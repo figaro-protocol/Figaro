@@ -1,0 +1,10 @@
+[workspace]
+members = ["lib", "program", "script", "sequencer"]
+resolver = "2"
+
+# SP1 accelerates k256 and sha3 (keccak) via precompiles.
+# If your SP1 installation requires explicit patches, add them here:
+#
+# [patch.crates-io]
+# sha3 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha3", tag = "..." }
+# k256 = { git = "https://github.com/sp1-patches/elliptic-curves", package = "k256", tag = "..." }

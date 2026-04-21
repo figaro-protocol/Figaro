@@ -1,0 +1,919 @@
+import fs from 'fs';
+import path from 'path';
+import { Page } from '@playwright/test';
+import {
+    createPublicClient,
+    createWalletClient,
+    decodeEventLog,
+    defineChain,
+    http,
+    keccak256,
+    parseAbi,
+    stringToHex,
+    zeroAddress,
+} from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+
+import { waitForFirstOrderUiSync } from './test-helpers';
+
+const RPC_URL = 'http://127.0.0.1:8545';
+const MAX_UINT256 = (2n ** 256n) - 1n;
+const LOCAL_ANVIL = defineChain({
+    id: 31337,
+    name: 'Localhost',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: {
+        default: { http: [RPC_URL] },
+    },
+});
+
+const BUYER_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+const RESTAURANT_PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
+const SUPPLIER_PRIVATE_KEY = '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a';
+
+const ERC20_TEST_ABI = parseAbi([
+    'function approve(address spender, uint256 amount) external returns (bool)',
+]);
+
+const CORE_TEST_ABI = parseAbi([
+    'function firstOrder(address counterparty, bool isBuyerProposal, address currency, uint256 payment, bytes manifest, address permitTarget, bytes permitData, address preAcceptHook) external returns (uint256, bytes32)',
+    'function acceptOffer(uint256 orderId, bytes32 processId, address permitTarget, bytes permitData) external',
+    'function subOrder(bytes32 processId, address seller, uint256 payment, uint256[] parentOrderIds, bytes manifest, address permitTarget, bytes permitData, address preAcceptHook) external returns (uint256)',
+    'event OrderCreated(uint256 indexed orderId, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes manifest, bytes32 manifestHash, bool buyerProposed, uint256[] parentOrderIds, bytes32 parentRoot, uint16 feeSnapshot, uint256 timestamp)',
+]);
+
+const GHG_TEST_ABI = parseAbi([
+    'function registerSchema(bytes32 schemaId, uint64 version, bytes32 uriHash) external',
+    'function activateSchema(bytes32 schemaId) external',
+    'function deactivateSchema(bytes32 schemaId) external',
+    'function isSchemaActive(bytes32 schemaId) view returns (bool)',
+    'function getSchema(bytes32 schemaId) view returns ((bytes32 schemaId, uint64 version, bytes32 uriHash, bool active))',
+    'function openReportingBoundary(bytes32 processId, uint256 rootOrderId, bytes32 schemaId) external returns (bytes32)',
+    'function createOrderRequirement(bytes32 boundaryId, uint256 orderId, uint8 disclosureKind, uint8 dueStage, bool required) external returns (uint256)',
+    'function submitDisclosure(uint256 requirementId, bytes32 contentRef) external returns (uint256)',
+    'function closeReportingBoundary(bytes32 boundaryId) external',
+]);
+
+export type SeededGhgScenario = {
+    schemaId: `0x${string}`;
+    processId: `0x${string}`;
+    rootOrderId: bigint;
+    supplierOrderId: bigint;
+    boundaryId: `0x${string}`;
+    rootRequirementId: bigint;
+    supplierRequirementId: bigint;
+    supplierContentRef: `0x${string}`;
+};
+
+export type SeededSupersededGhgScenario = SeededGhgScenario & {
+    initialSupplierContentRef: `0x${string}`;
+    latestSupplierContentRef: `0x${string}`;
+};
+
+export type SeededClosedCompleteGhgScenario = SeededGhgScenario & {
+    rootContentRef: `0x${string}`;
+};
+
+export type SeededUnreportedProcessScenario = {
+    schemaId: `0x${string}`;
+    processId: `0x${string}`;
+    rootOrderId: bigint;
+    supplierOrderId: bigint;
+};
+
+type DeploymentConfig = {
+    figaroCore?: `0x${string}`;
+    tokenAddress?: `0x${string}`;
+    ghgReportingModule?: `0x${string}`;
+    driverMarket?: `0x${string}`;
+    auctionFloatVault?: `0x${string}`;
+    deliveryLifecycle?: `0x${string}`;
+    reputationModule?: `0x${string}`;
+    operatorRegistry?: `0x${string}`;
+};
+
+function readLocalDeploymentConfig(): DeploymentConfig {
+    const envPath = path.resolve(__dirname, '../../.env.local');
+    const deploymentPath = path.resolve(__dirname, '../../../.deployments/local.json');
+    const config: DeploymentConfig = {};
+
+    if (fs.existsSync(envPath)) {
+        const contents = fs.readFileSync(envPath, 'utf8');
+        for (const line of contents.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) continue;
+            const eq = trimmed.indexOf('=');
+            if (eq === -1) continue;
+            const key = trimmed.slice(0, eq).trim();
+            const value = trimmed.slice(eq + 1).trim() as `0x${string}`;
+            if (key === 'NEXT_PUBLIC_FIGARO_CORE') config.figaroCore = value;
+            if (key === 'NEXT_PUBLIC_TOKEN_ADDRESS') config.tokenAddress = value;
+            if (key === 'NEXT_PUBLIC_GHG_REPORTING_MODULE') config.ghgReportingModule = value;
+            if (key === 'NEXT_PUBLIC_DUTCH_AUCTION_DRIVER_MARKET') config.driverMarket = value;
+            if (key === 'NEXT_PUBLIC_AUCTION_FLOAT_VAULT') config.auctionFloatVault = value;
+            if (key === 'NEXT_PUBLIC_DELIVERY_LIFECYCLE_MODULE') config.deliveryLifecycle = value;
+            if (key === 'NEXT_PUBLIC_REPUTATION_MODULE') config.reputationModule = value;
+            if (key === 'NEXT_PUBLIC_OPERATOR_REGISTRY') config.operatorRegistry = value;
+        }
+    }
+
+    if (fs.existsSync(deploymentPath)) {
+        const contents = JSON.parse(fs.readFileSync(deploymentPath, 'utf8')) as DeploymentConfig;
+        config.figaroCore = config.figaroCore ?? contents.figaroCore;
+        config.tokenAddress = config.tokenAddress ?? contents.tokenAddress;
+        config.ghgReportingModule = config.ghgReportingModule ?? contents.ghgReportingModule;
+        config.driverMarket = config.driverMarket ?? contents.driverMarket;
+        config.auctionFloatVault = config.auctionFloatVault ?? contents.auctionFloatVault;
+        config.deliveryLifecycle = config.deliveryLifecycle ?? contents.deliveryLifecycle;
+        config.reputationModule = config.reputationModule ?? contents.reputationModule;
+        config.operatorRegistry = config.operatorRegistry ?? contents.operatorRegistry;
+    }
+
+    return config;
+}
+
+export async function seedGhgDisclosureScenario(): Promise<SeededGhgScenario> {
+    const localConfig = readLocalDeploymentConfig();
+    const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE as `0x${string}` | undefined) ?? localConfig.figaroCore;
+    const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}` | undefined) ?? localConfig.tokenAddress;
+    const ghgAddress = (process.env.NEXT_PUBLIC_GHG_REPORTING_MODULE as `0x${string}` | undefined) ?? localConfig.ghgReportingModule;
+
+    if (!coreAddress || !tokenAddress || !ghgAddress) {
+        throw new Error('Missing local deployment env for GHG devnet seed');
+    }
+
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const buyer = privateKeyToAccount(BUYER_PRIVATE_KEY);
+    const restaurant = privateKeyToAccount(RESTAURANT_PRIVATE_KEY);
+    const supplier = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
+
+    const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const restaurantClient = createWalletClient({ account: restaurant, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const supplierClient = createWalletClient({ account: supplier, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    const schemaId = keccak256(stringToHex('SEC-GHG-v1'));
+    const schemaUriHash = keccak256(stringToHex('ipfs://sec-ghg-v1'));
+    let schemaActive = false;
+    try {
+        const schema = await publicClient.readContract({
+            address: ghgAddress,
+            abi: GHG_TEST_ABI,
+            functionName: 'getSchema',
+            args: [schemaId],
+        }) as { active?: boolean; 3?: boolean };
+        schemaActive = !!(schema.active ?? schema[3]);
+    } catch { /* schema not registered yet */ }
+
+    if (!schemaActive) {
+        const { request } = await publicClient.simulateContract({
+            account: buyer.address,
+            address: ghgAddress,
+            abi: GHG_TEST_ABI,
+            functionName: 'registerSchema',
+            args: [schemaId, 1n, schemaUriHash],
+        });
+        const registerHash = await buyerClient.writeContract(request);
+        await publicClient.waitForTransactionReceipt({ hash: registerHash });
+    }
+
+    for (const client of [buyerClient, restaurantClient] as const) {
+        const { request } = await publicClient.simulateContract({
+            account: client.account,
+            address: tokenAddress,
+            abi: ERC20_TEST_ABI,
+            functionName: 'approve',
+            args: [coreAddress, MAX_UINT256],
+        });
+        const approveHash = await client.writeContract(request);
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+    }
+
+    const rootManifest = stringToHex('o:Buyer HQ|d:Restaurant Node|mass:5 kg|class:Scope3');
+    const { request: firstOrderRequest } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: coreAddress,
+        abi: CORE_TEST_ABI,
+        functionName: 'firstOrder',
+        args: [restaurant.address, true, tokenAddress, 1_000000000000000000n, rootManifest, zeroAddress, '0x', zeroAddress],
+    });
+    const firstOrderHash = await buyerClient.writeContract(firstOrderRequest);
+    const firstOrderReceipt = await publicClient.waitForTransactionReceipt({ hash: firstOrderHash });
+    const firstOrderLog = firstOrderReceipt.logs
+        .map((log) => {
+            try {
+                return decodeEventLog({ abi: CORE_TEST_ABI, data: log.data, topics: log.topics });
+            } catch {
+                return null;
+            }
+        })
+        .find((log) => log?.eventName === 'OrderCreated');
+
+    if (!firstOrderLog) {
+        throw new Error('Failed to decode OrderCreated event for seeded firstOrder');
+    }
+
+    const rootOrderId = firstOrderLog.args.orderId as bigint;
+    const processId = firstOrderLog.args.processId as `0x${string}`;
+
+    const { request: acceptRequest } = await publicClient.simulateContract({
+        account: restaurant.address,
+        address: coreAddress,
+        abi: CORE_TEST_ABI,
+        functionName: 'acceptOffer',
+        args: [rootOrderId, processId, zeroAddress, '0x'],
+    });
+    const acceptHash = await restaurantClient.writeContract(acceptRequest);
+    await publicClient.waitForTransactionReceipt({ hash: acceptHash });
+
+    const supplierManifest = stringToHex('o:Restaurant Node|d:Supplier Farm|mass:2 kg|class:Primary Data');
+    const { request: subOrderRequest } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: coreAddress,
+        abi: CORE_TEST_ABI,
+        functionName: 'subOrder',
+        args: [processId, supplier.address, 400000000000000000n, [rootOrderId], supplierManifest, zeroAddress, '0x', zeroAddress],
+    });
+    const subOrderHash = await buyerClient.writeContract(subOrderRequest);
+    const subOrderReceipt = await publicClient.waitForTransactionReceipt({ hash: subOrderHash });
+    const subOrderLog = subOrderReceipt.logs
+        .map((log) => {
+            try {
+                return decodeEventLog({ abi: CORE_TEST_ABI, data: log.data, topics: log.topics });
+            } catch {
+                return null;
+            }
+        })
+        .find((log) => log?.eventName === 'OrderCreated');
+
+    if (!subOrderLog) {
+        throw new Error('Failed to decode OrderCreated event for seeded subOrder');
+    }
+
+    const supplierOrderId = subOrderLog.args.orderId as bigint;
+
+    const { result: boundaryResult, request: boundaryRequest } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: ghgAddress,
+        abi: GHG_TEST_ABI,
+        functionName: 'openReportingBoundary',
+        args: [processId, rootOrderId, schemaId],
+    });
+    const boundaryHash = await buyerClient.writeContract(boundaryRequest);
+    await publicClient.waitForTransactionReceipt({ hash: boundaryHash });
+    const boundaryId = boundaryResult as `0x${string}`;
+
+    const { result: rootRequirementResult, request: rootRequirementRequest } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: ghgAddress,
+        abi: GHG_TEST_ABI,
+        functionName: 'createOrderRequirement',
+        args: [boundaryId, rootOrderId, 0, 0, true],
+    });
+    const rootRequirementHash = await buyerClient.writeContract(rootRequirementRequest);
+    await publicClient.waitForTransactionReceipt({ hash: rootRequirementHash });
+    const rootRequirementId = rootRequirementResult as bigint;
+
+    const { result: supplierRequirementResult, request: supplierRequirementRequest } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: ghgAddress,
+        abi: GHG_TEST_ABI,
+        functionName: 'createOrderRequirement',
+        args: [boundaryId, supplierOrderId, 1, 3, true],
+    });
+    const supplierRequirementHash = await buyerClient.writeContract(supplierRequirementRequest);
+    await publicClient.waitForTransactionReceipt({ hash: supplierRequirementHash });
+    const supplierRequirementId = supplierRequirementResult as bigint;
+
+    const supplierContentRef = keccak256(stringToHex(`ipfs://sec-ghg-v1/${processId.slice(2, 10)}`));
+    const { request: submissionRequest } = await publicClient.simulateContract({
+        account: supplier.address,
+        address: ghgAddress,
+        abi: GHG_TEST_ABI,
+        functionName: 'submitDisclosure',
+        args: [supplierRequirementId, supplierContentRef],
+    });
+    const submissionHash = await supplierClient.writeContract(submissionRequest);
+    await publicClient.waitForTransactionReceipt({ hash: submissionHash });
+
+    return {
+        schemaId,
+        processId,
+        rootOrderId,
+        supplierOrderId,
+        boundaryId,
+        rootRequirementId,
+        supplierRequirementId,
+        supplierContentRef,
+    };
+}
+
+export async function seedUnreportedProcessScenario(): Promise<SeededUnreportedProcessScenario> {
+    const localConfig = readLocalDeploymentConfig();
+    const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE as `0x${string}` | undefined) ?? localConfig.figaroCore;
+    const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}` | undefined) ?? localConfig.tokenAddress;
+    const ghgAddress = (process.env.NEXT_PUBLIC_GHG_REPORTING_MODULE as `0x${string}` | undefined) ?? localConfig.ghgReportingModule;
+
+    if (!coreAddress || !tokenAddress || !ghgAddress) {
+        throw new Error('Missing local deployment env for unreported process seed');
+    }
+
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const buyer = privateKeyToAccount(BUYER_PRIVATE_KEY);
+    const restaurant = privateKeyToAccount(RESTAURANT_PRIVATE_KEY);
+    const supplier = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
+
+    const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const restaurantClient = createWalletClient({ account: restaurant, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    const schemaId = keccak256(stringToHex('SEC-GHG-v1'));
+    const schemaUriHash = keccak256(stringToHex('ipfs://sec-ghg-v1'));
+    let schemaActive = false;
+    try {
+        const schema = await publicClient.readContract({
+            address: ghgAddress,
+            abi: GHG_TEST_ABI,
+            functionName: 'getSchema',
+            args: [schemaId],
+        }) as { active?: boolean; 3?: boolean };
+        schemaActive = !!(schema.active ?? schema[3]);
+    } catch { /* schema not registered yet */ }
+
+    if (!schemaActive) {
+        const { request } = await publicClient.simulateContract({
+            account: buyer.address,
+            address: ghgAddress,
+            abi: GHG_TEST_ABI,
+            functionName: 'registerSchema',
+            args: [schemaId, 1n, schemaUriHash],
+        });
+        const registerHash = await buyerClient.writeContract(request);
+        await publicClient.waitForTransactionReceipt({ hash: registerHash });
+    }
+
+    for (const client of [buyerClient, restaurantClient] as const) {
+        const { request } = await publicClient.simulateContract({
+            account: client.account,
+            address: tokenAddress,
+            abi: ERC20_TEST_ABI,
+            functionName: 'approve',
+            args: [coreAddress, MAX_UINT256],
+        });
+        const approveHash = await client.writeContract(request);
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+    }
+
+    const rootManifest = stringToHex('o:Buyer HQ|d:Restaurant Node|mass:8 kg|class:Admin Seed');
+    const { request: firstOrderRequest } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: coreAddress,
+        abi: CORE_TEST_ABI,
+        functionName: 'firstOrder',
+        args: [restaurant.address, true, tokenAddress, 2_000000000000000000n, rootManifest, zeroAddress, '0x', zeroAddress],
+    });
+    const firstOrderHash = await buyerClient.writeContract(firstOrderRequest);
+    const firstOrderReceipt = await publicClient.waitForTransactionReceipt({ hash: firstOrderHash });
+    const firstOrderLog = firstOrderReceipt.logs
+        .map((log) => {
+            try {
+                return decodeEventLog({ abi: CORE_TEST_ABI, data: log.data, topics: log.topics });
+            } catch {
+                return null;
+            }
+        })
+        .find((log) => log?.eventName === 'OrderCreated');
+
+    if (!firstOrderLog) {
+        throw new Error('Failed to decode OrderCreated event for unreported firstOrder');
+    }
+
+    const rootOrderId = firstOrderLog.args.orderId as bigint;
+    const processId = firstOrderLog.args.processId as `0x${string}`;
+
+    const { request: acceptRequest } = await publicClient.simulateContract({
+        account: restaurant.address,
+        address: coreAddress,
+        abi: CORE_TEST_ABI,
+        functionName: 'acceptOffer',
+        args: [rootOrderId, processId, zeroAddress, '0x'],
+    });
+    const acceptHash = await restaurantClient.writeContract(acceptRequest);
+    await publicClient.waitForTransactionReceipt({ hash: acceptHash });
+
+    const supplierManifest = stringToHex('o:Restaurant Node|d:Supplier Farm|mass:3 kg|class:Admin Seed Suborder');
+    const { request: subOrderRequest } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: coreAddress,
+        abi: CORE_TEST_ABI,
+        functionName: 'subOrder',
+        args: [processId, supplier.address, 500000000000000000n, [rootOrderId], supplierManifest, zeroAddress, '0x', zeroAddress],
+    });
+    const subOrderHash = await buyerClient.writeContract(subOrderRequest);
+    const subOrderReceipt = await publicClient.waitForTransactionReceipt({ hash: subOrderHash });
+    const subOrderLog = subOrderReceipt.logs
+        .map((log) => {
+            try {
+                return decodeEventLog({ abi: CORE_TEST_ABI, data: log.data, topics: log.topics });
+            } catch {
+                return null;
+            }
+        })
+        .find((log) => log?.eventName === 'OrderCreated');
+
+    if (!subOrderLog) {
+        throw new Error('Failed to decode OrderCreated event for unreported subOrder');
+    }
+
+    return {
+        schemaId,
+        processId,
+        rootOrderId,
+        supplierOrderId: subOrderLog.args.orderId as bigint,
+    };
+}
+
+export async function seedSupersededGhgDisclosureScenario(): Promise<SeededSupersededGhgScenario> {
+    const seeded = await seedGhgDisclosureScenario();
+    const localConfig = readLocalDeploymentConfig();
+    const ghgAddress = (process.env.NEXT_PUBLIC_GHG_REPORTING_MODULE as `0x${string}` | undefined) ?? localConfig.ghgReportingModule;
+
+    if (!ghgAddress) {
+        throw new Error('Missing GHG deployment env for superseded disclosure seed');
+    }
+
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const supplier = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
+    const supplierClient = createWalletClient({ account: supplier, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    const latestSupplierContentRef = keccak256(
+        stringToHex(`ipfs://sec-ghg-v1/${seeded.processId.slice(2, 10)}/rev-2`)
+    );
+
+    const { request } = await publicClient.simulateContract({
+        account: supplier.address,
+        address: ghgAddress,
+        abi: GHG_TEST_ABI,
+        functionName: 'submitDisclosure',
+        args: [seeded.supplierRequirementId, latestSupplierContentRef],
+    });
+    const supersedeHash = await supplierClient.writeContract(request);
+    await publicClient.waitForTransactionReceipt({ hash: supersedeHash });
+
+    return {
+        ...seeded,
+        initialSupplierContentRef: seeded.supplierContentRef,
+        latestSupplierContentRef,
+    };
+}
+
+export async function seedClosedCompleteGhgDisclosureScenario(): Promise<SeededClosedCompleteGhgScenario> {
+    const seeded = await seedGhgDisclosureScenario();
+    const localConfig = readLocalDeploymentConfig();
+    const ghgAddress = (process.env.NEXT_PUBLIC_GHG_REPORTING_MODULE as `0x${string}` | undefined) ?? localConfig.ghgReportingModule;
+
+    if (!ghgAddress) {
+        throw new Error('Missing GHG deployment env for closed disclosure seed');
+    }
+
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const buyer = privateKeyToAccount(BUYER_PRIVATE_KEY);
+    const restaurant = privateKeyToAccount(RESTAURANT_PRIVATE_KEY);
+
+    const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const restaurantClient = createWalletClient({ account: restaurant, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    const rootContentRef = keccak256(
+        stringToHex(`ipfs://sec-ghg-v1/${seeded.processId.slice(2, 10)}/root-complete`)
+    );
+
+    const { request: submissionRequest } = await publicClient.simulateContract({
+        account: restaurant.address,
+        address: ghgAddress,
+        abi: GHG_TEST_ABI,
+        functionName: 'submitDisclosure',
+        args: [seeded.rootRequirementId, rootContentRef],
+    });
+    const submissionHash = await restaurantClient.writeContract(submissionRequest);
+    await publicClient.waitForTransactionReceipt({ hash: submissionHash });
+
+    const { request: closeRequest } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: ghgAddress,
+        abi: GHG_TEST_ABI,
+        functionName: 'closeReportingBoundary',
+        args: [seeded.boundaryId],
+    });
+    const closeHash = await buyerClient.writeContract(closeRequest);
+    await publicClient.waitForTransactionReceipt({ hash: closeHash });
+
+    return {
+        ...seeded,
+        rootContentRef,
+    };
+}
+
+function selectorWithinScope(scopeTestId?: string, selector = '[data-testid="approval-status"]'): string {
+    if (!scopeTestId) return selector;
+    return `[data-testid="${scopeTestId}"] ${selector}`;
+}
+
+export async function waitAndApproveIfNeeded(page: Page): Promise<void> {
+    try {
+        await page.waitForFunction(
+            () => {
+                const el = document.querySelector('[data-testid="approval-status"]');
+                if (!el) return true;
+                const text = el.textContent || '';
+                return text.includes('Approved') || text.includes('Needs approval');
+            },
+            null,
+            { timeout: 10000 }
+        );
+    } catch {
+        return;
+    }
+
+    const approvalStatus = page.getByTestId('approval-status');
+    if (!await approvalStatus.count()) return;
+
+    const statusText = await approvalStatus.innerText().catch(() => '');
+    if (!statusText.includes('Needs approval')) return;
+
+    const approveBtn = page.getByTestId('approve-button');
+    if (!await approveBtn.count()) return;
+
+    await approveBtn.click();
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Approved'),
+        null,
+        { timeout: 30000 }
+    ).catch(() => { });
+}
+
+export async function waitForApprovalState(page: Page, scopeTestId?: string, timeout = 10000): Promise<void> {
+    const statusSelector = selectorWithinScope(scopeTestId);
+    try {
+        await page.waitForFunction(
+            (selector: string) => {
+                const el = document.querySelector(selector);
+                if (!el) return true;
+                const text = el.textContent || '';
+                return text.includes('Approved') || text.includes('Needs approval');
+            },
+            statusSelector,
+            { timeout }
+        );
+    } catch {
+        return;
+    }
+}
+
+export async function waitForApproved(page: Page, scopeTestId?: string, timeout = 30000): Promise<void> {
+    const statusSelector = selectorWithinScope(scopeTestId);
+    await page.waitForFunction(
+        (selector: string) => document.querySelector(selector)?.textContent?.includes('Approved') ?? false,
+        statusSelector,
+        { timeout }
+    );
+}
+
+export async function approveIfNeeded(page: Page, scopeTestId?: string): Promise<void> {
+    await waitForApprovalState(page, scopeTestId);
+
+    const scope = scopeTestId ? page.getByTestId(scopeTestId) : page;
+    const approvalStatus = scope.getByTestId('approval-status');
+    if (!await approvalStatus.count()) return;
+
+    const statusText = await approvalStatus.innerText().catch(() => '');
+    if (!statusText.includes('Needs approval')) return;
+
+    const approveBtn = scope.getByTestId('approve-button');
+    if (!await approveBtn.count()) return;
+
+    await approveBtn.click();
+    await waitForApproved(page, scopeTestId, 60000);
+}
+
+export async function waitForCreateConfirm(page: Page): Promise<void> {
+    const previousNodeCount = await page.locator('[data-testid^="order-node-"]').count();
+    const previousProcessOrderCount = await page.locator('[data-testid^="process-order-item-"]').count();
+    await waitForFirstOrderUiSync(page, { previousNodeCount, previousProcessOrderCount });
+}
+
+export async function getNodeIds(page: Page): Promise<string[]> {
+    const handles = await page.locator('[data-testid^="order-node-"]').all();
+    const ids: string[] = [];
+    for (const handle of handles) {
+        const testId = await handle.getAttribute('data-testid');
+        if (testId) ids.push(testId.replace('order-node-', ''));
+    }
+    return ids;
+}
+
+export async function waitForWalletReady(page: Page): Promise<void> {
+    await page.waitForFunction(
+        () => {
+            const btn = document.querySelector('[data-testid="btn-submit-order"]');
+            return btn !== null && !btn.hasAttribute('disabled');
+        },
+        null,
+        { timeout: 20000 }
+    );
+}
+
+export async function selectProcessForOrder(page: Page, orderId: string): Promise<void> {
+    const processItem = page.locator('li').filter({
+        has: page.getByTestId(`process-order-item-${orderId}`),
+    });
+    await processItem.waitFor({ timeout: 30000 });
+    await processItem.locator('[data-testid^="process-item-"]').click();
+}
+
+export async function clickSuborderCloseIfOpen(page: Page): Promise<void> {
+    const modal = page.getByTestId('suborder-modal');
+    if (!await modal.count()) return;
+
+    await page.evaluate(() => {
+        const btn = document.querySelector('[data-testid="suborder-modal"] button[aria-label="Close"]') as HTMLElement | null;
+        btn?.click();
+    });
+    await modal.waitFor({ state: 'detached', timeout: 5000 }).catch(() => { });
+}
+
+export async function acceptOrder(page: Page, orderId: string): Promise<void> {
+    const btn = page.getByTestId(`btn-accept-${orderId}`);
+    const alreadyVisible = await btn.isVisible({ timeout: 1000 }).catch(() => false);
+    if (!alreadyVisible) {
+        await selectProcessForOrder(page, orderId);
+    }
+    await btn.waitFor({ timeout: 30000 });
+    await btn.click();
+    await page.waitForFunction(
+        (id) => document.querySelector(`[data-testid="order-node-${id}"]`)?.getAttribute('data-order-state') === 'active' ?? false,
+        orderId,
+        { timeout: 60000 }
+    );
+}
+
+export async function resolveVisibleProcess(page: Page): Promise<void> {
+    const btn = page.getByTestId('btn-resolve-process');
+    await btn.waitFor({ timeout: 10000 });
+    await btn.click();
+    await page.waitForFunction(
+        () => {
+            const nodes = Array.from(document.querySelectorAll('[data-testid^="order-node-"]'));
+            return nodes.length > 0 && nodes.every((node) => node.getAttribute('data-order-state') === 'resolved');
+        },
+        null,
+        { timeout: 60000 }
+    );
+}
+
+// ── Mechanism ABIs ───────────────────────────────────────────────────────────
+
+const DRIVER_MARKET_TEST_ABI = parseAbi([
+    'function startAuction(uint256 foodOrderId, uint256 deliveryOrderId) external',
+    'function startAuction(uint256 orderId) external',
+    'function claimAndAccept(uint256 orderId) external',
+    'function payDriver(uint256 orderId) external',
+    'function auctionStartTime(uint256 orderId) view returns (uint256)',
+    'function assignedDriver(uint256 orderId) view returns (address)',
+    'function getCurrentPrice(uint256 orderId) view returns (uint256)',
+    'event AuctionStarted(uint256 indexed orderId, bytes32 indexed processId, uint256 indexed foodOrderId, uint256 maxPrice, uint256 startTime)',
+    'event JobClaimed(uint256 indexed orderId, address indexed driver, uint256 clearingPrice, uint256 surplusRefund)',
+]);
+
+const DELIVERY_LIFECYCLE_TEST_ABI = parseAbi([
+    'function declarePreparationStarted(uint256 foodOrderId, uint256 deliveryOrderId) external',
+    'function declareReadyForPickup(uint256 foodOrderId, uint256 deliveryOrderId) external',
+    'function declareEnRoute(uint256 deliveryOrderId) external',
+    'function declarePickedUp(uint256 deliveryOrderId) external',
+    'function declareDelivered(uint256 deliveryOrderId) external',
+    'function deliveryStage(uint256 deliveryOrderId) view returns (uint8)',
+]);
+
+// ── Delivery lifecycle seed ─────────────────────────────────────────────────
+
+export type SeededDeliveryScenario = {
+    processId: `0x${string}`;
+    foodOrderId: bigint;
+    deliveryOrderId: bigint;
+    buyer: `0x${string}`;
+    restaurant: `0x${string}`;
+    driver: `0x${string}`;
+};
+
+/**
+ * Seed a 3-party delivery scenario entirely via viem calls.
+ *
+ * Creates a food order (buyer→restaurant), restaurant accepts it,
+ * buyer posts a delivery sub-order (buyer→driverMarket), restaurant starts
+ * the auction, and returns all IDs needed for exercising the rest of the
+ * lifecycle via the UI or further viem calls.
+ */
+export async function seedDeliveryScenario(): Promise<SeededDeliveryScenario> {
+    const localConfig = readLocalDeploymentConfig();
+    const coreAddress = resolve('NEXT_PUBLIC_FIGARO_CORE', localConfig.figaroCore);
+    const tokenAddress = resolve('NEXT_PUBLIC_TOKEN_ADDRESS', localConfig.tokenAddress);
+    const driverMarketAddress = resolve('NEXT_PUBLIC_DUTCH_AUCTION_DRIVER_MARKET', localConfig.driverMarket);
+    const lifecycleAddress = resolve('NEXT_PUBLIC_DELIVERY_LIFECYCLE_MODULE', localConfig.deliveryLifecycle);
+
+    if (!coreAddress || !tokenAddress || !driverMarketAddress || !lifecycleAddress) {
+        throw new Error(
+            'Missing deployment addresses for delivery seed. Needed: FIGARO_CORE, TOKEN, DUTCH_AUCTION_DRIVER_MARKET, DELIVERY_LIFECYCLE_MODULE',
+        );
+    }
+
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const buyer = privateKeyToAccount(BUYER_PRIVATE_KEY);
+    const restaurant = privateKeyToAccount(RESTAURANT_PRIVATE_KEY);
+    const driver = privateKeyToAccount(SUPPLIER_PRIVATE_KEY); // account[2]
+
+    const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const restaurantClient = createWalletClient({ account: restaurant, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const driverClient = createWalletClient({ account: driver, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    // ── Approve tokens ──────────────────────────────────────────────
+    for (const client of [buyerClient, restaurantClient, driverClient] as const) {
+        const { request } = await publicClient.simulateContract({
+            account: client.account,
+            address: tokenAddress,
+            abi: ERC20_TEST_ABI,
+            functionName: 'approve',
+            args: [coreAddress, MAX_UINT256],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: await client.writeContract(request) });
+    }
+    // Driver also needs to approve the driver market
+    {
+        const { request } = await publicClient.simulateContract({
+            account: driver,
+            address: tokenAddress,
+            abi: ERC20_TEST_ABI,
+            functionName: 'approve',
+            args: [driverMarketAddress, MAX_UINT256],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: await driverClient.writeContract(request) });
+    }
+
+    // ── Step 1: Buyer creates food order ────────────────────────────
+    const foodManifest = stringToHex('o:Buyer|d:Restaurant|type:food|geo:u4pruydqqvj');
+    const { request: firstReq } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: coreAddress,
+        abi: CORE_TEST_ABI,
+        functionName: 'firstOrder',
+        args: [restaurant.address, true, tokenAddress, 1_000000000000000000n, foodManifest, zeroAddress, '0x', zeroAddress],
+    });
+    const firstHash = await buyerClient.writeContract(firstReq);
+    const firstReceipt = await publicClient.waitForTransactionReceipt({ hash: firstHash });
+    const firstLog = firstReceipt.logs
+        .map((log: any) => { try { return decodeEventLog({ abi: CORE_TEST_ABI, data: log.data, topics: log.topics }); } catch { return null; } })
+        .find((l: any) => l?.eventName === 'OrderCreated');
+    if (!firstLog) throw new Error('Failed to decode food OrderCreated');
+    const foodOrderId = (firstLog as any).args.orderId as bigint;
+    const processId = (firstLog as any).args.processId as `0x${string}`;
+
+    // ── Step 2: Restaurant accepts ──────────────────────────────────
+    const { request: acceptReq } = await publicClient.simulateContract({
+        account: restaurant.address,
+        address: coreAddress,
+        abi: CORE_TEST_ABI,
+        functionName: 'acceptOffer',
+        args: [foodOrderId, processId, zeroAddress, '0x'],
+    });
+    await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(acceptReq) });
+
+    // ── Step 3: Buyer posts delivery sub-order ──────────────────────
+    const deliveryManifest = stringToHex('o:Restaurant|d:Buyer|type:delivery|geo:u4pruydqqvj');
+    const { request: subReq } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: coreAddress,
+        abi: CORE_TEST_ABI,
+        functionName: 'subOrder',
+        args: [processId, driverMarketAddress, 500000000000000000n, [foodOrderId], deliveryManifest, zeroAddress, '0x', zeroAddress],
+    });
+    const subHash = await buyerClient.writeContract(subReq);
+    const subReceipt = await publicClient.waitForTransactionReceipt({ hash: subHash });
+    const subLog = subReceipt.logs
+        .map((log: any) => { try { return decodeEventLog({ abi: CORE_TEST_ABI, data: log.data, topics: log.topics }); } catch { return null; } })
+        .find((l: any) => l?.eventName === 'OrderCreated');
+    if (!subLog) throw new Error('Failed to decode delivery OrderCreated');
+    const deliveryOrderId = (subLog as any).args.orderId as bigint;
+
+    // ── Step 4: Restaurant starts auction ───────────────────────────
+    const { request: auctionReq } = await publicClient.simulateContract({
+        account: restaurant.address,
+        address: driverMarketAddress,
+        abi: DRIVER_MARKET_TEST_ABI,
+        functionName: 'startAuction',
+        args: [foodOrderId, deliveryOrderId],
+    });
+    await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(auctionReq) });
+
+    return {
+        processId,
+        foodOrderId,
+        deliveryOrderId,
+        buyer: buyer.address as `0x${string}`,
+        restaurant: restaurant.address as `0x${string}`,
+        driver: driver.address as `0x${string}`,
+    };
+}
+
+/**
+ * Have the driver claim an auction job via viem.
+ */
+export async function driverClaimJob(deliveryOrderId: bigint): Promise<void> {
+    const localConfig = readLocalDeploymentConfig();
+    const driverMarketAddress = resolve('NEXT_PUBLIC_DUTCH_AUCTION_DRIVER_MARKET', localConfig.driverMarket);
+    if (!driverMarketAddress) throw new Error('Missing NEXT_PUBLIC_DUTCH_AUCTION_DRIVER_MARKET');
+
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const driver = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
+    const driverClient = createWalletClient({ account: driver, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    const { request } = await publicClient.simulateContract({
+        account: driver.address,
+        address: driverMarketAddress,
+        abi: DRIVER_MARKET_TEST_ABI,
+        functionName: 'claimAndAccept',
+        args: [deliveryOrderId],
+    });
+    await publicClient.waitForTransactionReceipt({ hash: await driverClient.writeContract(request) });
+}
+
+/**
+ * Send a lifecycle signal via viem.
+ */
+export async function sendLifecycleSignal(
+    signal: 'declareEnRoute' | 'declarePickedUp' | 'declareDelivered',
+    deliveryOrderId: bigint,
+): Promise<void> {
+    const localConfig = readLocalDeploymentConfig();
+    const lifecycleAddress = resolve('NEXT_PUBLIC_DELIVERY_LIFECYCLE_MODULE', localConfig.deliveryLifecycle);
+    if (!lifecycleAddress) throw new Error('Missing NEXT_PUBLIC_DELIVERY_LIFECYCLE_MODULE');
+
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const driver = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
+    const driverClient = createWalletClient({ account: driver, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    const { request } = await publicClient.simulateContract({
+        account: driver.address,
+        address: lifecycleAddress,
+        abi: DELIVERY_LIFECYCLE_TEST_ABI,
+        functionName: signal,
+        args: [deliveryOrderId],
+    });
+    await publicClient.waitForTransactionReceipt({ hash: await driverClient.writeContract(request) });
+}
+
+/**
+ * Send restaurant lifecycle signals (prep started, ready for pickup) via viem.
+ */
+export async function restaurantPrepSignals(foodOrderId: bigint, deliveryOrderId: bigint): Promise<void> {
+    const localConfig = readLocalDeploymentConfig();
+    const lifecycleAddress = resolve('NEXT_PUBLIC_DELIVERY_LIFECYCLE_MODULE', localConfig.deliveryLifecycle);
+    if (!lifecycleAddress) throw new Error('Missing NEXT_PUBLIC_DELIVERY_LIFECYCLE_MODULE');
+
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const restaurant = privateKeyToAccount(RESTAURANT_PRIVATE_KEY);
+    const restaurantClient = createWalletClient({ account: restaurant, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    // declarePreparationStarted
+    const { request: prepReq } = await publicClient.simulateContract({
+        account: restaurant.address,
+        address: lifecycleAddress,
+        abi: DELIVERY_LIFECYCLE_TEST_ABI,
+        functionName: 'declarePreparationStarted',
+        args: [foodOrderId, deliveryOrderId],
+    });
+    await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(prepReq) });
+
+    // declareReadyForPickup
+    const { request: readyReq } = await publicClient.simulateContract({
+        account: restaurant.address,
+        address: lifecycleAddress,
+        abi: DELIVERY_LIFECYCLE_TEST_ABI,
+        functionName: 'declareReadyForPickup',
+        args: [foodOrderId, deliveryOrderId],
+    });
+    await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(readyReq) });
+}
+
+function resolve(envKey: string, fallback?: `0x${string}`): `0x${string}` | undefined {
+    return (process.env[envKey] as `0x${string}` | undefined) ?? fallback;
+}
+
+// ── Anvil EVM snapshot / revert ──────────────────────────────────────────────
+
+const snapshotClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+/** Take an EVM snapshot. Returns a snapshot ID that can be passed to `evmRevert`. */
+export async function evmSnapshot(): Promise<string> {
+    return snapshotClient.request({ method: 'evm_snapshot' as any }) as Promise<string>;
+}
+
+/** Revert Anvil state to a previous snapshot. The snapshot is consumed. */
+export async function evmRevert(snapshotId: string): Promise<void> {
+    await snapshotClient.request({ method: 'evm_revert' as any, params: [snapshotId] } as any);
+}

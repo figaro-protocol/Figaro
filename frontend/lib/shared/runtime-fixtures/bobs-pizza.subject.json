@@ -1,0 +1,21 @@
+{
+    "subjectAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "subjectKind": "merchant",
+    "displayName": "Bob's Pizza Palace",
+    "profileURI": "ipfs://figaro/subjects/bobs-pizza-palace.json",
+    "bindingRefs": [
+        {
+            "refKind": "binding",
+            "uri": "ipfs://figaro/bindings/bobs-pizza-palace.binding.json",
+            "contentHash": "bafybeibindinghash"
+        }
+    ],
+    "signatureRefs": [
+        {
+            "refKind": "signature",
+            "uri": "ipfs://figaro/signatures/bobs-pizza-palace.sig",
+            "contentHash": "bafybeisighash"
+        }
+    ],
+    "version": "1.0.0"
+}

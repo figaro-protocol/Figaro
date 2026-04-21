@@ -1,0 +1,29 @@
+{
+    "bindingId": "binding:acme-components-supply:local-anvil",
+    "subjectAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "archetypeId": "bonded-procurement-supplier",
+    "assemblySlug": "figaro-procurement",
+    "networkTargets": [
+        "local-anvil"
+    ],
+    "roleBindings": [
+        {
+            "roleKind": "supplier",
+            "assemblyRoleKinds": [
+                "supplier"
+            ],
+            "scope": "institution",
+            "mechanismIds": [
+                "core-orders",
+                "fulfillment-coordinator"
+            ],
+            "notes": "Reference bonded supplier for procurement assembly previews."
+        }
+    ],
+    "metadataURI": "ipfs://figaro/procurement/acme-components-supply.metadata.json",
+    "metadataHash": "bafybeiacmemetadatahash",
+    "assetURI": "ipfs://figaro/procurement/acme-components-supply.assets.json",
+    "assetHash": "bafybeiacmeassethash",
+    "effectiveFrom": "2026-03-19T00:00:00Z",
+    "version": "1.0.0"
+}

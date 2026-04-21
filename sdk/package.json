@@ -1,0 +1,60 @@
+{
+    "name": "@figaro/core",
+    "version": "0.1.0",
+    "description": "Figaro Protocol SDK — event parsing, state reconstruction, EIP-712 commitment building, and bond math for agents and integrations.",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./agent": {
+            "import": "./dist/agent/index.js",
+            "types": "./dist/agent/index.d.ts",
+            "default": "./dist/agent/index.js"
+        },
+        "./extensions": {
+            "import": "./dist/extensions/index.js",
+            "types": "./dist/extensions/index.d.ts",
+            "default": "./dist/extensions/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "src"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "lint": "tsc --noEmit"
+    },
+    "dependencies": {
+        "viem": "^2.0.0"
+    },
+    "devDependencies": {
+        "typescript": "^5.5.0",
+        "vitest": "^2.0.0"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/user/Figaro-Prototype2",
+        "directory": "sdk"
+    },
+    "keywords": [
+        "figaro",
+        "protocol",
+        "sdk",
+        "eip-712",
+        "bonding",
+        "settlement",
+        "agent"
+    ],
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

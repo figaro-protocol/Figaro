@@ -1,0 +1,193 @@
+{
+    "identity": {
+        "id": "figaro-disclosure-reference",
+        "name": "Figaro Disclosure Review",
+        "slug": "figaro-disclosure-review",
+        "description": "Reference institution assembly for disclosure-heavy coordination with a narrower, inspector-first module surface.",
+        "networkTargets": [
+            "local-anvil",
+            "evm-compatible"
+        ],
+        "version": "0.1.0"
+    },
+    "contracts": [
+        {
+            "key": "core",
+            "required": true,
+            "description": "Bonded process coordination substrate."
+        },
+        {
+            "key": "ghgReporting",
+            "required": false,
+            "description": "Generic disclosure graph for replacing and reviewing submissions."
+        }
+    ],
+    "mechanisms": [
+        {
+            "mechanismId": "core-orders",
+            "kind": "core",
+            "displayName": "Bonded Coordination Core",
+            "riskClass": "read-only-inherited",
+            "enabled": true,
+            "visibility": "secondary",
+            "contractKeys": [
+                "core"
+            ],
+            "moduleBindings": []
+        },
+        {
+            "mechanismId": "ghg-disclosure",
+            "kind": "disclosure",
+            "displayName": "GHG Disclosure Graph",
+            "riskClass": "medium-risk-extension",
+            "enabled": true,
+            "visibility": "primary",
+            "contractKeys": [
+                "core",
+                "ghgReporting"
+            ],
+            "capabilityBindings": [
+                "submit-disclosure",
+                "replace-disclosure",
+                "review-disclosure"
+            ],
+            "moduleBindings": [
+                "mechanism-inspector"
+            ]
+        }
+    ],
+    "roles": [
+        {
+            "roleKind": "buyer",
+            "displayName": "Buyer",
+            "description": "Creates the order and reviews submitted disclosures before resolving the process.",
+            "visibility": "primary",
+            "defaultLandingView": "disclosure-workbench",
+            "sampleCapabilities": [
+                "create-order",
+                "resolve-process"
+            ]
+        },
+        {
+            "roleKind": "seller",
+            "displayName": "Seller",
+            "description": "Accepts the order and submits or replaces the required disclosure references.",
+            "visibility": "primary",
+            "defaultLandingView": "disclosure-workbench",
+            "sampleCapabilities": [
+                "accept-offer",
+                "submit-disclosure",
+                "replace-disclosure"
+            ]
+        },
+        {
+            "roleKind": "reviewer",
+            "displayName": "Reviewer",
+            "description": "Inspects disclosure completeness without taking custody of settlement flows.",
+            "visibility": "secondary",
+            "defaultLandingView": "disclosure-workbench",
+            "sampleCapabilities": [
+                "review-disclosure"
+            ]
+        }
+    ],
+    "views": [
+        {
+            "viewId": "institution-overview",
+            "kind": "overview",
+            "title": "Institution Overview",
+            "moduleSlots": [
+                "mechanism-inspector"
+            ]
+        },
+        {
+            "viewId": "disclosure-workbench",
+            "kind": "role-dashboard",
+            "title": "Disclosure Workbench",
+            "moduleSlots": [
+                "capability-rail",
+                "mechanism-inspector",
+                "event-timeline",
+                "process-capital-summary"
+            ]
+        }
+    ],
+    "modules": [
+        {
+            "moduleId": "capability-rail",
+            "slot": "sidebar",
+            "priority": 1
+        },
+        {
+            "moduleId": "order-actions",
+            "slot": "main",
+            "priority": 2
+        },
+        {
+            "moduleId": "settlement-breakdown",
+            "slot": "main",
+            "priority": 3
+        },
+        {
+            "moduleId": "disclosure-actions",
+            "slot": "main",
+            "priority": 4
+        },
+        {
+            "moduleId": "mechanism-inspector",
+            "slot": "main",
+            "priority": 5
+        },
+        {
+            "moduleId": "event-timeline"
+        },
+        {
+            "moduleId": "process-capital-summary",
+            "slot": "sidebar",
+            "priority": 2
+        }
+    ],
+    "capabilityPresentation": [
+        {
+            "capabilityKind": "resolve-process",
+            "priority": 10,
+            "warningStyle": "warning"
+        },
+        {
+            "capabilityKind": "submit-disclosure",
+            "priority": 9,
+            "warningStyle": "info"
+        },
+        {
+            "capabilityKind": "replace-disclosure",
+            "priority": 8,
+            "warningStyle": "warning"
+        },
+        {
+            "capabilityKind": "review-disclosure",
+            "priority": 7,
+            "warningStyle": "info"
+        }
+    ],
+    "visibilityDefaults": {
+        "showGraphByDefault": false,
+        "showAdvancedMechanisms": false,
+        "showRiskBoundaries": true,
+        "showGuarantees": true,
+        "showEconomicBreakdowns": false,
+        "showBuilderMode": false,
+        "showAuditMode": true
+    },
+    "narrative": {
+        "institutionSummary": "A disclosure-first institution that keeps the prototype focused on role capabilities and mechanism inspection rather than process topology.",
+        "builderNotes": "Used to prove the builder shell can render a narrower module surface with a medium-risk extension mechanism."
+    },
+    "builderMetadata": {
+        "assemblyClass": "reference-disclosure",
+        "compositionLevel": 2,
+        "requiresCustomModules": false,
+        "safetyWarnings": [
+            "Disclosure modules may change information quality without changing custody or repricing guarantees."
+        ]
+    }
+}

@@ -1,0 +1,21 @@
+{
+    "subjectAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "subjectKind": "participant",
+    "displayName": "Acme Components Supply",
+    "profileURI": "ipfs://figaro/subjects/acme-components-supply.json",
+    "bindingRefs": [
+        {
+            "refKind": "binding",
+            "uri": "ipfs://figaro/bindings/acme-components-supply.binding.json",
+            "contentHash": "bafybeiacmebindinghash"
+        }
+    ],
+    "signatureRefs": [
+        {
+            "refKind": "signature",
+            "uri": "ipfs://figaro/signatures/acme-components-supply.sig",
+            "contentHash": "bafybeiacmesignaturehash"
+        }
+    ],
+    "version": "1.0.0"
+}

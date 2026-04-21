@@ -1,0 +1,28 @@
+[package]
+name = "figaro-sequencer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "sequencer"
+path = "src/main.rs"
+
+[dependencies]
+figaro-kernel = { path = "../lib" }
+sp1-sdk = "6.0"
+alloy-primitives = { version = "0.8", features = ["serde"] }
+alloy-sol-types = "0.8"
+alloy = { version = "0.8", features = ["full", "node-bindings"] }
+axum = { version = "0.7", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[build-dependencies]
+sp1-build = "6.0"
+
+[dev-dependencies]
+k256 = { version = "0.13", features = ["ecdsa"] }
+tower = { version = "0.5", features = ["util"] }

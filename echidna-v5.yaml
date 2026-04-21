@@ -1,0 +1,33 @@
+# Echidna configuration for FigaroCore V5
+#
+# Run: echidna . --contract EchidnaFuzzerV5 --config echidna-v5.yaml
+#
+# Requires HEVM cheatcodes: sign, addr, prank (Echidna 2.0+)
+#
+# Properties tested (7):
+#   echidna_solvency             — core balance >= outstanding bonds
+#   echidna_active_count_consistent — activeOrderCount == actual
+#   echidna_cumulative_accounting   — accumulator == sum(payments)
+#   echidna_state_monotonicity      — orderStatus only moves forward
+#   echidna_token_conservation      — no tokens created/destroyed by core
+#   echidna_buyer_dominance         — non-buyer resolve always reverts
+#   echidna_atomic_resolution       — incomplete list always reverts
+
+testMode: property
+testLimit: 50000
+seqLen: 30
+shrinkLimit: 5000
+
+deployer: "0x30000"
+sender: ["0x10000", "0x20000", "0x30000"]
+prefix: "echidna_"
+
+cryticArgs: ["--foundry-out-directory", "out"]
+
+coverage: true
+corpusDir: "echidna/corpus-v5"
+
+quiet: false
+format: text
+timeout: 300
+allowFFI: false

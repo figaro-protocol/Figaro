@@ -1,0 +1,470 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import type { ModuleProps } from "@/lib/shared/moduleRegistry";
+import { useCommerce, useCheckout } from "@/lib/commerce";
+import { useCartStore } from "@/lib/marketplace/cartStore";
+import type { CartItem } from "@/lib/marketplace/types";
+import { ContentImage } from "@/components/shared/ContentImage";
+import { broadcastSharedCommitment } from "@/lib/core/commitmentBroadcast";
+import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
+import { CONTRACTS } from "@/lib/core/contracts";
+import { calculateBonds } from "@figaro/core";
+import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
+import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
+import { formatToken, parseToken } from "@/lib/shared/utils";
+import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
+
+function MinusIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14" />
+        </svg>
+    );
+}
+
+function PlusIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12h14" />
+        </svg>
+    );
+}
+
+function CartIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="8" cy="21" r="1" />
+            <circle cx="19" cy="21" r="1" />
+            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+        </svg>
+    );
+}
+
+function XIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+    );
+}
+
+export function CartModule({ moduleId, context }: ModuleProps) {
+    const { selectedRoleKind } = context;
+    const { accentTone, cardStyle, labelStyle } = deriveModuleChrome(context);
+    const { items, addItem, removeItem, clearCart, getTotalPrice, getItemCount, deliveryMaxPrice, setDeliveryMaxPrice, fulfillmentMode, setFulfillmentMode } = useCartStore();
+    const [isOpen, setIsOpen] = useState(false);
+    const [deliveryAddress, setDeliveryAddress] = useState("");
+    const [step, setStep] = useState<"cart" | "delivery" | "checkout">("cart");
+    const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+    const { address: buyer } = useCommerce();
+    const currency = (CONTRACTS.mockToken || CONTRACTS.permitToken) as `0x${string}`;
+    const {
+        decimals: tokenDecimals,
+        balance: tokenBalance,
+        needsAuthorization: needsApproval,
+        authorize: approve,
+        authorization: { isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess },
+        signAndPlace,
+        initiateAsParty,
+        broadcast,
+        order: { step: commitStep, error: commitError, payload },
+        resetOrder: resetCommitment,
+    } = useCheckout(currency);
+
+    const itemCount = getItemCount();
+    const totalPrice = getTotalPrice();
+    const totalPriceAmount = items.length > 0 && totalPrice ? parseToken(totalPrice, tokenDecimals) : 0n;
+    const buyerBondAmount = totalPriceAmount > 0n ? calculateBonds(totalPriceAmount, totalPriceAmount).buyerBond : 0n;
+    const deliveryDetailsIncomplete = fulfillmentMode === "delivery" && (!deliveryAddress.trim() || Number(deliveryMaxPrice) <= 0);
+
+    const balance = tokenBalance ?? 0n;
+    const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
+    const isApproving = isApprovePending || isApproveConfirming;
+    const pendingCheckout = useRef(false);
+
+    // Auto-chain: when approval confirms, proceed to commitment signing
+    useEffect(() => {
+        if (pendingCheckout.current && isApproveSuccess) {
+            pendingCheckout.current = false;
+            void executeCheckout();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isApproveSuccess]);
+
+    if (selectedRoleKind !== "buyer") return null;
+
+    const handleToggle = () => {
+        setStep("cart");
+        setCheckoutError(null);
+        resetCommitment();
+        setIsOpen(!isOpen);
+    };
+
+    const executeCheckout = async () => {
+        if (!buyer) return;
+        const sellerAddress = items[0].restaurantAddress as `0x${string}`;
+        const paymentWei = totalPriceAmount;
+        const prepared = await prepareOrderCommitment({
+            buyer,
+            seller: sellerAddress,
+            currency,
+            payment: paymentWei,
+            lineItems: items.map((item) => ({
+                itemId: item.menuItemId,
+                name: item.name,
+                quantity: item.quantity,
+                unitPrice: item.price,
+            })),
+            manifestFields: {
+                origin: "",
+                destination: "",
+                fulfilmentMethod: fulfillmentMode === "delivery" ? "deliver" : "pickup",
+                auctionType: fulfillmentMode === "delivery" ? "dutch-auction" : undefined,
+                handoffMode: fulfillmentMode === "delivery" ? "meet-at-door" : "face-to-face",
+            },
+        });
+
+        try {
+            setCheckoutError(null);
+            setStep("checkout");
+
+            const immediateCommit = isE2EMockSession() || isE2EDevnetSession();
+            if (immediateCommit) {
+                await signAndPlace(
+                    prepared.commitment,
+                    prepared.commitmentMeta,
+                    "buyer",
+                );
+                // Immediate commit succeeded — clear cart and close panel
+                clearCart();
+                setDeliveryAddress("");
+                setStep("cart");
+                setIsOpen(false);
+            } else {
+                await initiateAsParty(
+                    prepared.commitment,
+                    "buyer",
+                    prepared.commitmentMeta,
+                );
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Signing failed";
+            setCheckoutError(msg);
+        }
+    };
+
+    const handlePlaceOrder = async () => {
+        if (!buyer) {
+            setCheckoutError("Sign in to place your order");
+            return;
+        }
+        if (items.length === 0) return;
+        if (hasInsufficientBalance) {
+            setCheckoutError(`Insufficient funds. Required: ${formatToken(buyerBondAmount, tokenDecimals)}, Available: ${formatToken(balance, tokenDecimals)}`);
+            return;
+        }
+        setCheckoutError(null);
+
+        if (needsApproval(buyerBondAmount)) {
+            try {
+                pendingCheckout.current = true;
+                approve(buyerBondAmount * 10n);
+            } catch {
+                pendingCheckout.current = false;
+                setCheckoutError("Payment authorization failed. Please try again.");
+            }
+        } else {
+            await executeCheckout();
+        }
+    };
+
+    const handleAddOne = (item: CartItem) => {
+        addItem({ ...item, quantity: 1 });
+    };
+
+    return (
+        <div data-testid="cart-module" data-module-id={moduleId} data-skin={context.skinBundle?.skinId}>
+            {/* Floating cart button */}
+            <button
+                onClick={handleToggle}
+                className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all z-50"
+                style={accentTone ? { backgroundColor: accentTone, borderColor: accentTone } : undefined}
+                aria-label={`Shopping cart: ${itemCount} items`}
+                data-testid="cart-fab"
+            >
+                <CartIcon className="w-6 h-6" />
+                {itemCount > 0 && (
+                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                        {itemCount}
+                    </div>
+                )}
+            </button>
+
+            {/* Slide-out panel */}
+            {isOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-50"
+                    onClick={handleToggle}
+                    onKeyDown={(e) => { if (e.key === 'Escape') handleToggle(); }}
+                >
+                    <div
+                        role="dialog"
+                        aria-label="Shopping cart"
+                        data-testid="cart-panel"
+                        className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col"
+                        data-skin={context.skinBundle?.skinId}
+                        style={cardStyle}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-6 border-b border-neutral-200 flex justify-between items-center">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2" style={labelStyle}>
+                                    {context.shellPresentation.title}
+                                </p>
+                                <h2 className="text-2xl font-bold text-black">
+                                    {step === "checkout" ? "Confirm Order" : step === "delivery" ? "Delivery Details" : "Your Cart"}
+                                </h2>
+                            </div>
+                            <button onClick={handleToggle} className="text-neutral-500 hover:text-black" aria-label="Close cart">
+                                <XIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {step === "checkout" ? (
+                            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                                <button
+                                    data-testid="btn-back-to-cart-from-checkout"
+                                    onClick={() => { setStep("cart"); resetCommitment(); }}
+                                    className="text-neutral-500 hover:text-black text-sm flex items-center gap-1"
+                                >
+                                    ← Back to cart
+                                </button>
+
+                                <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 space-y-2 text-sm">
+                                    <p className="text-neutral-700">
+                                        <strong>Total:</strong> {formatToken(totalPriceAmount, tokenDecimals)} &nbsp;|&nbsp;
+                                        <strong>Security deposit:</strong> {formatToken(buyerBondAmount, tokenDecimals)}
+                                    </p>
+                                    <p className="text-neutral-500">
+                                        Your order is ready. Share the QR code below
+                                        with the seller to confirm.
+                                    </p>
+                                </div>
+
+                                <CommitmentSharePanel
+                                    payload={payload}
+                                    step={commitStep}
+                                    onBroadcast={() => {
+                                        void broadcastSharedCommitment({
+                                            payload: payload!,
+                                            broadcast,
+                                        }).then(() => {
+                                            clearCart();
+                                            setDeliveryAddress("");
+                                            setStep("cart");
+                                            setIsOpen(false);
+                                        });
+                                    }}
+                                />
+
+                                {(checkoutError || commitError) && (
+                                    <p className="text-red-600 text-sm" data-testid="checkout-error">
+                                        {checkoutError || commitError}
+                                    </p>
+                                )}
+                            </div>
+                        ) : step === "delivery" ? (
+                            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                                <button
+                                    data-testid="btn-back-to-cart"
+                                    onClick={() => setStep("cart")}
+                                    className="text-neutral-500 hover:text-black text-sm flex items-center gap-1"
+                                >
+                                    ← Back to cart
+                                </button>
+                                <h3 className="text-xl font-bold text-black">Fulfillment</h3>
+
+                                {/* Fulfillment mode selector */}
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-700 mb-2">How would you like to receive your order?</label>
+                                    <div className="flex gap-2" data-testid="fulfillment-mode-selector">
+                                        <button
+                                            data-testid="btn-mode-delivery"
+                                            onClick={() => setFulfillmentMode("delivery")}
+                                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${fulfillmentMode === "delivery" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-neutral-700 border-neutral-300 hover:border-blue-400"}`}
+                                            style={fulfillmentMode === "delivery" && accentTone
+                                                ? { backgroundColor: accentTone, borderColor: accentTone }
+                                                : undefined}
+                                        >
+                                            🚗 Delivery
+                                        </button>
+                                        <button
+                                            data-testid="btn-mode-pickup"
+                                            onClick={() => setFulfillmentMode("pickup")}
+                                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${fulfillmentMode === "pickup" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-neutral-700 border-neutral-300 hover:border-blue-400"}`}
+                                            style={fulfillmentMode === "pickup" && accentTone
+                                                ? { backgroundColor: accentTone, borderColor: accentTone }
+                                                : undefined}
+                                        >
+                                            🏪 Pickup
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {fulfillmentMode === "delivery" && (
+                                    <>
+                                        <div>
+                                            <label htmlFor="cart-delivery-address" className="block text-sm font-medium text-neutral-700 mb-1">
+                                                Delivery address <span className="text-red-500">*</span>
+                                            </label>
+                                            <textarea
+                                                id="cart-delivery-address"
+                                                data-testid="input-delivery-address"
+                                                className="w-full bg-white border border-neutral-300 rounded-lg px-3 py-2 text-black text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                rows={2}
+                                                placeholder="123 Main St, Apt 4B, City, State, ZIP"
+                                                value={deliveryAddress}
+                                                onChange={(e) => setDeliveryAddress(e.target.value)}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="cart-delivery-max-price" className="block text-sm font-medium text-neutral-700 mb-1">
+                                                Delivery budget cap <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                id="cart-delivery-max-price"
+                                                data-testid="input-delivery-max-price"
+                                                type="number"
+                                                min="0.001"
+                                                step="0.001"
+                                                className="w-full bg-white border border-neutral-300 rounded-lg px-3 py-2 text-black text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="0.002"
+                                                value={deliveryMaxPrice}
+                                                onChange={(e) => setDeliveryMaxPrice(e.target.value)}
+                                            />
+                                            <p className="text-xs text-neutral-500 mt-1">
+                                                Maximum amount you&apos;re willing to pay for delivery.
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3 text-xs text-neutral-500 space-y-1">
+                                    <p>
+                                        <strong className="text-neutral-700">Deposit:</strong> Both sides place a refundable security deposit.
+                                        If either side doesn&apos;t follow through, they forfeit their deposit.
+                                    </p>
+                                </div>
+
+                                <button
+                                    data-testid="btn-confirm-delivery"
+                                    onClick={() => setStep("cart")}
+                                    disabled={deliveryDetailsIncomplete}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-200 disabled:text-neutral-400 text-white font-semibold py-3 rounded-lg transition-colors"
+                                    style={!deliveryDetailsIncomplete && accentTone
+                                        ? { backgroundColor: accentTone, borderColor: accentTone }
+                                        : undefined}
+                                >
+                                    Confirm {fulfillmentMode === "pickup" ? "Pickup" : "Delivery Details"}
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                                    {items.length === 0 ? (
+                                        <div className="text-center py-12">
+                                            <CartIcon className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+                                            <p className="text-neutral-500">Your cart is empty</p>
+                                        </div>
+                                    ) : (
+                                        items.map((item, idx) => (
+                                            <div key={`${item.menuItemId}-${idx}`} className="bg-neutral-50 p-4 rounded-lg flex justify-between items-center" data-testid={`cart-item-${item.menuItemId}`}>
+                                                <div className="flex items-center gap-3">
+                                                    {item.imageURI && (
+                                                        <ContentImage src={item.imageURI} alt={item.name} className="w-10 h-10 rounded object-cover text-2xl flex items-center justify-center" />
+                                                    )}
+                                                    <div>
+                                                        <h4 className="font-medium text-black">{item.name}</h4>
+                                                        <p className="text-sm text-neutral-500">{item.restaurantName}</p>
+                                                        <p className="text-sm text-blue-600" style={labelStyle}>{item.price} ETH</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => removeItem(item.menuItemId, item.restaurantId)}
+                                                        className="p-1 bg-neutral-200 rounded hover:bg-neutral-300"
+                                                        aria-label="Remove one"
+                                                    >
+                                                        <MinusIcon className="w-4 h-4 text-black" />
+                                                    </button>
+                                                    <span className="text-black w-8 text-center">{item.quantity}</span>
+                                                    <button
+                                                        onClick={() => handleAddOne(item)}
+                                                        className="p-1 bg-blue-600 rounded hover:bg-blue-700"
+                                                        style={accentTone ? { backgroundColor: accentTone, borderColor: accentTone } : undefined}
+                                                        aria-label="Add one more"
+                                                    >
+                                                        <PlusIcon className="w-4 h-4 text-white" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                {items.length > 0 && (
+                                    <div className="p-6 border-t border-neutral-200 space-y-4">
+                                        <div className="flex justify-between items-center font-bold text-lg">
+                                            <span className="text-black">Total</span>
+                                            <span className="text-blue-600" style={labelStyle} data-testid="cart-total">{totalPrice} ETH</span>
+                                        </div>
+
+                                        {fulfillmentMode === "delivery" && !deliveryAddress.trim() ? (
+                                            <button
+                                                data-testid="btn-add-delivery-details"
+                                                onClick={() => setStep("delivery")}
+                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors"
+                                                style={accentTone ? { backgroundColor: accentTone, borderColor: accentTone } : undefined}
+                                            >
+                                                Set Fulfillment Options →
+                                            </button>
+                                        ) : (
+                                            <button
+                                                data-testid="btn-place-order-cart"
+                                                onClick={handlePlaceOrder}
+                                                disabled={commitStep === "signing" || isApproving || hasInsufficientBalance}
+                                                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-300 text-white font-semibold py-3 rounded-lg"
+                                                style={commitStep !== "signing" && !isApproving && accentTone
+                                                    ? { backgroundColor: accentTone, borderColor: accentTone }
+                                                    : undefined}
+                                            >
+                                                {isApproving ? "Authorizing payment..." : commitStep === "signing" ? "Signing…" : "Place Order"}
+                                            </button>
+                                        )}
+
+                                        <button
+                                            data-testid="btn-clear-cart"
+                                            onClick={() => { clearCart(); setDeliveryAddress(""); }}
+                                            className="w-full text-sm text-neutral-500 hover:text-neutral-700"
+                                        >
+                                            Clear Cart
+                                        </button>
+
+                                        {checkoutError && (
+                                            <p className="text-red-600 text-sm" data-testid="checkout-error">
+                                                {checkoutError}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

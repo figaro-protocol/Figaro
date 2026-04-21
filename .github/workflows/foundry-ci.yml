@@ -1,0 +1,40 @@
+name: Foundry CI
+
+on:
+    push:
+        branches: [main, develop]
+        paths:
+            - "src/**"
+            - "test/**"
+            - "script/**"
+            - "foundry.toml"
+            - ".github/workflows/foundry-ci.yml"
+    pull_request:
+        branches: [main, develop]
+        paths:
+            - "src/**"
+            - "test/**"
+            - "script/**"
+            - "foundry.toml"
+
+jobs:
+    test:
+        name: Forge Test
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@v1
+
+            - name: Run forge build
+              run: forge build --via-ir
+
+            - name: Run forge tests
+              run: forge test --via-ir -vvv
+
+            - name: Run forge fmt check
+              run: forge fmt --check

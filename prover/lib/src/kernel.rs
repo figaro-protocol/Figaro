@@ -1,0 +1,987 @@
+use alloy_primitives::{Address, B256, U256, keccak256};
+use std::collections::{BTreeMap, BTreeSet};
+
+use crate::eip712::{
+    attest_buyer_struct_hash, attest_seller_struct_hash, commitment_struct_hash,
+    compute_order_hash, deactivate_operator_struct_hash, domain_separator,
+    reactivate_operator_struct_hash, recover_signer, register_operator_struct_hash,
+    register_schema_struct_hash, resolve_struct_hash, set_mechanism_schema_struct_hash,
+    typed_data_hash, update_operator_struct_hash,
+};
+use crate::state::KernelState;
+use crate::types::*;
+
+// ── Token flow tracker ────────────────────────────────────────────
+
+/// Accumulates deposit and payout amounts per (token, user) across
+/// all operations in a batch.
+struct TokenTracker {
+    deposits: BTreeMap<(Address, Address), U256>,
+    payouts: BTreeMap<(Address, Address), U256>,
+}
+
+impl TokenTracker {
+    fn new() -> Self {
+        Self {
+            deposits: BTreeMap::new(),
+            payouts: BTreeMap::new(),
+        }
+    }
+
+    fn deposit(&mut self, token: Address, user: Address, amount: U256) {
+        let entry = self.deposits.entry((token, user)).or_insert(U256::ZERO);
+        *entry = entry
+            .checked_add(amount)
+            .expect("deposit accumulator overflow");
+    }
+
+    fn payout(&mut self, token: Address, user: Address, amount: U256) {
+        let entry = self.payouts.entry((token, user)).or_insert(U256::ZERO);
+        *entry = entry
+            .checked_add(amount)
+            .expect("payout accumulator overflow");
+    }
+
+    fn net_positions(&self) -> Vec<NetPosition> {
+        let mut keys = BTreeSet::new();
+        for k in self.deposits.keys() {
+            keys.insert(*k);
+        }
+        for k in self.payouts.keys() {
+            keys.insert(*k);
+        }
+        keys.into_iter()
+            .map(|(token, user)| NetPosition {
+                token,
+                user,
+                deposit: self
+                    .deposits
+                    .get(&(token, user))
+                    .copied()
+                    .unwrap_or(U256::ZERO),
+                payout: self
+                    .payouts
+                    .get(&(token, user))
+                    .copied()
+                    .unwrap_or(U256::ZERO),
+            })
+            .collect()
+    }
+}
+
+/// Deterministic hash of net positions for inclusion in public values.
+pub fn compute_positions_hash(positions: &[NetPosition]) -> B256 {
+    let mut data = Vec::new();
+    for p in positions {
+        data.extend_from_slice(p.token.as_slice());
+        data.extend_from_slice(p.user.as_slice());
+        data.extend_from_slice(&p.deposit.to_be_bytes::<32>());
+        data.extend_from_slice(&p.payout.to_be_bytes::<32>());
+    }
+    keccak256(&data)
+}
+
+// ── commit ────────────────────────────────────────────────────────
+
+/// Apply a single commit operation. Matches `FigaroCore.commit()` exactly.
+///
+/// Returns `(processId, orderHash)`.
+fn apply_commit(
+    state: &mut KernelState,
+    domain: &B256,
+    c: &Commitment,
+    buyer_sig: &Signature,
+    seller_sig: &Signature,
+    timestamp: u64,
+    tracker: &mut TokenTracker,
+) -> Result<(B256, B256), KernelError> {
+    // ── Pre-checks ──
+    if c.deadline < U256::from(timestamp) {
+        return Err(KernelError::DeadlineExpired);
+    }
+    if c.payment.is_zero() {
+        return Err(KernelError::ZeroPayment);
+    }
+
+    // ── EIP-712 digest ──
+    let struct_hash = commitment_struct_hash(c);
+    let digest = typed_data_hash(domain, &struct_hash);
+
+    // ── Dual-signature verification ──
+    let recovered_buyer = recover_signer(&digest, buyer_sig)?;
+    if recovered_buyer != c.buyer {
+        return Err(KernelError::InvalidBuyerSignature);
+    }
+
+    let recovered_seller = recover_signer(&digest, seller_sig)?;
+    if recovered_seller != c.seller {
+        return Err(KernelError::InvalidSellerSignature);
+    }
+
+    // ── Process ID derivation ──
+    // Root: processId IS the EIP-712 digest (matches Solidity).
+    let process_id = if c.process_id == B256::ZERO {
+        digest
+    } else {
+        c.process_id
+    };
+
+    // ── Root vs sub-order ──
+    if c.process_id == B256::ZERO {
+        // Root order: create new process.
+        if state.processes.contains_key(&process_id) {
+            return Err(KernelError::ProcessAlreadyExists);
+        }
+        if c.expected_cumulative_value != c.payment {
+            return Err(KernelError::InvalidRootCumulativeValue);
+        }
+        state.processes.insert(
+            process_id,
+            ProcessState {
+                root_buyer: c.buyer,
+                currency: c.currency,
+                cumulative_value: c.payment,
+                active_order_count: 1,
+            },
+        );
+    } else {
+        // Sub-order: extend existing process.
+        let ps = state
+            .processes
+            .get_mut(&process_id)
+            .ok_or(KernelError::UnknownProcess)?;
+        if c.buyer != ps.root_buyer {
+            return Err(KernelError::NotProcessBuyer);
+        }
+        if c.currency != ps.currency {
+            return Err(KernelError::CurrencyMismatch);
+        }
+        let actual = ps
+            .cumulative_value
+            .checked_add(c.payment)
+            .ok_or(KernelError::Overflow)?;
+        if c.expected_cumulative_value != actual {
+            return Err(KernelError::CumulativeValueMismatch {
+                expected: c.expected_cumulative_value,
+                actual,
+            });
+        }
+        ps.cumulative_value = actual;
+        ps.active_order_count += 1;
+    }
+
+    // ── Order hash and nullifier ──
+    let order_hash = compute_order_hash(&process_id, &struct_hash);
+    if state.order_status.get(&order_hash).copied().unwrap_or(0) != 0 {
+        return Err(KernelError::DuplicateCommitment);
+    }
+    state.order_status.insert(order_hash, 1);
+    state.order_process_id.insert(order_hash, process_id);
+
+    // ── Token flows ──
+    // Buyer bond = 2 × payment.
+    let buyer_bond = c
+        .payment
+        .checked_mul(U256::from(2))
+        .ok_or(KernelError::Overflow)?;
+    // Seller bond = 2 × expectedCumulativeValue.
+    let seller_bond = c
+        .expected_cumulative_value
+        .checked_mul(U256::from(2))
+        .ok_or(KernelError::Overflow)?;
+
+    tracker.deposit(c.currency, c.buyer, buyer_bond);
+    tracker.deposit(c.currency, c.seller, seller_bond);
+
+    Ok((process_id, order_hash))
+}
+
+// ── FIG emission constants (batch path: Euler oscillation) ────────
+//
+// Batch path uses a decaying oscillation derived from Euler's identity:
+//   r(n) = r₀ · 2^(-n / halflife) · (1 + A · cos(2πn / season))
+//
+// The cosine term redistributes emission within cycles (peaks and
+// troughs) without changing the total — the integral of cos over a
+// full cycle is zero. This creates temporal coordination value for
+// FIG denomination while preserving emission neutrality.
+//
+// The direct-path contract (FigEmission.sol) uses plain discrete
+// halving with the same base rate and a 10M-settlement epoch as a
+// step-function approximation of the decay envelope. The Euler
+// oscillation is a batch-path-only feature, incentivizing batched
+// settlement.
+
+/// Base emission rate: 100 FIG per settlement at genesis.
+const EMISSION_BASE_RATE: f64 = 100.0;
+
+/// Halflife in settlements: rate halves every 10M settlements.
+const EMISSION_HALFLIFE: f64 = 10_000_000.0;
+
+/// Season length in settlements: one full oscillation cycle.
+const EMISSION_SEASON: f64 = 2_000_000.0;
+
+/// Oscillation amplitude (0 < A < 1). At peaks rate is (1+A)×envelope,
+/// at troughs (1-A)×envelope. A=0.5 keeps trough at 50% of envelope.
+const EMISSION_AMPLITUDE: f64 = 0.5;
+
+/// Compute 10^18 as U256.
+fn ether_unit() -> U256 {
+    U256::from(10u64).pow(U256::from(18u64))
+}
+
+/// Maximum total emission (600M FIG in wei).
+fn emission_reward_cap() -> U256 {
+    U256::from(600_000_000u64) * ether_unit()
+}
+
+/// Compute per-settlement Euler emission rate at the given cumulative
+/// settlement count. Returns the amount in wei (18 decimals).
+///
+/// r(n) = r₀ · 2^(-n/halflife) · (1 + A·cos(2πn/season))
+///
+/// Uses f64 arithmetic (deterministic in SP1's software float) and
+/// converts to U256 wei. The result is always non-negative since A < 1.
+fn euler_emission_rate(settlement_count: u64) -> U256 {
+    let n = settlement_count as f64;
+    let decay = (-n / EMISSION_HALFLIFE * std::f64::consts::LN_2).exp();
+    let omega = 2.0 * std::f64::consts::PI * n / EMISSION_SEASON;
+    let oscillation = 1.0 + EMISSION_AMPLITUDE * omega.cos();
+    let rate_fig = EMISSION_BASE_RATE * decay * oscillation;
+
+    // Convert to wei: rate_fig * 10^18, clamped to non-negative
+    if rate_fig <= 0.0 {
+        return U256::ZERO;
+    }
+    // Split into integer and fractional parts to avoid f64 precision loss
+    // at large values. rate_fig is at most 150 (100 * 1.5), so this is safe.
+    let rate_wei = rate_fig * 1e18;
+    U256::from(rate_wei as u128)
+}
+
+// ── resolveProcess ────────────────────────────────────────────────
+
+/// Apply a single resolve operation. Matches `FigaroCore.resolveProcess()`
+/// except buyer authorization is via EIP-712 signature (batched equivalent
+/// of `msg.sender == rootBuyer`).
+///
+/// When `fig_token` is non-zero, computes FIG emission per resolved order
+/// and adds the payout to the token tracker (matching FigEmission.sol).
+fn apply_resolve(
+    state: &mut KernelState,
+    domain: &B256,
+    process_id: &B256,
+    commitments: &[Commitment],
+    buyer_sig: &Signature,
+    tracker: &mut TokenTracker,
+    fig_token: Address,
+) -> Result<(), KernelError> {
+    let ps = state
+        .processes
+        .get(process_id)
+        .ok_or(KernelError::UnknownProcess)?;
+
+    // ── Buyer authorization via EIP-712 signature ──
+    let resolve_hash = resolve_struct_hash(process_id);
+    let digest = typed_data_hash(domain, &resolve_hash);
+    let recovered = recover_signer(&digest, buyer_sig)?;
+    if recovered != ps.root_buyer {
+        return Err(KernelError::NotProcessBuyer);
+    }
+
+    // ── Pre-checks ──
+    if ps.active_order_count == 0 {
+        return Err(KernelError::NoActiveOrders);
+    }
+    if commitments.len() as u64 != ps.active_order_count {
+        return Err(KernelError::IncompleteOrderList {
+            required: ps.active_order_count,
+            provided: commitments.len() as u64,
+        });
+    }
+
+    let currency = ps.currency;
+    let buyer = ps.root_buyer;
+
+    // ── Per-order resolution ──
+    for c in commitments {
+        let struct_hash = commitment_struct_hash(c);
+        let order_hash = compute_order_hash(process_id, &struct_hash);
+
+        if state.order_status.get(&order_hash).copied().unwrap_or(0) != 1 {
+            return Err(KernelError::OrderNotCommitted(order_hash));
+        }
+
+        // Seller payout = expectedCumulativeValue × 2 + payment.
+        let seller_payout = c
+            .expected_cumulative_value
+            .checked_mul(U256::from(2))
+            .ok_or(KernelError::Overflow)?
+            .checked_add(c.payment)
+            .ok_or(KernelError::Overflow)?;
+        // Buyer payout = payment.
+        let buyer_payout = c.payment;
+
+        tracker.payout(currency, c.seller, seller_payout);
+        tracker.payout(currency, buyer, buyer_payout);
+
+        // ── FIG emission (seller-only, per resolved order) ──
+        if fig_token != Address::ZERO {
+            let mut amount = euler_emission_rate(state.emission_settlement_count);
+
+            // Enforce reward cap
+            let cap = emission_reward_cap();
+            if state.emission_total_emitted.checked_add(amount).ok_or(KernelError::Overflow)? > cap {
+                amount = cap.saturating_sub(state.emission_total_emitted);
+            }
+
+            if !amount.is_zero() {
+                tracker.payout(fig_token, c.seller, amount);
+                state.emission_settlement_count += 1;
+                state.emission_total_emitted = state
+                    .emission_total_emitted
+                    .checked_add(amount)
+                    .ok_or(KernelError::Overflow)?;
+            }
+        }
+
+        state.order_status.insert(order_hash, 2);
+    }
+
+    // ── Finalize process ──
+    let ps = state.processes.get_mut(process_id).unwrap();
+    ps.active_order_count = 0;
+
+    Ok(())
+}
+
+// ── attestAsSeller ────────────────────────────────────────────────
+
+/// Apply a seller attestation. Matches the authorization logic in
+/// `AttestationCoordinator.attestAsSeller()` with msg.sender replaced
+/// by EIP-712 signature verification.
+fn apply_attest_as_seller(
+    state: &KernelState,
+    domain: &B256,
+    role_commitment: &Commitment,
+    order_hash: &B256,
+    schema_id: &B256,
+    stage: u8,
+    content_ref: &B256,
+    seller_sig: &Signature,
+    events: &mut Vec<AttestationEventData>,
+) -> Result<(), KernelError> {
+    // ── Recover signer (replaces msg.sender) ──
+    let struct_hash = attest_seller_struct_hash(order_hash, schema_id, stage, content_ref);
+    let digest = typed_data_hash(domain, &struct_hash);
+    let attester = recover_signer(&digest, seller_sig)?;
+
+    // ── Verify role commitment exists in state (_requireKnownCommitment) ──
+    let role_process_id = if role_commitment.process_id == B256::ZERO {
+        // Root order: processId is the EIP-712 digest of the commitment
+        let commit_struct = commitment_struct_hash(role_commitment);
+        typed_data_hash(domain, &commit_struct)
+    } else {
+        role_commitment.process_id
+    };
+    let role_struct = commitment_struct_hash(role_commitment);
+    let role_order_hash = compute_order_hash(&role_process_id, &role_struct);
+
+    if state.order_status.get(&role_order_hash).copied().unwrap_or(0) == 0 {
+        return Err(KernelError::UnknownOrder);
+    }
+
+    // ── Verify caller is seller of roleCommitment ──
+    if role_commitment.seller != attester {
+        return Err(KernelError::NotAuthorized);
+    }
+
+    // ── Process matching ──
+    let process_id = if role_order_hash == *order_hash {
+        // Same-order attestation
+        role_process_id
+    } else {
+        // Cross-order: verify target order exists in same process
+        let target_pid = state
+            .order_process_id
+            .get(order_hash)
+            .copied()
+            .ok_or(KernelError::UnknownOrder)?;
+        if target_pid == B256::ZERO {
+            return Err(KernelError::UnknownOrder);
+        }
+        if target_pid != role_process_id {
+            return Err(KernelError::ProcessMismatch);
+        }
+        role_process_id
+    };
+
+    events.push(AttestationEventData {
+        order_hash: *order_hash,
+        process_id,
+        attester,
+        schema_id: *schema_id,
+        stage,
+        content_ref: *content_ref,
+    });
+
+    Ok(())
+}
+
+// ── attestAsBuyer ─────────────────────────────────────────────────
+
+/// Apply a buyer attestation. Matches the authorization logic in
+/// `AttestationCoordinator.attestAsBuyer()`.
+fn apply_attest_as_buyer(
+    state: &KernelState,
+    domain: &B256,
+    process_id: &B256,
+    order_hash: &B256,
+    schema_id: &B256,
+    stage: u8,
+    content_ref: &B256,
+    buyer_sig: &Signature,
+    events: &mut Vec<AttestationEventData>,
+) -> Result<(), KernelError> {
+    // ── Recover signer ──
+    let struct_hash =
+        attest_buyer_struct_hash(process_id, order_hash, schema_id, stage, content_ref);
+    let digest = typed_data_hash(domain, &struct_hash);
+    let attester = recover_signer(&digest, buyer_sig)?;
+
+    // ── Verify attester is root buyer ──
+    let ps = state
+        .processes
+        .get(process_id)
+        .ok_or(KernelError::UnknownOrder)?;
+    if ps.root_buyer == Address::ZERO {
+        return Err(KernelError::UnknownOrder);
+    }
+    if ps.root_buyer != attester {
+        return Err(KernelError::NotAuthorized);
+    }
+
+    // ── Verify target order belongs to this process ──
+    let target_pid = state
+        .order_process_id
+        .get(order_hash)
+        .copied()
+        .ok_or(KernelError::UnknownOrder)?;
+    if target_pid == B256::ZERO {
+        return Err(KernelError::UnknownOrder);
+    }
+    if target_pid != *process_id {
+        return Err(KernelError::ProcessMismatch);
+    }
+
+    events.push(AttestationEventData {
+        order_hash: *order_hash,
+        process_id: *process_id,
+        attester,
+        schema_id: *schema_id,
+        stage,
+        content_ref: *content_ref,
+    });
+
+    Ok(())
+}
+
+// ── registerSchema ────────────────────────────────────────────────
+
+fn apply_register_schema(
+    state: &mut KernelState,
+    domain: &B256,
+    schema_id: &B256,
+    version: u64,
+    uri_hash: &B256,
+    registrar_sig: &Signature,
+    events: &mut Vec<SchemaEventData>,
+) -> Result<(), KernelError> {
+    // ── Dedup guard ──
+    if state.schemas_registered.get(schema_id).copied().unwrap_or(false) {
+        return Err(KernelError::SchemaAlreadyRegistered(*schema_id));
+    }
+
+    // ── Recover registrar address ──
+    let struct_hash = register_schema_struct_hash(schema_id, version, uri_hash);
+    let digest = typed_data_hash(domain, &struct_hash);
+    let registrar = recover_signer(&digest, registrar_sig)?;
+
+    state.schemas_registered.insert(*schema_id, true);
+
+    events.push(SchemaEventData {
+        schema_id: *schema_id,
+        version,
+        uri_hash: *uri_hash,
+        registrar,
+    });
+
+    Ok(())
+}
+
+// ── setMechanismSchema ────────────────────────────────────────────
+
+fn apply_set_mechanism_schema(
+    state: &KernelState,
+    domain: &B256,
+    schema_id: &B256,
+    mechanism_sig: &Signature,
+    events: &mut Vec<MechanismSchemaEventData>,
+) -> Result<(), KernelError> {
+    // ── Schema must be registered ──
+    if !state.schemas_registered.get(schema_id).copied().unwrap_or(false) {
+        return Err(KernelError::SchemaNotRegistered(*schema_id));
+    }
+
+    // ── Recover mechanism address ──
+    let struct_hash = set_mechanism_schema_struct_hash(schema_id);
+    let digest = typed_data_hash(domain, &struct_hash);
+    let mechanism = recover_signer(&digest, mechanism_sig)?;
+
+    events.push(MechanismSchemaEventData {
+        mechanism,
+        schema_id: *schema_id,
+    });
+
+    Ok(())
+}
+
+// ── OperatorRegistry operations ──────────────────────────────────
+
+fn apply_register_operator(
+    state: &mut KernelState,
+    domain: &B256,
+    role: OperatorRole,
+    metadata_uri: &str,
+    operator_sig: &Signature,
+    events: &mut Vec<OperatorEventData>,
+) -> Result<(), KernelError> {
+    if role == OperatorRole::None {
+        return Err(KernelError::InvalidOperatorRole);
+    }
+
+    let struct_hash = register_operator_struct_hash(role as u8, metadata_uri);
+    let digest = typed_data_hash(domain, &struct_hash);
+    let operator = recover_signer(&digest, operator_sig)?;
+
+    // Already registered?
+    if state
+        .operator_roles
+        .get(&operator)
+        .copied()
+        .unwrap_or(OperatorRole::None)
+        != OperatorRole::None
+    {
+        return Err(KernelError::OperatorAlreadyRegistered);
+    }
+
+    state.operator_roles.insert(operator, role);
+    state.operator_active.insert(operator, true);
+
+    events.push(OperatorEventData::Registered {
+        operator,
+        role: role as u8,
+        metadata_uri: metadata_uri.to_string(),
+    });
+
+    Ok(())
+}
+
+fn apply_update_operator(
+    state: &mut KernelState,
+    domain: &B256,
+    role: OperatorRole,
+    metadata_uri: &str,
+    operator_sig: &Signature,
+    events: &mut Vec<OperatorEventData>,
+) -> Result<(), KernelError> {
+    if role == OperatorRole::None {
+        return Err(KernelError::InvalidOperatorRole);
+    }
+
+    let struct_hash = update_operator_struct_hash(role as u8, metadata_uri);
+    let digest = typed_data_hash(domain, &struct_hash);
+    let operator = recover_signer(&digest, operator_sig)?;
+
+    if state
+        .operator_roles
+        .get(&operator)
+        .copied()
+        .unwrap_or(OperatorRole::None)
+        == OperatorRole::None
+    {
+        return Err(KernelError::OperatorNotRegistered);
+    }
+
+    // Only active operators can update profile (mirrors Solidity OP-2 fix)
+    if !state.operator_active.get(&operator).copied().unwrap_or(false) {
+        return Err(KernelError::OperatorNotActive);
+    }
+
+    state.operator_roles.insert(operator, role);
+
+    events.push(OperatorEventData::Updated {
+        operator,
+        role: role as u8,
+        metadata_uri: metadata_uri.to_string(),
+    });
+
+    Ok(())
+}
+
+fn apply_deactivate_operator(
+    state: &mut KernelState,
+    domain: &B256,
+    operator_sig: &Signature,
+    events: &mut Vec<OperatorEventData>,
+) -> Result<(), KernelError> {
+    let struct_hash = deactivate_operator_struct_hash();
+    let digest = typed_data_hash(domain, &struct_hash);
+    let operator = recover_signer(&digest, operator_sig)?;
+
+    if state
+        .operator_roles
+        .get(&operator)
+        .copied()
+        .unwrap_or(OperatorRole::None)
+        == OperatorRole::None
+    {
+        return Err(KernelError::OperatorNotRegistered);
+    }
+
+    // Idempotency guard: prevent duplicate deactivate events (OP-3)
+    if !state.operator_active.get(&operator).copied().unwrap_or(false) {
+        return Err(KernelError::OperatorAlreadyDeactivated);
+    }
+
+    state.operator_active.insert(operator, false);
+
+    events.push(OperatorEventData::Deactivated { operator });
+
+    Ok(())
+}
+
+fn apply_reactivate_operator(
+    state: &mut KernelState,
+    domain: &B256,
+    operator_sig: &Signature,
+    events: &mut Vec<OperatorEventData>,
+) -> Result<(), KernelError> {
+    let struct_hash = reactivate_operator_struct_hash();
+    let digest = typed_data_hash(domain, &struct_hash);
+    let operator = recover_signer(&digest, operator_sig)?;
+
+    if state
+        .operator_roles
+        .get(&operator)
+        .copied()
+        .unwrap_or(OperatorRole::None)
+        == OperatorRole::None
+    {
+        return Err(KernelError::OperatorNotRegistered);
+    }
+
+    // Idempotency guard: prevent duplicate reactivate events (OP-3)
+    if state.operator_active.get(&operator).copied().unwrap_or(false) {
+        return Err(KernelError::OperatorAlreadyActive);
+    }
+
+    state.operator_active.insert(operator, true);
+
+    events.push(OperatorEventData::Reactivated { operator });
+
+    Ok(())
+}
+
+// ── Event hashing ─────────────────────────────────────────────────
+
+/// Deterministic hash of attestation events for inclusion in public values.
+pub fn compute_attestation_events_hash(events: &[AttestationEventData]) -> B256 {
+    let mut data = Vec::new();
+    for e in events {
+        data.extend_from_slice(e.order_hash.as_slice());
+        data.extend_from_slice(e.process_id.as_slice());
+        data.extend_from_slice(e.attester.as_slice());
+        data.extend_from_slice(e.schema_id.as_slice());
+        data.push(e.stage);
+        data.extend_from_slice(e.content_ref.as_slice());
+    }
+    keccak256(&data)
+}
+
+/// Deterministic hash of schema events for inclusion in public values.
+pub fn compute_schema_events_hash(
+    schemas: &[SchemaEventData],
+    mechanisms: &[MechanismSchemaEventData],
+) -> B256 {
+    let mut data = Vec::new();
+    for e in schemas {
+        data.extend_from_slice(e.schema_id.as_slice());
+        data.extend_from_slice(&e.version.to_be_bytes());
+        data.extend_from_slice(e.uri_hash.as_slice());
+        data.extend_from_slice(e.registrar.as_slice());
+    }
+    for e in mechanisms {
+        data.extend_from_slice(e.mechanism.as_slice());
+        data.extend_from_slice(e.schema_id.as_slice());
+    }
+    keccak256(&data)
+}
+
+/// Deterministic hash of operator events for inclusion in public values.
+pub fn compute_operator_events_hash(events: &[OperatorEventData]) -> B256 {
+    let mut data = Vec::new();
+    for e in events {
+        match e {
+            OperatorEventData::Registered {
+                operator,
+                role,
+                metadata_uri,
+            } => {
+                data.push(0x01); // tag
+                data.extend_from_slice(operator.as_slice());
+                data.push(*role);
+                data.extend_from_slice(&keccak256(metadata_uri.as_bytes()).0);
+            }
+            OperatorEventData::Updated {
+                operator,
+                role,
+                metadata_uri,
+            } => {
+                data.push(0x02);
+                data.extend_from_slice(operator.as_slice());
+                data.push(*role);
+                data.extend_from_slice(&keccak256(metadata_uri.as_bytes()).0);
+            }
+            OperatorEventData::Deactivated { operator } => {
+                data.push(0x03);
+                data.extend_from_slice(operator.as_slice());
+            }
+            OperatorEventData::Reactivated { operator } => {
+                data.push(0x04);
+                data.extend_from_slice(operator.as_slice());
+            }
+        }
+    }
+    keccak256(&data)
+}
+
+// ── Batch execution ───────────────────────────────────────────────
+
+/// Execute a full batch of kernel operations and return the
+/// public values for on-chain verification plus net token positions
+/// and side-effect events.
+pub fn apply_batch(
+    input: &BatchInput,
+) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents), KernelError> {
+    let (pv, positions, events, _state) = apply_batch_inner(input)?;
+    Ok((pv, positions, events))
+}
+
+/// Like `apply_batch`, but also returns the post-batch kernel state.
+/// Used by the sequencer to advance its local state mirror.
+pub fn apply_batch_with_state(
+    input: &BatchInput,
+) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents, KernelState), KernelError> {
+    apply_batch_inner(input)
+}
+
+/// Internal batch execution returning (PublicValues, positions, events, state).
+/// Both public entry points delegate to this.
+fn apply_batch_inner(
+    input: &BatchInput,
+) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents, KernelState), KernelError> {
+    let domain = domain_separator(input.chain_id, input.verifying_contract);
+    let mut state = KernelState::from_snapshot(&input.prev_state);
+    let prev_root = state.compute_root();
+    let fig_token = input.fig_token;
+
+    let mut tracker = TokenTracker::new();
+    let mut attestation_events = Vec::new();
+    let mut schema_events = Vec::new();
+    let mut mechanism_schema_events = Vec::new();
+    let mut operator_events = Vec::new();
+
+    for op in &input.operations {
+        match op {
+            KernelOp::Commit {
+                commitment,
+                buyer_sig,
+                seller_sig,
+            } => {
+                apply_commit(
+                    &mut state,
+                    &domain,
+                    commitment,
+                    buyer_sig,
+                    seller_sig,
+                    input.block_timestamp,
+                    &mut tracker,
+                )?;
+            }
+            KernelOp::Resolve {
+                process_id,
+                commitments,
+                buyer_sig,
+            } => {
+                apply_resolve(
+                    &mut state,
+                    &domain,
+                    process_id,
+                    commitments,
+                    buyer_sig,
+                    &mut tracker,
+                    fig_token,
+                )?;
+            }
+
+            // ── Attestation ──
+            KernelOp::AttestAsSeller {
+                role_commitment,
+                order_hash,
+                schema_id,
+                stage,
+                content_ref,
+                seller_sig,
+            } => {
+                apply_attest_as_seller(
+                    &state,
+                    &domain,
+                    role_commitment,
+                    order_hash,
+                    schema_id,
+                    *stage,
+                    content_ref,
+                    seller_sig,
+                    &mut attestation_events,
+                )?;
+            }
+            KernelOp::AttestAsBuyer {
+                process_id,
+                order_hash,
+                schema_id,
+                stage,
+                content_ref,
+                buyer_sig,
+            } => {
+                apply_attest_as_buyer(
+                    &state,
+                    &domain,
+                    process_id,
+                    order_hash,
+                    schema_id,
+                    *stage,
+                    content_ref,
+                    buyer_sig,
+                    &mut attestation_events,
+                )?;
+            }
+
+            // ── Schema ──
+            KernelOp::RegisterSchema {
+                schema_id,
+                version,
+                uri_hash,
+                registrar_sig,
+            } => {
+                apply_register_schema(
+                    &mut state,
+                    &domain,
+                    schema_id,
+                    *version,
+                    uri_hash,
+                    registrar_sig,
+                    &mut schema_events,
+                )?;
+            }
+            KernelOp::SetMechanismSchema {
+                schema_id,
+                mechanism_sig,
+            } => {
+                apply_set_mechanism_schema(
+                    &state,
+                    &domain,
+                    schema_id,
+                    mechanism_sig,
+                    &mut mechanism_schema_events,
+                )?;
+            }
+
+            // ── Operator ──
+            KernelOp::RegisterOperator {
+                role,
+                metadata_uri,
+                operator_sig,
+            } => {
+                apply_register_operator(
+                    &mut state,
+                    &domain,
+                    *role,
+                    metadata_uri,
+                    operator_sig,
+                    &mut operator_events,
+                )?;
+            }
+            KernelOp::UpdateOperator {
+                role,
+                metadata_uri,
+                operator_sig,
+            } => {
+                apply_update_operator(
+                    &mut state,
+                    &domain,
+                    *role,
+                    metadata_uri,
+                    operator_sig,
+                    &mut operator_events,
+                )?;
+            }
+            KernelOp::DeactivateOperator { operator_sig } => {
+                apply_deactivate_operator(
+                    &mut state,
+                    &domain,
+                    operator_sig,
+                    &mut operator_events,
+                )?;
+            }
+            KernelOp::ReactivateOperator { operator_sig } => {
+                apply_reactivate_operator(
+                    &mut state,
+                    &domain,
+                    operator_sig,
+                    &mut operator_events,
+                )?;
+            }
+        }
+    }
+
+    let new_root = state.compute_root();
+    let positions = tracker.net_positions();
+    let ops_hash = compute_positions_hash(&positions);
+    let att_hash = compute_attestation_events_hash(&attestation_events);
+    let sch_hash = compute_schema_events_hash(&schema_events, &mechanism_schema_events);
+    let op_hash = compute_operator_events_hash(&operator_events);
+
+    let batch_events = BatchEvents {
+        attestations: attestation_events,
+        schemas: schema_events,
+        mechanism_schemas: mechanism_schema_events,
+        operators: operator_events,
+    };
+
+    Ok((
+        PublicValues {
+            prev_state_root: prev_root,
+            new_state_root: new_root,
+            chain_id: input.chain_id,
+            verifying_contract: input.verifying_contract,
+            token_ops_hash: ops_hash,
+            attestation_events_hash: att_hash,
+            schema_events_hash: sch_hash,
+            operator_events_hash: op_hash,
+        },
+        positions,
+        batch_events,
+        state,
+    ))
+}

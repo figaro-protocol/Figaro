@@ -1,0 +1,115 @@
+import { test, expect } from '@playwright/test';
+import {
+    gotoHome,
+    fillCreateOrderForm,
+    submitFirstOrder,
+    openSubOrderModal,
+    fillSubOrderModal,
+    submitSubOrder,
+    dismissConfirmationModal,
+    switchToGraphTab,
+} from './test-helpers';
+
+const BUYER = '0x000000000000000000000000000000000000dEaD';
+const SELLER = '0x000000000000000000000000000000000000b00b';
+
+test.describe('Sub-order flows — Create SubOrder (mocked)', () => {
+    test.beforeEach(async ({ page }) => {
+        await gotoHome(page, { mock: true });
+    });
+
+    test('subOrder: create sub-order with mock permit', async ({ page }) => {
+        // ── Step 1: first order ────────────────────────────────────────────
+        await fillCreateOrderForm(page, BUYER, '0.01', 'u4pruydqqvj', 'u4pruydqqvj');
+        await page.getByTestId('approve-button').click();
+        await page.waitForFunction(
+            () => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'),
+            null, { timeout: 10000 }
+        );
+        await submitFirstOrder(page);
+        await dismissConfirmationModal(page);
+
+        // ── Step 2: open sub-order modal (the "+" button lives on the
+        // OrderNodeSemanticCard rendered in the default "orders" tab)
+        await openSubOrderModal(page);
+
+        // Inject a pending permit blob for the upcoming subOrder
+        await page.evaluate(() => {
+            // @ts-ignore
+            window.__FIGARO_PENDING_PERMIT__ = { target: '0x0000000000000000000000000000000000000002', data: '0xcafe' };
+        });
+
+        // ── Step 3: fill + approve + submit inside the modal ───────────────
+        await fillSubOrderModal(page, SELLER, '0.005', 'u4pruydqqvj', 'u4pruydqqvj');
+
+        // Approve button is inside the modal (scoped to avoid collision with main form)
+        // Use JS click to bypass viewport clipping (ManifestForm makes the modal taller)
+        await page.evaluate(() => {
+            const modal = document.querySelector('[data-testid="suborder-modal"]');
+            const btn = modal?.querySelector('[data-testid="approve-button"]') as HTMLElement | null;
+            btn?.click();
+        });
+        await page.waitForFunction(
+            () => {
+                const modal = document.querySelector('[data-testid="suborder-modal"]');
+                return modal?.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized');
+            },
+            null, { timeout: 10000 }
+        );
+
+        await submitSubOrder(page);
+
+        // ── Assertions ─────────────────────────────────────────────────────
+        // Graph tab is where order-node-* elements live.
+        await switchToGraphTab(page);
+        await page.waitForSelector('[data-testid^="order-node-"]', { timeout: 8000 });
+        const nodes = page.locator('[data-testid^="order-node-"]');
+        await expect(nodes.first()).toBeVisible();
+        // Sub-order payment (0.005 tokens) should appear in the graph nodes
+        await expect(nodes.last()).toContainText('0.005');
+    });
+
+    test('sub-order creates a visible edge between parent and child nodes', async ({ page }) => {
+        // Create first order → Active in mock mode
+        await fillCreateOrderForm(page, SELLER, '0.01', 'u4pruydqqvj', 'u4pruydqqvj');
+        await page.getByTestId('approve-button').click();
+        await page.waitForFunction(
+            () => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'),
+            null, { timeout: 10000 }
+        );
+        await submitFirstOrder(page);
+        await dismissConfirmationModal(page);
+
+        // Open sub-order modal (btn-add-suborder-* lives on OrderNodeSemanticCard in the orders tab)
+        await openSubOrderModal(page);
+        await page.evaluate(() => {
+            // @ts-ignore
+            window.__FIGARO_PENDING_PERMIT__ = { target: '0x0000000000000000000000000000000000000002', data: '0xcafe' };
+        });
+        await fillSubOrderModal(page, SELLER, '0.005', 'u4pruydqqvj', 'u4pruydqqvj');
+        await page.evaluate(() => {
+            const modal = document.querySelector('[data-testid="suborder-modal"]');
+            const btn = modal?.querySelector('[data-testid="approve-button"]') as HTMLElement | null;
+            btn?.click();
+        });
+        await page.waitForFunction(
+            () => {
+                const modal = document.querySelector('[data-testid="suborder-modal"]');
+                return modal?.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized');
+            },
+            null, { timeout: 10000 }
+        );
+        await submitSubOrder(page);
+
+        await switchToGraphTab(page);
+        // Wait for both nodes to appear
+        await page.waitForFunction(
+            () => document.querySelectorAll('[data-testid^="order-node-"]').length >= 2,
+            null, { timeout: 10000 }
+        );
+
+        // ReactFlow must render at least one edge path connecting parent to child
+        await expect(page.locator('.react-flow__edge-path').first()).toBeVisible({ timeout: 5000 });
+    });
+});
+

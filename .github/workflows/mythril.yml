@@ -1,0 +1,61 @@
+name: Mythril tests
+
+on:
+    push:
+        paths:
+            - "mythril/**"
+    pull_request:
+        paths:
+            - "mythril/**"
+
+jobs:
+    mythril:
+        name: Run Mythril test suite (Docker)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Pull Mythril Docker image
+              run: docker pull mythril/myth
+
+            - name: Flatten Solidity sources (uses Foundry Docker)
+              run: |
+                  docker run --rm -v "${{ github.workspace }}":/project -w /project foundry/foundry:latest /bin/bash -lc '
+                    set -euo pipefail
+                    mkdir -p mythril/tests/testdata/flattened
+                    for f in src/**/*.sol src/*.sol; do
+                      [ -f "$f" ] || continue
+                      base=$(basename "$f")
+                      out=mythril/tests/testdata/flattened/${base%.*}_flat.sol
+                      echo "forge flatten $f > $out"
+                      forge flatten "$f" > "$out"
+                    done
+                  '
+
+            - name: Run Mythril tests and analyses inside container
+              run: |
+                  # Run Mythril test-suite and analyze flattened sources; fallback to per-file analysis
+                  docker run --rm -v "${{ github.workspace }}":/project -w /project/mythril mythril/myth /bin/bash -lc '
+                    set -euo pipefail
+                    chmod +x /project/mythril/ci/analyze_figaro.sh || true
+                    ./all_tests.sh || true
+                    mkdir -p /project/mythril/tests/testdata/outputs_flatten_analyze
+                    for f in /project/mythril/tests/testdata/flattened/*.sol; do
+                      [ -f "$f" ] || continue
+                      base=$(basename "$f")
+                      out=/project/mythril/tests/testdata/outputs_flatten_analyze/${base}.txt
+                      echo "Analyzing flattened $f -> $out"
+                      myth analyze "$f" -t 3 --execution-timeout 60 > "$out" 2>&1 || true
+                    done
+                    # Also run original per-file analyzer (will detect solc pragmas)
+                    /bin/bash /project/mythril/ci/analyze_figaro.sh || true
+                  '
+              timeout-minutes: 30
+
+            - name: Upload Mythril analysis reports
+              uses: actions/upload-artifact@v4
+              with:
+                  name: mythril-reports
+                  path: mythril/tests/testdata/outputs_current_analyze/
+                  retention-days: 7

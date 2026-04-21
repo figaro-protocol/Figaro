@@ -1,0 +1,106 @@
+# Foundry
+out/
+cache/
+broadcast/
+dist/
+verify/
+
+# Hardhat (removed — Foundry handles all compilation/testing)
+hh-artifacts/
+hh-cache/
+
+# Node dependencies
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/playwright-report/
+frontend/test-results/
+frontend/tsconfig.tsbuildinfo
+.vercel
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+.venv/
+
+# Husky internals — auto-generated on `npm install`; only `.husky/pre-commit`
+# (and similar hook scripts) should be tracked.
+.husky/_/
+
+# IDEs and OS
+.DS_Store
+.idea/
+.vscode/
+
+# Certora
+.certora_internal/
+
+# Local deployment state
+.deployments/
+
+# Echidna / Formal Verification
+echidna_output.txt
+echidna_coverage.txt
+echidna-credit-corpus/
+corpus/
+crytic-export/
+states/
+formal/states/
+formal/.tlacache/
+formal/MC_trace_*
+# TLA+ Toolbox scratch: auto-generated counterexample/trace-exploration modules.
+# Pattern covers FigaroCore, FigToken, and any future model's TTrace outputs.
+formal/*_TTrace_*.tla
+formal/*_TTrace_*.bin
+# tla2tools.jar is a tool binary, not source — downloaded on demand by
+# test-tla.sh. Committing it would bloat the repo and obscure its provenance.
+formal/tla2tools.jar
+tlc_output.txt
+*.tla.backup
+
+# Mythril
+mythril/
+
+# Cairo
+cairo/target/
+cairo/.snfoundry_cache/
+cairo/test_output.txt
+cairo/.coverage*
+
+# Rust / Prover
+prover/target/
+
+# Local tool state
+.solcx-lock-*
+.pytest_cache/
+
+# Test outputs
+test-results/
+playwright-report/
+
+# Build / analysis artifacts
+build-full.txt
+coverage-full.txt
+coverage-run-*.txt
+coverage.json
+func_report.txt
+lcov.info
+coverage/
+
+# Misc
+*.log
+*.tsbuildinfo

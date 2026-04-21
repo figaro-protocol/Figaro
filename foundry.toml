@@ -1,0 +1,77 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.26"
+solc_version = "0.8.26"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+via_ir = false               # Legacy codegen — stack-depth managed by scoping blocks.
+                             # Build time: ~4s vs ~17min with via_ir=true.
+force = false
+build_info = false
+extra_output = []
+
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "solady/=lib/solady/src/",
+    "forge-std/=lib/forge-std/src/",
+]
+
+# Fast development testing
+[fuzz]
+runs = 256
+[invariant]
+runs = 256
+depth = 15
+
+# Halmos symbolic testing requires via_ir (compiles all contracts including scripts)
+[profile.halmos]
+via_ir = true
+
+# NOTE: Coverage requires --ir-minimum flag due to instrumentation overhead
+# Usage: ./coverage.sh (or forge coverage --ir-minimum)
+# GasCeilingTest is excluded from coverage because its assertions are calibrated
+# for non-instrumented bytecode — see coverage.sh.
+
+# Production profile for pre-deployment testing
+# Usage: forge build --profile production && forge test --profile production
+[profile.production]
+optimizer = true
+optimizer_runs = 10000       # Maximum optimization
+via_ir = true                 # Full IR compilation
+
+[profile.production.fuzz]
+runs = 10000
+
+[profile.production.invariant]
+runs = 5120
+depth = 100
+
+# Coverage profile: used by `forge coverage --profile coverage --ir-minimum`.
+# via_ir = true here matches the default profile; --ir-minimum flag further
+# enables full Yul IR for instrumentation, which prevents stack-too-deep
+# under coverage instrumentation overhead.
+[profile.coverage]
+optimizer = true
+optimizer_runs = 200
+via_ir = true
+# GasCeilingTest's gas assertion is calibrated for non-instrumented bytecode
+# (~1800 orders in 30M gas). Under coverage instrumentation the per-order cost
+# rises (~14k → ~25k), so only ~1170 fit, failing the >1500 assertion.
+# The test measures gas capacity, not correctness — resolveProcess coverage
+# is fully exercised by FigaroCoreTest.
+no_match_test = "test_Gas_MaxOrdersResolvableUnder30MGas"
+
+[profile.coverage.optimizer_details.yul_details]
+stack_allocation = true
+
+[profile.coverage.fuzz]
+runs = 256
+
+# Contract verification on block explorers.
+# Set ETHERSCAN_API_KEY env var or use --etherscan-api-key flag.
+[etherscan]
+base_sepolia = { key = "${ETHERSCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }

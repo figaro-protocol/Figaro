@@ -1,0 +1,169 @@
+"use client";
+
+/**
+ * React hooks for reading manifest schemas from SchemaRegistry.
+ *
+ * Live SchemaRegistry exposes: registered(bytes32), registerSchema(), setMechanismSchema().
+ * Schema details and counts are derived from indexed events (SchemaRegistered, MechanismSchemaSet).
+ */
+
+import { useEffect, useState } from "react";
+import { usePublicClient, useReadContract } from "wagmi";
+import {
+    CONTRACTS,
+    SCHEMA_REGISTRY_ABI,
+} from "../core/contracts";
+
+/** Well-known schema IDs — shared constants for all archetypes. */
+export const HANDOFF_SCHEMA_KEY = "figaro-handoff-v1";
+export const COMMERCE_SCHEMA_KEY = "figaro-commerce-v1";
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+export interface ManifestSchema {
+    schemaId: `0x${string}`;
+    version: number;
+    uriHash: `0x${string}`;
+    active: boolean;
+}
+
+// ── Hook: lookup a single schema ─────────────────────────────────────────────
+
+export function useManifestSchema(schemaId: `0x${string}` | undefined) {
+    const addr = CONTRACTS.schemaRegistry;
+    const hasAddr = !!addr && addr.length === 42;
+    const publicClient = usePublicClient();
+    const [schema, setSchema] = useState<ManifestSchema | null>(null);
+
+    // Live registry: check if registered
+    const { data: isRegistered, isLoading, error } = useReadContract({
+        address: hasAddr ? addr : undefined,
+        abi: SCHEMA_REGISTRY_ABI,
+        functionName: "registered",
+        args: schemaId ? [schemaId] : undefined,
+        query: { enabled: hasAddr && !!schemaId },
+    });
+
+    // If registered, try to get version/uriHash from SchemaRegistered events
+    useEffect(() => {
+        if (!isRegistered || !schemaId || !publicClient || !hasAddr) {
+            setSchema(isRegistered && schemaId ? {
+                schemaId,
+                version: 1,
+                uriHash: "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`,
+                active: true,
+            } : null);
+            return;
+        }
+
+        publicClient.getContractEvents({
+            address: addr,
+            abi: SCHEMA_REGISTRY_ABI,
+            eventName: "SchemaRegistered",
+            args: { schemaId },
+            fromBlock: 0n,
+            toBlock: "latest",
+        }).then((logs) => {
+            if (logs.length > 0) {
+                const latest = logs[logs.length - 1];
+                const a = latest.args as Partial<{ version: bigint | number; uriHash: `0x${string}` }>;
+                setSchema({
+                    schemaId,
+                    version: Number(a.version ?? 1),
+                    uriHash: (a.uriHash ?? "0x0000000000000000000000000000000000000000000000000000000000000000") as `0x${string}`,
+                    active: true,
+                });
+            } else {
+                setSchema({ schemaId, version: 1, uriHash: "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`, active: true });
+            }
+        }).catch(() => {
+            setSchema({ schemaId, version: 1, uriHash: "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`, active: true });
+        });
+    }, [isRegistered, schemaId, publicClient, hasAddr, addr]);
+
+    return { schema, isLoading, error };
+}
+
+// ── Hook: resolve which schema a mechanism requires ──────────────────────────
+
+export function useMechanismSchema(mechanismAddress: `0x${string}` | undefined) {
+    const addr = CONTRACTS.schemaRegistry;
+    const hasAddr = !!addr && addr.length === 42;
+    const publicClient = usePublicClient();
+    const [schemaId, setSchemaId] = useState<`0x${string}` | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if (!mechanismAddress || !publicClient || !hasAddr) {
+            setSchemaId(null);
+            return;
+        }
+
+        setIsLoading(true);
+        publicClient.getContractEvents({
+            address: addr,
+            abi: SCHEMA_REGISTRY_ABI,
+            eventName: "MechanismSchemaSet",
+            args: { mechanism: mechanismAddress },
+            fromBlock: 0n,
+            toBlock: "latest",
+        }).then((logs) => {
+            if (logs.length > 0) {
+                const latest = logs[logs.length - 1];
+                const a = latest.args as Partial<{ schemaId: `0x${string}` }>;
+                setSchemaId(a.schemaId ?? null);
+            } else {
+                setSchemaId(null);
+            }
+        }).catch(() => {
+            setSchemaId(null);
+        }).finally(() => {
+            setIsLoading(false);
+        });
+    }, [mechanismAddress, publicClient, hasAddr, addr]);
+
+    // Also fetch the full schema if we have a schemaId
+    const { schema } = useManifestSchema(schemaId ?? undefined);
+
+    return { schemaId, schema, isLoading };
+}
+
+// ── Hook: registry stats ─────────────────────────────────────────────────────
+
+export function useManifestSchemaCount() {
+    const addr = CONTRACTS.schemaRegistry;
+    const hasAddr = !!addr && addr.length === 42;
+    const publicClient = usePublicClient();
+    const [count, setCount] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if (!publicClient || !hasAddr) {
+            setCount(0);
+            return;
+        }
+
+        setIsLoading(true);
+        publicClient.getContractEvents({
+            address: addr,
+            abi: SCHEMA_REGISTRY_ABI,
+            eventName: "SchemaRegistered",
+            fromBlock: 0n,
+            toBlock: "latest",
+        }).then((logs) => {
+            // Count unique schema IDs
+            const uniqueSchemas = new Set(
+                logs
+                    .map((log) => (log.args as Partial<{ schemaId: `0x${string}` }>).schemaId)
+                    .filter((schemaId): schemaId is `0x${string}` => typeof schemaId === "string"),
+            );
+            setCount(uniqueSchemas.size);
+        }).catch(() => {
+            setCount(0);
+        }).finally(() => {
+            setIsLoading(false);
+        });
+    }, [publicClient, hasAddr, addr]);
+
+    return { count, isLoading };
+}

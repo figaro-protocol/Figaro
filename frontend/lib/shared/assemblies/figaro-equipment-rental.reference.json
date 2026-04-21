@@ -1,0 +1,190 @@
+{
+    "identity": {
+        "id": "figaro-equipment-rental-reference",
+        "name": "Figaro Equipment Rental",
+        "slug": "figaro-equipment-rental",
+        "description": "Reference institution assembly for bonded equipment rental with handoff and return checkpoints.",
+        "networkTargets": [
+            "local-anvil",
+            "evm-compatible"
+        ],
+        "version": "0.1.0"
+    },
+    "contracts": [
+        {
+            "key": "core",
+            "required": true,
+            "description": "Bonded process coordination substrate."
+        },
+        {
+            "key": "rentalCoordinator",
+            "required": false,
+            "description": "Low-risk rental lifecycle coordinator for handoff, usage, and return checkpoints."
+        }
+    ],
+    "mechanisms": [
+        {
+            "mechanismId": "core-orders",
+            "kind": "core",
+            "displayName": "Bonded Rental Core",
+            "riskClass": "read-only-inherited",
+            "enabled": true,
+            "visibility": "primary",
+            "contractKeys": [
+                "core"
+            ],
+            "moduleBindings": []
+        },
+        {
+            "mechanismId": "rental-coordinator",
+            "kind": "coordinator",
+            "displayName": "Rental Lifecycle Coordinator",
+            "riskClass": "low-risk-coordinator",
+            "enabled": true,
+            "visibility": "primary",
+            "contractKeys": [
+                "core",
+                "rentalCoordinator"
+            ],
+            "moduleBindings": [
+                "mechanism-inspector"
+            ]
+        }
+    ],
+    "roles": [
+        {
+            "roleKind": "buyer",
+            "displayName": "Renter",
+            "description": "Requests equipment rental, bonds collateral, confirms return and resolves process.",
+            "visibility": "primary",
+            "defaultLandingView": "figaro-equipment-rental-dashboard",
+            "sampleCapabilities": [
+                "create-order",
+                "declare-equipment-received",
+                "declare-equipment-returned",
+                "resolve-process",
+                "withdraw"
+            ]
+        },
+        {
+            "roleKind": "seller",
+            "displayName": "Equipment Owner",
+            "description": "Lists equipment, accepts rental offers, signals handoff and inspects returns.",
+            "visibility": "primary",
+            "defaultLandingView": "figaro-equipment-rental-dashboard",
+            "sampleCapabilities": [
+                "accept-offer",
+                "declare-equipment-dispatched",
+                "declare-return-inspected",
+                "withdraw"
+            ]
+        }
+    ],
+    "views": [
+        {
+            "viewId": "institution-overview",
+            "kind": "overview",
+            "title": "Institution Overview"
+        },
+        {
+            "viewId": "figaro-equipment-rental-dashboard",
+            "kind": "role-dashboard",
+            "title": "Rental Dashboard",
+            "moduleSlots": [
+                "role-switcher",
+                "capability-rail",
+                "process-graph",
+                "order-node",
+                "coordinator-actions",
+                "event-timeline",
+                "process-capital-summary"
+            ]
+        }
+    ],
+    "modules": [
+        {
+            "moduleId": "role-switcher"
+        },
+        {
+            "moduleId": "capability-rail"
+        },
+        {
+            "moduleId": "process-graph"
+        },
+        {
+            "moduleId": "order-node"
+        },
+        {
+            "moduleId": "order-actions"
+        },
+        {
+            "moduleId": "settlement-breakdown"
+        },
+        {
+            "moduleId": "coordinator-actions"
+        },
+        {
+            "moduleId": "mechanism-inspector"
+        },
+        {
+            "moduleId": "event-timeline"
+        },
+        {
+            "moduleId": "process-capital-summary"
+        }
+    ],
+    "capabilityPresentation": [
+        {
+            "capabilityKind": "resolve-process",
+            "priority": 10,
+            "warningStyle": "warning"
+        },
+        {
+            "capabilityKind": "declare-equipment-dispatched",
+            "priority": 9,
+            "warningStyle": "info"
+        },
+        {
+            "capabilityKind": "declare-equipment-received",
+            "priority": 8,
+            "warningStyle": "info"
+        },
+        {
+            "capabilityKind": "declare-equipment-returned",
+            "priority": 7,
+            "warningStyle": "info"
+        },
+        {
+            "capabilityKind": "declare-return-inspected",
+            "priority": 7,
+            "warningStyle": "info"
+        },
+        {
+            "capabilityKind": "withdraw",
+            "priority": 6,
+            "warningStyle": "info"
+        }
+    ],
+    "visibilityDefaults": {
+        "showGraphByDefault": true,
+        "showAdvancedMechanisms": false,
+        "showRiskBoundaries": true,
+        "showGuarantees": true,
+        "showEconomicBreakdowns": true,
+        "showBuilderMode": false,
+        "showAuditMode": false
+    },
+    "narrative": {
+        "institutionSummary": "Equipment rental as a composed institution: renter and owner each bond collateral. The rental lifecycle (dispatch, receipt, usage, return, inspection) is signaled through a coordinator. If either party defaults, bonds are lost. No arbiter decides — the mechanism enforces.",
+        "builderNotes": "Level 2 assembly proving the runtime can express time-bounded rental coordination, not just one-shot delivery or procurement. Uses the same core substrate with a rental-specific coordinator. The key difference from delivery: the process has a return leg, not just a forward leg."
+    },
+    "builderMetadata": {
+        "assemblyClass": "reference-rental",
+        "compositionLevel": 2,
+        "requiresCustomModules": false,
+        "safetyWarnings": [
+            "Rental coordinator checkpoints are timestamped attestations only. They do not alter settlement guarantees or enforce return deadlines.",
+            "Damage disputes are resolved through the protocol's defense-in-depth layers (MAD, coordination pressure, timestamped evidence), not through arbiter escalation."
+        ]
+    }
+}

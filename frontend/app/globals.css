@@ -1,0 +1,275 @@
+/* MUJI-inspired minimalism for the home page and site-wide refinements */
+
+.home-muji {
+    background: #f5f5f2;
+    color: #222;
+    font-family: 'Noto Sans JP', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.muji-hero {
+    padding-top: 3.5rem;
+    padding-bottom: 2.5rem;
+    background: none;
+    border: none;
+}
+
+.muji-title {
+    font-size: 2.5rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #222;
+    margin-bottom: 1.5rem;
+}
+
+.muji-subtitle {
+    font-size: 1.25rem;
+    color: #555;
+    margin-bottom: 1.5rem;
+}
+
+.muji-section {
+    background: #fff;
+    border-radius: 1.25rem;
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.03);
+    padding: 2.5rem 1.5rem;
+    margin-bottom: 2.5rem;
+    border: 1px solid #ececec;
+}
+
+.muji-links a {
+    border-radius: 0.75rem;
+    border: 1.5px solid #e5e5e5;
+    background: #fafaf8;
+    color: #222;
+    font-weight: 500;
+    padding: 0.75rem 2.25rem;
+    margin: 0 0.5rem 1rem 0.5rem;
+    box-shadow: none;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    text-decoration: none;
+}
+
+.muji-links a:hover {
+    background: #f0f0ed;
+    border-color: #b3b3a8;
+    color: #111;
+}
+
+.muji-invariants {
+    margin-top: 2.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.muji-invariants ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    padding: 0;
+    margin: 0;
+}
+
+.muji-invariants li {
+    background: #fafaf8;
+    border-radius: 1rem;
+    border: 1px solid #ececec;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: #333;
+    font-size: 1rem;
+    margin: 0;
+    box-shadow: none;
+}
+
+.muji-invariants strong {
+    color: #111;
+    font-weight: 600;
+}
+
+.muji-invariants span {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.muji-footer {
+    margin-top: 3rem;
+    color: #888;
+    font-size: 0.95rem;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base layer: set defaults through Tailwind's @layer so they can be
+   overridden by component-level utility classes (no !important). */
+@layer base {
+
+    html,
+    body {
+        @apply text-black font-sans antialiased;
+        background-color: #f5f5f2;
+        letter-spacing: 0.01em;
+        font-size: 17px;
+        line-height: 1.7;
+        min-height: 100vh;
+        scroll-behavior: smooth;
+    }
+
+    /* Minimalist headings */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-semibold text-gray-900;
+        letter-spacing: 0.01em;
+        margin-top: 2.5rem;
+        margin-bottom: 1.2rem;
+    }
+
+    h1 {
+        @apply text-4xl sm:text-5xl;
+        font-weight: 700;
+        margin-top: 3.5rem;
+        margin-bottom: 2rem;
+    }
+
+    h2 {
+        @apply text-3xl sm:text-4xl;
+        font-weight: 600;
+    }
+
+    h3 {
+        @apply text-2xl;
+        font-weight: 500;
+    }
+
+    /* Minimalist links */
+    a {
+        @apply text-gray-800 underline-offset-4 transition-colors duration-200;
+        text-decoration-thickness: 1.5px;
+    }
+
+    a:hover {
+        @apply text-black underline;
+    }
+
+    /* Minimalist buttons */
+    button,
+    .btn {
+        @apply rounded-lg border border-gray-300 bg-white text-black px-5 py-2 font-medium shadow-sm transition-colors duration-200;
+    }
+
+    button:hover,
+    .btn:hover {
+        @apply bg-gray-100 border-gray-400;
+    }
+
+    /* Card style for sections */
+    .card,
+    .section-card {
+        @apply border rounded-xl p-8;
+        background: #fafaf8;
+        border-color: #ececec;
+        box-shadow: none;
+    }
+
+    /* Subtle divider */
+    hr {
+        @apply border-gray-200 my-8;
+    }
+
+    /* More whitespace for containers */
+    .container,
+    .mx-auto {
+        @apply px-6 sm:px-10;
+    }
+
+    /* Minimalist list style */
+    ul,
+    ol {
+        @apply pl-6;
+    }
+
+    li {
+        @apply mb-2;
+    }
+
+    /* Subtle focus ring for accessibility */
+    :focus {
+        outline: 2px solid #b3b3a8;
+        outline-offset: 2px;
+    }
+
+    /* Gentle transitions for interactive elements */
+    a,
+    button,
+    .btn,
+    input,
+    textarea,
+    select {
+        transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+}
+
+/* Remove all React Flow custom colors */
+.react-flow__node,
+.react-flow__node.buyer,
+.react-flow__node.seller,
+.react-flow__node.active,
+.react-flow__edge.active,
+.react-flow__edge.resolved {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #ddd !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+}
+
+/* ReactFlow: edges layer uses overflow:hidden by default which clips edge paths
+   and SVG marker (arrowhead) definitions. Force visible so arrows render. */
+.react-flow__edges,
+.react-flow__edges svg {
+    overflow: visible !important;
+}
+
+/* Ensure edge paths have a visible stroke when inline style is absent */
+.react-flow__edge-path {
+    stroke: #555;
+    stroke-width: 2;
+    fill: none;
+}
+
+/* Respect user motion preferences — disable animations and transitions globally */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Settlement Confirmation print layout — hide everything except the document */
+@media print {
+
+    body>*:not(#__next),
+    header,
+    nav,
+    footer,
+    .print\\:hidden {
+        display: none !important;
+    }
+
+    tr {
+        page-break-inside: avoid;
+    }
+
+    @page {
+        margin: 1cm;
+    }
+}

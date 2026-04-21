@@ -1,0 +1,406 @@
+# Figaro Protocol: Vision
+
+A public coordination economy of transaction-scoped institutions.
+
+---
+
+## For Visitors
+
+Figaro is not a DeFi protocol — it subsumes DeFi, not the reverse. It is not
+a food delivery app. It is not a platform-controlled application. It is not
+venture-backed rent-extraction.
+
+Figaro is infrastructure for a **post-firm economy** — a system where any two
+parties can coordinate reliably without trusting each other, without an
+arbitrator, and without geographic jurisdiction.
+
+The concrete organizational unit this produces is the
+**transaction-scoped institution**: a temporary assembly of directly bonded
+contributors formed around a single process and dissolved at settlement.
+
+The mechanism is simple: both parties lock collateral on-chain — exactly 2×
+payment each (1× is unsafe because the seller breaks even by defecting; 3× is
+wasteful because it adds capital burden without improving the equilibrium).
+Only the buyer can trigger resolution — not as a power asymmetry, but as a
+coordination property that prevents deadlock (the buyer is also locked at 2×,
+so griefing is self-destructive). If either party defects, both lose. This
+creates a Nash equilibrium where cooperation is strictly dominant — not as a
+hopeful social outcome, but as a mathematical certainty.
+
+In legal terms, this is a **self-executing bilateral performance bond** — a
+known legal instrument, with one innovation: the counterparty is the surety.
+No third-party surety trust is required. Enforcement is ex-ante (locked
+capital), not ex-post (courts and police), making it jurisdiction-independent.
+
+What makes this more than a clever escrow:
+
+1. **Process trees** turn pairwise bonds into N-party value-added processes.
+   There is no "restaurant" — there is a cook, a kitchen operator, an
+   ingredient sourcer, a courier, each an independent node in a tree. Every
+   node adds value, bonds capital, and is compensated directly via settlement.
+   The entire tree resolves atomically — all or nothing.
+
+2. **Token-agnostic denomination** means any ERC-20 can serve as the unit of
+   coordination. A stablecoin for legal convenience. A DAO governance token to
+   express community alignment. A commodity-backed token for value anchoring.
+   Token choice is itself a coordination signal — it expresses the user's
+   preferences, values, and jurisdictional strategy.
+
+3. **Public coordination graphs** — every order, bond, geolocation signal, GHG
+   disclosure, and settlement cascade is intentionally visible on-chain. This is
+   not a data leak; it is the protocol's design. These graphs function as
+   **economic pheromones**: autonomous agents (human or AI) discover
+   opportunities, route capacity, and coordinate fulfillment by reading public
+   state, exactly as ants follow chemical trails without central planning.
+
+4. **Composable institutions** — the protocol provides settlement security;
+   additional mechanisms (auctions, attestation coordinators, disclosure
+   modules, operator registries) layer on top without weakening the bonding
+   guarantee.
+   An institution is a composition of mechanisms, not a monolithic application.
+
+The result: a **public coordination economy** where trust is priced by capital,
+jurisdiction is replaced by code, process trees assemble into
+transaction-scoped institutions, and coordination emerges from economic
+incentives rather than management hierarchies.
+
+---
+
+## The Vision in Detail
+
+### The Six Properties
+
+Everything in Figaro derives from six protocol properties (see THEORY.md):
+
+| # | Property | What It Replaces |
+|---|---|---|
+| 1 | **Asymmetric bonding** | Trust, reputation, credit history |
+| 2 | **Progressive collateralization** | Hierarchical authority, management chains |
+| 3 | **Buyer dominance** | Arbitrators, dispute resolution, governance |
+| 4 | **Atomic resolution** | Partial payments, individual accountability |
+| 5 | **Immutable evidence** | Courts, discovery, forensic audits |
+| 6 | **No escape hatches** | Timeouts, admin overrides, emergency pauses |
+
+These six properties are the **starting point** for all reasoning. Contracts
+implement properties. Mechanisms augment properties. UI renders contracts.
+
+### The Augmentation Layers
+
+The core bonding mechanism is augmented by coordination layers that extend its
+reach without weakening its guarantees:
+
+**`parentOrderId` + process trees** — Public value-added process provenance.
+Every value chain is visible as a DAG. A buyer's cart can settle as a single
+root process that distributes tokens downstream to every contributor, or each
+item can decompose into direct token flows to every value-adder in the tree.
+Cumulative bonding at each node creates geometric coordination pressure — later
+sellers have exponentially more at stake. This replaces management hierarchies
+with economic self-organization.
+
+**Token denomination** — The choice of settlement token is a coordination
+signal, not merely a technical parameter. Token-agnostic bonding means any
+ERC-20 can denominate any process. A participant choosing a DAO token to pay
+for services is expressing governance alignment — the same economic act carries
+a social signal. A stablecoin denomination expresses legal-regime preference.
+A commodity token anchors value to physical reality. The protocol treats all
+tokens identically; the meaning flows from the participants' choices.
+
+**Geolocation (geohash)** — Public spatial coordination graph. Geohashes
+function as economic pheromones: a fulfiller sees active orders clustered in a
+6-char cell and routes toward them; a market maker sees demand concentration
+and opens a vault in that zone. Agents coordinate by intersecting multiple
+graphs simultaneously — spatial density (geo graph) × clearing prices (capital
+graph) × settlement history (process graph) — and the coordination emerges
+from graph intersection, not from a single signal. Private details (exact
+address, notes) are sealed with per-order AES-256-GCM keys and exchanged
+out-of-band. The public layer coordinates; the private layer protects.
+
+**GHG disclosures** — Public accountability graph. Reporting entities open
+process-level boundaries, buyers create order-level requirements, and sellers
+submit disclosure references. All anchored to settlement — you cannot game the
+disclosure without breaking the bond. Opt-in, but tamper-proof once committed.
+
+**Cross-process links (templates, cascades)** — Public trade network graph.
+Templates encode reusable value-added process patterns. Settlement cascades
+propagate resolution across linked processes. These are not auxiliary
+infrastructure — they are the primary mechanism by which value distributes
+through process trees. A template defines how a buyer's payment decomposes into
+flows reaching every contributor; a cascade ensures that when a root process
+resolves, every sub-process in the tree settles accordingly. These form the
+bones of an inter-institution economy where provenance is verifiable across
+process boundaries.
+
+### The Five Graphs
+
+Together, the protocol and its augmentation layers produce five semantic graphs
+that constitute the information layer of the public coordination economy:
+
+1. **Process graph** (protocol-enforced) — orders, bonds, settlement, DAG
+2. **Spatial graph** (institution-declared) — geohashes, routing signals, zones
+3. **Disclosure graph** (protocol-derived) — schemas, requirements, submissions
+4. **Capital graph** (protocol-enforced) — bond flows, vault positions, auction clearing
+5. **Cross-process graph** (protocol-derived) — template provenance, settlement links
+
+Each graph has its own truth boundary:
+
+- **Protocol-enforced**: immutable, on-chain, no external trust required
+- **Protocol-derived**: computed from on-chain state, deterministic
+- **Institution-declared**: claimed by participants, not protocol-verified
+- **Off-chain overlay**: out-of-band data, not on-chain at all
+
+Do not conflate these. A geohash is an institution-declared claim. A bond
+amount is a protocol-enforced fact. Both are useful; only one is trustless.
+
+### Beyond Delivery: The General Pattern
+
+The delivery archetype (Figaro Eats) demonstrates one instance of this system.
+But the properties generalize to any coordination scenario. In every case,
+the named "entity" is not a firm — it is a process tree of independent
+value-adders:
+
+- **Ride-hail**: buyer + driver (+ vehicle owner, + maintenance provider…),
+  geohash routing, auction allocation
+- **Prepared food**: buyer + cook + ingredient sourcer + kitchen operator +
+  courier, value flowing through the tree to every contributor
+- **Repair dispatch**: buyer + diagnostician + parts sourcer + technician,
+  lifecycle signals, sealed address
+- **Procurement**: buyer + N value-adders at every stage, template-guided
+  cascades, GHG disclosure at each node
+- **Cross-border trade**: buyer + producer + shipper + customs broker +
+  logistics chain, progressive collateralization with geographic bridging.
+  In trade finance, a **Letter of Credit** (LC) is the closest legacy
+  instrument: a bank-issued guarantee that payment will arrive on time and
+  for the correct amount. The bank is the trusted third party; its fee is
+  1–3%. FigaroCore replaces the bank with the $2x$ bond — same guarantee
+  (irrevocable, document-conditional), no intermediary, no fee, no
+  jurisdiction dependency. The legal framing is exact: an LC is a
+  unilateral performance bond issued by a third party; Figaro is a
+  bilateral performance bond where the counterparty is the surety.
+- **Anonymous collaboration**: two pseudonymous developers co-building
+  software without legal identities. The schema-typed agreement hash
+  defines deliverables; the bond enforces completion. No platform
+  mediation, no KYC, no escrow service fee.
+- **Jurisdiction-free exchange**: high-stakes coordination in environments
+  where legal recourse is non-existent. The bond works identically because
+  enforcement is ex-ante (capital locked), not ex-post (courts invoked).
+  Two parties in a failed state, or across hostile jurisdictions, can
+  coordinate with the same mathematical certainty as two parties in
+  Switzerland.
+
+The pattern is always the same: asymmetric bonds secure the process, mechanisms
+augment the coordination surface, public graphs enable agent discovery, and
+private channels protect sensitive details. The institution is a composition of
+value-added processes — not a monolithic application, and not a firm.
+
+### Dispute Resolution: Math Replaces Power
+
+Legacy dispute resolution is a product of firms and power structures — courts,
+arbitrators, HR departments, consumer protection agencies. These systems assume
+that enforcement happens *after* a breach, imposed by an authority with
+jurisdiction over the parties.
+
+Figaro inverts this. Enforcement happens *before* work begins, imposed by
+mathematics, not authority. The protocol's defense-in-depth operates across
+three layers:
+
+**Layer 1: Economic — Primary Nash Equilibrium (MAD via asymmetric bonding)**
+— Both parties lock collateral at exactly 2× the transaction value. Defection
+destroys more capital than it could capture. Cooperation is the strictly
+dominant strategy — not as a social aspiration, but as a mathematical fact.
+This handles the vast majority of interactions. The enforcement is ex-ante
+(capital locked before work begins), not ex-post (courts invoked after breach).
+This single mechanism replaces trust, reputation, credit history, and most
+forms of contractual enforcement.
+
+**Layer 2: Social — Seller Coordination Game (the micro-lending circle
+effect)** — In multi-party process trees, atomic resolution means every seller
+sinks or swims with every other seller. If one node defects, the entire tree
+fails and all bonds are lost. This creates geometric coordination pressure:
+later sellers have exponentially more at stake, and all sellers are
+economically incentivized to police each other. The empirical parallel is
+Grameen Bank's group lending model, which reduced default rates from ~20%
+(individual lending) to ~2% (group accountability). Figaro's atomic resolution
+creates the same pressure structure without requiring social relationships —
+the bond geometry does it. The buyer does not need to manage the sellers. This
+replaces management hierarchies, quality control departments, and supervisory
+authority.
+
+**Layer 3: Legal — Timestamped Evidence (bridge to legacy systems)** — We
+recognize that the transition from legacy dispute resolution to bonded
+coordination will not happen overnight. For the edge cases where Layers 1 and
+2 are insufficient — and for the transition period where participants may still
+seek recourse in traditional forums — every lifecycle event emitted by
+coordinators is an immutable, role-gated, block-timestamped attestation
+on-chain. These events serve as tamper-proof evidence in whatever dispute forum
+the parties choose (arbitration, court, community governance). The forum and
+jurisdiction are for the parties to determine. The deterrence loop: because
+evidence is already on-chain and unforgeable, bringing frivolous claims is
+self-defeating. This layer handles the remaining fraction of irrational actors
+who defect despite economic and social pressure.
+
+The result is a system that returns **self-sovereignty to the wallet holder**.
+Your economic protection comes from the capital you locked, not from the
+jurisdiction you happen to live in, the firm that happens to employ you, or the
+power structure that happens to govern your industry. It functions identically
+for a human in a high-corruption jurisdiction, an AI agent in a server rack, or
+a colony on Mars.
+
+### The Coasean Collapse
+
+Ronald Coase theorized that firms exist because transaction costs (vetting,
+trusting, contracting) make external coordination expensive. Reduce those costs
+and the firm dissolves.
+
+Figaro prices the cost of trust at $2x$ — the bond each party locks. Trust
+is not eliminated; it is made unnecessary. The counterparty need not be
+trustworthy; they need only be rational. A rational actor who prefers $2x$
+return over $0x$ will cooperate. The bond is pre-paid; the "lawsuit" is
+resolved before work begins. No vetting, no credit check, no reputation
+threshold required — only solvency.
+
+**No firms, no employees.** Every participant in a process tree is an
+independent value-adder. The entity formerly known as a "restaurant" does not
+exist — what exists is a cook, a kitchen operator, an ingredient sourcer, each
+bonding independently, each compensated directly for the value they add. A
+"driver" is a fulfiller who won an auction, not an employee dispatched by
+management. Token fees flow to each node for the value it contributes —
+identical in structure to validator fees paid for compute.
+
+Two settlement topologies emerge naturally from this:
+
+- **Indirect**: the buyer settles a root process; the root coordinator
+  distributes tokens downstream to every contributor via sub-orders and
+  cascades. The buyer sees one price; the tree handles decomposition.
+- **Direct**: each item in the buyer's cart decomposes into token flows that
+  reach every value-adder explicitly. The process tree *is* the payment
+  routing.
+
+Token denomination compounds this. Paying in a local co-op token means every
+node in the tree receives value denominated in that alignment. A swap at any
+node lets a participant convert to their preferred denomination, but the
+incoming coordination signal is preserved as public graph data. Value is
+transmitted not just to specific people, but to specific **value systems**.
+
+### The Singleton Thesis
+
+Figaro's shared-kernel design (one deployment, no owner, no fee) is not a
+limitation — it maximizes network effects. Shared security (one battle-tested
+contract > 1,000 forks), shared tooling (indexers, UIs, wallets work for
+everyone), shared coordination surface (all institutions' graphs are
+superimposable). Anyone can fork the code; the value is in the shared
+coordination network.
+
+The singleton stays safe because of a critical architectural separation:
+**bonds are capital; payments are income.** The core bonding mechanism locks
+and releases collateral — that is all it does. Extensions (attestation
+coordinators, auctions, disclosure modules, operator registries) operate on
+coordination, discovery, and evidence surfaces around the process. They can
+inform routing, allocation, and attestations, but they do not alter the bond
+mechanism or buyer-only resolution. This is how the protocol scales
+composability without scaling risk.
+
+### Three-Tier Architecture
+
+The system has three distinct tiers. Precision matters — proposals that
+confuse tiers (e.g., "add yield to locked bonds") misidentify what they touch.
+
+| Tier | What it is | Boundary |
+|---|---|---|
+| **Kernel** | `FigaroCore`. The irreducible settlement primitive: 2 external functions, 3 mappings, no owner, no fee, no escape hatches. Secures the process graph via asymmetric bonding. | Nothing modifies the kernel's payoff matrix. |
+| **Protocol** | Kernel + extension doctrine + public graphs. Attestation, schema registry, mechanism modules (auctions, lifecycle coordinators, operator registry), five semantic graphs. | Extensions read kernel state but never weaken its guarantees. |
+| **Runtime** | Protocol + semantic derivation layer + institution assembly schema + builder surfaces + UI. The complete operational environment. | Institutions grow on top; they can wither or be replaced without shaking the kernel. |
+
+The kernel is bedrock; the protocol is law; the runtime is the shared workshop;
+institutions are the structures built on top.
+
+### FIG — The Named Schelling Point
+
+The token denomination thesis above is abstract: *any* ERC-20 carries a
+coordination signal, and the bonding equilibrium holds regardless of which
+token is used. FIG makes this concrete. It is the token participants converge
+on by name — a Schelling point, not a governance mechanism.
+
+FIG is minted exclusively through settlement. When an order resolves in
+FigaroCore, the seller — the party that bore the asymmetric capital commitment —
+may claim a FIG reward. 100 FIG per settlement in epoch 0 (direct path),
+halving every ten million settlements, hard-capped at 600 million. The batch
+path uses Euler oscillation — a decaying cosine on the same envelope — peaking
+at 150 FIG per settlement, creating temporal coordination value. The emission
+contract is immutable: no owner, no upgrade path, no parameter changes. If it
+is wrong, deploy a new one.
+
+This design is deliberate. FIG is not required for participation. It is not
+staked, slashed, or voted with. The 98% cooperation rate comes from the
+bonding equilibrium, not from token incentives. FIG exists because people
+will ask for a token — and when they do, they should receive one whose
+issuance is anchored to the only thing that matters: completed economic
+coordination. See `FIG_TOKEN.md` for the full design.
+
+### Per-Order Sovereignty
+
+Self-sovereignty in Figaro extends from capital to data. Each order is a
+cryptographic boundary: a fresh secp256k1 keypair generates a per-order
+AES-256-GCM key that seals sensitive details (address, notes, coordination
+data). Compromise of one order does not expose any other. There is no master
+key, no platform-held decryption capability, no data silo.
+
+The protocol core (`FigaroCore`) treats the manifest field as opaque bytes —
+it stores nothing, interprets nothing, and only emits the raw bytes and their
+hash in the `OrderCreated` event. What goes into the manifest, how it is
+encrypted, and what schema it conforms to are **dapp-level policy decisions**.
+A delivery archetype might use geohash-6 + AES-sealed street address. A
+procurement archetype might use H3 hexagons + cleartext warehouse codes. A
+repair archetype might use lat/long + sealed unit number. The protocol remains
+constant; the dapp layer varies.
+
+Manifest schemas follow the same anchoring pattern as GHG disclosures:
+off-chain semantics, on-chain reference integrity (schema ID, version, content
+hash). Mechanisms declare which schema(s) they require; order creators declare
+which schema their manifest conforms to. This makes manifest interpretation
+verifiable without making the protocol opinionated about content.
+
+### What This Means For Development
+
+When working in this repository:
+
+1. **Reason from properties downward**, not from contracts upward. The six
+   properties are the starting point. If a feature weakens any property, it is
+   wrong regardless of how useful it seems.
+
+2. **No contract belongs to a dapp.** Every contract is a permissionless
+   primitive. The two-repo split (Prototype2 / Figaro-eats) is organizational,
+   not an ownership boundary.
+
+3. **Token denomination matters.** When building UI or mechanism modules,
+   surface token choice as a meaningful coordination signal, not just a
+   technical detail. The user selecting a token is expressing something about
+   their relationship to the counterparty and the broader economy.
+
+4. **The runtime thesis is the default.** Prototype2 is the canonical runtime.
+   Downstream repos are archetypes and proving grounds. Archetypes may
+   specialize presentation; settlement semantics remain anchored here.
+
+5. **Public graphs are features, not bugs.** Do not treat on-chain visibility
+   as a privacy problem to solve. The public layer is coordination
+   infrastructure. Private details have their own encryption layer.
+
+### Origin
+
+Figaro's bonding mechanism descends from Vitalik Buterin's **Safe Remote
+Purchase** contract — a minimal escrow where buyer and seller each lock 2×
+payment, creating mutual assured destruction that makes cooperation dominant.
+Figaro generalizes this insight from a 2-party escrow into an N-party
+coordination protocol: progressive collateralization scales the equilibrium
+across process trees, atomic resolution binds the tree into a single game, and
+the augmentation layers (auctions, lifecycle coordinators, disclosure modules)
+turn the bare mechanism into composable institutions.
+
+The intellectual debt is real and worth stating: without the Safe Remote
+Purchase primitive, the rest of this system does not exist.
+
+---
+
+*This document distills the vision from THEORY.md, RUNTIME_THESIS.md, and
+iterative development sessions. It is the starting point for new agents and
+visitors. For game-theoretic foundations, see THEORY.md. For runtime
+architecture, see RUNTIME_THESIS.md.*

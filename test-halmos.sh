@@ -1,0 +1,113 @@
+#!/bin/bash
+# test-halmos.sh — Reproducible Halmos symbolic proofs for Figaro.
+#
+# Halmos symbolically executes two harnesses against the Z3 SMT solver and
+# proves 11 properties hold for ALL possible inputs:
+#
+#   HalmosFigaroCore (7 properties):
+#     check_tokenConservation_afterCommit
+#     check_contractSolvency_afterCommit
+#     check_correctBondAmounts
+#     check_resolutionPayouts             (run in isolation, see note below)
+#     check_orderStatusTransition
+#     check_buyerDominance_revert
+#     check_cumulativeValueMonotonic
+#
+#   HalmosStagedMerkleAirdrop (4 properties):
+#     check_claimSetsFlag
+#     check_alreadyClaimedReverts
+#     check_notUnlockedReverts
+#     check_invalidStageReverts
+#
+# The run is split into three halmos processes:
+#
+#   Pass 1 (6 FigaroCore properties): run together in a single halmos process.
+#   Pass 2 (1 FigaroCore property, check_resolutionPayouts): run in a fresh process.
+#   Pass 3 (4 StagedMerkleAirdrop properties): run in a fresh process.
+#
+# Why the split: check_resolutionPayouts exercises the full commit + resolve
+# lifecycle (2 ECDSA signature recoveries, multiple keccak256 hashes, 4 ERC-20
+# transfers symbolically). In isolation it proves in ~75 seconds. Batched with
+# the other 6 properties in one halmos process, Z3's search path degrades
+# enough that even a 10-minute per-assertion timeout can time out. Running it
+# in a fresh process reliably passes under the default budget.
+#
+# Prerequisites (one-time):
+#   brew install z3           # Z3 SMT solver (macOS)
+#   pipx install halmos       # Halmos CLI (Python)
+#
+# Verify your environment before running:
+#   which z3 halmos
+#
+# Usage:
+#   ./test-halmos.sh
+#   HALMOS_SOLVER_TIMEOUT_MS=900000 ./test-halmos.sh   # raise per-assertion timeout (ms)
+#
+# Exit codes:
+#   0  — all 7 properties proved
+#   >0 — at least one property failed or the environment is misconfigured
+
+set -e
+
+# ── Environment checks ─────────────────────────────────────────────────────
+
+if ! command -v halmos >/dev/null 2>&1; then
+    echo "❌ halmos not found on PATH."
+    echo "   Install with: pipx install halmos"
+    exit 127
+fi
+
+if ! command -v z3 >/dev/null 2>&1; then
+    echo "❌ z3 not found on PATH."
+    echo "   Install with: brew install z3  (macOS)"
+    exit 127
+fi
+
+echo "🔎 Using:"
+echo "   $(command -v halmos) — $(halmos --version 2>&1 | head -1)"
+echo "   $(command -v z3)     — $(z3 --version 2>&1 | head -1)"
+echo ""
+
+# ── Configuration ──────────────────────────────────────────────────────────
+# Per-assertion timeout in ms. 600000 = 10 minutes.
+: "${HALMOS_SOLVER_TIMEOUT_MS:=600000}"
+
+COMMON_ARGS=(
+    --contract HalmosFigaroCore
+    --solver z3
+    --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS"
+)
+
+# ── Pass 1: six fast properties, batched ───────────────────────────────────
+
+echo "▶ Pass 1/2 — 6 batched properties (fast)"
+echo ""
+
+FOUNDRY_PROFILE=halmos halmos \
+    "${COMMON_ARGS[@]}" \
+    --match-test '(tokenConservation|contractSolvency|correctBondAmounts|orderStatusTransition|buyerDominance|cumulativeValue)' \
+    "$@"
+
+echo ""
+echo "▶ Pass 2/2 — check_resolutionPayouts (run in isolation)"
+echo ""
+
+# ── Pass 2: the one heavy property, in a fresh halmos process ──────────────
+
+FOUNDRY_PROFILE=halmos halmos \
+    "${COMMON_ARGS[@]}" \
+    --function check_resolutionPayouts \
+    "$@"
+
+echo ""
+echo "▶ Pass 3/3 — HalmosStagedMerkleAirdrop (4 properties)"
+echo ""
+
+FOUNDRY_PROFILE=halmos halmos \
+    --contract HalmosStagedMerkleAirdrop \
+    --solver z3 \
+    --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
+    "$@"
+
+echo ""
+echo "✅ All 11 Halmos properties proved (7 FigaroCore + 4 StagedMerkleAirdrop)."

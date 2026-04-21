@@ -1,0 +1,25 @@
+{
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "husky": "^9.1.7",
+    "jsdom": "^29.0.2",
+    "lint-staged": "^16.4.0"
+  },
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix frontend run start",
+    "test:e2e": "npm --prefix frontend run test:e2e --",
+    "test:e2e:mock": "npm --prefix frontend run test:e2e:mock --",
+    "test:e2e:devnet": "npm --prefix frontend run test:e2e:devnet --",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "frontend/**/*.{ts,tsx}": [
+      "bash -c 'cd frontend && npx tsc --noEmit'"
+    ],
+    "src/**/*.sol": [
+      "forge fmt"
+    ]
+  }
+}

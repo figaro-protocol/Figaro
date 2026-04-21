@@ -1,0 +1,47 @@
+name: Rust Prover CI
+
+on:
+    push:
+        branches: [main, develop]
+        paths:
+            - "prover/**"
+            - ".github/workflows/prover-ci.yml"
+    pull_request:
+        branches: [main, develop]
+        paths:
+            - "prover/**"
+
+# Tests the two pure-Rust workspace members: figaro-kernel (33 tests —
+# EIP-712 parity with Solidity, batch execution, state transitions, ECDSA
+# recovery, schema/operator/attestation operations, genesis root) and
+# figaro-sequencer (22 tests — mempool pre-checks, state mirror, assembler,
+# HTTP API, end-to-end batch chaining).
+#
+# Skipped in CI: figaro-prover (SP1 zkVM program — requires the SP1 toolchain)
+# and figaro-prove-test (prover harness — likewise SP1-dependent). Those are
+# covered manually on developer machines with SP1 installed.
+
+jobs:
+    test:
+        name: Cargo Test
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: ./prover
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Cache cargo
+              uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: prover
+
+            - name: Test figaro-kernel
+              run: cargo test -p figaro-kernel
+
+            - name: Test figaro-sequencer
+              run: cargo test -p figaro-sequencer
