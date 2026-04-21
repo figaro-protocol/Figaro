@@ -57,6 +57,9 @@ echidna_output.txt
 echidna_coverage.txt
 echidna-credit-corpus/
 corpus/
+# Echidna writes per-config corpora like `corpus-v5/`, `corpus-<tag>/`.
+corpus-*/
+echidna/corpus*/
 crytic-export/
 states/
 formal/states/
@@ -104,3 +107,14 @@ coverage/
 # Misc
 *.log
 *.tsbuildinfo
+
+# LaTeX build artifacts (regenerable from .tex via pdflatex/latexmk).
+# `.log` is already covered above by `*.log`.
+*.aux
+*.fdb_latexmk
+*.fls
+*.out
+*.toc
+*.bbl
+*.blg
+*.synctex.gz
