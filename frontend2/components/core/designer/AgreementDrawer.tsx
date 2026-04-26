@@ -36,8 +36,13 @@ import {
 } from "@/lib/designer/syntheticProcess";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
+import {
+    GHG_DISCLOSURE_SCHEMA_KEYS,
+    GHG_SCHEMA_KEY,
+    GHG_SCHEMA_TO_STANDARD,
+    GHG_STANDARD_TO_SCHEMA,
+} from "@/lib/core/agreementManifest";
 
-const GHG_STANDARDS = ["", "ISO-14064", "GHG-Protocol", "PAS-2050", "Custom"] as const;
 const GHG_SCOPES = ["", "1", "2", "3"] as const;
 const HANDOFF_MODES = ["", "face-to-face", "dead-drop", "parking-area", "locker", "courier-relay"] as const;
 const PROXIMITY_BANDS = ["", "none", "zone-wifi", "nearby-ble", "contact-nfc"] as const;
@@ -56,14 +61,76 @@ const SECTION_LABELS: Record<SectionKey, string> = {
     topology: "Topology",
 };
 
-const SECTION_SCHEMA_IDS: Record<SectionKey, string> = {
-    geo: "figaro-geo-v1",
-    ghg: "figaro-ghg-iso-14064-v1",
-    handoff: "figaro-handoff-v1",
-    proximity: "figaro-proximity-policy-v1",
-    jurisdiction: "figaro-jurisdiction-v1",
-    topology: "figaro-topology-v1",
+/**
+ * Per-section schema candidates — a section topic (the pill in the drawer)
+ * can be served by N different schemaIds. The drawer picks the active one
+ * from manifest fields; the section header displays it live.
+ *
+ * GHG is the canonical multi-candidate case: 5 sister schemas, one per
+ * accounting standard, sharing the `(uint8 scope)` content shape. The
+ * picker stores a label (`ISO-14064`, etc.) in `manifestFields.ghgStandard`
+ * and `GHG_STANDARD_TO_SCHEMA` resolves the active schemaId.
+ *
+ * **How to add a v2 of an existing section schema** (e.g. `figaro-geo-v2`
+ * adds new fields):
+ *   1. Land the v2 lockstep (JSON spec + frontend mirror + SDK encoder +
+ *      `Figaro<Schema>V2Validator.sol` + Foundry tests + deploy-script
+ *      entry + `DeployScriptTest`). See CLAUDE.md "Adding a new schema".
+ *   2. Add `{ schemaId: "figaro-<section>-v2", label: "v2", ... }` to that
+ *      section's option list below.
+ *   3. Add a manifest field like `<section>SchemaVersion` that the resolver
+ *      below reads to pick between v1 and v2 for that section.
+ *   4. Add a Select to the section panel below to surface the picker.
+ *   5. Update orderAgreement.ts to read the version field and emit the
+ *      correct schemaId for that section.
+ */
+interface SectionSchemaOption {
+    schemaId: string;
+    label: string;
+    description?: string;
+}
+
+const SECTION_SCHEMA_OPTIONS: Record<SectionKey, readonly SectionSchemaOption[]> = {
+    geo: [
+        { schemaId: "figaro-geo-v1", label: "v1" },
+    ],
+    ghg: GHG_DISCLOSURE_SCHEMA_KEYS.map((schemaId) => ({
+        schemaId,
+        label: GHG_SCHEMA_TO_STANDARD[schemaId],
+    })),
+    handoff: [
+        { schemaId: "figaro-handoff-v1", label: "v1" },
+    ],
+    proximity: [
+        { schemaId: "figaro-proximity-policy-v1", label: "policy (v1)" },
+    ],
+    jurisdiction: [
+        { schemaId: "figaro-jurisdiction-v1", label: "v1" },
+    ],
+    topology: [
+        { schemaId: "figaro-topology-v1", label: "v1" },
+    ],
 };
+
+/**
+ * Resolve the active schemaId for a section from the current manifest fields.
+ * Single-option sections always return their one schemaId. Multi-option
+ * sections (GHG today; v2-bearing sections in future) read a manifest field
+ * to pick. Returns the section's first option as the fallback when the
+ * manifest field is unset or unknown.
+ */
+function resolveActiveSchemaId(section: SectionKey, fields: ManifestFields): string {
+    if (section === "ghg") {
+        const standard = (fields.ghgStandard as string | undefined)?.trim();
+        if (standard && GHG_STANDARD_TO_SCHEMA[standard]) {
+            return GHG_STANDARD_TO_SCHEMA[standard];
+        }
+        return GHG_SCHEMA_KEY;
+    }
+    return SECTION_SCHEMA_OPTIONS[section][0].schemaId;
+}
+
+const GHG_STANDARDS: readonly string[] = ["", ...SECTION_SCHEMA_OPTIONS.ghg.map((opt) => opt.label)];
 
 interface Props {
     order: Order;
@@ -183,7 +250,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                 {openSection === "geo" && (
                     <section data-testid="drawer-section-geo" className="mb-5 pt-2 border-t border-neutral-100">
                         <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
-                            Geo · <span className="font-mono normal-case text-neutral-400">{SECTION_SCHEMA_IDS.geo}</span>
+                            Geo · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("geo", fields)}</span>
                         </p>
                         <div className="space-y-3">
                             <Field
@@ -227,7 +294,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                 {openSection === "ghg" && (
                     <section data-testid="drawer-section-ghg" className="mb-5 pt-2 border-t border-neutral-100">
                         <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
-                            GHG · <span className="font-mono normal-case text-neutral-400">{SECTION_SCHEMA_IDS.ghg}</span>
+                            GHG · <span className="font-mono normal-case text-neutral-400" data-testid="drawer-section-ghg-active-schema">{resolveActiveSchemaId("ghg", fields)}</span>
                         </p>
                         <div className="space-y-3">
                             <Select
@@ -251,7 +318,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                 {openSection === "handoff" && (
                     <section data-testid="drawer-section-handoff" className="mb-5 pt-2 border-t border-neutral-100">
                         <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
-                            Handoff · <span className="font-mono normal-case text-neutral-400">{SECTION_SCHEMA_IDS.handoff}</span>
+                            Handoff · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("handoff", fields)}</span>
                         </p>
                         <div className="space-y-3">
                             <Select
@@ -272,7 +339,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                 {openSection === "proximity" && (
                     <section data-testid="drawer-section-proximity" className="mb-5 pt-2 border-t border-neutral-100">
                         <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
-                            Proximity · <span className="font-mono normal-case text-neutral-400">{SECTION_SCHEMA_IDS.proximity}</span>
+                            Proximity · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("proximity", fields)}</span>
                         </p>
                         <div className="space-y-3">
                             <Select
@@ -299,7 +366,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                 {openSection === "jurisdiction" && (
                     <section data-testid="drawer-section-jurisdiction" className="mb-5 pt-2 border-t border-neutral-100">
                         <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
-                            Jurisdiction · <span className="font-mono normal-case text-neutral-400">{SECTION_SCHEMA_IDS.jurisdiction}</span>
+                            Jurisdiction · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("jurisdiction", fields)}</span>
                         </p>
                         <div className="space-y-3">
                             <Field
@@ -330,7 +397,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                 {openSection === "topology" && (
                     <section data-testid="drawer-section-topology" className="mb-5 pt-2 border-t border-neutral-100">
                         <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
-                            Topology · <span className="font-mono normal-case text-neutral-400">{SECTION_SCHEMA_IDS.topology}</span>
+                            Topology · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("topology", fields)}</span>
                         </p>
                         <div className="space-y-2 text-xs">
                             <p>

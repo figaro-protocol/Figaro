@@ -120,6 +120,36 @@ export const GHG_DISCLOSURE_SCHEMA_KEYS = [
     "figaro-ghg-en-16258-v1",
     "figaro-ghg-custom-v1",
 ] as const;
+/** Map a UI standard string to its corresponding GHG sister schemaId. Each
+ *  accounting standard is its own schema; standard identity lives in the
+ *  schemaId, not in a content field. Unknown values fall through to the
+ *  default GHG_SCHEMA_KEY. Canonical source of truth — the drawer's GHG
+ *  picker, orderAgreement.ts builder, and any indexer that needs to derive
+ *  a schemaId from a label all read this map. */
+export const GHG_STANDARD_TO_SCHEMA: Record<string, typeof GHG_DISCLOSURE_SCHEMA_KEYS[number]> = {
+    "iso-14064-1": "figaro-ghg-iso-14064-v1",
+    "iso-14064-2": "figaro-ghg-iso-14064-v1",
+    "iso-14064-3": "figaro-ghg-iso-14064-v1",
+    "ISO-14064": "figaro-ghg-iso-14064-v1",
+    "ghg-protocol-corporate": "figaro-ghg-protocol-v1",
+    "ghg-protocol-scope3": "figaro-ghg-protocol-v1",
+    "GHG-Protocol": "figaro-ghg-protocol-v1",
+    "pas-2050": "figaro-ghg-pas-2050-v1",
+    "PAS-2050": "figaro-ghg-pas-2050-v1",
+    "en-16258": "figaro-ghg-en-16258-v1",
+    "EN-16258": "figaro-ghg-en-16258-v1",
+    "custom": "figaro-ghg-custom-v1",
+    "Custom": "figaro-ghg-custom-v1",
+};
+/** Reverse lookup: schemaId → human-readable standard label (for summaries
+ *  and UI display). */
+export const GHG_SCHEMA_TO_STANDARD: Record<typeof GHG_DISCLOSURE_SCHEMA_KEYS[number], string> = {
+    "figaro-ghg-protocol-v1": "GHG-Protocol",
+    "figaro-ghg-iso-14064-v1": "ISO-14064",
+    "figaro-ghg-pas-2050-v1": "PAS-2050",
+    "figaro-ghg-en-16258-v1": "EN-16258",
+    "figaro-ghg-custom-v1": "Custom",
+};
 export const GHG_MEASUREMENT_SCHEMA_KEY = "figaro-ghg-measurement-v1";
 /** Committed proximity policy (Category-2 — band declared at agreement time). */
 export const PROXIMITY_POLICY_SCHEMA_KEY = "figaro-proximity-policy-v1";

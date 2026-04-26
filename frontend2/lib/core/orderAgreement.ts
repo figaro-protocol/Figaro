@@ -7,6 +7,8 @@ import {
     FULFILMENT_SCHEMA_KEY,
     GHG_SCHEMA_KEY,
     GHG_DISCLOSURE_SCHEMA_KEYS,
+    GHG_STANDARD_TO_SCHEMA,
+    GHG_SCHEMA_TO_STANDARD,
     HANDOFF_SCHEMA_KEY,
     JURISDICTION_SCHEMA_KEY,
     PROXIMITY_POLICY_SCHEMA_KEY,
@@ -76,37 +78,6 @@ function combineToCanonicalFulfilmentMethod(
     // Unknown — pass through; encoder will throw downstream.
     return fulfilmentMethod;
 }
-
-/**
- * Map a UI standard string to its corresponding GHG sister schemaId. Each
- * accounting standard is now its own schema; the standard identity lives in
- * the schemaId, not in a content field. Unknown values fall through to the
- * default GHG_SCHEMA_KEY.
- */
-const GHG_STANDARD_TO_SCHEMA: Record<string, typeof GHG_DISCLOSURE_SCHEMA_KEYS[number]> = {
-    "iso-14064-1": "figaro-ghg-iso-14064-v1",
-    "iso-14064-2": "figaro-ghg-iso-14064-v1",
-    "iso-14064-3": "figaro-ghg-iso-14064-v1",
-    "ISO-14064": "figaro-ghg-iso-14064-v1",
-    "ghg-protocol-corporate": "figaro-ghg-protocol-v1",
-    "ghg-protocol-scope3": "figaro-ghg-protocol-v1",
-    "GHG-Protocol": "figaro-ghg-protocol-v1",
-    "pas-2050": "figaro-ghg-pas-2050-v1",
-    "PAS-2050": "figaro-ghg-pas-2050-v1",
-    "en-16258": "figaro-ghg-en-16258-v1",
-    "EN-16258": "figaro-ghg-en-16258-v1",
-    "custom": "figaro-ghg-custom-v1",
-    "Custom": "figaro-ghg-custom-v1",
-};
-
-/** Reverse lookup: schemaId → human-readable standard label (for summaries). */
-const GHG_SCHEMA_TO_STANDARD: Record<string, string> = {
-    "figaro-ghg-protocol-v1": "GHG-Protocol",
-    "figaro-ghg-iso-14064-v1": "ISO-14064",
-    "figaro-ghg-pas-2050-v1": "PAS-2050",
-    "figaro-ghg-en-16258-v1": "EN-16258",
-    "figaro-ghg-custom-v1": "Custom",
-};
 
 function aliasLookup(table: Record<string, string>, value: string): string {
     return table[value] ?? value;
