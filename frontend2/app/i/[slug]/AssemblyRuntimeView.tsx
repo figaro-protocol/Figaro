@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { WalletGate } from "@/components/core/WalletGate";
 import { AssemblyShell } from "@/components/core/AssemblyShell";
 import { MerchantBrandingModule } from "@/components/modules/MerchantBrandingModule";
 import { ProcessSummaryCard } from "@/components/core/ProcessSummaryCard";
@@ -52,7 +52,6 @@ export function AssemblyRuntimeView({ artifact, slug }: Props) {
         onSelectProcess,
         transactionStatus,
         subOrder,
-        address,
     } = runtime;
 
     const renderBindings = (bindings: typeof sidebarBindings) =>
@@ -116,16 +115,9 @@ export function AssemblyRuntimeView({ artifact, slug }: Props) {
                                             />
                                         ))
                                     ) : (
-                                        <div className="rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-500 space-y-3">
-                                            {!address ? (
-                                                <>
-                                                    <p>Connect a wallet to place orders and track active processes.</p>
-                                                    <ConnectButton />
-                                                </>
-                                            ) : (
-                                                <p>No active processes found for this wallet.</p>
-                                            )}
-                                        </div>
+                                        <WalletGate hint="Connect a wallet to place orders and track active processes.">
+                                            <p className="rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-500">No active processes found for this wallet.</p>
+                                        </WalletGate>
                                     )}
                                 </div>
                             </>

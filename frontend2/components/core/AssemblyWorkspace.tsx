@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount } from "wagmi";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { WalletGate } from "@/components/core/WalletGate";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { AssemblyShell } from "@/components/core/AssemblyShell";
 import { MerchantBrandingModule } from "@/components/modules/MerchantBrandingModule";
@@ -287,16 +287,9 @@ export function AssemblyWorkspace({ artifact, runtimeContext }: Props) {
                                             skin={skinBundle}
                                         />
                                     )) : (
-                                        <div className="rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-500 space-y-3">
-                                            {!address ? (
-                                                <>
-                                                    <p>Connect a wallet to place orders and track active processes.</p>
-                                                    <ConnectButton />
-                                                </>
-                                            ) : (
-                                                <p>No active processes found for this wallet.</p>
-                                            )}
-                                        </div>
+                                        <WalletGate hint="Connect a wallet to place orders and track active processes.">
+                                            <p className="rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-500">No active processes found for this wallet.</p>
+                                        </WalletGate>
                                     )}
                                 </div>
                             </>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAccount, usePublicClient } from "wagmi";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { WalletGate } from "@/components/core/WalletGate";
 import { formatEther } from "viem";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -301,13 +301,13 @@ export function OperatorOnboarding() {
 
     if (!isConnected) {
         return (
-            <div className="border border-gray-200 rounded-lg px-8 py-10 text-center">
-                <p className="text-sm font-semibold text-black mb-1">Connect your wallet to continue</p>
-                <p className="text-xs text-gray-500 mb-6">
-                    Registration requires a wallet. Your profile is signed by your address.
-                </p>
-                <ConnectButton />
-            </div>
+            <WalletGate
+                variant="standalone"
+                title="Connect your wallet to continue"
+                hint="Registration requires a wallet. Your profile is signed by your address."
+            >
+                {null}
+            </WalletGate>
         );
     }
 
