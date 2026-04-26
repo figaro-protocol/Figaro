@@ -11,6 +11,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { RpcBanner } from "@/components/core/RpcBanner";
 import ClientInit from "@/components/core/ClientInit";
 import { HandoffCleanupProvider } from "@/components/core/HandoffCleanupProvider";
+import { CommitmentSignPreviewProvider } from "@/components/core/CommitmentSignPreviewProvider";
 import { registerAllModules } from "@/components/modules/registerAllModules";
 import { ConfigurationBanner } from "@/components/core/ConfigurationBanner";
 
@@ -29,6 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                             <ConfigurationBanner />
                             <ClientInit />
                             <HandoffCleanupProvider />
+                            <CommitmentSignPreviewProvider />
                             {children}
                         </CommerceProvider>
                     </ChainGuard>

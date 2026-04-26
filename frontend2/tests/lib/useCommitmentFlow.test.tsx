@@ -44,6 +44,9 @@ vi.mock("@/lib/core/agreementStore", () => ({
     primeAgreementArtifact: mocked.primeAgreementArtifact,
     hydrateAgreement: mocked.hydrateAgreement,
     saveAgreementUri: mocked.saveAgreementUri,
+    // loadAgreement is called by the pre-sign preview gate; tests don't
+    // need a real value, the modal is auto-approved by global setup.
+    loadAgreement: () => null,
 }));
 
 function makeCommitment() {

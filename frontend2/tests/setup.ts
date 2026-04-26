@@ -2,6 +2,14 @@ import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { _setSignPreviewMode_TESTING_ONLY } from '@/lib/core/commitmentSignPreviewStore';
+
+// Default test mode: auto-approve commitment-sign confirmation modals so
+// unit tests don't deadlock waiting for a Provider that isn't mounted.
+// Tests that exercise the gate explicitly can call
+// _setSignPreviewMode_TESTING_ONLY(null) per-test to restore normal
+// Provider-driven behavior.
+_setSignPreviewMode_TESTING_ONLY('auto-approve');
 
 // Cleanup after each test
 afterEach(() => {

@@ -22,7 +22,8 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import { useFigaroActions, Commitment, ZERO_PROCESS_ID } from "@/lib/core/useFigaroActions";
 import { saveCommitment, computeOrderHash } from "@/lib/console/commitmentStore";
 import type { Agreement } from "@/lib/core/agreementManifest";
-import { hydrateAgreement, primeAgreementArtifact, saveAgreementUri } from "@/lib/core/agreementStore";
+import { hydrateAgreement, loadAgreement, primeAgreementArtifact, saveAgreementUri } from "@/lib/core/agreementStore";
+import { requestSignConfirmation } from "@/lib/core/commitmentSignPreviewStore";
 
 // ── EIP-712 Domain (V5: version "3") ──────────────────────────
 
@@ -206,6 +207,24 @@ export function useCommitmentFlow() {
         setError(null);
         setStep("signing");
         try {
+            // Threat-model 🟡 Priority 4: gate signing on a pre-sign agreement
+            // preview. The wallet prompt only shows the agreementHash; the
+            // user has no way to verify in MetaMask that the hash matches the
+            // intended terms. This loads the agreement (if available locally)
+            // and posts a confirmation request to the global
+            // CommitmentSignPreviewProvider, which renders an
+            // AgreementPreviewModal showing the human-readable terms next to
+            // the hash. Only after the user clicks Confirm does the wallet
+            // prompt open.
+            const agreement = loadAgreement(commitment.agreementHash);
+            const approved = await requestSignConfirmation(commitment, agreement);
+            if (!approved) {
+                const msg = "Signing cancelled by user";
+                setError(msg);
+                setStep("idle");
+                throw new Error(msg);
+            }
+
             const sig = await signTypedDataAsync({
                 domain,
                 types: COMMITMENT_TYPES,

@@ -1,6 +1,6 @@
 # UI ↔ MetaMask Injection Threat Model
 
-Status: 🟡 DRAFT — survey 2026-04-26
+Status: 🟢 ALL FOUR PRIORITY FIXES SHIPPED — survey 2026-04-26, fixes landed same day. The four real exposures the survey flagged are now defended.
 Scope: `frontend2/` (the only active frontend; legacy `frontend/` archived)
 Threat surface: the pipeline between "user clicks Sign" and "wallet prompt appears", plus the IPFS-fetched content that flows into the UI and (via `agreementHash`) into the signed message.
 
@@ -107,7 +107,7 @@ If the app handles `postMessage` from any iframe, the message contents are an in
 | CSP `'unsafe-inline'` scripts | 🔴 EXPOSED | High (injected script under page origin) | Extension or other DOM-write injection |
 | Prototype pollution via IPFS attestation JSON | 🟢 OK as of 2026-04-26 | Medium (corrupt local component state) | Required attacker control over IPFS CID; mitigated via `safeJsonFromResponse` reviver-based key stripping |
 | Prototype pollution via registry-fetched agreement JSON | 🟢 OK as of 2026-04-26 | Medium (same) | Registry compromise / MITM; mitigated via same helper |
-| Agreement-hash opacity in wallet prompt | 🟡 MITIGATED-BY-DESIGN | Low (off-chain evidence catches forgery) | Operator collusion |
+| Agreement-hash opacity in wallet prompt | 🟢 OK as of 2026-04-26 | Low (off-chain evidence catches forgery) | Mitigated via pre-sign AgreementPreviewModal: user reviews terms + hash before wallet prompt opens; cancel aborts the flow |
 | Clickjacking | 🟢 OK | — | — |
 | `eval` / `Function` reachability | 🟢 OK | — | — |
 | IPFS content rendered as HTML/URL | 🟢 OK | — | — (IPFS gateway is trusted) |
@@ -124,7 +124,7 @@ If the app handles `postMessage` from any iframe, the message contents are an in
 
 **Priority 3 — ✅ Landed 2026-04-26.** Scope expanded from the two sites the survey listed (evidence-display + agreementStore) to the full set of network-fetched JSON parse sites — same defense, same shape, no point leaving 10 instances unhardened. New helper at `frontend2/lib/shared/safeJson.ts` exposes `safeJsonParse` and `safeJsonFromResponse`, both stripping `__proto__` / `constructor` / `prototype` keys via a `JSON.parse` reviver (14 unit tests). Applied at: `evidence-display/page.tsx`, `agreementStore.ts` (3 sites), `useOperatorRegistry.ts`, `catalogueFetcher.ts`, `discoveryService.ts` (2 sites), `merchantBranding.ts`, `driverOfferingFetcher.ts`, `useDidWeb.ts`, `xmtpChannel.ts`. One site (`runtimeResolution.ts:251`) deferred — the `RuntimeAssetDocumentResponseLike` fetcher abstraction exposes only `.json()`, not `.text()`; expanding the interface would constrain test stubs, and the parsed document goes through `parseRuntimeAssetDocument` validator immediately so the prototype-pollution surface is bounded.
 
-**Priority 4 — Pre-sign agreement preview modal.** Insert `<AgreementPreviewModal>` between "user clicks Sign" and the wallet prompt. Show: agreement terms (line items, sections, addresses, amounts) with the computed `agreementHash` displayed alongside. User clicks Confirm; only then does the wallet prompt open. Closes the agreement-hash opacity gap. Est: 4-6 hours including tests.
+**Priority 4 — ✅ Landed 2026-04-26.** Architecture: a singleton `commitmentSignPreviewStore` queues pending sign requests; a global `<CommitmentSignPreviewProvider>` mounted in `app/providers.tsx` subscribes and renders `<AgreementPreviewModal>` when a request is pending. `useCommitmentFlow.signCommitment` now `await`s `requestSignConfirmation(commitment, agreement)` before `signTypedDataAsync`; the store resolves on Confirm (proceed to wallet prompt) or rejects on Cancel (throw, abort the flow). The agreement is loaded locally via `agreementStore.loadAgreement(agreementHash)` so the modal can render line items, parties, payment amount, deadline, jurisdiction, and other clauses next to the hash. The user verifies "the hash matches the agreement I assembled" before delegating to the wallet. Singleton-store + global-provider pattern avoided per-consumer modal placement (otherwise would have needed a `<AgreementPreviewModal>` next to each of 7 `useCommitmentFlow` call sites). 6 unit tests for the store. All commitment-signing flows in the app now route through this gate automatically — no per-consumer changes required.
 
 **Priority 5 — Document IPFS gateway trust assumption.** Add a section to CLAUDE.md / a security doc explaining that all IPFS-rendered content (images, attestation evidence, agreement terms) is gateway-trusted, what compromise of the gateway would expose, and how to harden by running a self-hosted gateway with content-hash verification.
 
