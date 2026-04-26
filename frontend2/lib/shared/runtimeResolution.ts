@@ -251,6 +251,12 @@ export async function fetchRuntimeAssetDocument(
         return null;
     }
 
+    // Note: the RuntimeAssetDocumentResponseLike fetcher abstraction exposes
+    // only .json(), not .text(), so safeJsonFromResponse can't be applied
+    // here without expanding the interface (which would constrain test
+    // stubs). Prototype-pollution risk is bounded because the downstream
+    // parseRuntimeAssetDocument validator does shape-checking; the parsed
+    // object never reaches Object.assign / spread paths directly.
     const assetDocument = await response.json();
 
     return parseRuntimeAssetDocument(assetDocument, options.sourceLabel ?? assetURI);

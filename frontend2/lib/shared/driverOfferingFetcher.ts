@@ -9,6 +9,7 @@
 
 import type { DriverOfferingMetadata } from "@/lib/shared/driverOfferingMetadata";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
 
@@ -30,9 +31,7 @@ export async function fetchDriverOffering(
     try {
         const url = resolveContentURI(metadataURI);
         const res = await fetch(url);
-        if (!res.ok) return null;
-
-        const doc = await res.json();
+        const doc = await safeJsonFromResponse<Record<string, unknown> | null>(res);
 
         // Basic shape validation
         if (!doc || typeof doc !== "object") return null;
@@ -40,7 +39,7 @@ export async function fetchDriverOffering(
         if (doc.archetypeId !== "driver-delivery") return null;
         if (!Array.isArray(doc.serviceAreas) || doc.serviceAreas.length === 0) return null;
 
-        const offering = doc as DriverOfferingMetadata;
+        const offering = doc as unknown as DriverOfferingMetadata;
         offeringCache.set(metadataURI, offering);
         return offering;
     } catch {

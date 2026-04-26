@@ -11,6 +11,7 @@
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
 
@@ -41,9 +42,9 @@ export async function fetchMerchantCatalogue(
     try {
         const url = resolveContentURI(metadataURI);
         const res = await fetch(url);
-        if (!res.ok) return null;
+        const doc = await safeJsonFromResponse(res);
+        if (!doc) return null;
 
-        const doc = await res.json();
         const parsed = parseSellerCatalogueDocument(doc, metadataURI);
 
         catalogueCache.set(metadataURI, { data: parsed, ts: Date.now() });

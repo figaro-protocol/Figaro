@@ -25,6 +25,7 @@ import { createPublicClient, isAddress } from "viem";
 import { mockAwareHttp } from "@/lib/shared/mockTransport";
 import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "@/lib/dispute";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { decodeManifest, cosLabel } from "@/lib/handoff/manifest";
 
 // ---------------------------------------------------------------------------
@@ -119,7 +120,7 @@ function AttestationViewer({ cid }: { cid: string }) {
         if (!isValidCID(cid)) return;
         const url = resolveContentURI(`ipfs://${cid}`);
         fetch(url)
-            .then((r) => r.ok ? r.json() : null)
+            .then((r) => safeJsonFromResponse<Record<string, unknown>>(r))
             .then((data) => setAttestation(data))
             .catch(() => setAttestation(null));
     }, [cid]);

@@ -76,6 +76,7 @@ describe("catalogueFetcher", () => {
         vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
             ok: true,
             json: () => Promise.resolve(VALID_MERCHANT_DOC),
+            text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
         const result = await fetchMerchantCatalogue("ipfs://QmTest");
@@ -98,6 +99,7 @@ describe("catalogueFetcher", () => {
         vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
             ok: true,
             json: () => Promise.resolve({ invalid: true }),
+            text: () => Promise.resolve(JSON.stringify({ invalid: true })),
         } as Response);
 
         expect(await fetchMerchantCatalogue("ipfs://QmBad")).toBeNull();
@@ -107,6 +109,7 @@ describe("catalogueFetcher", () => {
         const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
             ok: true,
             json: () => Promise.resolve(VALID_MERCHANT_DOC),
+            text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
         await fetchMerchantCatalogue("ipfs://QmCached");
@@ -119,6 +122,7 @@ describe("catalogueFetcher", () => {
         const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
             ok: true,
             json: () => Promise.resolve(VALID_MERCHANT_DOC),
+            text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
         await fetchMerchantCatalogue("ipfs://QmInv");
@@ -132,6 +136,7 @@ describe("catalogueFetcher", () => {
         const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
             ok: true,
             json: () => Promise.resolve(VALID_MERCHANT_DOC),
+            text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
         await fetchMerchantCatalogue("ipfs://QmA");
@@ -209,6 +214,7 @@ describe("cataloguePublisher", () => {
             vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve(VALID_MERCHANT_DOC),
+                text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
             } as Response);
             await fetchMerchantCatalogue("ipfs://QmPublished123");
 
@@ -219,6 +225,7 @@ describe("cataloguePublisher", () => {
             vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve(VALID_MERCHANT_DOC),
+                text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
             } as Response);
             await fetchMerchantCatalogue("ipfs://QmPublished123");
         });

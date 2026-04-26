@@ -14,6 +14,7 @@ import { useState, useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
 import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "./contracts";
 import { getOperatorState, getOperatorMetadataURI } from "@/lib/core/indexer";
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 // Mirror the Solidity enum: None=0, Merchant=1, Driver=2, Both=3
 export const OperatorRole = { None: 0, Merchant: 1, Driver: 2, Both: 3 } as const;
@@ -191,7 +192,7 @@ export function useAgentServices(address: `0x${string}` | undefined) {
                     }
                     return;
                 }
-                return fetch(uri).then((r) => r.json());
+                return fetch(uri).then((r) => safeJsonFromResponse(r));
             })
             .then((json) => {
                 if (cancelled) return;

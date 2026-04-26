@@ -6,6 +6,7 @@
  */
 import { useState, useEffect } from "react";
 import { useChainId } from "wagmi";
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 // ── SDK Types (inline to avoid ESM/CJS import issues with SDK) ──────────────
 
@@ -111,8 +112,8 @@ async function resolveDidWeb(did: string): Promise<DIDResolutionResult> {
 
     if (!response.ok) return { document: null, error: `HTTP ${response.status} fetching ${url}` };
 
-    let body: unknown;
-    try { body = await response.json(); } catch {
+    const body = await safeJsonFromResponse<unknown>(response);
+    if (body === null) {
         return { document: null, error: "DID Document is not valid JSON" };
     }
 

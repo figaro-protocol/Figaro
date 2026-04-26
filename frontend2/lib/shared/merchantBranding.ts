@@ -11,6 +11,7 @@
  */
 
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -145,9 +146,7 @@ export async function fetchMerchantBranding(
     try {
         const url = resolveContentURI(metadataURI);
         const res = await fetch(url);
-        if (!res.ok) return null;
-
-        const doc = await res.json();
+        const doc = await safeJsonFromResponse(res);
         if (!doc || typeof doc !== "object" || Array.isArray(doc)) return null;
 
         const record = doc as Record<string, unknown>;

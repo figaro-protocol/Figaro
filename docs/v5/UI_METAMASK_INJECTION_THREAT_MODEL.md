@@ -105,8 +105,8 @@ If the app handles `postMessage` from any iframe, the message contents are an in
 |---|---|---|---|
 | Extension shadowing `window.ethereum` | 🟢 OK as of 2026-04-26 | High (signature forgery / parameter substitution) | Malicious extension installed; only reachable in dev/devnet (gated by NODE_ENV + URL param) |
 | CSP `'unsafe-inline'` scripts | 🔴 EXPOSED | High (injected script under page origin) | Extension or other DOM-write injection |
-| Prototype pollution via IPFS attestation JSON | 🟡 EXPLOITABLE | Medium (corrupt local component state) | Attacker controls IPFS CID |
-| Prototype pollution via registry-fetched agreement JSON | 🟡 EXPLOITABLE | Medium (same) | Registry compromise / MITM |
+| Prototype pollution via IPFS attestation JSON | 🟢 OK as of 2026-04-26 | Medium (corrupt local component state) | Required attacker control over IPFS CID; mitigated via `safeJsonFromResponse` reviver-based key stripping |
+| Prototype pollution via registry-fetched agreement JSON | 🟢 OK as of 2026-04-26 | Medium (same) | Registry compromise / MITM; mitigated via same helper |
 | Agreement-hash opacity in wallet prompt | 🟡 MITIGATED-BY-DESIGN | Low (off-chain evidence catches forgery) | Operator collusion |
 | Clickjacking | 🟢 OK | — | — |
 | `eval` / `Function` reachability | 🟢 OK | — | — |
@@ -122,7 +122,7 @@ If the app handles `postMessage` from any iframe, the message contents are an in
 
 **Priority 2 — ✅ Landed 2026-04-26.** On closer reading the exposure was smaller than the survey framed: production signing flows already go through wagmi (EIP-6963), and the only direct `window.ethereum` access is in the devnet-shortcut path. Fix added a runtime production-build guard inside `getInjectedEthereumProvider()` (returns null in prod even if some future call site reaches it) and scoped the call lazily to the `if (isDevnet)` branch. Sealing `window.ethereum` via `Object.defineProperty` was considered but rejected — wallet ecosystem behavior is too varied (some legit extensions update the provider object after EIP-6963 announce), and the production sign path no longer touches `window.ethereum` directly so sealing buys nothing additional.
 
-**Priority 3 — Schema-validate IPFS attestation JSON.** Wrap `JSON.parse(attestation)` paths in `evidence-display` and `agreementStore` with either (a) a small allowlist parser that rejects `__proto__` / `constructor` / `prototype` keys, or (b) Zod / valibot schema validation. The SDK's `parseSchemaSpec` pattern is the model. Est: 2-3 hours.
+**Priority 3 — ✅ Landed 2026-04-26.** Scope expanded from the two sites the survey listed (evidence-display + agreementStore) to the full set of network-fetched JSON parse sites — same defense, same shape, no point leaving 10 instances unhardened. New helper at `frontend2/lib/shared/safeJson.ts` exposes `safeJsonParse` and `safeJsonFromResponse`, both stripping `__proto__` / `constructor` / `prototype` keys via a `JSON.parse` reviver (14 unit tests). Applied at: `evidence-display/page.tsx`, `agreementStore.ts` (3 sites), `useOperatorRegistry.ts`, `catalogueFetcher.ts`, `discoveryService.ts` (2 sites), `merchantBranding.ts`, `driverOfferingFetcher.ts`, `useDidWeb.ts`, `xmtpChannel.ts`. One site (`runtimeResolution.ts:251`) deferred — the `RuntimeAssetDocumentResponseLike` fetcher abstraction exposes only `.json()`, not `.text()`; expanding the interface would constrain test stubs, and the parsed document goes through `parseRuntimeAssetDocument` validator immediately so the prototype-pollution surface is bounded.
 
 **Priority 4 — Pre-sign agreement preview modal.** Insert `<AgreementPreviewModal>` between "user clicks Sign" and the wallet prompt. Show: agreement terms (line items, sections, addresses, amounts) with the computed `agreementHash` displayed alongside. User clicks Confirm; only then does the wallet prompt open. Closes the agreement-hash opacity gap. Est: 4-6 hours including tests.
 

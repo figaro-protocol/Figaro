@@ -17,7 +17,11 @@ vi.mock('@/lib/mechanisms/contracts', () => ({
 }));
 
 function makeJsonResponse(body: unknown): Response {
-    return { ok: true, json: async () => body } as unknown as Response;
+    return {
+        ok: true,
+        json: async () => body,
+        text: async () => JSON.stringify(body),
+    } as unknown as Response;
 }
 
 describe('discoveryService', () => {

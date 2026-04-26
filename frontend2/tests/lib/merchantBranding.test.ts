@@ -83,6 +83,7 @@ describe('merchantBranding', () => {
             vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve(mockDoc),
+                text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
             const result = await fetchMerchantBranding('ipfs://QmMetadata');
@@ -108,6 +109,7 @@ describe('merchantBranding', () => {
             vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve(mockDoc),
+                text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
             const result = await fetchMerchantBranding('http://example.com/metadata.json');
@@ -141,6 +143,7 @@ describe('merchantBranding', () => {
             vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve('not an object'),
+                text: () => Promise.resolve(JSON.stringify('not an object')),
             } as Response);
 
             const result = await fetchMerchantBranding('ipfs://QmNotJson');
@@ -151,6 +154,7 @@ describe('merchantBranding', () => {
             vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve([1, 2, 3]),
+                text: () => Promise.resolve(JSON.stringify([1, 2, 3])),
             } as Response);
 
             const result = await fetchMerchantBranding('ipfs://QmArray');
@@ -162,6 +166,7 @@ describe('merchantBranding', () => {
             const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
                 ok: true,
                 json: () => Promise.resolve(mockDoc),
+                text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
             await fetchMerchantBranding('ipfs://QmCached');
@@ -176,6 +181,7 @@ describe('merchantBranding', () => {
             const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
                 ok: true,
                 json: () => Promise.resolve(mockDoc),
+                text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
             await fetchMerchantBranding('ipfs://QmClearTest');
@@ -191,6 +197,7 @@ describe('merchantBranding', () => {
             vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve(mockDoc),
+                text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
             const result = await fetchMerchantBranding('http://example.com/bare.json');

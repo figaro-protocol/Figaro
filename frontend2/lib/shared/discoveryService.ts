@@ -11,6 +11,7 @@ import {
     tryParseCatalogueItems,
     operatorProfileToRestaurant,
 } from '@/lib/shared/operatorProfileAdapter';
+import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 
 /** Only allow safe URI schemes for operator-declared image URLs. */
 function isSafeImageURI(uri: string): boolean {
@@ -73,9 +74,8 @@ async function fetchOperatorAsRestaurant(
     if (!url) return null;
 
     const res = await fetchFn(url);
-    if (!res.ok) return null;
-
-    const doc = await res.json() as unknown;
+    const doc = await safeJsonFromResponse<unknown>(res);
+    if (!doc) return null;
 
     // Try SellerCatalogueMetadata format first (backward compat with seed data / CatalogueEditorModule)
     try {
@@ -96,8 +96,8 @@ async function fetchOperatorAsRestaurant(
             const catUrl = resolveContentURI(profile.catalogueURI);
             if (catUrl) {
                 const catRes = await fetchFn(catUrl);
-                if (catRes.ok) {
-                    const catDoc = await catRes.json() as unknown;
+                const catDoc = await safeJsonFromResponse<unknown>(catRes);
+                if (catDoc) {
                     items = tryParseCatalogueItems(catDoc) ?? [];
                 }
             }

@@ -37,6 +37,7 @@ describe("driverOfferingFetcher", () => {
             ok,
             status: ok ? 200 : 500,
             json: async () => data,
+            text: async () => JSON.stringify(data),
         });
     }
 

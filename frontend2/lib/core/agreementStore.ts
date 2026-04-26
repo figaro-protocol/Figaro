@@ -1,5 +1,6 @@
 import type { Hex } from "viem";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
+import { safeJsonFromResponse, safeJsonParse } from "@/lib/shared/safeJson";
 import {
     canonicalizeAgreement,
     computeAgreementHash,
@@ -71,11 +72,8 @@ async function discoverPublishedAgreementUri(
             method: "GET",
             cache: "no-store",
         });
-        if (!res.ok) {
-            return null;
-        }
-        const publication = await res.json() as RegisteredAgreementPublication;
-        if (!publication?.uri) {
+        const publication = await safeJsonFromResponse<RegisteredAgreementPublication>(res);
+        if (!publication?.uri || typeof publication.uri !== "string") {
             return null;
         }
         saveAgreementUri(agreementHash, publication.uri);
@@ -114,8 +112,10 @@ export function loadAgreement(agreementHash: Hex | string | undefined | null): A
 
     try {
         const raw = localStorage.getItem(getAgreementKey(agreementHash));
-        if (!raw) return null;
-        return JSON.parse(raw) as Agreement;
+        // localStorage is our own write surface, but parsing through
+        // safeJsonParse costs nothing and protects against an attacker who
+        // gains storage write access (e.g. via XSS in another extension).
+        return safeJsonParse<Agreement>(raw);
     } catch {
         return null;
     }
@@ -195,10 +195,10 @@ export async function hydrateAgreement(
     const pending = (async () => {
         try {
             const res = await fetch(fetchUrl, { method: "GET" });
-            if (!res.ok) {
+            const agreement = await safeJsonFromResponse<Agreement>(res);
+            if (!agreement) {
                 return null;
             }
-            const agreement = await res.json() as Agreement;
             const computedHash = computeAgreementHash(agreement);
             if (computedHash.toLowerCase() !== agreementHash.toLowerCase()) {
                 return null;

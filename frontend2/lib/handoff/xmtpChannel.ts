@@ -7,17 +7,10 @@
  */
 
 import type { CoordinationChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, ChannelMessage } from "./channel";
+import { safeJsonParse } from "@/lib/shared/safeJson";
 
 function parseChannelMessage(content: unknown): ChannelMessage | null {
-    if (typeof content !== "string") {
-        return null;
-    }
-
-    try {
-        return JSON.parse(content) as ChannelMessage;
-    } catch {
-        return null;
-    }
+    return safeJsonParse<ChannelMessage>(content);
 }
 
 /** Retry an async operation with exponential backoff. */

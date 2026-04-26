@@ -74,6 +74,7 @@ describe("agreementStore", () => {
         globalThis.fetch = vi.fn().mockResolvedValue({
             ok: true,
             json: async () => agreement,
+            text: async () => JSON.stringify(agreement),
         } as Response);
 
         const loaded = await hydrateAgreement(agreementHash);
@@ -90,9 +91,11 @@ describe("agreementStore", () => {
             const url = String(input);
 
             if (url.endsWith(`/api/semantic/agreements/${agreementHash}`)) {
+                const body = { agreementHash, uri: "ipfs://bafy-agreement" };
                 return {
                     ok: true,
-                    json: async () => ({ agreementHash, uri: "ipfs://bafy-agreement" }),
+                    json: async () => body,
+                    text: async () => JSON.stringify(body),
                 } as Response;
             }
 
@@ -100,6 +103,7 @@ describe("agreementStore", () => {
                 return {
                     ok: true,
                     json: async () => agreement,
+                    text: async () => JSON.stringify(agreement),
                 } as Response;
             }
 
@@ -145,6 +149,7 @@ describe("agreementStore", () => {
         globalThis.fetch = vi.fn().mockResolvedValue({
             ok: true,
             json: async () => agreement,
+            text: async () => JSON.stringify(agreement),
         } as Response);
 
         const loaded = await hydrateAgreement(agreementHash, undefined, {
