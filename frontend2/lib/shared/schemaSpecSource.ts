@@ -14,6 +14,7 @@
  */
 
 import { parseSchemaSpec, type SchemaSpec } from "@figaro/core/schemas";
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import topologySpecRaw from "@/lib/shared/schemas/figaro-topology-v1.json";
 import handoffSpecRaw from "@/lib/shared/schemas/figaro-handoff-v1.json";
 
@@ -64,7 +65,11 @@ export type SchemaSpecFetcher = (uri: string) => Promise<unknown>;
 let activeFetcher: SchemaSpecFetcher = async (uri) => {
     const response = await fetch(uri);
     if (!response.ok) throw new Error(`Failed to fetch schema spec at ${uri}: ${response.status} ${response.statusText}`);
-    return response.json();
+    const parsed = await safeJsonFromResponse(response);
+    if (parsed === null) {
+        throw new Error(`Failed to parse schema spec at ${uri}: invalid JSON or pollution-stripped to empty`);
+    }
+    return parsed;
 };
 
 /** Replace the default fetcher (test-only). */

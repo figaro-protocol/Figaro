@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAccount, usePublicClient, useWalletClient, useChainId } from "wagmi";
 import { getStagedAirdropClaimStatus } from "@/lib/core/indexer";
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import {
     STAGED_MERKLE_AIRDROP_ABI,
     getStagedAirdrop,
@@ -33,8 +34,8 @@ async function fetchAllocation(
     if (!file) return null;
     try {
         const res = await fetch(file);
-        if (!res.ok) return null;
-        const data = await res.json();
+        const data = await safeJsonFromResponse<Record<string, AllocationEntry>>(res);
+        if (!data) return null;
         return data[address.toLowerCase()] ?? null;
     } catch {
         return null;

@@ -86,6 +86,33 @@ async function writeRegistryRaw(serialized: string): Promise<void> {
     await fs.writeFile(filePath, serialized, "utf8");
 }
 
+/**
+ * Module-scope async mutex serializing the read-modify-write window on the
+ * registry file (Web2 adversarial-audit 🔴 Priority 2, 2026-04-26).
+ *
+ * fs.readFile + JSON.parse + mutate + JSON.stringify + fs.writeFile is not
+ * atomic. Two concurrent POSTs that arrive within the same event-loop tick
+ * could both pass the size cap and one's write silently overwrites the
+ * other's. The mutex serializes the upsert path so reads always see the
+ * latest write.
+ *
+ * Sufficient for the single-process Node server in dev. Multi-instance
+ * production deployments would need file-level locking (proper-lockfile)
+ * or a real database — out of scope for the dev registry.
+ */
+let registryMutexTail: Promise<unknown> = Promise.resolve();
+async function withRegistryLock<T>(fn: () => Promise<T>): Promise<T> {
+    const previous = registryMutexTail;
+    let release!: () => void;
+    registryMutexTail = new Promise<void>((resolve) => { release = resolve; });
+    try {
+        await previous;
+        return await fn();
+    } finally {
+        release();
+    }
+}
+
 export async function lookupAgreementPublication(
     agreementHash: string,
 ): Promise<AgreementPublicationRecord | null> {
@@ -116,19 +143,24 @@ export async function upsertAgreementPublication(input: {
         updatedAt: new Date().toISOString(),
     };
 
-    const registry = await readRegistry();
-    registry.agreements[agreementHash] = record;
+    // Mutex serializes the read-modify-write so concurrent POSTs can't
+    // race past the size cap and overwrite each other.
+    return withRegistryLock(async () => {
+        const registry = await readRegistry();
+        registry.agreements[agreementHash] = record;
 
-    // Storage-quota cap — refuse to grow the file past the limit. Upserts to
-    // existing keys never push past the cap from below (size only stays the
-    // same or shrinks), but new keys can. We compute the prospective size
-    // and bail before the write so the registry never enters a partial state.
-    const serialized = `${JSON.stringify(registry, null, 2)}\n`;
-    const prospectiveBytes = Buffer.byteLength(serialized, "utf8");
-    if (prospectiveBytes > MAX_REGISTRY_FILE_BYTES) {
-        throw new AgreementRegistryFullError(prospectiveBytes, MAX_REGISTRY_FILE_BYTES);
-    }
+        // Storage-quota cap — refuse to grow the file past the limit. Upserts
+        // to existing keys never push past the cap from below (size only
+        // stays the same or shrinks), but new keys can. We compute the
+        // prospective size and bail before the write so the registry never
+        // enters a partial state.
+        const serialized = `${JSON.stringify(registry, null, 2)}\n`;
+        const prospectiveBytes = Buffer.byteLength(serialized, "utf8");
+        if (prospectiveBytes > MAX_REGISTRY_FILE_BYTES) {
+            throw new AgreementRegistryFullError(prospectiveBytes, MAX_REGISTRY_FILE_BYTES);
+        }
 
-    await writeRegistryRaw(serialized);
-    return record;
+        await writeRegistryRaw(serialized);
+        return record;
+    });
 }

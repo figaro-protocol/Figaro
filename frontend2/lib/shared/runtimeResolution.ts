@@ -19,6 +19,7 @@ import {
 } from '@/lib/shared/runtimeDataSource';
 import type { IpfsService } from '@/lib/shared/ipfsService';
 import { parseRuntimeAssetDocument } from '@/lib/shared/runtimeIdentityDocument';
+import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 import type { SellerBrandingMetadata, SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
 import type { RuntimeIdentityDocumentValidationIssue } from '@/lib/shared/runtimeIdentityDocument';
 import { FIXTURE_RUNTIME_IDENTITY_SOURCE } from '@/lib/shared/runtimeIdentityRegistry';
@@ -136,7 +137,10 @@ export interface RuntimeAssetDocumentResponseLike {
     ok: boolean;
     status: number;
     statusText: string;
-    json(): Promise<unknown>;
+    /** Read body as text. Required so the runtime can route through
+     *  `safeJsonParse` for prototype-pollution defense. Test stubs need
+     *  to implement both `json()` (legacy) and `text()`. */
+    text(): Promise<string>;
 }
 
 export type RuntimeAssetDocumentFetcher = (
@@ -247,17 +251,14 @@ export async function fetchRuntimeAssetDocument(
     const fetcher = options.fetcher ?? getDefaultRuntimeAssetDocumentFetcher();
     const response = await fetcher(fetchUrl, options.requestInit);
 
-    if (!response.ok) {
+    // The RuntimeAssetDocumentResponseLike interface now requires `.text()`
+    // (Web2 adversarial-audit 🟡 Priority 3, 2026-04-26) so we route through
+    // safeJsonFromResponse and strip prototype-pollution keys at the parse
+    // boundary, matching the rest of the network-fetched JSON sites.
+    const assetDocument = await safeJsonFromResponse(response);
+    if (!assetDocument) {
         return null;
     }
-
-    // Note: the RuntimeAssetDocumentResponseLike fetcher abstraction exposes
-    // only .json(), not .text(), so safeJsonFromResponse can't be applied
-    // here without expanding the interface (which would constrain test
-    // stubs). Prototype-pollution risk is bounded because the downstream
-    // parseRuntimeAssetDocument validator does shape-checking; the parsed
-    // object never reaches Object.assign / spread paths directly.
-    const assetDocument = await response.json();
 
     return parseRuntimeAssetDocument(assetDocument, options.sourceLabel ?? assetURI);
 }

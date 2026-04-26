@@ -6,6 +6,7 @@ import {
     isValidAgreementUri,
     upsertAgreementPublication,
 } from "@/lib/core/agreementPublicationRegistry.server";
+import { safeJsonParse } from "@/lib/shared/safeJson";
 
 export const dynamic = "force-dynamic";
 
@@ -26,13 +27,18 @@ function isRateLimited(ip: string): boolean {
 }
 
 /**
- * Web2 audit 🟡 Priority 3 (defense-in-depth on top of CORS preflight +
- * JSON-only Content-Type). Reject POSTs whose `Origin` header isn't on
- * the configured allowlist. Empty allowlist = "accept any origin" for
- * local-dev convenience (default behavior preserved).
+ * Reject POSTs whose `Origin` header isn't on the configured allowlist.
+ * Defense-in-depth on top of CORS preflight + JSON-only Content-Type.
  *
  * Configure via env: comma-separated list of allowed origins, e.g.
  *   FIGARO_ALLOWED_ORIGINS=https://app.figaro.example,https://staging.figaro.example
+ *
+ * **Defaults (Web2 adversarial-audit 🔴 Priority 1, 2026-04-26):**
+ * - Production builds (NODE_ENV === "production"): unset allowlist
+ *   rejects all POSTs. Production deployments MUST configure
+ *   FIGARO_ALLOWED_ORIGINS or this endpoint is unreachable.
+ * - Dev/test builds: unset allowlist permits all (so local dev doesn't
+ *   need to set the env var to use the API).
  *
  * `Origin: null` (file://, data:, sandboxed iframes) is always rejected
  * when an allowlist is configured.
@@ -40,7 +46,11 @@ function isRateLimited(ip: string): boolean {
 function isOriginAllowed(origin: string | null): boolean {
     const allowlistRaw = process.env.FIGARO_ALLOWED_ORIGINS?.trim();
     if (!allowlistRaw) {
-        // No allowlist configured — local-dev passthrough.
+        // Production: fail-closed. A missing env var is a deployment bug,
+        // not a usage bug; better to break the API than silently accept
+        // every origin.
+        if (process.env.NODE_ENV === "production") return false;
+        // Dev/test: permissive passthrough.
         return true;
     }
     if (!origin || origin === "null") return false;
@@ -59,9 +69,12 @@ export async function POST(request: NextRequest) {
     }
 
     let body: unknown;
-
     try {
-        body = await request.json();
+        const text = await request.text();
+        body = safeJsonParse(text);
+        if (body === null) {
+            return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+        }
     } catch {
         return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }

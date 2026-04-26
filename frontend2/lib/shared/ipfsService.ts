@@ -5,6 +5,8 @@
  * resolution so runtime surfaces do not duplicate Kubo HTTP wiring.
  */
 
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
+
 const IPFS_API_URL =
     process.env.NEXT_PUBLIC_IPFS_API_URL ?? "http://127.0.0.1:5001";
 
@@ -126,8 +128,8 @@ class DefaultIpfsService implements IpfsService {
             throw new Error(`${failureMessage}: ${res.status} ${res.statusText}`);
         }
 
-        const result = await res.json() as { Hash?: unknown };
-        const cid = result.Hash;
+        const result = await safeJsonFromResponse<{ Hash?: unknown }>(res);
+        const cid = result?.Hash;
         if (typeof cid !== "string" || cid.length === 0) {
             throw new Error(emptyCidMessage);
         }

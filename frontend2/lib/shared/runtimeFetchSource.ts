@@ -3,12 +3,16 @@ import {
     createRuntimeIdentityDataSourceFromDocument,
     ParsedRuntimeIdentityDocument,
 } from '@/lib/shared/runtimeIdentityDocument';
+import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 
 export interface RuntimeIdentityResponseLike {
     ok: boolean;
     status: number;
     statusText: string;
-    json(): Promise<unknown>;
+    /** Read body as text. Required so the runtime can route through
+     *  `safeJsonParse` for prototype-pollution defense. Test stubs that
+     *  previously only implemented `json()` need to add `text()` too. */
+    text(): Promise<string>;
 }
 
 export type RuntimeIdentityFetcher = (
@@ -47,13 +51,14 @@ export async function fetchRuntimeIdentityDocument(
     const fetcher = options.fetcher ?? getDefaultFetcher();
     const response = await fetcher(identityUrl, options.requestInit);
 
-    if (!response.ok) {
+    const parsed = await safeJsonFromResponse(response);
+    if (parsed === null) {
         throw new Error(
             `Failed to fetch runtime identity document from ${identityUrl}: ${response.status} ${response.statusText}`.trim()
         );
     }
 
-    return response.json();
+    return parsed;
 }
 
 export async function createRuntimeIdentityDataSourceFromUrl(

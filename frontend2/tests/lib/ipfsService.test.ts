@@ -20,6 +20,7 @@ describe("ipfsService", () => {
             status: 200,
             statusText: "OK",
             json: async () => ({ Hash: "QmJson123" }),
+            text: async () => JSON.stringify({ Hash: "QmJson123" }),
         });
 
         const result = await DEFAULT_IPFS_SERVICE.publishJSON({ hello: "world" });
@@ -38,6 +39,7 @@ describe("ipfsService", () => {
             status: 200,
             statusText: "OK",
             json: async () => ({ Hash: "QmFile123" }),
+            text: async () => JSON.stringify({ Hash: "QmFile123" }),
         });
 
         const result = await DEFAULT_IPFS_SERVICE.uploadFile(

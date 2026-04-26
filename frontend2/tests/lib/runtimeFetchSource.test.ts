@@ -8,11 +8,13 @@ import {
 } from '@/lib/shared/runtimeFetchSource';
 
 function createJsonResponse(payload: unknown) {
+    const text = JSON.stringify(payload);
     return {
         ok: true,
         status: 200,
         statusText: 'OK',
         json: async () => payload,
+        text: async () => text,
     };
 }
 
@@ -61,6 +63,7 @@ describe('runtime fetch source', () => {
             status: 404,
             statusText: 'Not Found',
             json: async () => ({ error: 'missing' }),
+            text: async () => JSON.stringify({ error: 'missing' }),
         }));
 
         await expect(createRuntimeIdentityDataSourceFromUrl('https://example.com/missing.json', { fetcher })).rejects.toThrow(

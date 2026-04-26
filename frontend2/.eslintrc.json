@@ -1,0 +1,26 @@
+{
+    "extends": "next/core-web-vitals",
+    "rules": {
+        "no-restricted-syntax": [
+            "warn",
+            {
+                "selector": "CallExpression[callee.type='MemberExpression'][callee.property.name='json'][arguments.length=0]",
+                "message": "Use safeJsonFromResponse() from @/lib/shared/safeJson instead of .json() to defend against prototype-pollution from network-fetched JSON. If this is a controlled internal endpoint where pollution risk is bounded, add: // eslint-disable-next-line no-restricted-syntax -- <reason>"
+            }
+        ]
+    },
+    "overrides": [
+        {
+            "files": ["lib/shared/safeJson.ts"],
+            "rules": {
+                "no-restricted-syntax": "off"
+            }
+        },
+        {
+            "files": ["tests/**/*.{ts,tsx}"],
+            "rules": {
+                "no-restricted-syntax": "off"
+            }
+        }
+    ]
+}

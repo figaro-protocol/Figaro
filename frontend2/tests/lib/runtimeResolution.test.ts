@@ -266,24 +266,26 @@ describe('runtime resolution', () => {
         const evidenceTransport = {
             resolveFetchUrl: vi.fn().mockReturnValue('https://example.com/runtime-assets.json'),
         };
+        const transportPayload = {
+            assetURI: 'ipfs://example/transport-skin.assets.json',
+            name: 'Transport Skin Merchant Runtime Skin',
+            branding: {
+                displayName: 'Transport Skin Merchant',
+                logoURI: 'ipfs://example/transport-logo.png',
+                accentColor: '#0f766e',
+                themeClass: 'transport-theme',
+            },
+            assets: {
+                cssURI: 'ipfs://example/transport-theme.css',
+            },
+            version: '1.0.0',
+        };
         const fetcher = vi.fn().mockResolvedValue({
             ok: true,
             status: 200,
             statusText: 'OK',
-            json: async () => ({
-                assetURI: 'ipfs://example/transport-skin.assets.json',
-                name: 'Transport Skin Merchant Runtime Skin',
-                branding: {
-                    displayName: 'Transport Skin Merchant',
-                    logoURI: 'ipfs://example/transport-logo.png',
-                    accentColor: '#0f766e',
-                    themeClass: 'transport-theme',
-                },
-                assets: {
-                    cssURI: 'ipfs://example/transport-theme.css',
-                },
-                version: '1.0.0',
-            }),
+            json: async () => transportPayload,
+            text: async () => JSON.stringify(transportPayload),
         });
 
         const assetDocument = await fetchRuntimeAssetDocument(
@@ -312,25 +314,27 @@ describe('runtime resolution', () => {
         const evidenceTransport = {
             resolveFetchUrl: vi.fn().mockReturnValue('https://example.com/runtime-assets.json'),
         };
+        const transportPayload = {
+            assetURI: 'ipfs://example/transport-skin.assets.json',
+            name: 'Transport Skin Merchant Runtime Skin',
+            branding: {
+                displayName: 'Transport Skin Merchant',
+                logoURI: 'ipfs://example/transport-logo.png',
+                heroImageURI: 'ipfs://example/transport-hero.png',
+                accentColor: '#0f766e',
+                themeClass: 'transport-theme',
+            },
+            assets: {
+                cssURI: 'ipfs://example/transport-theme.css',
+            },
+            version: '1.0.0',
+        };
         const fetcher = vi.fn().mockResolvedValue({
             ok: true,
             status: 200,
             statusText: 'OK',
-            json: async () => ({
-                assetURI: 'ipfs://example/transport-skin.assets.json',
-                name: 'Transport Skin Merchant Runtime Skin',
-                branding: {
-                    displayName: 'Transport Skin Merchant',
-                    logoURI: 'ipfs://example/transport-logo.png',
-                    heroImageURI: 'ipfs://example/transport-hero.png',
-                    accentColor: '#0f766e',
-                    themeClass: 'transport-theme',
-                },
-                assets: {
-                    cssURI: 'ipfs://example/transport-theme.css',
-                },
-                version: '1.0.0',
-            }),
+            json: async () => transportPayload,
+            text: async () => JSON.stringify(transportPayload),
         });
 
         const skinBundle = await resolveAssemblySkinBundleFromTransport(

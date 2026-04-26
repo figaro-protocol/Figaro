@@ -15,6 +15,7 @@ import {
     OperatorRole,
 } from "@/lib/mechanisms/useOperatorRegistry";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { TokenAddressInput, isValidAddress } from "./TokenAddressInput";
 
 /**
@@ -198,7 +199,7 @@ export function OperatorOnboarding() {
         const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(currentURI);
         if (!url) return;
         fetch(url)
-            .then((r) => r.json())
+            .then((r) => safeJsonFromResponse<unknown>(r))
             .then((data: unknown) => {
                 const m = data as Partial<OperatorMetadata>;
                 setForm((prev) => ({

@@ -30,6 +30,7 @@ describe("ipfsUpload", () => {
         globalThis.fetch = vi.fn().mockResolvedValue({
             ok: true,
             json: async () => ({ Hash: "QmTestPhoto123" }),
+            text: async () => JSON.stringify({ Hash: "QmTestPhoto123" }),
         });
 
         const uri = await uploadFileToIPFS(file);
@@ -53,6 +54,7 @@ describe("ipfsUpload", () => {
         globalThis.fetch = vi.fn().mockResolvedValue({
             ok: true,
             json: async () => ({ Hash: "" }),
+            text: async () => JSON.stringify({ Hash: "" }),
         });
 
         await expect(uploadFileToIPFS(file)).rejects.toThrow("IPFS upload returned no CID");
@@ -63,6 +65,7 @@ describe("ipfsUpload", () => {
         globalThis.fetch = vi.fn().mockResolvedValue({
             ok: true,
             json: async () => ({ Hash: "QmValid" }),
+            text: async () => JSON.stringify({ Hash: "QmValid" }),
         });
 
         for (const type of types) {
