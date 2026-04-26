@@ -1,23 +1,9 @@
 /** @type {import('next').NextConfig} */
-const isDev = process.env.NODE_ENV !== 'production';
 
-// Dev: 'unsafe-eval' for React Refresh/HMR, 'unsafe-inline' for Next.js bootstrap.
-// Prod: 'unsafe-inline' required for Next.js RSC/SSR inline JSON payloads.
-// TODO(HP-2 followup): replace 'unsafe-inline' in prod with nonce + 'strict-dynamic'.
-const scriptSrc = isDev
-    ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
-    : "script-src 'self' 'unsafe-inline'";
-
-const BASE_CSP = [
-    "default-src 'self'",
-    scriptSrc,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
-    "font-src 'self' data: https://fonts.gstatic.com",
-    "connect-src 'self' ws: wss: http://127.0.0.1:* https://*.walletconnect.com https://*.walletconnect.org https://*.infura.io",
-    "frame-src 'self' https://*.walletconnect.com",
-    "frame-ancestors 'none'",
-].join('; ');
+// Content-Security-Policy is set per-request by `middleware.ts` so a fresh
+// nonce can be inserted into `script-src 'nonce-{value}' 'strict-dynamic'`
+// each response (HP-2 hardening; threat-model 🔴 Priority 1). next.config.mjs
+// only owns the static security headers below (HSTS, X-Frame-Options, etc).
 
 const nextConfig = {
     reactStrictMode: true,
@@ -48,16 +34,12 @@ const nextConfig = {
         ];
     },
 
-    // AUDIT FIX HP-2: Security Headers
+    // Security headers (CSP lives in middleware.ts — see header comment above).
     async headers() {
         return [
             {
                 source: '/:path*',
                 headers: [
-                    {
-                        key: 'Content-Security-Policy',
-                        value: BASE_CSP,
-                    },
                     {
                         key: 'Strict-Transport-Security',
                         value: 'max-age=63072000; includeSubDomains; preload',
