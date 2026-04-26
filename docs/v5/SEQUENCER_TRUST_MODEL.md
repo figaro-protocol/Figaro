@@ -82,6 +82,58 @@ until the approval is restored.
 
 This is a sequencer operational responsibility, not a protocol invariant.
 
+### Adversarial selective approval revocation (extension of INFO-3, 2026-04-26)
+
+The base INFO-3 case is **accidental**: a user revokes approval before the
+batch lands and the batch reverts. The 2026-04-26 Web3 adversarial audit
+(`docs/v5/WEB3_ADVERSARIAL_AUDIT.md` C-2 / D-2) identifies a **deliberate**
+extension that is materially worse:
+
+**Attack flow**:
+1. Attacker observes `settleBatch` proof submission in the mempool (or learns
+   of it via off-chain coordination).
+2. Attacker has a small position in the batch (sufficient to be included).
+3. Attacker revokes their ERC-20 approval in a higher-priority tx that lands
+   in the same block as (or before) the `settleBatch` tx.
+4. `safeTransferFrom` for the attacker's position reverts → entire batch
+   reverts atomically.
+5. **Other participants in the batch are griefed**. Their settlement is
+   delayed; they may need to be re-batched. Their costs include re-batching
+   gas (sequencer-borne) and time-to-settle.
+6. **Attacker cost**: ~21,000 gas for the revocation tx. No bond, no on-chain
+   penalty.
+
+**Why this is worse than the accidental case**:
+- The accidental revoker pays a higher cost: their own settlement reverts and
+  they must re-approve and re-batch.
+- The deliberate adversarial case is asymmetric: the attacker pays minimal
+  gas to grief other participants of the batch.
+- An attacker can repeat this against specific counterparties to systematically
+  delay or extort them, especially in a batch where the attacker holds an
+  unrelated grievance against another participant.
+
+**Sequencer hardening required**:
+
+1. **Same-block approval re-verification**: pre-submission approval checks
+   MUST run against a recent block (ideally same block as proof submission).
+   A 12-block-old check is insufficient — the attacker has 12 blocks of
+   mempool visibility to revoke.
+2. **Finality threshold + retry budget**: if `settleBatch` reverts due to
+   approval revocation, the sequencer should re-batch the non-attacker
+   participants and exclude addresses that revoked. Repeated revocation
+   from the same address within a window is a strong signal of adversarial
+   behavior — exclude that address from future batches at sequencer discretion.
+3. **Optional rate-limit on settlement participation**: a sequencer may
+   require an off-chain stake or reputation gate before including a
+   participant in a batch, to make repeat griefing economically costly.
+
+**Why no on-chain fix**: per DESIGN_DECISIONS.md §10, on-chain redundant
+guards are rejected — the SP1 program is the single authority. Per-participant
+state on-chain (e.g., a "revoked-recently" flag) breaks the stateless design
+and creates new attack surface. The mitigation lives at the sequencer layer
+where it belongs: detect adversarial revocations, re-batch around them,
+optionally rate-limit known offenders.
+
 ---
 
 ## Sequencer Trust Assumptions Summary

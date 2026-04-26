@@ -147,9 +147,11 @@ async fn main() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operator_roles: vec![],
-            operator_active: vec![],
+            operators_registered: vec![],
+            emission_settlement_count: 0,
+            emission_total_emitted: U256::ZERO,
         },
+        fig_token: Address::ZERO,
     };
 
     // Load the ELF.

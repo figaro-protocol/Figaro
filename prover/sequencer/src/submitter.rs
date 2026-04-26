@@ -156,32 +156,6 @@ pub async fn submit_batch(
                 role: *role,
                 metadataURI: metadata_uri.clone(),
             },
-            OperatorEventData::Updated {
-                operator,
-                role,
-                metadata_uri,
-            } => IFigaroBatchVerifier::OperatorEventInputCall {
-                tag: 2,
-                operator: *operator,
-                role: *role,
-                metadataURI: metadata_uri.clone(),
-            },
-            OperatorEventData::Deactivated { operator } => {
-                IFigaroBatchVerifier::OperatorEventInputCall {
-                    tag: 3,
-                    operator: *operator,
-                    role: 0,
-                    metadataURI: String::new(),
-                }
-            }
-            OperatorEventData::Reactivated { operator } => {
-                IFigaroBatchVerifier::OperatorEventInputCall {
-                    tag: 4,
-                    operator: *operator,
-                    role: 0,
-                    metadataURI: String::new(),
-                }
-            }
         })
         .collect();
 

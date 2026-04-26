@@ -1,0 +1,27 @@
+{
+    "schemaId": "figaro-geo-v1",
+    "version": 1,
+    "title": "Geographic origin and destination",
+    "description": "Origin and destination geohashes for an order with physical handoff.",
+    "categories": ["geo"],
+    "fields": [
+        {
+            "name": "originGeohash",
+            "type": "string",
+            "required": true,
+            "minLength": 1,
+            "maxLength": 12,
+            "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
+            "description": "Origin geohash (base32). 1–12 characters; longer = higher precision."
+        },
+        {
+            "name": "destinationGeohash",
+            "type": "string",
+            "required": true,
+            "minLength": 1,
+            "maxLength": 12,
+            "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
+            "description": "Destination geohash (base32)."
+        }
+    ]
+}

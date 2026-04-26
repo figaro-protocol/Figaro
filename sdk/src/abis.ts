@@ -64,10 +64,18 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 
 export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "function core() view returns (address)",
-    `function attestAsSeller(${COMMITMENT_TUPLE} roleCommitment, bytes32 orderHash, bytes32 schemaId, uint8 stage, bytes32 contentRef) external`,
-    "function attestAsBuyer(bytes32 processId, bytes32 orderHash, bytes32 schemaId, uint8 stage, bytes32 contentRef) external",
-    `function attestViaResolver(${COMMITMENT_TUPLE} commitment, bytes32 schemaId, uint8 stage, bytes32 contentRef) external`,
+    "function schemaValidator(bytes32 schemaId) view returns (address)",
+    "function setValidator(bytes32 schemaId, address validator) external",
+    // All three paths now take the full Commitment(s) so the coordinator can
+    // recover `agreementHash` without new kernel state, and carry `sectionData`
+    // + merkle `proof` so the attestation's clause is provably part of the
+    // signed agreement.
+    `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 schemaId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
+    `function attestAsBuyer(${COMMITMENT_TUPLE} target, bytes32 schemaId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
+    `function attestViaResolver(${COMMITMENT_TUPLE} target, bytes32 schemaId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)",
+    "event ValidatorSet(bytes32 indexed schemaId, address indexed validator)",
+    "error InvalidInclusionProof(bytes32 agreementHash, bytes32 schemaId)",
 ]);
 
 export const EV_ATTESTATION = parseAbiItem(
@@ -107,6 +115,19 @@ export const SCHEMA_REGISTRY_ABI = parseAbi([
     "function setMechanismSchema(bytes32 schemaId) external",
     "event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, address indexed registrar)",
     "event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId)",
+]);
+
+// ── SchemaRegistrationHelper ABI ────────────────────────────────────────────
+// Atomic register-schema + bind-validator helper. Closes the M-1 front-running
+// window between SchemaRegistry.registerSchema and AttestationCoordinator.setValidator
+// (DESIGN_DECISIONS.md #13). Stateless, no admin — anyone can call. Use this when
+// registering a non-bootstrap schema; the alternative is the two primitives called
+// separately (which exposes a front-running window for high-stakes schemas).
+
+export const SCHEMA_REGISTRATION_HELPER_ABI = parseAbi([
+    "function schemaRegistry() view returns (address)",
+    "function attestationCoordinator() view returns (address)",
+    "function registerSchemaAndValidator(bytes32 schemaId, uint64 version, bytes32 uriHash, address validator) external",
 ]);
 
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────

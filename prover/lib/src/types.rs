@@ -128,28 +128,12 @@ pub enum KernelOp {
     // ── OperatorRegistry ──────────────────────────────────────────
 
     /// Register a new operator. Batched equivalent of register().
+    /// Role is event-only data; not stored on-chain (web2-strip 2026-04-26).
+    /// To switch role or metadata, withdraw and re-register.
     RegisterOperator {
         role: OperatorRole,
         metadata_uri: String,
         /// EIP-712 authorization from the operator.
-        operator_sig: Signature,
-    },
-
-    /// Update operator profile. Batched equivalent of updateProfile().
-    UpdateOperator {
-        role: OperatorRole,
-        metadata_uri: String,
-        /// EIP-712 authorization from the operator.
-        operator_sig: Signature,
-    },
-
-    /// Deactivate operator. Batched equivalent of deactivate().
-    DeactivateOperator {
-        operator_sig: Signature,
-    },
-
-    /// Reactivate operator. Batched equivalent of reactivate().
-    ReactivateOperator {
         operator_sig: Signature,
     },
 }
@@ -165,10 +149,11 @@ pub struct KernelStateSnapshot {
     pub order_process_id: Vec<(B256, B256)>,
     /// SchemaRegistry: registered schemas (dedup guard).
     pub schemas_registered: Vec<(B256, bool)>,
-    /// OperatorRegistry: operator role per address.
-    pub operator_roles: Vec<(Address, u8)>,
-    /// OperatorRegistry: operator active status per address.
-    pub operator_active: Vec<(Address, bool)>,
+    /// OperatorRegistry: dedup guard per operator address. Lifecycle flags
+    /// removed (web2-strip 2026-04-26) — operator availability is
+    /// signal-by-availability, not registry state. Role + metadata travel
+    /// in the OperatorRegistered event only.
+    pub operators_registered: Vec<(Address, bool)>,
     /// FIG emission: global settlement counter.
     pub emission_settlement_count: u64,
     /// FIG emission: total FIG emitted (wei).
@@ -238,23 +223,15 @@ pub struct MechanismSchemaEventData {
 }
 
 /// An operator registry event proven by the batch.
+/// Web2-strip (2026-04-26): only Registered survives. Role/metadata
+/// updates happen via withdraw + re-register; lifecycle flags are
+/// signal-by-availability, not registry state.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum OperatorEventData {
     Registered {
         operator: Address,
         role: u8,
         metadata_uri: String,
-    },
-    Updated {
-        operator: Address,
-        role: u8,
-        metadata_uri: String,
-    },
-    Deactivated {
-        operator: Address,
-    },
-    Reactivated {
-        operator: Address,
     },
 }
 
@@ -308,11 +285,7 @@ pub enum KernelError {
     SchemaNotRegistered(B256),
     // OperatorRegistry errors
     OperatorAlreadyRegistered,
-    OperatorNotRegistered,
     InvalidOperatorRole,
-    OperatorNotActive,
-    OperatorAlreadyDeactivated,
-    OperatorAlreadyActive,
 }
 
 impl core::fmt::Display for KernelError {

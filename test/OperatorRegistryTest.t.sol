@@ -66,118 +66,26 @@ contract OperatorRegistryTest is Test {
         freeReg.register(OperatorRegistry.OperatorRole.Merchant, "ipfs://x");
     }
 
-    // ── Update ──────────────────────────────────────────────────────────
-
-    function test_05_updateProfile_emits_event() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://v1");
-
-        vm.prank(alice);
-        vm.expectEmit(true, false, false, true);
-        emit OperatorRegistry.OperatorUpdated(alice, OperatorRegistry.OperatorRole.Both, "ipfs://v2");
-        reg.updateProfile(OperatorRegistry.OperatorRole.Both, "ipfs://v2");
-    }
-
-    function test_06_updateProfile_reverts_unregistered() public {
-        vm.prank(alice);
-        vm.expectRevert(OperatorRegistry.NotRegistered.selector);
-        reg.updateProfile(OperatorRegistry.OperatorRole.Merchant, "ipfs://x");
-    }
-
-    function test_07_updateProfile_reverts_None_role() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://v1");
-
-        vm.prank(alice);
-        vm.expectRevert(OperatorRegistry.InvalidRole.selector);
-        reg.updateProfile(OperatorRegistry.OperatorRole.None, "ipfs://x");
-    }
-
-    function test_updateProfile_reverts_when_deactivated() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://v1");
-
-        vm.prank(alice);
-        reg.deactivate();
-
-        vm.prank(alice);
-        vm.expectRevert(OperatorRegistry.NotActive.selector);
-        reg.updateProfile(OperatorRegistry.OperatorRole.Both, "ipfs://v2");
-    }
-
-    // ── Deactivate / Reactivate ─────────────────────────────────────────
-
-    function test_08_deactivate_emits_event() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Driver, "ipfs://d");
-
-        vm.prank(alice);
-        vm.expectEmit(true, false, false, true);
-        emit OperatorRegistry.OperatorDeactivated(alice);
-        reg.deactivate();
-    }
-
-    function test_09_deactivate_reverts_unregistered() public {
-        vm.prank(alice);
-        vm.expectRevert(OperatorRegistry.NotRegistered.selector);
-        reg.deactivate();
-    }
-
-    function test_deactivate_reverts_when_already_deactivated() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Driver, "ipfs://d");
-
-        vm.prank(alice);
-        reg.deactivate();
-
-        vm.prank(alice);
-        vm.expectRevert(OperatorRegistry.AlreadyDeactivated.selector);
-        reg.deactivate();
-    }
-
-    function test_10_reactivate_emits_event() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://r");
-
-        vm.prank(alice);
-        reg.deactivate();
-
-        vm.prank(alice);
-        vm.expectEmit(true, false, false, true);
-        emit OperatorRegistry.OperatorReactivated(alice);
-        reg.reactivate();
-    }
-
-    function test_11_reactivate_reverts_unregistered() public {
-        vm.prank(bob);
-        vm.expectRevert(OperatorRegistry.NotRegistered.selector);
-        reg.reactivate();
-    }
-
-    function test_reactivate_reverts_when_already_active() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://r");
-
-        vm.prank(alice);
-        vm.expectRevert(OperatorRegistry.AlreadyActive.selector);
-        reg.reactivate();
-    }
-
     // ── Multi-operator isolation ────────────────────────────────────────
 
-    function test_12_two_operators_independent() public {
+    function test_two_operators_independent() public {
         vm.prank(alice);
         reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://alice");
 
         vm.prank(bob);
         reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Driver, "ipfs://bob");
 
-        // Alice deactivates — Bob unaffected (no revert)
-        vm.prank(alice);
-        reg.deactivate();
+        // Alice's registration is independent of Bob's — alice can withdraw
+        // (after lock) without affecting bob's registered state.
+        vm.warp(block.timestamp + LOCK_PERIOD);
 
+        vm.prank(alice);
+        reg.withdraw();
+
+        // Bob is still registered and cannot re-register
         vm.prank(bob);
-        reg.updateProfile(OperatorRegistry.OperatorRole.Both, "ipfs://bob-v2");
+        vm.expectRevert(OperatorRegistry.AlreadyRegistered.selector);
+        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Both, "ipfs://bob-v2");
     }
 
     // ── Deposit Withdrawal ──────────────────────────────────────────────
@@ -185,9 +93,6 @@ contract OperatorRegistryTest is Test {
     function test_withdraw_after_lock_period() public {
         vm.prank(alice);
         reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://w");
-
-        vm.prank(alice);
-        reg.deactivate();
 
         // Advance past lock period
         vm.warp(block.timestamp + LOCK_PERIOD);
@@ -202,9 +107,6 @@ contract OperatorRegistryTest is Test {
         vm.prank(alice);
         reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Driver, "ipfs://e");
 
-        vm.prank(alice);
-        reg.deactivate();
-
         vm.warp(block.timestamp + LOCK_PERIOD);
 
         vm.prank(alice);
@@ -213,21 +115,9 @@ contract OperatorRegistryTest is Test {
         reg.withdraw();
     }
 
-    function test_withdraw_reverts_still_active() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://a");
-
-        vm.prank(alice);
-        vm.expectRevert(OperatorRegistry.StillActive.selector);
-        reg.withdraw();
-    }
-
     function test_withdraw_reverts_deposit_locked() public {
         vm.prank(alice);
         reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://l");
-
-        vm.prank(alice);
-        reg.deactivate();
 
         // One second before lock expires
         vm.warp(block.timestamp + LOCK_PERIOD - 1);
@@ -248,9 +138,7 @@ contract OperatorRegistryTest is Test {
         vm.prank(alice);
         reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://v1");
 
-        // Deactivate + withdraw
-        vm.prank(alice);
-        reg.deactivate();
+        // Withdraw after lock
         vm.warp(block.timestamp + LOCK_PERIOD);
         vm.prank(alice);
         reg.withdraw();
@@ -266,12 +154,27 @@ contract OperatorRegistryTest is Test {
         vm.prank(alice);
         freeReg.register(OperatorRegistry.OperatorRole.Merchant, "ipfs://f");
 
-        vm.prank(alice);
-        freeReg.deactivate();
-
         vm.warp(block.timestamp + LOCK_PERIOD);
 
         vm.prank(alice);
         freeReg.withdraw(); // no ETH to transfer, should still succeed
+    }
+
+    function test_reregistration_restarts_lock_period() public {
+        vm.prank(alice);
+        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://v1");
+
+        // Cycle through withdraw + re-register
+        vm.warp(block.timestamp + LOCK_PERIOD);
+        vm.prank(alice);
+        reg.withdraw();
+
+        vm.prank(alice);
+        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://v2");
+
+        // Fresh registration must wait its own lock period before withdraw
+        vm.prank(alice);
+        vm.expectRevert(OperatorRegistry.DepositLocked.selector);
+        reg.withdraw();
     }
 }

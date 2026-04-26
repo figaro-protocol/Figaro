@@ -1,0 +1,16 @@
+{
+    "schemaId": "figaro-handoff-v1",
+    "version": 1,
+    "title": "Handoff mode",
+    "description": "Records how an order was physically handed off between parties. The exchange-coordination clause in an order's agreement.",
+    "categories": ["handoff"],
+    "fields": [
+        {
+            "name": "mode",
+            "type": "enum",
+            "values": ["face-to-face", "dead-drop", "parking-area", "locker", "courier-relay"],
+            "required": true,
+            "description": "The physical-exchange modality."
+        }
+    ]
+}

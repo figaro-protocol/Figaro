@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-20
 **Auditor**: Claude Sonnet 4.6 (Anthropic), interactive audit with design-challenge verification
-**Scope**: 10 production contracts in `src/`, Solidity 0.8.26, Foundry
+**Scope (at audit time)**: 10 production contracts in `src/`, Solidity 0.8.26, Foundry
 
 > **Post-audit amendment (2026-04-21)**: This audit describes the pre-amendment
 > Solidity surface. After this audit, the following changes were applied and
@@ -16,6 +16,37 @@
 >
 > Current state is described in `AUDIT_REPORT.md`. References to `MerkleAirdrop`,
 > `TrancheVesting`, `figToken`, or the prior 252-test count below are historical.
+
+> **Post-audit amendment (2026-04-23) — Phase-4a/4b agreement binding**:
+> Further changes landed since the prior amendment. They are NOT reflected below:
+> - `ISchemaValidator` interface added; 10 schema validator contracts (handoff, geo,
+>   fulfilment, ghg-disclosure, commerce, ghg-measurement, delivery-lifecycle,
+>   proximity, merchant-process, courier-process) wired via first-write-wins
+>   `setValidator`. GHG measurement carries runtime grams CO2e as
+>   `abi.encode(uint256 grams)`; the other nine are pre-measurement schemas.
+> - `AttestationCoordinator.attestAsSeller/Buyer/ViaResolver` rewritten to take
+>   the full `Commitment(s)`, a `bytes sectionData`, and a `bytes32[] proof`;
+>   each attestation carries a merkle inclusion proof verified against the target
+>   order's signed `agreementHash` (OpenZeppelin sorted-pair).
+> - Five Category-2 validators additionally enforce `keccak256(content) ==
+>   keccak256(sectionData)` — byte-equality between committed clause and runtime
+>   declaration, closing the drift where runtime attestations could contradict
+>   the signed contract.
+> - `FigaroTopologyV1Validator.sol` deleted — topology is manifest-only.
+> - Production surface grew from 10 → 20 concrete contracts (10 original + 10
+>   schema validators, including `figaro-ghg-measurement-v1` for runtime grams
+>   CO2e) plus the new `ISchemaValidator` interface.
+> - Certora AC spec re-verified 8/8 sub-rules against the new dispatch shape.
+
+> **2026-04-26 audit pass — Phase-4a/4b surface + small-surface deltas**:
+> A second AI audit pass was run against the post-amendment surface (10 schema
+> validators + ISchemaValidator + AttestationCoordinator rewrite + StagedMerkleAirdrop
+> + FigToken `totalRegisteredCap` sum-enforcement + FigaroBatchVerifier 3-arg
+> constructor + FigaroCore `DOMAIN_SEPARATOR()` getter). See the
+> "## 2026-04-26 Audit Pass" section appended at the end of this file.
+> Net new findings: **1 Medium (M-1: `setValidator` front-running for
+> non-bootstrap schemas), 3 Informational**. Prior INFO-1 and INFO-2 closed.
+
 **Disclaimer**: This is an AI-generated audit. It complements but does not
 replace a professional audit from a firm like Trail of Bits, OpenZeppelin, or
 Spearbit. AI audits excel at systematic pattern matching and exhaustive
@@ -270,3 +301,148 @@ contract, and all auxiliary data hashes before executing any transfers.
 stateless, bilateral-signature-enforced design is internally consistent. The
 patterns that initially appeared as vulnerabilities were confirmed to be
 correct design decisions once evaluated against the protocol's architecture.
+
+---
+
+## 2026-04-26 Audit Pass — Phase-4a/4b Surface + Small-Surface Deltas
+
+**Date**: 2026-04-26
+**Auditor**: Claude Opus 4.7 (1M context), interactive audit dispatched as 5 parallel surface-scoped sub-audits, kernel-discipline framing maintained throughout.
+**Scope**: Production contracts added or materially modified since the 2026-04-20 audit. Pre-amendment 10-contract surface findings are unchanged from above.
+
+### Surfaces audited
+
+| Surface | Files | What was new |
+|---|---|---|
+| Schema validator interface | `src/ISchemaValidator.sol` | New file — 4-arg `validate` signature with `bytes sectionData` + `bytes content` |
+| Category-2 validators (byte-equality enforced) | `src/schemaValidators/FigaroHandoffV1Validator.sol`, `FigaroGeoV1Validator.sol`, `FigaroFulfilmentV1Validator.sol`, `FigaroGHGDisclosureV1Validator.sol`, `FigaroCommerceV1Validator.sol` | New per-schema validators; enforce `keccak256(content) == keccak256(sectionData)` before ABI decode |
+| Category-1 validators (runtime-only) | `src/schemaValidators/FigaroGHGMeasurementV1Validator.sol`, `FigaroDeliveryLifecycleV1Validator.sol`, `FigaroProximityV1Validator.sol`, `FigaroMerchantProcessV1Validator.sol`, `FigaroCourierProcessV1Validator.sol` | New per-schema validators; runtime content fresh per attestation, no byte-equality |
+| AttestationCoordinator rewrite | `src/AttestationCoordinator.sol` | Phase-4a/4b: `Commitment(s)` + `bytes sectionData` + `bytes32[] proof` + `bytes content`; mandatory validator gate; mandatory merkle inclusion proof against `target.agreementHash`; permissionless first-write-wins `setValidator` |
+| StagedMerkleAirdrop | `src/fig/StagedMerkleAirdrop.sol` | Replaces deleted `MerkleAirdrop.sol` + `TrancheVesting.sol`; three immutable merkle roots + three immutable unlock timestamps; one-shot per (stage, address) |
+| FigToken cap enforcement | `src/fig/FigToken.sol` | New `totalRegisteredCap` sum-enforcement at registration time (closes prior INFO-1) |
+| BatchVerifier constructor | `src/FigaroBatchVerifier.sol` | `figToken` field removed; constructor now 3-arg (closes prior INFO-2) |
+| FigaroCore EIP-712 getter | `src/FigaroCore.sol` | `DOMAIN_SEPARATOR()` getter added; consumed by AttestationCoordinator's `_computeDigest` for root-commitment processId derivation |
+
+### Methodology
+
+Five parallel surface-scoped sub-audits, each instructed to:
+1. Read `docs/v5/DESIGN_DECISIONS.md` first and skip findings matching any of the 12 false-positive patterns
+2. Apply the standard Web3 checklist (reentrancy, access control, integer overflow, signature handling, ERC20 edge cases, hash collision, EIP-712 binding, assembly safety, cross-contract trust)
+3. Annotate every finding with the design-challenge check that justified raising or withdrawing it
+4. Cite file:line for every piece of evidence
+
+The synthesis pass reconfirmed the highest-impact findings against source (Deploy.s.sol bootstrap pattern at `script/Deploy.s.sol:181-219`; BatchVerifier constructor at `src/FigaroBatchVerifier.sol:148-154`) before promotion.
+
+### Findings
+
+#### M-1 — `setValidator` front-running risk for non-bootstrap schemas
+
+**Severity**: Medium
+
+**Location**: `src/AttestationCoordinator.sol:117-124`
+
+**Evidence**:
+```solidity
+function setValidator(bytes32 schemaId, address validator) external {
+    if (validator == address(0)) revert ZeroValidator();
+    if (schemaValidator[schemaId] != address(0)) revert ValidatorAlreadySet(schemaId);
+    bytes32 boundId = ISchemaValidator(validator).schemaId();
+    if (boundId != schemaId) revert InvalidValidatorBinding(schemaId, boundId);
+    schemaValidator[schemaId] = validator;
+    emit ValidatorSet(schemaId, validator);
+}
+```
+
+**Description**: `setValidator` is permissionless first-write-wins. Any address can bind a validator to any schemaId before the legitimate operator. Once bound, the binding is immutable (`ValidatorAlreadySet` blocks overwrite). The `InvalidValidatorBinding` check (validator's `schemaId()` self-attestation) prevents binding under a wrong schemaId — but a validator that returns the correct schemaId AND has malicious `validate()` logic CAN front-run a legitimate validator and capture the schemaId permanently.
+
+For the 10 reference figaro-* schemas this is mitigated: `script/Deploy.s.sol:181-219` deploys all 10 validators and binds them in a single transaction (`_deployAndRegisterValidators` helper). At genesis, no front-running window exists.
+
+For schemas registered post-deploy (e.g., third-party schemas via permissionless `SchemaRegistry.registerSchema`), the deployer of the validator must atomically register the schema and bind the validator in one transaction. A schema registered first, with its validator deployed in a separate tx, exposes the binding window.
+
+**Recommendation**:
+1. Document the atomic-binding pattern as required for any new schema (CLAUDE.md "Adding a new schema" checklist already exists at line 393; add an explicit step "register schema and bind validator atomically — never in separate transactions"). Optionally add as `DESIGN_DECISIONS.md` entry #13 to make the deployment-discipline rationale explicit for external auditors.
+2. Optional code change — add a `registerSchemaAndValidator(schemaId, version, uriHash, validator)` convenience method that performs both writes in one external call. Non-load-bearing on protocol invariants; removes the foot-gun entirely.
+
+**Design-decision check**: Considered #4 (no admin) and #8 (permissionless schema registry). Neither false-positive applies. The first-write-wins pattern IS the no-admin mechanism — adding a permissioned binding gate would be a regression. The risk is at the deployment-discipline layer, not the protocol layer.
+
+**Status (2026-04-26)**: Both recommendations **LANDED**.
+- Recommendation (1): documented in `docs/v5/DESIGN_DECISIONS.md` #13 (full rationale + rejection of admin-based mitigations), `CLAUDE.md` "Third-party schema deployment — atomic register+bind required" subsection (after the schema checklist), and `.github/copilot-instructions.md` "Schema Validation Architecture" section (mirror note).
+- Recommendation (2): `src/SchemaRegistrationHelper.sol` shipped as a stateless, no-admin composer. Atomically calls `SchemaRegistry.registerSchema` + `AttestationCoordinator.setValidator` in one transaction. Helper-contract design (rather than AC method) preserves the kernel-discipline principle of keeping `SchemaRegistry` and `AttestationCoordinator` as independently-addressable primitives — the helper is opt-in syntactic sugar with no privilege over its targets. 16 Foundry tests cover happy path, every revert, atomicity, and registrar-identity behavior. Wired into both `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`. SDK exports `SCHEMA_REGISTRATION_HELPER_ABI`. Closes M-1 entirely for any third-party schema author who uses the helper; the front-running window now exists only for authors who explicitly choose the two-call path (see DESIGN_DECISIONS.md #13 for the trade-off — registrar-identity vs. atomic-bind).
+
+---
+
+#### INFO-7 — `ISchemaValidator` interface does not enforce pure/view at compile time
+
+**Location**: `src/ISchemaValidator.sol:18-19, 54`
+
+**Description**: The interface declares `validate` as `external view` and documentation states validators MUST be pure/view. Solidity does not enforce interface mutability across the call boundary at compile time on the implementation side — a deployed validator could in principle be non-view if it implemented the function differently than the interface declared.
+
+**Mitigation in place**: `AttestationCoordinator._validateContent` (`src/AttestationCoordinator.sol:229`) calls `ISchemaValidator(v).validate(...)`. Solidity's compile-time view-function dispatch generates a `STATICCALL` at the dispatch site; the EVM reverts on any state write attempted by the callee, regardless of the validator's source. State-modifying reentrancy is therefore impossible.
+
+All 10 production validators are deployed with `external pure override` and contain no storage or external calls.
+
+**Recommendation**: Accept as design. Optionally add a comment in `ISchemaValidator.sol` noting that the `view` declaration produces a `STATICCALL` at the dispatch site, providing runtime protection independent of the validator's source.
+
+**Design-decision check**: Documentation/clarity note, not a vulnerability.
+
+---
+
+#### INFO-8 — `FigaroGHGMeasurementV1Validator` accepts unbounded `uint256` grams
+
+**Location**: `src/schemaValidators/FigaroGHGMeasurementV1Validator.sol:42`
+
+**Description**: The validator decodes `abi.decode(content, (uint256))` and accepts any value, including `type(uint256).max`. There is no upper bound check.
+
+**Why this is correct**: Category-1 validators are syntactic gates. Semantic bounds (what constitutes a plausible grams CO2e value) are downstream concerns for indexers, UIs, and accounting consumers. The kernel-discipline rule "validators are syntactic, semantics are off-chain" applies. Imposing a ceiling on-chain would lock the protocol to a presumed-reasonable range that may not survive future use cases.
+
+**Recommendation**: No on-chain change. Frontend / indexer code that surfaces grams should validate semantic plausibility against application-domain limits.
+
+**Design-decision check**: Aligns with #8 (permissionless schema registry — validators are syntactic). Not a withdrawal — the unbounded acceptance is the intended Category-1 behavior.
+
+---
+
+#### INFO-9 — `FigaroBatchVerifier` constructor does not zero-check `_initialRoot`
+
+**Location**: `src/FigaroBatchVerifier.sol:148-154`
+
+**Description**: The constructor validates `_verifier != address(0)` and `_verifier.code.length > 0`, but does not check `_initialRoot != bytes32(0)`. A genesis root of zero is technically valid bytes but semantically meaningless.
+
+**Why this is acceptable**: An incorrect genesis root is self-correcting at first batch settlement — `pv.prevRoot != stateRoot` triggers `StateRootMismatch` revert (`src/FigaroBatchVerifier.sol:188`). The contract cannot enter an exploitable state. Both `script/Deploy.s.sol:133` and `script/DeployMainnet.s.sol` provide non-zero genesis roots derived from the kernel state (`KernelState::new().compute_root()`).
+
+**Recommendation**: Optional — add `if (_initialRoot == bytes32(0)) revert ZeroInitialRoot();` for fail-fast deployment hygiene. Not load-bearing.
+
+**Design-decision check**: Deployment-script concern, not a kernel-pattern question.
+
+---
+
+### Withdrawn after design-challenge review (false-positive matches)
+
+| Initial concern | Surface | DESIGN_DECISIONS match | Withdrawal reason |
+|---|---|---|---|
+| Cross-order seller attestation | `AttestationCoordinator.attestAsSeller` | #2 | Attester recorded truthfully; semantic concern is off-chain |
+| Post-resolution attestations permitted | `AttestationCoordinator._requireKnownCommitment` | #7 | Lifecycle events post-settlement are intentional |
+| No admin / no upgrade across all new contracts | All new contracts | #4 | No admin = no escape hatch, by design |
+| Permissionless schema validator binding | `AttestationCoordinator.setValidator` | #4, #8 | First-write-wins is the no-admin mechanism. M-1 above is the deployment-discipline footnote, not a withdrawal of the principle |
+| Single-hash leaves in StagedMerkleAirdrop | `StagedMerkleAirdrop.claim` | Prior L-1 reasoning | Leaf preimage 52B (address + uint256), node preimage 64B (two bytes32) — structurally distinct, conflation impossible |
+| Empty proof on single-leaf agreement | `AttestationCoordinator._validateContent` | Standard OZ MerkleProof behavior | Correctly accepts `proof == []` when `root == leaf`; tested at `test/AttestationCoordinatorTest.t.sol:227-253` |
+
+### Status of prior informational findings
+
+| Prior finding | Status | Closed by |
+|---|---|---|
+| INFO-1 (FigToken: cap registration not summed) | **CLOSED** | `totalRegisteredCap` sum-enforcement at `src/fig/FigToken.sol:51`; Certora `totalRegisteredCapWithinMaxSupply` rule |
+| INFO-2 (FigaroBatchVerifier: dead `figToken` field) | **CLOSED** | Field removed; constructor now 3-arg at `src/FigaroBatchVerifier.sol:148` |
+| INFO-3 (BatchVerifier DoS via approval revocation) | **STILL APPLIES** | Operational mitigation only; documented in contract |
+| INFO-4 (FigaroCore `_pullExact` panic on extreme rebase) | **STILL APPLIES** | Behavior (revert) is correct; error-signal naming differs |
+| INFO-5 (OperatorRegistry `InsufficientDeposit` fires on excess) | **STILL APPLIES** | Naming inconsistency only |
+| INFO-6 (FigToken: deployer can self-register before renounce) | **STILL APPLIES** | Trusted-setup assumption |
+
+### Updated assessment
+
+**The Phase-4a/4b surface is sound.** The validator + agreement-binding architecture introduces three hard gates (validator bound, inclusion proof, role authorization) that collectively prevent runtime attestations from contradicting the signed agreement. All schema validators are pure/view, ABI-decode safely, and bound first-write-wins under their hard-coded `schemaId()` constants. **(Note 2026-04-26 post-audit: the original `figaro-ghg-disclosure-v1` schema was split into 5 sister schemas — `figaro-ghg-protocol-v1`, `figaro-ghg-iso-14064-v1`, `figaro-ghg-pas-2050-v1`, `figaro-ghg-en-16258-v1`, `figaro-ghg-custom-v1` — one validator each, same audit profile applies. Validator count: 10 → 14 runtime + ISchemaValidator interface.)**
+
+**StagedMerkleAirdrop is sound.** The single-contract replacement for MerkleAirdrop + TrancheVesting preserves all prior properties (one-shot guard, CEI mint pattern, OZ MerkleProof) and adds independent per-stage gating with three immutable roots + three immutable unlock timestamps. Four Halmos symbolic properties + three Certora CVL rules formalize the coverage.
+
+**Net new actionable findings: 1 (M-1, Medium severity, deployment-discipline)**. M-1 should be addressed by either documenting the atomic-binding pattern in CLAUDE.md and DESIGN_DECISIONS.md, or by adding a `registerSchemaAndValidator` convenience method. Both options preserve protocol invariants; the latter eliminates the foot-gun entirely.
+
+**No new critical or high-severity findings.** Two prior informational findings (INFO-1, INFO-2) are now closed.

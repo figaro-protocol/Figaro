@@ -34,7 +34,7 @@ export type {
 
 export {
     computeSchemaId,
-    GHG_SCHEMA_KEY,
+    GHG_DISCLOSURE_SCHEMA_KEYS,
     DisclosureKind,
     DISCLOSURE_KIND_LABELS,
     GHG_NORM_REFERENCES,
@@ -42,6 +42,7 @@ export {
     encodeGramsRef,
     decodeGramsRef,
     formatGrams,
+    filterLogsBySource,
     filterBySchema,
     filterByProcess,
     filterByOrder,

@@ -1,0 +1,145 @@
+{
+    "identity": {
+        "id": "figaro-freelance-reference",
+        "name": "Figaro Freelance",
+        "slug": "figaro-freelance",
+        "description": "Level 1 reference assembly: bonded freelance coordination using only existing FigaroCore contracts. No custom coordinators, no additional mechanisms. The simplest possible Figaro assembly.",
+        "networkTargets": [
+            "local-anvil",
+            "evm-compatible"
+        ],
+        "version": "0.1.0"
+    },
+    "contracts": [
+        {
+            "key": "core",
+            "required": true,
+            "description": "Bonded process coordination substrate. The only contract needed."
+        }
+    ],
+    "mechanisms": [
+        {
+            "mechanismId": "core-orders",
+            "kind": "core",
+            "displayName": "Bonded Freelance Coordination",
+            "riskClass": "read-only-inherited",
+            "enabled": true,
+            "visibility": "primary",
+            "contractKeys": [
+                "core"
+            ],
+            "moduleBindings": []
+        }
+    ],
+    "roles": [
+        {
+            "roleKind": "buyer",
+            "displayName": "Client",
+            "description": "Posts a job, deposits 2× payment, resolves when work is delivered.",
+            "visibility": "primary",
+            "defaultLandingView": "role-dashboard",
+            "sampleCapabilities": [
+                "create-order",
+                "resolve-process",
+                "withdraw"
+            ]
+        },
+        {
+            "roleKind": "seller",
+            "displayName": "Freelancer",
+            "description": "Accepts a job, deposits 2× value delivered, gets paid on resolution.",
+            "visibility": "primary",
+            "defaultLandingView": "role-dashboard",
+            "sampleCapabilities": [
+                "accept-offer",
+                "withdraw"
+            ]
+        }
+    ],
+    "views": [
+        {
+            "viewId": "assembly-overview",
+            "kind": "overview",
+            "title": "Assembly Overview"
+        },
+        {
+            "viewId": "role-dashboard",
+            "kind": "role-dashboard",
+            "title": "Role Dashboard",
+            "moduleSlots": [
+                "role-switcher",
+                "capability-rail",
+                "process-graph",
+                "order-node",
+                "order-actions",
+                "settlement-breakdown",
+                "event-timeline",
+                "process-capital-summary"
+            ]
+        }
+    ],
+    "modules": [
+        {
+            "moduleId": "role-switcher"
+        },
+        {
+            "moduleId": "capability-rail"
+        },
+        {
+            "moduleId": "process-graph"
+        },
+        {
+            "moduleId": "order-node"
+        },
+        {
+            "moduleId": "order-actions"
+        },
+        {
+            "moduleId": "settlement-breakdown"
+        },
+        {
+            "moduleId": "mechanism-inspector"
+        },
+        {
+            "moduleId": "event-timeline",
+            "slot": "main",
+            "priority": 5
+        },
+        {
+            "moduleId": "process-capital-summary"
+        }
+    ],
+    "capabilityPresentation": [
+        {
+            "capabilityKind": "resolve-process",
+            "priority": 10,
+            "warningStyle": "warning"
+        },
+        {
+            "capabilityKind": "withdraw",
+            "priority": 7,
+            "warningStyle": "info"
+        }
+    ],
+    "visibilityDefaults": {
+        "showGraphByDefault": true,
+        "showAdvancedMechanisms": false,
+        "showRiskBoundaries": true,
+        "showGuarantees": true,
+        "showEconomicBreakdowns": true,
+        "showBuilderMode": false,
+        "showAuditMode": false
+    },
+    "narrative": {
+        "assemblySummary": "The simplest Figaro assembly: a client posts a job, a freelancer accepts it, both deposit, the client resolves when satisfied. One contract. Two roles. Zero custom mechanisms.",
+        "builderNotes": "Level 1 assembly demonstrating that a working assembly requires nothing beyond FigaroCore. No coordinators, no auctions, no extensions. If your productive asset is unique (consulting, design, writing), you set a price and accept jobs. This is the minimal viable assembly."
+    },
+    "builderMetadata": {
+        "assemblyClass": "reference-freelance",
+        "compositionLevel": 1,
+        "requiresCustomModules": false,
+        "safetyWarnings": [
+            "Core-only assembly. No additional economic mechanisms. Risk profile is identical to raw FigaroCore usage."
+        ]
+    }
+}

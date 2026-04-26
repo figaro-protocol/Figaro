@@ -1,0 +1,692 @@
+% Figaro Paper E: On-Chain Evidence, Off-Chain Adjudication
+% A Layered Approach to Smart-Contract Dispute Resolution
+% Audience: legal scholars, COALA-adjacent practitioners, on-chain
+% dispute-resolution researchers.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+
+\newcommand{\figaro}{\textsc{Figaro}}
+
+\title{%
+  On-Chain Evidence, Off-Chain Adjudication:\\
+  A Layered Approach to Smart-Contract Dispute Resolution%
+}
+
+\author{
+  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+}
+
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+
+% ════════════════════════════════════════════════════════════════════
+\begin{abstract}
+This paper makes a focused legal argument about smart-contract
+dispute resolution. The dominant on-chain dispute-resolution
+designs---Kleros's Schelling-jury arbitration, Aragon Court's
+DAO-governed jury, optimistic-rollup challenge windows---attempt
+to perform adjudication on chain. We argue that this is a
+category error: settlement is on-chain by nature, adjudication is
+off-chain by nature, and conflating the two re-introduces the
+discretionary intermediary that smart contracts were supposed to
+remove.
+
+We develop the argument by reference to a recently developed
+settlement primitive~\citep{daliana2026mechanism}, formally
+verified in~\citep{daliana2026impl}, whose three-layer enforcement
+architecture explicitly separates the bonding game (Layer 1), the
+peer-coordination subgame (Layer 2), and the evidentiary record
+that supports off-chain proceedings when the first two layers fail
+(Layer 3). The contribution of this paper is to develop Layer 3 in
+detail: the evidentiary properties of the on-chain record, the
+relationship between those properties and existing
+electronic-evidence law (eIDAS, UCC §1-201, the Singapore
+Electronic Transactions Act, the UNCITRAL Model Law on Electronic
+Commerce), and the jurisdictional implications of decoupling
+settlement from adjudication.
+
+The argument is not that smart contracts replace courts. It is
+that smart contracts can produce a form of evidence that courts
+already know how to use, and that the cleanest division of labor
+is one in which the protocol does what it does well (deterministic
+settlement) and the legal system does what it does well
+(contextual adjudication). The protocol is silent on what counts
+as ``satisfactory performance'' or ``material breach''---those are
+adjudicative determinations---but loud on the facts that
+adjudication needs as input.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:}
+electronic evidence, smart-contract law, dispute resolution,
+blockchain evidence, eIDAS, UNCITRAL, jurisdictional flexibility
+
+% ════════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+Smart-contract dispute resolution is currently a contested design
+space. The dominant architectures attempt to perform adjudication
+on chain, typically through some variant of token-weighted juror
+selection or DAO governance. Kleros~\citep{kleros2019} uses
+Schelling-point juror voting; Aragon Court~\citep{aragon2017}
+embeds arbitration in DAO infrastructure; optimistic
+mechanisms~\citep{optimism2021,uma2020} use challenge windows in
+which assertions stand unless contested. Each of these
+approaches addresses the dispute-resolution problem by importing
+the discretionary actor that would otherwise reside in a court:
+the juror, the DAO voter, the challenger.
+
+This paper argues that the import is a mistake. The claim is not
+that on-chain juries are bad mechanisms (they are interesting
+mechanisms with documented properties); it is that they are
+solving the wrong problem. The right problem is not ``how do we
+adjudicate disputes on chain'' but ``how do we produce evidence
+that off-chain forums can use to adjudicate efficiently.'' The
+former requires re-creating, in adversarial token-economic
+settings, the institutional infrastructure (impartial juror
+selection, jurisdictional fit, due process) that civil legal
+systems have refined over centuries. The latter requires only that
+the on-chain artifact meet existing evidentiary standards---a
+substantially easier problem, and one for which the legal
+infrastructure already exists.
+
+We make the argument in the context of \figaro{}, a settlement
+primitive whose mechanism is established
+in~\citep{daliana2026mechanism} and whose implementation is
+verified in~\citep{daliana2026impl}. \figaro{} explicitly does not
+attempt on-chain dispute resolution. Its three-layer enforcement
+architecture treats Layer 1 (bonding) and Layer 2 (peer
+coordination) as the primary defenses, and Layer 3 (immutable
+evidence) as the residual mechanism for cases where Layers 1 and
+2 are insufficient. The present paper develops Layer 3.
+
+\paragraph{What this paper is not.}
+This paper does not provide legal advice. It does not predict the
+admissibility of any specific on-chain artifact in any specific
+jurisdiction, nor does it claim that the on-chain record is
+itself sufficient for any particular legal claim. It argues for a
+design discipline (do not perform adjudication on chain) and
+catalogues the evidentiary properties of the artifact that the
+discipline produces. Practitioners who wish to rely on those
+properties in specific proceedings should obtain jurisdiction-specific
+counsel.
+
+\paragraph{Paper organization.}
+\Cref{sec:layering} states the layered architecture.
+\Cref{sec:evidentiary} develops the evidentiary properties of the
+on-chain record. \Cref{sec:legal-fit} compares those properties to
+existing electronic-evidence law.
+\Cref{sec:jurisdiction} addresses jurisdictional implications.
+\Cref{sec:against-on-chain} argues against on-chain adjudication
+as a category. \Cref{sec:conclusion} concludes.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Three-Layer Architecture}
+\label{sec:layering}
+
+\figaro{}'s enforcement architecture is layered. We summarize it
+here from the legal-design perspective; the mechanism details are
+in~\citep{daliana2026mechanism} and~\citep{daliana2026impl}.
+
+\paragraph{Layer 1 --- bonding.}
+Each party to a transaction locks $2\times$ the transaction value
+(asymmetric for $N$-party processes; the seller's bond scales with
+upstream value). The locked capital is recoverable only through
+buyer-initiated atomic resolution. Cooperation is the strictly
+dominant strategy; defection costs the full bond. The vast
+majority of disputes are prevented at this layer because the
+incentive to defect is structurally negative.
+
+\paragraph{Layer 2 --- peer coordination.}
+Atomic resolution induces a weakest-link subgame among
+co-sellers in a process tree: any one seller's defection causes
+all sellers to lose their bonds. Honest sellers therefore have
+direct economic incentive to monitor and pressure underperforming
+co-sellers. This layer handles disputes that survive Layer 1 by
+internalizing them as intra-cohort coordination problems.
+
+\paragraph{Layer 3 --- evidence.}
+The on-chain record. Every commitment, every bond deposit, every
+resolution (or its absence) is recorded with block timestamps and
+cryptographic signatures. When Layers 1 and 2 fail---when a party
+acts irrationally, when a co-seller cohort cannot self-coordinate,
+when external circumstances (regulatory action, force majeure,
+participant death) prevent normal resolution---Layer 3 produces
+the artifact that off-chain dispute forums need to adjudicate.
+
+\paragraph{What is and is not on chain.}
+Settlement is on chain. Adjudication is off chain. The split is
+deliberate. Settlement is deterministic, automated, and
+public---all properties that on-chain execution provides natively.
+Adjudication is contextual, discretionary, and
+jurisdiction-specific---all properties that on-chain execution is
+poorly suited for. The split lets each layer do what it does best
+and avoids forcing one to imitate the other.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Evidentiary Properties of the On-Chain Record}
+\label{sec:evidentiary}
+
+Before enumerating the evidentiary properties of the on-chain
+record, we draw a distinction the remainder of this section
+relies on. The ``on-chain record'' is not a single artifact
+class; it is two artifact classes with substantially different
+evidentiary character.
+
+\paragraph{Class A: settlement byproduct.}
+Commitment payloads, bond deposits, and resolution calls. These
+are produced as a mechanical side effect of the bonding game: no
+party can collect the settlement payout without the corresponding
+on-chain events having been emitted. Their integrity as evidence
+is underwritten by the game itself --- an actor cannot opt out of
+producing them without opting out of settlement.
+
+\paragraph{Class B: discretionary attestation.}
+Schema-typed lifecycle events, disclosure records, proximity
+witnesses, and other party-generated attestations emitted by the
+attestation coordinator. These are voluntary: a party chooses
+whether to attest, when to attest, and what content to place in
+the attestation. The schema validator ensures the content is
+well-formed; it does not and cannot ensure the content is
+accurate. A party who selectively attests (silence about
+underperformance, precise attestation of performance) can produce
+a Class B record that survives authentication but misrepresents
+reality.
+
+\medskip
+
+The six properties enumerated below apply \emph{unconditionally}
+to Class A and \emph{conditionally} to Class B: each Class B
+attestation carries the integrity of the signature and timestamp
+(Class A characteristics), but the accuracy of its content
+depends on the attestor's incentive structure at the moment of
+attestation. A cryptoeconomics reader will recognize Class B as
+subject to the same self-reporting incentive problems that
+attach to every voluntary disclosure; adjudication should treat
+Class B under ordinary authentication-and-hearsay doctrine
+rather than extending Class A's byproduct assurance to it. An
+attestation-bond layer (stake posted per attestation, slashable
+on proven falsity) is a plausible Class B strengthening but lies
+outside the kernel and is not yet developed in the protocol.
+
+\paragraph{Evidentiary completeness and constitutive primacy.}
+A further distinction matters for certain downstream uses:
+the on-chain record is not merely \emph{admissible} as
+evidence but \emph{constitutive} of the accounting record of
+the process. The companion accounting
+paper~\citep{daliana2026accounting} develops the argument that
+a \figaro{} process is a self-closing ledger period in the
+precise accounting sense --- the custodial balance of the
+contract is the balance-sheet position; commit and resolve
+events are journal and closing entries; the process closes
+when resolution discharges all custodial liabilities. For
+disputes whose subject matter is the accounting record of
+economic activity settled through the protocol, the on-chain
+record is not corroborating evidence for a party-held book;
+the chain is the book, and any party-held document is a
+summary or translation of it. The admissibility analysis of
+the present section applies to the record's evidentiary
+weight in proceedings; the constitutive analysis applies to
+the record's primacy within the economic activity it
+documents.
+
+The on-chain record produced by \figaro{} has six properties that
+together constitute its evidentiary value.
+
+\paragraph{(1) Timestamped.}
+Every state transition is associated with a block timestamp. The
+timestamp is set by block proposers under consensus rules; it is
+not subject to retroactive modification. For practical purposes,
+the timestamp on a finalized block is a qualified time stamp in
+the eIDAS sense.
+
+\paragraph{(2) Cryptographically signed.}
+Every commitment is signed by both parties using EIP-712 typed
+structured data~\citep{eip712}. The signatures bind the commitment
+content (payment, parties, denomination, agreement hash, deadline)
+to the signers' private keys. Recovery is deterministic; tampering
+with any field invalidates the signature.
+
+\paragraph{(3) Content-addressed.}
+Order identifiers are content hashes
+($\text{orderHash} = \mathrm{keccak256}(\text{processId} \;\|\;
+\text{structHash})$). The same commitment content always produces
+the same identifier; different content always produces different
+identifiers (collision-resistant under the assumed hash
+function). This makes the record unforgeable in a specific sense:
+no second commitment can claim the same identifier.
+
+\paragraph{(4) Immutable.}
+On a finalized block, the record cannot be modified or deleted. A
+party seeking to repudiate a commitment cannot purge the chain of
+the relevant log entries. This is a stronger property than what
+electronic records normally enjoy.
+
+\paragraph{(5) Publicly verifiable.}
+Anyone can read the chain and replay the verification logic. The
+evidence is not held by any single party; it is held by the
+network. Disputing parties therefore cannot disagree about what
+the record says---they can disagree only about what the record
+\emph{means}, which is precisely the question adjudication is
+suited to.
+
+\paragraph{(6) Contains commitment intent.}
+The signed payload includes a content hash $h$ of the off-chain
+agreement. The off-chain agreement itself can be anything the
+parties choose---a structured contract, a free-text PDF, a
+schema-typed JSON document. The on-chain record does not interpret
+the agreement; it commits both parties to a specific document via
+the hash. A dispute over performance is then a dispute over the
+referenced document, with the on-chain hash establishing
+\emph{which} document is at issue.
+
+These six properties, combined, produce an artifact that is
+substantially \emph{stronger} than the electronic records most
+courts already accept. Courts admit emails, electronic signatures,
+and database extracts as evidence subject to authentication
+challenges; the on-chain record satisfies many authentication
+requirements at the cryptographic level rather than at the
+custodial level.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Legal Fit: Existing Electronic-Evidence Frameworks}
+\label{sec:legal-fit}
+
+We sketch how the six properties above interact with four major
+electronic-evidence frameworks. The treatment is illustrative; a
+full doctrinal analysis is jurisdiction-by-jurisdiction.
+
+\paragraph{eIDAS (EU Regulation 910/2014).}
+eIDAS distinguishes electronic signatures, advanced electronic
+signatures (AdES), and qualified electronic signatures (QES).
+EIP-712 signatures meet the AdES technical requirements (uniquely
+linked to the signatory; capable of identifying the signatory;
+created using means under the signatory's sole control;
+linked to the signed data such that any subsequent change is
+detectable). They do not, by themselves, meet the QES
+requirements (which include a qualified certificate from a
+trust service provider). However, the AdES status is sufficient
+for most contractual purposes, and the eIDAS framework explicitly
+provides that the legal effect of an electronic signature shall
+not be denied solely because it is in electronic form. eIDAS
+also defines qualified electronic time stamps; block timestamps
+on chains with public consensus rules satisfy the technical
+requirements but typically not the trust-service-provider
+designation. The practical effect: the on-chain record is
+admissible electronic evidence under eIDAS, with weight
+determined by the court's contextual assessment.
+
+\paragraph{UCC §1-201 (US).}
+The Uniform Commercial Code defines ``record'' as ``information
+that is inscribed on a tangible medium or that is stored in an
+electronic or other medium and is retrievable in perceivable
+form.'' On-chain log entries satisfy this definition without
+ambiguity. UCC §1-201 also defines ``signature'' inclusively
+(``any symbol executed or adopted with present intention to
+adopt or accept a writing''); EIP-712 signatures, being
+intentionally executed by the signer's private key on the typed
+commitment, qualify. The Uniform Electronic Transactions Act
+(UETA) and the federal E-SIGN Act extend the same principle to
+contracts more broadly. The practical effect: on-chain
+commitments are records and signatures under US commercial law.
+
+\paragraph{Singapore Electronic Transactions Act (Cap. 88).}
+Singapore's ETA closely follows the UNCITRAL Model Law and
+provides functional equivalents for ``writing'',
+``signature'', and ``original'' in electronic form. The ETA was
+amended in 2021 to recognize electronic transferable records,
+extending its scope to instruments of title. On-chain records
+satisfy the writing and signature requirements directly; the
+transferable-record provisions are particularly relevant for
+process trees in which the right to receive performance moves
+along the supply chain.
+
+\paragraph{UNCITRAL Model Law on Electronic Commerce.}
+Adopted in 1996 and supplemented by the 2017 Model Law on
+Electronic Transferable Records, the UNCITRAL framework
+articulates the functional-equivalence principle that underlies
+most modern electronic-evidence regimes worldwide. The Model
+Law's three core requirements---accessibility for subsequent
+reference, integrity of the information, and identifiability of
+the originator---are all satisfied by on-chain commitments. The
+practical effect: jurisdictions that have adopted UNCITRAL-derived
+electronic-transactions law (over 80 as of 2024) provide an
+established framework for treating on-chain commitments as
+admissible electronic evidence.
+
+\paragraph{The summary picture.}
+The on-chain record is admissible electronic evidence in every
+jurisdiction whose electronic-evidence law derives from the
+UNCITRAL framework or implements equivalent functional principles.
+What varies across jurisdictions is the weight courts assign to
+the evidence (a question of judicial practice rather than
+admissibility) and the further procedural requirements for
+authenticating the chain itself (typically satisfied by expert
+testimony or by the court taking judicial notice of well-known
+chains). No jurisdiction we are aware of categorically excludes
+on-chain records from evidentiary consideration.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Jurisdictional Implications}
+\label{sec:jurisdiction}
+
+The decoupling of settlement from adjudication has substantive
+jurisdictional consequences.
+
+\paragraph{Forum is contractual.}
+The on-chain commitment includes an off-chain agreement hash $h$.
+That off-chain agreement can---and typically should---include a
+forum-selection clause, a choice-of-law clause, and an
+arbitration clause if the parties prefer arbitration to court.
+The on-chain record proves what was agreed; the off-chain
+agreement specifies where and under what law the agreement is
+adjudicated. Parties who omit a forum clause default to whatever
+private-international-law analysis the seised forum applies; this
+is a known regime, not a novel problem.
+
+\paragraph{Forum-shopping is bounded.}
+A party seeking to forum-shop is bounded by (a) the
+forum-selection clause in the off-chain agreement, (b) the seising
+forum's own jurisdictional rules, and (c) the recognition-and-enforcement
+treaties between the seising forum and any forum where the
+counterparty's assets reside. None of these constraints is
+weakened by the on-chain settlement; they all operate on the
+off-chain agreement and the parties' real-world circumstances.
+
+\paragraph{Evidence is jurisdiction-displaced.}
+The integrity of the on-chain evidence does not depend on the
+seising forum's recognition of any specific cryptographic
+standard. The signatures verify, or they do not; the chain hashes
+match, or they do not. A forum that doubts the cryptographic
+analysis can engage an expert; a forum that does not is in the
+position of any forum facing forensic evidence.
+
+\paragraph{Cross-border processes.}
+A process tree can involve parties in multiple jurisdictions
+simultaneously. The on-chain settlement is jurisdiction-blind:
+the bond mechanics work identically regardless of where the
+parties reside. Off-chain disputes that arise from such processes
+are handled by the same private-international-law machinery that
+already handles cross-border disputes in conventional
+commerce---typically with the on-chain record providing
+substantially more evidentiary clarity than the parties would
+have produced under conventional bookkeeping.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Why Not On-Chain Adjudication}
+\label{sec:against-on-chain}
+
+We have argued the positive case for off-chain adjudication. We
+now argue the negative case against on-chain adjudication.
+Several patterns occupy this space; we treat each briefly.
+
+\paragraph{Schelling-point juror selection (Kleros).}
+A token-weighted juror panel votes on the disputed question; the
+plurality wins; jurors who voted with the plurality are rewarded,
+jurors who voted against are slashed. The mechanism is elegant
+in its abstraction but has three problems for serious adjudication.
+First, the juror panel is not selected for jurisdictional
+fit---a Kleros juror in jurisdiction $A$ may know nothing of
+jurisdiction $B$'s law that the parties agreed should govern.
+Second, the juror's incentive is to vote with the perceived
+plurality, not to vote for the legally correct outcome---a
+Schelling point on plurality is structurally distinct from a
+Schelling point on truth. Third, the slashing mechanism imports a
+new dispute (was the slashing fair?) that has no terminal forum
+on chain.
+
+\paragraph{DAO-governed arbitration (Aragon Court).}
+Aragon Court is structurally similar to Kleros, with the
+juror-selection layer integrated with DAO governance. This
+inherits all of Kleros's problems plus the additional problem
+that DAO voting power is plutocratic in proportion to token
+holdings; the wealthy juror has structurally more votes than the
+poor juror. Whether or not one views this as a desirable
+property of arbitration is a normative question; that it differs
+from the conventional ``one juror, one vote'' premise of jury
+trials is a doctrinal question that has not been settled.
+
+\paragraph{Optimistic challenge windows.}
+Optimistic mechanisms~\citep{optimism2021,uma2020} avoid the juror
+problem by allowing assertions to stand unless challenged within a
+fixed window. This works for settlement-layer state machines but
+does not work for adjudication, because adjudication is precisely
+the activity of assessing an assertion that has been challenged.
+An optimistic ``adjudication'' is just an assertion with a
+deadline---it has no mechanism for resolving the underlying
+question, only for resolving the question of who blinked first.
+
+\paragraph{The structural objection.}
+All on-chain adjudication mechanisms share the same structural
+flaw. The kernel mechanism of~\citep{daliana2026mechanism}
+establishes that any unilateral exit from the bonded state
+requires either a third-party decision (which introduces an
+unbonded actor whose incentives are not constrained by the bond
+structure) or a payoff modification that weakens the Nash
+equilibrium. On-chain adjudication is the third-party-decision
+case: the juror, the DAO voter, the challenger is the unbonded
+actor whose decision determines the outcome. Whatever the
+mechanism designer does to constrain that actor (token slashing,
+Schelling incentives, reputation), the actor is still unbonded
+and the kernel's self-enforcing property is broken.
+
+\paragraph{The off-chain alternative.}
+Off-chain adjudication by an existing legal forum has the
+opposite structure. The forum's incentives are constrained by
+its institutional context---judges face appellate review,
+arbitrators face institutional reputation, both face professional
+sanction. The forum is not unbonded in the kernel sense; it
+operates inside a different bond structure (its institutional
+authority). The off-chain evidence record is therefore consumed
+by an actor whose incentives are already constrained by a regime
+that has been refined for centuries. The protocol does not
+re-implement that regime; it provides input to it.
+
+\paragraph{Composition with Kleros as forum, not as kernel
+adjudicator.} The objection above is to on-chain adjudication
+\emph{at the kernel layer}. It is not an objection to Kleros, or
+to any other adjudication mechanism, when the parties' agreement
+designates it as the forum. The kernel of \figaro{} is
+forum-agnostic: it does not adjudicate; it produces an evidence
+record. If two parties sign an off-chain agreement whose
+arbitration clause names Kleros as the dispute forum, the
+evidence record produced by their \figaro{} commitments is
+exported to Kleros and the dispute is adjudicated there. From
+the kernel's perspective Kleros is the off-chain forum the
+parties chose, in the same sense that the Singapore International
+Arbitration Centre or the New York Supreme Court can be the
+off-chain forum the parties choose. The structural critique above
+is not an endorsement of some forums over others; any forum the
+parties name in their agreement is their forum to choose, and
+\figaro{} composes with it by exporting evidence to it.
+
+\paragraph{Engagement with the legal-academic literature on Kleros.}
+A small but real legal-academic literature has developed around
+Kleros and its peers. \citet{ortolani2019blockchain} is the
+principal engagement from the international-arbitration side,
+raising the recognition-and-enforcement question under the New
+York Convention~\citep{nyc1958}: can a Kleros decision be
+enforced abroad as an arbitral award, and on what doctrinal
+basis? \citet{kaal2020dispute} reviews the broader landscape of
+decentralized dispute resolution. \citet{defilippi_wright_2018}
+situates Kleros and similar mechanisms within the lex
+cryptographia frame. \citet{rabinovich_einy_katsh_2017} place
+them in the longer trajectory of online dispute resolution. The
+literature is not yet large but it is real, and its general
+posture is compatible with this paper's: most of the
+legal-academic engagement with Kleros expresses concern about
+adjudicative-quality and recognition issues, not about the
+existence of the mechanism. The recognition-and-enforcement
+question raised by Ortolani and others is in our reading the
+binding legal-doctrinal question, and the layered architecture of
+\Cref{sec:layering} mitigates it: the on-chain record is
+admissible electronic evidence under the frameworks of
+\Cref{sec:legal-fit} regardless of how the forum that consumes
+the evidence is constituted, and forum-clause discipline allows
+the parties to name a forum (Kleros, SIAC, court) whose decisions
+they have a clean recognition theory for in the jurisdiction of
+intended enforcement.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have argued for a layered approach to smart-contract dispute
+resolution: settlement on chain, adjudication off chain, with a
+deliberately designed evidentiary record that bridges the two.
+The architecture inherits the strengths of each layer (chain
+determinism for settlement, legal-system contextual judgment for
+adjudication) without forcing either to imitate the other. It
+also resolves the structural objection to on-chain adjudication:
+the unbonded juror does not need to exist because the legally
+constituted forum already does.
+
+The contribution is modest but, we believe, important. The
+debate over smart-contract dispute resolution has been dominated
+by the assumption that on-chain settlement implies on-chain
+adjudication. The decoupling we propose is a different design
+posture, and it permits a substantially cleaner alignment with
+existing electronic-evidence law.
+
+\paragraph{What remains for legal scholarship.}
+Three questions are out of scope for this paper but warrant
+sustained legal-scholarly attention. First, the doctrinal
+analysis of on-chain commitments under specific jurisdictions'
+contract-formation, evidence, and electronic-signature laws is
+substantial and necessarily jurisdiction-by-jurisdiction. Second,
+the question of how courts should address chain-finality
+assumptions (what happens when the underlying chain reorganizes
+substantially after a contested transaction) requires technical-legal
+collaboration that has barely begun. Third, the question of
+whether and when the on-chain record should be treated as
+self-authenticating (in the US Federal Rules of Evidence sense,
+or its analogues in other common-law jurisdictions) is a question
+of judicial practice that will develop with case law.
+
+\paragraph{What remains for protocol design.}
+On the protocol side, the principal open question is how schema-typed
+attestations~\citep{daliana2026impl} interact with off-chain
+dispute proceedings. The attestation surface allows parties to
+record structured evidence (geo proofs, lifecycle stage
+transitions, GHG disclosures) on chain in addition to the bare
+commitment. How that structured evidence is treated by off-chain
+forums---whether as supplementary fact, as binding stipulation,
+or as expert testimony---is design space that has not yet been
+explored.
+
+\section*{Acknowledgments}
+This argument owes a substantial debt to the Coalition of
+Automated Legal Applications (COALA), whose work over many years
+has established the framework within which questions of this kind
+can be productively asked. I thank colleagues there and at the
+Stanford CodeX Center for conversations that sharpened the
+distinction between settlement and adjudication that this paper
+develops.
+
+
+% ════════════════════════════════════════════════════════════════════
+% References
+% ════════════════════════════════════════════════════════════════════
+
+\begin{thebibliography}{99}
+
+\bibitem[Aragon(2017)]{aragon2017}
+Cuende, L. and Izquierdo, J.
+\newblock Aragon Network: A Decentralized Infrastructure for Value Exchange.
+\newblock Aragon White Paper, 2017.
+
+\bibitem[Daliana(2026a)]{daliana2026mechanism}
+Daliana, A.
+\newblock Asymmetric Bonding: A Self-Enforcing Settlement Primitive
+  for $N$-Party Coordination.
+\newblock Companion mechanism-design paper, 2026.
+
+\bibitem[Daliana(2026b)]{daliana2026impl}
+Daliana, A.
+\newblock The \textsc{Figaro} Kernel: A Verified Solidity
+  Implementation of Asymmetric Bonding.
+\newblock Companion implementation paper, 2026.
+
+\bibitem[Daliana(2026c)]{daliana2026accounting}
+Daliana, A.
+\newblock Bookkeeping as Protocol Byproduct: Self-Closing
+  Ledger Periods in the \textsc{Figaro} Settlement
+  Primitive.
+\newblock Companion accounting paper, 2026.
+
+\bibitem[De Filippi and Wright(2018)]{defilippi_wright_2018}
+De Filippi, P. and Wright, A.
+\newblock \emph{Blockchain and the Law: The Rule of Code}.
+\newblock Harvard University Press, Cambridge, MA, 2018.
+
+\bibitem[EIP-712(2017)]{eip712}
+Bloemen, R., Logvinov, L., and Evans, J.
+\newblock {EIP-712}: Ethereum typed structured data hashing and signing.
+\newblock Ethereum Improvement Proposal, 2017.
+\newblock \url{https://eips.ethereum.org/EIPS/eip-712}
+
+\bibitem[Kaal(2020)]{kaal2020dispute}
+Kaal, W.~A.
+\newblock Decentralized Dispute Resolution.
+\newblock University of St.\ Thomas (Minnesota) Legal Studies
+  Research Paper No.\ 20-13, 2020.
+
+\bibitem[Kleros(2019)]{kleros2019}
+Ast, F. and Lesaege, C.
+\newblock Kleros: A Protocol for a Decentralized Justice System.
+\newblock Kleros White Paper, 2019.
+\newblock \url{https://kleros.io/yellowpaper.pdf}
+
+\bibitem[New York Convention(1958)]{nyc1958}
+United Nations.
+\newblock \emph{Convention on the Recognition and Enforcement
+  of Foreign Arbitral Awards} (the New York Convention).
+\newblock 330 U.N.T.S. 38, 1958.
+
+\bibitem[Optimism(2021)]{optimism2021}
+Optimism Foundation.
+\newblock Optimistic Rollups.
+\newblock Optimism Technical Documentation, 2021.
+
+\bibitem[Ortolani(2019)]{ortolani2019blockchain}
+Ortolani, P.
+\newblock The Impact of Blockchain Technologies and Smart
+  Contracts on Dispute Resolution: Arbitration and Court
+  Litigation at the Crossroads.
+\newblock \emph{Uniform Law Review}, 24(2):430--448, 2019.
+
+\bibitem[Rabinovich-Einy and Katsh(2017)]{rabinovich_einy_katsh_2017}
+Rabinovich-Einy, O. and Katsh, E.
+\newblock \emph{Digital Justice: Technology and the Internet of
+  Disputes}.
+\newblock Oxford University Press, New York, 2017.
+
+\bibitem[UMA(2020)]{uma2020}
+UMA Project.
+\newblock The Optimistic Oracle.
+\newblock UMA Technical Documentation, 2020.
+
+\end{thebibliography}
+
+\end{document}

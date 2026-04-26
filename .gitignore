@@ -12,6 +12,8 @@ hh-cache/
 # Node dependencies
 node_modules/
 frontend/node_modules/
+frontend2/node_modules/
+sdk/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -23,7 +25,19 @@ frontend/build/
 frontend/playwright-report/
 frontend/test-results/
 frontend/tsconfig.tsbuildinfo
+frontend2/.next/
+frontend2/out/
+frontend2/build/
+frontend2/playwright-report/
+frontend2/test-results/
+frontend2/tsconfig.tsbuildinfo
 .vercel
+
+# Archived legacy frontend (preserved locally; not version-controlled)
+archive-frontend/
+
+# Local Claude Code state
+.claude/
 
 # Environment variables
 .env

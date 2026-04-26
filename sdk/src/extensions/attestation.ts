@@ -20,7 +20,7 @@ import type { Hex, Address, AttestationEvent } from "../types.js";
  *
  * @example
  * ```ts
- * const schemaId = computeSchemaId("figaro-ghg-disclosure-v1");
+ * const schemaId = computeSchemaId("figaro-ghg-iso-14064-v1");
  * ```
  */
 export function computeSchemaId(key: string): Hex {
@@ -29,7 +29,19 @@ export function computeSchemaId(key: string): Hex {
 
 // ── Well-known schema keys ──────────────────────────────────────────────────
 
-export const GHG_SCHEMA_KEY = "figaro-ghg-disclosure-v1";
+/**
+ * GHG disclosure sister schemas — one per accounting standard. The standard
+ * identity lives in the schemaId; the content shape is shared across all five.
+ */
+export const GHG_DISCLOSURE_SCHEMA_KEYS = [
+    "figaro-ghg-protocol-v1",
+    "figaro-ghg-iso-14064-v1",
+    "figaro-ghg-pas-2050-v1",
+    "figaro-ghg-en-16258-v1",
+    "figaro-ghg-custom-v1",
+] as const;
+
+export type GHGDisclosureSchemaKey = (typeof GHG_DISCLOSURE_SCHEMA_KEYS)[number];
 
 // ── GHG disclosure kinds (stage values in AttestationCoordinator) ────────────
 
@@ -108,6 +120,39 @@ export function formatGrams(grams: bigint): string {
 }
 
 // ── Attestation event filtering ─────────────────────────────────────────────
+
+/**
+ * Filter raw event logs by source contract address. Use this when processing
+ * `Attestation`, `SchemaRegistered`, `MechanismSchemaSet`, `OperatorRegistered`,
+ * or any other event re-emitted from `FigaroBatchVerifier` with the same
+ * topic hash as its direct-path counterpart. Without contract-address
+ * filtering, indexers conflate batch-re-emitted events with direct-path ones
+ * — the topic hashes are identical by design (so a single ABI definition
+ * decodes both), but the source contract carries the trust-boundary
+ * distinction (direct path enforces gates inline; batch path inherits from
+ * the SP1 proof).
+ *
+ * @param logs    Raw event logs from `publicClient.getLogs()` or similar.
+ *                Each must carry an `address` field (viem's standard log shape).
+ * @param sources One contract address, or an array of accepted addresses.
+ * @returns Logs whose `address` matches one of the sources (case-insensitive).
+ *
+ * @example
+ *   const all = await client.getLogs({ event: EV_ATTESTATION, fromBlock, toBlock });
+ *   const direct  = filterLogsBySource(all, attestationCoordinator);
+ *   const batched = filterLogsBySource(all, batchVerifier);
+ *   // Or accept both for downstream tagging:
+ *   const both    = filterLogsBySource(all, [attestationCoordinator, batchVerifier]);
+ */
+export function filterLogsBySource<T extends { address: Address }>(
+    logs: readonly T[],
+    sources: Address | readonly Address[],
+): T[] {
+    const accept = new Set<string>(
+        (Array.isArray(sources) ? sources : [sources as Address]).map((s) => s.toLowerCase()),
+    );
+    return logs.filter((log) => accept.has(log.address.toLowerCase()));
+}
 
 /**
  * Filter attestation events by schema ID.

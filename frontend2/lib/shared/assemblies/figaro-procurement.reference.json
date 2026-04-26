@@ -1,0 +1,186 @@
+{
+    "identity": {
+        "id": "figaro-procurement-reference",
+        "name": "Figaro Procurement",
+        "slug": "figaro-procurement",
+        "description": "Reference assembly for bonded procurement with inspection checkpoints.",
+        "networkTargets": [
+            "local-anvil",
+            "evm-compatible"
+        ],
+        "version": "0.1.0"
+    },
+    "contracts": [
+        {
+            "key": "core",
+            "required": true,
+            "description": "Bonded process coordination substrate."
+        },
+        {
+            "key": "fulfillmentCoordinator",
+            "required": false,
+            "description": "Low-risk shipment and inspection checkpoint coordinator."
+        }
+    ],
+    "mechanisms": [
+        {
+            "mechanismId": "core-orders",
+            "kind": "core",
+            "displayName": "Bonded Procurement Core",
+            "riskClass": "read-only-inherited",
+            "enabled": true,
+            "visibility": "primary",
+            "contractKeys": [
+                "core"
+            ],
+            "moduleBindings": []
+        },
+        {
+            "mechanismId": "fulfillment-coordinator",
+            "kind": "coordinator",
+            "displayName": "Fulfillment Checkpoint Coordinator",
+            "riskClass": "low-risk-coordinator",
+            "enabled": true,
+            "visibility": "primary",
+            "contractKeys": [
+                "core",
+                "fulfillmentCoordinator"
+            ],
+            "moduleBindings": [
+                "mechanism-inspector"
+            ]
+        }
+    ],
+    "roles": [
+        {
+            "roleKind": "buyer",
+            "displayName": "Buyer",
+            "description": "Initiates procurement, resolves the process, and withdraws released balances.",
+            "visibility": "primary",
+            "defaultLandingView": "role-dashboard",
+            "sampleCapabilities": [
+                "create-order",
+                "resolve-process",
+                "withdraw"
+            ]
+        },
+        {
+            "roleKind": "supplier",
+            "displayName": "Supplier",
+            "description": "Accepts procurement offers and signals fulfillment readiness.",
+            "visibility": "primary",
+            "defaultLandingView": "role-dashboard",
+            "sampleCapabilities": [
+                "accept-offer",
+                "declare-lot-ready",
+                "withdraw"
+            ]
+        },
+        {
+            "roleKind": "inspector",
+            "displayName": "Inspector",
+            "description": "Signals acceptance checkpoints without touching settlement logic.",
+            "visibility": "secondary",
+            "defaultLandingView": "role-dashboard",
+            "sampleCapabilities": [
+                "declare-inspection-cleared"
+            ]
+        }
+    ],
+    "views": [
+        {
+            "viewId": "assembly-overview",
+            "kind": "overview",
+            "title": "Assembly Overview"
+        },
+        {
+            "viewId": "role-dashboard",
+            "kind": "role-dashboard",
+            "title": "Role Dashboard",
+            "moduleSlots": [
+                "role-switcher",
+                "capability-rail",
+                "process-graph",
+                "order-node",
+                "coordinator-actions",
+                "event-timeline",
+                "process-capital-summary"
+            ]
+        }
+    ],
+    "modules": [
+        {
+            "moduleId": "role-switcher"
+        },
+        {
+            "moduleId": "capability-rail"
+        },
+        {
+            "moduleId": "process-graph"
+        },
+        {
+            "moduleId": "order-node"
+        },
+        {
+            "moduleId": "order-actions"
+        },
+        {
+            "moduleId": "settlement-breakdown"
+        },
+        {
+            "moduleId": "coordinator-actions"
+        },
+        {
+            "moduleId": "mechanism-inspector"
+        },
+        {
+            "moduleId": "event-timeline"
+        },
+        {
+            "moduleId": "process-capital-summary"
+        }
+    ],
+    "capabilityPresentation": [
+        {
+            "capabilityKind": "resolve-process",
+            "priority": 10,
+            "warningStyle": "warning"
+        },
+        {
+            "capabilityKind": "declare-lot-ready",
+            "priority": 8,
+            "warningStyle": "info"
+        },
+        {
+            "capabilityKind": "declare-inspection-cleared",
+            "priority": 8,
+            "warningStyle": "info"
+        },
+        {
+            "capabilityKind": "withdraw",
+            "priority": 7,
+            "warningStyle": "info"
+        }
+    ],
+    "visibilityDefaults": {
+        "showGraphByDefault": true,
+        "showAdvancedMechanisms": false,
+        "showRiskBoundaries": true,
+        "showGuarantees": true,
+        "showEconomicBreakdowns": true,
+        "showBuilderMode": false,
+        "showAuditMode": false
+    },
+    "narrative": {
+        "assemblySummary": "Procurement as a composed assembly built from bonded order coordination and inspection checkpoints.",
+        "builderNotes": "Core-plus-coordinator example used to prove the builder substrate is not Eats-specific."
+    },
+    "builderMetadata": {
+        "assemblyClass": "reference-procurement",
+        "compositionLevel": 2,
+        "requiresCustomModules": false,
+        "safetyWarnings": [
+            "Coordinator checkpoints may affect workflow expectations but do not alter settlement guarantees."
+        ]
+    }
+}

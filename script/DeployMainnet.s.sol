@@ -12,6 +12,23 @@ import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
 import "../src/fig/StagedMerkleAirdrop.sol";
 import "../src/FigaroBatchVerifier.sol";
+import "../src/SchemaRegistrationHelper.sol";
+import "../src/schemaValidators/FigaroHandoffV1Validator.sol";
+import "../src/schemaValidators/FigaroCommerceV1Validator.sol";
+import "../src/schemaValidators/FigaroGeoV1Validator.sol";
+import "../src/schemaValidators/FigaroFulfilmentV1Validator.sol";
+import "../src/schemaValidators/FigaroGHGProtocolV1Validator.sol";
+import "../src/schemaValidators/FigaroGHGISO14064V1Validator.sol";
+import "../src/schemaValidators/FigaroGHGPAS2050V1Validator.sol";
+import "../src/schemaValidators/FigaroGHGEN16258V1Validator.sol";
+import "../src/schemaValidators/FigaroGHGCustomV1Validator.sol";
+import "../src/schemaValidators/FigaroGHGMeasurementV1Validator.sol";
+import "../src/schemaValidators/FigaroDeliveryLifecycleV1Validator.sol";
+import "../src/schemaValidators/FigaroProximityPolicyV1Validator.sol";
+import "../src/schemaValidators/FigaroProximityProofV1Validator.sol";
+import "../src/schemaValidators/FigaroMerchantProcessV1Validator.sol";
+import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
+import "../src/schemaValidators/FigaroJurisdictionV1Validator.sol";
 
 /// @title DeployMainnet — Mainnet deployment of the full Figaro V5 protocol stack
 ///
@@ -60,6 +77,7 @@ contract DeployMainnet is Script {
     address internal _fig;
     address internal _airdrop;
     address internal _batchVerifier;
+    address internal _schemaHelper;
 
     function run() external {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
@@ -69,6 +87,7 @@ contract DeployMainnet is Script {
         vm.startBroadcast(privateKey);
 
         _deployProtocol();
+        _deployAndRegisterValidators();
         _deployFigEcosystem(privateKey);
         _deployBatchVerifier();
 
@@ -108,16 +127,53 @@ contract DeployMainnet is Script {
         _schemas = address(schemas);
         console.log("SchemaRegistry:         ", _schemas);
 
+        schemas.registerSchema(keccak256("figaro-topology-v1"), 1, keccak256("ipfs://figaro-topology/v1"));
         schemas.registerSchema(keccak256("figaro-handoff-v1"), 1, keccak256("ipfs://figaro-handoff/v1"));
+        schemas.registerSchema(keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"));
+        schemas.registerSchema(keccak256("figaro-geo-v1"), 1, keccak256("ipfs://figaro-geo/v1"));
+        schemas.registerSchema(keccak256("figaro-fulfilment-v1"), 1, keccak256("ipfs://figaro-fulfilment/v1"));
+        schemas.registerSchema(keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"));
+        schemas.registerSchema(keccak256("figaro-ghg-iso-14064-v1"), 1, keccak256("ipfs://figaro-ghg-iso-14064/v1"));
+        schemas.registerSchema(keccak256("figaro-ghg-pas-2050-v1"), 1, keccak256("ipfs://figaro-ghg-pas-2050/v1"));
+        schemas.registerSchema(keccak256("figaro-ghg-en-16258-v1"), 1, keccak256("ipfs://figaro-ghg-en-16258/v1"));
+        schemas.registerSchema(keccak256("figaro-ghg-custom-v1"), 1, keccak256("ipfs://figaro-ghg-custom/v1"));
+        schemas.registerSchema(keccak256("figaro-ghg-measurement-v1"), 1, keccak256("ipfs://figaro-ghg-measurement/v1"));
         schemas.registerSchema(
             keccak256("figaro-delivery-lifecycle-v1"), 1, keccak256("ipfs://figaro-delivery-lifecycle/v1")
         );
-        schemas.registerSchema(keccak256("figaro-ghg-disclosure-v1"), 1, keccak256("ipfs://figaro-ghg-disclosure/v1"));
-        schemas.registerSchema(keccak256("figaro-proximity-v1"), 1, keccak256("ipfs://figaro-proximity/v1"));
-        schemas.registerSchema(keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"));
+        schemas.registerSchema(
+            keccak256("figaro-proximity-policy-v1"), 1, keccak256("ipfs://figaro-proximity-policy/v1")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-proximity-proof-v1"), 1, keccak256("ipfs://figaro-proximity-proof/v1")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-merchant-process-v1"), 1, keccak256("ipfs://figaro-merchant-process/v1")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-courier-process-v1"), 1, keccak256("ipfs://figaro-courier-process/v1")
+        );
+        schemas.registerSchema(keccak256("figaro-jurisdiction-v1"), 1, keccak256("ipfs://figaro-jurisdiction/v1"));
         schemas.registerSchema(keccak256("erc8004-agent-services-v1"), 1, keccak256("ipfs://erc8004-agent-services/v1"));
-        console.log("SchemaRegistry: 6 reference schemas registered");
+        console.log("SchemaRegistry: 18 reference schemas registered");
 
+        // ── OperatorRegistry ────────────────────────────────────────
+        // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
+        // The deposit + lock pair is the Sybil-resistance knob (see
+        // OperatorRegistry NatSpec on `depositLockPeriod`). Picking
+        // mainnet values needs explicit reasoning recorded here:
+        //   - registrationDeposit: $X target in ETH at deploy-time price?
+        //     Bonded participation cost is the floor of attacker
+        //     discouragement. Too low → cheap Sybil farms; too high →
+        //     locks out small operators.
+        //   - depositLockPeriod: how long does an operator commit to a
+        //     given role/metadata before they can withdraw + reassert?
+        //     Every role/metadata change goes through withdraw +
+        //     re-register (web2-strip 2026-04-26). Too short →
+        //     deposits churn freely (Sybil mitigation weakens); too
+        //     long → exit friction discourages legitimate operators.
+        // Devnet uses (0.001 ether, 365 days) as ergonomic defaults.
+        // Replace these before mainnet broadcast.
         OperatorRegistry operators = new OperatorRegistry(0.001 ether, 365 days);
         _operators = address(operators);
         console.log("OperatorRegistry:       ", _operators);
@@ -125,6 +181,77 @@ contract DeployMainnet is Script {
         DutchAuction auction = new DutchAuction(30 minutes, 2000);
         _auction = address(auction);
         console.log("DutchAuction:           ", _auction);
+
+        // Atomic register-schema + bind-validator helper for post-deploy
+        // schema authors. Closes the M-1 front-running window between the
+        // two writes (DESIGN_DECISIONS.md #13). Stateless, no admin.
+        SchemaRegistrationHelper schemaHelper = new SchemaRegistrationHelper(_schemas, _attestation);
+        _schemaHelper = address(schemaHelper);
+        console.log("SchemaRegistrationHelper:", _schemaHelper);
+    }
+
+    // ── Schema validators ───────────────────────────────────────────
+
+    /// @dev Deploy 15 per-schema runtime validators and register each with the
+    ///      AttestationCoordinator via permissionless setValidator. The
+    ///      coordinator enforces `validator.schemaId() == schemaId`, so any
+    ///      cross-wired validator reverts InvalidValidatorBinding. Without
+    ///      this step every attest* call reverts with ValidatorNotSet.
+    ///
+    ///      Topology is a manifest-only clause (contract-time, not runtime-
+    ///      attested), so no on-chain validator is wired for `figaro-topology-v1`.
+    ///      The schema itself remains registered in SchemaRegistry above for
+    ///      off-chain vocabulary anchoring.
+    function _deployAndRegisterValidators() internal {
+        AttestationCoordinator attestation = AttestationCoordinator(_attestation);
+
+        // Each validator is deployed + registered + logged in a single scope
+        // to avoid holding more than one address on the Yul stack at a time.
+        // Prevents stack-too-deep under `solc_via_ir` with many local vars.
+        _wireValidator(attestation, "HandoffV1Validator:          ",
+            keccak256("figaro-handoff-v1"), address(new FigaroHandoffV1Validator()));
+        _wireValidator(attestation, "CommerceV1Validator:         ",
+            keccak256("figaro-commerce-v1"), address(new FigaroCommerceV1Validator()));
+        _wireValidator(attestation, "GeoV1Validator:              ",
+            keccak256("figaro-geo-v1"), address(new FigaroGeoV1Validator()));
+        _wireValidator(attestation, "FulfilmentV1Validator:       ",
+            keccak256("figaro-fulfilment-v1"), address(new FigaroFulfilmentV1Validator()));
+        _wireValidator(attestation, "GHGProtocolV1Validator:      ",
+            keccak256("figaro-ghg-protocol-v1"), address(new FigaroGHGProtocolV1Validator()));
+        _wireValidator(attestation, "GHGISO14064V1Validator:      ",
+            keccak256("figaro-ghg-iso-14064-v1"), address(new FigaroGHGISO14064V1Validator()));
+        _wireValidator(attestation, "GHGPAS2050V1Validator:       ",
+            keccak256("figaro-ghg-pas-2050-v1"), address(new FigaroGHGPAS2050V1Validator()));
+        _wireValidator(attestation, "GHGEN16258V1Validator:       ",
+            keccak256("figaro-ghg-en-16258-v1"), address(new FigaroGHGEN16258V1Validator()));
+        _wireValidator(attestation, "GHGCustomV1Validator:        ",
+            keccak256("figaro-ghg-custom-v1"), address(new FigaroGHGCustomV1Validator()));
+        _wireValidator(attestation, "GHGMeasurementV1Validator:   ",
+            keccak256("figaro-ghg-measurement-v1"), address(new FigaroGHGMeasurementV1Validator()));
+        _wireValidator(attestation, "DeliveryLifecycleV1Validator:",
+            keccak256("figaro-delivery-lifecycle-v1"), address(new FigaroDeliveryLifecycleV1Validator()));
+        _wireValidator(attestation, "ProximityPolicyV1Validator:  ",
+            keccak256("figaro-proximity-policy-v1"), address(new FigaroProximityPolicyV1Validator()));
+        _wireValidator(attestation, "ProximityProofV1Validator:   ",
+            keccak256("figaro-proximity-proof-v1"), address(new FigaroProximityProofV1Validator()));
+        _wireValidator(attestation, "MerchantProcessV1Validator: ",
+            keccak256("figaro-merchant-process-v1"), address(new FigaroMerchantProcessV1Validator()));
+        _wireValidator(attestation, "CourierProcessV1Validator:     ",
+            keccak256("figaro-courier-process-v1"), address(new FigaroCourierProcessV1Validator()));
+        _wireValidator(attestation, "JurisdictionV1Validator:       ",
+            keccak256("figaro-jurisdiction-v1"), address(new FigaroJurisdictionV1Validator()));
+
+        console.log("AttestationCoordinator: 16 validators wired");
+    }
+
+    function _wireValidator(
+        AttestationCoordinator attestation,
+        string memory label,
+        bytes32 schemaId,
+        address validator
+    ) internal {
+        attestation.setValidator(schemaId, validator);
+        console.log(label, validator);
     }
 
     // ── FIG token + genesis distribution + staged airdrop ───────────
@@ -185,6 +312,7 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_FIGARO_CORE=              ", _core);
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=  ", _attestation);
         console.log("  NEXT_PUBLIC_SCHEMA_REGISTRY=          ", _schemas);
+        console.log("  NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=", _schemaHelper);
         console.log("  NEXT_PUBLIC_OPERATOR_REGISTRY=        ", _operators);
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=            ", _auction);
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=        ", _fig);

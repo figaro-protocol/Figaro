@@ -1,0 +1,19 @@
+# Token-ops inventory — authoritative list of every ERC20 token-moving call
+# site in production `src/`. Every new `transfer` / `transferFrom` /
+# `safeTransfer` / `safeTransferFrom` call merged into `src/` must be added
+# here (file:line) with the spec rule that upholds its invariant, or the
+# lint-token-ops.sh gate will refuse the merge.
+#
+# Format: `<path>:<line> | <caller> | <spec coverage>`
+# Blank lines and `#` comments are ignored.
+#
+# Spec coverage column lists the CVL rule(s) in certora/TokenOpsVerification.spec
+# (or a sister spec) that prove the call's invariant. Pending entries are
+# marked `[PENDING: <spec target>]` — new entries MAY ship pending, but must
+# be followed by a spec PR within the same sprint.
+
+src/FigaroCore.sol:131 | _pullExact (commit bond pull) | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
+src/FigaroCore.sol:286 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/FigaroCore.sol:287 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/FigaroBatchVerifier.sol:396 | settleBatch → _executePositions (net payout to user)    | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/FigaroBatchVerifier.sol:406 | settleBatch → _pullExact (net deposit from user)        | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation

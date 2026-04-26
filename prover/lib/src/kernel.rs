@@ -3,10 +3,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::eip712::{
     attest_buyer_struct_hash, attest_seller_struct_hash, commitment_struct_hash,
-    compute_order_hash, deactivate_operator_struct_hash, domain_separator,
-    reactivate_operator_struct_hash, recover_signer, register_operator_struct_hash,
+    compute_order_hash, domain_separator,
+    recover_signer, register_operator_struct_hash,
     register_schema_struct_hash, resolve_struct_hash, set_mechanism_schema_struct_hash,
-    typed_data_hash, update_operator_struct_hash,
+    typed_data_hash,
 };
 use crate::state::KernelState;
 use crate::types::*;
@@ -547,6 +547,12 @@ fn apply_set_mechanism_schema(
 }
 
 // ── OperatorRegistry operations ──────────────────────────────────
+//
+// Web2-strip (2026-04-26): only RegisterOperator survives. Update / deactivate
+// / reactivate were removed because they encoded web2 lifecycle CRUD on top
+// of a stateless coordination primitive. To switch role or metadata, the
+// operator submits a fresh RegisterOperator (after withdrawing on-chain — the
+// dedup guard is cleared on withdraw, not via a batched op).
 
 fn apply_register_operator(
     state: &mut KernelState,
@@ -564,131 +570,23 @@ fn apply_register_operator(
     let digest = typed_data_hash(domain, &struct_hash);
     let operator = recover_signer(&digest, operator_sig)?;
 
-    // Already registered?
+    // Dedup guard
     if state
-        .operator_roles
+        .operators_registered
         .get(&operator)
         .copied()
-        .unwrap_or(OperatorRole::None)
-        != OperatorRole::None
+        .unwrap_or(false)
     {
         return Err(KernelError::OperatorAlreadyRegistered);
     }
 
-    state.operator_roles.insert(operator, role);
-    state.operator_active.insert(operator, true);
+    state.operators_registered.insert(operator, true);
 
     events.push(OperatorEventData::Registered {
         operator,
         role: role as u8,
         metadata_uri: metadata_uri.to_string(),
     });
-
-    Ok(())
-}
-
-fn apply_update_operator(
-    state: &mut KernelState,
-    domain: &B256,
-    role: OperatorRole,
-    metadata_uri: &str,
-    operator_sig: &Signature,
-    events: &mut Vec<OperatorEventData>,
-) -> Result<(), KernelError> {
-    if role == OperatorRole::None {
-        return Err(KernelError::InvalidOperatorRole);
-    }
-
-    let struct_hash = update_operator_struct_hash(role as u8, metadata_uri);
-    let digest = typed_data_hash(domain, &struct_hash);
-    let operator = recover_signer(&digest, operator_sig)?;
-
-    if state
-        .operator_roles
-        .get(&operator)
-        .copied()
-        .unwrap_or(OperatorRole::None)
-        == OperatorRole::None
-    {
-        return Err(KernelError::OperatorNotRegistered);
-    }
-
-    // Only active operators can update profile (mirrors Solidity OP-2 fix)
-    if !state.operator_active.get(&operator).copied().unwrap_or(false) {
-        return Err(KernelError::OperatorNotActive);
-    }
-
-    state.operator_roles.insert(operator, role);
-
-    events.push(OperatorEventData::Updated {
-        operator,
-        role: role as u8,
-        metadata_uri: metadata_uri.to_string(),
-    });
-
-    Ok(())
-}
-
-fn apply_deactivate_operator(
-    state: &mut KernelState,
-    domain: &B256,
-    operator_sig: &Signature,
-    events: &mut Vec<OperatorEventData>,
-) -> Result<(), KernelError> {
-    let struct_hash = deactivate_operator_struct_hash();
-    let digest = typed_data_hash(domain, &struct_hash);
-    let operator = recover_signer(&digest, operator_sig)?;
-
-    if state
-        .operator_roles
-        .get(&operator)
-        .copied()
-        .unwrap_or(OperatorRole::None)
-        == OperatorRole::None
-    {
-        return Err(KernelError::OperatorNotRegistered);
-    }
-
-    // Idempotency guard: prevent duplicate deactivate events (OP-3)
-    if !state.operator_active.get(&operator).copied().unwrap_or(false) {
-        return Err(KernelError::OperatorAlreadyDeactivated);
-    }
-
-    state.operator_active.insert(operator, false);
-
-    events.push(OperatorEventData::Deactivated { operator });
-
-    Ok(())
-}
-
-fn apply_reactivate_operator(
-    state: &mut KernelState,
-    domain: &B256,
-    operator_sig: &Signature,
-    events: &mut Vec<OperatorEventData>,
-) -> Result<(), KernelError> {
-    let struct_hash = reactivate_operator_struct_hash();
-    let digest = typed_data_hash(domain, &struct_hash);
-    let operator = recover_signer(&digest, operator_sig)?;
-
-    if state
-        .operator_roles
-        .get(&operator)
-        .copied()
-        .unwrap_or(OperatorRole::None)
-        == OperatorRole::None
-    {
-        return Err(KernelError::OperatorNotRegistered);
-    }
-
-    // Idempotency guard: prevent duplicate reactivate events (OP-3)
-    if state.operator_active.get(&operator).copied().unwrap_or(false) {
-        return Err(KernelError::OperatorAlreadyActive);
-    }
-
-    state.operator_active.insert(operator, true);
-
-    events.push(OperatorEventData::Reactivated { operator });
 
     Ok(())
 }
@@ -729,6 +627,8 @@ pub fn compute_schema_events_hash(
 }
 
 /// Deterministic hash of operator events for inclusion in public values.
+/// Web2-strip (2026-04-26): only Registered survives. Tag byte preserved
+/// to keep the hash format compositional if future event variants are added.
 pub fn compute_operator_events_hash(events: &[OperatorEventData]) -> B256 {
     let mut data = Vec::new();
     for e in events {
@@ -742,24 +642,6 @@ pub fn compute_operator_events_hash(events: &[OperatorEventData]) -> B256 {
                 data.extend_from_slice(operator.as_slice());
                 data.push(*role);
                 data.extend_from_slice(&keccak256(metadata_uri.as_bytes()).0);
-            }
-            OperatorEventData::Updated {
-                operator,
-                role,
-                metadata_uri,
-            } => {
-                data.push(0x02);
-                data.extend_from_slice(operator.as_slice());
-                data.push(*role);
-                data.extend_from_slice(&keccak256(metadata_uri.as_bytes()).0);
-            }
-            OperatorEventData::Deactivated { operator } => {
-                data.push(0x03);
-                data.extend_from_slice(operator.as_slice());
-            }
-            OperatorEventData::Reactivated { operator } => {
-                data.push(0x04);
-                data.extend_from_slice(operator.as_slice());
             }
         }
     }
@@ -918,36 +800,6 @@ fn apply_batch_inner(
                     &domain,
                     *role,
                     metadata_uri,
-                    operator_sig,
-                    &mut operator_events,
-                )?;
-            }
-            KernelOp::UpdateOperator {
-                role,
-                metadata_uri,
-                operator_sig,
-            } => {
-                apply_update_operator(
-                    &mut state,
-                    &domain,
-                    *role,
-                    metadata_uri,
-                    operator_sig,
-                    &mut operator_events,
-                )?;
-            }
-            KernelOp::DeactivateOperator { operator_sig } => {
-                apply_deactivate_operator(
-                    &mut state,
-                    &domain,
-                    operator_sig,
-                    &mut operator_events,
-                )?;
-            }
-            KernelOp::ReactivateOperator { operator_sig } => {
-                apply_reactivate_operator(
-                    &mut state,
-                    &domain,
                     operator_sig,
                     &mut operator_events,
                 )?;

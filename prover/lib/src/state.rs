@@ -1,4 +1,4 @@
-use crate::types::{KernelStateSnapshot, OperatorRole, ProcessState};
+use crate::types::{KernelStateSnapshot, ProcessState};
 use alloy_primitives::{Address, B256, U256, keccak256};
 use std::collections::BTreeMap;
 
@@ -12,9 +12,10 @@ pub struct KernelState {
     pub order_process_id: BTreeMap<B256, B256>,
     // SchemaRegistry
     pub schemas_registered: BTreeMap<B256, bool>,
-    // OperatorRegistry
-    pub operator_roles: BTreeMap<Address, OperatorRole>,
-    pub operator_active: BTreeMap<Address, bool>,
+    // OperatorRegistry — dedup guard only (web2-strip 2026-04-26).
+    // Lifecycle flags + role storage removed; role + metadata travel only
+    // in the OperatorRegistered event.
+    pub operators_registered: BTreeMap<Address, bool>,
     // FIG emission
     pub emission_settlement_count: u64,
     pub emission_total_emitted: U256,
@@ -27,8 +28,7 @@ impl KernelState {
             order_status: BTreeMap::new(),
             order_process_id: BTreeMap::new(),
             schemas_registered: BTreeMap::new(),
-            operator_roles: BTreeMap::new(),
-            operator_active: BTreeMap::new(),
+            operators_registered: BTreeMap::new(),
             emission_settlement_count: 0,
             emission_total_emitted: U256::ZERO,
         }
@@ -41,12 +41,11 @@ impl KernelState {
             order_status: self.order_status.iter().map(|(k, v)| (*k, *v)).collect(),
             order_process_id: self.order_process_id.iter().map(|(k, v)| (*k, *v)).collect(),
             schemas_registered: self.schemas_registered.iter().map(|(k, v)| (*k, *v)).collect(),
-            operator_roles: self
-                .operator_roles
+            operators_registered: self
+                .operators_registered
                 .iter()
-                .map(|(addr, r)| (*addr, *r as u8))
+                .map(|(k, v)| (*k, *v))
                 .collect(),
-            operator_active: self.operator_active.iter().map(|(k, v)| (*k, *v)).collect(),
             emission_settlement_count: self.emission_settlement_count,
             emission_total_emitted: self.emission_total_emitted,
         }
@@ -59,12 +58,7 @@ impl KernelState {
             order_status: snap.order_status.iter().cloned().collect(),
             order_process_id: snap.order_process_id.iter().cloned().collect(),
             schemas_registered: snap.schemas_registered.iter().cloned().collect(),
-            operator_roles: snap
-                .operator_roles
-                .iter()
-                .map(|(addr, r)| (*addr, OperatorRole::from_u8(*r).unwrap_or(OperatorRole::None)))
-                .collect(),
-            operator_active: snap.operator_active.iter().cloned().collect(),
+            operators_registered: snap.operators_registered.iter().cloned().collect(),
             emission_settlement_count: snap.emission_settlement_count,
             emission_total_emitted: snap.emission_total_emitted,
         }
@@ -73,24 +67,21 @@ impl KernelState {
     /// Compute deterministic state root.
     ///
     /// `root = keccak256(processes_hash || status_hash || process_id_hash
-    ///                    || schemas_hash || operator_roles_hash || operator_active_hash
-    ///                    || emission_hash)`
+    ///                    || schemas_hash || operators_hash || emission_hash)`
     pub fn compute_root(&self) -> B256 {
         let ph = self.hash_processes();
         let sh = self.hash_order_status();
         let oh = self.hash_order_process_id();
         let sch = self.hash_schemas();
-        let orh = self.hash_operator_roles();
-        let oah = self.hash_operator_active();
+        let oph = self.hash_operators_registered();
         let emh = self.hash_emission();
 
-        let mut data = Vec::with_capacity(224);
+        let mut data = Vec::with_capacity(192);
         data.extend_from_slice(ph.as_slice());
         data.extend_from_slice(sh.as_slice());
         data.extend_from_slice(oh.as_slice());
         data.extend_from_slice(sch.as_slice());
-        data.extend_from_slice(orh.as_slice());
-        data.extend_from_slice(oah.as_slice());
+        data.extend_from_slice(oph.as_slice());
         data.extend_from_slice(emh.as_slice());
         keccak256(&data)
     }
@@ -141,20 +132,9 @@ impl KernelState {
         keccak256(&data)
     }
 
-    fn hash_operator_roles(&self) -> B256 {
+    fn hash_operators_registered(&self) -> B256 {
         let mut data = Vec::new();
-        for (k, v) in &self.operator_roles {
-            let mut addr_word = [0u8; 32];
-            addr_word[12..].copy_from_slice(k.as_slice());
-            data.extend_from_slice(&addr_word);
-            data.push(*v as u8);
-        }
-        keccak256(&data)
-    }
-
-    fn hash_operator_active(&self) -> B256 {
-        let mut data = Vec::new();
-        for (k, v) in &self.operator_active {
+        for (k, v) in &self.operators_registered {
             let mut addr_word = [0u8; 32];
             addr_word[12..].copy_from_slice(k.as_slice());
             data.extend_from_slice(&addr_word);

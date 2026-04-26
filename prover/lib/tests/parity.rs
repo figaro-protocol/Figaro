@@ -184,8 +184,7 @@ fn test_full_batch_commit_and_state() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operator_roles: vec![],
-            operator_active: vec![],
+            operators_registered: vec![],
             emission_settlement_count: 0,
             emission_total_emitted: U256::ZERO,
         },
@@ -259,8 +258,7 @@ fn test_full_batch_commit_resolve_payouts() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operator_roles: vec![],
-            operator_active: vec![],
+            operators_registered: vec![],
             emission_settlement_count: 0,
             emission_total_emitted: U256::ZERO,
         },
@@ -325,10 +323,9 @@ fn empty_snapshot() -> KernelStateSnapshot {
         order_status: vec![],
         order_process_id: vec![],
         schemas_registered: vec![],
-        operator_roles: vec![],
-        operator_active: vec![],
-            emission_settlement_count: 0,
-            emission_total_emitted: U256::ZERO,
+        operators_registered: vec![],
+        emission_settlement_count: 0,
+        emission_total_emitted: U256::ZERO,
     }
 }
 
@@ -502,14 +499,10 @@ fn test_register_operator() {
     let (pv, _positions, events) = apply_batch(&input).unwrap();
     assert_ne!(pv.prev_state_root, pv.new_state_root);
     assert_eq!(events.operators.len(), 1);
-    match &events.operators[0] {
-        OperatorEventData::Registered { operator, role, metadata_uri } => {
-            assert_eq!(*operator, SELLER1);
-            assert_eq!(*role, OperatorRole::Merchant as u8);
-            assert_eq!(metadata_uri, metadata);
-        }
-        _ => panic!("expected Registered event"),
-    }
+    let OperatorEventData::Registered { operator, role, metadata_uri } = &events.operators[0];
+    assert_eq!(*operator, SELLER1);
+    assert_eq!(*role, OperatorRole::Merchant as u8);
+    assert_eq!(metadata_uri, metadata);
 }
 
 #[test]
@@ -573,238 +566,12 @@ fn test_register_operator_invalid_role_fails() {
     assert!(matches!(err, KernelError::InvalidOperatorRole));
 }
 
-#[test]
-fn test_update_operator() {
-    let operator_key = make_signing_key(SELLER1_KEY);
-    let domain = domain_separator(CHAIN_ID, CORE);
-
-    // Register first
-    let reg_struct = register_operator_struct_hash(OperatorRole::Merchant as u8, "ipfs://v1");
-    let reg_digest = typed_data_hash(&domain, &reg_struct);
-    let reg_sig = sign_digest(&operator_key, &reg_digest);
-
-    // Then update
-    let upd_struct = update_operator_struct_hash(OperatorRole::Both as u8, "ipfs://v2");
-    let upd_digest = typed_data_hash(&domain, &upd_struct);
-    let upd_sig = sign_digest(&operator_key, &upd_digest);
-
-    let input = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![
-            KernelOp::RegisterOperator {
-                role: OperatorRole::Merchant,
-                metadata_uri: "ipfs://v1".to_string(),
-                operator_sig: reg_sig,
-            },
-            KernelOp::UpdateOperator {
-                role: OperatorRole::Both,
-                metadata_uri: "ipfs://v2".to_string(),
-                operator_sig: upd_sig,
-            },
-        ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
-
-    let (_pv, _positions, events) = apply_batch(&input).unwrap();
-    assert_eq!(events.operators.len(), 2);
-    match &events.operators[1] {
-        OperatorEventData::Updated { operator, role, metadata_uri } => {
-            assert_eq!(*operator, SELLER1);
-            assert_eq!(*role, OperatorRole::Both as u8);
-            assert_eq!(metadata_uri, "ipfs://v2");
-        }
-        _ => panic!("expected Updated event"),
-    }
-}
-
-#[test]
-fn test_deactivate_reactivate_operator() {
-    let operator_key = make_signing_key(SELLER1_KEY);
-    let domain = domain_separator(CHAIN_ID, CORE);
-
-    // Register
-    let reg_struct = register_operator_struct_hash(OperatorRole::Driver as u8, "ipfs://driver");
-    let reg_sig = sign_digest(&operator_key, &typed_data_hash(&domain, &reg_struct));
-
-    // Deactivate
-    let deact_struct = deactivate_operator_struct_hash();
-    let deact_sig = sign_digest(&operator_key, &typed_data_hash(&domain, &deact_struct));
-
-    // Reactivate
-    let react_struct = reactivate_operator_struct_hash();
-    let react_sig = sign_digest(&operator_key, &typed_data_hash(&domain, &react_struct));
-
-    let input = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![
-            KernelOp::RegisterOperator {
-                role: OperatorRole::Driver,
-                metadata_uri: "ipfs://driver".to_string(),
-                operator_sig: reg_sig,
-            },
-            KernelOp::DeactivateOperator {
-                operator_sig: deact_sig,
-            },
-            KernelOp::ReactivateOperator {
-                operator_sig: react_sig,
-            },
-        ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
-
-    let (_pv, _positions, events) = apply_batch(&input).unwrap();
-    assert_eq!(events.operators.len(), 3);
-    assert!(matches!(events.operators[0], OperatorEventData::Registered { .. }));
-    assert!(matches!(events.operators[1], OperatorEventData::Deactivated { .. }));
-    assert!(matches!(events.operators[2], OperatorEventData::Reactivated { .. }));
-}
-
-#[test]
-fn test_deactivate_unregistered_fails() {
-    let operator_key = make_signing_key(SELLER1_KEY);
-    let domain = domain_separator(CHAIN_ID, CORE);
-
-    let deact_struct = deactivate_operator_struct_hash();
-    let deact_sig = sign_digest(&operator_key, &typed_data_hash(&domain, &deact_struct));
-
-    let input = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![KernelOp::DeactivateOperator {
-            operator_sig: deact_sig,
-        }],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
-
-    let err = apply_batch(&input).unwrap_err();
-    assert!(matches!(err, KernelError::OperatorNotRegistered));
-}
-
-#[test]
-fn test_update_deactivated_operator_fails() {
-    let operator_key = make_signing_key(SELLER1_KEY);
-    let domain = domain_separator(CHAIN_ID, CORE);
-
-    // Register
-    let reg_struct = register_operator_struct_hash(OperatorRole::Merchant as u8, "ipfs://v1");
-    let reg_sig = sign_digest(&operator_key, &typed_data_hash(&domain, &reg_struct));
-
-    // Deactivate
-    let deact_struct = deactivate_operator_struct_hash();
-    let deact_sig = sign_digest(&operator_key, &typed_data_hash(&domain, &deact_struct));
-
-    // Attempt update while deactivated
-    let upd_struct = update_operator_struct_hash(OperatorRole::Both as u8, "ipfs://v2");
-    let upd_sig = sign_digest(&operator_key, &typed_data_hash(&domain, &upd_struct));
-
-    let input = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![
-            KernelOp::RegisterOperator {
-                role: OperatorRole::Merchant,
-                metadata_uri: "ipfs://v1".to_string(),
-                operator_sig: reg_sig,
-            },
-            KernelOp::DeactivateOperator {
-                operator_sig: deact_sig,
-            },
-            KernelOp::UpdateOperator {
-                role: OperatorRole::Both,
-                metadata_uri: "ipfs://v2".to_string(),
-                operator_sig: upd_sig,
-            },
-        ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
-
-    let err = apply_batch(&input).unwrap_err();
-    assert!(matches!(err, KernelError::OperatorNotActive));
-}
-
-#[test]
-fn test_double_deactivate_fails() {
-    let operator_key = make_signing_key(SELLER1_KEY);
-    let domain = domain_separator(CHAIN_ID, CORE);
-
-    // Register
-    let reg_struct = register_operator_struct_hash(OperatorRole::Driver as u8, "ipfs://driver");
-    let reg_sig = sign_digest(&operator_key, &typed_data_hash(&domain, &reg_struct));
-
-    // Deactivate twice
-    let deact_struct = deactivate_operator_struct_hash();
-    let deact_sig1 = sign_digest(&operator_key, &typed_data_hash(&domain, &deact_struct));
-    let deact_sig2 = sign_digest(&operator_key, &typed_data_hash(&domain, &deact_struct));
-
-    let input = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![
-            KernelOp::RegisterOperator {
-                role: OperatorRole::Driver,
-                metadata_uri: "ipfs://driver".to_string(),
-                operator_sig: reg_sig,
-            },
-            KernelOp::DeactivateOperator {
-                operator_sig: deact_sig1,
-            },
-            KernelOp::DeactivateOperator {
-                operator_sig: deact_sig2,
-            },
-        ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
-
-    let err = apply_batch(&input).unwrap_err();
-    assert!(matches!(err, KernelError::OperatorAlreadyDeactivated));
-}
-
-#[test]
-fn test_reactivate_active_operator_fails() {
-    let operator_key = make_signing_key(SELLER1_KEY);
-    let domain = domain_separator(CHAIN_ID, CORE);
-
-    // Register (starts active)
-    let reg_struct = register_operator_struct_hash(OperatorRole::Merchant as u8, "ipfs://m");
-    let reg_sig = sign_digest(&operator_key, &typed_data_hash(&domain, &reg_struct));
-
-    // Reactivate without deactivating first
-    let react_struct = reactivate_operator_struct_hash();
-    let react_sig = sign_digest(&operator_key, &typed_data_hash(&domain, &react_struct));
-
-    let input = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![
-            KernelOp::RegisterOperator {
-                role: OperatorRole::Merchant,
-                metadata_uri: "ipfs://m".to_string(),
-                operator_sig: reg_sig,
-            },
-            KernelOp::ReactivateOperator {
-                operator_sig: react_sig,
-            },
-        ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
-
-    let err = apply_batch(&input).unwrap_err();
-    assert!(matches!(err, KernelError::OperatorAlreadyActive));
-}
+// Web2-strip (2026-04-26): tests for UpdateOperator / DeactivateOperator /
+// ReactivateOperator / their failure modes (OperatorNotActive,
+// OperatorAlreadyDeactivated, OperatorAlreadyActive) deleted along with
+// the corresponding KernelOp variants. To switch role or metadata, an
+// operator now withdraws (off-chain via the contract's withdraw()) and
+// re-registers — the dedup guard is cleared on withdraw, not via batch.
 
 // ── Attestation tests ─────────────────────────────────────────────
 
@@ -1338,8 +1105,12 @@ fn test_genesis_root_print() {
     let root = state.compute_root();
     let root_hex = format!("0x{}", alloy_primitives::hex::encode(root.as_slice()));
     eprintln!("GENESIS ROOT: {}", root_hex);
+    // Web2-strip (2026-04-26): genesis root changed when operator_roles +
+    // operator_active state fields were collapsed into operators_registered.
+    // This breaks any pre-existing batch proofs — devnet only, no mainnet
+    // impact. The new constant is the source of truth going forward.
     assert_eq!(
         root_hex,
-        "0x10fc52ca200d9d5568c46b8435274d86183f39c5a9d8648b4006ec68f8058bc9"
+        "0xb34b2328216876a2c527c2ebb375154610b36152deea0efb43bf73d4689e662e"
     );
 }

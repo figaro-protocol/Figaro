@@ -1,0 +1,939 @@
+% Figaro Paper C: The Figaro Kernel — A Verified Solidity Implementation
+% Implementation + verification snapshot. The mechanism is presented in
+% the companion paper figaro3a.tex; organizational implications appear
+% in figaro3b.tex.
+% Snapshot: 2026-04-23
+
+\documentclass[11pt,a4paper]{article}
+
+% ── Packages ────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+
+% ── Theorem environments ────────────────────────────────────────────
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% ── Listings config ─────────────────────────────────────────────────
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\bfseries\color{blue!70!black},
+  commentstyle=\itshape\color{gray},
+  frame=single,
+  breaklines=true,
+  captionpos=b,
+}
+
+% ── Macros ──────────────────────────────────────────────────────────
+\newcommand{\figaro}{\textsc{Figaro}}
+\newcommand{\pay}{P}
+\newcommand{\cumval}{G}
+\newcommand{\bbond}{C_b}
+\newcommand{\sbond}{C_s}
+
+% ────────────────────────────────────────────────────────────────────
+
+\title{%
+  The \figaro{} Kernel:\\
+  A Verified Solidity Implementation of Asymmetric Bonding%
+}
+
+\author{
+  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+}
+
+\date{April 2026 (snapshot: 2026-04-23)}
+
+\begin{document}
+
+\maketitle
+
+% ════════════════════════════════════════════════════════════════════
+\begin{abstract}
+We describe a reference Solidity implementation of the
+asymmetric-bonding settlement mechanism developed
+in~\citep{daliana2026mechanism}, together with the formal-verification
+stack used to audit it. The kernel (\texttt{FigaroCore}) is
+\textbf{ownerless, fee-less, and admin-less}: two external functions,
+three storage mappings, no upgrade path, no escape hatch from the
+bonded state. Verification is layered: TLA\textsuperscript{+} model
+checking exhaustively explores 6{,}087{,}113 distinct states across
+seven kernel invariants; Echidna fuzzes seven property invariants
+under a 50{,}000-call campaign budget; Halmos symbolically proves
+seven kernel properties via the z3 SMT solver; Certora cloud proves
+twenty-four declared CVL rules (twenty-five sub-rules in the cloud
+report) across the kernel, the attestation surface, and a
+token-operations conservation surface that gates every ERC-20 call
+site in the source tree.
+
+The implementation also realizes a \emph{coordinator pattern}: an
+extension discipline under which external mechanisms (Dutch auction,
+schema-typed attestation coordinator, schema and operator registries)
+compose with the kernel without weakening the bonding equilibrium
+of~\citep{daliana2026mechanism}. We give the four sufficient
+conditions and three concrete instances. Finally, we describe the
+three-layer enforcement architecture---economic (bonding),
+coordinational (atomic resolution), evidentiary (immutable
+log)---and the threat model under which the layers compose.
+
+This paper is a snapshot at commit-of-record 2026-04-23. Verification
+counts will grow as the test surface expands; the methodology is the
+stable artifact.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:}
+smart contracts, formal verification, TLA\textsuperscript{+}, Halmos,
+Certora, Echidna, EIP-712, settlement layer, coordinator pattern
+
+% ════════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+The asymmetric-bonding mechanism developed
+in~\citep{daliana2026mechanism} establishes that, given a settlement
+layer with the operations \texttt{commit} and \texttt{resolveProcess},
+cooperation is the unique outcome surviving iterated elimination of
+weakly dominated strategies in an $N$-party process tree. The
+mechanism is implementation-agnostic. This paper presents one
+implementation of the mechanism---a Solidity smart contract
+\texttt{FigaroCore} on the EVM---and the verification methodology
+applied to it.
+
+The core property the verification is asked to deliver is precisely
+the gap between mechanism and code: the mechanism's theorems hold
+\emph{by assumption} that the settlement layer enforces buyer
+dominance, monotonic accumulation, and atomic resolution. The code
+must \emph{actually} enforce them, in every reachable path, against
+all reasonable adversaries. Bridging that gap is the work of the
+verification stack.
+
+\paragraph{What verification does and does not transfer from the mechanism paper.}
+A distinction worth naming up front: the companion mechanism paper
+proves \emph{equilibrium} properties of a bonding game --- that
+cooperation weakly dominates defection at every position in an
+$N$-party process tree, under specified rationality assumptions.
+The present paper verifies \emph{structural preconditions} that
+those equilibrium properties assume --- buyer dominance, monotonic
+accumulation, atomic resolution, conservation of value. These are
+different kinds of claim. The equilibrium itself is a property of
+rational play over a payoff structure; it is not a property of
+code and it is not verified by any of the four tools we apply.
+What we verify is that the code implements the payoff structure
+faithfully in every reachable path. When the companion
+cryptoeconomics paper~\citep{daliana2026fig} asserts that a
+token-emission policy ``preserves the kernel's bonding
+equilibrium,'' it is invoking the mechanism paper's equilibrium
+claim (which holds by rational play) and not the verification
+claim made here (which holds by code inspection). Keeping the two
+claims distinct matters for any reader who wants to know exactly
+which property is backed by which evidence.
+
+\paragraph{Brief recap of the mechanism.}
+For a transaction with payment $\pay$ and cumulative upstream value
+$\cumval \geq \pay$, the buyer locks $2\pay$ and the seller locks
+$2\cumval$. Only the buyer can trigger resolution; on resolution the
+buyer recovers $\pay$ and the seller recovers $2\cumval + \pay$. All
+orders within a process resolve atomically. The full game-theoretic
+treatment, including the two-party Nash result, the $N$-party
+generalization, the escape-hatch impossibility, and the reduction
+over joint-liability microfinance, is in~\citep{daliana2026mechanism}.
+
+\paragraph{Paper organization.}
+\Cref{sec:architecture} describes the contract architecture and the
+EIP-712 commitment protocol. \Cref{sec:non-decisions} catalogues the
+features deliberately absent from the kernel and ties each absence
+to a mechanism property it would have broken.
+\Cref{sec:verification-method} describes the four-layer verification
+methodology. \Cref{sec:verification-results} presents the current
+results. \Cref{sec:security} develops the threat model and
+three-layer enforcement architecture.
+\Cref{sec:composition} formulates the coordinator pattern and
+exhibits three concrete instances. \Cref{sec:conclusion} concludes
+with notes on agent-native operation and execution-environment
+portability.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Smart Contract Architecture}
+\label{sec:architecture}
+
+The kernel is a single Solidity 0.8.26 contract,
+\texttt{src/FigaroCore.sol}, inheriting OpenZeppelin's \texttt{EIP712}
+and \texttt{ReentrancyGuard}. It exposes two external functions:
+\texttt{commit} and \texttt{resolveProcess}. There is no constructor
+parameter, no owner, no admin, no upgrade path.
+
+\subsection{Storage Layout}
+
+Three mappings comprise the kernel state:
+\begin{itemize}
+  \item \texttt{processes}: \texttt{bytes32} $\to$
+    \texttt{ProcessState}, where \texttt{ProcessState} is a struct of
+    \texttt{(address rootBuyer, IERC20 currency, uint256
+    cumulativeValue, uint256 activeOrderCount)}.
+  \item \texttt{orderStatus}: \texttt{bytes32} $\to$ \texttt{uint8}
+    encoding $\{0:\text{unknown}, 1:\text{committed},
+    2:\text{resolved}\}$. The status function is monotonically
+    non-decreasing; this is one of the verified invariants.
+  \item \texttt{orderProcessId}: \texttt{bytes32} $\to$
+    \texttt{bytes32} recording each order's process membership.
+\end{itemize}
+
+The kernel deliberately does not store a per-order struct. Order
+terms (payment, cumulative-value snapshot, parties, denomination) are
+reconstructed off-chain from the signed commitment and the emitted
+\texttt{OrderCommitted} event. Bond amounts ($2\pay$ for the buyer,
+$2\cumval$ for the seller) are deterministic functions of those
+values rather than separate storage variables. Storage is therefore
+$O(\text{processes}) + O(\text{orders})$ uint8 + $O(\text{orders})$
+bytes32, with no order-payload duplication.
+
+\subsection{Commitment Protocol}
+
+Both parties sign an EIP-712 typed commitment~\citep{eip712}
+off-chain. A single on-chain \texttt{commit} call verifies both
+signatures (via \texttt{ECDSA.recover} against the EIP-712 digest)
+and pulls both bonds atomically. Root commitments create a new
+process; sub-order commitments extend an existing one by carrying
+the inherited \texttt{processId} and the next expected cumulative
+value. This eliminates the accept-reject pattern of traditional
+escrow protocols (which front-run on acceptance) and makes the act
+of committing simultaneous from the chain's point of view.
+
+\subsection{Identifier Derivation}
+
+Process and order identifiers are content-addressed:
+\begin{align}
+  \text{processId} &= H_{\text{EIP-712}}(\text{root commitment}), \\
+  \text{orderHash} &= \mathrm{keccak256}(\text{processId} \;\|\; \text{structHash}).
+\end{align}
+The EIP-712 domain separator binds the root identifier to chain id
+and verifying contract, preventing replay across deployments. Sub-orders
+inherit \texttt{processId} from the signed commitment. No
+auto-incrementing counter exists; identifier collisions require
+SHA-3 collisions.
+
+\subsection{Fee-on-Transfer Protection}
+
+The internal helper \texttt{\_pullExact(IERC20 token, address from,
+uint256 amount)} reads the contract's pre-transfer balance, calls
+\texttt{safeTransferFrom}, and reverts with
+\texttt{FeeOnTransferDetected} if
+$\texttt{balanceAfter} - \texttt{balanceBefore} \neq
+\texttt{amount}$. This ensures the conservation law cannot be broken
+by tokens that apply a transfer tax---a class of issues that has
+silently corrupted accounting in several DeFi systems.
+
+\subsection{Events}
+
+Five events are emitted, supporting full off-chain state
+reconstruction without a subgraph dependency:
+
+\begin{itemize}
+  \item \texttt{OrderCommitted} carries the canonical commitment
+    payload --- ten fields:
+    \texttt{orderHash}, \texttt{processId}, \texttt{buyer},
+    \texttt{seller}, \texttt{currency}, \texttt{payment},
+    \texttt{cumulativeValue}, \texttt{agreementHash},
+    \texttt{salt}, \texttt{deadline}. The \texttt{salt} and
+    \texttt{deadline} fields are what enable the SDK's
+    \texttt{reconstruct()} primitive to derive the EIP-712 digest
+    deterministically from event logs alone.
+  \item \texttt{OrderSeller} and \texttt{OrderCurrency} are
+    companion events that index the seller and currency
+    respectively---needed because the EVM caps indexed event
+    arguments at three.
+  \item \texttt{OrderResolved} fires once per order at resolution.
+  \item \texttt{ProcessResolved} fires once per process at
+    resolution, with the order count.
+\end{itemize}
+
+A reader who replays the four event types into a state machine
+exactly reconstructs \texttt{processes}, \texttt{orderStatus}, and
+\texttt{orderProcessId}---this is the basis of the SDK's
+\texttt{reconstruct()} primitive used by agents and frontends.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Design Non-Decisions}
+\label{sec:non-decisions}
+
+The following features are deliberately absent. Each absence
+preserves a mechanism property
+from~\citep{daliana2026mechanism}.
+
+\begin{enumerate}
+  \item \textbf{No owner, admin, or upgrade.} There is no
+    \texttt{pause()}, \texttt{upgrade()}, or \texttt{transferOwnership()}.
+    The contract is ownerless from deployment. Adding any of these would
+    introduce an unbonded actor (the owner) into the resolution path,
+    which the escape-hatch impossibility theorem rules out.
+  \item \textbf{No protocol fee.} Settlement distributes the full
+    bond amount to the parties. A fee at $k = 2$ would shift the
+    buyer's net cooperation payoff above the defection payoff
+    only by $\pay - \text{fee}$, narrowing the dominance margin and
+    --- if the fee approaches $\pay$ --- collapsing the equilibrium.
+  \item \textbf{No timeout.} An active order remains active
+    indefinitely. Per the escape-hatch impossibility theorem, any
+    timeout with recovery fraction $\alpha \geq \tfrac{1}{2}$ destroys
+    weak dominance for the buyer.
+  \item \textbf{No partial resolution.} The resolution function
+    requires the full active order list and reverts otherwise. This
+    enforces atomicity, on which the weakest-link coordination
+    pressure depends.
+  \item \textbf{No internal ledger.} Payouts are direct
+    \texttt{safeTransfer} calls, not balance increments to be
+    withdrawn later. This eliminates withdrawal-pattern reentrancy
+    surface and removes a class of accounting drift bugs.
+  \item \textbf{No restriction on buyer--seller equality.} The
+    contract does not forbid $B = S$. If a single address signs both
+    sides of a commitment, that address deposits both bonds and
+    receives both payouts at resolution; the bond math is
+    self-cancelling and no third party is exposed. We surface this
+    explicitly because it is a reasonable design question to ask of
+    every smart-contract escrow: in \texttt{FigaroCore}, the answer
+    is that the equilibrium analysis treats $B \neq S$ as the
+    standard case but the contract permits the degenerate case
+    rather than introducing a guard whose effect would be cosmetic.
+\end{enumerate}
+
+\subsection{Custom Errors as Specification}
+
+The kernel defines fifteen custom errors, each named for the
+invariant it protects: \texttt{DeadlineExpired},
+\texttt{InvalidBuyerSignature}, \texttt{InvalidSellerSignature},
+\texttt{ZeroPayment}, \texttt{ProcessAlreadyExists},
+\texttt{UnknownProcess}, \texttt{CumulativeValueMismatch(uint256
+expected, uint256 actual)}, \texttt{NotProcessBuyer},
+\texttt{CurrencyMismatch}, \texttt{OrderNotCommitted(bytes32
+orderHash)}, \texttt{NoActiveOrders},
+\texttt{IncompleteOrderList(uint256 required, uint256 provided)},
+\texttt{DuplicateCommitment}, \texttt{FeeOnTransferDetected},
+\texttt{InvalidRootCumulativeValue}.
+The error names function as a partial executable specification:
+each error is exercised by a Foundry revert-branch test and
+referenced by name in the verification-results section below.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Formal Verification Methodology}
+\label{sec:verification-method}
+
+We use four verification techniques, each chosen for what it covers
+that the others do not.
+
+\paragraph{TLA\textsuperscript{+} model checking (TLC).}
+Captures the full state machine as a single transition system.
+Invariants are propositional safety properties. TLC explores all
+reachable states under bounded parameters by breadth-first search,
+exhibiting either an invariant violation with a minimal trace or
+exhaustive coverage of the bounded space. Strength: high-level
+state-machine reasoning; abstracts cryptography and ERC-20 mechanics
+to expose accounting errors. Weakness: bounded by parameters; gives
+no guarantee for unbounded state.
+
+\paragraph{Property-based fuzzing (Echidna).}
+Runs randomized call sequences against the deployed bytecode under
+HEVM, with EIP-712 signing performed via cheatcodes. Strength:
+exercises real bytecode against concrete adversaries, including
+combinations of operations the model abstracts. Weakness: random
+sampling; finds bugs but does not prove their absence.
+
+\paragraph{Symbolic execution (Halmos, z3-backed).}
+Encodes call traces as SMT formulas and asks z3 whether any concrete
+input satisfies the negation of an invariant. Strength: when it
+returns \emph{verified}, the property holds for \emph{all} inputs in
+the modeled trace; complements Echidna's bounded random sampling
+with symbolic coverage of the commit/resolve state machine.
+Weakness: symbolic complexity blows up with control-flow depth;
+tractable on bounded path lengths.
+
+\paragraph{Specification checking (Certora).}
+SMT-based proving of CVL rules against the bytecode, run on
+Certora's cloud service. Strength: rules can quantify over methods
+(\texttt{method f}), allowing universal statements like ``no method
+modifies $X$''. Weakness: paid service; rule encoding is non-trivial.
+
+\paragraph{Foundry as the regression spine.}
+A Foundry test suite (14 files, 225 tests as of snapshot date)
+serves as the continuous-integration spine. Foundry tests are not
+counted toward formal verification but provide the harness the other
+three techniques compile against.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Verification Results}
+\label{sec:verification-results}
+
+All numbers in this section are reported against the snapshot at
+2026-04-23, repository commit
+\texttt{970ee3a914b2}\footnote{Pin to this commit when reproducing
+to guarantee identical bytecode; later commits may change call
+counts as the test surface evolves.}. Re-runs produce different
+fuzz-call counts; the configuration parameters (invariants, rule
+counts, model bounds) are the stable artifact.
+
+\subsection{TLA\textsuperscript{+} (\texttt{formal/FigaroCore.tla})}
+
+The contract is modeled in TLA\textsuperscript{+} with eight state
+variables (\texttt{processes}, \texttt{orderStatus},
+\texttt{orderRecords}, \texttt{processOrders},
+\texttt{contractBalance}, \texttt{wallets}, \texttt{nextProcId},
+\texttt{nextOrdId}) and three actions: \texttt{CommitRoot},
+\texttt{CommitSub}, \texttt{ResolveProcess}. The model abstracts
+EIP-712 signatures (assumed correct given valid commitments), ERC-20
+mechanics (modeled as integer balances), and timing (deadlines are
+orthogonal to the bonding equilibrium and are exercised in Foundry
+instead).
+
+\paragraph{Model bounds (\texttt{formal/MC.cfg}).}
+2 buyers ($b_1, b_2$), 2 sellers ($s_1, s_2$), initial balance 30,
+maximum payment 3, 2 concurrent processes, 2 sub-orders per process.
+Two buyers (rather than one) enable cross-buyer invariant
+verification---a single-buyer model would not exercise
+\texttt{NotProcessBuyer} branches reachable by an attacker buyer.
+
+\paragraph{Invariants verified.}
+Seven safety invariants verified exhaustively:
+\begin{enumerate}[label=\textbf{I\arabic*}]
+  \item \textbf{TypeOK}: type well-formedness of all state variables.
+  \item \textbf{TokenConservation}: sum of wallet balances plus
+    contract balance equals total supply.
+  \item \textbf{ContractSolvency}: \texttt{contractBalance} $\geq 0$.
+  \item \textbf{WalletNonNegative}: all participant balances $\geq 0$.
+  \item \textbf{CumulativeIntegrity}: per-process,
+    $\cumval$ equals the sum of all order payments.
+  \item \textbf{ActiveCountCorrect}: stored active-order count
+    matches the count of committed orders.
+  \item \textbf{ResolutionAlwaysPossible}: for every active process,
+    the contract holds sufficient funds to resolve all orders.
+\end{enumerate}
+
+\paragraph{Result.}
+6{,}087{,}113 distinct states explored in 4 minutes 8 seconds; zero
+invariant violations. Reproduced via \texttt{./test-tla.sh}.
+
+\subsection{Echidna (\texttt{src/echidna/EchidnaFuzzerV5.sol})}
+
+Seven property invariants, each prefixed \texttt{echidna\_}, checked
+after every call sequence:
+\begin{enumerate}[label=\textbf{E\arabic*}]
+  \item \texttt{solvency}: token balance $\geq$ sum of outstanding
+    bonds.
+  \item \texttt{active\_count\_consistent}: stored count equals
+    actual.
+  \item \texttt{cumulative\_accounting}: accumulator equals sum of
+    payments.
+  \item \texttt{state\_monotonicity}: orders never transition
+    backwards (0 $\to$ 1 $\to$ 2, never reverse).
+  \item \texttt{token\_conservation}: total supply constant under
+    all commit/resolve sequences.
+  \item \texttt{buyer\_dominance}: non-buyer \texttt{resolveProcess}
+    always reverts.
+  \item \texttt{atomic\_resolution}: incomplete order list always
+    reverts.
+\end{enumerate}
+
+\paragraph{Configuration (\texttt{echidna-v5.yaml}).}
+\texttt{testLimit: 50000} (campaign budget), \texttt{seqLen: 30},
+\texttt{shrinkLimit: 5000}, three deployer/sender accounts, property
+mode, 300-second wall-clock timeout. The Echidna campaign budget is
+the reproducibility anchor; raw call counts vary between runs.
+
+\paragraph{Result.}
+All seven properties held across the campaign; the most recent run
+exercised approximately 43{,}000 individual calls before the budget
+was exhausted, with no counterexample produced. Reproduced via
+\texttt{./test-echidna.sh}.
+
+\subsection{Halmos (\texttt{test/HalmosFigaroCore.t.sol})}
+
+Seven kernel properties, each implemented as a \texttt{check\_}
+function and discharged by z3 under symbolic-input quantification:
+\begin{enumerate}[label=\textbf{H\arabic*}]
+  \item \texttt{tokenConservation\_afterCommit}.
+  \item \texttt{contractSolvency\_afterCommit}.
+  \item \texttt{correctBondAmounts}: $\bbond = 2\pay$ and
+    $\sbond = 2\cumval$ for all symbolic $\pay$.
+  \item \texttt{resolutionPayouts}: $\pi_s = 2\cumval + \pay$ and
+    $\pi_b = \pay$ for all symbolic $\pay$.
+  \item \texttt{orderStatusTransition}: status moves only
+    $0 \to 1 \to 2$.
+  \item \texttt{buyerDominance\_revert}: any non-buyer caller of
+    \texttt{resolveProcess} reverts.
+  \item \texttt{cumulativeValueMonotonic}: across two symbolic
+    sub-order commitments, $\cumval$ never decreases.
+\end{enumerate}
+
+\paragraph{Result.}
+All seven discharged by z3. Reproduced via the Foundry profile
+\texttt{halmos} as documented in the repo.
+
+\subsection{Certora (\texttt{certora/})}
+
+Five specification files. We list the rule counts per surface and
+the headline rule for each.
+
+\paragraph{Kernel (\texttt{FigaroCore.spec}, 8 rules).}
+\texttt{orderStatusNeverDecreases},
+\texttt{orderStatusTransitionsAreValid},
+\texttt{commitIncreasesActiveCount},
+\texttt{onlyBuyerCanResolve},
+\texttt{noDoubleCommit},
+\texttt{cumulativeValueMonotonic},
+\texttt{rootBuyerImmutable},
+\texttt{currencyImmutable}.
+
+\paragraph{Attestation surface (\texttt{AttestationCoordinator.spec}, 9 rules).}
+Six role-gate rules:
+\texttt{nonBuyerCannotAttestAsBuyer},
+\texttt{unknownProcessRevertsAsBuyer},
+\texttt{successfulBuyerAttestationImpliesBuyer},
+\texttt{buyerAttestationEnforcesProcessBoundary},
+\texttt{attestationCannotChangeOrderStatus},
+\texttt{attestationCannotChangeProcessState}.
+Three validator-gate rules (verified on Certora cloud
+2026-04-23):
+\texttt{noValidatorBlocksBuyerAttestation},
+\texttt{setValidatorIsFirstWriteWins},
+\texttt{setValidatorPreservesOtherBindings}.
+
+\paragraph{Token-operations conservation (\texttt{TokenOpsVerification.spec}, 7 declared rules).}
+\texttt{commitBuyerExactDelta},
+\texttt{commitSellerExactDelta},
+\texttt{commitContractExactDelta},
+\texttt{commitAllowanceDrainSafety},
+\texttt{commitTokenConservation},
+\texttt{resolveSingleOrderPayout},
+\texttt{resolveSingleOrderConservation}.
+A regression guard for ``no untracked token moves'' is documented in
+the spec but is not itself a CVL rule. Certora's prover splits
+\texttt{resolveSingleOrderConservation} into two sub-cases, so the
+service report shows 8 sub-rules green for this spec.
+The token-ops surface is gated by a pre-run lint
+(\texttt{lint-token-ops.sh}, invoked from \texttt{test-certora.sh})
+that asserts the spec's inventory file enumerates every ERC-20
+\texttt{transfer}/\texttt{transferFrom}/\texttt{safeTransfer*} call
+site in \texttt{src/}. New transfer call sites without a matching
+inventory entry fail before any cloud dispatch.
+
+\paragraph{Other specs.}
+\texttt{StagedMerkleAirdrop.spec} (3 rules) covers the airdrop
+contract, and \texttt{FigToken.spec} (6 rules) covers the FIG token
+registry. Both are out of scope for the kernel claim of this paper
+but ship in the same repository and are verified together.
+
+\paragraph{Total Certora kernel-relevant rules.}
+$8 + 9 + 7 = 24$ declared rules across three specs (Certora reports
+25 sub-rules green when sub-case splits are counted). All
+discharged on Certora cloud as of the snapshot date.
+
+\subsection{Foundry Regression Spine}
+
+14 test suites, 225 tests (including
+\texttt{FigaroCoreRevertBranchTest} which targets every custom error
+listed in \Cref{sec:non-decisions}; \texttt{ParityVectors} which
+asserts EIP-712-digest parity between the SDK's TypeScript hash
+function and the on-chain implementation; and
+\texttt{FigaroCoreEventEmissionTest} which asserts every event field
+encodes as the SDK expects).
+
+\subsection{Scope of the Verification Claim}
+\label{sec:verification-scope}
+
+What this paper's verification establishes, in plain language for
+non-specialist readers: the Solidity source at commit
+\texttt{970ee3a914b2} has been audited by four different
+methodological approaches, and each approach has found that the
+source satisfies seven named properties within the bounds each
+approach explores. What this does \emph{not} establish:
+
+\begin{itemize}
+  \item \textbf{That the specification is the right specification.}
+    Verification checks code against a spec; it does not check
+    whether the spec captures what the author meant or what users
+    expect.
+  \item \textbf{That bytecode at a deployed address was compiled
+    from this commit.} The kernel's production deployment is a
+    separate act, performed by a separate party, using a compiler
+    under settings and dependency versions that this paper does
+    not pin. Reproducing the verified bytecode against a deployed
+    address requires standard contract-source-verification
+    tooling (Etherscan-style verification, sourcify, or
+    reproducible-build pipelines) which is out-of-scope here.
+    Relying parties should confirm the source-to-bytecode-to-address
+    chain independently.
+  \item \textbf{That the denomination token behaves.} The kernel
+    takes an arbitrary \texttt{IERC20}. If the chosen token's
+    issuer exercises blocklist, freeze, upgrade, or pause
+    authority over a party's bonded balance, the ``no escape
+    hatch'' property of the kernel is vacuously violated --- the
+    bond is still locked from the kernel's perspective, but it
+    is unreachable from the world's. Parties should treat the
+    choice of denomination token as a selection of whose escape
+    hatches to accept, not as an avoidance of escape hatches in
+    aggregate.
+  \item \textbf{That chain liveness and key custody persist.} If
+    the host chain halts, censors, or reorgs past finality, and
+    if either party loses or has compromised their signing key
+    during the process, the kernel has no recovery mechanism.
+    These are operational-security dependencies that sit above
+    the verified surface.
+\end{itemize}
+
+The honest summary is that verification reduces one class of risk
+(specification--implementation gap within the verified bounds) and
+displaces several others (specification correctness, deployment
+chain of custody, token-issuer authority, host-chain liveness, key
+custody) onto layers the paper does not itself verify. A
+practitioner or legal reader consuming these verification claims
+should treat them as input to due diligence, not as a substitute
+for it.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Security Analysis}
+\label{sec:security}
+
+\subsection{Threat Model}
+
+We assume rational adversaries who maximize economic payoff. We
+consider four attack vectors.
+
+\paragraph{Griefing (buyer refuses to resolve).}
+The attacker's cost is $2\pay$ (locked bond) plus opportunity cost on
+that capital plus permanent on-chain reputation damage. The attacker's
+benefit is zero. For rational agents, the attack is strictly
+dominated by cooperation. For irrational agents (spite exceeds
+economic loss), Layer~3 (below) provides deterrence: the immutable
+on-chain record serves as evidence in off-chain legal proceedings.
+
+\paragraph{Sybil (fake orders to manipulate state).}
+Each order requires real bond deposits totaling $2(\cumval_i +
+\pay_i)$ per order. At scale, Sybil attacks are capital-intensive
+with no path to extracting the invested capital---there is no
+secondary market for locked bonds, no yield, no governance influence.
+
+\paragraph{Front-running.}
+Order identifiers are content-addressed from the dual-signed
+commitment. An attacker who observes a pending \texttt{commit}
+transaction cannot create a conflicting order for the same process:
+producing a different signature changes the digest, which changes
+the order hash, so the front-runner's order would be a distinct
+order, not a conflicting one. No extractable MEV exists.
+
+\paragraph{Cumulative value manipulation.}
+Per the self-enforcing-DAG-honesty result
+in~\citep{daliana2026mechanism}, overstating cumulative value is
+strictly dominated (greater capital at risk, same payoff).
+Understating is prevented by the contract's monotonic accumulator
+check (\texttt{CumulativeValueMismatch} revert).
+
+\subsection{Liveness}
+
+\begin{theorem}[Liveness Under Rationality]
+\label{thm:liveness}
+Let $B$ be a buyer with time-discounted utility
+$U_B = \sum_{t=0}^{\infty} \delta^t \cdot u_t$ where
+$\delta \in (0, 1)$ is the discount factor and $u_t$ is the
+per-period payoff. If all sellers have cooperated (the buyer has
+received the agreed goods), then the buyer resolves in finite time.
+\end{theorem}
+
+\begin{proof}
+The buyer's payoff under \emph{resolve at $t^*$} is $\delta^{t^*}
+\sum_i \pay_i$; under \emph{never resolve} is $0$. Since
+$\delta \in (0,1)$ and $\pay_i > 0$, every finite $t^*$ strictly
+dominates non-resolution; the optimum is $t^* = 0$.
+\end{proof}
+
+\begin{remark}[Limitations]
+\label{rem:liveness-limitations}
+\Cref{thm:liveness} assumes (i)~the buyer received satisfactory
+performance, (ii)~$\delta < 1$, and (iii)~no spite. Condition (iii)
+is the hardest to guarantee. When it fails, the mechanism cannot
+guarantee liveness by economic incentives alone---the residual case
+is addressed by Layer~3 (legal deterrence via immutable on-chain
+evidence).
+\end{remark}
+
+\subsection{The Three-Layer Enforcement Architecture}
+
+\begin{table}[ht]
+\centering
+\caption{Defense-in-depth: three enforcement layers.}
+\label{tab:enforcement}
+\begin{tabular}{llll}
+\toprule
+\textbf{Layer} & \textbf{Mechanism} & \textbf{Coverage} & \textbf{Failure Mode} \\
+\midrule
+1. Bonding & Asymmetric collateral & Rational actors & Irrational actors \\
+2. Coordination & Atomic resolution & Multi-seller failures & Uncoordinated sellers \\
+3. Evidence & Immutable on-chain log & Adversarial actors & Jurisdictional limits \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Layer 1 (economic).}
+The bonding equilibrium of~\citep{daliana2026mechanism} handles
+rational participants; cooperation strictly dominates defection at
+every node.
+
+\paragraph{Layer 2 (coordinational).}
+Atomic resolution induces the weakest-link subgame; honest sellers
+have direct economic interest of magnitude $\pay_i + 2\cumval_i$ in
+ensuring co-sellers cooperate. No explicit communication is required.
+
+\paragraph{Layer 3 (evidentiary).}
+Every commitment, every bond deposit, every resolution (or its
+absence) is recorded with block timestamps. The kernel does not
+attempt on-chain dispute resolution; it provides the \emph{evidence}
+that off-chain dispute systems already accept.
+
+\subsection{Scope and Limitations}
+
+\paragraph{Liveness under non-rational failure.}
+Catastrophic non-rational failure (lost keys, hardware failure,
+participant death) imposes losses on co-sellers via atomic
+resolution regardless of incentive alignment. The
+coordination-pressure result assumes payoffs depend on co-sellers'
+\emph{choices}; failure is not a choice. Operational reliability
+under such failure depends on participant continuity practices (key
+management, multisig, delegated signing) that sit above the kernel
+and are out of scope.
+
+\paragraph{Capital opportunity cost.}
+At prevailing risk-free rate $r$ over process duration $t$, the
+buyer and seller forgo $r\pay t$ and $2r\cumval t$ respectively.
+Dominance is preserved at any $rt > 0$, but the operational margin
+narrows; the $2\times$ multiplier is sufficient as a matter of
+game-theoretic derivation, but the practical applicability favors
+processes short relative to the prevailing risk-free horizon.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Mechanism Composition: The Coordinator Pattern}
+\label{sec:composition}
+
+The kernel's bonding equilibrium is a fixed point. The natural next
+question---under what conditions does an external mechanism composed
+with the kernel preserve the equilibrium?---is answered, in this
+implementation, by the \emph{coordinator pattern}.
+
+\begin{proposition}[Coordinator Pattern --- Sufficient Conditions]
+\label{prop:coordinator}
+An external mechanism $M$ composed with \texttt{FigaroCore} preserves
+the bonding equilibrium of~\citep{daliana2026mechanism} if it
+satisfies:
+\begin{enumerate}[label=(\roman*)]
+  \item \textbf{Read-only kernel access}: $M$ interacts with kernel
+    state via \texttt{staticcall} or event consumption only.
+  \item \textbf{Role non-impersonation}: $M$ never calls
+    \texttt{commit} or \texttt{resolveProcess} on behalf of a buyer
+    or seller; signatures are originated by the parties themselves.
+  \item \textbf{Bond non-modification}: $M$ holds no kernel bonds
+    and does not interpose between the parties and the bond
+    transfers.
+  \item \textbf{No bypass}: $M$ does not provide an alternative
+    resolution path or escape from \texttt{Active}.
+\end{enumerate}
+\end{proposition}
+
+\Cref{prop:coordinator} is sufficient, not necessary; mechanisms
+that violate one of (i)--(iv) may still preserve the equilibrium
+under additional argument, but those arguments are per-mechanism.
+The four conditions are currently checked by inspection per
+extension contract rather than by a parametric Certora rule that
+quantifies over arbitrary $M$ --- see \Cref{sec:conclusion} for the
+verification status of this proposition. The envelope is the
+discipline that makes composition \emph{by construction} safe.
+We exhibit three instances.
+
+\paragraph{Dutch auction (\texttt{src/DutchAuction.sol}).}
+A descending-price coordination primitive that performs role
+allocation: who may become the seller for a given root commitment.
+The auction holds no tokens, custodies no bonds, and never calls
+\texttt{commit}. The auction's winner subsequently signs an
+EIP-712 commitment off-chain and the parties execute \texttt{commit}
+themselves. Conditions (i)--(iv) hold by construction.
+
+\paragraph{Attestation coordinator (\texttt{src/AttestationCoordinator.sol}).}
+A unified zero-storage attestation surface, validator-gated per
+\texttt{schemaId}. Three modes: \texttt{attestAsSeller},
+\texttt{attestAsBuyer}, \texttt{attestViaResolver}. Each call
+verifies role membership against the kernel's
+\texttt{ProcessState.rootBuyer} (or against an
+\texttt{IRoleResolver} for the resolver path), runs
+\texttt{schemaValidator[schemaId].validate(...)} on the content, and
+emits an \texttt{Attestation} event whose \texttt{contentRef} is
+$\mathrm{keccak256}(\text{content})$. The coordinator never modifies
+kernel state---this is the headline Certora rule
+\texttt{attestationCannotChangeOrderStatus} and its sibling
+\texttt{attestationCannotChangeProcessState}, both verified
+exhaustively. Conditions (i)--(iv) hold; the coordinator is the
+cleanest example of an event-only extension.
+
+\paragraph{Schema and operator registries (\texttt{src/SchemaRegistry.sol}, \texttt{src/OperatorRegistry.sol}).}
+Permissionless, append-only event-first registries. The schema
+registry anchors content schemas as \texttt{keccak256(name)} with a
+URI hash pointing at the off-chain JSON spec. The operator registry
+is on-chain operator self-registration with a reclaimable ETH
+deposit. Both compose with the kernel by being visible to readers
+and not being callable by \texttt{commit} or
+\texttt{resolveProcess}. Conditions (i)--(iv) hold; both registries
+are pure coordination surfaces with no kernel interaction at all.
+
+\paragraph{What this gives.}
+\Cref{prop:coordinator} is the discipline used to evaluate every
+proposed extension. A mechanism that satisfies all four conditions
+can be composed without re-doing the equilibrium proof; a mechanism
+that violates one of them requires explicit mechanism-level argument
+and re-verification. In the reference implementation, all five
+extension contracts shipped to date satisfy
+\Cref{prop:coordinator} by construction.
+
+\paragraph{A note on liability allocation when conditions fail.}
+The verification status of \Cref{prop:coordinator} is important
+for legal readers: the four conditions are presently checked by
+inspection per extension contract rather than by a parametric
+Certora rule that quantifies over arbitrary $M$ (see
+\Cref{sec:conclusion} for the verification gap this leaves open).
+If an extension contract silently violates condition (i), (ii),
+(iii), or (iv) and a downstream user is harmed when the kernel
+equilibrium breaks for that composition, the kernel verification
+in this paper does not extend to the resulting harm. Liability in
+such a case is allocated by the legal regime governing the
+extension deployer's conduct, the audit artifacts (or their
+absence) accompanying the extension, and the disclosures made to
+users --- all of which sit outside the kernel and are treated in
+the law-and-evidence companion~\citep{daliana2026legal}. The
+kernel claims it is correct; it does not claim that every
+extension built against it is correct, nor does it claim that
+the legal chain from kernel correctness to user remedy is
+closed.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+We have presented a verified Solidity implementation of the
+asymmetric-bonding mechanism of~\citep{daliana2026mechanism}: an
+ownerless, fee-less kernel of two functions and three mappings, with
+a four-layer verification stack (TLA\textsuperscript{+}, Echidna,
+Halmos, Certora) that exercises the same invariants from four
+methodological directions. The coordinator pattern of
+\Cref{sec:composition} provides a discipline for extending the
+kernel without weakening its equilibrium.
+
+\paragraph{Agent-native operation.}
+The kernel is designed for autonomous agent participation as a
+first-class concern. EIP-712 typed commitments allow agents to
+build, verify, and sign structured data using standard libraries.
+Event-sourced state reconstruction means agents can derive the
+complete process graph from on-chain logs without subgraph
+dependencies. The companion SDK exposes a typed action proposer
+(\texttt{proposeActions}) and a dual-mode execution queue
+(\texttt{ActionQueue}) that supports both human-in-the-loop approval
+and fully autonomous submission. Nothing in the kernel
+distinguishes a human signer from an autonomous agent: the bonding
+equilibrium holds for any rational actor capable of controlling an
+address and bearing capital risk.
+
+\paragraph{Execution-environment portability.}
+A Cairo/Starknet port of the kernel is in progress. The mechanism is
+execution-environment-agnostic; what varies between EVM and Cairo is
+the cryptographic primitive (ECDSA vs.\ STARK signatures), the
+storage cost model, and the event surface. The verification stack
+must be re-instantiated per environment: TLA\textsuperscript{+} and
+Certora rules are mostly portable (state-machine reasoning); Halmos
+is EVM-specific; Echidna ditto. The conformance specification
+between EVM and Cairo is the SP1 prover's Rust kernel, which mirrors
+the TS validator and Solidity hashing byte-for-byte.
+
+\paragraph{Verification gaps the present snapshot does not close.}
+The Echidna corpus is accumulated but not minimized; corpus
+maintenance is a continuous task, not a release event.
+\Cref{prop:coordinator} is currently asserted at the implementation
+level (the four conditions are checked by inspection per extension
+contract); a formal Certora rule that checks
+``$M$ does not call \texttt{commit}'' for arbitrary $M$ has not yet
+been authored. A future revision of this snapshot will include it,
+along with the reverse direction (no kernel storage write reachable
+from any extension entry point).
+
+\paragraph{The deeper claim: defense in depth, not a probability bound.}
+Beyond the headline numbers, the value of the verification stack
+is that four methodologically different proofs converge on the
+same seven properties (token conservation, solvency, bond
+correctness, status monotonicity, buyer dominance, cumulative
+monotonicity, atomic resolution). We present this as
+\emph{defense in depth}: a bug that survives all four toolchains
+must be consistent with the bounded-exhaustive exploration of
+TLA\textsuperscript{+}, the property-level random sampling of
+Echidna, the symbolic-input discharge of Halmos, and the
+method-quantified SMT rules of Certora. We do not attempt a
+formal probability bound on residual error: Halmos and Certora
+both lean on the z3 SMT solver, which breaks the independence
+assumption any probabilistic bound would require, and the prior
+distribution over kernel-invariant violations in this toolchain
+ecosystem is not characterized in the literature. The honest
+statement is that four methodologically distinct proofs agreeing
+provides substantially stronger assurance than any one alone, not
+that the residual probability is bounded above by any particular
+value. The stack reduces risk; it does not retire it.
+
+\section*{Acknowledgments}
+The verification surface described here owes its current shape to
+many hands. I want in particular to acknowledge Vitalik Buterin for
+the Safe Remote Purchase primitive that seeded the work, Vlad Zamfir
+for the mechanism-design lens that made the generalization legible,
+Fabrizio Romano Genovese for his contributions to \figaro{}, the
+Coalition of Automated Legal Applications (COALA), and the
+maintainers of TLA\textsuperscript{+}, Echidna, Halmos, and Certora.
+
+
+% ════════════════════════════════════════════════════════════════════
+% References
+% ════════════════════════════════════════════════════════════════════
+
+\begin{thebibliography}{99}
+
+\bibitem[Daliana(2026a)]{daliana2026mechanism}
+Daliana, A.
+\newblock Asymmetric Bonding: A Self-Enforcing Settlement Primitive
+  for $N$-Party Coordination.
+\newblock Companion mechanism-design paper, 2026.
+
+\bibitem[Daliana(2026b)]{daliana2026legal}
+Daliana, A.
+\newblock On-Chain Evidence, Off-Chain Adjudication: A Layered
+  Approach to Smart-Contract Dispute Resolution.
+\newblock Companion law-and-evidence paper, 2026.
+
+\bibitem[Daliana(2026c)]{daliana2026fig}
+Daliana, A.
+\newblock \textsc{Fig}: A Coordination Token Decoupled from
+  Protocol Activity.
+\newblock Companion cryptoeconomics paper, 2026.
+
+\bibitem[EIP-712(2017)]{eip712}
+Bloemen, R., Logvinov, L., and Evans, J.
+\newblock {EIP-712}: Ethereum typed structured data hashing and signing.
+\newblock Ethereum Improvement Proposal, 2017.
+\newblock \url{https://eips.ethereum.org/EIPS/eip-712}
+
+\end{thebibliography}
+
+\end{document}

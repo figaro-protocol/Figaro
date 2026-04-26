@@ -170,34 +170,6 @@ pub fn register_operator_struct_hash(role: u8, metadata_uri: &str) -> B256 {
     keccak256(&data)
 }
 
-/// Struct hash for operator profile update authorization.
-/// `UpdateOperator(uint8 role,string metadataURI)`
-pub fn update_operator_struct_hash(role: u8, metadata_uri: &str) -> B256 {
-    let type_hash = keccak256(b"UpdateOperator(uint8 role,string metadataURI)");
-    let uri_hash = keccak256(metadata_uri.as_bytes());
-    let mut data = Vec::with_capacity(96);
-    data.extend_from_slice(type_hash.as_slice());
-    data.extend_from_slice(&alloy_primitives::U256::from(role).to_be_bytes::<32>());
-    data.extend_from_slice(uri_hash.as_slice());
-    keccak256(&data)
-}
-
-/// Struct hash for operator deactivation authorization.
-/// `DeactivateOperator()` — empty struct, only the signature
-/// identifies the operator.
-pub fn deactivate_operator_struct_hash() -> B256 {
-    let type_hash = keccak256(b"DeactivateOperator()");
-    // Empty struct: hash is just the typehash itself
-    keccak256(type_hash.as_slice())
-}
-
-/// Struct hash for operator reactivation authorization.
-/// `ReactivateOperator()` — empty struct.
-pub fn reactivate_operator_struct_hash() -> B256 {
-    let type_hash = keccak256(b"ReactivateOperator()");
-    keccak256(type_hash.as_slice())
-}
-
 // ── Typed data hash ───────────────────────────────────────────────
 
 /// `keccak256("\x19\x01" || domainSeparator || structHash)`

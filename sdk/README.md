@@ -11,7 +11,7 @@ agent coordination, and protocol extension utilities. Single dependency: `viem`.
 npm install @figaro/core
 ```
 
-## Three Entry Points
+## Four Entry Points
 
 ### `@figaro/core` — Protocol Primitives
 
@@ -124,9 +124,22 @@ const eval = evaluateClaim(maxPrice, floorBps, duration, startTime, now, false);
 // → { currentPrice, floorPrice, savingsVsMax, discountPct, secondsToFloor, claimable }
 
 // GHG disclosure: derive schema ID, build process summary
-const schemaId = computeSchemaId("figaro-ghg-disclosure-v1");
+// Standard identity is the schemaId — pick a sister schema (figaro-ghg-protocol-v1,
+// figaro-ghg-iso-14064-v1, figaro-ghg-pas-2050-v1, figaro-ghg-en-16258-v1, figaro-ghg-custom-v1).
+const schemaId = computeSchemaId("figaro-ghg-iso-14064-v1");
 const summary = buildProcessDisclosureSummary(attestations, processId, schemaId);
 // → { attestationCount, commitmentCount, inventoryCount, totalActualGrams }
+
+// Indexer hygiene: filter raw event logs by source contract before processing.
+// Required when consuming events that FigaroBatchVerifier re-emits with the
+// same topic hash as the direct-path contract (Attestation, SchemaRegistered,
+// MechanismSchemaSet, OperatorRegistered, etc.). Without this, batch and
+// direct emissions get conflated.
+const allLogs = await client.getLogs({ event: EV_ATTESTATION, fromBlock, toBlock });
+const direct  = filterLogsBySource(allLogs, attestationCoordinatorAddress);
+const batched = filterLogsBySource(allLogs, batchVerifierAddress);
+// Or accept both:
+const both    = filterLogsBySource(allLogs, [attestationCoordinatorAddress, batchVerifierAddress]);
 
 // Geo: check delivery proximity
 const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix match)
@@ -139,6 +152,43 @@ if (document) {
   // → true if the DID Document contains a verification method for this address
 }
 ```
+
+### `@figaro/core/schemas` — Schema-Spec Format + Content Validation
+
+Single source of truth that all three Figaro validation layers parse
+identically: client (this module), SP1 prover (Rust mirror, pending),
+on-chain `ISchemaValidator` contracts.
+
+```ts
+import {
+  parseSchemaSpec,
+  validateContent,
+  encodeHandoffContent,
+  encodeCommerceContent,
+  // ... encoders for the 9 runtime-attestable figaro-eats schemas
+  // (topology is manifest-only and has no ABI encoder)
+} from "@figaro/core/schemas";
+
+// 1. Parse a schema spec (typically fetched from IPFS)
+const parsed = parseSchemaSpec(specJson);
+if (!parsed.ok) throw new Error(parsed.errors[0].message);
+
+// 2. Validate content against the spec (closed schemas: unknown fields rejected)
+const result = validateContent(
+  { mode: "face-to-face" },
+  parsed.spec,
+);
+
+// 3. Encode TS content for the on-chain attestation call
+const bytes = encodeHandoffContent("face-to-face");
+// Pass `bytes` as the `content` arg to AttestationCoordinator.attestAs{Seller,Buyer}.
+// The on-chain validator re-decodes it and reverts if invalid.
+```
+
+Format is a closed subset of JSON Schema. Field types: `string` (with
+format `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
+`integer`, `bigint` (decimal-string for JSON safety), `boolean`, `enum`,
+`array`, `object`. Per-stage overrides via `spec.stages[stage]`.
 
 ## Design Principles
 

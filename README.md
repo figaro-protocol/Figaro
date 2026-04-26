@@ -22,9 +22,9 @@ The organizational consequence: each process assembles a temporary institution o
 - **Mechanism modules** — attestation, schema registry, Dutch auction, operator registry
 - **FIG token** — settlement-anchored emission, time-locks, batch verifier
 - **SDK** — `@figaro/core`: TypeScript, event-sourced state, agent coordination
-- **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, 5 reference assemblies
+- **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **SP1 prover** — Rust workspace: kernel library, guest program, batch sequencer
-- **Formal verification** — TLA+ (7 invariants, 6M+ states), Echidna fuzzing
+- **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
 - **Paper** — Academic paper in `paper/`
 
 Start with [docs/v5/CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) for the reading path.
@@ -52,22 +52,22 @@ src/                        Solidity contracts (0.8.26, Foundry)
 
 sdk/                        TypeScript SDK (@figaro/core)
   src/                      Event parsing, state reconstruction, agent coordination
-  test/                     166 Vitest tests
+  test/                     Vitest tests
 
 frontend/                   Next.js 14 runtime
-  app/                      24 routes (App Router)
-  components/               126 components (core, modules, shared, ui)
-  lib/                      142 library files (hooks, mechanisms, semantic)
-  tests/                    84 Vitest test files
-  tests/e2e/                38 Playwright specs (mock + devnet)
+  app/                      App Router routes
+  components/               core, modules, shared, ui
+  lib/                      hooks, mechanisms, semantic
+  tests/                    Vitest unit tests
+  tests/e2e/                Playwright specs (mock, mock-mobile, devnet)
 
 prover/                     Rust SP1 workspace
-  figaro-kernel/            Kernel library (33 tests)
-  figaro-sequencer/         Batch sequencer (22 tests)
+  figaro-kernel/            Kernel library
+  figaro-sequencer/         Batch sequencer
   figaro-guest/             SP1 guest program
   figaro-prove-test/        Mock prover test
 
-test/                       Foundry tests (16 files, 252 tests)
+test/                       Foundry tests
 formal/                     TLA+ specs + TLC config
 paper/                      Academic paper (LaTeX)
 docs/v5/                    Active design documents
@@ -130,45 +130,27 @@ The `script/` directory now contains helper deployment and analysis scripts (Dep
 
 ## Testing
 
+See [CLAUDE.md](CLAUDE.md#testing) for the full inventory. Quick commands:
+
 ```bash
-
-# Foundry (252 tests, 16 files)
-forge test --via-ir
-
-# SDK (166 Vitest tests)
-cd sdk && npm test
-
-# Frontend unit tests (84 files)
-cd frontend && npx vitest run
-
-# Playwright — mock (no chain)
-cd frontend && npx playwright test --project=mock
-
-# Playwright — devnet (Anvil required)
-cd frontend && npx playwright test --project=devnet
-
-# Rust kernel (33 tests)
-cd prover && cargo test -p figaro-kernel
-
-# Rust sequencer (22 tests)
-cd prover && cargo test -p figaro-sequencer
-
-# All Rust tests (55 total)
-cd prover && cargo test
-
-# Echidna fuzzing
-echidna src/echidna/EchidnaFuzzerV4.sol --config echidna-v4.yaml
+forge test --via-ir                         # Foundry
+cd sdk && npm test                          # SDK
+cd frontend && npx vitest run               # Frontend unit
+cd frontend && npx playwright test --project=mock    # E2E, no chain
+cd frontend && npx playwright test --project=devnet  # E2E, Anvil required
+cd prover && cargo test                     # Rust (kernel + sequencer)
+./test-echidna.sh                           # Echidna fuzzing
+./test-halmos.sh                            # Halmos symbolic proofs
+./test-tla.sh                               # TLA+ model checking
+./test-certora.sh                           # Certora CVL (paid cloud)
 ```
 
 ## Formal Verification
 
-TLA+ model of FigaroCore in `formal/`. Exhaustively verified with TLC:
-7 safety invariants across 6M+ states, exit code 0.
+TLA+ model of FigaroCore in `formal/`. Key invariants: `TokenConservation`,
+`ContractSolvency`, `ResolutionAlwaysPossible`, `CumulativeIntegrity`.
 
-Key invariants: `TokenConservation`, `ContractSolvency`,
-`ResolutionAlwaysPossible`, `CumulativeIntegrity`.
-
-See [formal/README.md](formal/README.md).
+See [formal/README.md](formal/README.md) and [CLAUDE.md](CLAUDE.md#testing) for the full verification inventory.
 
 ---
 

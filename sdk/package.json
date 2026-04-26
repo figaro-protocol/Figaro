@@ -20,6 +20,11 @@
             "import": "./dist/extensions/index.js",
             "types": "./dist/extensions/index.d.ts",
             "default": "./dist/extensions/index.js"
+        },
+        "./schemas": {
+            "import": "./dist/schemas/index.js",
+            "types": "./dist/schemas/index.d.ts",
+            "default": "./dist/schemas/index.js"
         }
     },
     "files": [

@@ -1,0 +1,41 @@
+{
+    "schemaId": "figaro-commerce-v1",
+    "version": 1,
+    "title": "Commerce terms",
+    "description": "Currency, payment amount, and itemized line items for the commercial half of an order.",
+    "categories": ["commerce", "payment"],
+    "fields": [
+        {
+            "name": "currency",
+            "type": "string",
+            "format": "address-hex",
+            "required": true,
+            "description": "ERC-20 settlement currency address."
+        },
+        {
+            "name": "payment",
+            "type": "bigint",
+            "required": true,
+            "min": "1",
+            "description": "Payment amount in the currency's smallest unit. Must be > 0."
+        },
+        {
+            "name": "lineItems",
+            "type": "array",
+            "required": true,
+            "minItems": 0,
+            "description": "Itemized line items. May be empty for non-itemized orders.",
+            "items": {
+                "name": "lineItem",
+                "type": "object",
+                "required": true,
+                "fields": [
+                    { "name": "itemId", "type": "string", "required": true, "minLength": 1 },
+                    { "name": "name", "type": "string", "required": true, "minLength": 1 },
+                    { "name": "quantity", "type": "integer", "required": true, "min": 1 },
+                    { "name": "unitPrice", "type": "bigint", "required": true, "min": "0" }
+                ]
+            }
+        }
+    ]
+}

@@ -72,15 +72,27 @@ export async function resolveProcess(
 
 /**
  * Submit an attestation as a seller.
+ *
+ * @param role   Commitment proving seller identity in the target's process.
+ * @param target Commitment for the order being attested (carries the
+ *               `agreementHash` the merkle proof opens against). Pass the
+ *               same commitment twice for same-order attestation.
+ * @param sectionData The raw clause bytes committed in the agreement manifest.
+ *               Use `canonicalizeSectionData(section.data)` + encode to Hex.
+ * @param proof  Merkle inclusion proof produced by `buildSectionInclusionProof`.
+ * @param content ABI-encoded content per the schema's encoding (use the
+ *                encoders in `@figaro/core/schemas`).
  */
 export async function attestAsSeller(
     walletClient: WalletClient,
     coordinatorAddress: Address,
-    roleCommitment: Commitment,
-    orderHash: Hex,
+    role: Commitment,
+    target: Commitment,
     schemaId: Hex,
     stage: number,
-    contentRef: Hex,
+    sectionData: Hex,
+    proof: readonly Hex[],
+    content: Hex,
 ): Promise<TxResult> {
     const hash = await walletClient.writeContract({
         chain: walletClient.chain ?? null,
@@ -88,22 +100,24 @@ export async function attestAsSeller(
         address: coordinatorAddress,
         abi: ATTESTATION_COORDINATOR_ABI,
         functionName: "attestAsSeller",
-        args: [roleCommitment, orderHash, schemaId, stage, contentRef],
+        args: [role, target, schemaId, stage, sectionData, proof, content],
     });
     return { hash };
 }
 
 /**
- * Submit an attestation as a buyer.
+ * Submit an attestation as a buyer. Caller must equal `target.buyer` (which
+ * equals `rootBuyer` of the process by commit invariant).
  */
 export async function attestAsBuyer(
     walletClient: WalletClient,
     coordinatorAddress: Address,
-    processId: Hex,
-    orderHash: Hex,
+    target: Commitment,
     schemaId: Hex,
     stage: number,
-    contentRef: Hex,
+    sectionData: Hex,
+    proof: readonly Hex[],
+    content: Hex,
 ): Promise<TxResult> {
     const hash = await walletClient.writeContract({
         chain: walletClient.chain ?? null,
@@ -111,7 +125,7 @@ export async function attestAsBuyer(
         address: coordinatorAddress,
         abi: ATTESTATION_COORDINATOR_ABI,
         functionName: "attestAsBuyer",
-        args: [processId, orderHash, schemaId, stage, contentRef],
+        args: [target, schemaId, stage, sectionData, proof, content],
     });
     return { hash };
 }

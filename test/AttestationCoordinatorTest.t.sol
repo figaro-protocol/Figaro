@@ -7,7 +7,34 @@ import "../src/CommitmentTypes.sol";
 import "../src/AttestationCoordinator.sol";
 import "../src/SchemaRegistry.sol";
 import "../src/IRoleResolver.sol";
+import "../src/ISchemaValidator.sol";
 import "../src/mocks/MockPermitToken.sol";
+import {AgreementTestHelper} from "./helpers/AgreementTestHelper.sol";
+
+/// @dev Permissive test validator — implements ISchemaValidator for a given
+///      schemaId and accepts any content. Used only in these tests to isolate
+///      coordinator semantics from per-schema validation rules. Production
+///      validators live in src/schemaValidators/.
+contract PermissiveTestValidator is ISchemaValidator {
+    bytes32 public immutable override schemaId;
+    error SchemaIdMismatch(bytes32 got, bytes32 expected);
+    constructor(bytes32 _schemaId) {
+        schemaId = _schemaId;
+    }
+    function validate(
+        bytes32 id,
+        uint8, /* stage */
+        bytes calldata, /* sectionData */
+        bytes calldata /* content */
+    ) external view override {
+        // Test mock uses `view` because Solidity treats reading the
+        // constructor-set `immutable schemaId` as a state read. Production
+        // validators in src/schemaValidators/ are `external pure override`
+        // because they decode against compile-time `constant` schemaIds —
+        // see ISchemaValidator NatSpec for the discipline.
+        if (id != schemaId) revert SchemaIdMismatch(id, schemaId);
+    }
+}
 
 /// @title AttestationCoordinatorTest
 /// @notice Tests for the rewritten zero-storage attestation coordinator.
@@ -33,8 +60,8 @@ contract AttestationCoordinatorTest is Test {
     uint256 constant INITIAL_BALANCE = 10_000 ether;
 
     bytes32 constant LIFECYCLE_SCHEMA = keccak256("figaro-delivery-lifecycle-v1");
-    bytes32 constant GHG_SCHEMA = keccak256("figaro-ghg-disclosure-v1");
-    bytes32 constant PROXIMITY_SCHEMA = keccak256("figaro-proximity-v1");
+    bytes32 constant GHG_SCHEMA = keccak256("figaro-ghg-iso-14064-v1");
+    bytes32 constant PROXIMITY_SCHEMA = keccak256("figaro-proximity-proof-v1");
     bytes32 constant COMMERCE_SCHEMA = keccak256("figaro-commerce-v1");
     bytes32 constant HANDOFF_SCHEMA = keccak256("figaro-handoff-v1");
 
@@ -62,6 +89,16 @@ contract AttestationCoordinatorTest is Test {
         schemas.registerSchema(PROXIMITY_SCHEMA, 1, testUri);
         schemas.registerSchema(COMMERCE_SCHEMA, 1, testUri);
         schemas.registerSchema(HANDOFF_SCHEMA, 1, testUri);
+
+        // ── AttestationCoordinator: register a permissive validator for each schema ─
+        // Production deployments register the real per-schema validators from
+        // src/schemaValidators/. These tests isolate coordinator semantics, so
+        // they use PermissiveTestValidator (accepts any content).
+        coordinator.setValidator(LIFECYCLE_SCHEMA, address(new PermissiveTestValidator(LIFECYCLE_SCHEMA)));
+        coordinator.setValidator(GHG_SCHEMA,       address(new PermissiveTestValidator(GHG_SCHEMA)));
+        coordinator.setValidator(PROXIMITY_SCHEMA, address(new PermissiveTestValidator(PROXIMITY_SCHEMA)));
+        coordinator.setValidator(COMMERCE_SCHEMA,  address(new PermissiveTestValidator(COMMERCE_SCHEMA)));
+        coordinator.setValidator(HANDOFF_SCHEMA,   address(new PermissiveTestValidator(HANDOFF_SCHEMA)));
 
         // AttestationCoordinator declares which schemas it uses.
         // In production this is called from the deploy script (post-audit amendment);
@@ -99,7 +136,11 @@ contract AttestationCoordinatorTest is Test {
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
     }
 
-    function _rootCommitment(uint256 payment, uint256 salt) internal view returns (CommitmentTypes.Commitment memory) {
+    function _rootCommitment(uint256 payment, uint256 salt, bytes32 agreementHash)
+        internal
+        view
+        returns (CommitmentTypes.Commitment memory)
+    {
         return CommitmentTypes.Commitment({
             processId: bytes32(0),
             buyer: buyer,
@@ -107,17 +148,17 @@ contract AttestationCoordinatorTest is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256(abi.encodePacked("root-", salt)),
+            agreementHash: agreementHash,
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
     }
 
-    function _commitRoot(uint256 payment, uint256 salt)
+    function _commitRoot(uint256 payment, uint256 salt, bytes32 agreementHash)
         internal
         returns (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c)
     {
-        c = _rootCommitment(payment, salt);
+        c = _rootCommitment(payment, salt, agreementHash);
         bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
         bytes memory sellerSig = _signCommitment(c, SELLER1_KEY);
         (processId, orderHash) = core.commit(c, buyerSig, sellerSig);
@@ -129,7 +170,8 @@ contract AttestationCoordinatorTest is Test {
         uint256 payment,
         uint256 expectedCum,
         uint256 sellerKey,
-        uint256 salt
+        uint256 salt,
+        bytes32 agreementHash
     ) internal returns (bytes32 orderHash, CommitmentTypes.Commitment memory c) {
         c = CommitmentTypes.Commitment({
             processId: processId,
@@ -138,7 +180,7 @@ contract AttestationCoordinatorTest is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: expectedCum,
-            agreementHash: keccak256(abi.encodePacked("sub-", salt)),
+            agreementHash: agreementHash,
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -147,16 +189,53 @@ contract AttestationCoordinatorTest is Test {
         (, orderHash) = core.commit(c, buyerSig, sellerSig);
     }
 
+    /// @dev Shortcut: commit a root order whose agreement is a single clause
+    ///      under `schemaId` with `sectionData`. The resulting commitment's
+    ///      `agreementHash` equals `leafFor(schemaId, sectionData)`, which is
+    ///      a valid single-leaf merkle tree — attestations use `sectionData`
+    ///      plus an empty proof.
+    function _commitRootSingle(
+        uint256 payment,
+        uint256 salt,
+        bytes32 schemaIdLocal,
+        bytes memory sectionData
+    ) internal returns (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c) {
+        return _commitRoot(payment, salt, AgreementTestHelper.singleSectionRoot(schemaIdLocal, sectionData));
+    }
+
+    /// @dev Shortcut: commit a sub-order whose agreement is a single clause.
+    function _commitSubSingle(
+        bytes32 processId,
+        address seller,
+        uint256 payment,
+        uint256 expectedCum,
+        uint256 sellerKey,
+        uint256 salt,
+        bytes32 schemaIdLocal,
+        bytes memory sectionData
+    ) internal returns (bytes32 orderHash, CommitmentTypes.Commitment memory c) {
+        return _commitSub(
+            processId, seller, payment, expectedCum, sellerKey, salt,
+            AgreementTestHelper.singleSectionRoot(schemaIdLocal, sectionData)
+        );
+    }
+
+    /// @dev Empty proof sentinel — single-leaf agreements have empty proof arrays.
+    function _emptyProof() internal pure returns (bytes32[] memory) {
+        return new bytes32[](0);
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // TEST 1: Seller attests a lifecycle stage
     // ═══════════════════════════════════════════════════════════════
 
     function test_sellerAttestation_lifecycle() public {
-        (bytes32 processId, bytes32 rootHash, CommitmentTypes.Commitment memory c) = _commitRoot(50 ether, 1);
+        (bytes32 processId, bytes32 rootHash, CommitmentTypes.Commitment memory c) =
+            _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, "");
 
         vm.recordLogs();
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, rootHash, LIFECYCLE_SCHEMA, 1, bytes32(0));
+        coordinator.attestAsSeller(c, c, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), "");
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
@@ -171,7 +250,7 @@ contract AttestationCoordinatorTest is Test {
                     abi.decode(logs[i].data, (bytes32, uint8, bytes32));
                 assertEq(schemaId, LIFECYCLE_SCHEMA, "schemaId");
                 assertEq(stage, 1, "stage");
-                assertEq(contentRef, bytes32(0), "no content ref");
+                assertEq(contentRef, keccak256(""), "contentRef is keccak256 of empty content");
                 found = true;
             }
         }
@@ -183,12 +262,12 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_sellerAttestation_ghgDisclosure() public {
-        (, bytes32 rootHash, CommitmentTypes.Commitment memory c) = _commitRoot(50 ether, 1);
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, GHG_SCHEMA, "");
 
-        bytes32 ipfsCidHash = keccak256("QmSomeIpfsCid");
+        bytes memory ipfsCidContent = "QmSomeIpfsCid";
 
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, rootHash, GHG_SCHEMA, 2, ipfsCidHash);
+        coordinator.attestAsSeller(c, c, GHG_SCHEMA, 2, "", _emptyProof(), ipfsCidContent);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -196,10 +275,10 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_buyerAttestation() public {
-        (bytes32 processId, bytes32 rootHash,) = _commitRoot(50 ether, 1);
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, "");
 
         vm.prank(buyer);
-        coordinator.attestAsBuyer(processId, rootHash, LIFECYCLE_SCHEMA, 5, bytes32(0));
+        coordinator.attestAsBuyer(c, LIFECYCLE_SCHEMA, 5, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -207,11 +286,11 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_unauthorizedSeller_reverts() public {
-        (, bytes32 rootHash, CommitmentTypes.Commitment memory c) = _commitRoot(50 ether, 1);
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, "");
 
         vm.prank(buyer); // buyer tries to attest as seller
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestAsSeller(c, rootHash, LIFECYCLE_SCHEMA, 1, bytes32(0));
+        coordinator.attestAsSeller(c, c, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -219,11 +298,11 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_unauthorizedBuyer_reverts() public {
-        (bytes32 processId, bytes32 rootHash,) = _commitRoot(50 ether, 1);
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, "");
 
         vm.prank(seller1); // seller tries to attest as buyer
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestAsBuyer(processId, rootHash, LIFECYCLE_SCHEMA, 1, bytes32(0));
+        coordinator.attestAsBuyer(c, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -231,14 +310,17 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_crossOrderAttestation_sameProcess() public {
-        (bytes32 processId, bytes32 rootHash,) = _commitRoot(10 ether, 1);
+        // Root and sub-order each commit under a single-section LIFECYCLE
+        // agreement so a lifecycle attestation against either has a valid
+        // inclusion proof from the respective commitment.
+        bytes32 agHash = AgreementTestHelper.singleSectionRoot(LIFECYCLE_SCHEMA, "");
+        (bytes32 processId, , CommitmentTypes.Commitment memory rootC) = _commitRoot(10 ether, 1, agHash);
+        (, CommitmentTypes.Commitment memory subC) =
+            _commitSub(processId, seller2, 20 ether, 30 ether, SELLER2_KEY, 2, agHash);
 
-        // Sub-order: buyer → seller2
-        (, CommitmentTypes.Commitment memory subC) = _commitSub(processId, seller2, 20 ether, 30 ether, SELLER2_KEY, 2);
-
-        // seller2 attests ON rootHash, using their subC as role proof
+        // seller2 attests ON the root order, using their subC as role proof.
         vm.prank(seller2);
-        coordinator.attestAsSeller(subC, rootHash, LIFECYCLE_SCHEMA, 3, bytes32(0));
+        coordinator.attestAsSeller(subC, rootC, LIFECYCLE_SCHEMA, 3, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -246,14 +328,17 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_crossOrderAttestation_crossProcess_reverts() public {
-        (, bytes32 rootHashA, CommitmentTypes.Commitment memory rootA) = _commitRoot(10 ether, 1);
-        (, bytes32 rootHashB,) = _commitRoot(20 ether, 2);
+        bytes32 agHash = AgreementTestHelper.singleSectionRoot(LIFECYCLE_SCHEMA, "");
+        (, bytes32 rootHashA, CommitmentTypes.Commitment memory rootA) = _commitRoot(10 ether, 1, agHash);
+        (, bytes32 rootHashB, CommitmentTypes.Commitment memory rootB) = _commitRoot(20 ether, 2, agHash);
 
         assertTrue(rootHashA != rootHashB, "distinct orders");
 
+        // seller1 is the seller of both root orders but they belong to distinct
+        // processes — the coordinator must refuse cross-process attestation.
         vm.prank(seller1);
         vm.expectRevert(AttestationCoordinator.ProcessMismatch.selector);
-        coordinator.attestAsSeller(rootA, rootHashB, LIFECYCLE_SCHEMA, 3, bytes32(0));
+        coordinator.attestAsSeller(rootA, rootB, LIFECYCLE_SCHEMA, 3, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -261,13 +346,13 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_resolverAttestation() public {
-        (,, CommitmentTypes.Commitment memory c) = _commitRoot(50 ether, 1);
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, "");
 
         // Mock seller1 as a resolver that authorizes seller2
         vm.mockCall(seller1, abi.encodeWithSelector(IRoleResolver.isAuthorized.selector), abi.encode(true));
 
         vm.prank(seller2);
-        coordinator.attestViaResolver(c, LIFECYCLE_SCHEMA, 3, bytes32(0));
+        coordinator.attestViaResolver(c, LIFECYCLE_SCHEMA, 3, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -275,13 +360,13 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_resolverAttestation_unauthorized_reverts() public {
-        (,, CommitmentTypes.Commitment memory c) = _commitRoot(50 ether, 1);
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, "");
 
         vm.mockCall(seller1, abi.encodeWithSelector(IRoleResolver.isAuthorized.selector), abi.encode(false));
 
         vm.prank(seller2);
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestViaResolver(c, LIFECYCLE_SCHEMA, 3, bytes32(0));
+        coordinator.attestViaResolver(c, LIFECYCLE_SCHEMA, 3, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -302,13 +387,9 @@ contract AttestationCoordinatorTest is Test {
             deadline: block.timestamp + 1 hours
         });
 
-        bytes32 fakeStructHash = fake.hashStruct();
-        bytes32 fakeProcessId = _typedDataHash(fakeStructHash);
-        bytes32 fakeOrderHash = keccak256(abi.encodePacked(fakeProcessId, fakeStructHash));
-
         vm.prank(seller1);
         vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestAsSeller(fake, fakeOrderHash, LIFECYCLE_SCHEMA, 1, bytes32(0));
+        coordinator.attestAsSeller(fake, fake, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -316,12 +397,23 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_unknownOrder_buyer_reverts() public {
-        bytes32 fakeProcessId = keccak256("nonexistent-process");
-        bytes32 fakeOrderHash = keccak256("nonexistent-order");
+        // Craft a commitment that was never committed — _requireKnownCommitment
+        // reverts UnknownOrder before the buyer role check runs.
+        CommitmentTypes.Commitment memory fake = CommitmentTypes.Commitment({
+            processId: bytes32(0),
+            buyer: buyer,
+            seller: seller1,
+            currency: address(token),
+            payment: 50 ether,
+            expectedCumulativeValue: 50 ether,
+            agreementHash: keccak256("fake-buyer"),
+            salt: 998,
+            deadline: block.timestamp + 1 hours
+        });
 
         vm.prank(buyer);
         vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestAsBuyer(fakeProcessId, fakeOrderHash, LIFECYCLE_SCHEMA, 1, bytes32(0));
+        coordinator.attestAsBuyer(fake, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -329,13 +421,14 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_contentRef_emitted() public {
-        (, bytes32 rootHash, CommitmentTypes.Commitment memory c) = _commitRoot(50 ether, 1);
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, GHG_SCHEMA, "");
 
-        bytes32 ipfsRef = keccak256("bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi");
+        bytes memory ipfsContent = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi";
+        bytes32 ipfsRef = keccak256(ipfsContent);
 
         vm.recordLogs();
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, rootHash, GHG_SCHEMA, 1, ipfsRef);
+        coordinator.attestAsSeller(c, c, GHG_SCHEMA, 1, "", _emptyProof(), ipfsContent);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
@@ -363,7 +456,8 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_sellerAttestation_resolvedOrder() public {
-        (bytes32 processId, bytes32 rootHash, CommitmentTypes.Commitment memory c) = _commitRoot(50 ether, 1);
+        (bytes32 processId, , CommitmentTypes.Commitment memory c) =
+            _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, "");
 
         // Resolve the process
         CommitmentTypes.Commitment[] memory cs = new CommitmentTypes.Commitment[](1);
@@ -373,7 +467,7 @@ contract AttestationCoordinatorTest is Test {
 
         // Seller can still attest after resolution (orderStatus == 2 != 0)
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, rootHash, LIFECYCLE_SCHEMA, 10, bytes32(0));
+        coordinator.attestAsSeller(c, c, LIFECYCLE_SCHEMA, 10, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -381,7 +475,8 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_buyerAttestation_resolvedOrder() public {
-        (bytes32 processId, bytes32 rootHash, CommitmentTypes.Commitment memory c) = _commitRoot(50 ether, 1);
+        (bytes32 processId, , CommitmentTypes.Commitment memory c) =
+            _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, "");
 
         CommitmentTypes.Commitment[] memory cs = new CommitmentTypes.Commitment[](1);
         cs[0] = c;
@@ -389,7 +484,7 @@ contract AttestationCoordinatorTest is Test {
         core.resolveProcess(processId, cs);
 
         vm.prank(buyer);
-        coordinator.attestAsBuyer(processId, rootHash, LIFECYCLE_SCHEMA, 10, bytes32(0));
+        coordinator.attestAsBuyer(c, LIFECYCLE_SCHEMA, 10, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -411,7 +506,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.prank(seller2);
         vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestViaResolver(fake, LIFECYCLE_SCHEMA, 3, bytes32(0));
+        coordinator.attestViaResolver(fake, LIFECYCLE_SCHEMA, 3, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -420,14 +515,25 @@ contract AttestationCoordinatorTest is Test {
 
     function test_crossOrderAttestation_unknownTarget_reverts() public {
         // Commit a valid root order — seller1 is the seller
-        (,, CommitmentTypes.Commitment memory c) = _commitRoot(10 ether, 1);
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(10 ether, 1, LIFECYCLE_SCHEMA, "");
 
-        bytes32 fakeTargetHash = keccak256("nonexistent-target-order");
+        // Craft a target commitment that was never committed — _requireKnownCommitment
+        // reverts UnknownOrder on the target leg before role checks run.
+        CommitmentTypes.Commitment memory fakeTarget = CommitmentTypes.Commitment({
+            processId: bytes32(0),
+            buyer: buyer,
+            seller: seller1,
+            currency: address(token),
+            payment: 1 ether,
+            expectedCumulativeValue: 1 ether,
+            agreementHash: keccak256("never-committed-target"),
+            salt: 42,
+            deadline: block.timestamp + 1 hours
+        });
 
-        // seller1 attests on fakeTargetHash, proving role via their valid commitment
         vm.prank(seller1);
         vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestAsSeller(c, fakeTargetHash, LIFECYCLE_SCHEMA, 1, bytes32(0));
+        coordinator.attestAsSeller(c, fakeTarget, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -435,12 +541,12 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_buyerAttestation_nonBuyer_validProcess_reverts() public {
-        (bytes32 processId, bytes32 rootHash,) = _commitRoot(50 ether, 1);
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, "");
 
-        // seller1 tries to attest as buyer on a process where buyer is the root buyer
+        // seller1 tries to attest as buyer — they are not the commitment's buyer.
         vm.prank(seller1);
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestAsBuyer(processId, rootHash, LIFECYCLE_SCHEMA, 1, bytes32(0));
+        coordinator.attestAsBuyer(c, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -448,27 +554,62 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_buyerAttestation_unknownOrderHash_reverts() public {
-        (bytes32 processId,,) = _commitRoot(50 ether, 1);
+        // Buyer passes a commitment struct that was never committed; _requireKnownCommitment
+        // reverts UnknownOrder. (Under the new symmetric design "wrong-order-in-valid-process"
+        // becomes "uncommitted-commitment" — there is no separate processId/orderHash split.)
+        _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, ""); // anchor a real process for good measure
 
-        bytes32 fakeOrderHash = keccak256("nonexistent-order-in-process");
+        CommitmentTypes.Commitment memory fake = CommitmentTypes.Commitment({
+            processId: bytes32(0),
+            buyer: buyer,
+            seller: seller1,
+            currency: address(token),
+            payment: 50 ether,
+            expectedCumulativeValue: 50 ether,
+            agreementHash: keccak256("nonexistent-order-in-process"),
+            salt: 666,
+            deadline: block.timestamp + 1 hours
+        });
 
-        // buyer is correct, process is correct, but order hash doesn't exist
         vm.prank(buyer);
         vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestAsBuyer(processId, fakeOrderHash, LIFECYCLE_SCHEMA, 1, bytes32(0));
+        coordinator.attestAsBuyer(fake, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // TEST 19: Buyer attestation across processes reverts
+    // TEST 19: Buyer attestation across processes is no longer a distinct
+    // failure mode — the new symmetric design authorizes purely on
+    // `msg.sender == target.buyer`. A buyer trying to attest under a
+    // commitment they did not buy simply triggers `NotAuthorized`; there is
+    // no separate cross-process check because target is self-contained.
     // ═══════════════════════════════════════════════════════════════
 
     function test_buyerAttestation_crossProcess_reverts() public {
-        (bytes32 processIdA,,) = _commitRoot(50 ether, 1);
-        (, bytes32 rootHashB,) = _commitRoot(25 ether, 2);
+        // Anchor one process for `buyer`.
+        _commitRootSingle(50 ether, 1, LIFECYCLE_SCHEMA, "");
 
+        // A committed order in a different process with a different buyer address
+        // (seller1 as buyer — irrelevant because the fake isn't committed here).
+        address otherBuyer = seller1;
+        CommitmentTypes.Commitment memory c2 = CommitmentTypes.Commitment({
+            processId: bytes32(0),
+            buyer: otherBuyer,
+            seller: seller2,
+            currency: address(token),
+            payment: 25 ether,
+            expectedCumulativeValue: 25 ether,
+            agreementHash: AgreementTestHelper.singleSectionRoot(LIFECYCLE_SCHEMA, ""),
+            salt: 2,
+            deadline: block.timestamp + 1 hours
+        });
+        bytes memory bs = _signCommitment(c2, SELLER1_KEY);  // seller1 acts as buyer here
+        bytes memory ss = _signCommitment(c2, SELLER2_KEY);
+        core.commit(c2, bs, ss);
+
+        // `buyer` (from our setUp) is NOT c2.buyer, so the call must revert NotAuthorized.
         vm.prank(buyer);
-        vm.expectRevert(AttestationCoordinator.ProcessMismatch.selector);
-        coordinator.attestAsBuyer(processIdA, rootHashB, LIFECYCLE_SCHEMA, 1, bytes32(0));
+        vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
+        coordinator.attestAsBuyer(c2, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -491,43 +632,57 @@ contract AttestationCoordinatorTest is Test {
         assertTrue(schemas.registered(COMMERCE_SCHEMA), "commerce schema registered");
         assertTrue(schemas.registered(HANDOFF_SCHEMA), "handoff schema registered");
 
-        // ── Process setup ─────────────────────────────────────────
-        // Root order: buyer → seller1 (restaurant, 50 ETH payment)
-        (bytes32 processId, bytes32 rootHash, CommitmentTypes.Commitment memory rootC) = _commitRoot(50 ether, 10);
+        // ── Multi-section agreement ───────────────────────────────
+        // Both root and driver commitments use the same two-clause agreement:
+        // one LIFECYCLE clause (empty) and one PROXIMITY clause (empty). The
+        // merkle root is the agreementHash both parties sign at commit time;
+        // each attestation carries the other leaf as its inclusion proof.
+        bytes32 lifecycleLeaf = AgreementTestHelper.leafFor(LIFECYCLE_SCHEMA, "");
+        bytes32 proximityLeaf = AgreementTestHelper.leafFor(PROXIMITY_SCHEMA, "");
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = lifecycleLeaf;
+        leaves[1] = proximityLeaf;
+        bytes32 agreementRoot = AgreementTestHelper.rootFor(leaves);
 
-        // Delivery sub-order: buyer → seller2 (driver, 10 ETH fee)
+        bytes32[] memory proofLifecycle = AgreementTestHelper.proofFor(leaves, 0);
+        bytes32[] memory proofProximity = AgreementTestHelper.proofFor(leaves, 1);
+
+        // ── Process setup ─────────────────────────────────────────
+        (bytes32 processId, bytes32 rootHash, CommitmentTypes.Commitment memory rootC) =
+            _commitRoot(50 ether, 10, agreementRoot);
         (, CommitmentTypes.Commitment memory driverC) =
-            _commitSub(processId, seller2, 10 ether, 60 ether, SELLER2_KEY, 11);
+            _commitSub(processId, seller2, 10 ether, 60 ether, SELLER2_KEY, 11, agreementRoot);
 
         bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
 
         // ── Stage 0: PreparationStarted (restaurant) ─────────────
         vm.prank(seller1);
-        coordinator.attestAsSeller(rootC, rootHash, LIFECYCLE_SCHEMA, 0, bytes32(0));
+        coordinator.attestAsSeller(rootC, rootC, LIFECYCLE_SCHEMA, 0, "", proofLifecycle, "");
 
         // ── Stage 1: ReadyForPickup (restaurant) ──────────────────
         vm.prank(seller1);
-        coordinator.attestAsSeller(rootC, rootHash, LIFECYCLE_SCHEMA, 1, bytes32(0));
+        coordinator.attestAsSeller(rootC, rootC, LIFECYCLE_SCHEMA, 1, "", proofLifecycle, "");
 
-        // ── Stage 2: DriverEnRoute (driver, cross-order) ──────────
+        // ── Stage 2: DriverEnRoute (driver, cross-order against root) ───
         vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootHash, LIFECYCLE_SCHEMA, 2, bytes32(0));
+        coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_SCHEMA, 2, "", proofLifecycle, "");
 
         // ── Stage 3: PickedUp (driver) + proximity proof (BLE) ────
-        bytes32 pickupProofRef = keccak256("pickup-proximity-proof-band-2");
+        bytes memory pickupProofContent = "pickup-proximity-proof-band-2";
         vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootHash, PROXIMITY_SCHEMA, 2, pickupProofRef);
+        coordinator.attestAsSeller(driverC, rootC, PROXIMITY_SCHEMA, 2, "", proofProximity, pickupProofContent);
         vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootHash, LIFECYCLE_SCHEMA, 3, pickupProofRef);
+        coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_SCHEMA, 3, "", proofLifecycle, pickupProofContent);
 
         // ── Stage 4: Delivered (driver) + proximity proof (NFC) ───
-        bytes32 deliveryProofRef = keccak256("delivery-proximity-proof-band-3");
+        bytes memory deliveryProofContent = "delivery-proximity-proof-band-3";
+        bytes32 deliveryProofRef = keccak256(deliveryProofContent);
         vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootHash, PROXIMITY_SCHEMA, 3, deliveryProofRef);
+        coordinator.attestAsSeller(driverC, rootC, PROXIMITY_SCHEMA, 3, "", proofProximity, deliveryProofContent);
 
         vm.recordLogs();
         vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootHash, LIFECYCLE_SCHEMA, 4, deliveryProofRef);
+        coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_SCHEMA, 4, "", proofLifecycle, deliveryProofContent);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         // ── Verify final Delivered attestation event ───────────────
@@ -546,5 +701,143 @@ contract AttestationCoordinatorTest is Test {
             }
         }
         assertTrue(found, "Delivered attestation event emitted");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Validator-gate tests (Layer C on-chain validation)
+    // ═══════════════════════════════════════════════════════════════
+
+    bytes32 constant UNUSED_SCHEMA = keccak256("figaro-never-registered-v1");
+
+    function test_setValidator_rejectsZeroAddress() public {
+        vm.expectRevert(AttestationCoordinator.ZeroValidator.selector);
+        coordinator.setValidator(UNUSED_SCHEMA, address(0));
+    }
+
+    function test_setValidator_rejectsAlreadySet() public {
+        // LIFECYCLE_SCHEMA validator is already set in setUp()
+        PermissiveTestValidator v = new PermissiveTestValidator(LIFECYCLE_SCHEMA);
+        vm.expectRevert(abi.encodeWithSelector(
+            AttestationCoordinator.ValidatorAlreadySet.selector, LIFECYCLE_SCHEMA
+        ));
+        coordinator.setValidator(LIFECYCLE_SCHEMA, address(v));
+    }
+
+    function test_setValidator_rejectsMismatchedBinding() public {
+        // Validator claims it handles UNUSED_SCHEMA, but we try to register under a different ID.
+        PermissiveTestValidator v = new PermissiveTestValidator(UNUSED_SCHEMA);
+        bytes32 differentId = keccak256("figaro-yet-another-v1");
+        vm.expectRevert(abi.encodeWithSelector(
+            AttestationCoordinator.InvalidValidatorBinding.selector, differentId, UNUSED_SCHEMA
+        ));
+        coordinator.setValidator(differentId, address(v));
+    }
+
+    function test_setValidator_happyPath() public {
+        PermissiveTestValidator v = new PermissiveTestValidator(UNUSED_SCHEMA);
+        coordinator.setValidator(UNUSED_SCHEMA, address(v));
+        assertEq(coordinator.schemaValidator(UNUSED_SCHEMA), address(v));
+    }
+
+    function test_attestAsSeller_revertsOnUnregisteredSchema() public {
+        // ValidatorNotSet fires before merkle-proof check, so agreementHash is
+        // irrelevant — any commit works.
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 1, LIFECYCLE_SCHEMA, "");
+        vm.prank(seller1);
+        vm.expectRevert(abi.encodeWithSelector(
+            AttestationCoordinator.ValidatorNotSet.selector, UNUSED_SCHEMA
+        ));
+        coordinator.attestAsSeller(c, c, UNUSED_SCHEMA, 1, "", _emptyProof(), "");
+    }
+
+    function test_attestAsBuyer_revertsOnUnregisteredSchema() public {
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 2, LIFECYCLE_SCHEMA, "");
+        vm.prank(buyer);
+        vm.expectRevert(abi.encodeWithSelector(
+            AttestationCoordinator.ValidatorNotSet.selector, UNUSED_SCHEMA
+        ));
+        coordinator.attestAsBuyer(c, UNUSED_SCHEMA, 1, "", _emptyProof(), "");
+    }
+
+    function test_attestViaResolver_revertsOnUnregisteredSchema() public {
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 5, LIFECYCLE_SCHEMA, "");
+        // Resolver would authorize the caller, but the validator gate fires first.
+        vm.mockCall(seller1, abi.encodeWithSelector(IRoleResolver.isAuthorized.selector), abi.encode(true));
+        vm.prank(seller2);
+        vm.expectRevert(abi.encodeWithSelector(
+            AttestationCoordinator.ValidatorNotSet.selector, UNUSED_SCHEMA
+        ));
+        coordinator.attestViaResolver(c, UNUSED_SCHEMA, 3, "", _emptyProof(), "");
+    }
+
+    function test_contentRefIsKeccakOfContent() public {
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 3, LIFECYCLE_SCHEMA, "");
+        bytes memory content = "arbitrary-content-bytes";
+        bytes32 expected = keccak256(content);
+
+        bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
+        vm.recordLogs();
+        vm.prank(seller1);
+        coordinator.attestAsSeller(c, c, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), content);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bool found = false;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == attSig) {
+                (, , bytes32 contentRef) = abi.decode(logs[i].data, (bytes32, uint8, bytes32));
+                assertEq(contentRef, expected, "contentRef = keccak256(content)");
+                found = true;
+            }
+        }
+        assertTrue(found, "Attestation event emitted");
+    }
+
+    // Fuzz companion to test_contentRefIsKeccakOfContent — universal coverage
+    // over content bytes. Complements the Certora rule 7 / 8 / 9 proofs
+    // (see certora/AttestationCoordinator.spec) for the invariants that
+    // can't be expressed as pure AC-level CVL rules without a mock-validator
+    // scene.
+    function testFuzz_contentRefIsKeccakOfContent(bytes calldata content) public {
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 4, LIFECYCLE_SCHEMA, "");
+        bytes32 expected = keccak256(content);
+
+        bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
+        vm.recordLogs();
+        vm.prank(seller1);
+        coordinator.attestAsSeller(c, c, LIFECYCLE_SCHEMA, 1, "", _emptyProof(), content);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bool found;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == attSig) {
+                (, , bytes32 contentRef) = abi.decode(logs[i].data, (bytes32, uint8, bytes32));
+                assertEq(contentRef, expected, "contentRef = keccak256(content) for any content");
+                found = true;
+            }
+        }
+        assertTrue(found, "Attestation event emitted");
+    }
+
+    // Fuzz companion to test_setValidator_rejectsMismatchedBinding — every
+    // pair (schemaId, boundId) with schemaId != boundId must revert with
+    // InvalidValidatorBinding. Together with the Certora first-write-wins
+    // rule (rule 8), this closes the binding-integrity half of the validator
+    // gate.
+    function testFuzz_setValidator_rejectsMismatchedBinding(
+        bytes32 schemaId,
+        bytes32 boundId
+    ) public {
+        vm.assume(schemaId != boundId);
+        // Avoid colliding with the schemas pre-registered in setUp(); if schemaId
+        // is already bound, the contract reverts with ValidatorAlreadySet before
+        // ever reaching the binding check. That is a separate invariant
+        // (Certora rule 8) and not what this fuzz targets.
+        vm.assume(coordinator.schemaValidator(schemaId) == address(0));
+
+        PermissiveTestValidator v = new PermissiveTestValidator(boundId);
+        vm.expectRevert(abi.encodeWithSelector(
+            AttestationCoordinator.InvalidValidatorBinding.selector, schemaId, boundId
+        ));
+        coordinator.setValidator(schemaId, address(v));
     }
 }

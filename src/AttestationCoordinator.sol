@@ -4,12 +4,14 @@ pragma solidity 0.8.26;
 import "./FigaroCore.sol";
 import "./CommitmentTypes.sol";
 import "./IRoleResolver.sol";
+import "./ISchemaValidator.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-/// @title AttestationCoordinator — Unified stateless attestation
+/// @title AttestationCoordinator — Validator-gated stateless attestation
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
-/// @notice Zero-storage, role-gated attestation coordinator. Emits
-///         schema-typed attestation events for lifecycle, GHG, proximity,
+/// @notice Zero-storage, role-gated, validator-gated attestation coordinator.
+///         Emits schema-typed attestation events for lifecycle, GHG, proximity,
 ///         and any future attestation domain.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
@@ -19,18 +21,63 @@ import "./IRoleResolver.sol";
 ///         struct; the coordinator recomputes the orderHash to verify
 ///         the order exists and extracts the role from the struct.
 ///
-/// @dev Three attestation modes:
-///      - attestAsSeller:    caller provides their commitment to prove seller role
-///      - attestAsBuyer:     caller provides processId; buyer is in ProcessState
-///      - attestViaResolver: caller provides commitment; seller implements IRoleResolver
+/// @dev Three attestation modes — each caller supplies one or two `Commitment`
+///      structs so the coordinator can (a) verify role authority, (b) read the
+///      signed `agreementHash` without new kernel state, and (c) verify the
+///      attestation matches a clause in the signed contract.
+///      - attestAsSeller:    caller supplies role + target commitments
+///                           (role proves seller identity + process; target
+///                           carries the order being attested and its
+///                           agreementHash for the receipt). For same-order
+///                           attestation pass the same commitment twice.
+///      - attestAsBuyer:     caller supplies the target commitment only
+///                           (`c.buyer == processes[c.processId].rootBuyer` by
+///                           commit invariant, so `msg.sender == c.buyer`
+///                           authorizes the call).
+///      - attestViaResolver: caller supplies the target commitment only; the
+///                           seller address must authorize `msg.sender` via
+///                           `IRoleResolver`.
+///
+/// @dev Validator gate (mandatory):
+///      Every `attest*` call validates `content` against the schema's registered
+///      `ISchemaValidator` before emitting. A schema with no registered validator
+///      cannot be attested under — the call reverts with `ValidatorNotSet`.
+///      Validator registration is permissionless and first-write-wins:
+///      anyone can call `setValidator(schemaId, validator)` once per schemaId,
+///      and the binding is immutable thereafter. This preserves the no-admin
+///      invariant and prevents validator-swap rug-pulls.
+///
+/// @dev Agreement binding (mandatory):
+///      Every `attest*` call carries an inclusion proof showing the attestation's
+///      schema and clause data are leaves of the order's signed `agreementHash`
+///      merkle root. A seller who signed a clause of "ISO 14064-1 GHG" at commit
+///      time cannot fire a runtime GHG attestation under a different standard —
+///      the inclusion proof won't open. This closes the drift where runtime
+///      declarations could contradict the signed contract.
+///
+///      Leaf format: `keccak256(abi.encodePacked(schemaId, keccak256(sectionData)))`.
+///      Tree: OpenZeppelin `MerkleProof` with sorted-pair hashing.
+///      Empty / unbound attestation is blocked — callers must prove a clause.
+///
+/// @dev Content encoding:
+///      `content` is ABI-encoded per the schema's spec (off-chain JSON spec
+///      anchored via SchemaRegistry.uriHash). Each schema validator decodes
+///      with `abi.decode(content, (...))`. The on-chain `contentRef` recorded
+///      in the Attestation event is `keccak256(content)` — content is
+///      cryptographically bound to its hash.
 contract AttestationCoordinator {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
     FigaroCore public immutable core;
 
+    /// @notice Validator contract bound to a schemaId. address(0) = no validator
+    ///         registered, attestation under this schemaId is blocked.
+    mapping(bytes32 => address) public schemaValidator;
+
     // ── Events ──────────────────────────────────────────────────────
 
-    /// @notice A role-gated attestation against a registered schema.
+    /// @notice A role-gated, validator-checked attestation against a registered schema.
+    /// @dev `contentRef` is always `keccak256(content)` — content is bound to its hash on-chain.
     event Attestation(
         bytes32 indexed orderHash,
         bytes32 indexed processId,
@@ -40,11 +87,19 @@ contract AttestationCoordinator {
         bytes32 contentRef
     );
 
+    /// @notice Emitted when a schema's validator contract is registered (first-write-wins).
+    event ValidatorSet(bytes32 indexed schemaId, address indexed validator);
+
     // ── Errors ──────────────────────────────────────────────────────
 
     error NotAuthorized();
     error ProcessMismatch();
     error UnknownOrder();
+    error ValidatorAlreadySet(bytes32 schemaId);
+    error ValidatorNotSet(bytes32 schemaId);
+    error InvalidValidatorBinding(bytes32 schemaId, bytes32 validatorSchemaId);
+    error ZeroValidator();
+    error InvalidInclusionProof(bytes32 agreementHash, bytes32 schemaId);
 
     // ── Constructor ─────────────────────────────────────────────────
 
@@ -53,65 +108,121 @@ contract AttestationCoordinator {
         core = FigaroCore(_core);
     }
 
+    // ── Validator registration ──────────────────────────────────────
+
+    /// @notice Register a validator contract for a schemaId. First-write-wins.
+    /// @dev Permissionless. After this call succeeds the binding is immutable.
+    ///      The validator MUST report the matching schemaId via its `schemaId()`
+    ///      view; any mismatch reverts.
+    function setValidator(bytes32 schemaId, address validator) external {
+        if (validator == address(0)) revert ZeroValidator();
+        if (schemaValidator[schemaId] != address(0)) revert ValidatorAlreadySet(schemaId);
+        bytes32 boundId = ISchemaValidator(validator).schemaId();
+        if (boundId != schemaId) revert InvalidValidatorBinding(schemaId, boundId);
+        schemaValidator[schemaId] = validator;
+        emit ValidatorSet(schemaId, validator);
+    }
+
     // ── Seller attestations ─────────────────────────────────────────
 
-    /// @notice Attest as the seller of an order.
-    /// @param roleCommitment The commitment proving the caller's seller role.
-    ///        The coordinator recomputes orderHash and verifies it exists.
-    /// @param orderHash The order being attested (may differ from role order
-    ///        for cross-order attestation within the same process).
-    /// @param schemaId  Schema defining the attestation vocabulary.
-    /// @param stage     Numeric stage within the schema.
-    /// @param contentRef Optional off-chain evidence reference (0 if none).
+    /// @notice Attest as the seller of `role`, against the order in `target`.
+    /// @dev For same-order attestation pass the same commitment twice. For
+    ///      cross-order attestation within the same process (e.g. a courier
+    ///      attesting a lifecycle stage against the root order using their
+    ///      sub-order commitment as role), pass distinct `role` and `target`
+    ///      commitments — the coordinator verifies both are committed and in
+    ///      the same process. The inclusion proof is verified against
+    ///      `target.agreementHash` (the clause being declared lives in the
+    ///      target's signed contract, not the role's).
     function attestAsSeller(
-        CommitmentTypes.Commitment calldata roleCommitment,
-        bytes32 orderHash,
+        CommitmentTypes.Commitment calldata role,
+        CommitmentTypes.Commitment calldata target,
         bytes32 schemaId,
         uint8 stage,
-        bytes32 contentRef
+        bytes calldata sectionData,
+        bytes32[] calldata proof,
+        bytes calldata content
     ) external {
-        bytes32 processId = _verifySeller(roleCommitment, orderHash);
-        emit Attestation(orderHash, processId, msg.sender, schemaId, stage, contentRef);
+        (, bytes32 roleProcessId) = _requireKnownCommitment(role);
+        if (role.seller != msg.sender) revert NotAuthorized();
+
+        (bytes32 targetOrderHash, bytes32 targetProcessId) = _requireKnownCommitment(target);
+        if (roleProcessId != targetProcessId) revert ProcessMismatch();
+
+        bytes32 contentRef = _validateContent(target.agreementHash, schemaId, stage, sectionData, proof, content);
+        emit Attestation(targetOrderHash, targetProcessId, msg.sender, schemaId, stage, contentRef);
     }
 
     // ── Buyer attestations ──────────────────────────────────────────
 
-    /// @notice Attest as the buyer of a process.
-    /// @param processId The process the buyer belongs to.
-    /// @param orderHash The order being attested.
-    /// @param schemaId  Schema defining the attestation vocabulary.
-    /// @param stage     Numeric stage within the schema.
-    /// @param contentRef Optional off-chain evidence reference (0 if none).
-    function attestAsBuyer(bytes32 processId, bytes32 orderHash, bytes32 schemaId, uint8 stage, bytes32 contentRef)
-        external
-    {
-        _verifyBuyer(processId, orderHash);
-        emit Attestation(orderHash, processId, msg.sender, schemaId, stage, contentRef);
+    /// @notice Attest as the buyer of the target order.
+    /// @dev `msg.sender` must equal `target.buyer`. By commit invariant,
+    ///      `target.buyer == processes[target.processId].rootBuyer` for every
+    ///      committed order, so this authorizes the rootBuyer for any order
+    ///      in their process (covering the cross-order case implicitly —
+    ///      pass the target order's commitment).
+    function attestAsBuyer(
+        CommitmentTypes.Commitment calldata target,
+        bytes32 schemaId,
+        uint8 stage,
+        bytes calldata sectionData,
+        bytes32[] calldata proof,
+        bytes calldata content
+    ) external {
+        (bytes32 targetOrderHash, bytes32 targetProcessId) = _requireKnownCommitment(target);
+        if (msg.sender != target.buyer) revert NotAuthorized();
+
+        bytes32 contentRef = _validateContent(target.agreementHash, schemaId, stage, sectionData, proof, content);
+        emit Attestation(targetOrderHash, targetProcessId, msg.sender, schemaId, stage, contentRef);
     }
 
     // ── Mechanism-delegated attestations ─────────────────────────────
 
-    /// @notice Attest via the order's seller (mechanism contract).
-    /// @dev The seller extracted from the commitment must implement IRoleResolver.
-    /// @param commitment The commitment whose seller implements IRoleResolver.
-    /// @param schemaId  Schema defining the attestation vocabulary.
-    /// @param stage     Numeric stage within the schema.
-    /// @param contentRef Optional off-chain evidence reference (0 if none).
+    /// @notice Attest via the target order's seller (mechanism contract).
+    /// @dev The seller extracted from the commitment must implement IRoleResolver
+    ///      and return `true` for `isAuthorized(orderHash, msg.sender)`.
     function attestViaResolver(
-        CommitmentTypes.Commitment calldata commitment,
+        CommitmentTypes.Commitment calldata target,
         bytes32 schemaId,
         uint8 stage,
-        bytes32 contentRef
+        bytes calldata sectionData,
+        bytes32[] calldata proof,
+        bytes calldata content
     ) external {
-        (bytes32 orderHash, bytes32 processId) = _requireKnownCommitment(commitment);
-        address seller = commitment.seller;
-        if (!IRoleResolver(seller).isAuthorized(orderHash, msg.sender)) {
+        (bytes32 targetOrderHash, bytes32 targetProcessId) = _requireKnownCommitment(target);
+        if (!IRoleResolver(target.seller).isAuthorized(targetOrderHash, msg.sender)) {
             revert NotAuthorized();
         }
-        emit Attestation(orderHash, processId, msg.sender, schemaId, stage, contentRef);
+
+        bytes32 contentRef = _validateContent(target.agreementHash, schemaId, stage, sectionData, proof, content);
+        emit Attestation(targetOrderHash, targetProcessId, msg.sender, schemaId, stage, contentRef);
     }
 
     // ── Internal ────────────────────────────────────────────────────
+
+    /// @dev Verify the clause is a committed leaf of the order's signed
+    ///      agreement, validate the runtime content, and return its hash.
+    ///      Leaf = `keccak256(schemaId || keccak256(sectionData))`, sorted-pair
+    ///      merkle tree as produced by the off-chain manifest helpers.
+    function _validateContent(
+        bytes32 agreementHash,
+        bytes32 schemaId,
+        uint8 stage,
+        bytes calldata sectionData,
+        bytes32[] calldata proof,
+        bytes calldata content
+    ) internal view returns (bytes32) {
+        address v = schemaValidator[schemaId];
+        if (v == address(0)) revert ValidatorNotSet(schemaId);
+
+        bytes32 leaf = keccak256(abi.encodePacked(schemaId, keccak256(sectionData)));
+        if (!MerkleProof.verify(proof, agreementHash, leaf)) {
+            revert InvalidInclusionProof(agreementHash, schemaId);
+        }
+
+        ISchemaValidator(v).validate(schemaId, stage, sectionData, content);
+        return keccak256(content);
+    }
 
     /// @dev Recompute orderHash from commitment, verify it exists in Core.
     function _requireKnownCommitment(CommitmentTypes.Commitment calldata c)
@@ -125,34 +236,6 @@ contract AttestationCoordinator {
         orderHash = keccak256(abi.encodePacked(processId, structHash));
 
         if (core.orderStatus(orderHash) == 0) revert UnknownOrder();
-    }
-
-    /// @dev Verify msg.sender is seller of roleCommitment; enforce same process.
-    function _verifySeller(CommitmentTypes.Commitment calldata roleCommitment, bytes32 orderHash)
-        internal
-        view
-        returns (bytes32 processId)
-    {
-        bytes32 roleOrderHash;
-        (roleOrderHash, processId) = _requireKnownCommitment(roleCommitment);
-        if (roleCommitment.seller != msg.sender) revert NotAuthorized();
-
-        // Same-order attestation: no cross-check needed
-        if (roleOrderHash == orderHash) return processId;
-
-        bytes32 targetProcessId = core.orderProcessId(orderHash);
-        if (targetProcessId == bytes32(0)) revert UnknownOrder();
-        if (targetProcessId != processId) revert ProcessMismatch();
-    }
-
-    /// @dev Verify msg.sender is root buyer of the process; enforce same process.
-    function _verifyBuyer(bytes32 processId, bytes32 orderHash) internal view {
-        (address rootBuyer,,,) = core.processes(processId);
-        if (rootBuyer == address(0)) revert UnknownOrder();
-        if (rootBuyer != msg.sender) revert NotAuthorized();
-        bytes32 targetProcessId = core.orderProcessId(orderHash);
-        if (targetProcessId == bytes32(0)) revert UnknownOrder();
-        if (targetProcessId != processId) revert ProcessMismatch();
     }
 
     /// @dev Compute the EIP-712 digest for a root commitment (processId derivation).

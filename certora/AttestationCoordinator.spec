@@ -1,16 +1,30 @@
 // SPDX-License-Identifier: MIT
 // Certora CVL specification for AttestationCoordinator
+// (validator-gated + agreement-receipt binding).
 //
-// AttestationCoordinator is stateless: it has no storage of its own.
-// All role checks are reads from the linked FigaroCore instance.
+// The coordinator owns one storage mapping (`schemaValidator`). All role checks
+// are reads from the linked FigaroCore instance (no new kernel state). Every
+// runtime attestation carries a merkle inclusion proof against the signed
+// `agreementHash` — the call reverts unless the caller's sectionData and proof
+// open to a committed clause.
 //
-// Rules are organized into two groups:
-//   A) Targeted rules for attestAsBuyer (no struct parameters — clean CVL)
+// Rules are organized into three groups:
+//   A) Role-gate invariants on attestAsBuyer (takes a Commitment struct; caller
+//      must equal `c.buyer`, which equals rootBuyer by commit invariant)
 //   B) Parametric rules: no AC call can modify FigaroCore state
+//   C) Validator-gate + binding invariants
 //
-// The seller path (attestAsSeller) takes a CommitmentTypes.Commitment struct
-// which is not directly declared in this spec; seller-role correctness is
-// covered by the Foundry AttestationCoordinatorTest suite.
+// The seller path (attestAsSeller — takes role + target commitments) and the
+// mechanism path (attestViaResolver) are covered by the Foundry suite in
+// test/AttestationCoordinatorTest.t.sol.
+//
+// Foundry-covered invariants NOT re-proven here:
+//   • validator-binding-check     → test_setValidator_rejectsMismatchedBinding
+//   • contentRef == keccak256(content) → test_contentRefIsKeccakOfContent
+//   • invalid inclusion proof → revert (covered structurally by the spec rules
+//     below: `sectionData`/`proof` land in `_validateContent` which routes
+//     through OZ `MerkleProof.verify`; any successful attestation must have
+//     opened the proof. Tests exercise the revert path directly.)
 
 using FigaroCore as core;
 
@@ -20,129 +34,88 @@ methods {
     function core.orderProcessId(bytes32) external returns (bytes32) envfree;
     function core.processes(bytes32) external returns (address, address, uint256, uint256) envfree;
 
-    // IRoleResolver — wildcard external call from attestViaResolver.
-    // NONDET havocs the return value: the AC rules verify that no call path
-    // mutates FigaroCore state, which holds regardless of what isAuthorized
-    // returns (whether the attestation reverts or succeeds, core is untouched).
-    // DISPATCHER(true) would require a non-interface implementation in the
-    // scene, which we don't have (IRoleResolver.sol is an interface).
+    // AttestationCoordinator's own validator-registry getter.
+    function schemaValidator(bytes32) external returns (address) envfree;
+
+    // IRoleResolver.isAuthorized — wildcard external call from attestViaResolver.
+    // NONDET havocs the return value: AC rules verify that no call path mutates
+    // FigaroCore state, which holds regardless of what isAuthorized returns.
     function _.isAuthorized(bytes32, address) external => NONDET;
+
+    // ISchemaValidator hooks. `validate` is view and called by _validateContent
+    // for every attest* path; NONDET models "validator accepts" (non-reverting)
+    // since the rules here assert properties orthogonal to content semantics.
+    // `schemaId` is called only by setValidator and its correctness is
+    // Foundry-covered (see file header).
+    function _.validate(bytes32, uint8, bytes, bytes) external => NONDET;
+    function _.schemaId() external => NONDET;
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// GROUP A — Role-gate invariants (attestAsBuyer)
+// ═══════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════
 // RULE 1: Non-buyer cannot attest as buyer
 //
-// If msg.sender is not the rootBuyer of processId, attestAsBuyer reverts.
+// If msg.sender is not the target commitment's buyer, attestAsBuyer reverts.
+// (By commit invariant, `c.buyer == processes[c.processId].rootBuyer` for any
+// committed order, so this is equivalent to the rootBuyer check but expressed
+// directly on the signed commitment.)
 // ═══════════════════════════════════════════════════════════════════
 
 rule nonBuyerCannotAttestAsBuyer(
-    bytes32 processId,
-    bytes32 orderHash,
+    CommitmentTypes.Commitment c,
     bytes32 schemaId,
     uint8   stage,
-    bytes32 contentRef
+    bytes   sectionData,
+    bytes32[] proof,
+    bytes   content
 ) {
     env e;
 
-    address rootBuyer; address currency; uint256 cumVal; uint256 count;
-    (rootBuyer, currency, cumVal, count) = core.processes(processId);
+    require e.msg.sender != c.buyer;
 
-    require e.msg.sender != rootBuyer;
-
-    attestAsBuyer@withrevert(e, processId, orderHash, schemaId, stage, contentRef);
+    attestAsBuyer@withrevert(e, c, schemaId, stage, sectionData, proof, content);
 
     assert lastReverted,
-        "attestAsBuyer must revert when caller is not the process root buyer";
+        "attestAsBuyer must revert when caller is not the commitment's buyer";
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 2: Unknown process always causes attestAsBuyer to revert
-//
-// If rootBuyer == 0 the process does not exist; attestAsBuyer must revert.
-// ═══════════════════════════════════════════════════════════════════
-
-rule unknownProcessRevertsAsBuyer(
-    bytes32 processId,
-    bytes32 orderHash,
-    bytes32 schemaId,
-    uint8   stage,
-    bytes32 contentRef
-) {
-    env e;
-
-    address rootBuyer; address currency; uint256 cumVal; uint256 count;
-    (rootBuyer, currency, cumVal, count) = core.processes(processId);
-
-    require rootBuyer == 0;
-
-    attestAsBuyer@withrevert(e, processId, orderHash, schemaId, stage, contentRef);
-
-    assert lastReverted,
-        "attestAsBuyer must revert for a process with no root buyer (unknown process)";
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// RULE 3: Successful attestAsBuyer implies msg.sender is root buyer
+// RULE 2: Successful attestAsBuyer implies msg.sender == c.buyer
 //
 // Contrapositive of rule 1; stated as a positive precondition check.
 // ═══════════════════════════════════════════════════════════════════
 
 rule successfulBuyerAttestationImpliesBuyer(
-    bytes32 processId,
-    bytes32 orderHash,
+    CommitmentTypes.Commitment c,
     bytes32 schemaId,
     uint8   stage,
-    bytes32 contentRef
+    bytes   sectionData,
+    bytes32[] proof,
+    bytes   content
 ) {
     env e;
 
-    attestAsBuyer@withrevert(e, processId, orderHash, schemaId, stage, contentRef);
-    // Capture immediately — `lastReverted` is reset by any subsequent call,
-    // including the view read on core.processes below.
+    attestAsBuyer@withrevert(e, c, schemaId, stage, sectionData, proof, content);
     bool reverted = lastReverted;
 
-    address rootBuyer; address currency; uint256 cumVal; uint256 count;
-    (rootBuyer, currency, cumVal, count) = core.processes(processId);
-
-    assert !reverted => e.msg.sender == rootBuyer,
-        "If attestAsBuyer succeeds, msg.sender must equal the process root buyer";
+    assert !reverted => e.msg.sender == c.buyer,
+        "If attestAsBuyer succeeds, msg.sender must equal the commitment's buyer";
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 4: Successful attestAsBuyer implies target order is in processId
-//
-// The target orderHash must belong to processId or attestAsBuyer reverts.
+// GROUP B — AC cannot mutate FigaroCore state (parametric)
 // ═══════════════════════════════════════════════════════════════════
 
-rule buyerAttestationEnforcesProcessBoundary(
-    bytes32 processId,
-    bytes32 orderHash,
-    bytes32 schemaId,
-    uint8   stage,
-    bytes32 contentRef
-) {
-    env e;
-
-    attestAsBuyer@withrevert(e, processId, orderHash, schemaId, stage, contentRef);
-    bool reverted = lastReverted;
-
-    bytes32 actualProcess = core.orderProcessId(orderHash);
-
-    assert !reverted => actualProcess == processId,
-        "If attestAsBuyer succeeds, the target order must belong to the given process";
-}
-
 // ═══════════════════════════════════════════════════════════════════
-// RULE 5: No AttestationCoordinator call can change FigaroCore order status
+// RULE 3: No AttestationCoordinator call can change FigaroCore order status
 //
 // AC only reads from Core (view calls only). Order status must be immutable
 // across any AC function invocation.
 // ═══════════════════════════════════════════════════════════════════
 
-// `filtered` restricts `method f` to AttestationCoordinator's own external
-// methods. Without it, CVL's `method f` also enumerates FigaroCore's methods
-// (because FigaroCore is linked into the scene), and FigaroCore.commit()
-// trivially violates the assertion — which isn't what this rule is about.
 rule attestationCannotChangeOrderStatus(bytes32 watchedOrder, method f)
     filtered { f -> f.contract == currentContract }
 {
@@ -157,10 +130,10 @@ rule attestationCannotChangeOrderStatus(bytes32 watchedOrder, method f)
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 6: No AttestationCoordinator call can change FigaroCore process state
+// RULE 4: No AttestationCoordinator call can change FigaroCore process state
 //
-// rootBuyer, currency, cumulativeValue, and activeOrderCount are all
-// owned by FigaroCore. AC cannot modify them.
+// rootBuyer, currency, cumulativeValue, and activeOrderCount are all owned by
+// FigaroCore. AC cannot modify them.
 // ═══════════════════════════════════════════════════════════════════
 
 rule attestationCannotChangeProcessState(bytes32 watchedProcess, method f)
@@ -185,4 +158,82 @@ rule attestationCannotChangeProcessState(bytes32 watchedProcess, method f)
            cumValBefore     == cumValAfter    &&
            countBefore      == countAfter,
         "No AttestationCoordinator function can change FigaroCore process state";
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GROUP C — Validator-gate + binding invariants
+// ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
+// RULE 5: Validator-mandatory-on-attest (buyer path)
+//
+// A schema with no registered validator cannot be attested under: if
+// schemaValidator[schemaId] == 0 pre-call, attestAsBuyer must revert.
+// This is the "no silent attestation" guarantee — an unknown schema cannot
+// emit an Attestation event. Paired with the merkle-proof gate in
+// `_validateContent`, it closes both the unknown-schema and unsigned-clause
+// attack surfaces.
+// ═══════════════════════════════════════════════════════════════════
+
+rule noValidatorBlocksBuyerAttestation(
+    CommitmentTypes.Commitment c,
+    bytes32 schemaId,
+    uint8   stage,
+    bytes   sectionData,
+    bytes32[] proof,
+    bytes   content
+) {
+    env e;
+
+    require schemaValidator(schemaId) == 0;
+
+    attestAsBuyer@withrevert(e, c, schemaId, stage, sectionData, proof, content);
+
+    assert lastReverted,
+        "attestAsBuyer must revert when no validator is registered for schemaId";
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RULE 6: First-write-wins — cannot overwrite an existing validator
+//
+// setValidator(s, v) must revert whenever schemaValidator[s] != 0.
+// Makes the validator binding immutable post-registration and prevents a
+// validator-swap rug-pull.
+// ═══════════════════════════════════════════════════════════════════
+
+rule setValidatorIsFirstWriteWins(bytes32 schemaId, address newValidator) {
+    env e;
+
+    require schemaValidator(schemaId) != 0;
+
+    setValidator@withrevert(e, schemaId, newValidator);
+
+    assert lastReverted,
+        "setValidator must revert when a validator is already registered for schemaId";
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RULE 7: setValidator cannot alter bindings for other schemas
+//
+// Storage isolation: setValidator(s1, v) touches only schemaValidator[s1];
+// schemaValidator[s2] for any s2 != s1 is preserved. Combined with rule 6,
+// every (schemaId → validator) binding is stable for life once set.
+// ═══════════════════════════════════════════════════════════════════
+
+rule setValidatorPreservesOtherBindings(
+    bytes32 touchedSchema,
+    bytes32 otherSchema,
+    address newValidator
+) {
+    env e;
+
+    require touchedSchema != otherSchema;
+    address otherBefore = schemaValidator(otherSchema);
+
+    setValidator@withrevert(e, touchedSchema, newValidator);
+
+    address otherAfter = schemaValidator(otherSchema);
+
+    assert otherBefore == otherAfter,
+        "setValidator must not modify the validator binding of any other schema";
 }

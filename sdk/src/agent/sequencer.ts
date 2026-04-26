@@ -64,23 +64,13 @@ export type SequencerOp =
         mechanism_sig: SequencerSignature;
     }
     | {
+        // Web2-strip (2026-04-26): only RegisterOperator survives. Update /
+        // Deactivate / Reactivate were removed alongside their on-chain
+        // functions; switching role or metadata happens via withdraw +
+        // re-register (the dedup guard is cleared on withdraw, not via batch).
         type: "RegisterOperator";
         role: number;
         metadata_uri: string;
-        operator_sig: SequencerSignature;
-    }
-    | {
-        type: "UpdateOperator";
-        role: number;
-        metadata_uri: string;
-        operator_sig: SequencerSignature;
-    }
-    | {
-        type: "DeactivateOperator";
-        operator_sig: SequencerSignature;
-    }
-    | {
-        type: "ReactivateOperator";
         operator_sig: SequencerSignature;
     };
 

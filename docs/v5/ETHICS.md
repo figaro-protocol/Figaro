@@ -102,9 +102,16 @@ reveal, the deployed contract cannot be fixed.
 - The assumptions are mathematically derived from the payoff matrix, not
   heuristic. The 2× ratio is the minimum sufficient deterrent, proven by
   game-theoretic analysis.
-- Migration is always possible: a new kernel can be deployed alongside the
-  old one, and protocol-layer tooling can bridge between them. TCP/IP
-  evolved through versioning, not through patching existing deployments.
+- Migration is possible in principle: a new kernel can be deployed
+  alongside the old one, and protocol-layer tooling can bridge between
+  them. In practice, civilizational-scale migration is hard — the
+  IPv4→IPv6 transition has been underway for 25 years and remains
+  incomplete; TCP/IP's evolution has been as much a story of layering
+  and patching as of clean versioning. If a subtle flaw in the 2×
+  ratio, buyer dominance, or atomic resolution is revealed by decades
+  of operation, migration cost is real and not trivially deferrable.
+  Immutability is a 200-year wager on the correctness and adequacy of
+  the current assumptions; the wager is defensible, but it is a wager.
 - The runtime and protocol layers (above the kernel) are mutable and can
   adapt to new requirements.
 
@@ -148,6 +155,73 @@ trees, everything built on top of, around, and in response to firms loses
 its substrate. This extrapolation follows that cascade — not just what
 happens to the firm, but what happens to everything that exists because
 firms exist.
+
+### Scenario Space
+
+The extrapolation that follows is one scenario among several. Its
+value is not as prediction but as *considered consequence*: the set of
+outcomes thought through before deployment. The weights below are one
+analyst's subjective estimates at the time of writing, not empirical
+predictions or consensus forecasts. They exist to prevent the phased
+description that follows from being read as a single trajectory.
+
+| Scenario | Weight | Character |
+|---|---|---|
+| Partial durable adoption in coordination-heavy niches | ~30% | Cross-border trade, gig work, agent commerce, DAO operations transform; capital-intensive production stays firm-structured |
+| AI-accelerated substantial transformation (30–50 yr) | ~25% | AI agents as dominant throughput users compress the timeline; coordination-heavy sectors restructure fundamentally; real political stress |
+| Regulatory capture / CBDC substitution | ~20% | States force wallet-level KYC or promote programmable-money alternatives; pure kernel survives on margins |
+| Full dissolution of the coordination firm (elaborated below) | ~15% | The phased extrapolation that follows, roughly on its timeline |
+| Transition-pain political backlash | ~8% | Erosion of employment-bundled protections outpaces composable replacements; political movements force restrictions |
+| Supersession by a better primitive | ~2% | Zero-knowledge coordination, AI-mediated trust, or other innovation makes asymmetric bonding obsolete |
+
+The phases below elaborate the fourth scenario in detail. The others
+are not elaborated because the release argument does not depend on
+which obtains. A constrained, ownerless primitive is responsible to
+release under any of them; the ecosystem's obligations apply in all.
+
+### What Actually Dissolves, and What Persists
+
+The firm historically bundles five distinct functions: coordination of
+production, aggregation of capital across projects, accumulation of
+tacit organizational knowledge, pooling of risk across uncorrelated
+ventures, and provision of legal personhood for contracting and
+liability. Asymmetric bonding addresses the first cleanly and
+decisively. It does not address the other four.
+
+- **Capital aggregation.** Retained earnings, long-horizon R&D,
+  factory construction, and patient investment all require some
+  persistent entity to hold assets across processes. Process trees
+  settle and dissolve; they are not capital accumulators.
+- **Tacit organizational knowledge.** Operating practices that only
+  survive continuous operation by stable teams — a production system,
+  an airline's safety culture, a trauma unit's reflexes — depend on
+  persistence that transactional coordination does not provide.
+- **Risk pooling.** Firms absorb variance by diversifying across
+  uncorrelated projects. A sovereign wallet in a process tree absorbs
+  variance only through its own capital buffer.
+- **Legal personhood.** Owning property, carrying liability insurance,
+  holding patents, being sued — all require someone to *be* the
+  entity, not just to coordinate one.
+
+Where these functions persist, they likely reconstitute around
+token-denominated treasury communities whose members repeatedly
+participate in compatible process trees. These structures resemble
+firms at the meta-layer — they own assets, aggregate capital,
+accumulate norms, and persist across processes — even if their
+internal coordination looks different.
+
+The precise claim, then, is: the *coordination firm* — whose value is
+internal management of a bounded labor pool — loses its economic
+rationale where asymmetric bonding is applicable. The *capital firm* —
+whose value is durable asset ownership and risk-bearing — persists in
+revised wrappers.
+
+The cascade that follows ("What Exists Because Firms Exist") should be
+read with this narrowing in mind. Institutions that exist because
+coordination was expensive erode. Institutions that exist because
+capital aggregation, tacit knowledge, risk pooling, or legal
+personhood were centralized do not erode on the same schedule, and
+some do not erode at all.
 
 ### What Exists Because Firms Exist
 
@@ -197,6 +271,18 @@ fee, no admin. Regulators regulate participants, not the primitive.
 
 ### Phase 2: The Coasean Tipping Point and the Institutional Cascade (2046–2076)
 
+This phase's timeline is conditional on AI-agent adoption. AI agents
+are likely to become the majority throughput users of process trees
+within this window — they have no friction with the 2× lockup
+(perfect discount-rate rationality, parallel process management,
+continuous availability), and they can assemble coordination
+structures at a cadence no human coordinator could match. Where AI
+agents dominate adoption, the Coasean threshold shift in
+coordination-heavy sectors may compress to 2030–2050 rather than
+2046–2076. The phase dates reflect the slower human-adoption path; the
+faster AI-led path is plausible and would have the same qualitative
+consequences on a shorter calendar.
+
 Coase's logic activates: firms exist to reduce transaction costs; when
 process-tree coordination falls below the cost of internal management, the
 firm loses its economic reason to exist. Coordination-heavy industries
@@ -210,11 +296,36 @@ tax, payroll tax). Both assume the firm as the intermediary that reports,
 withholds, and remits. When economic activity is process trees of sovereign
 wallets settling directly, the state loses its collection point. This is
 not tax evasion — it is the structural disappearance of the entity through
-which taxes were collected. On-chain visibility makes *assessment* trivial
-(every settlement is public), but *collection* requires new mechanisms —
-process-tree template patterns that route a percentage to a jurisdictional
-treasury node. The state becomes a service provider competing for template
-inclusion, not a sovereign extracting from captive entities.
+which taxes were collected. On-chain visibility makes *assessment* trivial;
+*collection* does not follow, because voluntary template inclusion cannot
+substitute for compulsory taxation at the scale modern states require.
+Three forks emerge:
+
+- **Capture.** States force wallet-level regulation — mandatory KYC
+  at the wallet tier, CBDCs with programmable routing to treasury
+  nodes, regulatory gating of legitimate commerce to approved
+  wrappers. The kernel survives, but legitimate economic activity
+  routes through state-compatible layers. This is the closest outcome
+  to the current regime.
+- **Fracture.** States retain the monopoly on legitimate violence but
+  lose fiscal capacity. Compulsory public goods — pandemic response,
+  defense, long-horizon environmental coordination, scientific basic
+  research — are under-provisioned. Voluntary redistribution through
+  token communities handles some of what welfare systems did, but not
+  the goods that require compulsion. This is the most alarming
+  outcome.
+- **Synthesis.** The state narrows to a small set of truly compulsory
+  functions (courts, security, taxation of physical resources and
+  energy) and cedes most coordination to the protocol and token
+  communities. Template patterns route a percentage to jurisdictional
+  treasury nodes voluntarily, sustained by the state's continued
+  monopoly on physical-world enforcement.
+
+Which fork dominates is jurisdiction-specific and depends on factors
+outside the protocol's design — political culture, fiscal starting
+position, willingness to accept reduced compulsory capacity in
+exchange for reduced rent extraction. The protocol does not choose; it
+makes the choice legible.
 
 **Securities transform into token markets.** A stock is a claim on a firm's
 future earnings. When the firm dissolves into its process tree, equity
@@ -316,6 +427,19 @@ The same permissionless infrastructure that enables AI participation enables
 human reinvention at zero switching cost — register a capability, bond
 capital, start settling. No employer to find, no interview, no onboarding.
 
+AI agents as economic *principals* (not merely tools operating on
+behalf of human principals) are a category the protocol technically
+enables and does not govern. The mechanism says nothing about whether
+AI wealth accumulation should be bounded, whether AI-to-AI economic
+activity should be distinguishable from AI-to-human activity, or
+whether the state of AI principal autonomy should itself be a
+coordination concern. These questions are punted to the surrounding
+legal and political system — which, by this period, is weaker than
+today. We flag this as an open problem with no proposed solution. The
+protocol's neutrality on participant identity is game-theoretically
+necessary; its consequences for AI economic agency extend beyond this
+document's analysis.
+
 ### Phase 4: Deep Infrastructure (2126–2226)
 
 If the protocol still runs at this scale, FigaroCore has become invisible
@@ -344,10 +468,28 @@ bonded process, taxation as treasury node, welfare as community
 redistribution) are not yet built. This window is where human suffering is
 most likely.
 
+Economic protections are not the only thing firms bundle with
+employment. The firm is also an identity container, a stability
+container, and a social-network container. "I work at X" is
+load-bearing for many people's self-concept in ways this document has
+under-weighted. Process-tree work is transactional; it does not
+provide the narrative continuity, the social scaffolding, or the
+long-arc sense of belonging that stable employment has historically
+provided for those who had it. Token communities can partially fill
+the gap — settlement history, template specialization as craft
+identity, recurring participation with compatible counterparties — but
+they are thinner and less cohesive than employer-based identity has
+been. The psychological and social cost of making transactional work
+the default is a real cost that the mechanism enables and cannot
+remedy. It is distinct from the economic protection gap and will be
+felt by the same population during the same window.
+
 This is not an argument against deployment. It is an argument for urgency
-in building the composable protections alongside the kernel. The kernel
-enables the new world. The templates, schemas, and community patterns
-determine whether that world is livable.
+in building the composable protections alongside the kernel, and for
+recognizing that not all transition costs are economic. The kernel
+enables the new world. The templates, schemas, community patterns, and
+identity structures that form around it determine whether that world
+is livable.
 
 ### What the Protocol Cannot Control
 
@@ -368,10 +510,29 @@ communities that build on it. The protocol cannot prevent:
   fragmentation, insularity, and echo chambers. The semantic graphs are
   interoperable across communities — but whether communities *choose* to
   interoperate is a social question, not a technical one.
+- **Long-horizon and tail-risk coordination.** Pandemic preparedness,
+  defense, long-horizon environmental response, and existential-risk
+  coordination are goods that require compulsion — free-riding is
+  rational for individuals, and the payoff horizon exceeds any
+  individual process-tree duration. Voluntary coordination through
+  token communities under-provides these goods; template inclusion
+  cannot substitute for compulsory taxation at the scale these goods
+  require. To the extent state fiscal capacity is eroded (see the
+  Fracture fork above), civilizational resilience to tail risk
+  degrades. The protocol does not enable or prevent these goods; it
+  erodes the compulsory mechanism that has historically funded them,
+  and the voluntary mechanisms that might replace them are not yet
+  built.
 
 ---
 
 ## Why the Answer Is Yes
+
+Across the scenarios above — partial adoption, AI-accelerated
+transformation, regulatory capture, full dissolution, transition
+backlash, supersession — the release decision survives. Not because
+all scenarios are equally good, but because the arguments below hold
+under each.
 
 ### 1. The Mechanism Is Deterministic, Not Intelligent
 

@@ -216,6 +216,109 @@ Wrapped, non-rebasing variants (e.g., wstETH instead of stETH) must be used.
 
 ---
 
+## 12. Single currency per process — multi-token is a composition concern
+
+**Pattern**: `commit` binds every order in a process to one `currency` address;
+sub-orders with a mismatched currency revert (`CurrencyMismatch`). Two parties
+cannot buy and sell in different tokens within the same process.
+
+**Why it looks correct and IS correct**: The 2:1 asymmetric bond ratio is
+Nash-stable from chain state alone — no oracle, no DEX dependency, no pre-agreed
+FX rate. Mixing currencies within one process would require all three to compare
+"buyer bond" against "seller bond" at settlement, and each reintroduces a
+discretionary actor (oracle operator, DEX router, a counterparty picking the
+rate). Kernel-level single-currency binding is precisely what preserves
+trust-minimization.
+
+**The composition patterns** (no kernel change required):
+
+1. **Process-tree composition.** A "single transaction with N vendors in N
+   currencies" is N independent monotoken processes, one per vendor relationship,
+   each in the vendor's preferred token. The kernel sees N bonded handshakes; the
+   UI or wallet correlates them. Closer in spirit to "every participant is an
+   independent value-adder." Buyer holds each currency or swaps upstream.
+
+2. **Wallet-side atomic swap → monotoken commit.** Buyer holds DAI, vendor wants
+   USDC. The wallet performs a DEX swap, then calls `commit` with USDC in the
+   same transaction. Kernel sees one clean commitment; slippage is absorbed
+   pre-bond. Modern wallets (Rabby, MetaMask Swap, Rainbow) do this natively.
+
+3. **Level-3 atomic bundler mechanism.** When all-or-nothing semantics is needed
+   across N differently-denominated vendor processes, a Level-3 extension contract
+   can orchestrate N monotoken commits as a wallet-bundled group with
+   revert-on-any-fail. Kernel still sees N independent monotoken processes.
+
+Do not propose adding oracles, DEX routers, or "multi-currency bonds" to
+FigaroCore. The perceived limitation is a misframing — point inquirers at the
+three composition patterns above.
+
+---
+
+## 13. Schema validator binding is not bundled with schema registration
+
+**Pattern**: `SchemaRegistry.registerSchema` and
+`AttestationCoordinator.setValidator` are independent permissionless writes.
+There is no single-call function that registers a schema and binds its
+validator atomically. A schema can be registered with no validator bound
+(attestations under it revert with `ValidatorNotSet`); a validator can be
+bound to a schemaId before that schemaId has been registered in
+`SchemaRegistry`. The two writes are not transactionally coupled at the
+protocol layer.
+
+**Why it looks wrong**: A new schema registered via
+`SchemaRegistry.registerSchema` exposes a window where any address can call
+`setValidator(schemaId, maliciousValidator)` and capture the binding
+permanently — `setValidator` is first-write-wins and immutable. A malicious
+validator that returns the correct `schemaId()` from its self-attestation
+(passing the `InvalidValidatorBinding` check) but contains adversarial
+`validate()` logic can become the immutable binding before the legitimate
+validator deploys. The schemaId is then permanently captured.
+
+**Why it is correct**: First-write-wins binding IS the no-admin mechanism
+(Decision #4). Adding an admin who can override or revoke validator bindings
+is the only way to "fix" this front-running risk at the protocol layer, and
+that admin is itself the larger problem — it reintroduces the trusted third
+party the protocol is designed to eliminate. The risk lives at the deployment-
+discipline layer, not the protocol layer.
+
+**The discipline**: A schema author deploys their validator and binds it to
+their schemaId **in a single transaction**. The pattern is established by
+`script/Deploy.s.sol:_deployAndRegisterValidators`, which deploys each of the
+14 reference figaro-* validators inline with its `setValidator` call so no
+front-running window exists between deploy and bind. Third-party schema
+authors must follow the same pattern via one of:
+
+1. **`SchemaRegistrationHelper.registerSchemaAndValidator(schemaId, version, uriHash, validator)`** —
+   the recommended path for post-deploy schemas. A stateless, no-admin helper
+   contract deployed alongside the protocol that composes both writes
+   atomically. See `src/SchemaRegistrationHelper.sol`.
+2. A custom deploy script that performs both writes in one external transaction.
+3. A multicall/batch transaction submitted via the schema author's wallet.
+
+**Why a separate helper contract instead of bundling into AttestationCoordinator**:
+the kernel-discipline framing prefers keeping `SchemaRegistry` and
+`AttestationCoordinator` as independently-addressable primitives. The helper
+is opt-in syntactic sugar — schema authors who want atomic register+bind use it;
+those who don't can still call the two primitives separately. Neither AC nor
+SchemaRegistry gains a dependency on the other. The "two primitives bundled"
+concern is preserved at the kernel layer; the bundling happens at a
+non-privileged composer one tier above.
+
+**Behavioral note for helper users**: when a schema is registered through the
+helper, the `SchemaRegistered` event records the helper's address as the
+`registrar`, not the calling user's address. Schema authors who want to be
+on record as the registrar (e.g., for off-chain provenance) should call
+`SchemaRegistry.registerSchema` directly — this trades atomicity for
+registrar-identity. The atomic-bind property protects against malicious-
+validator front-running; the registrar-identity property is informational.
+
+The risk surface is bounded: `script/Deploy.s.sol` and
+`script/DeployMainnet.s.sol` have zero front-running window for the 10
+reference schemas; only post-deploy third-party schemas need to apply the
+discipline.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Looks wrong because | Is correct because |
@@ -231,3 +334,5 @@ Wrapped, non-rebasing variants (e.g., wstETH instead of stETH) must be used.
 | 9 | Auction creator can self-claim | Defeats price discovery | No funds held; financial commitment is in FigaroCore |
 | 10 | No redundant on-chain batch guards | Insufficient defense-in-depth | ZK proof is the single authority; duplicating guards creates drift |
 | 11 | Strict token compatibility rejection | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
+| 12 | Single currency per process | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process tree / wallet swap / Level-3 bundler) |
+| 13 | `setValidator` unbundled from `registerSchema` | Front-running window for new schemas | First-write-wins is the no-admin mechanism; atomic deploy+bind is deployment discipline, not a protocol gap |

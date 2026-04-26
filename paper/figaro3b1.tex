@@ -1,0 +1,721 @@
+% Figaro Paper B1: From Firms to Transaction-Scoped Institutions
+% A Coasean Re-Examination Under Costless Bilateral Enforcement
+% (Institutional-economics half of the former Paper B; the political-economy
+% argument is now in figaro3b2.tex.)
+% Preprint, April 2026
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\figaro}{\textsc{Figaro}}
+\newcommand{\fig}{\textsc{Fig}}
+\newcommand{\pay}{P}
+\newcommand{\cumval}{G}
+
+\title{%
+  From Firms to Transaction-Scoped Institutions:\\
+  A Coasean Re-Examination Under Costless Bilateral Enforcement%
+}
+
+\author{
+  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+}
+
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+
+% ════════════════════════════════════════════════════════════════════
+\begin{abstract}
+\citet{coase1937} argued that firms exist because the cost of
+discovering prices, negotiating terms, and enforcing contracts in
+open markets sometimes exceeds the cost of hierarchical management.
+\citet{williamson1985} refined this into Transaction Cost Economics
+(TCE), identifying asset specificity, uncertainty, and frequency as
+drivers of vertical integration. \citet{hart1995} located the firm
+boundary at the allocation of residual control rights over
+non-contractible decisions. Across these traditions, a common premise
+is that contract enforcement between strangers is costly, slow, and
+jurisdiction-dependent. This paper examines what happens to the
+boundary of the firm when one of those underlying costs collapses to
+a fixed, jurisdiction-displaced capital lockup.
+
+We take as given the existence of a settlement primitive---developed
+formally in a companion paper~\citep{daliana2026mechanism}, with a
+verified Solidity implementation in a second
+companion~\citep{daliana2026impl}---that prices the cost of trust at
+exactly $2\times$ the transaction value in temporarily locked
+capital, with no recurring extraction, no arbitrator, and no
+jurisdictional dependency. Treating this primitive as exogenous, we
+ask two questions. First, what does the existence of such a
+primitive imply for the Coasean threshold that defines the boundary
+of the firm? Second, what is the firm's status in the organizational
+space once that threshold has shifted?
+
+Our argument is that the firm has always been a coordination
+mechanism with a particular layer added --- \emph{subordination}:
+the organization of labor and assets under an ownership nucleus that
+retains residual control rights and captures residual output. In
+Coase's analysis, the subordination layer is not incidental; it is
+load-bearing, because enforcement between non-subordinated
+counterparties was costly in the pre-primitive regime. A fixed-cost
+bilateral-bond settlement primitive prices that enforcement
+directly. The subordination layer loses its cost advantage for the
+class of transactions identified below; what emerges is not the
+abolition of the firm, but its demotion from the privileged
+organizational container to one pattern among several. A companion
+political-economy paper~\citep{daliana2026hegemony} develops what
+this demotion looks like from the outside; the present paper is
+internal institutional-economics.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:}
+transaction cost economics, theory of the firm, subordination,
+coordination economics, organizational substrate, institutional
+economics
+
+% ════════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+The boundary of the firm has been the central object of theoretical
+attention in organizational economics since
+\citet{coase1937}. Williamson's Transaction Cost
+Economics~\citep{williamson1985} identified asset specificity,
+uncertainty, and frequency as the conditions under which
+hierarchical governance dominates market exchange. The
+property-rights theory~\citep{hart1995} located the firm boundary at
+the allocation of residual control rights over non-contractible
+decisions. Across these traditions, a common premise is that market
+contracting between strangers is expensive: search is costly,
+negotiation is costly, and enforcement---through courts,
+arbitrators, or platforms---is costly, slow, and
+jurisdiction-dependent.
+
+This paper asks what happens to that boundary when one of the
+underlying costs---contract enforcement between mutually distrusting
+parties---collapses to a fixed, jurisdiction-displaced capital
+lockup. The collapse is not a thought experiment: a companion
+paper~\citep{daliana2026mechanism} presents the mechanism with
+formal proofs of cooperation as the unique surviving Nash
+equilibrium, and a second companion~\citep{daliana2026impl} presents
+a verified Solidity implementation audited through
+TLA\textsuperscript{+} model checking, property-based fuzzing,
+symbolic execution, and specification checking.
+
+We treat that primitive as exogenous. The contribution of this paper
+is institutional-economic: given the primitive, what follows for the
+theory of the firm? We argue two things. First, the Coasean
+threshold shifts inward --- narrowly, in a precise sense we make
+explicit. Second, the firm ceases to be the privileged organizational
+container in the region where the threshold has shifted; it becomes
+one pattern among several, sharing the organizational space with
+treasury communities, peer networks, transaction-scoped assemblies,
+agent coalitions, and forms whose naming is yet to stabilize.
+
+\paragraph{Paper organization.}
+\Cref{sec:primitive} summarizes the settlement primitive, citing the
+companion papers for the formal development and implementation.
+\Cref{sec:threshold} develops the Coasean threshold shift.
+\Cref{sec:patterns} treats the firm as one organizational pattern
+among many, introducing subordination as the variable whose cost
+advantage the primitive erases, and developing the three concrete
+implications for property-rights theory and for the unit of
+coordination.
+\Cref{sec:token} examines token denomination as a coordination
+signal that supplants standing platform credentialing.
+\Cref{sec:conclusion} concludes.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Settlement Primitive}
+\label{sec:primitive}
+
+We summarize here only the properties of the primitive that the
+present argument uses. The full definitions and theorems are
+in~\citep{daliana2026mechanism}; the implementation and verification
+in~\citep{daliana2026impl}.
+
+\paragraph{Asymmetric bonding.}
+For a transaction with payment $\pay > 0$ and cumulative upstream
+value $\cumval \geq \pay$, the buyer locks $2\pay$ and the seller
+locks $2\cumval$. Only the buyer can trigger resolution. On
+resolution, the buyer recovers $\pay$ (net cost: $-\pay$) and the
+seller recovers $2\cumval + \pay$ (net gain: $+\pay$). On
+non-resolution, both bonds remain locked indefinitely.
+
+\paragraph{Equilibrium properties.}
+In the resulting one-shot bonding game, cooperation weakly dominates
+defection for all parties, and the cooperative profile is the unique
+outcome surviving iterated elimination of weakly dominated
+strategies. The result extends to $N$-party process trees through
+\emph{progressive collateralization}, with the seller's
+risk-to-reward ratio growing with chain depth.
+
+\paragraph{Atomic resolution and peer enforcement.}
+All orders within a process resolve atomically---all or
+nothing---which induces a weakest-link subgame among sellers.
+This produces an endogenous coordination pressure analogous to
+peer enforcement in joint-liability microfinance, but obtained
+without repeated interaction, local information, or social
+punishment technology.
+
+\paragraph{No escape hatches.}
+The primitive has no timeout, no admin override, no governance
+mechanism, no protocol fee, and no upgrade path. The companion
+mechanism paper proves that any such escape hatch weakens the
+equilibrium.
+
+\paragraph{What the primitive does \emph{not} provide.}
+For the institutional argument that follows, two non-properties
+matter as much as the properties. The primitive does not provide
+capital aggregation across projects, does not provide pooled
+risk-bearing across uncorrelated ventures, and does not provide
+legal personhood for off-chain liability. We return to these
+absences in \Cref{sec:patterns}.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Coasean Threshold Shift}
+\label{sec:threshold}
+
+Coase's central insight is that firms exist because market
+transaction costs---searching for partners, negotiating terms,
+enforcing agreements---sometimes exceed the cost of hierarchical
+management. Williamson refined this into TCE, identifying three
+conditions under which hierarchical governance dominates market
+exchange: high asset specificity, high uncertainty, and high
+frequency.
+
+The settlement primitive changes the calculus by collapsing one of
+these costs to a fixed, predictable capital lockup. Consider the
+three transaction costs separately.
+
+\paragraph{Search costs.}
+Public on-chain signals (settlement history, accepted-token lists,
+attested capabilities) allow autonomous discovery through shared
+coordination graphs. For agents able to read blockchain state,
+search cost approaches zero. The substantive change is not that
+search is cheaper---platforms already make search cheap---but that
+the search index is non-proprietary: no platform owns the discovery
+function, and the data is not extracted as rent.
+
+\paragraph{Negotiation costs.}
+Off-chain commitment building (EIP-712 typed structured data) lets
+parties iterate on terms without gas costs. The negotiation is
+bilateral and direct; counterparties can discover and iterate
+through shared graph visibility rather than through a standing
+intermediary's matching function. The substantive change here is
+asymmetric: the \emph{cost} of negotiating is roughly unchanged from
+web2 baselines, but the \emph{counterparty space} from which one
+can negotiate is no longer mediated by a platform's terms of
+service.
+
+\paragraph{Enforcement costs.}
+This is the decisive variable. In the pre-primitive world,
+enforcement requires courts (slow, expensive,
+jurisdiction-dependent), arbitrators (trusted third parties), or
+standing intermediaries that internalize coordination and charge
+for it. The primitive prices enforcement at exactly $2\times$ the
+transaction value---a fixed, predictable, jurisdiction-displaced
+cost requiring no third party.\footnote{The $2\pay$ figure is the
+capital-lockup component, which is the substantive change relative
+to the prior regime. A full enforcement-cost accounting adds
+(i) gas for the \texttt{commit} and \texttt{resolveProcess} calls
+(bounded but non-zero), (ii) opportunity cost on locked capital
+over the process duration $T$ at the prevailing risk-free rate $r$
+(roughly $2\pay \cdot rT$), (iii) slippage if bond-denomination
+currency must be acquired at transaction time, and
+(iv) operational-security costs associated with key custody
+(signing infrastructure, backup, rotation). The Coasean-threshold
+comparison below abstracts (i)--(iv) because they are small
+relative to the standing-firm overheads against which the
+comparison is made for the retail-scale transactions this paper
+treats; the abstraction is not universally valid and should be
+revisited for applications in which any of (i)--(iv) is
+comparable in magnitude to $2\pay$.}
+
+\begin{proposition}[Coasean Threshold Shift]
+\label{prop:coasean-shift}
+For any transaction where $2\pay$ (the capital lockup cost) is
+less than the firm's coordination overhead for the same
+transaction, the rational organizational choice is market exchange
+via the primitive rather than hierarchical integration.
+\end{proposition}
+
+\Cref{prop:coasean-shift} is a comparative-statics statement, not a
+sweeping institutional prediction. It identifies a class of
+transactions for which the make-or-buy boundary tilts toward
+\emph{buy}---specifically, transactions where the time-weighted
+opportunity cost of locked capital is lower than the standing
+overhead of internalizing the coordination function. The class is
+non-empty (most retail-scale transactions in mature financial
+environments satisfy it) and bounded (very-high-frequency,
+very-low-margin, or very-long-duration transactions do not). The
+proposition does not claim that all transactions migrate; it claims
+that the migration threshold is now defined by capital opportunity
+cost rather than by the cost of standing institutional infrastructure.
+
+\paragraph{Engagement with TCE.}
+Williamson's three drivers of vertical integration deserve direct
+treatment. \emph{Asset specificity} continues to favor hierarchy: a
+specialized asset whose value is contingent on a specific
+counterparty cannot be efficiently coordinated through a sequence of
+short-lived bonded transactions, since the holdup risk is in the
+asset's pre-transaction sunk investment, not in the transaction
+itself. \emph{Uncertainty} cuts both ways: contract incompleteness
+favors hierarchy, but the primitive's evidence trail (timestamped
+commitments, signed disclosures) reduces some classes of
+uncertainty---specifically those that hierarchical authority
+historically resolved by managerial fiat. \emph{Frequency} is the
+condition under which the shift is most pronounced: high-frequency
+exchanges with low asset specificity are exactly where the standing
+firm's overhead is hardest to amortize and the primitive's
+per-transaction capital lockup is easiest to absorb.
+
+The proposition therefore narrows rather than overturns TCE. It
+identifies a region of the asset-specificity / uncertainty /
+frequency space where hierarchical governance was previously the
+equilibrium outcome but is no longer.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Firm as One Pattern Among Many}
+\label{sec:patterns}
+
+The implication of \Cref{prop:coasean-shift} is not that the firm
+dissolves but that the firm's status in the organizational space
+changes. The firm has always been a coordination mechanism. What
+distinguishes the modern corporate firm from older coordination
+forms---partnerships, guilds, cooperatives, market exchange---is not
+the coordination function itself but a particular overlay placed on
+top of it: \emph{subordination}.
+
+\subsection{Subordination as the Variable}
+
+By subordination we mean the allocation of labor and productive
+assets under a single ownership nucleus, combined with an
+employment contract that transfers residual output rights and
+residual control rights to that nucleus in exchange for a wage. In
+the Coasean analysis, subordination is not incidental to the firm;
+it is load-bearing. Prior to the settlement primitive, enforcement
+between non-subordinated counterparties was costly, and aggregation
+under an ownership nucleus that resolved enforcement internally
+through managerial authority was the institutional response.
+
+\begin{proposition}[Subordination as an Enforcement Economy]
+\label{prop:subordination}
+In the pre-primitive regime, subordination is a response to
+enforcement cost. The firm's subordination layer secures
+coordination between counterparties whose direct bilateral
+enforcement would be prohibitively costly, at the price of
+aggregating residual rights under a single nucleus. When bilateral
+enforcement is priced at a fixed capital lockup, the subordination
+layer loses its cost advantage in the region identified by
+\Cref{prop:coasean-shift}.
+\end{proposition}
+
+\Cref{prop:subordination} reframes what is dissolving. It is not
+the firm's coordination function that becomes unnecessary ---
+coordination is still required. It is the subordination overlay ---
+the transfer of residual control rights from the producing party to
+an ownership nucleus --- that becomes economically optional where
+the primitive is applicable. What is left behind is coordination
+without subordination: the same productive assets, the same
+coordination requirements, but without the ownership aggregation
+that historically secured them.
+
+\subsection{What Emerges in the Shifted Region}
+
+Where subordination is no longer load-bearing, the firm becomes one
+organizational pattern among several. The organizational space in
+that region admits multiple viable coordination patterns that were
+previously suppressed by the enforcement-cost structure:
+transaction-scoped assemblies that form around a process and
+dissolve at settlement; standing treasury communities whose members
+recurrently participate in compatible process trees; peer networks
+of independent bonded counterparties without a common treasury;
+agent coalitions mixing human, software, and machine participants.
+The firm continues to exist; it shares the space with these other
+forms rather than occupying it alone. Which form dominates for a
+given industry is an empirical question about the parameters of
+\Cref{prop:coasean-shift} and the non-coordination functions
+(capital aggregation, risk pooling, legal personhood) that the
+primitive does not itself address.
+
+\paragraph{Holacracy as an intra-firm precedent.}
+Intra-firm experiments with flat coordination --- most visibly the
+Zappos adoption of Holacracy~\citep{robertson2015holacracy} in 2014
+--- previewed what some of these patterns look like when they
+remain confined to a single ownership nucleus. Such experiments are informative as data points
+about what flat coordination requires operationally, but they are
+not what the primitive generalizes. Holacracy, once the
+subordination nucleus is retained, operates at the mercy of that
+nucleus. The primitive enables flat coordination where the nucleus
+itself is not required; that is a stronger condition than any
+intra-firm reform can provide.
+
+\subsection{Three Concrete Implications}
+
+\paragraph{(a) The wallet is the unit of coordination.}
+Each productive asset is represented directly by a wallet address.
+At the protocol tier\footnote{We use ``kernel / protocol /
+runtime'' in the sense defined in~\citep[§1.4]{daliana2026mechanism}.
+The kernel guarantees only the \texttt{commit}/\texttt{resolveProcess}
+bond structure; the credential and attestation apparatus described
+in this paragraph is realized at the protocol tier by extensions
+(attestation coordinators, schema registries) whose composition
+discipline is developed in the implementation
+companion~\citep{daliana2026impl}.} the wallet can hold
+content-addressed credentials --- attested capabilities, operator
+profiles, and (at the runtime tier) NFT-anchored deeds --- that
+certify the asset's identity and performance history. In the firm
+model, the cook's skill, the kitchen's equipment, the courier's
+vehicle are subsumed under the firm's legal identity and cease to be
+individually addressable. In the wallet model, each asset is its
+own coordination endpoint. The productive asset \emph{is} the
+identity; it remains an identity whether the firm persists or not.
+
+\paragraph{(b) Tokens replace stock.}
+Participants in the shifted region do not receive shares in a firm;
+they hold tokens denominated by the communities with which they
+coordinate. Token holdings signal community affiliation and
+participation-history, not residual-output ownership in a
+centralized nucleus. The relationship between productive asset and
+community is market-mediated rather than hierarchically
+internalized. Tokens are borderless, community-defined rather than
+jurisdiction-issued, and the community's definition is itself an
+open parameter.
+
+\paragraph{(c) Actor type is neutral.}
+Nothing in the primitive's coordination layer distinguishes an AI
+capable of bearing capital risk from a human capable of the same
+risk. A person with a law degree and an AI trained on legal
+precedent compete on identical terms --- each as a bonded
+counterparty whose capabilities, if attested at all, are attested
+at the protocol tier by a schema-validated attestation coordinator
+rather than asserted at the kernel tier. Actor-type neutrality is
+a property of the kernel's coordination layer, not a policy
+choice; it follows directly from the kernel's indifference to what
+sits behind a wallet.
+
+\subsection{Engagement with the Property-Rights Tradition}
+
+The property-rights tradition~\citep{hart1995, grossman_hart_1986,
+hart_moore_1990} locates the firm boundary at the allocation of
+residual control rights over non-contractible decisions. The
+primitive does not abolish non-contractibility; rather, it changes
+\emph{where} residual control rights are allocated. In the firm
+model, those rights are allocated to the ownership nucleus. In the
+wallet model, they are allocated to whoever controls the wallet ---
+which, under self-sovereign key management and NFT-anchored
+credentials, is the productive asset itself (or the individual
+operating it). Residual control rights do not disappear; they are
+held by the asset rather than aggregated under an ownership layer.
+
+This is the institutional-economics translation of what
+\Cref{sec:patterns} has been describing throughout: the decision
+about who holds residual rights, previously answered by the firm's
+ownership structure, is now a property of the asset's wallet
+architecture. This relocates the allocation question rather than
+dissolving it; \citet{hart_moore_1990} applies to the wallet-layer
+question just as it applied to the firm-layer question before,
+with a different set of empirical facts about costs and
+observability.
+
+\paragraph{Williamson's drivers, revisited.}
+Our treatment of Williamson's three drivers
+(\Cref{sec:threshold}) likewise does not dissolve TCE; it relocates
+the question. Asset specificity continues to matter wherever a
+productive asset's value is contingent on a specific bond-specific
+investment; the primitive does not change that. What changes is
+that the institutional response to asset specificity need not be
+subordination under an ownership nucleus --- a treasury community,
+a long-term peer network, or a serial bonded-commitment pattern
+can, for some parameter regions, secure the specific investment
+without aggregating residual rights.
+
+The non-coordination functions of the firm --- capital aggregation,
+organizational knowledge, risk pooling, legal personhood --- persist
+as durable requirements that some institution must satisfy. They do
+not necessarily re-bundle into a firm-shaped container; they can be
+satisfied by treasuries, DAOs, mutuals, cooperatives, or
+jurisdiction-specific legal wrappers attached to wallet clusters.
+The empirical question of which bundling pattern dominates in a
+given industry is outside the scope of this paper.
+
+\paragraph{The firm's self-knowledge function dissolves alongside.}
+A function we have not separately named is that the firm
+historically has been the unit at which \emph{books} are kept ---
+the unit whose position is tracked over time through
+double-entry bookkeeping in the tradition of
+\citet{pacioli1494summa}. The bookkeeping function is not
+incidental: at scale, an entity that cannot maintain accurate
+records of its position cannot grow, attract investment, pay
+taxes, or contract with third parties who require disclosure.
+The companion accounting paper~\citep{daliana2026accounting}
+develops the argument that a \figaro{} process is a
+self-closing ledger period, and that the apparatus that grew up
+around the books (bookkeeping, accounting, audit) becomes
+optional for activity that settles through the protocol. The
+implication for the present argument is that the firm's
+demotion from privileged organizational container is supported
+by an additional structural shift not addressed elsewhere
+above: the records function that motivated the firm boundary
+historically is also no longer firm-bound. A wallet cohort
+participating in many process trees has its full position
+visible without consolidation.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Token Denomination as Coordination Signal}
+\label{sec:token}
+
+In the primitive, the choice of denomination token is itself a
+coordination signal. The settlement layer is token-agnostic: any
+ERC-20 can serve as the bond and payment currency. This means:
+
+\begin{itemize}
+  \item A stablecoin signals legal-system alignment.
+  \item A DAO governance token signals community membership.
+  \item A commodity-backed token signals value anchoring.
+  \item Accepting a specific token \emph{is} the seller's identity
+    declaration---an accepted-token list is a brand.
+\end{itemize}
+
+Settlement velocity in a given token replaces traditional
+reputation metrics (star ratings, review scores). The on-chain
+record of resolved orders denominated in token $\tau$ is a public,
+tamper-proof signal of the seller's reliability within the $\tau$
+economy. No platform needs to aggregate, curate, or attest this
+signal; it is a natural byproduct of protocol usage.
+
+This matters institutionally because reputation infrastructure is
+one of the durable rents that platforms extract. A standing
+platform's credentialing function---certifying that a counterparty
+is reliable, safe, or qualified---is one of the structural reasons
+platforms persist even after their matching function is technically
+replicable. When reputation is a public byproduct of settlement
+rather than a proprietary platform asset, the platform's claim to
+that rent weakens.
+
+\paragraph{Schelling-point tokens as a distinct category.}
+The coordination-signal argument above applies to \emph{any}
+token used in a bonded commitment. A second coordination role is
+played by tokens designed specifically to serve as focal points
+in the sense of \citet{schelling1960strategy}: anchors around
+which participants converge to signal alignment with a specific
+ecosystem, without central authority and without relying on any
+of the token's financial-mechanism features. The cryptoeconomics
+companion~\citep{daliana2026fig} develops this category in
+detail, with \textsc{Btc} and \textsc{Eth} as precedents at the
+money and settlement layers respectively, and the \fig{} token
+as the focal anchor for participants who coordinate around the
+bonded-commitment primitive specifically. A Schelling-point
+token does not compete with the general-purpose denomination
+tokens discussed above; it carries a signal they cannot carry,
+which is alignment with a specific coordination ecosystem rather
+than with legal-system, community, or value-anchoring choices.
+Such a token is underpinned not by cost-of-production (as Bitcoin
+is) nor by transaction-execution demand (as Ethereum is) but by
+the \emph{value-added of trade} conducted through the substrate
+it coordinates around: \fig{}'s value rests on the scale and
+quality of bonded commitments conducted by participants who use
+it to identify each other.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+The Coasean threshold is not a conjecture---it is observable.
+Contemporary coordination stacks often extract 15--30\% of
+transaction value as coordination rent (Uber~25\%, DoorDash~30\%,
+Airbnb~14\%, Amazon Marketplace~15\%). Credit card networks layer
+2--3\% interchange plus double-digit annual interest on revolving
+balances. Financial markets intermediate trillions in notional
+value against a fraction of that in real economic exchange.
+Asymmetric bonding prices the cost of trust at $2\times$ the
+transaction value in temporarily locked (not spent) capital, with
+zero recurring extraction.
+
+For any economic activity where the coordination rent exceeds the
+opportunity cost of locked capital, the standing firm --- as Coase
+conceived it --- is no longer the uniquely efficient unit of
+economic organization in that activity. The stronger consequence is
+that the firm becomes one organizational pattern among several in
+the shifted region: transaction-scoped assemblies, treasury
+communities, peer networks, and agent coalitions share the
+coordination space alongside it. The settlement primitive does not
+abolish coordination, nor does it abolish the firm; it retires the
+\emph{subordination overlay} that previously made the firm the
+privileged container, and leaves a richer organizational space in
+its place.
+
+The argument leaves three questions open. First, the empirical
+question: which industries and which transaction classes lie above
+the threshold today, and at what rate does the threshold shift as
+on-chain settlement matures? Second, the institutional question:
+which organizational patterns --- firms, treasuries, peer networks,
+or forms not yet named --- dominate in a given industry once the
+primitive is available, and what determines the dominance? The
+non-coordination functions of the firm (capital aggregation,
+organizational knowledge, risk pooling, legal personhood) must
+still be bundled somewhere; the bundling question is open. Third, a
+question of a different character: why this shift is qualitatively
+harder to recognize than to specify, and what that difficulty
+itself reveals about the architecture of contemporary coordination
+infrastructure. That third question is addressed in the companion
+political-economy paper~\citep{daliana2026hegemony}.
+
+\paragraph{A note on scope alignment across the companion papers.}
+This paper bounds its claim by two scope conditions: the Coasean
+comparison (\Cref{prop:coasean-shift}: $2\pay$ vs. coordination
+overhead) and asset specificity (\Cref{sec:patterns}). The
+political-economy companion~\citep{daliana2026hegemony} bounds its
+claim differently, by hegemonic legibility --- its argument applies
+wherever the primitive makes a previously-presupposed
+coordination function visible as a design artifact. The labor-law
+companion~\citep{daliana2026labor} bounds its claim by asset
+specificity alone. The electronic-evidence
+companion~\citep{daliana2026legal} bounds its claim least
+restrictively --- wherever the primitive is used, its evidentiary
+framework applies. Each bound is internally reasonable within
+its paper's discipline. Read across the set, these bounds are
+compatible but not identical. The theoretical-cluster domain is
+the \emph{intersection} of the four scope conditions, not their
+union: a given transaction lies within the cluster's shared
+domain only if the primitive's Coasean threshold is met, asset
+specificity is low or structurally handled, the coordination
+function is legible as a design choice, and the evidentiary
+framework is practically accessible for the parties' jurisdictional
+situation. A transaction that satisfies three of the four
+conditions but not the fourth is in-scope for three papers and
+out-of-scope for one; readers constructing arguments about such
+transactions should check which papers apply. We flag this here
+because each companion's scope condition is developed within its
+own register and the inter-paper alignment is not elsewhere made
+explicit.
+
+\section*{Acknowledgments}
+I thank the readers and collaborators who pressed me to separate
+the institutional-economics argument made here from its
+political-economy half (now in the companion
+paper~\citep{daliana2026hegemony}). The two were entangled in
+earlier drafts in a way that did neither audience justice.
+
+
+% ════════════════════════════════════════════════════════════════════
+% References
+% ════════════════════════════════════════════════════════════════════
+
+\begin{thebibliography}{99}
+
+\bibitem[Coase(1937)]{coase1937}
+Coase, R.~H.
+\newblock The Nature of the Firm.
+\newblock \emph{Economica}, 4(16):386--405, 1937.
+
+\bibitem[Daliana(2026a)]{daliana2026mechanism}
+Daliana, A.
+\newblock Asymmetric Bonding: A Self-Enforcing Settlement Primitive
+  for $N$-Party Coordination.
+\newblock Companion mechanism-design paper, 2026.
+
+\bibitem[Daliana(2026b)]{daliana2026impl}
+Daliana, A.
+\newblock The \textsc{Figaro} Kernel: A Verified Solidity
+  Implementation of Asymmetric Bonding.
+\newblock Companion implementation paper, 2026.
+
+\bibitem[Daliana(2026c)]{daliana2026hegemony}
+Daliana, A.
+\newblock The Visibility of Coordination: A Gramscian Reading of
+  the Platform Economy and Its Successor.
+\newblock Companion political-economy paper, 2026.
+
+\bibitem[Daliana(2026d)]{daliana2026legal}
+Daliana, A.
+\newblock On-Chain Evidence, Off-Chain Adjudication: A Layered
+  Approach to Smart-Contract Dispute Resolution.
+\newblock Companion law-and-evidence paper, 2026.
+
+\bibitem[Daliana(2026e)]{daliana2026labor}
+Daliana, A.
+\newblock The Wallet as Legal Subject: Subordination, Property,
+  and the Dissolution of the Employee--Contractor Line.
+\newblock Companion labor-law paper, 2026.
+
+\bibitem[Daliana(2026f)]{daliana2026fig}
+Daliana, A.
+\newblock \textsc{Fig}: A Schelling-Point Token for the
+  \textsc{Figaro} Coordination Ecosystem.
+\newblock Companion cryptoeconomics paper, 2026.
+
+\bibitem[Daliana(2026g)]{daliana2026accounting}
+Daliana, A.
+\newblock Bookkeeping as Protocol Byproduct: Self-Closing
+  Ledger Periods in the \textsc{Figaro} Settlement
+  Primitive.
+\newblock Companion accounting paper, 2026.
+
+\bibitem[Pacioli(1494)]{pacioli1494summa}
+Pacioli, L.
+\newblock \emph{Summa de Arithmetica, Geometria, Proportioni
+  et Proportionalita}.
+\newblock Paganinus de Paganinis, Venice, 1494.
+
+\bibitem[Grossman and Hart(1986)]{grossman_hart_1986}
+Grossman, S.~J. and Hart, O.~D.
+\newblock The Costs and Benefits of Ownership: A Theory of Vertical
+  and Lateral Integration.
+\newblock \emph{Journal of Political Economy}, 94(4):691--719, 1986.
+
+\bibitem[Hart(1995)]{hart1995}
+Hart, O.
+\newblock \emph{Firms, Contracts, and Financial Structure}.
+\newblock Oxford University Press, 1995.
+
+\bibitem[Hart and Moore(1990)]{hart_moore_1990}
+Hart, O. and Moore, J.
+\newblock Property Rights and the Nature of the Firm.
+\newblock \emph{Journal of Political Economy}, 98(6):1119--1158, 1990.
+
+\bibitem[Robertson(2015)]{robertson2015holacracy}
+Robertson, B.~J.
+\newblock \emph{Holacracy: The New Management System for a Rapidly
+  Changing World}.
+\newblock Henry Holt and Company, New York, 2015.
+
+\bibitem[Schelling(1960)]{schelling1960strategy}
+Schelling, T.~C.
+\newblock \emph{The Strategy of Conflict}.
+\newblock Harvard University Press, Cambridge, MA, 1960.
+
+\bibitem[Williamson(1985)]{williamson1985}
+Williamson, O.~E.
+\newblock \emph{The Economic Institutions of Capitalism}.
+\newblock Free Press, New York, 1985.
+
+\end{thebibliography}
+
+\end{document}

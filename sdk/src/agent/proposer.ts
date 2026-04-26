@@ -69,6 +69,21 @@ export interface AttestAction extends BaseAction {
     attester: Address;
     /** Orders this address can attest against. */
     orderHashes: Hex[];
+    /**
+     * Optional schemaId for the attestation. When omitted, the executor picks
+     * a default (typically `figaro-delivery-lifecycle-v1`). Must correspond to
+     * a clause committed in the target's signed agreement — otherwise the
+     * coordinator's inclusion-proof gate rejects the call.
+     */
+    schemaId?: Hex;
+    /** Optional stage; executor default is 1. */
+    stage?: number;
+    /** Optional ABI-encoded content. Omit to default to the committed
+     *  sectionData (correct for Category-2 schemas). */
+    content?: Hex;
+    /** Optional — seller-attest only. Supply a distinct role commitment for
+     *  cross-order attestation; omit for same-order attestation. */
+    roleOrderHash?: Hex;
 }
 
 export type ProposedAction =

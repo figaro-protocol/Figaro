@@ -1,0 +1,33 @@
+{
+    "schemaId": "figaro-jurisdiction-v1",
+    "version": 1,
+    "title": "Off-chain dispute-resolution jurisdiction",
+    "description": "Captures the off-chain legal/forum scope under which the contract is adjudicated if disputes escalate beyond the kernel's MAD equilibrium. Per Paper E: settlement on-chain by nature, adjudication off-chain by nature — every signed contract sits inside *some* jurisdiction even if FigaroCore never reads it. Generic across legal traditions: state law (ISO 3166), religious law (Sharia, Halakha), customary law, and ODR systems (Kleros, ICANN-UDRP).",
+    "categories": ["jurisdiction", "evidence-law"],
+    "fields": [
+        {
+            "name": "applicableLaw",
+            "type": "string",
+            "required": true,
+            "minLength": 2,
+            "maxLength": 16,
+            "description": "Identifier for the body of law that governs the contract. Conventionally an ISO 3166-1 alpha-2 country code (e.g., 'US', 'NL', 'JP'), optionally with ISO 3166-2 subdivision (e.g., 'US-CA', 'CA-ON'). 'EU' for European Union law. 'INTL' for international/treaty law. Free-form for non-state legal orders (e.g., 'Sharia', 'ICANN-UDRP', 'Kleros')."
+        },
+        {
+            "name": "forum",
+            "type": "string",
+            "required": false,
+            "minLength": 0,
+            "maxLength": 64,
+            "description": "Named adjudication venue. E.g., 'JAMS-arbitration', 'AAA-arbitration', 'ICC-arbitration', 'us-federal-court', 'small-claims-court', 'kleros' for on-chain ODR. Empty means: courts of competent jurisdiction within applicableLaw."
+        },
+        {
+            "name": "language",
+            "type": "string",
+            "required": false,
+            "minLength": 0,
+            "maxLength": 16,
+            "description": "ISO 639-1 / 639-2 language code for adjudication proceedings. E.g., 'en', 'fr', 'zh', 'ar'. Empty means: official language of the forum."
+        }
+    ]
+}

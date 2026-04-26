@@ -1,0 +1,91 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Figaro Handoff Schema v1",
+    "description": "Off-chain schema definition for the figaro-handoff-v1 agreement section schema. Defines the physical logistics parameters of a Figaro bonded commitment: pickup/dropoff locations (geohash-encoded), class of service, package dimensions, and the encrypted destination address for the fulfiller.",
+    "version": 1,
+    "schemaKey": "figaro-handoff-v1",
+    "schemaClass": "agreement-section",
+    "overview": {
+        "description": "figaro-handoff-v1 is an agreement section schema, not a lifecycle attestation schema. It describes the structure of the 'data' field in an AgreementSection with schema key 'figaro-handoff-v1'. This section encodes the physical logistics parameters that both parties agree to at commitment-time.",
+        "agreementRole": "Specifies where the order originates and where it must be delivered, the class of service, package weight and volume, and the encrypted destination address. The fulfiller (driver) can read the geohashes pre-claim; the full address is only accessible post-claim via ECDH key exchange.",
+        "lifecycleRelation": "This schema does not define attestation stages. It is co-signed at commitment time as part of the bilateral agreement manifest. Physical handoff events are attested separately under figaro-delivery-lifecycle-v1. Proximity at handoff is proved under figaro-proximity-proof-v1 (paired with the committed band declared in figaro-proximity-policy-v1)."
+    },
+    "manifestVersions": {
+        "description": "The handoff manifest has evolved through several wire formats. The agreement section data maps to manifest version v4/v5 semantics. Earlier wire formats (v1–v3) encoded directly as pipe-separated hex bytes on-chain; the agreement manifest layer replaces that encoding.",
+        "v1": "Cleartext address (base64url-encoded). Deprecated.",
+        "v2": "AES-256-GCM sealed address, shared-key decryption. Deprecated.",
+        "v3": "AES-256-GCM sealed + buyer's ephemeral secp256k1 public key for ECDH. Deprecated.",
+        "v4": "AES-256-GCM sealed address + notes + line items (base64 JSON). Current.",
+        "v5": "v4 with ECDH ephemeral key. Current agreement manifest equivalent."
+    },
+    "sectionDataFormat": {
+        "description": "The 'data' field of an AgreementSection with schema key 'figaro-handoff-v1' must conform to this structure.",
+        "fields": {
+            "pickupGeohash": {
+                "type": "string",
+                "format": "geohash string, precision 6–8 characters",
+                "description": "Geohash encoding of the pickup/origin location. Precision 6 (~1.2km × 0.6km cell), precision 7 (~152m × 152m), precision 8 (~38m × 19m). Pre-claim visible to any fulfiller inspecting the open job.",
+                "required": true
+            },
+            "dropoffGeohash": {
+                "type": "string",
+                "format": "geohash string, precision 6–8 characters",
+                "description": "Geohash encoding of the dropoff/destination location. Pre-claim visible to any fulfiller for routing distance estimation. The exact address is encrypted in encryptedAddress and only decryptable post-claim.",
+                "required": true
+            },
+            "classOfService": {
+                "type": "string",
+                "enum": ["S", "E", "F", "C"],
+                "description": "Logistics class of service: S=Standard, E=Express, F=Fragile (special handling), C=ColdChain (temperature controlled). Drives fulfiller filtering and pricing in the driver auction.",
+                "required": true
+            },
+            "massGrams": {
+                "type": "integer",
+                "description": "Package mass in grams. 0 if unknown or not applicable (e.g. digital services). Used for logistics cost estimation and carbon accounting.",
+                "required": true
+            },
+            "volumeMl": {
+                "type": "integer",
+                "description": "Package volume in millilitres. 0 if unknown or not applicable. Used for vehicle capacity planning.",
+                "required": true
+            },
+            "encryptedAddress": {
+                "type": "string",
+                "description": "AES-256-GCM encrypted destination street address. Encrypted to the buyer's ephemeral secp256k1 public key (for ECDH derivation) or to a shared key negotiated during checkout. Decryptable only by the committed fulfiller post-claim. Format: 'enc:{hex-encoded AES-GCM ciphertext+IV+tag}'.",
+                "required": false
+            },
+            "buyerEphemeralPubkey": {
+                "type": "string",
+                "format": "compressed secp256k1 public key hex (33 bytes, 66 hex chars)",
+                "description": "Buyer's ephemeral secp256k1 public key for ECDH key agreement. Present in v5-equivalent agreements. The committed fulfiller uses their private key + this public key to derive the AES symmetric key for decrypting encryptedAddress.",
+                "required": false
+            },
+            "encryptedNotes": {
+                "type": "string",
+                "description": "AES-256-GCM encrypted handoff notes (e.g. 'leave at front door', 'ring intercom'). Same key derivation as encryptedAddress. Format: 'enc:{hex-encoded ciphertext}'.",
+                "required": false
+            },
+            "handoffMode": {
+                "type": "string",
+                "enum": ["face-to-face", "dead-drop", "parking-area", "locker", "doorstep"],
+                "description": "The physical modality of the final handoff. Determines which proximity proof band is appropriate and what UI the fulfiller sees at the handoff step. 'face-to-face' is the default for food delivery.",
+                "required": false
+            }
+        }
+    },
+    "geohashGuidance": {
+        "description": "Geohash precision trades off location specificity against privacy. See docs/v5/GEOHASH_PRECISION.md for the full precision guidance.",
+        "precision6": "~1.2km × 0.6km. Appropriate for neighbourhood-level display in pre-claim job listings.",
+        "precision7": "~152m × 152m. Appropriate for street-level pickup confirmation.",
+        "precision8": "~38m × 19m. Appropriate for precise pickup point within a venue.",
+        "privacyNote": "The dropoffGeohash encodes only approximate destination. The exact destination is protected by encryption in encryptedAddress. Indexers and job-market participants see only the geohash."
+    },
+    "keyExchangeBinding": {
+        "description": "The encrypted address and notes use ECDH + AES-256-GCM. Key derivation: sharedSecret = ECDH(fulfillerPrivkey, buyerEphemeralPubkey). AES key = keccak256(sharedSecret). This is the same protocol as frontend/lib/handoff/ ECDH key exchange. See docs/v5/XMTP_KEY_EXCHANGE.md for the full protocol.",
+        "postClaimAccess": "The fulfiller can decrypt encryptedAddress only after the bilateral commitment is submitted on-chain. The ECDH derivation requires knowledge of the fulfiller's committed address (which is embedded in the Commitment struct)."
+    },
+    "canonicalizationNote": {
+        "description": "This section is included in the canonical JSON of the Agreement. All object keys are sorted recursively. encryptedAddress and encryptedNotes are treated as opaque strings — their internal encoding is not canonicalized further.",
+        "hashBinding": "agreementHash = keccak256(UTF-8 bytes of canonical JSON of Agreement). Implemented in frontend/lib/core/agreementManifest.ts computeAgreementHash()."
+    }
+}

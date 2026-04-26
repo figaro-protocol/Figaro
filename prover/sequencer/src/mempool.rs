@@ -189,32 +189,6 @@ impl Mempool {
                     .map_err(|e| format!("invalid register-operator signature: {e}"))?;
                 Ok(())
             }
-            KernelOp::UpdateOperator {
-                role,
-                metadata_uri,
-                operator_sig,
-            } => {
-                let struct_hash =
-                    update_operator_struct_hash(*role as u8, metadata_uri);
-                let digest = typed_data_hash(&domain, &struct_hash);
-                recover_signer(&digest, operator_sig)
-                    .map_err(|e| format!("invalid update-operator signature: {e}"))?;
-                Ok(())
-            }
-            KernelOp::DeactivateOperator { operator_sig } => {
-                let struct_hash = deactivate_operator_struct_hash();
-                let digest = typed_data_hash(&domain, &struct_hash);
-                recover_signer(&digest, operator_sig)
-                    .map_err(|e| format!("invalid deactivate-operator signature: {e}"))?;
-                Ok(())
-            }
-            KernelOp::ReactivateOperator { operator_sig } => {
-                let struct_hash = reactivate_operator_struct_hash();
-                let digest = typed_data_hash(&domain, &struct_hash);
-                recover_signer(&digest, operator_sig)
-                    .map_err(|e| format!("invalid reactivate-operator signature: {e}"))?;
-                Ok(())
-            }
         }
     }
 }

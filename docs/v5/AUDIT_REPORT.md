@@ -3,24 +3,57 @@
 Status: comprehensive internal security audit for the live V5 kernel, mechanism
 modules, FIG token contracts, and batch verification layer.
 
-Last updated: 2026-04-20 (AI audit pass — Claude Sonnet 4.6).
+Last updated: 2026-04-26 (Web3 normal-pass + adversarial-pass AI audits on the Phase-4a/4b + StagedMerkleAirdrop + small-surface deltas; 1 new Medium from normal pass, 0 new actionable from adversarial pass; case strengthened for two queued items).
 
 ## Scope
 
-Reviewed live Solidity surface (10 production contracts):
+Reviewed live Solidity surface (20 production contracts + 1 new validator interface):
 
 **Core Protocol**
 - `src/FigaroCore.sol` — kernel: 2 external functions, 3 mappings, no owner
 - `src/CommitmentTypes.sol` — EIP-712 typed structs and hash functions
 
 **Attestation & Schema**
-- `src/AttestationCoordinator.sol` — unified zero-storage attestation (3 modes)
+- `src/AttestationCoordinator.sol` — unified zero-storage attestation (3 modes, agreement-binding)
 - `src/SchemaRegistry.sol` — permissionless event-only schema anchoring
+- `src/SchemaRegistrationHelper.sol` — stateless atomic-bind composer for non-bootstrap schemas (closes M-1; see DESIGN_DECISIONS.md #13)
 - `src/IRoleResolver.sol` — role-authorization interface
+- `src/ISchemaValidator.sol` — four-arg validator interface (schemaId, stage, sectionData, content)
 
 **Mechanism Modules**
 - `src/DutchAuction.sol` — descending-price coordination, no token handling
 - `src/OperatorRegistry.sol` — self-declaration with reclaimable ETH deposit
+
+**Schema Validators** (15 — one per registered runtime-attestable schema, set via first-write-wins `setValidator`)
+- `src/schemaValidators/FigaroHandoffV1Validator.sol` — Category-2, enforces byte-equality
+- `src/schemaValidators/FigaroGeoV1Validator.sol` — Category-2, enforces byte-equality
+- `src/schemaValidators/FigaroFulfilmentV1Validator.sol` — Category-2, enforces byte-equality
+- `src/schemaValidators/FigaroGHGProtocolV1Validator.sol` — Category-2, enforces byte-equality (GHG sister schema)
+- `src/schemaValidators/FigaroGHGISO14064V1Validator.sol` — Category-2, enforces byte-equality (GHG sister schema)
+- `src/schemaValidators/FigaroGHGPAS2050V1Validator.sol` — Category-2, enforces byte-equality (GHG sister schema)
+- `src/schemaValidators/FigaroGHGEN16258V1Validator.sol` — Category-2, enforces byte-equality (GHG sister schema)
+- `src/schemaValidators/FigaroGHGCustomV1Validator.sol` — Category-2, enforces byte-equality (GHG sister schema)
+- `src/schemaValidators/FigaroCommerceV1Validator.sol` — Category-2, enforces byte-equality
+- `src/schemaValidators/FigaroGHGMeasurementV1Validator.sol` — Category-1, runtime grams CO2e
+- `src/schemaValidators/FigaroDeliveryLifecycleV1Validator.sol` — Category-1, runtime-only
+- `src/schemaValidators/FigaroProximityPolicyV1Validator.sol` — Category-2, enforces byte-equality (committed band)
+- `src/schemaValidators/FigaroProximityProofV1Validator.sol` — Category-1, runtime witness payload
+- `src/schemaValidators/FigaroMerchantProcessV1Validator.sol` — Category-1, runtime-only
+- `src/schemaValidators/FigaroCourierProcessV1Validator.sol` — Category-1, runtime-only
+- `src/schemaValidators/FigaroJurisdictionV1Validator.sol` — Category-2, enforces byte-equality (off-chain dispute-resolution jurisdiction; baseline graph per Paper E)
+
+The five `FigaroGHG<Standard>V1Validator` contracts are sister schemas — one
+per accounting standard, replacing the prior single `FigaroGHGDisclosureV1Validator`
+(2026-04-26 split). Standard identity lives in the schemaId; content shape
+`(uint8 scope)` and validation logic are shared.
+
+`FigaroProximityPolicyV1Validator` + `FigaroProximityProofV1Validator` are
+sister schemas that replaced the prior single `FigaroProximityV1Validator`
+(2026-04-26 split). Policy commits the required band at agreement signing
+(Category-2, byte-equality enforced); proof carries the per-handoff nonce
++ signed witness at runtime (Category-1, fresh per attestation). Off-chain
+consumers verify `proof.band == policy.band`. Same split rationale as
+GHG-disclosure / GHG-measurement.
 
 **FIG Token**
 - `src/fig/FigToken.sol` — ERC-20 + EIP-2612 permit, 1B hard cap, minter registry
@@ -32,7 +65,26 @@ Reviewed live Solidity surface (10 production contracts):
 Excluded from scope:
 - `archive-v3/`, `archive-v4/`
 - `src/mocks/`, `src/echidna/` (test infrastructure)
+- `src/fig/IFigMinter.sol`, `src/interfaces/ISP1Verifier.sol` (upstream-style interfaces)
 - `lib/` (upstream dependencies)
+
+## Post-audit amendment (2026-04-23) — Phase-4a/4b agreement binding
+
+The Phase-4a/4b refactor tightened the attestation path to bind every runtime
+declaration to the contract parties signed at commit time:
+
+- `ISchemaValidator` gained a `bytes sectionData` parameter; all ten validators
+  updated in lockstep.
+- `AttestationCoordinator.attestAsSeller/Buyer/ViaResolver` now take a full
+  `Commitment(s)` plus `sectionData` and `bytes32[] proof` and verify the
+  declared clause is a leaf of the target order's signed `agreementHash`
+  via OpenZeppelin `MerkleProof.verify` (sorted-pair).
+- Five Category-2 validators (handoff, geo, fulfilment, ghg-disclosure, commerce)
+  additionally enforce `keccak256(content) == keccak256(sectionData)` — a seller
+  who signed a clause at commit time cannot silently drift at runtime.
+- `FigaroTopologyV1Validator.sol` deleted — topology is manifest-only with no
+  runtime attestation.
+- Certora AC spec re-verified (8/8 sub-rules) against the new dispatch shape.
 
 ## Verification Layers
 
@@ -57,7 +109,7 @@ Live test inventory:
 - `AttestationCoordinator` (3 modes, cross-process rejection)
 - `SchemaRegistry` (permissionless registration, duplicate rejection)
 - `DutchAuction` (price curves, claim evaluation, edge cases)
-- `OperatorRegistry` (registration, deposit, deactivation, withdrawal)
+- `OperatorRegistry` (registration, deposit, withdrawal — web2-strip 2026-04-26 removed deactivate/reactivate/updateProfile)
 - `FigaroBatchVerifier` (state root continuity, auxiliary data hash verification)
 - `FigToken` (cap enforcement, permit, minter registry)
 - `StagedMerkleAirdrop` (per-stage claim, per-stage one-shot, per-stage unlock timing, merkle proof validation)
@@ -167,7 +219,7 @@ source-level review followed by design-philosophy challenge of every finding
 
 **Net result: 0 new actionable findings.**
 
-Initial findings that were raised and then withdrawn after design challenge:
+Initial findings that were raised and then withdrawn after design challenge (2026-04-20 pass):
 
 | Initial Severity | Description | Withdrawal Reason |
 |---|---|---|
@@ -195,6 +247,75 @@ via `abi.encode`, processId via EIP-712 domain-separated digest, orderHash via
 Commitment is the correct bilateral nonce. Removal of prevrandao is an
 improvement under PoS (validators know prevrandao up to one epoch ahead).
 
+### AI Audit Pass — 2026-04-26 (Phase-4a/4b + StagedMerkleAirdrop + small-surface deltas)
+
+Second AI audit pass against the post-amendment surface. Scope: 10 schema
+validators + `ISchemaValidator` interface + AttestationCoordinator Phase-4a/4b
+rewrite + `StagedMerkleAirdrop` + FigToken `totalRegisteredCap` sum-enforcement
++ FigaroBatchVerifier 3-arg constructor + FigaroCore `DOMAIN_SEPARATOR()` getter.
+
+Methodology: five parallel surface-scoped sub-audits, each pre-loaded with
+`DESIGN_DECISIONS.md` to skip the 12 false-positive patterns; design-challenge
+reasoning recorded for every finding raised or withdrawn.
+
+**Net result: 1 new Medium finding, 3 new Informational, 2 prior Info findings closed.**
+
+| New finding | Severity | Surface |
+|---|---|---|
+| M-1 — `setValidator` front-running for non-bootstrap schemas | Medium | `AttestationCoordinator.setValidator` |
+| INFO-7 — `ISchemaValidator` purity not compile-enforced (STATICCALL provides runtime protection) | Informational | `ISchemaValidator` |
+| INFO-8 — GHG-Measurement validator accepts unbounded `uint256` grams (Category-1 syntactic gate, semantics off-chain) | Informational | `FigaroGHGMeasurementV1Validator` |
+| INFO-9 — BatchVerifier constructor missing `_initialRoot != bytes32(0)` check (self-correcting via `StateRootMismatch`) | Informational | `FigaroBatchVerifier` constructor |
+
+| Prior finding | Status |
+|---|---|
+| INFO-1 (FigToken cap registration not summed) | **CLOSED** by `totalRegisteredCap` sum-enforcement at `src/fig/FigToken.sol:51` |
+| INFO-2 (BatchVerifier dead `figToken` field) | **CLOSED** by field removal; constructor now 3-arg |
+
+M-1 mitigation in place for the 14 reference figaro-* schemas (atomic
+deploy+bind in `script/Deploy.s.sol:_deployAndRegisterValidators`). For
+post-deploy third-party schemas, both recommendations now landed:
+recommendation (1) doc-only discipline (DESIGN_DECISIONS.md #13 + CLAUDE.md +
+copilot-instructions.md), and recommendation (2) `SchemaRegistrationHelper.sol`
+— a stateless no-admin composer that bundles `SchemaRegistry.registerSchema` +
+`AttestationCoordinator.setValidator` atomically in one transaction. See
+`docs/v5/SECURITY_AUDIT_AI.md` "## 2026-04-26 Audit Pass" for full detail.
+
+### AI Adversarial Audit Pass — 2026-04-26 (companion to the normal pass above)
+
+Hostile-frame audit dispatched as 4 parallel attack-class probes (validator/AC
+inputs + hash collision; bonding economics + multi-party process exploitation;
+BatchVerifier + sequencer trust boundary; cross-contract composition chains).
+Graded by **blast radius** rather than traditional severity.
+
+Full deliverable: `docs/v5/WEB3_ADVERSARIAL_AUDIT.md`.
+
+**Net result: 0 new actionable findings against the kernel.** All 28 examined
+attack vectors either (a) failed against existing defenses, (b) reduced to
+known design decisions, or (c) mapped to operational/deployment-discipline
+boundaries already documented in `SEQUENCER_TRUST_MODEL.md` and
+`DESIGN_DECISIONS.md`.
+
+**Two protocol-extension recommendations strengthened by adversarial reasoning:**
+
+1. **Implement `registerSchemaAndValidator` convenience method** (currently
+   queued in backlog) before the first high-stakes third-party schema is
+   announced. The M-1 capture risk has Severe blast radius for compliance/
+   regulatory schemas; doc-only mitigation is sufficient for the bootstrap
+   surface and low-stakes schemas, but cannot fully close the window for
+   schemas where capture has asymmetric impact.
+
+2. **Tighten `ISchemaValidator` purity discipline** from "must be pure/view"
+   to "must be pure (no external state reads)" — NatSpec + CLAUDE.md schema
+   checklist. Optionally change the interface declaration from `view` to
+   `pure`. Forecloses the latent non-determinism class for third-party
+   validators (D-8).
+
+**Operational documentation augmentation recommended:**
+- `SEQUENCER_TRUST_MODEL.md`: add adversarial selective-approval-revocation scenario alongside the existing accidental-revocation note (C-2/D-2).
+- `/help` schema interpretation: stage is attestation-time, not commitment-time (A-1); proximity is syntactic gate (A-6); GHG aggregates require client-side bounds (D-3).
+- SDK/indexer boilerplate: explicit contract-address filtering for re-emitted events (C-6).
+
 ## Security Posture
 
 The live kernel remains intentionally minimal:
@@ -213,7 +334,7 @@ Mechanism modules remain outside the kernel payoff matrix:
 - `AttestationCoordinator` is zero-storage and role-gated
 - `SchemaRegistry` is permissionless and event-first
 - `DutchAuction` is coordination-only and does not intermediate funds
-- `OperatorRegistry` is self-declaration plus minimal write-gating state
+- `OperatorRegistry` is event-sourced self-declaration with a dedup guard plus a deposit-lock-period timestamp (web2-strip 2026-04-26 collapsed prior `_role`/`_active` storage and removed updateProfile/deactivate/reactivate)
 - `FigaroBatchVerifier` verifies SP1 proofs before executing state transitions
 
 The verification suite explicitly covers the following enforcement edges:

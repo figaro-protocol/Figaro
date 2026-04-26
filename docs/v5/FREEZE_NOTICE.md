@@ -28,7 +28,7 @@ either a narrow follow-up review or a repeat audit decision.
 
 | Directory / file | Contents |
 |---|---|
-| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `SchemaRegistry.sol`, `DutchAuction.sol`, `OperatorRegistry.sol`, `FigaroBatchVerifier.sol` |
+| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `DutchAuction.sol`, `OperatorRegistry.sol`, `FigaroBatchVerifier.sol` |
 | `src/fig/` | `FigToken.sol`, `StagedMerkleAirdrop.sol`, `IFigMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |

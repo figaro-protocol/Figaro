@@ -1,13 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
     computeSchemaId,
-    GHG_SCHEMA_KEY,
+    GHG_DISCLOSURE_SCHEMA_KEYS,
     DisclosureKind,
     DISCLOSURE_KIND_LABELS,
     encodeCommitmentRef,
     encodeGramsRef,
     decodeGramsRef,
     formatGrams,
+    filterLogsBySource,
     filterBySchema,
     filterByProcess,
     filterByOrder,
@@ -24,6 +25,8 @@ const addr = (n: number): Address =>
 const hex32 = (n: number): Hex =>
     `0x${n.toString(16).padStart(64, "0")}` as Hex;
 
+// Use the ISO-14064 sister schema as the canonical GHG schema for tests.
+const GHG_SCHEMA_KEY = "figaro-ghg-iso-14064-v1";
 const GHG_SCHEMA_ID = keccak256(stringToHex(GHG_SCHEMA_KEY));
 const OTHER_SCHEMA_ID = keccak256(stringToHex("other-schema"));
 
@@ -44,8 +47,8 @@ function makeAttestation(overrides: Partial<AttestationEvent> = {}): Attestation
 
 describe("computeSchemaId", () => {
     it("matches keccak256(stringToHex(key))", () => {
-        const id = computeSchemaId("figaro-ghg-disclosure-v1");
-        expect(id).toBe(keccak256(stringToHex("figaro-ghg-disclosure-v1")));
+        const id = computeSchemaId("figaro-ghg-iso-14064-v1");
+        expect(id).toBe(keccak256(stringToHex("figaro-ghg-iso-14064-v1")));
     });
 
     it("different keys produce different IDs", () => {
@@ -62,6 +65,15 @@ describe("computeSchemaId", () => {
 // ── GHG constants ───────────────────────────────────────────────────────────
 
 describe("GHG constants", () => {
+    it("GHG_DISCLOSURE_SCHEMA_KEYS contains 5 sister schemas", () => {
+        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toHaveLength(5);
+        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toContain("figaro-ghg-protocol-v1");
+        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toContain("figaro-ghg-iso-14064-v1");
+        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toContain("figaro-ghg-pas-2050-v1");
+        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toContain("figaro-ghg-en-16258-v1");
+        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toContain("figaro-ghg-custom-v1");
+    });
+
     it("DisclosureKind has 4 values", () => {
         expect(DisclosureKind.Commitment).toBe(0);
         expect(DisclosureKind.Inventory).toBe(1);
@@ -156,6 +168,52 @@ describe("event filtering", () => {
     it("filterByStage", () => {
         expect(filterByStage(events, 0)).toHaveLength(1);
         expect(filterByStage(events, 1)).toHaveLength(3);
+    });
+});
+
+// ── filterLogsBySource ──────────────────────────────────────────────────────
+
+describe("filterLogsBySource", () => {
+    const COORDINATOR = addr(0xAC);
+    const BATCH_VERIFIER = addr(0xBA);
+    const OTHER = addr(0xFF);
+
+    type SimpleLog = { address: Address; data: string };
+    const logs: SimpleLog[] = [
+        { address: COORDINATOR, data: "direct-1" },
+        { address: BATCH_VERIFIER, data: "batched-1" },
+        { address: COORDINATOR, data: "direct-2" },
+        { address: OTHER, data: "unrelated" },
+        { address: BATCH_VERIFIER, data: "batched-2" },
+    ];
+
+    it("filters by single source address", () => {
+        const direct = filterLogsBySource(logs, COORDINATOR);
+        expect(direct).toHaveLength(2);
+        expect(direct.every((l) => l.data.startsWith("direct"))).toBe(true);
+    });
+
+    it("filters by an array of accepted sources", () => {
+        const both = filterLogsBySource(logs, [COORDINATOR, BATCH_VERIFIER]);
+        expect(both).toHaveLength(4);
+        expect(both.find((l) => l.data === "unrelated")).toBeUndefined();
+    });
+
+    it("is case-insensitive on the address comparison", () => {
+        const upper = COORDINATOR.toUpperCase().replace("0X", "0x") as Address;
+        const direct = filterLogsBySource(logs, upper);
+        expect(direct).toHaveLength(2);
+    });
+
+    it("returns empty when no source matches", () => {
+        expect(filterLogsBySource(logs, addr(0xDEAD))).toHaveLength(0);
+        expect(filterLogsBySource(logs, [addr(0xDEAD), addr(0xBEEF)])).toHaveLength(0);
+    });
+
+    it("preserves the original log shape (does not mutate)", () => {
+        const filtered = filterLogsBySource(logs, COORDINATOR);
+        expect(filtered[0]).toBe(logs[0]); // same reference
+        expect(filtered[1]).toBe(logs[2]);
     });
 });
 

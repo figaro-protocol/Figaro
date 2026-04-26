@@ -1,0 +1,509 @@
+% Figaro Paper F2: The Wallet Without a Polity
+% Displaced and Stateless Subjects under a Bonded Settlement Primitive
+% Audience: humanitarian-economics researchers, refugee-policy scholars,
+% legal philosophers of personhood, NGO policy staff working on stateless
+% populations and displaced economies.
+% Companion to Paper F1 (The Wallet as Legal Subject), which treats the
+% same wallet-collapse argument from the labor-law side.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+
+\newcommand{\figaro}{\textsc{Figaro}}
+
+\title{%
+  The Wallet Without a Polity:\\
+  Displaced and Stateless Subjects under\\
+  a Bonded Settlement Primitive%
+}
+
+\author{
+  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+}
+
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+
+% ════════════════════════════════════════════════════════════════════
+\begin{abstract}
+The bonded settlement primitive of~\citep{daliana2026mechanism},
+implemented and verified in~\citep{daliana2026impl}, exhibits a
+property whose consequences are most consequential not for
+populations conventionally treated by labor or commercial law, but
+for those who occupy the negative space of those frames: refugees,
+stateless persons, undocumented migrants, and populations whose
+residency is beyond the reach of stable banking and enforcement
+infrastructure. The primitive's precondition is a cryptographic
+key, not a recognized civil-legal subjecthood. This paper
+develops the consequence.
+
+The wallet-as-legal-subject argument that underwrites the labor-law
+companion~\citep{daliana2026labor} extends here in a different
+direction. In the labor setting the wallet collapses the Roman
+\emph{res}/\emph{persona} distinction so that the productive asset
+is simultaneously property and party; in the present setting it
+allows the productive asset to act as party where civil-legal
+subjecthood is itself absent. We do not claim that the primitive
+resolves statelessness. \citet{arendt1951origins} named the right
+to have rights as the fundamental human right --- a right whose
+denial is a civilizational failure rather than an individual
+misfortune --- and the technological infrastructure considered
+here cannot grant it. What it grants is narrower: a capacity to
+have commerce, where the capacity to have rights is denied. The
+two should not be confused. For populations for whom the first is
+denied, the second is non-trivial.
+
+The argument is positional rather than programmatic. Real
+constraints --- key custody, counterparty willingness, fiat
+on-ramp, collateral access --- are named and not dismissed. The
+analytical claim is that the primitive moves the
+humanitarian-economics gap from an architectural impossibility to
+an operational engineering question, and that this is a
+consequential move worth scholarship.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:}
+statelessness, refugee economies, displaced populations, the
+wallet as legal subject, Arendt, humanitarian economics,
+commerce-without-jurisdiction
+
+% ════════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+The legal infrastructure of commerce presumes a recognized civil
+subject. Contract law requires parties whose standing the forum
+will accept; banking access requires identity documents the
+domestic regime issues; commercial-dispute adjudication requires
+a court whose jurisdiction reaches both sides. Each of these
+presumptions is so deeply embedded in the architecture of
+contemporary trade that its failure mode --- populations for whom
+the presumptions do not hold --- is treated by the architecture as
+exception rather than as a system property.
+
+The United Nations Refugee Agency estimated 120 million forcibly
+displaced persons worldwide at the end of 2023, and approximately
+4.4 million persons registered as stateless, with a substantially
+larger estimated population whose statelessness is undocumented
+\citep{unhcr2024globaltrends}. An overlapping and considerably
+larger population lacks stable banking and enforcement access for
+reasons of informal migration status, residence without papers,
+or residency in jurisdictions whose financial infrastructure does
+not reach them. Across these categories, the productive capacity
+of well over a hundred million working-age adults is
+systematically underused because the legal scaffold for engaging
+it is absent. The humanitarian-economics literature on refugee
+economies~\citep{betts_collier_2017} and the policy frontier
+between camp and labor market~\citep{pritchett2006people}
+documents the cost of this gap and the existing repertoire of
+responses.
+
+This paper argues that the bonded settlement primitive
+of~\citep{daliana2026mechanism}, implemented and verified
+in~\citep{daliana2026impl}, changes the architectural posture of
+the gap. The primitive operates on parties whose existence as
+parties does not require civil-legal recognition. A wallet can
+sign; a bonded commitment can settle; an exchange can complete ---
+without a host-state court, a domestic bank, or a permission-to-work
+visa sitting between the parties. The labor-law consequences of
+the primitive are developed in the companion
+paper~\citep{daliana2026labor}; the present paper develops the
+consequence for populations to whom the labor-law debate is a
+second-order question, because the first-order question is
+whether they are recognized parties to any contract in any forum
+at all.
+
+\paragraph{What this paper is not.}
+This paper does not claim that the primitive resolves
+statelessness. It does not confer citizenship, restore legal
+recognition, or create enforcement against a state that denies a
+person's standing. It is not a substitute for the political work
+that addresses those gaps --- work that remains necessary, that
+this paper does not duplicate, and that no technological
+infrastructure can perform. It does not predict adoption rates,
+endorse any particular humanitarian program, or assess the
+political consequences of widespread wallet adoption among
+displaced populations. Its argument is structural: the
+architectural posture of the commerce-access gap changes once a
+settlement primitive whose precondition is a cryptographic key
+exists.
+
+\paragraph{Paper organization.}
+\Cref{sec:primitive} summarizes the settlement primitive in the
+terms relevant here. \Cref{sec:wallet-brief} restates the
+wallet-as-legal-subject argument from~\citep{daliana2026labor} in
+the form needed for the present paper. \Cref{sec:capacity}
+develops the central claim across four moves: scale of the
+affected population, the architecture they face, what the
+primitive does and does not do, and the Arendtian distinction
+between the right to have rights and the capacity to have
+commerce. \Cref{sec:constraints} names the operational constraints
+the primitive does not dissolve. \Cref{sec:conclusion} concludes.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Settlement Primitive}
+\label{sec:primitive}
+
+We summarize only the features relevant to the present argument.
+The mechanism is established in~\citep{daliana2026mechanism}; the
+Solidity implementation and formal verification
+in~\citep{daliana2026impl}.
+
+A transaction between two parties is consummated by dual-signed
+EIP-712 commitments. Each party signs from their own wallet. Each
+party locks collateral against their own performance --- the buyer
+locks $2P$, the seller locks $2G$ where $G$ is the cumulative
+upstream value bonded in the process. Only the buyer can trigger
+resolution. Defection is structurally more expensive than
+cooperation. There is no platform between the parties, no
+arbitrator authorized to resolve disputes on-chain, and no admin
+key permitting external override.
+
+The features that matter for the present paper are three. First,
+the kernel does not require either party to be a recognized civil
+subject; it requires them to control a key that can sign. Second,
+the kernel does not require a forum to enforce the agreement; the
+collateral structure is the enforcement mechanism. Third, the
+kernel does not route value through a banking intermediary;
+settlement is direct, wallet to wallet, atomic on resolution.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Wallet as Legal Subject (Brief)}
+\label{sec:wallet-brief}
+
+Roman private law distinguished \emph{res} (things, property,
+objects that can be owned and alienated) from \emph{persona}
+(persons, parties, subjects capable of acting legally). The
+distinction survived and structures modern private law. The
+companion labor-law paper~\citep[§4]{daliana2026labor} develops
+in detail how the bonded primitive collapses the
+\emph{persona}/\emph{res} partition: a wallet is simultaneously a
+property (a key-pair owned and transferable) and a party (a
+signer, bonder, settlement-receiver). The collapse is operational
+rather than metaphorical; it follows from the architecture of
+dual-signed bonded commitments.
+
+For the present paper the relevant consequence is narrower than
+the labor-law one but harder. In the labor setting the
+\emph{persona}/\emph{res} collapse dissolves the subordination
+gradient between employer and employee, because each party signs
+for itself and bonds for its own performance. In the present
+setting --- where one or both parties may lack stable
+\emph{persona} status in the host jurisdiction at all --- the
+collapse means something stronger: the wallet provides a
+party-to-the-transaction whose existence does not depend on the
+prior existence of a recognized civil subject. The labor-law
+argument shows that the wallet can be both property and party.
+The argument here is that the wallet can be a party where no
+civil-legal party exists.
+
+This is not a claim that the wallet \emph{is} a civil-legal
+subject. Civil-legal subjecthood is conferred by polities, and
+its absence is a political condition. The claim is narrower: a
+party to a bonded commitment can transact, settle, and accumulate
+verifiable performance history without first acquiring civil-legal
+subjecthood, because the kernel does not consult the polity for
+permission to settle a bond.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Capacity to Have Commerce}
+\label{sec:capacity}
+
+\subsection{Scale}
+
+Beyond the UNHCR figures cited in \Cref{sec:intro}, the population
+relevant to the present argument is broader than the
+forcibly-displaced and stateless categories alone. Undocumented
+migrants who hold no recognized status in their country of
+residence, internally displaced persons whose host
+sub-jurisdiction does not extend banking infrastructure to their
+location, and populations in failed-state or contested-sovereignty
+zones whose nominal citizenship is not exercisable for commercial
+purposes all share the operationally-relevant property: they
+cannot reliably enter the legal infrastructure of commerce as
+recognized parties. Estimates of the combined population vary
+substantially with definition; the order of magnitude is
+hundreds of millions, not millions.
+
+\subsection{The Received Architecture}
+
+Labor law, contract law, banking, and commercial-dispute
+adjudication each presume a recognized legal subject attached to
+a jurisdiction that enforces their rights. The relevant
+populations occupy the negative space of that presumption.
+
+\begin{itemize}
+  \item The employment relation is typically unavailable to them
+    formally: permission-to-work requirements gate access to the
+    employee category, and undocumented work, where it occurs,
+    occurs outside legal recognition.
+  \item The independent-contractor relation is unstable: cannot
+    register a business in many jurisdictions of residence, cannot
+    enforce contracts in local courts that do not recognize the
+    party's standing, cannot reliably serve process across
+    jurisdictional boundaries.
+  \item Banking access is restricted or absent: opening an account
+    typically requires documents of residency and identity that
+    the population does not have or does not have in the form the
+    host jurisdiction recognizes.
+  \item Adjudication has no stable forum: commercial disputes have
+    no local court willing to hear them from a party whose
+    standing is contested.
+\end{itemize}
+
+The humanitarian-economics tradition has documented the cost of
+this gap. \citet{betts_collier_2017} argue that displaced
+populations are systematically prevented from contributing to the
+economies that host them by an institutional architecture
+designed for citizens, with the result that the host economy
+captures little of the productive capacity the displaced bring,
+and the displaced themselves remain dependent on humanitarian
+transfers when productive participation would be both possible
+and preferred. \citet{pritchett2006people} makes the broader
+argument about labor-mobility friction and the welfare cost of
+the institutional gap between labor markets in origin and
+destination economies.
+
+\subsection{What the Primitive Does and Does Not Do}
+
+The primitive does not resolve statelessness. It does not confer
+citizenship, restore legal recognition, or create enforcement
+against a state that denies the person's standing. It is not a
+substitute for the political work that addresses those gaps.
+What it does is structurally narrower:
+
+\begin{enumerate}[label=(\alph*)]
+  \item It provides a commerce architecture whose precondition is
+    a cryptographic key rather than a recognized civil-legal
+    subjecthood. A wallet does not require a passport to bond; a
+    bonded commitment does not require a host-state court to
+    enforce; a settled exchange does not require a domestic bank
+    to clear.
+  \item It produces a verifiable performance record that travels
+    with the wallet across jurisdictional boundaries. A
+    contributor whose civil-legal subjecthood is contested in
+    jurisdiction $A$ accumulates the same on-chain attestation
+    history as one whose status is settled in jurisdiction $B$.
+    The record is portable in a way that conventional employment
+    or contracting records are not.
+  \item It opens a region of productive activity --- bilateral,
+    bonded, settled directly between parties --- to participants
+    for whom the legal scaffold that conventionally underwrites
+    such activity is unavailable. The set of activities thus
+    opened is bounded by what can be coordinated bilaterally and
+    settled atomically; the bound is non-trivial but not all of
+    productive activity.
+\end{enumerate}
+
+These are descriptive properties of the architecture. They do not
+depend on any humanitarian program or any particular legal
+reform; they follow from the construction of the primitive.
+
+\subsection{Arendt and the Right to Have Rights}
+
+\citet{arendt1951origins} observed that the fundamental human
+right is the right to have rights --- the right to belong to a
+political community within which one's other rights have
+standing. Her analysis of statelessness named the condition as a
+civilizational failure rather than an individual misfortune. The
+person without a polity is not merely deprived of specific
+rights; they are deprived of the institutional setting in which
+having-rights is even a coherent claim. The remedy is political,
+not technological.
+
+The bonded primitive does not grant the right to have rights; it
+grants, more narrowly, a capacity to have commerce. The two
+should not be confused. The right to have rights is political and
+is not within the gift of any technology. The capacity to have
+commerce is structural and becomes operational once the
+cryptographic infrastructure is in reach. For populations for
+whom the first right is denied, the second capacity is
+non-trivial; for populations for whom the first right is granted,
+the second capacity is largely subsumed by existing institutions
+and the primitive is one infrastructure among several. The
+distinction matters for the audience of this paper because the
+primitive's leverage is asymmetric: where the conventional
+infrastructure works, it adds modestly; where the conventional
+infrastructure fails, it adds the architectural condition for
+participation at all.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Operational Constraints}
+\label{sec:constraints}
+
+The present paper is positional rather than programmatic. The
+primitive moves the commerce-access gap from architectural
+impossibility to operational engineering question; it does not
+solve the engineering question. We name four constraints that
+remain.
+
+\paragraph{Key custody.}
+Populations with unreliable access to power, devices, and
+connectivity face usability barriers at the cryptographic layer
+that the primitive does not solve. Loss-of-key risk is high in
+unstable environments, and key-recovery infrastructure for
+displaced populations is not built. The constraint is real and
+evolves with the broader infrastructure around the protocol;
+solutions exist (social recovery, custodial wallets with
+revocable trust) but each carries trade-offs the population is
+poorly positioned to evaluate.
+
+\paragraph{Counterparty willingness.}
+A well-resourced buyer in a recognized jurisdiction may decline
+to bond with a counterparty whose civil-legal standing is
+contested. The decline is not because of the primitive; it is
+because of downstream legal exposure in the buyer's home
+jurisdiction (sanctions screening, anti-money-laundering
+obligations, forum-of-enforcement concerns). The primitive does
+not dissolve this friction. Its effect, where it has one, is to
+shift the friction from architectural --- ``commerce with the
+displaced is impossible'' --- to discretionary --- ``some
+counterparties will, others will not.''
+
+\paragraph{Fiat on-ramp.}
+Converting wallet-denominated value to local currency still runs
+through existing rails, which remain gated for the population in
+question. The primitive operates within the crypto-native
+settlement layer; the bridge between that layer and local
+purchasing power remains a separate problem with its own
+architecture and its own gatekeepers. Stablecoin acceptance by
+local merchants, where it occurs, partially closes this gap; full
+closure depends on infrastructure outside the primitive.
+
+\paragraph{Collateral access.}
+Bonding requires collateral. A counterparty without starting
+capital cannot bond. This is a hard constraint on the primitive's
+applicability to populations whose displacement is correlated with
+asset loss. Possible mitigations exist at the assembly tier ---
+sponsor pools, cooperative bonding, assembly-aggregated bonds,
+microfinance-style group guarantees --- but each of these is a
+construction on top of the primitive, not a property of the
+primitive itself, and none are yet built at scale.
+
+The cumulative effect of these constraints is that the primitive
+is not a solved-problem deliverable for displaced populations
+today. Its present-tense contribution is architectural:
+commerce-without-recognition is now possible to build, where it
+was not before, and the constraints that remain are engineering
+problems with engineering solutions rather than structural
+features of the legal infrastructure.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+The bonded settlement primitive does not solve statelessness, and
+this paper has not argued that it does. It does change the
+architecture of the commerce-access gap that statelessness
+creates, by replacing the precondition of recognized
+civil-legal subjecthood with the precondition of a cryptographic
+key. The change is not in the political condition of the
+populations under discussion; it is in the institutional
+architecture they face when they attempt to participate in
+productive activity across jurisdictional boundaries.
+
+The Arendtian distinction is the one to hold: the right to have
+rights is political, denied by polities, and not within the gift
+of any technology to restore. The capacity to have commerce is
+structural, denied by the legal architecture of commerce, and
+restorable by a settlement primitive whose precondition is
+cryptographic rather than civil-legal. For populations for whom
+the first denial is constitutive, the second restoration is
+non-trivial.
+
+The paper is positional. It identifies a gap, names the
+architectural change, and acknowledges the operational
+constraints that remain. The programmatic work --- building
+key-custody infrastructure for refugee populations, designing
+sponsor pools that lend collateral against verified attestation
+history, partnering with humanitarian organizations to evaluate
+where bonded commerce is structurally feasible and where it is
+not --- is for the practitioners who do that work. The
+contribution of this paper, and its companion at the
+labor-law~\citep{daliana2026labor} side, is to make the
+architectural change legible to scholarship that has not yet
+recognized it as available.
+
+\section*{Acknowledgments}
+The argument here owes a particular debt to readers from
+humanitarian-economics and refugee-policy backgrounds who pushed
+the labor-law companion paper~\citep{daliana2026labor} toward
+treating the statelessness extension separately, on the grounds
+that conflating it with the gig-economy classification debate did
+neither audience justice. The Arendtian framing came from
+conversations with collaborators working on the legal-philosophy
+side of statelessness scholarship; specific responsibility for the
+present paper's positioning rests with the author.
+
+
+% ════════════════════════════════════════════════════════════════════
+% References
+% ════════════════════════════════════════════════════════════════════
+
+\begin{thebibliography}{99}
+
+\bibitem[Arendt(1951)]{arendt1951origins}
+Arendt, H.
+\newblock \emph{The Origins of Totalitarianism}.
+\newblock Harcourt, Brace \& Co., New York, 1951.
+\newblock See especially Part II, Ch.~9 (``The Decline of the
+  Nation-State and the End of the Rights of Man''), for the
+  formulation of the right to have rights.
+
+\bibitem[Betts and Collier(2017)]{betts_collier_2017}
+Betts, A. and Collier, P.
+\newblock \emph{Refuge: Transforming a Broken Refugee System}.
+\newblock Penguin, London, 2017.
+
+\bibitem[Daliana(2026a)]{daliana2026mechanism}
+Daliana, A.
+\newblock Asymmetric Bonding: A Self-Enforcing Settlement Primitive
+  for $N$-Party Coordination.
+\newblock Companion mechanism-design paper, 2026.
+
+\bibitem[Daliana(2026b)]{daliana2026impl}
+Daliana, A.
+\newblock The \textsc{Figaro} Kernel: A Verified Solidity
+  Implementation of Asymmetric Bonding.
+\newblock Companion implementation paper, 2026.
+
+\bibitem[Daliana(2026c)]{daliana2026labor}
+Daliana, A.
+\newblock The Wallet as Legal Subject: Subordination, Property,
+  and the Dissolution of the Employee--Contractor Line.
+\newblock Companion labor-law paper, 2026.
+
+\bibitem[Pritchett(2006)]{pritchett2006people}
+Pritchett, L.
+\newblock \emph{Let Their People Come: Breaking the Gridlock on
+  Global Labor Mobility}.
+\newblock Center for Global Development, Washington, DC, 2006.
+
+\bibitem[UNHCR(2024)]{unhcr2024globaltrends}
+United Nations High Commissioner for Refugees.
+\newblock \emph{Global Trends: Forced Displacement in 2023}.
+\newblock UNHCR, Geneva, 2024.
+
+\end{thebibliography}
+
+\end{document}

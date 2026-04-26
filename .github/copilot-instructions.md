@@ -26,6 +26,14 @@ Each bonded process is therefore a transaction-scoped institution: a temporary a
 Read `docs/v5/VISION.md` for the full extrapolation. Read `docs/v5/THEORY.md` for the
 game-theoretic derivation.
 
+## Why the Name
+
+**Figaro** is the factotum of the city. In Rossini's *Il Barbiere di Siviglia* (1816, libretto by Sterbini, drawn from Beaumarchais's *Le Barbier de Séville*, 1775), the character declares himself the city's factotum in the famous "Largo al factotum" aria — running errands, brokering favors, mediating between parties of incommensurable standing, making commerce of the whole household work without owning any of it. The kernel is named for what it does: the factotum of the network, the coordinator of everything without being the owner of anything. FigaroCore holds collateral, executes commitments, and discharges resolution — exactly the coordination function the character performs, at protocol scale. The naming dates to Figaro-Original (Genovese & Daliana, March 2022); see `docs/v5/PROJECT_HISTORY.md` for the lineage. The metaphor is the thesis, not decoration.
+
+**FIG** is a speech-act identifier, the way ETH, BTC, USDC, and USD are. It is not a consumer brand name that has to semantically signal infrastructure; it is the name by which the token gets invoked in transactions and conversations. "Send me 10 FIG" works in speech the way "send me 10 ETH" does. Evaluate FIG by whether it fits the speech register, not by Fortune-500 brand logic.
+
+When writing naming discussion, proposing renames, or writing user-facing copy, apply these framings. Do not apply Web2 consumer-brand evaluation to Web3 protocol names or token tickers. Do not introduce alternative metaphors for the protocol's name (no "the Uber-killer", no "like Stripe but decentralized", no "Web3 e-commerce rails"). The factotum-of-the-network framing is canonical.
+
 ## What This Repo Is
 
 `Figaro-Prototype2` is the canonical runtime. It owns:
@@ -36,9 +44,9 @@ game-theoretic derivation.
 - Rust SP1 prover workspace (`prover/`): kernel library, guest program,
   prove-test script, devnet batch sequencer
 - Formal verification specs (TLA+) and fuzzing campaigns (Echidna)
-- The runtime frontend: builder surfaces, institution assembly, semantic layer,
+- The runtime frontend: builder surfaces, assembly, semantic layer,
   mechanism modules, and marketing pages
-- Five reference institution assemblies (eats, equipment-rental, procurement,
+- Five reference assemblies (eats, equipment-rental, procurement,
   disclosure-review, freelance) built from composable components
 
 ### Framing Discipline
@@ -59,7 +67,7 @@ infrastructure — d-commerce from the inside-out. The platform companies are
 not being replaced; the architecture makes them structurally unnecessary.
 
 Do not reify labels into entities. "Restaurant", "merchant", "supplier" are
-role labels within a specific institution assembly, not firms or legal entities.
+role labels within a specific assembly, not firms or legal entities.
 Every label decomposes into a process tree of independent value-adders.
 
 ### Three-Tier Naming
@@ -94,6 +102,7 @@ specific protocol property:
 - **Star ratings** → firm-era signal; token denomination replaces them
 - **Finalized flag on resolved process** → breaks multi-round composition
 - **Timeout or recovery path for locked bonds** → breaks buyer dominance (MAD)
+- **Multi-currency bonding within one process** → breaks same-unit comparability of bonds (the 2:1 ratio is Nash-stable only with one currency per process; multi-currency forces an oracle/DEX/pre-agreed FX rate, each reintroducing a trusted/discretionary actor). Multi-token vendor UX is a composition pattern: N independent monotoken processes, or wallet-side swap before commit.
 
 ### Dispute Resolution — Defense-in-Depth (3 Layers)
 
@@ -139,7 +148,7 @@ V3 contracts are archived in `archive-v3/`.
 ### Contract Identity Rule
 
 No contract belongs to a dapp. Every contract is a permissionless primitive
-available to any institution assembly. A Dutch auction is a Dutch auction. A
+available to any assembly. A Dutch auction is a Dutch auction. A
 lifecycle coordinator is a lifecycle coordinator.
 
 ### Core Protocol
@@ -154,8 +163,8 @@ lifecycle coordinator is a lifecycle coordinator.
 - Direct transfer at resolution (no internal ledger, no withdrawal step)
 - Content-addressed order IDs (bytes32 hashes, not auto-increment)
 - No L1 timeouts, no position NFT, no upgradeable proxy, no owner
-- 15 Foundry test files (227 tests), 7 Echidna property invariants (43k calls),
-  11 Halmos symbolic proofs (z3), 27 Certora CVL rules across 4 specs
+- Covered by Foundry unit tests, 7 Echidna property invariants (43k calls),
+  11 Halmos symbolic proofs (z3), and 6 Certora specs (all green; AC re-verified 2026-04-23 for the agreement-receipt ABI change)
 
 **`src/CommitmentTypes.sol`** — EIP-712 typed structs (`Commitment`)
 and hash functions. Single struct used for both root and sub-orders;
@@ -163,14 +172,37 @@ and hash functions. Single struct used for both root and sub-orders;
 
 ### Attestation & Schema
 
-**`src/AttestationCoordinator.sol`** — Unified zero-storage attestation.
-Replaces all V3 per-domain contracts (GHG, lifecycle, coordinator).
-Three modes: `attestAsSeller`, `attestAsBuyer`, `attestViaResolver`.
-Schema-typed via `bytes32 schemaId` + `uint8 stage`. 20 tests.
-6 Certora CVL rules in `certora/AttestationCoordinator.spec`.
+**`src/AttestationCoordinator.sol`** — Unified zero-storage attestation,
+validator-gated, receipt-bound. Three modes: `attestAsSeller(role, target, …)`,
+`attestAsBuyer(target, …)`, `attestViaResolver(target, …)`. Each path takes
+full Commitment structs so the coordinator recovers `agreementHash` without
+new kernel state. Every call carries `bytes sectionData` + `bytes32[] proof`;
+the coordinator verifies a merkle inclusion proof of
+`keccak256(schemaId || keccak256(sectionData))` against `target.agreementHash`
+via OZ `MerkleProof.verify` before invoking the registered validator. Without
+the proof opening to a committed clause, the call reverts
+`InvalidInclusionProof` — runtime declarations cannot deviate from the signed
+contract. 7 Certora CVL rules (8/8 sub-rules green, cloud-verified 2026-04-23).
+Binding-integrity and `contentRef == keccak256(content)` are covered by
+Foundry tests.
 
 **`src/SchemaRegistry.sol`** — Permissionless event-only schema anchoring.
-13 tests. 6 reference schemas pre-registered at deploy.
+Reference schemas pre-registered at deploy. `schemaId = keccak256(humanReadableName)`,
+`uriHash` points at off-chain JSON spec.
+
+**`src/ISchemaValidator.sol`** — Per-schema content validator interface.
+`validate(bytes32 schemaId, uint8 stage, bytes calldata content) view` reverts
+on invalid content; binds to one schemaId via `schemaId() view returns (bytes32)`.
+
+**`src/schemaValidators/`** — 16 production validator contracts for the
+*runtime-attestable* figaro-eats schemas + jurisdiction baseline (handoff,
+commerce, geo, fulfilment, the 5 GHG sister schemas — protocol, iso-14064,
+pas-2050, en-16258, custom — ghg-measurement, lifecycle, the proximity
+policy/proof sister schemas, merchant-process, courier-process,
+jurisdiction). Each ABI-decodes content (no on-chain JSON parser) and
+reverts with typed custom errors. Topology is a manifest-only clause —
+registered in SchemaRegistry for vocabulary anchoring but has no on-chain
+validator.
 
 **`src/IRoleResolver.sol`** — Role-authorization interface for mechanism-
 delegated attestation.
@@ -178,13 +210,19 @@ delegated attestation.
 ### Mechanism Modules
 
 **`src/DutchAuction.sol`** — Descending-price job allocation. Pure
-coordination primitive, no token handling. 38 tests.
+coordination primitive, no token handling.
 
-**`src/OperatorRegistry.sol`** — On-chain operator registration (role enum,
-metadata URI). Event-first, minimal write-gating storage. Reclaimable ETH
-registration deposit (immutable amount + immutable lock period) for Sybil
-resistance. Active/deactivated state with idempotency guards. Deposit
-withdrawal after lock period clears all state, enabling re-registration. 25 tests.
+**`src/OperatorRegistry.sol`** — Permissionless operator self-registration.
+Two external functions: `register(role, metadataURI)` + `withdraw()`. Two
+events: `OperatorRegistered`, `OperatorWithdrawn`. State is dedup-only
+(`_registered: address → bool`) plus the registration timestamp that backs
+the immutable deposit-lock period. No `_active` flag, no `updateProfile`,
+no `deactivate` / `reactivate` (web2-strip 2026-04-26): operator
+availability is signal-by-availability off-chain. Role + metadata travel
+only in the `OperatorRegistered` event; switching role or metadata happens
+via withdraw + re-register (clears the dedup guard, restarts the lock).
+The kernel does not gate any operation on operator state — this registry
+is advisory metadata for off-chain discovery surfaces.
 
 ### FIG Token (`src/fig/`)
 
@@ -240,15 +278,70 @@ There is no `FigaroCoreV3.sol` (archived), `FigaroFactory.sol`,
 `FigaroRouter.sol`, `governance/`, `compliance/`, `adapters/`, `examples/`,
 `FigEmission.sol` (removed), `FigTimeLock.sol` (removed),
 `ProximityTypes.sol` (removed), `IRoleResolverV4.sol` (renamed to `IRoleResolver.sol`),
-or any upgradeable proxy. FIG is not a governance token. There is no
-protocol fee, no owner, no admin surface. Do not reference these.
+generic `JSONSchemaValidator.sol` (per-schema validators instead — see "Schema
+validation architecture" below), or any upgradeable proxy. FIG is not a
+governance token. `FigTokenModule` (UI) does not exist — `/fig` and `/fig/claim`
+use `useFigToken` hooks directly. There is no protocol fee, no owner, no admin
+surface. Do not reference these.
+
+---
+
+## Schema Validation Architecture
+
+Figaro enforces schema-content correctness in three layers — Layer A (client TS),
+Layer B (SP1 prover, pending), Layer C (on-chain Solidity). All three parse the
+same canonical JSON spec format (closed subset of JSON Schema) and apply the
+same rules. **A new schema is not "done" until all three layers ship in lockstep.**
+
+- **Layer A** (TypeScript): `@figaro/core/schemas` subpath. `parseSchemaSpec`,
+  `validateContent`, plus per-schema `encode<Schema>Content` helpers that produce
+  the ABI bytes the on-chain validator expects.
+- **Layer B** (SP1 prover, pending): Rust mirror of the TS validator. Not yet
+  implemented; the TS test suite is the conformance spec.
+- **Layer C** (Solidity): per-schema `ISchemaValidator` contracts in
+  `src/schemaValidators/`. Registered via `AttestationCoordinator.setValidator`
+  (permissionless, first-write-wins, immutable after first set). Every `attest*`
+  call is gated through the registered validator. **Third-party schemas must
+  perform `registerSchema` + `setValidator` atomically in a single transaction**
+  to prevent malicious-validator front-running — see DESIGN_DECISIONS.md #13.
+  Use `SchemaRegistrationHelper.registerSchemaAndValidator(...)` (stateless
+  no-admin helper deployed alongside the protocol) for the recommended path.
+  The 14 reference figaro-* schemas are atomically bound by
+  `script/Deploy.s.sol:_deployAndRegisterValidators`; the same atomicity
+  applies to any post-deploy schema via the helper.
+  **Validator `validate` MUST be `external pure override`** — no external
+  state reads, no `block.*`/`tx.*`, no external calls. Use
+  `bytes32 public constant override schemaId = keccak256("...")` so the
+  schemaId is a compile-time literal (not constructor-set immutable, which
+  forces `view` and forfeits EVM-enforced determinism). See ISchemaValidator
+  NatSpec for the rationale.
+
+The 17 figaro-eats schemas: `figaro-topology-v1` (manifest-only — no
+runtime validator), plus 16 runtime-attestable schemas with Layer A + C
+coverage: `figaro-handoff-v1`, `figaro-commerce-v1`, `figaro-geo-v1`,
+`figaro-fulfilment-v1`, plus the GHG sister schemas `figaro-ghg-protocol-v1`,
+`figaro-ghg-iso-14064-v1`, `figaro-ghg-pas-2050-v1`, `figaro-ghg-en-16258-v1`,
+`figaro-ghg-custom-v1` (all Category-2 — one per accounting standard),
+`figaro-ghg-measurement-v1` (Category-1 runtime grams),
+`figaro-delivery-lifecycle-v1`, the proximity sister schemas
+`figaro-proximity-policy-v1` (Category-2 committed band) +
+`figaro-proximity-proof-v1` (Category-1 runtime witness),
+`figaro-merchant-process-v1`, `figaro-courier-process-v1`,
+`figaro-jurisdiction-v1`.
+Each runtime schema ships: JSON spec in `sdk/src/schemas/examples/` + mirror
+in `frontend2/lib/shared/schemas/`, TS encoder in `sdk/src/schemas/encode.ts`,
+Solidity validator + Foundry tests. Topology ships only the JSON spec — it
+lives inside the signed agreement manifest at commit time.
+
+User-facing copy lives at `/builders` "Schema validators in force" and
+`/help` "Schema validation". Both must be updated when adding a new schema.
 
 ---
 
 ## Agent SDK (`sdk/`)
 
 `@figaro/core` — standalone TypeScript SDK for reading, analyzing, and proposing
-Figaro transactions. Single dependency: `viem ^2.0.0`. ESM package, three subpath exports.
+Figaro transactions. Single dependency: `viem ^2.0.0`. ESM package, four subpath exports.
 
 ### `@figaro/core` (root)
 
@@ -278,10 +371,24 @@ Protocol extension utilities for mechanism modules.
 - **Geo & handoff**: `geohashesMatch`, `haversineDistance`, Kleros evidence envelope formatting
 - **DID (did:web)**: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `extractEthereumAddresses`, `buildOperatorDidDocument`
 
+### `@figaro/core/schemas`
+
+Schema-spec format + content validator + per-schema content encoders. Single
+source of truth that all three validation layers (client TS, SP1 prover,
+on-chain Solidity) parse identically.
+
+- `parseSchemaSpec(json)` — meta-schema validator (closed subset of JSON Schema)
+- `validateContent(content, spec, options?)` — validates against parsed spec; rejects unknown fields
+- `encode<Schema>Content(...)` — per-schema content encoders (handoff,
+  commerce, geo, fulfilment, GHG scope + measurement, lifecycle, proximity
+  policy + proof, merchant-process, courier-process, jurisdiction). Each
+  one returns the ABI bytes the on-chain validator expects. Topology has
+  no encoder — it's a manifest-only clause with no runtime attestation.
+
 ### SDK Scripts
 
 ```bash
-cd sdk && npm test          # 166 Vitest tests
+cd sdk && npm test
 cd sdk && npm run build     # tsc → dist/
 cd sdk && npm run lint      # tsc --noEmit
 ```
@@ -290,44 +397,42 @@ cd sdk && npm run lint      # tsc --noEmit
 
 ## Frontend — Structure
 
-Next.js 14 (App Router), TypeScript, Tailwind CSS.
-Located in `frontend/`. Dev server on port 3000.
-107 components, 141 lib files, 11 hooks, 24 route entries.
+Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend2/` is the only
+active frontend.** The prior `frontend/` directory was archived to
+`archive-frontend/` on 2026-04-26 — do not edit it. Frontend changes ship in
+`frontend2/` only.
 
-### Routes (`frontend/app/`)
+### Routes (`frontend2/app/`)
 
 - `/` — Landing page
-- `/accounting` — Accounting and reporting surface
 - `/admin` — Stubbed (V5 has no owner, no fee — infrastructure is free)
-- `/builders` — Developer docs and templates
-- `/builders/assemblies` — Browse published institution assemblies
-- `/builders/authoring` — Author new institution assemblies
-- `/builders/prototype` — Prototype institution from assembly
-- `/builders/prototype/[slug]` — Individual prototype workspace
-- `/builders/templates` — Template browsing surface
+- `/builders` — Builder landing
+- `/builders/assemblies` — Browse published assemblies
+- `/builders/authoring` — Author new assemblies
+- `/builders/prototype` + `/builders/prototype/[slug]` — Prototype a live instance from an assembly
+- `/builders/designer` — Three-column Designer tool: palette + canvas + inspector + publish drawer. See "Designer tool surface" below.
 - `/console` — Console HITL surface for queued operating and build actions
 - `/evidence-display` — Kleros evidence display interface (iframed by Kleros court)
-- `/fig` — FIG token explainer and dashboard
+- `/fig` + `/fig/claim` — FIG token explainer, dashboard, and merkle-claim surface
 - `/figaro-eats` — Eats archetype marketing/landing
-- `/gods-eye` — Network and process observability surface
-- `/i/[slug]` — Live institution rendering from assembly slug
-- `/network-state` — Protocol theory, FIG as coordination Schelling point
+- `/help` — FAQ and guides
+- `/i/[slug]` — Live assembly rendering from slug. Authored declaratively against `components/modules/` registry via `useAssemblyRuntime`.
+- `/onboarding` — New-user onboarding
+- `/operators` + `/operators/catalogue` — Operator self-registration and catalogue authoring
 - `/sign` — Signature and agreement tooling surface
-- `/sovereign-commerce` — Sovereign commerce thesis
-- `/why-figaro` — Philosophy
-- `/workbench` — Direct access to FigaroCore: create orders, manage bonds, settle, inspect state
+- `/terminal` — Direct kernel-level interaction: raw orders, processes, protocol stats, graph. (Replaces `/workbench`; `/workbench` issues a 308 permanent redirect via `next.config.mjs`.)
 - `/api/semantic/agreements`, `/api/semantic/agreements/[agreementHash]`
 - `/api/semantic/assemblies`, `/api/semantic/runtime`
 
-### Components (`frontend/components/`)
+### Components (`frontend2/components/`)
 
-**`core/`** — 45 components. Building blocks for order flows and institution rendering:
+**`core/`** — Building blocks for order flows and assembly rendering:
 - Order flows: `OrderControls`, `OrderConfirmationModal`, `OrderGraph`,
   `OrderErrorMessage`, `OrderNodeSemanticCard`
 - Bond/token: `BondApprovalPanel`, `PermitControl`, `TokenApprovalFlow`, `TokenBalances`
 - Builder/assembly: `BuilderAuthoringStudio`, `BuilderPrototypeIndexShell`,
-  `BuilderPrototypeShell`, `InstitutionAssemblyInspector`, `InstitutionShell`,
-  `InstitutionWorkspace`, `InstitutionProcessWorkspace`, `InstitutionArtifactWorkspace`,
+  `BuilderPrototypeShell`, `AssemblyInspector`, `AssemblyShell`,
+  `AssemblyWorkspace`, `AssemblyProcessWorkspace`, `RegisteredAssemblyWorkspace`,
   `CapabilityRail`, `RoleSwitcher`
 - Semantic/analytical: `SemanticProcessWorkspacePanel`, `ProcessSummaryCard`,
   `ProcessTopologyPanel`, `EconomicBreakdownPanel`, `SettlementProceedsPanel`,
@@ -354,34 +459,43 @@ Located in `frontend/`. Dev server on port 3000.
 
 **`ui/`** — Design primitives (4): `Button`, `Card`, `FormField`, `Input`
 
-**`icons/`** — 13 SVG icon components
+**`icons/`** — SVG icon components
 
-### Library (`frontend/lib/`)
+### Library (`frontend2/lib/`)
 
-**`core/`** (28 files) — FigaroCore contract hooks and agreement/commitment utilities
+**`core/`** — FigaroCore contract hooks and agreement/commitment utilities
 
-**`dispute/`** (6 files) — Kleros dispute resolution integration (Layer 3 evidence):
+**`dispute/`** — Kleros dispute resolution integration (Layer 3 evidence):
 `evidenceTimeline.ts`, `klerosEvidence.ts`, `klerosProxy.ts`, `ipfsPin.ts`,
 `deliveryAttestation.ts` (four attestation modes), `index.ts`
 
-**`handoff/`** (12 files) — Per-order encryption key exchange and lifecycle
+**`handoff/`** — Per-order encryption key exchange and lifecycle
 
-**`mechanisms/`** (15 files) — Mechanism-layer contract hooks and package registry:
+**`mechanisms/`** — Mechanism-layer contract hooks and package registry:
 `contracts.ts`, `deliveryCoordinatorEvents.ts`, `useAttestationCoordinatorActions.ts`,
 `useDeliveryLifecycle.ts`, `useDidWeb.ts`, `useDriverOffering.ts`, `useDutchAuction.ts`,
 `useFigToken.ts`, `useGHGDisclosure.ts`,
 `useMerchantBranding.ts`, `useMerchantCatalogue.ts`, `useOperatorRegistry.ts`,
 `useRegisteredCatalogues.ts`, `packageDefaults.ts`, `packages.ts`
 
-**`semantic/`** (7 files) — Institution derivation from assembly definitions
+**`semantic/`** — Assembly derivation and capability models. Key entries: `deriveAssemblyModel.ts` (pure projection of a manifest into `AssemblyModel`), `deriveAssemblyCapabilities.ts` (runtime-aware capabilities), `models.ts` (`AssemblyModel`, `MechanismModel`, `ProcessModel`, `RoleContext`)
 
-**`marketplace/`** (3 files), **`commerce/`** (4 files), **`console/`** (7 files)
+**`marketplace/`**, **`commerce/`**, **`console/`**
 
-**`shared/`** (59 files) — Wagmi config, runtime identity, institution assembly, IPFS,
-module system, vocabulary (`vocab.ts`), reference assemblies (`assemblies/*.reference.json`),
-runtime fixtures
+**`shared/`** — Wagmi config, runtime identity, assembly schema/parser/registry/validation, IPFS, module system, vocabulary (`vocab.ts`), reference assemblies (`assemblies/*.reference.json`), runtime fixtures. Key entries: `assembly.ts` (schema types `Assembly`, `MechanismAssembly`, `RoleAssembly`, `ModuleBinding`), `assemblyParser.ts` (`parseAssemblyDocument`), `assemblyRegistry.ts` (`getAssemblyBySlug`, `getRegisteredAssemblyBySlug`, `listAssemblies`, `listRegisteredAssemblies`), `assemblyValidation.ts`, `assemblyPublication.ts`, `runtimeResolution.ts` (`resolveAssemblyRuntimeContext`), `moduleRegistry.ts` (`ModuleRenderContext`, `getModule`, `registerModule`), `blockMetadata.ts` (designer block registry: `BlockMetadata`, `registerBlock`, `listBlockMetadata`, `listBlocksByCategory`, `getBlockForModule`), `designerOps.ts` (pure draft-mutation helpers: `addBlockToSlot`, `removeBindingFromSlot`, `updateBinding`)
 
-### Hooks (`frontend/hooks/core/`) — 11 hooks
+### Designer tool surface (`frontend2/components/core/designer/`)
+
+The `/builders/designer` route mounts a three-column editor:
+
+- `DesignerPalette.tsx` — left rail. Renders blocks grouped by category with per-block Layer A schema-availability signal (✓ / ⚠).
+- `DesignerCanvas.tsx` — middle. Identity / roles / mechanisms / views×slots×bindings. Read-only by default; becomes interactive when `onSelectSlot` / `onSelectBinding` / `onRemoveBinding` callbacks are passed.
+- `DesignerInspector.tsx` — right rail. Edits the selected binding's `componentKind` / `semanticInput` / `priority`; surfaces the owning block.
+- `DesignerPublishDrawer.tsx` — overlay. Runs `validateDraftPublicationReadiness` (collision checks suppressed for the demo), shows readiness badge + issue list + serialized assembly JSON with clipboard copy.
+
+All four components are state-free; the host page (`app/builders/designer/page.tsx`) holds draft-by-slug state and routes selection across them. Pure draft mutations live in `lib/shared/designerOps.ts` (return same `Assembly` reference on no-op for cheap re-renders).
+
+### Hooks (`frontend2/hooks/core/`)
 
 `useTokenApproval`, `useProcessOrders`, `useBondPreview`,
 `useTokenDecimals`, `useWalletProcessIds`, `useArbitrationCost`,
@@ -397,7 +511,7 @@ runtime fixtures
 - MetaMask recognizes chain 31337 natively — no SNAP required
 - `/rpc` URL in Next.js is proxied to Anvil (configured in `next.config.js`)
 
-### Environment Variables (`.env.local` in `frontend/`)
+### Environment Variables (`.env.local` in `frontend2/`)
 
 ```
 NEXT_PUBLIC_FIGARO_CORE=0x...
@@ -435,9 +549,9 @@ NEXT_PUBLIC_SEQUENCER_URL=http://127.0.0.1:3001
 ./deploy-local.sh
 
 # Start Next.js dev server (port 3000)
-cd frontend && npm run dev
+cd frontend2 && npm run dev
 
-# Run Foundry tests (15 test files, 227 tests) — --via-ir required
+# Run Foundry tests — --via-ir required
 forge test --via-ir
 
 # Run Halmos symbolic proofs (installer-checked wrapper)
@@ -456,19 +570,19 @@ forge test --via-ir
 ./test-certora.sh
 # Prereqs (one-time): pip install certora-cli ; export CERTORAKEY=...
 
-# Run Vitest unit tests (84 test files)
-cd frontend && npx vitest run
+# Run Vitest unit tests
+cd frontend2 && npx vitest run
 
 # Run Playwright mock tests (no chain needed)
-cd frontend && npx playwright test --project=mock
+cd frontend2 && npx playwright test --project=mock
 
 # Run Playwright devnet tests (Anvil must be running)
-cd frontend && npx playwright test --project=devnet
+cd frontend2 && npx playwright test --project=devnet
 
-# Run Rust kernel tests (33 tests)
+# Run Rust kernel tests
 cd prover && cargo test -p figaro-kernel
 
-# Run Rust sequencer tests (22 tests)
+# Run Rust sequencer tests
 cd prover && cargo test -p figaro-sequencer
 
 # Run SP1 prove-test (mock prover, ~20M cycles)
@@ -485,22 +599,23 @@ cd prover && cargo run --release -p figaro-prove-test
 
 ## Testing
 
-### Vitest (`frontend/tests/`)
+### Vitest (`frontend2/tests/`)
 
-84 test files covering encoding, hooks, components, semantic derivation,
-runtime identity, institution assembly, console queue/build execution,
+Unit tests covering encoding, hooks, components, semantic derivation,
+runtime identity, assembly, console queue/build execution,
 console order creation flow, order commitment preparation, token approval,
 merchant branding, catalogue pipeline, agreement publication and hydration,
 delivery attestation (incl. QR challenge), GHG disclosure hook state,
-transaction capability execution helpers, workbench mint-hook behavior,
+transaction capability execution helpers, terminal mint-hook behavior,
 discovery service behavior, coordination messaging service behavior,
 handoff key-exchange module behavior, runtime skin execution, route posture chrome,
 and more.
 
-### Playwright (`frontend/tests/e2e/`)
+### Playwright (`frontend2/tests/e2e/`)
 
-38 spec files across two projects:
+Three projects:
 - `mock` — UI/logic tests, no wallet/chain required
+- `mock-mobile` — responsive-layout tests (Pixel 5 via Chromium)
 - `devnet` — full on-chain tests against live Anvil
 
 ### Foundry (`test/`)
@@ -511,11 +626,11 @@ gas ceiling, and audit regressions. Run with `forge test --via-ir`.
 
 ### Rust (`prover/`)
 
-55 tests across 2 crates:
-- `figaro-kernel` (33 tests): EIP-712 parity with Solidity, batch execution,
+Two crates:
+- `figaro-kernel`: EIP-712 parity with Solidity, batch execution,
   state transitions, ECDSA recovery, schema/operator/attestation operations,
   genesis root verification
-- `figaro-sequencer` (22 tests): mempool pre-checks, state mirror, assembler,
+- `figaro-sequencer`: mempool pre-checks, state mirror, assembler,
   HTTP API, end-to-end batch chaining
 
 ### Echidna
@@ -542,10 +657,14 @@ were removed along with their target contracts. A new Halmos harness for
 `commitIncreasesActiveCount`, `onlyBuyerCanResolve`, `noDoubleCommit`,
 `cumulativeValueMonotonic`, `rootBuyerImmutable`, `currencyImmutable`
 
-**`certora/AttestationCoordinator.spec`** (6 rules):
-`nonBuyerCannotAttestAsBuyer`, `unknownProcessRevertsAsBuyer`,
-`successfulBuyerAttestationImpliesBuyer`, `buyerAttestationEnforcesProcessBoundary`,
-`attestationCannotChangeOrderStatus`, `attestationCannotChangeProcessState`
+**`certora/AttestationCoordinator.spec`** (7 rules):
+`nonBuyerCannotAttestAsBuyer`, `successfulBuyerAttestationImpliesBuyer`,
+`attestationCannotChangeOrderStatus`, `attestationCannotChangeProcessState`,
+`noValidatorBlocksBuyerAttestation`, `setValidatorIsFirstWriteWins`,
+`setValidatorPreservesOtherBindings`. Re-authored 2026-04-23 for the new
+commitment-arg ABI; old `unknownProcessRevertsAsBuyer` and
+`buyerAttestationEnforcesProcessBoundary` rules subsumed because the target
+commitment now carries its own processId + orderHash.
 
 ### Formal Verification (TLA+)
 

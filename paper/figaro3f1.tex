@@ -1,0 +1,811 @@
+% Figaro Paper F1: The Wallet as Legal Subject
+% Subordination, Property, and the Dissolution of the Employee–Contractor Line
+% Audience: labor-law scholars, legal philosophers, COALA-adjacent
+% practitioners, gig-economy policy researchers.
+% Companion to Paper F2 (The Wallet Without a Polity), which treats the
+% statelessness/Arendt extension on a different audience.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+
+\newcommand{\figaro}{\textsc{Figaro}}
+
+\title{%
+  The Wallet as Legal Subject:\\
+  Subordination, Property, and the Dissolution\\
+  of the Employee--Contractor Line%
+}
+
+\author{
+  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+}
+
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+
+% ════════════════════════════════════════════════════════════════════
+\begin{abstract}
+Labor law distinguishes employees from independent contractors along
+a single doctrinal axis: the degree of subordination the employer
+exercises over how the worker conducts themselves within the
+employer's system of processes and values. The axis is a continuum,
+the classification is a threshold placed somewhere on it, and the
+threshold is the perpetual subject of legislative and judicial
+contest --- AB5 and Proposition 22 in California, \emph{Uber BV v
+Aslam} in the United Kingdom, the 2024 EU Platform Work Directive.
+The cases are all the same case, relitigated in each jurisdiction
+against each new technology.
+
+This paper argues that the bonded settlement primitive
+of~\citep{daliana2026mechanism}, implemented and verified
+in~\citep{daliana2026impl}, changes the doctrinal terrain by
+eliminating the axis. Figaro parties are bonded counterparties;
+there is no employment relation to classify. The wallet collapses a
+distinction the Roman legal tradition kept separate: \emph{res}
+(property) and \emph{persona} (legal party). Every productive asset
+is simultaneously property and party --- self-owned rather than
+owned or rented.
+
+We develop the argument in three moves. First, we locate
+subordination as the doctrinal variable in the long-running labor
+classification debate, drawing on Anderson's analysis of the firm
+as private government~\citep{anderson2017private}, Ellerman's
+argument that the employment contract renews the master--servant
+relation in softer form~\citep{ellerman1992property}, and Taleb's
+compressed version of the same point in \emph{Skin in the
+Game}~\citep{taleb2018skin}. Second, we show that the gig-economy
+case law is a classification dispute whose ground disappears once
+subordination ceases to be a variable. Third, we name the
+trade-off: Figaro is a leveller on the subordination axis but
+simultaneously a privatizer of employment-attached protections
+(unemployment insurance, healthcare, pensions, collective
+bargaining). What follows is a matter of policy, not mechanism.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:}
+labor law, employee classification, gig economy, private government,
+subordination, legal subject, self-sovereign identity
+
+% ════════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+Labor law, across every jurisdiction that has one, answers a
+recurring question: is this person an employee or an independent
+contractor? The answer matters because the two categories attract
+radically different legal consequences --- minimum wage, overtime,
+unemployment insurance, employer health-insurance obligations,
+workers' compensation, collective-bargaining rights, anti-discrimination
+protections, tax treatment, pension eligibility. The classification
+test varies by jurisdiction, but all tests converge on a common
+underlying variable: the degree to which the putative employer
+directs and controls the putative employee's work --- their
+schedule, their tools, their processes, their supervision, their
+ability to work for others.
+
+We will call this variable \emph{subordination}, following the
+usage common in Continental labor-law scholarship and in the
+political-economy tradition we return to in \Cref{sec:subordination}.
+Subordination is a continuum; the employee--contractor line is a
+threshold placed somewhere on it; and the location of the threshold
+is the perpetual subject of doctrinal and political contest.
+
+The gig economy made the contest legible. Drivers, couriers, and
+platform freelancers occupy a region of the subordination continuum
+the existing legal categories were not designed for: loosely
+supervised by algorithm, nominally free to refuse work, economically
+dependent on the platform nonetheless. Jurisdictions have responded
+with increasingly granular tests. California's Assembly Bill 5
+(2019) codified the ABC test~\citep{ab5_2019}, pushing many gig
+workers toward employee status; Proposition 22 (2020) carved out an
+exception for app-based rideshare and delivery
+drivers~\citep{prop22_2020}. The UK Supreme Court in \emph{Uber BV
+v Aslam}~\citep{uber_aslam_2021} classified drivers as ``workers''
+--- a third category intermediate between employee and contractor
+--- on subordination grounds. The EU Platform Work Directive
+(Directive (EU) 2024/2831)~\citep{eu_platform_directive_2024}
+established a presumption of employment for platform workers
+meeting specified control indicators.
+
+Each of these cases and statutes is, at root, an attempt to draw
+the same line differently. The line itself is what the cases
+cannot dispense with.
+
+\paragraph{The argument of this paper.}
+We argue that the bonded settlement primitive developed
+in~\citep{daliana2026mechanism} and implemented
+in~\citep{daliana2026impl} changes the question. Its companion
+institutional-economics paper~\citep{daliana2026tce} develops the
+institutional consequence: the firm becomes one organizational
+pattern among several when the subordination overlay is no longer
+enforcement-driven. The legal consequence follows but needs a
+separate treatment because its vocabulary and its audience are
+different.
+
+Specifically: when every party to a productive exchange is a bonded
+counterparty --- signing commitments under their own key, posting
+collateral against their own performance, receiving settlement
+directly to their own wallet --- there is no employment relation
+to classify. The classification problem has no subject. The
+employee--contractor line is not redrawn; it is dissolved by the
+absence of the relation it was drawing.
+
+\paragraph{What this paper is not.}
+This paper does not provide legal advice. It does not argue that
+labor law should be abolished. It does not argue that
+employment-attached protections are undesirable. It does not
+predict that the bonded primitive will displace employment as the
+dominant coordination form, and does not endorse any particular
+outcome of the classification it dissolves. Its argument is
+diagnostic: the primitive changes the doctrinal terrain, and
+legal scholarship should understand that change independently of
+any normative conclusion one might draw from it.
+
+\paragraph{Paper organization.}
+\Cref{sec:subordination} develops subordination as the
+labor-law variable, drawing on Anderson, Ellerman, and Taleb.
+\Cref{sec:primitive} summarizes the settlement primitive in the
+terms relevant here. \Cref{sec:wallet} develops the central legal
+move: the wallet as a legal subject that collapses the classical
+\emph{res}/\emph{persona} distinction. \Cref{sec:gig} re-reads the
+gig-economy case law through that lens.
+\Cref{sec:leveller} names the leveller/privatizer trade-off.
+\Cref{sec:conclusion} concludes.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Subordination as the Labor-Law Variable}
+\label{sec:subordination}
+
+\subsection{The Doctrinal Test}
+
+Every mature labor-law regime operationalizes the
+employee--contractor distinction through a control-flavored test.
+The details vary:
+
+\begin{itemize}
+  \item The IRS twenty-factor test in the United States examines
+    behavioral control, financial control, and the nature of the
+    relationship.
+  \item California's ABC test, codified in AB5, places the burden
+    on the hiring entity to show that the worker
+    (A) is free from control and direction,
+    (B) performs work outside the hiring entity's usual business,
+    and (C) is customarily engaged in an independently established
+    trade.
+  \item UK jurisprudence, following \emph{Autoclenz}~\citep{autoclenz_2011}
+    and refined in \emph{Aslam}, examines the reality of the
+    working arrangement rather than its contractual label,
+    focusing on personal service, mutuality of obligation, and
+    control.
+  \item Continental systems (France, Germany, Italy) distinguish
+    \emph{travail salarié}, \emph{abh\"angige Arbeit},
+    \emph{lavoro subordinato} respectively, anchoring the status
+    on \emph{subordination juridique} --- the juridical subordination
+    of the worker to the employer's directive power.
+\end{itemize}
+
+The tests differ in which facts they weight and in whether the
+burden sits on the worker or the employer. They agree on what the
+variable is. Control, direction, supervision, integration into the
+employer's processes --- these are all labels for the same underlying
+relationship: subordination of the worker's conduct to the employer's
+authority, in exchange for a wage.
+
+\subsection{The Philosophical Position}
+
+A scholarly tradition with roots in classical liberalism and in
+Marx, refreshed more recently by legal and political philosophers,
+reads the employment relationship as lying on the same continuum
+as older forms of property-in-persons. We summarize three
+representative positions; the paper does not endorse any of them,
+and each can be read as descriptive rather than normative.
+
+\paragraph{Ellerman: the firm as rent-a-person.}
+\citet{ellerman1992property} argues that the employment contract is
+not merely economically one-sided but ontologically incoherent: it
+attempts to rent \emph{persona} (the worker as legal party) on the
+same terms as \emph{res} (the worker's labor power as object). In
+ordinary jurisprudence, persons cannot be rented --- a doctrine
+that predates and survived the legal abolition of chattel slavery.
+The employment contract, Ellerman argues, honors the formal
+doctrine by contracting for labor power rather than the person, but
+the substance of the relation (subordination of the worker's
+conduct to another's authority for a defined period) exercises the
+same operative control. The argument is philosophical rather than
+legal --- Ellerman is not claiming that employment contracts are
+unenforceable --- but it names a tension that labor law
+operationalizes as the employee/contractor test.
+
+\paragraph{Anderson: the firm as private government.}
+\citet{anderson2017private} makes the complementary argument at the
+level of political theory. Firms exercise governmental powers over
+employees --- mandatory schedules, speech restrictions, body
+surveillance, drug testing, arbitrary dismissal --- that are
+constitutionally proscribed when exercised by the state. American
+political vocabulary, Anderson argues, has no term for this because
+the liberal tradition's attention to state power left the
+authoritarian structure of the workplace unanalyzed. The firm is
+a private government, and the employment relation is the
+governance relation within it.
+
+The structural observation common to Ellerman and Anderson --- that
+the employment relation places one party's conduct under another
+party's authority along an axis whose endpoints touch
+historical arrangements of chattel and serfdom --- has been put
+in popular form by other writers as well.\footnote{See, e.g.,
+\citet[][Book 4, Ch.\ 3, ``How to Legally Own Another
+Person'']{taleb2018skin}, who frames the relation as ``an
+employee is practically a slave.'' Taleb's register is rhetorical
+and his treatment is not peer-reviewed; we cite him here as
+evidence that the observation has currency outside academic labor
+philosophy, not as an independent argument on par with Anderson
+and Ellerman. The substantive analytical work in this paper rests
+on the latter two.} The observation, however framed, is that the
+axis is subordination; the differences between historical
+arrangements at different points on it are quantitative. The
+paper does not endorse this framing as a moral claim about
+modern employment; we return to that scope question in §7.
+
+\paragraph{Subordination in two registers.}
+The doctrinal test in \Cref{sec:subordination} and the
+philosophical treatment just given describe the same
+relationship from two disciplinary vantages. The doctrinal register
+is direction-and-control: does the putative employer specify
+schedule, tools, processes, supervision, ability to work for
+others? The property-rights register, developed in the
+institutional-economics companion~\citep[§3.1]{daliana2026tce},
+is residual-rights allocation: does the employment contract
+transfer residual control rights over non-contractible decisions
+to an ownership nucleus separate from the productive asset?
+These are not competing definitions. The direction-and-control
+test is the \emph{operational} face of subordination --- what a
+court observes when assessing the relation. The residual-rights
+framing is its \emph{structural} face --- what a property-rights
+theorist sees when analyzing the same relation. The two
+converge: a relation with high directional control is a relation
+in which residual rights have been transferred; a relation in
+which residual rights stay with the worker is a relation of low
+directional control. This paper uses the doctrinal register
+(because the subject is labor law); the companion paper uses the
+property-rights register (because the subject is the boundary of
+the firm). The primitive dissolves both faces at once because
+they are faces of the same thing.
+
+\subsection{Why the Threshold Keeps Moving}
+
+Once subordination is recognized as the variable and the
+employee--contractor line as a threshold placed on it, the
+perpetual legal contest becomes explicable. The threshold has no
+principled location. Any specific test produces a bright line
+through a continuum, and whichever side of the line a given
+working arrangement falls on becomes the object of rent-seeking
+effort by the party for whom that side is cheaper.
+
+\begin{itemize}
+  \item Employers push the threshold upward: reclassifying employees
+    as contractors reduces payroll taxes, avoids
+    benefits-attachment, eliminates collective-bargaining
+    obligations, and removes discrimination-law exposure. Every
+    major gig-economy platform has been the subject of litigation
+    on this point.
+  \item Workers with bargaining power push the threshold downward:
+    reclassification as employees unlocks minimum-wage
+    protections, overtime, employer-funded health insurance,
+    unemployment eligibility, and union rights. Much of AB5 was a
+    legislative response to this pressure.
+\end{itemize}
+
+The threshold is not ``wrong''; it is \emph{under-specified}. The
+underlying continuum has no natural joint. As technologies of
+remote direction (apps, algorithms, performance dashboards)
+evolve, the reality of the control relation changes faster than
+the law can locate the threshold, which is why gig-economy cases
+recur across jurisdictions with broadly similar facts and broadly
+divergent outcomes.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Settlement Primitive}
+\label{sec:primitive}
+
+We summarize only the features relevant to the legal argument. The
+mechanism is established in~\citep{daliana2026mechanism}; the
+Solidity implementation and formal verification
+in~\citep{daliana2026impl}; the evidentiary framework for off-chain
+dispute adjudication in~\citep{daliana2026legal}.
+
+\paragraph{Bonded counterparties.}
+A transaction between two parties is consummated by dual-signed
+EIP-712 commitments. Each party signs from their own wallet. Each
+party locks collateral against their own performance --- the buyer
+locks $2P$, the seller locks $2G$ where $G$ is the cumulative
+upstream value bonded in the process. Only the buyer can trigger
+resolution. Defection is structurally more expensive than
+cooperation. There is no platform between the parties, no
+arbitrator authorized to resolve disputes on-chain, and no admin
+key permitting external override.
+
+\paragraph{What the primitive does not require.}
+No employment relation, no subcontractor hierarchy, no master--servant
+agreement, no W-9 or W-2, no 1099 or P-60, no PAYE code, no
+\emph{contrat de travail}. The primitive operates on parties as
+parties: each is a wallet address bonded against performance for a
+specified exchange. The direction-and-control relation that labor
+law categories turn on does not exist at the primitive layer; it is
+replaced by the direction given by the off-chain agreement both
+parties sign and the bond that backs their mutual performance.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Wallet as Legal Subject}
+\label{sec:wallet}
+
+Roman private law distinguished \emph{res} (things, property,
+objects that can be owned and alienated) from \emph{persona}
+(persons, parties, subjects capable of acting legally). The
+distinction survived and structures modern private law: physical
+assets are \emph{res}; natural persons and recognized legal
+persons (corporations, states, partnerships) are \emph{personae};
+the two interact through contracts of sale, lease, license, and
+labor.
+
+The employment contract sits awkwardly in this structure. A worker
+is unambiguously a \emph{persona}, but the employment contract
+treats the worker's labor power as \emph{res} --- a resource
+rented from the worker for a specified period, under the
+employer's direction. Ellerman's argument
+in~\Cref{sec:subordination} is that this treatment is operationally
+coherent only because the legal tradition has learned to overlook
+the \emph{persona}/\emph{res} boundary in this one setting. Every
+labor-law test for employee status is implicitly an attempt to
+police that boundary without naming it.
+
+\paragraph{The wallet as collapse.}
+A wallet in the \figaro{} architecture is a legal artifact that
+does not fit the classical categories. It is a property --- a
+cryptographic key-pair that its holder owns and can transfer or
+abandon. It is simultaneously a party --- it signs commitments,
+posts bonds, receives settlements, accrues credentials, and
+generates an evidence record that off-chain adjudication can
+consume~\citep{daliana2026legal}. The wallet is the productive
+asset acting in its own legal name.
+
+The collapse is not metaphorical. When the party to a commitment
+is the wallet itself (whether operated by a natural person, a
+software agent, or an organizational treasury), the classical
+\emph{persona}/\emph{res} partition no longer partitions. The
+wallet is what it controls and it controls what it is.
+
+\paragraph{Three consequences.}
+\begin{enumerate}[label=(\alph*)]
+  \item \textbf{Self-control is the default.} A wallet cannot be
+    \emph{owned} by another wallet in the way a \emph{res} can be
+    owned by a \emph{persona}: ownership transfer requires key
+    transfer, which is a change of control rather than a change of
+    subject. We are careful here not to collapse ownership and
+    control: the property-rights tradition (Grossman--Hart, Hart--Moore)
+    builds on the distinction between the two, and the present
+    paper relocates the question rather than dissolving it. The
+    relocation is that residual control rights over the productive
+    capability the wallet represents are held by whoever holds the
+    key, not by an ownership nucleus separate from the productive
+    asset. \emph{What} the key controls --- the cryptographic act
+    of signing, but also indirectly the deployment of physical
+    assets, tacit knowledge, and judgment under uncertainty that
+    the signer brings to bear --- remains a property-rights
+    question with the same structure as before; it is just answered
+    differently.
+  \item \textbf{No rental of persona.} A commitment between two
+    wallets bonds each wallet's performance directly. There is no
+    construct in which one wallet's persona is rented to another
+    for a defined period; each party signs for themselves,
+    commitment-by-commitment.
+  \item \textbf{Credentialing is self-attached.} At the protocol
+    tier (per the kernel/protocol/runtime distinction
+    in~\citep[§1.4]{daliana2026mechanism}), schema-validated
+    attestations and operator profiles attach to the wallet; at
+    the runtime tier, NFT-anchored deeds and credentials may be
+    layered on. A worker's skills, certifications, and
+    performance history travel with the wallet, not with the
+    employer. The resume becomes the wallet; the reference becomes
+    an attestation.
+\end{enumerate}
+
+These consequences are descriptive. They do not depend on any
+policy choice; they follow from the architecture of dual-signed
+bonded commitments settled directly between parties.
+
+\paragraph{A fourth consequence: the wallet is self-accounting.}
+The Roman private-law inheritance distinguishes \emph{res}
+from \emph{persona} and keeps both separate from the
+\emph{liber rationum} --- the book of account in which the
+entity's dealings are recorded. A \figaro{} wallet collapses
+the first two (§4 above); it also collapses both into the
+third. The companion accounting
+paper~\citep{daliana2026accounting} develops the argument
+that a \figaro{} process is a self-closing ledger period
+whose records are constituted by the protocol rather than
+maintained by any party. For labor-law analysis, the
+implication is that the wallet is not only property-and-party
+but also its own continuously updated book of account: the
+worker-as-wallet has a record of performance, attested
+capability, and settled compensation that travels with the
+wallet indefinitely. This eliminates one traditional source
+of asymmetry between employer and employee --- the employer
+keeps the books, the employee does not --- by making the
+books protocol-level and symmetrically readable.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Gig-Economy Cases, Re-read}
+\label{sec:gig}
+
+The gig-economy case law can be read as a series of attempts to
+place the employee--contractor threshold in the face of a
+technology (the platform) that had engineered a new position on the
+subordination continuum. We re-read four landmark cases/statutes
+through the primitive's lens.
+
+\paragraph{California AB5 (2019).}
+AB5 codified the ABC test established in \emph{Dynamex Operations
+West v Superior Court}~\citep{dynamex_2018}, shifting the
+classification default toward employee status for workers
+performing services in the hiring entity's usual course of
+business. The statute's legal force turns on the direction-and-control
+finding (prong A), the nature-of-work finding (prong B), and the
+independent-trade finding (prong C).
+
+Under the primitive, none of the three prongs are well-posed. There
+is no hiring entity to direct and control (prong A has no subject).
+There is no usual course of business for the bonded counterparty
+relation (prong B presupposes a firm). The bonded party is by
+construction independently established (prong C is trivially
+satisfied, not by design but by default). AB5 operationalizes a
+threshold that Figaro does not instantiate at all.
+
+\paragraph{Proposition 22 (2020).}
+Prop 22 created a statutory exception to AB5 for app-based
+rideshare and delivery drivers, classifying them as contractors
+with a specified minimum earnings guarantee and healthcare subsidy.
+The political coalition behind Prop 22 argued that AB5 was forcing
+classification into a category inappropriate for the work; the
+coalition against argued that the exception hollowed out AB5's
+protective purpose. Both arguments are downstream of the threshold
+choice.
+
+Under the primitive, Prop 22's carve-out is unnecessary because
+the category it is carving out of does not apply. The underlying
+question it tries to answer --- how to provide minimum earnings
+and healthcare to workers outside the employment relation --- is
+what we treat in \Cref{sec:leveller} as the leveller/privatizer
+trade-off. Figaro does not answer it; it changes what the question
+is.
+
+\paragraph{Uber BV v Aslam (UKSC 2021).}
+The UK Supreme Court held unanimously that Uber drivers are
+\emph{workers} --- an intermediate category in UK employment law
+that attracts minimum wage and holiday-pay protections but not
+full employee rights. The Court examined the substance of the
+relation (algorithmic direction, tightly specified routes, rating
+systems, ability-to-work-for-others constraints) rather than the
+contractual label. The judgment is unusually clear that
+subordination-in-substance is the operative test.
+
+Under the primitive, the Aslam analysis does not run. There is no
+entity whose substance can be examined against the contractual
+label, because the primitive produces no contract between
+substance-behind-label and worker. A bonded counterparty signs
+commitment-by-commitment with the party it serves. The
+rating-and-algorithmic-direction apparatus that Aslam turned on
+is a platform artifact; it does not exist in the primitive.
+
+\paragraph{EU Platform Work Directive (2024).}
+The Directive establishes a presumption of employment for platform
+workers when specified criteria are met (algorithmic management,
+remuneration caps, appearance restrictions, tool prescriptions,
+supervision of work, restrictions on working for others). Member
+states are to implement by 2026. The Directive is the most
+sophisticated of the four measures: it treats platform employment
+as its own typological object, with a presumption rule rather than
+a bright-line test.
+
+Under the primitive, the Directive's presumption criteria have no
+referent --- there is no platform between parties whose algorithmic
+management would trigger the presumption. The Directive applies to
+the platform-mediated region of the contemporary labor market;
+Figaro moves exchanges out of that region entirely.
+
+\paragraph{The pattern.}
+Each measure engages the subordination variable directly, and each
+would be either vacuous or inapplicable if the parties to an
+exchange were bonded counterparties rather than parties to a
+platform-mediated or firm-mediated employment relation. The cases
+do not fail in the Figaro setting; they have no application there.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Leveller and Privatizer}
+\label{sec:leveller}
+
+The primitive is, in one register, a leveller. It eliminates a
+structural asymmetry in labor markets: the subordination gradient
+between employer and employee. Every party is bonded on the same
+terms; every party signs from its own wallet; no party is rented
+as \emph{persona}.
+
+The primitive is, in another register, a privatizer. The protections
+labor law built around the employment relation --- employer-funded
+healthcare, employer-paid payroll taxes feeding unemployment
+insurance, employer pension contributions, workplace safety
+inspections tied to employer status, collective bargaining
+structured around bargaining units within firms --- are all
+attached to the category that the primitive removes. When
+employment is not the container, employment-attached protections
+are not delivered.
+
+\paragraph{Asset specificity is a scope condition.}
+The argument above presumes that the productive activity in
+question is the kind for which symmetric bilateral bonding is an
+adequate substitute for hierarchical governance. The
+institutional-economics companion~\citep[§3]{daliana2026tce} is
+explicit that asset specificity continues to favor hierarchy:
+when a productive asset's value is contingent on a specific
+counterparty (relationship-specific human capital, co-located
+equipment, firm-specific tacit routine), the holdup risk lies in
+the pre-transaction sunk investment rather than in the
+transaction itself, and symmetric bonding does not neutralize
+that holdup --- it relocates it. The class of activity for which
+the primitive substitutes for the firm is therefore bounded.
+What class is bounded by what level of specificity is an
+empirical question outside this paper's scope. The reader should
+take F's argument as applying within the bound: where asset
+specificity is low or where specificity-protecting arrangements
+are achievable through other means (long-term peer networks,
+treasury communities, serial bonded-commitment patterns), the
+employment relation becomes optional. Where it is high, the
+employment relation persists for the standard TCE reason.
+
+\paragraph{Four options for the political response.}
+We do not advocate for any of them; we name them so the trade-off
+is legible.
+
+\begin{enumerate}[label=(\roman*)]
+  \item \textbf{Attach protections to the wallet.} Health
+    insurance, pension contributions, income protection become
+    benefits that the wallet itself purchases from portable
+    providers, priced per unit of bonded activity. This is the
+    direction Prop 22 gestured at, without the AB5 backdrop
+    making it necessary.
+  \item \textbf{Attach protections to citizenship.} Universal
+    basic income, single-payer healthcare, state-funded
+    unemployment assistance --- all decouple protection from
+    employment and re-couple it to polity membership. The social
+    democratic tradition has advocated this independently of
+    Figaro; the primitive removes one historical argument against
+    the decoupling (the argument that employment was the natural
+    locus because that is where most people spend most of their
+    time).
+  \item \textbf{Preserve the employment option.} Nothing in the
+    primitive prevents the employment relation from continuing to
+    exist. Firms can hire employees, employees can bargain
+    collectively, labor law can continue to regulate the
+    subordination region. The primitive coexists with the
+    employment relation rather than abolishing it. The question
+    is what fraction of productive activity moves out of that
+    region, and at what rate.
+  \item \textbf{Treat employment as the asset-specificity
+    residual.} A position adjacent to (iii) but more pointed:
+    employment continues to apply to the class of productive
+    activity for which Williamsonian asset specificity makes
+    hierarchical coordination the equilibrium response, and
+    labor-law protections continue to attach to that residual
+    domain. On this view the primitive does not compete with
+    employment in the high-specificity region at all; it
+    competes only in the low-specificity region, where
+    employment was a second-best response to enforcement cost
+    rather than a first-best response to specificity. The
+    question becomes empirical: what is the asset-specificity
+    distribution of contemporary productive activity, and what
+    fraction lies on each side of the threshold? F does not
+    answer the question; we name it because the institutional-economics
+    tradition would otherwise treat its absence as oversight.
+\end{enumerate}
+
+The trade-off is real: each of (i)--(iv) has different
+distributive consequences, and the fight over which one
+dominates will occupy the political economy of the next several
+decades regardless of how the primitive diffuses. What the
+primitive changes is that the fight becomes explicit: the
+attachment of protections to employment was a historical
+contingency that looked like a natural fact; once the category
+is removable, the attachment becomes a policy choice.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+Labor law has treated subordination as an axis on which to place
+threshold after threshold, in each jurisdiction against each
+technology. The bonded settlement primitive removes the axis by
+removing the relation that gave it its subject matter. The
+employee--contractor line, the platform-worker line, the \emph{worker}
+category, the \emph{subordonné} test --- all presuppose a
+directional control relation between two parties that the primitive
+does not produce. The classification problem has no classification
+problem.
+
+What is left is a different set of questions. What protections, if
+any, should attach to productive activity independent of the
+employment relation? Which organizational patterns will absorb the
+productive activity that moves out of the employment relation, and
+how will they be regulated? How will labor law's traditional
+counterparty, the state, relate to productive activity that
+increasingly occurs between wallets rather than between firms and
+workers? These questions are not answered here and are not, in our
+reading, answerable from mechanism-design first principles. They
+are legal-doctrinal, political-economic, and constitutional
+questions that the primitive poses rather than resolves.
+
+\paragraph{A scope caveat.}
+This paper's argument is diagnostic. The primitive changes what
+labor law is asked about; the paper says so. The paper does not
+argue that the primitive will diffuse uniformly or that employment
+as a legal category will disappear. It does not argue that the
+disappearance of the classification problem is desirable, in whole
+or in part. It argues that the doctrinal terrain has changed,
+that legal scholarship has not yet caught up to the change, and
+that whatever normative position the reader takes on the change
+will be better served by engagement with the primitive on its own
+terms than by treating it as one more gig-economy platform to be
+reclassified under the existing test.
+
+\paragraph{A note on rhetoric.}
+We have, following Anderson and Ellerman (and, in a popular
+register, Taleb), used the vocabulary of ``subordination'' and
+``slavery'' to describe the employment relation. The rhetorical
+register is deliberate but should not be mistaken for a normative
+claim about modern employment. Modern labor law --- at-will
+doctrine carve-outs notwithstanding --- has developed substantial
+protections that distinguish the employee from the serf and the
+serf from the slave. The axis on which these arrangements sit is
+structural, not moral; the primitive removes the arrangement, not
+the moral progress the arrangement's softening represented.
+Whether that removal is desirable is a policy question; whether
+it is happening is an engineering one; and the two questions
+should not be conflated.
+
+\paragraph{A cross-cluster note on the diagnostic posture.}
+This paper, along with the institutional-economics
+companion~\citep{daliana2026tce}, the political-economy
+companion~\citep{daliana2026hegemony}, and the electronic-evidence
+companion~\citep{daliana2026legal}, each individually disclaims
+the normative register. Each is explicit that it is diagnostic
+rather than predictive or prescriptive. Read together, the four
+diagnoses nonetheless accumulate into a picture: a world in which
+the firm demotes, gig-economy classification dissolves, platform
+hegemony becomes visible, and legal adjudication cleanly decouples
+from settlement. A careful reader can observe that four carefully
+bounded diagnoses, read in sequence, approach an \emph{implicit}
+endorsement --- an endorsement by exhaustion --- that no
+individual paper makes. We wish to name this effect without
+resolving it. The portfolio describes what it observes about the
+primitive's consequences; it does not predict which of those
+consequences materialize, does not advocate for those that do, and
+does not compose the four diagnoses into a prediction. The
+normative question of whether any of the diagnosed changes are
+desirable is policy and politics, and the present paper --- along
+with its companions --- leaves that question open.
+
+\section*{Acknowledgments}
+I am grateful to readers who pushed me to separate the legal
+consequence of the settlement primitive from the institutional and
+political-economy consequences developed in companion papers. The
+Coalition of Automated Legal Applications (COALA) has been a
+consistent interlocutor on the legal-doctrinal questions treated
+here, and the Stanford CodeX community on the computational-law
+side. The provocation of the title comes from Nassim Taleb's
+chapter heading; the philosophical spine comes from Elizabeth
+Anderson and David Ellerman, to both of whom my debt is evident
+throughout.
+
+
+% ════════════════════════════════════════════════════════════════════
+% References
+% ════════════════════════════════════════════════════════════════════
+
+\begin{thebibliography}{99}
+
+\bibitem[AB5(2019)]{ab5_2019}
+California State Legislature.
+\newblock Assembly Bill No. 5, Ch. 296, Stats. 2019.
+\newblock Codifying the ABC test for employee classification.
+
+\bibitem[Anderson(2017)]{anderson2017private}
+Anderson, E.
+\newblock \emph{Private Government: How Employers Rule Our Lives
+  (and Why We Don't Talk About It)}.
+\newblock Princeton University Press, 2017.
+
+\bibitem[Autoclenz(2011)]{autoclenz_2011}
+\emph{Autoclenz Ltd v Belcher}, [2011] UKSC 41.
+
+\bibitem[Daliana(2026a)]{daliana2026mechanism}
+Daliana, A.
+\newblock Asymmetric Bonding: A Self-Enforcing Settlement Primitive
+  for $N$-Party Coordination.
+\newblock Companion mechanism-design paper, 2026.
+
+\bibitem[Daliana(2026b)]{daliana2026impl}
+Daliana, A.
+\newblock The \textsc{Figaro} Kernel: A Verified Solidity
+  Implementation of Asymmetric Bonding.
+\newblock Companion implementation paper, 2026.
+
+\bibitem[Daliana(2026c)]{daliana2026tce}
+Daliana, A.
+\newblock From Firms to Transaction-Scoped Institutions: A Coasean
+  Re-Examination Under Costless Bilateral Enforcement.
+\newblock Companion institutional-economics paper, 2026.
+
+\bibitem[Daliana(2026d)]{daliana2026legal}
+Daliana, A.
+\newblock On-Chain Evidence, Off-Chain Adjudication: A Layered
+  Approach to Smart-Contract Dispute Resolution.
+\newblock Companion law-and-evidence paper, 2026.
+
+\bibitem[Daliana(2026e)]{daliana2026accounting}
+Daliana, A.
+\newblock Bookkeeping as Protocol Byproduct: Self-Closing
+  Ledger Periods in the \textsc{Figaro} Settlement
+  Primitive.
+\newblock Companion accounting paper, 2026.
+
+\bibitem[Dynamex(2018)]{dynamex_2018}
+\emph{Dynamex Operations West, Inc. v Superior Court},
+  4 Cal.5th 903 (2018).
+
+\bibitem[Ellerman(1992)]{ellerman1992property}
+Ellerman, D.~P.
+\newblock \emph{Property and Contract in Economics: The Case for
+  Economic Democracy}.
+\newblock Blackwell, Cambridge, MA, 1992.
+
+\bibitem[EU Platform Work Directive(2024)]{eu_platform_directive_2024}
+European Parliament and Council.
+\newblock Directive (EU) 2024/2831 of 23 October 2024 on improving
+  working conditions in platform work.
+\newblock Official Journal of the European Union, 2024.
+
+\bibitem[Prop 22(2020)]{prop22_2020}
+California Proposition 22 (2020), codified at Cal. Bus. \&
+  Prof. Code §§ 7448--7467.
+
+\bibitem[Taleb(2018)]{taleb2018skin}
+Taleb, N.~N.
+\newblock \emph{Skin in the Game: Hidden Asymmetries in Daily Life}.
+\newblock Random House, New York, 2018.
+\newblock See especially Book~4 (``Wolves Among Dogs''), Chapter~3
+  (``How to Legally Own Another Person'').
+
+\bibitem[Uber v Aslam(2021)]{uber_aslam_2021}
+\emph{Uber BV and others v Aslam and others}, [2021] UKSC 5.
+
+\end{thebibliography}
+
+\end{document}

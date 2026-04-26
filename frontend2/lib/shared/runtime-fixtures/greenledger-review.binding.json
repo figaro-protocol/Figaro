@@ -1,0 +1,28 @@
+{
+    "bindingId": "binding:greenledger-review-desk:local-anvil",
+    "subjectAddress": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+    "archetypeId": "disclosure-review-operator",
+    "assemblySlug": "figaro-disclosure-review",
+    "networkTargets": [
+        "local-anvil"
+    ],
+    "roleBindings": [
+        {
+            "roleKind": "reviewer",
+            "assemblyRoleKinds": [
+                "reviewer"
+            ],
+            "scope": "assembly",
+            "mechanismIds": [
+                "ghg-disclosure"
+            ],
+            "notes": "Reference reviewer binding for disclosure-heavy assembly previews."
+        }
+    ],
+    "metadataURI": "ipfs://figaro/disclosure/greenledger-review-desk.metadata.json",
+    "metadataHash": "bafybeigreenledgermetadatahash",
+    "assetURI": "ipfs://figaro/disclosure/greenledger-review-desk.assets.json",
+    "assetHash": "bafybeigreenledgerassethash",
+    "effectiveFrom": "2026-03-19T00:00:00Z",
+    "version": "1.0.0"
+}

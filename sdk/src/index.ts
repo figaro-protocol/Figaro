@@ -26,6 +26,7 @@
 // ABIs
 export {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, DUTCH_AUCTION_ABI, SCHEMA_REGISTRY_ABI,
+    SCHEMA_REGISTRATION_HELPER_ABI,
     BATCH_VERIFIER_ABI, ERC20_ABI, OPERATOR_REGISTRY_ABI,
     FIG_TOKEN_ABI, STAGED_MERKLE_AIRDROP_ABI,
 } from "./abis.js";
@@ -106,3 +107,14 @@ export {
     computeAirdropLeaf,
 } from "./merkleAirdrop.js";
 export type { AirdropEntry, MerkleAirdropTree } from "./merkleAirdrop.js";
+
+// Agreement manifest + merkle root + inclusion proofs
+export {
+    canonicalizeSectionData,
+    computeSectionLeaf,
+    computeAgreementHash,
+    buildSectionInclusionProof,
+    verifyInclusionProof,
+    getSectionDataBytes,
+} from "./agreement.js";
+export type { Agreement, AgreementSection } from "./agreement.js";

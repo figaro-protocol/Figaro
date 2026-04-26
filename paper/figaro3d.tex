@@ -1,0 +1,1046 @@
+% Figaro Paper D: FIG — A Schelling-Point Token for the Figaro Coordination Ecosystem
+% Cryptoeconomic design. Snapshot of the implementation as of 2026-04-23.
+% The kernel itself is token-agnostic and is treated in figaro3a.tex / figaro3c.tex.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\figaro}{\textsc{Figaro}}
+\newcommand{\fig}{\textsc{Fig}}
+\newcommand{\pay}{P}
+
+\title{%
+  \fig{}: A Schelling-Point Token\\
+  for the Figaro Coordination Ecosystem%
+}
+
+\author{
+  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+}
+
+\date{April 2026 (snapshot: 2026-04-23)}
+
+\begin{document}
+
+\maketitle
+
+% ════════════════════════════════════════════════════════════════════
+\begin{abstract}
+We describe \fig, the coordination token that ships alongside the
+\figaro{} settlement primitive. \fig{} is designed as a
+\emph{Schelling-point token} in the sense of
+\citet{schelling1960strategy}: a focal point around which
+participants in the \figaro{} ecosystem can coordinate without
+central authority or explicit agreement. Its value as a
+coordination artifact derives from its focality, not from any
+on-chain utility function, yield stream, governance claim, or fee
+path.
+
+This framing inverts the usual design question for a new token.
+Rather than asking ``what does FIG \emph{do}?'' we ask ``what
+would \fig{} have to \emph{not} do in order to remain a credible
+focal point?'' The answer produces a catalogue of design
+exclusions, each of which removes a class of holding motivation
+that would dilute the purity of \fig{}'s signaling value. \fig{}
+is not governance, not yield-bearing, not a fee path, not bond
+collateral for the kernel, not settlement-emitted, and not
+founder-vested. Each negative preserves focality by removing a
+reason to hold \fig{} that is not ``I am signaling alignment with
+the Figaro ecosystem.''
+
+The positive design content is modest and targeted: a fixed
+one-billion-unit cap enforced by two complementary supply-integrity
+mechanisms, a one-way deployer-renouncement latch that freezes the
+allocation plan at deployment, and a single staged-merkle airdrop
+that distributes 60\% of supply to pre-committed cohorts at years
+2, 5, and 9. We lay this design out in detail, reject an earlier
+settlement-anchored ``Euler oscillation'' design for the
+focality-destroying reasons it introduced, and close with an
+honest analysis of how \fig{} can lose its focal-point status and
+what the design does and does not defend against.
+
+The paper sits within a lineage. \citet{nakamoto2008bitcoin}
+demonstrated that money could be a protocol rather than an
+institution, with \textsc{Btc} as the focal Schelling point for a
+peer-to-peer cash system. \citet{buterin2014ethereum} demonstrated
+that contracts could be composable, with \textsc{Eth} as the focal
+point for programmable-settlement. The present work extends the
+lineage one step: \emph{institutions} themselves become composable
+through the \figaro{}
+primitive~\citep{daliana2026mechanism, daliana2026impl}, and
+\fig{} is the focal point for participants who coordinate around
+the composition.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:}
+cryptoeconomics, Schelling point, focal-point coordination, token
+design, coordination token, supply integrity, decoupled emission
+
+% ════════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+\fig{} is the native token that ships alongside the \figaro{}
+settlement primitive developed
+in~\citep{daliana2026mechanism, daliana2026impl}. This paper
+describes its design and defends a specific framing of what it
+is. The framing is the substantive contribution; the
+supply-integrity and distribution mechanics follow from it.
+
+The framing: \emph{\fig{} is a Schelling-point token for the
+\figaro{} ecosystem.} Its value to participants is not a claim on
+protocol revenue (there is no protocol fee), not a governance
+vote (the kernel has no governance), not a yield stream (no
+activity-coupled emission), not a utility token purchasable for
+on-chain services (there are no protocol-layer services that
+require it), and not bond collateral (the kernel is
+token-agnostic). Its value is its focality: in the sense of
+\citet{schelling1960strategy}, \fig{} is the focal point that
+\figaro{}-aligned participants converge on when they want to
+signal alignment without coordinating through a central authority.
+
+\paragraph{A lineage note.}
+The design pattern has precedent. \citet{nakamoto2008bitcoin}'s
+Bitcoin is, in retrospect, the clearest example of a
+Schelling-point token at the money layer: its value as a store of
+value derives from holders converging on it as \emph{the} answer
+to the question ``what digital bearer asset are we
+coordinating around?'' The proof-of-work mechanism secures
+Bitcoin's ledger, but it does not manufacture Bitcoin's
+Schelling-point status --- that emerged from participant
+convergence under conditions in which Bitcoin's design made
+convergence viable (fixed supply, open participation, no issuer).
+\citet{buterin2014ethereum}'s Ethereum moved the logic up one
+layer: \textsc{Eth} became the focal point for programmable
+settlement, with composable contracts as the substrate. The
+present work moves it up again: with \figaro{}, institutions
+themselves are composable, and \fig{} is the focal point for
+aligned participation in that composition. Each layer's native
+token has the same structural role --- a focal coordination
+anchor that does not require a central issuer, does not require a
+governance apparatus, and cannot be replicated by a
+general-purpose token, because the signal it provides is
+specifically about alignment with that particular ecosystem.
+Each layer's token is also underpinned by a different primary
+economic quantity --- Bitcoin by the cost of producing the asset,
+Ethereum by the demand for executing transactions, \fig{} by the
+trade conducted through the substrate (\Cref{sec:ecosystem-need}).
+Of the three, \fig{}'s underpinning sits closest to where actual
+economic value is created, because trade is where it is created.
+
+\paragraph{Paper organization.}
+\Cref{sec:design-category} introduces Schelling-point tokens as a
+design category and locates \fig{} within it.
+\Cref{sec:ecosystem-need} argues why the \figaro{} ecosystem is
+well-suited to a focal-point native token rather than a
+utility-coupled one.
+\Cref{sec:design-rules} articulates design rules that support
+focal-point emergence and resist focality-dilution.
+\Cref{sec:supply} develops supply integrity.
+\Cref{sec:allocation} develops allocation.
+\Cref{sec:vesting} develops the staged-merkle airdrop.
+\Cref{sec:negatives} catalogues the design exclusions and ties
+each to the focality property it preserves.
+\Cref{sec:rejected} records the rejection of an earlier
+settlement-anchored ``Euler oscillation'' design and deepens the
+rejection rationale in light of the Schelling-point framing.
+\Cref{sec:bootstrap} treats bootstrap and attack surface.
+\Cref{sec:silhouette} retains the scope note on
+substrate-neutrality and distributional silhouette.
+\Cref{sec:verification} reports the verification surface.
+\Cref{sec:conclusion} concludes.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Schelling-Point Tokens as a Design Category}
+\label{sec:design-category}
+
+\citet{schelling1960strategy} identified \emph{focal points}
+(what later came to be called Schelling points) as solutions that
+parties tend to choose in the absence of explicit communication,
+because some feature of the solution makes it stand out as the
+natural coordination target. Schelling's canonical example: if
+two parties are told to meet in New York City without being able
+to communicate, a disproportionate fraction converge on Grand
+Central at noon. Neither the location nor the time is more
+rational than any other; what makes them focal is a shared
+cultural salience that each party correctly expects the other to
+recognize.
+
+\paragraph{Crypto and Schelling points.}
+The structure has been rediscovered repeatedly in crypto design.
+\citet{nakamoto2008bitcoin} did not use the word ``Schelling,''
+but Bitcoin's emergence as a store of value followed the logic
+precisely: a fixed-supply, non-upgradable, issuer-less digital
+bearer asset with a peer-to-peer monetary intent. No mechanism
+guarantees Bitcoin's SoV status; it emerged because the design
+made focal convergence viable and participants converged.
+\citet{buterin2014ethereum} extended the logic up a layer:
+\textsc{Eth} became the focal settlement unit for programmable
+contracts, for the same reason --- the design made convergence
+viable (gas-required, ubiquitous across contracts, issuer-less at
+the base layer). Similar focal patterns have emerged for
+subsidiary positions within crypto: Uniswap as the focal AMM,
+Aave as the focal lending protocol, Lido as the focal liquid-staking
+wrapper. In each case the token (\textsc{Uni},
+\textsc{Aave}, \textsc{Ldo}) has some utility, but a substantial
+fraction of its holding behavior is Schelling convergence on
+``the token that represents alignment with this particular
+primitive.''
+
+\paragraph{Schelling tokens vs.\ utility tokens.}
+A pure utility token is valued for the services a holder can
+purchase with it (gas, access, data). A pure governance token is
+valued for the votes it conveys. A pure yield-bearing token is
+valued for the cash flows it represents. A Schelling-point token
+is valued for something different: its \emph{focality}, which is
+a coordination property, not a cash-flow property or a rights
+property. A participant holds a Schelling-point token because
+holding it makes them legible to other aligned participants and
+because the shared holding constitutes the coordination itself.
+
+Pure Schelling-point tokens are rare because most token designs
+add utility or governance features to create additional demand
+drivers. Each such addition, however, introduces holders whose
+reason for holding is \emph{not} focal alignment --- governance
+speculators, yield farmers, utility arbitrageurs --- and these
+holders' presence dilutes the focality signal. Bitcoin's focality
+is durable partly because Bitcoin has \emph{remained} a pure
+Schelling point by refusing to add governance or yield or utility
+features beyond the base-layer payment rail. Each refused feature
+protects the signal's purity.
+
+\paragraph{\fig{}'s design category.}
+\fig{} is designed to sit in the pure-Schelling-point category.
+The design is committed to refusing utility couplings, governance
+rights, yield streams, and fee paths. The rest of this paper
+develops what that refusal looks like in practice.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Why the \figaro{} Ecosystem Is Well-Suited to a Focal-Point Token}
+\label{sec:ecosystem-need}
+
+\paragraph{What underpins \fig{}'s value.}
+A Schelling-point token requires focal convergence, but focal
+convergence coordinates \emph{which} token participants pick; it
+does not by itself create value. Each token in the lineage
+invoked above has a distinct economic underpinning, sitting at a
+distinct layer of the economic stack.
+
+\begin{itemize}
+  \item \textbf{Bitcoin} is underpinned by the \emph{cost of
+    production}: proof-of-work consumes real energy, hardware,
+    and electricity, putting a floor on rational issuance. The
+    underpinning is at the factor-input layer.
+  \item \textbf{Ethereum} is underpinned by \emph{transaction
+    demand}: every Ethereum transaction requires gas denominated
+    in \textsc{Eth}, with EIP-1559 burn reinforcing the floor.
+    The underpinning is at the transaction-execution layer.
+  \item \textbf{\fig{}} is underpinned by \emph{trade}: every
+    bonded commitment in the \figaro{} ecosystem is a real
+    transfer of value --- goods for payment, services for
+    payment, coordination for payment. The aggregate volume and
+    quality of these transfers is the economic content of the
+    ecosystem; \fig{} is the token denomination of alignment with
+    the value-adding activity that produces them. The
+    underpinning is at the trade layer --- the layer at which
+    actual economic value is created.
+\end{itemize}
+
+This places \fig{} not at a weaker position in the lineage than
+its predecessors but at a different one, attached to a different
+primary economic quantity. Bitcoin is underpinned by the cost of
+the infrastructure it runs on; Ethereum by the demand for
+executing transactions on its substrate; \fig{} by the value
+produced when the substrate is used to coordinate trade. In
+classical-economics terms: factor cost, transaction utility,
+value-added. The three answers sit at three different points in
+the economic chain; \fig{}'s is the most proximate to end-value
+creation.
+
+A consequence worth stating explicitly: \fig{}'s value is fully
+endogenous to \figaro{}'s trade activity. If little trade flows
+through the ecosystem, \fig{} is correspondingly worth little; if
+substantial trade flows, \fig{}'s value rises with it. This
+coupling is direct, on-chain visible, and participant-auditable
+--- the volume of bonded commitments is a public ledger fact ---
+which makes \fig{}'s value-formation more legible than the
+factor-cost or transaction-fee underpinnings of its predecessors,
+both of which require external accounting (electricity prices,
+fee-market depth) to interpret. The coupling is the right
+relation between a coordination token and the activity it
+coordinates: the token is worth the trade it identifies aligned
+participants in, and no more.
+
+\paragraph{Why a general-purpose token cannot carry this signal.}
+The \figaro{} kernel is token-agnostic. Any ERC-20 can serve as
+the bond and payment currency for a bonded
+commitment~\citep{daliana2026mechanism}. The kernel does not need
+a native token to function, and \fig{} does not interact with
+the kernel in any equilibrium-relevant way. Why, then, have a
+native token at all?
+
+The answer is that multi-party coordination in an ecosystem
+without central authority requires a coordination signal that
+does not depend on any central authority, and no general-purpose
+token provides that signal. Participants bond in \texttt{USDC}
+when they want legal-system alignment; in a DAO governance token
+when they want community membership in that DAO; in \texttt{ETH}
+when they want to denominate in the base settlement unit; in a
+commodity-backed token when they want value anchoring. None of
+these signals \emph{Figaro-ecosystem alignment specifically}. A
+general-purpose token carries many signals; what distinguishes
+them cannot be inferred from the token.
+
+A focal-point token that signals Figaro alignment \emph{only},
+and whose design forbids any other reading of the holder's
+motivation, provides a coordination instrument the ecosystem does
+not otherwise have. This instrument is useful in two distinct
+settings:
+
+\paragraph{Finding aligned counterparties.}
+A participant designing a new \figaro{} assembly (a bonded
+workflow composed from protocol components) wants to find
+counterparties who understand the protocol, operate in its idiom,
+and will engage constructively with its equilibrium discipline.
+Searching for such counterparties by settlement history is
+possible~\citep[§5]{daliana2026tce} but expensive --- one must
+read the chain. Searching by \fig{} holding is cheaper: a
+participant who holds \fig{} has declared alignment through the
+specific act of acquiring a token whose only plausible reason to
+acquire is alignment.
+
+\paragraph{Signaling alignment in contested contexts.}
+Participants who want to declare \figaro{}-aligned participation
+in adjacent debates --- regulatory, academic, industry --- benefit
+from a token whose holding is unambiguous. A founder who accepts
+\fig{} in lieu of other compensation signals more than a founder
+who accepts \texttt{USDC}. Not every participant needs this
+signal; those who do benefit from the existence of a focal
+coordination anchor that has no financial pretext.
+
+These use cases are modest. We do not claim \fig{} is
+indispensable or that the ecosystem fails without it. We claim
+only that a focal-point token has a coordination function
+unavailable to general-purpose tokens, and that a cohort of
+participants will find the function useful.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Design Rules for a Focal-Point Token}
+\label{sec:design-rules}
+
+Supporting focal-point emergence is not the same as manufacturing
+it. A designer cannot declare that a token is a Schelling point;
+focality emerges from participant convergence or it does not.
+What the designer can do is remove features that would make
+convergence implausible or fragile, and add features that make
+convergence stable once it starts.
+
+We articulate four design rules.
+
+\paragraph{Rule 1: Pure signaling.}
+The token must carry \emph{one} unambiguous reason to hold it.
+Holders should be alignment-signalers, not yield-chasers,
+governance-speculators, utility-arbitrageurs, or
+fee-path-optimizers. Features that would introduce non-alignment
+holders are forbidden. This is the most restrictive rule and
+generates most of \fig{}'s catalogue of exclusions
+(\Cref{sec:negatives}).
+
+\paragraph{Rule 2: Predictable supply.}
+Focality is fragile under surprise inflation. A holder who
+believes supply is fixed may exit on learning it is not.
+\fig{}'s supply schedule is committed at deployment and cannot
+be modified: 1B hard cap, staged airdrop with three immutable
+merkle roots and immutable calendar unlocks, one-way
+deployer-renouncement at the end of the deploy transaction. There
+are no surprise-inflation paths available to any actor after
+deployment.
+
+\paragraph{Rule 3: Clean distribution.}
+Focality is fragile under highly concentrated ownership. If a
+single holder can dump enough supply to destabilize the price,
+Schelling convergence is less credible. \fig{}'s allocation is
+60\% to a pre-committed community cohort (the staged airdrop),
+30\% to a treasury with an ecosystem mandate (the DAO), and 10\%
+to founders. The concentration is higher than ideal for
+focality (the DAO + founder share is 40\%), which we address
+honestly in \Cref{sec:bootstrap} and in the
+distributional-silhouette concession in
+\Cref{sec:silhouette}.
+
+\paragraph{Rule 4: Absence of protocol-activity coupling.}
+Focality requires that participants hold for alignment reasons.
+If the token's supply is a function of protocol activity,
+holders acquire the token by doing things that are not alignment
+(gaming the emission curve, wash-trading for rewards), and the
+signal is muddied. Activity-coupled emission is ruled out. We
+develop the argument at length in \Cref{sec:rejected}, where we
+describe an earlier \fig{} design that used settlement-anchored
+emission and explain why we rejected it on focality grounds.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Supply Integrity}
+\label{sec:supply}
+
+\fig{} has a fixed maximum supply of $10^9$ units (one billion,
+denominated in 18-decimal $\mathit{ether}$ units in the
+contract). The supply ceiling is enforced by two distinct
+mechanisms operating at different times.
+
+\paragraph{Per-mint enforcement (run-time).}
+The \texttt{mint} function reverts with \texttt{SupplyCapExceeded}
+if $\texttt{totalSupply()} + \texttt{amount} > \texttt{MAX\_SUPPLY}$,
+checked atomically inside a non-reentrant call.
+
+\paragraph{Pre-registration enforcement (deploy-time).}
+The contract maintains an aggregate \texttt{totalRegisteredCap}:
+the sum of all registered minter caps. \texttt{registerMinter}
+reverts if
+$\texttt{totalRegisteredCap} + \texttt{cap} > \texttt{MAX\_SUPPLY}$.
+This means the entire allocation plan is committed to the
+$10^9$ ceiling \emph{before any token is minted}.
+
+The pair (per-mint + pre-registration) is stronger than either
+alone in the focality frame: per-mint enforcement catches cap
+overruns that survive bugs; pre-registration enforcement puts the
+allocation plan on chain where a focality-assessing participant
+can read it directly rather than relying on off-chain narrative.
+
+\paragraph{The renouncement latch.}
+\fig{} has a one-way Boolean \texttt{deployerMintRenounced},
+settable exactly once by the original deployer via
+\texttt{renounceDeployerMint}. After renouncement,
+\texttt{registerMinter} reverts and any deployer call to
+\texttt{mint} reverts. The deploy script
+(\texttt{script/DeployMainnet.s.sol}) registers exactly two
+minters --- the deployer wallet (cap $4 \times 10^8$, used for
+the genesis mint) and the airdrop contract (cap $6 \times
+10^8$) --- and then calls \texttt{renounceDeployerMint} as the
+final action of the deploy transaction. After the transaction
+completes:
+
+\begin{itemize}
+  \item $\texttt{totalRegisteredCap} = 10^9$ exactly;
+  \item the deployer has minted exactly $4 \times 10^8$ to the
+    designated founder and DAO wallets;
+  \item only the airdrop contract retains residual mint
+    authority, capped at $6 \times 10^8$;
+  \item no path exists to register additional minters.
+\end{itemize}
+
+The supply schedule is therefore frozen by a single transaction,
+and the contract has no further ``governance moments'' available
+to anyone --- not to the deployer, not to the DAO, not to any
+future upgrade proposal. In focality terms: a participant
+assessing \fig{} at time $t > t_{\text{deploy}}$ can verify on
+chain that no further minting will occur beyond the airdrop
+schedule. Focal convergence is not destabilized by uncertainty
+about supply.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Allocation: 10 / 30 / 60}
+\label{sec:allocation}
+
+The total supply is split:
+
+\begin{center}
+\begin{tabular}{lrl}
+\toprule
+\textbf{Bucket} & \textbf{Share} & \textbf{Realization} \\
+\midrule
+Founder      & 10\% (100M)  & Genesis mint, no vesting, no unlock \\
+DAO          & 30\% (300M)  & Genesis mint, no vesting, no unlock \\
+Airdrop      & 60\% (600M)  & Three-stage merkle, yr 2 / 5 / 9 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Founder allocation (10\%).}
+A modest founder share, by contemporary norms. The non-vesting
+choice is deliberate: a vesting cliff is a tacit promise of
+future voting alignment or schedule-driven holding, both of which
+would be reasons to hold \fig{} other than alignment signaling.
+Releasing the founder allocation at genesis exposes the founder
+to whatever market consequences attach to early sale; the
+structural observation is that an unvested founder forgoes an
+asymmetric option (sell into early demand if it materializes;
+ride out the vesting if it does not) that a vested founder
+retains, and we have chosen to forgo the option. The prior
+question --- whether founder allocation at this magnitude is the
+right allocation at all --- is a political-economy question we
+do not attempt to answer in a cryptoeconomic paper.
+
+\paragraph{DAO allocation (30\%).}
+A treasury share, available immediately at genesis. The DAO is
+not a kernel-governance body --- there is no kernel governance to
+be done --- but a coordination treasury for ecosystem activity
+(grants, public goods, reference implementations). Releasing the
+DAO allocation at genesis means the treasury is operational from
+day one. A fair objection: doesn't a liquid 30\% treasury with
+an ecosystem-grants mandate create exactly the reflexivity that
+\Cref{sec:rejected} rejects in the Euler design, and doesn't it
+dilute \fig{}'s focal-point purity (Rule 1)? We concede the
+objection in its general form. The defense is narrower than the
+objection implies: the coupling the Euler design introduces is
+\emph{mechanism-level} (a deterministic on-chain function from
+settlement count to mint), while the coupling a treasury
+introduces is \emph{policy-level} (a human-discretionary
+function from treasury governance to disbursement).
+Mechanism-level coupling is what the kernel's no-escape-hatches
+design principle rules out; policy-level coupling is attenuated
+by two layers of friction (off-chain discretion, revocable
+grants). The distinction is principled but not absolute: a
+sufficiently mechanical grant policy would reintroduce the
+coupling, which is why the DAO's operating procedures are
+themselves a design artifact that warrants its own treatment
+rather than a silent assumption.
+
+\paragraph{Airdrop allocation (60\%).}
+The majority share, allocated over a calendar window with
+declining per-stage size. The structure is designed to (a) reach
+non-genesis participants, (b) reward sustained participation
+(longer-window cohorts at year 5 and year 9), and (c) avoid the
+``dump-on-launch'' dynamic of single-event airdrops by spreading
+the supply emission over a 9-year horizon.
+
+The 60/30/10 internal split of the airdrop (300M at yr 2, 200M
+at yr 5, 100M at yr 9) is front-loaded for the bootstrap
+reason: the network needs participants more in its early years
+than in its mature years. The declining schedule encodes that
+asymmetry into the supply.
+
+\paragraph{A note on the specific percentages.}
+The 10/30/60 split and the internal 50/33/17 staging of the
+airdrop reflect a design judgment rather than a first-principles
+derivation. Any front-loaded schedule (45/35/20, 40/40/20,
+50/30/20) would satisfy the bootstrap argument above, and the
+specific weights are a calibration we do not attempt to justify
+beyond ``plausible under the stated principles.''
+
+% ════════════════════════════════════════════════════════════════════
+\section{Cohort-Based Vesting via Staged Merkle}
+\label{sec:vesting}
+
+The 600M airdrop is realized by a single contract,
+\texttt{StagedMerkleAirdrop.sol}, with three immutable stages
+($\texttt{STAGE\_COUNT} = 3$). Each stage is parameterized by a
+\texttt{Stage} struct holding a merkle \texttt{root} and a
+\texttt{unlockTime}. Both are written once in the constructor and
+never mutated thereafter; there is no admin-controlled stage
+addition, schedule extension, or cohort modification.
+
+\paragraph{Single contract, three stages.}
+An earlier candidate design used three separate airdrop
+contracts. The single-contract design is preferred for two
+reasons. First, surface area: a single contract is a single
+audit target, a single set of formal-verification rules, and a
+single storage account. Second, atomic deploy guarantees: the
+\texttt{registerMinter} call binds the airdrop contract's $6
+\times 10^8$ cap before the renouncement, and a single contract
+makes the cap binding atomic.
+
+\paragraph{Leaf format.}
+The merkle leaf is
+$\texttt{keccak256(abi.encodePacked(account, amount))}$, the
+canonical OpenZeppelin format. Choosing a non-canonical leaf
+format would have required custom tooling per off-chain proof
+generator and a corresponding audit cost; we accept the canonical
+choice.
+
+\paragraph{One-shot per (stage, address).}
+The \texttt{claimed[stageIndex][msg.sender]} double-mapping is
+set true on successful claim and checked on every entry. A given
+account can claim at most once per stage. No top-up, no
+re-claim, no rebate.
+
+\paragraph{Calendar-based unlock.}
+The unlock timestamps are calendar-based (Unix epoch seconds),
+not activity-based. Tying unlocks to settlement activity would
+re-introduce a coupling between protocol use and token
+availability --- the category Rule 4 forbids. Calendar timing
+has the additional virtue of being predictable to all parties at
+deploy time, which supports focal-point clarity.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Design Exclusions as Focality Preservers}
+\label{sec:negatives}
+
+The cryptoeconomic content of \fig{} is largely defined by what
+the design excludes. We catalogue the exclusions and tie each
+explicitly to the focality property it preserves. This restates
+the exclusions documented in earlier drafts of the paper, but
+with the Schelling-point framing the reasons become unified: each
+exclusion removes a class of holder whose reason for holding
+\fig{} would be something other than alignment signaling.
+
+\paragraph{\fig{} is not a governance token.}
+The kernel has no governance surface to vote on. Adding a
+governance role to \fig{} would introduce governance
+speculators --- participants who hold \fig{} because they want
+to vote on proposals, not because they want to signal
+alignment. This would dilute the signal by populating the
+holder set with non-alignment holders. Refusing governance
+preserves the signal's purity (Rule 1).
+
+\paragraph{\fig{} is not yield-bearing.}
+The kernel takes no protocol fee; there is no fee pool to
+distribute. A stake-and-earn mechanism would introduce yield
+farmers --- participants who hold \fig{} for expected cash flow,
+not for alignment. Refusing yield preserves the signal's
+purity (Rule 1) and also preserves the activity-decoupling
+(Rule 4), since yield mechanisms are typically indirectly coupled
+to protocol activity.
+
+\paragraph{\fig{} is not a fee path.}
+Even if a future runtime layer above the kernel introduces a
+fee mechanism, that fee is not denominated in \fig. A
+fee-denomination role would introduce utility arbitrageurs ---
+participants who acquire \fig{} to pay fees, not to signal
+alignment. The signal would be muddied by transactional
+holders.
+
+\paragraph{\fig{} is not bond collateral for the kernel.}
+The kernel's bonds are denominated in whatever ERC-20 the
+parties choose. Making \fig{} the preferred bond denomination
+would introduce collateral demand that distorts price discovery
+and couples \fig{} to kernel activity through the back door.
+Refusing this role keeps the kernel token-agnostic (per Paper
+A's design) and preserves \fig{}'s focal-signal purity.
+
+\paragraph{\fig{} is not founder-vested.}
+The 10\% founder allocation and the 30\% DAO allocation are
+unvested. There is no cliff, no schedule, no time-locked vesting
+contract. Vesting would introduce schedule-driven holders ---
+participants who hold \fig{} because they will receive more in
+the future, not because they are signaling current alignment.
+The vested-founder case is the clearest instance: a founder
+vesting into liquidity over four years holds \fig{} during that
+period for mixed reasons, only one of which is alignment.
+
+\paragraph{\fig{} is not settlement-emitted.}
+There is no path from kernel activity (commit, resolve, attest)
+to \fig{} mint. \texttt{FigaroBatchVerifier} --- the layer-2
+batch verification contract --- is explicitly not a registered
+minter and will never be. The deploy script does not register
+it; the renouncement latch ensures it cannot be added later.
+This refusal is the most rigorous application of Rule 4 and is
+worth its own section (\Cref{sec:rejected}).
+
+\paragraph{\fig{} is not a coordinator-pattern extension.}
+The implementation companion~\citep[§7]{daliana2026impl}
+develops a \emph{coordinator pattern}: four sufficient
+conditions under which a mechanism composed with the kernel
+preserves the bonding equilibrium. \fig{} satisfies these
+conditions trivially: it has no kernel interaction at all.
+\fig{} and the kernel are siblings, not a composition.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Rejected Design: Euler-Oscillation Emission}
+\label{sec:rejected}
+
+An earlier iteration (preprint draft, February 2026) included
+a settlement-anchored emission mechanism we called \emph{Euler
+oscillation}: a settlement-count-decayed cosine modulation on
+top of a halving envelope, with seller-only emission at
+resolution time. Three properties motivated it: persistent
+bootstrap subsidy, partial wash-trade resistance, and seasonal
+coordination through a $1.5\times$ peak rate.
+
+We rejected it. The rejection deepens under the Schelling-point
+frame. In the prior draft we listed three reasons: reflexivity,
+partial-but-not-eliminative wash-trade defense, and
+oscillation-pattern speculation. The Schelling-point frame
+reveals a more fundamental reason: activity-coupled emission
+\emph{destroys focal-point status} by introducing holders whose
+reason for acquiring \fig{} is not alignment.
+
+\paragraph{The focality argument, formally.}
+Under Euler emission at rate $r(n)$ with settlement-count decay
+and seller-only payout, a participant who settles a process
+through the kernel acquires \fig{}. The acquisition is
+triggered by the settlement event, not by a decision to signal
+alignment. After acquisition, the holder has \fig{} in their
+wallet --- but the token-in-wallet does not distinguish
+``holder of \fig{} by alignment choice'' from ``holder of
+\fig{} because an Euler function happened to pay me.'' In the
+Schelling-point frame, these are two distinct populations whose
+signals interfere. A third party looking at the distribution of
+\fig{} holders cannot read focal alignment from the
+distribution because the distribution mixes two holder
+populations.
+
+This is distinct from the reflexivity argument (which points at
+a decision-coupling between settlement choice and emission
+expectation) and the wash-trade argument (which points at a
+gameable payoff structure). It is a more fundamental point about
+what a token \emph{means} under each design. Activity-coupled
+emission makes the token mean two things at once; pure airdrop
+distribution makes it mean one thing.
+
+\paragraph{The wash-trade inequality, for completeness.}
+Let the prevailing \fig{}/currency exchange rate be $\phi$, let
+the seller-only emission rate at settlement count $n$ be $r(n)$,
+let gas per cycle be $g$, and let the process duration be $T$
+with opportunity cost of capital $\rho$ per unit time. A
+wash-trader bonds both sides: buyer posts $2\pay$, seller posts
+$2\pay$, total locked $4\pay$ for $T$, seller receives $r(n)$
+\fig{} at resolution. The cycle is profitable iff
+\begin{equation}
+  \phi \cdot r(n) \;>\; \rho \cdot 4\pay \cdot T \;+\; g.
+  \label{eq:wash-trade}
+\end{equation}
+Seller-only emission doubles the capital requirement from
+$2\pay$ to $4\pay$ but does not drive \eqref{eq:wash-trade} to
+infeasibility. The parameter region where wash-trading is
+infeasible is non-empty but not universal. This was a secondary
+reason to reject Euler; the primary reason was the
+focality-destroying mixing of holder motivations above.
+
+\paragraph{What we kept.}
+The 600M airdrop bucket, the staged structure (now realized via
+calendar unlocks rather than settlement counts), and the design
+intent of distributing the bootstrap subsidy over time. The
+underlying intuition --- that distribution should be staged
+rather than instantaneous --- survived; the Euler mathematics
+did not.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Bootstrap and Attack Surface}
+\label{sec:bootstrap}
+
+A Schelling-point token cannot be declared; it must be
+\emph{recognized}. This section is the most uncertain part of
+the design, because it concerns processes we cannot directly
+control.
+
+\paragraph{Bootstrap: how \fig{} achieves focal status.}
+Focal-point emergence for a newly-launched token depends on
+several converging factors, none of which the designer can
+guarantee.
+
+\begin{itemize}
+  \item \emph{Initial cohort.} The year-2 airdrop distributes
+    300M to a pre-committed cohort determined by a merkle root
+    set at deploy. The cohort selection process (which is
+    policy, not mechanism) determines who receives \fig{} in
+    the first distribution and therefore who has the first
+    opportunity to recognize \fig{} as a focal point.
+  \item \emph{Design legibility.} The design rules of
+    \Cref{sec:design-rules}, and the exclusions of
+    \Cref{sec:negatives}, must be legible to prospective
+    holders as consistent with focal-point coordination rather
+    than as random design preferences. This paper is part of
+    that legibility work.
+  \item \emph{Absence of competing focal candidates.} If an
+    alternative token launched with better focal properties
+    (cleaner distribution, more restrictive exclusions) at a
+    moment when \fig{} had not yet stabilized, participants
+    might converge on it instead. The design attempts to make
+    \fig{} hard to beat on focal grounds (Rule 1 purity,
+    Rule 2 supply predictability) but cannot preempt all
+    competitors.
+\end{itemize}
+
+\paragraph{Focal-shift attack.}
+The relevant attack against a Schelling-point token is the
+\emph{focal-shift attack}: an adversary, through concerted
+action, moves focal convergence to a different token. The
+canonical example is the decade-long debate over whether
+Bitcoin-Cash or Bitcoin-SV could displace Bitcoin as the SoV
+focal point; neither succeeded, but both made the attempt at
+significant scale. The defense is Schelling stickiness:
+participants who have converged on a focal point typically hold
+through attempts to move the focus, because moving costs
+coordination value.
+
+\paragraph{Dump attacks.}
+An adversary with large \fig{} holdings can attempt to
+destabilize focal-point status by dumping supply. In a pure
+Schelling-point frame, this is \emph{less damaging} than in a
+yield-anchored or governance-anchored frame: holders of \fig{}
+are holders by alignment choice, not by financial hedging, and
+the financial price of \fig{} is somewhat decoupled from its
+focal-point status. A price crash that leaves participant
+alignment unchanged does not necessarily destroy the focal
+point; a coordinated loss of participant alignment does.
+
+\paragraph{Acquiescence attacks.}
+The quietest attack is no attack at all: nobody converges, and
+\fig{} fails to become a focal point. This is possible and
+unavoidable. The defense is limited --- we can support focal
+emergence but cannot force it. The honest statement is that if
+no cohort recognizes \fig{} as a focal point, the token has no
+Schelling-point value and operates as an unvalued distribution
+artifact. The supply-integrity and allocation properties
+continue to hold in that case; only the signaling function
+fails.
+
+\paragraph{The griefing attack reconsidered.}
+In earlier design iterations, a concern was raised about
+\emph{griefing} --- an adversary who writes code to drain the
+reward pool not for profit but for spite, given that no
+governance or fee-extraction capture is available. Under Euler,
+this attack had a concrete surface (manipulate the emission
+function to empty the reward budget). Under the current
+pure-airdrop design, the attack surface is narrower: the
+airdrop contract's claim path requires merkle-proof inclusion
+at a pre-committed address, and no drain is possible beyond
+what the merkle root already authorizes. The
+dump-at-unlock surface remains (addresses can claim at unlock
+and sell), but that is indistinguishable from the normal
+operation of the airdrop; it is not an exploit.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Substrate-Neutrality and Distributional Silhouette}
+\label{sec:silhouette}
+
+The mechanism paper~\citep{daliana2026mechanism} and the
+political-economy companion~\citep{daliana2026hegemony} argue
+that the bonded settlement \emph{kernel} is a substrate on which
+multiple organizational forms can be expressed. The present
+paper describes \fig{}, a specific token ecosystem that ships
+alongside the kernel. Those two statements are about different
+objects and a careful reader should not confuse them.
+
+\fig{}'s 10/30/60 allocation is \emph{one} instantiation of a
+token economy over the substrate. The substrate is
+substrate-neutral; \fig{} is not. If the distributional
+silhouette of \fig{} --- early founder allocation, large
+standing treasury, community recipients on a calendar schedule
+--- rhymes with the silhouette of prior platform-capital
+arrangements that~\citep{daliana2026hegemony} critiques, that
+rhyme is a feature of this specific token's distribution, not
+of the substrate, and not inherent to the Schelling-point
+framing. Different focal-point tokens could be launched with
+different silhouettes (flatter, community-only, non-founder),
+and the Schelling-point design principles would apply to them
+unchanged.
+
+We flag this explicitly to disentangle three claims:
+
+\begin{itemize}
+  \item \textbf{Substrate-neutrality (true of the kernel)}: the
+    bonded settlement primitive does not impose any particular
+    distributional structure on tokens or organizations.
+  \item \textbf{Focal-point integrity (true of \fig{})}: the
+    specific supply mechanism and exclusion catalogue enforce
+    the allocation and the focality-preservation properties at
+    deploy.
+  \item \textbf{Allocation legitimacy (out-of-scope)}: whether
+    10/30/60 is the \emph{right} allocation, whether a 30\%
+    liquid treasury is an appropriate ecosystem-coordination
+    vehicle, and whether the implicit authority of the DAO over
+    grant direction reproduces soft-governance patterns the
+    political-economy companion critiques --- these are
+    political-economy questions the present paper does not
+    resolve.
+\end{itemize}
+
+% ════════════════════════════════════════════════════════════════════
+\section{Verification Surface}
+\label{sec:verification}
+
+The \fig{} ecosystem is verified independently of the kernel.
+We report rule and invariant counts as of the snapshot date;
+numbers will grow as the surface expands.
+
+\paragraph{TLA\textsuperscript{+} (\texttt{formal/FigToken.tla}).}
+8 invariants verified across 160{,}844 distinct states in
+approximately 9 seconds (TLC, breadth-first search, parameters
+$\texttt{MAX\_SUPPLY}=5$, 3 minters, 6 recipients):
+\texttt{Inv\_MaxSupply}, \texttt{Inv\_NonNegative},
+\texttt{Inv\_DeployerCannotMintAfterRenounce},
+\texttt{Inv\_NoMintToZero}, \texttt{Inv\_MinterCap},
+\texttt{Inv\_BalancesSumToSupply},
+\texttt{Inv\_CapBelowMaxSupply},
+\texttt{Inv\_SupplyEqualsSumMinted}.
+
+\paragraph{Halmos (\texttt{test/HalmosStagedMerkleAirdrop.t.sol}).}
+4 symbolic-execution proofs of staged-airdrop properties:
+claim flag set on success, one-shot enforcement per (stage,
+address), correct balance arithmetic, and merkle leaf format
+$\texttt{keccak256(abi.encodePacked(account, amount))}$.
+
+\paragraph{Certora.}
+9 CVL rules across two specs:
+\begin{itemize}
+  \item \texttt{certora/FigToken.spec} (6 rules):
+    \texttt{totalSupplyWithinMaxSupply},
+    \texttt{totalRegisteredCapWithinMaxSupply},
+    \texttt{minterMintedWithinCap},
+    \texttt{totalRegisteredCapMonotonic},
+    \texttt{deployerMintRenouncedIsOneWayLatch},
+    \texttt{minterCapImmutable}.
+  \item \texttt{certora/StagedMerkleAirdrop.spec} (3 rules):
+    \texttt{claimedIsMonotonic},
+    \texttt{stageConfigImmutable},
+    \texttt{minterImmutable}.
+\end{itemize}
+
+\paragraph{Foundry regression.}
+\texttt{test/fig/FigToken.t.sol} and
+\texttt{test/fig/StagedMerkleAirdrop.t.sol} cover the deploy
+flow, every custom-error revert path, and the canonical 10/30/60
+allocation realized by \texttt{script/DeployMainnet.s.sol}.
+
+\paragraph{Headline supply guarantee.}
+The verification surface yields a strong guarantee: from the
+moment \texttt{deployerMintRenounced = true} is included in a
+finalized transaction, the \texttt{totalSupply()} trajectory is
+bounded above by $10^9$, no new minters can be registered, and
+the only remaining mint authority is the airdrop contract whose
+schedule is itself frozen by its three immutable stages. The
+supply is deterministic conditional on the merkle leaves; the
+merkle leaves are committed at deploy. Focal-point participants
+assessing \fig{} can verify this directly from on-chain state.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+\fig{} is a small design. Most of its positive content is
+procedural (supply cap, renouncement latch, staged merkle
+airdrop) and most of its substantive content is negative (no
+governance, no yield, no fee path, no founder vesting, no
+settlement-anchored emission, no coordinator-pattern role).
+Under the framing this paper develops, the negatives are not
+restraint without purpose --- they are the specific design
+discipline required to support focal-point emergence. Every
+exclusion removes a class of holder whose presence would dilute
+the signaling value of \fig{} for participants who hold for
+alignment reasons.
+
+\paragraph{The lineage, made explicit.}
+\citet{nakamoto2008bitcoin} took money out of institutions and
+made it a protocol. Bitcoin is the Schelling point at the money
+layer, underpinned by the cost of producing the asset: a bearer
+asset around which participants converge because its design
+makes convergence credible (fixed supply, issuer-less,
+peer-to-peer). \citet{buterin2014ethereum} made contracts
+composable and put \textsc{Eth} at the focal point of
+programmable settlement, underpinned by transaction demand: gas
+is the utility floor, Schelling recognition the coordination
+premium. The present work extends the pattern to institutions:
+bonded commitments are composable into arbitrarily large
+assemblies~\citep{daliana2026mechanism, daliana2026impl}, and
+\fig{} is the focal point for aligned participation in that
+composition, underpinned by \emph{trade} --- the value-added
+produced when parties exchange goods, services, or coordination
+through the bonded primitive. The pattern is the same at each
+layer: a native token that is not a utility, not a governance
+claim, and not a cash-flow instrument, but a coordination anchor
+whose value rests on a distinct real-economic quantity. The
+distinction between the three is which quantity: factor cost for
+Bitcoin, transaction utility for Ethereum, and the value-added
+of trade for \fig{}.
+
+\paragraph{Open questions.}
+Three questions remain outside this paper's scope but worth
+flagging. First, the airdrop cohort selection (which addresses
+appear in which stage's merkle root) is policy, not mechanism,
+and the policy framework should be developed and audited as a
+separate artifact before each stage's root is committed at
+deploy. Second, the relationship between \fig{} and the various
+treasury communities likely to form around it (cf.\ the
+``capital firm'' discussion in~\citep{daliana2026tce}) is
+genuinely emergent and not centrally designable; the present
+paper does not attempt to predict or control that emergence.
+Third, the status of the specific percentages in the allocation
+is as addressed in \Cref{sec:allocation}: judgment, not proof;
+the structural choices are the defensible content.
+
+\paragraph{What the design can and cannot do.}
+Schelling-point design is a matter of supporting emergence, not
+causing it. The design rules of \Cref{sec:design-rules} and the
+exclusions of \Cref{sec:negatives} make focal-point convergence
+on \fig{} viable: a participant who wants to signal alignment
+can do so by acquiring and holding \fig{}, and the design
+ensures the signal is not muddied by non-alignment holders.
+Whether focal-point convergence \emph{happens} is a social
+process we do not control. We document the design so that those
+who choose to converge can do so legibly, and so that those who
+do not can see what they are declining.
+
+\section*{Acknowledgments}
+The decision to frame \fig{} as a Schelling-point token,
+rather than as a decoupled-emission token whose cryptoeconomic
+content is largely negative, emerged in discussions with
+collaborators who pressed the question of what \fig{}
+\emph{is} rather than what it \emph{is not}. Their skepticism
+clarified the argument. The verification surface owes a
+continuing debt to the maintainers of TLA\textsuperscript{+},
+Halmos, and Certora.
+
+
+% ════════════════════════════════════════════════════════════════════
+% References
+% ════════════════════════════════════════════════════════════════════
+
+\begin{thebibliography}{99}
+
+\bibitem[Buterin(2014)]{buterin2014ethereum}
+Buterin, V.
+\newblock Ethereum: A Next-Generation Smart Contract and
+  Decentralized Application Platform.
+\newblock White paper, 2014.
+\newblock \url{https://ethereum.org/en/whitepaper/}
+
+\bibitem[Daliana(2026a)]{daliana2026mechanism}
+Daliana, A.
+\newblock Asymmetric Bonding: A Self-Enforcing Settlement
+  Primitive for $N$-Party Coordination.
+\newblock Companion mechanism-design paper, 2026.
+
+\bibitem[Daliana(2026b)]{daliana2026impl}
+Daliana, A.
+\newblock The \textsc{Figaro} Kernel: A Verified Solidity
+  Implementation of Asymmetric Bonding.
+\newblock Companion implementation paper, 2026.
+
+\bibitem[Daliana(2026c)]{daliana2026tce}
+Daliana, A.
+\newblock From Firms to Transaction-Scoped Institutions: A
+  Coasean Re-Examination Under Costless Bilateral Enforcement.
+\newblock Companion institutional-economics paper, 2026.
+
+\bibitem[Daliana(2026d)]{daliana2026hegemony}
+Daliana, A.
+\newblock The Visibility of Coordination: A Gramscian Reading of
+  the Platform Economy and Its Successor.
+\newblock Companion political-economy paper, 2026.
+
+\bibitem[Nakamoto(2008)]{nakamoto2008bitcoin}
+Nakamoto, S.
+\newblock Bitcoin: A Peer-to-Peer Electronic Cash System.
+\newblock White paper, 2008.
+\newblock \url{https://bitcoin.org/bitcoin.pdf}
+
+\bibitem[Schelling(1960)]{schelling1960strategy}
+Schelling, T.~C.
+\newblock \emph{The Strategy of Conflict}.
+\newblock Harvard University Press, Cambridge, MA, 1960.
+
+\end{thebibliography}
+
+\end{document}
