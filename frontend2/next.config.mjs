@@ -60,6 +60,21 @@ const nextConfig = {
                         key: 'Permissions-Policy',
                         value: 'camera=(), microphone=(), geolocation=(self)',
                     },
+                    // Web2 audit 🟡 Priority 2: defense-in-depth Cross-Origin
+                    // headers. COOP isolates the window object from any
+                    // popup-opened cross-origin context (`same-origin-allow-popups`
+                    // keeps WalletConnect popups working). CORP prevents other
+                    // sites from hotlinking app resources. COEP intentionally
+                    // skipped — `require-corp` would force CORS on every embedded
+                    // resource without a SharedArrayBuffer / Wasm-threading need.
+                    {
+                        key: 'Cross-Origin-Opener-Policy',
+                        value: 'same-origin-allow-popups',
+                    },
+                    {
+                        key: 'Cross-Origin-Resource-Policy',
+                        value: 'same-origin',
+                    },
                 ],
             },
         ]

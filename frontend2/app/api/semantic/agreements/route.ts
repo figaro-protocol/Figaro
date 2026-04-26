@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+    AgreementRecordTooLargeError,
+    AgreementRegistryFullError,
     isValidAgreementHash,
     isValidAgreementUri,
     upsertAgreementPublication,
@@ -23,7 +25,34 @@ function isRateLimited(ip: string): boolean {
     return entry.count > RATE_LIMIT_MAX;
 }
 
+/**
+ * Web2 audit 🟡 Priority 3 (defense-in-depth on top of CORS preflight +
+ * JSON-only Content-Type). Reject POSTs whose `Origin` header isn't on
+ * the configured allowlist. Empty allowlist = "accept any origin" for
+ * local-dev convenience (default behavior preserved).
+ *
+ * Configure via env: comma-separated list of allowed origins, e.g.
+ *   FIGARO_ALLOWED_ORIGINS=https://app.figaro.example,https://staging.figaro.example
+ *
+ * `Origin: null` (file://, data:, sandboxed iframes) is always rejected
+ * when an allowlist is configured.
+ */
+function isOriginAllowed(origin: string | null): boolean {
+    const allowlistRaw = process.env.FIGARO_ALLOWED_ORIGINS?.trim();
+    if (!allowlistRaw) {
+        // No allowlist configured — local-dev passthrough.
+        return true;
+    }
+    if (!origin || origin === "null") return false;
+    const allowed = allowlistRaw.split(",").map((s) => s.trim()).filter(Boolean);
+    return allowed.includes(origin);
+}
+
 export async function POST(request: NextRequest) {
+    if (!isOriginAllowed(request.headers.get("origin"))) {
+        return NextResponse.json({ error: "Origin not allowed" }, { status: 403 });
+    }
+
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
     if (isRateLimited(ip)) {
         return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -47,11 +76,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invalid agreement URI" }, { status: 400 });
     }
 
-    const record = await upsertAgreementPublication({
-        agreementHash: candidate.agreementHash,
-        uri: candidate.uri,
-        cid: candidate.cid,
-    });
-
-    return NextResponse.json(record, { status: 201 });
+    try {
+        const record = await upsertAgreementPublication({
+            agreementHash: candidate.agreementHash,
+            uri: candidate.uri,
+            cid: candidate.cid,
+        });
+        return NextResponse.json(record, { status: 201 });
+    } catch (error) {
+        if (error instanceof AgreementRecordTooLargeError) {
+            return NextResponse.json({ error: "Agreement URI too large" }, { status: 413 });
+        }
+        if (error instanceof AgreementRegistryFullError) {
+            return NextResponse.json({ error: "Registry full" }, { status: 503 });
+        }
+        throw error;
+    }
 }

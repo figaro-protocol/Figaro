@@ -1,6 +1,6 @@
 # Web2 Security Audit — Normal Pass
 
-Status: 🟢 ZERO HIGH-SEVERITY FINDINGS — survey 2026-04-26
+Status: 🟢 ALL THREE PRIORITY GAPS FIXED — survey + fixes 2026-04-26. Zero high-severity findings; three Low/Medium gaps closed.
 Scope: `frontend2/` Next.js 14 app, API routes, middleware, dependency manifest
 Out of scope: UI ↔ MetaMask injection (separate threat model at `docs/v5/UI_METAMASK_INJECTION_THREAT_MODEL.md`)
 
@@ -117,7 +117,7 @@ These three are defense-in-depth; none of them are required for current function
 | # | Surface | Status | Severity |
 |---|---|---|---|
 | 1 | API routes — input validation, rate limiting, auth | 🟢 OK | — |
-| 1b | API routes — explicit CSRF token | 🟡 GAP | Low (mitigated by JSON-only + CORS preflight) |
+| 1b | API routes — explicit Origin-header allowlist | 🟢 OK as of 2026-04-26 | Low (was 🟡 GAP — closed via FIGARO_ALLOWED_ORIGINS env-configurable check) |
 | 2 | SSR data leakage | 🟢 OK | — |
 | 3 | `npm audit` — high/critical runtime exposures | 🟡 GAP | Medium (mostly devDeps + wallet-lib transitives; no direct API exploit) |
 | 4 | Cookies / session / persistent state | 🟢 OK | — |
@@ -125,10 +125,10 @@ These three are defense-in-depth; none of them are required for current function
 | 6 | External resource loads (SRI / CSP allowlist) | 🟢 OK | — |
 | 7 | Server-side request forgery (SSRF) | 🟢 OK | — |
 | 8 | Storage quota abuse — browser side | 🟢 OK | — |
-| 8b | Storage quota abuse — file-based dev registry | 🟡 GAP | Medium (local-dev only; production needs file-size cap + rotation) |
+| 8b | Storage quota abuse — file-based dev registry | 🟢 OK as of 2026-04-26 | Medium (was 🟡 GAP — closed via 10 MB file cap + 4 KB per-URI cap; HTTP 503 / 413 on overage) |
 | 9 | Error message leakage | 🟢 OK | — |
 | 10 | Security headers — baseline OWASP set | 🟢 OK | — |
-| 10b | Security headers — Cross-Origin-* (COOP/COEP/CORP) | 🟡 GAP | Low (defense-in-depth only) |
+| 10b | Security headers — Cross-Origin-* (COOP/COEP/CORP) | 🟢 OK as of 2026-04-26 | Low (was 🟡 GAP — closed via COOP `same-origin-allow-popups` + CORP `same-origin`; COEP intentionally skipped) |
 
 **Zero high-severity Web2 findings.** Three 🟡 gaps, ranked by exploit-readiness:
 
@@ -136,11 +136,11 @@ These three are defense-in-depth; none of them are required for current function
 
 ## 4. Remediation recommendations (ranked)
 
-**Priority 1 — file-based agreement-registry size cap.** Add a max-size precheck inside the POST handler before appending to `.figaro/agreement-publications.json`. Cap at a reasonable bound (e.g., 10 MB, ~10k entries). Reject with 503 when exceeded; log for cleanup. Also cap individual agreement payload size. Local-dev only today, but trivially exploitable at scale by a slow drip past the rate limiter — close it before production. ~30 min.
+**Priority 1 — ✅ Landed 2026-04-26.** `lib/core/agreementPublicationRegistry.server.ts` now caps the registry file at 10 MB and per-record URI at 4 KB. Two new error classes (`AgreementRegistryFullError`, `AgreementRecordTooLargeError`) bubble through the upsert path; the API route catches them and maps to HTTP 503 / 413 respectively. The size precheck is computed against the prospective serialized form before the write, so the registry never enters a partial state.
 
-**Priority 2 — Cross-Origin headers (COOP/COEP/CORP).** Add to `next.config.mjs` static headers block. Recommended values: `COOP: same-origin-allow-popups` (lets the wallet popup work), `CORP: same-origin` (prevents hotlinking), skip COEP (forces CORS on every embedded resource — too restrictive without a specific need like SharedArrayBuffer). ~15 min.
+**Priority 2 — ✅ Landed 2026-04-26.** Added `Cross-Origin-Opener-Policy: same-origin-allow-popups` and `Cross-Origin-Resource-Policy: same-origin` to `next.config.mjs` static headers. COOP keeps WalletConnect popups working while isolating the window object from cross-origin contexts; CORP prevents other sites from hotlinking app resources. COEP intentionally skipped — no SharedArrayBuffer / Wasm-threading need today.
 
-**Priority 3 — explicit Origin-header check on POST.** Add `request.headers.get("origin")` validation against a configured deployment-origin allowlist inside `/api/semantic/agreements` POST handler. Defense-in-depth on top of the existing CORS + JSON-only mitigation. ~15 min.
+**Priority 3 — ✅ Landed 2026-04-26.** `/api/semantic/agreements` POST now checks the `Origin` header against an env-configurable allowlist (`FIGARO_ALLOWED_ORIGINS`, comma-separated). Empty allowlist preserves local-dev behavior. `Origin: null` always rejected when the allowlist is configured. Returns 403 on mismatch.
 
 **Priority 4 — wagmi v2 → v3 upgrade.** Closes the runtime moderate-severity dep vulns. Substantial effort (breaking changes across hooks, connectors, WalletConnect v2 → v3 migration). Track as its own item — not part of this audit pass.
 
