@@ -97,7 +97,11 @@ export default function TerminalPage() {
                 <div id="panel-orders" role="tabpanel" aria-labelledby="tab-orders" className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-6">
                         <OrderControls />
-                        <TokenBalances />
+                        {/* Dev-only debugging panel — hidden in production builds.
+                            TokenBalances inspects wallet ERC-20 holdings; useful when
+                            developing locally against devnet, noisy on the public
+                            terminal. Per Web2 UI/UX audit (2026-04-26). */}
+                        {process.env.NODE_ENV !== "production" && <TokenBalances />}
                     </div>
                     <SemanticProcessWorkspacePanel />
                 </div>

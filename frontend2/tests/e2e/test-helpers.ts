@@ -240,7 +240,7 @@ export async function gotoHome(page: Page, opts?: { mock?: boolean; devnet?: boo
 }
 
 /**
- * Switch the workbench page to the Graph tab so OrderGraph renders (and
+ * Switch the terminal page to the Graph tab so OrderGraph renders (and
  * order-node-* elements become available). No-op if already active.
  */
 export async function switchToGraphTab(page: Page): Promise<void> {

@@ -1,5 +1,5 @@
 /**
- * manifest-form.spec.ts — stable browser-level coverage for the workbench
+ * manifest-form.spec.ts — stable browser-level coverage for the terminal
  * ManifestForm and the sub-order modal form.
  *
  * Validation timing now lives in component tests plus order-submit-guidance.spec.ts.
@@ -17,7 +17,7 @@ import {
 
 const BUYER = '0x000000000000000000000000000000000000dEaD';
 
-test.describe('ManifestForm — workbench route behavior', () => {
+test.describe('ManifestForm — terminal route behavior', () => {
     test.beforeEach(async ({ page }) => {
         await gotoHome(page, { mock: true });
     });

@@ -47,7 +47,7 @@ Removed the duplicate effect from `OrderGraph.tsx`.
 
 ### 3. Tab-aware test helpers
 
-The workbench is tab-routed (`orders` default, `graph`, `processes`, `stats`).
+The terminal is tab-routed (`orders` default, `graph`, `processes`, `stats`).
 Order form lives on `orders`; order-node elements only on `graph`;
 `btn-resolve-process` on `orders`; `btn-add-suborder-*` (semantic card)
 on `orders` too. Tests now actively navigate:
