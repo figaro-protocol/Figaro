@@ -48,8 +48,29 @@ interface InjectedEthereumProvider {
     request<T = unknown>(args: JsonRpcRequest): Promise<T>;
 }
 
+/**
+ * Direct `window.ethereum` access for the **devnet shortcut path only**.
+ *
+ * Production signing flows go through wagmi's `useSignTypedData` and the
+ * EIP-6963-discovered provider — not this helper. Reading `window.ethereum`
+ * directly is a known soft attack surface (a malicious browser extension
+ * can shadow the property after page load), so the helper bails on
+ * production builds even if some future call site tries to use it. See
+ * `docs/v5/UI_METAMASK_INJECTION_THREAT_MODEL.md` §2.1.
+ *
+ * The threat model 🟡 Priority 2 fix landed here: gate the helper to dev
+ * builds + scope the call to the devnet shortcut branch. Production calls
+ * are blocked at runtime, not just by upstream control flow.
+ */
 function getInjectedEthereumProvider(): InjectedEthereumProvider | null {
     if (typeof window === "undefined") {
+        return null;
+    }
+
+    if (process.env.NODE_ENV === "production") {
+        // Defense-in-depth: even if some future code path tries to call
+        // this in prod, it bails. Production sign flows must go through
+        // wagmi connectors (EIP-6963 discovery), never direct window.ethereum.
         return null;
     }
 
@@ -310,7 +331,6 @@ export function useCommitmentFlow() {
         const e2eMode = getE2EMode();
         const isE2EMock = e2eMode === "mock" && process.env.NODE_ENV !== "production";
         const isDevnet = e2eMode === "devnet" && process.env.NODE_ENV !== "production";
-        const injectedProvider = getInjectedEthereumProvider();
         const normalizedAddress = address?.toLowerCase();
         const sameParty = commitment.buyer.toLowerCase() === commitment.seller.toLowerCase();
         const resolvedInitiatorRole = initiatorRole
@@ -347,6 +367,12 @@ export function useCommitmentFlow() {
             }
 
             if (isDevnet) {
+                // Devnet-only path: resolve the injected provider lazily so a
+                // production build cannot accidentally enter this branch with
+                // a `window.ethereum` reference cached in scope.
+                // `getInjectedEthereumProvider` is also gated to NODE_ENV !==
+                // "production" as defense-in-depth.
+                const injectedProvider = getInjectedEthereumProvider();
                 if (!injectedProvider || !resolvedInitiatorRole) {
                     throw new Error("Devnet shortcut requires an injected provider and a recognized participant role");
                 }

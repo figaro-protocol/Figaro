@@ -25,10 +25,10 @@ The protocol's core defense is **hash-based signing**: only the merkle root of t
 A malicious browser extension can shadow `window.ethereum` between the dApp and MetaMask, intercepting RPC calls, modifying transaction parameters, or returning forged signatures.
 
 - **Primary defense — EIP-6963 multi-provider discovery**: Active. `ClientInit.tsx:289` dispatches `eip6963:requestProvider` event and listens for dynamic provider registration. wagmi v2 auto-registers providers via `eip6963:announceProvider`. This means we don't rely on whoever wrote `window.ethereum` first — we discover providers via a structured event each declares itself on.
-- **Fallback — direct `window.ethereum` access**: `getInjectedEthereumProvider()` in `useCommitmentFlow.ts:51-62` casts `window as Window & { ethereum?: ... }` and calls `provider?.request()` directly. **No defensive property wrapping** (no `Object.defineProperty(..., { configurable: false, writable: false })`). An extension that runs after page load can replace or shadow `window.ethereum`.
-- **DevShim race**: `lib/shared/devShims.ts:128-147` unconditionally writes `window.ethereum` if `NEXT_PUBLIC_DEV_ADDRESS` is set, with no check for a pre-existing provider. Devnet-only; not a production concern.
+- **Direct `window.ethereum` access — devnet shortcut path only**: `getInjectedEthereumProvider()` in `useCommitmentFlow.ts` casts `window as Window & { ethereum?: ... }` and calls `provider?.request()` directly. After the 2026-04-26 fix, the helper bails on production builds (`process.env.NODE_ENV === "production"` early-returns null) and the call is scoped lazily to the `if (isDevnet)` branch — devnet shortcut requires both a non-production build AND `?e2e=devnet` URL param.
+- **DevShim writes**: `lib/shared/devShims.ts:128-147` writes `window.ethereum` only if `NEXT_PUBLIC_DEV_ADDRESS` is set (env var only present in dev), AND it checks `if (!devWindow.ethereum)` first — won't overwrite an existing provider. (Survey initially flagged a race condition; rechecked the code path — the guard is in place. Devnet-only either way.)
 
-**Status: 🟡 PARTIAL.** EIP-6963 reduces the primary attack path, but the fallback is unguarded. Acceptable for current scope (no defensive wrap is industry-standard for dApps), but worth recording.
+**Status: 🟢 OK as of 2026-04-26.** Production signing flows go through wagmi connectors (EIP-6963 discovery), never direct `window.ethereum` access. The dev/devnet path is gated by both env-var-at-build-time AND URL-param-at-runtime. Defense-in-depth runtime guard inside `getInjectedEthereumProvider()` blocks any future code path that tries to use it in prod.
 
 ### 2.2 CSP allows `'unsafe-inline'` scripts
 
@@ -103,7 +103,7 @@ If the app handles `postMessage` from any iframe, the message contents are an in
 
 | Vector | Status | Severity if exploited | Exploit precondition |
 |---|---|---|---|
-| Extension shadowing `window.ethereum` | 🟡 PARTIAL | High (signature forgery / parameter substitution) | Malicious extension installed |
+| Extension shadowing `window.ethereum` | 🟢 OK as of 2026-04-26 | High (signature forgery / parameter substitution) | Malicious extension installed; only reachable in dev/devnet (gated by NODE_ENV + URL param) |
 | CSP `'unsafe-inline'` scripts | 🔴 EXPOSED | High (injected script under page origin) | Extension or other DOM-write injection |
 | Prototype pollution via IPFS attestation JSON | 🟡 EXPLOITABLE | Medium (corrupt local component state) | Attacker controls IPFS CID |
 | Prototype pollution via registry-fetched agreement JSON | 🟡 EXPLOITABLE | Medium (same) | Registry compromise / MITM |
@@ -120,7 +120,7 @@ If the app handles `postMessage` from any iframe, the message contents are an in
 
 **Priority 1 — CSP nonce-based hardening.** Replace `'unsafe-inline'` with per-response nonces in Next.js middleware. Highest leverage single change: turns "extension with DOM write" from "free script execution" into "execution bounded to the JS surface that already shipped with the response". Est: 2-4 hours including tests.
 
-**Priority 2 — Defensive `window.ethereum` wrap.** After EIP-6963 discovery completes, optionally seal `window.ethereum` via `Object.defineProperty(window, "ethereum", { configurable: false, writable: false })` so a later-loading extension can't shadow it. Tradeoff: some legitimate wallet extensions write to `window.ethereum` after announcing via EIP-6963 (defense in depth) — sealing might break them. Worth surveying installed-extension behavior before shipping. Est: 1-2 hours of investigation + 1-2 hours of guarded implementation.
+**Priority 2 — ✅ Landed 2026-04-26.** On closer reading the exposure was smaller than the survey framed: production signing flows already go through wagmi (EIP-6963), and the only direct `window.ethereum` access is in the devnet-shortcut path. Fix added a runtime production-build guard inside `getInjectedEthereumProvider()` (returns null in prod even if some future call site reaches it) and scoped the call lazily to the `if (isDevnet)` branch. Sealing `window.ethereum` via `Object.defineProperty` was considered but rejected — wallet ecosystem behavior is too varied (some legit extensions update the provider object after EIP-6963 announce), and the production sign path no longer touches `window.ethereum` directly so sealing buys nothing additional.
 
 **Priority 3 — Schema-validate IPFS attestation JSON.** Wrap `JSON.parse(attestation)` paths in `evidence-display` and `agreementStore` with either (a) a small allowlist parser that rejects `__proto__` / `constructor` / `prototype` keys, or (b) Zod / valibot schema validation. The SDK's `parseSchemaSpec` pattern is the model. Est: 2-3 hours.
 
