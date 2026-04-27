@@ -7,23 +7,32 @@
 ## Abstract
 
 Figaro is a coordination protocol that enables sovereign economic coordination
-through a single mechanism: asymmetric bonding. Both parties in a transaction
-lock collateral on-chain; only the buyer can release it. This creates a Nash
-equilibrium where cooperation is strictly dominant for all participants, without
-timeouts, governance, or third-party dispute resolution. The architecture makes
-trusted intermediaries — escrows, arbitrators, platform operators — structurally
-unnecessary.
+through two composing mechanisms: asymmetric bonding and buyer dominance.
+Asymmetric bonding (each party locks 2× their respective stake) produces a
+Nash equilibrium where cooperation is strictly dominant for both parties, and
+scales the bilateral primitive from 2-party to N-party service chains via
+progressive collateralization (downstream sellers bond against cumulative
+upstream value, creating a mesh of independently secured edges). Buyer
+dominance — only the buyer can trigger resolution, and resolution is atomic
+across all orders in the process — operates on the already-scaled mesh to
+enforce inter-seller coordination, cooperation, and communication. Atomic
+resolution is the forcing function: it induces a weakest-link subgame among
+sellers, reproducing Grameen joint-liability peer enforcement at kernel
+granularity without repeated interaction or local information.
 
-The mechanism scales from 2-party exchanges to N-party service chains through
-progressive collateralization, where downstream sellers bond against cumulative
-upstream value — producing geometric coordination pressure that maintains the
-Nash equilibrium at every chain position.
+The two mechanisms compose; neither substitutes the other. Bonding alone
+yields independently bonded edges that can't multi-party coordinate;
+buyer-dominance alone is worthless without the bonding equilibrium. Together,
+they make the mesh resolvable from a single signature with cooperation
+pressure propagating through it. The architecture makes trusted intermediaries
+— escrows, arbitrators, platform operators — structurally unnecessary.
 
 Enforcement operates across three layers: economic self-interest (bonding),
-social pressure among co-dependent sellers (atomic resolution), and legal
-deterrence backed by immutable on-chain evidence. This paper presents the
-game-theoretic foundations, the N-party scaling model, the enforcement
-architecture, and a security analysis of the protocol.
+social pressure among co-dependent sellers (atomic resolution as buyer
+dominance's forcing function), and legal deterrence backed by immutable
+on-chain evidence. This paper presents the game-theoretic foundations, the
+N-party scaling model, the enforcement architecture, and a security analysis
+of the protocol.
 
 ---
 
@@ -46,15 +55,22 @@ architecture, and a security analysis of the protocol.
 
 ### The Coordination Forcing Function
 
-Figaro achieves multi-party coordination through a deceptively simple mechanism:
+Figaro achieves multi-party coordination through two composing mechanisms:
 
-1. **All parties lock collateral on-chain**
-2. **Only the buyer can unlock funds** by calling `resolveProcess()`
-3. **If buyer unhappy → ALL funds locked forever**
-4. **Sellers must coordinate among themselves** to satisfy the buyer
-5. **Buyer accountability** through locked capital + self-destructive griefing economics
+**Mechanism 1 — Asymmetric bonding (the bilateral equilibrium + scaling):**
 
-**Key Insight**: Capital lockup creates sufficient economic pressure to force cooperation without any external enforcement mechanisms.
+1. **Both parties lock collateral on-chain** (buyer 2P, seller 2G)
+2. **The 2× ratio creates the Nash equilibrium** — cooperation strictly dominates defection for both, at the minimum viable multiplier
+3. **Each seller bonds against cumulative upstream value** (progressive collateralization), creating a mesh of independently secured edges that scales from 2-party to N-party trees
+
+**Mechanism 2 — Buyer dominance (inter-seller coordination on the mesh):**
+
+4. **Only the buyer can unlock funds** by calling `resolveProcess()`
+5. **Resolution is atomic** across all orders in the process — all or nothing
+6. **Sellers must coordinate among themselves** to satisfy the buyer (weakest-link subgame; endogenous peer pressure of magnitude P_i + 2G_i on every co-seller)
+7. **Buyer accountability** through locked capital + self-destructive griefing economics
+
+**Key Insight**: Capital lockup creates the bilateral equilibrium and scales the mesh; buyer dominance enforces coordination across the mesh. Either mechanism alone is insufficient — bonding without buyer dominance gives a mesh that can't multi-party coordinate; buyer dominance without bonding is worthless. Together they replace external enforcement.
 
 ### Philosophy: The Post-Firm Economy
 

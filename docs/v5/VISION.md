@@ -207,23 +207,29 @@ three layers:
 — Both parties lock collateral at exactly 2× the transaction value. Defection
 destroys more capital than it could capture. Cooperation is the strictly
 dominant strategy — not as a social aspiration, but as a mathematical fact.
-This handles the vast majority of interactions. The enforcement is ex-ante
-(capital locked before work begins), not ex-post (courts invoked after breach).
-This single mechanism replaces trust, reputation, credit history, and most
-forms of contractual enforcement.
+This handles the vast majority of bilateral interactions. The enforcement is
+ex-ante (capital locked before work begins), not ex-post (courts invoked
+after breach). Asymmetric bonding replaces trust, reputation, credit history,
+and most forms of contractual enforcement at the bilateral level — and scales
+the bilateral primitive to N-party trees via progressive collateralization
+(each seller bonds against cumulative upstream value, creating a mesh of
+independently secured edges).
 
-**Layer 2: Social — Seller Coordination Game (the micro-lending circle
-effect)** — In multi-party process trees, atomic resolution means every seller
-sinks or swims with every other seller. If one node defects, the entire tree
-fails and all bonds are lost. This creates geometric coordination pressure:
-later sellers have exponentially more at stake, and all sellers are
-economically incentivized to police each other. The empirical parallel is
-Grameen Bank's group lending model, which reduced default rates from ~20%
-(individual lending) to ~2% (group accountability). Figaro's atomic resolution
-creates the same pressure structure without requiring social relationships —
-the bond geometry does it. The buyer does not need to manage the sellers. This
-replaces management hierarchies, quality control departments, and supervisory
-authority.
+**Layer 2: Social — Buyer Dominance + Atomic Resolution (the micro-lending
+circle effect)** — Layer 1 produces the mesh; Layer 2 enforces coordination
+across it. Only the buyer can trigger resolution, and resolution is atomic —
+all orders in the process settle together or not at all. This means every
+seller sinks or swims with every other seller: if one node defects, the
+entire tree fails and all bonds are lost. The atomic-resolution rule is
+buyer dominance's forcing function, inducing a weakest-link subgame among
+sellers with endogenous peer pressure of magnitude P_i + 2G_i on every
+co-seller. The empirical parallel is Grameen Bank's group lending model,
+which reduced default rates from ~20% (individual lending) to ~2% (group
+accountability). Figaro reproduces that pressure structure without requiring
+repeated interaction or social relationships — the bond geometry plus
+atomic resolution does it. The buyer does not need to manage the sellers.
+This replaces management hierarchies, quality control departments, and
+supervisory authority.
 
 **Layer 3: Legal — Timestamped Evidence (bridge to legacy systems)** — We
 recognize that the transition from legacy dispute resolution to bonded
