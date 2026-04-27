@@ -21,27 +21,33 @@ describe('runtime identity registry', () => {
         expect(metadata?.menu).toHaveLength(2);
     });
 
-    it('resolves a runtime subject preview for the configured address', () => {
-        const context = resolveRuntimeSubjectByAddress('0x70997970C51812dc3A010C7d01b50e0d17dc79C8', 'local-anvil');
+    it.each([
+        {
+            address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+            displayName: "Bob's Pizza Palace",
+            assemblySlug: 'local-commerce',
+            archetypeId: undefined,
+        },
+        {
+            address: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+            displayName: 'Acme Components Supply',
+            assemblySlug: 'figaro-procurement',
+            archetypeId: 'bonded-procurement-supplier',
+        },
+        {
+            address: '0x90F79bf6EB2c4f870365E785982E1f101E93b906',
+            displayName: 'GreenLedger Review Desk',
+            assemblySlug: 'figaro-disclosure-review',
+            archetypeId: 'disclosure-review-operator',
+        },
+    ])('resolves a runtime subject preview for $assemblySlug', ({ address, displayName, assemblySlug, archetypeId }) => {
+        const context = resolveRuntimeSubjectByAddress(address, 'local-anvil');
 
-        expect(context?.subject.displayName).toBe("Bob's Pizza Palace");
-        expect(context?.selectedBinding?.assemblySlug).toBe('local-commerce');
-    });
-
-    it('resolves a procurement-bound subject preview for a second fixture address', () => {
-        const context = resolveRuntimeSubjectByAddress('0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC', 'local-anvil');
-
-        expect(context?.subject.displayName).toBe('Acme Components Supply');
-        expect(context?.selectedBinding?.assemblySlug).toBe('figaro-procurement');
-        expect(context?.selectedBinding?.archetypeId).toBe('bonded-procurement-supplier');
-    });
-
-    it('resolves a disclosure-review-bound subject preview for a third fixture address', () => {
-        const context = resolveRuntimeSubjectByAddress('0x90F79bf6EB2c4f870365E785982E1f101E93b906', 'local-anvil');
-
-        expect(context?.subject.displayName).toBe('GreenLedger Review Desk');
-        expect(context?.selectedBinding?.assemblySlug).toBe('figaro-disclosure-review');
-        expect(context?.selectedBinding?.archetypeId).toBe('disclosure-review-operator');
+        expect(context?.subject.displayName).toBe(displayName);
+        expect(context?.selectedBinding?.assemblySlug).toBe(assemblySlug);
+        if (archetypeId) {
+            expect(context?.selectedBinding?.archetypeId).toBe(archetypeId);
+        }
     });
 
     it('lists assembly-bound subject summaries for local-commerce', () => {

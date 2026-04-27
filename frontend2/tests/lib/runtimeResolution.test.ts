@@ -127,35 +127,31 @@ const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
 };
 
 describe('runtime resolution', () => {
-    it('resolves a combined assembly runtime context for local-commerce', () => {
+    it.each([
+        { slug: 'local-commerce', displayName: "Bob's Pizza Palace", merchantId: 'bobs-pizza-palace' },
+        { slug: 'figaro-procurement', displayName: 'Acme Components Supply', merchantId: undefined },
+        { slug: 'figaro-disclosure-review', displayName: 'GreenLedger Review Desk', merchantId: undefined },
+    ])('resolves a combined assembly runtime context for $slug', ({ slug, displayName, merchantId }) => {
+        const context = resolveAssemblyRuntimeContext(slug, 'local-anvil');
+
+        expect(context?.artifact.assembly.identity.slug).toBe(slug);
+        expect(context?.boundSubjects).toHaveLength(1);
+        expect(context?.boundSubjects[0]?.displayName).toBe(displayName);
+        if (merchantId) {
+            expect(context?.boundSubjects[0]?.sellerCatalogueMetadata?.merchantId).toBe(merchantId);
+        } else {
+            expect(context?.boundSubjects[0]?.sellerCatalogueMetadata).toBeUndefined();
+        }
+    });
+
+    it('reports bundled source metadata for the default fixture registry', () => {
         const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil');
 
-        expect(context?.artifact.assembly.identity.slug).toBe('local-commerce');
-        expect(context?.boundSubjects).toHaveLength(1);
-        expect(context?.boundSubjects[0]?.sellerCatalogueMetadata?.merchantId).toBe('bobs-pizza-palace');
         expect(context?.sourceMetadata).toEqual({
             sourceKind: 'bundled',
             sourceLabel: 'local-runtime-identity.json',
             transport: 'static',
         });
-    });
-
-    it('resolves a combined assembly runtime context for figaro-procurement', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-procurement', 'local-anvil');
-
-        expect(context?.artifact.assembly.identity.slug).toBe('figaro-procurement');
-        expect(context?.boundSubjects).toHaveLength(1);
-        expect(context?.boundSubjects[0]?.displayName).toBe('Acme Components Supply');
-        expect(context?.boundSubjects[0]?.sellerCatalogueMetadata).toBeUndefined();
-    });
-
-    it('resolves a combined assembly runtime context for figaro-disclosure-review', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-disclosure-review', 'local-anvil');
-
-        expect(context?.artifact.assembly.identity.slug).toBe('figaro-disclosure-review');
-        expect(context?.boundSubjects).toHaveLength(1);
-        expect(context?.boundSubjects[0]?.displayName).toBe('GreenLedger Review Desk');
-        expect(context?.boundSubjects[0]?.sellerCatalogueMetadata).toBeUndefined();
     });
 
     it('returns undefined for an unknown assembly slug', () => {
