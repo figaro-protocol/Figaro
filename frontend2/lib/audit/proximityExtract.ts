@@ -89,6 +89,8 @@ export function extractProximity(
         orderHash: order.id,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",
+        buyer: order.buyer,
+        seller: order.seller,
         policyCommitted: policy !== undefined,
         committedBand,
         proofs,

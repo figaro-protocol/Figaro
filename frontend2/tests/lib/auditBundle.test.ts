@@ -20,6 +20,15 @@ import { extractBillOfLading } from "@/lib/audit/billOfLadingExtract";
 import { extractEmissions } from "@/lib/audit/emissionsExtract";
 import { extractProximity } from "@/lib/audit/proximityExtract";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
+import {
+    extractDutchAuction,
+    type DutchAuctionCreatedEvent,
+    type DutchAuctionClaimedEvent,
+} from "@/lib/audit/dutchAuctionExtract";
+import {
+    extractOperatorRegistry,
+    type OperatorRegisteredEvent,
+} from "@/lib/audit/operatorRegistryExtract";
 import { buildHashAppendix } from "@/lib/audit/hashAppendix";
 import { buildAuditBundle } from "@/lib/audit/auditBundle";
 import { DELIVERY_LIFECYCLE_STAGES } from "@/lib/audit/types";
@@ -495,6 +504,139 @@ describe("extractProcessLogs", () => {
     });
 });
 
+// ── Dutch auction extractor ──────────────────────────────────────────────────
+
+describe("extractDutchAuction", () => {
+    const order = makeOrder({ payment: 75n });
+
+    function created(auctionId: string, processId: string, blockNumber: number): DutchAuctionCreatedEvent {
+        return {
+            auctionId, creator: BUYER, maxPrice: 100n,
+            processId, currency: TOKEN, blockNumber,
+            transactionHash: `0xCREATE-${auctionId}`,
+        };
+    }
+    function claimed(auctionId: string, provider: string, clearingPrice: bigint, blockNumber: number): DutchAuctionClaimedEvent {
+        return {
+            auctionId, provider, clearingPrice, blockNumber,
+            transactionHash: `0xCLAIM-${auctionId}`,
+        };
+    }
+
+    it("reports auctionApplicable=false when fulfilment isn't Dutch auction", () => {
+        const doc = extractDutchAuction(order, "deliver:seller-assigned", [], []);
+        expect(doc.auctionApplicable).toBe(false);
+    });
+
+    it("locates the matching auction via (provider===seller, clearingPrice===payment) and reports the price-discovery trail", () => {
+        const c = created("0xAUC1", order.processId, 100);
+        const cl = claimed("0xAUC1", order.seller, 75n, 110);
+        const doc = extractDutchAuction(order, "deliver:dutch-auction", [c], [cl]);
+        expect(doc.auctionApplicable).toBe(true);
+        expect(doc.auctionId).toBe("0xAUC1");
+        expect(doc.maxPrice).toBe(100n);
+        expect(doc.clearingPrice).toBe(75n);
+        expect(doc.startBlock).toBe(100);
+        expect(doc.claimedAtBlock).toBe(110);
+        expect(doc.blocksToClaim).toBe(10);
+    });
+
+    it("reports auctionApplicable=true but no auctionId when fulfilment indicates auction but the matching claim isn't located", () => {
+        const cl = claimed("0xAUC1", "0xOTHER_PROVIDER", 75n, 110);
+        const doc = extractDutchAuction(order, "deliver:dutch-auction", [], [cl]);
+        expect(doc.auctionApplicable).toBe(true);
+        expect(doc.auctionId).toBeUndefined();
+    });
+
+    it("requires both provider AND clearingPrice to match — same provider with a different price is not the match", () => {
+        const cl = claimed("0xAUC1", order.seller, 80n, 110); // wrong price
+        const doc = extractDutchAuction(order, "deliver:dutch-auction", [], [cl]);
+        expect(doc.auctionId).toBeUndefined();
+    });
+});
+
+// ── Operator registry extractor ──────────────────────────────────────────────
+
+describe("extractOperatorRegistry", () => {
+    const order = makeOrder();
+
+    it("reports registered=false with audit notice when the seller has no registration event", () => {
+        const doc = extractOperatorRegistry(order, []);
+        expect(doc.registered).toBe(false);
+        expect(doc.notice).toContain("NOT registered");
+        expect(doc.role).toBeUndefined();
+        expect(doc.metadataURI).toBeUndefined();
+    });
+
+    it("surfaces the seller's registration record when present", () => {
+        const ev: OperatorRegisteredEvent = {
+            operator: order.seller,
+            role: 1, // Merchant
+            metadataURI: "ipfs://QmMerchantMeta",
+            blockNumber: 50,
+            transactionHash: "0xREG",
+        };
+        const doc = extractOperatorRegistry(order, [ev]);
+        expect(doc.registered).toBe(true);
+        expect(doc.role).toBe(1);
+        expect(doc.roleLabel).toBe("Merchant");
+        expect(doc.metadataURI).toBe("ipfs://QmMerchantMeta");
+        expect(doc.registeredAtBlock).toBe(50);
+        expect(doc.notice).toBe("");
+    });
+
+    it("filters out events for other operators (cross-operator leakage)", () => {
+        const ev: OperatorRegisteredEvent = {
+            operator: "0xOTHER_OPERATOR",
+            role: 1, metadataURI: "ipfs://other",
+            blockNumber: 50, transactionHash: "0xREG",
+        };
+        const doc = extractOperatorRegistry(order, [ev]);
+        expect(doc.registered).toBe(false);
+    });
+
+    it("uses the latest registration when the seller re-registered after withdraw", () => {
+        const old: OperatorRegisteredEvent = {
+            operator: order.seller, role: 1, metadataURI: "ipfs://old",
+            blockNumber: 50, transactionHash: "0xOLD",
+        };
+        const fresh: OperatorRegisteredEvent = {
+            operator: order.seller, role: 2, metadataURI: "ipfs://fresh",
+            blockNumber: 200, transactionHash: "0xFRESH",
+        };
+        const doc = extractOperatorRegistry(order, [old, fresh]);
+        expect(doc.role).toBe(2);
+        expect(doc.metadataURI).toBe("ipfs://fresh");
+        expect(doc.registeredAtBlock).toBe(200);
+    });
+});
+
+// ── Cross-cutting: buyer + seller on every document ──────────────────────────
+
+describe("AuditBundle — every document carries buyer + seller addresses", () => {
+    const order = makeOrder();
+    const agreement = makeAgreement();
+    const bundle = buildAuditBundle(order, agreement, []);
+
+    it("every document has the buyer + seller fields populated from the order", () => {
+        const docs = [
+            bundle.contract,
+            bundle.invoice,
+            bundle.billOfLading,
+            bundle.emissions,
+            bundle.proximity,
+            bundle.processLogs,
+            bundle.dutchAuction,
+            bundle.operatorRegistry,
+            bundle.hashAppendix,
+        ];
+        for (const doc of docs) {
+            expect(doc.buyer).toBe(order.buyer);
+            expect(doc.seller).toBe(order.seller);
+        }
+    });
+});
+
 // ── Bundle assembler ──────────────────────────────────────────────────────────
 
 describe("buildAuditBundle", () => {
@@ -505,25 +647,23 @@ describe("buildAuditBundle", () => {
     ]);
     const bundle = buildAuditBundle(order, agreement, []);
 
-    it("emits all 7 documents (contract, invoice, BoL, emissions, proximity, processLogs, hashAppendix)", () => {
+    it("emits all 9 documents", () => {
         expect(bundle.contract).toBeDefined();
         expect(bundle.invoice).toBeDefined();
         expect(bundle.billOfLading).toBeDefined();
         expect(bundle.emissions).toBeDefined();
         expect(bundle.proximity).toBeDefined();
         expect(bundle.processLogs).toBeDefined();
+        expect(bundle.dutchAuction).toBeDefined();
+        expect(bundle.operatorRegistry).toBeDefined();
         expect(bundle.hashAppendix).toBeDefined();
     });
 
     it("every document carries the same orderHash + processId + agreementHash anchors", () => {
         const docs = [
-            bundle.contract,
-            bundle.invoice,
-            bundle.billOfLading,
-            bundle.emissions,
-            bundle.proximity,
-            bundle.processLogs,
-            bundle.hashAppendix,
+            bundle.contract, bundle.invoice, bundle.billOfLading,
+            bundle.emissions, bundle.proximity, bundle.processLogs,
+            bundle.dutchAuction, bundle.operatorRegistry, bundle.hashAppendix,
         ];
         for (const doc of docs) {
             expect(doc.orderHash).toBe(order.id);

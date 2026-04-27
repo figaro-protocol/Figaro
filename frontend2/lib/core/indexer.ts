@@ -234,11 +234,11 @@ export async function getOrderStateMap(
     return stateMap;
 }
 
-/** AuctionClaimed logs for a specific driver address. */
-export async function getAuctionClaimedByDriver(client: PublicClient, chainId: number, driver: string) {
+/** AuctionClaimed logs for a specific provider address. */
+export async function getAuctionClaimedByProvider(client: PublicClient, chainId: number, provider: string) {
     const all = await getAllAuctionClaimed(client, chainId);
-    const lc = driver.toLowerCase();
-    return all.filter((log) => getStringArg(log, "courier")?.toLowerCase() === lc);
+    const lc = provider.toLowerCase();
+    return all.filter((log) => getStringArg(log, "provider")?.toLowerCase() === lc);
 }
 
 // ---------------------------------------------------------------------------

@@ -124,6 +124,8 @@ export function extractBillOfLading(
         orderHash: order.id,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",
+        buyer: order.buyer,
+        seller: order.seller,
         bolNumber: order.id,
         consignor: order.seller,
         consignee: order.buyer,

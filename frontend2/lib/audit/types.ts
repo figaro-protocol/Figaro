@@ -27,6 +27,12 @@ export interface ExtractedDocument {
     processId: string;
     /** agreementHash anchoring the document's content to chain. */
     agreementHash: string;
+    /** Buyer address from the order — load-bearing identifier; auditor
+     *  landing on any document page needs the parties without
+     *  cross-referencing. */
+    buyer: string;
+    /** Seller address from the order — same load-bearing rationale. */
+    seller: string;
 }
 
 /**

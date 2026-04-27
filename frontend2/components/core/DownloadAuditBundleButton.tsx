@@ -19,8 +19,21 @@ import { useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import type { Order } from "@/lib/core/store";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { getAttestationsByOrder } from "@/lib/core/indexer";
+import {
+    getAttestationsByOrder,
+    getAllAuctionCreated,
+    getAllAuctionClaimed,
+    getAllOperatorRegistered,
+} from "@/lib/core/indexer";
 import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
+import type {
+    DutchAuctionCreatedEvent,
+    DutchAuctionClaimedEvent,
+} from "@/lib/audit/dutchAuctionExtract";
+import type {
+    OperatorRegisteredEvent,
+    OperatorRoleNumeric,
+} from "@/lib/audit/operatorRegistryExtract";
 import {
     projectFinancials,
     type FinancialsModel,
@@ -80,6 +93,56 @@ function toAttestationRecord(log: IndexedAttestationLog): AttestationRecord | nu
     };
 }
 
+type IndexedLog = {
+    args?: Record<string, unknown>;
+    transactionHash?: string;
+    blockNumber?: bigint | number;
+};
+
+function toAuctionCreated(log: IndexedLog): DutchAuctionCreatedEvent | null {
+    const a = log.args;
+    if (!a || typeof a.auctionId !== "string" || typeof a.creator !== "string"
+        || typeof a.processId !== "string" || typeof a.currency !== "string") {
+        return null;
+    }
+    return {
+        auctionId: a.auctionId,
+        creator: a.creator,
+        maxPrice: typeof a.maxPrice === "bigint" ? a.maxPrice : BigInt(String(a.maxPrice ?? 0)),
+        processId: a.processId,
+        currency: a.currency,
+        blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+    };
+}
+
+function toAuctionClaimed(log: IndexedLog): DutchAuctionClaimedEvent | null {
+    const a = log.args;
+    if (!a || typeof a.auctionId !== "string" || typeof a.provider !== "string") return null;
+    return {
+        auctionId: a.auctionId,
+        provider: a.provider,
+        clearingPrice:
+            typeof a.clearingPrice === "bigint" ? a.clearingPrice : BigInt(String(a.clearingPrice ?? 0)),
+        blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+    };
+}
+
+function toOperatorRegistered(log: IndexedLog): OperatorRegisteredEvent | null {
+    const a = log.args;
+    if (!a || typeof a.operator !== "string") return null;
+    const role = Number(a.role ?? 0);
+    if (role < 0 || role > 3) return null;
+    return {
+        operator: a.operator,
+        role: role as OperatorRoleNumeric,
+        metadataURI: typeof a.metadataURI === "string" ? a.metadataURI : "",
+        blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+    };
+}
+
 async function buildPdfBlob(
     processId: string,
     orders: readonly Order[],
@@ -87,6 +150,34 @@ async function buildPdfBlob(
     chainId: number,
 ): Promise<Blob> {
     const perOrderBundles: AuditBundle[] = [];
+
+    // Pre-fetch process-wide auction + operator-registration events once,
+    // not per order. The extractors filter to the relevant order/seller
+    // internally.
+    let auctionCreatedAll: DutchAuctionCreatedEvent[] = [];
+    let auctionClaimedAll: DutchAuctionClaimedEvent[] = [];
+    let operatorRegisteredAll: OperatorRegisteredEvent[] = [];
+    if (publicClient) {
+        try {
+            const [createdLogs, claimedLogs, opRegLogs] = await Promise.all([
+                getAllAuctionCreated(publicClient, chainId),
+                getAllAuctionClaimed(publicClient, chainId),
+                getAllOperatorRegistered(publicClient, chainId),
+            ]);
+            auctionCreatedAll = (createdLogs as IndexedLog[])
+                .map(toAuctionCreated)
+                .filter((r): r is DutchAuctionCreatedEvent => r !== null);
+            auctionClaimedAll = (claimedLogs as IndexedLog[])
+                .map(toAuctionClaimed)
+                .filter((r): r is DutchAuctionClaimedEvent => r !== null);
+            operatorRegisteredAll = (opRegLogs as IndexedLog[])
+                .map(toOperatorRegistered)
+                .filter((r): r is OperatorRegisteredEvent => r !== null);
+        } catch {
+            // Non-fatal — extractors will report auctionApplicable=false /
+            // registered=false and the bundle still renders.
+        }
+    }
 
     for (const order of orders) {
         const agreement = loadAgreement(order.agreementHash);
@@ -113,7 +204,20 @@ async function buildPdfBlob(
             }
         }
 
-        perOrderBundles.push(buildAuditBundle(order, agreement, attestations));
+        // Filter the process-wide auction events to those scoped to this
+        // order's process. Operator-registration events are filtered to
+        // the seller inside the extractor.
+        const orderAuctionsCreated = auctionCreatedAll.filter((e) => e.processId === order.processId);
+        const auctionIds = new Set(orderAuctionsCreated.map((e) => e.auctionId));
+        const orderAuctionsClaimed = auctionClaimedAll.filter((e) => auctionIds.has(e.auctionId));
+
+        perOrderBundles.push(
+            buildAuditBundle(order, agreement, attestations, {
+                auctionCreatedEvents: orderAuctionsCreated,
+                auctionClaimedEvents: orderAuctionsClaimed,
+                operatorRegistrationEvents: operatorRegisteredAll,
+            }),
+        );
     }
 
     const financials: FinancialsModel = projectFinancials(orders, "process", processId);

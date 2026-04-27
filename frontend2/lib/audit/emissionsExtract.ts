@@ -104,6 +104,8 @@ export function extractEmissions(
         orderHash: order.id,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",
+        buyer: order.buyer,
+        seller: order.seller,
         disclosed: disclosure !== undefined,
         standardSchemaKey,
         standardLabel,

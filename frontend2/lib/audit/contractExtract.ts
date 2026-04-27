@@ -159,6 +159,8 @@ export function extractContract(order: Order, agreement: Agreement): ContractDoc
         orderHash: order.id,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",
+        buyer: order.buyer,
+        seller: order.seller,
         parties: { buyer: order.buyer, seller: order.seller },
         currency: commerceCurrency ?? order.currency ?? "0x0000000000000000000000000000000000000000",
         payment: order.payment,
