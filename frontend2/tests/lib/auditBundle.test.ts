@@ -3,9 +3,11 @@ import { OrderState, type Order } from "@/lib/core/store";
 import {
     type Agreement,
     COMMERCE_SCHEMA_KEY,
+    FULFILMENT_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
     HANDOFF_SCHEMA_KEY,
     JURISDICTION_SCHEMA_KEY,
+    TOPOLOGY_SCHEMA_KEY,
     computeSectionLeaf,
 } from "@/lib/core/agreementManifest";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
@@ -129,6 +131,53 @@ describe("extractContract", () => {
     it("preserves salt + deadline for full reconstruction", () => {
         expect(contract.salt).toBe(order.salt);
         expect(contract.deadline).toBe(order.deadline);
+    });
+});
+
+describe("extractContract — lineage (DAG / parentOrderHashes)", () => {
+    it("returns empty parentOrderHashes for a root order with no topology clause", () => {
+        const c = extractContract(makeOrder(), makeAgreement());
+        expect(c.lineage.parentOrderHashes).toEqual([]);
+        expect(c.lineage.topologyMode).toBeUndefined();
+    });
+
+    it("surfaces parentOrderHashes from a topology clause as a first-class field", () => {
+        const parents = ["0xPARENT_A", "0xPARENT_B"];
+        const ag = makeAgreement([
+            {
+                schema: TOPOLOGY_SCHEMA_KEY,
+                data: { topologyMode: "explicit", parentOrderHashes: parents },
+            },
+        ]);
+        const c = extractContract(makeOrder(), ag);
+        expect(c.lineage.parentOrderHashes).toEqual(parents);
+        expect(c.lineage.topologyMode).toBe("explicit");
+    });
+
+    it("filters out non-string parent entries silently rather than throwing", () => {
+        const ag = makeAgreement([
+            {
+                schema: TOPOLOGY_SCHEMA_KEY,
+                data: { parentOrderHashes: ["0xVALID", 42, null, "0xVALID2"] },
+            },
+        ]);
+        const c = extractContract(makeOrder(), ag);
+        expect(c.lineage.parentOrderHashes).toEqual(["0xVALID", "0xVALID2"]);
+    });
+});
+
+describe("extractContract — fulfilment summary", () => {
+    it("surfaces the canonical fulfilment method from a fulfilment clause", () => {
+        const ag = makeAgreement([
+            { schema: FULFILMENT_SCHEMA_KEY, data: { method: "deliver:dutch-auction" } },
+        ]);
+        const c = extractContract(makeOrder(), ag);
+        expect(c.fulfilment).toEqual({ method: "deliver:dutch-auction" });
+    });
+
+    it("omits the fulfilment summary when no fulfilment clause is signed", () => {
+        const c = extractContract(makeOrder(), makeAgreement());
+        expect(c.fulfilment).toBeUndefined();
     });
 });
 

@@ -14,7 +14,9 @@ import {
     type Agreement,
     type AgreementSection,
     COMMERCE_SCHEMA_KEY,
+    FULFILMENT_SCHEMA_KEY,
     JURISDICTION_SCHEMA_KEY,
+    TOPOLOGY_SCHEMA_KEY,
     computeSectionLeaf,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
@@ -80,6 +82,26 @@ export interface ContractDocument extends ExtractedDocument {
         forum?: string;
         language?: string;
     };
+    /**
+     * Process-tree lineage for this order. Surfaces the topology-clause
+     * data so the auditor can locate this order in its process DAG without
+     * having to dig into the generic clauses array.
+     *
+     *   - `parentOrderHashes` is empty for a root order.
+     *   - For a sub-order it lists each parent order's hash; for a
+     *     diamond / fan-in node it lists multiple parents.
+     */
+    lineage: {
+        parentOrderHashes: string[];
+        topologyMode?: string;
+    };
+    /** Optional fulfilment summary if a fulfilment clause is present. */
+    fulfilment?: {
+        /** Canonical 5-value enum: consume-onsite | pickup |
+         *  deliver:buyer-assigned | deliver:seller-assigned |
+         *  deliver:dutch-auction. */
+        method: string;
+    };
     /** Block number when OrderCommitted was mined, if known. */
     committedAtBlock?: number;
 }
@@ -105,6 +127,25 @@ function extractJurisdictionSummary(agreement: Agreement) {
     };
 }
 
+function extractLineage(agreement: Agreement) {
+    const topology = getSectionByKey(agreement, TOPOLOGY_SCHEMA_KEY);
+    const data = topology?.data as
+        | { parentOrderHashes?: unknown; topologyMode?: unknown }
+        | undefined;
+    const parentOrderHashes = Array.isArray(data?.parentOrderHashes)
+        ? (data.parentOrderHashes.filter((p) => typeof p === "string") as string[])
+        : [];
+    const topologyMode = typeof data?.topologyMode === "string" ? data.topologyMode : undefined;
+    return { parentOrderHashes, topologyMode };
+}
+
+function extractFulfilmentSummary(agreement: Agreement) {
+    const fulfilment = getSectionByKey(agreement, FULFILMENT_SCHEMA_KEY);
+    const data = fulfilment?.data as { method?: unknown } | undefined;
+    if (typeof data?.method !== "string" || data.method.length === 0) return undefined;
+    return { method: data.method };
+}
+
 export function extractContract(order: Order, agreement: Agreement): ContractDocument {
     // Currency: prefer the agreement's commerce-section currency (signed by both
     // parties) over the order's currency field (which is event-derived, normally
@@ -126,6 +167,8 @@ export function extractContract(order: Order, agreement: Agreement): ContractDoc
         deadline: order.deadline,
         clauses: agreement.sections.map(clauseFromSection),
         jurisdiction: extractJurisdictionSummary(agreement),
+        lineage: extractLineage(agreement),
+        fulfilment: extractFulfilmentSummary(agreement),
         committedAtBlock: order.blockNumber,
     };
 }

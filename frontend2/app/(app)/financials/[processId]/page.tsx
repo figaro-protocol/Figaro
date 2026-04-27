@@ -99,7 +99,9 @@ export default function ProcessFinancialsPage() {
                     = retained earnings. Each line traces to one or more on-chain
                     events. Not an audited statement under any accounting standard
                     — interpretation under GAAP/IFRS requires accountant judgment
-                    (see Paper G).
+                    (see Paper G). Amounts displayed in 18-decimal units; per-token
+                    decimals lookup is a future enhancement — reconcile against
+                    chain using the raw smallest-units value if needed.
                 </p>
             </header>
 
@@ -127,6 +129,9 @@ export default function ProcessFinancialsPage() {
                     <p className="text-[11px] text-neutral-500">
                         Every transfer recorded by the kernel for orders in this process,
                         in input order. Each row is one on-chain ERC-20 transfer.
+                        {model.currencies.length === 1 && (
+                            <> Single-currency process — denomination shown once at the segment header above.</>
+                        )}
                     </p>
                     <div className="overflow-x-auto">
                         <table className="w-full text-xs">
@@ -136,7 +141,9 @@ export default function ProcessFinancialsPage() {
                                     <th className="text-left px-3 py-2 font-medium">Order</th>
                                     <th className="text-left px-3 py-2 font-medium">Party</th>
                                     <th className="text-right px-3 py-2 font-medium">Amount</th>
-                                    <th className="text-left px-3 py-2 font-medium">Currency</th>
+                                    {model.currencies.length > 1 && (
+                                        <th className="text-left px-3 py-2 font-medium">Currency</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
@@ -146,7 +153,9 @@ export default function ProcessFinancialsPage() {
                                         <td className="px-3 py-2 font-mono">{shortHash(entry.orderId)}</td>
                                         <td className="px-3 py-2 font-mono">{shortAddr(entry.party)}</td>
                                         <td className="px-3 py-2 text-right font-mono">{formatAmount(entry.amount)}</td>
-                                        <td className="px-3 py-2 font-mono">{shortAddr(entry.currency)}</td>
+                                        {model.currencies.length > 1 && (
+                                            <td className="px-3 py-2 font-mono text-neutral-400">{shortAddr(entry.currency)}</td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
