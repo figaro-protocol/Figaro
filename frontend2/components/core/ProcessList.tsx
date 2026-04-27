@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useAccount } from "wagmi";
 import { useOrderStore, OrderState } from "@/lib/core/store";
 import { useWalletProcessIds, ProcessSummary } from "@/hooks/core/useWalletProcessIds";
@@ -208,6 +209,17 @@ export function ProcessList() {
                                         </span>
                                     )}
                                 </button>
+
+                                {/* Financials link — process consolidated view */}
+                                <div className="ml-4 mt-1">
+                                    <Link
+                                        href={`/financials/${s.processId}`}
+                                        data-testid={`process-financials-link-${s.processId.slice(0, 10)}`}
+                                        className="text-[10px] font-mono text-neutral-500 hover:text-black hover:underline"
+                                    >
+                                        Financials →
+                                    </Link>
+                                </div>
 
                                 {/* Order sub-list — always visible beneath the process row */}
                                 {s.orders.length > 0 && (

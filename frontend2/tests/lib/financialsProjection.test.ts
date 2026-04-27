@@ -3,7 +3,7 @@ import {
     projectFinancials,
     checkBalanceSheetIdentity,
 } from "@/lib/semantic/financialsProjection";
-import type { Order } from "@/lib/core/types";
+import { OrderState, type Order } from "@/lib/core/store";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -22,8 +22,10 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
         currency: TOKEN_A,
         payment: 100n,
         cumulativeValue: 100n,
-        state: "Active",
+        state: OrderState.Active,
         agreementHash: "0xAGREEMENT1",
+        sellerBond: 200n,
+        buyerBond: 200n,
         salt: 1n,
         deadline: 9999999999n,
         ...overrides,
@@ -81,7 +83,7 @@ describe("projectFinancials — single active order", () => {
 // ── Single resolved order ─────────────────────────────────────────────────────
 
 describe("projectFinancials — single resolved order", () => {
-    const order = makeOrder({ payment: 100n, cumulativeValue: 100n, state: "Resolved" });
+    const order = makeOrder({ payment: 100n, cumulativeValue: 100n, state: OrderState.Resolved });
     const model = projectFinancials([order], "order", order.id);
 
     it("zeros out all balance-sheet accounts after resolve", () => {
@@ -168,7 +170,7 @@ describe("projectFinancials — process consolidation (2 active orders, same cur
 // ── Mixed-state process ───────────────────────────────────────────────────────
 
 describe("projectFinancials — process with one resolved + one active order", () => {
-    const resolvedOrder = makeOrder({ id: "0xR", state: "Resolved", payment: 100n, cumulativeValue: 100n });
+    const resolvedOrder = makeOrder({ id: "0xR", state: OrderState.Resolved, payment: 100n, cumulativeValue: 100n });
     const activeOrder = makeOrder({
         id: "0xA",
         seller: SELLER2,
@@ -226,6 +228,72 @@ describe("projectFinancials — empty input", () => {
         expect(model.currencies).toEqual([]);
         expect(model.cashFlow).toEqual([]);
         expect(model.orderIds).toEqual([]);
+        expect(model.lineItems).toEqual([]);
         expect(Object.keys(model.balanceSheet)).toEqual([]);
+    });
+});
+
+// ── Line items (invoice-style detail) ─────────────────────────────────────────
+
+describe("projectFinancials — line items expose per-order detail", () => {
+    const root = makeOrder({ id: "0xR", payment: 100n, cumulativeValue: 250n }); // root, P=100, G=250 (root + 150 sub-orders)
+    const subA = makeOrder({ id: "0xSA", seller: SELLER2, payment: 80n, cumulativeValue: 80n });
+    const subB = makeOrder({ id: "0xSB", seller: SELLER2, payment: 70n, cumulativeValue: 70n, state: OrderState.Resolved });
+    const model = projectFinancials([root, subA, subB], "process", "0xPROCESS1");
+
+    it("emits one line item per order, in input order", () => {
+        expect(model.lineItems).toHaveLength(3);
+        expect(model.lineItems.map((li) => li.orderId)).toEqual(["0xR", "0xSA", "0xSB"]);
+    });
+
+    it("each line item carries seller + payment + cumulativeValue + state for invoice-style display", () => {
+        const r = model.lineItems[0];
+        expect(r.seller).toBe(SELLER1);
+        expect(r.payment).toBe(100n);
+        expect(r.cumulativeValue).toBe(250n);
+        expect(r.state).toBe(OrderState.Active);
+
+        const sb = model.lineItems[2];
+        expect(sb.seller).toBe(SELLER2);
+        expect(sb.payment).toBe(70n);
+        expect(sb.state).toBe(OrderState.Resolved);
+    });
+
+    it("line-item retained-earnings contribution is P for active, 0 for resolved", () => {
+        expect(model.lineItems[0].retainedEarningsContribution).toBe(100n);
+        expect(model.lineItems[1].retainedEarningsContribution).toBe(80n);
+        expect(model.lineItems[2].retainedEarningsContribution).toBe(0n);
+    });
+
+    it("line-item cost contribution is P for resolved, 0 for active", () => {
+        expect(model.lineItems[0].costContribution).toBe(0n);
+        expect(model.lineItems[1].costContribution).toBe(0n);
+        expect(model.lineItems[2].costContribution).toBe(70n);
+    });
+
+    it("sum of line-item contributions equals the aggregate (every field, every currency)", () => {
+        const cur = TOKEN_A.toLowerCase();
+        const lis = model.lineItems.filter((li) => li.currency === cur);
+
+        const sum = (sel: (li: typeof lis[number]) => bigint) =>
+            lis.reduce((acc, li) => acc + sel(li), 0n);
+
+        const bs = model.balanceSheet[cur];
+        expect(sum((li) => li.buyerCustodyContribution)).toBe(bs.buyerCustody);
+        expect(sum((li) => li.sellerCustodyContribution)).toBe(bs.sellerCustody);
+        expect(sum((li) => li.refundOwedToBuyerContribution)).toBe(bs.refundOwedToBuyer);
+        expect(sum((li) => li.refundOwedToSellerContribution)).toBe(bs.refundOwedToSeller);
+        expect(sum((li) => li.retainedEarningsContribution)).toBe(bs.retainedEarnings);
+
+        const ist = model.incomeStatement[cur];
+        expect(sum((li) => li.salesContribution)).toBe(ist.sales);
+        expect(sum((li) => li.costContribution)).toBe(ist.cost);
+        expect(sum((li) => li.netIncomeContribution)).toBe(ist.netIncome);
+    });
+
+    it("line-item agreementHash anchors each line to its off-chain contract document", () => {
+        for (const li of model.lineItems) {
+            expect(li.agreementHash).toMatch(/^0x/);
+        }
     });
 });

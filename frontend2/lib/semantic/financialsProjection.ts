@@ -34,7 +34,7 @@
  *   Income statement records: sales (P), cost (P), net income (0)
  */
 
-import type { Order } from "@/lib/core/types";
+import { OrderState, type Order } from "@/lib/core/store";
 
 /**
  * Currency address normalised to lowercase. Multi-currency arithmetic is
@@ -79,6 +79,55 @@ export interface CashFlowEntry {
     party: string;
 }
 
+/**
+ * Per-order line item — the invoice-style row for the consolidated view.
+ *
+ * A Figaro process is structurally an invoice: one buyer paying multiple
+ * sellers across a tree, with each sub-order = one line. Aggregated totals
+ * hide which seller got how much; line items expose it. Auditors and
+ * reviewers want both registers visible.
+ *
+ * Each field is the order's individual contribution to the corresponding
+ * aggregate. Summing line-items[*].salesContribution across one currency
+ * equals incomeStatement[currency].sales, and so on for every other line.
+ */
+export interface OrderLineItem {
+    orderId: string;
+    processId: string;
+    buyer: string;
+    seller: string;
+    currency: CurrencyKey;
+    /** Payment P (the trade value). */
+    payment: bigint;
+    /** Cumulative value G at commit (Σ payments from this order rolling up the tree). */
+    cumulativeValue: bigint;
+    state: OrderState;
+    /** agreementHash — anchors the line item to its off-chain contract document.
+     *  Optional because the store's Order makes it optional; in practice a
+     *  committed order always carries one. */
+    agreementHash: string | undefined;
+
+    // ── Balance-sheet contribution (zero if state === "Resolved") ──────────
+    /** 2P contributed to buyer custody if active, else 0. */
+    buyerCustodyContribution: bigint;
+    /** 2G contributed to seller custody if active, else 0. */
+    sellerCustodyContribution: bigint;
+    /** P contributed to refund-owed-to-buyer if active, else 0. */
+    refundOwedToBuyerContribution: bigint;
+    /** 2G contributed to refund-owed-to-seller if active, else 0. */
+    refundOwedToSellerContribution: bigint;
+    /** P contributed to retained earnings if active, else 0 (transferred out at resolve). */
+    retainedEarningsContribution: bigint;
+
+    // ── Income-statement contribution ──────────────────────────────────────
+    /** Sales recognized at commit — always = P. */
+    salesContribution: bigint;
+    /** Cost recognized at resolve — P if resolved, else 0. */
+    costContribution: bigint;
+    /** Per-order net income — 0 if resolved, P if active. */
+    netIncomeContribution: bigint;
+}
+
 export interface FinancialsModel {
     scope: "order" | "process";
     scopeId: string;
@@ -87,6 +136,13 @@ export interface FinancialsModel {
     balanceSheet: Record<CurrencyKey, BalanceSheetEntry>;
     incomeStatement: Record<CurrencyKey, IncomeStatementEntry>;
     cashFlow: readonly CashFlowEntry[];
+    /**
+     * Per-order line items — invoice-style detail. One entry per order in scope,
+     * preserving input order (caller controls; typically commit-block order).
+     * Sum of `lineItems[*].<field>Contribution` per currency equals the
+     * corresponding aggregate in `balanceSheet` / `incomeStatement`.
+     */
+    lineItems: readonly OrderLineItem[];
     /** Order ids contributing to this projection. */
     orderIds: readonly string[];
 }
@@ -112,18 +168,58 @@ function bondTwo(value: bigint): bigint {
 }
 
 /**
+ * Build the per-order line item — the invoice-style row capturing this
+ * order's individual contribution to every aggregate. Pure; no side effects.
+ */
+/** Currency address for a Figaro order. The kernel always emits currency on
+ *  OrderCommitted; the store types it as optional to defer hydration. We
+ *  fall back to the zero address as a sentinel — financial projection then
+ *  segments any orders that arrived without a currency under "0x000…0",
+ *  visible as a flag rather than silently aggregating with real currencies. */
+const ZERO_CURRENCY = "0x0000000000000000000000000000000000000000";
+
+function buildLineItem(order: Order): OrderLineItem {
+    const P = order.payment;
+    const G = order.cumulativeValue;
+    const isActive = order.state === OrderState.Active;
+    const currency = (order.currency ?? ZERO_CURRENCY).toLowerCase();
+    return {
+        orderId: order.id,
+        processId: order.processId,
+        buyer: order.buyer,
+        seller: order.seller,
+        currency,
+        payment: P,
+        cumulativeValue: G,
+        state: order.state,
+        agreementHash: order.agreementHash,
+
+        buyerCustodyContribution: isActive ? bondTwo(P) : 0n,
+        sellerCustodyContribution: isActive ? bondTwo(G) : 0n,
+        refundOwedToBuyerContribution: isActive ? P : 0n,
+        refundOwedToSellerContribution: isActive ? bondTwo(G) : 0n,
+        retainedEarningsContribution: isActive ? P : 0n,
+
+        salesContribution: P,
+        costContribution: isActive ? 0n : P,
+        netIncomeContribution: isActive ? P : 0n,
+    };
+}
+
+/**
  * Project a single order's contribution into the running aggregates. Called
  * from `projectFinancials` once per order in scope.
  */
 function projectOrder(
     order: Order,
+    lineItem: OrderLineItem,
     balanceSheet: Record<CurrencyKey, BalanceSheetEntry>,
     incomeStatement: Record<CurrencyKey, IncomeStatementEntry>,
     cashFlow: CashFlowEntry[],
     seenCurrencies: Set<CurrencyKey>,
     currenciesInOrder: CurrencyKey[],
 ): void {
-    const currency = order.currency.toLowerCase();
+    const currency = lineItem.currency;
     if (!seenCurrencies.has(currency)) {
         seenCurrencies.add(currency);
         currenciesInOrder.push(currency);
@@ -131,52 +227,47 @@ function projectOrder(
         incomeStatement[currency] = emptyIncomeStatement();
     }
 
-    const P = order.payment;
-    const G = order.cumulativeValue;
+    const bs = balanceSheet[currency];
+    const ist = incomeStatement[currency];
 
-    // Income statement: sales recognized at commit (always — every order in
-    // scope has been committed by definition).
-    incomeStatement[currency].sales += P;
+    bs.buyerCustody += lineItem.buyerCustodyContribution;
+    bs.sellerCustody += lineItem.sellerCustodyContribution;
+    bs.refundOwedToBuyer += lineItem.refundOwedToBuyerContribution;
+    bs.refundOwedToSeller += lineItem.refundOwedToSellerContribution;
+    bs.retainedEarnings += lineItem.retainedEarningsContribution;
 
-    // Cash flow: commit-time pulls.
+    ist.sales += lineItem.salesContribution;
+    ist.cost += lineItem.costContribution;
+
+    // Cash flow: commit-time pulls (always, since the order has committed).
     cashFlow.push({
         kind: "commit-buyer-deposit",
         orderId: order.id,
         currency,
-        amount: bondTwo(P),
+        amount: bondTwo(order.payment),
         party: order.buyer,
     });
     cashFlow.push({
         kind: "commit-seller-deposit",
         orderId: order.id,
         currency,
-        amount: bondTwo(G),
+        amount: bondTwo(order.cumulativeValue),
         party: order.seller,
     });
 
-    if (order.state === "Active") {
-        // Pre-resolve: contributes to balance-sheet position.
-        const bs = balanceSheet[currency];
-        bs.buyerCustody += bondTwo(P);
-        bs.sellerCustody += bondTwo(G);
-        bs.refundOwedToBuyer += P;
-        bs.refundOwedToSeller += bondTwo(G);
-        bs.retainedEarnings += P;
-    } else {
-        // Resolved: cost recognized; cash-flow entries for the payouts.
-        incomeStatement[currency].cost += P;
+    if (order.state === OrderState.Resolved) {
         cashFlow.push({
             kind: "resolve-buyer-refund",
             orderId: order.id,
             currency,
-            amount: P,
+            amount: order.payment,
             party: order.buyer,
         });
         cashFlow.push({
             kind: "resolve-seller-payout",
             orderId: order.id,
             currency,
-            amount: bondTwo(G) + P,
+            amount: bondTwo(order.cumulativeValue) + order.payment,
             party: order.seller,
         });
     }
@@ -203,9 +294,12 @@ export function projectFinancials(
     const seenCurrencies = new Set<CurrencyKey>();
     const currencies: CurrencyKey[] = [];
     const orderIds: string[] = [];
+    const lineItems: OrderLineItem[] = [];
 
     for (const order of orders) {
-        projectOrder(order, balanceSheet, incomeStatement, cashFlow, seenCurrencies, currencies);
+        const lineItem = buildLineItem(order);
+        lineItems.push(lineItem);
+        projectOrder(order, lineItem, balanceSheet, incomeStatement, cashFlow, seenCurrencies, currencies);
         orderIds.push(order.id);
     }
 
@@ -225,6 +319,7 @@ export function projectFinancials(
         balanceSheet,
         incomeStatement,
         cashFlow,
+        lineItems,
         orderIds,
     };
 }
