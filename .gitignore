@@ -3,7 +3,7 @@ out/
 cache/
 broadcast/
 dist/
-verify/
+/verify/
 
 # Hardhat (removed — Foundry handles all compilation/testing)
 hh-artifacts/

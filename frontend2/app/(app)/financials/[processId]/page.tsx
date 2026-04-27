@@ -107,7 +107,10 @@ export default function ProcessFinancialsPage() {
                     — interpretation under GAAP/IFRS requires accountant judgment
                     (see Paper G). Amounts displayed in 18-decimal units; per-token
                     decimals lookup is a future enhancement — reconcile against
-                    chain using the raw smallest-units value if needed.
+                    chain using the raw smallest-units value if needed.{" "}
+                    <Link href="/verify" className="underline hover:text-black" data-testid="financials-verify-link">
+                        Verify a hash from the bundle →
+                    </Link>
                 </p>
             </header>
 
