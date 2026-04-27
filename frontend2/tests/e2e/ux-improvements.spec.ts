@@ -3,7 +3,7 @@
  *
  * Covers Figaro Protocol core page UI/UX:
  *
- *  1.  Builders page #templates section exists
+ *  1.  Builders page — links to registered assemblies + designer + SDK
  *  2.  Route posture chrome — in-page banners for terminal and builder routes
  *
  * All tests use the mock project (no wallet / no chain required).
@@ -27,30 +27,33 @@ async function gotoRoute(page: import('@playwright/test').Page, href: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Builders page — #templates anchor
+// 1. Builders page — links to composition surfaces
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.describe('Builders page — template anchor', () => {
-    test('Browse Reference Assemblies link targets the assemblies route', async ({ page }) => {
+test.describe('Builders page — composition links', () => {
+    test('Registered assemblies link targets the assemblies route', async ({ page }) => {
         await gotoRoute(page, '/builders');
-        const link = page.getByRole('link', { name: 'Browse Reference Assemblies' });
+        const link = page.getByRole('link', { name: 'Registered assemblies' });
         await expect(link).toBeVisible({ timeout: 10_000 });
-        const text = await link.textContent();
-        expect(text?.trim().toLowerCase()).toContain('assemblies');
         await expect(link).toHaveAttribute('href', '/builders/assemblies');
 
         await gotoRoute(page, '/builders/assemblies?e2e=mock');
         await expect(page.getByRole('heading', { name: 'Browse Assemblies' })).toBeVisible({ timeout: 15_000 });
     });
 
-    test('#sdk section exists for Level 2', async ({ page }) => {
+    test('Designer link targets the designer route', async ({ page }) => {
         await gotoRoute(page, '/builders');
-        await expect(page.locator('#sdk')).toBeAttached({ timeout: 10_000 });
+        // Designer also appears in the footer; scope to main content.
+        const link = page.locator('#main-content').getByRole('link', { name: 'Designer' });
+        await expect(link).toBeVisible({ timeout: 10_000 });
+        await expect(link).toHaveAttribute('href', '/builders/designer');
     });
 
-    test('#contracts section exists for Level 3', async ({ page }) => {
+    test('SDK link targets the integrate route', async ({ page }) => {
         await gotoRoute(page, '/builders');
-        await expect(page.locator('#contracts')).toBeAttached({ timeout: 10_000 });
+        const link = page.getByRole('link', { name: '@figaro/core (SDK)' });
+        await expect(link).toBeVisible({ timeout: 10_000 });
+        await expect(link).toHaveAttribute('href', '/integrate');
     });
 });
 

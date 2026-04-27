@@ -35,7 +35,6 @@ test.describe('ManifestForm — terminal route behavior', () => {
         await expect(page.getByTestId('manifest-input-volume')).toBeVisible();
         await expect(page.getByTestId('manifest-input-class')).toBeVisible();
         await expect(page.getByTestId('manifest-input-fulfilment')).toBeVisible();
-        await expect(page.getByTestId('manifest-input-auction')).toBeVisible();
         await expect(page.getByTestId('manifest-input-handoff')).toBeVisible();
         await expect(page.getByTestId('manifest-input-ghg-standard')).toBeVisible();
         await expect(page.getByTestId('manifest-input-ghg-scope')).toBeVisible();
@@ -62,7 +61,7 @@ test.describe('ManifestForm — terminal route behavior', () => {
         const previewAfterMass = await preview.innerText();
         expect(previewAfterMass).not.toBe(previewBefore);
 
-        await page.getByTestId('manifest-input-fulfilment').selectOption('deliver');
+        await page.getByTestId('manifest-input-fulfilment').selectOption('deliver:dutch-auction');
         await page.getByTestId('manifest-input-handoff').selectOption('meet-at-door');
         const previewAfterTerms = await preview.innerText();
         expect(previewAfterTerms).not.toBe(previewAfterMass);

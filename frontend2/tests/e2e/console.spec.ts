@@ -16,9 +16,13 @@ test.describe('Console — no wallet connected', () => {
         await expect(page.getByText('supervision')).toBeVisible();
     });
 
-    test('shows connect-wallet prompt when no wallet is connected', async ({ page }) => {
+    test('renders mode toggle and disconnected sync status when no wallet is connected', async ({ page }) => {
         await page.goto('/console');
 
-        await expect(page.getByText('Connect a wallet to use the console')).toBeVisible({ timeout: 15000 });
+        // Console is read-accessible without a wallet (wallet-connect is not auth — see feedback_wallet_connect_not_auth).
+        // Verify the page loads with its mode toggle and disconnected sync status.
+        await expect(page.getByRole('button', { name: 'operating' })).toBeVisible({ timeout: 15000 });
+        await expect(page.getByRole('button', { name: 'building' })).toBeVisible();
+        await expect(page.getByText('Disconnected')).toBeVisible();
     });
 });

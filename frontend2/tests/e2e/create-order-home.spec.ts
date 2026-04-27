@@ -185,6 +185,9 @@ test.describe('Order card — field coverage (mocked)', () => {
         await switchToGraphTab(page);
         await page.waitForSelector(`[data-testid="order-node-${orderId}"]`, { timeout: 10000 });
 
+        // Geo lens must be active to render the location row.
+        await page.getByTestId('lens-btn-geo').click();
+
         // The card must render the decoded manifest (origin) row
         const locationRow = page.getByTestId(`order-location-${orderId}`);
         await expect(locationRow).toBeVisible({ timeout: 5000 });
@@ -205,6 +208,9 @@ test.describe('Order card — field coverage (mocked)', () => {
 
         await switchToGraphTab(page);
         await page.waitForSelector(`[data-testid="order-node-${orderId}"]`, { timeout: 10000 });
+
+        // Value lens must be active to render the token row.
+        await page.getByTestId('lens-btn-value').click();
 
         // The card must show a truncated token address
         const currencyRow = page.getByTestId(`order-currency-${orderId}`);
@@ -251,6 +257,9 @@ test.describe('Order card — field coverage (mocked)', () => {
         await page.waitForSelector(`[data-testid="order-node-${orderId}"]`, { timeout: 10000 });
         const node = page.getByTestId(`order-node-${orderId}`);
 
+        // Geo lens must be active to render origin/destination/manifest rows.
+        await page.getByTestId('lens-btn-geo').click();
+
         // Origin row (has explicit data-testid anchor)
         await expect(page.getByTestId(`order-location-${orderId}`)).toBeVisible({ timeout: 5000 });
         await expect(node).toContainText('farm-A');
@@ -273,6 +282,9 @@ test.describe('Order card — field coverage (mocked)', () => {
 
         await switchToGraphTab(page);
         await page.waitForSelector(`[data-testid="order-node-${orderId}"]`, { timeout: 10000 });
+
+        // Capital lens must be active to render bond rows.
+        await page.getByTestId('lens-btn-capital').click();
 
         const sellerBondEl = page.getByTestId(`bond-seller-${orderId}`);
         const buyerBondEl = page.getByTestId(`bond-buyer-${orderId}`);

@@ -11,15 +11,15 @@ test.describe('/operators — page structure', () => {
     test('renders the registration heading and description', async ({ page }) => {
         await page.goto('/operators', { waitUntil: 'load' });
 
-        await expect(page.getByRole('heading', { name: 'Two steps, refundable deposit.' })).toBeVisible({ timeout: 15000 });
-        await expect(page.getByText('Signal your capabilities to protocol assemblies.')).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Self-registered participants.' })).toBeVisible({ timeout: 15000 });
+        await expect(page.getByText(/An operator is an address that has posted a reclaimable ETH deposit/)).toBeVisible();
     });
 
     test('step indicator shows step 2 as pending', async ({ page }) => {
         await page.goto('/operators', { waitUntil: 'load' });
 
-        await expect(page.getByRole('heading', { name: 'Two steps, refundable deposit.' })).toBeVisible({ timeout: 15000 });
-        await expect(page.getByText('Add catalogue', { exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Self-registered participants.' })).toBeVisible({ timeout: 15000 });
+        await expect(page.getByText('Catalogue', { exact: true })).toBeVisible();
     });
 });
 
