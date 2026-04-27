@@ -640,6 +640,21 @@ reference on no-op so React re-renders are minimal.
 - **`modules/`** — composable mechanism components registered via `registerAllModules.ts`. Base-slot registry entries consumed by the declarative `/i/[slug]` route.
 - **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs; **`console/`** and **`operators/`** — route-specific panels
 
+### Wallet-provider scope per route
+
+Every route in `frontend2/app/` is classified into one of three tiers
+governing wallet-provider load:
+
+- **Marketing** — pure publication / explanation. Must NOT trigger wallet-provider load. Examples: `/`, `/about`, `/help`, `/legal`, `/research`, `/publications`, `/spec`, `/verification`, `/sovereign-commerce`, `/economics`, `/labor-law`, `/displaced`, `/compliance`, `/mechanism`, `/resources`.
+- **Reference / read-only** — registries and tools whose primary purpose is read-only inspection. May surface inline write affordances via `WalletGate`, but the page renders fully without a connected wallet. Examples: `/builders`, `/builders/assemblies`, `/builders/authoring`, `/builders/designer*` (DesignDraft is localStorage), `/builders/prototype*`, `/integrate`, `/schemas`, `/groups`, `/groups/[slug]`, `/grants`, `/treasuries`, `/i/[slug]` (read-mode views).
+- **Transactional** — primary purpose is signing or sending transactions. Must require a connected wallet (route-guard or `WalletGate` at the page top). Examples: `/terminal`, `/sign`, `/operators`, `/operators/catalogue`, `/console`, `/admin`, `/fig`, `/fig/claim`, `/fig/design`, `/evidence-display`, `/accounting`, `/local-commerce`.
+
+**Rules:**
+
+1. Do NOT gate read-only pages behind `useAccount` / `isConnected`. Wallet-connect is a signing prerequisite, not a login (see `feedback_wallet_connect_not_auth.md`). A user who has never connected must be able to read every Reference / read-only and Marketing route.
+2. For inline write affordances on Reference pages, use `WalletGate` (the canonical inline-gate wrapper).
+3. The current root layout loads `<Providers>` (WagmiProvider + RainbowKit) for every route, so Marketing pages technically load the wallet provider today. Splitting `app/` into `(marketing)` / `(transactional)` route groups with separate layouts is a known follow-on (see backlog) — the classification above is the canonical reference for that future refactor.
+
 ---
 
 ## Local Development

@@ -461,6 +461,16 @@ active frontend.** The prior `frontend/` directory was archived to
 
 **`icons/`** — SVG icon components
 
+### Wallet-provider scope per route
+
+Routes are classified into three tiers:
+
+- **Marketing** — pure publication / explanation, must NOT trigger wallet-provider load. `/`, `/about`, `/help`, `/legal`, `/research`, `/publications`, `/spec`, `/verification`, `/sovereign-commerce`, `/economics`, `/labor-law`, `/displaced`, `/compliance`, `/mechanism`, `/resources`.
+- **Reference / read-only** — registries and tools whose primary purpose is read-only inspection. May surface inline write affordances via `WalletGate`. `/builders`, `/builders/assemblies`, `/builders/authoring`, `/builders/designer*`, `/builders/prototype*`, `/integrate`, `/schemas`, `/groups`, `/groups/[slug]`, `/grants`, `/treasuries`, `/i/[slug]` (read-mode views).
+- **Transactional** — primary purpose is signing or sending transactions. Must require connected wallet. `/terminal`, `/sign`, `/operators`, `/operators/catalogue`, `/console`, `/admin`, `/fig`, `/fig/claim`, `/fig/design`, `/evidence-display`, `/accounting`, `/local-commerce`.
+
+Rules: don't gate read-only pages behind `useAccount` (wallet-connect is not auth); use `WalletGate` for inline gates on Reference pages. Today the root layout loads `<Providers>` for every route — splitting `app/` into `(marketing)` / `(transactional)` route groups is a known follow-on; the classification above is the canonical reference for that future refactor.
+
 ### Library (`frontend2/lib/`)
 
 **`core/`** — FigaroCore contract hooks and agreement/commitment utilities
@@ -473,7 +483,7 @@ active frontend.** The prior `frontend/` directory was archived to
 
 **`mechanisms/`** — Mechanism-layer contract hooks and package registry:
 `contracts.ts`, `deliveryCoordinatorEvents.ts`, `useAttestationCoordinatorActions.ts`,
-`useDeliveryLifecycle.ts`, `useDidWeb.ts`, `useDriverOffering.ts`, `useDutchAuction.ts`,
+`useDeliveryLifecycle.ts`, `useDidWeb.ts`, `useCourierOffering.ts`, `useDutchAuction.ts`,
 `useFigToken.ts`, `useGHGDisclosure.ts`,
 `useMerchantBranding.ts`, `useMerchantCatalogue.ts`, `useOperatorRegistry.ts`,
 `useRegisteredCatalogues.ts`, `packageDefaults.ts`, `packages.ts`

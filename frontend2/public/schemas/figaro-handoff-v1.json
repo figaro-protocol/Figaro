@@ -7,7 +7,7 @@
     "schemaClass": "agreement-section",
     "overview": {
         "description": "figaro-handoff-v1 is an agreement section schema, not a lifecycle attestation schema. It describes the structure of the 'data' field in an AgreementSection with schema key 'figaro-handoff-v1'. This section encodes the physical logistics parameters that both parties agree to at commitment-time.",
-        "agreementRole": "Specifies where the order originates and where it must be delivered, the class of service, package weight and volume, and the encrypted destination address. The fulfiller (driver) can read the geohashes pre-claim; the full address is only accessible post-claim via ECDH key exchange.",
+        "agreementRole": "Specifies where the order originates and where it must be delivered, the class of service, package weight and volume, and the encrypted destination address. The fulfiller (courier — driver, cyclist, walker, drone, etc.) can read the geohashes pre-claim; the full address is only accessible post-claim via ECDH key exchange.",
         "lifecycleRelation": "This schema does not define attestation stages. It is co-signed at commitment time as part of the bilateral agreement manifest. Physical handoff events are attested separately under figaro-delivery-lifecycle-v1. Proximity at handoff is proved under figaro-proximity-proof-v1 (paired with the committed band declared in figaro-proximity-policy-v1)."
     },
     "manifestVersions": {
@@ -36,7 +36,7 @@
             "classOfService": {
                 "type": "string",
                 "enum": ["S", "E", "F", "C"],
-                "description": "Logistics class of service: S=Standard, E=Express, F=Fragile (special handling), C=ColdChain (temperature controlled). Drives fulfiller filtering and pricing in the driver auction.",
+                "description": "Logistics class of service: S=Standard, E=Express, F=Fragile (special handling), C=ColdChain (temperature controlled). Drives fulfiller filtering and pricing in the courier auction.",
                 "required": true
             },
             "massGrams": {

@@ -62,7 +62,7 @@
     },
     "processTreeBinding": {
         "description": "A commerce section binds to a single order node in the process tree. Sub-orders (e.g., delivery sub-orders) may carry their own commerce section describing the delivery service terms, distinct from the root order's goods section.",
-        "rootOrderRole": "The commerce section of the root order describes the primary goods transaction (buyer ↔ restaurant).",
-        "subOrderRole": "A delivery sub-order may carry a minimal commerce section describing the delivery fee and service terms (buyer ↔ driver), if required by the assembly."
+        "rootOrderRole": "The commerce section of the root order describes the primary goods or services transaction (buyer ↔ merchant — e.g., restaurant, retailer, service-provider).",
+        "subOrderRole": "A delivery sub-order may carry a minimal commerce section describing the delivery fee and service terms (buyer ↔ courier — e.g., driver, cyclist, walker, drone), if required by the assembly."
     }
 }
