@@ -31,6 +31,10 @@ const nextConfig = {
         return [
             { source: '/workbench', destination: '/terminal', permanent: true },
             { source: '/workbench/:path*', destination: '/terminal/:path*', permanent: true },
+            { source: '/figaro-eats', destination: '/local-commerce', permanent: true },
+            { source: '/figaro-eats/:path*', destination: '/local-commerce/:path*', permanent: true },
+            { source: '/i/figaro-eats', destination: '/i/local-commerce', permanent: true },
+            { source: '/i/figaro-eats/:path*', destination: '/i/local-commerce/:path*', permanent: true },
         ];
     },
 

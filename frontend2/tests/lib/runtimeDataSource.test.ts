@@ -42,7 +42,7 @@ const testSource: RuntimeIdentityDataSource = {
             bindingId: 'binding-fixture-transport-merchant',
             subjectAddress: '0x1111111111111111111111111111111111111111',
             archetypeId: 'merchant-one-hop-delivery',
-            assemblySlug: 'figaro-eats',
+            assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [
                 {
@@ -114,11 +114,11 @@ describe('runtime data source helpers', () => {
         );
 
         expect(context?.subject.displayName).toBe('Fixture Transport Merchant');
-        expect(context?.selectedBinding?.assemblySlug).toBe('figaro-eats');
+        expect(context?.selectedBinding?.assemblySlug).toBe('local-commerce');
     });
 
     it('lists assembly-bound subject summaries from the injected data source', () => {
-        const summaries = listAssemblyBoundSubjectSummariesFromSource('figaro-eats', 'local-anvil', testSource);
+        const summaries = listAssemblyBoundSubjectSummariesFromSource('local-commerce', 'local-anvil', testSource);
 
         expect(summaries).toHaveLength(1);
         expect(summaries[0]?.displayName).toBe('Fixture Transport Merchant');
@@ -165,7 +165,7 @@ describe('runtime data source helpers', () => {
         expect(manifestSource.subjectProvenance).toHaveLength(3);
         expect(manifestSource.listSubjectProvenanceRecords?.()).toHaveLength(3);
         expect(manifestSource.listValidationIssues?.()).toHaveLength(2);
-        expect(manifestSource.listAssemblyBindings()[0]?.roleBindings[0]?.assemblyRoleKinds).toEqual(['restaurant']);
+        expect(manifestSource.listAssemblyBindings()[0]?.roleBindings[0]?.assemblyRoleKinds).toEqual(['merchant']);
     });
 
     it('exposes manifest validation issues through the runtime source helper', () => {

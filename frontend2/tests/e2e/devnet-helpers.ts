@@ -62,7 +62,7 @@ const DELIVERY_LIFECYCLE_SCHEMA_ID = keccak256(stringToHex(DELIVERY_LIFECYCLE_SC
 const DELIVERY_STAGE = {
     preparationStarted: 0,
     readyForPickup: 1,
-    driverEnRoute: 2,
+    courierEnRoute: 2,
     pickedUp: 3,
     delivered: 4,
 } as const;
@@ -70,7 +70,7 @@ const DELIVERY_STAGE = {
 const LIFECYCLE_SIGNAL_TO_STAGE: Record<string, number> = {
     declarePreparationStarted: DELIVERY_STAGE.preparationStarted,
     declareReadyForPickup: DELIVERY_STAGE.readyForPickup,
-    declareEnRoute: DELIVERY_STAGE.driverEnRoute,
+    declareEnRoute: DELIVERY_STAGE.courierEnRoute,
     declarePickedUp: DELIVERY_STAGE.pickedUp,
     declareDelivered: DELIVERY_STAGE.delivered,
 };

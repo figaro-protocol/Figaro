@@ -25,7 +25,7 @@ describe('runtime identity registry', () => {
         const context = resolveRuntimeSubjectByAddress('0x70997970C51812dc3A010C7d01b50e0d17dc79C8', 'local-anvil');
 
         expect(context?.subject.displayName).toBe("Bob's Pizza Palace");
-        expect(context?.selectedBinding?.assemblySlug).toBe('figaro-eats');
+        expect(context?.selectedBinding?.assemblySlug).toBe('local-commerce');
     });
 
     it('resolves a procurement-bound subject preview for a second fixture address', () => {
@@ -44,8 +44,8 @@ describe('runtime identity registry', () => {
         expect(context?.selectedBinding?.archetypeId).toBe('disclosure-review-operator');
     });
 
-    it('lists assembly-bound subject summaries for figaro-eats', () => {
-        const summaries = listAssemblyBoundSubjectSummaries('figaro-eats', 'local-anvil');
+    it('lists assembly-bound subject summaries for local-commerce', () => {
+        const summaries = listAssemblyBoundSubjectSummaries('local-commerce', 'local-anvil');
 
         expect(summaries).toHaveLength(1);
         expect(summaries[0]?.displayName).toBe("Bob's Pizza Palace");

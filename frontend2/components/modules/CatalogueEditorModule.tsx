@@ -407,7 +407,7 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
     // ── Render ────────────────────────────────────────────────────────────────
 
     // Only show for restaurant (seller) role
-    if (selectedRoleKind !== "restaurant") return null;
+    if (selectedRoleKind !== "merchant") return null;
 
     if (!address) {
         return (

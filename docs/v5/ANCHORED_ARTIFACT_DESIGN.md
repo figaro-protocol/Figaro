@@ -198,7 +198,7 @@ Recommended shape:
 
 1. keep the current GHG-specific workflow logic separate
 2. make the anchor primitive conceptually generic enough to support other document families later
-3. do not prematurely force manifests into the same module if the only current need is Eats-specific payload encoding
+3. do not prematurely force manifests into the same module if the only current need is local-commerce-specific payload encoding
 
 The right abstraction boundary is:
 
@@ -344,7 +344,7 @@ The message should be:
 Today the codebase already hints at this distinction.
 
 1. FigaroCore treats `manifest` as per-order payload bytes emitted in `OrderCreated`, not as a first-class schema-governed object
-2. Eats uses sealed manifest payloads for delivery privacy
+2. Local Commerce uses sealed manifest payloads for delivery privacy
 3. TemplateRegistry already includes an optional `schemaHash` for an off-chain manifest schema reference
 
 That means the architecture is already moving toward the right pattern, but inconsistently.

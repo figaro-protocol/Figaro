@@ -1,6 +1,6 @@
 # Geohash Precision — Design Decision
 
-This document records the geohash precision choices used in Figaro Eats and
+This document records the geohash precision choices used in Figaro Local Commerce and
 the rationale behind them.
 
 ---

@@ -10,7 +10,7 @@ import { deriveAssemblyCapabilities } from '@/lib/semantic/deriveAssemblyCapabil
 import { deriveSelectedOrderCapabilitiesFromRuntime } from '@/lib/semantic/deriveSelectedOrderCapabilitiesFromRuntime';
 import {
     FIGARO_DISCLOSURE_REFERENCE_ASSEMBLY,
-    FIGARO_EATS_REFERENCE_ASSEMBLY,
+    LOCAL_COMMERCE_REFERENCE_ASSEMBLY,
     FIGARO_EQUIPMENT_RENTAL_REFERENCE_ASSEMBLY,
     FIGARO_FREELANCE_REFERENCE_ASSEMBLY,
     FIGARO_PROCUREMENT_REFERENCE_ASSEMBLY,
@@ -27,40 +27,40 @@ describe('assembly artifact registry', () => {
         const indexValidation = getRegisteredAssemblyIndexValidation();
 
         expect(artifacts.map((artifact) => artifact.assembly.identity.slug)).toEqual(
-            expect.arrayContaining(['figaro-eats', 'figaro-procurement', 'figaro-disclosure-review', 'figaro-equipment-rental', 'figaro-freelance'])
+            expect.arrayContaining(['local-commerce', 'figaro-procurement', 'figaro-disclosure-review', 'figaro-equipment-rental', 'figaro-freelance'])
         );
         expect(artifacts.every((artifact) => artifact.validation.ok)).toBe(true);
         expect(selectorCards.map((card) => card.slug)).toEqual(
-            expect.arrayContaining(['figaro-eats', 'figaro-procurement', 'figaro-disclosure-review', 'figaro-equipment-rental', 'figaro-freelance'])
+            expect.arrayContaining(['local-commerce', 'figaro-procurement', 'figaro-disclosure-review', 'figaro-equipment-rental', 'figaro-freelance'])
         );
         expect(selectorCards.every((card) => card.validationOk)).toBe(true);
         expect(indexValidation.ok).toBe(true);
     });
 
     it('resolves a builder artifact with derived roles, mechanisms, and risk boundaries', () => {
-        const artifact = getRegisteredAssemblyBySlug('figaro-eats');
+        const artifact = getRegisteredAssemblyBySlug('local-commerce');
 
         expect(artifact).toBeDefined();
         expect(artifact?.validation.ok).toBe(true);
-        expect(artifact?.assembly.identity.id).toBe(FIGARO_EATS_REFERENCE_ASSEMBLY.identity.id);
+        expect(artifact?.assembly.identity.id).toBe(LOCAL_COMMERCE_REFERENCE_ASSEMBLY.identity.id);
         expect(artifact?.model.source.truthClass).toBe('assembly-declared');
-        expect(artifact?.model.availableNetworks).toEqual(FIGARO_EATS_REFERENCE_ASSEMBLY.identity.networkTargets);
-        expect(artifact?.model.roles.map((role) => role.roleKind)).toEqual(['buyer', 'restaurant', 'driver']);
+        expect(artifact?.model.availableNetworks).toEqual(LOCAL_COMMERCE_REFERENCE_ASSEMBLY.identity.networkTargets);
+        expect(artifact?.model.roles.map((role) => role.roleKind)).toEqual(['buyer', 'merchant', 'courier']);
         expect(artifact?.model.roles.every((role) => role.prototype)).toBe(true);
         expect(artifact?.model.roles.every((role) => role.activeCapabilities.every((capability) => capability.action.executionType === 'prototype'))).toBe(true);
 
-        const auctionMechanism = artifact?.model.mechanisms.find((mechanism) => mechanism.id === 'driver-auction');
+        const auctionMechanism = artifact?.model.mechanisms.find((mechanism) => mechanism.id === 'courier-auction');
         const coordinatorMechanism = artifact?.model.mechanisms.find((mechanism) => mechanism.id === 'delivery-coordinator');
         const operatorRegistryMechanism = artifact?.model.mechanisms.find((mechanism) => mechanism.id === 'operator-registration');
         expect(auctionMechanism).toBeDefined();
-        expect(auctionMechanism?.recognizedRoles).toEqual(['driver']);
-        expect(coordinatorMechanism?.recognizedRoles).toEqual(['buyer', 'restaurant', 'driver']);
-        expect(operatorRegistryMechanism?.recognizedRoles).toEqual(['restaurant']);
+        expect(auctionMechanism?.recognizedRoles).toEqual(['courier']);
+        expect(coordinatorMechanism?.recognizedRoles).toEqual(['buyer', 'merchant', 'courier']);
+        expect(operatorRegistryMechanism?.recognizedRoles).toEqual(['merchant']);
         expect(auctionMechanism?.moduleBindings).toContain('auction-actions');
         expect(auctionMechanism?.attachments.some((attachment) => attachment.attachmentKind === 'module-binding')).toBe(true);
         expect(auctionMechanism?.attachments.some((attachment) => attachment.attachmentKind === 'contract-reference')).toBe(true);
 
-        expect(artifact?.riskBoundaries['driver-auction']?.riskClass).toBe('high-risk-economic');
+        expect(artifact?.riskBoundaries['courier-auction']?.riskClass).toBe('high-risk-economic');
     });
 
     it('resolves a non-Eats procurement artifact through the same semantic contract', () => {
@@ -129,8 +129,8 @@ describe('assembly artifact registry', () => {
     });
 
     it('derives assembly-scoped operator registration capabilities from visible mechanisms', () => {
-        const artifact = getRegisteredAssemblyBySlug('figaro-eats');
-        const restaurantRole = artifact?.model.roles.find((role) => role.roleKind === 'restaurant');
+        const artifact = getRegisteredAssemblyBySlug('local-commerce');
+        const restaurantRole = artifact?.model.roles.find((role) => role.roleKind === 'merchant');
         const buyerRole = artifact?.model.roles.find((role) => role.roleKind === 'buyer');
 
         expect(artifact).toBeDefined();
@@ -248,9 +248,9 @@ describe('assembly artifact registry', () => {
     });
 
     it('derives selected-order coordinator signal capabilities only for the connected driver when coordinator is visible', () => {
-        const artifact = getRegisteredAssemblyBySlug('figaro-eats');
-        const driverRole = artifact?.model.roles.find((role) => role.roleKind === 'driver');
-        const restaurantRole = artifact?.model.roles.find((role) => role.roleKind === 'restaurant');
+        const artifact = getRegisteredAssemblyBySlug('local-commerce');
+        const driverRole = artifact?.model.roles.find((role) => role.roleKind === 'courier');
+        const restaurantRole = artifact?.model.roles.find((role) => role.roleKind === 'merchant');
 
         expect(artifact).toBeDefined();
         expect(driverRole).toBeDefined();

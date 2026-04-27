@@ -10,12 +10,12 @@ describe("executeTransactionCapabilityAction", () => {
                 executionType: "transaction",
                 kind: "submit-disclosure-commitment",
                 orderHash: "root-order",
-                disclosureRole: "restaurant",
+                disclosureRole: "merchant",
             },
             { submitDisclosureCommitment },
         );
 
-        expect(submitDisclosureCommitment).toHaveBeenCalledWith("root-order", "restaurant");
+        expect(submitDisclosureCommitment).toHaveBeenCalledWith("root-order", "merchant");
     });
 
     it("dispatches airdrop claims with amount and proof from action and waits for confirmation", async () => {

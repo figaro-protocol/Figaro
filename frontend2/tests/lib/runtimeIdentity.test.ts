@@ -24,9 +24,9 @@ describe('runtime identity parser', () => {
     it('parses a valid assembly binding document', () => {
         const binding = parseAssemblyBindingDocument(bindingFixture, 'bobs-pizza.binding.json');
 
-        expect(binding.assemblySlug).toBe('figaro-eats');
-        expect(binding.roleBindings[0]?.roleKind).toBe('restaurant-operator');
-        expect(binding.roleBindings[0]?.assemblyRoleKinds).toEqual(['restaurant']);
+        expect(binding.assemblySlug).toBe('local-commerce');
+        expect(binding.roleBindings[0]?.roleKind).toBe('merchant-operator');
+        expect(binding.roleBindings[0]?.assemblyRoleKinds).toEqual(['merchant']);
         expect(binding.networkTargets).toContain('local-anvil');
     });
 
@@ -53,7 +53,7 @@ describe('runtime identity resolution', () => {
         const context = resolveIdentityContext(subject.subjectAddress, [subject], [binding], 'local-anvil');
 
         expect(context?.subject.subjectAddress).toBe(subject.subjectAddress);
-        expect(context?.selectedBinding?.assemblySlug).toBe('figaro-eats');
+        expect(context?.selectedBinding?.assemblySlug).toBe('local-commerce');
     });
 
     it('derives subject provenance from the subject record and its bindings', () => {

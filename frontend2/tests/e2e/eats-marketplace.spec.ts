@@ -3,7 +3,7 @@
  *
  * Mock-mode tests for marketplace modules: restaurant discovery, menu browsing,
  * shopping cart, and driver job market. These verify the assembly pipeline
- * renders the marketplace UX surfaces at /i/figaro-eats.
+ * renders the marketplace UX surfaces at /i/local-commerce.
  */
 import { test, expect } from '@playwright/test';
 import { gotoAssemblyMock } from './test-helpers';

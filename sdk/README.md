@@ -84,8 +84,8 @@ queue.enqueueAll(actions.map((action) => ({
   action,
   approvalContext: {
     bindingId: "binding:bobs-pizza-palace:local-anvil",
-    roleKind: "restaurant",
-    runtimeSummary: "Bob's Pizza Palace · Figaro Eats · Restaurant",
+    roleKind: "merchant",
+    runtimeSummary: "Bob's Pizza Palace · Figaro Local Commerce · Restaurant",
   },
 })));
 // ... user reviews and approves ...
@@ -165,7 +165,7 @@ import {
   validateContent,
   encodeHandoffContent,
   encodeCommerceContent,
-  // ... encoders for the 9 runtime-attestable figaro-eats schemas
+  // ... encoders for the 9 runtime-attestable local-commerce schemas
   // (topology is manifest-only and has no ABI encoder)
 } from "@figaro/core/schemas";
 

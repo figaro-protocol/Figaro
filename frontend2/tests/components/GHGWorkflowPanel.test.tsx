@@ -37,7 +37,7 @@ vi.mock("@/hooks/core/useSemanticProcessWorkspace", () => ({
                                 executionType: "transaction",
                                 kind: "submit-disclosure-commitment",
                                 orderHash: "root-order",
-                                disclosureRole: "restaurant",
+                                disclosureRole: "merchant",
                             },
                         },
                         {

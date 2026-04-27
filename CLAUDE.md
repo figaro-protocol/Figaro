@@ -275,7 +275,7 @@ invalid content; binds to one schemaId via `schemaId() view returns (bytes32)`.
 Validators are pure / view, no admin, no mutable state.
 
 **`src/schemaValidators/`** — 16 production validator contracts, one per
-*runtime-attestable* schemaId (figaro-eats use case + jurisdiction baseline):
+*runtime-attestable* schemaId (local-commerce use case + jurisdiction baseline):
 `FigaroHandoffV1Validator`,
 `FigaroCommerceV1Validator`, `FigaroGeoV1Validator`,
 `FigaroFulfilmentV1Validator`, plus the 5 GHG sister schemas
@@ -425,7 +425,7 @@ Lives off-chain as JSON at the URI hashed into `SchemaRegistry.uriHash`.
 Built-in specs ship in `sdk/src/schemas/examples/` and
 `frontend2/lib/shared/schemas/` (the application's working copy).
 
-### The 17 figaro-eats + jurisdiction schemas
+### The 17 local-commerce + jurisdiction schemas
 
 | schemaId | What it carries | Attestation surface |
 |---|---|---|
@@ -543,7 +543,7 @@ The single source of truth that all three validation layers (client TS,
 SP1 prover, on-chain Solidity) parse identically. Imports:
 - `parseSchemaSpec(json) → ParseResult` — meta-schema validator
 - `validateContent(content, spec, options?) → ValidationResult`
-- `encode<Schema>Content(...)` — one encoder per figaro-eats schema, returning
+- `encode<Schema>Content(...)` — one encoder per local-commerce schema, returning
   the ABI bytes the on-chain validator expects
 
 See "Schema Validation Architecture" above for the full lockstep checklist.
@@ -569,7 +569,7 @@ needed, it ships in `frontend2/` only.
 
 `/`, `/admin`, `/builders`, `/builders/assemblies`, `/builders/authoring`,
 `/builders/designer`, `/builders/prototype`, `/builders/prototype/[slug]`,
-`/console`, `/evidence-display`, `/fig`, `/fig/claim`, `/figaro-eats`,
+`/console`, `/evidence-display`, `/fig`, `/fig/claim`, `/local-commerce`,
 `/help`, `/i/[slug]`, `/onboarding`, `/operators`, `/operators/catalogue`,
 `/sign`, `/terminal` (with `/workbench` → `/terminal` 308 redirect preserved
 in `next.config.mjs`), `/api/semantic/agreements`,
@@ -630,7 +630,7 @@ reference on no-op so React re-renders are minimal.
 
 - `useSchemaValidator(schemaId)` hook (`hooks/core/`) — binds `validateContent`
   to a form value. `{ isReady, validate, loadError }`.
-- `schemaSpecSource.ts` — preloads built-in specs at module load (15 figaro-eats
+- `schemaSpecSource.ts` — preloads built-in specs at module load (15 local-commerce
   schemas live in `lib/shared/schemas/`); supports async `loadSchemaSpec(id, uri)`
   for IPFS-resolved specs.
 

@@ -111,7 +111,7 @@ const STANDALONE_BLOCKS: readonly BlockMetadata[] = [
         category: "mechanism",
         schemaIds: [],
         modules: [{ moduleId: "job-market", component: JobMarketModule }],
-        compatibility: { roles: ["driver", "fulfiller"], requiresMechanisms: ["dutch-auction"], requiresCapabilities: [] },
+        compatibility: { roles: ["courier", "fulfiller"], requiresMechanisms: ["dutch-auction"], requiresCapabilities: [] },
         paletteOrder: 30,
     },
     {
@@ -121,7 +121,7 @@ const STANDALONE_BLOCKS: readonly BlockMetadata[] = [
         category: "schema",
         schemaIds: [],
         modules: [{ moduleId: "catalogue-editor", component: CatalogueEditorModule }],
-        compatibility: { roles: ["seller", "restaurant", "merchant"], requiresMechanisms: [], requiresCapabilities: ["commerce.catalogue"] },
+        compatibility: { roles: ["seller", "merchant"], requiresMechanisms: [], requiresCapabilities: ["commerce.catalogue"] },
         paletteOrder: 40,
     },
     {
@@ -131,7 +131,7 @@ const STANDALONE_BLOCKS: readonly BlockMetadata[] = [
         category: "display",
         schemaIds: [],
         modules: [{ moduleId: "incoming-orders", component: IncomingOrdersModule }],
-        compatibility: { roles: ["seller", "restaurant"], requiresMechanisms: [], requiresCapabilities: [] },
+        compatibility: { roles: ["seller", "merchant"], requiresMechanisms: [], requiresCapabilities: [] },
         paletteOrder: 50,
     },
 ];
@@ -196,7 +196,7 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
         category: "handoff",
         schemaIds: [],
         modules: [{ moduleId: "delivery-attestation", component: DeliveryAttestationModule }],
-        compatibility: { roles: ["driver", "fulfiller", "buyer"], requiresMechanisms: [], requiresCapabilities: [] },
+        compatibility: { roles: ["courier", "fulfiller", "buyer"], requiresMechanisms: [], requiresCapabilities: [] },
         paletteOrder: 120,
     },
     {

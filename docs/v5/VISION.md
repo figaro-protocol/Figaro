@@ -153,7 +153,7 @@ amount is a protocol-enforced fact. Both are useful; only one is trustless.
 
 ### Beyond Delivery: The General Pattern
 
-The delivery archetype (Figaro Eats) demonstrates one instance of this system.
+The delivery archetype (Figaro Local Commerce) demonstrates one instance of this system.
 But the properties generalize to any coordination scenario. In every case,
 the named "entity" is not a firm — it is a process tree of independent
 value-adders:

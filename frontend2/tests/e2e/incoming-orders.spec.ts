@@ -16,7 +16,7 @@ import { gotoAssemblyMock, switchToAssemblyRole } from './test-helpers';
 test.describe('IncomingOrdersModule (mock)', () => {
     test('renders for restaurant role', async ({ page }) => {
         await gotoAssemblyMock(page);
-        await switchToAssemblyRole(page, 'restaurant');
+        await switchToAssemblyRole(page, 'merchant');
 
         const module = page.getByTestId('incoming-orders-module');
         await expect(module).toBeVisible({ timeout: 15000 });
@@ -24,7 +24,7 @@ test.describe('IncomingOrdersModule (mock)', () => {
 
     test('shows mock-mode notice in mock session', async ({ page }) => {
         await gotoAssemblyMock(page);
-        await switchToAssemblyRole(page, 'restaurant');
+        await switchToAssemblyRole(page, 'merchant');
 
         const module = page.getByTestId('incoming-orders-module');
         await expect(module).toBeVisible({ timeout: 15000 });
@@ -42,7 +42,7 @@ test.describe('IncomingOrdersModule (mock)', () => {
 
     test('does not render for driver role', async ({ page }) => {
         await gotoAssemblyMock(page);
-        await switchToAssemblyRole(page, 'driver');
+        await switchToAssemblyRole(page, 'courier');
 
         await expect(page.getByTestId('incoming-orders-module')).not.toBeVisible({ timeout: 5000 });
     });
@@ -53,7 +53,7 @@ test.describe('IncomingOrdersModule (mock)', () => {
 test.describe('CoordinatorActionModule restaurant signals (mock)', () => {
     test('coordinator module renders for restaurant role', async ({ page }) => {
         await gotoAssemblyMock(page);
-        await switchToAssemblyRole(page, 'restaurant');
+        await switchToAssemblyRole(page, 'merchant');
 
         const module = page.getByTestId('coordinator-action-module');
         await expect(module).toBeVisible({ timeout: 15000 });
@@ -61,7 +61,7 @@ test.describe('CoordinatorActionModule restaurant signals (mock)', () => {
 
     test('coordinator module renders for driver role', async ({ page }) => {
         await gotoAssemblyMock(page);
-        await switchToAssemblyRole(page, 'driver');
+        await switchToAssemblyRole(page, 'courier');
 
         const module = page.getByTestId('coordinator-action-module');
         await expect(module).toBeVisible({ timeout: 15000 });
@@ -69,7 +69,7 @@ test.describe('CoordinatorActionModule restaurant signals (mock)', () => {
 
     test('coordinator module prompts to select an order when none is selected', async ({ page }) => {
         await gotoAssemblyMock(page);
-        await switchToAssemblyRole(page, 'restaurant');
+        await switchToAssemblyRole(page, 'merchant');
 
         const module = page.getByTestId('coordinator-action-module');
         await expect(module).toBeVisible({ timeout: 15000 });
@@ -84,7 +84,7 @@ test.describe('CoordinatorActionModule restaurant signals (mock)', () => {
 test.describe('Incoming orders coexistence with existing modules (mock)', () => {
     test('incoming-orders module coexists with coordinator module for restaurant', async ({ page }) => {
         await gotoAssemblyMock(page);
-        await switchToAssemblyRole(page, 'restaurant');
+        await switchToAssemblyRole(page, 'merchant');
 
         await expect(page.getByTestId('incoming-orders-module')).toBeVisible({ timeout: 15000 });
         await expect(page.getByTestId('coordinator-action-module')).toBeVisible({ timeout: 15000 });

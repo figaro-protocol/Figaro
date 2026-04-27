@@ -2,7 +2,7 @@
  * analytical-modules.spec.ts
  *
  * Mock-mode tests verifying the event-timeline and process-capital-summary
- * modules render in the assembly workspace at /i/figaro-eats.
+ * modules render in the assembly workspace at /i/local-commerce.
  * These modules show a fallback placeholder when no process is selected,
  * and populate with data once a process exists. We verify the empty-state
  * render here (same pattern as eats-modules.spec.ts).
@@ -48,7 +48,7 @@ test.describe('Analytical modules render in assembly (mock)', () => {
         await expect(page.getByTestId('seller-discovery-module')).toBeVisible({ timeout: 15000 });
 
         // Disclosure remains role-scoped — restaurant should expose it.
-        await switchToAssemblyRole(page, 'restaurant');
+        await switchToAssemblyRole(page, 'merchant');
         await expect(page.getByTestId('disclosure-module')).toBeVisible({ timeout: 15000 });
     });
 

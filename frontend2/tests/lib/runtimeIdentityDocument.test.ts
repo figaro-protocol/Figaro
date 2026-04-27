@@ -43,16 +43,16 @@ describe('runtime manifest validation', () => {
         );
     });
 
-    it('throws when seller catalogue metadata has no figaro-eats binding', () => {
+    it('throws when seller catalogue metadata has no local-commerce binding', () => {
         const invalidManifest = {
             ...localRuntimeIdentityDocument,
             assemblyBindings: localRuntimeIdentityDocument.assemblyBindings.filter(
-                (binding) => binding.assemblySlug !== 'figaro-eats'
+                (binding) => binding.assemblySlug !== 'local-commerce'
             ),
         };
 
         expect(() => parseRuntimeIdentityDocument(invalidManifest, 'invalid.manifest.json')).toThrow(
-            /seller catalogue metadata .* has no figaro-eats assembly binding/
+            /seller catalogue metadata .* has no local-commerce assembly binding/
         );
     });
 

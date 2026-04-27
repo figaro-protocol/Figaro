@@ -59,12 +59,12 @@ export default function Resources() {
                 </h2>
                 <ul className="space-y-4">
                     <li className="border-b border-gray-100 pb-3">
-                        <Link href="/figaro-eats" className="text-black font-medium hover:underline">Figaro Eats</Link>
-                        <p className="text-sm text-gray-600 mt-0.5">Complete food-delivery assembly — three roles (buyer, restaurant, driver), bonded ordering, Dutch-auction dispatch, attestation coordinator, operator registry, optional GHG disclosure. Template; forkable.</p>
+                        <Link href="/local-commerce" className="text-black font-medium hover:underline">Figaro Local Commerce</Link>
+                        <p className="text-sm text-gray-600 mt-0.5">Complete local-commerce assembly — three roles (buyer, merchant, courier), bonded ordering, Dutch-auction dispatch, attestation coordinator, operator registry, optional GHG disclosure. Generic across food, retail, and service verticals. Template; forkable.</p>
                     </li>
                     <li className="border-b border-gray-100 pb-3">
-                        <Link href="/i/figaro-eats" className="text-black font-medium hover:underline">Figaro Eats runtime</Link>
-                        <p className="text-sm text-gray-600 mt-0.5">Live runtime for the Figaro-Eats assembly.</p>
+                        <Link href="/i/local-commerce" className="text-black font-medium hover:underline">Figaro Local Commerce runtime</Link>
+                        <p className="text-sm text-gray-600 mt-0.5">Live runtime for the Figaro Local Commerce assembly.</p>
                     </li>
                 </ul>
             </section>

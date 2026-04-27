@@ -17,7 +17,7 @@
     "stages": {
         "0": [{ "name": "evidenceUri", "type": "string", "required": false, "minLength": 0, "maxLength": 512, "description": "preparationStarted: optional evidence." }],
         "1": [{ "name": "evidenceUri", "type": "string", "required": false, "minLength": 0, "maxLength": 512, "description": "readyForPickup: optional evidence." }],
-        "2": [{ "name": "evidenceUri", "type": "string", "required": false, "minLength": 0, "maxLength": 512, "description": "driverEnRoute: optional evidence." }],
+        "2": [{ "name": "evidenceUri", "type": "string", "required": false, "minLength": 0, "maxLength": 512, "description": "courierEnRoute: optional evidence." }],
         "3": [{ "name": "evidenceUri", "type": "string", "required": false, "minLength": 0, "maxLength": 512, "description": "pickedUp: optional evidence." }],
         "4": [{ "name": "evidenceUri", "type": "string", "required": false, "minLength": 0, "maxLength": 512, "description": "delivered: optional evidence." }]
     }

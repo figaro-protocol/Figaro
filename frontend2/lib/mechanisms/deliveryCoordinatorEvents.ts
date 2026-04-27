@@ -35,7 +35,7 @@ const PROXIMITY_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_SCHEMA_KEY));
 const STAGE_LABELS: Record<number, string> = {
     0: "Preparation Started",
     1: "Ready for Pickup",
-    2: "Driver En Route",
+    2: "Courier En Route",
     3: "Order Picked Up",
     4: "Order Delivered",
 };

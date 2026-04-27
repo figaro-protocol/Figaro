@@ -46,7 +46,7 @@ When writing naming discussion, proposing renames, or writing user-facing copy, 
 - Formal verification specs (TLA+) and fuzzing campaigns (Echidna)
 - The runtime frontend: builder surfaces, assembly, semantic layer,
   mechanism modules, and marketing pages
-- Five reference assemblies (eats, equipment-rental, procurement,
+- Five reference assemblies (local-commerce, equipment-rental, procurement,
   disclosure-review, freelance) built from composable components
 
 ### Framing Discipline
@@ -195,7 +195,7 @@ Reference schemas pre-registered at deploy. `schemaId = keccak256(humanReadableN
 on invalid content; binds to one schemaId via `schemaId() view returns (bytes32)`.
 
 **`src/schemaValidators/`** — 16 production validator contracts for the
-*runtime-attestable* figaro-eats schemas + jurisdiction baseline (handoff,
+*runtime-attestable* local-commerce schemas + jurisdiction baseline (handoff,
 commerce, geo, fulfilment, the 5 GHG sister schemas — protocol, iso-14064,
 pas-2050, en-16258, custom — ghg-measurement, lifecycle, the proximity
 policy/proof sister schemas, merchant-process, courier-process,
@@ -316,7 +316,7 @@ same rules. **A new schema is not "done" until all three layers ship in lockstep
   forces `view` and forfeits EVM-enforced determinism). See ISchemaValidator
   NatSpec for the rationale.
 
-The 17 figaro-eats schemas: `figaro-topology-v1` (manifest-only — no
+The 17 local-commerce schemas: `figaro-topology-v1` (manifest-only — no
 runtime validator), plus 16 runtime-attestable schemas with Layer A + C
 coverage: `figaro-handoff-v1`, `figaro-commerce-v1`, `figaro-geo-v1`,
 `figaro-fulfilment-v1`, plus the GHG sister schemas `figaro-ghg-protocol-v1`,
@@ -414,7 +414,7 @@ active frontend.** The prior `frontend/` directory was archived to
 - `/console` — Console HITL surface for queued operating and build actions
 - `/evidence-display` — Kleros evidence display interface (iframed by Kleros court)
 - `/fig` + `/fig/claim` — FIG token explainer, dashboard, and merkle-claim surface
-- `/figaro-eats` — Eats archetype marketing/landing
+- `/local-commerce` — Local Commerce archetype marketing/landing
 - `/help` — FAQ and guides
 - `/i/[slug]` — Live assembly rendering from slug. Authored declaratively against `components/modules/` registry via `useAssemblyRuntime`.
 - `/onboarding` — New-user onboarding
@@ -710,9 +710,9 @@ Architecture:
 - `docs/v5/SCALING_STRATEGY.md` — Kernel scaling architecture: SP1, sequencer
 - `docs/v5/BATCH_SEQUENCER.md` — Batch sequencer architecture and implementation status
 
-## Figaro Eats — First Archetype (Consolidated)
+## Figaro Local Commerce — First Archetype (Consolidated)
 
-Figaro Eats was the first institution archetype. It has been consolidated into
+Figaro Local Commerce was the first institution archetype. It has been consolidated into
 this repo as composable components and templates. The separate Figaro-eats repo
 has been retired and archived.
 

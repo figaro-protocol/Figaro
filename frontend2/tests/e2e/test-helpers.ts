@@ -159,7 +159,7 @@ export async function waitForCreateConfirm(page: Page): Promise<void> {
     await dismissConfirmationModal(page);
 }
 
-export async function gotoAssemblyMock(page: Page, slug = 'figaro-eats') {
+export async function gotoAssemblyMock(page: Page, slug = 'local-commerce') {
     await page.goto(`/i/${slug}?e2e=mock`, { waitUntil: 'load' });
     await page.getByTestId('role-btn-buyer').waitFor({ timeout: 30000 });
     // Wait for React hydration by detecting fiber internals on a known element.

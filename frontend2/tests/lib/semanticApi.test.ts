@@ -30,10 +30,10 @@ describe('semantic API data contract', () => {
     });
 
     it('resolves a single assembly artifact with full model', () => {
-        const artifact = getRegisteredAssemblyBySlug('figaro-eats');
+        const artifact = getRegisteredAssemblyBySlug('local-commerce');
 
         expect(artifact).toBeDefined();
-        expect(artifact?.assembly.identity.slug).toBe('figaro-eats');
+        expect(artifact?.assembly.identity.slug).toBe('local-commerce');
         expect(artifact?.model).toBeDefined();
         expect(artifact?.model.roles.length).toBeGreaterThan(0);
         expect(artifact?.model.mechanisms.length).toBeGreaterThan(0);
@@ -46,9 +46,9 @@ describe('semantic API data contract', () => {
     });
 
     it('exposes mechanism risk classes for each assembly', () => {
-        const artifact = getRegisteredAssemblyBySlug('figaro-eats');
+        const artifact = getRegisteredAssemblyBySlug('local-commerce');
 
-        const auctionBoundary = artifact?.riskBoundaries['driver-auction'];
+        const auctionBoundary = artifact?.riskBoundaries['courier-auction'];
         expect(auctionBoundary).toBeDefined();
         expect(auctionBoundary?.riskClass).toBe('high-risk-economic');
 
@@ -58,7 +58,7 @@ describe('semantic API data contract', () => {
     });
 
     it('exposes analytical module bindings through the model', () => {
-        const artifact = getRegisteredAssemblyBySlug('figaro-eats');
+        const artifact = getRegisteredAssemblyBySlug('local-commerce');
 
         const coreOrders = artifact?.model.mechanisms.find((m) => m.id === 'core-orders');
         expect(coreOrders?.moduleBindings).toContain('event-timeline');
@@ -67,14 +67,14 @@ describe('semantic API data contract', () => {
 
     it('serves a resolved runtime snapshot for agent consumers', async () => {
         const response = await getRuntimeSnapshot(new NextRequest(
-            'http://localhost/api/semantic/runtime?slug=figaro-eats&networkTarget=local-anvil&bindingId=binding:bobs-pizza-palace:local-anvil'
+            'http://localhost/api/semantic/runtime?slug=local-commerce&networkTarget=local-anvil&bindingId=binding:bobs-pizza-palace:local-anvil'
         ));
         const body = await response.json();
 
         expect(response.status).toBe(200);
         expect(body.runtime.networkTarget).toBe('local-anvil');
         expect(body.runtime.selectedBindingId).toBe('binding:bobs-pizza-palace:local-anvil');
-        expect(body.runtime.selectedRole.roleKind).toBe('restaurant');
+        expect(body.runtime.selectedRole.roleKind).toBe('merchant');
         expect(body.runtime.selectedShellPresentation.title).toBe("Bob's Pizza Palace");
         expect(body.runtime.boundSubjects[0].subject.bindingId).toBe('binding:bobs-pizza-palace:local-anvil');
         expect(body.runtime.boundSubjects[0].serviceProviderKeys.catalogue).toBe('default-catalogue');
@@ -82,7 +82,7 @@ describe('semantic API data contract', () => {
 
     it('rejects role selections that are not available in the selected runtime context', async () => {
         const response = await getRuntimeSnapshot(new NextRequest(
-            'http://localhost/api/semantic/runtime?slug=figaro-eats&networkTarget=local-anvil&bindingId=binding:bobs-pizza-palace:local-anvil&roleKind=buyer'
+            'http://localhost/api/semantic/runtime?slug=local-commerce&networkTarget=local-anvil&bindingId=binding:bobs-pizza-palace:local-anvil&roleKind=buyer'
         ));
         const body = await response.json();
 

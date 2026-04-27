@@ -118,7 +118,7 @@ Making these graphs public enables:
    pickup/drop-off zones.
 4. **Reputation derivation** — Settlement history, on-time rates, and
    disclosure compliance can be computed from public graph data.
-5. **Cross-institution interoperability** — Other archetypes (not just Eats)
+5. **Cross-institution interoperability** — Other archetypes (not just Local Commerce)
    can consume the same graphs for their own coordination logic.
 
 This is the "economic pheromones" model: coordination signals left by

@@ -1,6 +1,6 @@
 # Institution Assembly Schema
 
-Status: implemented. Five reference assemblies ship in `frontend/lib/shared/assemblies/` (eats, equipment-rental, procurement, disclosure-review, freelance). The authoring studio is at `/builders/authoring`, assembly validation and parsing live in `frontend/lib/shared/institutionAssembly*.ts`. The schema below is the conceptual foundation that guided that implementation.
+Status: implemented. Five reference assemblies ship in `frontend/lib/shared/assemblies/` (local-commerce, equipment-rental, procurement, disclosure-review, freelance). The authoring studio is at `/builders/authoring`, assembly validation and parsing live in `frontend/lib/shared/institutionAssembly*.ts`. The schema below is the conceptual foundation that guided that implementation.
 
 ## Purpose
 
@@ -278,7 +278,7 @@ This section should make it possible for a future builder tool to know whether a
 
 Current implementation note:
 
-1. the frontend now proves this contract with multiple registered assemblies, including Figaro Eats, a procurement reference institution, and a disclosure-first review institution, all rendered through the same prototype shell and semantic derivation path
+1. the frontend now proves this contract with multiple registered assemblies, including Figaro Local Commerce, a procurement reference institution, and a disclosure-first review institution, all rendered through the same prototype shell and semantic derivation path
 2. those reference assemblies now live as file-backed authored documents under `frontend/lib/shared/assemblies/`, rather than only as hardcoded TypeScript literals
 3. registry resolution now flows through a manifest layer that validates duplicate slugs, duplicate institution ids, and per-document integrity before exposing assemblies to routes
 4. authored JSON documents are parsed through a runtime loader before they become `InstitutionAssembly` values, so malformed document shape fails at the document boundary instead of being silently cast

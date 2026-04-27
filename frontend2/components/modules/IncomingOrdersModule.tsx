@@ -180,7 +180,7 @@ export function IncomingOrdersModule({ moduleId, context }: ModuleProps) {
     }, []);
 
     // Only show for restaurant role
-    if (selectedRoleKind !== "restaurant") return null;
+    if (selectedRoleKind !== "merchant") return null;
 
     return (
         <div

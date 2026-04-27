@@ -1,6 +1,6 @@
 // BEGIN GENERATED ASSEMBLY IMPORTS
 import figaroDisclosureReviewReference from "@/lib/shared/assemblies/figaro-disclosure-review.reference.json";
-import figaroEatsReference from "@/lib/shared/assemblies/figaro-eats.reference.json";
+import localCommerceReference from "@/lib/shared/assemblies/local-commerce.reference.json";
 import figaroEquipmentRentalReference from "@/lib/shared/assemblies/figaro-equipment-rental.reference.json";
 import figaroFreelanceReference from "@/lib/shared/assemblies/figaro-freelance.reference.json";
 import figaroProcurementReference from "@/lib/shared/assemblies/figaro-procurement.reference.json";
@@ -146,9 +146,9 @@ export interface Assembly {
 }
 
 // BEGIN GENERATED ASSEMBLY EXPORTS
-export const FIGARO_EATS_REFERENCE_ASSEMBLY = parseAssemblyDocument(
-    figaroEatsReference,
-    "figaro-eats.reference.json"
+export const LOCAL_COMMERCE_REFERENCE_ASSEMBLY = parseAssemblyDocument(
+    localCommerceReference,
+    "local-commerce.reference.json"
 );
 
 export const FIGARO_PROCUREMENT_REFERENCE_ASSEMBLY = parseAssemblyDocument(
@@ -174,7 +174,7 @@ export const FIGARO_FREELANCE_REFERENCE_ASSEMBLY = parseAssemblyDocument(
 
 // BEGIN GENERATED ASSEMBLY REGISTRY
 export const REFERENCE_ASSEMBLIES: Assembly[] = [
-    FIGARO_EATS_REFERENCE_ASSEMBLY,
+    LOCAL_COMMERCE_REFERENCE_ASSEMBLY,
     FIGARO_PROCUREMENT_REFERENCE_ASSEMBLY,
     FIGARO_DISCLOSURE_REFERENCE_ASSEMBLY,
     FIGARO_EQUIPMENT_RENTAL_REFERENCE_ASSEMBLY,

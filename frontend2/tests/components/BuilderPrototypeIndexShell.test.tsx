@@ -25,7 +25,7 @@ describe('BuilderPrototypeIndexShell', () => {
         expect(screen.getByText("Bob's Pizza Palace")).toBeInTheDocument();
         expect(screen.getAllByText('bundled').length).toBeGreaterThan(0);
         expect(screen.getAllByText('bundled-fixture').length).toBeGreaterThan(0);
-        expect(screen.getAllByRole('link', { name: 'Open Prototype' })[0]).toHaveAttribute('href', '/builders/prototype/figaro-eats');
+        expect(screen.getAllByRole('link', { name: 'Open Prototype' })[0]).toHaveAttribute('href', '/builders/prototype/local-commerce');
     });
 
     it('applies a remote manifest to previews and propagated prototype links', async () => {
@@ -59,7 +59,7 @@ describe('BuilderPrototypeIndexShell', () => {
         expect(screen.getAllByText('https://example.com/index.manifest.json').length).toBeGreaterThan(0);
         expect(screen.getAllByRole('link', { name: 'Open Prototype' })[0]).toHaveAttribute(
             'href',
-            '/builders/prototype/figaro-eats?identity=https%3A%2F%2Fexample.com%2Findex.manifest.json'
+            '/builders/prototype/local-commerce?identity=https%3A%2F%2Fexample.com%2Findex.manifest.json'
         );
     });
 
@@ -98,6 +98,6 @@ describe('BuilderPrototypeIndexShell', () => {
 
         expect(screen.getByDisplayValue('')).toBeInTheDocument();
         expect(screen.getByText("Bob's Pizza Palace")).toBeInTheDocument();
-        expect(screen.getAllByRole('link', { name: 'Open Prototype' })[0]).toHaveAttribute('href', '/builders/prototype/figaro-eats');
+        expect(screen.getAllByRole('link', { name: 'Open Prototype' })[0]).toHaveAttribute('href', '/builders/prototype/local-commerce');
     });
 });

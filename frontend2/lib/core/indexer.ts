@@ -238,7 +238,7 @@ export async function getOrderStateMap(
 export async function getAuctionClaimedByDriver(client: PublicClient, chainId: number, driver: string) {
     const all = await getAllAuctionClaimed(client, chainId);
     const lc = driver.toLowerCase();
-    return all.filter((log) => getStringArg(log, "driver")?.toLowerCase() === lc);
+    return all.filter((log) => getStringArg(log, "courier")?.toLowerCase() === lc);
 }
 
 // ---------------------------------------------------------------------------

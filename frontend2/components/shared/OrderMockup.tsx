@@ -4,7 +4,7 @@ export function OrderMockup() {
             <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                    <div className="text-xs font-semibold text-black">Figaro Eats</div>
+                    <div className="text-xs font-semibold text-black">Figaro Local Commerce</div>
                 </div>
                 <div className="text-[10px] text-gray-500 font-mono">0x3f2a...a2c1</div>
             </div>
@@ -51,7 +51,7 @@ export function OrderMockup() {
                 </button>
 
                 <div className="text-[10px] text-gray-400 text-center">
-                    Mockup &mdash; a live order lives at <span className="font-mono">/i/figaro-eats</span>
+                    Mockup &mdash; a live order lives at <span className="font-mono">/i/local-commerce</span>
                 </div>
             </div>
         </div>

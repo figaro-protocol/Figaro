@@ -40,12 +40,12 @@ contract OperatorRegistry {
     ///      can deploy their own registry contract or carry richer role
     ///      semantics in `metadataURI`. Widening this enum is non-breaking;
     ///      removing it would require changing the event signature, so it
-    ///      stays for as long as the {Merchant, Driver, Both} taxonomy is
+    ///      stays for as long as the {Merchant, Courier, Both} taxonomy is
     ///      still load-bearing for any indexer.
     enum OperatorRole {
         None,
         Merchant,
-        Driver,
+        Courier,
         Both
     }
 
@@ -108,7 +108,7 @@ contract OperatorRegistry {
     ///         Exact match prevents excess ETH from being trapped in the contract
     ///         (no sweep function, no owner). Deposit is reclaimable after lock
     ///         period via withdraw().
-    /// @param role         The operator role (Merchant, Driver, or Both). Event-only.
+    /// @param role         The operator role (Merchant, Courier, or Both). Event-only.
     /// @param metadataURI  IPFS or HTTPS URI pointing to the operator's metadata JSON.
     function register(OperatorRole role, string calldata metadataURI) external payable {
         if (role == OperatorRole.None) revert InvalidRole();

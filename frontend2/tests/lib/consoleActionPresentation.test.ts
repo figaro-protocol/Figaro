@@ -98,7 +98,7 @@ describe('console action presentation', () => {
         });
 
         expect(runtimeContext).toEqual({
-            summary: "Runtime: Bob's Pizza Palace · Figaro Eats · Restaurant",
+            summary: "Runtime: Bob's Pizza Palace · Figaro Local Commerce · Merchant",
             providers: 'Providers: catalogue=default-catalogue, evidenceTransport=default-ipfs, coordinationMessaging=default-coordination-messaging',
         });
     });

@@ -81,7 +81,7 @@ contract AttestationCoordinatorTest is Test {
             token.approve(address(core), type(uint256).max);
         }
 
-        // ── SchemaRegistry: register all figaro-eats schemas ────────
+        // ── SchemaRegistry: register all local-commerce schemas ────────
         schemas = new SchemaRegistry();
         bytes32 testUri = keccak256("ipfs://figaro-test-uri");
         schemas.registerSchema(LIFECYCLE_SCHEMA, 1, testUri);
@@ -613,7 +613,7 @@ contract AttestationCoordinatorTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // TEST 20: Full figaro-eats lifecycle with SchemaRegistry
+    // TEST 20: Full local-commerce lifecycle with SchemaRegistry
     //
     // Verifies that all 5 delivery lifecycle stages can be attested
     // with properly registered schema IDs, and that the AttestationCoordinator
@@ -663,7 +663,7 @@ contract AttestationCoordinatorTest is Test {
         vm.prank(seller1);
         coordinator.attestAsSeller(rootC, rootC, LIFECYCLE_SCHEMA, 1, "", proofLifecycle, "");
 
-        // ── Stage 2: DriverEnRoute (driver, cross-order against root) ───
+        // ── Stage 2: CourierEnRoute (courier, cross-order against root) ───
         vm.prank(seller2);
         coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_SCHEMA, 2, "", proofLifecycle, "");
 

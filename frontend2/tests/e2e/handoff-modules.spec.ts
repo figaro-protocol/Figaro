@@ -3,7 +3,7 @@
  *
  * Mock-mode tests for the handoff modules: HandoffDetailsModule,
  * HandoffTrackerModule, and HandoffKeyExchangeModule. These verify
- * the assembly pipeline renders the handoff UX surfaces at /i/figaro-eats.
+ * the assembly pipeline renders the handoff UX surfaces at /i/local-commerce.
  */
 import { test, expect } from '@playwright/test';
 import { gotoAssemblyMock } from './test-helpers';
@@ -13,7 +13,7 @@ test.describe('HandoffDetailsModule (mock)', () => {
         await context.grantPermissions(['geolocation']);
         await context.setGeolocation({ latitude: 37.7749, longitude: -122.4194 });
 
-        const response = await page.goto('/i/figaro-eats?e2e=mock', { waitUntil: 'load' });
+        const response = await page.goto('/i/local-commerce?e2e=mock', { waitUntil: 'load' });
         expect(response?.headers()['permissions-policy']).toContain('geolocation=(self)');
 
         const module = page.getByTestId('handoff-details-module');

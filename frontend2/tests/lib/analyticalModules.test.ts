@@ -108,7 +108,7 @@ describe('analytical modules in assembly schema', () => {
     });
 
     it('event-timeline module has ProcessModel semantic input', () => {
-        const artifact = getRegisteredAssemblyBySlug('figaro-eats');
+        const artifact = getRegisteredAssemblyBySlug('local-commerce');
         const timelineModule = artifact?.assembly.modules.find(
             (m) => m.moduleId === 'event-timeline'
         );
@@ -119,7 +119,7 @@ describe('analytical modules in assembly schema', () => {
     });
 
     it('process-capital-summary module is assigned to sidebar slot', () => {
-        const artifact = getRegisteredAssemblyBySlug('figaro-eats');
+        const artifact = getRegisteredAssemblyBySlug('local-commerce');
         const capitalModule = artifact?.assembly.modules.find(
             (m) => m.moduleId === 'process-capital-summary'
         );
@@ -314,7 +314,7 @@ describe('analytical modules in assembly schema', () => {
     });
 
     it('reference assemblies retain assembly-specific module deltas while inheriting packaged defaults', () => {
-        const artifact = getRegisteredAssemblyBySlug('figaro-eats');
+        const artifact = getRegisteredAssemblyBySlug('local-commerce');
 
         const coreOrders = artifact?.assembly.mechanisms.find((m) => m.mechanismId === 'core-orders');
         const deliveryCoordinator = artifact?.assembly.mechanisms.find((m) => m.mechanismId === 'delivery-coordinator');
@@ -343,13 +343,13 @@ describe('analytical modules in assembly schema', () => {
     });
 
     it('catalogue-editor remains an assembly-specific discovery surface rather than a registry package default', () => {
-        const eatsArtifact = getRegisteredAssemblyBySlug('figaro-eats');
+        const eatsArtifact = getRegisteredAssemblyBySlug('local-commerce');
         const eatsRegistry = eatsArtifact?.assembly.mechanisms.find((m) => m.mechanismId === 'operator-registration');
         const registryPackage = getMechanismPackage('registry');
 
         expect(REFERENCE_ASSEMBLIES.filter((assembly) =>
             assembly.modules.some((module) => module.moduleId === 'catalogue-editor')
-        ).map((assembly) => assembly.identity.slug)).toEqual(['figaro-eats']);
+        ).map((assembly) => assembly.identity.slug)).toEqual(['local-commerce']);
         expect(eatsRegistry?.moduleBindings).toEqual(['catalogue-editor']);
         expect(getEffectiveMechanismModuleBindings(eatsRegistry!)).toEqual(expect.arrayContaining([
             'operator-registration-panel',
@@ -358,8 +358,8 @@ describe('analytical modules in assembly schema', () => {
         expect(registryPackage?.modules.map((module) => module.moduleId)).not.toContain('catalogue-editor');
     });
 
-    it('figaro-eats binds delivery attestation through the attestation mechanism package', () => {
-        const artifact = getRegisteredAssemblyBySlug('figaro-eats');
+    it('local-commerce binds delivery attestation through the attestation mechanism package', () => {
+        const artifact = getRegisteredAssemblyBySlug('local-commerce');
         const attestationMechanism = artifact?.assembly.mechanisms.find(
             (mechanism) => mechanism.kind === 'attestation'
         );

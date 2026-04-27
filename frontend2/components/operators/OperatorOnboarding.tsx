@@ -66,9 +66,9 @@ function toggle(arr: string[], item: string): string[] {
 
 function deriveRoleFromServiceTypes(serviceTypes: string[]): number {
     const hasMerchant = serviceTypes.some((t) => t === "on-site" || t === "pickup");
-    const hasDriver = serviceTypes.includes("delivery");
-    if (hasMerchant && hasDriver) return OperatorRole.Both;
-    if (hasDriver) return OperatorRole.Driver;
+    const hasCourier = serviceTypes.includes("delivery");
+    if (hasMerchant && hasCourier) return OperatorRole.Both;
+    if (hasCourier) return OperatorRole.Courier;
     if (hasMerchant) return OperatorRole.Merchant;
     return OperatorRole.Both;
 }

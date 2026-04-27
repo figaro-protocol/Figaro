@@ -14,7 +14,7 @@ vi.mock('@/lib/shared/runtimeFetchSource', () => ({
 
 describe('BuilderPrototypeShell', () => {
     it('shows bundled source state by default', () => {
-        render(<BuilderPrototypeShell slug="figaro-eats" />);
+        render(<BuilderPrototypeShell slug="local-commerce" />);
 
         expect(screen.getByLabelText('Runtime identity URL')).toBeInTheDocument();
         expect(screen.getByText(/Runtime source:/)).toBeInTheDocument();
@@ -22,8 +22,8 @@ describe('BuilderPrototypeShell', () => {
         expect(screen.getAllByText('bundled-fixture').length).toBeGreaterThan(0);
     });
 
-    it('renders runtime-bound subject context for figaro-eats', () => {
-        render(<BuilderPrototypeShell slug="figaro-eats" />);
+    it('renders runtime-bound subject context for local-commerce', () => {
+        render(<BuilderPrototypeShell slug="local-commerce" />);
 
         expect(screen.getByText('Runtime Context')).toBeInTheDocument();
         expect(screen.getByText('Bound subjects for this assembly')).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe('BuilderPrototypeShell', () => {
 
         render(
             <BuilderPrototypeShell
-                slug="figaro-eats"
+                slug="local-commerce"
                 runtimeIdentityUrl="https://example.com/runtime-identity.json"
             />
         );
@@ -87,7 +87,7 @@ describe('BuilderPrototypeShell', () => {
             createRuntimeIdentityDataSourceFromDocument(remoteManifest, 'https://example.com/applied-identity.json')
         );
 
-        render(<BuilderPrototypeShell slug="figaro-eats" />);
+        render(<BuilderPrototypeShell slug="local-commerce" />);
 
         await user.type(screen.getByLabelText('Runtime identity URL'), 'https://example.com/applied-identity.json');
         await user.click(screen.getByRole('button', { name: 'Apply Identity' }));
@@ -118,7 +118,7 @@ describe('BuilderPrototypeShell', () => {
             createRuntimeIdentityDataSourceFromDocument(remoteManifest, 'https://example.com/resettable-identity.json')
         );
 
-        render(<BuilderPrototypeShell slug="figaro-eats" />);
+        render(<BuilderPrototypeShell slug="local-commerce" />);
 
         await user.type(screen.getByLabelText('Runtime identity URL'), 'https://example.com/resettable-identity.json');
         await user.click(screen.getByRole('button', { name: 'Apply Identity' }));
@@ -142,7 +142,7 @@ describe('BuilderPrototypeShell', () => {
 
         render(
             <BuilderPrototypeShell
-                slug="figaro-eats"
+                slug="local-commerce"
                 runtimeIdentityUrl="https://example.com/missing-identity.json"
             />
         );

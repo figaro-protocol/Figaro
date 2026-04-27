@@ -34,12 +34,12 @@ const skinBundle: ResolvedAssemblySkinBundle = {
 
 const role: RoleContext = {
     id: 'role-restaurant',
-    roleKind: 'restaurant',
-    displayName: 'Restaurant',
+    roleKind: 'merchant',
+    displayName: 'Merchant',
     description: 'Seller role',
     visibility: 'primary',
     scopeType: 'assembly',
-    scopeId: 'figaro-eats',
+    scopeId: 'local-commerce',
     mechanismIds: [],
     prototype: false,
     authoritySource: {
@@ -60,7 +60,7 @@ const capability: CapabilityModel = {
     },
     mechanismId: 'core-orders',
     scopeType: 'assembly',
-    scopeId: 'figaro-eats',
+    scopeId: 'local-commerce',
     preconditions: ['wallet connected'],
     source: {
         truthClass: 'protocol-enforced',
@@ -77,7 +77,7 @@ const mechanism: MechanismModel = {
     moduleBindings: ['order-action'],
     contracts: ['FigaroCore'],
     touchesAssets: true,
-    recognizedRoles: ['restaurant'],
+    recognizedRoles: ['merchant'],
     guarantees: [
         {
             id: 'guarantee-bonded',
@@ -96,7 +96,7 @@ const mechanism: MechanismModel = {
             id: 'attachment-manifest',
             mechanismId: 'core-orders',
             targetType: 'assembly',
-            targetId: 'figaro-eats',
+            targetId: 'local-commerce',
             label: 'Manifest',
             attachmentKind: 'document',
             state: 'ready',
@@ -138,7 +138,7 @@ describe('runtime skin-aware chrome', () => {
         render(
             <RoleSwitcher
                 roles={[role]}
-                selectedRoleKind="restaurant"
+                selectedRoleKind="merchant"
                 onSelectRole={vi.fn()}
                 contextLabel="Bob's Pizza Palace"
                 skin={skinBundle}
@@ -147,7 +147,7 @@ describe('runtime skin-aware chrome', () => {
 
         expect(screen.getByText("Bob's Pizza Palace")).toBeInTheDocument();
         expect(screen.getByText('I am a…')).toHaveStyle({ color: '#1f6feb' });
-        expect(screen.getByTestId('role-btn-restaurant')).toHaveStyle({
+        expect(screen.getByTestId('role-btn-merchant')).toHaveStyle({
             borderColor: '#1f6feb',
             color: '#1f6feb',
         });

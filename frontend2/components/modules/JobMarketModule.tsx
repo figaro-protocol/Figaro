@@ -285,7 +285,7 @@ export function JobMarketModule({ moduleId, context }: ModuleProps) {
         );
     }, [auctionJobs, geohashFilter]);
 
-    if (selectedRoleKind !== "driver") return null;
+    if (selectedRoleKind !== "courier") return null;
 
     return (
         <div

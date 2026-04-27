@@ -95,7 +95,7 @@ describe('assembly publication', () => {
         const workspace = createTempWorkspace();
         const draft = buildBlankAssembly({
             name: 'Duplicate Eats',
-            slug: 'figaro-eats',
+            slug: 'local-commerce',
             description: 'Duplicate slug.',
             assemblyClass: 'reference-template',
             compositionLevel: 1,

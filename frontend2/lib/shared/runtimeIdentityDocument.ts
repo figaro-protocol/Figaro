@@ -223,15 +223,15 @@ function buildManifestValidationIssues(
             });
         }
 
-        const hasEatsBinding = assemblyBindings.some(
+        const hasLocalCommerceBinding = assemblyBindings.some(
             (binding) => normalizeAddress(binding.subjectAddress) === normalizeAddress(metadata.subjectAddress)
-                && binding.assemblySlug === 'figaro-eats'
+                && binding.assemblySlug === 'local-commerce'
         );
-        if (!hasEatsBinding) {
+        if (!hasLocalCommerceBinding) {
             issues.push({
                 severity: 'error',
                 code: 'merchant-metadata-binding-missing',
-                message: `${sourceLabel} seller catalogue metadata for ${metadata.subjectAddress} has no figaro-eats assembly binding.`,
+                message: `${sourceLabel} seller catalogue metadata for ${metadata.subjectAddress} has no local-commerce assembly binding.`,
                 subjectAddress: metadata.subjectAddress,
             });
         }

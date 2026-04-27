@@ -42,7 +42,7 @@ The target is a reusable runtime that can:
 4. expose capabilities by role and context
 5. let downstream archetypes specialize presentation, metadata, and workflow policy
 
-Under this thesis, a concrete vertical such as Eats is not the universal UI shape of Figaro.
+Under this thesis, a concrete vertical such as Local Commerce is not the universal UI shape of Figaro.
 It is one archetype assembly that proves how multiple coordination mechanisms can be composed into an operational institution.
 
 ## Practical Comparison
@@ -85,9 +85,9 @@ The vertical thesis is still useful tactically when:
 But that should be understood as staging, specialization, or external packaging.
 It should not displace the runtime model as the main architectural direction.
 
-## Eats In This Model
+## Local Commerce In This Model
 
-Figaro Eats should be understood as the first concrete archetype of:
+Figaro Local Commerce should be understood as the first concrete archetype of:
 
 1. buyer-dominant merchant order flow
 2. one-hop local fulfillment
@@ -95,7 +95,7 @@ Figaro Eats should be understood as the first concrete archetype of:
 4. auction-mediated courier allocation
 5. optional disclosure and reputation overlays
 
-That makes Eats valuable not only as a food-delivery demo, but as proof that the same secured process model can support other archetypes such as ride hailing, couriered retail, local service dispatch, or repair coordination.
+That makes Local Commerce valuable not only as a food-delivery demo, but as proof that the same secured process model can support other archetypes such as ride hailing, couriered retail, local service dispatch, or repair coordination.
 
 ## Practical Merchant Target
 
@@ -147,7 +147,7 @@ Figaro-eats should currently be treated as:
 2. a downstream proving ground for service-layer specialization
 3. a place to validate real operator flows before they are generalized into the runtime
 
-Long term, more of what is currently Eats-specific on the frontend should migrate into reusable runtime modules or assembly-governed institution surfaces where that generalization is justified.
+Long term, more of what is currently Local Commerce-specific on the frontend should migrate into reusable runtime modules or assembly-governed institution surfaces where that generalization is justified.
 
 ## Immediate Planning Questions
 
@@ -172,7 +172,7 @@ The detailed design work lives in:
 
 Together, those documents define the technical path from protocol composition to institution runtime.
 
-The first-pass shared runtime implementation seeds now live under `frontend/lib/shared/`, including typed identity resolution records and an Eats merchant metadata schema.
+The first-pass shared runtime implementation seeds now live under `frontend/lib/shared/`, including typed identity resolution records and an Local Commerce merchant metadata schema.
 
 The workspace renderer now also consumes bound runtime context to constrain role selection when a connected address matches a bound institution subject, and it scopes the mechanism inspector to the selected role context instead of always showing the full assembly indiscriminately.
 

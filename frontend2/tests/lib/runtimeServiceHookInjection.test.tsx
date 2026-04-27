@@ -316,7 +316,7 @@ describe("runtime service hook injection", () => {
 
     it("uses an injected runtime identity service for both fallback source and context resolution", () => {
         const fallbackSource = { sourceLabel: "injected" };
-        const resolveAssemblyContext = vi.fn().mockReturnValue({ assemblySlug: "figaro-eats" });
+        const resolveAssemblyContext = vi.fn().mockReturnValue({ assemblySlug: "local-commerce" });
         const service = {
             getFallbackSource: vi.fn().mockReturnValue(fallbackSource),
             loadSourceFromUrl: vi.fn(),
@@ -326,8 +326,8 @@ describe("runtime service hook injection", () => {
         const { result } = renderHook(() => useRuntimeIdentitySource({ service }));
 
         expect(result.current.activeRuntimeSource).toBe(fallbackSource);
-        expect(result.current.resolveAssemblyContext("figaro-eats", "local-anvil")).toEqual({ assemblySlug: "figaro-eats" });
-        expect(resolveAssemblyContext).toHaveBeenCalledWith("figaro-eats", "local-anvil", fallbackSource);
+        expect(result.current.resolveAssemblyContext("local-commerce", "local-anvil")).toEqual({ assemblySlug: "local-commerce" });
+        expect(resolveAssemblyContext).toHaveBeenCalledWith("local-commerce", "local-anvil", fallbackSource);
         expect(defaultGetFallbackSourceMock).not.toHaveBeenCalled();
         expect(defaultResolveAssemblyContextMock).not.toHaveBeenCalled();
     });

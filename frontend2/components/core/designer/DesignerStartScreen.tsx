@@ -5,7 +5,7 @@
  *
  * Orients a first-time visitor: explains what an assembly is, offers
  * reference templates as starting points, and offers a blank canvas.
- * Replaces the previous default of "Figaro Eats preloaded with no context."
+ * Replaces the previous default of "Figaro Local Commerce preloaded with no context."
  */
 
 import type { Assembly } from "@/lib/shared/assembly";

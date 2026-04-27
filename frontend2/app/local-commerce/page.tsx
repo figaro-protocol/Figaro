@@ -3,25 +3,25 @@ import Link from "next/link";
 import { BondingDiagram } from "@/components/shared/BondingDiagram";
 
 export const metadata: Metadata = {
-    title: "figaro-eats — Figaro Protocol",
-    description: "An assembly composing a three-role bonded food-delivery process from protocol primitives. The first shipped example of Figaro composition.",
+    title: "Figaro Local Commerce — Figaro Protocol",
+    description: "An assembly composing a three-role bonded local-commerce process from protocol primitives. Generic across food, retail, and services. The first shipped example of Figaro composition.",
 };
 
-export default function FigaroEatsPage() {
+export default function LocalCommercePage() {
     return (
         <>
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
                 <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-4">
-                    figaro-eats
+                    local-commerce
                 </p>
                 <h1 className="text-5xl sm:text-6xl font-bold text-black leading-tight tracking-tight mb-6">
                     Three roles, one bonded process.
                 </h1>
                 <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mb-4">
-                    An assembly composing a food-delivery process from protocol primitives. Three roles (buyer, restaurant, driver), one root bonded commitment, two sub-orders, atomic settlement.
+                    An assembly composing a local-commerce process from protocol primitives. Three roles (buyer, merchant, courier), one root bonded commitment, two sub-orders, atomic settlement. Generic across food, retail, and service verticals; the reference instance below uses food delivery as the concrete shape.
                 </p>
                 <p className="text-base text-gray-600 leading-relaxed max-w-2xl">
-                    Figaro-eats is the first shipped example of Figaro composition. The kernel enforces bonding and settlement; the assembly shapes what gets settled. Runtime: <Link href="/i/figaro-eats" data-testid="reference-archetype-runtime-link" className="underline">/i/figaro-eats</Link>.
+                    Figaro Local Commerce is the first shipped example of Figaro composition. The kernel enforces bonding and settlement; the assembly shapes what gets settled. Runtime: <Link href="/i/local-commerce" data-testid="reference-archetype-runtime-link" className="underline">/i/local-commerce</Link>.
                 </p>
             </section>
 
@@ -31,7 +31,7 @@ export default function FigaroEatsPage() {
                 </h2>
                 <BondingDiagram />
                 <p className="text-sm text-gray-600 mt-4">
-                    In figaro-eats, the root order is the buyer ↔ restaurant meal commitment; a sub-order is the restaurant ↔ driver delivery commitment. The driver bonds against cumulative value (meal + delivery), not just the delivery leg. See <Link href="/mechanism" className="underline">mechanism</Link>.
+                    In this reference, the root order is the buyer ↔ merchant commitment; a sub-order is the merchant ↔ courier commitment. The courier bonds against cumulative value (goods + delivery), not just the delivery leg. See <Link href="/mechanism" className="underline">mechanism</Link>.
                 </p>
             </section>
 
@@ -42,15 +42,15 @@ export default function FigaroEatsPage() {
                 <dl className="space-y-4 text-sm">
                     <div>
                         <dt className="text-base font-semibold text-black">Buyer</dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">Commits the root order against a restaurant. Bonds 2× the meal payment. Triggers <code>resolveProcess</code> once delivery is confirmed.</dd>
+                        <dd className="text-gray-700 leading-relaxed mt-1">Commits the root order against a merchant. Bonds 2× the goods payment. Triggers <code>resolveProcess</code> once delivery is confirmed.</dd>
                     </div>
                     <div>
-                        <dt className="text-base font-semibold text-black">Restaurant</dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">Counter-signs the root commitment. Bonds 2× the meal value. Commits a sub-order against a driver for delivery, bonding 2× the meal value again (progressive collateralization).</dd>
+                        <dt className="text-base font-semibold text-black">Merchant</dt>
+                        <dd className="text-gray-700 leading-relaxed mt-1">Counter-signs the root commitment. Bonds 2× the goods value. Commits a sub-order against a courier for delivery, bonding 2× the goods value again (progressive collateralization). Maps to a restaurant in food, a retailer in retail, a service-provider in services.</dd>
                     </div>
                     <div>
-                        <dt className="text-base font-semibold text-black">Driver</dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">Counter-signs the sub-order at an auction-determined delivery fee. Bonds 2× cumulative value (meal + delivery).</dd>
+                        <dt className="text-base font-semibold text-black">Courier</dt>
+                        <dd className="text-gray-700 leading-relaxed mt-1">Counter-signs the sub-order at an auction-determined delivery fee. Bonds 2× cumulative value (goods + delivery). Maps to a driver, cyclist, walker, drone, or any other delivery modality the merchant chooses.</dd>
                     </div>
                 </dl>
             </section>
@@ -66,7 +66,7 @@ export default function FigaroEatsPage() {
                     </li>
                     <li className="border-b border-gray-100 pb-3">
                         <div className="text-black font-medium"><code>DutchAuction</code></div>
-                        <p className="text-sm text-gray-600 mt-0.5">Descending-price mechanism for driver dispatch. The restaurant posts a delivery job; the auction starts at a max price and linearly decays to a floor. The first driver to accept wins at the current price; surplus refunds to the buyer.</p>
+                        <p className="text-sm text-gray-600 mt-0.5">Descending-price mechanism for courier dispatch. The merchant posts a delivery job; the auction starts at a max price and linearly decays to a floor. The first courier to accept wins at the current price; surplus refunds to the buyer.</p>
                     </li>
                     <li className="border-b border-gray-100 pb-3">
                         <div className="text-black font-medium"><code>AttestationCoordinator</code></div>
@@ -74,7 +74,7 @@ export default function FigaroEatsPage() {
                     </li>
                     <li className="border-b border-gray-100 pb-3">
                         <div className="text-black font-medium"><code>OperatorRegistry</code></div>
-                        <p className="text-sm text-gray-600 mt-0.5">Permissionless self-registration for merchants and couriers with a reclaimable ETH deposit. Event-sourced (role + metadataURI in <code>OperatorRegistered</code>); on-chain state is dedup-only. No admin, no KYC, no profile-edit / deactivate / reactivate — switch role or metadata via withdraw + re-register.</p>
+                        <p className="text-sm text-gray-600 mt-0.5">Permissionless self-registration for merchants and couriers (across all local-commerce verticals) with a reclaimable ETH deposit. Event-sourced (role + metadataURI in <code>OperatorRegistered</code>); on-chain state is dedup-only. No admin, no KYC, no profile-edit / deactivate / reactivate — switch role or metadata via withdraw + re-register.</p>
                     </li>
                 </ul>
             </section>
@@ -115,7 +115,7 @@ export default function FigaroEatsPage() {
                     Privacy surface
                 </h2>
                 <p className="text-base text-gray-700 leading-relaxed">
-                    The delivery address is sealed per-order with ECDH key exchange over XMTP and AES-256-GCM; only the driver can decrypt it. Keys are discarded at settlement — no standing intermediary retains the address. GHG emissions data (grams CO₂e for meal preparation and delivery) is optional and declared via <code>figaro-ghg-measurement-v1</code> at runtime.
+                    The delivery address is sealed per-order with ECDH key exchange over XMTP and AES-256-GCM; only the courier can decrypt it. Keys are discarded at settlement — no standing intermediary retains the address. GHG emissions data (grams CO₂e for goods preparation and delivery) is optional and declared via <code>figaro-ghg-measurement-v1</code> at runtime.
                 </p>
             </section>
 
@@ -124,11 +124,11 @@ export default function FigaroEatsPage() {
                     Forking
                 </h2>
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
-                    Figaro-eats is a template for bonded marketplaces with three or more roles, time-sensitive handoffs, and physical delivery. The kernel makes no distinction between food delivery, ride-hail, parcel courier, equipment rental, or multi-tier procurement. Any community can fork the assembly, replace roles and schemas, and publish a new composition.
+                    Figaro Local Commerce is a template for bonded marketplaces with three or more roles, time-sensitive handoffs, and physical delivery. The kernel makes no distinction between food delivery, retail, services, ride-hail, parcel courier, equipment rental, or multi-tier procurement. Any community can fork the assembly, replace roles and schemas, and publish a new composition.
                 </p>
                 <ul className="space-y-2 text-sm">
                     <li>
-                        <Link href="/i/figaro-eats" className="text-black hover:underline">
+                        <Link href="/i/local-commerce" className="text-black hover:underline">
                             Runtime &rarr;
                         </Link>
                     </li>

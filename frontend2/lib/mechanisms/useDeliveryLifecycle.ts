@@ -24,7 +24,7 @@ export const PROXIMITY_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_SCHEMA_KEY));
 export const DELIVERY_STAGE = {
     preparationStarted: 0,
     readyForPickup: 1,
-    driverEnRoute: 2,
+    courierEnRoute: 2,
     pickedUp: 3,
     delivered: 4,
 } as const;
@@ -40,7 +40,7 @@ export type DeliveryLifecycleSignal =
 const SIGNAL_TO_STAGE: Record<DeliveryLifecycleSignal, number> = {
     declarePreparationStarted: DELIVERY_STAGE.preparationStarted,
     declareReadyForPickup: DELIVERY_STAGE.readyForPickup,
-    declareEnRoute: DELIVERY_STAGE.driverEnRoute,
+    declareEnRoute: DELIVERY_STAGE.courierEnRoute,
     declarePickedUp: DELIVERY_STAGE.pickedUp,
     declareDelivered: DELIVERY_STAGE.delivered,
 };

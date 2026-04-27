@@ -23,7 +23,7 @@ test.afterAll(async () => {
 });
 
 async function gotoAssemblyDevnet(page: import('@playwright/test').Page) {
-    const response = await page.goto('/i/figaro-eats?e2e=devnet', { waitUntil: 'load' });
+    const response = await page.goto('/i/local-commerce?e2e=devnet', { waitUntil: 'load' });
     await page.getByTestId('role-btn-buyer').waitFor({ timeout: 30000 });
     return response;
 }
@@ -76,7 +76,7 @@ test.describe('Delivery attestation browser flow (devnet)', () => {
         await expect(deliveryNode).toBeVisible({ timeout: 15000 });
         await deliveryNode.click();
 
-        await switchToRole(driverPage, 'driver');
+        await switchToRole(driverPage, 'courier');
 
         const attestationPanel = driverPage.getByTestId('delivery-attestation-panel');
         await expect(attestationPanel).toBeVisible({ timeout: 15000 });

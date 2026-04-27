@@ -19,7 +19,7 @@ export default function OperatorsPage() {
                     Self-registered participants.
                 </h1>
                 <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
-                    An operator is an address that has posted a reclaimable ETH deposit in <code>OperatorRegistry</code>. Operators are the pool assemblies draw from when filling seller-side roles: restaurants in figaro-eats, drivers, subcontractors in procurement assemblies, inspectors, anyone whose participation an assembly wants to gate by staked identity.
+                    An operator is an address that has posted a reclaimable ETH deposit in <code>OperatorRegistry</code>. Operators are the pool assemblies draw from when filling seller-side roles: merchants and couriers in the local-commerce reference, subcontractors in procurement assemblies, inspectors, anyone whose participation an assembly wants to gate by staked identity.
                 </p>
             </section>
 
@@ -87,7 +87,7 @@ export default function OperatorsPage() {
                     Related
                 </h2>
                 <ul className="space-y-2 text-sm">
-                    <li><Link href="/figaro-eats" className="text-black hover:underline">figaro-eats &rarr;</Link> &mdash; the reference assembly that consumes restaurant and driver operators.</li>
+                    <li><Link href="/local-commerce" className="text-black hover:underline">local-commerce &rarr;</Link> &mdash; the reference assembly that consumes merchant and courier operators.</li>
                     <li><Link href="/builders" className="text-black hover:underline">Builders &rarr;</Link> &mdash; composing assemblies that route work to registered operators.</li>
                     <li><Link href="/about#enforcement" className="text-black hover:underline">Enforcement &rarr;</Link> &mdash; what happens when a counterparty defects.</li>
                     <li><Link href="/compliance" className="text-black hover:underline">Compliance &rarr;</Link> &mdash; the evidence bundle surfaced when a dispute reaches an off-chain forum.</li>

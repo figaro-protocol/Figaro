@@ -1,7 +1,7 @@
 # XMTP Key Exchange Architecture
 
 This document describes the per-order encryption and key exchange system
-used to protect private delivery details in Figaro Eats.
+used to protect private delivery details in Figaro Local Commerce.
 
 ---
 
@@ -140,12 +140,12 @@ appropriate implementation.
 `useDeliveryKeyExchange(opts)` handles both sides:
 
 **Buyer side** (`role: "buyer"`):
-1. Polls `assignedDriver(deliveryOrderId)` every 4 seconds
-2. When a driver is assigned, retrieves the stored AES key
+1. Polls `assignedCourier(deliveryOrderId)` every 4 seconds
+2. When a courier is assigned, retrieves the stored AES key
 3. Opens a `DeliveryChannel` and sends the key
 4. Status: `idle → sending → sent`
 
-**Driver side** (`role: "driver"`):
+**Courier side** (`role: "courier"`):
 1. Subscribes to incoming `DELIVERY_KEY` messages for the order
 2. On receipt, exposes the key via hook return value
 3. Status: `listening → received`

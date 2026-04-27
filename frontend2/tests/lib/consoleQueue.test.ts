@@ -69,7 +69,7 @@ describe('ConsoleQueue', () => {
         const runtimeSnapshot = resolveSemanticRuntimeSnapshotForSubjectAddress(BOUND_ADDRESS);
         const id = q.enqueueOperating(makeOperatingAction(), { runtimeSnapshot });
 
-        expect(q.get(id)?.runtimeSnapshot?.assembly.identity.slug).toBe('figaro-eats');
+        expect(q.get(id)?.runtimeSnapshot?.assembly.identity.slug).toBe('local-commerce');
         expect(q.get(id)?.runtimeSnapshot?.runtime.selectedBindingId).toBe('binding:bobs-pizza-palace:local-anvil');
     });
 

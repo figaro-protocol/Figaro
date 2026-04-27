@@ -38,7 +38,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/lib/mechanisms/useOperatorRegistry', () => ({
-    OperatorRole: { None: 0, Merchant: 1, Driver: 2, Both: 3 },
+    OperatorRole: { None: 0, Merchant: 1, Courier: 2, Both: 3 },
     useOperatorProfile: (...args: unknown[]) => useOperatorProfileMock(...args),
     useRegistrationDeposit: () => useRegistrationDepositMock(),
     useDepositLockPeriod: () => useDepositLockPeriodMock(),
@@ -188,7 +188,7 @@ describe('OperatorOnboarding — not registered', () => {
         await userEvent.click(screen.getByRole('button', { name: /register/i }));
 
         await waitFor(() => {
-            // OperatorRole.Driver = 2
+            // OperatorRole.Courier = 2
             expect(registerMock).toHaveBeenCalledWith(2, 'ipfs://QmDriver', 1000000000000000n);
         });
     });

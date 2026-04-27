@@ -40,7 +40,7 @@ contract OperatorRegistryTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(OperatorRegistry.AlreadyRegistered.selector);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Driver, "ipfs://y");
+        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Courier, "ipfs://y");
     }
 
     function test_04_register_Both_role() public {
@@ -73,7 +73,7 @@ contract OperatorRegistryTest is Test {
         reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Merchant, "ipfs://alice");
 
         vm.prank(bob);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Driver, "ipfs://bob");
+        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Courier, "ipfs://bob");
 
         // Alice's registration is independent of Bob's — alice can withdraw
         // (after lock) without affecting bob's registered state.
@@ -105,7 +105,7 @@ contract OperatorRegistryTest is Test {
 
     function test_withdraw_emits_event() public {
         vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Driver, "ipfs://e");
+        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Courier, "ipfs://e");
 
         vm.warp(block.timestamp + LOCK_PERIOD);
 
@@ -145,7 +145,7 @@ contract OperatorRegistryTest is Test {
 
         // Re-register with fresh deposit
         vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Driver, "ipfs://v2");
+        reg.register{value: REG_DEPOSIT}(OperatorRegistry.OperatorRole.Courier, "ipfs://v2");
     }
 
     function test_withdraw_zero_deposit_succeeds() public {

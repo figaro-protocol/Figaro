@@ -49,7 +49,7 @@ It should not require immediate changes to:
 
 1. `src/FigaroCore.sol`
 2. composability contracts
-3. Eats service contracts
+3. Local Commerce service contracts
 
 ## Step 1 Solidity Objectives
 
@@ -195,7 +195,7 @@ Step 1 should not do any of the following:
 2. redesign `FigaroCore` around generalized document semantics
 3. implement manifest schema anchors
 4. implement offset purchase flows
-5. rewrite downstream Eats logic to use a generic artifact framework
+5. rewrite downstream Local Commerce logic to use a generic artifact framework
 
 ## Deliverable Definition
 

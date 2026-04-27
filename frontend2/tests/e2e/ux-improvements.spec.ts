@@ -66,7 +66,7 @@ test.describe('Route loading', () => {
     });
 
     test('live assembly routes load assembly runtime', async ({ page }) => {
-        await gotoRoute(page, '/i/figaro-eats?e2e=mock');
+        await gotoRoute(page, '/i/local-commerce?e2e=mock');
         await expect(page.getByTestId('assembly-runtime')).toBeVisible({ timeout: 15_000 });
     });
 });

@@ -96,18 +96,18 @@ primitive available to any application. The two-repo split (Prototype2 /
 Figaro-eats) is organizational (independent CI, cleaner demos), not an
 ownership boundary.
 
-Do not classify a contract as "Eats-specific" just because it was first
+Do not classify a contract as "local-commerce-specific" just because it was first
 developed alongside the delivery archetype. A Dutch auction module is a
 Dutch auction module. A lifecycle coordinator is a lifecycle coordinator.
 A proximity verifier is a proximity verifier. Any institution can deploy
 any of them.
 
-## Figaro Eats — First Archetype
+## Figaro Local Commerce — First Archetype
 
-Figaro Eats was the first institution archetype. It was originally developed
+Figaro Local Commerce was the first institution archetype. It was originally developed
 in a separate repo but has been consolidated into this repo as composable
-components and templates. The eats assembly is one of five reference
-assemblies (eats, equipment-rental, procurement, disclosure-review,
+components and templates. The local-commerce assembly is one of five reference
+assemblies (local-commerce, equipment-rental, procurement, disclosure-review,
 freelance) that demonstrate how the runtime renders different institution
 types from the same shared components and mechanism modules. The separate
 Figaro-eats repo has been retired and archived.

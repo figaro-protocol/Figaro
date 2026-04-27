@@ -9,7 +9,7 @@ import {
 
 /**
  * GET /api/semantic/assemblies
- * GET /api/semantic/assemblies?slug=figaro-eats
+ * GET /api/semantic/assemblies?slug=local-commerce
  *
  * Returns structured JSON for agent consumption:
  * - Without slug: index of all registered assemblies

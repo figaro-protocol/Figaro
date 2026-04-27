@@ -219,7 +219,7 @@ export function useGhgDisclosureActions() {
      */
     const submitCommitmentForOrder = useCallback(async (
         orderHash: string,
-        _role: "restaurant" | "driver",
+        _role: "merchant" | "courier",
     ) => {
         return submitSellerAttestation({
             orderHash: orderHash as Hex,

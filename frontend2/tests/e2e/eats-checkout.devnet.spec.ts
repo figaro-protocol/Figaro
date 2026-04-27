@@ -61,7 +61,7 @@ test.describe('Cart checkout to settlement (devnet)', () => {
 
     test('browse → add to cart → place order → resolve', async ({ page }) => {
         // Navigate to the eats assembly as buyer
-        await page.goto('/i/figaro-eats?e2e=devnet', { waitUntil: 'load' });
+        await page.goto('/i/local-commerce?e2e=devnet', { waitUntil: 'load' });
         await page.getByTestId('role-btn-buyer').waitFor({ timeout: 30000 });
 
         // ── 1. Browse restaurants ──────────────────────────────────────

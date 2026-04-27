@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { DesignerPublishDrawer } from "@/components/core/designer/DesignerPublishDrawer";
-import { FIGARO_EATS_REFERENCE_ASSEMBLY, type Assembly } from "@/lib/shared/assembly";
+import { LOCAL_COMMERCE_REFERENCE_ASSEMBLY, type Assembly } from "@/lib/shared/assembly";
 import type { PublishAssemblyResult } from "@/lib/shared/assemblyPublication";
 
 function makeInvalidAssembly(): Assembly {
@@ -41,7 +41,7 @@ describe("DesignerPublishDrawer", () => {
     it("renders nothing when open is false", () => {
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open={false}
                 onClose={() => undefined}
             />,
@@ -52,7 +52,7 @@ describe("DesignerPublishDrawer", () => {
     it("renders the drawer when open is true", () => {
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
             />,
@@ -65,10 +65,10 @@ describe("DesignerPublishDrawer", () => {
         expect(screen.getByTestId("publish-empty")).toBeInTheDocument();
     });
 
-    it("shows a green 'Ready' badge for the figaro-eats reference assembly", () => {
+    it("shows a green 'Ready' badge for the local-commerce reference assembly", () => {
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
             />,
@@ -90,21 +90,21 @@ describe("DesignerPublishDrawer", () => {
     it("populates the JSON textarea with the serialized assembly", () => {
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
             />,
         );
         const textarea = screen.getByTestId("designer-publish-json") as HTMLTextAreaElement;
         const parsed = JSON.parse(textarea.value);
-        expect(parsed.identity.slug).toBe("figaro-eats");
+        expect(parsed.identity.slug).toBe("local-commerce");
     });
 
     it("closes when the backdrop is clicked", () => {
         const onClose = vi.fn();
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={onClose}
             />,
@@ -117,7 +117,7 @@ describe("DesignerPublishDrawer", () => {
         const onClose = vi.fn();
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={onClose}
             />,
@@ -144,7 +144,7 @@ describe("DesignerPublishDrawer", () => {
 
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
             />,
@@ -153,7 +153,7 @@ describe("DesignerPublishDrawer", () => {
 
         expect(createObjectURL).toHaveBeenCalledTimes(1);
         expect(clicks).toHaveLength(1);
-        expect(clicks[0].download).toBe("figaro-eats.reference.json");
+        expect(clicks[0].download).toBe("local-commerce.reference.json");
         expect(clicks[0].href).toBe("blob:mock");
         expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock");
 
@@ -163,7 +163,7 @@ describe("DesignerPublishDrawer", () => {
     it("does not render the 'Publish to workspace' button when onPublish is omitted", () => {
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
             />,
@@ -174,7 +174,7 @@ describe("DesignerPublishDrawer", () => {
     it("renders 'Publish to workspace' when onPublish is provided", () => {
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
                 onPublish={vi.fn()}
@@ -186,16 +186,16 @@ describe("DesignerPublishDrawer", () => {
     it("calls onPublish with the serialized assembly and renders the success panel", async () => {
         const successResult: PublishAssemblyResult = {
             ok: true,
-            slug: "figaro-eats",
-            assembly: FIGARO_EATS_REFERENCE_ASSEMBLY,
-            outputPath: "/repo/lib/shared/assemblies/figaro-eats.reference.json",
+            slug: "local-commerce",
+            assembly: LOCAL_COMMERCE_REFERENCE_ASSEMBLY,
+            outputPath: "/repo/lib/shared/assemblies/local-commerce.reference.json",
             registryPath: "/repo/lib/shared/assembly.ts",
-            prototypePath: "/builders/prototype/figaro-eats",
+            prototypePath: "/builders/prototype/local-commerce",
         };
         const onPublish = vi.fn().mockResolvedValue(successResult);
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
                 onPublish={onPublish}
@@ -209,9 +209,9 @@ describe("DesignerPublishDrawer", () => {
         });
         expect(onPublish).toHaveBeenCalledTimes(1);
         const sentJson = onPublish.mock.calls[0][0] as string;
-        expect(sentJson).toContain('"slug": "figaro-eats"');
+        expect(sentJson).toContain('"slug": "local-commerce"');
         expect(screen.getByTestId("publish-commit-success")).toHaveTextContent(
-            "/repo/lib/shared/assemblies/figaro-eats.reference.json",
+            "/repo/lib/shared/assemblies/local-commerce.reference.json",
         );
     });
 
@@ -225,7 +225,7 @@ describe("DesignerPublishDrawer", () => {
         const onPublish = vi.fn().mockResolvedValue(failureResult);
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
                 onPublish={onPublish}
@@ -246,7 +246,7 @@ describe("DesignerPublishDrawer", () => {
         const onPublish = vi.fn().mockRejectedValue(new Error("network down"));
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
                 onPublish={onPublish}
@@ -270,7 +270,7 @@ describe("DesignerPublishDrawer", () => {
         );
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
                 onPublish={onPublish}
@@ -296,7 +296,7 @@ describe("DesignerPublishDrawer", () => {
         });
         render(
             <DesignerPublishDrawer
-                assembly={FIGARO_EATS_REFERENCE_ASSEMBLY}
+                assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY}
                 open
                 onClose={() => undefined}
             />,
@@ -306,6 +306,6 @@ describe("DesignerPublishDrawer", () => {
         });
         expect(writeText).toHaveBeenCalledTimes(1);
         const value = writeText.mock.calls[0][0] as string;
-        expect(value).toContain('"slug": "figaro-eats"');
+        expect(value).toContain('"slug": "local-commerce"');
     });
 });

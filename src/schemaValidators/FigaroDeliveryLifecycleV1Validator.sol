@@ -10,7 +10,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 /// @dev Lifecycle stages (uint8 envelope):
 ///        0 = preparationStarted
 ///        1 = readyForPickup
-///        2 = driverEnRoute
+///        2 = courierEnRoute
 ///        3 = pickedUp
 ///        4 = delivered
 ///

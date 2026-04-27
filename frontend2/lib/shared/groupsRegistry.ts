@@ -143,7 +143,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         readingPath: [
             { label: "Paper A — equilibrium analysis", href: "/publications#paper-a", note: "Nash, iterated elimination, 2× minimum" },
             { label: "Console", href: "/console", note: "supervision and attestation surface" },
-            { label: "Figaro Eats runtime", href: "/i/figaro-eats", note: "reference implementation of the signing flow" },
+            { label: "Figaro Local Commerce runtime", href: "/i/local-commerce", note: "reference implementation of the signing flow" },
         ],
     },
 ];

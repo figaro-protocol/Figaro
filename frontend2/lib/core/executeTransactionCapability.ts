@@ -10,7 +10,7 @@ export interface TransactionCapabilityExecutors {
     /** Web2-strip (2026-04-26): replaces updateOperatorProfile. Switching role
      *  or metadata happens via withdraw + re-register. */
     withdrawOperatorDeposit?: () => TransactionExecutionResult;
-    submitDisclosureCommitment?: (orderHash: string, disclosureRole: "restaurant" | "driver") => TransactionExecutionResult;
+    submitDisclosureCommitment?: (orderHash: string, disclosureRole: "merchant" | "courier") => TransactionExecutionResult;
     submitDisclosureInventory?: (orderHash: string, grams: bigint) => TransactionExecutionResult;
     submitDeliveryLifecycleSignal?: (orderHash: string, signal: DeliveryLifecycleSignalActionKind, roleOrderHash?: string) => TransactionExecutionResult;
     submitDeliveryLifecycleProof?: (orderHash: string, signal: "declarePickedUp" | "declareDelivered", proof: { band: number; nonce: `0x${string}`; deviceSig: `0x${string}` }, roleOrderHash?: string) => TransactionExecutionResult;

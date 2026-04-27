@@ -145,7 +145,7 @@ describe("useGhgDisclosureActions", () => {
         const orderHash = `0x${"11".repeat(32)}`;
         const { result } = renderHook(() => useGhgDisclosureActions());
 
-        await result.current.submitCommitmentForOrder(orderHash, "restaurant");
+        await result.current.submitCommitmentForOrder(orderHash, "merchant");
         await result.current.submitActualForOrder(orderHash, 1250n);
 
         expect(result.current.isPending).toBe(true);

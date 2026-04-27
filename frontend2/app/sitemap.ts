@@ -16,7 +16,7 @@ const PUBLIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[numb
     { path: "/resources", changeFrequency: "weekly", priority: 0.9 },
     { path: "/publications", changeFrequency: "weekly", priority: 0.9 },
     { path: "/about", changeFrequency: "weekly", priority: 0.9 },
-    { path: "/figaro-eats", changeFrequency: "weekly", priority: 0.8 },
+    { path: "/local-commerce", changeFrequency: "weekly", priority: 0.8 },
     { path: "/operators", changeFrequency: "weekly", priority: 0.8 },
     { path: "/fig", changeFrequency: "weekly", priority: 0.8 },
     { path: "/mechanism", changeFrequency: "monthly", priority: 0.8 },

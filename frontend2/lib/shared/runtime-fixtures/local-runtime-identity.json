@@ -56,23 +56,23 @@
             "bindingId": "binding:bobs-pizza-palace:local-anvil",
             "subjectAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "archetypeId": "merchant-one-hop-delivery",
-            "assemblySlug": "figaro-eats",
+            "assemblySlug": "local-commerce",
             "networkTargets": [
                 "local-anvil"
             ],
             "roleBindings": [
                 {
-                    "roleKind": "restaurant-operator",
+                    "roleKind": "merchant-operator",
                     "assemblyRoleKinds": [
-                        "restaurant"
+                        "merchant"
                     ],
                     "scope": "assembly",
                     "mechanismIds": [
                         "core-v3",
                         "delivery-lifecycle",
-                        "dutch-auction-driver-market"
+                        "dutch-auction-courier-market"
                     ],
-                    "notes": "Primary merchant operator for the Eats archetype."
+                    "notes": "Primary merchant operator for the Local Commerce archetype."
                 }
             ],
             "metadataURI": "ipfs://figaro/merchants/bobs-pizza-palace.metadata.json",

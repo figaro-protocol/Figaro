@@ -22,7 +22,7 @@ function errorMessage(cause: unknown, fallback: string): string {
 
 // ── Order-level disclosure panel ─────────────────────────────────────────────
 
-function OrderDisclosurePanel({ context, orderHash, role }: { context: ModuleProps["context"]; orderHash: string; role: "restaurant" | "driver" }) {
+function OrderDisclosurePanel({ context, orderHash, role }: { context: ModuleProps["context"]; orderHash: string; role: "merchant" | "courier" }) {
     const accentTone = context.skinBundle?.branding.branding.accentColor;
     const { tasks, loading, refresh } = useOrderDisclosureTasks(orderHash);
     const [actualInput, setActualInput] = useState("");
@@ -108,7 +108,7 @@ function OrderDisclosurePanel({ context, orderHash, role }: { context: ModulePro
                 <p className="mt-1 text-xs text-neutral-600">
                     {hasCommitment
                         ? "Recorded on-chain."
-                        : role === "restaurant"
+                        : role === "merchant"
                             ? "Recorded when the restaurant accepts the food order."
                             : "Recorded when the driver claims the delivery order."}
                 </p>
@@ -217,8 +217,8 @@ export function DisclosureModule({ context }: ModuleProps) {
     const processId = context.processModel?.processId as `0x${string}` | undefined;
 
     // Map selected role to disclosure role
-    const disclosureRole: "restaurant" | "driver" =
-        context.selectedRoleKind === "driver" ? "driver" : "restaurant";
+    const disclosureRole: "merchant" | "courier" =
+        context.selectedRoleKind === "courier" ? "courier" : "merchant";
 
     return (
         <div

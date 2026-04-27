@@ -54,7 +54,7 @@ describe('assembly draft utilities', () => {
     it('flags publication conflicts against the registered assembly set', () => {
         const conflictingDraft = buildBlankAssembly({
             name: 'Duplicate Eats',
-            slug: 'figaro-eats',
+            slug: 'local-commerce',
             description: 'Duplicate slug.',
             assemblyClass: 'reference-template',
             compositionLevel: 1,

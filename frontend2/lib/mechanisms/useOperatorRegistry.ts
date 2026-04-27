@@ -16,8 +16,8 @@ import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "./contracts";
 import { getOperatorState, getOperatorMetadataURI } from "@/lib/core/indexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
-// Mirror the Solidity enum: None=0, Merchant=1, Driver=2, Both=3
-export const OperatorRole = { None: 0, Merchant: 1, Driver: 2, Both: 3 } as const;
+// Mirror the Solidity enum: None=0, Merchant=1, Courier=2, Both=3
+export const OperatorRole = { None: 0, Merchant: 1, Courier: 2, Both: 3 } as const;
 
 const registry = getOperatorRegistry();
 

@@ -1,5 +1,5 @@
 /**
- * Content encoders for the figaro-eats schemas.
+ * Content encoders for the local-commerce schemas.
  *
  * Each function takes a typed payload (matching the JSON schema spec) and
  * returns the ABI-encoded bytes that the on-chain validator expects.

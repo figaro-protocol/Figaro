@@ -173,7 +173,7 @@
     },
     "narrative": {
         "assemblySummary": "Procurement as a composed assembly built from bonded order coordination and inspection checkpoints.",
-        "builderNotes": "Core-plus-coordinator example used to prove the builder substrate is not Eats-specific."
+        "builderNotes": "Core-plus-coordinator example used to prove the builder substrate is not local-commerce-specific."
     },
     "builderMetadata": {
         "assemblyClass": "reference-procurement",

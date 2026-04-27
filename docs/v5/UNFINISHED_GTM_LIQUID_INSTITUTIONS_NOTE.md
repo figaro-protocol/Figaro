@@ -69,7 +69,7 @@ Each transaction assembles a temporary institution of directly bonded contributo
 ### Layer 4: Runtime Meaning
 
 Prototype2 is the canonical runtime for rendering those institutions.
-Eats is the first archetype proving the model.
+Local Commerce is the first archetype proving the model.
 
 ## Page Hierarchy
 

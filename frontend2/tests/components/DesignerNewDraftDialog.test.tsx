@@ -65,13 +65,13 @@ describe("DesignerNewDraftDialog", () => {
         render(
             <DesignerNewDraftDialog
                 open
-                existingSlugs={["figaro-eats"]}
+                existingSlugs={["local-commerce"]}
                 onCreate={() => undefined}
                 onClose={() => undefined}
             />,
         );
         fireEvent.change(screen.getByTestId("new-draft-name"), { target: { value: "Eats" } });
-        fireEvent.change(screen.getByTestId("new-draft-slug"), { target: { value: "figaro-eats" } });
+        fireEvent.change(screen.getByTestId("new-draft-slug"), { target: { value: "local-commerce" } });
         expect(screen.getByTestId("new-draft-error")).toHaveTextContent(/already in use/i);
     });
 

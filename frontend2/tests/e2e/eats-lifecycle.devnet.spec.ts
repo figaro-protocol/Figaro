@@ -1,7 +1,7 @@
 /**
  * eats-lifecycle.devnet.spec.ts
  *
- * Delivery lifecycle test exercised through the assembly route /i/figaro-eats.
+ * Delivery lifecycle test exercised through the assembly route /i/local-commerce.
  * This is the Prototype2-native equivalent of the Eats repo's
  * delivery-3party.devnet.spec.ts — proving that the assembly runtime can
  * render and drive the same 3-party workflow (buyer → restaurant → driver)
@@ -75,7 +75,7 @@ test.afterAll(async () => {
 // ── Assembly route helpers ───────────────────────────────────────────────────
 
 async function gotoAssemblyDevnet(page: import('@playwright/test').Page) {
-    await page.goto('/i/figaro-eats?e2e=devnet', { waitUntil: 'load' });
+    await page.goto('/i/local-commerce?e2e=devnet', { waitUntil: 'load' });
     // Wait for runtime-specific shell controls rather than the first page h1,
     // because the global header also renders an h1 before the assembly shell hydrates.
     await page.getByTestId('role-btn-buyer').waitFor({ timeout: 30000 });
@@ -312,7 +312,7 @@ test.describe('Auction module visibility (devnet)', () => {
 
         await gotoAssemblyDevnet(page);
 
-        await switchToRole(page, 'driver');
+        await switchToRole(page, 'courier');
 
         await selectProcessInAssembly(page, scenario.processId);
 

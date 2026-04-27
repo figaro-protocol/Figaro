@@ -2,12 +2,12 @@ import { CapabilityModel, MechanismModel } from "@/lib/semantic/models";
 
 const OPERATOR_ROLE_NONE = 0;
 const OPERATOR_ROLE_MERCHANT = 1;
-const OPERATOR_ROLE_DRIVER = 2;
+const OPERATOR_ROLE_COURIER = 2;
 const OPERATOR_ROLE_BOTH = 3;
 
 function deriveOperatorRole(roleKind: string): number {
-    if (roleKind === "driver") return OPERATOR_ROLE_DRIVER;
-    if (roleKind === "merchant" || roleKind === "restaurant" || roleKind === "seller") {
+    if (roleKind === "courier") return OPERATOR_ROLE_COURIER;
+    if (roleKind === "merchant" || roleKind === "seller") {
         return OPERATOR_ROLE_MERCHANT;
     }
     return OPERATOR_ROLE_BOTH;

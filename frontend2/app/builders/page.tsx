@@ -131,7 +131,7 @@ export default function BuildersPage() {
                     Reference implementation
                 </h2>
                 <p className="text-sm text-gray-700 leading-relaxed">
-                    <Link href="/i/figaro-eats" className="text-black font-medium hover:underline">Figaro Eats</Link> — three roles (buyer, restaurant, driver), bonded ordering, Dutch-auction dispatch, attestation coordinator, operator registry, optional GHG disclosure. Level-1 + Level-2 + Level-3 composition. Forkable.
+                    <Link href="/i/local-commerce" className="text-black font-medium hover:underline">Figaro Local Commerce</Link> — three roles (buyer, merchant, courier), bonded ordering, Dutch-auction dispatch, attestation coordinator, operator registry, optional GHG disclosure. Generic across food, retail, and service verticals. Level-1 + Level-2 + Level-3 composition. Forkable.
                 </p>
             </section>
         </div>

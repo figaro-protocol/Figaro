@@ -1,9 +1,9 @@
 {
     "identity": {
-        "id": "figaro-eats-reference",
-        "name": "Figaro Eats",
-        "slug": "figaro-eats",
-        "description": "Reference institution assembly for bonded food delivery coordination.",
+        "id": "local-commerce-reference",
+        "name": "Figaro Local Commerce",
+        "slug": "local-commerce",
+        "description": "Reference assembly for bonded local-commerce coordination: three roles, one root commitment, two sub-orders, atomic settlement. Generic across local-commerce verticals (food, retail, services). Surfaced at /local-commerce (explainer) and /i/local-commerce (runtime instance).",
         "networkTargets": [
             "local-anvil",
             "evm-compatible"
@@ -17,7 +17,7 @@
             "description": "Bonded process coordination substrate."
         },
         {
-            "key": "dutchAuctionDriverMarket",
+            "key": "dutchAuctionCourierMarket",
             "required": false,
             "description": "High-risk delivery allocation mechanism."
         },
@@ -34,7 +34,7 @@
         {
             "key": "operatorRegistry",
             "required": false,
-            "description": "Permissionless merchant/driver self-registration."
+            "description": "Permissionless merchant/courier self-registration."
         },
         {
             "key": "manifestSchemaRegistry",
@@ -91,8 +91,8 @@
             "visibility": "primary",
             "recognizedRoles": [
                 "buyer",
-                "restaurant",
-                "driver"
+                "merchant",
+                "courier"
             ],
             "contractKeys": [
                 "core",
@@ -111,7 +111,7 @@
             "enabled": true,
             "visibility": "secondary",
             "recognizedRoles": [
-                "driver"
+                "courier"
             ],
             "contractKeys": [
                 "core",
@@ -120,15 +120,15 @@
             "moduleBindings": []
         },
         {
-            "mechanismId": "driver-auction",
+            "mechanismId": "courier-auction",
             "kind": "auction",
-            "displayName": "Driver Auction",
+            "displayName": "Courier Auction",
             "riskClass": "high-risk-economic",
             "enabled": true,
             "visibility": "primary",
             "contractKeys": [
                 "core",
-                "dutchAuctionDriverMarket"
+                "dutchAuctionCourierMarket"
             ],
             "moduleBindings": [
                 "mechanism-inspector"
@@ -142,8 +142,8 @@
             "enabled": true,
             "visibility": "secondary",
             "recognizedRoles": [
-                "restaurant",
-                "driver"
+                "merchant",
+                "courier"
             ],
             "contractKeys": [
                 "core",
@@ -159,7 +159,7 @@
             "enabled": true,
             "visibility": "secondary",
             "recognizedRoles": [
-                "restaurant"
+                "merchant"
             ],
             "contractKeys": [
                 "operatorRegistry"
@@ -182,10 +182,10 @@
             ]
         },
         {
-            "roleKind": "restaurant",
-            "displayName": "Restaurant",
+            "roleKind": "merchant",
+            "displayName": "Merchant",
             "visibility": "primary",
-            "defaultLandingView": "restaurant-view",
+            "defaultLandingView": "merchant-view",
             "sampleCapabilities": [
                 "accept-offer",
                 "declare-ready-for-pickup",
@@ -193,10 +193,10 @@
             ]
         },
         {
-            "roleKind": "driver",
-            "displayName": "Driver",
+            "roleKind": "courier",
+            "displayName": "Courier",
             "visibility": "primary",
-            "defaultLandingView": "driver-view",
+            "defaultLandingView": "courier-view",
             "sampleCapabilities": [
                 "claim-auction",
                 "declare-picked-up",
@@ -208,7 +208,7 @@
         {
             "viewId": "buyer-view",
             "kind": "overview",
-            "title": "Figaro Eats",
+            "title": "Figaro Local Commerce",
             "contextsAccepted": ["assembly", "role"],
             "moduleSlots": [
                 "role-switcher",
@@ -226,9 +226,9 @@
             ]
         },
         {
-            "viewId": "restaurant-view",
+            "viewId": "merchant-view",
             "kind": "role-dashboard",
-            "title": "Restaurant Dashboard",
+            "title": "Merchant Dashboard",
             "contextsAccepted": ["role", "process", "order"],
             "moduleSlots": [
                 "role-switcher",
@@ -243,9 +243,9 @@
             ]
         },
         {
-            "viewId": "driver-view",
+            "viewId": "courier-view",
             "kind": "role-dashboard",
-            "title": "Driver Dashboard",
+            "title": "Courier Dashboard",
             "contextsAccepted": ["role", "process", "order"],
             "moduleSlots": [
                 "role-switcher",
@@ -383,7 +383,7 @@
         "showAuditMode": false
     },
     "narrative": {
-        "assemblySummary": "Food delivery as a composed assembly built from bonded coordination, lifecycle coordinators, and a delivery auction.",
+        "assemblySummary": "Local commerce as a composed assembly built from bonded coordination, lifecycle coordinators, and a delivery auction. Generic across food / retail / service verticals.",
         "builderNotes": "Reference assembly only. Not the universal shape for future assemblies."
     },
     "builderMetadata": {

@@ -115,9 +115,9 @@ Self-enforcing agreements do not rely on a single defense:
    the blockchain provides immutable, timestamped evidence. Courts do not
    need to reconstruct what happened — it is already on-chain.
 
-## What Eats Proves
+## What Local Commerce Proves
 
-Figaro Eats is the first working archetype — a complete food delivery
+Figaro Local Commerce is the first working archetype — a complete food delivery
 institution rendered from the canonical runtime and composed from
 permissionless primitives:
 
@@ -131,9 +131,9 @@ permissionless primitives:
 Three roles — buyer, restaurant, driver — coordinate a real order
 lifecycle with real deposits. The process tree settles atomically.
 
-Prototype2 is the canonical runtime. Eats is the first proving ground.
+Prototype2 is the canonical runtime. Local Commerce is the first proving ground.
 Each order assembles a temporary institution around a bonded process
-tree, then dissolves at settlement. Eats is a template. Any community
+tree, then dissolves at settlement. Local Commerce is a template. Any community
 can fork it.
 
 ## The Opportunity

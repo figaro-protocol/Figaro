@@ -204,10 +204,10 @@ export default function Help() {
             <section className="container mx-auto px-6 pb-32 max-w-3xl border-t border-gray-100 pt-12">
                 <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-8">Getting started</p>
                 <div className="space-y-3">
-                    <a href="/figaro-eats" className="flex items-center justify-between px-6 py-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors group">
+                    <a href="/local-commerce" className="flex items-center justify-between px-6 py-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors group">
                         <div>
-                            <div className="text-sm font-semibold text-black">Try the protocol — Figaro Eats</div>
-                            <div className="text-xs text-gray-500 mt-1">A reference implementation of the full coordination stack.</div>
+                            <div className="text-sm font-semibold text-black">Try the protocol — Figaro Local Commerce</div>
+                            <div className="text-xs text-gray-500 mt-1">A reference implementation of the full coordination stack across food, retail, and services.</div>
                         </div>
                         <span className="text-gray-400 group-hover:text-black transition-colors ml-4">&rarr;</span>
                     </a>

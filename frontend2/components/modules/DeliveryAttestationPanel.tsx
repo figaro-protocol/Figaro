@@ -639,7 +639,7 @@ export function DeliveryAttestationPanel({
 }
 
 export function DeliveryAttestationModule({ context }: ModuleProps) {
-    if (context.selectedRoleKind !== "driver" || !context.processModel || !context.selectedOrder) {
+    if (context.selectedRoleKind !== "courier" || !context.processModel || !context.selectedOrder) {
         return null;
     }
 

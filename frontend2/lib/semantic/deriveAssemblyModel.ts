@@ -35,7 +35,7 @@ function deriveContractKeys(mechanism: MechanismAssembly, contracts: ContractRef
     const preferredKeys = mechanism.kind === "core"
         ? ["core"]
         : mechanism.kind === "auction"
-            ? ["core", "dutchAuctionDriverMarket"]
+            ? ["core", "dutchAuctionCourierMarket"]
             : mechanism.kind === "coordinator"
                 ? ["core", "deliveryCoordinator"]
                 : ["core"];

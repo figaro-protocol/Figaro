@@ -10,7 +10,7 @@ const RESTAURANT_SIGNAL_ORDER = ["declarePreparationStarted", "declareReadyForPi
 function LifecycleSignalPanel({ context, orderHash }: { context: ModuleProps["context"]; orderHash: string }) {
     const accentTone = context.skinBundle?.branding.branding.accentColor;
     const roleKind = context.selectedRoleKind;
-    const signalOrder = roleKind === "restaurant" ? RESTAURANT_SIGNAL_ORDER : DRIVER_SIGNAL_ORDER;
+    const signalOrder = roleKind === "merchant" ? RESTAURANT_SIGNAL_ORDER : DRIVER_SIGNAL_ORDER;
 
     const signalCapabilities = signalOrder.flatMap((signal) => {
         const capability = context.selectedOrder?.capabilities.find((candidate) =>

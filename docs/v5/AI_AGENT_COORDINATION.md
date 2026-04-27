@@ -113,7 +113,7 @@ firms would dissolve when transaction costs reach zero.
    by platform-imposed throttling.
 3. **No data moats**: Competitors and collaborators see the same signals.
    Advantage comes from better *interpretation*, not better *access*.
-4. **Composable agents**: An agent built for Eats delivery routing can be
+4. **Composable agents**: An agent built for Local Commerce delivery routing can be
    adapted for any other archetype that uses geohash + Dutch auction
    coordination.
 

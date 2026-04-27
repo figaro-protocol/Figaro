@@ -26,7 +26,7 @@
  * attestations are pinned to IPFS and submitted as Kleros evidence.
  *
  * This module is a permissionless primitive — any coordinator or institution
- * can use these attestation types. Not scoped to Eats.
+ * can use these attestation types. Not scoped to Local Commerce.
  */
 
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";

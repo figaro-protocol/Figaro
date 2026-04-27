@@ -48,7 +48,7 @@ function createCoordinatorProps(overrides?: Record<string, unknown>) {
                     moduleBindings: [],
                     contracts: [],
                     touchesAssets: false,
-                    recognizedRoles: ['driver'],
+                    recognizedRoles: ['courier'],
                     guarantees: [],
                     attachments: [],
                 },
@@ -83,7 +83,7 @@ function createDisclosureProps(overrides?: Record<string, unknown>) {
         moduleId: 'disclosure',
         binding: {} as never,
         context: {
-            selectedRoleKind: 'restaurant',
+            selectedRoleKind: 'merchant',
             processModel: {
                 processId: 'process-1',
             },
@@ -97,7 +97,7 @@ function createDisclosureProps(overrides?: Record<string, unknown>) {
                     moduleBindings: [],
                     contracts: [],
                     touchesAssets: false,
-                    recognizedRoles: ['restaurant'],
+                    recognizedRoles: ['merchant'],
                     guarantees: [],
                     attachments: [],
                 },

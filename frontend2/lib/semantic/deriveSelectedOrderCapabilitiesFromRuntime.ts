@@ -18,19 +18,19 @@ function findMechanism(mechanisms: MechanismModel[], kinds: string[]): Mechanism
 }
 
 function isSellerRole(roleKind: string | undefined): boolean {
-    return roleKind === "restaurant" || roleKind === "driver" || roleKind === "seller";
+    return roleKind === "merchant" || roleKind === "courier" || roleKind === "seller";
 }
 
-function resolveDisclosureRole(roleKind: string | undefined): "restaurant" | "driver" {
-    return roleKind === "driver" ? "driver" : "restaurant";
+function resolveDisclosureRole(roleKind: string | undefined): "merchant" | "courier" {
+    return roleKind === "courier" ? "courier" : "merchant";
 }
 
 function isDeliveryCoordinatorRole(roleKind: string | undefined): boolean {
-    return roleKind === "driver";
+    return roleKind === "courier";
 }
 
 function isRestaurantRole(roleKind: string | undefined): boolean {
-    return roleKind === "restaurant";
+    return roleKind === "merchant";
 }
 
 const RESTAURANT_SIGNAL_ORDER: DeliveryLifecycleSignalActionKind[] = [
@@ -39,7 +39,7 @@ const RESTAURANT_SIGNAL_ORDER: DeliveryLifecycleSignalActionKind[] = [
 ];
 
 function isAuctionClaimRole(roleKind: string | undefined): boolean {
-    return roleKind === "driver";
+    return roleKind === "courier";
 }
 
 export function deriveSelectedOrderCapabilitiesFromRuntime(

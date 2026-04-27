@@ -253,7 +253,7 @@ The protocol source of truth is the set of active submissions, not an off-chain 
 
 ## Offset Extension
 
-Carbon offset purchase is not implemented in the current generic GHG module or the current Eats specialization.
+Carbon offset purchase is not implemented in the current generic GHG module or the current Local Commerce specialization.
 
 That feature should be modeled as a process extension, not as a mutation of the disclosure graph itself.
 
@@ -300,7 +300,7 @@ The generic GHG layer must not encode app-specific business semantics such as:
 4. delivery lifecycle state machines
 5. app-specific offset marketplace integrations
 
-Those belong in downstream service-layer adapters such as Figaro Eats.
+Those belong in downstream service-layer adapters such as Figaro Local Commerce.
 
 ## Role Of The Prototype2 Dapp
 
@@ -311,7 +311,7 @@ Its GHG responsibilities are:
 1. expose the disclosure graph as a first-class protocol feature
 2. let users inspect boundaries, requirements, and active submissions
 3. support the generic workflow of opening boundaries, creating requirements, and submitting disclosures
-4. avoid any Eats-specific lifecycle assumptions
+4. avoid any local-commerce-specific lifecycle assumptions
 
 ## Relationship To The Core Primitive
 
@@ -336,7 +336,7 @@ Domain modules such as GHG then add:
 
 This is the right abstraction level for implementation work.
 
-The protocol should not drift downward into an Eats-specific special case.
+The protocol should not drift downward into a local-commerce-specific special case.
 
 The protocol should also not drift upward into a fake universal ontology for every possible institution or document.
 
@@ -379,4 +379,4 @@ Downstream apps may specialize the generic model, but they must preserve these m
 3. active submission remains the current protocol truth for that requirement
 4. supersession remains the mechanism for correction and replacement
 
-Figaro Eats is the first service-layer specialization of this model.
+Figaro Local Commerce is the first service-layer specialization of this model.

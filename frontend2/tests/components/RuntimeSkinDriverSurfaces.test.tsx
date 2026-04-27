@@ -52,7 +52,7 @@ function createProps(overrides?: Record<string, unknown>) {
         moduleId: 'job-market',
         binding: {} as never,
         context: {
-            selectedRoleKind: 'driver',
+            selectedRoleKind: 'courier',
             shellPresentation: {
                 title: 'Driver Guild',
             },

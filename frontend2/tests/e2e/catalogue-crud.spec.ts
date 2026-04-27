@@ -74,7 +74,7 @@ test.describe("Catalogue CRUD — seller editor (mock)", () => {
     test("catalogue editor visible for restaurant role", async ({ page }) => {
         await gotoAssemblyMock(page);
 
-        await switchToAssemblyRole(page, "restaurant");
+        await switchToAssemblyRole(page, "merchant");
 
         const editor = page.getByTestId("catalogue-editor-module");
         await expect(editor).toBeVisible({ timeout: 15000 });
@@ -83,7 +83,7 @@ test.describe("Catalogue CRUD — seller editor (mock)", () => {
     test("catalogue editor shows wallet-not-connected state in mock mode", async ({ page }) => {
         await gotoAssemblyMock(page);
 
-        await switchToAssemblyRole(page, "restaurant");
+        await switchToAssemblyRole(page, "merchant");
 
         const editor = page.getByTestId("catalogue-editor-module");
         await expect(editor).toBeVisible({ timeout: 15000 });

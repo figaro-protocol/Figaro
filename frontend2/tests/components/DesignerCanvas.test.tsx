@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { DesignerCanvas } from "@/components/core/designer/DesignerCanvas";
 import { DESIGNER_BLOCK_DND_MIME } from "@/components/core/designer/DesignerPalette";
-import { FIGARO_EATS_REFERENCE_ASSEMBLY } from "@/lib/shared/assembly";
+import { LOCAL_COMMERCE_REFERENCE_ASSEMBLY } from "@/lib/shared/assembly";
 import type { Assembly } from "@/lib/shared/assembly";
 
 function makeAssembly(overrides: Partial<Assembly> = {}): Assembly {
@@ -356,11 +356,11 @@ describe("DesignerCanvas", () => {
         expect(slot).not.toHaveAttribute("data-drop-over");
     });
 
-    it("renders the figaro-eats reference assembly without crashing", () => {
-        render(<DesignerCanvas assembly={FIGARO_EATS_REFERENCE_ASSEMBLY} />);
+    it("renders the local-commerce reference assembly without crashing", () => {
+        render(<DesignerCanvas assembly={LOCAL_COMMERCE_REFERENCE_ASSEMBLY} />);
         const canvas = screen.getByTestId("designer-canvas");
-        expect(canvas).toHaveAttribute("data-assembly-slug", "figaro-eats");
+        expect(canvas).toHaveAttribute("data-assembly-slug", "local-commerce");
         const identity = within(canvas).getByTestId("canvas-identity");
-        expect(within(identity).getByText(FIGARO_EATS_REFERENCE_ASSEMBLY.identity.name)).toBeInTheDocument();
+        expect(within(identity).getByText(LOCAL_COMMERCE_REFERENCE_ASSEMBLY.identity.name)).toBeInTheDocument();
     });
 });

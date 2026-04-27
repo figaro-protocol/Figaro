@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import figaroEatsReference from "@/lib/shared/assemblies/figaro-eats.reference.json";
+import localCommerceReference from "@/lib/shared/assemblies/local-commerce.reference.json";
 import { parseAssemblyDocument } from "@/lib/shared/assemblyParser";
 import { DEFAULT_CATALOGUE_SERVICE } from "@/lib/shared/catalogueService";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
@@ -15,14 +15,14 @@ import {
 describe("runtimeServices", () => {
     it("resolves default runtime services for assemblies with explicit binding keys", () => {
         const assembly = parseAssemblyDocument({
-            ...figaroEatsReference,
+            ...localCommerceReference,
             serviceBindings: [
                 { serviceKey: "catalogue", providerKey: "default-catalogue" },
                 { serviceKey: "evidenceTransport", providerKey: "default-ipfs" },
                 { serviceKey: "coordinationMessaging", providerKey: "default-coordination-messaging" },
                 { serviceKey: "handoffPersistence", providerKey: "default-handoff-persistence" },
             ],
-        }, "figaro-eats.reference.json");
+        }, "local-commerce.reference.json");
 
         const services = resolveRuntimeServices(assembly);
 
@@ -34,11 +34,11 @@ describe("runtimeServices", () => {
 
     it("falls back to default services when an assembly names an unknown provider key", () => {
         const assembly = parseAssemblyDocument({
-            ...figaroEatsReference,
+            ...localCommerceReference,
             serviceBindings: [
                 { serviceKey: "catalogue", providerKey: "custom-catalogue-provider" },
             ],
-        }, "figaro-eats.reference.json");
+        }, "local-commerce.reference.json");
 
         const services = resolveRuntimeServices(assembly);
 
@@ -57,11 +57,11 @@ describe("runtimeServices", () => {
         registerRuntimeServiceProvider("catalogue", providerKey, customCatalogueService);
 
         const assembly = parseAssemblyDocument({
-            ...figaroEatsReference,
+            ...localCommerceReference,
             serviceBindings: [
                 { serviceKey: "catalogue", providerKey },
             ],
-        }, "figaro-eats.reference.json");
+        }, "local-commerce.reference.json");
 
         const services = resolveRuntimeServices(assembly);
 
@@ -88,11 +88,11 @@ describe("runtimeServices", () => {
         registerRuntimeServiceProvider("catalogue", bindingProviderKey, bindingCatalogueService);
 
         const assembly = parseAssemblyDocument({
-            ...figaroEatsReference,
+            ...localCommerceReference,
             serviceBindings: [
                 { serviceKey: "catalogue", providerKey: assemblyProviderKey },
             ],
-        }, "figaro-eats.reference.json");
+        }, "local-commerce.reference.json");
 
         const services = resolveRuntimeServices(assembly, {
             bindingId: "binding:test-merchant:local-anvil",
@@ -111,11 +111,11 @@ describe("runtimeServices", () => {
         const assemblyProviderKey = "test-assembly-discovery-provider";
         const bindingProviderKey = "test-binding-catalogue-provider-keys";
         const assembly = parseAssemblyDocument({
-            ...figaroEatsReference,
+            ...localCommerceReference,
             serviceBindings: [
                 { serviceKey: "discovery", providerKey: assemblyProviderKey },
             ],
-        }, "figaro-eats.reference.json");
+        }, "local-commerce.reference.json");
 
         const providerKeys = resolveRuntimeServiceProviderKeys(assembly, {
             bindingId: "binding:test-merchant:local-anvil",

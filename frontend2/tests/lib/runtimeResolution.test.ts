@@ -30,7 +30,7 @@ const injectedRuntimeSource: RuntimeIdentityDataSource = {
             bindingId: 'binding-injected-runtime-merchant',
             subjectAddress: '0x2222222222222222222222222222222222222222',
             archetypeId: 'merchant-one-hop-delivery',
-            assemblySlug: 'figaro-eats',
+            assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [
                 {
@@ -66,11 +66,11 @@ const unmappedRuntimeSource: RuntimeIdentityDataSource = {
             bindingId: 'binding-unmapped-runtime-merchant',
             subjectAddress: '0x3333333333333333333333333333333333333333',
             archetypeId: 'merchant-one-hop-delivery',
-            assemblySlug: 'figaro-eats',
+            assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [
                 {
-                    roleKind: 'restaurant-operator',
+                    roleKind: 'merchant-operator',
                     scope: 'assembly',
                 },
             ],
@@ -94,12 +94,12 @@ const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
             bindingId: 'binding-transport-skin-merchant',
             subjectAddress: '0x4444444444444444444444444444444444444444',
             archetypeId: 'merchant-one-hop-delivery',
-            assemblySlug: 'figaro-eats',
+            assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [
                 {
                     roleKind: 'seller',
-                    assemblyRoleKinds: ['restaurant'],
+                    assemblyRoleKinds: ['merchant'],
                     scope: 'assembly',
                 },
             ],
@@ -127,10 +127,10 @@ const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
 };
 
 describe('runtime resolution', () => {
-    it('resolves a combined assembly runtime context for figaro-eats', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil');
+    it('resolves a combined assembly runtime context for local-commerce', () => {
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil');
 
-        expect(context?.artifact.assembly.identity.slug).toBe('figaro-eats');
+        expect(context?.artifact.assembly.identity.slug).toBe('local-commerce');
         expect(context?.boundSubjects).toHaveLength(1);
         expect(context?.boundSubjects[0]?.sellerCatalogueMetadata?.merchantId).toBe('bobs-pizza-palace');
         expect(context?.sourceMetadata).toEqual({
@@ -163,9 +163,9 @@ describe('runtime resolution', () => {
     });
 
     it('accepts an injected runtime data source instead of the default fixture registry', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil', injectedRuntimeSource);
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil', injectedRuntimeSource);
 
-        expect(context?.artifact.assembly.identity.slug).toBe('figaro-eats');
+        expect(context?.artifact.assembly.identity.slug).toBe('local-commerce');
         expect(context?.boundSubjects).toHaveLength(1);
         expect(context?.boundSubjects[0]?.displayName).toBe('Injected Runtime Merchant');
         expect(context?.boundSubjects[0]?.sellerCatalogueMetadata?.merchantId).toBe('injected-runtime-merchant');
@@ -177,7 +177,7 @@ describe('runtime resolution', () => {
     });
 
     it('prefers runtime-bound assembly roles for the connected subject address', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil');
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil');
         const roleSelection = resolveRuntimeRoleSelection(
             '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
             context?.boundSubjects ?? [],
@@ -186,13 +186,13 @@ describe('runtime resolution', () => {
 
         expect(roleSelection.matchedSubject?.displayName).toBe("Bob's Pizza Palace");
         expect(roleSelection.matchedSubject?.bindingId).toBe('binding:bobs-pizza-palace:local-anvil');
-        expect(roleSelection.roleHints).toEqual(['restaurant']);
-        expect(roleSelection.availableRoles.map((role) => role.roleKind)).toEqual(['restaurant']);
-        expect(roleSelection.preferredRoleKind).toBe('restaurant');
+        expect(roleSelection.roleHints).toEqual(['merchant']);
+        expect(roleSelection.availableRoles.map((role) => role.roleKind)).toEqual(['merchant']);
+        expect(roleSelection.preferredRoleKind).toBe('merchant');
     });
 
     it('resolves runtime-bound shell metadata from the matched subject', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil');
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil');
         const roleSelection = resolveRuntimeRoleSelection(
             '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
             context?.boundSubjects ?? [],
@@ -215,7 +215,7 @@ describe('runtime resolution', () => {
     });
 
     it('resolves a runtime skin bundle from the matched subject shell presentation', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil');
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil');
         const roleSelection = resolveRuntimeRoleSelection(
             '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
             context?.boundSubjects ?? [],
@@ -236,19 +236,19 @@ describe('runtime resolution', () => {
     });
 
     it('builds a runtime snapshot from the selected bound subject without a parallel model', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil');
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil');
         const snapshot = resolveSemanticRuntimeSnapshot(context!, {
             selectedBoundSubject: context?.boundSubjects[0],
         });
 
         expect(snapshot.runtime.selectedBindingId).toBe('binding:bobs-pizza-palace:local-anvil');
-        expect(snapshot.runtime.selectedRole?.roleKind).toBe('restaurant');
+        expect(snapshot.runtime.selectedRole?.roleKind).toBe('merchant');
         expect(snapshot.runtime.selectedShellPresentation.title).toBe("Bob's Pizza Palace");
         expect(snapshot.runtime.boundSubjects[0]?.subject.displayName).toBe("Bob's Pizza Palace");
         expect(snapshot.runtime.boundSubjects[0]?.shellPresentation.assetDocument?.branding?.themeClass).toBe('runtime-shell-pizza');
         expect(snapshot.runtime.selectedServiceProviderKeys.catalogue).toBe('default-catalogue');
         expect(snapshot.runtime.boundSubjects[0]?.serviceProviderKeys.evidenceTransport).toBe('default-ipfs');
-        expect(snapshot.runtime.availableRoles.map((role) => role.roleKind)).toEqual(['restaurant']);
+        expect(snapshot.runtime.availableRoles.map((role) => role.roleKind)).toEqual(['merchant']);
     });
 
     it('resolves a runtime snapshot directly from a bound subject address', () => {
@@ -256,9 +256,9 @@ describe('runtime resolution', () => {
             '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
         );
 
-        expect(snapshot?.assembly.identity.slug).toBe('figaro-eats');
+        expect(snapshot?.assembly.identity.slug).toBe('local-commerce');
         expect(snapshot?.runtime.selectedBindingId).toBe('binding:bobs-pizza-palace:local-anvil');
-        expect(snapshot?.runtime.selectedRole?.roleKind).toBe('restaurant');
+        expect(snapshot?.runtime.selectedRole?.roleKind).toBe('merchant');
         expect(snapshot?.runtime.selectedShellPresentation.title).toBe("Bob's Pizza Palace");
     });
 
@@ -301,7 +301,7 @@ describe('runtime resolution', () => {
     });
 
     it('hydrates a remote skin bundle and prefers it over seller metadata fallback', async () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil', transportSkinRuntimeSource);
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil', transportSkinRuntimeSource);
         const roleSelection = resolveRuntimeRoleSelection(
             '0x4444444444444444444444444444444444444444',
             context?.boundSubjects ?? [],
@@ -350,7 +350,7 @@ describe('runtime resolution', () => {
     });
 
     it('falls back to seller metadata skin when remote asset hydration fails', async () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil', transportSkinRuntimeSource);
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil', transportSkinRuntimeSource);
         const roleSelection = resolveRuntimeRoleSelection(
             '0x4444444444444444444444444444444444444444',
             context?.boundSubjects ?? [],
@@ -379,7 +379,7 @@ describe('runtime resolution', () => {
     });
 
     it('prefers explicit assembly role mappings over raw binding role labels', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil', injectedRuntimeSource);
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil', injectedRuntimeSource);
         const roleSelection = resolveRuntimeRoleSelection(
             '0x2222222222222222222222222222222222222222',
             context?.boundSubjects ?? [],
@@ -392,7 +392,7 @@ describe('runtime resolution', () => {
     });
 
     it('does not infer assembly roles from raw binding role labels when explicit mappings are missing', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil', unmappedRuntimeSource);
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil', unmappedRuntimeSource);
         const roleSelection = resolveRuntimeRoleSelection(
             '0x3333333333333333333333333333333333333333',
             context?.boundSubjects ?? [],
@@ -517,7 +517,7 @@ describe('runtime resolution', () => {
     });
 
     it('uses explicit mechanism recognizedRoles when assembly modules are not implied by capabilities', () => {
-        const context = resolveAssemblyRuntimeContext('figaro-eats', 'local-anvil');
+        const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil');
         const buyerRole = context?.artifact.model.roles.find((role) => role.roleKind === 'buyer');
         const scopedMechanisms = resolveRoleScopedMechanismSelection(
             buyerRole,
