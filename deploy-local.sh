@@ -3,18 +3,19 @@ set -e
 
 # Deploy the full Figaro Protocol stack to local Anvil and auto-write
 # addresses into:
-#   frontend/.env.local             (frontend)
+#   frontend2/.env.local            (frontend)
 #   .deployments/local.json         (downstream/manual consumption)
 #
-# Stack: FigaroCore, AttestationCoordinator, SchemaRegistry, OperatorRegistry,
-#        DutchAuction, FigToken, MockToken, MockPermitToken.
+# Stack: FigaroCore, AttestationCoordinator, SchemaRegistry,
+#        SchemaRegistrationHelper, OperatorRegistry, DutchAuction, FigToken,
+#        MockToken, MockPermitToken, FigaroBatchVerifier.
 #
 # Usage:
 #   ./deploy-local.sh                                  # Anvil (default)
 #   RPC_URL=https://... PRIVATE_KEY=0x... ./deploy-local.sh  # Any chain
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CORE_ENV="$SCRIPT_DIR/frontend/.env.local"
+CORE_ENV="$SCRIPT_DIR/frontend2/.env.local"
 DEPLOY_DIR="$SCRIPT_DIR/.deployments"
 CORE_MANIFEST="$DEPLOY_DIR/local.json"
 
@@ -47,6 +48,7 @@ TOKEN_ADDR=$(echo "$FORGE_OUT"       | grep 'MockToken deployed at:'            
 PERMIT_ADDR=$(echo "$FORGE_OUT"      | grep 'MockPermitToken deployed at:'        | grep -oE '0x[0-9a-fA-F]+')
 ATTESTATION_ADDR=$(echo "$FORGE_OUT" | grep 'AttestationCoordinator deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 SCHEMA_ADDR=$(echo "$FORGE_OUT"      | grep 'SchemaRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
+SCHEMA_HELPER_ADDR=$(echo "$FORGE_OUT" | grep 'SchemaRegistrationHelper deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 OPERATOR_ADDR=$(echo "$FORGE_OUT"    | grep 'OperatorRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 AUCTION_ADDR=$(echo "$FORGE_OUT"     | grep 'DutchAuction deployed at:'           | grep -oE '0x[0-9a-fA-F]+')
 FIG_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FigToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
@@ -79,6 +81,7 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_TOKEN_ADDRESS"             "$TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS"      "$PERMIT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ATTESTATION_COORDINATOR"   "$ATTESTATION_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_SCHEMA_REGISTRY"           "$SCHEMA_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER" "$SCHEMA_HELPER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_OPERATOR_REGISTRY"         "$OPERATOR_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_DUTCH_AUCTION"             "$AUCTION_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FIG_TOKEN_ADDRESS"         "$FIG_TOKEN_ADDR"
@@ -96,6 +99,7 @@ cat > "$CORE_MANIFEST" <<EOF
   "permitTokenAddress": "$PERMIT_ADDR",
   "attestationCoordinator": "$ATTESTATION_ADDR",
   "schemaRegistry": "$SCHEMA_ADDR",
+  "schemaRegistrationHelper": "$SCHEMA_HELPER_ADDR",
   "operatorRegistry": "$OPERATOR_ADDR",
   "dutchAuction": "$AUCTION_ADDR",
   "figToken": "$FIG_TOKEN_ADDR",
@@ -111,6 +115,7 @@ echo "   NEXT_PUBLIC_TOKEN_ADDRESS=$TOKEN_ADDR"
 echo "   NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=$PERMIT_ADDR"
 echo "   NEXT_PUBLIC_ATTESTATION_COORDINATOR=$ATTESTATION_ADDR"
 echo "   NEXT_PUBLIC_SCHEMA_REGISTRY=$SCHEMA_ADDR"
+echo "   NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=$SCHEMA_HELPER_ADDR"
 echo "   NEXT_PUBLIC_OPERATOR_REGISTRY=$OPERATOR_ADDR"
 echo "   NEXT_PUBLIC_DUTCH_AUCTION=$AUCTION_ADDR"
 echo "   NEXT_PUBLIC_FIG_TOKEN_ADDRESS=$FIG_TOKEN_ADDR"

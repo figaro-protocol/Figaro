@@ -35,7 +35,7 @@ import {
 // Running tests in parallel causes nonce conflicts (multiple txs from the same
 // address submitted simultaneously). Force serial execution for this file.
 test.describe.configure({ mode: 'serial' });
-import { gotoHome, fillCreateOrderForm, submitFirstOrder, openSubOrderModal, fillSubOrderModal, submitSubOrder, waitForFirstOrderUiSync } from './test-helpers';
+import { gotoHome, fillCreateOrderForm, submitFirstOrder, openSubOrderModal, fillSubOrderModal, submitSubOrder, waitForFirstOrderUiSync, switchToGraphTab } from './test-helpers';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const BUYER = ANVIL_ACCOUNTS[0];
@@ -76,6 +76,7 @@ test.describe('Lifecycle — commitOrder + resolveProcess (devnet)', () => {
             await waitAndApproveIfNeeded(page);
             await submitFirstOrder(page);
             await waitForCreateConfirm(page);
+            await switchToGraphTab(page);
 
             // Order appears in graph as Active immediately (dual-signed)
             await page.waitForSelector('[data-testid^="order-node-"]', { timeout: 15000 });

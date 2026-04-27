@@ -607,9 +607,27 @@ export async function assertOrderActive(page: Page, orderHash: string): Promise<
 }
 
 export async function resolveVisibleProcess(page: Page): Promise<void> {
+    // btn-resolve-process lives on the Orders tab (semantic process workspace).
+    // Switch there if needed.
+    const ordersTab = page.getByRole('tab', { name: 'Create Order' });
+    const isSelected = await ordersTab.getAttribute('aria-selected').catch(() => null);
+    if (isSelected !== 'true') {
+        await ordersTab.click().catch(() => {});
+    }
+
+    // executeTransactionCapability calls window.confirm before the resolve tx;
+    // Playwright auto-dismisses unless we accept first.
+    page.once('dialog', (dialog) => { dialog.accept().catch(() => {}); });
+
     const btn = page.getByTestId('btn-resolve-process');
     await btn.waitFor({ timeout: 10000 });
     await btn.click();
+
+    // After tx confirms, order-node testids only render on the Graph tab.
+    // Switch there to assert the resolved state.
+    const graphTab = page.getByRole('tab', { name: 'Graph' });
+    await graphTab.click().catch(() => {});
+
     await page.waitForFunction(() => {
         const nodes = Array.from(document.querySelectorAll('[data-testid^="order-node-"]'));
         return nodes.length > 0 && nodes.every(n => n.getAttribute('data-order-state') === 'resolved');

@@ -151,8 +151,17 @@ export async function waitAndApproveIfNeeded(page: Page): Promise<void> {
 }
 
 export async function waitForCreateConfirm(page: Page): Promise<void> {
+    // Tab-agnostic confirmation: order-node-* only appears on the Graph tab,
+    // but the success paragraph and form reset happen on the Create Order tab
+    // where submit was clicked. Treat any of these as success.
     await page.waitForFunction(
-        () => document.querySelectorAll('[data-testid^="order-node-"]').length > 0,
+        () => {
+            if (document.querySelectorAll('[data-testid^="order-node-"]').length > 0) return true;
+            const bodyText = document.body.textContent || '';
+            if (bodyText.includes('Commitment submitted successfully')) return true;
+            if (bodyText.includes('Order confirmed on-chain')) return true;
+            return false;
+        },
         null,
         { timeout: 60000 }
     );
@@ -333,11 +342,24 @@ export async function submitFirstOrder(page: Page) {
     // Click the submit button in all modes (mock and devnet).
     // In mock mode this triggers the useFigaroActions mock path which calls
     // setMockIsSuccess(true) → form reset → setMockApproved(false).
+    // In devnet mode this opens the AgreementPreviewModal (pre-sign gate
+    // landed in the Web2 audit Priority-4 fix); we auto-click "Confirm &
+    // sign" to proceed to the wallet signing flow.
     // Callers are responsible for waiting for the resulting order node or
     // on-chain confirmation after this returns.
     await submitBtn.waitFor({ timeout: 30000 });
     await expect(submitBtn).toBeEnabled({ timeout: 15000 });
     await clickWithRetry(submitBtn);
+
+    // Devnet pre-sign modal — only appears when a real signing flow runs.
+    // Mock mode bypasses signing, so the modal won't show and we move on.
+    const previewModal = page.getByTestId('agreement-preview-modal');
+    try {
+        await previewModal.waitFor({ state: 'visible', timeout: 2000 });
+        await page.getByTestId('preview-confirm').click();
+    } catch {
+        // Modal didn't appear within 2s — mock mode or modal disabled.
+    }
 }
 
 /**
@@ -463,6 +485,17 @@ export async function submitSubOrder(page: Page) {
         const btn = m?.querySelector('[data-testid="suborder-btn-submit"]') as HTMLElement | null;
         btn?.click();
     });
+
+    // Devnet pre-sign modal — sub-orders go through the same commit flow,
+    // so the AgreementPreviewModal opens here too. Mock mode bypasses it.
+    const previewModal = page.getByTestId('agreement-preview-modal');
+    try {
+        await previewModal.waitFor({ state: 'visible', timeout: 2000 });
+        await page.getByTestId('preview-confirm').click();
+    } catch {
+        // Modal didn't appear within 2s — mock mode or modal disabled.
+    }
+
     // Modal closing is the cross-tab signal that the sub-order was accepted.
     // (Previously this waited for order-node-* DOM count, which only exists on
     // the Graph tab — silently burning 30s on tests that submit from the
