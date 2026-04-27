@@ -35,7 +35,7 @@ import {
 // Running tests in parallel causes nonce conflicts (multiple txs from the same
 // address submitted simultaneously). Force serial execution for this file.
 test.describe.configure({ mode: 'serial' });
-import { gotoHome, fillCreateOrderForm, submitFirstOrder, openSubOrderModal, fillSubOrderModal, submitSubOrder, waitForFirstOrderUiSync, switchToGraphTab } from './test-helpers';
+import { gotoHome, fillCreateOrderForm, submitFirstOrder, openSubOrderModal, fillSubOrderModal, submitSubOrder, waitForFirstOrderUiSync, switchToGraphTab, switchToOrdersTab } from './test-helpers';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const BUYER = ANVIL_ACCOUNTS[0];
@@ -154,7 +154,9 @@ test.describe('Lifecycle — 4-seller diamond (devnet)', () => {
                 // ── Step 4: wait for the new order node (graph-driven sync) ─
                 // watchContractEvent polls independently of useWaitForTransactionReceipt.
                 // When the OrderCreated event is picked up, the graph re-renders
-                // with the new node.  Use a generous 90 s budget.
+                // with the new node. Switch to Graph tab to observe it (modal
+                // closes when the tab changes too).
+                await switchToGraphTab(page);
                 await page.waitForFunction(
                     (n: number) => document.querySelectorAll('[data-testid^="order-node-"]').length >= n,
                     expectedNodes,
@@ -170,6 +172,8 @@ test.describe('Lifecycle — 4-seller diamond (devnet)', () => {
 
             // ── Order 1 (commitOrder: buyer → seller1) ─────────────────────
             await submitDevnetFirstOrder(SELLER1, '0.04');
+            // order-node-* only renders on Graph tab; switch to verify.
+            await switchToGraphTab(page);
             await page.waitForSelector('[data-testid^="order-node-"]', { timeout: 15000 });
             const [order1Id] = await getNodeIds(page);
             // Order is Active immediately (dual-signed commit)
@@ -200,6 +204,8 @@ test.describe('Lifecycle — 4-seller diamond (devnet)', () => {
             const order2Id = idsAfter2.find((id) => id !== order1Id)!;
 
             // ── Order 3 (subOrder: buyer → seller3, parent: order1) ────────
+            // btn-add-suborder lives on the Orders tab; switch back from Graph.
+            await switchToOrdersTab(page);
             // Use JS click to bypass pointer-event interception from the manifest form.
             await page.getByTestId(`btn-add-suborder-${order1Id}`).waitFor({ timeout: 15000 });
             await page.evaluate((tid) => {
@@ -215,6 +221,7 @@ test.describe('Lifecycle — 4-seller diamond (devnet)', () => {
 
             // ── Order 4 (subOrder: buyer → seller4, parents: order2 + order3) ──
             // All orders are Active at commit. Use order1's button.
+            await switchToOrdersTab(page);
             await page.getByTestId(`btn-add-suborder-${order1Id}`).waitFor({ timeout: 15000 });
             await page.evaluate((tid) => {
                 const btn = document.querySelector<HTMLButtonElement>(`[data-testid="${tid}"]`);

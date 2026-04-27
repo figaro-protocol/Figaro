@@ -355,10 +355,10 @@ export async function submitFirstOrder(page: Page) {
     // Mock mode bypasses signing, so the modal won't show and we move on.
     const previewModal = page.getByTestId('agreement-preview-modal');
     try {
-        await previewModal.waitFor({ state: 'visible', timeout: 2000 });
+        await previewModal.waitFor({ state: 'visible', timeout: 5000 });
         await page.getByTestId('preview-confirm').click();
     } catch {
-        // Modal didn't appear within 2s — mock mode or modal disabled.
+        // Modal didn't appear within 5s — mock mode or modal disabled.
     }
 }
 
@@ -490,10 +490,10 @@ export async function submitSubOrder(page: Page) {
     // so the AgreementPreviewModal opens here too. Mock mode bypasses it.
     const previewModal = page.getByTestId('agreement-preview-modal');
     try {
-        await previewModal.waitFor({ state: 'visible', timeout: 2000 });
+        await previewModal.waitFor({ state: 'visible', timeout: 5000 });
         await page.getByTestId('preview-confirm').click();
     } catch {
-        // Modal didn't appear within 2s — mock mode or modal disabled.
+        // Modal didn't appear within 5s — mock mode or modal disabled.
     }
 
     // Modal closing is the cross-tab signal that the sub-order was accepted.
