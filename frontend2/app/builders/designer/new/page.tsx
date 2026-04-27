@@ -13,9 +13,9 @@ import {
     isRootOrder,
     mergeSyntheticParent,
     startSyntheticSession,
-    swapSyntheticMechanism,
+    swapSyntheticFulfilmentMethod,
     type AgreementEdits,
-    type FormationMechanism,
+    type CanonicalFulfilmentMethod,
     type SyntheticProcessSession,
 } from "@/lib/designer/syntheticProcess";
 import {
@@ -151,11 +151,11 @@ export default function NewDesignerPage() {
     );
 
     const handleSwapMechanism = useCallback(
-        (childOrderId: string, mechanism: FormationMechanism) => {
+        (childOrderId: string, method: CanonicalFulfilmentMethod) => {
             setOrders((prev) => {
                 const child = prev.find((o) => o.id === childOrderId);
                 if (!child) return prev;
-                const updated = swapSyntheticMechanism(child, mechanism);
+                const updated = swapSyntheticFulfilmentMethod(child, method);
                 return prev.map((o) => (o.id === childOrderId ? updated : o));
             });
         },
@@ -327,7 +327,7 @@ export default function NewDesignerPage() {
                     </p>
                 )}
                 <p className="mt-6 text-xs text-neutral-500">
-                    <strong>Drag</strong> a node&apos;s green handle to empty space to add a sub-order, or onto another node to merge it as an additional parent (enables diamond / fan-in). <strong>Click</strong> any edge pill to swap the formation mechanism. <strong>Click</strong> any node to modify its baseline-graph clauses (Geo · GHG · Topology) or to delete it. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
+                    <strong>Drag</strong> a node&apos;s green handle to empty space to add a sub-order, or onto another node to merge it as an additional parent (enables diamond / fan-in). <strong>Click</strong> any edge pill to swap the fulfilment method (consume on-site · pickup · 3 delivery variants). <strong>Click</strong> any node to modify its baseline-graph clauses (Geo · GHG · Topology) or to delete it. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
                 </p>
             </div>
             {selectedOrderId && (() => {

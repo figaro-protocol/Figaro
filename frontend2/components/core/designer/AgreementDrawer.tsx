@@ -29,8 +29,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Order } from "@/lib/core/store";
 import type { ManifestFields } from "@/lib/core/encoding";
 import {
-    deriveFormationMechanism,
-    FORMATION_MECHANISM_LABELS,
+    deriveFulfilmentMethod,
+    FULFILMENT_METHOD_LABELS,
     readAgreementFields,
     type AgreementEdits,
 } from "@/lib/designer/syntheticProcess";
@@ -153,7 +153,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
         setFields(readAgreementFields(order));
     }, [order.id, order.agreementHash]);
 
-    const mechanism = deriveFormationMechanism(order);
+    const fulfilmentMethod = deriveFulfilmentMethod(order);
     const summary = summarizeAgreement(loadAgreement(order.agreementHash));
     const topology = summary?.topology;
 
@@ -233,8 +233,8 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
             {/* Body — scrollable, sections rendered only when their pill is on */}
             <div className="flex-1 overflow-y-auto px-5 py-4 text-sm">
                 <p className="text-[11px] text-neutral-500 mb-3">
-                    agreementHash recomputes live as you edit. Mechanism is{" "}
-                    <span className="font-semibold text-neutral-700">{FORMATION_MECHANISM_LABELS[mechanism]}</span>{" "}
+                    agreementHash recomputes live as you edit. Fulfilment method is{" "}
+                    <span className="font-semibold text-neutral-700">{FULFILMENT_METHOD_LABELS[fulfilmentMethod]}</span>{" "}
                     (change via the edge pill on the canvas).
                 </p>
                 <p className="font-mono text-[10px] text-neutral-500 break-all mb-5" data-testid="drawer-agreement-hash">

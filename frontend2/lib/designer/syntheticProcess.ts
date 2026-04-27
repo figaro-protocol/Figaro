@@ -217,54 +217,74 @@ export function mergeSyntheticParent(
     };
 }
 
-// ── Formation mechanism per child order ─────────────────────────────────────
+// ── Fulfilment method per child order ──────────────────────────────────────
 
-export type FormationMechanism = "direct" | "dutch-auction";
+import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
+export type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 
-export const FORMATION_MECHANISM_LABELS: Record<FormationMechanism, string> = {
-    "direct": "Direct commit",
-    "dutch-auction": "Dutch auction",
+export const FULFILMENT_METHOD_LABELS: Record<CanonicalFulfilmentMethod, string> = {
+    "consume-onsite": "Consume on-site",
+    "pickup": "Pickup",
+    "deliver:buyer-assigned": "Delivery (buyer chooses courier)",
+    "deliver:seller-assigned": "Delivery (merchant arranges courier)",
+    "deliver:dutch-auction": "Delivery (Dutch-auction courier)",
 };
 
-/** Read the child's current formation mechanism from its committed agreement.
- *  Auction is now implicit in the canonical fulfilment method enum:
- *  `deliver:dutch-auction` is the only Dutch-auction-mediated case among live
- *  methods. Future auction allocators would land as additional method values. */
-export function deriveFormationMechanism(order: Order): FormationMechanism {
+/** Short labels for the inline edge pill (limited horizontal space). */
+export const FULFILMENT_METHOD_PILL_LABELS: Record<CanonicalFulfilmentMethod, string> = {
+    "consume-onsite": "On-site",
+    "pickup": "Pickup",
+    "deliver:buyer-assigned": "Deliver · buyer",
+    "deliver:seller-assigned": "Deliver · seller",
+    "deliver:dutch-auction": "Deliver · auction",
+};
+
+/**
+ * Default fulfilment method when an order's agreement carries no fulfilment
+ * section. Picked as the most common case for a delivery sub-order — the
+ * merchant arranges the courier directly. Edge pill swaps it via
+ * `swapSyntheticFulfilmentMethod`.
+ */
+const DEFAULT_FULFILMENT_METHOD: CanonicalFulfilmentMethod = "deliver:seller-assigned";
+
+/** Read the child's current fulfilment method from its committed agreement. */
+export function deriveFulfilmentMethod(order: Order): CanonicalFulfilmentMethod {
     const summary = summarizeAgreement(loadAgreement(order.agreementHash));
     const method = summary?.fulfilment?.method;
-    if (typeof method === "string" && method === "deliver:dutch-auction") {
-        return "dutch-auction";
+    if (typeof method === "string" && (FULFILMENT_METHOD_LABELS as Record<string, string>)[method]) {
+        return method as CanonicalFulfilmentMethod;
     }
-    return "direct";
+    return DEFAULT_FULFILMENT_METHOD;
+}
+
+function manifestFieldsForFulfilmentMethod(method: CanonicalFulfilmentMethod): ManifestFields {
+    const fields: ManifestFields = { origin: "—", destination: "—", fulfilmentMethod: method };
+    if (method === "deliver:dutch-auction") {
+        fields.auctionType = "dutch-auction";
+    }
+    return fields;
 }
 
 /**
- * Swap the formation mechanism on a child order. Rebuilds its agreement with
- * (or without) the fulfilment section reflecting the new mechanism, persists
- * the new agreement, and returns an Order with the updated agreementHash.
+ * Swap the fulfilment method on a child order. Rebuilds its agreement with
+ * the fulfilment section reflecting the new method, persists the new
+ * agreement, and returns an Order with the updated agreementHash.
  *
  * The order id stays stable in synthetic mode — see mergeSyntheticParent.
  */
-export function swapSyntheticMechanism(
+export function swapSyntheticFulfilmentMethod(
     child: Order,
-    mechanism: FormationMechanism,
+    method: CanonicalFulfilmentMethod,
 ): Order {
     const existingAgreement = loadAgreement(child.agreementHash);
     const existingParents = getTopologyParentOrderHashes(existingAgreement) ?? [];
-
-    const manifestFields: ManifestFields = { origin: "—", destination: "—" };
-    if (mechanism === "dutch-auction") {
-        manifestFields.fulfilmentMethod = "deliver:dutch-auction";
-        manifestFields.auctionType = "dutch-auction";
-    }
 
     const newAgreement = buildOrderAgreement({
         buyer: child.buyer as `0x${string}`,
         seller: child.seller as `0x${string}`,
         currency: (child.currency ?? ZERO_ADDRESS) as `0x${string}`,
         payment: child.payment,
-        manifestFields,
+        manifestFields: manifestFieldsForFulfilmentMethod(method),
         parentOrderHashes: existingParents,
     });
     const newAgreementHash = computeAgreementHash(newAgreement);
@@ -301,17 +321,19 @@ export function editSyntheticAgreement(
 ): Order {
     const existingAgreement = loadAgreement(order.agreementHash);
     const existingParents = getTopologyParentOrderHashes(existingAgreement) ?? [];
-    const existingMechanism = deriveFormationMechanism(order);
+    const existingMethod = deriveFulfilmentMethod(order);
 
-    // Mechanism is preserved across edits — the user changes mechanism via
-    // the edge pill, not the section editor.
+    // Fulfilment method is preserved across edits — the user changes it via
+    // the edge pill, not the section editor. If the caller's manifest patch
+    // already specifies fulfilmentMethod, that wins.
     const baseFields: ManifestFields = edits.manifestFields ?? {
         origin: "—",
     };
     const manifestFields: ManifestFields = { ...baseFields };
-    if (existingMechanism === "dutch-auction") {
-        manifestFields.fulfilmentMethod = "deliver:dutch-auction";
-        manifestFields.auctionType = "dutch-auction";
+    if (manifestFields.fulfilmentMethod === undefined) {
+        const inherited = manifestFieldsForFulfilmentMethod(existingMethod);
+        manifestFields.fulfilmentMethod = inherited.fulfilmentMethod;
+        if (inherited.auctionType) manifestFields.auctionType = inherited.auctionType;
     }
 
     const currency = (edits.currency ?? order.currency ?? ZERO_ADDRESS) as `0x${string}`;

@@ -44,13 +44,23 @@ const HANDOFF_MODE_ALIASES: Record<string, string> = {
  * combiner translates this to `deliver:dutch-auction`. New callers pass the
  * canonical value directly and it passes through.
  */
-const CANONICAL_FULFILMENT_METHODS = new Set([
+/**
+ * The five canonical fulfilment-method values, ordered for UI display
+ * (least → most coordination overhead). Single canonical enum capturing
+ * both modality (consume-onsite / pickup / deliver) AND who-organizes-
+ * the-fulfiller (buyer-assigned / seller-assigned / dutch-auction).
+ */
+export const CANONICAL_FULFILMENT_METHODS_LIST = [
     "consume-onsite",
     "pickup",
     "deliver:buyer-assigned",
     "deliver:seller-assigned",
     "deliver:dutch-auction",
-]);
+] as const;
+
+export type CanonicalFulfilmentMethod = typeof CANONICAL_FULFILMENT_METHODS_LIST[number];
+
+const CANONICAL_FULFILMENT_METHODS = new Set<string>(CANONICAL_FULFILMENT_METHODS_LIST);
 
 function combineToCanonicalFulfilmentMethod(
     fulfilmentMethod: string | undefined,

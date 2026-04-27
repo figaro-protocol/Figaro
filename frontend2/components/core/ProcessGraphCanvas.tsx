@@ -51,10 +51,12 @@ import {
 } from "@/lib/mechanisms/useGHGDisclosure";
 import { DISCLOSURE_KIND_LABELS } from "@/lib/mechanisms/contracts";
 import {
-    deriveFormationMechanism,
-    FORMATION_MECHANISM_LABELS,
-    type FormationMechanism,
+    deriveFulfilmentMethod,
+    FULFILMENT_METHOD_LABELS,
+    FULFILMENT_METHOD_PILL_LABELS,
+    type CanonicalFulfilmentMethod,
 } from "@/lib/designer/syntheticProcess";
+import { CANONICAL_FULFILMENT_METHODS_LIST } from "@/lib/core/orderAgreement";
 
 // ── Public types ────────────────────────────────────────────────────────────
 
@@ -359,23 +361,26 @@ const nodeTypes: NodeTypes = {
     order: OrderNode,
 };
 
-// ── Custom edge: mechanism pill ─────────────────────────────────────────────
+// ── Custom edge: fulfilment-method pill ────────────────────────────────────
 
 interface MechanismEdgeData {
-    mechanism: FormationMechanism;
-    /** Child order id — the order whose formation mechanism this edge represents. */
+    method: CanonicalFulfilmentMethod;
+    /** Child order id — the order whose fulfilment method this edge represents. */
     childOrderId: string;
     /** When set, the pill is interactive and clicking it offers a swap. */
-    onSwap?: (childOrderId: string, mechanism: FormationMechanism) => void;
+    onSwap?: (childOrderId: string, method: CanonicalFulfilmentMethod) => void;
     [key: string]: unknown;
 }
 
-const MECHANISM_PILL_STYLE: Record<FormationMechanism, string> = {
-    "direct": "bg-white text-neutral-700 border-neutral-300",
-    "dutch-auction": "bg-amber-50 text-amber-800 border-amber-400",
+const FULFILMENT_METHOD_PILL_STYLE: Record<CanonicalFulfilmentMethod, string> = {
+    "consume-onsite": "bg-white text-neutral-700 border-neutral-300",
+    "pickup": "bg-white text-neutral-700 border-neutral-300",
+    "deliver:buyer-assigned": "bg-white text-neutral-700 border-neutral-300",
+    "deliver:seller-assigned": "bg-white text-neutral-700 border-neutral-300",
+    "deliver:dutch-auction": "bg-amber-50 text-amber-800 border-amber-400",
 };
 
-const MECHANISM_OPTIONS: FormationMechanism[] = ["direct", "dutch-auction"];
+const DEFAULT_PILL_METHOD: CanonicalFulfilmentMethod = "deliver:seller-assigned";
 
 function MechanismEdge(props: EdgeProps) {
     const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd, style } = props;
@@ -383,7 +388,7 @@ function MechanismEdge(props: EdgeProps) {
     const [open, setOpen] = useState(false);
 
     const mechData = (data ?? {}) as MechanismEdgeData;
-    const mechanism = mechData.mechanism ?? "direct";
+    const method = mechData.method ?? DEFAULT_PILL_METHOD;
     const onSwap = mechData.onSwap;
     const childId = mechData.childOrderId;
 
@@ -408,30 +413,30 @@ function MechanismEdge(props: EdgeProps) {
                             if (onSwap) setOpen((v) => !v);
                         }}
                         disabled={!onSwap}
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shadow-sm transition-colors inline-flex items-center gap-1 ${MECHANISM_PILL_STYLE[mechanism]} ${onSwap ? "hover:shadow cursor-pointer" : "cursor-default"}`}
-                        title={onSwap ? "Click to change formation mechanism" : FORMATION_MECHANISM_LABELS[mechanism]}
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shadow-sm transition-colors inline-flex items-center gap-1 ${FULFILMENT_METHOD_PILL_STYLE[method]} ${onSwap ? "hover:shadow cursor-pointer" : "cursor-default"}`}
+                        title={onSwap ? "Click to change fulfilment method" : FULFILMENT_METHOD_LABELS[method]}
                     >
-                        <span>{FORMATION_MECHANISM_LABELS[mechanism]}</span>
+                        <span>{FULFILMENT_METHOD_PILL_LABELS[method]}</span>
                         {onSwap && <span className="text-[8px] opacity-60">▾</span>}
                     </button>
                     {open && onSwap && (
                         <div
-                            className="absolute top-full left-1/2 -translate-x-1/2 mt-1 rounded border border-neutral-300 bg-white shadow-lg py-1 min-w-[140px]"
+                            className="absolute top-full left-1/2 -translate-x-1/2 mt-1 rounded border border-neutral-300 bg-white shadow-lg py-1 min-w-[220px]"
                             data-testid={`mechanism-popover-${childId}`}
                         >
-                            {MECHANISM_OPTIONS.map((opt) => (
+                            {CANONICAL_FULFILMENT_METHODS_LIST.map((opt) => (
                                 <button
                                     key={opt}
                                     type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setOpen(false);
-                                        if (opt !== mechanism) onSwap(childId, opt);
+                                        if (opt !== method) onSwap(childId, opt);
                                     }}
-                                    className={`w-full text-left text-xs px-3 py-1.5 hover:bg-neutral-100 ${opt === mechanism ? "font-semibold text-black" : "text-neutral-700"}`}
+                                    className={`w-full text-left text-xs px-3 py-1.5 hover:bg-neutral-100 ${opt === method ? "font-semibold text-black" : "text-neutral-700"}`}
                                     data-testid={`mechanism-option-${childId}-${opt}`}
                                 >
-                                    {opt === mechanism ? "✓ " : "  "}{FORMATION_MECHANISM_LABELS[opt]}
+                                    {opt === method ? "✓ " : "  "}{FULFILMENT_METHOD_LABELS[opt]}
                                 </button>
                             ))}
                         </div>
@@ -483,12 +488,12 @@ export interface ProcessGraphCanvasProps {
      */
     onAddParent?: (childOrderId: string, parentOrderId: string) => void;
     /**
-     * When set, the mechanism pill on each edge becomes interactive. Clicking
-     * an alternative in the popover invokes this with the child order's id
-     * and the new mechanism. Consumers rebuild the agreement (or commit a
-     * fresh one in live mode) and update state.
+     * When set, the fulfilment-method pill on each edge becomes interactive.
+     * Clicking an alternative in the popover invokes this with the child
+     * order's id and the new method. Consumers rebuild the agreement (or
+     * commit a fresh one in live mode) and update state.
      */
-    onSwapMechanism?: (childOrderId: string, mechanism: FormationMechanism) => void;
+    onSwapMechanism?: (childOrderId: string, method: CanonicalFulfilmentMethod) => void;
     /**
      * Single-click on a node fires this with the order id. Designer uses it
      * to open the agreement-editor drawer.
@@ -577,7 +582,7 @@ export function ProcessGraphCanvas({
                 (parentOrderId) => parentOrderId !== order.id && knownOrderIds.has(parentOrderId),
             );
 
-            const childMechanism = deriveFormationMechanism(order);
+            const childMethod = deriveFulfilmentMethod(order);
 
             parentOrderIds.forEach((parentOrderId) => {
                 const valueLens = activeLens === "value";
@@ -595,7 +600,7 @@ export function ProcessGraphCanvas({
                         opacity: edgeDimmed ? 0.15 : 1,
                     },
                     data: {
-                        mechanism: childMechanism,
+                        method: childMethod,
                         childOrderId: order.id,
                         onSwap: onSwapMechanism,
                     } satisfies MechanismEdgeData,
