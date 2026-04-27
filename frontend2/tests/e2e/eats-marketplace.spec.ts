@@ -207,7 +207,7 @@ test.describe('Driver job market module (mock)', () => {
         await gotoAssemblyMock(page);
 
         // Switch to driver role
-        const driverBtn = page.getByRole('button', { name: /driver/i });
+        const driverBtn = page.getByTestId('role-btn-courier');
         await expect(driverBtn).toBeVisible({ timeout: 15000 });
         await driverBtn.click();
 
@@ -223,7 +223,7 @@ test.describe('Driver job market module (mock)', () => {
         await gotoAssemblyMock(page);
 
         // Switch to driver role
-        await page.getByRole('button', { name: /driver/i }).click();
+        await page.getByTestId('role-btn-courier').click();
 
         const module = page.getByTestId('job-market-module');
         await expect(module).toBeVisible({ timeout: 15000 });
@@ -241,7 +241,7 @@ test.describe('Driver job market module (mock)', () => {
         await gotoAssemblyMock(page);
 
         // Switch to driver role
-        await page.getByRole('button', { name: /driver/i }).click();
+        await page.getByTestId('role-btn-courier').click();
 
         const module = page.getByTestId('job-market-module');
         await expect(module).toBeVisible({ timeout: 15000 });
