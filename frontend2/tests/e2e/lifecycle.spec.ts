@@ -82,20 +82,9 @@ test.describe('Lifecycle — commitOrder (mock)', () => {
         await expect(node).toHaveAttribute('data-order-state', 'active');
     });
 
-    test('multiple orders — all are Active at commit', async ({ page }) => {
-        const processId = '0x' + 'b2c3d4e5'.repeat(8);
-
-        const id1 = await injectPendingOrder(page, { processId, seller: SELLER1, payment: '5000000000000000' });
-        const id2 = await injectPendingOrder(page, { processId, seller: SELLER2, payment: '3000000000000000' });
-
-        await switchToGraphTab(page);
-        await page.waitForSelector(`[data-testid="order-node-${id1}"]`, { timeout: 10000 });
-        await page.waitForSelector(`[data-testid="order-node-${id2}"]`, { timeout: 10000 });
-
-        // Both are Active at commit
-        await expect(page.getByTestId(`order-node-${id1}`)).toHaveAttribute('data-order-state', 'active');
-        await expect(page.getByTestId(`order-node-${id2}`)).toHaveAttribute('data-order-state', 'active');
-    });
+    // Note: 'multiple orders — all are Active at commit' trimmed
+    // (2026-04-27 mock audit) — covered by the diamond test below which
+    // exercises 4 simultaneous Active orders.
 });
 
 // ── 2. resolveProcess ─────────────────────────────────────────────────────────
@@ -130,62 +119,12 @@ test.describe('Lifecycle — resolveProcess (mock)', () => {
         }
     });
 
-    test('after resolve, Resolve button disappears (no more Active orders)', async ({ page }) => {
-        await fillCreateOrderForm(page, SELLER1, '0.01', 'u4pruydqqvj', 'u4pruydqqvj');
-        await page.getByTestId('approve-button').click();
-        await page.waitForFunction(
-            () => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'),
-            null, { timeout: 10000 }
-        );
-        await submitFirstOrder(page);
-        await dismissConfirmationModal(page);
-
-        await expect(page.getByTestId('btn-resolve-process')).toBeVisible({ timeout: 10000 });
-        await resolveProcessMock(page);
-
-        // Resolve button should disappear once there are no Active orders
-        await expect(page.getByTestId('btn-resolve-process')).not.toBeVisible({ timeout: 5000 });
-    });
-});
-
-// ── 3. resolve verification ────────────────────────────────────────────────
-
-test.describe('Lifecycle — resolve (mock)', () => {
-    test.beforeEach(async ({ page }) => {
-        await gotoHome(page, { mock: true });
-    });
-
-    test('resolving transitions all Active orders to Resolved', async ({ page }) => {
-        await fillCreateOrderForm(page, SELLER1, '0.01', 'u4pruydqqvj', 'u4pruydqqvj');
-        await page.getByTestId('approve-button').click();
-        await page.waitForFunction(
-            () => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'),
-            null, { timeout: 10000 }
-        );
-        await submitFirstOrder(page);
-        await dismissConfirmationModal(page);
-
-        await expect(page.getByTestId('btn-resolve-process')).toBeVisible({ timeout: 10000 });
-
-        // All orders are Active before resolve — verified on Graph tab
-        await switchToGraphTab(page);
-        await page.waitForSelector('[data-testid^="order-node-"]', { timeout: 10000 });
-        const nodeBefore = page.locator('[data-testid^="order-node-"]').first();
-        await expect(nodeBefore).toHaveAttribute('data-order-state', 'active');
-
-        // Switch back to orders tab to click resolve
-        await page.getByRole('tab', { name: 'Create Order' }).click();
-        await resolveProcessMock(page);
-
-        // After resolve, all orders must be Resolved — verified on Graph tab
-        await switchToGraphTab(page);
-        const nodeAfter = page.locator('[data-testid^="order-node-"]').first();
-        await expect(nodeAfter).toHaveAttribute('data-order-state', 'resolved');
-
-        // Resolve button should disappear once there are no Active orders
-        await page.getByRole('tab', { name: 'Create Order' }).click();
-        await expect(page.getByTestId('btn-resolve-process')).not.toBeVisible({ timeout: 5000 });
-    });
+    // Note: 'after resolve, Resolve button disappears' + 'resolving
+    // transitions all Active orders to Resolved' (whole describe block)
+    // trimmed (2026-04-27 mock audit) — both duplicated the resolve flow
+    // the test above already exercises end-to-end. The button-disappears
+    // assertion is a UI cleanup detail covered by the diamond test below
+    // which also asserts no resolve button after resolution.
 });
 
 // ── 4. Diamond pattern — 4 sellers ───────────────────────────────────────────
@@ -339,91 +278,7 @@ test.describe('Lifecycle — diamond (4 sellers, mock)', () => {
         }
     });
 
-    test('4-seller diamond: graph has correct node count', async ({ page }) => {
-        // Lightweight variant: just verify 4 nodes appear and the processId is consistent
-        await fillCreateOrderForm(page, SELLER1, '0.04', 'u4pruydqqvj', 'u4pruydqqvj');
-        await page.getByTestId('approve-button').click();
-        await page.waitForFunction(
-            () => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'),
-            null, { timeout: 10000 }
-        );
-        await submitFirstOrder(page);
-        await dismissConfirmationModal(page);
-        await switchToGraphTab(page);
-        await page.waitForSelector('[data-testid^="order-node-"]', { timeout: 10000 });
-        const [order1Id] = await getOrderNodeIds(page);
-
-        // Helper: submit a sub-order scoped to a specific parent
-        async function addSubOrder(parentId: string, seller: string) {
-            await switchToOrdersTab(page);
-            await page.evaluate((id) => {
-                const btn = document.querySelector(`[data-testid="btn-add-suborder-${id}"]`) as HTMLElement | null;
-                btn?.click();
-            }, parentId);
-            await page.getByTestId('suborder-modal').waitFor({ timeout: 10000 });
-            await fillSubOrderModal(page, seller, '0.01', 'u4pruydqqvj', 'u4pruydqqvj');
-            const m = page.getByTestId('suborder-modal');
-            // Approve only if button is visible (allowance not already sufficient)
-            const approveBtn = m.getByTestId('approve-button');
-            if (await approveBtn.count() > 0) {
-                await approveBtn.click();
-                await page.waitForFunction(
-                    () => {
-                        const m2 = document.querySelector('[data-testid="suborder-modal"]');
-                        return m2?.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized');
-                    },
-                    null, { timeout: 10000 }
-                );
-            }
-            await submitSubOrder(page);
-        }
-
-        await addSubOrder(order1Id, SELLER2);
-        await switchToGraphTab(page);
-        await page.waitForFunction(() => document.querySelectorAll('[data-testid^="order-node-"]').length >= 2, null, { timeout: 10000 });
-        const order2Id = (await getOrderNodeIds(page)).find((id) => id !== order1Id)!;
-
-        await addSubOrder(order1Id, SELLER3);
-        await switchToGraphTab(page);
-        await page.waitForFunction(() => document.querySelectorAll('[data-testid^="order-node-"]').length >= 3, null, { timeout: 10000 });
-        const ids3 = await getOrderNodeIds(page);
-        const order3Id = ids3.find((id) => id !== order1Id && id !== order2Id)!;
-
-        // order4: two parents
-        await switchToOrdersTab(page);
-        await page.evaluate((id) => {
-            const btn = document.querySelector(`[data-testid="btn-add-suborder-${id}"]`) as HTMLElement | null;
-            btn?.click();
-        }, order2Id);
-        await page.getByTestId('suborder-modal').waitFor({ timeout: 10000 });
-        await page.getByTestId('suborder-input-parent-order-ids').fill(`${order2Id}, ${order3Id}`);
-        await fillSubOrderModal(page, SELLER4, '0.01', 'u4pruydqqvj', 'u4pruydqqvj');
-        const m4 = page.getByTestId('suborder-modal');
-        const approveBtn4 = m4.getByTestId('approve-button');
-        if (await approveBtn4.count() > 0) {
-            await approveBtn4.click();
-            await page.waitForFunction(
-                () => {
-                    const mx = document.querySelector('[data-testid="suborder-modal"]');
-                    return mx?.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized');
-                },
-                null, { timeout: 10000 }
-            );
-        }
-        await submitSubOrder(page);
-        await switchToGraphTab(page);
-
-        await page.waitForFunction(() => document.querySelectorAll('[data-testid^="order-node-"]').length >= 4, null, { timeout: 10000 });
-
-        const finalIds = await getOrderNodeIds(page);
-        expect(finalIds.length).toBe(4);
-
-        // All 4 nodes must be Active (mock path)
-        for (const id of finalIds) {
-            await expect(page.getByTestId(`order-node-${id}`)).toHaveAttribute('data-order-state', 'active');
-        }
-
-        // viewedProcessId is not persisted to localStorage (intentional — it is reset each session).
-        // The 4-node + Active assertions above are the meaningful correctness checks.
-    });
+    // Note: '4-seller diamond: graph has correct node count' trimmed
+    // (2026-04-27 mock audit) — the comprehensive diamond test above
+    // already asserts 4 nodes + Active state.
 });

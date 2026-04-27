@@ -1,88 +1,50 @@
 /**
  * incoming-orders.spec.ts
  *
- * Mock-mode tests for the IncomingOrdersModule and restaurant-role
- * coordinator action signals. Verifies:
- *   - IncomingOrdersModule renders only for restaurant role
- *   - Mock-mode notice is shown (no XMTP inbox in mock sessions)
- *   - CoordinatorActionModule renders for restaurant and driver roles
- *   - Restaurant role sees stages 0–1 (not driver stages 2–4)
+ * Mock-mode tests for the IncomingOrdersModule + CoordinatorActionModule
+ * role-gating in the assembly workspace at /i/local-commerce.
+ *
+ * Per the 2026-04-27 mock audit: 3 separate "does not render for X role"
+ * negative tests collapsed into the role-gating assertions inside the
+ * keep tests below; "coordinator prompts to select an order" trimmed
+ * (small UI state already covered by component tests).
  */
 import { test, expect } from '@playwright/test';
 import { gotoAssemblyMock, switchToAssemblyRole } from './test-helpers';
 
-// ── IncomingOrdersModule ─────────────────────────────────────────────────────
-
 test.describe('IncomingOrdersModule (mock)', () => {
-    test('renders for restaurant role', async ({ page }) => {
+    test('renders for merchant role with mock-mode notice; absent on buyer + courier', async ({ page }) => {
         await gotoAssemblyMock(page);
-        await switchToAssemblyRole(page, 'merchant');
 
+        // Default role is buyer — module is merchant-scoped, must be absent.
+        await expect(page.getByTestId('incoming-orders-module')).not.toBeVisible({ timeout: 5000 });
+
+        // Switch to merchant: module renders with mock-mode notice.
+        await switchToAssemblyRole(page, 'merchant');
         const module = page.getByTestId('incoming-orders-module');
         await expect(module).toBeVisible({ timeout: 15000 });
-    });
-
-    test('shows mock-mode notice in mock session', async ({ page }) => {
-        await gotoAssemblyMock(page);
-        await switchToAssemblyRole(page, 'merchant');
-
-        const module = page.getByTestId('incoming-orders-module');
-        await expect(module).toBeVisible({ timeout: 15000 });
-
-        // In mock mode, the XMTP inbox is bypassed — a notice explains this
         await expect(module.getByTestId('incoming-orders-mock-notice')).toBeVisible();
         await expect(module.getByText('Mock mode active')).toBeVisible();
-    });
 
-    test('does not render for buyer role', async ({ page }) => {
-        await gotoAssemblyMock(page);
-        // Default role is buyer — module should be absent
-        await expect(page.getByTestId('incoming-orders-module')).not.toBeVisible({ timeout: 5000 });
-    });
-
-    test('does not render for driver role', async ({ page }) => {
-        await gotoAssemblyMock(page);
+        // Switch to courier: module disappears.
         await switchToAssemblyRole(page, 'courier');
-
         await expect(page.getByTestId('incoming-orders-module')).not.toBeVisible({ timeout: 5000 });
     });
 });
 
-// ── CoordinatorActionModule — restaurant role ────────────────────────────────
-
-test.describe('CoordinatorActionModule restaurant signals (mock)', () => {
-    test('coordinator module renders for restaurant role', async ({ page }) => {
+test.describe('CoordinatorActionModule (mock)', () => {
+    test('renders for both merchant and courier roles', async ({ page }) => {
         await gotoAssemblyMock(page);
         await switchToAssemblyRole(page, 'merchant');
+        await expect(page.getByTestId('coordinator-action-module')).toBeVisible({ timeout: 15000 });
 
-        const module = page.getByTestId('coordinator-action-module');
-        await expect(module).toBeVisible({ timeout: 15000 });
-    });
-
-    test('coordinator module renders for driver role', async ({ page }) => {
-        await gotoAssemblyMock(page);
         await switchToAssemblyRole(page, 'courier');
-
-        const module = page.getByTestId('coordinator-action-module');
-        await expect(module).toBeVisible({ timeout: 15000 });
-    });
-
-    test('coordinator module prompts to select an order when none is selected', async ({ page }) => {
-        await gotoAssemblyMock(page);
-        await switchToAssemblyRole(page, 'merchant');
-
-        const module = page.getByTestId('coordinator-action-module');
-        await expect(module).toBeVisible({ timeout: 15000 });
-
-        // No order is pre-selected in mock mode — shows the prompt
-        await expect(module.getByText('Select a delivery order to send lifecycle signals.')).toBeVisible();
+        await expect(page.getByTestId('coordinator-action-module')).toBeVisible({ timeout: 15000 });
     });
 });
 
-// ── Coexistence check ────────────────────────────────────────────────────────
-
-test.describe('Incoming orders coexistence with existing modules (mock)', () => {
-    test('incoming-orders module coexists with coordinator module for restaurant', async ({ page }) => {
+test.describe('Incoming orders coexistence (mock)', () => {
+    test('incoming-orders + coordinator both render for merchant', async ({ page }) => {
         await gotoAssemblyMock(page);
         await switchToAssemblyRole(page, 'merchant');
 

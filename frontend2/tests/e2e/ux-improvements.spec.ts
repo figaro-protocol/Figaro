@@ -58,17 +58,14 @@ test.describe('Builders page — composition links', () => {
 });
 
 test.describe('Route loading', () => {
-    test('terminal route loads', async ({ page }) => {
-        await gotoRoute(page, '/terminal?e2e=mock');
-        await expect(page).toHaveURL(/terminal/);
-    });
+    // Per the 2026-04-27 mock audit: 'terminal route loads' + 'builders
+    // route loads' (2 trivial URL-arrives-at-URL checks) collapsed into
+    // the assembly-runtime test below which is the meaningful "route
+    // loads + key surface renders" smoke test. /terminal and /builders
+    // route loading is implicitly exercised by ~every other mock test
+    // in this suite which navigates through those routes.
 
-    test('builders route loads', async ({ page }) => {
-        await gotoRoute(page, '/builders?e2e=mock');
-        await expect(page).toHaveURL(/builders/);
-    });
-
-    test('live assembly routes load assembly runtime', async ({ page }) => {
+    test('live assembly route loads assembly runtime shell', async ({ page }) => {
         await gotoRoute(page, '/i/local-commerce?e2e=mock');
         await expect(page.getByTestId('assembly-runtime')).toBeVisible({ timeout: 15_000 });
     });

@@ -119,34 +119,10 @@ test.describe('Home page — Create Order (mocked)', () => {
         await expect(visibleNode).toContainText('0.01');
         await expect(page.getByTestId(`order-node-${staleOrderId}`)).not.toBeVisible();
     });
-    test('permit: create first order with mock permit', async ({ page }) => {
-        // Inject __FIGARO_PENDING_PERMIT__ BEFORE navigation so the component's
-        // mount-time useEffect reads it and sets permitEnabled=true → approved=true.
-        await page.addInitScript(() => {
-            // @ts-ignore
-            window.__FIGARO_PENDING_PERMIT__ = {
-                target: '0x0000000000000000000000000000000000000001',
-                data: '0xdeadbeef',
-            };
-        });
-        // Navigate again (beforeEach already navigated without the permit).
-        // addInitScript runs on every page.goto, so the component now mounts
-        // with __FIGARO_PENDING_PERMIT__ already present.
-        await gotoHome(page, { mock: true });
-
-        await fillCreateOrderForm(page, SELLER, '0.03', 'u4pruydqqvj', 'u4pruydqqvj');
-
-        // permit was loaded at mount → computeApproved() returns true immediately.
-        await expect(page.getByTestId('approval-status')).toContainText('Authorized', { timeout: 10000 });
-
-        await submitFirstOrder(page);
-        await waitForFirstOrderUiSync(page);
-
-        // viewedProcessId is not persisted — verify via the graph node instead.
-        await switchToGraphTab(page);
-        await page.waitForSelector('[data-testid^="order-node-"]', { timeout: 8000 });
-        await expect(page.locator('[data-testid^="order-node-"]').first()).toBeVisible();
-    });
+    // Note: 'permit: create first order with mock permit' trimmed
+    // (2026-04-27 mock audit) — covered by permit.devnet.spec.ts which
+    // exercises the same mount-time __FIGARO_PENDING_PERMIT__ path
+    // through to a real on-chain commit.
 });
 
 // ---------------------------------------------------------------------------
@@ -172,53 +148,6 @@ test.describe('Order card — field coverage (mocked)', () => {
         await expect(page.getByTestId(`btn-add-suborder-${orderId}`)).toBeVisible({ timeout: 10000 });
     });
 
-    test('order card shows decoded location field when set (mock)', async ({ page }) => {
-        // "NYC|LAX" encoded as bytes32 (null-padded UTF-8)
-        const locationHex = '0x4e59437c4c41580000000000000000000000000000000000000000000000000000'.slice(0, 66);
-        const orderId = await injectPendingOrder(page, {
-            processId: PROCESS_A,
-            buyer: BUYER,
-            seller: SELLER,
-            manifest: locationHex,
-        });
-
-        await switchToGraphTab(page);
-        await page.waitForSelector(`[data-testid="order-node-${orderId}"]`, { timeout: 10000 });
-
-        // Geo lens must be active to render the location row.
-        await page.getByTestId('lens-btn-geo').click();
-
-        // The card must render the decoded manifest (origin) row
-        const locationRow = page.getByTestId(`order-location-${orderId}`);
-        await expect(locationRow).toBeVisible({ timeout: 5000 });
-        await expect(locationRow).toContainText('NYC');
-        // Destination renders as a sibling row — find it in the parent geo container
-        const geoContainer = locationRow.locator('..');
-        await expect(geoContainer).toContainText('LAX');
-    });
-
-    test('order card shows currency token address when set (mock)', async ({ page }) => {
-        const TOKEN = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
-        const orderId = await injectPendingOrder(page, {
-            processId: PROCESS_A,
-            buyer: BUYER,
-            seller: SELLER,
-            currency: TOKEN,
-        });
-
-        await switchToGraphTab(page);
-        await page.waitForSelector(`[data-testid="order-node-${orderId}"]`, { timeout: 10000 });
-
-        // Value lens must be active to render the token row.
-        await page.getByTestId('lens-btn-value').click();
-
-        // The card must show a truncated token address
-        const currencyRow = page.getByTestId(`order-currency-${orderId}`);
-        await expect(currencyRow).toBeVisible({ timeout: 5000 });
-        // Displays as "0x5FbD…aa3" — check start and end of the real address
-        await expect(currencyRow).toContainText('0x5FbD');
-    });
-
     test('currency input clears after successful order submit (mock)', async ({ page }) => {
         // fillCreateOrderForm clicks btn-use-default-token which sets currency to mockToken address
         await fillCreateOrderForm(page, SELLER, '0.01', 'u4pruydqqvj', 'u4pruydqqvj');
@@ -240,9 +169,16 @@ test.describe('Order card — field coverage (mocked)', () => {
         expect(await currencyInput.inputValue()).toBe('');
     });
 
-    test('order card renders advanced manifest fields (mass, volume, class) when set', async ({ page }) => {
-        // Build a KV-format manifest hex that includes all advanced fields.
-        // Encoding: UTF-8 bytes of "o:farm-A|d:market-B|mass:5 kg|vol:10 L|class:Perishables"
+    test('order card surfaces all field families (geo + value + capital lenses)', async ({ page }) => {
+        // Single comprehensive test — exercises all three lens-gated field
+        // families on one injected order. Replaces 4 prior single-field tests
+        // (decoded location / currency token / advanced manifest / bond
+        // display) per the 2026-04-27 mock audit. The lens-switching pattern
+        // itself is identical across families — there's no value in
+        // re-testing it three more times.
+        const TOKEN = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+        // KV-format manifest covers origin (farm-A) + destination (market-B)
+        // + mass (5 kg) + volume (10 L) + class (Perishables).
         const text = 'o:farm-A|d:market-B|mass:5 kg|vol:10 L|class:Perishables';
         const manifestHex = '0x' + Buffer.from(text, 'utf8').toString('hex');
 
@@ -250,48 +186,36 @@ test.describe('Order card — field coverage (mocked)', () => {
             processId: PROCESS_A,
             buyer: BUYER,
             seller: SELLER,
+            currency: TOKEN,
             manifest: manifestHex,
+            payment: '20000000000000000', // 0.02 → bonds 0.04 each
         });
 
         await switchToGraphTab(page);
         await page.waitForSelector(`[data-testid="order-node-${orderId}"]`, { timeout: 10000 });
         const node = page.getByTestId(`order-node-${orderId}`);
 
-        // Geo lens must be active to render origin/destination/manifest rows.
+        // Geo lens — origin, destination, mass, volume, class.
         await page.getByTestId('lens-btn-geo').click();
-
-        // Origin row (has explicit data-testid anchor)
         await expect(page.getByTestId(`order-location-${orderId}`)).toBeVisible({ timeout: 5000 });
         await expect(node).toContainText('farm-A');
         await expect(node).toContainText('market-B');
-
-        // Advanced fields must also be rendered on the card
         await expect(node).toContainText('5000 g');
         await expect(node).toContainText('10000 mL');
         await expect(node).toContainText('Perishables');
-    });
-    test('Active bond display: both buyer and seller bonds shown at commit (mock)', async ({ page }) => {
-        // payment = 0.02 → buyerBond = 2×0.02 = 0.04; sellerBond = 2×0.02 = 0.04
-        // Both bonds are locked at commit time.
-        const orderId = await injectPendingOrder(page, {
-            processId: PROCESS_A,
-            buyer: BUYER,
-            seller: SELLER,
-            payment: '20000000000000000',
-        });
 
-        await switchToGraphTab(page);
-        await page.waitForSelector(`[data-testid="order-node-${orderId}"]`, { timeout: 10000 });
+        // Value lens — currency token (truncated).
+        await page.getByTestId('lens-btn-value').click();
+        const currencyRow = page.getByTestId(`order-currency-${orderId}`);
+        await expect(currencyRow).toBeVisible({ timeout: 5000 });
+        await expect(currencyRow).toContainText('0x5FbD');
 
-        // Capital lens must be active to render bond rows.
+        // Capital lens — symmetric buyer + seller bonds at 2× payment.
         await page.getByTestId('lens-btn-capital').click();
-
         const sellerBondEl = page.getByTestId(`bond-seller-${orderId}`);
         const buyerBondEl = page.getByTestId(`bond-buyer-${orderId}`);
         await expect(sellerBondEl).toBeVisible({ timeout: 5000 });
         await expect(buyerBondEl).toBeVisible({ timeout: 5000 });
-
-        // Both bonds lock at commit — both should show 0.04
         await expect(buyerBondEl).toContainText('0.04');
         await expect(sellerBondEl).toContainText('0.04');
     });
