@@ -85,7 +85,7 @@ vi.mock('@/lib/console/provider', () => ({
 
 // lib/console/provider.tsx has a dynamic import for this path which no longer exists.
 // Vite resolves all dynamic imports statically, so the mock must be registered here.
-vi.mock('@/app/builders/authoring/actions', () => ({
+vi.mock('@/app/(app)/builders/authoring/actions', () => ({
     publishAssemblyAction: vi.fn(),
 }));
 

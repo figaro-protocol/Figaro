@@ -23,7 +23,7 @@ import {
 } from "@/components/core/designer/DesignerCanvas";
 import { DesignerInspector } from "@/components/core/designer/DesignerInspector";
 import { DesignerPublishDrawer } from "@/components/core/designer/DesignerPublishDrawer";
-import { publishAssemblyAction } from "@/app/builders/authoring/actions";
+import { publishAssemblyAction } from "@/app/(app)/builders/authoring/actions";
 import { getBlockMetadata, listBlockMetadata } from "@/lib/shared/blockMetadata";
 import { registerAllModules } from "@/components/modules/registerAllModules";
 import {

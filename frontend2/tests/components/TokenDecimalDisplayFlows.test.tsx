@@ -91,7 +91,7 @@ vi.mock("@/lib/shared/runtimeServicesContext", () => ({
     }),
 }));
 
-import SignPage from "@/app/sign/page";
+import SignPage from "@/app/(app)/sign/page";
 
 describe("token-decimal display flows", () => {
     beforeEach(() => {

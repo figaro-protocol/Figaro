@@ -5,7 +5,7 @@ import { ChangeEvent, startTransition, useDeferredValue, useEffect, useState } f
 import {
     publishAssemblyAction,
     unregisterAssemblyAction,
-} from "@/app/builders/authoring/actions";
+} from "@/app/(app)/builders/authoring/actions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";

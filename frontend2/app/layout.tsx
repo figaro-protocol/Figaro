@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Providers } from "./providers";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
-import { Header } from "@/components/shared/Header";
-import { Footer } from "@/components/shared/Footer";
 
 
 const inter = Inter({ subsets: ["latin"] });
@@ -35,6 +32,12 @@ export const metadata: Metadata = {
     },
 };
 
+/**
+ * Root layout — bare HTML shell only. Per-tier chrome (Header, Footer,
+ * Providers) lives in `app/(marketing)/layout.tsx` and `app/(app)/layout.tsx`.
+ * Marketing routes don't mount the wallet provider; reference + transactional
+ * routes do. See CLAUDE.md "Wallet-provider scope per route".
+ */
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -50,15 +53,7 @@ export default function RootLayout({
                     Skip to content
                 </a>
 
-                <ErrorBoundary>
-                    <Providers>
-                        <div className="min-h-screen flex flex-col bg-white text-black">
-                            <Header />
-                            <main id="main-content" className="flex-1">{children}</main>
-                            <Footer />
-                        </div>
-                    </Providers>
-                </ErrorBoundary>
+                <ErrorBoundary>{children}</ErrorBoundary>
             </body>
         </html>
     );
