@@ -170,6 +170,9 @@ test.describe('ProcessList — order sub-list (devnet)', () => {
             await submitFirstOrder(page);
             await waitForCreateConfirm(page);
 
+            // ProcessList renders on the My Processes tab.
+            await page.getByRole('tab', { name: 'My Processes' }).click();
+
             // ProcessList must become visible once the wallet’s process is tracked
             const processList = page.getByTestId('process-list');
             await expect(processList).toBeVisible({ timeout: 20000 });
