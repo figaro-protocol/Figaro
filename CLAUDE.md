@@ -99,40 +99,64 @@ secure handshake: **The Bonded Commitment**. Two parties who have never met can
 transact with mathematical certainty that cooperation is the dominant strategy —
 no arbitrator, no timeout, no admin backdoor.
 
-The kernel's core mechanism is **asymmetric bonding** (buyer locks 2× payment,
-seller locks 2× cumulative value). This mechanism does two things: (1) produces
-the Nash equilibrium — cooperation weakly dominates defection for both parties,
-and is the unique profile surviving iterated elimination of weakly dominated
-strategies (Paper A, Theorem 4.3; 2× is the minimum viable multiplier per
-Theorem 4.6); (2) scales itself from two parties to N-party process trees by
-bonding each seller against cumulative upstream value. Scaling the seller bond
-with cumulative value — called progressive collateralization — creates a mesh
-of independently secured edges, each carrying its own Nash equilibrium at every
-depth in the tree (Theorem 5.3). The scaling is the mechanism, not a separate
-thing.
+The kernel runs **two mechanisms** doing distinct work — they compose, they
+don't substitute. Match Paper A §2 line 300–311 directly.
 
-Two rules then **compose with the already-scaled mesh** — they don't do the
-scaling:
-- **Buyer dominance** — only the buyer can trigger `resolveProcess`. Takes
-  advantage of the mesh structure to make multi-party resolution tractable
-  from a single signature instead of N mutual agreements.
-- **Atomic resolution** — the whole process tree settles together or not at
-  all. Combined with buyer dominance, induces a weakest-link subgame among
-  sellers (Proposition 5.8).
+**Mechanism 1 — Asymmetric bonding** (buyer locks 2× payment, seller locks
+2× cumulative value): produces the bilateral Nash equilibrium (cooperation
+weakly dominates defection for both parties; unique profile surviving iterated
+elimination of weakly dominated strategies; Paper A Theorem 4.3) AND scales
+the bilateral primitive from 2-party to N-party trees via **progressive
+collateralization** (each seller bonds against cumulative upstream value,
+creating a mesh of independently secured edges, each edge carrying its own
+equilibrium at every depth; Theorem 5.3). 2× is the minimum viable multiplier
+(Theorem 4.6).
+
+**Mechanism 2 — Buyer dominance** (only the buyer can trigger `resolveProcess`,
+and resolution is **atomic** — all orders in the process settle together or
+not at all): operates on the already-scaled mesh to enforce inter-seller
+coordination, cooperation, and communication. The atomic-resolution rule is
+buyer dominance's forcing function: it induces a weakest-link subgame among
+sellers (Proposition 5.8) — endogenous peer pressure of magnitude Pᵢ + 2Gᵢ
+on every co-seller, without explicit communication or governance. This
+reproduces Grameen joint-liability microfinance's peer-enforcement outcome
+under strictly weaker assumptions (no repeated interaction, no local
+information, no exogenous punishment technology; Theorem 6.1).
+
+The mechanisms are inseparable in practice. Bonding alone gives a mesh of
+independently bonded edges — multi-party coordination would still require N
+mutual agreements at resolution. Buyer-dominance alone gives a single party
+who can resolve whatever they want — without bonding it's worthless. Together:
+the bonding ratio creates the mesh; buyer dominance + atomic resolution make
+the mesh resolvable from a single signature AND propagate cooperation pressure
+through it.
 
 Plus one security constraint:
-- **No escape hatches** — any exit path weakens the Nash equilibrium
-  (Theorem 4.7).
+- **No escape hatches** — any unilateral exit path weakens the Nash
+  equilibrium (Theorem 4.7). Either α≥½ breaks weak dominance directly
+  (timeout case), or the exit requires a third party J ∉ {B, S} whose
+  incentives aren't bond-constrained (arbitrator / governance vote — unbonded
+  actor). External legal forums adjudicating under duress / frustration /
+  impossibility are NOT this kind of escape hatch (Remark 4.8): they're
+  constrained by their own institutional bond structures and operate on the
+  bonded commitment as evidentiary input.
 
 Immutable evidence is produced by the on-chain composition layer, not the kernel.
 
 **Common mistakes to avoid:**
-1. Do not call buyer dominance or atomic resolution "mechanisms." The mechanism
-   is asymmetric bonding; the others are rules / constraints that compose with it.
-2. Do not say buyer dominance or atomic resolution "scale the mechanism from two
-   parties to N." Asymmetric bonding scales itself (via progressive
-   collateralization). Buyer dominance and atomic resolution operate on the
+1. Do not collapse the two mechanisms to "one mechanism plus rules." Buyer
+   dominance with atomic resolution does mechanism-style work — it enforces
+   inter-seller coordination via the weakest-link subgame, not just
+   convenience-of-resolution. (Earlier framings called buyer dominance "just
+   a rule that operates on the already-scaled mesh"; that under-states what
+   it does.)
+2. Do not say buyer dominance + atomic resolution "scale the mechanism from
+   two parties to N." Scaling is asymmetric bonding's work via progressive
+   collateralization. Buyer dominance enforces coordination on the
    already-scaled mesh.
+3. Do not treat the no-escape-hatches property as a third mechanism. It's a
+   security constraint protecting the equilibrium induced by the two
+   mechanisms.
 
 Every participant is an independent value-adder. What traditional models call a
 "restaurant" is a process tree of independent contributors — a cook, a kitchen
