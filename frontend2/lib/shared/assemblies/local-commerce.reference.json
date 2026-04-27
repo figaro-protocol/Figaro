@@ -256,6 +256,7 @@
                 "handoff-details",
                 "handoff-tracker",
                 "handoff-key-exchange",
+                "delivery-attestation",
                 "event-timeline"
             ]
         }

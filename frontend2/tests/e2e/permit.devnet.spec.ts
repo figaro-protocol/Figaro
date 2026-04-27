@@ -127,17 +127,23 @@ async function fillPermitOrderForm(page: import('@playwright/test').Page): Promi
 }
 
 /**
- * Wait for the approve button to settle specifically to "Sign Permit".
+ * Wait for the approve button to settle into permit mode.
  *
- * The button initially renders as "Approve X" while the async `nonces()` RPC
- * query is in-flight (supportsPermit = false).  Once the query resolves with
- * a nonce value, supportsPermit flips to true and the label changes.
- * Waiting for "Approve OR Sign Permit" races against this; we wait for the
- * specific "Sign Permit" label instead.
+ * For a non-permit token the button renders as `Authorize {amount}`; for a
+ * permit (EIP-2612) token the button label collapses to just `Authorize`
+ * (BondApprovalPanel — supportsPermit branch). The button initially renders
+ * as the non-permit variant while the async `nonces()` RPC query is in-flight
+ * (supportsPermit = false). Once the query resolves with a nonce value,
+ * supportsPermit flips to true and the label changes. Wait for the specific
+ * permit-mode label.
  */
 async function waitForSignPermitButton(page: import('@playwright/test').Page): Promise<void> {
     await page.waitForFunction(
-        () => document.querySelector('[data-testid="approve-button"]')?.textContent?.includes('Sign Permit'),
+        () => {
+            const text = document.querySelector('[data-testid="approve-button"]')?.textContent?.trim();
+            // Permit mode: label is exactly "Authorize" (no amount appended).
+            return text === 'Authorize';
+        },
         null,
         { timeout: 20000 }
     );
@@ -147,18 +153,19 @@ async function waitForSignPermitButton(page: import('@playwright/test').Page): P
 
 test.describe('Permit-first approval flow (devnet)', () => {
 
-    test('approval panel renders "Sign Permit" for an EIP-2612 token', async ({ page }) => {
+    test('approval panel renders permit-mode button for an EIP-2612 token', async ({ page }) => {
         await fillPermitOrderForm(page);
         await waitForSignPermitButton(page);
 
         const btnText = await page.getByTestId('approve-button').innerText();
-        expect(btnText).toContain('Sign Permit');
+        // Permit mode: label is exactly "Authorize" (no amount appended).
+        expect(btnText.trim()).toBe('Authorize');
     });
 
-    test('clicking "Sign Permit" approves without broadcasting a transaction', async ({ page }) => {
+    test('clicking permit-mode "Authorize" approves without broadcasting a transaction', async ({ page }) => {
         await fillPermitOrderForm(page);
         await waitForSignPermitButton(page);
-        await expect(page.getByTestId('approve-button')).toContainText('Sign Permit');
+        await expect(page.getByTestId('approve-button')).toHaveText('Authorize');
 
         await page.getByTestId('approve-button').click();
 
@@ -166,7 +173,7 @@ test.describe('Permit-first approval flow (devnet)', () => {
         // as soon as signTypedDataAsync resolves and state is updated.
         await waitForApproved(page);
 
-        await expect(page.getByTestId('approval-status')).toContainText('Approved');
+        await expect(page.getByTestId('approval-status')).toContainText('Authorized');
 
         // Submit button should now be enabled (no further approval step needed).
         const submitBtn = page.getByTestId('btn-submit-order');
@@ -187,9 +194,19 @@ test.describe('Permit-first approval flow (devnet)', () => {
         const previousNodeCount = await page.locator('[data-testid^="order-node-"]').count();
         const previousProcessOrderCount = await page.locator('[data-testid^="process-order-item-"]').count();
         await submitBtn.click();
+
+        // AgreementPreviewModal pre-sign gate (Web2 audit Priority-4 fix);
+        // click Confirm & sign to proceed.
+        const previewModal = page.getByTestId('agreement-preview-modal');
+        try {
+            await previewModal.waitFor({ state: 'visible', timeout: 5000 });
+            await page.getByTestId('preview-confirm').click();
+        } catch { /* Modal didn't appear within 5s */ }
+
         await waitForFirstOrderUiSync(page, { previousNodeCount, previousProcessOrderCount });
 
-        // Graph must render the new order node with the correct payment amount.
+        // order-node-* renders on the Graph tab; switch to verify.
+        await page.getByRole('tab', { name: 'Graph' }).click();
         await page.waitForSelector('[data-testid^="order-node-"]', { timeout: 30000 });
         const node = page.locator('[data-testid^="order-node-"]').first();
         await expect(node).toBeVisible();

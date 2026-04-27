@@ -1,4 +1,28 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Load .env.local into process.env so devnet specs that read
+// NEXT_PUBLIC_* addresses (PERMIT_TOKEN_ADDRESS, etc.) get fresh
+// values from the latest ./deploy-local.sh run instead of hard-coded
+// fallbacks. Next.js's dev server loads .env.local on its own; this
+// makes the Playwright test process see the same values.
+try {
+    const envPath = path.resolve(__dirname, '.env.local');
+    if (fs.existsSync(envPath)) {
+        for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) continue;
+            const eq = trimmed.indexOf('=');
+            if (eq === -1) continue;
+            const key = trimmed.slice(0, eq).trim();
+            const value = trimmed.slice(eq + 1).trim();
+            if (!process.env[key]) process.env[key] = value;
+        }
+    }
+} catch {
+    // .env.local missing is fine — fallback addresses kick in.
+}
 
 const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT ?? '3100');
 const PLAYWRIGHT_BASE_URL = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;

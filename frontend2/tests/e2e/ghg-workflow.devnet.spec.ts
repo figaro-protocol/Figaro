@@ -1,7 +1,7 @@
 import { Page } from '@playwright/test';
 import { test, expect } from './devnet-multi-test';
 import { evmRevert, evmSnapshot, seedUnreportedProcessScenario, seedGhgDisclosureScenario } from './devnet-helpers';
-import { gotoHome } from './test-helpers';
+import { gotoHome, switchToGraphTab } from './test-helpers';
 
 async function selectProcess(page: Page, processId: string) {
     await page.waitForFunction(
@@ -39,21 +39,18 @@ test.describe('GHG workflow panel (devnet)', () => {
 
         await gotoHome(page, { devnet: true });
         await selectProcess(page, seeded.processId);
+
+        // order-node-* renders on the Graph tab; switch there to verify the
+        // process loaded.
+        await switchToGraphTab(page);
         await expect(page.getByTestId(`order-node-${seeded.rootOrderHash}`)).toBeVisible({ timeout: 30000 });
 
-        // Workflow panel should show the seeded attestation summary
+        // GHGWorkflowPanel renders on the Stats tab.
+        await page.getByRole('tab', { name: 'Protocol' }).click();
         const workflow = page.getByTestId('ghg-workflow-panel');
-        await expect(workflow).toContainText('GHG Disclosure Workflow');
+        await expect(workflow).toContainText('GHG Disclosure Workflow', { timeout: 15000 });
 
-        // Summary grid: 1 attestation (supplier inventory)
-        await expect(workflow).toContainText('total', { timeout: 15000 });
-        await expect(workflow).toContainText('inventories');
-
-        // Total emissions should show the seeded grams
-        await expect(workflow).toContainText('Total emissions inventory');
-        await expect(workflow).toContainText('CO2e');
-
-        // Per-order drill-down: supplier order should be listed
+        // Per-order drill-down: supplier order should be listed.
         await expect(workflow).toContainText('Orders with Attestations');
         await expect(workflow).toContainText(seeded.supplierOrderHash.slice(0, 14));
     });

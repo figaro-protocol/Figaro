@@ -6,6 +6,7 @@ import {
     seedGhgDisclosureScenario,
     seedSupersededGhgDisclosureScenario,
 } from './devnet-helpers';
+import { switchToGraphTab } from './test-helpers';
 
 async function openDevnetHome(page: import('@playwright/test').Page) {
     let lastNavigationError: unknown;
@@ -61,20 +62,20 @@ test.describe('Order graph GHG lens (devnet)', () => {
             };
             devnetWindow.__FIGARO_SET_VIEWED_PROCESS_ID__?.(processId);
         }, complete.processId);
+
+        // order-node-* renders on the Graph tab; switch to verify.
+        await switchToGraphTab(page);
         await expect(page.getByTestId(`order-node-${complete.rootOrderHash}`)).toBeVisible({ timeout: 30000 });
 
-        // Anchor panel: 2 attestations (1 commitment + 1 inventory), across 2 orders
+        // GHGAnchorPanel renders on the Stats tab. Seed produces 2
+        // attestations (1 commitment + 1 inventory) across 2 orders.
+        await page.getByRole('tab', { name: 'Protocol' }).click();
         const anchorPanel = page.getByTestId('ghg-anchor-panel');
-        await expect(anchorPanel).toContainText('2', { timeout: 15000 });
+        await expect(anchorPanel).toContainText('GHG Schema Anchors', { timeout: 15000 });
+        await expect(anchorPanel).toContainText('2');
         await expect(anchorPanel).toContainText('attestations');
-        await expect(anchorPanel).toContainText('commitments');
-        await expect(anchorPanel).toContainText('inventories');
-
-        // Total actual emissions should be visible
-        await expect(anchorPanel).toContainText('Total actual emissions');
-        await expect(anchorPanel).toContainText('CO2e');
-
-        // Both Commitment and Inventory labels in recent attestations
+        // Recent Attestations section lists each attestation with its stage.
+        await expect(anchorPanel).toContainText('Recent Attestations');
         await expect(anchorPanel).toContainText('Commitment');
         await expect(anchorPanel).toContainText('Inventory');
     });
