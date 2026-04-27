@@ -55,7 +55,7 @@ export default function PermitControl({
                         className="font-mono text-xs px-2 py-1 border"
                     />
                     <p className="text-xs text-gray-500 mt-1 w-full">
-                        Advanced compatibility testing. Leave empty to target the token's own permit() surface.
+                        Advanced compatibility testing. Leave empty to target the token&apos;s own permit() surface.
                     </p>
                     <button
                         data-testid="btn-mock-sign-permit"

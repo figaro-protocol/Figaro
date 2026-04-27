@@ -283,7 +283,6 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
     // Encoders live in the `@figaro/core/schemas` subpath; require them
     // dynamically to keep this module loadable in test environments where
     // the SDK is resolved via link / pnpm / vitest.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const schemasMod = require("@figaro/core/schemas") as typeof import("@figaro/core/schemas");
     const {
         encodeHandoffContent,
@@ -299,7 +298,6 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
     // encoder and surface to the hook as an encoding failure — that's the
     // intended behaviour; upstream builders are expected to supply SDK-valid
     // enum strings.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const asAny = <T>(v: unknown) => v as T;
     switch (schemaKey) {
         case "figaro-handoff-v1":

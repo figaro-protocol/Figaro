@@ -37,7 +37,7 @@ export default function Help() {
                     <div>
                         <h2 className="text-base font-semibold text-black mb-2">How do stakes work?</h2>
                         <p className="text-sm text-gray-700 leading-relaxed">
-                            The buyer locks 2× the payment value. The seller locks 2× the cumulative value of their process commitments. If the buyer triggers settlement, both parties recover their stakes plus or minus the payment. If either party defects, the defector's stake is forfeited. The math is sized so that defection always produces a worse outcome than cooperation — regardless of the payment amount.
+                            The buyer locks 2× the payment value. The seller locks 2× the cumulative value of their process commitments. If the buyer triggers settlement, both parties recover their stakes plus or minus the payment. If either party defects, the defector&apos;s stake is forfeited. The math is sized so that defection always produces a worse outcome than cooperation — regardless of the payment amount.
                         </p>
                     </div>
                     <div>
@@ -68,7 +68,7 @@ export default function Help() {
                     <div>
                         <h2 className="text-base font-semibold text-black mb-2">What happens if a party defects?</h2>
                         <p className="text-sm text-gray-700 leading-relaxed">
-                            If the seller fails to deliver, the buyer withholds settlement. The seller's locked stake — 2× the cumulative value of their commitments — remains in the contract and is not returned. The buyer recovers their stake minus the payment. Defection is structurally more expensive than cooperation for both parties at all times. This is the primary enforcement layer and it operates automatically.
+                            If the seller fails to deliver, the buyer withholds settlement. The seller&apos;s locked stake — 2× the cumulative value of their commitments — remains in the contract and is not returned. The buyer recovers their stake minus the payment. Defection is structurally more expensive than cooperation for both parties at all times. This is the primary enforcement layer and it operates automatically.
                         </p>
                     </div>
                     <div>
@@ -114,7 +114,7 @@ export default function Help() {
                     <div>
                         <h2 className="text-base font-semibold text-black mb-2">What should a builder do given the audit status?</h2>
                         <p className="text-sm text-gray-700 leading-relaxed">
-                            For testnet deployments and prototypes, the current verification coverage is substantial. For mainnet deployments with real economic value at stake, builders should wait for an independent audit, conduct their own review, or size their initial deployments to a risk level they are comfortable with given the current state. The protocol's open-source codebase and formal specifications are available for independent review.
+                            For testnet deployments and prototypes, the current verification coverage is substantial. For mainnet deployments with real economic value at stake, builders should wait for an independent audit, conduct their own review, or size their initial deployments to a risk level they are comfortable with given the current state. The protocol&apos;s open-source codebase and formal specifications are available for independent review.
                         </p>
                     </div>
                 </div>
@@ -188,7 +188,7 @@ export default function Help() {
                     <div>
                         <h2 className="text-base font-semibold text-black mb-2">What is the builder responsible for?</h2>
                         <p className="text-sm text-gray-700 leading-relaxed">
-                            The correctness of the assembly configuration, any new contracts introduced at Level 3, the attestation schemas defined at Level 2, operator identity and onboarding, and the claims made in the assembly's UI. The protocol cannot verify that a workflow is correctly structured — a misconfigured assembly is the builder's risk. Do not imply protocol-level guarantees for properties your assembly does not actually enforce.
+                            The correctness of the assembly configuration, any new contracts introduced at Level 3, the attestation schemas defined at Level 2, operator identity and onboarding, and the claims made in the assembly&apos;s UI. The protocol cannot verify that a workflow is correctly structured — a misconfigured assembly is the builder&apos;s risk. Do not imply protocol-level guarantees for properties your assembly does not actually enforce.
                         </p>
                     </div>
                     <div>

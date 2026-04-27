@@ -33,8 +33,8 @@ export default function TerminalPage() {
 
     useEffect(() => {
         if (!isE2EMockSession()) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- E2E test harness on window global
-        (window as any).__FIGARO_MOCK__ = {
+        // E2E test harness on window global.
+        (window as unknown as { __FIGARO_MOCK__: unknown }).__FIGARO_MOCK__ = {
             emitOrder: mockEmitOrder,
             resolveProcess: (pid: string, idStrs: string[]) => mockResolveProcess(pid, idStrs),
         };

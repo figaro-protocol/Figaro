@@ -2,6 +2,15 @@ import { Providers } from "../providers";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
 
+// Wallet-dependent pages (everything in this group) read window.ethereum
+// + wagmi/RainbowKit client state at render time. Static pre-render would
+// require Suspense boundaries around every transitive useSearchParams /
+// useAccount call site in the dependency tree (RainbowKit + wagmi).
+// Marking the layout `force-dynamic` opts the entire (app) tier out of
+// static export — pages render at request time on the server. Marketing
+// routes in `(marketing)/` stay statically exportable.
+export const dynamic = "force-dynamic";
+
 /**
  * Layout for reference + transactional routes — everything that's not pure
  * marketing. Mounts the full `<Providers>` stack (WagmiProvider, RainbowKit,
