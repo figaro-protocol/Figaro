@@ -5,8 +5,11 @@ import {
     COMMERCE_SCHEMA_KEY,
     FULFILMENT_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
+    GHG_MEASUREMENT_SCHEMA_KEY,
     HANDOFF_SCHEMA_KEY,
     JURISDICTION_SCHEMA_KEY,
+    PROXIMITY_POLICY_SCHEMA_KEY,
+    PROXIMITY_PROOF_SCHEMA_KEY,
     TOPOLOGY_SCHEMA_KEY,
     computeSectionLeaf,
 } from "@/lib/core/agreementManifest";
@@ -14,6 +17,9 @@ import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { extractContract } from "@/lib/audit/contractExtract";
 import { extractInvoice } from "@/lib/audit/invoiceExtract";
 import { extractBillOfLading } from "@/lib/audit/billOfLadingExtract";
+import { extractEmissions } from "@/lib/audit/emissionsExtract";
+import { extractProximity } from "@/lib/audit/proximityExtract";
+import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { buildHashAppendix } from "@/lib/audit/hashAppendix";
 import { buildAuditBundle } from "@/lib/audit/auditBundle";
 import { DELIVERY_LIFECYCLE_STAGES } from "@/lib/audit/types";
@@ -362,6 +368,133 @@ describe("buildHashAppendix", () => {
     });
 });
 
+// ── Emissions extractor ───────────────────────────────────────────────────────
+
+describe("extractEmissions", () => {
+    const order = makeOrder();
+
+    it("reports disclosed=false when no GHG clause is signed", () => {
+        const doc = extractEmissions(order, makeAgreement(), []);
+        expect(doc.disclosed).toBe(false);
+        expect(doc.standardSchemaKey).toBeUndefined();
+        expect(doc.scope).toBeUndefined();
+    });
+
+    it("surfaces the chosen sister-schema standard + scope when committed", () => {
+        const ag = makeAgreement([
+            { schema: "figaro-ghg-iso-14064-v1", data: { scope: 2 } },
+        ]);
+        const doc = extractEmissions(order, ag, []);
+        expect(doc.disclosed).toBe(true);
+        expect(doc.standardSchemaKey).toBe("figaro-ghg-iso-14064-v1");
+        expect(doc.standardLabel).toBe("ISO-14064");
+        expect(doc.scope).toBe(2);
+    });
+
+    it("collects measurement attestation receipts in input order", () => {
+        const att1: AttestationRecord = {
+            orderHash: order.id, processId: order.processId, attester: SELLER,
+            schemaId: GHG_MEASUREMENT_SCHEMA_KEY, stage: 3, contentRef: "0xMEAS1",
+            transactionHash: "0xTX1", blockNumber: 100,
+        };
+        const att2: AttestationRecord = { ...att1, stage: 4, contentRef: "0xMEAS2", transactionHash: "0xTX2", blockNumber: 110 };
+        const doc = extractEmissions(order, makeAgreement(), [att1, att2]);
+        expect(doc.measurements).toHaveLength(2);
+        expect(doc.measurements[0].contentRef).toBe("0xMEAS1");
+        expect(doc.measurements[1].contentRef).toBe("0xMEAS2");
+    });
+
+    it("ignores non-measurement attestations + cross-order leakage", () => {
+        const lifecycleAtt: AttestationRecord = {
+            orderHash: order.id, processId: order.processId, attester: SELLER,
+            schemaId: "figaro-delivery-lifecycle-v1", stage: 0, contentRef: "0xLC",
+            transactionHash: "0xTXLC", blockNumber: 1,
+        };
+        const otherOrderAtt: AttestationRecord = {
+            orderHash: "0xOTHER", processId: order.processId, attester: SELLER,
+            schemaId: GHG_MEASUREMENT_SCHEMA_KEY, stage: 3, contentRef: "0xMEAS",
+            transactionHash: "0xTX", blockNumber: 1,
+        };
+        const doc = extractEmissions(order, makeAgreement(), [lifecycleAtt, otherOrderAtt]);
+        expect(doc.measurements).toHaveLength(0);
+    });
+});
+
+// ── Proximity extractor ───────────────────────────────────────────────────────
+
+describe("extractProximity", () => {
+    const order = makeOrder();
+
+    it("reports policyCommitted=false + no band when no policy clause is signed", () => {
+        const doc = extractProximity(order, makeAgreement(), []);
+        expect(doc.policyCommitted).toBe(false);
+        expect(doc.committedBand).toBeUndefined();
+    });
+
+    it("surfaces the committed band from a policy clause", () => {
+        const ag = makeAgreement([
+            { schema: PROXIMITY_POLICY_SCHEMA_KEY, data: { band: 2 } },
+        ]);
+        const doc = extractProximity(order, ag, []);
+        expect(doc.policyCommitted).toBe(true);
+        expect(doc.committedBand).toBe(2);
+    });
+
+    it("collects proof-attestation receipts and ignores non-proof attestations", () => {
+        const proofAtt: AttestationRecord = {
+            orderHash: order.id, processId: order.processId, attester: SELLER,
+            schemaId: PROXIMITY_PROOF_SCHEMA_KEY, stage: 3, contentRef: "0xPROOF",
+            transactionHash: "0xTX", blockNumber: 50,
+        };
+        const lifecycleAtt: AttestationRecord = { ...proofAtt, schemaId: "figaro-delivery-lifecycle-v1", contentRef: "0xLC" };
+        const doc = extractProximity(order, makeAgreement(), [proofAtt, lifecycleAtt]);
+        expect(doc.proofs).toHaveLength(1);
+        expect(doc.proofs[0].contentRef).toBe("0xPROOF");
+    });
+});
+
+// ── Sovereign process-logs extractor ──────────────────────────────────────────
+
+describe("extractProcessLogs", () => {
+    const order = makeOrder();
+
+    function logAtt(schemaId: string, stage: number, contentRef: string): AttestationRecord {
+        return {
+            orderHash: order.id, processId: order.processId, attester: SELLER,
+            schemaId, stage, contentRef, transactionHash: "0xTX", blockNumber: 50,
+        };
+    }
+
+    it("partitions events by role (merchant vs courier) by schemaId", () => {
+        const merchantEv = logAtt("figaro-merchant-process-v1", 1, "0xM1");
+        const courierEv1 = logAtt("figaro-courier-process-v1", 2, "0xC1");
+        const courierEv2 = logAtt("figaro-courier-process-v1", 4, "0xC2");
+        const doc = extractProcessLogs(order, [merchantEv, courierEv1, courierEv2]);
+        expect(doc.merchantEvents).toHaveLength(1);
+        expect(doc.courierEvents).toHaveLength(2);
+        expect(doc.merchantEvents[0].role).toBe("merchant");
+        expect(doc.courierEvents[0].role).toBe("courier");
+    });
+
+    it("ignores attestations from other schemas + other orders", () => {
+        const ghgAtt = logAtt(GHG_MEASUREMENT_SCHEMA_KEY, 3, "0xGHG");
+        const otherOrderMerchant: AttestationRecord = {
+            orderHash: "0xOTHER", processId: order.processId, attester: SELLER,
+            schemaId: "figaro-merchant-process-v1", stage: 0, contentRef: "0xM",
+            transactionHash: "0xTX", blockNumber: 1,
+        };
+        const doc = extractProcessLogs(order, [ghgAtt, otherOrderMerchant]);
+        expect(doc.merchantEvents).toHaveLength(0);
+        expect(doc.courierEvents).toHaveLength(0);
+    });
+
+    it("returns empty arrays when no process-log attestations exist", () => {
+        const doc = extractProcessLogs(order, []);
+        expect(doc.merchantEvents).toEqual([]);
+        expect(doc.courierEvents).toEqual([]);
+    });
+});
+
 // ── Bundle assembler ──────────────────────────────────────────────────────────
 
 describe("buildAuditBundle", () => {
@@ -372,15 +505,27 @@ describe("buildAuditBundle", () => {
     ]);
     const bundle = buildAuditBundle(order, agreement, []);
 
-    it("emits all 4 documents", () => {
+    it("emits all 7 documents (contract, invoice, BoL, emissions, proximity, processLogs, hashAppendix)", () => {
         expect(bundle.contract).toBeDefined();
         expect(bundle.invoice).toBeDefined();
         expect(bundle.billOfLading).toBeDefined();
+        expect(bundle.emissions).toBeDefined();
+        expect(bundle.proximity).toBeDefined();
+        expect(bundle.processLogs).toBeDefined();
         expect(bundle.hashAppendix).toBeDefined();
     });
 
     it("every document carries the same orderHash + processId + agreementHash anchors", () => {
-        for (const doc of [bundle.contract, bundle.invoice, bundle.billOfLading, bundle.hashAppendix]) {
+        const docs = [
+            bundle.contract,
+            bundle.invoice,
+            bundle.billOfLading,
+            bundle.emissions,
+            bundle.proximity,
+            bundle.processLogs,
+            bundle.hashAppendix,
+        ];
+        for (const doc of docs) {
             expect(doc.orderHash).toBe(order.id);
             expect(doc.processId).toBe(order.processId);
             expect(doc.agreementHash).toBe(order.agreementHash);

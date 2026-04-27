@@ -34,6 +34,7 @@ import {
     type OrderLineItem,
 } from "@/lib/semantic/financialsProjection";
 import { OrderState } from "@/lib/core/store";
+import { DownloadAuditBundleButton } from "@/components/core/DownloadAuditBundleButton";
 
 // 18-decimal formatting is the universal default for ERC20 + ETH. A future
 // enhancement is per-currency decimals lookup; for now we surface the raw
@@ -75,12 +76,17 @@ export default function ProcessFinancialsPage() {
         <div className="container mx-auto px-6 py-10 max-w-5xl space-y-10" data-testid="financials-page">
             {/* Header */}
             <header className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-                    Process financials
-                </p>
-                <h1 className="text-2xl font-bold text-black">
-                    Consolidated statement
-                </h1>
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                            Process financials
+                        </p>
+                        <h1 className="text-2xl font-bold text-black">
+                            Consolidated statement
+                        </h1>
+                    </div>
+                    <DownloadAuditBundleButton processId={processId} orders={orders} />
+                </div>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-neutral-700 mt-3">
                     <div>
                         <dt className="text-neutral-500">processId</dt>
