@@ -30,18 +30,9 @@ test.afterAll(async () => { if (chainSnapshot) await evmRevert(chainSnapshot); }
 test.describe('GHG workflow panel (devnet)', () => {
     test.setTimeout(240000);
 
-    test('unreported process shows empty workflow state', async ({ page }) => {
-        const seeded = await seedUnreportedProcessScenario();
-
-        await gotoHome(page, { devnet: true });
-        await selectProcess(page, seeded.processId);
-        await expect(page.getByTestId(`order-node-${seeded.rootOrderHash}`)).toBeVisible({ timeout: 30000 });
-
-        // Workflow panel should show zero-state dashboard
-        const workflow = page.getByTestId('ghg-workflow-panel');
-        await expect(workflow).toContainText('GHG Disclosure Workflow');
-        await expect(workflow).toContainText(/0\s*total/, { timeout: 15000 });
-    });
+    // Note: 'unreported process shows empty workflow state' removed —
+    // empty-state rendering is covered by mock + component tests; the
+    // seeded-state test below is the on-chain-unique value.
 
     test('seeded process shows attestation data in workflow panel', async ({ page }) => {
         const seeded = await seedGhgDisclosureScenario();

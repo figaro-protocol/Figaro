@@ -24,21 +24,9 @@ test.describe('UI feedback — connect button & balances (devnet)', () => {
         await gotoHome(page, { devnet: true });
     });
 
-    // -----------------------------------------------------------------------
-    // Fix #5: ConnectButton should render the truncated connected address
-    // -----------------------------------------------------------------------
-    test('header shows connected state when wallet is connected (devnet)', async ({ page }) => {
-        // gotoHome(devnet) waits until btn-submit-order is enabled, guaranteeing
-        // wagmi has resolved address = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266.
-
-        // TokenBalances renders the full connected address in its wallet card.
-        // This is the most reliable DOM evidence that the UI knows it is connected.
-        const addressDisplay = page.locator('.font-mono.truncate').filter({ hasText: /0xf39Fd/i });
-        await expect(addressDisplay.first()).toBeVisible({ timeout: 10000 });
-
-        // The header must NOT show "Connect Wallet" (button appears when disconnected).
-        await expect(page.locator('header').getByRole('button', { name: /connect wallet/i })).not.toBeVisible();
-    });
+    // Note: 'header shows connected state' removed — connected/disconnected
+    // header rendering is covered by mock route tests. The balance-auto-update
+    // test below is the on-chain-unique value (wagmi reactivity to new blocks).
 
     // -----------------------------------------------------------------------
     // Fix #4: wallet-balance should update when a new block is mined

@@ -78,36 +78,10 @@ test.describe('/operators — registration lifecycle (devnet)', () => {
         await expect(page.getByRole('link', { name: 'Build your catalogue →' })).toBeVisible();
     });
 
-    // 2. Active state (account[0] is registered + active from step 1)
-    test('edit form shows Active operator status for the registered operator', async ({ page }) => {
-        await gotoOperators(page);
-
-        // Profile loads from chain — shows edit form in active mode
-        await expect(page.getByText('Active operator')).toBeVisible({ timeout: 15000 });
-        await expect(page.getByRole('button', { name: /update profile/i })).toBeVisible();
-        await expect(page.getByRole('button', { name: /^deactivate$/i })).toBeVisible();
-    });
-
-    // 3. Deactivate (account[0] is active from step 2)
-    test('deactivates the operator from the danger zone', async ({ page }) => {
-        await gotoOperators(page);
-        await expect(page.getByText('Active operator')).toBeVisible({ timeout: 15000 });
-
-        await page.getByRole('button', { name: /^deactivate$/i }).click();
-
-        await expect(page.getByText('Operator inactive')).toBeVisible({ timeout: 60000 });
-        await expect(page.getByRole('button', { name: /^reactivate$/i })).toBeVisible();
-    });
-
-    // 4. Reactivate (account[0] is inactive from step 3)
-    test('reactivates the inactive operator', async ({ page }) => {
-        await gotoOperators(page);
-        await expect(page.getByText('Operator inactive')).toBeVisible({ timeout: 15000 });
-
-        await page.getByRole('button', { name: /^reactivate$/i }).click();
-
-        await expect(page.getByText('Active operator')).toBeVisible({ timeout: 60000 });
-    });
+    // Note: edit / deactivate / reactivate tests removed — those functions
+    // were stripped from OperatorRegistry on 2026-04-26 (web2-strip). To
+    // switch role or update metadata, an operator now withdraws (after the
+    // deposit lock) and re-registers.
 });
 
 // ── Catalogue URI handoff ─────────────────────────────────────────────────────

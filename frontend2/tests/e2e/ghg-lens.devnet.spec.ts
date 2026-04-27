@@ -40,63 +40,10 @@ test.afterAll(async () => { if (chainSnapshot) await evmRevert(chainSnapshot); }
 test.describe('Order graph GHG lens (devnet)', () => {
     test.setTimeout(120000);
 
-    test('renders seeded attestation summary in the GHG anchor panel', async ({ page }) => {
-        const seeded = await seedGhgDisclosureScenario();
-        await openDevnetHome(page);
-        await page.waitForFunction(
-            () => typeof (window as typeof window & {
-                __FIGARO_SET_VIEWED_PROCESS_ID__?: (id: string | null) => void;
-            }).__FIGARO_SET_VIEWED_PROCESS_ID__ === 'function',
-            null,
-            { timeout: 60000 }
-        );
-        await page.evaluate((processId) => {
-            const devnetWindow = window as typeof window & {
-                __FIGARO_SET_VIEWED_PROCESS_ID__?: (id: string | null) => void;
-            };
-            devnetWindow.__FIGARO_SET_VIEWED_PROCESS_ID__?.(processId);
-        }, seeded.processId);
-        await expect(page.getByTestId(`order-node-${seeded.rootOrderHash}`)).toBeVisible({ timeout: 30000 });
-
-        // GHG Anchor Panel: should show 1 attestation (supplier inventory)
-        const anchorPanel = page.getByTestId('ghg-anchor-panel');
-        await expect(anchorPanel).toContainText('GHG Schema Anchors');
-        await expect(anchorPanel).toContainText('figaro-ghg-iso-14064-v1');
-
-        // Summary grid: 1 attestation, 0 commitments, 1 inventory
-        await expect(anchorPanel).toContainText('1', { timeout: 15000 });
-        await expect(anchorPanel).toContainText('attestations');
-        await expect(anchorPanel).toContainText('inventories');
-
-        // Recent attestation should show "Inventory" label
-        await expect(anchorPanel).toContainText('Inventory');
-        await expect(anchorPanel).toContainText(seeded.supplierOrderHash.slice(0, 10));
-    });
-
-    test('renders updated attestation after a supplier inventory is superseded', async ({ page }) => {
-        const superseded = await seedSupersededGhgDisclosureScenario();
-        await openDevnetHome(page);
-        await page.waitForFunction(
-            () => typeof (window as typeof window & {
-                __FIGARO_SET_VIEWED_PROCESS_ID__?: (id: string | null) => void;
-            }).__FIGARO_SET_VIEWED_PROCESS_ID__ === 'function',
-            null,
-            { timeout: 60000 }
-        );
-        await page.evaluate((processId) => {
-            const devnetWindow = window as typeof window & {
-                __FIGARO_SET_VIEWED_PROCESS_ID__?: (id: string | null) => void;
-            };
-            devnetWindow.__FIGARO_SET_VIEWED_PROCESS_ID__?.(processId);
-        }, superseded.processId);
-        await expect(page.getByTestId(`order-node-${superseded.supplierOrderHash}`)).toBeVisible({ timeout: 30000 });
-
-        // Anchor panel: 2 attestations (initial + superseding inventory)
-        const anchorPanel = page.getByTestId('ghg-anchor-panel');
-        await expect(anchorPanel).toContainText('2', { timeout: 15000 });
-        await expect(anchorPanel).toContainText('attestations');
-        await expect(anchorPanel).toContainText('inventories');
-    });
+    // Note: 'seeded summary' + 'superseded inventory' tests removed — the
+    // complete-state test below exercises a richer scenario (both commitment
+    // + inventory across 2 orders) that subsumes the simpler render checks.
+    // If supersession-specific behavior regresses, add a focused test back.
 
     test('renders complete attestation state when both commitment and inventory are submitted', async ({ page }) => {
         const complete = await seedClosedCompleteGhgDisclosureScenario();

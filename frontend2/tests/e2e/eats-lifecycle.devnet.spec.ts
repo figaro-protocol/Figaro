@@ -141,28 +141,10 @@ test.describe('Delivery lifecycle via assembly (devnet)', () => {
         if (testSnapshot) await evmRevert(testSnapshot);
     });
 
-    test('viem-seeded delivery: order nodes appear in assembly graph', async ({ page }) => {
-        // Seed the full delivery scenario on-chain
-        const scenario = await seedDeliveryScenario();
-
-        // Navigate to assembly as buyer
-        await gotoAssemblyDevnet(page);
-
-        // The buyer should see the seeded process in the sidebar.
-        // Click the process card to load the graph.
-        await selectProcessInAssembly(page, scenario.processId);
-
-        // Both orders are Active at commit time (dual-signed)
-        const foodId = scenario.foodOrderHash;
-        const foodNode = page.getByTestId(`topo-node-${foodId}`);
-        await expect(foodNode).toBeVisible({ timeout: 15000 });
-        await expect(foodNode).toHaveAttribute('data-order-state', 'active', { timeout: 15000 });
-
-        // The delivery sub-order node should also be visible
-        const deliveryId = scenario.deliveryOrderHash;
-        const deliveryNode = page.getByTestId(`topo-node-${deliveryId}`);
-        await expect(deliveryNode).toBeVisible({ timeout: 15000 });
-    });
+    // Note: 'viem-seeded delivery: order nodes appear in assembly graph' was
+    // removed — superset coverage is in the 'driver lifecycle signals complete
+    // the flow' test below, which seeds the same scenario plus exercises the
+    // attestation pipeline + resolve.
 
     test('viem-seeded delivery: driver lifecycle signals complete the flow', async ({ page }) => {
         const scenario = await seedDeliveryScenario();
@@ -194,99 +176,11 @@ test.describe('Delivery lifecycle via assembly (devnet)', () => {
         await expect(foodNode).toHaveAttribute('data-order-state', 'resolved', { timeout: 30000 });
     });
 
-    test('UI-driven delivery: buyer creates order, restaurant accepts, process resolves', async ({ page }) => {
-        // This test creates an order through the assembly UI and exercises
-        // the core lifecycle (create → accept → resolve) without the auction
-        // or coordinator modules. A simpler flow that proves the assembly UI
-        // supports the happy path.
-
-        await gotoHome(page, { devnet: true });
-
-        // Buyer creates order for restaurant
-        await fillCreateOrderForm(page, RESTAURANT, '0.01', LOCATION, LOCATION);
-        await waitAndApproveIfNeeded(page);
-        await submitFirstOrder(page);
-        await waitForCreateConfirm(page);
-
-        // Wait for the order graph to render the new node
-        await page.waitForSelector('[data-testid^="order-node-"]', { timeout: 30000 });
-
-        // Get the order ID
-        const [orderId] = await getNodeIds(page);
-        // Order is Active immediately at commit (dual-signed)
-        await assertOrderActive(page, orderId);
-
-        // Buyer resolves
-        await resolveVisibleProcess(page);
-        await expect(page.getByTestId(`order-node-${orderId}`)).toHaveAttribute('data-order-state', 'resolved');
-    });
-
-    test('UI-driven delivery with sub-order: buyer creates diamond, all sellers accept, buyer resolves', async ({ page }) => {
-        // Create a food order + delivery sub-order through the UI,
-        // demonstrating that the assembly route supports the full
-        // sub-order modal workflow.
-        test.setTimeout(300_000);
-
-        await gotoHome(page, { devnet: true });
-
-        // Buyer creates food order to restaurant
-        await fillCreateOrderForm(page, RESTAURANT, '0.05', LOCATION, LOCATION);
-        await waitAndApproveIfNeeded(page);
-        await submitFirstOrder(page);
-        await waitForCreateConfirm(page);
-
-        // Wait for the order graph to render the new node
-        await page.waitForSelector('[data-testid^="order-node-"]', { timeout: 30000 });
-
-        const [foodOrderId] = await getNodeIds(page);
-        // Order is Active immediately at commit (dual-signed)
-        await assertOrderActive(page, foodOrderId);
-
-        // Add delivery sub-order via modal
-        await openSubOrderModal(page);
-        await fillSubOrderModal(page, DRIVER, '0.01', LOCATION, LOCATION);
-
-        // Approve if needed in sub-order modal context
-        const modal = page.getByTestId('suborder-modal');
-        const approveBtn = modal.getByTestId('approve-button');
-        if (await approveBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await approveBtn.click();
-            await page.waitForFunction(
-                () => document.querySelector('[data-testid="suborder-modal"] [data-testid="approval-status"]')?.textContent?.includes('Approved'),
-                null,
-                { timeout: 30000 },
-            ).catch(() => { });
-        }
-
-        await submitSubOrder(page);
-
-        // Wait for the delivery order node to appear
-        await page.waitForFunction(
-            () => document.querySelectorAll('[data-testid^="order-node-"]').length >= 2,
-            null,
-            { timeout: 60000 },
-        );
-
-        const allIds = await getNodeIds(page);
-        expect(allIds.length).toBeGreaterThanOrEqual(2);
-        const deliveryOrderId = allIds.find(id => id !== foodOrderId)!;
-        expect(deliveryOrderId).toBeTruthy();
-
-        // Both orders are Active at commit (dual-signed). No accept step.
-        // Select the process to ensure graph is loaded
-        await selectProcessForOrder(page, foodOrderId);
-
-        for (const id of [foodOrderId, deliveryOrderId]) {
-            await expect(page.getByTestId(`order-node-${id}`)).toHaveAttribute('data-order-state', 'active', { timeout: 15000 });
-        }
-
-        // Buyer resolves all
-        await resolveVisibleProcess(page);
-
-        for (const id of [foodOrderId, deliveryOrderId]) {
-            await expect(page.getByTestId(`order-node-${id}`)).toHaveAttribute('data-order-state', 'resolved', { timeout: 30000 });
-        }
-    });
+    // Note: 'UI-driven delivery' single-order + diamond tests removed —
+    // those lifecycle paths are covered by lifecycle.devnet.spec.ts which
+    // exercises the same commit/resolve and 4-seller-diamond flows. The
+    // assembly route's own UI is exercised by mock + viem-seeded tests in
+    // this file.
 });
 
 test.describe('Auction module visibility (devnet)', () => {
