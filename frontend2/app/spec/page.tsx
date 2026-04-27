@@ -118,7 +118,7 @@ export default function Specifications() {
                     Schema validators in force
                 </h2>
                 <p className="text-sm text-gray-600 mb-6">
-                    Ten runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
+                    Sixteen runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
                 </p>
                 <table className="w-full text-sm">
                     <thead>

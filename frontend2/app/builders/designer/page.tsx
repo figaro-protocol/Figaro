@@ -22,7 +22,7 @@ export default function DesignerLanding() {
                     An assembly is a composition of roles, coordination mechanisms, and display views that use the Figaro kernel to coordinate a multi-party process.
                 </p>
                 <p className="text-base text-neutral-600 leading-relaxed max-w-2xl">
-                    Every assembly inherits the four baseline graphs — capital flow, geolocation, GHG, and DAG topology — automatically. On top of the baseline, you add components (today: Dutch auction) that bundle their own schemas, backend, and UI.
+                    Every assembly inherits the seven baseline graphs — capital flow (committed at buy time), geolocation, GHG, handoff, proximity, jurisdiction, and DAG topology — automatically. On top of the baseline, you add components (today: Dutch auction) that bundle their own schemas, backend, and UI.
                 </p>
                 <div className="mt-8">
                     <Link
