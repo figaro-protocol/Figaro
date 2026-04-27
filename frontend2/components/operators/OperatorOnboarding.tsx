@@ -312,11 +312,14 @@ export function OperatorOnboarding() {
         );
     }
 
-    if (profileLoading) {
-        return <p className="text-sm text-gray-400 py-8">Loading...</p>;
-    }
-
     // ── Post-registration success ──────────────────────────────────────────────
+    //
+    // Check showSuccess BEFORE profileLoading: after register confirms,
+    // OperatorOnboarding triggers a profile refetch which sets
+    // profileLoading=true. On a long-block-height anvil the event-log scan in
+    // getOperatorState can take a while, but the success state is determined
+    // by the receipt (regSuccess), not the post-registration profile read.
+    // Don't gate the user-visible success card behind a slow refetch.
 
     if (showSuccess) {
         return (
@@ -347,6 +350,10 @@ export function OperatorOnboarding() {
                 </div>
             </div>
         );
+    }
+
+    if (profileLoading) {
+        return <p className="text-sm text-gray-400 py-8">Loading...</p>;
     }
 
     // ── Registered operator: profile summary + withdraw ───────────────────────

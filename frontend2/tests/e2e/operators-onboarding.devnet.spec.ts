@@ -98,9 +98,11 @@ test.describe('/operators — catalogue URI handoff (devnet)', () => {
 
         // Form renders (wallet connected)
         await page.getByPlaceholder('e.g. Tasty Burger').waitFor({ timeout: 30000 });
-        // Catalogue URI field is pre-filled from the URL param
-        // Note: `getByDisplayValue` is only on Locator in current @playwright/test typings,
-        // not on Page. Use locator chain instead.
-        await expect(page.locator('input').filter({ hasText: CATALOGUE_URI }).first()).toBeVisible();
+        // Catalogue URI field is pre-filled from the URL param. `hasText`
+        // matches DOM textContent, not input value, so we must check the
+        // value directly. The input value is the same string we passed via
+        // ?catalogueURI=...
+        const catalogueInput = page.locator(`input[value="${CATALOGUE_URI}"]`);
+        await expect(catalogueInput).toBeVisible({ timeout: 10000 });
     });
 });
