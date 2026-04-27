@@ -105,7 +105,7 @@ export interface AuctionCreatedEvent {
 
 export interface AuctionClaimedEvent {
     auctionId: Hex;
-    driver: Address;
+    provider: Address;
     clearingPrice: bigint;
     blockNumber: number;
 }

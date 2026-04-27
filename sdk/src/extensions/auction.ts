@@ -22,7 +22,7 @@ export interface AuctionState {
     creator: Address;
     startTime: number;
     maxPrice: bigint;
-    driver: Address;
+    provider: Address;
     clearingPrice: bigint;
     status: AuctionStatus;
 }
@@ -193,7 +193,7 @@ export async function fetchAuctionState(
         args: [auctionId],
     });
 
-    const [creator, startTime, maxPrice, driver, clearingPrice] =
+    const [creator, startTime, maxPrice, provider, clearingPrice] =
         result as readonly [Address, bigint, bigint, Address, bigint];
 
     const zeroAddr = "0x0000000000000000000000000000000000000000" as Address;
@@ -201,7 +201,7 @@ export async function fetchAuctionState(
     let status: AuctionStatus;
     if (creator === zeroAddr) {
         status = "unknown";
-    } else if (driver !== zeroAddr) {
+    } else if (provider !== zeroAddr) {
         status = "claimed";
     } else {
         status = "active";
@@ -212,7 +212,7 @@ export async function fetchAuctionState(
         creator,
         startTime: Number(startTime),
         maxPrice,
-        driver,
+        provider,
         clearingPrice,
         status,
     };
@@ -227,8 +227,8 @@ export async function fetchAuctionState(
 export function deriveAuctionStates(
     created: AuctionCreatedEvent[],
     claimed: AuctionClaimedEvent[],
-): Map<Hex, { auctionId: Hex; creator: Address; maxPrice: bigint; processId: Hex; currency: Address; claimed: boolean; driver?: Address; clearingPrice?: bigint }> {
-    const map = new Map<Hex, { auctionId: Hex; creator: Address; maxPrice: bigint; processId: Hex; currency: Address; claimed: boolean; driver?: Address; clearingPrice?: bigint }>();
+): Map<Hex, { auctionId: Hex; creator: Address; maxPrice: bigint; processId: Hex; currency: Address; claimed: boolean; provider?: Address; clearingPrice?: bigint }> {
+    const map = new Map<Hex, { auctionId: Hex; creator: Address; maxPrice: bigint; processId: Hex; currency: Address; claimed: boolean; provider?: Address; clearingPrice?: bigint }>();
 
     for (const e of created) {
         map.set(e.auctionId, {
@@ -245,7 +245,7 @@ export function deriveAuctionStates(
         const auction = map.get(e.auctionId);
         if (auction) {
             auction.claimed = true;
-            auction.driver = e.driver;
+            auction.provider = e.provider;
             auction.clearingPrice = e.clearingPrice;
         }
     }

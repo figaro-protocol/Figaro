@@ -158,7 +158,7 @@ describe("deriveAuctionStates", () => {
         expect(s!.maxPrice).toBe(500n);
     });
 
-    it("marks claimed with driver and clearing price", () => {
+    it("marks claimed with provider and clearing price", () => {
         const created: AuctionCreatedEvent[] = [{
             auctionId: hex32(2),
             creator: addr(1),
@@ -170,7 +170,7 @@ describe("deriveAuctionStates", () => {
 
         const claimed: AuctionClaimedEvent[] = [{
             auctionId: hex32(2),
-            driver: addr(5),
+            provider: addr(5),
             clearingPrice: 300n,
             blockNumber: 20,
         }];
@@ -178,7 +178,7 @@ describe("deriveAuctionStates", () => {
         const map = deriveAuctionStates(created, claimed);
         const s = map.get(hex32(2));
         expect(s!.claimed).toBe(true);
-        expect(s!.driver).toBe(addr(5));
+        expect(s!.provider).toBe(addr(5));
         expect(s!.clearingPrice).toBe(300n);
     });
 });

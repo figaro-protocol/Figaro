@@ -168,7 +168,7 @@ export function parseAuctionClaimedLogs(logs: Log[]): AuctionClaimedEvent[] {
             const a = decoded.args as Record<string, unknown>;
             results.push({
                 auctionId: a.auctionId as Hex,
-                driver: a.driver as Address,
+                provider: a.provider as Address,
                 clearingPrice: a.clearingPrice as bigint,
                 blockNumber: Number(log.blockNumber ?? 0),
             });

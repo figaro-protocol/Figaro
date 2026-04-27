@@ -144,9 +144,9 @@ function useAuctionJobs(): AuctionJob[] {
                         args: [auctionId],
                     }) as readonly [string, bigint, bigint, string, bigint];
 
-                    const [, startTime, maxPrice, driver] = data;
+                    const [, startTime, maxPrice, provider] = data;
                     const started = startTime > 0n;
-                    const claimed = driver !== ZERO_ADDRESS;
+                    const claimed = provider !== ZERO_ADDRESS;
 
                     // Skip claimed auctions
                     if (claimed) continue;

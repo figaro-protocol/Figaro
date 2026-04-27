@@ -106,16 +106,16 @@ export function useDutchAuction(order: AuctionOrder) {
         query: { enabled: !!auction },
     });
 
-    // Destructure: (creator, startTime, maxPrice, driver, clearingPrice)
+    // Destructure: (creator, startTime, maxPrice, provider, clearingPrice)
     const creator = (auctionData as readonly [string, bigint, bigint, string, bigint] | undefined)?.[0] ?? ZERO_ADDRESS;
     const startTime = (auctionData as readonly [string, bigint, bigint, string, bigint] | undefined)?.[1] ?? 0n;
     const maxPrice = (auctionData as readonly [string, bigint, bigint, string, bigint] | undefined)?.[2] ?? 0n;
-    const driverAddr = (auctionData as readonly [string, bigint, bigint, string, bigint] | undefined)?.[3] ?? ZERO_ADDRESS;
+    const providerAddr = (auctionData as readonly [string, bigint, bigint, string, bigint] | undefined)?.[3] ?? ZERO_ADDRESS;
     const clearingPrice = (auctionData as readonly [string, bigint, bigint, string, bigint] | undefined)?.[4] ?? 0n;
 
     const started = creator !== ZERO_ADDRESS && startTime > 0n;
-    const isClaimed = driverAddr !== ZERO_ADDRESS;
-    const isMyJob = !!address && isClaimed && driverAddr.toLowerCase() === address.toLowerCase();
+    const isClaimed = providerAddr !== ZERO_ADDRESS;
+    const isMyJob = !!address && isClaimed && providerAddr.toLowerCase() === address.toLowerCase();
 
     // Live auction: read the decaying price
     const { data: currentPrice, refetch: refetchPrice } = useReadContract({
@@ -141,9 +141,9 @@ export function useDutchAuction(order: AuctionOrder) {
         }
     }, [isConfirming, wasConfirming, refetchAuction, refetchPrice]);
 
-    // claim() — driver claims at the current decaying price.
+    // claim() — provider claims at the current decaying price.
     // No approval needed here — DutchAuction has no token handling.
-    // The driver bonds directly in FigaroCore (commitSubOrder) after claiming.
+    // The provider bonds directly in FigaroCore (commitSubOrder) after claiming.
     const claimJob = async () => {
         try {
             const txHash = await auctionActions.claim(auctionId);
@@ -174,7 +174,7 @@ export function useDutchAuction(order: AuctionOrder) {
         connected: !!address,
         started,
         currentPrice: isClaimed ? clearingPrice : (currentPrice as bigint | undefined),
-        assignedDriver: isClaimed ? driverAddr : undefined,
+        assignedProvider: isClaimed ? providerAddr : undefined,
         isClaimed,
         isMyJob,
         creator,

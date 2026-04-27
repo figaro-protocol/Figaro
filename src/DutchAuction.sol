@@ -9,12 +9,15 @@ pragma solidity 0.8.26;
 ///
 ///         The auction determines WHO does a job and at WHAT PRICE. The
 ///         bonded commitment happens separately through FigaroCore — the
-///         driver becomes the seller in the V5 kernel commitment and receives
-///         payment directly at resolution. No financial intermediation.
+///         provider (the address that called claim) becomes the seller in the
+///         V5 kernel commitment and receives payment directly at resolution.
+///         No financial intermediation. The auction is generic: the provider
+///         could be a courier, a merchant in pickup mode, or any other
+///         service-providing actor — the contract has no opinion.
 ///
 /// @dev V3 DutchAuctionDriverMarketV3 had:
 ///      - 7 per-order mappings (High finding)
-///      - Multi-step settlement: payDriver → reclaimAndRepay → refundSurplus (Medium)
+///      - Multi-step settlement: payProvider → reclaimAndRepay → refundSurplus (Medium)
 ///      - Ownable, Pausable, ReentrancyGuard, IRoleResolver
 ///      - Tight coupling to FigaroCoreV3 (acceptOffer, withdraw, getOrderCore, etc.)
 ///      - Vault integration for seller bond float
@@ -33,16 +36,16 @@ pragma solidity 0.8.26;
 /// @dev Flow:
 ///      1. Creator calls createAuction(auctionId, maxPrice, processId, currency)
 ///      2. Price decays linearly from maxPrice to floor over `duration`
-///      3. Driver calls claim(auctionId) — locks driver + clearingPrice
-///      4. Off-chain: buyer + driver sign a commitment with payment = clearingPrice
-///      5. commit on FigaroCore — driver is the seller, bonds directly
-///      6. resolveProcess — FigaroCore pays driver directly. No auction settlement.
+///      3. Provider calls claim(auctionId) — locks provider + clearingPrice
+///      4. Off-chain: buyer + provider sign a commitment with payment = clearingPrice
+///      5. commit on FigaroCore — provider is the seller, bonds directly
+///      6. resolveProcess — FigaroCore pays provider directly. No auction settlement.
 contract DutchAuction {
     struct Auction {
         address creator; // slot 0: who started the auction (20 bytes)
         uint64 startTime; // slot 0: when the clock started (+8 = 28 bytes)
         uint256 maxPrice; // slot 1: starting price
-        address driver; // slot 2: claimed by (address(0) = open)
+        address provider; // slot 2: claimed by (address(0) = open)
         uint256 clearingPrice; // slot 3: price locked at claim time
     }
 
@@ -67,8 +70,8 @@ contract DutchAuction {
         address currency
     );
 
-    /// @notice Emitted when a driver claims at the current price.
-    event AuctionClaimed(bytes32 indexed auctionId, address indexed driver, uint256 clearingPrice);
+    /// @notice Emitted when a provider claims at the current price.
+    event AuctionClaimed(bytes32 indexed auctionId, address indexed provider, uint256 clearingPrice);
 
     /// @notice Emitted when the creator cancels an unclaimed auction.
     event AuctionCancelled(bytes32 indexed auctionId);
@@ -113,7 +116,7 @@ contract DutchAuction {
             creator: msg.sender,
             startTime: uint64(block.timestamp),
             maxPrice: maxPrice,
-            driver: address(0),
+            provider: address(0),
             clearingPrice: 0
         });
 
@@ -148,10 +151,10 @@ contract DutchAuction {
     function claim(bytes32 auctionId) external {
         Auction storage a = auctions[auctionId];
         if (a.creator == address(0)) revert NotStarted();
-        if (a.driver != address(0)) revert AlreadyClaimed();
+        if (a.provider != address(0)) revert AlreadyClaimed();
 
         uint256 price = getCurrentPrice(auctionId);
-        a.driver = msg.sender;
+        a.provider = msg.sender;
         a.clearingPrice = price;
 
         emit AuctionClaimed(auctionId, msg.sender, price);
@@ -162,7 +165,7 @@ contract DutchAuction {
     function cancel(bytes32 auctionId) external {
         Auction storage a = auctions[auctionId];
         if (a.creator != msg.sender) revert NotCreator();
-        if (a.driver != address(0)) revert AlreadyClaimed();
+        if (a.provider != address(0)) revert AlreadyClaimed();
 
         delete auctions[auctionId];
         emit AuctionCancelled(auctionId);
@@ -174,7 +177,7 @@ contract DutchAuction {
     function expire(bytes32 auctionId) external {
         Auction storage a = auctions[auctionId];
         if (a.creator == address(0)) revert NotStarted();
-        if (a.driver != address(0)) revert AlreadyClaimed();
+        if (a.provider != address(0)) revert AlreadyClaimed();
         if (block.timestamp - a.startTime < duration) revert NotExpired();
 
         delete auctions[auctionId];

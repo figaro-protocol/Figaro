@@ -44,11 +44,11 @@ function AuctionLiveStatePanel({
                         <p className="font-mono font-semibold text-black" style={labelStyle}>{formatUnits(auction.currentPrice, context.tokenDecimals ?? 18)}</p>
                     </div>
                 )}
-                {auction.isClaimed && auction.assignedDriver && (
+                {auction.isClaimed && auction.assignedProvider && (
                     <div>
-                        <p className="text-xs text-neutral-500">Assigned Driver</p>
+                        <p className="text-xs text-neutral-500">Assigned Provider</p>
                         <p className="font-mono text-xs text-black">
-                            {auction.assignedDriver.slice(0, 6)}...{auction.assignedDriver.slice(-4)}
+                            {auction.assignedProvider.slice(0, 6)}...{auction.assignedProvider.slice(-4)}
                         </p>
                     </div>
                 )}

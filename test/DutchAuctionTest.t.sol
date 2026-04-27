@@ -15,8 +15,8 @@ contract DutchAuctionTest is Test {
     address constant CURRENCY = address(0xC0FFE);
 
     address creator = address(0xA11CE);
-    address driver1 = address(0xD1);
-    address driver2 = address(0xD2);
+    address provider1 = address(0xD1);
+    address provider2 = address(0xD2);
 
     uint256 constant MAX_PRICE = 100 ether;
 
@@ -79,11 +79,11 @@ contract DutchAuctionTest is Test {
 
     function test_createAuction_permissionless() public {
         // Anyone can create — no owner gate
-        vm.prank(driver1);
+        vm.prank(provider1);
         auction.createAuction(AUCTION_ID, MAX_PRICE, PROCESS_ID, CURRENCY);
 
         (address c,,,,) = auction.auctions(AUCTION_ID);
-        assertEq(c, driver1);
+        assertEq(c, provider1);
     }
 
     // ── getCurrentPrice ──────────────────────────────────────────────
@@ -149,11 +149,11 @@ contract DutchAuctionTest is Test {
 
         vm.warp(block.timestamp + DURATION / 2);
 
-        vm.prank(driver1);
+        vm.prank(provider1);
         auction.claim(AUCTION_ID);
 
         (,,, address d, uint256 cp) = auction.auctions(AUCTION_ID);
-        assertEq(d, driver1);
+        assertEq(d, provider1);
         assertEq(cp, 60 ether);
     }
 
@@ -164,9 +164,9 @@ contract DutchAuctionTest is Test {
         vm.warp(block.timestamp + DURATION / 4);
         uint256 expectedPrice = auction.getCurrentPrice(AUCTION_ID);
 
-        vm.prank(driver1);
+        vm.prank(provider1);
         vm.expectEmit(true, true, false, true);
-        emit DutchAuction.AuctionClaimed(AUCTION_ID, driver1, expectedPrice);
+        emit DutchAuction.AuctionClaimed(AUCTION_ID, provider1, expectedPrice);
         auction.claim(AUCTION_ID);
     }
 
@@ -174,16 +174,16 @@ contract DutchAuctionTest is Test {
         vm.prank(creator);
         auction.createAuction(AUCTION_ID, MAX_PRICE, PROCESS_ID, CURRENCY);
 
-        vm.prank(driver1);
+        vm.prank(provider1);
         auction.claim(AUCTION_ID);
 
-        vm.prank(driver2);
+        vm.prank(provider2);
         vm.expectRevert(DutchAuction.AlreadyClaimed.selector);
         auction.claim(AUCTION_ID);
     }
 
     function test_claim_revertsOnUnknown() public {
-        vm.prank(driver1);
+        vm.prank(provider1);
         vm.expectRevert(DutchAuction.NotStarted.selector);
         auction.claim(AUCTION_ID);
     }
@@ -194,7 +194,7 @@ contract DutchAuctionTest is Test {
 
         vm.warp(block.timestamp + DURATION); // at floor
 
-        vm.prank(driver1);
+        vm.prank(provider1);
         auction.claim(AUCTION_ID);
 
         (,,,, uint256 cp) = auction.auctions(AUCTION_ID);
@@ -206,7 +206,7 @@ contract DutchAuctionTest is Test {
         auction.createAuction(AUCTION_ID, MAX_PRICE, PROCESS_ID, CURRENCY);
 
         // Claim immediately — price = maxPrice
-        vm.prank(driver1);
+        vm.prank(provider1);
         auction.claim(AUCTION_ID);
 
         (,,,, uint256 cp) = auction.auctions(AUCTION_ID);
@@ -240,7 +240,7 @@ contract DutchAuctionTest is Test {
         vm.prank(creator);
         auction.createAuction(AUCTION_ID, MAX_PRICE, PROCESS_ID, CURRENCY);
 
-        vm.prank(driver1);
+        vm.prank(provider1);
         vm.expectRevert(DutchAuction.NotCreator.selector);
         auction.cancel(AUCTION_ID);
     }
@@ -249,7 +249,7 @@ contract DutchAuctionTest is Test {
         vm.prank(creator);
         auction.createAuction(AUCTION_ID, MAX_PRICE, PROCESS_ID, CURRENCY);
 
-        vm.prank(driver1);
+        vm.prank(provider1);
         auction.claim(AUCTION_ID);
 
         vm.prank(creator);
@@ -296,7 +296,7 @@ contract DutchAuctionTest is Test {
         vm.prank(creator);
         auction.createAuction(AUCTION_ID, MAX_PRICE, PROCESS_ID, CURRENCY);
 
-        vm.prank(driver1);
+        vm.prank(provider1);
         auction.claim(AUCTION_ID);
 
         vm.warp(block.timestamp + DURATION);
@@ -317,7 +317,7 @@ contract DutchAuctionTest is Test {
         vm.warp(block.timestamp + DURATION);
 
         // Anyone can expire — not just creator
-        vm.prank(driver2);
+        vm.prank(provider2);
         auction.expire(AUCTION_ID);
 
         (address c,,,,) = auction.auctions(AUCTION_ID);
@@ -430,7 +430,7 @@ contract DutchAuctionTest is Test {
 
         vm.warp(block.timestamp + DURATION * 10);
 
-        vm.prank(driver1);
+        vm.prank(provider1);
         auction.claim(AUCTION_ID);
 
         (,,,, uint256 cp) = auction.auctions(AUCTION_ID);
