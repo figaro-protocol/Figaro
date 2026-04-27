@@ -1,28 +1,28 @@
 /**
- * lib/shared/driverOfferingFetcher.ts
+ * lib/shared/courierOfferingFetcher.ts
  *
- * Fetches the full DriverOfferingMetadata document from a driver's metadataURI
+ * Fetches the full CourierOfferingMetadata document from a courier's metadataURI
  * (on-chain pointer → IPFS/HTTP → parsed offering).
  *
  * Parallel to catalogueFetcher.ts for merchants.
  */
 
-import type { DriverOfferingMetadata } from "@/lib/shared/driverOfferingMetadata";
+import type { CourierOfferingMetadata } from "@/lib/shared/courierOfferingMetadata";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
 
-const offeringCache = new Map<string, DriverOfferingMetadata>();
+const offeringCache = new Map<string, CourierOfferingMetadata>();
 
 /**
- * Fetch and parse a driver offering metadata document from a content URI.
+ * Fetch and parse a courier offering metadata document from a content URI.
  * Returns null if the URI is empty, the fetch fails, or the document is invalid.
  * Results are cached in-memory by URI.
  */
-export async function fetchDriverOffering(
+export async function fetchCourierOffering(
     metadataURI: string
-): Promise<DriverOfferingMetadata | null> {
+): Promise<CourierOfferingMetadata | null> {
     if (!metadataURI) return null;
 
     const cached = offeringCache.get(metadataURI);
@@ -36,10 +36,10 @@ export async function fetchDriverOffering(
         // Basic shape validation
         if (!doc || typeof doc !== "object") return null;
         if (!doc.subjectAddress || typeof doc.subjectAddress !== "string") return null;
-        if (doc.archetypeId !== "driver-delivery") return null;
+        if (doc.archetypeId !== "courier-delivery") return null;
         if (!Array.isArray(doc.serviceAreas) || doc.serviceAreas.length === 0) return null;
 
-        const offering = doc as unknown as DriverOfferingMetadata;
+        const offering = doc as unknown as CourierOfferingMetadata;
         offeringCache.set(metadataURI, offering);
         return offering;
     } catch {

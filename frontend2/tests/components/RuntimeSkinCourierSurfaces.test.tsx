@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { JobMarketModule } from '@/components/modules/JobMarketModule';
 import type { ResolvedAssemblySkinBundle } from '@/lib/shared/runtimeResolution';
 
-const useDriverOfferingMock = vi.fn();
+const useCourierOfferingMock = vi.fn();
 
 vi.mock('wagmi', () => ({
     useAccount: () => ({
@@ -14,8 +14,8 @@ vi.mock('wagmi', () => ({
     usePublicClient: () => undefined,
 }));
 
-vi.mock('@/lib/mechanisms/useDriverOffering', () => ({
-    useDriverOffering: (...args: unknown[]) => useDriverOfferingMock(...args),
+vi.mock('@/lib/mechanisms/useCourierOffering', () => ({
+    useCourierOffering: (...args: unknown[]) => useCourierOfferingMock(...args),
 }));
 
 vi.mock('@/lib/shared/merchantBranding', () => ({
@@ -31,14 +31,14 @@ vi.mock('@/lib/core/contracts', () => ({
 
 const skinBundle: ResolvedAssemblySkinBundle = {
     sourceKind: 'runtime-bound',
-    skinId: 'binding-driver-guild-local-anvil',
+    skinId: 'binding-courier-guild-local-anvil',
     subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-    bindingId: 'binding:driver-guild:local-anvil',
+    bindingId: 'binding:courier-guild:local-anvil',
     branding: {
         branding: {
-            displayName: 'Driver Guild',
+            displayName: 'Courier Guild',
             accentColor: '#1f6feb',
-            themeClass: 'runtime-shell-driver-guild',
+            themeClass: 'runtime-shell-courier-guild',
         },
         assets: {},
         logoURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-logo.png',
@@ -54,7 +54,7 @@ function createProps(overrides?: Record<string, unknown>) {
         context: {
             selectedRoleKind: 'courier',
             shellPresentation: {
-                title: 'Driver Guild',
+                title: 'Courier Guild',
             },
             skinBundle,
             ...(overrides ?? {}),
@@ -62,15 +62,15 @@ function createProps(overrides?: Record<string, unknown>) {
     } as any;
 }
 
-describe('runtime skin-aware driver surfaces', () => {
+describe('runtime skin-aware courier surfaces', () => {
     beforeEach(() => {
-        useDriverOfferingMock.mockReset();
-        useDriverOfferingMock.mockReturnValue({
+        useCourierOfferingMock.mockReset();
+        useCourierOfferingMock.mockReturnValue({
             offering: {
                 displayName: 'Courier One',
                 vehicleType: 'bike',
                 branding: {
-                    avatarURI: 'ipfs://example/driver.png',
+                    avatarURI: 'ipfs://example/courier.png',
                 },
                 serviceAreas: [
                     {
@@ -87,8 +87,8 @@ describe('runtime skin-aware driver surfaces', () => {
         render(<JobMarketModule {...createProps()} />);
 
         expect(screen.getByTestId('job-market-module')).toHaveAttribute('data-skin', skinBundle.skinId);
-        expect(screen.getByText('Driver Guild')).toHaveStyle({ color: '#1f6feb' });
-        expect(screen.getByTestId('driver-profile-banner')).toHaveStyle({ borderTopColor: '#1f6feb' });
+        expect(screen.getByText('Courier Guild')).toHaveStyle({ color: '#1f6feb' });
+        expect(screen.getByTestId('courier-profile-banner')).toHaveStyle({ borderTopColor: '#1f6feb' });
         expect(screen.getByTestId('btn-claim-1')).toHaveStyle({ backgroundColor: '#1f6feb' });
         expect(screen.getByText('0.0018 ETH')).toHaveStyle({ color: '#1f6feb' });
     });

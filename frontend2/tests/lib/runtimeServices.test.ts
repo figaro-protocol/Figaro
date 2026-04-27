@@ -51,7 +51,7 @@ describe("runtimeServices", () => {
             fetchMerchantCatalogue: vi.fn(),
             invalidateMerchantCatalogueCache: vi.fn(),
             publishMerchantCatalogue: vi.fn(),
-            publishDriverOffering: vi.fn(),
+            publishCourierOffering: vi.fn(),
         } as unknown as typeof DEFAULT_CATALOGUE_SERVICE;
 
         registerRuntimeServiceProvider("catalogue", providerKey, customCatalogueService);
@@ -75,13 +75,13 @@ describe("runtimeServices", () => {
             fetchMerchantCatalogue: vi.fn(),
             invalidateMerchantCatalogueCache: vi.fn(),
             publishMerchantCatalogue: vi.fn(),
-            publishDriverOffering: vi.fn(),
+            publishCourierOffering: vi.fn(),
         } as unknown as typeof DEFAULT_CATALOGUE_SERVICE;
         const bindingCatalogueService = {
             fetchMerchantCatalogue: vi.fn(),
             invalidateMerchantCatalogueCache: vi.fn(),
             publishMerchantCatalogue: vi.fn(),
-            publishDriverOffering: vi.fn(),
+            publishCourierOffering: vi.fn(),
         } as unknown as typeof DEFAULT_CATALOGUE_SERVICE;
 
         registerRuntimeServiceProvider("catalogue", assemblyProviderKey, assemblyCatalogueService);

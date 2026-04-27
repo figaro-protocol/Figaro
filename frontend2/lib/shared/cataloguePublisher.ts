@@ -1,7 +1,7 @@
 /**
  * lib/shared/cataloguePublisher.ts
  *
- * Write path for seller/driver catalogues.
+ * Write path for seller/courier catalogues.
  * Serializes a SellerCatalogueMetadata document → pins to IPFS → returns
  * the IPFS URI to be stored on-chain via OperatorRegistry.updateProfile().
  *
@@ -10,7 +10,7 @@
  */
 
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import type { DriverOfferingMetadata } from "@/lib/shared/driverOfferingMetadata";
+import type { CourierOfferingMetadata } from "@/lib/shared/courierOfferingMetadata";
 import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
 import { invalidateCatalogueCache } from "@/lib/shared/catalogueFetcher";
@@ -49,17 +49,17 @@ export async function publishMerchantCatalogue(
 }
 
 /**
- * Validate, pin to IPFS, and return the URI for a driver offering.
+ * Validate, pin to IPFS, and return the URI for a courier offering.
  *
  * @throws If IPFS pinning fails.
  */
-export async function publishDriverOffering(
-    offering: DriverOfferingMetadata,
+export async function publishCourierOffering(
+    offering: CourierOfferingMetadata,
     evidenceTransport: Pick<IpfsService, "pinJSON" | "buildURI"> = DEFAULT_IPFS_SERVICE,
 ): Promise<PublishResult> {
     // Basic shape validation
     if (!offering.subjectAddress || !offering.serviceAreas?.length) {
-        throw new Error("Driver offering must include subjectAddress and at least one service area");
+        throw new Error("Courier offering must include subjectAddress and at least one service area");
     }
 
     const cid = await evidenceTransport.pinJSON(offering);

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { formatUnits } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
-import { useDriverOffering } from "@/lib/mechanisms/useDriverOffering";
+import { useCourierOffering } from "@/lib/mechanisms/useCourierOffering";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { CONTRACTS, DUTCH_AUCTION_ABI } from "@/lib/core/contracts";
 import { isE2EMockSession } from "@/lib/shared/e2e";
@@ -274,7 +274,7 @@ export function JobMarketModule({ moduleId, context }: ModuleProps) {
     const cardStyle = accentTone ? { borderTopColor: accentTone, borderTopWidth: "2px" } : undefined;
     const [geohashFilter, setGeohashFilter] = useState("");
     const { address } = useAccount();
-    const { offering } = useDriverOffering(address);
+    const { offering } = useCourierOffering(address);
 
     const auctionJobs = useAuctionJobs();
 
@@ -306,15 +306,15 @@ export function JobMarketModule({ moduleId, context }: ModuleProps) {
                 </div>
             </div>
 
-            {/* Driver profile from IPFS */}
+            {/* Courier profile from IPFS */}
             {offering && (
                 <div
-                    data-testid="driver-profile-banner"
+                    data-testid="courier-profile-banner"
                     className="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm flex items-center gap-4"
                     style={cardStyle}
                 >
                     {offering.branding?.avatarURI ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- Driver avatars are operator-supplied IPFS/HTTP assets resolved at runtime.
+                        // eslint-disable-next-line @next/next/no-img-element -- Courier avatars are operator-supplied IPFS/HTTP assets resolved at runtime.
                         <img
                             src={resolveContentURI(offering.branding.avatarURI)}
                             alt={offering.displayName}
@@ -344,7 +344,7 @@ export function JobMarketModule({ moduleId, context }: ModuleProps) {
                 </summary>
                 <div className="px-4 pb-3 text-xs text-neutral-600 space-y-1">
                     <p>Each delivery job is allocated through a <strong>Dutch auction</strong>. The price starts at a maximum set by the customer and decays over time toward a floor price.</p>
-                    <p>The first driver to claim the job gets it at the current price. Waiting longer means a lower payout but risks another driver claiming first.</p>
+                    <p>The first courier to claim the job gets it at the current price. Waiting longer means a lower payout but risks another courier claiming first.</p>
                     <p>Any surplus between the customer&apos;s budget and the clearing price is refunded to the customer.</p>
                 </div>
             </details>

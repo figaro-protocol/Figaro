@@ -6,11 +6,11 @@ import {
 } from "@/lib/shared/catalogueFetcher";
 import {
     publishMerchantCatalogue,
-    publishDriverOffering,
+    publishCourierOffering,
 } from "@/lib/shared/cataloguePublisher";
 import { createCatalogueService } from "@/lib/shared/catalogueService";
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import type { DriverOfferingMetadata } from "@/lib/shared/driverOfferingMetadata";
+import type { CourierOfferingMetadata } from "@/lib/shared/courierOfferingMetadata";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -46,11 +46,11 @@ const VALID_MERCHANT_DOC: SellerCatalogueMetadata = {
     version: "1",
 };
 
-const VALID_DRIVER_DOC: DriverOfferingMetadata = {
+const VALID_COURIER_DOC: CourierOfferingMetadata = {
     subjectAddress: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-    archetypeId: "driver-delivery",
-    driverId: "test-driver-01",
-    displayName: "Test Driver",
+    archetypeId: "courier-delivery",
+    courierId: "test-courier-01",
+    displayName: "Test Courier",
     description: "Fast bicycle delivery",
     serviceAreas: [{ geohashPrefix: "dr5re", label: "Downtown" }],
     vehicleType: "bicycle",
@@ -231,43 +231,43 @@ describe("cataloguePublisher", () => {
         });
     });
 
-    describe("publishDriverOffering", () => {
-        it("lets catalogue services publish driver offerings through an injected evidence transport", async () => {
+    describe("publishCourierOffering", () => {
+        it("lets catalogue services publish courier offerings through an injected evidence transport", async () => {
             const evidenceTransport = {
-                pinJSON: vi.fn().mockResolvedValue("QmInjectedDriver123"),
-                buildURI: vi.fn().mockReturnValue("ipfs://QmInjectedDriver123"),
+                pinJSON: vi.fn().mockResolvedValue("QmInjectedCourier123"),
+                buildURI: vi.fn().mockReturnValue("ipfs://QmInjectedCourier123"),
             };
             const service = createCatalogueService({ evidenceTransport: evidenceTransport as never });
 
-            const result = await service.publishDriverOffering(VALID_DRIVER_DOC);
+            const result = await service.publishCourierOffering(VALID_COURIER_DOC);
 
-            expect(evidenceTransport.pinJSON).toHaveBeenCalledWith(VALID_DRIVER_DOC);
-            expect(evidenceTransport.buildURI).toHaveBeenCalledWith("QmInjectedDriver123");
+            expect(evidenceTransport.pinJSON).toHaveBeenCalledWith(VALID_COURIER_DOC);
+            expect(evidenceTransport.buildURI).toHaveBeenCalledWith("QmInjectedCourier123");
             expect(result).toEqual({
-                cid: "QmInjectedDriver123",
-                uri: "ipfs://QmInjectedDriver123",
+                cid: "QmInjectedCourier123",
+                uri: "ipfs://QmInjectedCourier123",
             });
         });
 
-        it("pins a valid driver offering", async () => {
-            const result = await publishDriverOffering(VALID_DRIVER_DOC);
+        it("pins a valid courier offering", async () => {
+            const result = await publishCourierOffering(VALID_COURIER_DOC);
 
             expect(result.cid).toBe("QmPublished123");
             expect(result.uri).toBe("ipfs://QmPublished123");
         });
 
-        it("rejects a driver offering without subjectAddress", async () => {
-            const bad = { ...VALID_DRIVER_DOC, subjectAddress: "" } as unknown as DriverOfferingMetadata;
+        it("rejects a courier offering without subjectAddress", async () => {
+            const bad = { ...VALID_COURIER_DOC, subjectAddress: "" } as unknown as CourierOfferingMetadata;
 
-            await expect(publishDriverOffering(bad)).rejects.toThrow(
+            await expect(publishCourierOffering(bad)).rejects.toThrow(
                 /subjectAddress/
             );
         });
 
-        it("rejects a driver offering without service areas", async () => {
-            const bad = { ...VALID_DRIVER_DOC, serviceAreas: [] };
+        it("rejects a courier offering without service areas", async () => {
+            const bad = { ...VALID_COURIER_DOC, serviceAreas: [] };
 
-            await expect(publishDriverOffering(bad)).rejects.toThrow(
+            await expect(publishCourierOffering(bad)).rejects.toThrow(
                 /service area/
             );
         });
@@ -308,17 +308,17 @@ describe("catalogueToRestaurant semantics", () => {
     });
 });
 
-// ── driverOfferingMetadata ────────────────────────────────────────────────────
+// ── courierOfferingMetadata ───────────────────────────────────────────────────
 
-import { DRIVER_OFFERING_METADATA_EXAMPLE } from "@/lib/shared/driverOfferingMetadata";
+import { COURIER_OFFERING_METADATA_EXAMPLE } from "@/lib/shared/courierOfferingMetadata";
 
-describe("driverOfferingMetadata", () => {
+describe("courierOfferingMetadata", () => {
     it("example document has required fields", () => {
-        const doc = DRIVER_OFFERING_METADATA_EXAMPLE;
+        const doc = COURIER_OFFERING_METADATA_EXAMPLE;
 
         expect(doc.subjectAddress).toMatch(/^0x/);
-        expect(doc.archetypeId).toBe("driver-delivery");
-        expect(doc.driverId).toBeDefined();
+        expect(doc.archetypeId).toBe("courier-delivery");
+        expect(doc.courierId).toBeDefined();
         expect(doc.displayName).toBeDefined();
         expect(doc.serviceAreas.length).toBeGreaterThan(0);
         expect(doc.version).toBeDefined();
@@ -326,7 +326,7 @@ describe("driverOfferingMetadata", () => {
 
     it("vehicle types are valid union members", () => {
         const validTypes = ["bicycle", "motorcycle", "car", "van", "on-foot"];
-        const doc = DRIVER_OFFERING_METADATA_EXAMPLE;
+        const doc = COURIER_OFFERING_METADATA_EXAMPLE;
 
         if (doc.vehicleType) {
             expect(validTypes).toContain(doc.vehicleType);

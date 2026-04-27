@@ -130,7 +130,7 @@ function createAuctionProps(overrides?: Record<string, unknown>) {
                     fetchMerchantCatalogue: async () => null,
                     invalidateMerchantCatalogue: () => undefined,
                     publishMerchantCatalogue: async () => ({ success: true, cid: 'mock-cid', uri: 'ipfs://mock-cid' }),
-                    publishDriverOffering: async () => ({ success: true, cid: 'mock-cid', uri: 'ipfs://mock-cid' }),
+                    publishCourierOffering: async () => ({ success: true, cid: 'mock-cid', uri: 'ipfs://mock-cid' }),
                 },
                 discovery: {
                     isRegistryConfigured: () => true,
@@ -319,7 +319,7 @@ function createProcessProps(overrides?: Record<string, unknown>) {
                     fetchMerchantCatalogue: vi.fn(),
                     invalidateMerchantCatalogue: vi.fn(),
                     publishMerchantCatalogue: vi.fn(),
-                    publishDriverOffering: vi.fn(),
+                    publishCourierOffering: vi.fn(),
                 },
                 discovery: {
                     isRegistryConfigured: () => true,

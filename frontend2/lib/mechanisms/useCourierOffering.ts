@@ -1,8 +1,8 @@
 /**
- * lib/mechanisms/useDriverOffering.ts
+ * lib/mechanisms/useCourierOffering.ts
  *
- * React hook that reads a driver's metadataURI from OperatorRegistry events
- * (via the indexer), fetches and parses the DriverOfferingMetadata from IPFS.
+ * React hook that reads a courier's metadataURI from OperatorRegistry events
+ * (via the indexer), fetches and parses the CourierOfferingMetadata from IPFS.
  *
  * Parallel to useMerchantCatalogue.ts for merchants.
  */
@@ -11,28 +11,28 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useChainId } from "wagmi";
 import { getOperatorMetadataURI } from "@/lib/core/indexer";
-import { fetchDriverOffering, invalidateOfferingCache } from "@/lib/shared/driverOfferingFetcher";
-import type { DriverOfferingMetadata } from "@/lib/shared/driverOfferingMetadata";
+import { fetchCourierOffering, invalidateOfferingCache } from "@/lib/shared/courierOfferingFetcher";
+import type { CourierOfferingMetadata } from "@/lib/shared/courierOfferingMetadata";
 
-export interface UseDriverOfferingResult {
-    offering: DriverOfferingMetadata | null;
+export interface UseCourierOfferingResult {
+    offering: CourierOfferingMetadata | null;
     isLoading: boolean;
     error: string | null;
     refetch: () => void;
 }
 
-export function useDriverOffering(
-    driverAddress: `0x${string}` | undefined
-): UseDriverOfferingResult {
+export function useCourierOffering(
+    courierAddress: `0x${string}` | undefined
+): UseCourierOfferingResult {
     const client = usePublicClient();
     const chainId = useChainId();
-    const [offering, setOffering] = useState<DriverOfferingMetadata | null>(null);
+    const [offering, setOffering] = useState<CourierOfferingMetadata | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [fetchKey, setFetchKey] = useState(0);
 
     useEffect(() => {
-        if (!client || !driverAddress) {
+        if (!client || !courierAddress) {
             setOffering(null);
             setIsLoading(false);
             return;
@@ -42,7 +42,7 @@ export function useDriverOffering(
         setIsLoading(true);
         setError(null);
 
-        getOperatorMetadataURI(client, chainId, driverAddress)
+        getOperatorMetadataURI(client, chainId, courierAddress)
             .then(async (metadataURI) => {
                 if (cancelled) return;
                 if (!metadataURI) {
@@ -50,7 +50,7 @@ export function useDriverOffering(
                     setIsLoading(false);
                     return;
                 }
-                const result = await fetchDriverOffering(metadataURI);
+                const result = await fetchCourierOffering(metadataURI);
                 if (!cancelled) {
                     setOffering(result);
                     setIsLoading(false);
@@ -58,12 +58,12 @@ export function useDriverOffering(
             })
             .catch((err) => {
                 if (cancelled) return;
-                setError(err instanceof Error ? err.message : "Failed to fetch driver offering");
+                setError(err instanceof Error ? err.message : "Failed to fetch courier offering");
                 setIsLoading(false);
             });
 
         return () => { cancelled = true; };
-    }, [client, chainId, driverAddress, fetchKey]);
+    }, [client, chainId, courierAddress, fetchKey]);
 
     const refetch = useCallback(() => {
         setFetchKey((k) => k + 1);

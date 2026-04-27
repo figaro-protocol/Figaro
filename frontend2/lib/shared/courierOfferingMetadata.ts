@@ -1,23 +1,23 @@
 /**
- * lib/shared/driverOfferingMetadata.ts
+ * lib/shared/courierOfferingMetadata.ts
  *
- * Metadata schema for a driver's offering — analogous to SellerCatalogueMetadata
- * for merchants. A driver is a seller: they offer delivery capacity within
+ * Metadata schema for a courier's offering — analogous to SellerCatalogueMetadata
+ * for merchants. A courier is a seller: they offer delivery capacity within
  * service areas, at certain times, with certain vehicle constraints.
  *
  * Stored off-chain (IPFS), pointed to by OperatorRegistry.metadataURI.
  */
 
-export interface DriverAvailabilityWindow {
+export interface CourierAvailabilityWindow {
     /** ISO day-of-week: "monday" | "tuesday" | ... */
     day: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
-    /** HH:MM in the driver's timezone */
+    /** HH:MM in the courier's timezone */
     open: string;
-    /** HH:MM in the driver's timezone */
+    /** HH:MM in the courier's timezone */
     close: string;
 }
 
-export interface DriverServiceAreaMetadata {
+export interface CourierServiceAreaMetadata {
     /** 4–6 char geohash prefix defining the area */
     geohashPrefix: string;
     /** Human-readable label */
@@ -26,15 +26,15 @@ export interface DriverServiceAreaMetadata {
 
 export type VehicleType = "bicycle" | "motorcycle" | "car" | "van" | "on-foot";
 
-export interface DriverOfferingMetadata {
+export interface CourierOfferingMetadata {
     subjectAddress: `0x${string}`;
-    archetypeId: "driver-delivery";
-    driverId: string;
+    archetypeId: "courier-delivery";
+    courierId: string;
     displayName: string;
     description?: string;
 
-    /** Geographic areas this driver covers */
-    serviceAreas: DriverServiceAreaMetadata[];
+    /** Geographic areas this courier covers */
+    serviceAreas: CourierServiceAreaMetadata[];
 
     /** Vehicle or transport method */
     vehicleType?: VehicleType;
@@ -45,8 +45,8 @@ export interface DriverOfferingMetadata {
     /** IANA timezone for availability windows */
     timezone?: string;
 
-    /** When the driver is typically available */
-    availability?: DriverAvailabilityWindow[];
+    /** When the courier is typically available */
+    availability?: CourierAvailabilityWindow[];
 
     /** Minimum acceptable delivery fee in token units */
     minimumFee?: string;
@@ -61,10 +61,10 @@ export interface DriverOfferingMetadata {
     version: string;
 }
 
-export const DRIVER_OFFERING_METADATA_EXAMPLE: DriverOfferingMetadata = {
+export const COURIER_OFFERING_METADATA_EXAMPLE: CourierOfferingMetadata = {
     subjectAddress: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-    archetypeId: "driver-delivery",
-    driverId: "eve-delivery-01",
+    archetypeId: "courier-delivery",
+    courierId: "eve-delivery-01",
     displayName: "Eve Express",
     description: "Fast bicycle delivery, downtown Manhattan",
     serviceAreas: [
