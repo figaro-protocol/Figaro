@@ -3,7 +3,7 @@ set -e
 
 # Deploy the full Figaro Protocol stack to local Anvil and auto-write
 # addresses into:
-#   frontend2/.env.local            (frontend)
+#   frontend/.env.local            (frontend)
 #   .deployments/local.json         (downstream/manual consumption)
 #
 # Stack: FigaroCore, AttestationCoordinator, SchemaRegistry,
@@ -15,7 +15,7 @@ set -e
 #   RPC_URL=https://... PRIVATE_KEY=0x... ./deploy-local.sh  # Any chain
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CORE_ENV="$SCRIPT_DIR/frontend2/.env.local"
+CORE_ENV="$SCRIPT_DIR/frontend/.env.local"
 DEPLOY_DIR="$SCRIPT_DIR/.deployments"
 CORE_MANIFEST="$DEPLOY_DIR/local.json"
 

@@ -182,7 +182,7 @@ Same pattern as the schema ship-list, same verdict: doesn't break the protocol, 
 
 Worth a sentence in the developer docs: "The designer's block palette is one frontend's curated UX. The protocol's composition surface is the on-chain registries; the designer is one way to express assemblies, not THE way."
 
-### `frontend2/lib/shared/schemaSpecSource.ts` preload — 🟢 CLEAN (frontend caching)
+### `frontend/lib/shared/schemaSpecSource.ts` preload — 🟢 CLEAN (frontend caching)
 
 Module-level preload of the JSON spec files (currently topology + handoff; the others are present but not pre-loaded). This is purely a caching choice — the spec files exist, can be loaded async, and are cache-hit on subsequent reads. No curation.
 
@@ -227,7 +227,7 @@ Same shape: a field on the merchant's IPFS-pinned catalogue document. Merchant p
 ### Priority 1 — protocol-layer hygiene (low effort, high clarity)
 
 1. **OperatorRegistry docstring update.** Add a prominent "FigaroCore does not gate any operation on operator state; this registry is advisory metadata for off-chain discovery surfaces" note. One paragraph in the contract header. No code change.
-2. **OperatorRegistry lock-duration justification.** Document what Sybil attack the lock defends against and what changes if it's zero. Either in the contract docstring or in `docs/v5/DESIGN_DECISIONS.md` (which already catalogs 11 patterns that look like vulnerabilities but are correct by design — this would be #12).
+2. **OperatorRegistry lock-duration justification.** Document what Sybil attack the lock defends against and what changes if it's zero. Either in the contract docstring or in `docs/v5/DESIGN_DECISIONS.md` (which already catalogs 14 patterns that look like vulnerabilities but are correct by design — this would be #15).
 
 ### Priority 2 — convention-layer hygiene (small effort, defends against centralization-via-prestige)
 

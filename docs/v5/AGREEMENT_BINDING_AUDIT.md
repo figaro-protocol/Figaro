@@ -3,6 +3,8 @@
 **Audit date:** 2026-04-26
 **Scope:** Phases 1–6 of the agreement-binding rework (2026-04-23). Verifies that the migration from `agreementHash = keccak256(canonicalJSON(Agreement))` to `agreementHash = merkleRoot(sectionLeaves)` was implemented correctly across all five surfaces: Solidity, SDK, frontend, frontend2, Certora.
 
+> **Naming note (2026-04-28):** at the time of this audit, `frontend/` was the legacy build and `frontend2/` was the new build, audited side-by-side as twins. On 2026-04-28 the legacy `frontend/` was archived to `archive-frontend/` and `frontend2/` was renamed to `frontend/`. The references below preserve the original `frontend/` and `frontend2/` naming for historical accuracy — when consulting current source, read `frontend2/...` paths as the now-active `frontend/` and `frontend/...` paths as the now-archived `archive-frontend/`.
+
 **Verdict summary:**
 
 | # | Question | Verdict | Notes |

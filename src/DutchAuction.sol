@@ -9,29 +9,18 @@ pragma solidity 0.8.26;
 ///
 ///         The auction determines WHO does a job and at WHAT PRICE. The
 ///         bonded commitment happens separately through FigaroCore — the
-///         provider (the address that called claim) becomes the seller in the
-///         V5 kernel commitment and receives payment directly at resolution.
-///         No financial intermediation. The auction is generic: the provider
-///         could be a courier, a merchant in pickup mode, or any other
-///         service-providing actor — the contract has no opinion.
+///         provider (the address that called claim) becomes the seller in
+///         the kernel commitment and receives payment directly at
+///         resolution. No financial intermediation. The auction is generic:
+///         the provider could be a courier, a merchant in pickup mode, or
+///         any other service-providing actor — the contract has no opinion.
 ///
-/// @dev V3 DutchAuctionDriverMarketV3 had:
-///      - 7 per-order mappings (High finding)
-///      - Multi-step settlement: payProvider → reclaimAndRepay → refundSurplus (Medium)
-///      - Ownable, Pausable, ReentrancyGuard, IRoleResolver
-///      - Tight coupling to FigaroCoreV3 (acceptOffer, withdraw, getOrderCore, etc.)
-///      - Vault integration for seller bond float
-///
-///      All of that complexity existed because the auction acted as a financial
-///      intermediary for FigaroCoreV3's internal ledger. The live V5 kernel's direct transfer at
-///      resolution eliminates the intermediation entirely.
-///
-///      V5 DutchAuction:
-///      - 1 struct per auction (4 slots vs 7 mappings)
-///      - No token handling (no ReentrancyGuard needed)
-///      - No FigaroCore import (decoupled)
+/// @dev Architectural shape:
+///      - 1 struct per auction (4 storage slots)
+///      - No token handling (so no ReentrancyGuard needed)
+///      - No FigaroCore import (fully decoupled)
 ///      - No owner, no pause (immutable config at deploy)
-///      - processId + currency in events only (not stored)
+///      - processId + currency carried in events only, not stored
 ///
 /// @dev Flow:
 ///      1. Creator calls createAuction(auctionId, maxPrice, processId, currency)

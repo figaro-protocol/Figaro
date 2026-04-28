@@ -427,7 +427,7 @@ Seven safety invariants verified exhaustively:
 6{,}087{,}113 distinct states explored in 4 minutes 8 seconds; zero
 invariant violations. Reproduced via \texttt{./test-tla.sh}.
 
-\subsection{Echidna (\texttt{src/echidna/EchidnaFuzzerV5.sol})}
+\subsection{Echidna (\texttt{src/echidna/EchidnaFuzzer.sol})}
 
 Seven property invariants, each prefixed \texttt{echidna\_}, checked
 after every call sequence:
@@ -448,7 +448,7 @@ after every call sequence:
     reverts.
 \end{enumerate}
 
-\paragraph{Configuration (\texttt{echidna-v5.yaml}).}
+\paragraph{Configuration (\texttt{echidna.yaml}).}
 \texttt{testLimit: 50000} (campaign budget), \texttt{seqLen: 30},
 \texttt{shrinkLimit: 5000}, three deployer/sender accounts, property
 mode, 300-second wall-clock timeout. The Echidna campaign budget is

@@ -1,7 +1,7 @@
 # UI ↔ MetaMask Injection Threat Model
 
 Status: 🟢 ALL FOUR PRIORITY FIXES SHIPPED — survey 2026-04-26, fixes landed same day. The four real exposures the survey flagged are now defended.
-Scope: `frontend2/` (the only active frontend; legacy `frontend/` archived)
+Scope: `frontend/` (renamed from `frontend/` on 2026-04-28; the prior `frontend/` was archived to `archive-frontend/` 2026-04-26)
 Threat surface: the pipeline between "user clicks Sign" and "wallet prompt appears", plus the IPFS-fetched content that flows into the UI and (via `agreementHash`) into the signed message.
 
 ---
@@ -34,7 +34,7 @@ A malicious browser extension can shadow `window.ethereum` between the dApp and 
 
 If a malicious browser extension or other script gains DOM write access, it can inject `<script>` tags that execute under the page's origin. CSP normally bounds this; ours doesn't.
 
-- **Current state**: `frontend2/next.config.mjs:8-9` ships `script-src 'self' 'unsafe-inline'` in production. Dev mode adds `'unsafe-eval'` for HMR.
+- **Current state**: `frontend/next.config.mjs:8-9` ships `script-src 'self' 'unsafe-inline'` in production. Dev mode adds `'unsafe-eval'` for HMR.
 - **HP-2 audit flag** (prior audit, acknowledged): `'unsafe-inline'` is currently a fallback for Next.js RSC/SSR inline JSON payloads. The standard hardening path is **per-response nonce-based CSP** — Next.js middleware injects a `nonce` into every response, every legitimate inline script carries `nonce="<value>"`, and CSP only allows scripts matching the nonce. Injected scripts without the nonce are blocked.
 
 **Status: 🔴 EXPOSED.** This is the highest-leverage single fix. Solid CSP turns "extension with DOM write" from "free script execution" into "execution bounded to the existing JS surface".
@@ -122,7 +122,7 @@ If the app handles `postMessage` from any iframe, the message contents are an in
 
 **Priority 2 — ✅ Landed 2026-04-26.** On closer reading the exposure was smaller than the survey framed: production signing flows already go through wagmi (EIP-6963), and the only direct `window.ethereum` access is in the devnet-shortcut path. Fix added a runtime production-build guard inside `getInjectedEthereumProvider()` (returns null in prod even if some future call site reaches it) and scoped the call lazily to the `if (isDevnet)` branch. Sealing `window.ethereum` via `Object.defineProperty` was considered but rejected — wallet ecosystem behavior is too varied (some legit extensions update the provider object after EIP-6963 announce), and the production sign path no longer touches `window.ethereum` directly so sealing buys nothing additional.
 
-**Priority 3 — ✅ Landed 2026-04-26.** Scope expanded from the two sites the survey listed (evidence-display + agreementStore) to the full set of network-fetched JSON parse sites — same defense, same shape, no point leaving 10 instances unhardened. New helper at `frontend2/lib/shared/safeJson.ts` exposes `safeJsonParse` and `safeJsonFromResponse`, both stripping `__proto__` / `constructor` / `prototype` keys via a `JSON.parse` reviver (14 unit tests). Applied at: `evidence-display/page.tsx`, `agreementStore.ts` (3 sites), `useOperatorRegistry.ts`, `catalogueFetcher.ts`, `discoveryService.ts` (2 sites), `merchantBranding.ts`, `driverOfferingFetcher.ts`, `useDidWeb.ts`, `xmtpChannel.ts`. One site (`runtimeResolution.ts:251`) deferred — the `RuntimeAssetDocumentResponseLike` fetcher abstraction exposes only `.json()`, not `.text()`; expanding the interface would constrain test stubs, and the parsed document goes through `parseRuntimeAssetDocument` validator immediately so the prototype-pollution surface is bounded.
+**Priority 3 — ✅ Landed 2026-04-26.** Scope expanded from the two sites the survey listed (evidence-display + agreementStore) to the full set of network-fetched JSON parse sites — same defense, same shape, no point leaving 10 instances unhardened. New helper at `frontend/lib/shared/safeJson.ts` exposes `safeJsonParse` and `safeJsonFromResponse`, both stripping `__proto__` / `constructor` / `prototype` keys via a `JSON.parse` reviver (14 unit tests). Applied at: `evidence-display/page.tsx`, `agreementStore.ts` (3 sites), `useOperatorRegistry.ts`, `catalogueFetcher.ts`, `discoveryService.ts` (2 sites), `merchantBranding.ts`, `driverOfferingFetcher.ts`, `useDidWeb.ts`, `xmtpChannel.ts`. One site (`runtimeResolution.ts:251`) deferred — the `RuntimeAssetDocumentResponseLike` fetcher abstraction exposes only `.json()`, not `.text()`; expanding the interface would constrain test stubs, and the parsed document goes through `parseRuntimeAssetDocument` validator immediately so the prototype-pollution surface is bounded.
 
 **Priority 4 — ✅ Landed 2026-04-26.** Architecture: a singleton `commitmentSignPreviewStore` queues pending sign requests; a global `<CommitmentSignPreviewProvider>` mounted in `app/providers.tsx` subscribes and renders `<AgreementPreviewModal>` when a request is pending. `useCommitmentFlow.signCommitment` now `await`s `requestSignConfirmation(commitment, agreement)` before `signTypedDataAsync`; the store resolves on Confirm (proceed to wallet prompt) or rejects on Cancel (throw, abort the flow). The agreement is loaded locally via `agreementStore.loadAgreement(agreementHash)` so the modal can render line items, parties, payment amount, deadline, jurisdiction, and other clauses next to the hash. The user verifies "the hash matches the agreement I assembled" before delegating to the wallet. Singleton-store + global-provider pattern avoided per-consumer modal placement (otherwise would have needed a `<AgreementPreviewModal>` next to each of 7 `useCommitmentFlow` call sites). 6 unit tests for the store. All commitment-signing flows in the app now route through this gate automatically — no per-consumer changes required.
 
@@ -140,6 +140,6 @@ If the app handles `postMessage` from any iframe, the message contents are an in
 
 ## 6. Provenance
 
-- Survey conducted 2026-04-26 by an Explore subagent against `frontend2/` at SHA `5ca5670`.
+- Survey conducted 2026-04-26 by an Explore subagent against `frontend/` at SHA `5ca5670`.
 - Underlying findings traced via grep across CSP config, `useAccount` / `useSignTypedData` call sites, `JSON.parse` paths, IPFS-content-rendering paths.
 - No code changes made during the survey.

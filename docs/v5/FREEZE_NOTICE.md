@@ -70,7 +70,7 @@ the frozen Solidity surface:
 
 | Document | Location | Purpose |
 |---|---|---|
-| Design decisions | `docs/v5/DESIGN_DECISIONS.md` | 11 intentional patterns that look like vulnerabilities |
+| Design decisions | `docs/v5/DESIGN_DECISIONS.md` | 14 intentional patterns that look like vulnerabilities |
 | AI audit report | `docs/v5/SECURITY_AUDIT_AI.md` | Prior audit pass; 0 actionable findings, 6 informational |
 | Verification map | `docs/v5/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
 | Release readiness | `docs/v5/RELEASE_READINESS.md` | Gate criteria and current pass status |

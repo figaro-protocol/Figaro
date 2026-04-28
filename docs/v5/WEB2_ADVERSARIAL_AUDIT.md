@@ -128,6 +128,6 @@ Recorded for future contributors so they don't reopen what we just closed:
 
 ## 6. Provenance
 
-- Adversarial survey 2026-04-26 by an Explore subagent against `frontend2/` at SHA `1ed741f`.
+- Adversarial survey 2026-04-26 by an Explore subagent against `frontend/` (then named `frontend2/`) at SHA `1ed741f`.
 - Findings filtered for exploitability before write-up — recorded both real findings and the false-positive analysis explicitly so the next audit pass starts from honest priors.
 - Fixes landed same day; no code changes at survey time.

@@ -10,7 +10,7 @@ This file is the authoritative reference for AI-assisted work in this repo.
 ### Before Raising Any Finding
 
 Read `docs/v5/DESIGN_DECISIONS.md` before flagging anything as a vulnerability.
-It documents 11 patterns that look like vulnerabilities but are correct by design.
+It documents 14 patterns that look like vulnerabilities but are correct by design.
 Common false positives: missing lifecycle guards, resolved-process re-entry,
 cross-order attestation, buyer==seller, no admin/owner, no stuck-fund recovery.
 
@@ -83,9 +83,9 @@ forge test --via-ir
 # calls without a matching inventory entry fail before any cloud dispatch.
 
 # Frontend
-cd frontend2 && npm run type-check
-cd frontend2 && npx vitest run
-cd frontend2 && npm run test:e2e:mock
+cd frontend && npm run type-check
+cd frontend && npx vitest run
+cd frontend && npm run test:e2e:mock
 ```
 
 ---
@@ -381,7 +381,7 @@ AI audit — has been removed).
 ### Test / Mock Contracts
 
 - `src/mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`
-- `src/echidna/EchidnaFuzzerV5.sol`, `EchidnaToken.sol`
+- `src/echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`
 
 ### What Does NOT Exist
 
@@ -447,7 +447,7 @@ content (no on-chain JSON parsing). They are pure / view contracts.
 
 Lives off-chain as JSON at the URI hashed into `SchemaRegistry.uriHash`.
 Built-in specs ship in `sdk/src/schemas/examples/` and
-`frontend2/lib/shared/schemas/` (the application's working copy).
+`frontend/lib/shared/schemas/` (the application's working copy).
 
 ### The 17 local-commerce + jurisdiction schemas
 
@@ -488,7 +488,7 @@ proof carries the per-handoff nonce + signed witness payload at runtime
 ### Adding a new schema — checklist
 
 1. JSON spec in `sdk/src/schemas/examples/<schema>.json`.
-2. Mirror in `frontend2/lib/shared/schemas/<schema>.json` (preloaded by `schemaSpecSource`).
+2. Mirror in `frontend/lib/shared/schemas/<schema>.json` (preloaded by `schemaSpecSource`).
 3. SDK content encoder in `sdk/src/schemas/encode.ts` + export from `index.ts`.
 4. SDK examples test in `sdk/tests/schemas/examples.test.ts`.
 5. Solidity `Foo<Schema>V1Validator.sol` in `src/schemaValidators/`. Validate function MUST be declared `external pure override` (no external state reads, no `block.*`/`tx.*`, no external calls). Use `bytes32 public constant override schemaId = keccak256("...")` so the schemaId is a compile-time literal — `immutable` constructor-set schemaIds force the override to `view` and forfeit the EVM-enforced determinism guarantee. See `ISchemaValidator` NatSpec for the rationale.
@@ -584,12 +584,12 @@ cd sdk && npm run lint    # tsc --noEmit
 
 ## Frontend — Structure
 
-Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend2/` is the only
+Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend/` is the only
 active frontend.** The prior `frontend/` directory was archived to
 `archive-frontend/` on 2026-04-26 — do not edit it. If a frontend change is
-needed, it ships in `frontend2/` only.
+needed, it ships in `frontend/` only.
 
-### Routes (`frontend2/app/`)
+### Routes (`frontend/app/`)
 
 `/`, `/admin`, `/builders`, `/builders/assemblies`, `/builders/authoring`,
 `/builders/designer`, `/builders/prototype`, `/builders/prototype/[slug]`,
@@ -626,7 +626,7 @@ a metadata entry. Block arrays exported by `registerAllModules.ts`:
 `PACKAGE_BLOCKS`, `STANDALONE_BLOCKS`, `SHELL_BLOCKS`. Designer code consumes
 via `listBlockMetadata()` / `listBlocksByCategory(category)` / `getBlockForModule(moduleId)`.
 
-### Designer tool surface (`frontend2/`)
+### Designer tool surface (`frontend/`)
 
 Lives at `/builders/designer`. Three-column layout:
 
@@ -666,7 +666,7 @@ reference on no-op so React re-renders are minimal.
 
 ### Wallet-provider scope per route
 
-Every route in `frontend2/app/` is classified into one of three tiers
+Every route in `frontend/app/` is classified into one of three tiers
 governing wallet-provider load:
 
 - **Marketing** — pure publication / explanation. Must NOT trigger wallet-provider load. Examples: `/`, `/about`, `/help`, `/legal`, `/research`, `/publications`, `/spec`, `/verification`, `/sovereign-commerce`, `/economics`, `/labor-law`, `/displaced`, `/compliance`, `/mechanism`, `/resources`.
@@ -683,7 +683,7 @@ governing wallet-provider load:
 
 ## Local Development
 
-### Environment Variables (`.env.local` in `frontend2/`)
+### Environment Variables (`.env.local` in `frontend/`)
 
 ```
 NEXT_PUBLIC_FIGARO_CORE=0x...
@@ -705,7 +705,7 @@ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
 ```bash
 ./deploy-local.sh                          # Deploy to local Anvil
 
-cd frontend2 && npm run dev                # Dev server
+cd frontend && npm run dev                # Dev server
 
 forge test --via-ir                        # --via-ir required
 
@@ -713,9 +713,9 @@ FOUNDRY_PROFILE=halmos halmos \
   --contract HalmosFigaroCore \
   --solver-timeout-assertion 5m --solver z3
 
-cd frontend2 && npx vitest run
-cd frontend2 && npx playwright test --project=mock
-cd frontend2 && npx playwright test --project=devnet
+cd frontend && npx vitest run
+cd frontend && npx playwright test --project=mock
+cd frontend && npx playwright test --project=devnet
 
 cd sdk && npm test
 cd prover && cargo test -p figaro-kernel
@@ -769,7 +769,7 @@ Companion: `certora/token-ops.inventory` + `lint-token-ops.sh` — declarative i
 
 ### Echidna — 7 properties
 
-Harness: `src/echidna/EchidnaFuzzerV5.sol`.
+Harness: `src/echidna/EchidnaFuzzer.sol`.
 `echidna_solvency`, `echidna_active_count_consistent`, `echidna_cumulative_accounting`,
 `echidna_state_monotonicity`, `echidna_token_conservation`, `echidna_buyer_dominance`,
 `echidna_atomic_resolution`
@@ -794,7 +794,7 @@ Core theory:
 - `CURRENT_STATE.md` — Active reading path and archive boundaries
 
 Security & verification:
-- `DESIGN_DECISIONS.md` — 11 intentional patterns that look like vulnerabilities **(read before auditing)**
+- `DESIGN_DECISIONS.md` — 14 intentional patterns that look like vulnerabilities **(read before auditing)**
 - `SECURITY_AUDIT_AI.md` — AI audit report (2026-04-20): 0 actionable findings, 6 informational
 - `AUDIT_REPORT.md` — Combined audit history and findings registry
 - `VERIFICATION_MAP.md` — Every invariant → code → test → formal layer

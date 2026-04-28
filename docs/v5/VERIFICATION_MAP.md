@@ -26,7 +26,7 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory â†
 - **Protocol extensions**: `AttestationCoordinator`, `SchemaRegistry`, `DutchAuction`, `OperatorRegistry`, `FigaroBatchVerifier`
 - **FIG token ecosystem**: `FigToken`, `StagedMerkleAirdrop`
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
-- **Tests**: 14 Foundry suites (225 tests), 7 Echidna properties (`EchidnaFuzzerV5.sol`), 12 SDK test files (166 tests)
+- **Tests**: 14 Foundry suites (225 tests), 7 Echidna properties (`EchidnaFuzzer.sol`), 12 SDK test files (166 tests)
 - **Frontend**: All pages in `frontend/app/`, components, mechanism modules
 
 ### Explicitly out-of-scope
@@ -188,7 +188,7 @@ This section tracks features that are not protocol invariants but are significan
 
 ## 8) Echidna fuzzing â€” current posture
 
-### Harness: `src/echidna/EchidnaFuzzerV5.sol`
+### Harness: `src/echidna/EchidnaFuzzer.sol`
 
 **Fuzzed actions:**
 - `action_commitRoot`, `action_commitSub`, `action_commitRootAndSub`

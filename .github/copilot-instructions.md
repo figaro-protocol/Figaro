@@ -270,7 +270,7 @@ testing. Drop-in replacement for the real SP1 gateway.
 ### Test / Mock Contracts
 
 - `src/mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`
-- `src/echidna/EchidnaFuzzerV5.sol`, `EchidnaToken.sol`
+- `src/echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`
 
 ### What Does NOT Exist
 
@@ -329,7 +329,7 @@ coverage: `figaro-handoff-v1`, `figaro-commerce-v1`, `figaro-geo-v1`,
 `figaro-merchant-process-v1`, `figaro-courier-process-v1`,
 `figaro-jurisdiction-v1`.
 Each runtime schema ships: JSON spec in `sdk/src/schemas/examples/` + mirror
-in `frontend2/lib/shared/schemas/`, TS encoder in `sdk/src/schemas/encode.ts`,
+in `frontend/lib/shared/schemas/`, TS encoder in `sdk/src/schemas/encode.ts`,
 Solidity validator + Foundry tests. Topology ships only the JSON spec — it
 lives inside the signed agreement manifest at commit time.
 
@@ -397,12 +397,12 @@ cd sdk && npm run lint      # tsc --noEmit
 
 ## Frontend — Structure
 
-Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend2/` is the only
+Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend/` is the only
 active frontend.** The prior `frontend/` directory was archived to
 `archive-frontend/` on 2026-04-26 — do not edit it. Frontend changes ship in
-`frontend2/` only.
+`frontend/` only.
 
-### Routes (`frontend2/app/`)
+### Routes (`frontend/app/`)
 
 - `/` — Landing page
 - `/admin` — Stubbed (V5 has no owner, no fee — infrastructure is free)
@@ -424,7 +424,7 @@ active frontend.** The prior `frontend/` directory was archived to
 - `/api/semantic/agreements`, `/api/semantic/agreements/[agreementHash]`
 - `/api/semantic/assemblies`, `/api/semantic/runtime`
 
-### Components (`frontend2/components/`)
+### Components (`frontend/components/`)
 
 **`core/`** — Building blocks for order flows and assembly rendering:
 - Order flows: `OrderControls`, `OrderConfirmationModal`, `OrderGraph`,
@@ -471,7 +471,7 @@ Routes are classified into three tiers:
 
 Rules: don't gate read-only pages behind `useAccount` (wallet-connect is not auth); use `WalletGate` for inline gates on Reference pages. Today the root layout loads `<Providers>` for every route — splitting `app/` into `(marketing)` / `(transactional)` route groups is a known follow-on; the classification above is the canonical reference for that future refactor.
 
-### Library (`frontend2/lib/`)
+### Library (`frontend/lib/`)
 
 **`core/`** — FigaroCore contract hooks and agreement/commitment utilities
 
@@ -494,7 +494,7 @@ Rules: don't gate read-only pages behind `useAccount` (wallet-connect is not aut
 
 **`shared/`** — Wagmi config, runtime identity, assembly schema/parser/registry/validation, IPFS, module system, vocabulary (`vocab.ts`), reference assemblies (`assemblies/*.reference.json`), runtime fixtures. Key entries: `assembly.ts` (schema types `Assembly`, `MechanismAssembly`, `RoleAssembly`, `ModuleBinding`), `assemblyParser.ts` (`parseAssemblyDocument`), `assemblyRegistry.ts` (`getAssemblyBySlug`, `getRegisteredAssemblyBySlug`, `listAssemblies`, `listRegisteredAssemblies`), `assemblyValidation.ts`, `assemblyPublication.ts`, `runtimeResolution.ts` (`resolveAssemblyRuntimeContext`), `moduleRegistry.ts` (`ModuleRenderContext`, `getModule`, `registerModule`), `blockMetadata.ts` (designer block registry: `BlockMetadata`, `registerBlock`, `listBlockMetadata`, `listBlocksByCategory`, `getBlockForModule`), `designerOps.ts` (pure draft-mutation helpers: `addBlockToSlot`, `removeBindingFromSlot`, `updateBinding`)
 
-### Designer tool surface (`frontend2/components/core/designer/`)
+### Designer tool surface (`frontend/components/core/designer/`)
 
 The `/builders/designer` route mounts a three-column editor:
 
@@ -505,7 +505,7 @@ The `/builders/designer` route mounts a three-column editor:
 
 All four components are state-free; the host page (`app/builders/designer/page.tsx`) holds draft-by-slug state and routes selection across them. Pure draft mutations live in `lib/shared/designerOps.ts` (return same `Assembly` reference on no-op for cheap re-renders).
 
-### Hooks (`frontend2/hooks/core/`)
+### Hooks (`frontend/hooks/core/`)
 
 `useTokenApproval`, `useProcessOrders`, `useBondPreview`,
 `useTokenDecimals`, `useWalletProcessIds`, `useArbitrationCost`,
@@ -521,7 +521,7 @@ All four components are state-free; the host page (`app/builders/designer/page.t
 - MetaMask recognizes chain 31337 natively — no SNAP required
 - `/rpc` URL in Next.js is proxied to Anvil (configured in `next.config.js`)
 
-### Environment Variables (`.env.local` in `frontend2/`)
+### Environment Variables (`.env.local` in `frontend/`)
 
 ```
 NEXT_PUBLIC_FIGARO_CORE=0x...
@@ -559,7 +559,7 @@ NEXT_PUBLIC_SEQUENCER_URL=http://127.0.0.1:3001
 ./deploy-local.sh
 
 # Start Next.js dev server (port 3000)
-cd frontend2 && npm run dev
+cd frontend && npm run dev
 
 # Run Foundry tests — --via-ir required
 forge test --via-ir
@@ -581,13 +581,13 @@ forge test --via-ir
 # Prereqs (one-time): pip install certora-cli ; export CERTORAKEY=...
 
 # Run Vitest unit tests
-cd frontend2 && npx vitest run
+cd frontend && npx vitest run
 
 # Run Playwright mock tests (no chain needed)
-cd frontend2 && npx playwright test --project=mock
+cd frontend && npx playwright test --project=mock
 
 # Run Playwright devnet tests (Anvil must be running)
-cd frontend2 && npx playwright test --project=devnet
+cd frontend && npx playwright test --project=devnet
 
 # Run Rust kernel tests
 cd prover && cargo test -p figaro-kernel
@@ -609,7 +609,7 @@ cd prover && cargo run --release -p figaro-prove-test
 
 ## Testing
 
-### Vitest (`frontend2/tests/`)
+### Vitest (`frontend/tests/`)
 
 Unit tests covering encoding, hooks, components, semantic derivation,
 runtime identity, assembly, console queue/build execution,
@@ -621,7 +621,7 @@ discovery service behavior, coordination messaging service behavior,
 handoff key-exchange module behavior, runtime skin execution, route posture chrome,
 and more.
 
-### Playwright (`frontend2/tests/e2e/`)
+### Playwright (`frontend/tests/e2e/`)
 
 Three projects:
 - `mock` — UI/logic tests, no wallet/chain required
@@ -645,8 +645,8 @@ Two crates:
 
 ### Echidna
 
-Fuzzing config in `echidna-v5.yaml`. Corpus in `corpus/` and `echidna/corpus/`.
-Core fuzzer: `src/echidna/EchidnaFuzzerV5.sol`.
+Fuzzing config in `echidna.yaml`. Corpus in `corpus/` and `echidna/corpus/`.
+Core fuzzer: `src/echidna/EchidnaFuzzer.sol`.
 
 ### Halmos (symbolic testing)
 
@@ -696,7 +696,7 @@ Core theory:
 - `docs/v5/ETHICS.md` — Ethical analysis, 200-year extrapolation, decision to release
 
 Security & verification:
-- `docs/v5/DESIGN_DECISIONS.md` — 11 intentional patterns that look like vulnerabilities
+- `docs/v5/DESIGN_DECISIONS.md` — 14 intentional patterns that look like vulnerabilities
 - `docs/v5/SECURITY_AUDIT_AI.md` — AI audit report (2026-04-20): 0 actionable findings
 - `docs/v5/AUDIT_REPORT.md` — Combined audit history and findings registry
 - `docs/v5/VERIFICATION_MAP.md` — Theory → Code → Tests → TLA+ → UI triangulation map

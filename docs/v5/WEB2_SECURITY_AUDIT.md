@@ -1,7 +1,7 @@
 # Web2 Security Audit — Normal Pass
 
 Status: 🟢 ALL THREE PRIORITY GAPS FIXED — survey + fixes 2026-04-26. Zero high-severity findings; three Low/Medium gaps closed.
-Scope: `frontend2/` Next.js 14 app, API routes, middleware, dependency manifest
+Scope: `frontend/` Next.js 14 app, API routes, middleware, dependency manifest
 Out of scope: UI ↔ MetaMask injection (separate threat model at `docs/v5/UI_METAMASK_INJECTION_THREAT_MODEL.md`)
 
 ---
@@ -156,6 +156,6 @@ These three are defense-in-depth; none of them are required for current function
 
 ## 6. Provenance
 
-- Survey conducted 2026-04-26 by an Explore subagent against `frontend2/` at SHA `c967ace`.
+- Survey conducted 2026-04-26 by an Explore subagent against `frontend/` at SHA `c967ace`.
 - Findings traced via grep across API route handlers, middleware config, `next.config.mjs`, dependency manifest (`npm audit --json`), and storage / fetch / redirect call sites.
 - No code changes made during the survey.

@@ -1,8 +1,8 @@
 #!/bin/bash
 # test-echidna.sh — Reproducible Echidna property-based fuzzing.
 #
-# Runs the 7 Figaro kernel invariants declared in src/echidna/EchidnaFuzzerV5.sol
-# against the configuration in echidna-v5.yaml (50,000 test limit, seqLen 30,
+# Runs the 7 Figaro kernel invariants declared in src/echidna/EchidnaFuzzer.sol
+# against the configuration in echidna.yaml (50,000 test limit, seqLen 30,
 # 300s wall-clock timeout, property mode).
 #
 #   echidna_solvency                  echidna_token_conservation
@@ -39,10 +39,10 @@ echo ""
 
 # Echidna invokes `crytic-compile` under the hood, which reads foundry.toml
 # when --crytic-args specifies the Foundry backend. The `cryticArgs` field in
-# echidna-v5.yaml points at the forge `out/` directory.
+# echidna.yaml points at the forge `out/` directory.
 echidna . \
-    --contract EchidnaFuzzerV5 \
-    --config echidna-v5.yaml \
+    --contract EchidnaFuzzer \
+    --config echidna.yaml \
     "$@"
 
 echo ""

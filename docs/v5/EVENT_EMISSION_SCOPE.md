@@ -118,7 +118,7 @@ event Attestation(
 
 **Critical clarification:** This event does NOT carry the full attestation `content` bytes. The `bytes content` parameter passed to `attestAsBuyer` / `attestAsSeller` lives in the **transaction calldata**, not in the event. The event carries only `contentRef = keccak256(content)` — a 32-byte verification digest.
 
-**Reconstruction path:** indexers and frontends recover the full content via `getAttestationContent(txHash)` which calls `viem.decodeFunctionData` against the AC ABI on the transaction's calldata. This pattern was established in Phase 4a (per the backlog "Done in straggler-review session 2026-04-23 evening" — the GHG hook fix that mirrored frontend2's approach to the legacy frontend).
+**Reconstruction path:** indexers and frontends recover the full content via `getAttestationContent(txHash)` which calls `viem.decodeFunctionData` against the AC ABI on the transaction's calldata. This pattern was established in Phase 4a (per the backlog "Done in straggler-review session 2026-04-23 evening" — the GHG hook fix that mirrored the new frontend's approach to the legacy frontend, since renamed frontend2 → frontend on the public-push tidying pass).
 
 **Why the user's "too much emission" worry doesn't apply here:** The genuinely bulky data (sometimes hundreds of bytes for measurement schemas, future evidence schemas) is in calldata, not event payload. The event is already at the minimum useful shape — anything less and indexers couldn't filter by schemaId or know which stage was attested.
 

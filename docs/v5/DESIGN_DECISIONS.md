@@ -319,6 +319,115 @@ discipline.
 
 ---
 
+## 14. No MLETR-style transferable records — by design
+
+**Pattern**: Figaro's audit bundle assembles a Bill-of-Lading view (and
+contract-of-carriage, invoice, and stage-progression views) from the
+schemas committed at order signing, but exposes no `transferTitle`,
+`endorse`, `nominate`, or `surrender` operation. Once an order is
+committed, neither the buyer nor the seller can be substituted; the
+right-to-claim does not transfer between addresses during the order's
+lifetime. An auditor familiar with the UNCITRAL Model Law on Electronic
+Transferable Records (MLETR) and the TitleEscrow pattern in TradeTrust /
+ERC-721 transfer pattern in CargoX will look for the equivalent and find
+nothing.
+
+**Why it looks wrong**: Industry-standard electronic Bills of Lading are
+*negotiable* by construction — the right-to-claim transfers with possession
+of the document, in the same way a paper BoL transfers by physical
+endorsement. TradeTrust implements this via TitleEscrow's holder /
+beneficiary split with a two-step `nominate` + `transferBeneficiary`
+endorsement; CargoX implements it via direct ERC-721 token transfer;
+TradeLens implemented it via consortium-mediated record updates. Three
+production protocols — and the legal framework all three align to —
+treat transferability as load-bearing. Figaro's absence of any
+equivalent mechanism appears to be a missing feature.
+
+**Why it is correct**: Three independent kernel properties each
+separately rule transferability out:
+
+1. **Single-buyer invariant**. A Figaro process tree has one buyer at
+   the root, and every order in the tree carries that same buyer on its
+   buyer side. There is no kernel mechanism to fork the buyer (creating
+   two buyer-roots) or substitute the buyer (changing the orderHash). A
+   "transfer of buyer-side title" mid-tree has no representation in the
+   `processes` mapping.
+
+2. **Parties fixed at `commit`**. Both buyer and seller addresses are
+   bound into the EIP-712 `Commitment` struct that produces the
+   `orderHash`. The hash is the order's identity; changing either party
+   changes the hash, which is by definition a different order. There
+   cannot be a `transferBuyer` or `transferSeller` function without
+   changing what an `orderHash` means.
+
+3. **No escape hatches** (Theorem 4.7, Paper A). A transfer mechanism
+   requires authorization for the substitution. In TradeTrust this is
+   the holder's `transferBeneficiary` endorsement; in CargoX it is the
+   holder's signature on the ERC-721 transfer. In Figaro terms, the
+   authorizer is a third party J ∉ {B, S} relative to the *new*
+   bilateral relationship between the new buyer and the existing seller
+   — exactly the unbonded actor Theorem 4.7 forbids. Even if J equals
+   the original buyer, J's incentive structure no longer binds the new
+   relationship.
+
+Adding transferability would require either (a) abandoning the
+single-buyer invariant, which invalidates Theorem 5.3's progressive-
+collateralization derivation since cumulative-value math depends on a
+fixed root buyer, or (b) introducing a J ∉ {B, S} authorization path,
+which weakens the Nash equilibrium that makes the bonded commitment
+work. Neither is acceptable.
+
+The framing is the same kind of structural choice as Bitcoin's
+non-reversibility relative to fiat clearing: a substrate that does
+less, on purpose, so the less it does is unconditional. **Cargo does
+not carry rights in Figaro; the *commitment* carries rights.** When the
+cargo needs to carry rights — in trade finance with bank-as-temporary-
+holder, cargo resale in transit, negotiable warehouse receipts — Figaro
+is the wrong tool, by design.
+
+See `docs/v5/BOL_RESEARCH.md` for the full comparison against CargoX,
+TradeTrust, MLETR, and TradeLens, including the field-level mapping of
+what *is* expressible (non-negotiable BoLs in any DAG the buyer commits
+upfront, including multi-leg supply-chain carriage) and what is closed
+off.
+
+> **Scope note (2026-04-28)**: this entry covers the **kernel layer**
+> only — a single bonded order's parties cannot be substituted, by the
+> three invariants above. Whether the same economic event (cargo title
+> transfer mid-flight) can be expressed at the **protocol layer** via
+> composition is an **open research question, parked pending mechanism
+> design**.
+>
+> Working hypothesis (2026-04-28 late session): the
+> **CancellableSeller wrapper + counter-process pattern** appears
+> viable. Buyer commits a parallel `P_cancel` process where each
+> sub-order pays a small cancellation fee back via a CancellableSeller
+> wrapper that programmatically signs the acknowledgment under a
+> pre-agreed fee schedule. Arithmetic netting across P1 + P_cancel
+> produces the same effect as a partial DAG resolve, with cash flow
+> equal to just the cancellation fees rather than full downstream
+> payments. All three kernel invariants survive: same buyer at root of
+> both processes, parties fixed at each commit, cancellation
+> acknowledgments are bilateral signatures encoded in the wrapper's
+> code (not unbonded third-party authorizations). The new buyer's side
+> is a separate `P2` process committed independently.
+>
+> The closing paragraph above ("Cargo does not carry rights in Figaro;
+> the *commitment* carries rights ... Figaro is the wrong tool, by
+> design") should be read as scoped to the kernel layer; do **not**
+> extend it to the protocol layer. The initial framing in
+> `BOL_RESEARCH.md` §5/§6 dismissed the protocol-layer question as "out
+> of scope by design" on flawed economics (the rejected "early
+> `resolveProcess` + new process" pattern doubles DAG cost) — that
+> dismissal is incorrect-as-written. See
+> `memory/project_bol_transferability_parked.md` (full sketch + open
+> design points), the "🔬 Open — BoL transferability mechanism design
+> (parked)" entry in `memory/project_backlog.md`, and V3 reference
+> material at `archive-v3/src/composability/` +
+> `docs/archive/COMPOSABILITY.md`.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Looks wrong because | Is correct because |
@@ -336,3 +445,4 @@ discipline.
 | 11 | Strict token compatibility rejection | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
 | 12 | Single currency per process | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process tree / wallet swap / Level-3 bundler) |
 | 13 | `setValidator` unbundled from `registerSchema` | Front-running window for new schemas | First-write-wins is the no-admin mechanism; atomic deploy+bind is deployment discipline, not a protocol gap |
+| 14 | No `transferTitle` / `endorse` / `nominate` for BoLs | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |

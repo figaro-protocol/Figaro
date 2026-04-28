@@ -181,7 +181,7 @@ Spec: `formal/FigaroCore.tla`. Model: `formal/MC.tla`.
 ### 5. Echidna Fuzzing (property-based)
 
 ```bash
-echidna src/echidna/EchidnaFuzzerV5.sol --config echidna-v5.yaml
+echidna src/echidna/EchidnaFuzzer.sol --config echidna.yaml
 ```
 
 7 property invariants verified across 43k+ calls. Corpus stored in
