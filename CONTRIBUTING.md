@@ -61,7 +61,7 @@ The canonical folder for repo scripts is `script/` (singular). If you add helper
 
 Per repository policy, when a code change makes an existing doc statement stale, update the affected docs in the same change. Key files to keep in sync include:
 
-- `CLAUDE.md` and `AGENTS.md`
+- `CLAUDE.md`
 - `.github/copilot-instructions.md`
 - `sdk/README.md`
 - `docs/v5/` design docs referenced by the code you change

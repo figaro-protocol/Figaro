@@ -16,8 +16,8 @@ The live kernel is V5 and lives in `src/`.
 
 Current contract inventory and test counts are maintained in:
 
-1. `.github/copilot-instructions.md`
-2. `AGENTS.md`
+1. `CLAUDE.md`
+2. `.github/copilot-instructions.md`
 3. `README.md`
 
 Do not reason from V3 contract names unless you are explicitly working in `archive-v3/` or reading historical verification material.
@@ -125,7 +125,9 @@ Some older GHG docs still preserve richer product vocabulary such as boundaries,
 
 When in doubt:
 
-1. trust `.github/copilot-instructions.md` for current code inventory
-2. trust `AGENTS.md` for framing and vocabulary
-3. trust this file and `README.md` in `docs/v5/` for doc selection
-4. treat `docs/archive/`, `archive-v3/`, and `archive-v4/` as historical unless the task is explicitly archival
+1. trust `CLAUDE.md` (and `.github/copilot-instructions.md` for the
+   Copilot-specific subset) for current code inventory, framing, and
+   vocabulary
+2. trust this file and `README.md` in `docs/v5/` for doc selection
+3. prior versions of any contract live in git history — `git log --all`
+   and `git show <commit>:<path>` reach the V3/V4 era when needed
