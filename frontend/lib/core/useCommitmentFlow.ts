@@ -57,7 +57,7 @@ interface InjectedEthereumProvider {
  * directly is a known soft attack surface (a malicious browser extension
  * can shadow the property after page load), so the helper bails on
  * production builds even if some future call site tries to use it. See
- * `docs/v5/UI_METAMASK_INJECTION_THREAT_MODEL.md` §2.1.
+ * `docs/v5/AUDIT_REPORT.md` "Web2 / UI / Specific-Feature Audits → UI ↔ MetaMask Injection Threat Model".
  *
  * The threat model 🟡 Priority 2 fix landed here: gate the helper to dev
  * builds + scope the call to the devnet shortcut branch. Production calls

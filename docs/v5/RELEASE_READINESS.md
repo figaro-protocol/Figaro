@@ -187,14 +187,107 @@ Required posture for that audit:
 2. avoid feature churn during the audit window
 3. treat any post-audit Solidity edits as requiring either a narrow follow-up review or a repeat audit decision
 
+## Pre-Release Hardening Pass — Completed 2026-04-26
+
+A six-section hardening checklist was worked through to completion before
+this readiness assessment was finalized. All items checked off; the full
+checklist was archived after the work landed. Summary of what the pass
+covered:
+
+1. **Versioning cleanup** — drop residual V4-as-live language across
+   docs and code, leaving V3/V4 references only in archive directories
+   and external API names that genuinely use that literal (`_hashTypedDataV4`).
+2. **Solidity hardening** — re-run Foundry, refresh NatSpec + audit
+   docs, reconfirm fee-on-transfer rejection and event semantics, decide
+   on the external-audit gate.
+3. **React runtime hardening** — production-header policy verification,
+   missing-hook-dependency cleanup in stateful flows, `any`-usage
+   reduction in event/indexing/console plumbing, removal of disabled
+   account-abstraction code.
+4. **Documentation and release posture** — refresh AUDIT_REPORT to live
+   contract names + test counts, record exact validation commands,
+   document accepted risks explicitly.
+5. **Cairo rewrite prerequisites** — freeze the V5 kernel invariants as
+   the only source of truth for any future Cairo port, archive the old
+   pre-V5 Cairo lifecycle.
+6. **Exit criteria** — green Foundry + frontend type-check + frontend
+   build + warning-debt resolution + verified header policy.
+
+Earlier (V3-era) gas-consumption empirical numbers have been
+superseded by the gas-ceiling figures recorded in the "Verification
+Coverage" section of `AUDIT_REPORT.md` (≈2,145 orders within the 30M
+Ethereum gas limit).
+
+## Freeze Notice — Solidity Surface Frozen for External Audit
+
+**Date**: 2026-04-20 (initial freeze declaration), amended 2026-04-21
+to land a pre-audit batch of findings (FIG allocation restructured to
+genesis-mint + StagedMerkleAirdrop, `MerkleAirdrop`/`TrancheVesting`
+deleted, `figToken` dead-code field removed from `FigaroBatchVerifier`,
+`DOMAIN_SEPARATOR()` getter added, `totalRegisteredCap` sum-enforcement
+added to `FigToken`).
+
+The following Solidity surface is declared frozen for external audit.
+No feature changes, refactors, or dependency upgrades will be made to
+these directories during the audit window. Any edit requires either a
+narrow follow-up review or a repeat audit decision.
+
+### Frozen scope
+
+| Directory / file | Contents |
+|---|---|
+| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `DutchAuction.sol`, `OperatorRegistry.sol`, `FigaroBatchVerifier.sol` |
+| `src/fig/` | `FigToken.sol`, `StagedMerkleAirdrop.sol`, `IFigMinter.sol` |
+| `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
+| `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |
+
+### Explicitly out of scope (not frozen)
+
+- `src/mocks/` — test helpers, never deployed to mainnet
+- `src/echidna/` — fuzzing harnesses, never deployed to mainnet
+- `test/`, `frontend/`, `sdk/`, `prover/` — non-Solidity surfaces
+
+### Verifying a freeze
+
+To verify a file is unchanged from the freeze commit:
+
+```bash
+git diff <FREEZE_COMMIT> -- src/ src/fig/ script/Deploy.s.sol script/DeployMainnet.s.sol
+```
+
+Expected output: empty.
+
+### Handover Checklist for the Auditor
+
+| Document | Purpose |
+|---|---|
+| `docs/v5/DESIGN_DECISIONS.md` | 14 intentional patterns that look like vulnerabilities (read first) |
+| `docs/v5/AUDIT_REPORT.md` | Prior AI-audit history (4 passes), web2 + adversarial subsidiary audits, accepted risks |
+| `docs/v5/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
+| `docs/v5/RELEASE_READINESS.md` (this file) | Gate criteria, frozen scope, hardening completion record |
+| `docs/v5/SEQUENCER_TRUST_MODEL.md` | What the sequencer is trusted for and why |
+
+The AI-audit history is provided for context only. The external auditor
+should form their own independent findings.
+
+### Post-Audit Policy
+
+Any Solidity edit after the freeze commit must be:
+
+1. Explicitly scoped to a specific finding or accepted-risk item
+2. Reviewed by the original auditor or a qualified substitute
+3. Recorded in `docs/v5/AUDIT_REPORT.md` with finding reference and outcome
+
+Changes to `test/`, `frontend/`, `sdk/`, or `prover/` do not require
+re-audit unless they expose a new on-chain attack surface.
+
 ## Documentation Posture
 
 The canonical live release-readiness set is now:
 
 1. `docs/v5/CURRENT_STATE.md`
-2. `docs/v5/HARDENING_CHECKLIST.md`
-3. `docs/v5/RELEASE_READINESS.md`
-4. `docs/v5/AUDIT_REPORT.md`
-5. `docs/v5/VERIFICATION_MAP.md`
-
-Root-level historical planning files should remain redirect or archive notes only.
+2. `docs/v5/RELEASE_READINESS.md` (this file — also carries the freeze
+   notice + hardening completion record)
+3. `docs/v5/AUDIT_REPORT.md` (carries the AI-audit history + web2/UI
+   subsidiary audits)
+4. `docs/v5/VERIFICATION_MAP.md`

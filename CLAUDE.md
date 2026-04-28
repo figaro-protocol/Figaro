@@ -795,13 +795,10 @@ Core theory:
 
 Security & verification:
 - `DESIGN_DECISIONS.md` — 14 intentional patterns that look like vulnerabilities **(read before auditing)**
-- `SECURITY_AUDIT_AI.md` — AI audit report (2026-04-20): 0 actionable findings, 6 informational
-- `AUDIT_REPORT.md` — Combined audit history and findings registry
+- `AUDIT_REPORT.md` — Combined audit history (4 AI audit passes) + web2/UI subsidiary audits + accepted risks
 - `VERIFICATION_MAP.md` — Every invariant → code → test → formal layer
-- `RELEASE_READINESS.md` — Gate criteria and current pass status
-- `FREEZE_NOTICE.md` — Frozen Solidity surface declaration for external audit
+- `RELEASE_READINESS.md` — Gate criteria, hardening completion record, frozen Solidity surface declaration for external audit
 - `SEQUENCER_TRUST_MODEL.md` — Liveness vs safety trust assumptions for the batch sequencer
-- `HARDENING_CHECKLIST.md` — Pre-release hardening checklist
 
 Architecture:
 - `RUNTIME_THESIS.md`, `FRONTEND_RUNTIME_MODEL.md`, `SEMANTIC_MODEL_LAYER.md`

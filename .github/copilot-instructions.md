@@ -693,17 +693,12 @@ Core theory:
 - `docs/v5/VISION.md` — Full extrapolation: post-firm economy, Coasean collapse, token denomination
 - `docs/v5/THEORY.md` — Game-theoretic derivation of the six protocol properties
 - `docs/v5/CURRENT_STATE.md` — Current reading path, active docs, archive boundaries
-- `docs/v5/ETHICS.md` — Ethical analysis, 200-year extrapolation, decision to release
-
 Security & verification:
 - `docs/v5/DESIGN_DECISIONS.md` — 14 intentional patterns that look like vulnerabilities
-- `docs/v5/SECURITY_AUDIT_AI.md` — AI audit report (2026-04-20): 0 actionable findings
-- `docs/v5/AUDIT_REPORT.md` — Combined audit history and findings registry
+- `docs/v5/AUDIT_REPORT.md` — Combined audit history (4 AI audit passes) + web2/UI subsidiary audits + accepted risks
 - `docs/v5/VERIFICATION_MAP.md` — Theory → Code → Tests → TLA+ → UI triangulation map
-- `docs/v5/RELEASE_READINESS.md` — Gate criteria and current pass status
-- `docs/v5/FREEZE_NOTICE.md` — Frozen Solidity surface declaration for external audit
+- `docs/v5/RELEASE_READINESS.md` — Gate criteria, hardening completion record, frozen Solidity surface declaration for external audit
 - `docs/v5/SEQUENCER_TRUST_MODEL.md` — Sequencer liveness vs safety trust model
-- `docs/v5/HARDENING_CHECKLIST.md` — Pre-release hardening checklist
 
 Architecture:
 - `docs/v5/RUNTIME_THESIS.md` — Why this repo is a runtime, not just contracts

@@ -232,10 +232,8 @@ export default function Specifications() {
                 </table>
                 <p className="text-xs text-gray-500 mt-4">
                     Kernel surface is frozen for external audit. See{" "}
-                    <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/FREEZE_NOTICE.md" target="_blank" rel="noopener noreferrer" className="underline">FREEZE_NOTICE.md</a>{" "}
-                    for the frozen surface declaration and{" "}
                     <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/RELEASE_READINESS.md" target="_blank" rel="noopener noreferrer" className="underline">RELEASE_READINESS.md</a>{" "}
-                    for gate criteria.
+                    for gate criteria, the frozen-surface declaration, and the hardening completion record.
                 </p>
             </section>
 

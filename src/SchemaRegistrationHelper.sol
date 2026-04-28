@@ -10,7 +10,8 @@ import "./AttestationCoordinator.sol";
 /// @notice Combines `SchemaRegistry.registerSchema` + `AttestationCoordinator.setValidator`
 ///         into a single transaction. Closes the front-running window between
 ///         the two writes for non-bootstrap schemas — the M-1 finding from the
-///         2026-04-26 Web3 normal-pass audit (see `docs/v5/SECURITY_AUDIT_AI.md`).
+///         2026-04-26 Web3 normal-pass audit (see `docs/v5/AUDIT_REPORT.md`
+///         §"AI Audit Pass — 2026-04-26").
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
 ///         Why a helper contract instead of a method on AttestationCoordinator:

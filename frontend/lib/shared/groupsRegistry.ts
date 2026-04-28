@@ -78,9 +78,9 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         ],
         readingPath: [
             { label: "Verification inventory", href: "/verification", note: "every invariant → test → formal layer" },
-            { label: "Freeze notice", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/FREEZE_NOTICE.md", note: "the surface declared for external audit" },
-            { label: "Design decisions", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/DESIGN_DECISIONS.md", note: "eleven patterns that look like bugs but are correct" },
-            { label: "AI audit report", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/SECURITY_AUDIT_AI.md", note: "zero actionable findings; six informational" },
+            { label: "Release readiness + freeze notice", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/RELEASE_READINESS.md", note: "gate criteria, hardening record, frozen-surface declaration" },
+            { label: "Design decisions", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/DESIGN_DECISIONS.md", note: "fourteen patterns that look like bugs but are correct" },
+            { label: "Audit report", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/AUDIT_REPORT.md", note: "audit history + web2/UI subsidiary audits + accepted risks" },
             { label: "Paper C — Implementation", href: "/publications#paper-c", note: "verification stack + implementation choices" },
         ],
     },

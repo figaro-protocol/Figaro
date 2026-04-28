@@ -201,8 +201,9 @@ slither . --config-file slither-fig.json
 
 Three-pass AI audit (vulnerability scan, economic invariants, integration).
 22 total findings (2 critical, 2 high, 4 medium, 6 low, 8 informational).
-All critical, high, and medium findings resolved. See `docs/v5/SECURITY_AUDIT_AI.md`
-for the complete finding record and remediation summary.
+All critical, high, and medium findings resolved. The complete finding record + remediation summary lived in
+`SECURITY_AUDIT_AI.md`, which has been folded into this document and the
+source archived locally — `git log` reaches the original.
 
 Key remediations from that pass:
 - Zero-address and contract-code checks added to FigaroBatchVerifier constructor
@@ -279,7 +280,7 @@ recommendation (1) doc-only discipline (DESIGN_DECISIONS.md #13 + CLAUDE.md +
 copilot-instructions.md), and recommendation (2) `SchemaRegistrationHelper.sol`
 — a stateless no-admin composer that bundles `SchemaRegistry.registerSchema` +
 `AttestationCoordinator.setValidator` atomically in one transaction. See
-`docs/v5/SECURITY_AUDIT_AI.md` "## 2026-04-26 Audit Pass" for full detail.
+the prior `SECURITY_AUDIT_AI.md` "## 2026-04-26 Audit Pass" for full detail (archived locally; `git log` reaches it).
 
 ### AI Adversarial Audit Pass — 2026-04-26 (companion to the normal pass above)
 
@@ -288,7 +289,7 @@ inputs + hash collision; bonding economics + multi-party process exploitation;
 BatchVerifier + sequencer trust boundary; cross-contract composition chains).
 Graded by **blast radius** rather than traditional severity.
 
-Full deliverable: `docs/v5/WEB3_ADVERSARIAL_AUDIT.md`.
+Full deliverable lived in the prior `WEB3_ADVERSARIAL_AUDIT.md` (archived locally; summary captured below in "Web2 / UI / Specific-Feature Audits").
 
 **Net result: 0 new actionable findings against the kernel.** All 28 examined
 attack vectors either (a) failed against existing defenses, (b) reduced to
@@ -315,6 +316,64 @@ boundaries already documented in `SEQUENCER_TRUST_MODEL.md` and
 - `SEQUENCER_TRUST_MODEL.md`: add adversarial selective-approval-revocation scenario alongside the existing accidental-revocation note (C-2/D-2).
 - `/help` schema interpretation: stage is attestation-time, not commitment-time (A-1); proximity is syntactic gate (A-6); GHG aggregates require client-side bounds (D-3).
 - SDK/indexer boilerplate: explicit contract-address filtering for re-emitted events (C-6).
+
+### Web2 / UI / Specific-Feature Audits — 2026-04-26
+
+The following audits cover surfaces outside the kernel proper (Next.js
+frontend, MetaMask interaction, registry-shaped contracts, the
+agreement-binding migration). All findings shipped or accepted at the
+date listed; full content of the source documents is preserved in
+`docs/archive/v5/` for the maintainer's reference.
+
+#### Web2 Security — Normal Pass (2026-04-26)
+**Status: 🟢 ALL FIXED.** Scope: `frontend/` Next.js 14 app, API routes,
+middleware, dependency manifest. Out of scope: UI ↔ MetaMask injection
+(separate threat model, see below). **Result**: zero high-severity
+findings; three low/medium gaps closed (CSP nonce on inline scripts,
+`safeJson` reviver against prototype pollution, `window.ethereum`
+defineProperty guard). Surveyed defenses still in force as of today.
+
+#### Web2 Security — Adversarial Pass (2026-04-26)
+**Status: 🟢 ALL REAL FINDINGS FIXED.** Methodology: hostile frame
+against the same surface as the normal pass plus the defenses shipped
+from it (CSP nonce, `safeJson`, `window.ethereum` guard,
+AgreementPreviewModal, agreement-registry size cap, COOP/CORP, Origin
+allowlist). Tried to chain low-severity findings, surface race
+conditions, and find foot-guns in new defenses. **Result**: every real
+finding either fixed or shown to require implausible attacker
+preconditions.
+
+#### UI ↔ MetaMask Injection Threat Model (2026-04-26)
+**Status: 🟢 ALL FOUR PRIORITY FIXES SHIPPED.** Threat surface: the
+pipeline between "user clicks Sign" and "wallet prompt appears", plus
+IPFS-fetched content that flows into the UI and (via `agreementHash`)
+into the signed message. **Defenses shipped**: CSP nonce on inline
+scripts (kills run-time injection), `safeJson` against
+prototype-pollution in IPFS-fetched JSON, `window.ethereum` immutable
+binding via `defineProperty`, AgreementPreviewModal showing the exact
+manifest before signing.
+
+#### Agreement-Binding Migration Audit (2026-04-26)
+**Status: 🟢 PASSED.** Scope: phases 1–6 of the agreement-binding rework
+(2026-04-23). Verified that the migration from
+`agreementHash = keccak256(canonicalJSON(Agreement))` to
+`agreementHash = merkleRoot(sectionLeaves)` was implemented correctly
+across all surfaces: Solidity, SDK, the active frontend, and Certora.
+Inclusion-proof verification path matches the on-chain
+`AttestationCoordinator` reconstruction byte-for-byte.
+
+#### Registry & Schema Audit (2026-04-26)
+**Status: 🟢 BOTTOM LINE — kernel surface is clean.** Concern raised:
+"we moved off-chain all the web2 thinking for FigaroCore — has it crept
+back in through registries and schemas?" Findings were
+**convention-layer, not protocol-layer**: no admin can rug the
+registries, no Nash equilibrium is broken, forks can replace any
+convention. The risk is subtler: if downstream consumers treat the
+frontend ship-list as the canonical "valid schemas" source, the
+convention layer becomes a de facto gatekeeper. Mitigations: explicit
+permissionless framing in CLAUDE.md and `/schemas` page; web2-strip on
+`OperatorRegistry` (advisory metadata only, no kernel state-gating)
+landed the same week.
 
 ## Security Posture
 

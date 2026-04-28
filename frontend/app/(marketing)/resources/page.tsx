@@ -83,12 +83,12 @@ export default function Resources() {
                         <p className="text-sm text-gray-600 mt-0.5">Eleven patterns that look like vulnerabilities but are correct by design. Read before auditing.</p>
                     </li>
                     <li className="border-b border-gray-100 pb-3">
-                        <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/SECURITY_AUDIT_AI.md" target="_blank" rel="noopener noreferrer" className="text-black font-medium hover:underline">AI audit report</a>
-                        <p className="text-sm text-gray-600 mt-0.5">AI audit pass (2026-04-20). Zero actionable findings; six informational.</p>
+                        <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/AUDIT_REPORT.md" target="_blank" rel="noopener noreferrer" className="text-black font-medium hover:underline">Audit report</a>
+                        <p className="text-sm text-gray-600 mt-0.5">Combined audit history (4 AI passes), web2/UI subsidiary audits, accepted risks.</p>
                     </li>
                     <li className="border-b border-gray-100 pb-3">
-                        <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/FREEZE_NOTICE.md" target="_blank" rel="noopener noreferrer" className="text-black font-medium hover:underline">Freeze notice</a>
-                        <p className="text-sm text-gray-600 mt-0.5">The frozen Solidity surface declaration for external audit.</p>
+                        <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/RELEASE_READINESS.md" target="_blank" rel="noopener noreferrer" className="text-black font-medium hover:underline">Release readiness + freeze notice</a>
+                        <p className="text-sm text-gray-600 mt-0.5">Gate criteria, hardening completion record, frozen Solidity surface declared for external audit.</p>
                     </li>
                 </ul>
             </section>
