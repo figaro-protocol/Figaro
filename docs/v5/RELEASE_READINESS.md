@@ -265,7 +265,7 @@ Expected output: empty.
 | `docs/v5/AUDIT_REPORT.md` | Prior AI-audit history (4 passes), web2 + adversarial subsidiary audits, accepted risks |
 | `docs/v5/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
 | `docs/v5/RELEASE_READINESS.md` (this file) | Gate criteria, frozen scope, hardening completion record |
-| `docs/v5/SEQUENCER_TRUST_MODEL.md` | What the sequencer is trusted for and why |
+| `docs/v5/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for (consolidated from former `BATCH_SEQUENCER.md` + `SEQUENCER_TRUST_MODEL.md`) |
 
 The AI-audit history is provided for context only. The external auditor
 should form their own independent findings.

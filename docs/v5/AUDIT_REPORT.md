@@ -294,7 +294,7 @@ Full deliverable lived in the prior `WEB3_ADVERSARIAL_AUDIT.md` (archived locall
 **Net result: 0 new actionable findings against the kernel.** All 28 examined
 attack vectors either (a) failed against existing defenses, (b) reduced to
 known design decisions, or (c) mapped to operational/deployment-discipline
-boundaries already documented in `SEQUENCER_TRUST_MODEL.md` and
+boundaries already documented in `SCALING_STRATEGY.md` §"Sequencer Trust Model" and
 `DESIGN_DECISIONS.md`.
 
 **Two protocol-extension recommendations strengthened by adversarial reasoning:**
@@ -313,7 +313,7 @@ boundaries already documented in `SEQUENCER_TRUST_MODEL.md` and
    validators (D-8).
 
 **Operational documentation augmentation recommended:**
-- `SEQUENCER_TRUST_MODEL.md`: add adversarial selective-approval-revocation scenario alongside the existing accidental-revocation note (C-2/D-2).
+- `SCALING_STRATEGY.md` §"Sequencer Trust Model": add adversarial selective-approval-revocation scenario alongside the existing accidental-revocation note (C-2/D-2).
 - `/help` schema interpretation: stage is attestation-time, not commitment-time (A-1); proximity is syntactic gate (A-6); GHG aggregates require client-side bounds (D-3).
 - SDK/indexer boilerplate: explicit contract-address filtering for re-emitted events (C-6).
 

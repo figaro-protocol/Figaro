@@ -6,10 +6,7 @@ This document defines what the generic GHG feature is for, what objects exist in
 
 Related design notes:
 
-1. [ANCHORED_ARTIFACT_DESIGN.md](ANCHORED_ARTIFACT_DESIGN.md)
-2. [GHG_AVOIDED_EMISSIONS_NOTE.md](GHG_AVOIDED_EMISSIONS_NOTE.md)
-3. [PROTOCOL_EXTENSION_DOCTRINE.md](PROTOCOL_EXTENSION_DOCTRINE.md)
-4. [STEP1_ANCHORED_ARTIFACT_PLAN.md](STEP1_ANCHORED_ARTIFACT_PLAN.md)
+1. [PROTOCOL_EXTENSION_DOCTRINE.md](PROTOCOL_EXTENSION_DOCTRINE.md) — also carries the anchored-artifact pattern that originally lived in a separate `ANCHORED_ARTIFACT_DESIGN.md`
 
 ## Purpose
 

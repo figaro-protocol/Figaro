@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function Home() {
     return (
         <>
-            {/* Mission — property line from docs/v5/ONE_PAGER.md */}
+            {/* Mission — property line from docs/v5/VISION.md */}
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
                 <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-4">
                     Figaro Protocol

@@ -798,12 +798,12 @@ Security & verification:
 - `AUDIT_REPORT.md` — Combined audit history (4 AI audit passes) + web2/UI subsidiary audits + accepted risks
 - `VERIFICATION_MAP.md` — Every invariant → code → test → formal layer
 - `RELEASE_READINESS.md` — Gate criteria, hardening completion record, frozen Solidity surface declaration for external audit
-- `SEQUENCER_TRUST_MODEL.md` — Liveness vs safety trust assumptions for the batch sequencer
+- `SCALING_STRATEGY.md` — Proof-based scaling, batch sequencer architecture, sequencer trust model (consolidated)
 
 Architecture:
 - `RUNTIME_THESIS.md`, `FRONTEND_RUNTIME_MODEL.md`, `SEMANTIC_MODEL_LAYER.md`
 - `INSTITUTION_ASSEMBLY_SCHEMA.md`, `PROTOCOL_EXTENSION_DOCTRINE.md`
-- `SCALING_STRATEGY.md`, `BATCH_SEQUENCER.md`
+- `SCALING_STRATEGY.md` — also carries the batch sequencer architecture + sequencer trust model
 - `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`
 - `FIG_TOKEN.md`, `XMTP_KEY_EXCHANGE.md`, `GEOHASH_PRECISION.md`
 - `GHG_PROTOCOL_SPEC.md`, `ETHICS.md`

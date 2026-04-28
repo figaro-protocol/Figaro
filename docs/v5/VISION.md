@@ -406,7 +406,102 @@ Purchase primitive, the rest of this system does not exist.
 
 ---
 
-*This document distills the vision from THEORY.md, RUNTIME_THESIS.md, and
-iterative development sessions. It is the starting point for new agents and
-visitors. For game-theoretic foundations, see THEORY.md. For runtime
-architecture, see RUNTIME_THESIS.md.*
+## Appendix: A Simple Version
+
+A layperson-flavored pass at the same picture. If the rest of this
+document was too dense, start here.
+
+### The problem everyone has
+
+You want to buy something from a stranger on the internet. Maybe it's
+food. Maybe it's a service. Maybe it's something shipped from another
+country. The problem is: you don't trust them, and they don't trust you.
+Right now, the way we usually solve this is by packaging the deal
+inside a big company. Uber, DoorDash, Amazon give you a familiar shell
+for exchange: they hold the money, decide what counts as a problem,
+take a huge cut, and make both sides operate on their terms.
+
+Figaro starts from the deal itself. Instead of a standing company
+coordinating every exchange, each exchange can assemble its own
+temporary institution out of the people actually doing the work.
+
+### The lockbox
+
+Imagine you want to buy something for $10:
+
+1. **You (the buyer) put $20 into a lockbox.** That's the $10 payment
+   plus $10 as your guarantee that you won't mess around.
+2. **The seller also puts $20 into the lockbox.** That's their
+   guarantee that they'll deliver what they promised.
+3. **Now there's $40 locked up, and neither of you can touch it.**
+
+If the deal goes through, the lockbox opens: you get your $10 guarantee
+back, the seller gets their $20 guarantee back plus the $10 payment.
+If either of you tries to cheat, **both of you lose everything in the
+lockbox**. The cheater loses money, but so does the victim. That sounds
+harsh, but it's the whole point: cheating always costs you more than
+just playing fair.
+
+It's like mutually assured destruction, but for online shopping.
+
+**Why 2×?** At 1×, the seller could cheat and break even (lose deposit,
+keep what they stole). At 2×, cheating always means a net loss. 3×
+would work too, but it's wasted capital for no extra deterrent.
+
+### There are no companies — only people doing work
+
+Think about ordering a burger. In the current world, you think you're
+buying from "Joe's Burger Joint." But under that name, there's a cook
+making the burger, an ingredient sourcer, a kitchen operator, a driver,
+and a platform like DoorDash sitting on top taking a cut.
+
+In Figaro, "Joe's Burger Joint" doesn't exist as one thing. There's a
+**tree** of individual people, each doing their part:
+
+```
+You (buyer)
+ └─ Cook (makes the burger, bonds $X)
+     ├─ Ingredient person (got the tomatoes, bonds $Y)
+     └─ Kitchen operator (provides the space, bonds $Z)
+ └─ Driver (delivers it, bonds $W)
+```
+
+Each person locks their own money. Each person gets paid directly for
+the value they added. And if any one person in the tree screws up,
+**the whole tree fails and everyone loses their deposits**. So every
+person in the tree is motivated to make sure every other person does
+their job — group-project peer pressure with real money on the line.
+
+This same pattern works for rides, repairs, international shipments,
+freelance work — any deal between people. Lock money, do the work, get
+paid. No leap of faith needed.
+
+### What everyone can see (and what they can't)
+
+How much money is locked, who's involved, whether it got completed —
+all visible on chain. On purpose. It's a public bulletin board: anyone
+can see "there's a $10 delivery needed in downtown Austin" or "50
+orders happening in this neighborhood right now," and drivers (or AI
+bots) can pick up work without going through a platform's algorithm.
+
+But your home address, personal details, and private notes are
+encrypted. Only the people involved in your specific order can see
+them. Every order has its own separate encryption key — there's no
+master database to steal.
+
+### Who's in charge?
+
+Nobody. There's no company running Figaro, no CEO, no customer
+support, no one who can freeze your account. Three things protect you,
+in order: the money (cheating costs more than cooperating, handles
+~99% of cases), peer pressure with teeth (everyone in the tree loses
+if one cheats, so everyone watches everyone else), and receipts
+(everything is permanently recorded on chain, ready to be evidence in
+any forum).
+
+---
+
+*This document distills the vision from THEORY.md, RUNTIME_THESIS.md,
+and iterative development sessions. It is the starting point for new
+agents and visitors. For game-theoretic foundations, see THEORY.md.
+For runtime architecture, see RUNTIME_THESIS.md.*

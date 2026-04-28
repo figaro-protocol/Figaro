@@ -698,7 +698,7 @@ Security & verification:
 - `docs/v5/AUDIT_REPORT.md` — Combined audit history (4 AI audit passes) + web2/UI subsidiary audits + accepted risks
 - `docs/v5/VERIFICATION_MAP.md` — Theory → Code → Tests → TLA+ → UI triangulation map
 - `docs/v5/RELEASE_READINESS.md` — Gate criteria, hardening completion record, frozen Solidity surface declaration for external audit
-- `docs/v5/SEQUENCER_TRUST_MODEL.md` — Sequencer liveness vs safety trust model
+- `docs/v5/SCALING_STRATEGY.md` — Proof-based scaling, batch sequencer architecture, sequencer trust model (consolidated)
 
 Architecture:
 - `docs/v5/RUNTIME_THESIS.md` — Why this repo is a runtime, not just contracts
@@ -710,10 +710,8 @@ Architecture:
 - `docs/v5/PUBLIC_GRAPH_MODEL.md` — The five semantic graphs
 - `docs/v5/AI_AGENT_COORDINATION.md` — How autonomous agents coordinate via public graph data
 - `docs/v5/GEOHASH_PRECISION.md` — 6-char default precision rationale
-- `docs/v5/XMTP_KEY_EXCHANGE.md` — Per-order ephemeral key architecture
 - `docs/v5/GHG_PROTOCOL_SPEC.md` — GHG workflow semantics
-- `docs/v5/SCALING_STRATEGY.md` — Kernel scaling architecture: SP1, sequencer
-- `docs/v5/BATCH_SEQUENCER.md` — Batch sequencer architecture and implementation status
+- `docs/v5/SCALING_STRATEGY.md` — Kernel scaling architecture (SP1 prover, batch sequencer, sequencer trust model — all consolidated here)
 
 ## Figaro Local Commerce — First Archetype (Consolidated)
 

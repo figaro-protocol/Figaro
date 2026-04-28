@@ -43,7 +43,7 @@ architecture. It is implemented and tested:
 - On-chain verifier (`src/FigaroBatchVerifier.sol`): 22 Foundry tests
 - Devnet batch sequencer (`prover/sequencer/`): 22 tests
 
-Read `BATCH_SEQUENCER.md` for the sequencer architecture.
+Read `SCALING_STRATEGY.md` §"Batch Sequencer Architecture" for the sequencer architecture.
 
 If the task involves rewriting or deleting the old Cairo branch, also read
 `CAIRO_REWRITE_PREREQUISITES.md`.
@@ -61,11 +61,8 @@ Start with these docs, in this order:
 5. `FRONTEND_RUNTIME_PLAN.md`
 6. `PUBLIC_GRAPH_MODEL.md`
 7. `SEMANTIC_MODEL_LAYER.md`
-8. `INSTITUTION_ASSEMBLY_SCHEMA.md`
-9. `SCALING_STRATEGY.md`
-10. `BATCH_SEQUENCER.md`
-11. `VERIFICATION_MAP.md`
-12. `ETHICS.md`
+8. `SCALING_STRATEGY.md`
+9. `VERIFICATION_MAP.md`
 
 ### Frontend
 

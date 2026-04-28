@@ -309,3 +309,436 @@ Do not resume StarkNet implementation until V5 parity gates are cleared.
 1. ship the unchanged kernel on Ethereum mainnet (Track 1)
 2. design the validity-proof circuit for batched kernel transitions (Track 2)
 3. expand to secondary networks only when security and reward criteria are met
+
+---
+
+## Batch Sequencer Architecture
+
+
+Status: Phase 1 (devnet) implemented and tested.
+
+## What the Sequencer Is
+
+The batch sequencer is the off-chain service that collects signed protocol
+operations from participants, assembles them into batches, runs the SP1
+prover, and submits the proof + auxiliary data to the on-chain
+`FigaroBatchVerifier` contract.
+
+The sequencer is a **coordination convenience**, not a trust assumption.
+It cannot fabricate operations (every operation requires valid EIP-712
+signatures from the relevant parties). It cannot censor selectively
+(participants can always fall back to the direct `FigaroCore` on-chain
+path). It cannot extract value (the kernel has no fee, no MEV surface).
+
+## Architecture
+
+```
+                    ┌──────────────────┐
+  signed ops ──────►│    Sequencer     │
+  (EIP-712)        │                  │
+                    │  1. Collect      │
+                    │  2. Validate     │
+                    │  3. Assemble     │
+                    │  4. Prove (SP1)  │
+                    │  5. Submit       │
+                    └──────┬───────────┘
+                           │ proof + positions + events
+                           ▼
+                    ┌──────────────────┐
+                    │ FigaroBatchVerifier │
+                    │  (on-chain)      │
+                    │                  │
+                    │  verify proof    │
+                    │  check state root│
+                    │  reconcile tokens│
+                    │  re-emit events  │
+                    └──────────────────┘
+```
+
+## Operation Lifecycle
+
+### 1. Submission
+
+Participants submit signed protocol operations to the sequencer via a
+JSON-RPC or REST endpoint. Each operation is a typed message containing:
+
+- The operation type (commit, resolve, attest, register-schema,
+  register-operator, etc.)
+- The operation payload (commitment struct, process ID, attestation data, etc.)
+- EIP-712 signatures from the required parties
+
+The sequencer validates signatures immediately on receipt and rejects
+malformed or unauthorized operations.
+
+### 2. Pre-checks
+
+Before including an operation in a batch, the sequencer verifies:
+
+- **Signature validity**: EIP-712 typed data hash recovery matches expected signers
+- **Token approval**: For `commit` operations, the buyer and seller have
+  sufficient ERC-20 balance and approval for the verifier contract
+- **State validity**: The operation is consistent with the current state
+  (no duplicate commitments, process exists for sub-orders, etc.)
+
+Pre-checks are advisory — the proof itself enforces all invariants.
+But pre-checks avoid wasting prover compute on batches that would fail.
+
+### 3. Batch Assembly
+
+The sequencer collects operations into a batch once a trigger condition is met:
+
+- **Time-based**: every N seconds (e.g., 10s for devnet, configurable)
+- **Size-based**: when the batch reaches M operations
+- **Whichever comes first**
+
+The assembled `BatchInput` contains:
+
+```typescript
+{
+  chain_id: number,
+  verifying_contract: Address,
+  prev_state: KernelStateSnapshot,
+  operations: KernelOp[],
+  block_timestamp: number
+}
+```
+
+The `prev_state` is the sequencer's local mirror of the kernel state,
+which it maintains by replaying all previously submitted batches.
+
+### 4. Proving
+
+The sequencer feeds the `BatchInput` to the SP1 prover, which executes
+the Figaro kernel program in the zkVM and produces:
+
+- A validity proof
+- `PublicValues` (8 fields: prev/new state roots, chain binding, 4 event hashes)
+- `NetPosition[]` (aggregated token movements)
+- `BatchEvents` (attestation, schema, operator events)
+
+For devnet, the MockProver is used (no real proof generation).
+For production, the SP1 network prover generates STARK/SNARK proofs.
+
+### 5. Settlement Transaction
+
+The sequencer submits a single transaction to `FigaroBatchVerifier.settleBatch()`:
+
+```solidity
+settleBatch(
+  proof,           // SP1 proof bytes
+  publicValues,    // ABI-encoded 8 × 32-byte words
+  positions,       // NetPosition[] for token reconciliation
+  events           // BatchEventData (attestations, schemas, operators)
+)
+```
+
+The verifier contract:
+1. Verifies the proof via ISP1Verifier
+2. Checks state root continuity (`prevRoot == stateRoot`)
+3. Checks chain binding (`chainId`, `verifyingContract`)
+4. Verifies auxiliary data hashes match proof commitments
+5. Executes net token transfers (mints FIG directly when the settlement token is FIG)
+6. Re-emits protocol-compatible events
+7. Advances the state root
+
+## Trust Analysis
+
+### What the sequencer CAN do
+
+- **Delay**: withhold operations from a batch, delaying settlement.
+  Mitigation: participants can submit directly to `FigaroCore` on-chain
+  (the sequencer is an optimization layer, not a requirement).
+- **Order within batch**: choose the order of operations within a batch.
+  This is harmless — the kernel's state transitions are deterministic
+  and order-independent within a batch (no MEV surface).
+- **Refuse service**: decline to include an operation.
+  Mitigation: same as delay — direct on-chain fallback.
+
+### What the sequencer CANNOT do
+
+- **Fabricate operations**: every operation requires valid EIP-712
+  signatures. The prover verifies signatures inside the zkVM.
+- **Steal funds**: token movements are determined by the kernel logic
+  inside the proof. The verifier contract executes only the movements
+  the proof commits to.
+- **Violate invariants**: the proof enforces all 9 kernel invariants.
+  A batch that violates any invariant produces no valid proof.
+- **Forge state**: the on-chain state root chain prevents the sequencer
+  from submitting proofs against a fabricated prior state.
+
+### Relationship to "no escape hatches"
+
+The sequencer does not weaken the kernel's no-escape-hatches property.
+The kernel invariants are enforced by the proof, not by the sequencer.
+The sequencer is more analogous to a miner/validator (orders transactions)
+than to a governance council (makes discretionary decisions).
+
+A participant who distrusts the sequencer can always bypass it by
+submitting directly to `FigaroCore` on the settlement chain. The
+sequencer is a throughput optimization, not a trust requirement.
+
+## Fallback Path
+
+The direct on-chain `FigaroCore` contract remains deployed and functional
+alongside the batch verifier. This creates a two-tier settlement model:
+
+- **Batch path**: sequencer → prover → FigaroBatchVerifier (cheaper, batched)
+- **Direct path**: participant → FigaroCore (immediate, unbatched)
+
+Both paths produce equivalent state changes and emit compatible events.
+The SDK and runtime can consume events from either path transparently.
+
+## State Synchronization
+
+The sequencer maintains a local state mirror by:
+
+1. Initializing from the on-chain `stateRoot` at startup
+2. Replaying all operations from submitted batches
+3. Incorporating direct `FigaroCore` transactions (if any) by reading
+   on-chain events and applying them to the local state
+
+If a direct `FigaroCore` transaction occurs between batch submissions,
+the sequencer must detect the state divergence (the prover's `prevRoot`
+won't match the on-chain `stateRoot`) and re-sync before the next batch.
+
+## Implementation Phases
+
+### Phase 1: Devnet Sequencer (implemented)
+
+Rust crate in `prover/sequencer/`. 6 modules, 22 tests.
+
+- **Mempool** (`mempool.rs`): Thread-safe operation queue with full EIP-712
+  pre-check validation for all 11 `KernelOp` variants. Rejects malformed or
+  mis-signed operations before they reach the prover. Supports `requeue()`
+  to push failed-batch operations back to the front of the queue.
+- **State mirror** (`state.rs`): Local kernel state tracking via
+  `KernelState` with snapshot export, advance, and deterministic root.
+- **Assembler** (`assembler.rs`): Configurable batch assembly (max ops,
+  interval). Builds `BatchInput` from drained operations + state snapshot.
+- **Prover** (`prover.rs`): SP1 mock prover integration. Runs local
+  `apply_batch_with_state()` for positions/events + SP1 mock execution
+  for proof validation. Returns `ProveResult` with post-batch state.
+- **Submitter** (`submitter.rs`): On-chain transaction submission via
+  alloy. Converts kernel types to Solidity types, calls
+  `FigaroBatchVerifier.settleBatch()`, reads on-chain state root.
+- **API** (`api.rs`): axum HTTP routes — `POST /submit` (accepts
+  `KernelOp` JSON, returns operation ID or validation error),
+  `GET /status` (state root, pending ops, batches settled).
+- **Main** (`main.rs`): Env config, component bootstrap, time-triggered
+  batch loop (drain → assemble → prove → submit → advance state).
+  State mirror advances only after successful on-chain submission.
+  On prove or submission failure, drained operations are re-queued
+  to the front of the mempool via `Mempool::requeue()` — no operations
+  are lost.
+- MockSP1Verifier (no real proof generation)
+- Time-based batch trigger (configurable, default 10s)
+- 22 tests: mempool pre-checks (valid/invalid signatures, wrong chain,
+  drain, sequential IDs, schema/operator/resolve ops), state mirror
+  (genesis determinism, snapshot roundtrip, advance), assembler,
+  API (status, submit valid/invalid, pending count), end-to-end
+  (mempool → assemble → kernel → advance, sequential batch chaining)
+
+### Phase 2: Production Sequencer
+
+- SP1 network prover for real proof generation
+- Redundant sequencer instances for availability
+- Rate limiting and operation prioritization
+- Monitoring and alerting
+
+### Phase 3: Decentralized Sequencing (future)
+
+- Shared sequencer set with leader rotation
+- MEV protection (not currently a concern — the kernel has no MEV surface,
+  but worth monitoring as usage patterns evolve)
+- Economic incentives for sequencer operators (potentially FIG-denominated)
+
+---
+
+## Sequencer Trust Model
+
+
+Date: 2026-04-20
+
+This document defines what must be trusted about the batch sequencer, what is
+guaranteed by the ZK proof regardless of sequencer behavior, and what operational
+procedures the sequencer operator must follow.
+
+---
+
+## Overview
+
+The Figaro batch sequencer sits between FigaroCore (the on-chain kernel) and
+FigaroBatchVerifier (the on-chain ZK proof verifier). Its role is to:
+
+1. Watch FigaroCore for resolved processes (via `OrderResolved` events)
+2. Accumulate resolved positions into batches
+3. Generate an SP1 proof of the state transition from `prevStateRoot` to `newStateRoot`
+4. Call `FigaroBatchVerifier.settleBatch()` to apply the batch on-chain
+
+The sequencer is implemented in `prover/` (Rust) and exercised by
+`sdk/sequencer.test.ts` and `sdk/batch-e2e.test.ts`.
+
+---
+
+## What the ZK Proof Guarantees (No Sequencer Trust Required)
+
+The SP1 program is the single source of truth for valid state transitions
+(DESIGN_DECISIONS.md §10). The on-chain verifier checks:
+
+- Proof validity (Groth16 / Plonk via Succinct's SP1 verifier)
+- `prevStateRoot == currentStateRoot` (chain continuity)
+- `chainId` matches the chain where the verifier contract is deployed
+- `verifyingContract` matches the FigaroBatchVerifier address
+- Hashes of positions, attestations, schemas, and operator events match the
+  proof public inputs
+
+These checks mean that **no invalid state transition can be applied**, even if
+the sequencer is compromised. A malicious sequencer cannot:
+
+- Fabricate positions (amounts, addresses)
+- Double-apply a batch (chain continuity check rejects it)
+- Apply a batch from a different chain or contract
+- Skip or alter attestation or schema events
+
+Security (correctness of what gets settled) does **not** require trusting the sequencer.
+
+---
+
+## What Requires Trusting the Sequencer (Liveness)
+
+**Liveness** — the property that valid resolved orders eventually get settled —
+does require trusting the sequencer. A non-submitting or slow sequencer:
+
+- Delays FIG distribution (if/when emissions are live)
+- Delays net-position settlement for participants who are waiting on batch settlement
+- Does not affect FigaroCore directly (FigaroCore settlement is independent of batches)
+
+The protocol's safety invariants (bond math, buyer dominance, atomic resolution)
+are enforced entirely by FigaroCore. Batch settlement is an additional coordination
+layer, not a prerequisite for process resolution.
+
+**Implication**: the sequencer should be treated as a liveness-trusted operator,
+not a safety-trusted operator.
+
+---
+
+## Batch DoS via Approval Revocation (INFO-3)
+
+`FigaroBatchVerifier.settleBatch()` calls `safeTransferFrom` for each participant
+position. If any participant has revoked their ERC-20 approval between proof
+generation and the `settleBatch` transaction landing, the entire batch reverts.
+
+This is documented in the contract with a `@dev WARNING` comment. It is **not**
+an on-chain fixable problem (fixing it would require per-participant state).
+
+**Operational mitigation**: the sequencer must verify that every participant in
+the batch has approved `FigaroBatchVerifier` for at least their net settlement
+amount immediately before submitting the proof. If any approval is missing or
+insufficient, the batch must be split to exclude that participant, or delayed
+until the approval is restored.
+
+This is a sequencer operational responsibility, not a protocol invariant.
+
+### Adversarial selective approval revocation (extension of INFO-3, 2026-04-26)
+
+The base INFO-3 case is **accidental**: a user revokes approval before the
+batch lands and the batch reverts. The 2026-04-26 Web3 adversarial audit
+(C-2 / D-2; summary in `AUDIT_REPORT.md` "Web2 / UI / Specific-Feature
+Audits") identifies a **deliberate** extension that is materially worse:
+
+**Attack flow**:
+1. Attacker observes `settleBatch` proof submission in the mempool (or learns
+   of it via off-chain coordination).
+2. Attacker has a small position in the batch (sufficient to be included).
+3. Attacker revokes their ERC-20 approval in a higher-priority tx that lands
+   in the same block as (or before) the `settleBatch` tx.
+4. `safeTransferFrom` for the attacker's position reverts → entire batch
+   reverts atomically.
+5. **Other participants in the batch are griefed**. Their settlement is
+   delayed; they may need to be re-batched. Their costs include re-batching
+   gas (sequencer-borne) and time-to-settle.
+6. **Attacker cost**: ~21,000 gas for the revocation tx. No bond, no on-chain
+   penalty.
+
+**Why this is worse than the accidental case**:
+- The accidental revoker pays a higher cost: their own settlement reverts and
+  they must re-approve and re-batch.
+- The deliberate adversarial case is asymmetric: the attacker pays minimal
+  gas to grief other participants of the batch.
+- An attacker can repeat this against specific counterparties to systematically
+  delay or extort them, especially in a batch where the attacker holds an
+  unrelated grievance against another participant.
+
+**Sequencer hardening required**:
+
+1. **Same-block approval re-verification**: pre-submission approval checks
+   MUST run against a recent block (ideally same block as proof submission).
+   A 12-block-old check is insufficient — the attacker has 12 blocks of
+   mempool visibility to revoke.
+2. **Finality threshold + retry budget**: if `settleBatch` reverts due to
+   approval revocation, the sequencer should re-batch the non-attacker
+   participants and exclude addresses that revoked. Repeated revocation
+   from the same address within a window is a strong signal of adversarial
+   behavior — exclude that address from future batches at sequencer discretion.
+3. **Optional rate-limit on settlement participation**: a sequencer may
+   require an off-chain stake or reputation gate before including a
+   participant in a batch, to make repeat griefing economically costly.
+
+**Why no on-chain fix**: per DESIGN_DECISIONS.md §10, on-chain redundant
+guards are rejected — the SP1 program is the single authority. Per-participant
+state on-chain (e.g., a "revoked-recently" flag) breaks the stateless design
+and creates new attack surface. The mitigation lives at the sequencer layer
+where it belongs: detect adversarial revocations, re-batch around them,
+optionally rate-limit known offenders.
+
+---
+
+## Sequencer Trust Assumptions Summary
+
+| Property | Trust required? | Enforcement mechanism |
+|---|---|---|
+| State transition correctness | None | SP1 ZK proof + on-chain verifier |
+| Chain continuity | None | `prevStateRoot == currentStateRoot` check |
+| Cross-chain replay prevention | None | `chainId` + `verifyingContract` in proof public inputs |
+| Batch liveness | Yes — sequencer operator | Operational SLA; no on-chain enforcement |
+| Approval integrity before batch | Yes — sequencer operator | Pre-submission approval check (operational) |
+| Ordering of settlements within a batch | None (up to SP1 program) | Deterministic kernel execution |
+
+---
+
+## Sequencer Operator Requirements
+
+1. **Monitor FigaroCore events**: watch for `ProcessResolved` and `OrderCommitted`
+   events in real time to avoid falling behind.
+
+2. **Check approvals before proof submission**: for every position in a batch,
+   verify `allowance(participant, address(batchVerifier)) >= settlement_amount`
+   using a recent block. Exclude participants with insufficient approval.
+
+3. **Handle reorgs**: use a finality threshold (e.g., 12+ confirmations on
+   Ethereum mainnet) before including events in a batch to avoid proof
+   invalidation from chain reorgs.
+
+4. **Maintain `currentStateRoot` consistency**: the sequencer is the canonical
+   keeper of the off-chain state root. Losing this state means the sequencer
+   cannot produce valid `prevStateRoot` values until the root is recovered from
+   on-chain events.
+
+5. **Proof retry on gas spike**: if `settleBatch` reverts due to gas limits,
+   retry with higher gas. Do not discard proofs — regenerating them is expensive.
+
+---
+
+## Relationship to Protocol Safety
+
+The sequencer's trusted scope is narrow and cannot break the protocol's core
+invariants:
+
+- It cannot undo a resolved process (FigaroCore transitions are final)
+- It cannot reorder or modify bond payouts (FigaroCore settles atomically)
+- It cannot drain FigaroCore (FigaroBatchVerifier is a separate contract)
+- It cannot forge ZK proofs (Groth16/Plonk computational security)
+
+The worst outcome of a compromised or stopped sequencer is delayed batch
+settlement and delayed FIG distribution — both recoverable by deploying a new
+sequencer against the same on-chain state root.
