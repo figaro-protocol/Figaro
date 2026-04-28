@@ -66,6 +66,16 @@ frontend/.env.production.local
 # Local deployment state
 .deployments/
 
+# Local-only history. Pre-V5 contracts, formal specs, archived frontend, and
+# archived design notes are preserved on disk for the maintainer's reference
+# but never pushed to GitHub — git history itself preserves prior versions
+# at the commit level.
+archive-v3/
+archive-v4/
+archive-frontend/
+formal/archive-v3/
+docs/archive/
+
 # Echidna / Formal Verification
 echidna_output.txt
 echidna_coverage.txt

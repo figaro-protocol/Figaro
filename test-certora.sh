@@ -11,9 +11,19 @@
 #
 # Specs currently committed:
 #   certora/FigaroCore.spec             — kernel state-machine invariants (8 rules)
-#   certora/AttestationCoordinator.spec — attestation role-gate (6 rules)
+#   certora/AttestationCoordinator.spec — attestation role-gate + validator-gate + binding (7 rules)
+#   certora/TokenOpsVerification.spec   — FigaroCore token-flow invariants (7 rules → 8 sub-rules)
+#   certora/BatchVerifierTokenOps.spec  — FigaroBatchVerifier token-flow (single-position, 4 rules)
 #   certora/FigToken.spec               — token ancillary spec
 #   certora/StagedMerkleAirdrop.spec    — staged airdrop claim monotonicity + config immutability (3 rules)
+#
+# Conf flag note:
+#   Any spec whose rules pass symbolic `bytes` (dynamic-length) to a function
+#   that computes `keccak256(bytes)` MUST set `"optimistic_hashing": true` in
+#   its .conf. Without it, the prover aborts every reaching rule with
+#   "Trying to hash a non-constant length array". Currently applied to
+#   AttestationCoordinator.conf (content → keccak256(content) in
+#   _validateContent). Sound for rules that don't assert specific hash values.
 #
 # Prerequisites (one-time):
 #   pip install certora-cli        # or: pipx install certora-cli
@@ -46,12 +56,19 @@ echo "🔎 Using: $(command -v certoraRun)"
 certoraRun --version 2>&1 | head -1
 echo ""
 
+# Token-ops inventory gate: every ERC20 transfer call site in src/ must be
+# tracked. Runs before any cloud dispatch so a stale inventory fails fast.
+if [ -x "./lint-token-ops.sh" ]; then
+    ./lint-token-ops.sh || exit $?
+    echo ""
+fi
+
 # Default spec list; callers can override by passing spec basenames as args
 # (e.g. ./test-certora.sh FigaroCore).
 if [ "$#" -gt 0 ]; then
     SPECS=("$@")
 else
-    SPECS=(FigaroCore AttestationCoordinator FigToken StagedMerkleAirdrop)
+    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification BatchVerifierTokenOps FigToken StagedMerkleAirdrop)
 fi
 
 for spec in "${SPECS[@]}"; do
