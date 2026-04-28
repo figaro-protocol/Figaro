@@ -390,6 +390,41 @@ When working in this repository:
    as a privacy problem to solve. The public layer is coordination
    infrastructure. Private details have their own encryption layer.
 
+### Project Lineage
+
+Three iterations carried Figaro to its current shape; each removed
+surface area while preserving the load-bearing intuition.
+
+| Iteration | Year | Authors | Core mechanism | Status |
+|---|---|---|---|---|
+| Figaro-Original | March 2022 | F. R. Genovese & A. Daliana | Proof of Action consensus on its own chain | Abandoned |
+| Figaro-2 | 2022–2023 | F. R. Genovese & A. Daliana | 5-tx escrow with Mutually Assured Loss reasoning | Abandoned |
+| FigaroCore (current) | 2024–2026 | A. Daliana | Asymmetric bonding on existing chains, ~250 LOC kernel | Active |
+
+What survived: the factotum-of-the-city metaphor (Figaro-Original §1.0),
+the Mutually-Assured-Loss reasoning (Figaro-2 §3.4 Remark 3.4.6, fully
+formalized as asymmetric bonding here), encrypted handoff via wallet
+keypairs, geographic-area approximate locations for privacy, dual-signed
+dispute resolution, and the no-platform ethic.
+
+What was abandoned: Proof of Action consensus, own-chain architecture
+(current is chain-agnostic), the five-transaction-type model,
+slashing-to-protocol, fee caps, governance for refunds and disputes,
+project-internal currency, categorical-semantics as the formal substrate
+(replaced by industry-standard formal-verification tooling), and
+last-mile-specific scope.
+
+The convergence pattern is consistent: Figaro-Original was a chain plus
+a protocol plus a currency plus a governance system; current FigaroCore
+is just a contract. The intellectual asset that survived is asymmetric
+bonding plus the factotum framing; everything else was scaffolding to
+discover those.
+
+The current portfolio is solo-authored, but the early intellectual
+lineage includes Fabrizio Romano Genovese's categorical-mathematics
+formalization and his contributions to the Figaro-Original and Figaro-2
+protocol design. The project would not exist without that collaboration.
+
 ### Origin
 
 Figaro's bonding mechanism descends from Vitalik Buterin's **Safe Remote
@@ -501,7 +536,7 @@ any forum).
 
 ---
 
-*This document distills the vision from THEORY.md, RUNTIME_THESIS.md,
-and iterative development sessions. It is the starting point for new
+*This document distills the vision from THEORY.md, RUNTIME.md, and
+iterative development sessions. It is the starting point for new
 agents and visitors. For game-theoretic foundations, see THEORY.md.
-For runtime architecture, see RUNTIME_THESIS.md.*
+For runtime architecture, see RUNTIME.md.*

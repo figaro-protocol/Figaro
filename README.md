@@ -162,7 +162,7 @@ All active docs live in `docs/v5/`:
 - [THEORY.md](docs/v5/THEORY.md) — Game-theoretic derivation of six protocol properties
 - [FIG_TOKEN.md](docs/v5/FIG_TOKEN.md) — Token design: allocation, emission, time-locks
 - [SCALING_STRATEGY.md](docs/v5/SCALING_STRATEGY.md) — Proof-based batching, SP1
-- [RUNTIME_THESIS.md](docs/v5/RUNTIME_THESIS.md) — Why this is a runtime, not just contracts
+- [RUNTIME.md](docs/v5/RUNTIME.md) — Why this is a runtime, not just contracts (thesis + frontend model + semantic layer)
 - [CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) — Reading path and archive map
 
 ## License

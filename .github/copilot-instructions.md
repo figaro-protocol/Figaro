@@ -28,7 +28,7 @@ game-theoretic derivation.
 
 ## Why the Name
 
-**Figaro** is the factotum of the city. In Rossini's *Il Barbiere di Siviglia* (1816, libretto by Sterbini, drawn from Beaumarchais's *Le Barbier de Séville*, 1775), the character declares himself the city's factotum in the famous "Largo al factotum" aria — running errands, brokering favors, mediating between parties of incommensurable standing, making commerce of the whole household work without owning any of it. The kernel is named for what it does: the factotum of the network, the coordinator of everything without being the owner of anything. FigaroCore holds collateral, executes commitments, and discharges resolution — exactly the coordination function the character performs, at protocol scale. The naming dates to Figaro-Original (Genovese & Daliana, March 2022); see `docs/v5/PROJECT_HISTORY.md` for the lineage. The metaphor is the thesis, not decoration.
+**Figaro** is the factotum of the city. In Rossini's *Il Barbiere di Siviglia* (1816, libretto by Sterbini, drawn from Beaumarchais's *Le Barbier de Séville*, 1775), the character declares himself the city's factotum in the famous "Largo al factotum" aria — running errands, brokering favors, mediating between parties of incommensurable standing, making commerce of the whole household work without owning any of it. The kernel is named for what it does: the factotum of the network, the coordinator of everything without being the owner of anything. FigaroCore holds collateral, executes commitments, and discharges resolution — exactly the coordination function the character performs, at protocol scale. The naming dates to Figaro-Original (Genovese & Daliana, March 2022); see `docs/v5/VISION.md` "Appendix: Project Lineage". The metaphor is the thesis, not decoration.
 
 **FIG** is a speech-act identifier, the way ETH, BTC, USDC, and USD are. It is not a consumer brand name that has to semantically signal infrastructure; it is the name by which the token gets invoked in transactions and conversations. "Send me 10 FIG" works in speech the way "send me 10 ETH" does. Evaluate FIG by whether it fits the speech register, not by Fortune-500 brand logic.
 
@@ -701,11 +701,8 @@ Security & verification:
 - `docs/v5/SCALING_STRATEGY.md` — Proof-based scaling, batch sequencer architecture, sequencer trust model (consolidated)
 
 Architecture:
-- `docs/v5/RUNTIME_THESIS.md` — Why this repo is a runtime, not just contracts
-- `docs/v5/FRONTEND_RUNTIME_MODEL.md` — Canonical frontend/runtime composition model
-- `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` — How extensions layer on top of settlement
-- `docs/v5/SEMANTIC_MODEL_LAYER.md` — Semantic derivation from assembly definitions
-- `docs/v5/INSTITUTION_ASSEMBLY_SCHEMA.md` — Assembly JSON schema and validation
+- `docs/v5/RUNTIME.md` — Three-part runtime reference: thesis (why this is a runtime, not just contracts), the frontend composition model, and the semantic-derivation layer
+- `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` — How extensions layer on top of settlement (also carries the anchored-artifact pattern)
 - `docs/v5/FIG_TOKEN.md` — FIG token design: allocation, emission mechanism
 - `docs/v5/PUBLIC_GRAPH_MODEL.md` — The five semantic graphs
 - `docs/v5/AI_AGENT_COORDINATION.md` — How autonomous agents coordinate via public graph data

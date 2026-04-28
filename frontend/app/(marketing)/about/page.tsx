@@ -31,7 +31,7 @@ export default function About() {
                 </p>
                 <p className="text-base text-gray-700 leading-relaxed">
                     The naming dates to Figaro-Original (Genovese &amp; Daliana, March 2022). <strong>FIG</strong> is a speech-act identifier, the way ETH, BTC, USDC, and USD are — the name participants converge on when invoking the token in transactions and conversation. See{" "}
-                    <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/PROJECT_HISTORY.md" target="_blank" rel="noopener noreferrer" className="underline">PROJECT_HISTORY.md</a>{" "}
+                    <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/VISION.md#appendix-project-lineage" target="_blank" rel="noopener noreferrer" className="underline">VISION.md &quot;Appendix: Project Lineage&quot;</a>{" "}
                     for the lineage.
                 </p>
             </section>
@@ -54,7 +54,7 @@ export default function About() {
                 </dl>
                 <p className="text-sm text-gray-600 mt-4">
                     Full treatment:{" "}
-                    <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/RUNTIME_THESIS.md" target="_blank" rel="noopener noreferrer" className="underline">RUNTIME_THESIS.md</a>,{" "}
+                    <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/RUNTIME.md" target="_blank" rel="noopener noreferrer" className="underline">RUNTIME.md</a>,{" "}
                     <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md" target="_blank" rel="noopener noreferrer" className="underline">PROTOCOL_EXTENSION_DOCTRINE.md</a>.
                 </p>
             </section>

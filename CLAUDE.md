@@ -179,7 +179,8 @@ coordinator of everything without being the owner of anything. FigaroCore
 holds collateral, executes commitments, and discharges resolution —
 exactly the coordination function the character performs, at protocol
 scale. The naming dates to Figaro-Original (Genovese & Daliana, March
-2022); see `docs/v5/PROJECT_HISTORY.md` for the lineage. The metaphor
+2022); the project's intellectual lineage is sketched briefly in
+`docs/v5/VISION.md` "Appendix: Project Lineage". The metaphor
 is the thesis, not decoration.
 
 **FIG** is a speech-act identifier, the way ETH, BTC, USDC, and USD are. It
@@ -801,7 +802,7 @@ Security & verification:
 - `SCALING_STRATEGY.md` — Proof-based scaling, batch sequencer architecture, sequencer trust model (consolidated)
 
 Architecture:
-- `RUNTIME_THESIS.md`, `FRONTEND_RUNTIME_MODEL.md`, `SEMANTIC_MODEL_LAYER.md`
+- `RUNTIME.md` (consolidates the runtime thesis, frontend composition model, and semantic-derivation layer)
 - `INSTITUTION_ASSEMBLY_SCHEMA.md`, `PROTOCOL_EXTENSION_DOCTRINE.md`
 - `SCALING_STRATEGY.md` — also carries the batch sequencer architecture + sequencer trust model
 - `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`

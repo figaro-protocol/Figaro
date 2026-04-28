@@ -56,13 +56,11 @@ Start with these docs, in this order:
 
 1. `VISION.md`
 2. `THEORY.md`
-3. `RUNTIME_THESIS.md`
-4. `FRONTEND_RUNTIME_MODEL.md`
-5. `FRONTEND_RUNTIME_PLAN.md`
-6. `PUBLIC_GRAPH_MODEL.md`
-7. `SEMANTIC_MODEL_LAYER.md`
-8. `SCALING_STRATEGY.md`
-9. `VERIFICATION_MAP.md`
+3. `RUNTIME.md` (consolidates the runtime thesis, the frontend
+   composition model, and the semantic-layer reference)
+4. `PUBLIC_GRAPH_MODEL.md`
+5. `SCALING_STRATEGY.md`
+6. `VERIFICATION_MAP.md`
 
 ### Frontend
 
@@ -106,9 +104,11 @@ If a root-level file clearly says it is archived or historical, do not treat it 
 ## Known Conceptual Boundaries
 
 1. `PUBLIC_GRAPH_MODEL.md` is the protocol-level graph model.
-2. `SEMANTIC_MODEL_LAYER.md` is the runtime/frontend derivation model.
-3. `FRONTEND_RUNTIME_MODEL.md` is the current bounded-mutation frontend model.
-4. `PROTOCOL_EXTENSION_DOCTRINE.md` is the current extension doctrine.
+2. `RUNTIME.md` carries the runtime/frontend layer — Part 1 thesis,
+   Part 2 the bounded-mutation frontend model, Part 3 the semantic
+   derivation reference.
+3. `PROTOCOL_EXTENSION_DOCTRINE.md` is the current extension doctrine
+   (also carries the anchored-artifact pattern).
 
 If two docs appear to overlap, prefer the one above that matches the layer you are reasoning about.
 
