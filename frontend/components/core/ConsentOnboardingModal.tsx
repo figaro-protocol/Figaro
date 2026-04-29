@@ -133,8 +133,15 @@ export function ConsentOnboardingModal({ onDismiss }: ConsentOnboardingModalProp
                             Kleros independently using your consent receipt PDF as
                             evidence; the receipt contains the signed message and
                             document hash needed to make a case. A project-side
-                            dispute submission flow is being built and will surface
-                            here when ready.
+                            dispute submission flow is available at{" "}
+                            <a
+                                href="/dispute"
+                                className="underline"
+                                data-testid="onboarding-dispute-link"
+                            >
+                                /dispute
+                            </a>
+                            .
                         </p>
                     </div>
                 </section>

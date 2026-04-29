@@ -401,6 +401,22 @@ export default function ConsentPage() {
                             Continue to app
                         </Button>
                     </div>
+
+                    <div className="border-t border-neutral-200 pt-3">
+                        <p className="text-[11px] text-neutral-600 mb-1.5">
+                            If you believe this consent attestation has been
+                            breached (e.g. unauthorized redistribution of a
+                            watermarked artifact), submit a dispute to Kleros
+                            per §10:
+                        </p>
+                        <a
+                            href="/dispute"
+                            data-testid="btn-dispute-this-consent"
+                            className="inline-block text-xs text-blue-600 hover:text-blue-800 underline"
+                        >
+                            Dispute this consent →
+                        </a>
+                    </div>
                 </Card>
             )}
 
@@ -418,7 +434,11 @@ export default function ConsentPage() {
                     of the Agreement is <strong>Kleros</strong>, the decentralized
                     arbitration protocol. You may invoke Kleros independently using
                     your consent receipt PDF as evidence; a project-side submission
-                    flow is being built and will surface here when ready.
+                    flow is available at{" "}
+                    <a href="/dispute" className="underline" data-testid="consent-dispute-link">
+                        /dispute
+                    </a>
+                    .
                 </p>
             </Card>
 

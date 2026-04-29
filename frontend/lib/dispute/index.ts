@@ -33,6 +33,18 @@ export type {
     KlerosEvidence,
 } from "./klerosEvidence";
 
+// Consent-dispute evidence formatting (sibling of klerosEvidence)
+export {
+    buildConsentDisputeMetaEvidence,
+    buildConsentDisputeEvidence,
+} from "./consentDisputeEvidence";
+export type {
+    ConsentDisputeRole,
+    DisputedConsentAttestation,
+    SubmitterClaimSignature,
+    ConsentDisputeEvidenceInput,
+} from "./consentDisputeEvidence";
+
 // Kleros ArbitrableProxy interaction
 export {
     getArbitrationCost,
