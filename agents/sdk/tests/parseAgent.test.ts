@@ -98,10 +98,31 @@ describe("loadAgent (canonical .md files)", () => {
     expect(a.systemPrompt).toMatch(/PROTOCOL_EXTENSION_DOCTRINE|validator-contract/);
   });
 
-  it("loadAllAgents returns exactly the three canonical agents", () => {
+  it("loads figaro-runtime-ui-author as a writer agent for the runtime tier", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-runtime-ui-author");
+    expect(a.name).toBe("figaro-runtime-ui-author");
+    expect(a.tools).toContain("Edit");
+    expect(a.tools).toContain("Write");
+    expect(a.model).toBe("opus");
+    expect(a.systemPrompt).toMatch(/lens|frontend|runtime/i);
+  });
+
+  it("loads figaro-assembly-author as a writer agent that defers schema work", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-assembly-author");
+    expect(a.name).toBe("figaro-assembly-author");
+    expect(a.tools).toContain("Edit");
+    expect(a.tools).toContain("Write");
+    expect(a.model).toBe("opus");
+    expect(a.systemPrompt).toMatch(/DesignDraft|assembly|DAG/i);
+    expect(a.systemPrompt).toMatch(/PROTOCOL_EXTENSION_DOCTRINE/);
+  });
+
+  it("loadAllAgents returns exactly the five canonical agents", () => {
     const all = loadAllAgents(REPO_ROOT);
     expect(Object.keys(all).sort()).toEqual([
+      "figaro-assembly-author",
       "figaro-kernel-reviewer",
+      "figaro-runtime-ui-author",
       "figaro-schema-author",
       "figaro-schema-lockstep",
     ]);
@@ -109,7 +130,9 @@ describe("loadAgent (canonical .md files)", () => {
 
   it("FIGARO_AGENT_FILES map has stable keys", () => {
     expect(Object.keys(FIGARO_AGENT_FILES).sort()).toEqual([
+      "figaro-assembly-author",
       "figaro-kernel-reviewer",
+      "figaro-runtime-ui-author",
       "figaro-schema-author",
       "figaro-schema-lockstep",
     ]);

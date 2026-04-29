@@ -66,6 +66,8 @@ The project ships agent-shaped tooling — usable by humans, AI assistants, or a
 - **`figaro-kernel-reviewer`** — read-only review of any diff that touches `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, or kernel storage. Returns findings cited to the six invariants and the canonical anti-pattern list. Invoke before merging anything kernel-adjacent.
 - **`figaro-schema-lockstep`** — verifies a new or changed schema is in sync across all required surfaces (Layer A spec, TS encoder, on-chain validator contract, `SchemaRegistry` registration, listing pages). Invoke after authoring a schema.
 - **`figaro-schema-author`** — authors new schemas + their `ISchemaValidator` contracts with the protocol-extension doctrine and validator-contract pattern baked in. Never auto-commits; always shows the diff and waits for human approval. Invoke when proposing a new artifact family.
+- **`figaro-runtime-ui-author`** — authors runtime-tier UI for new schemas and assemblies (lens panels, attestation forms, per-role routes). Stays strictly within `frontend/`. Halts for marketing-expert review on user-facing pages. Invoke when a new schema or assembly needs a UI surface.
+- **`figaro-assembly-author`** — composes assembly DAGs as `DesignDraft` JSON with per-edge mechanism, per-node clauses, and bond posture. Refuses kernel-changing compositions. Defers schema authoring to `figaro-schema-author`. Invoke when scaffolding an end-to-end scenario.
 
 These rely on the canonical `figaro-kernel-discipline` skill at `.claude/skills/` and the `kernel-warn.sh` hook at `.claude/hooks/`. The skill is the single source of truth for kernel rules; the subagents are tool-constrained executors.
 

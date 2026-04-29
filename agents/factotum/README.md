@@ -152,6 +152,33 @@ The policy interface is generic over the action type, so its tests can run witho
 
 ---
 
+## Reference policies — `src/policies/`
+
+Five named policies cover common roles. Import and configure rather than writing `shouldExecute` from scratch.
+
+| Policy | Use for |
+|---|---|
+| `basicMerchantPolicy` | Single-seller merchant accepting commits within configured bounds |
+| `sellerOfRecordPolicy` | Fan-out actor (airline, ocean carrier) — seller to buyer, buyer to sub-suppliers |
+| `courierBidderPolicy` | Dutch auction bidder with margin gate (couriers, port operators, fuel suppliers) |
+| `auditorPolicy` | Passive observer — attestations only, no commits or resolutions |
+| `buyerWithBudgetPolicy` | Buyer-side variant with per-commit and total-budget caps |
+
+Each is a factory that takes config and returns a `Policy<ProposedAction, TContext>`:
+
+```ts
+import { courierBidderPolicy } from "@figaro/factotum/policies";
+
+const policy = courierBidderPolicy({
+  estimateMyCost: (action, ctx) => /* operator-specific */ 0n,
+  minMarginBps: 500n, // 5% minimum margin
+});
+```
+
+Wire it into `src/index.ts` in place of the default. Property tests on the rule logic live in `src/policies/policies.test.ts` and run without needing chain access.
+
+The `agents/examples/*/roles.md` files show these policies in context per scenario.
+
 ## Plugging in an LLM
 
 The factotum is LLM-agnostic. The policy interface is a synchronous-or-async function over actions; what's behind it is up to you.
