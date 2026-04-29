@@ -24,17 +24,50 @@ import { saveCommitment, computeOrderHash } from "@/lib/console/commitmentStore"
 import type { Agreement } from "@/lib/core/agreementManifest";
 import { hydrateAgreement, loadAgreement, primeAgreementArtifact, saveAgreementUri } from "@/lib/core/agreementStore";
 import { requestSignConfirmation } from "@/lib/core/commitmentSignPreviewStore";
+import { strippingReviver } from "@/lib/shared/safeJson";
 
 // ── EIP-712 Domain (V5: version "3") ──────────────────────────
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
+function isValidVerifyingContract(addr: string | undefined): addr is `0x${string}` {
+    if (!addr) return false;
+    if (addr === ZERO_ADDRESS) return false;
+    return /^0x[0-9a-fA-F]{40}$/.test(addr);
+}
+
 function useFigaroDomain() {
     const chainId = useChainId();
-    return {
+    // Object.freeze closes the "extension intercepts the signTypedData
+    // arguments and mutates the domain after the hook returned" angle.
+    // The fields are still wagmi-derived, but they cannot be mutated
+    // in-place once the object leaves the hook.
+    return Object.freeze({
         name: "FigaroCore",
         version: "3",
         chainId,
         verifyingContract: CONTRACTS.core as `0x${string}`,
-    } as const;
+    } as const);
+}
+
+function assertValidSigningDomain(domain: {
+    chainId: number;
+    verifyingContract: `0x${string}`;
+}): void {
+    // Pre-sign sanity gate. Catches: missing CONTRACTS.core (deploy
+    // misconfig), zero / malformed verifyingContract (env tampering),
+    // and chainId 0 (no wallet connected — wagmi default).
+    if (!isValidVerifyingContract(domain.verifyingContract)) {
+        throw new Error(
+            "Refusing to sign: FigaroCore address is missing or invalid. " +
+            "Check NEXT_PUBLIC_FIGARO_CORE in your environment.",
+        );
+    }
+    if (!domain.chainId || domain.chainId === 0) {
+        throw new Error(
+            "Refusing to sign: no chain detected. Connect a wallet first.",
+        );
+    }
 }
 
 // ── EIP-712 Type Definition (imported from SDK) ───────────────
@@ -140,9 +173,17 @@ function recoverPayload(): CommitmentPayload | null {
     try {
         const raw = sessionStorage.getItem(PAYLOAD_STORAGE_KEY);
         if (!raw) return null;
-        return JSON.parse(raw, (_k, v) =>
-            typeof v === "string" && v.startsWith("0xn") ? BigInt(`0x${v.slice(3)}`) : v,
-        );
+        // Compose stripping (proto-pollution defense) + bigint rehydration.
+        // sessionStorage is technically same-origin, but we treat any
+        // path into the typed-data signing flow as a potential injection
+        // vector — defense-in-depth.
+        return JSON.parse(raw, (k, v) => {
+            const stripped = strippingReviver(k, v);
+            if (stripped === undefined) return undefined;
+            return typeof stripped === "string" && stripped.startsWith("0xn")
+                ? BigInt(`0x${stripped.slice(3)}`)
+                : stripped;
+        });
     } catch {
         return null;
     }
@@ -207,6 +248,10 @@ export function useCommitmentFlow() {
         setError(null);
         setStep("signing");
         try {
+            // Pre-sign domain-separator gate. Refuses to call the wallet
+            // if the EIP-712 domain has been tampered or is misconfigured.
+            assertValidSigningDomain(domain);
+
             // Threat-model 🟡 Priority 4: gate signing on a pre-sign agreement
             // preview. The wallet prompt only shows the agreementHash; the
             // user has no way to verify in MetaMask that the hash matches the

@@ -1,7 +1,7 @@
 // Core Hook for V5 Protocol Actions (Unified Commit, Commitment[] Resolution)
 
 import { useState, useEffect } from "react";
-import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, usePublicClient } from "wagmi";
 import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/core/testHelpers';
 import { activeChain } from "@/lib/shared/chains";
@@ -34,6 +34,7 @@ export const useFigaroActions = () => {
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
     const { address: account } = useAccount();
     const chainId = useChainId();
+    const publicClient = usePublicClient();
 
     // C6: track mock success so OrderControls can trigger form-reset and modal in E2E mode
     const [mockIsSuccess, setMockIsSuccess] = useState(false);
@@ -122,6 +123,21 @@ export const useFigaroActions = () => {
         buyerSig: `0x${string}`,
         sellerSig: `0x${string}`,
     ): Promise<`0x${string}`> => {
+        // Pre-flight dry-run via eth_call. Catches: wrong contract address
+        // (no method match), insufficient ERC20 allowance, invalid sig, any
+        // kernel revert path — all BEFORE the wallet prompt opens. If a
+        // browser extension swapped calldata between simulate and write,
+        // simulate would still have used clean data, so the simulate-pass
+        // is a strong "this would work" signal even if the write differs.
+        if (publicClient) {
+            await publicClient.simulateContract({
+                address: CONTRACTS.core as `0x${string}`,
+                abi: CORE_ABI,
+                functionName: "commit",
+                args: [commitment, buyerSig, sellerSig],
+                account,
+            });
+        }
         return writeContractAsync({
             address: CONTRACTS.core as `0x${string}`,
             abi: CORE_ABI,
@@ -137,6 +153,15 @@ export const useFigaroActions = () => {
         processId: string,
         commitments: Commitment[]
     ): Promise<`0x${string}`> => {
+        if (publicClient) {
+            await publicClient.simulateContract({
+                address: CONTRACTS.core as `0x${string}`,
+                abi: CORE_ABI,
+                functionName: "resolveProcess",
+                args: [processId as `0x${string}`, commitments],
+                account,
+            });
+        }
         return writeContractAsync({
             address: CONTRACTS.core as `0x${string}`,
             abi: CORE_ABI,

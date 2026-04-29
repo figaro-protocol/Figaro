@@ -32,6 +32,7 @@ export interface IpfsPublishResult {
 
 export interface IpfsService {
     pinJSON(data: unknown): Promise<string>;
+    pinBlob(blob: Blob): Promise<string>;
     publishJSON(data: unknown): Promise<IpfsPublishResult>;
     uploadFile(file: File): Promise<IpfsPublishResult>;
     buildURI(cid: string): string;
@@ -65,6 +66,12 @@ class DefaultIpfsService implements IpfsService {
 
     async pinJSON(data: unknown): Promise<string> {
         const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+        const form = new FormData();
+        form.append("file", blob);
+        return this.add(form, "IPFS pin failed", "IPFS pin returned no CID");
+    }
+
+    async pinBlob(blob: Blob): Promise<string> {
         const form = new FormData();
         form.append("file", blob);
         return this.add(form, "IPFS pin failed", "IPFS pin returned no CID");

@@ -8,19 +8,25 @@
  *   - Current ruling status (pending / ruled)
  *   - Link to the case on resolve.kleros.io
  *   - Button to raise a dispute (if none exists)
- *   - Button to submit additional evidence
+ *   - Button to submit the audit-bundle PDF as evidence (with redact toggle)
+ *
+ * The audit-bundle PDF is the canonical evidence artifact: it carries the
+ * FigaroCore lifecycle timeline, per-order Contract / Invoice / BoL clauses,
+ * runtime attestations, consolidated financials, and the hash appendix all
+ * in one cryptographically-verifiable document. Per-order timeline JSON is
+ * no longer submitted separately — the bundle subsumes it.
  *
  * This component is process-scoped. Mount it in any process detail view.
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
+import type { Order } from "@/lib/core/store";
+import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import {
-    buildProcessTimeline,
-    buildExtendedTimeline,
-    buildTimelineEvidence,
+    buildAuditBundleEvidence,
     buildFigaroMetaEvidence,
     fetchRuling,
     createDispute,
@@ -28,7 +34,6 @@ import {
     getArbitrationCost,
     type KlerosConfig,
     type DisputeStatus,
-    type ProcessTimeline,
     type CoordinatorEventSource,
 } from "@/lib/dispute";
 
@@ -85,11 +90,18 @@ interface DisputeStatusPanelProps {
     /** Role of the current user — determines evidence framing. */
     role?: "buyer" | "seller";
     /**
-     * Optional coordinator event sources for extended timelines.
-     * When provided, evidence submissions include coordinator-specific events
-     * (lifecycle signals, proximity proofs, etc.) alongside FigaroCore events.
+     * Optional coordinator event sources for the timeline page in the
+     * audit-bundle PDF. When provided, the timeline includes
+     * coordinator-specific events (lifecycle signals, proximity proofs,
+     * etc.) alongside FigaroCore events.
      */
     coordinatorSources?: CoordinatorEventSource[];
+    /**
+     * All orders in the process. Required for the Submit Evidence flow
+     * (the audit-bundle PDF aggregates per-order extracts). When omitted
+     * or empty, the Submit Evidence button is hidden.
+     */
+    orders?: readonly Order[];
     /** Callback when a dispute is created (returns localDisputeId). */
     onDisputeCreated?: (localDisputeId: bigint) => void;
 }
@@ -104,10 +116,12 @@ export function DisputeStatusPanel({
     localDisputeId: externalDisputeId,
     role = "buyer",
     coordinatorSources,
+    orders,
     onDisputeCreated,
 }: DisputeStatusPanelProps) {
     const { address } = useAccount();
     const publicClient = usePublicClient();
+    const chainId = useChainId();
     const { data: walletClient } = useWalletClient();
     const { evidenceTransport } = useRuntimeServices();
 
@@ -115,11 +129,11 @@ export function DisputeStatusPanel({
         externalDisputeId ?? loadDisputeId(processId),
     );
     const [status, setStatus] = useState<DisputeStatus | null>(null);
-    const [timeline, setTimeline] = useState<ProcessTimeline | null>(null);
     const [arbCost, setArbCost] = useState<bigint | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lastEvidenceTxHash, setLastEvidenceTxHash] = useState<`0x${string}` | null>(null);
+    const [bundleRedact, setBundleRedact] = useState(false);
 
     // Sync external disputeId prop
     useEffect(() => {
@@ -149,17 +163,6 @@ export function DisputeStatusPanel({
 
         return () => { cancelled = true; };
     }, [publicClient, klerosConfig]);
-
-    // ── Build timeline on demand ────────────────────────────────────
-    const loadTimeline = useCallback(async () => {
-        if (!publicClient) return null;
-        if (timeline) return timeline;
-        const tl = coordinatorSources?.length
-            ? await buildExtendedTimeline(publicClient, processId, coordinatorSources)
-            : await buildProcessTimeline(publicClient, processId);
-        setTimeline(tl);
-        return tl;
-    }, [publicClient, processId, timeline, coordinatorSources]);
 
     // ── Raise dispute ───────────────────────────────────────────────
     const handleRaiseDispute = useCallback(async () => {
@@ -194,19 +197,37 @@ export function DisputeStatusPanel({
         }
     }, [walletClient, publicClient, klerosConfig, processId, onDisputeCreated, evidenceTransport]);
 
-    // ── Submit evidence ─────────────────────────────────────────────
+    // ── Submit evidence (audit-bundle PDF, includes timeline) ───────
     const handleSubmitEvidence = useCallback(async () => {
         if (!walletClient || !klerosConfig || disputeId === null) return;
+        if (!orders || orders.length === 0) return;
         setLoading(true);
         setError(null);
 
         try {
-            const tl = await loadTimeline();
-            if (!tl) throw new Error("Could not build process timeline");
+            // Build the process-scoped PDF in-browser. The bundle helper
+            // applies the redaction flag at the source so every extractor
+            // sees the redacted form (Option B: hash-then-encrypt; merkle
+            // root preserved, only cleartext omitted). The timeline page
+            // is rendered into the same PDF when a publicClient is
+            // available.
+            const pdfBlob = await buildAuditBundlePdfBlob(
+                processId,
+                orders,
+                publicClient ?? undefined,
+                chainId,
+                {
+                    redactLineItems: bundleRedact,
+                    coordinatorSources,
+                },
+            );
 
-            // Pin timeline JSON to IPFS, then wrap in Evidence envelope.
-            const timelineCID = await evidenceTransport.pinJSON(tl);
-            const evidence = buildTimelineEvidence(tl, timelineCID, role);
+            // Pin the PDF blob to IPFS, then build the Evidence envelope
+            // pointing at it. The envelope itself is a JSON pin.
+            const bundleCID = await evidenceTransport.pinBlob(pdfBlob);
+            const evidence = buildAuditBundleEvidence(processId, bundleCID, role, {
+                redacted: bundleRedact,
+            });
             const evidenceCID = await evidenceTransport.pinJSON(evidence);
             const evidenceURI = evidenceTransport.buildPath(evidenceCID);
 
@@ -218,7 +239,7 @@ export function DisputeStatusPanel({
         } finally {
             setLoading(false);
         }
-    }, [walletClient, klerosConfig, disputeId, loadTimeline, role, evidenceTransport]);
+    }, [walletClient, publicClient, chainId, klerosConfig, disputeId, orders, processId, role, bundleRedact, coordinatorSources, evidenceTransport]);
 
     // ── Render ──────────────────────────────────────────────────────
 
@@ -315,15 +336,47 @@ export function DisputeStatusPanel({
                         </p>
                     )}
 
-                    {/* Submit evidence button */}
-                    {!isRuled && (
-                        <button
-                            onClick={handleSubmitEvidence}
-                            disabled={loading || !address}
-                            className="px-3 py-1.5 text-xs font-medium rounded bg-gray-700 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    {/* Submit evidence */}
+                    {!isRuled && orders && orders.length > 0 && (
+                        <div
+                            className="flex flex-col gap-1.5 rounded border border-neutral-200 bg-neutral-50 p-2 mt-1"
+                            data-testid="dispute-submit-evidence"
                         >
-                            {loading ? "Submitting…" : "Submit Process Evidence"}
-                        </button>
+                            <label className="flex items-center gap-2 text-[11px] text-neutral-700 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={bundleRedact}
+                                    onChange={(e) => setBundleRedact(e.target.checked)}
+                                    disabled={loading}
+                                    data-testid="dispute-submit-evidence-redact"
+                                    className="h-3 w-3"
+                                />
+                                <span>
+                                    Seal commerce line items
+                                    {bundleRedact && (
+                                        <span className="ml-1 text-amber-700 font-semibold">— 🔒 sealed</span>
+                                    )}
+                                </span>
+                            </label>
+                            <button
+                                onClick={handleSubmitEvidence}
+                                disabled={loading || !address}
+                                data-testid="dispute-submit-evidence-button"
+                                className="self-start px-3 py-1.5 text-xs font-medium rounded bg-black text-white hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {loading
+                                    ? "Submitting…"
+                                    : bundleRedact
+                                        ? "Submit Evidence (sealed)"
+                                        : "Submit Evidence"}
+                            </button>
+                            <p className="text-[10px] text-neutral-600 leading-tight">
+                                Builds the process-scoped audit bundle (process timeline,
+                                contracts, invoices, BoL, attestations, financials) in your
+                                browser, pins the PDF to IPFS, and submits the URI as
+                                Kleros evidence.
+                            </p>
+                        </div>
                     )}
                 </div>
             )}

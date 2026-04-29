@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeJsonParse, safeJsonFromResponse } from "@/lib/shared/safeJson";
+import { safeJsonParse, safeJsonFromResponse, strippingReviver } from "@/lib/shared/safeJson";
 
 describe("safeJsonParse", () => {
     it("parses valid JSON into a typed value", () => {
@@ -69,6 +69,42 @@ describe("safeJsonParse", () => {
         const parsed = safeJsonParse<{ description: string }>(benign);
 
         expect(parsed).toEqual({ description: "Use the __proto__ field with caution" });
+    });
+});
+
+describe("strippingReviver (used directly by callers that need throws on parse error)", () => {
+    it("returns the value unchanged for safe keys", () => {
+        expect(strippingReviver("safe", 1)).toBe(1);
+        expect(strippingReviver("name", "alice")).toBe("alice");
+        expect(strippingReviver("", { a: 1 })).toEqual({ a: 1 }); // root-key reviver call
+    });
+
+    it("returns undefined for dangerous keys (which JSON.parse drops)", () => {
+        expect(strippingReviver("__proto__", { polluted: "yes" })).toBeUndefined();
+        expect(strippingReviver("constructor", { x: 1 })).toBeUndefined();
+        expect(strippingReviver("prototype", { y: 1 })).toBeUndefined();
+    });
+
+    it("strips dangerous keys when used as JSON.parse reviver, preserving throws on malformed JSON", () => {
+        const safe = JSON.parse('{"a":1,"__proto__":{"polluted":"yes"}}', strippingReviver);
+        expect(safe).toEqual({ a: 1 });
+
+        // The throw behavior is the reason callers use the reviver directly
+        // instead of safeJsonParse (which swallows errors as null).
+        expect(() => JSON.parse("not json", strippingReviver)).toThrow();
+    });
+
+    it("composes with downstream revivers (e.g. bigint rehydration)", () => {
+        const json = '{"amount":"0xnff","__proto__":{"polluted":"yes"}}';
+        const result = JSON.parse(json, (key, value) => {
+            const stripped = strippingReviver(key, value);
+            if (stripped === undefined) return undefined;
+            return typeof stripped === "string" && stripped.startsWith("0xn")
+                ? BigInt(`0x${stripped.slice(3)}`)
+                : stripped;
+        });
+
+        expect(result).toEqual({ amount: 255n });
     });
 });
 

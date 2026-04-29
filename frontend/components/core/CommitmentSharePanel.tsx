@@ -24,6 +24,7 @@ import { ZERO_PROCESS_ID } from "@/lib/core/useFigaroActions";
 import { computeOrderHash } from "@/lib/console/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
+import { strippingReviver } from "@/lib/shared/safeJson";
 
 // ── Serialization helpers ──────────────────────────────────────
 
@@ -36,7 +37,11 @@ export function serializePayload(p: CommitmentPayload): string {
 
 /** Deserialize a JSON payload back to typed commitment (hex strings → bigints). */
 export function deserializePayload(json: string): CommitmentPayload {
-    const raw = JSON.parse(json);
+    // Strip __proto__ / constructor / prototype at parse time so a malicious
+    // ?payload= parameter or XMTP-delivered envelope can't pollute the
+    // prototype chain when downstream code spreads / Object.assigns the
+    // parsed commitment.
+    const raw = JSON.parse(json, strippingReviver);
     const c = raw.commitment;
 
     // Convert hex string fields back to bigint

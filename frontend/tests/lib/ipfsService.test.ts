@@ -33,6 +33,25 @@ describe("ipfsService", () => {
         });
     });
 
+    it("pins an arbitrary blob (e.g. a PDF) and returns the CID", async () => {
+        globalThis.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: "OK",
+            json: async () => ({ Hash: "QmPdf123" }),
+            text: async () => JSON.stringify({ Hash: "QmPdf123" }),
+        });
+
+        const blob = new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
+            type: "application/pdf",
+        });
+        const cid = await DEFAULT_IPFS_SERVICE.pinBlob(blob);
+
+        expect(cid).toBe("QmPdf123");
+        // pinBlob skips the image-only allowlist that uploadFile enforces.
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
     it("uploads a valid file and returns CID plus URI variants", async () => {
         globalThis.fetch = vi.fn().mockResolvedValue({
             ok: true,

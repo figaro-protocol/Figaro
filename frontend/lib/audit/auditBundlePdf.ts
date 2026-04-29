@@ -1,0 +1,250 @@
+/**
+ * Process-scoped audit-bundle PDF builder.
+ *
+ * Pure async helper consumed by both surfaces that emit the audit-bundle
+ * PDF: `DownloadAuditBundleButton` (browser download) and the
+ * `DisputeStatusPanel` Submit Evidence flow (IPFS pin + on-chain
+ * evidence submission). The redact-line-items toggle is wired here so
+ * both call sites get identical redaction semantics. The PDF includes
+ * a Process Timeline page when a `publicClient` is supplied, so the
+ * timeline doesn't need a separate IPFS pin or evidence submission.
+ */
+
+import type { PublicClient } from "viem";
+import type { Order } from "@/lib/core/store";
+import { loadAgreement } from "@/lib/core/agreementStore";
+import { COMMERCE_SCHEMA_KEY, redactSections } from "@/lib/core/agreementManifest";
+import {
+    getAttestationsByOrder,
+    getAllAuctionCreated,
+    getAllAuctionClaimed,
+    getAllOperatorRegistered,
+} from "@/lib/core/indexer";
+import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
+import type {
+    DutchAuctionCreatedEvent,
+    DutchAuctionClaimedEvent,
+} from "@/lib/audit/dutchAuctionExtract";
+import type {
+    OperatorRegisteredEvent,
+    OperatorRoleNumeric,
+} from "@/lib/audit/operatorRegistryExtract";
+import {
+    projectFinancials,
+    type FinancialsModel,
+} from "@/lib/semantic/financialsProjection";
+import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
+import {
+    buildExtendedTimeline,
+    buildProcessTimeline,
+    type CoordinatorEventSource,
+    type ProcessTimeline,
+} from "@/lib/dispute/evidenceTimeline";
+
+interface IndexedAttestationLog {
+    args?: {
+        orderHash?: string;
+        processId?: string;
+        attester?: string;
+        schemaId?: string;
+        stage?: number | bigint;
+        contentRef?: string;
+    };
+    transactionHash?: string;
+    blockNumber?: bigint | number;
+}
+
+interface IndexedLog {
+    args?: Record<string, unknown>;
+    transactionHash?: string;
+    blockNumber?: bigint | number;
+}
+
+function toAttestationRecord(log: IndexedAttestationLog): AttestationRecord | null {
+    const args = log.args;
+    if (!args || !args.orderHash || !args.processId || !args.attester || !args.schemaId) {
+        return null;
+    }
+    const stage = args.stage === undefined ? 0 : Number(args.stage);
+    return {
+        orderHash: args.orderHash,
+        processId: args.processId,
+        attester: args.attester,
+        schemaId: args.schemaId,
+        stage,
+        contentRef: args.contentRef ?? "0x",
+        transactionHash: log.transactionHash ?? null,
+        blockNumber: log.blockNumber === undefined ? 0 : Number(log.blockNumber),
+    };
+}
+
+function toAuctionCreated(log: IndexedLog): DutchAuctionCreatedEvent | null {
+    const a = log.args;
+    if (!a || typeof a.auctionId !== "string" || typeof a.creator !== "string"
+        || typeof a.processId !== "string" || typeof a.currency !== "string") {
+        return null;
+    }
+    return {
+        auctionId: a.auctionId,
+        creator: a.creator,
+        maxPrice: typeof a.maxPrice === "bigint" ? a.maxPrice : BigInt(String(a.maxPrice ?? 0)),
+        processId: a.processId,
+        currency: a.currency,
+        blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+    };
+}
+
+function toAuctionClaimed(log: IndexedLog): DutchAuctionClaimedEvent | null {
+    const a = log.args;
+    if (!a || typeof a.auctionId !== "string" || typeof a.provider !== "string") return null;
+    return {
+        auctionId: a.auctionId,
+        provider: a.provider,
+        clearingPrice:
+            typeof a.clearingPrice === "bigint" ? a.clearingPrice : BigInt(String(a.clearingPrice ?? 0)),
+        blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+    };
+}
+
+function toOperatorRegistered(log: IndexedLog): OperatorRegisteredEvent | null {
+    const a = log.args;
+    if (!a || typeof a.operator !== "string") return null;
+    const role = Number(a.role ?? 0);
+    if (role < 0 || role > 3) return null;
+    return {
+        operator: a.operator,
+        role: role as OperatorRoleNumeric,
+        metadataURI: typeof a.metadataURI === "string" ? a.metadataURI : "",
+        blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+    };
+}
+
+// `@react-pdf/renderer` is ~400 kB. Lazy-load on first call so the
+// importer's bundle stays light. Users who never trigger PDF generation
+// never pay the cost.
+async function loadPdfModule() {
+    const [renderer, bundle] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("@/lib/audit/pdfBundle"),
+    ]);
+    return { pdf: renderer.pdf, AuditBundlePdf: bundle.AuditBundlePdf };
+}
+
+export interface BuildAuditBundlePdfOptions {
+    redactLineItems?: boolean;
+    /**
+     * Coordinator event sources to extend the FigaroCore timeline page.
+     * When omitted, only kernel events appear. Mirror of the
+     * `DisputeStatusPanel` coordinatorSources prop so the timeline that
+     * lands in the PDF matches the timeline a dispute page would build.
+     */
+    coordinatorSources?: CoordinatorEventSource[];
+    /**
+     * Skip the timeline page entirely. Defaults to including the timeline
+     * whenever a `publicClient` is available. Set to `false` only if the
+     * caller knows the timeline shouldn't appear (e.g. preview render).
+     */
+    includeTimeline?: boolean;
+}
+
+export async function buildAuditBundlePdfBlob(
+    processId: string,
+    orders: readonly Order[],
+    publicClient: PublicClient | undefined,
+    chainId: number,
+    options: BuildAuditBundlePdfOptions = {},
+): Promise<Blob> {
+    const redactLineItems = options.redactLineItems ?? false;
+    const perOrderBundles: AuditBundle[] = [];
+
+    let auctionCreatedAll: DutchAuctionCreatedEvent[] = [];
+    let auctionClaimedAll: DutchAuctionClaimedEvent[] = [];
+    let operatorRegisteredAll: OperatorRegisteredEvent[] = [];
+    if (publicClient) {
+        try {
+            const [createdLogs, claimedLogs, opRegLogs] = await Promise.all([
+                getAllAuctionCreated(publicClient, chainId),
+                getAllAuctionClaimed(publicClient, chainId),
+                getAllOperatorRegistered(publicClient, chainId),
+            ]);
+            auctionCreatedAll = (createdLogs as IndexedLog[])
+                .map(toAuctionCreated)
+                .filter((r): r is DutchAuctionCreatedEvent => r !== null);
+            auctionClaimedAll = (claimedLogs as IndexedLog[])
+                .map(toAuctionClaimed)
+                .filter((r): r is DutchAuctionClaimedEvent => r !== null);
+            operatorRegisteredAll = (opRegLogs as IndexedLog[])
+                .map(toOperatorRegistered)
+                .filter((r): r is OperatorRegisteredEvent => r !== null);
+        } catch {
+            // Non-fatal — extractors will report auctionApplicable=false /
+            // registered=false and the bundle still renders.
+        }
+    }
+
+    for (const order of orders) {
+        const cleartextAgreement = loadAgreement(order.agreementHash);
+        if (!cleartextAgreement) {
+            continue;
+        }
+        const agreement = redactLineItems
+            ? redactSections(cleartextAgreement, [COMMERCE_SCHEMA_KEY])
+            : cleartextAgreement;
+
+        let attestations: readonly AttestationRecord[] = [];
+        if (publicClient) {
+            try {
+                const logs = await getAttestationsByOrder(publicClient, chainId, order.id);
+                attestations = (logs as IndexedAttestationLog[])
+                    .map(toAttestationRecord)
+                    .filter((r): r is AttestationRecord => r !== null);
+            } catch {
+                attestations = [];
+            }
+        }
+
+        const orderAuctionsCreated = auctionCreatedAll.filter((e) => e.processId === order.processId);
+        const auctionIds = new Set(orderAuctionsCreated.map((e) => e.auctionId));
+        const orderAuctionsClaimed = auctionClaimedAll.filter((e) => auctionIds.has(e.auctionId));
+
+        perOrderBundles.push(
+            buildAuditBundle(order, agreement, attestations, {
+                auctionCreatedEvents: orderAuctionsCreated,
+                auctionClaimedEvents: orderAuctionsClaimed,
+                operatorRegistrationEvents: operatorRegisteredAll,
+            }),
+        );
+    }
+
+    const financials: FinancialsModel = projectFinancials(orders, "process", processId);
+    const buyer = orders[0]?.buyer;
+
+    let timeline: ProcessTimeline | null = null;
+    if (publicClient && options.includeTimeline !== false) {
+        try {
+            timeline = options.coordinatorSources?.length
+                ? await buildExtendedTimeline(publicClient, processId as `0x${string}`, options.coordinatorSources)
+                : await buildProcessTimeline(publicClient, processId as `0x${string}`);
+        } catch {
+            // Non-fatal — render without the timeline page if RPC fails.
+            // Hash-anchored evidence (clauses, contentRefs) is still sufficient
+            // for verification; the timeline is convenience.
+        }
+    }
+
+    const { pdf, AuditBundlePdf } = await loadPdfModule();
+    const doc = AuditBundlePdf({
+        data: {
+            processId,
+            buyer,
+            perOrderBundles,
+            financials,
+            timeline,
+            generatedAt: new Date(),
+        },
+    });
+    return pdf(doc).toBlob();
+}

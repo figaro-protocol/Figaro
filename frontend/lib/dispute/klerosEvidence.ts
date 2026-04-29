@@ -12,8 +12,6 @@
  * Upload to IPFS is the caller's responsibility.
  */
 
-import type { ProcessTimeline } from "./evidenceTimeline";
-
 // ---------------------------------------------------------------------------
 // ERC-1497 MetaEvidence
 // ---------------------------------------------------------------------------
@@ -91,37 +89,39 @@ export interface KlerosEvidence {
 }
 
 /**
- * Format a ProcessTimeline as a Kleros Evidence JSON.
+ * Format an audit-bundle PDF as Kleros Evidence.
  *
- * The timeline JSON itself should be uploaded to IPFS first; pass the
- * resulting CID as `timelineCID`. This function produces the Evidence
- * wrapper that points to it.
+ * The PDF is the canonical synthesized record (contract clauses, invoice
+ * line items, BoL clauses, hash appendix) that the audit pipeline emits
+ * — pinned to IPFS as a binary blob. This wrapper points the arbitrator
+ * at it. When `redacted` is true, commerce line items are sealed (the
+ * merkle root still verifies; individual sections can be revealed via
+ * Mode B on /verify if the arbitrator requests them).
  */
-export function buildTimelineEvidence(
-    timeline: ProcessTimeline,
-    timelineCID: string,
+export function buildAuditBundleEvidence(
+    processId: string,
+    auditBundleCID: string,
     party: "buyer" | "seller",
+    options: { redacted: boolean },
 ): KlerosEvidence {
-    const { processId, summary } = timeline;
-    const eventCount = timeline.events.length;
-    const first = timeline.events[0];
-    const last = timeline.events[timeline.events.length - 1];
-    const span = first && last
-        ? `${first.iso} → ${last.iso}`
-        : "no events";
-
+    const sealed = options.redacted ? " (line items sealed)" : "";
     return {
-        name: `Figaro Process Timeline — ${processId.slice(0, 10)}…`,
+        name: `Figaro Audit Bundle — ${processId.slice(0, 10)}…${sealed}`,
         description:
-            `On-chain evidence submitted by the ${party}. ` +
-            `Process ${processId} contains ${summary.orderCount} order(s), ` +
-            `${summary.resolvedCount} resolved, ${summary.cancelledCount} cancelled. ` +
-            `Total payment: ${summary.totalPayment} tokens. ` +
-            `${eventCount} lifecycle events spanning ${span}. ` +
-            `Full timeline at the attached IPFS link.`,
-        fileURI: `/ipfs/${timelineCID}`,
-        fileHash: timelineCID,
-        fileTypeExtension: "json",
+            `Synthesized audit record submitted by the ${party}. ` +
+            `Includes the FigaroCore lifecycle timeline, signed agreement ` +
+            `clauses, invoice line items, Bill of Lading clauses (where ` +
+            `applicable), runtime attestations, consolidated financial ` +
+            `statements, and the hash appendix that binds every section ` +
+            `to the on-chain agreement merkle root.` +
+            (options.redacted
+                ? " Line-item detail has been sealed for distribution; " +
+                  "the merkle root remains verifiable and individual " +
+                  "sections can be selectively revealed on request."
+                : ""),
+        fileURI: `/ipfs/${auditBundleCID}`,
+        fileHash: auditBundleCID,
+        fileTypeExtension: "pdf",
     };
 }
 

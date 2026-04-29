@@ -25,7 +25,7 @@ export type {
 // Kleros ERC-1497 formatting
 export {
     buildFigaroMetaEvidence,
-    buildTimelineEvidence,
+    buildAuditBundleEvidence,
     buildStatementEvidence,
 } from "./klerosEvidence";
 export type {

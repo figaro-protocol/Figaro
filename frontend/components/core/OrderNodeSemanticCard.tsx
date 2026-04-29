@@ -10,6 +10,7 @@ import { useMemo } from "react";
 import { CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { formatUnits } from "viem";
 import { createDeliveryCoordinatorSource } from "@/lib/mechanisms/deliveryCoordinatorEvents";
+import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { calculateBonds } from "@figaro/core";
 
 function capabilityTestId(capability: CapabilityModel): string | undefined {
@@ -51,6 +52,12 @@ export const OrderNodeSemanticCard = memo(function OrderNodeSemanticCard({
 
     // Stable coordinator event sources for extended dispute timelines
     const coordinatorSources = useMemo(() => [createDeliveryCoordinatorSource()], []);
+
+    // Process orders for audit-bundle Kleros evidence. Sourced here (not
+    // upstream) because this card is the only mount point for
+    // DisputeStatusPanel today; lifting it would require threading orders
+    // through every assembly shell.
+    const processOrders = useProcessOrders(order.processId);
 
     // Buyer bond = 2× payment. Show dispute cost as % of buyer bond exposure
     // when both values are available. Note: bond is in ERC-20, arb cost is in
@@ -200,6 +207,7 @@ export const OrderNodeSemanticCard = memo(function OrderNodeSemanticCard({
                     klerosConfig={klerosConfig ?? undefined}
                     role={address && address.toLowerCase() === order.seller.toLowerCase() ? "seller" : "buyer"}
                     coordinatorSources={coordinatorSources}
+                    orders={processOrders}
                 />
             </div>
         </Card>

@@ -37,6 +37,8 @@
  * decoded address and notes.
  */
 
+import { strippingReviver } from "@/lib/shared/safeJson";
+
 // ---------------------------------------------------------------------------
 // Geohash encoding (self-contained, no external dependency)
 // ---------------------------------------------------------------------------
@@ -231,7 +233,7 @@ export function decodeLineItems(field: string): LineItem[] {
     if (!field.startsWith("items:")) return [];
     try {
         const json = b64Decode(field.slice(6));
-        const arr = JSON.parse(json);
+        const arr = JSON.parse(json, strippingReviver);
         if (!Array.isArray(arr)) return [];
         return arr.map((e: { n: string; q: number }) => ({
             name: e.n ?? "",
@@ -438,7 +440,7 @@ export async function decryptLineItems(field: string, keyB64: string): Promise<L
     if (!field.startsWith(PREFIX)) return [];
     try {
         const json = await aesGcmDecrypt(field.slice(PREFIX.length), keyB64);
-        const arr = JSON.parse(json);
+        const arr = JSON.parse(json, strippingReviver);
         if (!Array.isArray(arr)) return [];
         return arr.map((e: { n: string; q: number }) => ({
             name: e.n ?? "",

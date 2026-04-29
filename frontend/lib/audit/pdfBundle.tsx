@@ -39,6 +39,7 @@ import type {
     OrderLineItem,
 } from "@/lib/semantic/financialsProjection";
 import { OrderState } from "@/lib/core/store";
+import type { ProcessTimeline, TimelineEvent } from "@/lib/dispute/evidenceTimeline";
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 
@@ -247,10 +248,11 @@ function CoverPage({ processId, buyer, generatedAt }: {
                 accountant judgment.
             </Text>
             <Text style={styles.note}>
-                Sections (per order, repeated): Contract · Invoice · Bill of
-                Lading · Emissions · Proximity · Sovereign process logs ·
-                Dutch auction trail · Operator registry. Then once for the
-                whole process: Financials (consolidated) · Hash appendix.
+                Sections: Process timeline (FigaroCore lifecycle, once for the
+                whole process). Then per order, repeated: Contract · Invoice ·
+                Bill of Lading · Emissions · Proximity · Sovereign process
+                logs · Dutch auction trail · Operator registry. Then once for
+                the whole process: Financials (consolidated) · Hash appendix.
             </Text>
             <PageFooter processId={processId} />
         </Page>
@@ -1063,6 +1065,121 @@ function Row({ label, amount, bold }: { label: string; amount: bigint; bold?: bo
     );
 }
 
+// ── Timeline page ───────────────────────────────────────────────────────────
+
+function shortDetails(ev: TimelineEvent): string {
+    const parts: string[] = [];
+    if (ev.eventName === "OrderCommitted") {
+        if (ev.details.payment) parts.push(`P=${ev.details.payment}`);
+        if (ev.details.seller) parts.push(`seller ${shortAddr(ev.details.seller)}`);
+    } else if (ev.eventName === "OrderResolved") {
+        if (ev.details.sellerPayout) parts.push(`seller +${ev.details.sellerPayout}`);
+        if (ev.details.buyerPayout) parts.push(`buyer +${ev.details.buyerPayout}`);
+    } else {
+        for (const [k, v] of Object.entries(ev.details)) {
+            if (!v) continue;
+            const display = v.length > 24 ? shortHex(v, 8, 4) : v;
+            parts.push(`${k}=${display}`);
+        }
+    }
+    return parts.join(" · ");
+}
+
+function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
+    const { events, summary, participants } = timeline;
+    return (
+        <Page size="A4" style={styles.page}>
+            <View style={styles.header}>
+                <Text style={styles.label}>Process timeline</Text>
+                <Text style={styles.h1}>FigaroCore lifecycle events</Text>
+            </View>
+            <Text style={styles.note}>
+                Chronological reconstruction of all FigaroCore events scoped to
+                this processId, plus coordinator-specific extensions where
+                supplied (lifecycle signals, proximity proofs). Each row is
+                anchored to a transaction hash on chain — the reader can
+                verify event-by-event without protocol cooperation.
+            </Text>
+
+            <View style={styles.section}>
+                <View style={styles.metadataRow}>
+                    <Text style={styles.metadataKey}>chainId</Text>
+                    <Text style={styles.metadataValue}>{timeline.chainId}</Text>
+                </View>
+                <View style={styles.metadataRow}>
+                    <Text style={styles.metadataKey}>core address</Text>
+                    <Text style={[styles.metadataValue, styles.mono]}>{timeline.coreAddress}</Text>
+                </View>
+                <View style={styles.metadataRow}>
+                    <Text style={styles.metadataKey}>events</Text>
+                    <Text style={styles.metadataValue}>
+                        {events.length} total · {summary.orderCount} committed · {summary.resolvedCount} resolved
+                    </Text>
+                </View>
+                <View style={styles.metadataRow}>
+                    <Text style={styles.metadataKey}>total payment</Text>
+                    <Text style={styles.metadataValue}>{summary.totalPayment}</Text>
+                </View>
+                <View style={styles.metadataRow}>
+                    <Text style={styles.metadataKey}>seller payouts</Text>
+                    <Text style={styles.metadataValue}>{summary.totalSellerPayout}</Text>
+                </View>
+                <View style={styles.metadataRow}>
+                    <Text style={styles.metadataKey}>buyer payouts</Text>
+                    <Text style={styles.metadataValue}>{summary.totalBuyerPayout}</Text>
+                </View>
+                {participants.length > 0 && (
+                    <View style={styles.metadataRow}>
+                        <Text style={styles.metadataKey}>participants</Text>
+                        <Text style={[styles.metadataValue, styles.mono]}>
+                            {participants.map((p) => shortAddr(p)).join(", ")}
+                        </Text>
+                    </View>
+                )}
+            </View>
+
+            <Text style={styles.h2}>Events ({events.length})</Text>
+            {events.length === 0 ? (
+                <Text style={styles.sectionBody}>
+                    No FigaroCore events found for this processId. The process
+                    may not yet exist on this chain, or the RPC may have lost
+                    the historical range.
+                </Text>
+            ) : (
+                <View style={styles.table}>
+                    <View style={[styles.tableRow, styles.tableHeader]}>
+                        <Text style={[styles.tCell, { flex: 2 }]}>Timestamp (UTC)</Text>
+                        <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
+                        <Text style={[styles.tCell, { flex: 2 }]}>Event</Text>
+                        <Text style={[styles.tCellMono, { flex: 2 }]}>Order</Text>
+                        <Text style={[styles.tCell, { flex: 4 }]}>Detail</Text>
+                        <Text style={[styles.tCellMono, { flex: 2 }]}>tx</Text>
+                    </View>
+                    {events.map((ev, idx) => (
+                        <View key={`${ev.txHash}-${idx}`} style={styles.tableRow}>
+                            <Text style={[styles.tCell, { flex: 2 }]}>{ev.iso}</Text>
+                            <Text style={[styles.tCell, { flex: 1 }]}>{ev.blockNumber.toString()}</Text>
+                            <Text style={[styles.tCell, { flex: 2 }]}>{ev.label}</Text>
+                            <Text style={[styles.tCellMono, { flex: 2 }]}>
+                                {ev.orderHash ? shortHex(ev.orderHash, 8, 4) : "—"}
+                            </Text>
+                            <Text style={[styles.tCell, { flex: 4 }]}>{shortDetails(ev)}</Text>
+                            <Text style={[styles.tCellMono, { flex: 2 }]}>{shortHex(ev.txHash, 8, 4)}</Text>
+                        </View>
+                    ))}
+                </View>
+            )}
+            <Text style={styles.note}>
+                Generated {timeline.generatedAt}. Same data surface used by
+                the in-iframe evidence-display view and previously submitted
+                as standalone timeline JSON evidence prior to this bundle&apos;s
+                consolidation.
+            </Text>
+            <PageFooter processId={timeline.processId} />
+        </Page>
+    );
+}
+
 // ── Hash appendix page ──────────────────────────────────────────────────────
 
 function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] }) {
@@ -1111,6 +1228,12 @@ export interface AuditBundlePdfData {
     perOrderBundles: AuditBundle[];
     /** Process-level financials projection (consolidated). */
     financials: FinancialsModel;
+    /**
+     * FigaroCore lifecycle timeline for the process. When present, the PDF
+     * renders a Process Timeline page right after the cover. When omitted
+     * (e.g. RPC unavailable), the bundle still renders without it.
+     */
+    timeline?: ProcessTimeline | null;
     /** Generation timestamp (UTC). */
     generatedAt: Date;
 }
@@ -1123,6 +1246,7 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
             subject="Bonded commitment record"
         >
             <CoverPage processId={data.processId} buyer={data.buyer} generatedAt={data.generatedAt} />
+            {data.timeline ? <TimelinePage timeline={data.timeline} /> : null}
             {data.perOrderBundles.map((bundle) => (
                 <ContractPage key={`contract-${bundle.contract.orderHash}`} contract={bundle.contract} />
             ))}

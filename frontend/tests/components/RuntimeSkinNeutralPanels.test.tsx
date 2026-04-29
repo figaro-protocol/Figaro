@@ -139,6 +139,7 @@ function createAuctionProps(overrides?: Record<string, unknown>) {
                 },
                 evidenceTransport: {
                     pinJSON: vi.fn(),
+                    pinBlob: vi.fn(),
                     publishJSON: vi.fn(),
                     uploadFile: vi.fn(),
                     buildURI: vi.fn(),
@@ -328,6 +329,7 @@ function createProcessProps(overrides?: Record<string, unknown>) {
                 },
                 evidenceTransport: {
                     pinJSON: vi.fn(),
+                    pinBlob: vi.fn(),
                     publishJSON: vi.fn(),
                     uploadFile: vi.fn(),
                     buildURI: vi.fn(),
