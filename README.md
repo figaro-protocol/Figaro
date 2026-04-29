@@ -26,6 +26,7 @@ The organizational consequence: each process assembles a temporary institution o
 - **SP1 prover** — Rust workspace: kernel library, guest program, batch sequencer
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
 - **Paper** — Academic paper in `paper/`
+- **Contributor agents** — `.claude/agents/` ships three Claude Code subagents (kernel-reviewer, schema-lockstep, schema-author), `agents/factotum/` is a runnable participation-agent reference, and `agents/sdk/` packages the subagents as `@figaro/agent-sdk` for non-Claude-Code runtimes. See [CONTRIBUTING.md](CONTRIBUTING.md#contributor-agents).
 
 Start with [docs/v5/CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) for the reading path.
 
@@ -66,6 +67,15 @@ prover/                     Rust SP1 workspace
   figaro-sequencer/         Batch sequencer
   figaro-guest/             SP1 guest program
   figaro-prove-test/        Mock prover test
+
+agents/                     Reference agent implementations
+  factotum/                 Runnable participation-agent (uses @figaro/core/agent)
+  sdk/                      @figaro/agent-sdk — subagent definitions for non-Claude-Code runtimes
+.claude/                    Claude Code contributor tooling
+  agents/                   Subagents (kernel-reviewer, schema-lockstep, schema-author)
+  skills/                   figaro-kernel-discipline (canonical kernel rules)
+  hooks/                    kernel-warn.sh + schema-lockstep-warn.sh (edit-time guards)
+  settings.json             Project-level permissions + hook registration
 
 test/                       Foundry tests
 formal/                     TLA+ specs + TLC config

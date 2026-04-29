@@ -1,0 +1,37 @@
+{
+  "name": "@figaro/factotum",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reference participation agent for the Figaro Protocol — wires @figaro/core/agent to a wallet, role binding, and a pluggable policy. Fork-and-modify starting point for human or AI agents that act on the protocol.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "factotum": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "lint": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@figaro/core": "file:../../sdk",
+    "viem": "^2.0.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

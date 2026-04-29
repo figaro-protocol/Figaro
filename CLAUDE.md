@@ -5,6 +5,45 @@ This file is the authoritative reference for AI-assisted work in this repo.
 
 ---
 
+## Agent Permissions
+
+Agents — human-driven or autonomous — have bounded write scope. These are hard limits, not guidelines.
+
+### Never edit, ever
+
+- **`src/FigaroCore.sol`** — the kernel is frozen. The `kernel-warn.sh` hook surfaces this at edit time; do not bypass.
+- **`src/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
+- **Any deployed contract on a chain anyone is using.** First-write-wins binding in `OperatorRegistry`, `SchemaRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
+- **Existing registered schemas.** Once a `schemaId` is bound to its `ISchemaValidator`, the binding is permanent. To change behavior, register a new schemaId (e.g., `figaro-foo-v1` → `figaro-foo-v2`); never mutate the v1 contract or its Layer A spec in `frontend/lib/shared/schemas/`.
+- **Reference assemblies** in the runtime that are shared infrastructure. New assemblies go in new files; treat existing reference assemblies as immutable for any agent.
+
+### Edit only what belongs to the user the agent is acting for
+
+The protocol is actor-neutral: any wallet can hold the same role any other wallet can hold. An agent acts for whoever holds its private key — and only for that wallet.
+
+An agent acting for wallet `W` may write:
+
+- W's own off-chain metadata (operator-registry entries, ENS/`did:web` documents, agent service descriptions).
+- Assemblies where W is `rootBuyer` or seller-of-record.
+- New artifacts W is authoring — new schemas, new validator contracts, new factotum forks, new frontend pages.
+
+An agent may NOT:
+
+- Edit assemblies, attestations, or operator-registry entries belonging to other wallets — even if reading them is fine.
+- Modify shared infrastructure (kernel, registries, reference assemblies) under the framing of "fixing it for everyone." That is a maintainer decision, not an agent decision.
+- Submit transactions that affect another wallet's bond, attestation, or settlement state without that wallet's signature.
+
+### Where these rules are enforced
+
+- **Path-level rules** (e.g., "never edit `src/FigaroCore.sol`") can be enforced at the Claude Code harness level via `.claude/settings.json` `permissions.deny` entries plus the existing `kernel-warn.sh` hook. The harness blocks (or prompts on) the tool call before it reaches the file.
+- **Ownership-level rules** (e.g., "do not edit another user's assembly") cannot be enforced by the harness — the harness has no notion of which wallet owns which file. They live in agent prompts, in CLAUDE.md, and in human review at PR/commit time.
+
+See `.claude/skills/figaro-kernel-discipline/SKILL.md` for the kernel-specific anti-patterns; that skill is the canonical source the kernel-reviewer subagent reads.
+
+When in doubt, ask. Cheap question, expensive cleanup.
+
+---
+
 ## Working With This Codebase
 
 ### Before Raising Any Finding
@@ -55,7 +94,7 @@ Authoritative docs that must stay in sync:
 - `.github/copilot-instructions.md` — same inventory, Copilot framing
 - `sdk/README.md` — SDK entry points
 - `docs/v5/VERIFICATION_MAP.md` — invariant → test → formal layer map
-- `app/builders/page.tsx` ("Schema validators in force") + `app/help/page.tsx` ("Schema validation") — user-facing list of validator contracts. Update when a new schema lands.
+- User-facing schema surfaces in `frontend/app/`. Use `grep -rl "<schemaId>" frontend/app/` to find every page that needs updating; canonical surfaces include `app/(app)/schemas/page.tsx`, `app/(app)/integrate/page.tsx`, `app/(marketing)/spec/page.tsx`, `app/(marketing)/help/page.tsx`. Update when a new schema lands.
 
 ### Test Commands
 

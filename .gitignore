@@ -36,8 +36,14 @@ frontend2/tsconfig.tsbuildinfo
 # Archived legacy frontend (preserved locally; not version-controlled)
 archive-frontend/
 
-# Local Claude Code state
-.claude/
+# Local Claude Code state. Contributor-facing artifacts (agents/, skills/,
+# hooks/, and project-level settings.json) are tracked as ecosystem artifacts;
+# personal overrides go in .claude/settings.local.json which stays out of git.
+.claude/*
+!.claude/agents/
+!.claude/skills/
+!.claude/hooks/
+!.claude/settings.json
 
 # Environment variables
 .env

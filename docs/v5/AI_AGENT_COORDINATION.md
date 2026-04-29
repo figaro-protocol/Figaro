@@ -19,6 +19,14 @@ that any agent can read, analyze, and act on.
 
 ---
 
+## Reference Implementation
+
+`agents/factotum/` ships a runnable reference participation agent: a fork-and-modify TypeScript starting point that wires `@figaro/core/agent` to a wallet, role binding (inferred from process state), and a pluggable policy. Treat the doctrine in this document as the *what*; the factotum is the *how*. See `agents/factotum/README.md` for architecture, the policy contract, LLM integration patterns, and ERC-8004 / `did:web` discoverability.
+
+The factotum is intentionally minimal — it is not a strategy or a production system. It is the concrete demonstration that humans and autonomous agents interact with the kernel through the same primitives (a wallet, EIP-712 signatures, on-chain commitments). Re-implementations in other languages are expected; the protocol does not care which runtime you use.
+
+---
+
 ## How Agents Use Each Graph
 
 ### Process Graph → Work Discovery

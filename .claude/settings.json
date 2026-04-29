@@ -1,0 +1,65 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(forge test*)",
+      "Bash(forge coverage*)",
+      "Bash(forge build*)",
+      "Bash(forge fmt*)",
+      "Bash(forge snapshot*)",
+      "Bash(FOUNDRY_PROFILE=halmos halmos*)",
+      "Bash(cd sdk && npm test*)",
+      "Bash(cd sdk && npm run build*)",
+      "Bash(cd sdk && npm run lint*)",
+      "Bash(cd frontend && npm run type-check*)",
+      "Bash(cd frontend && npx vitest*)",
+      "Bash(cd frontend && npm run test:e2e:mock*)",
+      "Bash(cd frontend && npm run build*)",
+      "Bash(cd frontend && npm run lint*)",
+      "Bash(cd prover && cargo test*)",
+      "Bash(cd prover && cargo check*)",
+      "Bash(cd prover && cargo build*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git stash list*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(wc*)",
+      "Bash(jq*)"
+    ],
+    "deny": [
+      "Bash(git push*)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(git checkout -- *)",
+      "Bash(git clean*)",
+      "Bash(forge script*)",
+      "Bash(certoraRun*)",
+      "Bash(rm -rf*)",
+      "Bash(npm publish*)",
+      "Edit(src/FigaroCore.sol)",
+      "Write(src/FigaroCore.sol)",
+      "Edit(src/CommitmentTypes.sol)",
+      "Write(src/CommitmentTypes.sol)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/kernel-warn.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/schema-lockstep-warn.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

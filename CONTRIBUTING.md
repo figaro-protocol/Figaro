@@ -57,6 +57,60 @@ The canonical folder for repo scripts is `script/` (singular). If you add helper
   - Prover changes → `cd prover && cargo test`
 - Add tests for any behavior you change.
 
+## Contributor agents
+
+The project ships agent-shaped tooling — usable by humans, AI assistants, or autonomous protocol participants — to make the security-first posture transferable. Every agent traces back to canonical sources (the six invariants, `docs/v5/DESIGN_DECISIONS.md`, `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md`); they are the executable form of what the publications already prove.
+
+### Claude Code subagents — `.claude/agents/`
+
+- **`figaro-kernel-reviewer`** — read-only review of any diff that touches `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, or kernel storage. Returns findings cited to the six invariants and the canonical anti-pattern list. Invoke before merging anything kernel-adjacent.
+- **`figaro-schema-lockstep`** — verifies a new or changed schema is in sync across all required surfaces (Layer A spec, TS encoder, on-chain validator contract, `SchemaRegistry` registration, listing pages). Invoke after authoring a schema.
+- **`figaro-schema-author`** — authors new schemas + their `ISchemaValidator` contracts with the protocol-extension doctrine and validator-contract pattern baked in. Never auto-commits; always shows the diff and waits for human approval. Invoke when proposing a new artifact family.
+
+These rely on the canonical `figaro-kernel-discipline` skill at `.claude/skills/` and the `kernel-warn.sh` hook at `.claude/hooks/`. The skill is the single source of truth for kernel rules; the subagents are tool-constrained executors.
+
+**How to invoke a subagent.** In Claude Code, three paths work:
+
+1. *Auto-invocation* — the main agent dispatches a subagent automatically when your prompt matches its `description`. Saying "review this diff for kernel discipline" should pick up `figaro-kernel-reviewer` without ceremony.
+2. *Naming* — explicitly delegate by name: "use the `figaro-schema-lockstep` agent to verify the figaro-foo-v1 surfaces."
+3. *`/agents`* — slash command to list, view, or manage available subagents in the current session.
+
+Subagents do not chain directly. The schema-author returns to the main session, which then dispatches the kernel-reviewer and schema-lockstep in turn — review the verification report each subagent produces before merging.
+
+### Reference participation agent — `agents/factotum/`
+
+`@figaro/factotum` is a fork-and-modify reference for any agent — human-driven or autonomous, AI or rule-based — that wants to *act* on the protocol. It wires `@figaro/core/agent` to a wallet, role binding (inferred from process state), and a pluggable policy. HITL is the default; autonomous mode ships with a refuse-all policy as the security floor.
+
+```bash
+cd agents/factotum
+npm install
+cp .env.example .env
+# Edit .env with a fresh test key and addresses from deploy-local.sh
+npm run dev
+```
+
+See `agents/factotum/README.md` for architecture, the policy contract, LLM integration patterns, and ERC-8004 / `did:web` discoverability. The package is the operational form of Figaro's actor-neutrality claim: humans and agents interact with the kernel through the same primitives.
+
+### Agent SDK package — `agents/sdk/`
+
+`@figaro/agent-sdk` parses the canonical `.claude/agents/*.md` files at runtime and exposes the subagents as structured `AgentDefinition` objects (name, description, tools, model, systemPrompt). Use it when you want the same security-first prompts in a runtime that isn't Claude Code — the Anthropic SDK directly, the Claude Agent SDK, OpenAI tool calling, or your own loop.
+
+The `.md` files remain the single source of truth; this package is a reader, not a duplicator. Property tests in `agents/sdk/tests/` run against the real `.md` files and catch drift (e.g., if anyone hands `Write` access to the read-only kernel-reviewer).
+
+```bash
+cd agents/sdk
+npm install
+npm test    # property tests against the canonical .md files
+```
+
+See `agents/sdk/README.md` for the API reference and an Anthropic SDK integration with prompt caching.
+
+### Conventions for new agents
+
+- New Claude Code subagents go in `.claude/agents/<name>.md` with frontmatter (`name`, `description`, `tools`, `model`). Read-only agents declare `tools: Read, Grep, Glob, Bash` to make the constraint explicit.
+- New runnable agents go under `agents/<name>/` as standalone packages depending on `@figaro/core` via `file:../../sdk`.
+- Agent prompts must cite canonical sources (papers, `docs/v5/`, `CLAUDE.md`) — not paraphrase. Drift between an agent's rules and the publications is a bug.
+
 ## Documentation discipline
 
 Per repository policy, when a code change makes an existing doc statement stale, update the affected docs in the same change. Key files to keep in sync include:
