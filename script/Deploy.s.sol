@@ -30,6 +30,7 @@ import "../src/schemaValidators/FigaroProximityProofV1Validator.sol";
 import "../src/schemaValidators/FigaroMerchantProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroJurisdictionV1Validator.sol";
+import "../src/schemaValidators/FigaroConsentV1Validator.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @notice Minimal mock token for local dev.
@@ -107,8 +108,9 @@ contract Deploy is Script {
             keccak256("figaro-courier-process-v1"), 1, keccak256("ipfs://figaro-courier-process/v1")
         );
         schemas.registerSchema(keccak256("figaro-jurisdiction-v1"), 1, keccak256("ipfs://figaro-jurisdiction/v1"));
+        schemas.registerSchema(keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"));
         schemas.registerSchema(keccak256("erc8004-agent-services-v1"), 1, keccak256("ipfs://erc8004-agent-services/v1"));
-        console.log("Registered 18 reference schemas");
+        console.log("Registered 19 reference schemas");
 
         // ── Schema validators ───────────────────────────────────────
         // Deploy per-schema validator contracts and wire them into the
@@ -271,6 +273,9 @@ contract Deploy is Script {
         attestation.setValidator(
             keccak256("figaro-jurisdiction-v1"), address(new FigaroJurisdictionV1Validator())
         );
-        console.log("Registered 16 schema validators with AttestationCoordinator");
+        attestation.setValidator(
+            keccak256("figaro-consent-v1"), address(new FigaroConsentV1Validator())
+        );
+        console.log("Registered 17 schema validators with AttestationCoordinator");
     }
 }

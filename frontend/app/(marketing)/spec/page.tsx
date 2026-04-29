@@ -118,7 +118,7 @@ export default function Specifications() {
                     Schema validators in force
                 </h2>
                 <p className="text-sm text-gray-600 mb-6">
-                    Sixteen runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
+                    Seventeen runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
                 </p>
                 <table className="w-full text-sm">
                     <thead>
@@ -146,6 +146,7 @@ export default function Specifications() {
                         <tr><td className="py-2 pr-4"><code>figaro-merchant-process-v1</code></td><td className="py-2 pr-4 text-gray-700">Merchant per-role event log (sovereign log; generic across local-commerce verticals)</td><td className="py-2 text-gray-500">Layer A + C</td></tr>
                         <tr><td className="py-2 pr-4"><code>figaro-courier-process-v1</code></td><td className="py-2 pr-4 text-gray-700">Courier per-role event log (sovereign log; generic across transport modes)</td><td className="py-2 text-gray-500">Layer A + C</td></tr>
                         <tr><td className="py-2 pr-4"><code>figaro-jurisdiction-v1</code></td><td className="py-2 pr-4 text-gray-700">Off-chain dispute-resolution jurisdiction (applicable law + forum + language)</td><td className="py-2 text-gray-500">Layer A + C</td></tr>
+                        <tr><td className="py-2 pr-4"><code>figaro-consent-v1</code></td><td className="py-2 pr-4 text-gray-700">Cryptographic consent to an off-chain legal document (documentHash + version + title)</td><td className="py-2 text-gray-500">Layer A + C</td></tr>
                     </tbody>
                 </table>
                 <p className="text-xs text-gray-500 mt-4">

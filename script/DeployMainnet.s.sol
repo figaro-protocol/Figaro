@@ -29,6 +29,7 @@ import "../src/schemaValidators/FigaroProximityProofV1Validator.sol";
 import "../src/schemaValidators/FigaroMerchantProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroJurisdictionV1Validator.sol";
+import "../src/schemaValidators/FigaroConsentV1Validator.sol";
 
 /// @title DeployMainnet — Mainnet deployment of the full Figaro V5 protocol stack
 ///
@@ -154,6 +155,7 @@ contract DeployMainnet is Script {
             keccak256("figaro-courier-process-v1"), 1, keccak256("ipfs://figaro-courier-process/v1")
         );
         schemas.registerSchema(keccak256("figaro-jurisdiction-v1"), 1, keccak256("ipfs://figaro-jurisdiction/v1"));
+        schemas.registerSchema(keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"));
         schemas.registerSchema(keccak256("erc8004-agent-services-v1"), 1, keccak256("ipfs://erc8004-agent-services/v1"));
         console.log("SchemaRegistry: 18 reference schemas registered");
 
@@ -240,8 +242,10 @@ contract DeployMainnet is Script {
             keccak256("figaro-courier-process-v1"), address(new FigaroCourierProcessV1Validator()));
         _wireValidator(attestation, "JurisdictionV1Validator:       ",
             keccak256("figaro-jurisdiction-v1"), address(new FigaroJurisdictionV1Validator()));
+        _wireValidator(attestation, "ConsentV1Validator:            ",
+            keccak256("figaro-consent-v1"), address(new FigaroConsentV1Validator()));
 
-        console.log("AttestationCoordinator: 16 validators wired");
+        console.log("AttestationCoordinator: 17 validators wired");
     }
 
     function _wireValidator(

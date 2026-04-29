@@ -489,7 +489,7 @@ Lives off-chain as JSON at the URI hashed into `SchemaRegistry.uriHash`.
 Built-in specs ship in `sdk/src/schemas/examples/` and
 `frontend/lib/shared/schemas/` (the application's working copy).
 
-### The 17 local-commerce + jurisdiction schemas
+### The 18 protocol schemas
 
 | schemaId | What it carries | Attestation surface |
 |---|---|---|
@@ -510,6 +510,7 @@ Built-in specs ship in `sdk/src/schemas/examples/` and
 | `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A + C |
 | `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A + C |
 | `figaro-jurisdiction-v1` | Off-chain dispute-resolution jurisdiction (applicable law + forum + language) — baseline graph per Paper E | Layer A + C |
+| `figaro-consent-v1` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` family) | Layer A + C |
 
 The five `figaro-ghg-<standard>-v1` entries are sister schemas — one per
 accounting standard. Standard identity lives in the schemaId; the content

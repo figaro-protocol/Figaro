@@ -265,6 +265,36 @@ export function encodeMerchantContent(content: MerchantContent): Hex {
     );
 }
 
+// ── figaro-consent-v1 ───────────────────────────────────────────────────────
+//
+// Cryptographic consent attestation. Anchors the binding between a wallet
+// (recovered from the EIP-712 signature on the AttestationCoordinator call,
+// visible in the `attester` field of the Attestation event) and an off-chain
+// legal document identified by its keccak256 content hash. Pattern: off-chain
+// document semantics, on-chain anchor for shared reference integrity.
+//
+// Append-only: revocation is a separate off-chain process and does NOT mutate
+// the on-chain attestation. A new document version requires figaro-consent-v2.
+//
+// Bounded inputs (length limits enforced both Layer A and Layer C) prevent
+// griefing via unbounded calldata.
+
+export interface ConsentContent {
+    /** keccak256 of the canonical legal document text. 32-byte hex (0x...). */
+    documentHash: Hex;
+    /** Semver-style version identifier; bounded to 32 chars. */
+    documentVersion: string;
+    /** Human-readable document name; bounded to 200 chars. */
+    documentTitle: string;
+}
+
+export function encodeConsentContent(content: ConsentContent): Hex {
+    return encodeAbiParameters(
+        [{ type: "bytes32" }, { type: "string" }, { type: "string" }],
+        [content.documentHash, content.documentVersion, content.documentTitle],
+    );
+}
+
 // ── figaro-courier-process-v1 ───────────────────────────────────────────────
 //
 // Sovereignty primitive: courier attests their own internal events under this

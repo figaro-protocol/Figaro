@@ -56,6 +56,7 @@ export type {
     MerchantContent,
     CourierEvent,
     CourierContent,
+    ConsentContent,
 } from "./encode.js";
 
 export {
@@ -72,4 +73,5 @@ export {
     encodeProximityProofContent,
     encodeMerchantContent,
     encodeCourierContent,
+    encodeConsentContent,
 } from "./encode.js";
