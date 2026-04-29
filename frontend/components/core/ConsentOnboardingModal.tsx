@@ -120,6 +120,23 @@ export function ConsentOnboardingModal({ onDismiss }: ConsentOnboardingModalProp
                             without penalty.
                         </p>
                     </div>
+
+                    <div>
+                        <h3 className="font-semibold text-black mb-1">Disputes and escalation</h3>
+                        <p>
+                            If you believe the Agreement has been breached or
+                            something has gone seriously wrong, contact the
+                            Operator first — most issues resolve directly. If a
+                            dispute remains unresolved, the formal escalation per
+                            §10 of the Agreement is <strong>Kleros</strong>, the
+                            decentralized arbitration protocol. You may invoke
+                            Kleros independently using your consent receipt PDF as
+                            evidence; the receipt contains the signed message and
+                            document hash needed to make a case. A project-side
+                            dispute submission flow is being built and will surface
+                            here when ready.
+                        </p>
+                    </div>
                 </section>
 
                 <Button

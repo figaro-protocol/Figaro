@@ -404,6 +404,24 @@ export default function ConsentPage() {
                 </Card>
             )}
 
+            <Card className="p-4 space-y-2 text-xs text-neutral-600" data-testid="consent-help-footer">
+                <p className="font-semibold text-black uppercase tracking-wider text-[10px]">
+                    Questions or concerns
+                </p>
+                <p>
+                    Contact the Project Operator at the address provided in your
+                    beta invitation. The Operator handles all questions, withdrawals,
+                    and disputes during the beta — most issues resolve directly.
+                </p>
+                <p>
+                    If a dispute remains unresolved, the formal escalation per §10
+                    of the Agreement is <strong>Kleros</strong>, the decentralized
+                    arbitration protocol. You may invoke Kleros independently using
+                    your consent receipt PDF as evidence; a project-side submission
+                    flow is being built and will surface here when ready.
+                </p>
+            </Card>
+
             {showOnboarding && (
                 <ConsentOnboardingModal onDismiss={() => setShowOnboarding(false)} />
             )}

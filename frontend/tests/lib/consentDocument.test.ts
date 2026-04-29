@@ -29,10 +29,15 @@ describe("consentDocument module", () => {
 
     it("CONSENT_DOCUMENT_TEXT is non-empty and contains expected structural markers", () => {
         expect(CONSENT_DOCUMENT_TEXT.length).toBeGreaterThan(100);
-        // Spot-check structural sections so a future edit can't accidentally
-        // delete the IRB-style scaffolding.
+        // Spot-check load-bearing clauses so a future edit can't accidentally
+        // drop them. Markers chosen to fail loudly if any is dropped:
+        //  - title (always identifies the document)
+        //  - contracting party (legal personhood — fixed)
+        //  - top-level term/withdrawal section
+        //  - Kleros dispute clause (the protocol's chosen jurisdiction)
         expect(CONSENT_DOCUMENT_TEXT).toContain("FIGARO BETA INFORMED CONSENT AGREEMENT");
-        expect(CONSENT_DOCUMENT_TEXT).toContain("RIGHT TO WITHDRAW");
-        expect(CONSENT_DOCUMENT_TEXT).toContain("CONFIDENTIALITY");
+        expect(CONSENT_DOCUMENT_TEXT).toContain("Alessandro Daliana");
+        expect(CONSENT_DOCUMENT_TEXT).toContain("TERM AND WITHDRAWAL");
+        expect(CONSENT_DOCUMENT_TEXT).toContain("Kleros");
     });
 });
