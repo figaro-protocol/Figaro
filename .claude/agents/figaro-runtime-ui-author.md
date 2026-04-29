@@ -125,13 +125,17 @@ If type-check fails because a `lib/` module needs an export, refuse to add it �
 
 ---
 
-## Step 6 — Marketing review for user-facing pages
+## Step 6 — Defer to communications agents on marketing surfaces
 
-If anything you wrote touches `frontend/app/(marketing)/` or changes navigation (sidebar, header, route inventory), you must STOP before declaring done and ask the operator to run a marketing-expert review. This is a hard rule from project memory.
+If anything you wrote touches `frontend/app/(marketing)/` or changes navigation (sidebar, header, route inventory), STOP before declaring done. Defer to:
 
-State explicitly: "I wrote user-facing marketing changes; the marketing-expert reviewer must run before commit. Halting at Step 6."
+- **`figaro-marketing-author`** — for any words / copy / claims on the surface.
+- **`figaro-site-ia`** — for navigation / route / cross-linking decisions.
+- **`figaro-visual-design`** — for design-system primitives if you found yourself reaching for new Tailwind values, modal patterns, or form scaffolding.
 
-For internal-only surfaces (`app/(app)/` only, no nav changes), proceed to Step 7.
+State explicitly: "I wrote changes that overlap [marketing-author / site-ia / visual-design] domains; halting at Step 6 for that review before commit."
+
+For internal-only surfaces (`app/(app)/` only, no nav changes, no new design primitives), proceed to Step 7.
 
 ---
 

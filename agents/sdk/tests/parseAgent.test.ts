@@ -153,18 +153,48 @@ describe("loadAgent (canonical .md files)", () => {
     expect(a.systemPrompt).toMatch(/composable-protection|framing|triage/i);
   });
 
-  it("loadAllAgents returns exactly the nine canonical agents", () => {
+  it("loads figaro-marketing-author with refusal discipline", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-marketing-author");
+    expect(a.name).toBe("figaro-marketing-author");
+    expect(a.tools).toContain("Edit");
+    expect(a.tools).toContain("Write");
+    expect(a.model).toBe("opus");
+    expect(a.systemPrompt).toMatch(/DeFi|TradFi|coordination protocol/);
+    expect(a.systemPrompt).toMatch(/200-year|extrapolation/i);
+  });
+
+  it("loads figaro-site-ia as a read-only IA recommender", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-site-ia");
+    expect(a.name).toBe("figaro-site-ia");
+    expect(a.tools).not.toContain("Edit");
+    expect(a.tools).not.toContain("Write");
+    expect(a.systemPrompt).toMatch(/reading path|curriculum|cross-link/i);
+  });
+
+  it("loads figaro-visual-design with design-system scope", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-visual-design");
+    expect(a.name).toBe("figaro-visual-design");
+    expect(a.tools).toContain("Edit");
+    expect(a.tools).toContain("Write");
+    expect(a.systemPrompt).toMatch(/design system|tailwind|semantic token/i);
+    expect(a.systemPrompt).toMatch(/WCAG|ARIA|a11y|accessibility/i);
+  });
+
+  it("loadAllAgents returns exactly the twelve canonical agents", () => {
     const all = loadAllAgents(REPO_ROOT);
     expect(Object.keys(all).sort()).toEqual([
       "figaro-assembly-author",
       "figaro-deploy-runner",
       "figaro-feedback-triage",
       "figaro-kernel-reviewer",
+      "figaro-marketing-author",
       "figaro-memory-hygiene",
       "figaro-paper-reviewer",
       "figaro-runtime-ui-author",
       "figaro-schema-author",
       "figaro-schema-lockstep",
+      "figaro-site-ia",
+      "figaro-visual-design",
     ]);
   });
 
@@ -174,11 +204,14 @@ describe("loadAgent (canonical .md files)", () => {
       "figaro-deploy-runner",
       "figaro-feedback-triage",
       "figaro-kernel-reviewer",
+      "figaro-marketing-author",
       "figaro-memory-hygiene",
       "figaro-paper-reviewer",
       "figaro-runtime-ui-author",
       "figaro-schema-author",
       "figaro-schema-lockstep",
+      "figaro-site-ia",
+      "figaro-visual-design",
     ]);
   });
 });
