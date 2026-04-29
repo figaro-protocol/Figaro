@@ -45,6 +45,16 @@ export type {
     ConsentDisputeEvidenceInput,
 } from "./consentDisputeEvidence";
 
+// Kleros subcourt catalog + arbitratorExtraData encoder
+export {
+    KLEROS_COURTS,
+    KLEROS_COURT_KEYS,
+    KLEROS_MIN_JURORS_FLOOR,
+    encodeArbitratorExtraData,
+    getKlerosCourt,
+} from "./klerosCourts";
+export type { KlerosCourt, KlerosCourtKey } from "./klerosCourts";
+
 // Kleros ArbitrableProxy interaction
 export {
     getArbitrationCost,

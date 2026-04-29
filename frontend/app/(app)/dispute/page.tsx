@@ -68,11 +68,15 @@ import {
     buildConsentDisputeEvidence,
     buildConsentDisputeMetaEvidence,
     createDispute,
+    encodeArbitratorExtraData,
     getArbitrationCost,
+    getKlerosCourt,
+    KLEROS_COURTS,
     submitEvidence,
     type DisputedConsentAttestation,
     type ConsentDisputeRole,
     type KlerosConfig,
+    type KlerosCourtKey,
 } from "@/lib/dispute";
 
 // ---------------------------------------------------------------------------
@@ -218,7 +222,7 @@ export default function DisputePage() {
     const { signTypedDataAsync } = useSignTypedData();
     const { evidenceTransport } = useRuntimeServices();
 
-    const klerosConfig = useMemo(() => getKlerosConfigFromEnv(), []);
+    const envKlerosConfig = useMemo(() => getKlerosConfigFromEnv(), []);
 
     const [step, setStep] = useState<Step>("select");
     const [error, setError] = useState<string | null>(null);
@@ -235,7 +239,35 @@ export default function DisputePage() {
     const [submitting, setSubmitting] = useState(false);
     const [submission, setSubmission] = useState<SubmissionResult | null>(null);
 
+    // ── Court selection (override env-configured arbitratorExtraData) ───
+    // Default to "env" — uses NEXT_PUBLIC_KLEROS_ARBITRATOR_EXTRA_DATA as
+    // configured by the deployment. The participant can override with a
+    // specific subcourt + min-juror count for this dispute.
+    const [courtKey, setCourtKey] = useState<KlerosCourtKey | "env">("env");
+    const [customCourtId, setCustomCourtId] = useState<number>(1);
+    const [minJurors, setMinJurors] = useState<number>(3);
+
+    // Effective Kleros config: env config with arbitratorExtraData possibly
+    // overridden by the court selector. extraData drives both arbitration
+    // cost and dispute creation, so this single source must be used in
+    // both call sites.
+    const klerosConfig = useMemo<KlerosConfig | null>(() => {
+        if (!envKlerosConfig) return null;
+        if (courtKey === "env") return envKlerosConfig;
+        const subcourtId =
+            courtKey === "custom" ? customCourtId : (getKlerosCourt(courtKey)?.id ?? 1);
+        try {
+            const extraData = encodeArbitratorExtraData(subcourtId, minJurors);
+            return { ...envKlerosConfig, arbitratorExtraData: extraData };
+        } catch {
+            // Invalid input (negative ID, zero jurors, etc.) — fall back to env.
+            return envKlerosConfig;
+        }
+    }, [envKlerosConfig, courtKey, customCourtId, minJurors]);
+
     // ── Fetch arbitration cost when configured + on submit step ─────────
+    // Refetches on courtKey / minJurors change because extraData is part
+    // of the cost calculation.
     useEffect(() => {
         if (!publicClient || !klerosConfig) return;
         let cancelled = false;
@@ -491,6 +523,12 @@ export default function DisputePage() {
                     onSubmit={handleSubmitToKleros}
                     onBack={() => setStep("review")}
                     error={error}
+                    courtKey={courtKey}
+                    onCourtKeyChange={setCourtKey}
+                    customCourtId={customCourtId}
+                    onCustomCourtIdChange={setCustomCourtId}
+                    minJurors={minJurors}
+                    onMinJurorsChange={setMinJurors}
                 />
             )}
 
@@ -1000,6 +1038,13 @@ interface SubmitStepProps {
     onSubmit: () => void;
     onBack: () => void;
     error: string | null;
+    // Court selection — overrides env extraData when not "env"
+    courtKey: KlerosCourtKey | "env";
+    onCourtKeyChange: (key: KlerosCourtKey | "env") => void;
+    customCourtId: number;
+    onCustomCourtIdChange: (id: number) => void;
+    minJurors: number;
+    onMinJurorsChange: (n: number) => void;
 }
 
 function SubmitStep({
@@ -1014,8 +1059,17 @@ function SubmitStep({
     onSubmit,
     onBack,
     error,
+    courtKey,
+    onCourtKeyChange,
+    customCourtId,
+    onCustomCourtIdChange,
+    minJurors,
+    onMinJurorsChange,
 }: SubmitStepProps) {
     const arbCostEth = arbCost !== null ? (Number(arbCost) / 1e18).toFixed(4) : "—";
+    const selectedCourt = courtKey === "env" || courtKey === "custom"
+        ? null
+        : getKlerosCourt(courtKey);
 
     return (
         <div className="space-y-4" data-testid="dispute-submit-step">
@@ -1035,16 +1089,81 @@ function SubmitStep({
                     </KV>
                 </div>
 
+                <div className="border border-neutral-200 rounded p-3 space-y-2" data-testid="dispute-court-selector">
+                    <p className="text-xs font-semibold text-black">Subcourt</p>
+                    <p className="text-[11px] text-neutral-600">
+                        Kleros routes the dispute to the selected subcourt. Each
+                        subcourt has its own juror pool and policy. The arbitration
+                        cost depends on this selection.
+                    </p>
+                    <select
+                        value={courtKey}
+                        onChange={(e) => onCourtKeyChange(e.target.value as KlerosCourtKey | "env")}
+                        disabled={submitting}
+                        data-testid="dispute-court-key"
+                        className="w-full text-sm border border-neutral-300 rounded px-2 py-1.5 font-mono"
+                    >
+                        <option value="env">
+                            Use deployment default (env arbitratorExtraData)
+                        </option>
+                        {KLEROS_COURTS.map((c) => (
+                            <option key={c.key} value={c.key}>
+                                {c.name} (subcourt {c.id})
+                            </option>
+                        ))}
+                        <option value="custom">Custom subcourt ID…</option>
+                    </select>
+                    {selectedCourt && (
+                        <p className="text-[11px] text-neutral-700 italic">
+                            {selectedCourt.description}
+                        </p>
+                    )}
+                    {courtKey === "custom" && (
+                        <div className="flex items-center gap-2">
+                            <label className="text-[11px] text-neutral-600">
+                                Subcourt ID
+                            </label>
+                            <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={customCourtId}
+                                onChange={(e) => onCustomCourtIdChange(Number(e.target.value) || 0)}
+                                disabled={submitting}
+                                data-testid="dispute-custom-court-id"
+                                className="w-24 text-sm border border-neutral-300 rounded px-2 py-1 font-mono"
+                            />
+                        </div>
+                    )}
+                    {courtKey !== "env" && (
+                        <div className="flex items-center gap-2 pt-1">
+                            <label className="text-[11px] text-neutral-600">
+                                Min jurors
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={minJurors}
+                                onChange={(e) => onMinJurorsChange(Math.max(1, Number(e.target.value) || 1))}
+                                disabled={submitting}
+                                data-testid="dispute-min-jurors"
+                                className="w-24 text-sm border border-neutral-300 rounded px-2 py-1 font-mono"
+                            />
+                            <span className="text-[11px] text-neutral-500">(Kleros default: 3)</span>
+                        </div>
+                    )}
+                </div>
+
                 <div className="bg-amber-50 border border-amber-200 rounded p-3" data-testid="dispute-arbitration-cost">
                     <p className="text-xs font-semibold text-amber-900">
                         Arbitration deposit
                     </p>
                     <p className="text-sm font-mono text-amber-900">{arbCostEth} ETH</p>
                     <p className="text-[11px] text-amber-800 mt-1">
-                        Paid by the wallet submitting the dispute. Refunded
-                        if the ruling favors your claim; lost otherwise. Court
-                        ID is selected by the configured
-                        <code className="font-mono mx-1">arbitratorExtraData</code> bytes.
+                        Paid by the wallet submitting the dispute. Refunded if
+                        the ruling favors your claim; lost otherwise. Cost is
+                        recomputed when subcourt or min-juror selection changes.
                     </p>
                 </div>
 
