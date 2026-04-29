@@ -1,4 +1,11 @@
 {
+  "name": "figaro-prototype2",
+  "private": true,
+  "workspaces": [
+    "sdk",
+    "agents/sdk",
+    "agents/factotum"
+  ],
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",
     "husky": "^9.1.7",

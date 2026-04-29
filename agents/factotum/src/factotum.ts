@@ -83,7 +83,7 @@ async function tick(
   if (entries.length === 0) return;
 
   console.log(
-    `[factotum] ${entries.length} proposed action(s) across ${active.length} process(es)`,
+    `[factotum] ${entries.length} proposed action(s) across ${myProcesses.length} process(es)`,
   );
 
   const decisions = await config.policy.decide(entries);
@@ -95,14 +95,14 @@ async function tick(
       try {
         const result = await executeAction(walletClient, config.addresses, decision.entry.action);
         console.log(
-          `[factotum] executed: ${decision.entry.action.kind} → ${result.transactionHash}`,
+          `[factotum] executed: ${decision.entry.action.type} → ${result.hash}`,
         );
       } catch (err) {
-        console.error(`[factotum] execution failed for ${decision.entry.action.kind}:`, err);
+        console.error(`[factotum] execution failed for ${decision.entry.action.type}:`, err);
       }
     } else {
       console.log(
-        `[factotum] rejected: ${decision.entry.action.kind} — ${decision.reason ?? "no reason"}`,
+        `[factotum] rejected: ${decision.entry.action.type} — ${decision.reason ?? "no reason"}`,
       );
     }
   }

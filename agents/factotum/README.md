@@ -72,19 +72,18 @@ After ~15 seconds the loop ticks. The proposer reconstructs every active process
 
 [factotum/hitl] proposed action:
 {
-  "kind": "commitSubOrder",
+  "type": "commit-sub-order",
+  "description": "Commit a sub-order to process 0x4e9b... as buyer",
   "processId": "0x4e9b...",
   "buyer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-  "seller": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-  "currency": "0x5FbDB...",
-  "payment": "1500000",
-  "agreementHash": "0xab12..."
+  "currentCumulativeValue": "1500000",
+  "currency": "0x5FbDB..."
 }
 [factotum/hitl] context: { processId: '0x4e9b...' }
 [factotum/hitl] approve? (y/N)
 ```
 
-The action is the canonical kernel call — buyer commits to a sub-order, locking 2× payment as bond. Read the JSON. Verify the seller is who you expect. Verify the payment matches what you negotiated. Verify the `agreementHash` matches the agreement you signed off-chain.
+The action is the canonical kernel call — buyer commits to a sub-order, locking 2× payment as bond. Read the description and the typed fields. Verify the `processId` matches the order you placed. Verify `currentCumulativeValue` matches what you expect (the executor will round-trip it through your signed commitment, so any mismatch reverts the on-chain call rather than executing the wrong amount).
 
 If anything looks off, type `n` and the action is rejected. The proposer will see the same opportunity next tick and re-surface it; rejection here is non-destructive.
 
@@ -92,7 +91,7 @@ If everything looks right, type `y`:
 
 ```text
 [factotum/hitl] approve? (y/N) y
-[factotum] executed: commitSubOrder → 0x8c7e3a...
+[factotum] executed: commit-sub-order → 0x8c7e3a...
 ```
 
 Bonds locked, on-chain. The transaction hash is your audit trail.
@@ -104,12 +103,16 @@ A few minutes later the seller has done their attestation work (handoff, fulfilm
 
 [factotum/hitl] proposed action:
 {
-  "kind": "resolveProcess",
-  "processId": "0x4e9b..."
+  "type": "resolve-process",
+  "description": "Resolve process 0x4e9b... — release bonds, settle payment",
+  "processId": "0x4e9b...",
+  "caller": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "totalBuyerPayout": "200000",
+  "totalSellerPayout": "1300000"
 }
 [factotum/hitl] context: { processId: '0x4e9b...' }
 [factotum/hitl] approve? (y/N) y
-[factotum] executed: resolveProcess → 0x2d4f8b...
+[factotum] executed: resolve-process → 0x2d4f8b...
 ```
 
 Bonds return, payment settles, the process closes. The factotum loops on, waiting for the next process this wallet becomes a party to.
