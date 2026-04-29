@@ -45,8 +45,8 @@
 
 % ════════════════════════════════════════════════════════════════════
 \begin{abstract}
-The bonded settlement primitive of~\citep{daliana2026mechanism},
-implemented and verified in~\citep{daliana2026impl}, exhibits a
+The bonded settlement primitive of the mechanism paper,
+implemented and verified in the implementation paper, exhibits a
 property whose consequences are most consequential not for
 populations conventionally treated by labor or commercial law, but
 for those who occupy the negative space of those frames: refugees,
@@ -56,8 +56,8 @@ infrastructure. The primitive's precondition is a cryptographic
 key, not a recognized civil-legal subjecthood. This paper
 develops the consequence.
 
-The wallet-as-legal-subject argument that underwrites the labor-law
-companion~\citep{daliana2026labor} extends here in a different
+The wallet-as-legal-subject argument that underwrites the companion
+labor-law paper extends here in a different
 direction. In the labor setting the wallet collapses the Roman
 \emph{res}/\emph{persona} distinction so that the productive asset
 is simultaneously property and party; in the present setting it
@@ -119,15 +119,15 @@ documents the cost of this gap and the existing repertoire of
 responses.
 
 This paper argues that the bonded settlement primitive
-of~\citep{daliana2026mechanism}, implemented and verified
-in~\citep{daliana2026impl}, changes the architectural posture of
+of the mechanism paper, implemented and verified
+in the implementation paper, changes the architectural posture of
 the gap. The primitive operates on parties whose existence as
 parties does not require civil-legal recognition. A wallet can
 sign; a bonded commitment can settle; an exchange can complete ---
 without a host-state court, a domestic bank, or a permission-to-work
 visa sitting between the parties. The labor-law consequences of
 the primitive are developed in the companion
-paper~\citep{daliana2026labor}; the present paper develops the
+labor-law paper; the present paper develops the
 consequence for populations to whom the labor-law debate is a
 second-order question, because the first-order question is
 whether they are recognized parties to any contract in any forum
@@ -151,7 +151,7 @@ exists.
 \paragraph{Paper organization.}
 \Cref{sec:primitive} summarizes the settlement primitive in the
 terms relevant here. \Cref{sec:wallet-brief} restates the
-wallet-as-legal-subject argument from~\citep{daliana2026labor} in
+wallet-as-legal-subject argument from the labor-law paper in
 the form needed for the present paper. \Cref{sec:capacity}
 develops the central claim across four moves: scale of the
 affected population, the architecture they face, what the
@@ -165,9 +165,9 @@ the primitive does not dissolve. \Cref{sec:conclusion} concludes.
 \label{sec:primitive}
 
 We summarize only the features relevant to the present argument.
-The mechanism is established in~\citep{daliana2026mechanism}; the
+The mechanism is established in the mechanism paper; the
 Solidity implementation and formal verification
-in~\citep{daliana2026impl}.
+in the implementation paper.
 
 A transaction between two parties is consummated by dual-signed
 EIP-712 commitments. Each party signs from their own wallet. Each
@@ -195,7 +195,7 @@ Roman private law distinguished \emph{res} (things, property,
 objects that can be owned and alienated) from \emph{persona}
 (persons, parties, subjects capable of acting legally). The
 distinction survived and structures modern private law. The
-companion labor-law paper~\citep[§4]{daliana2026labor} develops
+companion labor-law paper (§4) develops
 in detail how the bonded primitive collapses the
 \emph{persona}/\emph{res} partition: a wallet is simultaneously a
 property (a key-pair owned and transferable) and a party (a
@@ -440,14 +440,14 @@ history, partnering with humanitarian organizations to evaluate
 where bonded commerce is structurally feasible and where it is
 not --- is for the practitioners who do that work. The
 contribution of this paper, and its companion at the
-labor-law~\citep{daliana2026labor} side, is to make the
+labor-law side (the labor-law paper), is to make the
 architectural change legible to scholarship that has not yet
 recognized it as available.
 
 \section*{Acknowledgments}
 The argument here owes a particular debt to readers from
 humanitarian-economics and refugee-policy backgrounds who pushed
-the labor-law companion paper~\citep{daliana2026labor} toward
+the companion labor-law paper toward
 treating the statelessness extension separately, on the grounds
 that conflating it with the gig-economy classification debate did
 neither audience justice. The Arendtian framing came from
@@ -474,24 +474,6 @@ Arendt, H.
 Betts, A. and Collier, P.
 \newblock \emph{Refuge: Transforming a Broken Refugee System}.
 \newblock Penguin, London, 2017.
-
-\bibitem[Daliana(2026a)]{daliana2026mechanism}
-Daliana, A.
-\newblock Asymmetric Bonding: A Self-Enforcing Settlement Primitive
-  for $N$-Party Coordination.
-\newblock Companion mechanism-design paper, 2026.
-
-\bibitem[Daliana(2026b)]{daliana2026impl}
-Daliana, A.
-\newblock The \textsc{Figaro} Kernel: A Verified Solidity
-  Implementation of Asymmetric Bonding.
-\newblock Companion implementation paper, 2026.
-
-\bibitem[Daliana(2026c)]{daliana2026labor}
-Daliana, A.
-\newblock The Wallet as Legal Subject: Subordination, Property,
-  and the Dissolution of the Employee--Contractor Line.
-\newblock Companion labor-law paper, 2026.
 
 \bibitem[Pritchett(2006)]{pritchett2006people}
 Pritchett, L.

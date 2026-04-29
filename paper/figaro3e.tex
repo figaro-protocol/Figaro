@@ -52,8 +52,8 @@ discretionary intermediary that smart contracts were supposed to
 remove.
 
 We develop the argument by reference to a recently developed
-settlement primitive~\citep{daliana2026mechanism}, formally
-verified in~\citep{daliana2026impl}, whose three-layer enforcement
+settlement primitive (mechanism paper), formally
+verified in the implementation paper, whose three-layer enforcement
 architecture explicitly separates the bonding game (Layer 1), the
 peer-coordination subgame (Layer 2), and the evidentiary record
 that supports off-chain proceedings when the first two layers fail
@@ -113,8 +113,8 @@ infrastructure already exists.
 
 We make the argument in the context of \figaro{}, a settlement
 primitive whose mechanism is established
-in~\citep{daliana2026mechanism} and whose implementation is
-verified in~\citep{daliana2026impl}. \figaro{} explicitly does not
+in the mechanism paper and whose implementation is
+verified in the implementation paper. \figaro{} explicitly does not
 attempt on-chain dispute resolution. Its three-layer enforcement
 architecture treats Layer 1 (bonding) and Layer 2 (peer
 coordination) as the primary defenses, and Layer 3 (immutable
@@ -147,7 +147,7 @@ as a category. \Cref{sec:conclusion} concludes.
 
 \figaro{}'s enforcement architecture is layered. We summarize it
 here from the legal-design perspective; the mechanism details are
-in~\citep{daliana2026mechanism} and~\citep{daliana2026impl}.
+in the mechanism and implementation papers.
 
 \paragraph{Layer 1 --- bonding.}
 Each party to a transaction locks $2\times$ the transaction value
@@ -235,7 +235,7 @@ A further distinction matters for certain downstream uses:
 the on-chain record is not merely \emph{admissible} as
 evidence but \emph{constitutive} of the accounting record of
 the process. The companion accounting
-paper~\citep{daliana2026accounting} develops the argument that
+paper develops the argument that
 a \figaro{} process is a self-closing ledger period in the
 precise accounting sense --- the custodial balance of the
 contract is the balance-sheet position; commit and resolve
@@ -479,7 +479,7 @@ question, only for resolving the question of who blinked first.
 
 \paragraph{The structural objection.}
 All on-chain adjudication mechanisms share the same structural
-flaw. The kernel mechanism of~\citep{daliana2026mechanism}
+flaw. The kernel mechanism of the mechanism paper
 establishes that any unilateral exit from the bonded state
 requires either a third-party decision (which introduces an
 unbonded actor whose incentives are not constrained by the bond
@@ -586,7 +586,7 @@ of judicial practice that will develop with case law.
 
 \paragraph{What remains for protocol design.}
 On the protocol side, the principal open question is how schema-typed
-attestations~\citep{daliana2026impl} interact with off-chain
+attestations (implementation paper) interact with off-chain
 dispute proceedings. The attestation surface allows parties to
 record structured evidence (geo proofs, lifecycle stage
 transitions, GHG disclosures) on chain in addition to the bare
@@ -615,25 +615,6 @@ develops.
 Cuende, L. and Izquierdo, J.
 \newblock Aragon Network: A Decentralized Infrastructure for Value Exchange.
 \newblock Aragon White Paper, 2017.
-
-\bibitem[Daliana(2026a)]{daliana2026mechanism}
-Daliana, A.
-\newblock Asymmetric Bonding: A Self-Enforcing Settlement Primitive
-  for $N$-Party Coordination.
-\newblock Companion mechanism-design paper, 2026.
-
-\bibitem[Daliana(2026b)]{daliana2026impl}
-Daliana, A.
-\newblock The \textsc{Figaro} Kernel: A Verified Solidity
-  Implementation of Asymmetric Bonding.
-\newblock Companion implementation paper, 2026.
-
-\bibitem[Daliana(2026c)]{daliana2026accounting}
-Daliana, A.
-\newblock Bookkeeping as Protocol Byproduct: Self-Closing
-  Ledger Periods in the \textsc{Figaro} Settlement
-  Primitive.
-\newblock Companion accounting paper, 2026.
 
 \bibitem[De Filippi and Wright(2018)]{defilippi_wright_2018}
 De Filippi, P. and Wright, A.

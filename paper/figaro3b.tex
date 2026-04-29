@@ -63,9 +63,9 @@ slow, and jurisdiction-dependent. This paper examines what happens
 when that assumption no longer holds.
 
 We take as given the existence of a settlement primitive---developed
-formally in a companion paper~\citep{daliana2026mechanism}, with a
-verified Solidity implementation in a second
-companion~\citep{daliana2026impl}---that prices
+formally in the companion mechanism paper, with a
+verified Solidity implementation in the companion implementation
+paper---that prices
 the cost of trust at exactly $2\times$ the transaction value in
 temporarily locked capital, with no recurring extraction, no
 arbitrator, and no jurisdictional dependency. Treating this primitive
@@ -116,10 +116,10 @@ slow, and jurisdiction-dependent.
 This paper asks what happens to that boundary when one of the
 underlying costs---contract enforcement between mutually distrusting
 parties---collapses to a fixed, jurisdiction-independent capital
-lockup. The collapse is not a thought experiment: a companion
-paper~\citep{daliana2026mechanism} presents the mechanism with
+lockup. The collapse is not a thought experiment: the companion
+mechanism paper presents the mechanism with
 formal proofs of cooperation as the unique surviving Nash
-equilibrium, and a second companion~\citep{daliana2026impl}
+equilibrium, and the companion implementation paper
 presents a verified Solidity implementation audited through
 TLA\textsuperscript{+} model checking, property-based fuzzing,
 symbolic execution, and specification checking.
@@ -154,8 +154,8 @@ hard to see.
 
 We summarize here only the properties of the primitive that the
 present argument uses. The full definitions and theorems are
-in~\citep{daliana2026mechanism}; the implementation and verification
-in~\citep{daliana2026impl}.
+in the mechanism paper; the implementation and verification
+in the implementation paper.
 
 \paragraph{Asymmetric bonding.}
 For a transaction with payment $\pay > 0$ and cumulative upstream
@@ -498,18 +498,6 @@ earlier drafts in a way that did neither justice.
 Coase, R.~H.
 \newblock The Nature of the Firm.
 \newblock \emph{Economica}, 4(16):386--405, 1937.
-
-\bibitem[Daliana(2026a)]{daliana2026mechanism}
-Daliana, A.
-\newblock Asymmetric Bonding: A Self-Enforcing Settlement Primitive
-  for $N$-Party Coordination.
-\newblock Companion mechanism-design paper, 2026.
-
-\bibitem[Daliana(2026b)]{daliana2026impl}
-Daliana, A.
-\newblock The \textsc{Figaro} Kernel: A Verified Solidity Implementation of
-  Asymmetric Bonding.
-\newblock Companion implementation paper, 2026.
 
 \bibitem[Gramsci(1971)]{gramsci1971}
 Gramsci, A.

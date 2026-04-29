@@ -69,7 +69,7 @@
 \begin{abstract}
 We describe a reference Solidity implementation of the
 asymmetric-bonding settlement mechanism developed
-in~\citep{daliana2026mechanism}, together with the formal-verification
+in the mechanism paper, together with the formal-verification
 stack used to audit it. The kernel (\texttt{FigaroCore}) is
 \textbf{ownerless, fee-less, and admin-less}: two external functions,
 three storage mappings, no upgrade path, no escape hatch from the
@@ -87,7 +87,7 @@ The implementation also realizes a \emph{coordinator pattern}: an
 extension discipline under which external mechanisms (Dutch auction,
 schema-typed attestation coordinator, schema and operator registries)
 compose with the kernel without weakening the bonding equilibrium
-of~\citep{daliana2026mechanism}. We give the four sufficient
+of the mechanism paper. We give the four sufficient
 conditions and three concrete instances. Finally, we describe the
 three-layer enforcement architecture---economic (bonding),
 coordinational (atomic resolution), evidentiary (immutable
@@ -108,7 +108,7 @@ Certora, Echidna, EIP-712, settlement layer, coordinator pattern
 \label{sec:intro}
 
 The asymmetric-bonding mechanism developed
-in~\citep{daliana2026mechanism} establishes that, given a settlement
+in the mechanism paper establishes that, given a settlement
 layer with the operations \texttt{commit} and \texttt{resolveProcess},
 cooperation is the unique outcome surviving iterated elimination of
 weakly dominated strategies in an $N$-party process tree. The
@@ -138,7 +138,7 @@ rational play over a payoff structure; it is not a property of
 code and it is not verified by any of the four tools we apply.
 What we verify is that the code implements the payoff structure
 faithfully in every reachable path. When the companion
-cryptoeconomics paper~\citep{daliana2026fig} asserts that a
+FIG token paper asserts that a
 token-emission policy ``preserves the kernel's bonding
 equilibrium,'' it is invoking the mechanism paper's equilibrium
 claim (which holds by rational play) and not the verification
@@ -154,7 +154,7 @@ buyer recovers $\pay$ and the seller recovers $2\cumval + \pay$. All
 orders within a process resolve atomically. The full game-theoretic
 treatment, including the two-party Nash result, the $N$-party
 generalization, the escape-hatch impossibility, and the reduction
-over joint-liability microfinance, is in~\citep{daliana2026mechanism}.
+over joint-liability microfinance, is in the mechanism paper.
 
 \paragraph{Paper organization.}
 \Cref{sec:architecture} describes the contract architecture and the
@@ -276,7 +276,7 @@ exactly reconstructs \texttt{processes}, \texttt{orderStatus}, and
 
 The following features are deliberately absent. Each absence
 preserves a mechanism property
-from~\citep{daliana2026mechanism}.
+from the mechanism paper.
 
 \begin{enumerate}
   \item \textbf{No owner, admin, or upgrade.} There is no
@@ -637,7 +637,7 @@ order, not a conflicting one. No extractable MEV exists.
 
 \paragraph{Cumulative value manipulation.}
 Per the self-enforcing-DAG-honesty result
-in~\citep{daliana2026mechanism}, overstating cumulative value is
+in the mechanism paper, overstating cumulative value is
 strictly dominated (greater capital at risk, same payoff).
 Understating is prevented by the contract's monotonic accumulator
 check (\texttt{CumulativeValueMismatch} revert).
@@ -688,7 +688,7 @@ evidence).
 \end{table}
 
 \paragraph{Layer 1 (economic).}
-The bonding equilibrium of~\citep{daliana2026mechanism} handles
+The bonding equilibrium of the mechanism paper handles
 rational participants; cooperation strictly dominates defection at
 every node.
 
@@ -735,7 +735,7 @@ implementation, by the \emph{coordinator pattern}.
 \begin{proposition}[Coordinator Pattern --- Sufficient Conditions]
 \label{prop:coordinator}
 An external mechanism $M$ composed with \texttt{FigaroCore} preserves
-the bonding equilibrium of~\citep{daliana2026mechanism} if it
+the bonding equilibrium of the mechanism paper if it
 satisfies:
 \begin{enumerate}[label=(\roman*)]
   \item \textbf{Read-only kernel access}: $M$ interacts with kernel
@@ -818,7 +818,7 @@ such a case is allocated by the legal regime governing the
 extension deployer's conduct, the audit artifacts (or their
 absence) accompanying the extension, and the disclosures made to
 users --- all of which sit outside the kernel and are treated in
-the law-and-evidence companion~\citep{daliana2026legal}. The
+the companion evidence-and-law paper. The
 kernel claims it is correct; it does not claim that every
 extension built against it is correct, nor does it claim that
 the legal chain from kernel correctness to user remedy is
@@ -829,7 +829,7 @@ closed.
 \label{sec:conclusion}
 
 We have presented a verified Solidity implementation of the
-asymmetric-bonding mechanism of~\citep{daliana2026mechanism}: an
+asymmetric-bonding mechanism of the mechanism paper: an
 ownerless, fee-less kernel of two functions and three mappings, with
 a four-layer verification stack (TLA\textsuperscript{+}, Echidna,
 Halmos, Certora) that exercises the same invariants from four
@@ -909,24 +909,6 @@ maintainers of TLA\textsuperscript{+}, Echidna, Halmos, and Certora.
 % ════════════════════════════════════════════════════════════════════
 
 \begin{thebibliography}{99}
-
-\bibitem[Daliana(2026a)]{daliana2026mechanism}
-Daliana, A.
-\newblock Asymmetric Bonding: A Self-Enforcing Settlement Primitive
-  for $N$-Party Coordination.
-\newblock Companion mechanism-design paper, 2026.
-
-\bibitem[Daliana(2026b)]{daliana2026legal}
-Daliana, A.
-\newblock On-Chain Evidence, Off-Chain Adjudication: A Layered
-  Approach to Smart-Contract Dispute Resolution.
-\newblock Companion law-and-evidence paper, 2026.
-
-\bibitem[Daliana(2026c)]{daliana2026fig}
-Daliana, A.
-\newblock \textsc{Fig}: A Coordination Token Decoupled from
-  Protocol Activity.
-\newblock Companion cryptoeconomics paper, 2026.
 
 \bibitem[EIP-712(2017)]{eip712}
 Bloemen, R., Logvinov, L., and Evans, J.

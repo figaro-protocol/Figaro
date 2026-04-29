@@ -89,11 +89,10 @@ the microfinance literature.
 
 This paper is the mechanism-design half of a multi-paper development.
 The implementation as a Solidity smart contract, with formal
-verification across multiple methods, is presented in a companion
-paper~\citep{daliana2026impl}. Implications for organizational
+verification across multiple methods, is presented in the
+implementation paper. Implications for organizational
 economics---specifically, the Coasean shift toward transaction-scoped
-institutions---are developed in a second
-companion~\citep{daliana2026org}.
+institutions---are developed in the institutional-economics paper.
 \end{abstract}
 
 \medskip
@@ -174,13 +173,13 @@ contributions are:
 The mechanism's implementation as a Solidity smart contract, the
 formal-verification stack used to audit it, the threat model, and the
 three-layer enforcement architecture (economic / coordination /
-evidence) are developed in a companion implementation
-paper~\citep{daliana2026impl}. The implications of a fixed-cost
-enforcement primitive for the boundary of the firm in the sense of
-\citet{coase1937}---and specifically the demotion of the firm from
-privileged organizational container to one pattern among many when
-the subordination overlay is no longer enforcement-driven---are
-developed in a companion organizational paper~\citep{daliana2026org}.
+evidence) are developed in the companion implementation paper. The
+implications of a fixed-cost enforcement primitive for the boundary
+of the firm in the sense of \citet{coase1937}---and specifically the
+demotion of the firm from privileged organizational container to one
+pattern among many when the subordination overlay is no longer
+enforcement-driven---are developed in the companion
+institutional-economics paper.
 
 \subsection{Paper Organization}
 
@@ -210,7 +209,7 @@ companions invoke frequently:
     discipline (attestation coordinators, schema registries,
     auction primitives, operator registries). The composition
     discipline itself is developed in the companion implementation
-    paper~\citep{daliana2026impl}.
+    paper.
   \item \textbf{Runtime} --- the protocol together with semantic
     layers, builder surfaces, user interfaces, and the
     vertical-specific deployments that instantiate it for a given
@@ -246,8 +245,8 @@ a layer below which nothing remains to factor out, and a layer
 above which the normative choices become legible as choices rather
 than as properties of the infrastructure. Claims in the companion
 papers that bear on ideology or normative regime --- the
-political-economy companion~\citep{daliana2026hegemony} on cultural
-hegemony; the labor-law companion~\citep{daliana2026labor} on
+political-economy companion paper on cultural
+hegemony; the labor-law companion paper on
 subordination --- are claims about what becomes \emph{expressible}
 in the graph once the kernel is in place, not claims about the
 kernel itself.
@@ -275,7 +274,7 @@ posture is the architectural counterpart of the
 ideological-agnosticism claim above: the kernel makes the external
 surfaces composable; the graph names which externals it composes
 with. The companion implementation
-paper~\citep[§7]{daliana2026impl} develops the formal
+paper (§7) develops the formal
 \emph{coordinator pattern} that makes such composition
 equilibrium-preserving; the present paper records only the
 architectural posture from which the pattern follows.
@@ -777,8 +776,7 @@ policy. Those forums are constrained by their own institutional
 bond structures (appellate review, professional sanction, doctrinal
 consistency) and operate on the bonded commitment as evidentiary
 input rather than as a resolution path within the mechanism. The
-distinction is elaborated in the law-and-evidence
-companion~\citep{daliana2026legal}.
+distinction is elaborated in the companion evidence-and-law paper.
 \end{remark}
 
 \begin{corollary}\label{cor:no-timeout}
@@ -1217,8 +1215,8 @@ local information, or social sanction.
 A reference implementation as a Solidity smart contract, together
 with the formal-verification stack (TLA\textsuperscript{+}, symbolic
 execution, property-based fuzzing, specification checking) and the
-threat model that accompanies it, is presented in a companion
-paper~\citep{daliana2026impl}. That paper also develops the
+threat model that accompanies it, is presented in the companion
+implementation paper. That paper also develops the
 \emph{coordinator pattern}: sufficient conditions under which an
 external mechanism composed with the kernel preserves the bonding
 equilibrium, and the corresponding three-layer enforcement
@@ -1231,11 +1229,11 @@ specifically for the demotion of the firm from privileged
 organizational container to one pattern among many (alongside
 transaction-scoped assemblies, treasury communities, peer
 networks, and agent coalitions) when the subordination overlay
-is no longer enforcement-driven---are developed in a second
-companion paper~\citep{daliana2026org}.
+is no longer enforcement-driven---are developed in the companion
+institutional-economics paper.
 
 \paragraph{Focal-point coordination among participants.}
-The companion cryptoeconomics paper~\citep{daliana2026fig}
+The companion FIG token paper
 develops \textsc{Fig}, a focal-point coordination token in the
 sense of \citet{schelling1960strategy}, designed to support
 convergence among participants aligned with the bonded primitive
@@ -1260,7 +1258,7 @@ A consequence of the conservation law (\Cref{rem:conservation})
 worth flagging: the kernel is at all times in custodial balance,
 and a process is, in the precise accounting sense, a
 self-closing ledger period. The companion accounting
-paper~\citep{daliana2026accounting} develops the implications
+paper develops the implications
 for the bookkeeping apparatus that grew up around
 double-entry~\citep{pacioli1494summa} once that apparatus is
 made optional by protocol-level constitution of the records.
@@ -1294,7 +1292,7 @@ assemblies, or who lack access to the bond-denomination currency,
 the ``voluntary'' framing is itself a variable whose treatment
 lies outside mechanism design. The distributional and labor-law
 consequences of this scope are developed in the companion
-papers~\citep{daliana2026org, daliana2026labor}; the present paper
+institutional-economics and labor-law papers; the present paper
 establishes equilibrium properties conditional on voluntary
 participation, not the conditions under which participation is
 voluntary in any substantive sense.
@@ -1345,48 +1343,6 @@ Solidity Team.
 Coase, R.~H.
 \newblock The Nature of the Firm.
 \newblock \emph{Economica}, 4(16):386--405, 1937.
-
-\bibitem[Daliana(2026a)]{daliana2026impl}
-Daliana, A.
-\newblock The \textsc{Figaro} Kernel: A Verified Solidity Implementation of
-  Asymmetric Bonding.
-\newblock Companion implementation paper, 2026.
-
-\bibitem[Daliana(2026b)]{daliana2026org}
-Daliana, A.
-\newblock From Firms to Transaction-Scoped Institutions: A Coasean
-  Re-Examination Under Costless Bilateral Enforcement.
-\newblock Companion organizational paper, 2026.
-
-\bibitem[Daliana(2026b*)]{daliana2026hegemony}
-Daliana, A.
-\newblock The Visibility of Coordination: A Gramscian Reading of
-  the Platform Economy and Its Successor.
-\newblock Companion political-economy paper, 2026.
-
-\bibitem[Daliana(2026c)]{daliana2026legal}
-Daliana, A.
-\newblock On-Chain Evidence, Off-Chain Adjudication: A Layered
-  Approach to Smart-Contract Dispute Resolution.
-\newblock Companion law-and-evidence paper, 2026.
-
-\bibitem[Daliana(2026d)]{daliana2026labor}
-Daliana, A.
-\newblock The Wallet as Legal Subject: Subordination, Property,
-  and the Dissolution of the Employee--Contractor Line.
-\newblock Companion labor-law paper, 2026.
-
-\bibitem[Daliana(2026e)]{daliana2026fig}
-Daliana, A.
-\newblock \textsc{Fig}: A Schelling-Point Token for the
-  \textsc{Figaro} Coordination Ecosystem.
-\newblock Companion cryptoeconomics paper, 2026.
-
-\bibitem[Daliana(2026f)]{daliana2026accounting}
-Daliana, A.
-\newblock Bookkeeping as Protocol Byproduct: Self-Closing
-  Ledger Periods in the \textsc{Figaro} Settlement Primitive.
-\newblock Companion accounting paper, 2026.
 
 \bibitem[Pacioli(1494)]{pacioli1494summa}
 Pacioli, L.

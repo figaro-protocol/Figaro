@@ -58,8 +58,8 @@ and the commercial law that treats books as the authoritative
 record of the firm's economic acts.
 
 This paper argues that the \figaro{} settlement primitive
-formalized in~\citep{daliana2026mechanism} and implemented
-in~\citep{daliana2026impl} makes that apparatus optional for a
+formalized in the mechanism paper and implemented
+in the implementation paper makes that apparatus optional for a
 class of economic activity. A \figaro{} process --- a root
 bonded commitment together with its sub-orders, terms of
 agreement, and lifecycle attestations --- is a \emph{self-closing
@@ -382,7 +382,7 @@ the next section.
 
 We now develop the central technical claim. Let a
 \emph{process} be the object defined
-in~\citep{daliana2026mechanism}: a root bonded commitment,
+in the mechanism paper: a root bonded commitment,
 zero or more sub-order commitments sharing a common root
 buyer and currency, a monotonic cumulative-value accumulator,
 and a buyer-initiated atomic resolution. Every commit is a
@@ -489,7 +489,7 @@ The accounting record of a process consists of:
     conventional accounting, with the important distinction
     that their class (settlement byproduct vs.\ discretionary
     attestation) matters for evidentiary
-    weight~\citep{daliana2026legal}.
+    weight (evidence-and-law paper).
 \end{itemize}
 
 Together, these constitute a complete and contemporaneously
@@ -499,7 +499,7 @@ record is complete without them.
 
 \subsection{Reconstruction}
 
-The implementation companion~\citep{daliana2026impl} documents
+The companion implementation paper documents
 the SDK primitive \texttt{reconstruct()} which replays events
 into a state machine that exactly reproduces the kernel
 state. This primitive is equivalent to a universal
@@ -646,7 +646,7 @@ traditional outputs from non-traditional inputs.
 \label{sec:institutional-connection}
 
 The companion institutional-economics
-paper~\citep{daliana2026tce} argues that the firm's
+paper argues that the firm's
 coordination function dissolves in a precise region, and that
 the firm becomes one organizational pattern among several in
 that region. The present paper identifies an additional
@@ -656,7 +656,7 @@ function.
 
 A firm is not only a coordination mechanism; it is also an
 entity that knows what it is through its books. The
-subordination overlay (\citep{daliana2026tce} §3.1) is
+subordination overlay (§3.1 of the institutional-economics paper) is
 partially a solution to a coordination problem and partially
 a solution to a records problem: a firm that cannot maintain
 accurate books cannot grow, cannot attract investment,
@@ -682,7 +682,7 @@ weaker than it was in the pre-protocol environment.
 This tightens the institutional argument without changing
 its substance: the firm's demotion from privileged
 organizational container to one pattern among several
-(\citep{daliana2026tce}, \Cref*{sec:process-as-period}
+(institutional-economics paper; \Cref*{sec:process-as-period}
 above) rests on both the coordination argument developed
 there and the self-knowledge argument developed here.
 
@@ -690,7 +690,7 @@ there and the self-knowledge argument developed here.
 \section{Connection to the Legal-Evidence Argument}
 \label{sec:legal-connection}
 
-The companion law-and-evidence paper~\citep{daliana2026legal}
+The companion evidence-and-law paper
 argues that the on-chain record provides evidence that
 off-chain adjudicative forums already know how to use. The
 present paper extends this: the on-chain record is not only
@@ -700,7 +700,7 @@ record.
 The distinction matters for two reasons.
 
 \paragraph{Admissibility vs.\ primacy.}
-\citet{daliana2026legal} establishes that on-chain records
+The evidence-and-law paper establishes that on-chain records
 are admissible as evidence under eIDAS, UCC, UNCITRAL, and
 similar frameworks. The admissibility question asks whether
 the record can be introduced in a proceeding and weighed.
@@ -715,7 +715,7 @@ corroborating evidence for party-held books; the chain
 summary or translation.
 
 \paragraph{Class A and Class B records, revisited.}
-\citet{daliana2026legal} distinguishes Class A records
+The evidence-and-law paper distinguishes Class A records
 (settlement byproduct, produced mechanically by the bonding
 game) from Class B records (discretionary attestations,
 produced voluntarily by self-interested parties). The
@@ -781,8 +781,8 @@ than in the conventional regime: not the misstatement of
 internal books (which are unforgeable), but the
 misrepresentation of off-chain facts that the on-chain
 record hashes against (forged agreement documents, falsified
-attestations, collusive parties). \citet{daliana2026fig} and
-\citet{daliana2026legal} both discuss adjacent fraud
+attestations, collusive parties). The FIG token paper and
+the evidence-and-law paper both discuss adjacent fraud
 surfaces. The Pacioli apparatus did not eliminate accounting
 fraud; it reshaped it. So does the protocol.
 
@@ -901,37 +901,6 @@ Dai, J. and Vasarhelyi, M.~A.
 \newblock Toward Blockchain-Based Accounting and Assurance.
 \newblock \emph{Journal of Information Systems},
   31(3):5--21, 2017.
-
-\bibitem[Daliana(2026a)]{daliana2026mechanism}
-Daliana, A.
-\newblock Asymmetric Bonding: A Self-Enforcing Settlement
-  Primitive for $N$-Party Coordination.
-\newblock Companion mechanism-design paper, 2026.
-
-\bibitem[Daliana(2026b)]{daliana2026impl}
-Daliana, A.
-\newblock The \textsc{Figaro} Kernel: A Verified Solidity
-  Implementation of Asymmetric Bonding.
-\newblock Companion implementation paper, 2026.
-
-\bibitem[Daliana(2026c)]{daliana2026tce}
-Daliana, A.
-\newblock From Firms to Transaction-Scoped Institutions: A
-  Coasean Re-Examination Under Costless Bilateral
-  Enforcement.
-\newblock Companion institutional-economics paper, 2026.
-
-\bibitem[Daliana(2026d)]{daliana2026legal}
-Daliana, A.
-\newblock On-Chain Evidence, Off-Chain Adjudication: A
-  Layered Approach to Smart-Contract Dispute Resolution.
-\newblock Companion law-and-evidence paper, 2026.
-
-\bibitem[Daliana(2026e)]{daliana2026fig}
-Daliana, A.
-\newblock \textsc{Fig}: A Schelling-Point Token for the
-  \textsc{Figaro} Coordination Ecosystem.
-\newblock Companion cryptoeconomics paper, 2026.
 
 \bibitem[de Roover(1963)]{deroover1963medici}
 de Roover, R.

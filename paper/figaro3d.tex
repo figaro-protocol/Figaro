@@ -87,7 +87,7 @@ that contracts could be composable, with \textsc{Eth} as the focal
 point for programmable-settlement. The present work extends the
 lineage one step: \emph{institutions} themselves become composable
 through the \figaro{}
-primitive~\citep{daliana2026mechanism, daliana2026impl}, and
+primitive (mechanism and implementation papers), and
 \fig{} is the focal point for participants who coordinate around
 the composition.
 \end{abstract}
@@ -103,7 +103,7 @@ design, coordination token, supply integrity, decoupled emission
 
 \fig{} is the native token that ships alongside the \figaro{}
 settlement primitive developed
-in~\citep{daliana2026mechanism, daliana2026impl}. This paper
+in the mechanism and implementation papers. This paper
 describes its design and defends a specific framing of what it
 is. The framing is the substantive contribution; the
 supply-integrity and distribution mechanics follow from it.
@@ -295,7 +295,7 @@ participants in, and no more.
 \paragraph{Why a general-purpose token cannot carry this signal.}
 The \figaro{} kernel is token-agnostic. Any ERC-20 can serve as
 the bond and payment currency for a bonded
-commitment~\citep{daliana2026mechanism}. The kernel does not need
+commitment (mechanism paper). The kernel does not need
 a native token to function, and \fig{} does not interact with
 the kernel in any equilibrium-relevant way. Why, then, have a
 native token at all?
@@ -324,7 +324,7 @@ workflow composed from protocol components) wants to find
 counterparties who understand the protocol, operate in its idiom,
 and will engage constructively with its equilibrium discipline.
 Searching for such counterparties by settlement history is
-possible~\citep[§5]{daliana2026tce} but expensive --- one must
+possible (§5 of the institutional-economics paper) but expensive --- one must
 read the chain. Searching by \fig{} holding is cheaper: a
 participant who holds \fig{} has declared alignment through the
 specific act of acquiring a token whose only plausible reason to
@@ -648,7 +648,7 @@ This refusal is the most rigorous application of Rule 4 and is
 worth its own section (\Cref{sec:rejected}).
 
 \paragraph{\fig{} is not a coordinator-pattern extension.}
-The implementation companion~\citep[§7]{daliana2026impl}
+The companion implementation paper (§7)
 develops a \emph{coordinator pattern}: four sufficient
 conditions under which a mechanism composed with the kernel
 preserves the bonding equilibrium. \fig{} satisfies these
@@ -815,8 +815,8 @@ operation of the airdrop; it is not an exploit.
 \section{Substrate-Neutrality and Distributional Silhouette}
 \label{sec:silhouette}
 
-The mechanism paper~\citep{daliana2026mechanism} and the
-political-economy companion~\citep{daliana2026hegemony} argue
+The mechanism paper and the
+political-economy companion paper argue
 that the bonded settlement \emph{kernel} is a substrate on which
 multiple organizational forms can be expressed. The present
 paper describes \fig{}, a specific token ecosystem that ships
@@ -829,7 +829,7 @@ substrate-neutral; \fig{} is not. If the distributional
 silhouette of \fig{} --- early founder allocation, large
 standing treasury, community recipients on a calendar schedule
 --- rhymes with the silhouette of prior platform-capital
-arrangements that~\citep{daliana2026hegemony} critiques, that
+arrangements that the political-economy paper critiques, that
 rhyme is a feature of this specific token's distribution, not
 of the substrate, and not inherent to the Schelling-point
 framing. Different focal-point tokens could be launched with
@@ -943,7 +943,7 @@ programmable settlement, underpinned by transaction demand: gas
 is the utility floor, Schelling recognition the coordination
 premium. The present work extends the pattern to institutions:
 bonded commitments are composable into arbitrarily large
-assemblies~\citep{daliana2026mechanism, daliana2026impl}, and
+assemblies (mechanism and implementation papers), and
 \fig{} is the focal point for aligned participation in that
 composition, underpinned by \emph{trade} --- the value-added
 produced when parties exchange goods, services, or coordination
@@ -963,7 +963,7 @@ and the policy framework should be developed and audited as a
 separate artifact before each stage's root is committed at
 deploy. Second, the relationship between \fig{} and the various
 treasury communities likely to form around it (cf.\ the
-``capital firm'' discussion in~\citep{daliana2026tce}) is
+``capital firm'' discussion in the institutional-economics paper) is
 genuinely emergent and not centrally designable; the present
 paper does not attempt to predict or control that emergence.
 Third, the status of the specific percentages in the allocation
@@ -1005,30 +1005,6 @@ Buterin, V.
   Decentralized Application Platform.
 \newblock White paper, 2014.
 \newblock \url{https://ethereum.org/en/whitepaper/}
-
-\bibitem[Daliana(2026a)]{daliana2026mechanism}
-Daliana, A.
-\newblock Asymmetric Bonding: A Self-Enforcing Settlement
-  Primitive for $N$-Party Coordination.
-\newblock Companion mechanism-design paper, 2026.
-
-\bibitem[Daliana(2026b)]{daliana2026impl}
-Daliana, A.
-\newblock The \textsc{Figaro} Kernel: A Verified Solidity
-  Implementation of Asymmetric Bonding.
-\newblock Companion implementation paper, 2026.
-
-\bibitem[Daliana(2026c)]{daliana2026tce}
-Daliana, A.
-\newblock From Firms to Transaction-Scoped Institutions: A
-  Coasean Re-Examination Under Costless Bilateral Enforcement.
-\newblock Companion institutional-economics paper, 2026.
-
-\bibitem[Daliana(2026d)]{daliana2026hegemony}
-Daliana, A.
-\newblock The Visibility of Coordination: A Gramscian Reading of
-  the Platform Economy and Its Successor.
-\newblock Companion political-economy paper, 2026.
 
 \bibitem[Nakamoto(2008)]{nakamoto2008bitcoin}
 Nakamoto, S.

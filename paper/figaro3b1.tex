@@ -64,9 +64,9 @@ boundary of the firm when one of those underlying costs collapses to
 a fixed, jurisdiction-displaced capital lockup.
 
 We take as given the existence of a settlement primitive---developed
-formally in a companion paper~\citep{daliana2026mechanism}, with a
-verified Solidity implementation in a second
-companion~\citep{daliana2026impl}---that prices the cost of trust at
+formally in the companion mechanism paper, with a
+verified Solidity implementation in the companion implementation
+paper---that prices the cost of trust at
 exactly $2\times$ the transaction value in temporarily locked
 capital, with no recurring extraction, no arbitrator, and no
 jurisdictional dependency. Treating this primitive as exogenous, we
@@ -86,8 +86,8 @@ bilateral-bond settlement primitive prices that enforcement
 directly. The subordination layer loses its cost advantage for the
 class of transactions identified below; what emerges is not the
 abolition of the firm, but its demotion from the privileged
-organizational container to one pattern among several. A companion
-political-economy paper~\citep{daliana2026hegemony} develops what
+organizational container to one pattern among several. The
+companion political-economy paper develops what
 this demotion looks like from the outside; the present paper is
 internal institutional-economics.
 \end{abstract}
@@ -119,10 +119,10 @@ jurisdiction-dependent.
 This paper asks what happens to that boundary when one of the
 underlying costs---contract enforcement between mutually distrusting
 parties---collapses to a fixed, jurisdiction-displaced capital
-lockup. The collapse is not a thought experiment: a companion
-paper~\citep{daliana2026mechanism} presents the mechanism with
+lockup. The collapse is not a thought experiment: the companion
+mechanism paper presents the mechanism with
 formal proofs of cooperation as the unique surviving Nash
-equilibrium, and a second companion~\citep{daliana2026impl} presents
+equilibrium, and the companion implementation paper presents
 a verified Solidity implementation audited through
 TLA\textsuperscript{+} model checking, property-based fuzzing,
 symbolic execution, and specification checking.
@@ -156,8 +156,8 @@ signal that supplants standing platform credentialing.
 
 We summarize here only the properties of the primitive that the
 present argument uses. The full definitions and theorems are
-in~\citep{daliana2026mechanism}; the implementation and verification
-in~\citep{daliana2026impl}.
+in the mechanism paper; the implementation and verification
+in the implementation paper.
 
 \paragraph{Asymmetric bonding.}
 For a transaction with payment $\pay > 0$ and cumulative upstream
@@ -381,13 +381,13 @@ intra-firm reform can provide.
 \paragraph{(a) The wallet is the unit of coordination.}
 Each productive asset is represented directly by a wallet address.
 At the protocol tier\footnote{We use ``kernel / protocol /
-runtime'' in the sense defined in~\citep[§1.4]{daliana2026mechanism}.
+runtime'' in the sense defined in §1.4 of the mechanism paper.
 The kernel guarantees only the \texttt{commit}/\texttt{resolveProcess}
 bond structure; the credential and attestation apparatus described
 in this paragraph is realized at the protocol tier by extensions
 (attestation coordinators, schema registries) whose composition
-discipline is developed in the implementation
-companion~\citep{daliana2026impl}.} the wallet can hold
+discipline is developed in the companion implementation
+paper.} the wallet can hold
 content-addressed credentials --- attested capabilities, operator
 profiles, and (at the runtime tier) NFT-anchored deeds --- that
 certify the asset's identity and performance history. In the firm
@@ -474,7 +474,7 @@ double-entry bookkeeping in the tradition of
 incidental: at scale, an entity that cannot maintain accurate
 records of its position cannot grow, attract investment, pay
 taxes, or contract with third parties who require disclosure.
-The companion accounting paper~\citep{daliana2026accounting}
+The companion accounting paper
 develops the argument that a \figaro{} process is a
 self-closing ledger period, and that the apparatus that grew up
 around the books (bookkeeping, accounting, audit) becomes
@@ -526,8 +526,8 @@ played by tokens designed specifically to serve as focal points
 in the sense of \citet{schelling1960strategy}: anchors around
 which participants converge to signal alignment with a specific
 ecosystem, without central authority and without relying on any
-of the token's financial-mechanism features. The cryptoeconomics
-companion~\citep{daliana2026fig} develops this category in
+of the token's financial-mechanism features. The companion
+FIG token paper develops this category in
 detail, with \textsc{Btc} and \textsc{Eth} as precedents at the
 money and settlement layers respectively, and the \fig{} token
 as the focal anchor for participants who coordinate around the
@@ -585,19 +585,18 @@ question of a different character: why this shift is qualitatively
 harder to recognize than to specify, and what that difficulty
 itself reveals about the architecture of contemporary coordination
 infrastructure. That third question is addressed in the companion
-political-economy paper~\citep{daliana2026hegemony}.
+political-economy paper.
 
 \paragraph{A note on scope alignment across the companion papers.}
 This paper bounds its claim by two scope conditions: the Coasean
 comparison (\Cref{prop:coasean-shift}: $2\pay$ vs. coordination
 overhead) and asset specificity (\Cref{sec:patterns}). The
-political-economy companion~\citep{daliana2026hegemony} bounds its
+political-economy companion paper bounds its
 claim differently, by hegemonic legibility --- its argument applies
 wherever the primitive makes a previously-presupposed
 coordination function visible as a design artifact. The labor-law
-companion~\citep{daliana2026labor} bounds its claim by asset
-specificity alone. The electronic-evidence
-companion~\citep{daliana2026legal} bounds its claim least
+companion paper bounds its claim by asset
+specificity alone. The companion evidence-and-law paper bounds its claim least
 restrictively --- wherever the primitive is used, its evidentiary
 framework applies. Each bound is internally reasonable within
 its paper's discipline. Read across the set, these bounds are
@@ -620,7 +619,7 @@ explicit.
 I thank the readers and collaborators who pressed me to separate
 the institutional-economics argument made here from its
 political-economy half (now in the companion
-paper~\citep{daliana2026hegemony}). The two were entangled in
+political-economy paper). The two were entangled in
 earlier drafts in a way that did neither audience justice.
 
 
@@ -634,49 +633,6 @@ earlier drafts in a way that did neither audience justice.
 Coase, R.~H.
 \newblock The Nature of the Firm.
 \newblock \emph{Economica}, 4(16):386--405, 1937.
-
-\bibitem[Daliana(2026a)]{daliana2026mechanism}
-Daliana, A.
-\newblock Asymmetric Bonding: A Self-Enforcing Settlement Primitive
-  for $N$-Party Coordination.
-\newblock Companion mechanism-design paper, 2026.
-
-\bibitem[Daliana(2026b)]{daliana2026impl}
-Daliana, A.
-\newblock The \textsc{Figaro} Kernel: A Verified Solidity
-  Implementation of Asymmetric Bonding.
-\newblock Companion implementation paper, 2026.
-
-\bibitem[Daliana(2026c)]{daliana2026hegemony}
-Daliana, A.
-\newblock The Visibility of Coordination: A Gramscian Reading of
-  the Platform Economy and Its Successor.
-\newblock Companion political-economy paper, 2026.
-
-\bibitem[Daliana(2026d)]{daliana2026legal}
-Daliana, A.
-\newblock On-Chain Evidence, Off-Chain Adjudication: A Layered
-  Approach to Smart-Contract Dispute Resolution.
-\newblock Companion law-and-evidence paper, 2026.
-
-\bibitem[Daliana(2026e)]{daliana2026labor}
-Daliana, A.
-\newblock The Wallet as Legal Subject: Subordination, Property,
-  and the Dissolution of the Employee--Contractor Line.
-\newblock Companion labor-law paper, 2026.
-
-\bibitem[Daliana(2026f)]{daliana2026fig}
-Daliana, A.
-\newblock \textsc{Fig}: A Schelling-Point Token for the
-  \textsc{Figaro} Coordination Ecosystem.
-\newblock Companion cryptoeconomics paper, 2026.
-
-\bibitem[Daliana(2026g)]{daliana2026accounting}
-Daliana, A.
-\newblock Bookkeeping as Protocol Byproduct: Self-Closing
-  Ledger Periods in the \textsc{Figaro} Settlement
-  Primitive.
-\newblock Companion accounting paper, 2026.
 
 \bibitem[Pacioli(1494)]{pacioli1494summa}
 Pacioli, L.
