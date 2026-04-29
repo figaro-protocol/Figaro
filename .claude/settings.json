@@ -57,6 +57,10 @@
           {
             "type": "command",
             "command": ".claude/hooks/schema-lockstep-warn.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/memory-hygiene-warn.sh"
           }
         ]
       }

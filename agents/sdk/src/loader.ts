@@ -8,6 +8,10 @@ export const FIGARO_AGENT_FILES = {
   "figaro-schema-author": ".claude/agents/figaro-schema-author.md",
   "figaro-runtime-ui-author": ".claude/agents/figaro-runtime-ui-author.md",
   "figaro-assembly-author": ".claude/agents/figaro-assembly-author.md",
+  "figaro-paper-reviewer": ".claude/agents/figaro-paper-reviewer.md",
+  "figaro-memory-hygiene": ".claude/agents/figaro-memory-hygiene.md",
+  "figaro-deploy-runner": ".claude/agents/figaro-deploy-runner.md",
+  "figaro-feedback-triage": ".claude/agents/figaro-feedback-triage.md",
 } as const;
 
 export type FigaroAgentName = keyof typeof FIGARO_AGENT_FILES;

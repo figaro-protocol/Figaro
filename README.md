@@ -26,7 +26,7 @@ The organizational consequence: each process assembles a temporary institution o
 - **SP1 prover** — Rust workspace: kernel library, guest program, batch sequencer
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
 - **Paper** — Academic paper in `paper/`
-- **Contributor agents** — `.claude/agents/` ships five Claude Code subagents (kernel-reviewer, schema-lockstep, schema-author, runtime-ui-author, assembly-author), `agents/factotum/` is a runnable participation-agent reference with a reference policy library, `agents/sdk/` packages the subagents as `@figaro/agent-sdk` for non-Claude-Code runtimes, and `agents/examples/` walks through two end-to-end scenarios (TradeLens replacement, Spirit Air replacement). See [CONTRIBUTING.md](CONTRIBUTING.md#contributor-agents).
+- **Contributor agents** — `.claude/agents/` ships nine Claude Code subagents (kernel-reviewer, schema-lockstep, schema-author, runtime-ui-author, assembly-author, paper-reviewer, memory-hygiene, deploy-runner, feedback-triage), `agents/factotum/` is a runnable participation-agent reference with a policy library, `agents/sdk/` packages the subagents as `@figaro/agent-sdk` for non-Claude-Code runtimes, and `agents/examples/` walks through two end-to-end scenarios (TradeLens replacement, Spirit Air replacement). See [CONTRIBUTING.md](CONTRIBUTING.md#contributor-agents).
 
 Start with [docs/v5/CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) for the reading path.
 

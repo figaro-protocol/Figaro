@@ -117,11 +117,51 @@ describe("loadAgent (canonical .md files)", () => {
     expect(a.systemPrompt).toMatch(/PROTOCOL_EXTENSION_DOCTRINE/);
   });
 
-  it("loadAllAgents returns exactly the five canonical agents", () => {
+  it("loads figaro-paper-reviewer as a read-only verifier", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-paper-reviewer");
+    expect(a.name).toBe("figaro-paper-reviewer");
+    expect(a.tools).toContain("Read");
+    expect(a.tools).not.toContain("Edit");
+    expect(a.tools).not.toContain("Write");
+    expect(a.model).toBe("opus");
+    expect(a.systemPrompt).toMatch(/paper|drift|theorem/i);
+  });
+
+  it("loads figaro-memory-hygiene as a terse table-output auditor", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-memory-hygiene");
+    expect(a.name).toBe("figaro-memory-hygiene");
+    expect(a.tools).not.toContain("Edit");
+    expect(a.tools).not.toContain("Write");
+    expect(a.systemPrompt).toMatch(/table|terse|narrative/i);
+  });
+
+  it("loads figaro-deploy-runner with read + bash for orchestration", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-deploy-runner");
+    expect(a.name).toBe("figaro-deploy-runner");
+    expect(a.tools).toContain("Bash");
+    expect(a.tools).toContain("Read");
+    expect(a.tools).not.toContain("Edit");
+    expect(a.tools).not.toContain("Write");
+    expect(a.systemPrompt).toMatch(/runbook|confirmation|destructive/i);
+  });
+
+  it("loads figaro-feedback-triage as a read-only classifier", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-feedback-triage");
+    expect(a.name).toBe("figaro-feedback-triage");
+    expect(a.tools).not.toContain("Edit");
+    expect(a.tools).not.toContain("Write");
+    expect(a.systemPrompt).toMatch(/composable-protection|framing|triage/i);
+  });
+
+  it("loadAllAgents returns exactly the nine canonical agents", () => {
     const all = loadAllAgents(REPO_ROOT);
     expect(Object.keys(all).sort()).toEqual([
       "figaro-assembly-author",
+      "figaro-deploy-runner",
+      "figaro-feedback-triage",
       "figaro-kernel-reviewer",
+      "figaro-memory-hygiene",
+      "figaro-paper-reviewer",
       "figaro-runtime-ui-author",
       "figaro-schema-author",
       "figaro-schema-lockstep",
@@ -131,7 +171,11 @@ describe("loadAgent (canonical .md files)", () => {
   it("FIGARO_AGENT_FILES map has stable keys", () => {
     expect(Object.keys(FIGARO_AGENT_FILES).sort()).toEqual([
       "figaro-assembly-author",
+      "figaro-deploy-runner",
+      "figaro-feedback-triage",
       "figaro-kernel-reviewer",
+      "figaro-memory-hygiene",
+      "figaro-paper-reviewer",
       "figaro-runtime-ui-author",
       "figaro-schema-author",
       "figaro-schema-lockstep",
