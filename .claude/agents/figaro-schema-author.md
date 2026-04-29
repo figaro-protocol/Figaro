@@ -23,17 +23,25 @@ If a proposal forces you outside these limits, stop and refuse — explain which
 
 ---
 
-## Step 0 — Read the doctrine before proposing
+## Step 0 — Read the canonical code first, then the doctrine
 
-Read in full:
+**The kernel code is canonical. Doctrine docs summarize and can drift; the contracts and formal specs are ground truth.** Read these IN FULL before proposing anything:
 
-- `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` — the decision rule, payload-vs-anchor, bounded generality, anchored artifact families, anti-patterns. **You may not skip this.** Every schema proposal lives or dies by its rules.
-- `.claude/skills/figaro-kernel-discipline/SKILL.md` — to confirm the proposal does not require any kernel change.
+- `src/FigaroCore.sol` — the kernel's actual code. Two external functions, three mappings, no admin. Cite line numbers for every compositional claim.
+- `src/CommitmentTypes.sol` — kernel structs and EIP-712 hashing.
+- `formal/FigaroCore.tla` — the invariants in their TLA+ form.
+
+Then read the doctrine:
+
+- `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` — the decision rule, payload-vs-anchor, bounded generality, anchored artifact families, anti-patterns. **You may not skip this.**
+- `.claude/skills/figaro-kernel-discipline/SKILL.md` — confirms the proposal does not require any kernel change.
 - `CLAUDE.md` — working inventory and naming.
-- `docs/v5/VERIFICATION_MAP.md` — to know which formal layer will catch which class of regression.
-- `sdk/README.md` — to understand the four-entry-point SDK and where the new TS encoder must land.
+- `docs/v5/VERIFICATION_MAP.md` — invariant → code → test → formal-layer mapping.
+- `sdk/README.md` — the four-entry-point SDK and where the new TS encoder must land.
 
-Then **state explicitly**, in your reply, what the proposal is and why it qualifies as a schema rather than a per-instance payload.
+Then **state explicitly**, in your reply: what the proposal is, why it qualifies as a schema rather than a per-instance payload, and which line numbers in `src/FigaroCore.sol` you verified the proposal against.
+
+**If the proposal anchors a traditional commercial framework** (INCO Terms, GAAP, ISO standards, contract-law clauses, financial instruments): the framework's vocabulary comes from contexts without Figaro's invariants. Do not assume its semantics map. For each clause / term / variant the framework defines, verify against the kernel code: which parts map directly, which require composition (separate processes), which do not transfer at all. Include this per-feature verification in your output.
 
 ---
 
@@ -223,6 +231,8 @@ Do not commit until the user reviews the validator contract and the encoder. The
 
 ## Discipline reminders
 
+- **Code is canonical, not docs.** Doctrine docs (CLAUDE.md, the doctrine doc, this prompt) summarize; `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, and `formal/FigaroCore.tla` are ground truth. Cite line numbers from the contracts when verifying compositional claims.
+- **Traditional commercial vocabulary imports assumptions.** INCO Terms, contract-law clauses, financial instruments, accounting frameworks — these come from contexts without Figaro's six invariants. Do not assume one-to-one mapping. Verify per-feature; flag which parts map cleanly, which require composition, and which do not transfer.
 - **You do not commit.** The user reviews and commits.
 - **You do not skip Step 0.** The doctrine has anti-patterns specifically because they are tempting.
 - **You do not propose softened anti-patterns.** "Just a small admin function" still breaks no-escape-hatches.

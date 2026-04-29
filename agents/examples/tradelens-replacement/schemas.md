@@ -110,6 +110,84 @@ Verify as in the container-seal prompt above.
 
 If you ask for transferability features, the agent would refuse and refer to `project_bol_transferability_parked.md`. That refusal is the security-first posture working as designed.
 
+### 3. `figaro-incoterms-2020-v1` — Figaro-native, not pure-INCO
+
+INCO Terms (Incoterms® 2020 from the ICC) are the international trade vocabulary for risk-transfer points and cost allocation across legs of a shipment: EXW, FCA, CPT, CIP, DAP, DPU, DDP, FAS, FOB, CFR, CIF. Useful as cross-party shared reference, but **traditional INCO Term semantics come from a context without Figaro's six invariants** and may not all map cleanly. Specifically:
+
+1. **INCO Terms encode discretionary risk transfer** ("risk transfers at point X"). In Figaro, risk follows bond — the bonded party is at stake until they perform per the agreed clauses. There is no separate "risk transfer" concept; performance is what the chain attests.
+2. **INCO Terms separate "who pays for transport" from "who bears risk during transport."** In Figaro, both follow from process structure: a party who bonds for a sub-process is the buyer of that sub-process. Risk and cost are not independent variables.
+3. **Buyer dominance changes the resolution model.** INCO Terms assume good-faith resolution between parties; Figaro encodes buyer-dominance + MAD as the equilibrium that produces good-faith resolution. Some terms' implicit dispute-resolution paths may not transfer.
+
+The right schema is therefore **not "INCO term as a traditional contract clause" but "INCO term as a reference to a Figaro-native delivery-clause specification."** The schema anchors the term + named place; the term-to-delivery-clause mapping is verified against the kernel code, *per term*, and lives in the validator contract + an off-chain reference document.
+
+**This is also the canonical worked example for the agent's code-canonical discipline.** Before drafting fields, the schema-author MUST read `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, and `formal/FigaroCore.tla` — and verify each of the 11 Incoterms 2020 codes against the actual kernel mechanics. State which terms map cleanly, which require composition (e.g., CIF/CIP's insurance feature → separate insurance process), and which do not transfer.
+
+**Prompt:**
+
+```
+Use the figaro-schema-author agent to draft figaro-incoterms-2020-v1.
+
+CRITICAL: do not assume INCO Terms map cleanly to Figaro. Standardization
+in the traditional system is not a proxy for compatibility with Figaro's
+invariants. Some terms or term-features may require composition (parallel
+processes) or may not transfer at all (any discretionary recovery path
+that overrides buyer dominance, any feature that splits resolution
+authority, any mechanism that depends on cross-process atomicity).
+
+Step 0 must include reading IN FULL:
+- src/FigaroCore.sol           (kernel: 2 external functions, 3 mappings)
+- src/CommitmentTypes.sol       (structs and EIP-712 hashing)
+- formal/FigaroCore.tla         (the six invariants formally)
+
+Then for each of the 11 Incoterms 2020 codes (EXW, FCA, CPT, CIP, DAP,
+DPU, DDP, FAS, FOB, CFR, CIF), verify against the kernel code:
+  1. What handoff-v1 attestation triggers seller release per the term's
+     delivery-clause meaning?
+  2. What auxiliary clauses (customs, insurance, unloading) does the
+     term require?
+  3. Does the term assume any discretionary feature (timeouts,
+     fault-based recovery, third-party arbitration with override
+     authority) that Figaro's invariants do not support?
+  4. Map directly | requires composition | does not transfer.
+
+Include this per-term verification as a structured table in your output
+report. The reviewer will audit it against the kernel code.
+
+Schema fields (Layer A spec):
+- term:         enum {EXW, FCA, CPT, CIP, DAP, DPU, DDP, FAS, FOB, CFR, CIF}
+- namedPlace:   string (every Incoterm requires a named place)
+- placeGeohash: string (8-char) — for cross-reference with geo-v1
+
+The schema anchors the term + place. The validator contract MUST NOT
+encode per-term semantics in Solidity; those live in:
+- the off-chain ICC publication (canonical text)
+- a runtime term-to-delivery-clause table in frontend/public/schemas/
+
+This split lets future Incoterms revisions ship as new schemaIds
+(figaro-incoterms-2030-v1, etc.) without mutating prior anchors.
+
+Verify before declaring done:
+- No kernel changes.
+- Validator-contract pattern: 1:1 schemaId↔contract, ABI-encoded
+  content, first-write-wins.
+- Forge tests cover well-formed input, every field-level revert, gas
+  bound. Per-term mapping verification report attached to PR.
+- Schema-lockstep coverage matrix shows all required surfaces present.
+- Kernel-reviewer reports zero kernel-tier touches.
+```
+
+What the schema-author would do (and what the verification report would surface):
+
+1. Read `src/FigaroCore.sol` IN FULL. State explicitly: "kernel has X external functions at lines Y…Z; commit() takes parameters …; resolveProcess() takes parameters …."
+2. Walk through each of the 11 codes against this. Likely outcomes (subject to actual verification — which is the point):
+   - **EXW, FCA, DAP, DPU, DDP, FAS, FOB**: probably map directly. Each becomes a delivery-clause spec — handoff-v1 attestation at named place, possibly with auxiliary clauses (customs for DDP, unloading for DPU).
+   - **CPT, CFR**: map structurally. The "seller pays carriage" feature becomes a separate sub-process where the seller is buyer of carriage. The "risk transfers at first carrier" feature becomes the goods-commit's delivery-clause spec.
+   - **CIP, CIF**: same as CPT/CFR + the "seller insures for buyer's benefit" feature. Insurance assignment may not transfer directly — likely requires composition with a parallel insurance process. The schema-author should flag this and propose the composition.
+   - Anything that implies discretionary fault recovery or split resolution authority: refuse.
+3. Produce the schema only after the per-term verification table is in the report.
+
+The point of the verification step: traditional commercial vocabulary smuggles in assumptions. The agent exists specifically to catch this. Anchor the reference; don't import the assumptions.
+
 ## What the schema-author would refuse
 
 For this assembly, the schema-author would refuse:

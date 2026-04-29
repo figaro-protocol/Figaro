@@ -13,9 +13,15 @@ The two example walkthroughs in `agents/examples/tradelens-replacement/assembly.
 
 ---
 
-## Step 0 — Read the doctrine before composing
+## Step 0 — Read the canonical code first, then the doctrine
 
-Read in full:
+**The kernel code is canonical. Doctrine docs summarize and can drift; the contracts and formal specs are ground truth.** Read these IN FULL before composing anything:
+
+- `src/FigaroCore.sol` — the kernel's actual code. Two external functions, three mappings, no admin. Cite line numbers for any compositional claim about how processes settle.
+- `src/CommitmentTypes.sol` — kernel structs and EIP-712 hashing.
+- `formal/FigaroCore.tla` — the invariants in their TLA+ form. The six properties (asymmetric bonding, progressive collateralization, buyer dominance, atomic resolution, immutable evidence, no escape hatches) are formally specified here.
+
+Then read the doctrine:
 
 - `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` — bounded generality, payload vs anchor, decision rule.
 - `CLAUDE.md` § Agent Permissions and § Common Misframings — the kernel anti-patterns you cannot compose around.
@@ -27,9 +33,11 @@ Then survey current state:
 
 - `frontend/lib/shared/schemas/` — the existing schema inventory.
 - `src/schemaValidators/` — the existing on-chain validators.
-- `agents/factotum/src/policies/` — the reference policies for role-bound execution (you'll suggest one per role in your assembly).
+- `agents/factotum/src/policies/` — reference policies for role-bound execution.
 
-State explicitly: "Read the doctrine. The existing schemas are: ... Existing validator contracts: ... Reference policies: ..."
+State explicitly: "Read the kernel code (FigaroCore.sol lines …, CommitmentTypes.sol …). Read the doctrine. Existing schemas are: …. Existing validator contracts: …. Reference policies: …."
+
+**If the scenario draws on a traditional commercial framework** (shipping with INCO Terms, finance with regulatory accounting, insurance with policy clauses): the framework's vocabulary comes from contexts without Figaro's invariants. Verify per-feature against the kernel code. State which parts map directly to delivery clauses or process structure, which require composition (separate processes, parallel guarantee-processes), and which do not transfer at all. Refuse to encode any feature that requires a kernel change.
 
 ---
 
@@ -200,6 +208,8 @@ For each role, configure a factotum with the recommended policy.
 
 ## Discipline reminders
 
+- **Code is canonical, not docs.** Cite line numbers from `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, and `formal/FigaroCore.tla` when verifying that an edge or clause composes. Doctrine summaries can drift.
+- **Traditional commercial frameworks import assumptions.** INCO Terms, contract-law clauses, financial instruments — verify per-feature; do not assume one-to-one mapping just because the framework is "standardized."
 - You do not auto-commit. You do not write schemas. You do not write Solidity. You do not write UI.
 - You do not propose kernel changes. If the scenario demands one, refuse and propose composition.
 - Cite the anti-patterns by name when refusing — don't paraphrase.

@@ -46,8 +46,8 @@ ASCII sketch of the canonical export-import flow:
 
 | Edge | Mechanism | Notes |
 |---|---|---|
-| shipper → forwarder | bilateral commit (commerce-v1) | Fixed price, single seller |
-| forwarder → carrier | bilateral commit (commerce-v1) | Fixed price |
+| shipper → forwarder | bilateral commit (commerce-v1) + incoterms-2020-v1 clause | INCO term encodes the delivery-clause spec; per-term mapping verified against kernel code (see `schemas.md` § 3) |
+| forwarder → carrier | bilateral commit (commerce-v1) + incoterms-2020-v1 clause | Often a different INCO term than shipper-leg (forwarder may use FCA upstream, CPT downstream) |
 | carrier → port-of-loading | Dutch auction (the existing Component) | Carrier procures terminal services; descending price |
 | carrier ↔ port-of-discharge | Dutch auction | Discharge-side procurement |
 | port → carrier (handoff) | handoff-v1 + container-seal-v1 (intact) | Off-chain process, on-chain attestation |
@@ -55,6 +55,8 @@ ASCII sketch of the canonical export-import flow:
 | consignee → customs broker | bilateral commit (commerce-v1) | Customs clearance services |
 | customs broker → customs authority | jurisdiction-v1 attestation | Customs is sovereign — *not* a Figaro counterparty, only an attestation source |
 | trucking → consignee | bilateral commit + fulfilment-v1 | Last mile |
+
+**Note on INCO Terms.** Each `commerce-v1` commit on a transport leg carries a `figaro-incoterms-2020-v1` clause specifying the term and named place. The term is a reference, not a behavior — the schema's validator anchors the (term, namedPlace) pair, and the runtime maps each term to a Figaro-native delivery-clause specification (handoff-v1 attestation at the named place, plus auxiliary clauses for customs / insurance / unloading where the term requires them). Some term features (e.g., CIP/CIF insurance assignment) may require composition with a parallel insurance process rather than direct encoding. See `schemas.md` § 3 for the agent's code-canonical verification posture.
 
 ## Per-node clauses
 
