@@ -460,6 +460,26 @@ export default function DisputePage() {
 
             <Stepper current={step} />
 
+            {process.env.NEXT_PUBLIC_KLEROS_MOCK_BANNER === "true" && (
+                <Card
+                    className="p-4 bg-orange-50 border-orange-300"
+                    data-testid="dispute-mock-banner"
+                >
+                    <p className="text-xs font-semibold text-orange-900 uppercase tracking-wider">
+                        Testnet — Kleros submission simulated
+                    </p>
+                    <p className="text-[11px] text-orange-800 mt-1">
+                        This deployment uses a mock Kleros stack on the private
+                        testnet. The submission flow exercises the full UI and
+                        produces real EIP-712 signatures + IPFS-pinned evidence,
+                        but no actual juror arbitration happens. Mainnet
+                        submissions go to real Kleros; the same code path. See
+                        <code className="font-mono mx-1">cloudflare/README.md</code>
+                        for details.
+                    </p>
+                </Card>
+            )}
+
             {!klerosConfig && step !== "confirmation" && (
                 <Card className="p-4 bg-amber-50 border-amber-200" data-testid="dispute-not-configured">
                     <p className="text-xs font-semibold text-amber-900">

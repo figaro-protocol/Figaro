@@ -98,6 +98,46 @@ wrangler deploy
 
 In your Cloudflare dashboard, point the opaque subdomain (e.g., `q7m4-2026.figaroprotocol.com`) at the gate Worker. Add a route in the Worker dashboard for `<subdomain>/*` → `figaro-gate` and `<subdomain>/rpc` → `figaro-rpc-proxy`. The order matters: the more-specific `/rpc` route must be evaluated before the catch-all `/*`.
 
+### 5.5 Deploy the mock Kleros stack on Anvil (~2 minutes)
+
+The /dispute UI exercises the full Kleros submission flow end-to-end. On private testnet there is no real Kleros stack, so the testnet uses a Solidity mock that mimics the ArbitrableProxy interface. Same UI code path; mainnet flips the env vars to point at real Kleros.
+
+```bash
+# From the repo root, against the running Anvil container:
+forge script --via-ir \
+  --rpc-url <anvil-rpc-url> \
+  --private-key $DEPLOYER_PRIVATE_KEY \
+  --broadcast \
+  script/DeployMockKleros.s.sol:DeployMockKleros
+```
+
+The script prints the deployed addresses. Set them in the frontend env (Cloudflare Pages dashboard or `.env.local` for local dev):
+
+```bash
+NEXT_PUBLIC_KLEROS_ARBITRABLE_PROXY=<MockKlerosArbitrableProxy address>
+NEXT_PUBLIC_KLEROS_ARBITRATOR_EXTRA_DATA=0x   # any value; mock ignores it
+NEXT_PUBLIC_KLEROS_MOCK_BANNER=true            # shows "TESTNET — simulated" banner on /dispute
+```
+
+Then add the proxy address to the rpc-proxy Worker's `CONTRACT_ALLOWLIST`:
+
+```bash
+wrangler kv:key put --namespace-id=<ALLOWLIST_ID> \
+  "0x<mock-proxy-lowercased>" \
+  '{"name":"MockKlerosArbitrableProxy","deployedAt":"2026-04-29","note":"testnet mock"}'
+```
+
+To simulate a ruling (for UI-state testing), the operator can call the mock-only `mockSetRuling` method:
+
+```bash
+cast send <MockKlerosArbitrableProxy> \
+  'mockSetRuling(uint256,uint256)' <localID> <rulingValue> \
+  --rpc-url <anvil-rpc-url> \
+  --private-key $DEPLOYER_PRIVATE_KEY
+```
+
+For mainnet (later): unset `NEXT_PUBLIC_KLEROS_MOCK_BANNER` and point `NEXT_PUBLIC_KLEROS_ARBITRABLE_PROXY` at the real Kleros proxy on Ethereum mainnet. Same UI code; same flow; real arbitration on the other end.
+
 ### 6. Issue the first access code (~1 minute)
 
 ```bash
