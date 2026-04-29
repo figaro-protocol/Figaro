@@ -215,6 +215,10 @@ The Figaro project is security-first by construction. Carry that posture into yo
 
 ---
 
+## See also
+
+- `agents/examples/` — worked end-to-end scenarios showing per-role factotum policies for a multi-party shipping assembly and a passenger-airline assembly.
+
 ## What the factotum is not
 
 - **Not production-ready.** It's a reference, not a finished product. There's no retry/backoff, no pending-tx tracking, no nonce management beyond what viem does, no metrics, no health checks. Add what you need.

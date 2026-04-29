@@ -1,0 +1,108 @@
+# Assembly: TradeLens replacement
+
+The DAG of bonded commitments that makes this a shipping protocol rather than a generic Figaro deployment. **This is the human work.** The schema-author handles individual schemas; no agent today produces this DAG. See the gap statement at the end.
+
+## DAG
+
+ASCII sketch of the canonical export-import flow:
+
+```
+                   shipper (origin)
+                       │
+                       │  commerce-v1 + bol-issuance-v1
+                       ▼
+                  forwarder
+                       │
+                       │  commerce-v1 + bol-issuance-v1
+                       ▼
+                ocean carrier ──────────┐
+                /                        │
+               /  port-handoff           │  emissions-disclosure
+              /   (handoff-v1 +          │  (ghg-protocol-v1)
+             /    container-seal-v1)     │
+            ▼                             ▼
+   port-of-loading                    (consumed at resolution
+   (terminal services)                 for sustainability audit)
+            │
+            │  vessel-position stream (geo-v1)
+            ▼
+   port-of-discharge
+   (terminal services)
+            │
+            │  jurisdiction-v1 (customs clearance)
+            ▼
+   customs broker
+            │
+            │  fulfilment-v1 + last-mile commerce-v1
+            ▼
+   trucking
+            │
+            │  fulfilment-v1 (delivery)
+            ▼
+   consignee
+```
+
+## Per-edge mechanism
+
+| Edge | Mechanism | Notes |
+|---|---|---|
+| shipper → forwarder | bilateral commit (commerce-v1) | Fixed price, single seller |
+| forwarder → carrier | bilateral commit (commerce-v1) | Fixed price |
+| carrier → port-of-loading | Dutch auction (the existing Component) | Carrier procures terminal services; descending price |
+| carrier ↔ port-of-discharge | Dutch auction | Discharge-side procurement |
+| port → carrier (handoff) | handoff-v1 + container-seal-v1 (intact) | Off-chain process, on-chain attestation |
+| carrier → consignee (BoL) | bol-issuance-v1 attestation | Anchor only; non-transferable per parked research |
+| consignee → customs broker | bilateral commit (commerce-v1) | Customs clearance services |
+| customs broker → customs authority | jurisdiction-v1 attestation | Customs is sovereign — *not* a Figaro counterparty, only an attestation source |
+| trucking → consignee | bilateral commit + fulfilment-v1 | Last mile |
+
+## Per-node clauses
+
+Order nodes carry clauses — schema-typed obligations that must be discharged for the order to be resolvable.
+
+**Shipper-side (origin order):**
+- handoff-v1: forwarder must attest receipt before resolution
+- ghg-protocol-v1: emissions disclosure required for sustainability audit (optional clause; omitted if shipper hasn't elected)
+
+**Forwarder-side:**
+- handoff-v1 (incoming from shipper)
+- handoff-v1 (outgoing to carrier)
+- bol-issuance-v1 (carrier issues, forwarder counter-signs)
+
+**Carrier-side (the big one):**
+- container-seal-v1 sequence: applied → inspected_intact (per port handoff) → removed_by_customs
+- vessel-position attestation every N hours (geo-v1 with 8-char geohash)
+- ghg-protocol-v1: per-voyage emissions
+- handoff-v1: at every port
+
+**Consignee-side:**
+- jurisdiction-v1: customs clearance attestation
+- fulfilment-v1: physical receipt confirmation
+
+## Bond posture
+
+Each leg's bond is computed from the leg's value. Asymmetric bonding scales naturally — when the carrier sub-contracts to a port operator, the carrier is the *buyer* of port services and posts buyer bonds at that sub-process. Progressive collateralization composes the legs without compounding the bond requirement explosion.
+
+For a $20K shipment with $5K terminal handling at each port and $1K customs clearance:
+
+- Shipper buyer-bond at top: 2 × $20,000 = $40,000
+- Carrier seller-bond at top: 2 × $20,000 = $40,000 (cumulative service value)
+- Carrier buyer-bond at port-of-loading sub-process: 2 × $5,000 = $10,000
+- Port-of-loading seller-bond: 2 × $5,000 = $10,000
+- ...and so on at each sub-process
+
+These compose without the kernel needing to know about the structure beyond the local bilateral. That's the point of the primitive.
+
+## The gap
+
+This DAG is currently **human work on the designer canvas at `/builders/designer/new`**. There is no `figaro-assembly-author` agent that would emit this as a `DesignDraft` JSON.
+
+A future agent would need to:
+
+1. Read the protocol's existing schemas and propose composition.
+2. Emit a DAG with typed edges and clauses.
+3. Produce sample bond budgets given a parameterized shipment value.
+4. Refuse to compose anything that requires a kernel change (no multi-currency cross-leg, no centralized resolution).
+5. Cite `PROTOCOL_EXTENSION_DOCTRINE.md` for any new schemas it identifies as needed; defer their authorship to `figaro-schema-author`.
+
+Treat this `assembly.md` file as the spec for that agent.

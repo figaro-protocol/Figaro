@@ -159,6 +159,10 @@ cd agents/sdk && npm test
 
 ---
 
+## See also
+
+- `agents/examples/` — worked scenarios showing verbatim runnable prompts for the schema-author against real assembly designs.
+
 ## What this package is not
 
 - **Not a Claude Code replacement.** Claude Code subagents auto-load and auto-discover; this package is for runtimes that don't.

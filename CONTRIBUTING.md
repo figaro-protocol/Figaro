@@ -105,6 +105,15 @@ npm test    # property tests against the canonical .md files
 
 See `agents/sdk/README.md` for the API reference and an Anthropic SDK integration with prompt caching.
 
+### Worked examples — `agents/examples/`
+
+End-to-end walkthroughs of how the contributor agents and the factotum compose to build and operate a real assembly. Doc-only — every prompt is runnable verbatim against the current agent set; every factotum policy snippet is plug-and-play. Two scenarios:
+
+- `agents/examples/tradelens-replacement/` — multi-party container shipping
+- `agents/examples/spirit-air-replacement/` — passenger-airline with cascading-delay coordination
+
+Both surface the same structural gap: there is no `figaro-assembly-author` subagent yet — the assembly DAG is still human work on the designer canvas. The `assembly.md` files in each scenario are the spec for that future agent.
+
 ### Conventions for new agents
 
 - New Claude Code subagents go in `.claude/agents/<name>.md` with frontmatter (`name`, `description`, `tools`, `model`). Read-only agents declare `tools: Read, Grep, Glob, Bash` to make the constraint explicit.
