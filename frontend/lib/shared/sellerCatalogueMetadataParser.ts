@@ -2,7 +2,21 @@ import { SellerCatalogueMetadata, SellerHours, CatalogueItemMetadata, ServiceAre
 
 type UnknownRecord = Record<string, unknown>;
 
-const FULFILLMENT_MODES = new Set<"pickup" | "delivery">(["pickup", "delivery"]);
+const FULFILLMENT_MODES = new Set<
+    | "consume-onsite"
+    | "pickup"
+    | "delivery"
+    | "deliver:buyer-assigned"
+    | "deliver:seller-assigned"
+    | "deliver:dutch-auction"
+>([
+    "consume-onsite",
+    "pickup",
+    "delivery",
+    "deliver:buyer-assigned",
+    "deliver:seller-assigned",
+    "deliver:dutch-auction",
+]);
 const WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
 function asRecord(value: unknown, path: string): UnknownRecord {
@@ -130,7 +144,17 @@ export function parseSellerCatalogueDocument(value: unknown, sourceLabel = "sell
 
     return {
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
-        archetypeId: asEnum(record.archetypeId, new Set(["merchant-one-hop-delivery"]), `${sourceLabel}.archetypeId`),
+        archetypeId: asEnum(
+            record.archetypeId,
+            new Set([
+                "merchant-one-hop-delivery",
+                "bonded-procurement-supplier",
+                "disclosure-review-operator",
+                "equipment-rental-operator",
+                "freelance-operator",
+            ]),
+            `${sourceLabel}.archetypeId`,
+        ),
         merchantId: asString(record.merchantId, `${sourceLabel}.merchantId`),
         slug: asString(record.slug, `${sourceLabel}.slug`),
         name: asString(record.name, `${sourceLabel}.name`),

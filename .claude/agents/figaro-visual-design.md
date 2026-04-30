@@ -19,6 +19,8 @@ The project's visual pain is real and was named in `docs/v5/AUDIT_FINDINGS_2026-
 - **`feedback_no_badges.md`** — no badges next to names. (Often surfaced as a visual question.)
 - **`feedback_protocol_not_product_ui.md`** — no CTA funnels, no value-prop openers, no segment routers. Affects visual hierarchy decisions.
 - **`feedback_everything_is_math_and_proofs.md`** — visual decoration that doesn't trace to substance is anti-pattern.
+- **`feedback_horizontal_pages.md`** — Figaro pages are many short horizontal single-concept surfaces, NOT long vertical scrolls with hero → progressive-detail → CTA. Visual hierarchy decisions follow this shape: lateral-navigation primitives (tabs, prev/next, card grids) take precedence over scroll-deep section dividers.
+- **`project_zargham_taxonomy.md`** — marketing pages organize by Voshmgir & Zargham's 8 disciplines (one discipline-page per discipline). Visual treatments respect this audience-segmentation: a discipline-page may host multiple papers, but its visual identity is the discipline (audience), not any single paper.
 
 Then sample current state:
 

@@ -96,7 +96,25 @@ export interface SellerCatalogueMetadata {
     name: string;
     description?: string;
     cuisine?: string;
-    fulfillmentModes: Array<"pickup" | "delivery">;
+    /**
+     * Fulfillment modes supported by this operator. Mirrors the canonical
+     * `figaro-fulfilment-v1` schema enum:
+     *   - "consume-onsite" — no movement; on-premise consumption
+     *   - "pickup" — buyer organizes pickup
+     *   - "deliver:buyer-assigned" — buyer chooses courier
+     *   - "deliver:seller-assigned" — merchant arranges courier directly
+     *   - "deliver:dutch-auction" — courier selected via Dutch auction
+     * Legacy values "pickup" / "delivery" continue to parse for backward
+     * compat with older fixture data.
+     */
+    fulfillmentModes: Array<
+        | "consume-onsite"
+        | "pickup"
+        | "delivery"
+        | "deliver:buyer-assigned"
+        | "deliver:seller-assigned"
+        | "deliver:dutch-auction"
+    >;
     location: {
         geohash: string;
         addressText?: string;

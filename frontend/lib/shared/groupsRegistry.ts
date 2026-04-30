@@ -45,11 +45,11 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         charter: "The kernel rests on a game-theoretic argument: asymmetric bonding with a 2× minimum ratio produces a Nash equilibrium, scales itself from two to N parties through progressive collateralization, and retires the subordination axis of the Coasean firm. This group reads the substrate as economists and game theorists read it — equilibrium analysis, institutional form, monetary design.",
         venue: DEFAULT_VENUE,
         readingPath: [
-            { label: "Paper A — Mechanism", href: "/publications#paper-a", note: "asymmetric bonding, Nash, Grameen reduction" },
-            { label: "Paper B1 — Institutional economics", href: "/publications#paper-b1", note: "Coase, Williamson, the firm-dissolved" },
-            { label: "Paper D — Token design", href: "/publications#paper-d", note: "FIG as Schelling-point, not governance or yield" },
-            { label: "Mechanism companion", href: "/mechanism", note: "the game-theoretic derivation in web form" },
-            { label: "FIG design companion", href: "/fig/design", note: "token as speech-act identifier" },
+            { label: "Paper A — Mechanism", href: "/papers/figaro-mechanism.pdf", note: "asymmetric bonding, Nash, Grameen reduction" },
+            { label: "Paper B1 — Institutional economics", href: "/papers/figaro-economics.pdf", note: "Coase, Williamson, the firm-dissolved" },
+            { label: "Paper D — Token design", href: "/papers/figaro-fig-token.pdf", note: "FIG as Schelling-point, not governance or yield" },
+            { label: "Cryptoeconomics overview", href: "/cryptoeconomics", note: "two-mechanism + contract-law overview" },
+            { label: "FIG design", href: "/fig/design", note: "token as Schelling-point coordination signal" },
         ],
     },
     {
@@ -59,8 +59,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         charter: "The kernel is a frozen Solidity surface verified across four layers (TLA⁺, Echidna, Halmos, Certora). Above it, assemblies compose declaratively against the schema registry, attestation coordinator, and mechanism primitives. This group reads the substrate as systems engineers — architecture, verification, composition patterns, coordinator-pattern equilibrium preservation.",
         venue: DEFAULT_VENUE,
         readingPath: [
-            { label: "Paper C — Implementation", href: "/publications#paper-c", note: "4-layer verification stack, coordinator pattern" },
-            { label: "Verification inventory", href: "/verification", note: "every invariant → test → formal layer" },
+            { label: "Paper C — Implementation", href: "/papers/figaro-verification.pdf", note: "4-layer verification stack, coordinator pattern" },
             { label: "Specifications", href: "/spec", note: "the frozen on-chain surface" },
             { label: "Schemas", href: "/schemas", note: "three-layer validation architecture" },
         ],
@@ -77,11 +76,11 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
             "TLA⁺ refinement of the progressive-collateralization mesh beyond 3 depth",
         ],
         readingPath: [
-            { label: "Verification inventory", href: "/verification", note: "every invariant → test → formal layer" },
+            { label: "Specifications", href: "/spec", note: "the frozen on-chain surface" },
             { label: "Release readiness + freeze notice", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/RELEASE_READINESS.md", note: "gate criteria, hardening record, frozen-surface declaration" },
             { label: "Design decisions", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/DESIGN_DECISIONS.md", note: "fourteen patterns that look like bugs but are correct" },
             { label: "Audit report", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/AUDIT_REPORT.md", note: "audit history + web2/UI subsidiary audits + accepted risks" },
-            { label: "Paper C — Implementation", href: "/publications#paper-c", note: "verification stack + implementation choices" },
+            { label: "Paper C — Implementation", href: "/papers/figaro-verification.pdf", note: "verification stack + implementation choices" },
         ],
     },
     {
@@ -91,12 +90,10 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         charter: "A Figaro commitment is a signed contract: payment = consideration, schemas = terms and conditions, agreementHash = the contract document. Settlement happens on-chain by nature; adjudication happens off-chain by nature. The wallet collapses the Roman res/persona distinction, and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
         venue: DEFAULT_VENUE,
         readingPath: [
-            { label: "Paper E — Evidence and law", href: "/publications#paper-e", note: "Class A vs Class B records, admissibility" },
-            { label: "Paper F1 — Labor law", href: "/publications#paper-f1", note: "wallet-as-subject, subordination retired" },
-            { label: "Paper F2 — Displaced and stateless", href: "/publications#paper-f2", note: "Arendt, capacity-to-have-commerce" },
-            { label: "Legal companion", href: "/legal", note: "evidence surfaces for off-chain adjudication" },
-            { label: "Labor law companion", href: "/labor-law", note: "web-form treatment of Paper F1" },
-            { label: "Displaced companion", href: "/displaced", note: "web-form treatment of Paper F2" },
+            { label: "Paper E — Evidence and law", href: "/papers/figaro-legal.pdf", note: "Class A vs Class B records, admissibility" },
+            { label: "Paper F1 — Labor law", href: "/papers/figaro-labor-law.pdf", note: "wallet-as-subject, subordination retired" },
+            { label: "Paper F2 — Displaced and stateless", href: "/papers/figaro-polity.pdf", note: "Arendt, capacity-to-have-commerce" },
+            { label: "Foundations — Philosophy, Law and Ethics", href: "/foundations#discipline-4", note: "the four papers grouped" },
         ],
     },
     {
@@ -106,8 +103,8 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         charter: "The kernel is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same kernel. This group reads the substrate as political theorists — Gramsci, Arendt, post-hegemony; the question of what governance is when the primitive refuses to take positions.",
         venue: DEFAULT_VENUE,
         readingPath: [
-            { label: "Paper B2 — Political economy", href: "/publications#paper-b2", note: "hegemonic propositions, organizational substrate" },
-            { label: "Sovereign commerce companion", href: "/sovereign-commerce", note: "web-form treatment of Paper B2" },
+            { label: "Paper B2 — Political economy", href: "/papers/figaro-sovereign-commerce.pdf", note: "hegemonic propositions, organizational substrate" },
+            { label: "Foundations — Political Science and Governance", href: "/foundations#discipline-5", note: "B2, B3, I papers grouped" },
         ],
     },
     {
@@ -117,8 +114,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         charter: "A Figaro process is a self-closing ledger period. Commits are journal entries; resolution is the closing entry; the agreementHash is the contract document. This group reads the substrate as operations researchers and accountants — the kernel as an accounting primitive, the process tree as a coordination problem, the closure as a scheduling invariant.",
         venue: DEFAULT_VENUE,
         readingPath: [
-            { label: "Paper G — Accounting", href: "/publications#paper-g", note: "self-closing ledger period, Pacioli rewritten" },
-            { label: "Accounting companion", href: "/accounting", note: "web-form treatment of Paper G" },
+            { label: "Paper G — Accounting", href: "/papers/figaro-accounting.pdf", note: "self-closing ledger period, Pacioli rewritten" },
             { label: "Treasuries — composition patterns", href: "/treasuries", note: "multisig-as-buyer, governance-executor-as-buyer" },
         ],
     },
@@ -130,8 +126,8 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         venue: DEFAULT_VENUE,
         readingPath: [
             { label: "SDK — agent surface", href: "/integrate", note: "FigaroContext, ActionQueue, proposer" },
-            { label: "Paper A — scaling to N parties", href: "/publications#paper-a", note: "progressive collateralization, weakest-link subgame" },
-            { label: "Paper C — batch verifier", href: "/publications#paper-c", note: "SP1-proven batch execution" },
+            { label: "Paper A — scaling to N parties", href: "/papers/figaro-mechanism.pdf", note: "progressive collateralization, weakest-link subgame" },
+            { label: "Paper C — batch verifier", href: "/papers/figaro-verification.pdf", note: "SP1-proven batch execution" },
         ],
     },
     {
@@ -141,7 +137,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         charter: "The asymmetric-bonding Nash equilibrium assumes strategic agents reading their incentives correctly. In practice, those incentives must be legible through wallets, signing flows, and attestation UX. This group reads the substrate as behavioral economists and decision scientists — when does the equilibrium fail to bind because the player cannot see it?",
         venue: DEFAULT_VENUE,
         readingPath: [
-            { label: "Paper A — equilibrium analysis", href: "/publications#paper-a", note: "Nash, iterated elimination, 2× minimum" },
+            { label: "Paper A — equilibrium analysis", href: "/papers/figaro-mechanism.pdf", note: "Nash, iterated elimination, 2× minimum" },
             { label: "Console", href: "/console", note: "supervision and attestation surface" },
             { label: "Figaro Local Commerce runtime", href: "/i/local-commerce", note: "reference implementation of the signing flow" },
         ],

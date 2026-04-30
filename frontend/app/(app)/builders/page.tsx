@@ -91,7 +91,7 @@ export default function BuildersPage() {
                     </div>
                 </div>
                 <p className="text-sm text-gray-600 mt-6">
-                    Verification surface: <Link href="/verification" className="underline">/verification</Link>.
+                    Verification surface: <Link href="/spec" className="underline">/spec</Link>.
                 </p>
             </section>
 

@@ -41,7 +41,8 @@ export function OnboardingBanner() {
                         <li><strong>Settle</strong> — the buyer resolves the process when the work is done</li>
                     </ol>
                     <p className="mt-2 text-blue-700">
-                        Read <a href="/help" className="underline hover:no-underline">the help guide</a> to understand the game theory behind self-enforcing agreements.
+                        For the game-theory derivation behind self-enforcing agreements, see{" "}
+                        <a href="/cryptoeconomics" className="underline hover:no-underline">cryptoeconomics</a>.
                     </p>
                 </div>
                 <button

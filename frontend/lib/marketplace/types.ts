@@ -23,7 +23,14 @@ export interface Restaurant {
     geohash?: string;
     menu: MenuItem[];
     acceptedTokens?: AcceptedTokenMetadata[];
-    fulfillmentModes?: ("pickup" | "delivery")[];
+    fulfillmentModes?: Array<
+        | "consume-onsite"
+        | "pickup"
+        | "delivery"
+        | "deliver:buyer-assigned"
+        | "deliver:seller-assigned"
+        | "deliver:dutch-auction"
+    >;
 }
 
 export interface CartItem {

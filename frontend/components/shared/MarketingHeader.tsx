@@ -29,6 +29,13 @@ export function MarketingHeader() {
                         </Link>
                     ))}
                 </nav>
+                <Link
+                    href="/discover"
+                    className="hidden sm:inline-flex items-center gap-1 px-4 py-2 bg-black text-white text-sm font-semibold rounded-md hover:bg-gray-800 transition-colors"
+                    data-testid="launch-button"
+                >
+                    Launch <span aria-hidden="true">→</span>
+                </Link>
             </div>
         </header>
     );

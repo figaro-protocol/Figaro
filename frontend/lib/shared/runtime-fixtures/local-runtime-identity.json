@@ -49,6 +49,34 @@
                 }
             ],
             "version": "1.0.0"
+        },
+        {
+            "subjectAddress": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+            "subjectKind": "operator",
+            "displayName": "Hudson Tools Rental",
+            "profileURI": "ipfs://figaro/subjects/hudson-tools-rental.profile.json",
+            "bindingRefs": [
+                {
+                    "refKind": "binding",
+                    "uri": "ipfs://figaro/bindings/hudson-tools-rental.binding.json",
+                    "contentHash": "bafybeihudsonbinding"
+                }
+            ],
+            "version": "1.0.0"
+        },
+        {
+            "subjectAddress": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
+            "subjectKind": "operator",
+            "displayName": "Maria Castelli Translations",
+            "profileURI": "ipfs://figaro/subjects/maria-castelli.profile.json",
+            "bindingRefs": [
+                {
+                    "refKind": "binding",
+                    "uri": "ipfs://figaro/bindings/maria-castelli.binding.json",
+                    "contentHash": "bafybeimariabinding"
+                }
+            ],
+            "version": "1.0.0"
         }
     ],
     "assemblyBindings": [
@@ -138,6 +166,65 @@
             "assetHash": "bafybeigreenledgerassethash",
             "effectiveFrom": "2026-03-19T00:00:00Z",
             "version": "1.0.0"
+        },
+        {
+            "bindingId": "binding:hudson-tools-rental:local-anvil",
+            "subjectAddress": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+            "archetypeId": "equipment-rental-operator",
+            "assemblySlug": "figaro-equipment-rental",
+            "networkTargets": [
+                "local-anvil"
+            ],
+            "roleBindings": [
+                {
+                    "roleKind": "renter",
+                    "assemblyRoleKinds": [
+                        "renter"
+                    ],
+                    "scope": "assembly",
+                    "mechanismIds": [
+                        "core-orders",
+                        "deposit-bond",
+                        "delivery-lifecycle"
+                    ],
+                    "notes": "Reference equipment-rental operator for the rental assembly previews."
+                }
+            ],
+            "metadataURI": "ipfs://figaro/rental/hudson-tools-rental.metadata.json",
+            "metadataHash": "bafybeihudsonmetadatahash",
+            "assetURI": "ipfs://figaro/rental/hudson-tools-rental.assets.json",
+            "assetHash": "bafybeihudsonassethash",
+            "effectiveFrom": "2026-03-19T00:00:00Z",
+            "version": "1.0.0"
+        },
+        {
+            "bindingId": "binding:maria-castelli:local-anvil",
+            "subjectAddress": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
+            "archetypeId": "freelance-operator",
+            "assemblySlug": "figaro-freelance",
+            "networkTargets": [
+                "local-anvil"
+            ],
+            "roleBindings": [
+                {
+                    "roleKind": "freelancer",
+                    "assemblyRoleKinds": [
+                        "freelancer"
+                    ],
+                    "scope": "assembly",
+                    "mechanismIds": [
+                        "core-orders",
+                        "milestone-attestation"
+                    ],
+                    "notes": "Reference freelance operator for the freelance-services assembly previews."
+                }
+            ],
+            "metadataURI": "ipfs://figaro/freelance/maria-castelli.metadata.json",
+            "metadataHash": "bafybeimariametadatahash",
+            "assetURI": "ipfs://figaro/freelance/maria-castelli.assets.json",
+            "assetHash": "bafybeimariaassethash",
+            "effectiveFrom": "2026-03-19T00:00:00Z",
+            "version": "1.0.0"
         }
     ],
     "sellerCatalogueMetadata": [
@@ -150,7 +237,9 @@
             "description": "Authentic New York style pizza.",
             "cuisine": "Italian",
             "fulfillmentModes": [
-                "delivery"
+                "consume-onsite",
+                "pickup",
+                "deliver:dutch-auction"
             ],
             "location": {
                 "geohash": "dr5reg",
@@ -215,6 +304,152 @@
                 "imageBaseURI": "ipfs://example/assets/"
             },
             "version": "1.0.0"
+        },
+        {
+            "subjectAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+            "archetypeId": "bonded-procurement-supplier",
+            "merchantId": "acme-components-supply",
+            "slug": "acme-components-supply",
+            "name": "Acme Components Supply",
+            "description": "Industrial components and small-batch CNC parts. Bonded shipments to procurement contracts.",
+            "fulfillmentModes": [
+                "pickup",
+                "deliver:seller-assigned"
+            ],
+            "location": {
+                "geohash": "dr72j",
+                "addressText": "Newark, NJ"
+            },
+            "serviceAreas": [
+                {
+                    "geohashPrefix": "dr7",
+                    "label": "Greater Newark + NYC metro"
+                }
+            ],
+            "menu": [
+                {
+                    "id": "cnc-bracket-001",
+                    "name": "CNC Aluminum Bracket (custom spec)",
+                    "description": "5-axis-machined 6061 aluminum bracket. Quote on spec.",
+                    "price": "0.10",
+                    "currencySymbol": "ETH",
+                    "category": "Components",
+                    "available": true
+                }
+            ],
+            "branding": {
+                "displayName": "Acme Components Supply",
+                "logoURI": "ipfs://example/acme-logo.png",
+                "accentColor": "#1d4ed8",
+                "themeClass": "supplier-acme"
+            },
+            "version": "1.0.0"
+        },
+        {
+            "subjectAddress": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+            "archetypeId": "disclosure-review-operator",
+            "merchantId": "greenledger-review-desk",
+            "slug": "greenledger-review-desk",
+            "name": "GreenLedger Review Desk",
+            "description": "Independent review of GHG disclosure attestations. ISO 14064-2 + GHG Protocol Corporate Standard.",
+            "fulfillmentModes": [
+                "consume-onsite"
+            ],
+            "location": {
+                "geohash": "dr5ru",
+                "addressText": "Manhattan, NY (remote review)"
+            },
+            "menu": [
+                {
+                    "id": "ghg-review-iso-14064",
+                    "name": "GHG attestation review (ISO 14064)",
+                    "description": "Asynchronous review and counter-attestation of a buyer's or seller's emission disclosure.",
+                    "price": "0.05",
+                    "currencySymbol": "ETH",
+                    "category": "Review",
+                    "available": true
+                }
+            ],
+            "branding": {
+                "displayName": "GreenLedger Review Desk",
+                "logoURI": "ipfs://example/greenledger-logo.png",
+                "accentColor": "#15803d",
+                "themeClass": "reviewer-greenledger"
+            },
+            "version": "1.0.0"
+        },
+        {
+            "subjectAddress": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+            "archetypeId": "equipment-rental-operator",
+            "merchantId": "hudson-tools-rental",
+            "slug": "hudson-tools-rental",
+            "name": "Hudson Tools Rental",
+            "description": "Construction and event-equipment rental. Daily and weekly contracts; deposit bonded against return condition.",
+            "fulfillmentModes": [
+                "pickup",
+                "deliver:seller-assigned"
+            ],
+            "location": {
+                "geohash": "dr5rd",
+                "addressText": "Long Island City, NY"
+            },
+            "serviceAreas": [
+                {
+                    "geohashPrefix": "dr5",
+                    "label": "NYC metro"
+                }
+            ],
+            "menu": [
+                {
+                    "id": "tower-scaffold-day",
+                    "name": "Mobile tower scaffold (per day)",
+                    "description": "6-meter aluminum tower scaffold. Daily rate, deposit bonded.",
+                    "price": "0.04",
+                    "currencySymbol": "ETH",
+                    "category": "Construction",
+                    "available": true
+                }
+            ],
+            "branding": {
+                "displayName": "Hudson Tools Rental",
+                "logoURI": "ipfs://example/hudson-logo.png",
+                "accentColor": "#b45309",
+                "themeClass": "renter-hudson"
+            },
+            "version": "1.0.0"
+        },
+        {
+            "subjectAddress": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
+            "archetypeId": "freelance-operator",
+            "merchantId": "maria-castelli",
+            "slug": "maria-castelli",
+            "name": "Maria Castelli Translations",
+            "description": "Italian / English translation, technical and legal. Milestone-bonded contracts.",
+            "fulfillmentModes": [
+                "consume-onsite"
+            ],
+            "location": {
+                "geohash": "dr5re",
+                "addressText": "Brooklyn, NY (remote)"
+            },
+            "menu": [
+                {
+                    "id": "translation-it-en",
+                    "name": "Italian → English translation, per 1000 words",
+                    "description": "Technical and legal translation. Milestone-bonded; partial-delivery resolution.",
+                    "price": "0.02",
+                    "currencySymbol": "ETH",
+                    "category": "Translation",
+                    "available": true
+                }
+            ],
+            "branding": {
+                "displayName": "Maria Castelli Translations",
+                "logoURI": "ipfs://example/castelli-logo.png",
+                "accentColor": "#7c3aed",
+                "themeClass": "freelancer-castelli"
+            },
+            "version": "1.0.0"
         }
     ],
     "assetDocuments": [
@@ -259,6 +494,34 @@
             },
             "assets": {
                 "cssURI": "ipfs://example/greenledger-theme.css"
+            },
+            "version": "1.0.0"
+        },
+        {
+            "assetURI": "ipfs://figaro/rental/hudson-tools-rental.assets.json",
+            "name": "Hudson Tools Rental Runtime Skin",
+            "branding": {
+                "displayName": "Hudson Tools Rental",
+                "logoURI": "ipfs://example/hudson-logo.png",
+                "accentColor": "#b45309",
+                "themeClass": "runtime-shell-hudson"
+            },
+            "assets": {
+                "cssURI": "ipfs://example/hudson-theme.css"
+            },
+            "version": "1.0.0"
+        },
+        {
+            "assetURI": "ipfs://figaro/freelance/maria-castelli.assets.json",
+            "name": "Maria Castelli Translations Runtime Skin",
+            "branding": {
+                "displayName": "Maria Castelli Translations",
+                "logoURI": "ipfs://example/castelli-logo.png",
+                "accentColor": "#7c3aed",
+                "themeClass": "runtime-shell-castelli"
+            },
+            "assets": {
+                "cssURI": "ipfs://example/castelli-theme.css"
             },
             "version": "1.0.0"
         }

@@ -162,14 +162,14 @@ export default function Compliance() {
                             <strong>Paper E &mdash; On-Chain Evidence, Off-Chain Adjudication</strong>
                             <a href="/papers/figaro-legal.pdf" className="text-xs font-semibold text-black hover:text-gray-600 shrink-0">PDF &rarr;</a>
                         </div>
-                        <p>Full doctrinal treatment of the evidentiary framework. eIDAS / UCC / UNCITRAL / Singapore ETA fit. Why on-chain juries are a category error. <Link href="/legal" className="underline hover:text-black">/legal</Link></p>
+                        <p>Full doctrinal treatment of the evidentiary framework. eIDAS / UCC / UNCITRAL / Singapore ETA fit. Why on-chain juries are a category error.</p>
                     </div>
                     <div className="border border-gray-200 rounded-lg p-5">
                         <div className="flex items-baseline justify-between gap-3 mb-1">
                             <strong>Paper G &mdash; Bookkeeping as Protocol Byproduct</strong>
                             <a href="/papers/figaro-accounting.pdf" className="text-xs font-semibold text-black hover:text-gray-600 shrink-0">PDF &rarr;</a>
                         </div>
-                        <p>A Figaro process as a self-closing ledger period. The Pacioli stack, re-examined under protocol-level records. What the audit profession stops needing to do, and what remains genuinely professional. <Link href="/accounting" className="underline hover:text-black">/accounting</Link></p>
+                        <p>A Figaro process as a self-closing ledger period. The Pacioli stack, re-examined under protocol-level records. What the audit profession stops needing to do, and what remains genuinely professional.</p>
                     </div>
                 </div>
                 <p className="mt-6 text-xs text-gray-500 leading-relaxed">

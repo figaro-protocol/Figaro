@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import type { Restaurant } from "@/lib/marketplace/types";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
@@ -90,6 +91,26 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
     const [tokenFilter, setTokenFilter] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<"default" | "tokens" | "deliveryTime">("default");
     const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+    const [autoSelectAttempted, setAutoSelectAttempted] = useState(false);
+
+    // Honor `?operator=<address>` from /discover by pre-selecting that
+    // operator's card once catalogues have loaded. Only runs once per mount
+    // so the user can navigate away from the auto-selected merchant.
+    const searchParams = useSearchParams();
+    const requestedOperator = searchParams?.get("operator")?.toLowerCase();
+    useEffect(() => {
+        if (autoSelectAttempted) return;
+        if (cataloguesLoading) return;
+        if (!requestedOperator) {
+            setAutoSelectAttempted(true);
+            return;
+        }
+        const match = allRestaurants.find(
+            (r) => r.address.toLowerCase() === requestedOperator,
+        );
+        if (match) setSelectedRestaurant(match);
+        setAutoSelectAttempted(true);
+    }, [autoSelectAttempted, cataloguesLoading, requestedOperator, allRestaurants]);
 
     const cuisines = useMemo(
         () => Array.from(new Set(allRestaurants.map((r) => r.cuisine))).sort(),
@@ -155,7 +176,7 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
                     {context.shellPresentation.title}
                 </p>
                 <h2 className="text-2xl font-bold text-black mb-2">Order from the best restaurants</h2>
-                <p className="text-neutral-600">Browse menus and order directly &mdash; no middleman fees</p>
+                <p className="text-neutral-600">Browse menus and place a bonded order with the merchant.</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">

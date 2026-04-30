@@ -35,6 +35,30 @@ const nextConfig = {
             { source: '/figaro-eats/:path*', destination: '/local-commerce/:path*', permanent: true },
             { source: '/i/figaro-eats', destination: '/i/local-commerce', permanent: true },
             { source: '/i/figaro-eats/:path*', destination: '/i/local-commerce/:path*', permanent: true },
+            // Marketing-tier restructure (2026-04): /research and /publications
+            // were replaced by /cryptoeconomics + /foundations; per-paper companion
+            // pages were retired in favor of the foundations index.
+            { source: '/research', destination: '/foundations', permanent: true },
+            { source: '/publications', destination: '/foundations', permanent: true },
+            { source: '/economics', destination: '/foundations', permanent: true },
+            { source: '/sovereign-commerce', destination: '/foundations', permanent: true },
+            { source: '/legal', destination: '/foundations', permanent: true },
+            { source: '/labor-law', destination: '/foundations', permanent: true },
+            { source: '/displaced', destination: '/foundations', permanent: true },
+            { source: '/mechanism', destination: '/foundations', permanent: true },
+            { source: '/verification', destination: '/foundations', permanent: true },
+            { source: '/network-state', destination: '/foundations', permanent: true },
+            { source: '/political-economy', destination: '/foundations', permanent: true },
+            { source: '/political-philosophy', destination: '/foundations', permanent: true },
+            { source: '/accounting', destination: '/foundations', permanent: true },
+            { source: '/grants', destination: '/groups', permanent: true },
+            { source: '/groups/:slug*', destination: '/groups', permanent: true },
+            { source: '/admin', destination: '/', permanent: true },
+            // /help and /resources removed 2026-04-30: product-shaped surfaces
+            // whose content was either canonically duplicated elsewhere
+            // (Q&A → property pages) or pure index (link directory).
+            { source: '/help', destination: '/about', permanent: true },
+            { source: '/resources', destination: '/spec', permanent: true },
         ];
     },
 

@@ -11,7 +11,7 @@ export interface NavLink {
 }
 
 export const NAV_LINKS: NavLink[] = [
-    { href: "/spec", label: "Specifications" },
+    { href: "/cryptoeconomics", label: "Cryptoeconomics" },
     { href: "/builders", label: "Builders" },
     { href: "/groups", label: "Groups" },
     { href: "/fig", label: "FIG" },

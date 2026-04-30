@@ -29,54 +29,47 @@ export default function Home() {
                 </p>
 
                 <ol className="space-y-0 text-sm border border-gray-200 rounded-lg overflow-hidden">
-                    <li className="border-b border-gray-100 px-5 py-4 bg-gray-50">
-                        <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                            <span className="text-black font-semibold">Trade</span>
-                            <span className="text-xs text-gray-500 font-mono">people and agents transacting</span>
-                        </div>
+                    <li className="border-b border-gray-100 px-5 py-3 bg-gray-50 flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="text-black font-semibold">Trade</span>
+                        <span className="text-xs text-gray-500 font-mono">humans + agents</span>
                     </li>
-                    <li className="border-b border-gray-100 px-5 py-4 bg-gray-200/60">
-                        <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                            <span className="text-black font-semibold">Off-chain composition</span>
-                            <span className="text-xs text-gray-500 font-mono">any service</span>
-                        </div>
-                        <p className="text-xs text-gray-700 mt-1">UI, messaging (XMTP), geohashing (H3), maps, storage (IPFS, Arweave), indexers, agent clients. Centralized or decentralized, web2 or web3 — the kernel is indifferent.</p>
+                    <li className="border-b border-gray-100 px-5 py-3 bg-gray-100 flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="text-black font-semibold">UI · Runtime</span>
+                        <span className="text-xs text-gray-500 font-mono">assemblies · modules · skins</span>
                     </li>
-                    <li className="border-b border-gray-100 px-5 py-4 bg-gray-400/40">
-                        <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                            <span className="text-black font-semibold">On-chain composition</span>
-                            <span className="text-xs text-gray-500 font-mono">any contract</span>
-                        </div>
-                        <p className="text-xs text-gray-700 mt-1">Attestation coordinator, schema registry, per-schema validators, <code>DutchAuction</code>, <code>OperatorRegistry</code>, batch verifier, assembly manifests. External protocols plug in identically — Kleros, oracles, offset markets, lending pools.</p>
+                    <li className="border-b border-gray-100 px-5 py-3 bg-gray-200/70 flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="text-black font-semibold">Services</span>
+                        <span className="text-xs text-gray-500 font-mono">messaging · storage · identity</span>
                     </li>
-                    <li className="border-b border-gray-700 px-5 py-4 bg-black text-white">
-                        <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                            <span className="font-semibold">Kernel</span>
-                            <span className="text-xs text-gray-300 font-mono">FigaroCore</span>
-                        </div>
-                        <p className="text-xs text-gray-200 mt-1">Asymmetric bonding (buyer 2P, seller 2V) → Nash equilibrium, scaling to N parties via progressive collateralization. Buyer dominance and atomic resolution compose with the scaled mesh. No owner, no admin, no escape hatches.</p>
+                    <li className="border-b border-gray-100 px-5 py-3 bg-gray-300/70 flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="text-black font-semibold">Schemas</span>
+                        <span className="text-xs text-gray-600 font-mono">typed content · 3-layer validation</span>
                     </li>
-                    <li className="px-5 py-4 bg-white">
-                        <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                            <span className="text-black font-semibold">Network</span>
-                            <span className="text-xs text-gray-500 font-mono">any EVM chain</span>
-                        </div>
-                        <p className="text-xs text-gray-700 mt-1">Consensus, tamper-evident history, finality. Everything above inherits from this floor.</p>
+                    <li className="border-b border-gray-100 px-5 py-3 bg-gray-500/40 flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="text-black font-semibold">Protocol contracts</span>
+                        <span className="text-xs text-gray-700 font-mono">attestation · auction · registries</span>
+                    </li>
+                    <li className="border-b border-gray-800 px-5 py-3 bg-black text-white flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="font-semibold">Kernel</span>
+                        <span className="text-xs text-gray-300 font-mono">FigaroCore — the bonded primitive</span>
+                    </li>
+                    <li className="px-5 py-3 bg-white flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="text-black font-semibold">Network</span>
+                        <span className="text-xs text-gray-500 font-mono">any EVM chain</span>
                     </li>
                 </ol>
 
-                <div className="border border-dashed border-gray-300 rounded-lg px-5 py-4 mt-4">
-                    <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                        <span className="text-xs font-semibold uppercase tracking-widest text-gray-500">Edge</span>
-                        <span className="text-xs text-gray-500 font-mono">Kleros · courts</span>
-                    </div>
-                    <p className="text-xs text-gray-700 mt-2">
-                        Theoretical residual in the Grameen regime (~2%). Evidence bundle exports to off-chain forums. <Link href="/about#enforcement" className="underline">Enforcement</Link>.
-                    </p>
+                <div className="border border-dashed border-gray-300 rounded-lg px-5 py-3 mt-4 flex items-baseline justify-between gap-3 flex-wrap">
+                    <span className="text-xs font-semibold uppercase tracking-widest text-gray-500">Edge</span>
+                    <span className="text-xs text-gray-500 font-mono">Kleros · courts (Layer-3 residual)</span>
                 </div>
 
+                <p className="text-xs text-gray-500 mt-3 leading-relaxed">
+                    Adjacent dimension &mdash; <Link href="/fig/design" className="underline hover:text-black">FIG</Link>, <Link href="/groups" className="underline hover:text-black">Groups</Link>, <Link href="/foundations" className="underline hover:text-black">Foundations</Link> fund the work that produces the layers above.
+                </p>
+
                 <p className="text-base text-gray-700 leading-relaxed mt-8">
-                    The kernel&apos;s deliberate narrowness is what enables universality above it. <code>FigaroCore</code> runs one mechanism — asymmetric bonding — which scales itself from two parties to N-party process trees, plus two rules (buyer dominance, atomic resolution) that compose with the scaled mesh. It takes no position on currency, jurisdiction, identity, arbitration, role structure, or contribution metric, so any economic system can be expressed on top. A market-liberal graph, a cooperative graph, an Islamic-finance graph, a mutual-aid graph, a diaspora-network graph — all use the same kernel. The kernel is ideologically agnostic; the graph is the politics.
+                    The kernel&apos;s deliberate narrowness is what enables universality above it. <code>FigaroCore</code> runs two mechanisms doing distinct work: <strong>asymmetric bonding</strong> (the bilateral Nash equilibrium that scales from two parties to N-party process trees through progressive collateralization) and <strong>buyer dominance with atomic resolution</strong> (the weakest-link subgame that propagates cooperation pressure through the scaled mesh). Together they make trade self-enforcing without an arbitrator. The kernel takes no position on currency, jurisdiction, identity, arbitration, role structure, or contribution metric, so any economic system can be expressed on top. A market-liberal graph, a cooperative graph, an Islamic-finance graph, a mutual-aid graph, a diaspora-network graph — all use the same kernel. The kernel is ideologically agnostic; the graph is the politics.
                 </p>
 
                 <p className="text-sm text-gray-600 leading-relaxed mt-6">

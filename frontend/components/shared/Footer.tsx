@@ -6,12 +6,12 @@ export function Footer() {
             <div className="container mx-auto px-6 py-16">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
                     <div>
-                        <h4 className="text-black font-bold mb-4">SPECIFICATIONS</h4>
+                        <h4 className="text-black font-bold mb-4">CRYPTOECONOMICS</h4>
                         <div className="space-y-2">
-                            <Link href="/spec" className="block text-black hover:underline">Overview</Link>
+                            <Link href="/cryptoeconomics" className="block text-black hover:underline">Protocol cryptoeconomics</Link>
+                            <Link href="/foundations" className="block text-black hover:underline">Foundations (Zargham 8)</Link>
+                            <Link href="/spec" className="block text-black hover:underline">Specifications</Link>
                             <Link href="/schemas" className="block text-black hover:underline">Schemas</Link>
-                            <Link href="/verification" className="block text-black hover:underline">Verification</Link>
-                            <Link href="/publications" className="block text-black hover:underline">Papers</Link>
                             <Link href="/fig" className="block text-black hover:underline">FIG Token</Link>
                         </div>
                     </div>
@@ -29,16 +29,15 @@ export function Footer() {
                         <h4 className="text-black font-bold mb-4">GROUPS</h4>
                         <div className="space-y-2">
                             <Link href="/groups" className="block text-black hover:underline">Working Groups</Link>
-                            <Link href="/groups/economics-game-theory" className="block text-black hover:underline">Economics &amp; Game Theory</Link>
-                            <Link href="/groups/computer-science-cryptography" className="block text-black hover:underline">CS &amp; Cryptography</Link>
-                            <Link href="/groups/philosophy-law-ethics" className="block text-black hover:underline">Philosophy, Law &amp; Ethics</Link>
+                            <Link href="/treasuries" className="block text-black hover:underline">Treasuries</Link>
+                            <Link href="/local-commerce" className="block text-black hover:underline">Local Commerce</Link>
+                            <Link href="/verify" className="block text-black hover:underline">Verify (audit-bundle)</Link>
                         </div>
                     </div>
                     <div>
                         <h4 className="text-black font-bold mb-4">ABOUT</h4>
                         <div className="space-y-2">
                             <Link href="/about" className="block text-black hover:underline">About Figaro</Link>
-                            <Link href="/help" className="block text-black hover:underline">Help</Link>
                             <a href="https://github.com/figaro-protocol" target="_blank" rel="noopener noreferrer" className="block text-black hover:underline">GitHub</a>
                             <a href="https://twitter.com/figaroprotocol" target="_blank" rel="noopener noreferrer" className="block text-black hover:underline">X (Twitter)</a>
                         </div>

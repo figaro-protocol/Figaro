@@ -141,7 +141,7 @@ export default function About() {
                         </dt>
                         <dd className="text-base font-semibold text-black mb-1">Asymmetric bonding makes cheating irrational.</dd>
                         <dd className="text-gray-700 leading-relaxed">
-                            Both parties bond before any work begins. The only Nash-rational move is cooperation. Rational actors never defect because defection always costs more than completion. This covers the overwhelming majority of transactions; when the mechanism works as designed, no dispute ever arises. Full derivation on the <Link href="/mechanism" className="underline">mechanism</Link> page.
+                            Both parties bond before any work begins. The only Nash-rational move is cooperation. Rational actors never defect because defection always costs more than completion. This covers the overwhelming majority of transactions; when the mechanism works as designed, no dispute ever arises. Full derivation on the <Link href="/cryptoeconomics" className="underline">cryptoeconomics</Link> page.
                         </dd>
                     </div>
                     <div>
@@ -161,7 +161,7 @@ export default function About() {
                         </dt>
                         <dd className="text-base font-semibold text-black mb-1">On-chain evidence for off-chain adjudication.</dd>
                         <dd className="text-gray-700 leading-relaxed">
-                            For the residual fraction involving irrational or adversarial actors, the chain provides immutable, timestamped, role-gated evidence. Every lifecycle event is bound to the signed agreement via a merkle inclusion proof. Under eIDAS (EU), the UCC (US), and UNCITRAL model law, cryptographic evidence with tamper-proof timestamps is admissible. Adjudication happens in real courts with real procedure — not in on-chain juries. The protocol takes no position on outcomes; it only guarantees the evidence is honest. Details: <Link href="/legal" className="underline">Paper E — Evidence &amp; law</Link>.
+                            For the residual fraction involving irrational or adversarial actors, the chain provides immutable, timestamped, role-gated evidence. Every lifecycle event is bound to the signed agreement via a merkle inclusion proof. Under eIDAS (EU), the UCC (US), and UNCITRAL model law, cryptographic evidence with tamper-proof timestamps is admissible. Adjudication happens in real courts with real procedure — not in on-chain juries. The protocol takes no position on outcomes; it only guarantees the evidence is honest. Details: <a href="/papers/figaro-legal.pdf" className="underline">Paper E — Evidence &amp; law (PDF)</a>.
                         </dd>
                     </div>
                 </dl>
