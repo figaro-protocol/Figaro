@@ -52,7 +52,11 @@ const nextConfig = {
             { source: '/political-philosophy', destination: '/foundations', permanent: true },
             { source: '/accounting', destination: '/foundations', permanent: true },
             { source: '/grants', destination: '/groups', permanent: true },
-            { source: '/groups/:slug*', destination: '/groups', permanent: true },
+            // `:slug+` (one-or-more) — NOT `:slug*` (zero-or-more) — so the
+            // pattern matches `/groups/economics-game-theory` etc. but NOT
+            // `/groups` itself. The zero-segment case caused an infinite
+            // 308 self-redirect loop.
+            { source: '/groups/:slug+', destination: '/groups', permanent: true },
             { source: '/admin', destination: '/', permanent: true },
             // /help and /resources removed 2026-04-30: product-shaped surfaces
             // whose content was either canonically duplicated elsewhere

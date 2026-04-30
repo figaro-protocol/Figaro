@@ -36,16 +36,68 @@ export default function GroupsIndex() {
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-6">
                     Groups
                 </h2>
-                <ul className="space-y-6">
+                <ul className="space-y-8">
                     {GROUPS_REGISTRY.map((g) => (
-                        <li key={g.slug} className="border-b border-gray-100 pb-6">
+                        <li key={g.slug} className="border-b border-gray-100 pb-8">
                             <h3 className="text-2xl font-bold text-black">
                                 {g.name}
                             </h3>
-                            <p className="text-xs text-gray-500 mb-2">{g.discipline}</p>
-                            <p className="text-sm text-gray-700 leading-relaxed">
+                            <p className="text-xs text-gray-500 mb-3">{g.discipline}</p>
+                            <p className="text-sm text-gray-700 leading-relaxed mb-4">
                                 {g.charter}
                             </p>
+
+                            {g.readingPath && g.readingPath.length > 0 && (
+                                <div className="mb-3">
+                                    <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">
+                                        Reading path
+                                    </p>
+                                    <ul className="space-y-1.5 text-sm">
+                                        {g.readingPath.map((r) => (
+                                            <li key={r.href}>
+                                                <a
+                                                    href={r.href}
+                                                    target={r.href.startsWith("http") ? "_blank" : undefined}
+                                                    rel={r.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                                                    className="text-black hover:underline"
+                                                >
+                                                    {r.label}
+                                                </a>
+                                                {r.note && (
+                                                    <span className="text-gray-500"> &mdash; {r.note}</span>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {g.currentWork && g.currentWork.length > 0 && (
+                                <div className="mb-3">
+                                    <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">
+                                        Current work
+                                    </p>
+                                    <ul className="space-y-1 text-sm text-gray-700 list-disc pl-5">
+                                        {g.currentWork.map((w, i) => (
+                                            <li key={i}>{w}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {g.venue && (
+                                <p className="text-xs text-gray-500">
+                                    Conversation:{" "}
+                                    <a
+                                        href={g.venue.href}
+                                        target={g.venue.href.startsWith("http") ? "_blank" : undefined}
+                                        rel={g.venue.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                                        className="underline hover:text-black"
+                                    >
+                                        {g.venue.label}
+                                    </a>
+                                </p>
+                            )}
                         </li>
                     ))}
                 </ul>
