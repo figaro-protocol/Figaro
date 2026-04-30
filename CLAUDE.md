@@ -80,7 +80,7 @@ These each break a specific protocol property:
 - **"Kill Uber" / platform-tax framing** → defines Figaro by elimination
 - **Green-bond fee discounts** → breaks Nash equilibrium ($2x$ ratio)
 - **Soulbound reputation score** → reifies platform credential
-- **Multi-currency bonding within one process** → breaks the same-unit comparability that makes the 2:1 bond ratio Nash-stable from chain state alone (would need an oracle, DEX, or pre-agreed FX rate — each reintroduces a trusted/discretionary actor). Multi-token vendor UX is achievable through composition: N independent monotoken processes, or a wallet-side swap before commit. See `docs/v5/project_backlog.md` (`[K-1]`).
+- **Multi-currency bonding within one process** → breaks the same-unit comparability that makes the 2:1 bond ratio Nash-stable from chain state alone (would need an oracle, DEX, or pre-agreed FX rate — each reintroduces a trusted/discretionary actor). Multi-token vendor UX is achievable through composition: N independent monotoken processes, or a wallet-side swap before commit.
 
 Verify 3× before suggesting any change to kernel invariants.
 The MAD equilibrium is fragile — any single escape hatch degrades it.
