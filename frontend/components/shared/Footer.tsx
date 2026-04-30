@@ -1,58 +1,76 @@
 import Link from "next/link";
 import { FIGARO_TELEGRAM_URL } from "@/lib/shared/groupsRegistry";
 
+const COL_HEADER_CLS =
+    "text-xs uppercase tracking-wider text-gray-500 font-semibold mb-4";
+const COL_LINK_CLS =
+    "block text-black hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black rounded";
+
 export function Footer() {
     return (
         <footer className="border-t border-gray-300 bg-transparent">
             <div className="container mx-auto px-6 py-16">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
                     <div>
-                        <h4 className="text-black font-bold mb-4">CRYPTOECONOMICS</h4>
+                        <h4 className={COL_HEADER_CLS}>Cryptoeconomics</h4>
                         <div className="space-y-2">
-                            <Link href="/protocol" className="block text-black hover:underline">Protocol mechanisms</Link>
-                            <Link href="/cryptoeconomics" className="block text-black hover:underline">Cryptoeconomics (8 disciplines)</Link>
-                            <Link href="/spec" className="block text-black hover:underline">Specifications</Link>
-                            <Link href="/schemas" className="block text-black hover:underline">Schemas</Link>
+                            <Link href="/protocol" className={COL_LINK_CLS}>Protocol mechanisms</Link>
+                            <Link href="/cryptoeconomics" className={COL_LINK_CLS}>Cryptoeconomics</Link>
+                            <Link href="/spec" className={COL_LINK_CLS}>Specifications</Link>
+                            <Link href="/schemas" className={COL_LINK_CLS}>Schemas</Link>
                         </div>
                     </div>
                     <div>
-                        <h4 className="text-black font-bold mb-4">BUILDERS</h4>
+                        <h4 className={COL_HEADER_CLS}>Builders</h4>
                         <div className="space-y-2">
-                            <Link href="/builders" className="block text-black hover:underline">Builders</Link>
-                            <Link href="/builders/designer" className="block text-black hover:underline">Designer</Link>
-                            <Link href="/builders/assemblies" className="block text-black hover:underline">Assemblies</Link>
-                            <Link href="/integrate" className="block text-black hover:underline">Integrate (SDK)</Link>
-                            <Link href="/operators" className="block text-black hover:underline">Operators</Link>
-                            <Link href="/verify" className="block text-black hover:underline">Verify (audit-bundle)</Link>
+                            <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
+                            <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
+                            <Link href="/builders/assemblies" className={COL_LINK_CLS}>Assemblies</Link>
+                            <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
+                            <Link href="/operators" className={COL_LINK_CLS}>Operators</Link>
+                            <Link href="/verify" className={COL_LINK_CLS}>Verify</Link>
                         </div>
                     </div>
                     <div>
-                        <h4 className="text-black font-bold mb-4">GROUPS</h4>
+                        <h4 className={COL_HEADER_CLS}>Ecosystem</h4>
                         <div className="space-y-2">
-                            <Link href="/cryptoeconomics" className="block text-black hover:underline">Working Groups</Link>
-                            <Link href="/treasuries" className="block text-black hover:underline">Treasuries</Link>
-                            <Link href="/local-commerce" className="block text-black hover:underline">Local Commerce</Link>
-                            <Link href="/fig" className="block text-black hover:underline">FIG Token</Link>
-                            <Link href="/fig/design" className="block text-black hover:underline">FIG design</Link>
+                            <Link href="/treasuries" className={COL_LINK_CLS}>Treasuries</Link>
+                            <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce</Link>
+                            <Link href="/fig" className={COL_LINK_CLS}>FIG Token</Link>
+                            <Link href="/fig/design" className={COL_LINK_CLS}>FIG Design</Link>
                         </div>
                     </div>
                     <div>
-                        <h4 className="text-black font-bold mb-4">ABOUT</h4>
+                        <h4 className={COL_HEADER_CLS}>About</h4>
                         <div className="space-y-2">
-                            <Link href="/about" className="block text-black hover:underline">About Figaro</Link>
-                            <a href="https://github.com/figaro-protocol" target="_blank" rel="noopener noreferrer" className="block text-black hover:underline">GitHub</a>
-                            <a href={FIGARO_TELEGRAM_URL} target="_blank" rel="noopener noreferrer" className="block text-black hover:underline">Telegram</a>
+                            <Link href="/about" className={COL_LINK_CLS}>About Figaro</Link>
+                            <a
+                                href="https://github.com/figaro-protocol"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={COL_LINK_CLS}
+                            >
+                                GitHub
+                            </a>
+                            <a
+                                href={FIGARO_TELEGRAM_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={COL_LINK_CLS}
+                            >
+                                Telegram
+                            </a>
                         </div>
                     </div>
                 </div>
                 <div className="mt-8 pt-8 border-t border-gray-300 text-center text-black text-sm">
-                    <p>Figaro Protocol &mdash; The TCP of trade.</p>
+                    <p>Figaro Protocol &mdash; The TCP/IP of Trade.</p>
                     <div className="flex flex-wrap gap-2 justify-center items-center mt-3">
                         <a
                             href="https://github.com/figaro-protocol/Figaro-Prototype2"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block"
+                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black rounded"
                             aria-label="GitHub repository star count"
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -66,7 +84,7 @@ export function Footer() {
                             href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/LICENSE"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block"
+                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black rounded"
                             aria-label="MIT license"
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -77,32 +95,24 @@ export function Footer() {
                             />
                         </a>
                         <a
-                            href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/audit/"
+                            href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/AUDIT_REPORT.md"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block"
-                            aria-label="Audit reports"
+                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black rounded"
+                            aria-label="Audit report"
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                                src="https://img.shields.io/badge/audit-public-black?style=flat"
-                                alt="Audit: public"
+                                src="https://img.shields.io/badge/audit-report-black?style=flat"
+                                alt="Audit report"
                                 className="h-5"
                             />
                         </a>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-2 justify-center items-center mt-3 text-xs text-gray-600">
-                        <span>Open source &amp; formally verified</span>
-                        <span className="hidden sm:inline">|</span>
-                        <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="hover:underline">View on GitHub</a>
-                        <span className="hidden sm:inline">|</span>
-                        <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/audit/" target="_blank" rel="noopener noreferrer" className="hover:underline">Read the audit</a>
-                    </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                        <span>Figaro is a registered trademark. &copy; {new Date().getFullYear()} Figaro Protocol. All rights reserved.</span>
-                    </div>
-                    <div className="mt-2 text-xs text-gray-400">
-                        <span>This protocol and software are provided as-is, without warranty of any kind. No liability is accepted for loss, damages, or bugs. Use at your own risk.</span>
+                    <div className="mt-3 text-xs text-gray-500">
+                        <span>
+                            Figaro is a registered trademark. &copy; {new Date().getFullYear()} Figaro Protocol. All rights reserved. Provided as-is, without warranty of any kind. No liability is accepted for loss, damages, or bugs. Use at your own risk.
+                        </span>
                     </div>
                 </div>
             </div>
