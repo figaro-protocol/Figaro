@@ -1,0 +1,45 @@
+import type { ReactNode } from "react";
+
+interface LabelledListRowProps {
+    /** Mono-styled label rendered in the left column. */
+    label: string;
+    /** Width slot for the label column. */
+    labelWidth?: "narrow" | "default" | "wide";
+    /** Whether to uppercase the label. */
+    uppercase?: boolean;
+    /** Prose content rendered on the right. */
+    children: ReactNode;
+}
+
+const WIDTH_CLASS: Record<NonNullable<LabelledListRowProps["labelWidth"]>, string> = {
+    narrow: "w-32",
+    default: "w-40",
+    wide: "w-44",
+};
+
+/**
+ * Reusable two-column list row: a mono-styled label on the left, prose on
+ * the right. Used by `/integrate` (subpaths, events, external surfaces) and
+ * any other reference page that enumerates a labelled list. Caller wraps
+ * rows in a `<ul>`.
+ */
+export function LabelledListRow({
+    label,
+    labelWidth = "default",
+    uppercase = false,
+    children,
+}: LabelledListRowProps) {
+    return (
+        <li className="flex gap-4">
+            <span
+                className={
+                    `font-mono text-xs text-gray-500 mt-1 ${WIDTH_CLASS[labelWidth]} shrink-0` +
+                    (uppercase ? " uppercase" : "")
+                }
+            >
+                {label}
+            </span>
+            <span className="text-sm text-gray-700 leading-relaxed">{children}</span>
+        </li>
+    );
+}
