@@ -12,7 +12,6 @@ export function Footer() {
                             <Link href="/foundations" className="block text-black hover:underline">Foundations (Zargham 8)</Link>
                             <Link href="/spec" className="block text-black hover:underline">Specifications</Link>
                             <Link href="/schemas" className="block text-black hover:underline">Schemas</Link>
-                            <Link href="/fig" className="block text-black hover:underline">FIG Token</Link>
                         </div>
                     </div>
                     <div>
@@ -23,6 +22,7 @@ export function Footer() {
                             <Link href="/builders/assemblies" className="block text-black hover:underline">Assemblies</Link>
                             <Link href="/integrate" className="block text-black hover:underline">Integrate (SDK)</Link>
                             <Link href="/operators" className="block text-black hover:underline">Operators</Link>
+                            <Link href="/verify" className="block text-black hover:underline">Verify (audit-bundle)</Link>
                         </div>
                     </div>
                     <div>
@@ -31,7 +31,8 @@ export function Footer() {
                             <Link href="/groups" className="block text-black hover:underline">Working Groups</Link>
                             <Link href="/treasuries" className="block text-black hover:underline">Treasuries</Link>
                             <Link href="/local-commerce" className="block text-black hover:underline">Local Commerce</Link>
-                            <Link href="/verify" className="block text-black hover:underline">Verify (audit-bundle)</Link>
+                            <Link href="/fig" className="block text-black hover:underline">FIG Token</Link>
+                            <Link href="/fig/design" className="block text-black hover:underline">FIG design</Link>
                         </div>
                     </div>
                     <div>
