@@ -347,9 +347,12 @@ describe('analytical modules in assembly schema', () => {
         const eatsRegistry = eatsArtifact?.assembly.mechanisms.find((m) => m.mechanismId === 'operator-registration');
         const registryPackage = getMechanismPackage('registry');
 
+        // catalogue-editor is mounted by every merchant-facing assembly
+        // (currently local-commerce + direct-sale). Both feed merchants who
+        // edit their listing; neither is a registry-package default.
         expect(REFERENCE_ASSEMBLIES.filter((assembly) =>
             assembly.modules.some((module) => module.moduleId === 'catalogue-editor')
-        ).map((assembly) => assembly.identity.slug)).toEqual(['local-commerce']);
+        ).map((assembly) => assembly.identity.slug).sort()).toEqual(['direct-sale', 'local-commerce']);
         expect(eatsRegistry?.moduleBindings).toEqual(['catalogue-editor']);
         expect(getEffectiveMechanismModuleBindings(eatsRegistry!)).toEqual(expect.arrayContaining([
             'operator-registration-panel',

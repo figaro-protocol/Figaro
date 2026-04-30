@@ -111,6 +111,34 @@
             "version": "1.0.0"
         },
         {
+            "bindingId": "binding:bobs-pizza-palace:direct-sale:local-anvil",
+            "subjectAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "archetypeId": "merchant-direct-sale",
+            "assemblySlug": "direct-sale",
+            "networkTargets": [
+                "local-anvil"
+            ],
+            "roleBindings": [
+                {
+                    "roleKind": "merchant-operator",
+                    "assemblyRoleKinds": [
+                        "merchant"
+                    ],
+                    "scope": "assembly",
+                    "mechanismIds": [
+                        "core-orders"
+                    ],
+                    "notes": "Direct-sale binding for Bob's Pizza — covers consume-onsite (dine-in) and pickup (counter / takeaway). Sibling of the local-commerce binding above; the cart routes to whichever assembly matches the buyer's chosen fulfilment method."
+                }
+            ],
+            "metadataURI": "ipfs://figaro/merchants/bobs-pizza-palace.metadata.json",
+            "metadataHash": "bafybeimetadatahash",
+            "assetURI": "ipfs://figaro/merchants/bobs-pizza-palace.assets.json",
+            "assetHash": "bafybeiassethash",
+            "effectiveFrom": "2026-03-19T00:00:00Z",
+            "version": "1.0.0"
+        },
+        {
             "bindingId": "binding:acme-components-supply:local-anvil",
             "subjectAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
             "archetypeId": "bonded-procurement-supplier",

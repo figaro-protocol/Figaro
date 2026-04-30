@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { useCommerce, useCheckout } from "@/lib/commerce";
-import { useCartStore } from "@/lib/marketplace/cartStore";
+import { useCartStore, type FulfillmentMode } from "@/lib/marketplace/cartStore";
 import type { CartItem } from "@/lib/marketplace/types";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { broadcastSharedCommitment } from "@/lib/core/commitmentBroadcast";
@@ -14,6 +14,21 @@ import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
+import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
+import {
+    FULFILMENT_MODE_LABELS,
+    isDeliveryFulfilment,
+    mapFulfilmentToAssemblySlug,
+    mapFulfilmentToHandoff,
+} from "@/lib/marketplace/fulfilmentRouting";
+
+const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
+    "consume-onsite",
+    "pickup",
+    "deliver:buyer-assigned",
+    "deliver:seller-assigned",
+    "deliver:dutch-auction",
+];
 
 function MinusIcon({ className }: { className?: string }) {
     return (
@@ -77,7 +92,42 @@ export function CartModule({ moduleId, context }: ModuleProps) {
     const totalPrice = getTotalPrice();
     const totalPriceAmount = items.length > 0 && totalPrice ? parseToken(totalPrice, tokenDecimals) : 0n;
     const buyerBondAmount = totalPriceAmount > 0n ? calculateBonds(totalPriceAmount, totalPriceAmount).buyerBond : 0n;
-    const deliveryDetailsIncomplete = fulfillmentMode === "delivery" && (!deliveryAddress.trim() || Number(deliveryMaxPrice) <= 0);
+    const isDelivery = isDeliveryFulfilment(fulfillmentMode);
+    const deliveryDetailsIncomplete = isDelivery && (!deliveryAddress.trim() || Number(deliveryMaxPrice) <= 0);
+
+    // Look up the merchant for items[0] so we can filter the picker to the
+    // fulfilment modes they advertise. Falls back to all 5 canonical modes
+    // when the catalogue lookup hasn't resolved yet (or the merchant has no
+    // declared modes — surface everything rather than block the buyer).
+    const cataloguesResult = useRegisteredCatalogues({});
+    const restaurants = cataloguesResult?.restaurants ?? [];
+    const merchantAddress = items[0]?.restaurantAddress?.toLowerCase();
+    const supportedModes = useMemo<FulfillmentMode[]>(() => {
+        if (!merchantAddress) return ALL_FULFILMENT_MODES;
+        const merchant = restaurants.find(
+            (r) => r.address.toLowerCase() === merchantAddress,
+        );
+        const declared = merchant?.fulfillmentModes ?? [];
+        const canonical = declared.filter((m): m is FulfillmentMode =>
+            (ALL_FULFILMENT_MODES as readonly string[]).includes(m),
+        );
+        return canonical.length > 0 ? canonical : ALL_FULFILMENT_MODES;
+    }, [merchantAddress, restaurants]);
+
+    // If the cart's persisted fulfilment mode isn't supported by the
+    // selected merchant, snap to the first supported mode so the manifest
+    // is never built against an unsupported method.
+    useEffect(() => {
+        if (!supportedModes.includes(fulfillmentMode)) {
+            setFulfillmentMode(supportedModes[0]);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [supportedModes]);
+
+    // Drives post-commit routing once the cart wires it up; unused for now
+    // (the kernel doesn't read it). Surfaced as a `data-` attribute so e2e
+    // can assert the cart picked the right slug.
+    const targetAssemblySlug = mapFulfilmentToAssemblySlug(fulfillmentMode);
 
     const balance = tokenBalance ?? 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
@@ -120,8 +170,8 @@ export function CartModule({ moduleId, context }: ModuleProps) {
             manifestFields: {
                 origin: "",
                 destination: "",
-                fulfilmentMethod: fulfillmentMode === "delivery" ? "deliver:dutch-auction" : "pickup",
-                handoffMode: fulfillmentMode === "delivery" ? "meet-at-door" : "face-to-face",
+                fulfilmentMethod: fulfillmentMode,
+                handoffMode: mapFulfilmentToHandoff(fulfillmentMode),
             },
         });
 
@@ -184,7 +234,13 @@ export function CartModule({ moduleId, context }: ModuleProps) {
     };
 
     return (
-        <div data-testid="cart-module" data-module-id={moduleId} data-skin={context.skinBundle?.skinId}>
+        <div
+            data-testid="cart-module"
+            data-module-id={moduleId}
+            data-skin={context.skinBundle?.skinId}
+            data-fulfilment-mode={fulfillmentMode}
+            data-target-assembly={targetAssemblySlug}
+        >
             {/* Floating cart button */}
             <button
                 onClick={handleToggle}
@@ -285,34 +341,31 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                                 </button>
                                 <h3 className="text-xl font-bold text-black">Fulfillment</h3>
 
-                                {/* Fulfillment mode selector */}
+                                {/* Fulfillment mode selector — driven by the merchant's declared
+                                     fulfillmentModes (read from their catalogue metadata). */}
                                 <div>
                                     <label className="block text-sm font-medium text-neutral-700 mb-2">How would you like to receive your order?</label>
-                                    <div className="flex gap-2" data-testid="fulfillment-mode-selector">
-                                        <button
-                                            data-testid="btn-mode-delivery"
-                                            onClick={() => setFulfillmentMode("delivery")}
-                                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${fulfillmentMode === "delivery" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-neutral-700 border-neutral-300 hover:border-blue-400"}`}
-                                            style={fulfillmentMode === "delivery" && accentTone
-                                                ? { backgroundColor: accentTone, borderColor: accentTone }
-                                                : undefined}
-                                        >
-                                            🚗 Delivery
-                                        </button>
-                                        <button
-                                            data-testid="btn-mode-pickup"
-                                            onClick={() => setFulfillmentMode("pickup")}
-                                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${fulfillmentMode === "pickup" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-neutral-700 border-neutral-300 hover:border-blue-400"}`}
-                                            style={fulfillmentMode === "pickup" && accentTone
-                                                ? { backgroundColor: accentTone, borderColor: accentTone }
-                                                : undefined}
-                                        >
-                                            🏪 Pickup
-                                        </button>
+                                    <div className="flex flex-col gap-2" data-testid="fulfillment-mode-selector">
+                                        {supportedModes.map((mode) => {
+                                            const selected = fulfillmentMode === mode;
+                                            return (
+                                                <button
+                                                    key={mode}
+                                                    data-testid={`btn-mode-${mode}`}
+                                                    onClick={() => setFulfillmentMode(mode)}
+                                                    className={`py-2 px-3 rounded-lg text-sm font-medium border transition-colors text-left ${selected ? "bg-blue-600 text-white border-blue-600" : "bg-white text-neutral-700 border-neutral-300 hover:border-blue-400"}`}
+                                                    style={selected && accentTone
+                                                        ? { backgroundColor: accentTone, borderColor: accentTone }
+                                                        : undefined}
+                                                >
+                                                    {FULFILMENT_MODE_LABELS[mode]}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
-                                {fulfillmentMode === "delivery" && (
+                                {isDelivery && (
                                     <>
                                         <div>
                                             <label htmlFor="cart-delivery-address" className="block text-sm font-medium text-neutral-700 mb-1">
@@ -367,7 +420,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                                         ? { backgroundColor: accentTone, borderColor: accentTone }
                                         : undefined}
                                 >
-                                    Confirm {fulfillmentMode === "pickup" ? "Pickup" : "Delivery Details"}
+                                    Confirm {isDelivery ? "Delivery Details" : "Fulfilment"}
                                 </button>
                             </div>
                         ) : (
@@ -421,7 +474,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                                             <span className="text-blue-600" style={labelStyle} data-testid="cart-total">{totalPrice} ETH</span>
                                         </div>
 
-                                        {fulfillmentMode === "delivery" && !deliveryAddress.trim() ? (
+                                        {isDelivery && !deliveryAddress.trim() ? (
                                             <button
                                                 data-testid="btn-add-delivery-details"
                                                 onClick={() => setStep("delivery")}

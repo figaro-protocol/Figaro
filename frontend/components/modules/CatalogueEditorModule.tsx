@@ -28,6 +28,16 @@ import type {
     CatalogueItemMetadata,
     SupportedSchemaDeclaration,
 } from "@/lib/shared/sellerCatalogueMetadata";
+import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
+import { FULFILMENT_MODE_LABELS } from "@/lib/marketplace/fulfilmentRouting";
+
+const ALL_FULFILMENT_MODES: CanonicalFulfilmentMethod[] = [
+    "consume-onsite",
+    "pickup",
+    "deliver:buyer-assigned",
+    "deliver:seller-assigned",
+    "deliver:dutch-auction",
+];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -259,6 +269,9 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
     const [accentColor, setAccentColor] = useState("");
     const [logoURI, setLogoURI] = useState("");
     const [selectedSchemas, setSelectedSchemas] = useState<Set<string>>(new Set());
+    const [selectedFulfilmentModes, setSelectedFulfilmentModes] = useState<Set<CanonicalFulfilmentMethod>>(
+        new Set(["deliver:seller-assigned"]),
+    );
 
     const [publishStatus, setPublishStatus] = useState<"idle" | "pinning" | "updating" | "done" | "error">("idle");
     const [publishError, setPublishError] = useState<string | null>(null);
@@ -284,6 +297,13 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
         if (catalogue.supportedSchemas) {
             setSelectedSchemas(new Set(catalogue.supportedSchemas.map((s) => s.schemaKey)));
         }
+        const declared = (catalogue.fulfillmentModes ?? []).filter(
+            (m): m is CanonicalFulfilmentMethod =>
+                (ALL_FULFILMENT_MODES as readonly string[]).includes(m),
+        );
+        if (declared.length > 0) {
+            setSelectedFulfilmentModes(new Set(declared));
+        }
     }, [catalogue]);
 
     // ── Menu item CRUD ────────────────────────────────────────────────────────
@@ -307,6 +327,15 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
             const next = new Set(prev);
             if (next.has(key)) next.delete(key);
             else next.add(key);
+            return next;
+        });
+    }, []);
+
+    const toggleFulfilmentMode = useCallback((mode: CanonicalFulfilmentMethod) => {
+        setSelectedFulfilmentModes((prev) => {
+            const next = new Set(prev);
+            if (next.has(mode)) next.delete(mode);
+            else next.add(mode);
             return next;
         });
     }, []);
@@ -347,7 +376,9 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
                 name: merchantName.trim(),
                 description: description.trim() || undefined,
                 cuisine: cuisine.trim() || undefined,
-                fulfillmentModes: ["delivery"],
+                fulfillmentModes: selectedFulfilmentModes.size > 0
+                    ? Array.from(selectedFulfilmentModes)
+                    : ["deliver:seller-assigned"],
                 location: {
                     geohash: geohash.trim(),
                     addressText: addressText.trim() || undefined,
@@ -598,6 +629,50 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
                         </div>
                     </div>
                 </div>
+            </section>
+
+            {/* Fulfillment Modes — what shapes of order this merchant accepts.
+                 Drives the cart's mode picker and routes commitments to the
+                 right assembly (consume-onsite/pickup → direct-sale; deliver:* → local-commerce). */}
+            <section className="space-y-3">
+                <h4 className="text-sm font-medium text-black" style={accentTextStyle}>Fulfillment Modes</h4>
+                <p className="text-xs text-neutral-500">
+                    Declare which fulfilment methods you accept. The buyer&apos;s cart picker shows only these. <code>consume-onsite</code> and <code>pickup</code> imply a one-node order (no delivery sub-order); the three <code>deliver:*</code> variants imply a courier sub-order.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {ALL_FULFILMENT_MODES.map((mode) => (
+                        <label
+                            key={mode}
+                            className={`flex items-start gap-2 p-2 rounded border cursor-pointer transition-colors ${selectedFulfilmentModes.has(mode)
+                                ? "border-black bg-neutral-50"
+                                : "border-neutral-200 hover:border-neutral-300"
+                                }`}
+                            style={selectedFulfilmentModes.has(mode) && accentTone
+                                ? {
+                                    borderColor: accentTone,
+                                    boxShadow: `0 0 0 1px ${accentTone} inset`,
+                                }
+                                : undefined}
+                            data-testid={`fulfilment-mode-toggle-${mode}`}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={selectedFulfilmentModes.has(mode)}
+                                onChange={() => toggleFulfilmentMode(mode)}
+                                className="mt-0.5"
+                            />
+                            <div>
+                                <span className="text-sm font-medium text-black">{FULFILMENT_MODE_LABELS[mode]}</span>
+                                <p className="text-xs text-neutral-500 font-mono">{mode}</p>
+                            </div>
+                        </label>
+                    ))}
+                </div>
+                {selectedFulfilmentModes.size === 0 && (
+                    <p className="text-xs text-amber-700">
+                        At least one fulfilment mode is required. Defaulting to <code>deliver:seller-assigned</code> on publish.
+                    </p>
+                )}
             </section>
 
             {/* Supported Schemas — seller-level composability */}

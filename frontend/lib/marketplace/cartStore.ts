@@ -1,8 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CartItem } from "./types";
+import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 
-export type FulfillmentMode = "pickup" | "delivery";
+/**
+ * Cart's fulfilment mode mirrors the canonical `figaro-fulfilment-v1` enum
+ * verbatim — five values: consume-onsite, pickup, and three `deliver:*`
+ * variants. Replaces the prior 2-value `pickup | delivery` shape so the
+ * cart can drive both 1-node (`direct-sale`) and N-node (`local-commerce`)
+ * assembly bindings. See `fulfilmentRouting.ts` for the assembly-slug map.
+ */
+export type FulfillmentMode = CanonicalFulfilmentMethod;
 
 interface CartStore {
     items: CartItem[];
@@ -22,7 +30,7 @@ export const useCartStore = create<CartStore>()(
         (set, get) => ({
             items: [],
             deliveryMaxPrice: "0.002",
-            fulfillmentMode: "delivery" as FulfillmentMode,
+            fulfillmentMode: "deliver:seller-assigned" as FulfillmentMode,
 
             addItem: (newItem) =>
                 set((state) => {
@@ -62,7 +70,7 @@ export const useCartStore = create<CartStore>()(
                     return { items: updated };
                 }),
 
-            clearCart: () => set({ items: [], deliveryMaxPrice: "0.002", fulfillmentMode: "delivery" as FulfillmentMode }),
+            clearCart: () => set({ items: [], deliveryMaxPrice: "0.002", fulfillmentMode: "deliver:seller-assigned" as FulfillmentMode }),
 
             setDeliveryMaxPrice: (price) => set({ deliveryMaxPrice: price }),
 

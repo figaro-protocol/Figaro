@@ -65,6 +65,22 @@ function RestaurantCardInline({ restaurant, onSelect }: RestaurantCardInlineProp
                     </div>
                 )}
 
+                {/* Fulfillment modes the merchant accepts — drives the cart's
+                     mode picker and the assembly the buyer's commitment routes to. */}
+                {restaurant.fulfillmentModes && restaurant.fulfillmentModes.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3" data-testid="fulfillment-mode-badges">
+                        {restaurant.fulfillmentModes.map((mode) => (
+                            <span
+                                key={mode}
+                                className="text-xs px-2 py-0.5 rounded bg-neutral-100 text-neutral-700 border border-neutral-200"
+                                data-testid={`fulfillment-mode-badge-${mode}`}
+                            >
+                                {mode}
+                            </span>
+                        ))}
+                    </div>
+                )}
+
                 <div className="flex items-center gap-4 text-xs">
                     <div className="text-neutral-500">⏱️ {restaurant.deliveryTime}</div>
                     <div className="text-neutral-500">Min: {restaurant.minimumOrder} ETH</div>
