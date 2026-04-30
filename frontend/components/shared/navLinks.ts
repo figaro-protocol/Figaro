@@ -14,5 +14,6 @@ export const NAV_LINKS: NavLink[] = [
     { href: "/protocol", label: "Protocol" },
     { href: "/cryptoeconomics", label: "Cryptoeconomics" },
     { href: "/composability", label: "Composability" },
+    { href: "/groups", label: "Groups" },
     { href: "/about", label: "About" },
 ];

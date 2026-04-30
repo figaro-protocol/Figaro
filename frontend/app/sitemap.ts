@@ -14,6 +14,7 @@ const PUBLIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[numb
     { path: "/cryptoeconomics", changeFrequency: "weekly", priority: 0.9 },
     { path: "/protocol", changeFrequency: "weekly", priority: 0.9 },
     { path: "/composability", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/groups", changeFrequency: "weekly", priority: 0.9 },
     { path: "/about", changeFrequency: "weekly", priority: 0.9 },
     { path: "/spec", changeFrequency: "weekly", priority: 0.9 },
     { path: "/builders", changeFrequency: "weekly", priority: 0.9 },

@@ -57,11 +57,12 @@ const nextConfig = {
             // /foundations was the prior URL of the Zargham-disciplines page;
             // it has been renamed to /cryptoeconomics (matches the article title).
             { source: '/foundations', destination: '/cryptoeconomics', permanent: true },
-            // /groups was consolidated into /cryptoeconomics on 2026-04-30;
-            // working-groups now render inline under each Zargham discipline.
-            { source: '/groups', destination: '/cryptoeconomics', permanent: true },
-            { source: '/groups/:slug+', destination: '/cryptoeconomics', permanent: true },
-            { source: '/grants', destination: '/cryptoeconomics', permanent: true },
+            // /groups restored 2026-04-30 as the canonical working-groups page
+            // (cryptoeconomic + composability axes + grants + community).
+            // /groups/:slug+ keeps redirecting since per-discipline subpages
+            // are not currently shipped.
+            { source: '/groups/:slug+', destination: '/groups', permanent: true },
+            { source: '/grants', destination: '/groups', permanent: true },
             { source: '/admin', destination: '/', permanent: true },
             // /help and /resources removed 2026-04-30: product-shaped surfaces
             // whose content was either canonically duplicated elsewhere

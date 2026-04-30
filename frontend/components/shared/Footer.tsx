@@ -35,6 +35,7 @@ export function Footer() {
                     <div>
                         <h4 className={COL_HEADER_CLS}>Ecosystem</h4>
                         <div className="space-y-2">
+                            <Link href="/groups" className={COL_LINK_CLS}>Working Groups</Link>
                             <Link href="/treasuries" className={COL_LINK_CLS}>Treasuries</Link>
                             <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce</Link>
                             <Link href="/fig" className={COL_LINK_CLS}>FIG Token</Link>
