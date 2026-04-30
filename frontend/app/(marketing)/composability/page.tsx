@@ -56,19 +56,19 @@ export default function Composability() {
 
             <MarketingSection eyebrow="Three tiers of extension" title="Each tier carries a different blast radius.">
                 <dl className="space-y-6 text-sm">
-                    <div className="border-l-2 border-gray-300 pl-6">
+                    <div id="tier-1" className="border-l-2 border-gray-300 pl-6 scroll-mt-24">
                         <dt className="text-base font-semibold text-black mb-1">Tier 1 — Compose against existing primitives</dt>
                         <dd className="text-gray-700 leading-relaxed">
                             An assembly is a configuration artifact that binds the deployed kernel, attestation coordinator, schema registry, and validators in force. No new on-chain code; the assembly is the only authored artifact. The equilibrium is unchanged because nothing new is deployed.
                         </dd>
                     </div>
-                    <div className="border-l-2 border-gray-500 pl-6">
+                    <div id="tier-2" className="border-l-2 border-gray-500 pl-6 scroll-mt-24">
                         <dt className="text-base font-semibold text-black mb-1">Tier 2 — Add a typed clause</dt>
                         <dd className="text-gray-700 leading-relaxed">
                             Register a new <code>schemaId</code> and ship its validation layers in lockstep &mdash; TypeScript and Solidity today; SP1 Rust mirror pending. The settlement substrate is unchanged; the attestation surface extends. The kernel still gates every attestation through the validator; the new schema author owns the validator&apos;s correctness.
                         </dd>
                     </div>
-                    <div className="border-l-2 border-black pl-6">
+                    <div id="tier-3" className="border-l-2 border-black pl-6 scroll-mt-24">
                         <dt className="text-base font-semibold text-black mb-1">Tier 3 — Add a mechanism</dt>
                         <dd className="text-gray-700 leading-relaxed">
                             Deploy a mechanism primitive (allocation, pricing, discovery, coordination) above the kernel via the coordinator pattern. The kernel still enforces its invariants; the new contract must prove its own. Strongly recommended: external audit before mainnet deployment.
@@ -76,7 +76,7 @@ export default function Composability() {
                     </div>
                 </dl>
                 <p className="text-sm text-gray-600 mt-6">
-                    Operational tools at each tier &mdash; Designer, Authoring Studio, Registered assemblies, Schemas, Contracts, SDK, Console &mdash; are catalogued at <Link href="/builders" className="underline hover:text-black">/builders</Link>.
+                    Operational tools at each tier &mdash; Designer, Schemas, Contracts, SDK, Console &mdash; are catalogued at <Link href="/builders" className="underline hover:text-black">/builders</Link>.
                 </p>
             </MarketingSection>
 

@@ -60,7 +60,7 @@ export default function BuildersPage() {
 
                 <div className="border-l-2 border-gray-300 pl-6 mb-8">
                     <p className="text-base font-semibold text-black mb-1">Tier 1 &mdash; Compose against existing primitives</p>
-                    <p className="text-sm text-gray-600 mb-4">No new on-chain code; the assembly is the only authored artifact.</p>
+                    <p className="text-sm text-gray-600 mb-4">Property statement on <Link href="/composability#tier-1" className="underline hover:text-black">Composability</Link>.</p>
                     <ul className="space-y-3 text-sm">
                         <li>
                             <Link href="/builders/designer" className="text-black font-medium hover:underline">Designer</Link>
@@ -71,7 +71,7 @@ export default function BuildersPage() {
 
                 <div className="border-l-2 border-gray-500 pl-6 mb-8">
                     <p className="text-base font-semibold text-black mb-1">Tier 2 &mdash; Add a typed clause</p>
-                    <p className="text-sm text-gray-600 mb-4">Register a new <code>schemaId</code>; ship validation layers in lockstep (TypeScript and Solidity today; SP1 Rust mirror pending).</p>
+                    <p className="text-sm text-gray-600 mb-4">Property statement on <Link href="/composability#tier-2" className="underline hover:text-black">Composability</Link>.</p>
                     <ul className="space-y-3 text-sm">
                         <li>
                             <Link href="/schemas" className="text-black font-medium hover:underline">Schemas</Link>
@@ -86,7 +86,7 @@ export default function BuildersPage() {
 
                 <div className="border-l-2 border-black pl-6 mb-8">
                     <p className="text-base font-semibold text-black mb-1">Tier 3 &mdash; Add a mechanism</p>
-                    <p className="text-sm text-gray-600 mb-4">Deploy a mechanism primitive above the kernel via the coordinator pattern. The kernel still enforces its invariants; the new contract must prove its own. Strongly recommended: external audit before mainnet deployment.</p>
+                    <p className="text-sm text-gray-600 mb-4">Property statement on <Link href="/composability#tier-3" className="underline hover:text-black">Composability</Link>.</p>
                     <ul className="space-y-3 text-sm">
                         <li>
                             <Link href="/spec" className="text-black font-medium hover:underline">Contracts</Link>

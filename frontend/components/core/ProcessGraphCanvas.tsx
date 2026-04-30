@@ -58,6 +58,20 @@ import {
 } from "@/lib/designer/syntheticProcess";
 import { CANONICAL_FULFILMENT_METHODS_LIST } from "@/lib/core/orderAgreement";
 
+/**
+ * Edge pills represent the *child* order's fulfilment method (root orders
+ * have no incoming edge). A sub-order exists only because a seller
+ * outsourced part of the work; under root-buyer-dominance the sub-order's
+ * buyer IS the root buyer, so `consume-onsite` (buyer at sub-seller's site)
+ * and `pickup` (buyer fetches from sub-seller) are nonsensical for sub-edges
+ * — those are one-node-graph methods that imply no sub-order. Restrict the
+ * picker to the three `deliver:*` variants. The root order's own
+ * fulfilment method is set elsewhere (default: `deliver:seller-assigned`)
+ * and is not edited via an edge pill.
+ */
+const SUB_ORDER_FULFILMENT_OPTIONS: readonly CanonicalFulfilmentMethod[] =
+    CANONICAL_FULFILMENT_METHODS_LIST.filter((m) => m.startsWith("deliver:"));
+
 // ── Public types ────────────────────────────────────────────────────────────
 
 export type GraphLens = "default" | "value" | "geo" | "capital" | "ghg";
@@ -424,7 +438,7 @@ function MechanismEdge(props: EdgeProps) {
                             className="absolute top-full left-1/2 -translate-x-1/2 mt-1 rounded border border-neutral-300 bg-white shadow-lg py-1 min-w-[220px]"
                             data-testid={`mechanism-popover-${childId}`}
                         >
-                            {CANONICAL_FULFILMENT_METHODS_LIST.map((opt) => (
+                            {SUB_ORDER_FULFILMENT_OPTIONS.map((opt) => (
                                 <button
                                     key={opt}
                                     type="button"
