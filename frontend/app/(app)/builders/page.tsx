@@ -10,9 +10,9 @@ export default function BuildersPage() {
                 title="The operational catalogue."
                 lead={
                     <>
-                        Tools for composing, authoring, registering, prototyping,
-                        and running bonded processes. Organized by the three
-                        tiers of the extension doctrine. The property statement
+                        Tools for composing and running bonded processes.
+                        Organized by the three tiers of the extension doctrine.
+                        The property statement
                         &mdash; what composability is, why the kernel&apos;s
                         narrowness produces it, the coordinator pattern that
                         preserves the equilibrium &mdash; is on{" "}
@@ -64,19 +64,7 @@ export default function BuildersPage() {
                     <ul className="space-y-3 text-sm">
                         <li>
                             <Link href="/builders/designer" className="text-black font-medium hover:underline">Designer</Link>
-                            <span className="text-gray-700"> &mdash; three-column composition canvas: palette (blocks) → canvas (roles, views, slots, bindings) → inspector → publish drawer. Validates readiness against the assembly schema. Drafts persist locally.</span>
-                        </li>
-                        <li>
-                            <Link href="/builders/authoring" className="text-black font-medium hover:underline">Authoring Studio</Link>
-                            <span className="text-gray-700"> &mdash; server-action publish flow. Takes a Designer draft, validates against the assembly schema, and writes to the on-chain registry under the operator&apos;s wallet.</span>
-                        </li>
-                        <li>
-                            <Link href="/builders/assemblies" className="text-black font-medium hover:underline">Registered assemblies</Link>
-                            <span className="text-gray-700"> &mdash; index of assemblies written to the on-chain registry. Read surface for the current public graph.</span>
-                        </li>
-                        <li>
-                            <Link href="/builders/prototype" className="text-black font-medium hover:underline">Prototype shells</Link>
-                            <span className="text-gray-700"> &mdash; resolves an assembly through runtime-identity binding for live inspection. The same shell that ships at <code>/i/[slug]</code>, instrumented for builder-side iteration.</span>
+                            <span className="text-gray-700"> &mdash; DAG-of-orders editor: spawn sub-orders from a parent node, merge fan-in by dropping onto an existing node, and swap the per-edge fulfilment method (consume-onsite, pickup, deliver:buyer-assigned, deliver:seller-assigned, deliver:dutch-auction); per-node baseline-graph clauses (Geo, GHG, Handoff, Proximity, Jurisdiction) edit in a side drawer. Drafts persist locally; live instances render at <code>/i/[slug]</code>.</span>
                         </li>
                     </ul>
                 </div>

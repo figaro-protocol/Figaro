@@ -22,7 +22,7 @@ export default function DesignerLanding() {
                     An assembly is a composition of roles, coordination mechanisms, and display views that use the Figaro kernel to coordinate a multi-party process.
                 </p>
                 <p className="text-base text-neutral-600 leading-relaxed max-w-2xl">
-                    Every assembly inherits the seven baseline graphs — capital flow (committed at buy time), geolocation, GHG, handoff, proximity, jurisdiction, and DAG topology — automatically. On top of the baseline, you add components (today: Dutch auction) that bundle their own schemas, backend, and UI.
+                    Every assembly inherits the seven baseline graphs — capital flow (committed at buy time), geolocation, GHG, handoff, proximity, jurisdiction, and DAG topology — automatically. On top of the baseline, you extend the process tree by spawning sub-orders from any node and choosing a fulfilment method per edge. Today the supported methods are consume-onsite, pickup, and three delivery variants — including Dutch-auction dispatch.
                 </p>
                 <div className="mt-8">
                     <Link
@@ -39,7 +39,7 @@ export default function DesignerLanding() {
                     Your drafts
                 </h2>
                 <p className="text-sm text-neutral-600 mb-6 max-w-2xl">
-                    Designs you&apos;ve saved from the canvas. Drafts are kept in this browser&apos;s local storage; they don&apos;t leave your machine.
+                    Designs you&apos;ve saved from the DAG editor. Drafts are kept in this browser&apos;s local storage; they don&apos;t leave your machine.
                 </p>
                 <DraftsList />
             </section>

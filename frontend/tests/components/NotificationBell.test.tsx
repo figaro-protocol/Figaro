@@ -100,23 +100,6 @@ describe("NotificationBell", () => {
         expect(mocks.pushMock).not.toHaveBeenCalled();
     });
 
-    it("cancels navigation when builder authoring has an unsaved draft", async () => {
-        mocks.pathnameMock.mockReturnValue("/builders/authoring");
-        (window as Window & { __FIGARO_HAS_UNSAVED_BUILDER_DRAFT__?: boolean }).__FIGARO_HAS_UNSAVED_BUILDER_DRAFT__ = true;
-        const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
-        const user = userEvent.setup();
-        render(<NotificationBell />);
-        await user.click(screen.getByRole("button", { name: /notifications: 1 unread/i }));
-        await user.click(screen.getByLabelText(/unread notification: new order committed/i));
-        expect(confirmSpy).toHaveBeenCalledWith(
-            "You have unsaved builder changes. Leave this page and open the Protocol Terminal?"
-        );
-        expect(mocks.markAsReadMock).not.toHaveBeenCalled();
-        expect(mocks.setViewedProcessIdMock).not.toHaveBeenCalled();
-        expect(mocks.pushMock).not.toHaveBeenCalled();
-        confirmSpy.mockRestore();
-    });
-
     it("shows empty state controls correctly", async () => {
         mocks.notificationsState = {
             notifications: [],

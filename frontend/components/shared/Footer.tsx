@@ -26,7 +26,6 @@ export function Footer() {
                         <div className="space-y-2">
                             <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
                             <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
-                            <Link href="/builders/assemblies" className={COL_LINK_CLS}>Assemblies</Link>
                             <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
                             <Link href="/operators" className={COL_LINK_CLS}>Operators</Link>
                             <Link href="/verify" className={COL_LINK_CLS}>Verify</Link>

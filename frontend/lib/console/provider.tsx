@@ -450,7 +450,7 @@ export function FigaroProvider({ children }: { children: ReactNode }) {
                         });
                     },
                     publishAssembly: async (action) => {
-                        const { publishAssemblyAction } = await import("@/app/(app)/builders/authoring/actions");
+                        const { publishAssemblyAction } = await import("@/lib/builder/publishActions");
                         return publishAssemblyAction(serializeAssemblyDocument(action.assembly));
                     },
                 });

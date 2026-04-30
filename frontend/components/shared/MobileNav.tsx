@@ -1,20 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Menu from "@/components/icons/Menu";
 import X from "@/components/icons/X";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_LINKS, NavLink } from "@/components/shared/navLinks";
-import { DiscoverButton } from "@/components/shared/DiscoverButton";
 
 interface MobileNavProps {
     links?: NavLink[];
     logo?: React.ReactNode;
     theme?: "light" | "dark";
+    /** Optional CTA pinned to the top of the slide-out drawer. Marketing
+     *  passes `<DiscoverButton>`; (app) omits it. */
+    topCta?: ReactNode;
 }
 
-export function MobileNav({ links, logo, theme = "dark" }: MobileNavProps) {
+export function MobileNav({ links, logo, theme = "dark", topCta }: MobileNavProps) {
     links = links ?? NAV_LINKS;
     const [isOpen, setIsOpen] = useState(false);
     const pathname = usePathname();
@@ -143,11 +145,14 @@ export function MobileNav({ links, logo, theme = "dark" }: MobileNavProps) {
                             </button>
                         </div>
 
-                        {/* Discover CTA — primary curriculum entry, surfaced at top
-                             so the mobile drawer matches the desktop affordance set. */}
-                        <div className={`border-b p-4 ${headerBorderCls}`}>
-                            <DiscoverButton className="inline-flex w-full justify-center" />
-                        </div>
+                        {/* Optional top CTA — caller-controlled. MarketingHeader
+                             passes `<DiscoverButton>`; (app) Header omits it so
+                             the (app) drawer doesn't surface a marketing CTA. */}
+                        {topCta && (
+                            <div className={`border-b p-4 ${headerBorderCls}`}>
+                                {topCta}
+                            </div>
+                        )}
 
                         {/* Navigation Links */}
                         <nav className="flex-1 overflow-y-auto p-4">

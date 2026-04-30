@@ -9,7 +9,16 @@ import { HeaderShell } from "@/components/shared/HeaderShell";
  * `/protocol`, `/cryptoeconomics`, `/spec`, etc. mount this; transactional
  * and reference routes mount the full `Header.tsx` via
  * `app/(app)/layout.tsx`.
+ *
+ * Discover lives here (and only here): on marketing surfaces the user is
+ * exploring, so the curriculum CTA belongs. The (app) tier is for
+ * transacting — Connect Wallet there, no Discover.
  */
 export function MarketingHeader() {
-    return <HeaderShell right={<DiscoverButton />} />;
+    return (
+        <HeaderShell
+            right={<DiscoverButton />}
+            mobileTopCta={<DiscoverButton className="inline-flex w-full justify-center" />}
+        />
+    );
 }

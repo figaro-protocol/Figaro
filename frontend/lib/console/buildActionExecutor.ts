@@ -60,7 +60,7 @@ export function publishAssemblyToLocalRegistry(action: PublishAssemblyAction): L
         mode: "local",
         slug: action.slug,
         assembly: action.assembly,
-        prototypePath: `/builders/prototype/${action.slug}`,
+        prototypePath: `/i/${action.slug}`,
         localStorageKey,
     };
 }

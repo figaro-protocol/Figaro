@@ -35,13 +35,6 @@ export function NotificationBell({ theme = "dark" }: NotificationBellProps) {
     const unreadCls = theme === "dark" ? "bg-blue-900/20" : "bg-blue-50";
     const actionCls = theme === "dark" ? "text-blue-400 hover:text-blue-300" : "text-blue-700 hover:text-blue-800";
 
-    const hasUnsavedBuilderDraft = () => {
-        if (typeof window === "undefined") {
-            return false;
-        }
-
-        return Boolean((window as Window & { __FIGARO_HAS_UNSAVED_BUILDER_DRAFT__?: boolean }).__FIGARO_HAS_UNSAVED_BUILDER_DRAFT__);
-    };
 
     const toggleOpen = () => {
         if (!isOpen) {
@@ -69,16 +62,6 @@ export function NotificationBell({ theme = "dark" }: NotificationBellProps) {
 
     const handleNotificationClick = (notification: typeof notifications[number]) => {
         const shouldNavigate = !!(notification.processId || notification.orderId) && pathname !== "/terminal";
-
-        if (shouldNavigate && pathname.startsWith("/builders/authoring") && hasUnsavedBuilderDraft()) {
-            const confirmed = window.confirm(
-                "You have unsaved builder changes. Leave this page and open the Protocol Terminal?"
-            );
-
-            if (!confirmed) {
-                return;
-            }
-        }
 
         markAsRead(notification.id);
         if (notification.processId) {
