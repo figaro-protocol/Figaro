@@ -134,6 +134,8 @@ export default function About() {
                     <Link href="/protocol" className="underline">/protocol</Link>.
                     Reading paths by discipline:{" "}
                     <Link href="/cryptoeconomics" className="underline">/cryptoeconomics</Link>.
+                    Composition treatment:{" "}
+                    <Link href="/composability" className="underline">/composability</Link>.
                 </p>
             </MarketingSection>
 

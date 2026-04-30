@@ -142,16 +142,14 @@ export default function Protocol() {
 
             <MarketingSection
                 eyebrow="Read deeper"
-                title="Eight disciplines read this from eight angles."
+                title="Two branches diverge here."
                 bottomPad="extra"
             >
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
-                    Cryptoeconomic systems are multi-disciplinary by construction.
-                    Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic
-                    Systems</em> (2024), name eight disciplines that converge on
-                    the substrate &mdash; each asks it a different question in its
-                    own vocabulary. The <Link href="/cryptoeconomics" className="underline">cryptoeconomics page</Link>{" "}
-                    organizes Figaro&apos;s papers along that taxonomy.
+                    <strong>The academic branch.</strong> Cryptoeconomic systems are multi-disciplinary by construction. Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024), name eight disciplines that converge on the substrate &mdash; each asks it a different question in its own vocabulary. The <Link href="/cryptoeconomics" className="underline">cryptoeconomics page</Link> organizes Figaro&apos;s papers along that taxonomy.
+                </p>
+                <p className="text-base text-gray-700 leading-relaxed">
+                    <strong>The compositional branch.</strong> The kernel&apos;s narrowness produces composability as a derived property. Extensions live outside the kernel and preserve the equilibrium under the coordinator pattern. The <Link href="/composability" className="underline">composability page</Link> states the property, the three sufficient conditions, and the three tiers of extension.
                 </p>
             </MarketingSection>
         </>

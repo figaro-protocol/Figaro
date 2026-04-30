@@ -187,7 +187,7 @@ export default function Cryptoeconomics() {
             </section>
 
             <MarketingSection eyebrow="Implementation">
-                <p className="text-base text-gray-700 leading-relaxed">
+                <p className="text-base text-gray-700 leading-relaxed mb-4">
                     Implementation work &mdash; schema authoring, contract
                     development, assembly composition, frontend
                     construction &mdash; organizes separately at{" "}
@@ -196,6 +196,15 @@ export default function Cryptoeconomics() {
                     </Link>
                     . The disciplines above frame the substrate; /builders
                     is where the substrate gets built on.
+                </p>
+                <p className="text-base text-gray-700 leading-relaxed">
+                    The property the kernel&apos;s narrowness produces &mdash; that
+                    a wide range of economic arrangements compose on top while
+                    preserving the bonding equilibrium &mdash; is stated on{" "}
+                    <Link href="/composability" className="underline">
+                        /composability
+                    </Link>
+                    .
                 </p>
             </MarketingSection>
 

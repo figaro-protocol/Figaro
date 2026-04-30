@@ -192,7 +192,7 @@ const state = reconstruct(events);
                 </ul>
 
                 <p className="mt-8 text-sm text-gray-700 leading-relaxed">
-                    <strong>How composition stays safe.</strong> An external mechanism that could override resolution, claw back a bond, or revoke a counterparty mid-process would import an escape hatch the kernel was designed to deny. The coordinator pattern gives three sufficient conditions under which composition preserves the bonding equilibrium: the external reads kernel state and emits its own evidence, but never writes to kernel state, never reverses a resolution, and never controls a bond. Integrators bringing a new external into an assembly should verify the composition against the same conditions.
+                    <strong>How composition stays safe.</strong> An external mechanism that could override resolution, claw back a bond, or revoke a counterparty mid-process would import an escape hatch the kernel was designed to deny. The coordinator pattern gives three sufficient conditions under which composition preserves the bonding equilibrium: the external reads kernel state and emits its own evidence, but never writes to kernel state, never reverses a resolution, and never controls a bond. Integrators bringing a new external into an assembly should verify the composition against the same conditions. Property-side treatment with Theorem 4.7 citation: <Link href="/composability" className="underline hover:text-black">Composability</Link>.
                 </p>
             </MarketingSection>
 

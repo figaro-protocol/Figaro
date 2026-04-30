@@ -73,7 +73,7 @@ export default function Home() {
                 </p>
 
                 <p className="text-sm text-gray-600 leading-relaxed mt-6">
-                    Any internal exit path weakens the Nash equilibrium (Theorem 4.7). Extensions live outside the kernel and compose via the coordinator pattern.
+                    Any internal exit path weakens the Nash equilibrium (Theorem 4.7). Extensions live outside the kernel and compose via the coordinator pattern &mdash; full treatment on <Link href="/composability" className="underline hover:text-black">Composability</Link>.
                 </p>
             </section>
 
@@ -90,6 +90,10 @@ export default function Home() {
                     <li>
                         2. <Link href="/cryptoeconomics" className="underline hover:text-black font-semibold">Cryptoeconomics</Link>
                         <span className="text-sm text-gray-500"> &mdash; the eight-discipline taxonomy and the paper portfolio.</span>
+                    </li>
+                    <li>
+                        3. <Link href="/composability" className="underline hover:text-black font-semibold">Composability</Link>
+                        <span className="text-sm text-gray-500"> &mdash; what the kernel&apos;s narrowness produces, and the coordinator pattern that preserves it.</span>
                     </li>
                 </ol>
             </section>
