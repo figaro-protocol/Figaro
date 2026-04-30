@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+    DisciplineGlyph,
+} from "@/components/shared/DisciplineGlyph";
+import {
+    FIGARO_TELEGRAM_URL,
+    GROUPS_REGISTRY,
+    disciplineHasConvenedGroup,
+} from "@/lib/shared/groupsRegistry";
 
 export const metadata: Metadata = {
-    title: "Cryptoeconomics — Figaro Protocol",
+    title: "Cryptoeconomics — Figaro",
     description:
-        "Figaro's cryptoeconomics: two mechanisms producing a Nash equilibrium under bonded commitment, transaction-scoped institutions that form for one process and dissolve at settlement, and the contract-law mapping the protocol carries.",
+        "Voshmgir & Zargham, Foundations of Cryptoeconomic Systems (2024). Eight disciplines converge on the substrate; Figaro's papers are organized along that taxonomy. Working groups assemble where contributors do.",
 };
 
 export default function Cryptoeconomics() {
@@ -15,144 +23,244 @@ export default function Cryptoeconomics() {
                     Cryptoeconomics
                 </p>
                 <h1 className="text-5xl sm:text-6xl font-bold text-black leading-tight tracking-tight mb-6">
-                    Two mechanisms, one bonded commitment.
+                    Cryptoeconomic systems are multi-disciplinary.
                 </h1>
                 <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
-                    The kernel runs two mechanisms doing distinct work. Asymmetric
-                    bonding produces the bilateral Nash equilibrium and scales the
-                    primitive from two parties to N-party trees through progressive
-                    collateralization. Buyer dominance with atomic resolution
-                    operates on the scaled mesh and induces a weakest-link subgame
-                    among sellers. They compose; neither substitutes for the other.
+                    Voshmgir &amp; Zargham frame the field as eight disciplines
+                    converging on the same substrate &mdash; each asks the substrate
+                    a different question in its own vocabulary. Figaro&apos;s papers
+                    are organized along that taxonomy. Working groups assemble where
+                    contributors do; empty disciplines are open calls.
                 </p>
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
+                <figure>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src="/images/foundations-zargham-2024.jpg"
+                        alt="Eight disciplines arranged around a central cryptoeconomic-systems node."
+                        width={1014}
+                        height={612}
+                        className="w-full h-auto rounded-lg border border-gray-200"
+                    />
+                    <figcaption className="text-xs text-gray-500 italic mt-2">
+                        Figure from Voshmgir &amp; Zargham,{" "}
+                        <em>Foundations of Cryptoeconomic Systems</em> (2024, Figure 1).
+                        Reproduced with attribution.
+                    </figcaption>
+                </figure>
+            </section>
+
+            {/* Project-wide coordination — rendered once at the top of the
+                disciplines section so per-card venue lines don't repeat. */}
+            <section className="container mx-auto px-6 pb-8 max-w-3xl border-t border-gray-200 pt-12">
                 <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    The bonded commitment
+                    Conversation
                 </p>
-                <h2 className="text-3xl font-bold text-black mb-6 leading-tight">
-                    A signed contract at the protocol level.
-                </h2>
-                <p className="text-base text-gray-700 leading-relaxed mb-4">
-                    Every commitment carries the structural shape of a contract. The
-                    payment is consideration; the schemas in the agreement are the
-                    terms; the <code>agreementHash</code> binds the document; both
-                    EIP-712 signatures are formation; the buyer is the acceptor;{" "}
-                    <code>resolveProcess</code> is discharge. The familiar legal
-                    vocabulary carries over directly. What is different is not the
-                    shape of the contract — it is that the parties&apos; bonds are the
-                    enforcement.
+                <p className="text-sm text-gray-700 leading-relaxed">
+                    Project-wide coordination happens on{" "}
+                    <a
+                        href={FIGARO_TELEGRAM_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-black"
+                    >
+                        Telegram
+                    </a>
+                    . Disciplines with their own dedicated channels surface them
+                    inline below; otherwise, all conversation is the project
+                    Telegram.
                 </p>
-                <p className="text-sm text-gray-600">
-                    Bonding ratio: buyer locks <code>2P</code>, seller locks{" "}
-                    <code>2G</code>. Custody = <code>2P + 2G</code>. The 2× minimum
-                    is proven sufficient (Paper A, Theorem 4.6). Below that ratio the
-                    Nash equilibrium does not hold.
-                </p>
+            </section>
+
+            <section className="container mx-auto px-6 pb-12 max-w-3xl pt-2">
+                <div className="space-y-12">
+                    {GROUPS_REGISTRY.map((g) => {
+                        const convened = disciplineHasConvenedGroup(g);
+                        return (
+                            <article
+                                key={g.slug}
+                                id={`discipline-${g.disciplineIndex}`}
+                                className="scroll-mt-24"
+                            >
+                                <div className="flex items-start gap-4">
+                                    <DisciplineGlyph index={g.disciplineIndex} />
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="text-2xl font-bold text-black leading-snug">
+                                            {g.name}
+                                        </h3>
+                                        <p className="text-sm text-gray-500 italic">
+                                            {g.discipline}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {convened ? (
+                                    <div className="mt-4 ml-16 space-y-4">
+                                        <p className="text-sm text-gray-700 leading-relaxed">
+                                            {g.charter}
+                                        </p>
+
+                                        {g.papers.length > 0 && (
+                                            <div>
+                                                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">
+                                                    Papers
+                                                </p>
+                                                <ul className="space-y-1 text-sm">
+                                                    {g.papers.map((p) => (
+                                                        <li key={p.id}>
+                                                            <a
+                                                                href={p.href}
+                                                                className="text-gray-700 hover:text-black hover:underline"
+                                                            >
+                                                                <span className="font-mono text-xs text-gray-500">
+                                                                    {p.id}
+                                                                </span>{" "}
+                                                                &mdash; {p.title}
+                                                            </a>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {g.currentWork && g.currentWork.length > 0 && (
+                                            <div>
+                                                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">
+                                                    Current work
+                                                </p>
+                                                <ul className="space-y-1 text-sm text-gray-700 list-disc pl-5">
+                                                    {g.currentWork.map((w, i) => (
+                                                        <li key={i}>{w}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {g.references && g.references.length > 0 && (
+                                            <div>
+                                                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">
+                                                    See also
+                                                </p>
+                                                <ul className="space-y-1 text-sm">
+                                                    {g.references.map((r) => (
+                                                        <li key={r.href}>
+                                                            <a
+                                                                href={r.href}
+                                                                target={r.href.startsWith("http") ? "_blank" : undefined}
+                                                                rel={r.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                                                                className="text-gray-700 hover:text-black hover:underline"
+                                                            >
+                                                                {r.label}
+                                                            </a>
+                                                            {r.note && (
+                                                                <span className="text-gray-500"> &mdash; {r.note}</span>
+                                                            )}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {g.venue && (
+                                            <p className="text-xs text-gray-500">
+                                                Dedicated channel:{" "}
+                                                <a
+                                                    href={g.venue.href}
+                                                    target={g.venue.href.startsWith("http") ? "_blank" : undefined}
+                                                    rel={g.venue.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                                                    className="underline hover:text-black"
+                                                >
+                                                    {g.venue.label}
+                                                </a>
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="mt-3 ml-16 text-xs text-gray-500 italic">
+                                        Open call &mdash; no group convened yet.
+                                    </p>
+                                )}
+                            </article>
+                        );
+                    })}
+                </div>
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
                 <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    The institution form
+                    Implementation
                 </p>
-                <h2 className="text-3xl font-bold text-black mb-6 leading-tight">
-                    Each trade is a transaction-scoped institution.
-                </h2>
-                <p className="text-base text-gray-700 leading-relaxed mb-4">
-                    A multi-party process is an assembly of independent value-adders
-                    that forms for one trade and dissolves at settlement. The
-                    institution is commercially viable because the parties commit
-                    and bond — the structural fact of the bonded commitments is the
-                    validation. Roles like &ldquo;merchant&rdquo;,
-                    &ldquo;supplier&rdquo;, or &ldquo;courier&rdquo; are positions
-                    within an assembly, not firms.
-                </p>
-                <p className="text-sm text-gray-600">
-                    Worked example:{" "}
-                    <Link href="/local-commerce" className="underline">
-                        local commerce
-                    </Link>{" "}
-                    — three roles, one root commitment, two sub-orders, atomic
-                    settlement.
-                </p>
-            </section>
-
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    The token
-                </p>
-                <h2 className="text-3xl font-bold text-black mb-6 leading-tight">
-                    FIG is a coordination signal, not a fee or a yield.
-                </h2>
-                <p className="text-base text-gray-700 leading-relaxed mb-4">
-                    The FIG token does not accrue from kernel activity. It is not
-                    required to participate in the protocol. It is a fixed-supply
-                    coordination Schelling point: 1B max, 100M founder + 300M DAO at
-                    genesis, 600M staged community airdrop unlocking at year 2 / 5 /
-                    9. Settlement-anchored emission and yield-style designs were
-                    deliberately rejected (Paper D).
-                </p>
-                <p className="text-sm text-gray-600">
-                    Token-design treatment:{" "}
-                    <Link href="/fig/design" className="underline">
-                        /fig/design
+                <p className="text-base text-gray-700 leading-relaxed">
+                    Implementation work &mdash; schema authoring, contract
+                    development, assembly composition, frontend
+                    construction &mdash; organizes separately at{" "}
+                    <Link href="/builders" className="underline">
+                        /builders
                     </Link>
-                    . FIG holdings:{" "}
-                    <Link href="/fig" className="underline">
-                        /fig
-                    </Link>
-                    .
+                    . The disciplines above frame the substrate; /builders
+                    is where the substrate gets built on.
                 </p>
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
                 <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    Read deeper
+                    Grants &amp; capital sources
                 </p>
-                <h2 className="text-3xl font-bold text-black mb-6 leading-tight">
-                    Eight disciplines read this from eight angles.
-                </h2>
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
-                    Cryptoeconomic systems are multi-disciplinary by construction.
-                    Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic
-                    Systems</em> (2024), name eight disciplines that converge on
-                    the substrate &mdash; each asks it a different question in its
-                    own vocabulary. The <Link href="/foundations" className="underline">foundations page</Link>{" "}
-                    organizes Figaro&apos;s papers along that taxonomy.
+                    Work on the Figaro substrate &mdash; research, review,
+                    verification, assembly design, documentation &mdash; is funded
+                    through permissionless channels. No application committee. No
+                    curated budget.
                 </p>
+                <dl className="space-y-4 text-sm">
+                    <div className="border-l-2 border-gray-200 pl-4">
+                        <dt className="text-base font-semibold text-black">DAO allocation</dt>
+                        <dd className="text-gray-700 leading-relaxed mt-1">
+                            300M FIG (30% of supply) minted to the DAO wallet at
+                            genesis with no vesting. Allocation decisions will be
+                            made by the DAO&apos;s governance process; the DAO is
+                            not yet instantiated.
+                        </dd>
+                    </div>
+                    <div className="border-l-2 border-gray-200 pl-4">
+                        <dt className="text-base font-semibold text-black">Gitcoin rounds</dt>
+                        <dd className="text-gray-700 leading-relaxed mt-1">
+                            Quadratic funding for Figaro-adjacent work. No Figaro
+                            round is live yet; until then, groups can apply to
+                            general ecosystem rounds where they fit the theme.
+                        </dd>
+                    </div>
+                    <div className="border-l-2 border-gray-200 pl-4">
+                        <dt className="text-base font-semibold text-black">Direct contributions</dt>
+                        <dd className="text-gray-700 leading-relaxed mt-1">
+                            Any wallet can send assets to a group&apos;s published
+                            address or to the DAO wallet. On-chain visibility
+                            preserves the funding graph.
+                        </dd>
+                    </div>
+                </dl>
             </section>
 
             <section className="container mx-auto px-6 pb-32 max-w-3xl border-t border-gray-200 pt-12">
                 <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    Build / contribute
+                    Contributing
                 </p>
-                <ul className="text-sm text-gray-700 space-y-2">
-                    <li>
-                        <Link href="/builders" className="underline">
-                            Builders
-                        </Link>{" "}
-                        — assembly designer toolchain.
-                    </li>
-                    <li>
-                        <Link href="/integrate" className="underline">
-                            Integrate
-                        </Link>{" "}
-                        — SDK + Agent SDK.
-                    </li>
-                    <li>
-                        <Link href="/schemas" className="underline">
-                            Schemas
-                        </Link>{" "}
-                        — contract terms catalogued.
-                    </li>
-                    <li>
-                        <Link href="/groups" className="underline">
-                            Working groups
-                        </Link>{" "}
-                        — self-organize, contribute articles, request grants.
-                    </li>
-                </ul>
+                <p className="text-base text-gray-700 leading-relaxed mb-4">
+                    To add a paper, declare current work, surface a received
+                    grant, or publish a contributor handle, open a pull request
+                    against{" "}
+                    <code>frontend/lib/shared/groupsRegistry.ts</code>. PRs are
+                    reviewed at merge time; conversation about scope happens on
+                    Telegram before codification.
+                </p>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                    The disciplinary list itself tracks Voshmgir &amp; Zargham,{" "}
+                    <em>Foundations of Cryptoeconomic Systems</em>. If the
+                    literature converges on a different taxonomy, this registry
+                    will follow.
+                </p>
             </section>
         </>
     );

@@ -320,8 +320,8 @@ export default function FigDesign() {
                         <Link href="/fig" className="underline hover:text-black transition-colors">
                             the FIG page
                         </Link>. Full paper portfolio:&nbsp;
-                        <Link href="/foundations" className="underline hover:text-black transition-colors">
-                            foundations index
+                        <Link href="/cryptoeconomics" className="underline hover:text-black transition-colors">
+                            cryptoeconomics index
                         </Link>.
                     </p>
                 </div>

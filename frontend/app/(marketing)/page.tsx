@@ -65,11 +65,11 @@ export default function Home() {
                 </div>
 
                 <p className="text-xs text-gray-500 mt-3 leading-relaxed">
-                    Adjacent dimension &mdash; <Link href="/fig/design" className="underline hover:text-black">FIG</Link>, <Link href="/groups" className="underline hover:text-black">Groups</Link>, and <Link href="/foundations" className="underline hover:text-black">Foundations</Link> coordinate funding and governance for work above the kernel.
+                    Adjacent dimension &mdash; <Link href="/fig/design" className="underline hover:text-black">FIG</Link> coordinates funding; <Link href="/cryptoeconomics" className="underline hover:text-black">Cryptoeconomics</Link> organizes the paper portfolio and working-group activity for work above the kernel.
                 </p>
 
                 <p className="text-base text-gray-700 leading-relaxed mt-8">
-                    The kernel&apos;s deliberate narrowness is what enables universality above it. <code>FigaroCore</code> runs <Link href="/cryptoeconomics" className="underline hover:text-black">two mechanisms doing distinct work</Link>: <strong>asymmetric bonding</strong> (the bilateral Nash equilibrium that scales from two parties to N-party process trees through progressive collateralization) and <strong>buyer dominance with atomic resolution</strong> (the weakest-link subgame that propagates cooperation pressure through the scaled mesh). Together they make trade self-enforcing without an arbitrator. The kernel takes no position on currency, jurisdiction, identity, arbitration, role structure, or contribution metric, so a wide range of economic arrangements can be expressed on top. A market-liberal graph, a cooperative graph, a mutual-aid graph &mdash; all use the same kernel. The kernel is ideologically agnostic; the graph is the politics.
+                    The kernel&apos;s deliberate narrowness is what enables universality above it. <code>FigaroCore</code> runs <Link href="/protocol" className="underline hover:text-black">two mechanisms doing distinct work</Link>: <strong>asymmetric bonding</strong> (the bilateral Nash equilibrium that scales from two parties to N-party process trees through progressive collateralization) and <strong>buyer dominance with atomic resolution</strong> (the weakest-link subgame that propagates cooperation pressure through the scaled mesh). Together they make trade self-enforcing without an arbitrator. The kernel takes no position on currency, jurisdiction, identity, arbitration, role structure, or contribution metric, so a wide range of economic arrangements can be expressed on top. A market-liberal graph, a cooperative graph, a mutual-aid graph &mdash; all use the same kernel. The kernel is ideologically agnostic; the graph is the politics.
                 </p>
 
                 <p className="text-sm text-gray-600 leading-relaxed mt-6">
@@ -84,11 +84,11 @@ export default function Home() {
                 </p>
                 <ol className="space-y-2 text-base text-gray-700">
                     <li>
-                        1. <Link href="/cryptoeconomics" className="underline hover:text-black font-semibold">Cryptoeconomics</Link>
+                        1. <Link href="/protocol" className="underline hover:text-black font-semibold">Protocol</Link>
                         <span className="text-sm text-gray-500"> &mdash; the two mechanisms in plain language.</span>
                     </li>
                     <li>
-                        2. <Link href="/foundations" className="underline hover:text-black font-semibold">Foundations</Link>
+                        2. <Link href="/cryptoeconomics" className="underline hover:text-black font-semibold">Cryptoeconomics</Link>
                         <span className="text-sm text-gray-500"> &mdash; the eight-discipline taxonomy and the paper portfolio.</span>
                     </li>
                 </ol>

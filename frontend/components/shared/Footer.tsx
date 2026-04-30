@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FIGARO_TELEGRAM_URL } from "@/lib/shared/groupsRegistry";
 
 export function Footer() {
     return (
@@ -8,8 +9,8 @@ export function Footer() {
                     <div>
                         <h4 className="text-black font-bold mb-4">CRYPTOECONOMICS</h4>
                         <div className="space-y-2">
-                            <Link href="/cryptoeconomics" className="block text-black hover:underline">Protocol cryptoeconomics</Link>
-                            <Link href="/foundations" className="block text-black hover:underline">Foundations (Zargham 8)</Link>
+                            <Link href="/protocol" className="block text-black hover:underline">Protocol mechanisms</Link>
+                            <Link href="/cryptoeconomics" className="block text-black hover:underline">Cryptoeconomics (8 disciplines)</Link>
                             <Link href="/spec" className="block text-black hover:underline">Specifications</Link>
                             <Link href="/schemas" className="block text-black hover:underline">Schemas</Link>
                         </div>
@@ -28,7 +29,7 @@ export function Footer() {
                     <div>
                         <h4 className="text-black font-bold mb-4">GROUPS</h4>
                         <div className="space-y-2">
-                            <Link href="/groups" className="block text-black hover:underline">Working Groups</Link>
+                            <Link href="/cryptoeconomics" className="block text-black hover:underline">Working Groups</Link>
                             <Link href="/treasuries" className="block text-black hover:underline">Treasuries</Link>
                             <Link href="/local-commerce" className="block text-black hover:underline">Local Commerce</Link>
                             <Link href="/fig" className="block text-black hover:underline">FIG Token</Link>
@@ -40,7 +41,7 @@ export function Footer() {
                         <div className="space-y-2">
                             <Link href="/about" className="block text-black hover:underline">About Figaro</Link>
                             <a href="https://github.com/figaro-protocol" target="_blank" rel="noopener noreferrer" className="block text-black hover:underline">GitHub</a>
-                            <a href="https://twitter.com/figaroprotocol" target="_blank" rel="noopener noreferrer" className="block text-black hover:underline">X (Twitter)</a>
+                            <a href={FIGARO_TELEGRAM_URL} target="_blank" rel="noopener noreferrer" className="block text-black hover:underline">Telegram</a>
                         </div>
                     </div>
                 </div>

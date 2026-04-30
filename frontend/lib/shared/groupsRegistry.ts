@@ -1,149 +1,198 @@
+import type { DisciplineIndex } from "@/components/shared/DisciplineGlyph";
+
 /**
- * Groups registry.
+ * Disciplinary registry — Voshmgir & Zargham, "Foundations of Cryptoeconomic
+ * Systems" (2024, Figure 1). Eight disciplines, fixed. Each discipline is a
+ * stable lens for reading the substrate; the list cannot grow or shrink
+ * without departing from the taxonomy.
  *
- * The group list is anchored to the disciplinary taxonomy in Voshmgir &
- * Zargham, "Foundations of Cryptoeconomic Systems" (2020, Figure 2). Eight
- * disciplines, fixed. Groups form and organize within each discipline; they
- * do not form outside the taxonomy.
+ * Convened vs open-call disciplines: a discipline is "convened" when
+ * something concrete exists under it — published papers, declared
+ * `currentWork`, or recorded `grants`. A discipline that has none of
+ * those is rendered on `/cryptoeconomics` as an "Open call — no group
+ * convened yet" rather than as a fully-furnished group block. The
+ * asymmetry surfaces where the project actually is.
  *
- * Group pages are authored by contributors to that group. The site renders
- * what the entry supplies; it does not curate, review, or edit. To amend a
- * group, open a PR against this file.
+ * Project-wide coordination lives at `FIGARO_TELEGRAM_URL` (set the real
+ * handle in this file when the channel is live; placeholder until then).
+ * Per-group `venue` overrides exist only if a discipline has its own
+ * dedicated channel separate from the project-wide one.
+ *
+ * To amend an entry, open a PR against this file. PRs are reviewed at
+ * merge time like any other; the registry shape is the contract, not
+ * the merge process.
  */
 
+// PLACEHOLDER — set the real Telegram handle here once the channel is live.
+// Searched the frontend, docs, and memory on 2026-04-30: no prior Telegram
+// URL exists in this repo; this is a fresh wiring point.
+export const FIGARO_TELEGRAM_URL = "https://t.me/figaro_protocol";
+
+export interface PaperRef {
+    /** Short paper id, e.g. "A", "B1", "D". Renders as a font-mono prefix. */
+    id: string;
+    /** Full title. */
+    title: string;
+    /** Path to the PDF. */
+    href: string;
+}
+
+export interface ReferenceLink {
+    label: string;
+    href: string;
+    note?: string;
+}
+
 export interface GroupRegistryEntry {
-    /** URL slug. Stable. */
+    /** URL slug (stable). Used for `#discipline-N`-style anchors. */
     slug: string;
+    /** 1–8 — drives the `<DisciplineGlyph>` and the per-discipline anchor. */
+    disciplineIndex: DisciplineIndex;
     /** Zargham's discipline name. */
     name: string;
-    /** Short methodological gloss. */
+    /** Short methodological gloss (subdiscipline). */
     discipline: string;
     /** One-paragraph framing: what this discipline asks of the Figaro substrate. */
     charter: string;
-    /** Where the ongoing conversation happens. */
-    venue?: { label: string; href: string };
+    /** Papers primarily assigned to this discipline. Empty array means
+     *  the discipline is an open call — no canonical work convened yet. */
+    papers: PaperRef[];
+    /** Cross-references to other internal surfaces (specs, runtime,
+     *  cross-discipline papers). Optional. */
+    references?: ReferenceLink[];
     /** Current work in progress, as contributors describe it. */
     currentWork?: string[];
-    /** Reading path — papers, specs, inventories relevant to the group. */
-    readingPath?: { label: string; href: string; note?: string }[];
+    /** Where the conversation happens — only when the group has its OWN
+     *  dedicated channel separate from the project-wide Telegram. Most
+     *  entries leave this undefined and inherit the project default. */
+    venue?: { label: string; href: string };
     /** Grants received (DAO proposals, Gitcoin rounds, direct). */
     grants?: { label: string; href: string; amount?: string }[];
     /** Addresses or handles contributors choose to publish. */
     contributors?: string[];
 }
 
-const DEFAULT_VENUE = {
-    label: "Open a GitHub discussion",
-    href: "https://github.com/figaro-protocol/Figaro-Prototype2/discussions",
-};
-
 export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
     {
         slug: "economics-game-theory",
+        disciplineIndex: 1,
         name: "Economics and Game Theory",
         discipline: "Mechanism design · institutional economics · monetary theory",
-        charter: "The kernel rests on a game-theoretic argument: asymmetric bonding with a 2× minimum ratio produces a Nash equilibrium, scales itself from two to N parties through progressive collateralization, and retires the subordination axis of the Coasean firm. This group reads the substrate as economists and game theorists read it — equilibrium analysis, institutional form, monetary design.",
-        venue: DEFAULT_VENUE,
-        readingPath: [
-            { label: "Paper A — Mechanism", href: "/papers/figaro-mechanism.pdf", note: "asymmetric bonding, Nash, Grameen reduction" },
-            { label: "Paper B1 — Institutional economics", href: "/papers/figaro-economics.pdf", note: "Coase, Williamson, the firm-dissolved" },
-            { label: "Paper D — Token design", href: "/papers/figaro-fig-token.pdf", note: "FIG as Schelling-point, not governance or yield" },
-            { label: "Cryptoeconomics overview", href: "/cryptoeconomics", note: "two-mechanism + contract-law overview" },
+        charter: "The kernel rests on a game-theoretic argument: asymmetric bonding with a 2× minimum ratio produces a Nash equilibrium, scales itself from two to N parties through progressive collateralization, and makes the subordination axis of the Coasean firm structurally optional. This group reads the substrate as economists and game theorists read it — equilibrium analysis, institutional form, monetary design.",
+        papers: [
+            { id: "A", title: "Asymmetric Bonding: A Self-Enforcing Settlement Primitive", href: "/papers/figaro-mechanism.pdf" },
+            { id: "B1", title: "From Firms to Transaction-Scoped Institutions", href: "/papers/figaro-economics.pdf" },
+            { id: "D", title: "FIG: A Coordination Token Decoupled from Protocol Activity", href: "/papers/figaro-fig-token.pdf" },
+        ],
+        references: [
+            { label: "Protocol — two mechanisms", href: "/protocol", note: "two-mechanism + contract-law overview" },
             { label: "FIG design", href: "/fig/design", note: "token as Schelling-point coordination signal" },
         ],
     },
     {
         slug: "industrial-systems-engineering",
+        disciplineIndex: 2,
         name: "Industrial and Systems Engineering",
-        discipline: "System architecture · formal methods · composition",
-        charter: "The kernel is a frozen Solidity surface verified across four layers (TLA⁺, Echidna, Halmos, Certora). Above it, assemblies compose declaratively against the schema registry, attestation coordinator, and mechanism primitives. This group reads the substrate as systems engineers — architecture, verification, composition patterns, coordinator-pattern equilibrium preservation.",
-        venue: DEFAULT_VENUE,
-        readingPath: [
-            { label: "Paper C — Implementation", href: "/papers/figaro-verification.pdf", note: "4-layer verification stack, coordinator pattern" },
-            { label: "Specifications", href: "/spec", note: "the frozen on-chain surface" },
-            { label: "Schemas", href: "/schemas", note: "three-layer validation architecture" },
-        ],
+        discipline: "Process modeling · supply-chain coordination",
+        charter: "How bonded commitments compose into multi-party process trees with auditable handoffs, lifecycle attestation, and proximity proof. Open call for contributed articles.",
+        papers: [],
     },
     {
         slug: "computer-science-cryptography",
+        disciplineIndex: 3,
         name: "Computer Science and Cryptography",
         discipline: "Cryptographic primitives · adversarial review · formal verification",
-        charter: "Adversarial and formal review of FigaroCore, the attestation coordinator, schema validators, and the batch verifier. EIP-712 dual-signed commitments, merkle-bound attestation receipts, SP1-proven batch execution. This group reads the substrate as cryptographers and systems-security practitioners — where does the invariant break, and what proves that it does not?",
-        venue: DEFAULT_VENUE,
+        charter: "Adversarial and formal review of FigaroCore, the attestation coordinator, schema validators, and the batch verifier. EIP-712 dual-signed commitments, merkle-bound attestation receipts, SP1-proven batch execution. This group reads the substrate as cryptographers and systems-security practitioners — where does the invariant break, and what proves that it does not? Implementation work (schema authoring, contract development, assembly composition, frontend) organizes separately at /builders.",
+        papers: [
+            { id: "C", title: "The Figaro Kernel: A Verified Solidity Implementation", href: "/papers/figaro-verification.pdf" },
+        ],
         currentWork: [
             "Adversarial audit of the attestation coordinator's merkle-inclusion gate",
             "Extending the Certora token-ops inventory to cover batch-verifier fee-on-transfer paths",
             "TLA⁺ refinement of the progressive-collateralization mesh beyond 3 depth",
         ],
-        readingPath: [
+        references: [
             { label: "Specifications", href: "/spec", note: "the frozen on-chain surface" },
-            { label: "Release readiness + freeze notice", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/RELEASE_READINESS.md", note: "gate criteria, hardening record, frozen-surface declaration" },
+            { label: "Release readiness + freeze notice", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/RELEASE_READINESS.md" },
             { label: "Design decisions", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/DESIGN_DECISIONS.md", note: "fourteen patterns that look like bugs but are correct" },
-            { label: "Audit report", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/AUDIT_REPORT.md", note: "audit history + web2/UI subsidiary audits + accepted risks" },
-            { label: "Paper C — Implementation", href: "/papers/figaro-verification.pdf", note: "verification stack + implementation choices" },
+            { label: "Audit report", href: "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/AUDIT_REPORT.md" },
+            { label: "Builders", href: "/builders", note: "implementation work — schemas, contracts, assemblies, frontend" },
         ],
     },
     {
         slug: "philosophy-law-ethics",
+        disciplineIndex: 4,
         name: "Philosophy, Law and Ethics",
         discipline: "Contract theory · evidence law · labor law · stateless subjecthood",
         charter: "A Figaro commitment is a signed contract: payment = consideration, schemas = terms and conditions, agreementHash = the contract document. Settlement happens on-chain by nature; adjudication happens off-chain by nature. The wallet collapses the Roman res/persona distinction, and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
-        venue: DEFAULT_VENUE,
-        readingPath: [
-            { label: "Paper E — Evidence and law", href: "/papers/figaro-legal.pdf", note: "Class A vs Class B records, admissibility" },
-            { label: "Paper F1 — Labor law", href: "/papers/figaro-labor-law.pdf", note: "wallet-as-subject, subordination retired" },
-            { label: "Paper F2 — Displaced and stateless", href: "/papers/figaro-polity.pdf", note: "Arendt, capacity-to-have-commerce" },
-            { label: "Foundations — Philosophy, Law and Ethics", href: "/foundations#discipline-4", note: "the four papers grouped" },
+        papers: [
+            { id: "E", title: "On-Chain Evidence, Off-Chain Adjudication", href: "/papers/figaro-legal.pdf" },
+            { id: "F1", title: "The Wallet as Legal Subject", href: "/papers/figaro-labor-law.pdf" },
+            { id: "F2", title: "The Wallet Without a Polity", href: "/papers/figaro-polity.pdf" },
+            { id: "H", title: "The Coercion Variable", href: "/papers/figaro-political-philosophy.pdf" },
         ],
     },
     {
         slug: "political-science-governance",
+        disciplineIndex: 5,
         name: "Political Science and Governance",
         discipline: "Political economy · hegemony · sovereign coordination",
         charter: "The kernel is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same kernel. This group reads the substrate as political theorists — Gramsci, Arendt, post-hegemony; the question of what governance is when the primitive refuses to take positions.",
-        venue: DEFAULT_VENUE,
-        readingPath: [
-            { label: "Paper B2 — Political economy", href: "/papers/figaro-sovereign-commerce.pdf", note: "hegemonic propositions, organizational substrate" },
-            { label: "Foundations — Political Science and Governance", href: "/foundations#discipline-5", note: "B2, B3, I papers grouped" },
+        papers: [
+            { id: "B2", title: "The Visibility of Coordination", href: "/papers/figaro-sovereign-commerce.pdf" },
+            { id: "B3", title: "The Subordination Variable", href: "/papers/figaro-political-economy.pdf" },
+            { id: "I", title: "The Ungoverned Substrate", href: "/papers/figaro-network-state.pdf" },
         ],
     },
     {
         slug: "operations-research",
+        disciplineIndex: 6,
         name: "Operations Research and Management Science",
         discipline: "Resource allocation · accounting · ledger design",
         charter: "A Figaro process is a self-closing ledger period. Commits are journal entries; resolution is the closing entry; the agreementHash is the contract document. This group reads the substrate as operations researchers and accountants — the kernel as an accounting primitive, the process tree as a coordination problem, the closure as a scheduling invariant.",
-        venue: DEFAULT_VENUE,
-        readingPath: [
-            { label: "Paper G — Accounting", href: "/papers/figaro-accounting.pdf", note: "self-closing ledger period, Pacioli rewritten" },
+        papers: [
+            { id: "G", title: "Bookkeeping as Protocol Byproduct", href: "/papers/figaro-accounting.pdf" },
+        ],
+        references: [
             { label: "Treasuries — composition patterns", href: "/treasuries", note: "multisig-as-buyer, governance-executor-as-buyer" },
         ],
     },
     {
         slug: "ai-optimization-control",
+        disciplineIndex: 7,
         name: "AI, Optimization and Control Theory",
         discipline: "Agent coordination · allocation · control of the mesh",
-        charter: "N-party process trees expose a coordination and allocation problem that admits control-theoretic and optimization-theoretic treatment. The SDK ships an action queue and proposer surface for agent-driven composition. This group reads the substrate as control theorists and optimization researchers — what does closed-loop agent coordination look like over the bonded-commitment mesh?",
-        venue: DEFAULT_VENUE,
-        readingPath: [
+        charter: "Agent-mediated coordination over bonded commitments. An Agent SDK exists at the runtime tier (see /integrate); academic articles in this discipline are an open call.",
+        papers: [],
+        references: [
             { label: "SDK — agent surface", href: "/integrate", note: "FigaroContext, ActionQueue, proposer" },
-            { label: "Paper A — scaling to N parties", href: "/papers/figaro-mechanism.pdf", note: "progressive collateralization, weakest-link subgame" },
-            { label: "Paper C — batch verifier", href: "/papers/figaro-verification.pdf", note: "SP1-proven batch execution" },
         ],
     },
     {
         slug: "psychology-decisions",
+        disciplineIndex: 8,
         name: "Psychology and Decisions Science",
         discipline: "Behavioral game theory · incentive legibility · interface cognition",
-        charter: "The asymmetric-bonding Nash equilibrium assumes strategic agents reading their incentives correctly. In practice, those incentives must be legible through wallets, signing flows, and attestation UX. This group reads the substrate as behavioral economists and decision scientists — when does the equilibrium fail to bind because the player cannot see it?",
-        venue: DEFAULT_VENUE,
-        readingPath: [
-            { label: "Paper A — equilibrium analysis", href: "/papers/figaro-mechanism.pdf", note: "Nash, iterated elimination, 2× minimum" },
-            { label: "Console", href: "/console", note: "supervision and attestation surface" },
-            { label: "Figaro Local Commerce runtime", href: "/i/local-commerce", note: "reference implementation of the signing flow" },
-        ],
+        charter: "How participants read a bonded equilibrium under uncertainty; the legibility of incentive structure to non-specialist readers. Open call for contributed articles.",
+        papers: [],
     },
 ];
 
 export function getGroup(slug: string): GroupRegistryEntry | undefined {
     return GROUPS_REGISTRY.find((g) => g.slug === slug);
+}
+
+/**
+ * A discipline counts as having a "convened group" when contributors are
+ * actively producing something under it: published papers, declared
+ * `currentWork`, or recorded `grants`. Empty disciplines render as open
+ * calls instead of fully-furnished group blocks.
+ */
+export function disciplineHasConvenedGroup(entry: GroupRegistryEntry): boolean {
+    return (
+        entry.papers.length > 0 ||
+        (entry.currentWork && entry.currentWork.length > 0) ||
+        (entry.grants && entry.grants.length > 0) ||
+        false
+    );
 }

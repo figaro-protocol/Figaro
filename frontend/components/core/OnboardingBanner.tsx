@@ -42,7 +42,7 @@ export function OnboardingBanner() {
                     </ol>
                     <p className="mt-2 text-blue-700">
                         For the game-theory derivation behind self-enforcing agreements, see{" "}
-                        <a href="/cryptoeconomics" className="underline hover:no-underline">cryptoeconomics</a>.
+                        <a href="/protocol" className="underline hover:no-underline">Protocol</a>.
                     </p>
                 </div>
                 <button

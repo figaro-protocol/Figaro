@@ -141,7 +141,7 @@ export default function About() {
                         </dt>
                         <dd className="text-base font-semibold text-black mb-1">Asymmetric bonding makes cheating irrational.</dd>
                         <dd className="text-gray-700 leading-relaxed">
-                            Both parties bond before any work begins. The only Nash-rational move is cooperation. Rational actors never defect because defection always costs more than completion. This covers the overwhelming majority of transactions; when the mechanism works as designed, no dispute ever arises. Full derivation on the <Link href="/cryptoeconomics" className="underline">cryptoeconomics</Link> page.
+                            Both parties bond before any work begins. The only Nash-rational move is cooperation. Rational actors never defect because defection always costs more than completion. This covers the overwhelming majority of transactions; when the mechanism works as designed, no dispute ever arises. Full derivation on the <Link href="/protocol" className="underline">Protocol</Link> page.
                         </dd>
                     </div>
                     <div>

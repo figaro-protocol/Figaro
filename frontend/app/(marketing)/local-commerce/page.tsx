@@ -31,7 +31,7 @@ export default function LocalCommercePage() {
                 </h2>
                 <BondingDiagram />
                 <p className="text-sm text-gray-600 mt-4">
-                    In this reference, the root order is the buyer ↔ merchant commitment; a sub-order is the merchant ↔ courier commitment. The courier bonds against cumulative value (goods + delivery), not just the delivery leg. See <Link href="/cryptoeconomics" className="underline">cryptoeconomics</Link>.
+                    In this reference, the root order is the buyer ↔ merchant commitment; a sub-order is the merchant ↔ courier commitment. The courier bonds against cumulative value (goods + delivery), not just the delivery leg. See <Link href="/protocol" className="underline">Protocol</Link>.
                 </p>
             </section>
 

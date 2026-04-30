@@ -12,11 +12,10 @@ const SITE_URL =
 const PUBLIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }[] = [
     { path: "/", changeFrequency: "weekly", priority: 1.0 },
     { path: "/cryptoeconomics", changeFrequency: "weekly", priority: 0.9 },
-    { path: "/foundations", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/protocol", changeFrequency: "weekly", priority: 0.9 },
     { path: "/about", changeFrequency: "weekly", priority: 0.9 },
     { path: "/spec", changeFrequency: "weekly", priority: 0.9 },
     { path: "/builders", changeFrequency: "weekly", priority: 0.9 },
-    { path: "/groups", changeFrequency: "weekly", priority: 0.8 },
     { path: "/local-commerce", changeFrequency: "weekly", priority: 0.8 },
     { path: "/fig", changeFrequency: "weekly", priority: 0.8 },
     { path: "/fig/design", changeFrequency: "monthly", priority: 0.7 },
