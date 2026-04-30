@@ -141,5 +141,6 @@
         "safetyWarnings": [
             "Core-only assembly. No additional economic mechanisms. Risk profile is identical to raw FigaroCore usage."
         ]
-    }
+    },
+    "defaultRootFulfilment": "consume-onsite"
 }

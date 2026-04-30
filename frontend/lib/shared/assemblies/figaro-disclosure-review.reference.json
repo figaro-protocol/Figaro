@@ -189,5 +189,6 @@
         "safetyWarnings": [
             "Disclosure modules may change information quality without changing custody or repricing guarantees."
         ]
-    }
+    },
+    "defaultRootFulfilment": "consume-onsite"
 }

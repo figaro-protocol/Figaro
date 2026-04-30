@@ -1,0 +1,220 @@
+{
+    "identity": {
+        "id": "direct-sale-reference",
+        "name": "Direct Sale",
+        "slug": "direct-sale",
+        "description": "Reference assembly for one-node bonded sales: buyer commits to merchant; the buyer either consumes on-site or picks up. No delivery, no courier, no sub-orders. Generic across in-person commerce verticals (counter sale, dine-in, pickup, walk-in service, on-site appointment).",
+        "networkTargets": [
+            "local-anvil",
+            "evm-compatible"
+        ],
+        "version": "0.1.0"
+    },
+    "contracts": [
+        {
+            "key": "core",
+            "required": true,
+            "description": "Bonded process coordination substrate."
+        },
+        {
+            "key": "operatorRegistry",
+            "required": false,
+            "description": "Permissionless merchant self-registration."
+        },
+        {
+            "key": "manifestSchemaRegistry",
+            "required": false,
+            "description": "On-chain manifest encoding format registry."
+        }
+    ],
+    "serviceBindings": [
+        {
+            "serviceKey": "catalogue",
+            "providerKey": "default-catalogue"
+        },
+        {
+            "serviceKey": "discovery",
+            "providerKey": "default-discovery"
+        },
+        {
+            "serviceKey": "evidenceTransport",
+            "providerKey": "default-ipfs"
+        }
+    ],
+    "mechanisms": [
+        {
+            "mechanismId": "core-orders",
+            "kind": "core",
+            "displayName": "Bonded Order Coordination",
+            "riskClass": "read-only-inherited",
+            "enabled": true,
+            "visibility": "primary",
+            "contractKeys": [
+                "core",
+                "manifestSchemaRegistry"
+            ],
+            "moduleBindings": [
+                "seller-discovery",
+                "cart"
+            ]
+        },
+        {
+            "mechanismId": "operator-registration",
+            "kind": "registry",
+            "displayName": "Operator Registration",
+            "riskClass": "low-risk-coordinator",
+            "enabled": true,
+            "visibility": "secondary",
+            "recognizedRoles": [
+                "merchant"
+            ],
+            "contractKeys": [
+                "operatorRegistry"
+            ],
+            "moduleBindings": [
+                "catalogue-editor"
+            ]
+        }
+    ],
+    "roles": [
+        {
+            "roleKind": "buyer",
+            "displayName": "Buyer",
+            "visibility": "primary",
+            "defaultLandingView": "buyer-view",
+            "sampleCapabilities": [
+                "create-order",
+                "resolve-process",
+                "withdraw"
+            ]
+        },
+        {
+            "roleKind": "merchant",
+            "displayName": "Merchant",
+            "visibility": "primary",
+            "defaultLandingView": "merchant-view",
+            "sampleCapabilities": [
+                "accept-offer",
+                "declare-ready-for-pickup",
+                "withdraw"
+            ]
+        }
+    ],
+    "views": [
+        {
+            "viewId": "buyer-view",
+            "kind": "overview",
+            "title": "Direct Sale",
+            "contextsAccepted": ["assembly", "role"],
+            "moduleSlots": [
+                "role-switcher",
+                "capability-rail",
+                "process-capital-summary",
+                "seller-discovery",
+                "cart",
+                "handoff-details",
+                "order-node",
+                "order-actions",
+                "settlement-breakdown",
+                "event-timeline"
+            ]
+        },
+        {
+            "viewId": "merchant-view",
+            "kind": "role-dashboard",
+            "title": "Merchant Dashboard",
+            "contextsAccepted": ["role", "process", "order"],
+            "moduleSlots": [
+                "role-switcher",
+                "capability-rail",
+                "process-capital-summary",
+                "incoming-orders",
+                "catalogue-editor",
+                "handoff-details",
+                "event-timeline"
+            ]
+        }
+    ],
+    "modules": [
+        { "moduleId": "role-switcher" },
+        { "moduleId": "capability-rail" },
+        { "moduleId": "process-capital-summary" },
+        {
+            "moduleId": "seller-discovery",
+            "slot": "main",
+            "priority": 1
+        },
+        {
+            "moduleId": "cart",
+            "slot": "main",
+            "priority": 2
+        },
+        {
+            "moduleId": "order-node",
+            "slot": "main",
+            "priority": 3
+        },
+        {
+            "moduleId": "order-actions",
+            "slot": "main",
+            "priority": 4
+        },
+        {
+            "moduleId": "settlement-breakdown",
+            "slot": "main",
+            "priority": 5
+        },
+        {
+            "moduleId": "incoming-orders",
+            "slot": "main",
+            "priority": 1
+        },
+        {
+            "moduleId": "catalogue-editor",
+            "slot": "main",
+            "priority": 2
+        },
+        {
+            "moduleId": "handoff-details",
+            "slot": "main",
+            "priority": 3
+        },
+        {
+            "moduleId": "event-timeline",
+            "slot": "main",
+            "priority": 4
+        }
+    ],
+    "capabilityPresentation": [
+        {
+            "capabilityKind": "resolve-process",
+            "priority": 10,
+            "warningStyle": "warning"
+        },
+        {
+            "capabilityKind": "withdraw",
+            "priority": 7,
+            "warningStyle": "info"
+        }
+    ],
+    "visibilityDefaults": {
+        "showGraphByDefault": false,
+        "showAdvancedMechanisms": false,
+        "showRiskBoundaries": true,
+        "showGuarantees": true,
+        "showEconomicBreakdowns": true,
+        "showBuilderMode": false,
+        "showAuditMode": false
+    },
+    "narrative": {
+        "assemblySummary": "Direct in-person commerce as a one-node bonded process. The buyer commits to a merchant; settlement happens after handoff. No courier, no delivery, no auction. Generic across consume-on-site (dine-in, on-site service) and pickup (counter sale, takeaway, click-and-collect) shapes.",
+        "builderNotes": "Reference assembly only. The simplest viable shape — useful as a starting point for any in-person commerce that doesn't need a delivery sub-order."
+    },
+    "builderMetadata": {
+        "assemblyClass": "reference-dapp",
+        "compositionLevel": 1,
+        "requiresCustomModules": false,
+        "safetyWarnings": []
+    },
+    "defaultRootFulfilment": "consume-onsite"
+}

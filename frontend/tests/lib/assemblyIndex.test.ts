@@ -7,7 +7,7 @@ describe('assembly index', () => {
         const result = validateAssemblyIndex(REFERENCE_ASSEMBLIES_INDEX);
 
         expect(result.ok).toBe(true);
-        expect(result.perAssembly).toHaveLength(5);
+        expect(result.perAssembly).toHaveLength(6);
         expect(result.perAssembly.every((entry) => entry.result.ok)).toBe(true);
     });
 

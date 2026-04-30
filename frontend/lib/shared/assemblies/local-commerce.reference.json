@@ -394,5 +394,6 @@
         "safetyWarnings": [
             "Auction mechanism introduces additional economic risk beyond read-only and coordinator layers."
         ]
-    }
+    },
+    "defaultRootFulfilment": "deliver:seller-assigned"
 }

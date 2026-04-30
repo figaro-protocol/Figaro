@@ -1,4 +1,5 @@
 // BEGIN GENERATED ASSEMBLY IMPORTS
+import directSaleReference from "@/lib/shared/assemblies/direct-sale.reference.json";
 import figaroDisclosureReviewReference from "@/lib/shared/assemblies/figaro-disclosure-review.reference.json";
 import localCommerceReference from "@/lib/shared/assemblies/local-commerce.reference.json";
 import figaroEquipmentRentalReference from "@/lib/shared/assemblies/figaro-equipment-rental.reference.json";
@@ -6,6 +7,7 @@ import figaroFreelanceReference from "@/lib/shared/assemblies/figaro-freelance.r
 import figaroProcurementReference from "@/lib/shared/assemblies/figaro-procurement.reference.json";
 // END GENERATED ASSEMBLY IMPORTS
 import { parseAssemblyDocument } from "@/lib/shared/assemblyParser";
+import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 
 export type TruthClass =
     | "protocol-enforced"
@@ -143,9 +145,18 @@ export interface Assembly {
     visibilityDefaults: VisibilityDefaults;
     narrative?: NarrativeLayer;
     builderMetadata: BuilderMetadata;
+    /** Optional seed for the root order's fulfilment method when this
+     *  assembly is forked into the DAG editor. When absent, the bridge
+     *  applies the synthetic default (`deliver:seller-assigned`). */
+    defaultRootFulfilment?: CanonicalFulfilmentMethod;
 }
 
 // BEGIN GENERATED ASSEMBLY EXPORTS
+export const DIRECT_SALE_REFERENCE_ASSEMBLY = parseAssemblyDocument(
+    directSaleReference,
+    "direct-sale.reference.json"
+);
+
 export const LOCAL_COMMERCE_REFERENCE_ASSEMBLY = parseAssemblyDocument(
     localCommerceReference,
     "local-commerce.reference.json"
@@ -174,6 +185,7 @@ export const FIGARO_FREELANCE_REFERENCE_ASSEMBLY = parseAssemblyDocument(
 
 // BEGIN GENERATED ASSEMBLY REGISTRY
 export const REFERENCE_ASSEMBLIES: Assembly[] = [
+    DIRECT_SALE_REFERENCE_ASSEMBLY,
     LOCAL_COMMERCE_REFERENCE_ASSEMBLY,
     FIGARO_PROCUREMENT_REFERENCE_ASSEMBLY,
     FIGARO_DISCLOSURE_REFERENCE_ASSEMBLY,

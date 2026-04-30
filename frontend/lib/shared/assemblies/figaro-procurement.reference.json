@@ -182,5 +182,6 @@
         "safetyWarnings": [
             "Coordinator checkpoints may affect workflow expectations but do not alter settlement guarantees."
         ]
-    }
+    },
+    "defaultRootFulfilment": "pickup"
 }

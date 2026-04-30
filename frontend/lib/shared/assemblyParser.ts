@@ -16,6 +16,10 @@ import {
     VisibilityDefaults,
 } from "@/lib/shared/assembly";
 import {
+    CANONICAL_FULFILMENT_METHODS_LIST,
+    type CanonicalFulfilmentMethod,
+} from "@/lib/core/orderAgreement";
+import {
     getBuiltInModuleDefaults,
     getBuiltInViewContextsAccepted,
     getBuiltInViewModuleSlots,
@@ -369,6 +373,19 @@ function parseBuilderMetadata(value: unknown, path: string): BuilderMetadata {
     };
 }
 
+function parseDefaultRootFulfilment(value: unknown, sourceLabel: string): CanonicalFulfilmentMethod | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value !== "string") {
+        throw new Error(`${sourceLabel} must be a string when present, got ${typeof value}`);
+    }
+    if (!(CANONICAL_FULFILMENT_METHODS_LIST as readonly string[]).includes(value)) {
+        throw new Error(
+            `${sourceLabel} must be one of ${CANONICAL_FULFILMENT_METHODS_LIST.join(", ")}; got "${value}"`,
+        );
+    }
+    return value as CanonicalFulfilmentMethod;
+}
+
 export function parseAssemblyDocument(value: unknown, sourceLabel = "assembly document"): Assembly {
     const record = asRecord(value, sourceLabel);
     const modules = parseModules(record.modules, `${sourceLabel}.modules`);
@@ -384,5 +401,6 @@ export function parseAssemblyDocument(value: unknown, sourceLabel = "assembly do
         visibilityDefaults: parseVisibilityDefaults(record.visibilityDefaults, `${sourceLabel}.visibilityDefaults`),
         narrative: parseNarrative(record.narrative, `${sourceLabel}.narrative`),
         builderMetadata: parseBuilderMetadata(record.builderMetadata, `${sourceLabel}.builderMetadata`),
+        defaultRootFulfilment: parseDefaultRootFulfilment(record.defaultRootFulfilment, `${sourceLabel}.defaultRootFulfilment`),
     };
 }

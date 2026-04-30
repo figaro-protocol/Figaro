@@ -186,5 +186,6 @@
             "Rental coordinator checkpoints are timestamped attestations only. They do not alter settlement guarantees or enforce return deadlines.",
             "Damage disputes are resolved through the protocol's defense-in-depth layers (MAD, coordination pressure, timestamped evidence), not through arbiter escalation."
         ]
-    }
+    },
+    "defaultRootFulfilment": "pickup"
 }

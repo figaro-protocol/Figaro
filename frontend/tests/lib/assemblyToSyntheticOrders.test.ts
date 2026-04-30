@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { assemblyToSyntheticOrders } from "@/lib/designer/assemblyToSyntheticOrders";
 import {
+    DIRECT_SALE_REFERENCE_ASSEMBLY,
     LOCAL_COMMERCE_REFERENCE_ASSEMBLY,
     FIGARO_PROCUREMENT_REFERENCE_ASSEMBLY,
     FIGARO_DISCLOSURE_REFERENCE_ASSEMBLY,
@@ -33,6 +34,10 @@ describe("assemblyToSyntheticOrders", () => {
         expect(root.sellerBond).toBe(root.cumulativeValue * 2n);
         expect(root.buyerBond).toBe(root.payment * 2n);
 
+        // Local-commerce declares defaultRootFulfilment="deliver:seller-assigned"
+        // — the root's fulfilment should match.
+        expect(deriveFulfilmentMethod(root)).toBe("deliver:seller-assigned");
+
         // Sub: same buyer (root buyer dominance), new seller
         expect(sub.buyer).toBe(session.buyerAddress);
         expect(sub.processId).toBe(session.processId);
@@ -46,6 +51,21 @@ describe("assemblyToSyntheticOrders", () => {
         // Local-commerce has the courier-auction mechanism (kind=auction, enabled),
         // so the last (and only) sub-order should be deliver:dutch-auction.
         expect(deriveFulfilmentMethod(sub)).toBe("deliver:dutch-auction");
+    });
+
+    it("seeds the direct-sale reference into a 1-node DAG with consume-onsite root", () => {
+        const { orders } = assemblyToSyntheticOrders(DIRECT_SALE_REFERENCE_ASSEMBLY);
+
+        // Direct-sale has 2 roles (buyer + merchant) → 1 seller → 1-node graph.
+        expect(orders).toHaveLength(1);
+        const [root] = orders;
+
+        // Root inherits the assembly's defaultRootFulfilment.
+        expect(deriveFulfilmentMethod(root)).toBe("consume-onsite");
+
+        // No parents on the root.
+        const parents = getTopologyParentOrderHashes(loadAgreement(root.agreementHash)) ?? [];
+        expect(parents).toEqual([]);
     });
 
     it("dumps a human-readable shape for visual inspection", () => {
@@ -91,6 +111,10 @@ describe("assemblyToSyntheticOrders", () => {
             expect(order.buyer).toBe(session.buyerAddress);
             expect(order.sellerBond).toBe(order.cumulativeValue * 2n);
             expect(order.buyerBond).toBe(order.payment * 2n);
+        }
+        // Root honors the assembly's declared defaultRootFulfilment when present.
+        if (assembly.defaultRootFulfilment) {
+            expect(deriveFulfilmentMethod(orders[0])).toBe(assembly.defaultRootFulfilment);
         }
         // Sub-orders are children of the root
         if (orders.length > 1) {
