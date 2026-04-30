@@ -223,15 +223,20 @@ function buildManifestValidationIssues(
             });
         }
 
-        const hasLocalCommerceBinding = assemblyBindings.some(
+        // Operator metadata must have at least one assembly binding (any
+        // assembly), so the discovery surface can route the click-through.
+        // Earlier this check was hard-coded to local-commerce; now that
+        // metadata exists for procurement / disclosure-review / equipment-
+        // rental / freelance operators, the assertion is broadened to "any
+        // binding."
+        const hasAnyBinding = assemblyBindings.some(
             (binding) => normalizeAddress(binding.subjectAddress) === normalizeAddress(metadata.subjectAddress)
-                && binding.assemblySlug === 'local-commerce'
         );
-        if (!hasLocalCommerceBinding) {
+        if (!hasAnyBinding) {
             issues.push({
                 severity: 'error',
                 code: 'merchant-metadata-binding-missing',
-                message: `${sourceLabel} seller catalogue metadata for ${metadata.subjectAddress} has no local-commerce assembly binding.`,
+                message: `${sourceLabel} seller catalogue metadata for ${metadata.subjectAddress} has no assembly binding.`,
                 subjectAddress: metadata.subjectAddress,
             });
         }
