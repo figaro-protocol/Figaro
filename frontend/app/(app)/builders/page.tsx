@@ -1,30 +1,30 @@
 import Link from "next/link";
+import { MarketingHero } from "@/components/shared/MarketingHero";
+import { MarketingSection } from "@/components/shared/MarketingSection";
 
 export default function BuildersPage() {
     return (
-        <div>
-            <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-4">
-                    Builders
-                </p>
-                <h1 className="text-5xl sm:text-6xl font-bold text-black leading-tight tracking-tight mb-6">
-                    The composition surface.
-                </h1>
-                <p className="text-base text-gray-700 leading-relaxed max-w-2xl mb-4">
-                    Where schemas, validators, mechanisms, and assemblies are authored.
-                </p>
-                <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mb-4">
-                    Above the kernel, the runtime tier composes into <em>assemblies</em> &mdash; declarative configurations that specify roles, mechanisms, clauses, and handoff conditions for a multi-party process. The kernel enforces the settlement properties; assemblies shape what gets settled.
-                </p>
-                <p className="text-sm text-gray-500 leading-relaxed max-w-2xl">
-                    For the academic frame, see <Link href="/cryptoeconomics" className="underline hover:text-black">Cryptoeconomics</Link>. For the kernel invariants enforced under the substrate, see <Link href="/protocol" className="underline hover:text-black">Protocol</Link>.
-                </p>
-            </section>
+        <>
+            <MarketingHero
+                eyebrow="Builders"
+                title="The operational catalogue."
+                lead={
+                    <>
+                        Tools for composing, authoring, registering, prototyping,
+                        and running bonded processes. Organized by the three
+                        tiers of the extension doctrine. The property statement
+                        &mdash; what composability is, why the kernel&apos;s
+                        narrowness produces it, the coordinator pattern that
+                        preserves the equilibrium &mdash; is on{" "}
+                        <Link href="/composability" className="underline hover:text-black">
+                            Composability
+                        </Link>
+                        ; this page is the tool surface.
+                    </>
+                }
+            />
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-6">
-                    What an assembly declares
-                </h2>
+            <MarketingSection eyebrow="What an assembly declares" eyebrowAsHeading>
                 <dl className="space-y-6 text-sm">
                     <div>
                         <dt className="text-base font-semibold text-black">Roles</dt>
@@ -47,117 +47,87 @@ export default function BuildersPage() {
                         <dd className="text-gray-700 leading-relaxed mt-1">Operator metadata (advisory, off-chain) maintained through <code>OperatorRegistry</code>. Not a coordination mechanism; a self-registration surface that lets discovery UIs find available counterparties.</dd>
                     </div>
                 </dl>
-            </section>
+            </MarketingSection>
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-6">
-                    How to extend
-                </h2>
-                <dl className="space-y-6 text-sm">
-                    <div className="border-l-2 border-gray-300 pl-6">
-                        <dt className="text-base font-semibold text-black mb-1">Compose against existing primitives</dt>
-                        <dd className="text-gray-700 leading-relaxed">An assembly is a configuration artifact that binds the deployed kernel, attestation coordinator, schema registry, and validators in force. No new on-chain code; the assembly is the only authored artifact.</dd>
-                    </div>
-                    <div className="border-l-2 border-gray-500 pl-6">
-                        <dt className="text-base font-semibold text-black mb-1">Add a typed clause</dt>
-                        <dd className="text-gray-700 leading-relaxed">Register a new <code>schemaId</code> and ship its validation layers in lockstep &mdash; TypeScript and Solidity today; SP1 Rust mirror pending. The settlement substrate is unchanged; the attestation surface extends.</dd>
-                    </div>
-                    <div className="border-l-2 border-black pl-6">
-                        <dt className="text-base font-semibold text-black mb-1">Add a mechanism</dt>
-                        <dd className="text-gray-700 leading-relaxed">Deploy a mechanism primitive (allocation, pricing, discovery, coordination) above the kernel via the coordinator pattern. The kernel still enforces its invariants; the new contract must prove its own. Strongly recommended: external audit before mainnet deployment.</dd>
-                    </div>
-                </dl>
-                <p className="text-sm text-gray-600 mt-6">
-                    Start at the lowest tier that supplies the required behavior. Full discipline at <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md" target="_blank" rel="noopener noreferrer" className="underline hover:text-black">PROTOCOL_EXTENSION_DOCTRINE.md</a>.
+            <MarketingSection eyebrow="Tools by tier" eyebrowAsHeading>
+                <p className="text-sm text-gray-700 leading-relaxed mb-8">
+                    The tiers below mirror the property gradient on{" "}
+                    <Link href="/composability" className="underline hover:text-black">
+                        Composability
+                    </Link>
+                    . Start at the lowest tier that supplies the required behavior.
                 </p>
-            </section>
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-6">
-                    Security boundary
-                </h2>
-                <p className="text-sm text-gray-700 leading-relaxed mb-6">
-                    The kernel enforces the invariants stated on <Link href="/protocol" className="underline">Protocol</Link>. Everything else &mdash; assembly correctness, custom contracts, schema content, role filling, UI claims &mdash; is the builder&apos;s responsibility.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                    <div>
-                        <div className="text-sm font-semibold text-black mb-2">Enforced by the kernel</div>
-                        <ul className="space-y-2 text-sm text-gray-700 leading-relaxed list-disc pl-5">
-                            <li>Asymmetric bonding (2× payment / 2× cumulative value)</li>
-                            <li>Progressive collateralization across sub-orders</li>
-                            <li>Buyer-dominant atomic resolution</li>
-                            <li>Merkle-bound attestation receipts against the signed agreement</li>
-                            <li>Validator-gated attestation dispatch</li>
-                            <li>Token conservation (Certora + Halmos + TLA⁺ verified)</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <div className="text-sm font-semibold text-black mb-2">Outside the kernel</div>
-                        <ul className="space-y-2 text-sm text-gray-700 leading-relaxed list-disc pl-5">
-                            <li>Assembly correctness &mdash; the kernel records the declared structure; it does not verify the workflow is well-formed for its purpose.</li>
-                            <li>Custom mechanism contracts &mdash; new failure modes belong to the contract, not the kernel.</li>
-                            <li>Custom schema content &mdash; the validator enforces the declared shape; semantic correctness is the schema author&apos;s.</li>
-                            <li>Role filling and identity &mdash; the kernel has no KYC. Participation gating is an assembly concern.</li>
-                            <li>UI claims &mdash; representing protocol-level guarantees for properties the assembly does not enforce.</li>
-                        </ul>
-                    </div>
+                <div className="border-l-2 border-gray-300 pl-6 mb-8">
+                    <p className="text-base font-semibold text-black mb-1">Tier 1 &mdash; Compose against existing primitives</p>
+                    <p className="text-sm text-gray-600 mb-4">No new on-chain code; the assembly is the only authored artifact.</p>
+                    <ul className="space-y-3 text-sm">
+                        <li>
+                            <Link href="/builders/designer" className="text-black font-medium hover:underline">Designer</Link>
+                            <span className="text-gray-700"> &mdash; three-column composition canvas: palette (blocks) → canvas (roles, views, slots, bindings) → inspector → publish drawer. Validates readiness against the assembly schema. Drafts persist locally.</span>
+                        </li>
+                        <li>
+                            <Link href="/builders/authoring" className="text-black font-medium hover:underline">Authoring Studio</Link>
+                            <span className="text-gray-700"> &mdash; server-action publish flow. Takes a Designer draft, validates against the assembly schema, and writes to the on-chain registry under the operator&apos;s wallet.</span>
+                        </li>
+                        <li>
+                            <Link href="/builders/assemblies" className="text-black font-medium hover:underline">Registered assemblies</Link>
+                            <span className="text-gray-700"> &mdash; index of assemblies written to the on-chain registry. Read surface for the current public graph.</span>
+                        </li>
+                        <li>
+                            <Link href="/builders/prototype" className="text-black font-medium hover:underline">Prototype shells</Link>
+                            <span className="text-gray-700"> &mdash; resolves an assembly through runtime-identity binding for live inspection. The same shell that ships at <code>/i/[slug]</code>, instrumented for builder-side iteration.</span>
+                        </li>
+                    </ul>
                 </div>
-                <p className="text-sm text-gray-600 mt-6">
-                    Verification surface: <Link href="/spec" className="underline">/spec</Link>.
-                </p>
-            </section>
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-6">
-                    Composition surfaces
-                </h2>
-                <p className="text-sm text-gray-600 mb-6">
-                    Instruments for expressing each layer above the kernel. Not product features &mdash; the kernel makes no distinction between these surfaces and any third-party equivalent an integrator might ship.
-                </p>
-                <ul className="space-y-4">
-                    <li>
-                        <Link href="/builders/designer" className="text-black font-medium hover:underline">Designer</Link>
-                        <p className="text-sm text-gray-600 mt-0.5">Three-column composition UI: palette (blocks) → canvas (roles, views, slots, bindings) → inspector → publish drawer. Validates readiness against the assembly schema. Drafts persist locally; publish flow lives in Authoring Studio below.</p>
-                    </li>
-                    <li>
-                        <Link href="/builders/authoring" className="text-black font-medium hover:underline">Authoring Studio</Link>
-                        <p className="text-sm text-gray-600 mt-0.5">Server-action publish flow. Takes a Designer draft, validates against the assembly schema, and writes to the on-chain registry under the operator&apos;s wallet.</p>
-                    </li>
-                    <li>
-                        <Link href="/builders/assemblies" className="text-black font-medium hover:underline">Registered assemblies</Link>
-                        <p className="text-sm text-gray-600 mt-0.5">Index of assemblies written to the on-chain registry. Read surface for the current public graph.</p>
-                    </li>
-                    <li>
-                        <Link href="/builders/prototype" className="text-black font-medium hover:underline">Prototype shells</Link>
-                        <p className="text-sm text-gray-600 mt-0.5">Resolves an assembly through runtime-identity binding for live inspection. The same shell that ships at <code>/i/[slug]</code>, instrumented for builder-side iteration.</p>
-                    </li>
-                    <li>
-                        <Link href="/schemas" className="text-black font-medium hover:underline">Schemas</Link>
-                        <p className="text-sm text-gray-600 mt-0.5">Schema architecture and the validator-in-force inventory. Add a new schema by registering <code>schemaId</code> permissionlessly and shipping the TypeScript encoder, Solidity validator, and deploy script.</p>
-                    </li>
-                    <li>
-                        <Link href="/spec" className="text-black font-medium hover:underline">Contracts</Link>
-                        <p className="text-sm text-gray-600 mt-0.5">The on-chain canonical surface. Every contract above the kernel is listed with its purpose, source link, and verification status. The starting point for adding a mechanism primitive.</p>
-                    </li>
-                    <li>
-                        <Link href="/integrate" className="text-black font-medium hover:underline">Integrate (SDK)</Link>
-                        <p className="text-sm text-gray-600 mt-0.5"><code>@figaro/core</code> &mdash; ABIs, event parsers, <code>ProcessGraph</code> reconstruction, commitment builders, action queue, schema encoders.</p>
-                    </li>
-                    <li>
-                        <Link href="/console" className="text-black font-medium hover:underline">Console</Link>
-                        <p className="text-sm text-gray-600 mt-0.5">Supervision surface for live processes and assembly drafts. Action queue for human-in-the-loop approval or autonomous submission.</p>
-                    </li>
-                </ul>
-            </section>
+                <div className="border-l-2 border-gray-500 pl-6 mb-8">
+                    <p className="text-base font-semibold text-black mb-1">Tier 2 &mdash; Add a typed clause</p>
+                    <p className="text-sm text-gray-600 mb-4">Register a new <code>schemaId</code>; ship validation layers in lockstep (TypeScript and Solidity today; SP1 Rust mirror pending).</p>
+                    <ul className="space-y-3 text-sm">
+                        <li>
+                            <Link href="/schemas" className="text-black font-medium hover:underline">Schemas</Link>
+                            <span className="text-gray-700"> &mdash; the three-layer validation architecture and the eighteen reference schemas. Includes the nine-step authoring checklist and the <code>SchemaRegistrationHelper</code> path for atomic register+bind.</span>
+                        </li>
+                        <li>
+                            <Link href="/integrate" className="text-black font-medium hover:underline">SDK schema encoders</Link>
+                            <span className="text-gray-700"> &mdash; <code>@figaro/core/schemas</code>: meta-schema validator, <code>validateContent</code>, per-schema content encoders.</span>
+                        </li>
+                    </ul>
+                </div>
 
-            <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-gray-200 pt-12">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-6">
-                    Reference implementation
-                </h2>
+                <div className="border-l-2 border-black pl-6 mb-8">
+                    <p className="text-base font-semibold text-black mb-1">Tier 3 &mdash; Add a mechanism</p>
+                    <p className="text-sm text-gray-600 mb-4">Deploy a mechanism primitive above the kernel via the coordinator pattern. The kernel still enforces its invariants; the new contract must prove its own. Strongly recommended: external audit before mainnet deployment.</p>
+                    <ul className="space-y-3 text-sm">
+                        <li>
+                            <Link href="/spec" className="text-black font-medium hover:underline">Contracts</Link>
+                            <span className="text-gray-700"> &mdash; the canonical on-chain surface. Every contract above the kernel is listed with its purpose, source link, and verification status. The starting point for adding a mechanism primitive.</span>
+                        </li>
+                        <li>
+                            <Link href="/integrate" className="text-black font-medium hover:underline">SDK ABIs &amp; event parsers</Link>
+                            <span className="text-gray-700"> &mdash; <code>@figaro/core</code>: ABIs, event parsers, <code>ProcessGraph</code> reconstruction, commitment builders, action queue.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div className="border-l-2 border-gray-200 pl-6">
+                    <p className="text-base font-semibold text-black mb-1">Cross-cutting</p>
+                    <p className="text-sm text-gray-600 mb-4">Tools that operate across all three tiers.</p>
+                    <ul className="space-y-3 text-sm">
+                        <li>
+                            <Link href="/console" className="text-black font-medium hover:underline">Console</Link>
+                            <span className="text-gray-700"> &mdash; supervision surface for live processes and assembly drafts. Action queue for human-in-the-loop approval or autonomous submission.</span>
+                        </li>
+                    </ul>
+                </div>
+            </MarketingSection>
+
+            <MarketingSection eyebrow="Reference implementation" eyebrowAsHeading bottomPad="wide">
                 <p className="text-sm text-gray-700 leading-relaxed">
-                    <Link href="/i/local-commerce" className="text-black font-medium hover:underline">Figaro Local Commerce</Link> &mdash; three roles (buyer, merchant, courier), bonded ordering, Dutch-auction dispatch, attestation coordinator, operator registry, optional GHG disclosure. Generic across food handoff, retail pickup, and on-demand service flows. Composes existing primitives, declares custom clauses, and uses no new mechanism contracts.
+                    <Link href="/i/local-commerce" className="text-black font-medium hover:underline">Figaro Local Commerce</Link> &mdash; three roles (buyer, merchant, courier), bonded ordering, Dutch-auction dispatch, attestation coordinator, operator registry, optional GHG disclosure. Composes existing primitives, declares custom clauses, and uses no new mechanism contracts &mdash; a Tier-1 + Tier-2 assembly with no Tier-3 code authored.
                 </p>
-            </section>
-        </div>
+            </MarketingSection>
+        </>
     );
 }
