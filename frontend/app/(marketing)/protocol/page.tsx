@@ -1,39 +1,33 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { MarketingHero } from "@/components/shared/MarketingHero";
+import { MarketingSection } from "@/components/shared/MarketingSection";
 
 export const metadata: Metadata = {
     title: "Protocol — Figaro",
     description:
-        "Figaro's protocol-level properties: two mechanisms producing a Nash equilibrium under bonded commitment, transaction-scoped institutions that form for one process and dissolve at settlement, and the contract-law mapping the protocol carries.",
+        "Figaro's protocol-level properties: two mechanisms producing a Nash equilibrium under bonded commitment, transaction-scoped institutions that form for one process and dissolve at settlement, the contract-law mapping the protocol carries, and the three layers of enforcement.",
 };
 
 export default function Protocol() {
     return (
         <>
-            <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-4">
-                    Protocol
-                </p>
-                <h1 className="text-5xl sm:text-6xl font-bold text-black leading-tight tracking-tight mb-6">
-                    Two mechanisms, one bonded commitment.
-                </h1>
-                <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
-                    The kernel runs two mechanisms doing distinct work. Asymmetric
-                    bonding produces the bilateral Nash equilibrium and scales the
-                    primitive from two parties to N-party trees through progressive
-                    collateralization. Buyer dominance with atomic resolution
-                    operates on the scaled mesh and induces a weakest-link subgame
-                    among sellers. They compose; neither substitutes for the other.
-                </p>
-            </section>
+            <MarketingHero
+                eyebrow="Protocol"
+                title="Two mechanisms, one bonded commitment."
+                lead={
+                    <>
+                        The kernel runs two mechanisms doing distinct work. Asymmetric
+                        bonding produces the bilateral Nash equilibrium and scales the
+                        primitive from two parties to N-party trees through progressive
+                        collateralization. Buyer dominance with atomic resolution
+                        operates on the scaled mesh and induces a weakest-link subgame
+                        among sellers. They compose; neither substitutes for the other.
+                    </>
+                }
+            />
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    The bonded commitment
-                </p>
-                <h2 className="text-3xl font-bold text-black mb-6 leading-tight">
-                    A signed contract at the protocol level.
-                </h2>
+            <MarketingSection eyebrow="The bonded commitment" title="A signed contract at the protocol level.">
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
                     Every commitment carries the structural shape of a contract. The
                     payment is consideration; the schemas in the agreement are the
@@ -44,21 +38,22 @@ export default function Protocol() {
                     shape of the contract &mdash; it is that the parties&apos; bonds are the
                     enforcement.
                 </p>
+                <p className="text-base text-gray-700 leading-relaxed mb-4">
+                    An N-party process tree is a chain of linked bilateral
+                    contracts, each with its own buyer-seller pair, composed
+                    through progressive collateralization. The kitchen-operator
+                    role contracts with the courier role; the kitchen operator
+                    becomes the buyer of the delivery sub-contract.
+                </p>
                 <p className="text-sm text-gray-600">
                     Bonding ratio: buyer locks <code>2P</code>, seller locks{" "}
                     <code>2G</code>. Custody = <code>2P + 2G</code>. The 2&times; minimum
                     is proven sufficient (Paper A, Theorem 4.6); below that ratio
                     weak dominance fails (Theorem 4.7).
                 </p>
-            </section>
+            </MarketingSection>
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    The institution form
-                </p>
-                <h2 className="text-3xl font-bold text-black mb-6 leading-tight">
-                    Each trade is a transaction-scoped institution.
-                </h2>
+            <MarketingSection eyebrow="The institution form" title="Each trade is a transaction-scoped institution.">
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
                     A multi-party process is an assembly of independent value-adders
                     that forms for one trade and dissolves at settlement. The
@@ -76,15 +71,80 @@ export default function Protocol() {
                     &mdash; three roles, one root commitment, two sub-orders, atomic
                     settlement.
                 </p>
-            </section>
+            </MarketingSection>
 
-            <section className="container mx-auto px-6 pb-32 max-w-3xl border-t border-gray-200 pt-12">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    Read deeper
+            <MarketingSection
+                eyebrow="Enforcement"
+                title="Three layers, ordered by how often each fires."
+                sectionId="enforcement"
+            >
+                <p className="text-base text-gray-700 leading-relaxed mb-6">
+                    Self-enforcing agreements do not rely on a single defense.
                 </p>
-                <h2 className="text-3xl font-bold text-black mb-6 leading-tight">
-                    Eight disciplines read this from eight angles.
-                </h2>
+                <dl className="space-y-6 text-sm">
+                    <div>
+                        <dt className="flex items-baseline gap-3 flex-wrap mb-2">
+                            <span className="font-mono text-xs text-gray-500">Layer 1</span>
+                            <span className="text-xs text-gray-500 uppercase tracking-widest">Economic</span>
+                        </dt>
+                        <dd className="text-gray-700 leading-relaxed">
+                            <strong className="text-black">Asymmetric bonding makes cheating irrational.</strong>{" "}
+                            Both parties bond before any work begins. Cooperation
+                            weakly dominates defection (Paper A, Theorem 4.3); the
+                            bonded-commit profile is the unique strategy surviving
+                            iterated elimination of weakly dominated strategies.
+                            This covers the overwhelming majority of transactions;
+                            when the mechanism works as designed, no dispute ever
+                            arises.
+                        </dd>
+                    </div>
+                    <div>
+                        <dt className="flex items-baseline gap-3 flex-wrap mb-2">
+                            <span className="font-mono text-xs text-gray-500">Layer 2</span>
+                            <span className="text-xs text-gray-500 uppercase tracking-widest">Social</span>
+                        </dt>
+                        <dd className="text-gray-700 leading-relaxed">
+                            <strong className="text-black">Multi-party processes bind contributors together.</strong>{" "}
+                            Each contributor&apos;s failure costs everyone. A courier
+                            who fails to deliver doesn&apos;t just lose their own bond
+                            &mdash; they cost the kitchen operator and every upstream
+                            contributor their bond too, because the buyer cannot
+                            approve a half-complete process. Figaro reproduces the
+                            Grameen joint-liability peer-enforcement outcome under
+                            strictly weaker assumptions: no repeated interaction,
+                            no local information, no social sanction (Theorem 6.1).
+                        </dd>
+                    </div>
+                    <div>
+                        <dt className="flex items-baseline gap-3 flex-wrap mb-2">
+                            <span className="font-mono text-xs text-gray-500">Layer 3</span>
+                            <span className="text-xs text-gray-500 uppercase tracking-widest">Legal</span>
+                        </dt>
+                        <dd className="text-gray-700 leading-relaxed">
+                            <strong className="text-black">On-chain evidence for off-chain adjudication.</strong>{" "}
+                            For the residual fraction involving irrational or
+                            adversarial actors, the chain provides immutable,
+                            timestamped, role-gated evidence. Every lifecycle
+                            event is bound to the signed agreement via a merkle
+                            inclusion proof. Compatible with cryptographic-evidence
+                            frameworks under eIDAS, UCC, and UNCITRAL model law;
+                            admissibility is forum-specific. Adjudication happens
+                            in real courts with real procedure &mdash; not in on-chain
+                            juries. The protocol does not adjudicate; it produces
+                            tamper-evident, schema-validated evidence. Details:{" "}
+                            <a href="/papers/figaro-legal.pdf" className="underline">
+                                Paper E (legal)
+                            </a>.
+                        </dd>
+                    </div>
+                </dl>
+            </MarketingSection>
+
+            <MarketingSection
+                eyebrow="Read deeper"
+                title="Eight disciplines read this from eight angles."
+                bottomPad="extra"
+            >
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
                     Cryptoeconomic systems are multi-disciplinary by construction.
                     Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic
@@ -93,7 +153,7 @@ export default function Protocol() {
                     own vocabulary. The <Link href="/cryptoeconomics" className="underline">cryptoeconomics page</Link>{" "}
                     organizes Figaro&apos;s papers along that taxonomy.
                 </p>
-            </section>
+            </MarketingSection>
         </>
     );
 }

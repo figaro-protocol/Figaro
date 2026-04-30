@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-    DisciplineGlyph,
-} from "@/components/shared/DisciplineGlyph";
+import { DisciplineGlyph } from "@/components/shared/DisciplineGlyph";
+import { MarketingHero } from "@/components/shared/MarketingHero";
+import { MarketingSection } from "@/components/shared/MarketingSection";
 import {
     FIGARO_TELEGRAM_URL,
     GROUPS_REGISTRY,
@@ -18,23 +18,21 @@ export const metadata: Metadata = {
 export default function Cryptoeconomics() {
     return (
         <>
-            <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-4">
-                    Cryptoeconomics
-                </p>
-                <h1 className="text-5xl sm:text-6xl font-bold text-black leading-tight tracking-tight mb-6">
-                    Cryptoeconomic systems are multi-disciplinary.
-                </h1>
-                <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
-                    Voshmgir &amp; Zargham frame the field as eight disciplines
-                    converging on the same substrate &mdash; each asks the substrate
-                    a different question in its own vocabulary. Figaro&apos;s papers
-                    are organized along that taxonomy. Working groups assemble where
-                    contributors do; empty disciplines are open calls.
-                </p>
-            </section>
+            <MarketingHero
+                eyebrow="Cryptoeconomics"
+                title="Cryptoeconomic systems are multi-disciplinary."
+                lead={
+                    <>
+                        Voshmgir &amp; Zargham frame the field as eight disciplines
+                        converging on the same substrate &mdash; each asks the substrate
+                        a different question in its own vocabulary. Figaro&apos;s papers
+                        are organized along that taxonomy. Working groups assemble where
+                        contributors do; empty disciplines are open calls.
+                    </>
+                }
+            />
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
+            <MarketingSection>
                 <figure>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -50,14 +48,11 @@ export default function Cryptoeconomics() {
                         Reproduced with attribution.
                     </figcaption>
                 </figure>
-            </section>
+            </MarketingSection>
 
             {/* Project-wide coordination — rendered once at the top of the
                 disciplines section so per-card venue lines don't repeat. */}
-            <section className="container mx-auto px-6 pb-8 max-w-3xl border-t border-gray-200 pt-12">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    Conversation
-                </p>
+            <MarketingSection eyebrow="Conversation">
                 <p className="text-sm text-gray-700 leading-relaxed">
                     Project-wide coordination happens on{" "}
                     <a
@@ -72,8 +67,11 @@ export default function Cryptoeconomics() {
                     inline below; otherwise, all conversation is the project
                     Telegram.
                 </p>
-            </section>
+            </MarketingSection>
 
+            {/* Disciplines list — uses a non-MarketingSection wrapper because
+                each <article> is its own anchor target with custom layout
+                (glyph leading-column + indented body). */}
             <section className="container mx-auto px-6 pb-12 max-w-3xl pt-2">
                 <div className="space-y-12">
                     {GROUPS_REGISTRY.map((g) => {
@@ -188,10 +186,7 @@ export default function Cryptoeconomics() {
                 </div>
             </section>
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    Implementation
-                </p>
+            <MarketingSection eyebrow="Implementation">
                 <p className="text-base text-gray-700 leading-relaxed">
                     Implementation work &mdash; schema authoring, contract
                     development, assembly composition, frontend
@@ -202,12 +197,9 @@ export default function Cryptoeconomics() {
                     . The disciplines above frame the substrate; /builders
                     is where the substrate gets built on.
                 </p>
-            </section>
+            </MarketingSection>
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-gray-200 pt-12">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    Grants &amp; capital sources
-                </p>
+            <MarketingSection eyebrow="Grants &amp; capital sources">
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
                     Work on the Figaro substrate &mdash; research, review,
                     verification, assembly design, documentation &mdash; is funded
@@ -241,12 +233,9 @@ export default function Cryptoeconomics() {
                         </dd>
                     </div>
                 </dl>
-            </section>
+            </MarketingSection>
 
-            <section className="container mx-auto px-6 pb-32 max-w-3xl border-t border-gray-200 pt-12">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
-                    Contributing
-                </p>
+            <MarketingSection eyebrow="Contributing" bottomPad="extra">
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
                     To add a paper, declare current work, surface a received
                     grant, or publish a contributor handle, open a pull request
@@ -261,7 +250,7 @@ export default function Cryptoeconomics() {
                     literature converges on a different taxonomy, this registry
                     will follow.
                 </p>
-            </section>
+            </MarketingSection>
         </>
     );
 }

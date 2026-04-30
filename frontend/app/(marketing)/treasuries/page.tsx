@@ -64,7 +64,7 @@ export default function Treasuries() {
                 <ul className="space-y-3 text-sm text-gray-700 leading-relaxed list-disc pl-6">
                     <li><strong>Counterparty bond required.</strong> The seller posts <code>2× cumulative value</code>. Counterparties without in-hand capital cannot enter without external financing (<Link href="/integrate" className="underline">lending composition</Link>).</li>
                     <li><strong>No clawback after resolution.</strong> Settlement is terminal; it cannot be reversed by any party. Milestone-gated disbursement is achieved through process-tree composition, not kernel-level reversal.</li>
-                    <li><strong>No kernel-level arbitration.</strong> The protocol produces evidence; the agreement specifies the forum. See <Link href="/about#enforcement" className="underline">enforcement</Link> and <a href="/papers/figaro-legal.pdf" className="underline">Paper E (legal)</a>.</li>
+                    <li><strong>No kernel-level arbitration.</strong> The protocol produces evidence; the agreement specifies the forum. See <Link href="/protocol#enforcement" className="underline">enforcement</Link> and <a href="/papers/figaro-legal.pdf" className="underline">Paper E (legal)</a>.</li>
                     <li><strong>Public visibility.</strong> Commitment events are on a public ledger; content is hashed (only <code>agreementHash</code> is public), but participation is visible. Confidential disbursement is outside the protocol&apos;s guarantees.</li>
                 </ul>
             </section>
