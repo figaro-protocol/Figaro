@@ -239,13 +239,22 @@ shared institutions (norms, currencies, dispute mechanisms),
 attains a population large enough to matter and a treasury
 large enough to act, acquires territorial presence (initially
 distributed, eventually contiguous), and ultimately seeks
-diplomatic recognition as a sovereign-equivalent entity. The
-sequence is presented as a contemporary updating of
-Hirschman's framework on \emph{exit} as a response to
-institutional dissatisfaction (\citealt{hirschman1970exit}): when
-voice within incumbent states becomes ineffective, exit to a
-new entity becomes the alternative, but exit requires a
-destination, and the network state is the destination's design.
+diplomatic recognition as a sovereign-equivalent entity. A
+distinctive structural feature of the proposal is the
+\emph{one commandment}: the network state is to be organized
+around a single moral innovation that distinguishes it from the
+existing political environment, and on which the founding
+community has already converged. The one commandment is the
+substrate of cohesion --- the reason members are aligned with
+each other before any of the institutional apparatus is built ---
+and the network state's institutions then articulate that
+commandment into a practice. The sequence is presented as a
+contemporary updating of Hirschman's framework on \emph{exit} as
+a response to institutional dissatisfaction
+(\citealt{hirschman1970exit}): when voice within incumbent states
+becomes ineffective, exit to a new entity becomes the alternative,
+but exit requires a destination, and the network state is the
+destination's design.
 
 The thesis takes governance as constitutive. A network state is
 not a network state without explicit shared institutions,
@@ -296,6 +305,22 @@ which any entity (the network state, the incumbent state, a
 private cooperative, a single trader) can use, and whose
 neutrality is what makes it suitable for cross-affiliation
 coordination.
+
+The one-commandment structure makes this point sharper. The
+network state's coordination problem is not how to make
+participants who already share a moral commitment cooperate ---
+that is what the one commandment provides --- but how to give
+the cooperation an enforceable form that does not import either
+the incumbent state's apparatus or a network-state-internal
+sovereign. The bonded primitive supplies that enforceable form
+without supplying any moral content: it does not say what the
+participants should agree about, and it does not produce a
+commandment of its own. A network state organized around any
+one commandment can use the substrate without the substrate
+constraining what the commandment can be. The neutrality is
+not a deficit relative to the network-state program; it is the
+property the program needs to avoid recapitulating
+substrate-governance at the network-state level.
 
 This is the option the network-state program presupposes away
 when it treats every functional layer as something the network
@@ -368,6 +393,33 @@ relocates and transforms governance, often in ways that are less
 visible and accountable than the conventional institutions
 governance has historically inhabited.
 
+\citet{walch2017path, walch2019deconstructing} sharpens this
+critique. \citeauthor{walch2017path} argues that the language
+through which the blockchain field describes itself --- in
+particular the words ``decentralized,'' ``trustless,'' and ``code
+is law'' --- functions as a discourse that obscures rather than
+describes the arrangements at issue: ``decentralized'' protocols
+typically depend on small core-developer groups whose decisions
+carry enormous practical weight, and the relationship between
+those developers and the protocol's participants is properly
+characterized as \emph{fiduciary} even though no formal fiduciary
+duty has been recognized.
+\citeauthor{walch2019deconstructing} extends the argument by
+deconstructing ``decentralization'' as a unitary property:
+distinct dimensions (architectural, political, logical, economic)
+can vary independently, and a protocol can be decentralized along
+some dimensions while being highly centralized along others. The
+hidden-fiduciary critique is the strongest available challenge to
+any claim that a protocol has eliminated governance.
+
+\citet{werbach2018blockchain} arrives at an adjacent point from
+the trust-theory side: blockchain protocols substitute one
+\emph{architecture of trust} for another, and the new architecture
+has its own institutional preconditions (mathematical proof,
+adversarial review, infrastructural reliability) that are no less
+demanding than the trust apparatuses they displace --- only
+differently distributed.
+
 \paragraph{The confidence machine.}
 \citet{defilippi_mannan_reijers_2022}, building on adjacent work
 by \citet{reijers_coeckelbergh_2018} that read blockchain as a
@@ -434,6 +486,45 @@ funds the protocol's evolution. The present paper does not
 contradict the confidence-machine analysis; it identifies a
 class of arrangements outside its analytical scope.
 \end{remark}
+
+\paragraph{Protocol-layer governance versus substrate-layer governance.}
+The confidence-machine framing raises a question that the
+ungoverned-kernel claim must answer head-on: even an invariant
+kernel runs on infrastructure that is not invariant. Ethereum
+validators, sequencers and rollup operators, RPC providers,
+exchanges that price the bond-denomination currency, and the
+fiat on-ramps through which capital reaches the bonded substrate
+are all governed entities, and decisions taken in those layers
+affect what happens at the kernel.
+\citet{walch2017path}'s hidden-fiduciary critique is the
+strongest version of this concern: even if no fiduciary
+relationship is recognized at the protocol layer, the
+core developers, validator set, and infrastructure providers are
+in fiduciary-shaped positions relative to participants who
+depend on them.
+
+We accept the concern and locate the kernel relative to it
+explicitly. The ungoverned-substrate claim of this paper is a
+claim about the \emph{kernel} as a unit of governance, not about
+the entire stack on which a participant's transaction depends.
+The kernel composes two mechanisms (asymmetric bonding and buyer
+dominance with atomic resolution) and admits no decision-position
+from which kernel-level governance could be exercised.
+\emph{Substrate-level} governance --- of the chain on which the
+kernel runs, of the validator set, of the infrastructure
+operators --- is not eliminated; it is delegated to the chain's
+own governance arrangements (which are, in Ethereum's case,
+explicitly informal and exposed for what they are). The
+participant's confidence in the kernel decomposes into confidence
+in the kernel's bytecode (formally verified, immutable),
+confidence in the chain's continued operation
+(governance-dependent in the way \citeauthor{defilippi_mannan_reijers_2022}
+describe), and confidence in the surrounding infrastructure
+(governance-dependent and varying). Only the first is what the
+present paper claims is ungoverned. The other two are real
+dependencies that the participant inherits from the choice of
+underlying chain, and we recommend they be evaluated as such
+rather than absorbed into the kernel claim.
 
 % ════════════════════════════════════════════════════════════════════
 \section{The Common Premise: Governance at the Substrate Layer}
@@ -553,7 +644,19 @@ governance designed out of the substrate. The kernel's invariants
 are fixed by mathematics, formal verification, and code, not by
 the consent of an evolving body of participants. The kernel
 does not require governance because it does not have decisions
-to make.
+to make. The non-discretion is architectural: the kernel composes
+two mechanisms --- asymmetric bonding (Mechanism~1) and buyer
+dominance with atomic resolution (Mechanism~2) --- and Mechanism~2
+is what eliminates the resolution-time discretionary surface that
+governance would otherwise be needed to occupy. Only the buyer can
+trigger resolution; resolution settles every active order in the
+process simultaneously or not at all; no third party --- arbitrator,
+oracle, jury, foundation --- is in a position to defer, partial-resolve,
+selectively enforce, or override. The ungoverned-substrate claim
+is therefore not a claim that the kernel \emph{happens} to be
+small enough to verify; it is a claim that Mechanism~2 leaves
+no decision-position from which governance could be exercised
+even if a governance body were stood up adjacent to the kernel.
 
 \paragraph{What this requires of the kernel.}
 The ungoverned-substrate option is not free. It requires that
@@ -569,6 +672,38 @@ fuzzing, deductive verification), with a small public surface
 and no admin functions. The choice to have an ungoverned
 substrate is purchased by accepting the constraint that the
 substrate's function be amenable to this discipline.
+
+\paragraph{This is not ``code is law.''}
+The Lessig formulation \citep{lessig2006code} that ``code is
+law'' has been useful as a slogan and damaging as a method.
+Useful, because it correctly observed that software increasingly
+performs the regulatory function law had historically performed.
+Damaging, because the slogan obscures the substantial differences
+between what software and law do --- a point both
+\citet{walch2017path} and \citet{defilippi_wright_2018} have
+emphasized in different registers. Law is interpretively
+flexible, jurisdictionally bounded, amendable through legislative
+or judicial process, and applied by humans; code is interpretively
+rigid, globally identical, immutable except through redeployment,
+and applied by execution. Treating one as the other in either
+direction produces category errors.
+
+The ungoverned-substrate claim of this paper does not depend on
+``code is law.'' It depends on a narrower claim: that the
+\emph{settlement primitive} --- a single bilateral function with a
+deterministic outcome --- is exactly the class of arrangement for
+which formal specification, verification, and immutable
+deployment are appropriate, and that this class is much smaller
+than ``everything regulated by software.'' Law remains where
+law has always been: in the off-chain forums that adjudicate
+disputes under conventional doctrines (the companion
+evidence-and-law paper develops this in detail), in the
+jurisdictional environments within which the parties operate,
+and in the interpretive work that any contract --- whether
+recorded on chain or off --- ultimately requires. The kernel is
+not law; it is settlement infrastructure that produces evidence
+on which law operates. The ``code is law'' frame would conflate
+the two; we are at pains to keep them distinct.
 
 Most blockchain protocols that have been built do not satisfy
 the constraint. Lending protocols, scaling solutions, identity
@@ -674,6 +809,78 @@ participate in conventional legal systems. Other assemblies may
 elect not to (purely on-chain coordination, transient
 relationships, agent-only arrangements), and the substrate
 admits both.
+
+\paragraph{How DAOs use the substrate without governing it.}
+A common objection to the ungoverned-substrate framing reads as
+follows: DAOs need governance, the bonded primitive is meant for
+DAOs to use, therefore the bonded primitive needs a governance
+interface for DAOs. The objection mistakes a substrate property
+for a runtime requirement. DAOs that use the substrate compose
+through the same wallet abstraction every other party uses; the
+substrate sees a wallet that signs commitments and posts bond,
+not a DAO that needs a governance accommodation. The four
+composition patterns this section catalogues ---
+multisig-as-buyer, governance-executor-as-buyer, streaming
+upstream of commit, bookkeeping from chain state --- are the
+operational shapes through which a DAO's governance \emph{at the
+graph tier} reaches the substrate without requiring the substrate
+to take any position on what DAO governance should be.
+
+\emph{Multisig as buyer.} A DAO whose treasury sits in a Safe-style
+multisig (or in any threshold-signature wallet) commits as the
+buyer using the multisig's standard approval flow. EIP-1271
+\citep{eip1271} enables the kernel to verify the multisig's
+smart-contract-wallet signature against the same EIP-712 typed
+data the protocol uses for EOA signers. The DAO's choice of
+signer set, threshold, and rotation policy is a runtime-tier
+choice the DAO makes; the substrate is silent on it.
+
+\emph{Governance executor as buyer.} A DAO whose commitments
+require formal governance approval --- a quadratic-vote DAO, a
+delegation-based DAO, an optimistic-governance DAO --- routes the
+authorized commitment through an executor contract that calls
+\texttt{commit} after the vote passes
+\citep{compound_governor_2020, openzeppelin_governor_2024}. The
+substrate sees the executor's signature; the substrate does not
+see the vote, the proposal text, the delegation graph, or any
+other governance machinery. The DAO's governance is real and
+operates entirely above the substrate; the substrate is invisible
+to the governance and the governance is invisible to the
+substrate.
+
+\emph{Streaming upstream of commit.} A DAO with an ongoing
+disbursement program (a grants program, a continuous-funding
+public-goods round, a recurring contributor-payment commitment)
+can compose a streaming contract upstream of the substrate
+\citep{sablier_2023}. The streaming layer handles the
+continuous-flow allocation under the DAO's chosen disbursement
+policy; the substrate handles the discrete bonded commitments
+that disburse the streamed funds against specific work. The two
+layers compose without either's accounting model bending.
+
+\emph{Bookkeeping from chain state.} A DAO's accounting and
+audit reading work directly from chain state. The DAO's treasury
+position, disbursement history, and commitment portfolio for the
+disbursed-via-substrate portion of its activity are derivable
+from \texttt{OrderCommitted} and \texttt{OrderResolved} events
+without any substrate-specific accommodation. This is the same
+property the companion accounting paper develops more fully; from
+the present paper's perspective the property matters because it
+means a DAO using the substrate produces verifiable accounting
+records as a byproduct of operation, without the substrate
+imposing any accounting interface on the DAO.
+
+The four patterns share a structural property: each compose with
+the substrate by treating it as a wallet-and-signature interface
+rather than as a governance interface. The substrate provides the
+kernel-layer enforcement; the DAO's graph-tier governance is
+unaffected and is structurally compatible with whatever
+governance shape the DAO has chosen. This is the operational form
+of the section's general argument: governance returns at the
+graph; the substrate stays out of it; and the standard
+institutional shapes already in use among DAO and treasury
+operators \citep{messari_dao_treasury_2023, deepdao_treasury_2024}
+compose with the substrate without modification.
 
 \paragraph{Network states on the substrate.}
 A network-state community constituted on the substrate has its
@@ -945,6 +1152,58 @@ Reijers, W. and Coeckelbergh, M.
   the Social Ontology and Normative Configurations of
   Cryptocurrencies.
 \newblock \emph{Philosophy \& Technology}, 31(1):103--130, 2018.
+
+\bibitem[Walch(2017)]{walch2017path}
+Walch, A.
+\newblock The Path of the Blockchain Lexicon (and the Law).
+\newblock \emph{Boston University Review of Banking and Financial
+  Law}, 36:713--765, 2017.
+
+\bibitem[Walch(2019)]{walch2019deconstructing}
+Walch, A.
+\newblock Deconstructing `Decentralization': Exploring the Core
+  Claim of Crypto Systems.
+\newblock In C.~Brummer, editor, \emph{Crypto-Assets: Legal and
+  Regulatory Implications of Distributed Ledger Technology}.
+  Oxford University Press, 2019.
+
+\bibitem[Werbach(2018)]{werbach2018blockchain}
+Werbach, K.
+\newblock \emph{The Blockchain and the New Architecture of Trust}.
+\newblock MIT Press, Cambridge, MA, 2018.
+
+\bibitem[ERC-1271(2018)]{eip1271}
+Giordano, F., Lockyer, M., and Castonguay, P.
+\newblock EIP-1271: Standard Signature Validation Method for
+  Contracts.
+\newblock Ethereum Improvement Proposal 1271, July 2018.
+\newblock \url{https://eips.ethereum.org/EIPS/eip-1271}
+
+\bibitem[Compound(2020)]{compound_governor_2020}
+Compound Labs.
+\newblock \emph{Compound Governor: On-Chain Governance Module}.
+\newblock Compound Protocol Documentation, 2020.
+
+\bibitem[OpenZeppelin(2024)]{openzeppelin_governor_2024}
+OpenZeppelin.
+\newblock \emph{Governor Contracts: Reference Implementation for
+  On-Chain Governance}.
+\newblock OpenZeppelin Contracts Documentation, ongoing as of 2024.
+
+\bibitem[Sablier(2023)]{sablier_2023}
+Sablier Labs.
+\newblock \emph{Sablier Protocol: Token Streaming Infrastructure}.
+\newblock Sablier Documentation, 2023.
+
+\bibitem[Messari(2023)]{messari_dao_treasury_2023}
+Messari Research.
+\newblock \emph{State of DAO Treasuries 2023}.
+\newblock Messari Quarterly Report, 2023.
+
+\bibitem[DeepDAO(2024)]{deepdao_treasury_2024}
+DeepDAO.
+\newblock \emph{DAO Treasury Aggregate Statistics}.
+\newblock DeepDAO Analytics Platform, ongoing as of 2024.
 
 \bibitem[Srinivasan(2022)]{srinivasan2022network}
 Srinivasan, B.

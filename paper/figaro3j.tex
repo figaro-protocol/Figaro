@@ -1,0 +1,1003 @@
+% Figaro Paper J: Scheduled Air Service as Coordinated Resource Markets
+% Industrial / Systems Engineering register.
+% Audience: industrial-engineering and systems-engineering scholars,
+% supply-chain-coordination researchers, scheduled-service operations
+% practitioners.
+% Companion to Paper K (TradeLens replacement, container-shipping worked
+% example) in the same discipline.
+% Preprint, May 2026
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\figaro}{\textsc{Figaro}}
+\newcommand{\pay}{P}
+\newcommand{\cumval}{G}
+
+\title{%
+  Scheduled Air Service as Coordinated Resource Markets:\\
+  An Industrial-Engineering Reading of the Bonded Architecture%
+}
+
+\author{
+  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+}
+
+\date{May 2026}
+
+\begin{document}
+
+\maketitle
+
+% ════════════════════════════════════════════════════════════════════
+\begin{abstract}
+Scheduled passenger air service is coordination across a set of
+resource markets: crew-hours and certifications, aircraft-time,
+fuel volume, gate slots, catering counts, maintenance hours,
+ground handling. Today these markets are internalized by
+airlines, with the firm shape arising as the conventional
+architecture's response to the high transaction and enforcement
+costs of coordinating across markets without a firm-shaped
+container. The bonded settlement primitive of the companion
+mechanism paper changes those costs: enforcement is bilateral
+and self-enforcing through asymmetric bonding, and atomic
+resolution makes a multi-edge process tree resolvable from a
+single signature. Under the bonded primitive the resource
+markets become directly accessible to the passenger through
+bonded commerce.
+
+Two architectural properties carry the contribution:
+\emph{asymmetric bonding within a single process} (the passenger
+as \texttt{rootBuyer} posts $2P_i$ at each commit to each
+resource provider, and each resource provider posts $2G$ against
+the cumulative process value at the moment they commit; the
+kernel enforces a single \texttt{rootBuyer} across every order in
+the process) and \emph{buyer-initiated atomic resolution} (the
+passenger settles the entire process at destination as a single
+action). Together
+they produce two consequences for scheduled-service coordination.
+First, the resource markets become directly accessible to the
+passenger: the firm-shaped airline becomes structurally optional
+because the cross-market coordination it internalizes is
+coordinatable through bonded commerce. Second, when operational
+disruption occurs the seller cohort faces direct economic
+incentive --- under locked bonds across every edge --- to
+determine and pay compensation directly to the buyer, before any
+external mechanism (specialized contracts, dispute forums,
+insurance, regulators) engages. The contribution is not a better
+airline; it is a different way of organizing scheduled air
+service in which the firm-shaped container is structurally
+unnecessary because the resource markets it internalizes are
+directly coordinatable through bonded commerce. Cascading-delay
+reduction follows as a consequence of bond posture and atomic
+resolution; it is a property the architecture produces, not the
+property the paper is for.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:}
+scheduled-service coordination, supply-chain coordination,
+process modeling, resource markets, weakest-link coordination,
+industrial engineering
+
+% ════════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+Scheduled passenger air service is coordination across a set of
+resource markets. The journey a passenger purchases is the joint
+output of a flight crew (with required certifications and
+duty-time bands), an aircraft and its operator, a quantity of
+jet fuel, slot allocations at origin and destination gates,
+per-passenger catering, a share of the day's maintenance
+allocation for the operating airframe, and ground handling for
+boarding and baggage. Each is a distinct resource the journey
+draws on; each is supplied by a distinct set of operational
+parties; each has natural units of measure already in industry
+use --- crew-hours, type ratings, fuel volume in gallons or
+kilograms, gate-slot time bands, meal counts, maintenance hours,
+baggage counts. Air-traffic-control services are a further input
+the flight consumes, but they are public-authority outputs not
+market-traded; we list them only to bound the resource-market
+inventory. Each resource market currently operates under its own
+structural constraints (some auction-based, some bilateral, some
+near-monopolistic at congested airports); the inventory below
+makes no claim that those structures are uniform.
+
+Today these resources are coordinated through airlines.
+The airline contracts with crew agencies, fuel distributors,
+airport authorities, catering firms, maintenance providers, and
+ground-handling sub-contractors; sells tickets to passengers; and
+absorbs the residual coordination cost. The firm shape is the
+conventional architecture's response to a coordination problem
+whose transaction and enforcement costs make firm-internalization
+cheaper than market access for end customers
+\citep{williamson1985}. The operations-research literature on
+airline scheduling and operations
+\citep{barnhart_cohn_2004,ball_etal_2007,lan_clarke_barnhart_2006}
+largely takes this shape as given; analyses focus on optimization
+within the firm-internal portfolio rather than on whether the
+firm-internal organization is itself the right architecture.
+
+The bonded settlement primitive of the companion mechanism paper
+changes the calculus. Enforcement of bilateral commitments is
+self-enforcing through asymmetric bonding; multi-party
+coordination is resolvable from a single signature through atomic
+resolution; the transaction-cost component that made
+firm-internalization cheaper than direct market access becomes a
+fixed capital lockup at the bonded edge. Under that change, the
+resource markets that today's airlines internalize become
+directly accessible to the passenger through bonded commerce. The
+journey is composed as a process tree of bonded commitments
+across those markets; each resource provider bonds against the
+passenger's process; the passenger settles the entire tree at
+destination through one atomic \texttt{resolveProcess} call.
+
+\paragraph{Paper organization.}
+\Cref{sec:primitive} summarizes the settlement primitive.
+\Cref{sec:assembly} develops the architectural properties applied
+to scheduled-service coordination: per-edge asymmetric bonding,
+buyer-initiated atomic resolution, the two consequences for the
+assembly, the kernel / composability-stack distinction, and where
+specialized mechanism contracts can be developed for specific
+resource markets. \Cref{sec:disruption} treats disruption
+resolution: the seller-cohort compensation mechanism that arises
+from buyer-dominance under bond pressure (the primary mechanism),
+illustrated through a worked bond-posture example and through the
+crew-allocation case where today's airline-internal auction
+produces a documented misalignment that the bonded edge
+eliminates, with the fallback mechanisms (specialized contracts,
+coordination tokens, off-chain dispute forums, insurance,
+regulators) treated downstream. \Cref{sec:schemas} treats the
+schema requirements: one new schema, with the rest of the
+assembly satisfied by existing infrastructure.
+\Cref{sec:comparison} treats what the architecture preserves
+(safety regulation, crew-labor protections, insurance,
+competition law), what it changes (the cost-flow path and the
+firm-internalization), and the non-cost reasons firms might
+persist under the architecture nonetheless.
+\Cref{sec:scope} states the scope conditions.
+\Cref{sec:conclusion} concludes.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Settlement Primitive}
+\label{sec:primitive}
+
+The bonded primitive is developed formally in the companion
+mechanism paper. We summarize the features the present argument
+uses.
+
+\paragraph{Asymmetric bonding (Mechanism~1).}
+For a transaction with payment $\pay > 0$ and cumulative upstream
+value $\cumval \geq \pay$, the buyer locks $2\pay$ and the seller
+locks $2\cumval$. Cooperation is the unique profile surviving
+iterated elimination of weakly dominated strategies. The
+mechanism scales to $N$-party process trees through progressive
+collateralization: each seller bonds against the cumulative value
+of all upstream commitments, producing a mesh of independently
+secured bilateral edges, each of which carries its own
+equilibrium.
+
+\paragraph{Buyer dominance with atomic resolution (Mechanism~2).}
+Only the root buyer can trigger resolution, and resolution
+settles all active orders in the process simultaneously or not at
+all. The all-or-nothing rule induces a weakest-link subgame among
+sellers: each seller's payout depends on universal cooperation
+across the tree. The architecture produces cooperation pressure
+of magnitude $\pay_i + 2\cumval_i$ on every other seller from
+each seller's perspective, without explicit communication,
+governance, or managerial layer.
+
+\paragraph{What this implies for scheduled-service coordination.}
+The bonded primitive's two mechanisms are exactly the two missing
+properties in the contemporary scheduled-service architecture.
+Mechanism~1 supplies a bilateral commitment whose enforcement
+does not depend on either party's home jurisdiction's contract-law
+regime; this is what makes it possible for the passenger's
+commitment to a counterparty and that counterparty's commitment
+to its sub-suppliers to be denominated in the same coordinative
+unit. Mechanism~2 supplies the atomic resolution that propagates
+a single commit-or-don't decision through the entire process
+tree; this is what makes operational damages flow proportionally
+to the unit that caused them rather than being absorbed at
+whichever contract has the loosest cap. Neither mechanism is
+novel to the scheduled-service domain; both are general-purpose
+settlement properties whose application here is the present
+paper's contribution.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Bonded Architecture Applied to Scheduled-Service}
+\label{sec:assembly}
+
+The substantive contribution of the bonded primitive to
+scheduled-service coordination operates at the edge of the bonded
+process tree, not at any particular position within it. Two
+architectural properties supply the contribution; both are
+independent of how the operational arrangement is organizationally
+drawn.
+
+\paragraph{Asymmetric bonding within a single process.}
+The kernel enforces a strong structural rule: every order in a
+process has the same buyer (the \texttt{rootBuyer}). The
+passenger commits directly to each resource provider; there is
+no intermediating coordinator between the passenger and any
+seller. The first commit creates the process under the
+passenger's address; every subsequent commit in the same process
+extends the cumulative-value accumulator $G$ by the new payment.
+At each commit the passenger posts $2P_i$ for that specific
+payment, and the seller posts $2G_{\text{at commit time}}$ ---
+the full cumulative process value at the moment they commit.
+Bond posture is asymmetric: the passenger's per-commit bond
+scales with the immediate payment, while each seller's bond
+scales with the cumulative value of every upstream commit in the
+process. Sellers committing later post correspondingly larger
+bonds; the last seller bonds against the entire ticket value.
+
+\paragraph{Buyer-initiated atomic resolution.}
+The passenger calls \texttt{resolveProcess}, and the entire
+process settles simultaneously. Every active order in the process
+is resolved together or none is. The passenger's signature is the
+only signature required for settlement, and atomicity guarantees
+that no subset of orders settles without the rest.
+
+\paragraph{Two consequences for the scheduled-service assembly.}
+The two properties together produce two consequences.
+
+First, \emph{the resource markets named in \Cref{sec:intro}
+become directly accessible to the passenger through bonded
+commerce.} Each resource provider --- crew operator, aircraft
+operator, fuel supplier, gate operator, caterer, maintenance
+provider, ground-handling firm --- can be a seller bonded against
+the passenger's process, with payout depending on the passenger's
+atomic resolution. Each provider's interests align with the
+passenger's at the bonded commit rather than through the
+firm-mediated incentive structure conventional airlines impose.
+The misalignments today's firm-shaped container produces ---
+between the airline's cost-minimization objective, the resource
+provider's preferences, and the passenger's outcome --- dissolve
+at the bond. We treat one such misalignment in detail in
+\Cref{sec:disruption}: the crew secondary market.
+
+Second, \emph{damage flow tracks bond posture across the
+assembly's commits rather than the loosest contractual liability
+cap.} Each seller carries asymmetric bond exposure proportional
+to the cumulative process value at their commit; the seller-side
+total grows super-linearly with the number of commits while the
+passenger's posture stays at $2 P_{\text{ticket}}$. The
+atomic-resolution rule operates on this set of bonds. When
+something goes wrong, every seller's bond is locked across every
+commit --- which is the structural pressure behind the
+disruption-resolution mechanism we develop in
+\Cref{sec:disruption}.
+
+\paragraph{What the kernel constrains; what the composability stack carries.}
+The kernel reads only per-order facts: buyer (which must be the
+\texttt{rootBuyer} in every order in the process), seller,
+payment, cumulative-value snapshot at commit, and the
+atomic-resolution rule covering the process. The kernel-level
+shape of a single process is therefore tightly constrained: one
+buyer, one or more sellers, all under one cumulative accumulator,
+all resolving atomically. Deeper compositions across multiple
+processes (a seller in process $A$ becoming the
+\texttt{rootBuyer} of process $B$ to coordinate their own
+sub-suppliers) are admissible at the kernel layer but resolve
+process-by-process, not across.
+
+Above the kernel, the protocol-and-runtime composability stack
+attaches schemas to specific orders (the
+\texttt{scheduled-departure-v1} clause binds to whichever order
+the parties want to subject to schedule-tolerance enforcement;
+\texttt{handoff-v1} attestations attach to operational-handoff
+orders), mechanism contracts operate on specific order patterns,
+assembly specifications declare which schemas attach where and
+which view definitions render which surfaces, and UIs render the
+process per the assembly's declarations. An assembly's structure,
+once specified, is a fixed verifiable artifact bound to its full
+composability stack. The bonded-architecture argument of this
+paper applies to whichever resource markets the designer composes
+under one process, with the kernel-enforced structural rule
+holding throughout.
+
+\paragraph{Specialized mechanism contracts per resource market.}
+Each resource market admits its own market mechanism. The
+existing \texttt{DutchAuction} contract supplies one such
+mechanism for cases where descending-price coordination is
+appropriate (fuel procurement is a candidate where the supplier
+market admits competition). Bilateral commerce-v1 commits cover
+the cases where the parties contract directly. Future mechanism
+contracts can be developed under the protocol-extension
+discipline of the companion runtime-composition paper for
+resources whose market mechanics deserve their own primitive: a
+slot-allocation mechanism for gate-time bidding, a crew-dispatch
+mechanism that respects type-rating and duty-time constraints, a
+fuel-pool mechanism for shared ramp-side procurement among
+co-located operators. The mechanism-contract space for scheduled
+air service is underdeveloped today because the firm-shaped
+container has absorbed the design choice; under direct market
+access it becomes a first-class design surface.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Disruption Resolution Under Buyer Dominance}
+\label{sec:disruption}
+
+We turn to the operational question: when something goes wrong
+--- a delay, a slip, a service failure --- how is the disruption
+resolved under the bonded architecture? The substantive answer is
+that Mechanism~2 of the kernel (buyer dominance with atomic
+resolution) creates structural pressure for the seller cohort to
+determine and pay compensation themselves, directly to the buyer,
+before any external mechanism engages. This is the primary
+damage-management mechanism in the architecture. We treat it
+first, place a bond-posture worked example, develop the
+crew-allocation case as a concrete illustration, note the
+IROps-scale extension, locate the result in the companion
+mechanism paper's weakest-link result, and then position the
+fallback mechanisms in their proper register downstream.
+
+\subsection{The primary mechanism: seller-cohort compensation under bond pressure}
+
+\paragraph{Bond posture per commit.}
+Every order in a process shares the same \texttt{rootBuyer}; the
+passenger as that \texttt{rootBuyer} posts $2P_i$ at each commit
+to each resource provider, and each resource provider posts
+$2G_{\text{at commit time}}$ where $G$ is the cumulative
+process value at the moment of that commit. Sellers committing
+later in the sequence post correspondingly larger bonds.
+Aggregated across an $N$-seller process, the bonded exposure of
+the seller cohort scales super-linearly with the number of
+resource markets the assembly draws on.
+
+\paragraph{A bond-posture worked example.}
+Consider a stylized domestic short-haul passenger journey
+totalling $\$250$. There is no airline-shaped coordinator: the
+kernel enforces $\texttt{buyer} = \texttt{rootBuyer}$ in every
+order in a process, so the passenger commits directly to each
+resource provider. The seven commits below are all part of one
+process under one $\texttt{rootBuyer}$ (the passenger). The
+kernel maintains a single process-wide cumulative-value
+accumulator $G$ that grows monotonically as each commit lands
+($G \leftarrow G + P_i$). At every commit the buyer posts
+$2P_i$ and the seller posts $2G_{\text{at commit time}}$. The
+asymmetry shows up across the sequence: the passenger's
+buyer-side bond at each commit scales only with the immediate
+payment to that seller, while each seller's bond scales with
+the full cumulative value of every upstream commit in the
+process. Sellers committing later post correspondingly larger
+bonds; the last seller bonds against the entire ticket value.
+This is progressive collateralization in operation.
+\Cref{tab:bond-posture} traces the sequence.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Commit (in sequence) & $P_i$ & $G$ after commit & Passenger bond $2P_i$ & Seller bond $2G$ \\
+\midrule
+Root: passenger $\rightarrow$ aircraft operator & $\$65$ & $\$65$ & $\$130$ & $\$130$ \\
+Sub: passenger $\rightarrow$ fuel supplier & $\$45$ & $\$110$ & $\$90$ & $\$220$ \\
+Sub: passenger $\rightarrow$ crew operator & $\$40$ & $\$150$ & $\$80$ & $\$300$ \\
+Sub: passenger $\rightarrow$ maintenance provider & $\$15$ & $\$165$ & $\$30$ & $\$330$ \\
+Sub: passenger $\rightarrow$ catering & $\$5$ & $\$170$ & $\$10$ & $\$340$ \\
+Sub: passenger $\rightarrow$ ground handling & $\$15$ & $\$185$ & $\$30$ & $\$370$ \\
+Sub: passenger $\rightarrow$ origin airport authority & $\$20$ & $\$205$ & $\$40$ & $\$410$ \\
+Sub: passenger $\rightarrow$ destination airport authority & $\$20$ & $\$225$ & $\$40$ & $\$450$ \\
+Sub: passenger $\rightarrow$ TSA (security screening) & $\$6$ & $\$231$ & $\$12$ & $\$462$ \\
+Sub: passenger $\rightarrow$ federal aviation system & $\$19$ & $\$250$ & $\$38$ & $\$500$ \\
+\midrule
+Total bond locked across the process & --- & --- & $\$500$ & $\$3{,}512$ \\
+\bottomrule
+\end{tabular}
+\caption{Stylized per-commit bond posture for a domestic
+short-haul passenger journey under one process. The passenger
+commits directly to each seller; there is no intermediating
+coordinator (the kernel enforces buyer $= \texttt{rootBuyer}$ in
+every order). $G$ is the process-wide cumulative-value
+accumulator, monotonically growing with each commit. The
+passenger's bond at each commit is proportional to the immediate
+payment; each seller's bond is proportional to the cumulative
+process value at the moment that seller commits. The last seller
+to commit therefore posts the largest seller bond,
+$2G_{\text{final}} = 2 \times \$250 = \$500$. Per-seller payments
+are illustrative; absolute magnitudes vary with route, aircraft
+type, and operating context.}
+\label{tab:bond-posture}
+\end{table}
+
+Two features of the table carry the structural argument.
+
+\emph{The asymmetry between buyer and seller bonds.} The
+passenger's aggregate locked bond is $\$500$, which equals
+$2 \times P_{\text{ticket}}$ --- the standard buyer posture. The
+seller cohort's aggregate locked bond is $\$2{,}630$, more than
+five times the passenger's posture, because each seller bonds
+against the cumulative $G$ that has grown across the upstream
+commits. This is not an accident of the example; it is the
+asymmetric-bonding architecture in operation. As the assembly
+adds more resource markets, the seller-side total grows
+super-linearly with the number of commits while the passenger's
+side stays at $2 P_{\text{ticket}}$.
+
+\emph{The magnitude of the seller cohort's locked bond.} The
+seller cohort's aggregate locked bond ($\$2{,}630$) is more than
+ten times the ticket payment. A non-resolving passenger holds
+that full pool locked across every commit in the process. The
+pressure on the cohort to compensate the passenger and secure
+resolution is structural in proportion that exceeds the ticket by
+an order of magnitude.
+
+The order in which sub-orders commit reorders which specific
+seller posts the largest bond, but does not change the aggregate
+seller cohort total: it depends only on the set of payments, not
+the sequence. Whichever seller commits last bonds against the
+full $G_{\text{final}} = P_{\text{ticket}}$.
+
+\paragraph{Withholding resolution as the buyer's leverage.}
+The passenger holds unilateral authority to call
+\texttt{resolveProcess}. As long as the passenger does not call,
+every seller's bond in the tree remains locked. Each seller faces
+forfeit of their full $2G_i$ on continued non-resolution. The
+buyer's atomic-resolution authority is therefore not a remedy in
+the conventional sense (it does not pay the buyer anything beyond
+bond recovery); it is leverage. The buyer can hold up the entire
+tree's bond pool by simply not signing.
+
+\paragraph{Sellers determine and pay compensation themselves.}
+When operational disruption occurs and the buyer is left worse
+off than the agreement contemplated, the seller cohort faces
+direct economic incentive to make the buyer whole enough that the
+buyer chooses to resolve. The mechanism unfolds operationally as
+follows.
+
+Sellers approach the buyer with compensation offers. Compensation
+takes whatever form the buyer accepts: cash transfer, future
+service credit, accommodation or meal vouchers, refund of the
+ticket payment, alternative routing, partial or full refund
+combined with services. The currency of compensation is at the
+parties' discretion --- the kernel does not constrain it.
+
+Sellers negotiate among themselves about which seller bears what
+fraction of the compensation. The unit whose performance
+materially failed bears more. Operational parties around the
+failure who could not have prevented it (the catering provider
+who had no role in a fuel slip; the gate operator whose service
+was unaffected) contribute less or not at all. The negotiation is
+real but routine: each seller knows their own bond exposure,
+their counterfactual payout under cooperative resolution, and
+their willingness-to-pay against losing the bond entirely.
+
+The buyer accepts the compensation that satisfies them and calls
+\texttt{resolveProcess}. Bonds release across the tree; every
+seller recovers $2G_i + P_i$ less their share of the
+compensation; the buyer recovers their bond plus the compensation
+already paid. The settlement is bilateral and direct.
+
+This happens fast. The negotiation occurs at the operational
+boundary (the airport gate, the destination airport's customer
+service desk, in some cases through the runtime UI's
+disruption-coordination surface), not in a court filing six
+months later. It happens before insurance claims, before
+dispute-resolution forums, before regulatory engagement. Most
+disruption resolves through this path because that is where the
+bond pressure points.
+
+\paragraph{The crew-allocation case.}
+The mechanism is concrete in the crew market, where today's
+firm-mediated arrangement produces a documented misalignment.
+Airlines run bidding systems through which crew select trips by
+seniority and preference. The bid systems are largely artifacts
+of pilot-union and flight-attendant collective bargaining: senior
+crew preserve seniority-allocation order through bargained
+contracts, and the airline's discretion in the primary auction is
+bounded by collective-agreement protections. Crew frequently view
+the resulting allocations as imperfectly aligned with their
+preferences and run secondary markets to trade trips with each
+other after the primary auction settles. The secondary market is
+operationally inefficient (it duplicates allocation work) and
+structurally awkward (it requires the airline to permit and
+process post-allocation swaps). Its existence is evidence that
+the primary auction does not align crew interests with the
+operational outcome that matters to passengers (qualified,
+well-rested, willing crew on the flight).
+
+Under the bonded architecture, the crew-allocation can operate as
+a direct market between the passenger and the crew, without an
+airline-internal primary auction or a post-allocation secondary
+market at the passenger-coordination layer. A crew member bonds
+against the passenger's process at the crew-edge; the crew
+member's payout depends on the passenger's atomic resolution at
+destination; the crew member's interests align with the
+passenger's directly through the bonded edge. The
+passenger-coordination auction and the secondary market both
+become structurally unnecessary --- the bonded edge is the
+passenger-side market, and the allocation discipline is whichever
+mechanism contract the assembly designer composes for the
+crew-market. The collective-bargaining institutions over wage
+rates, duty-time protections, and seniority among crew remain;
+they are labor-market institutions the bonded primitive does not
+touch.
+
+Under disruption --- say a crew member cannot fly --- the
+crew-edge bond is locked alongside every other edge. The crew
+operator and crew member negotiate compensation directly with the
+passenger (find a substitute crew member at speed, accommodate
+the passenger on the next flight, refund the leg, or whatever the
+passenger accepts). Resolution follows compensation. The
+conventional airline's role as intermediary in this negotiation
+disappears.
+
+\paragraph{IROps-scale coordination.}
+The single-flight example understates the operational complexity
+of large-scale irregular operations (IROps). A hub disruption
+produces simultaneous bonded processes across hundreds of
+flights, with thousands of bonded edges across the resource-market
+mesh. The compensation negotiation at IROps scale is
+operationally heavier than the per-flight case: each affected
+passenger holds a separate bonded process with its own seller
+cohort, and many resource providers (crew operators, aircraft
+operators, ground-handling firms) appear in many trees at once.
+We do not claim the bonded architecture eliminates this
+coordination cost. We claim it routes the cost in a structurally
+different direction. Under the conventional regime, the airline
+absorbs the IROps coordination internally; sub-suppliers see only
+their per-incident penalties; passengers see liability-cap
+absorption. Under the bonded architecture, each affected
+passenger faces a (busy, but bilaterally coordinated) seller
+cohort negotiating their compensation directly. Operational
+tooling for the resource provider --- whose bond is locked across
+many simultaneous trees and who needs to coordinate compensation
+responses at scale --- is itself one of the assembly-design
+questions we identify as warranting empirical work.
+
+\paragraph{Connection to the companion mechanism paper.}
+The mechanism is the operational form of an analytical result
+developed in the companion mechanism paper. Under buyer dominance
+with atomic resolution, each seller bears direct economic
+interest of magnitude $P_i + 2G_i$ in every other seller's
+performance, because each seller's payout depends on universal
+cooperation across the tree (the mechanism paper formalizes this
+as a weakest-link subgame proposition: cooperation is the unique
+equilibrium surviving iterated elimination of weakly dominated
+strategies, induced by atomic resolution operating on the bonded
+mesh). The proposition's analytical content is the formal
+characterization of the pressure; the operational content is
+sellers paying compensation to buyers directly to secure
+resolution. The same structural shape produces the joint-liability
+dynamic in Grameen-style microfinance, in which group members
+chip in to cover a struggling member's installment before the
+lender forecloses, because each member's continued credit access
+is exposed to every other member's repayment. The bonded
+architecture's seller-cohort-compensates-buyer dynamic is the
+same structural mechanism scaled with chain depth and operating
+without the social-substrate prerequisites Grameen requires.
+
+\paragraph{Why this is structural, not procedural.}
+The mechanism is not a courtesy that sellers may or may not
+extend. It is a direct consequence of the bond posture under
+atomic resolution. A seller who refuses to participate in
+compensation negotiation watches their full bond forfeit
+alongside every other seller's. The compensation mechanism
+emerges from the architecture because the architecture has made
+non-cooperation strictly worse than reasonable compensation for
+every seller in the tree.
+
+\subsection{Fallback mechanisms}
+
+The primary mechanism resolves most disruption directly. Fallback
+mechanisms engage when the primary does not, or when the
+disruption involves a class of issue the primary cannot address.
+We list them in the order of operational engagement.
+
+\emph{Specialized mechanism contracts (protocol layer).} Where
+the assembly composes a specialized mechanism contract --- a
+delay-compensation contract that disburses pre-agreed amounts
+under specified conditions, a slot-reallocation mechanism, a
+fuel-pool mechanism --- the contract handles its specific
+coordination automatically. The specialized contract complements
+the primary mechanism by making specific compensation patterns
+automatic rather than negotiated.
+
+\emph{Coordination tokens (runtime layer).} Where the assembly
+composes around a coordination token, the substrate's operational
+state registers as token value. Token holders bear operational
+quality through value impact rather than through direct
+compensation. Token-value reflection is a diffuse signal
+operating in parallel with the per-edge compensation mechanism,
+not a substitute for it.
+
+\emph{Off-chain dispute resolution forums.} The off-chain
+agreement named in the bonded commitment binds a dispute forum
+(state court, international arbitration center, ODR platform,
+Schelling-point juror system). The forum engages when the
+seller-cohort compensation does not resolve the dispute ---
+typically because the dispute is substantive in a way bond
+pressure cannot address (duress, mistake, frustration,
+illegality, public-policy concerns). The bonded record is the
+evidentiary input the forum operates on, with the Class~A /
+Class~B taxonomy the companion evidence-and-law paper develops:
+Class~A kernel byproducts (commit and resolution events) supply
+the indisputable settlement record; Class~B schema-validated
+attestations (\texttt{handoff-v1} timestamps,
+\texttt{delivery-lifecycle-v1} stage events) supply the
+substantive performance evidence.
+
+\emph{Insurance compositions.} A passenger or operational party
+who wants insurance against risks the bond pool cannot absorb
+(catastrophic events, multi-day weather disruption, force-majeure
+events) composes a parallel bonded process with an insurer. The
+insurer's bond underwrites the risk; insurance settlement is its
+own bonded event. Insurance composes with the bonded primitive
+without modifying the kernel.
+
+\emph{Regulators.} Aviation safety regulators, consumer protection
+authorities, antitrust enforcement, and labor protection regimes
+operate alongside the bonded architecture and engage in the
+matters their authority covers. The architecture does not
+displace them.
+
+The substantive contribution of the bonded architecture to damage
+management is that the primary mechanism --- seller cohort
+negotiating and paying compensation directly to the buyer, before
+external mechanisms engage --- is structural, immediate, and
+operates without any of the fallbacks being needed in most cases.
+The conventional regime's cascading-delay pathology --- damages
+absorbed by whichever contract has the loosest liability cap,
+with limited unit-level operational signal
+\citep{lan_clarke_barnhart_2006} --- reduces under the bonded
+architecture as a consequence of bond posture and atomic
+resolution.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Schemas}
+\label{sec:schemas}
+
+The assembly draws almost entirely on existing schema
+infrastructure. One new schema is required: a binding from a
+ticket commitment to a specific scheduled departure / arrival
+pair, so the resolution path can verify whether the seller
+delivered against schedule.
+
+\paragraph{Existing schemas.}
+\texttt{figaro-commerce-v1} carries the currency, payment, and
+itemized line-items of every commitment in the assembly --- the
+passenger ticket and every sub-procurement commitment.
+\texttt{figaro-delivery-lifecycle-v1} carries staged progression
+as a sequence of attestations; the schema's five-slot structure
+can be re-used by reinterpretation (boarding initiated, cabin
+ready, pushback, takeoff, arrival, or whatever projection the
+assembly designer adopts), without authoring a new schema.
+\texttt{figaro-handoff-v1} carries the operational handoffs
+between operational parties.
+\texttt{figaro-jurisdiction-v1} carries the off-chain
+forum-selection clause for international flights, where the
+parties want to specify a particular dispute-resolution forum.
+\texttt{figaro-geo-v1} carries the origin and destination
+geohashes where geographic-anchoring is operationally relevant.
+The GHG family of schemas is available for assemblies that wish
+to compose carbon-emission attestations into the ticket
+commitment.
+
+\paragraph{The new schema: \texttt{scheduled-departure-v1}.}
+The schema binds a commerce-v1 ticket commitment to a specific
+scheduled departure / arrival pair, so the resolution path can
+verify whether the seller delivered against schedule. The fields
+of the Layer~A spec are:
+
+\begin{itemize}
+  \item \texttt{flightDesignator} (string, IATA format, e.g.\ ``NK1234'')
+  \item \texttt{scheduledDeparture} (ISO~8601 datetime, with explicit timezone)
+  \item \texttt{scheduledArrival} (ISO~8601 datetime, same form)
+  \item \texttt{originAirport} (string, ICAO~4-character, e.g.\ ``KORD'')
+  \item \texttt{destinationAirport} (string, ICAO~4-character)
+  \item \texttt{aircraftType} (string, optional, IATA aircraft code; omitted
+    if the parties reserve substitution rights at the runtime tier)
+  \item \texttt{toleranceSeconds} (integer, the agreed slip below which
+    no penalty applies; e.g.\ 900 for a 15-minute window)
+\end{itemize}
+
+The schema enforces one structural constraint at the validator
+contract: \texttt{scheduledArrival} must be strictly after
+\texttt{scheduledDeparture}. We deliberately do not impose a
+maximum on \texttt{toleranceSeconds}. Scheduled-service operations
+vary widely in operationally meaningful tolerance windows, and
+hard-coding a maximum at the validator contract would foreclose
+legitimate use cases under the first-write-wins binding discipline
+that makes the schemaId permanent. The contracting parties choose
+the tolerance their operation supports; if a domain-specific
+maximum is later wanted, it can be enforced at a domain-specific
+schema (e.g.\ \texttt{figaro-passenger-departure-v1} as a tighter
+sister of the present schema) without mutating the present
+binding. The schema is the seed of a \emph{scheduled-service}
+family; later extensions could cover scheduled ground transport,
+scheduled deliveries with tight windows, and other
+scheduled-binding use cases without reauthoring the family.
+
+\paragraph{Schemas the architecture deliberately does not include.}
+Three classes of schema are conspicuously absent. First, there is
+no force-majeure schema that allows a counterparty to avoid bond
+loss in weather events. Force-majeure handling is a
+\emph{composition} concern, not a kernel concern: a party who
+wants to insure against weather-driven delay composes a parallel
+insurance process; the kernel neither knows about weather nor
+adjudicates whether a given event qualifies. The companion
+mechanism paper's no-escape-hatches analysis applies here
+directly. Second, there is no schema that governs which delays
+count toward bond loss; the \texttt{scheduled-departure-v1}
+tolerance is the kernel's only such criterion, and any further
+refinement is for the off-chain forum that adjudicates disputes
+the parties bring to it. Third, there is no schema that grants
+any party a unilateral reschedule right; rescheduling is a new
+commitment with a new schemaId or a new instance, not a mutation
+of the existing binding. Append-only identity is the discipline.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Comparison with the Conventional Apparatus}
+\label{sec:comparison}
+
+The architectural change should be located precisely against the
+existing apparatus to clarify what does and does not change.
+
+\paragraph{What changes.}
+The architecture changes the cost-flow path. Under the
+contract-of-carriage regime, passenger schedule loss is bounded
+by per-incident penalty caps and the airline's internal
+willingness to issue voucher compensation; the supplier's
+liability for sub-service slip is bounded by per-incident
+contractual penalties; and the residual loss is absorbed by
+whichever party's contract has the loosest cap. Under the bonded
+architecture, schedule loss is allocated proportionally to the
+party whose bond is exposed at the relevant process layer:
+sub-supplier bond for sub-service slip, root-counterparty bond
+for arrival-tolerance violation, passenger bond returned in full
+on satisfactory delivery. The cost flow is direct, proportional,
+and tracks the operational layer at which performance failed.
+
+\paragraph{What does not change.}
+Safety regulation is unchanged: the FAA in the US, EASA in the
+EU, and analogous national civil-aviation authorities continue to
+certify aircraft, pilot licensing, maintenance procedures, and
+operational standards. Crew-labor protections are unchanged:
+pilot-union and flight-attendant collective bargaining and
+flight-time / duty-time limits under FAR Part 117 in the US (with
+analogous regimes elsewhere) apply to the crew-supplier
+sub-process under the bonded architecture exactly as they apply
+under the conventional regime. Insurance and reinsurance are
+unchanged in their underlying function; the bonded architecture
+changes the risk profile aviation insurance markets price (a
+smaller residual after bond allocation; concentrated risk at
+whichever edges carry the largest cumulative-value bond posture;
+a new class of bond-default risk at every operational party in
+the tree) but does not displace the insurance function. Antitrust
+and competition law are unchanged: operational-party markets
+remain subject to anti-collusion enforcement, slot-allocation
+regimes at congested airports remain governed by the relevant
+authorities, and code-share arrangements remain subject to the
+applicable competition regimes.
+
+\paragraph{Non-kernel roles firms might still play.}
+The bonded architecture removes the transaction-cost rationale
+for firm internalization of scheduled-service coordination. It
+does not remove other roles firms might play around the bonded
+process. Three deserve mention. First, FAA Part 121 (and
+analogous regimes in other jurisdictions) imposes a
+single-certificate-holder requirement on commercial scheduled
+passenger operations: the operating airline holds the air
+carrier certificate, and many regulatory and safety functions
+attach to that single legal entity. Under the bonded architecture
+the certificate-holder is one of the resource-market sellers
+(typically the aircraft-operator role); the certificate function
+is preserved, but the certificate-holder is no longer a
+cross-market coordinator. Second, knowledge accumulation across
+operational cycles --- learning about reliability of specific
+routings, weather patterns, sub-supplier reliability --- has
+firm-level returns to scale that direct market access does not
+naturally aggregate; firms retaining this knowledge are likely to
+out-perform unaffiliated participants on quality, even within the
+star-shaped bonded architecture. Third, brand identity functions
+as a quality signal in markets with imperfect ex ante
+observability of service quality. Brands cannot, however, become
+kernel-level coordinators in the bonded architecture --- the
+kernel forbids any party other than the passenger from being the
+buyer of resource-market commits. A brand under the bonded
+architecture is necessarily off-chain: a discovery surface, a
+quality-signal aggregator, a multi-process curator that
+recommends specific resource-provider compositions to passengers,
+or a service-level guarantor that composes an insurance process
+in parallel with the passenger's bonded process. None of these
+roles re-introduce the firm-shaped cross-market coordinator the
+architecture is designed to make structurally optional.
+
+\paragraph{What this is not.}
+The architecture is not a better airline. It is a re-architecture
+of the cost-flow path in scheduled-service coordination. Whether
+any specific operational party operates well or poorly within the
+architecture is an operational-management question the
+architecture is silent on.
+
+The architecture is also not a passenger-protection regime. It is
+a coordination protocol that has the side effect of routing
+schedule-loss damages to the passenger more proportionally than
+the contract-of-carriage regime does. Passenger-protection
+regimes (the EU's Regulation 261/2004, the US's Department of
+Transportation refund and compensation rules, and analogous
+regimes elsewhere) continue to operate in their own register and
+apply to the regulated entity in the relevant jurisdiction. The
+bonded architecture's passenger-side benefit is structural rather
+than regulatory.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Scope}
+\label{sec:scope}
+
+The argument bounds itself by several scope conditions.
+
+\paragraph{Asset specificity.}
+The architecture works best where sub-suppliers compete in markets
+with multiple available alternatives. Where a sub-supplier is a
+near-monopolist (as airport authorities often are at hub airports
+for gate operations, or as ATC services are by regulatory
+construction), the buyer-side leverage at sub-procurement is
+constrained, and the bonded architecture devolves toward the
+conventional single-supplier regime. The companion
+institutional-economics paper's discussion of asset specificity
+applies here: the architecture is most effective in the
+low-specificity region of the resource portfolio and least
+effective at the high-specificity end.
+
+\paragraph{Bond-currency access.}
+The architecture presumes that all parties can post collateral in
+a denomination the kernel accepts. For some sub-suppliers (e.g.\
+small catering contractors operating in jurisdictions with
+limited crypto on-ramps) this may be the binding operational
+constraint. The companion statelessness paper's bond-currency
+discussion applies in attenuated form: the constraint is real but
+solvable through standard treasury and on-ramp infrastructure for
+parties with the resources of typical airline sub-suppliers.
+
+\paragraph{Aggregate liquidity at the operational tier.}
+A high-volume operational party operating thousands of flights
+per day under the bonded architecture would face aggregate
+bond-custody requirements that scale with daily flight volume.
+This is an operational treasury question: the party maintains a
+working bond pool sized to its operational fleet, with bonds
+released and rebound as processes resolve. The cumulative custody
+at any moment is bounded by the active-process count multiplied
+by per-process bond requirements; the architecture is
+liquidity-intensive in steady state but not unbounded. The
+financial-engineering question of how to size and finance the
+bond pool is downstream of the architecture proposal here.
+
+\paragraph{Network effects and adoption.}
+The architecture's competitive position depends on adoption by a
+sufficient fraction of sub-suppliers and by passengers willing to
+trade the contract-of-carriage liability cap for the proportional
+bonded architecture. We do not model the adoption dynamics. The
+architecture is composable with the conventional regime: an
+operational party can serve some passengers under the bonded
+architecture and others under the contract-of-carriage regime,
+and a sub-supplier can serve some counterparties under bonded
+contracts and others under conventional ones. The transition is
+not all-or-nothing.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+Scheduled passenger air service is a coordination problem across
+resource markets that the conventional architecture internalizes
+inside firm-shaped airlines because the transaction and
+enforcement costs of direct cross-market coordination were
+prohibitive. The bonded settlement primitive collapses those
+costs, and under the primitive the resource markets become
+directly accessible to the passenger through bonded commerce. The
+substantive contribution is not a better airline; it is a
+different way of organizing scheduled air service in which the
+firm-shaped container is structurally unnecessary because the
+resource markets it internalizes are directly coordinatable
+through bonded commerce. Cascading-delay reduction follows as a
+consequence of bond posture and atomic resolution; it is a
+property the architecture produces, not the property the paper is
+for.
+
+The architecture is composable with existing safety regulation,
+crew-labor protections, insurance markets, and competition
+regimes. It changes the cost-flow path without displacing the
+regulatory and contractual layers that surround it. Whether the
+architecture diffuses into commercial aviation is an adoption
+question we do not adjudicate. What we do claim is that the
+architecture exists, that it is well-defined, and that its
+operational properties differ from the conventional regime in
+ways the operations-research literature on airline scheduling has
+been gesturing at without being positioned to deliver. The
+companion mechanism paper supplies the equilibrium analysis; the
+companion implementation paper supplies the verified Solidity
+implementation; the present paper supplies the assembly that
+turns those into a working scheduled-service coordination
+architecture.
+
+A natural next step is empirical: a pilot implementation of the
+architecture for a domestic route with a manageable resource-market
+portfolio, with measurement of bond-loss frequency,
+disruption-resolution latency, and operational-improvement
+outcomes at each resource provider, compared to the conventional
+regime. The pilot would also surface the operational tooling
+questions inherent to a star-shaped process the kernel enforces:
+how passengers discover and select resource providers across the
+seven (or more) markets the journey draws on, what off-chain
+discovery / curation surfaces are useful, how cohort-internal
+compensation negotiations play out at IROps scale, and how
+multi-process composition operates when a resource provider
+itself bonds with sub-suppliers under their own
+\texttt{rootBuyer} role. We do not undertake the pilot here; we
+identify it as the experimental work the architecture invites.
+
+\section*{Acknowledgments}
+The worked example originated in a project repository of
+agent-coordination scenarios; the present paper formalizes the
+scenario into an industrial-engineering register.
+
+% ════════════════════════════════════════════════════════════════════
+\begin{thebibliography}{99}
+
+\bibitem[Barnhart and Cohn(2004)]{barnhart_cohn_2004}
+Barnhart, C. and Cohn, A.
+\newblock Airline Schedule Planning: Accomplishments and Opportunities.
+\newblock \emph{Manufacturing \& Service Operations Management},
+  6(1):3--22, 2004.
+
+\bibitem[Ball et al.(2007)]{ball_etal_2007}
+Ball, M.~O., Barnhart, C., Nemhauser, G., and Odoni, A.
+\newblock Air Transportation: Irregular Operations and Control.
+\newblock In C.~Barnhart and G.~Laporte, editors, \emph{Handbooks in
+  Operations Research and Management Science: Transportation},
+  volume~14, pages 1--67. Elsevier, 2007.
+
+\bibitem[Lan et al.(2006)]{lan_clarke_barnhart_2006}
+Lan, S., Clarke, J.-P., and Barnhart, C.
+\newblock Planning for Robust Airline Operations: Optimizing Aircraft
+  Routings and Flight Departure Times to Minimize Passenger Disruptions.
+\newblock \emph{Transportation Science}, 40(1):15--28, 2006.
+
+\bibitem[Williamson(1985)]{williamson1985}
+Williamson, O.~E.
+\newblock \emph{The Economic Institutions of Capitalism}.
+\newblock Free Press, New York, 1985.
+
+\bibitem[European Parliament and Council(2004)]{eu261_2004}
+European Parliament and Council.
+\newblock \emph{Regulation (EC) No 261/2004 establishing common rules
+  on compensation and assistance to passengers in the event of denied
+  boarding and of cancellation or long delay of flights}.
+\newblock February 11, 2004.
+
+\bibitem[FAA(2014)]{far117}
+US Federal Aviation Administration.
+\newblock \emph{14 CFR Part 117: Flight and Duty Limitations and Rest
+  Requirements: Flightcrew Members}.
+\newblock 2014.
+
+\end{thebibliography}
+
+\end{document}

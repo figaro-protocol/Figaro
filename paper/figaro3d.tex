@@ -187,6 +187,42 @@ rational than any other; what makes them focal is a shared
 cultural salience that each party correctly expects the other to
 recognize.
 
+\paragraph{The focal-point literature, briefly.}
+The conceptual machinery is older and more developed than the
+crypto-token literature usually engages. \citet{schelling1960strategy}
+introduced focal points as a coordination phenomenon and observed
+the empirical fact that humans converge on salient solutions
+without communication. \citet{sugden1995theory} formalized the
+phenomenon as \emph{salience theory}: parties pick the option that
+stands out by some shared frame of reference, and the salience is
+itself constructed through repeated coordination on similar
+problems. \citet{mehta_starmer_sugden_1994} produced the canonical
+experimental confirmation that focal-point convergence operates
+robustly across populations on a wide range of pure-coordination
+problems. \citet{bacharach2006beyond}'s \emph{team reasoning}
+formalized the further step that focal points operate not because
+each party reasons about the other's reasoning but because both
+parties shift to a we-frame in which the salient solution is the
+team-rational choice. The combined apparatus gives a precise
+account of what makes a token focal: it is not the token's
+properties in isolation but the token's properties as picked out
+by a shared frame within which holding the token is recognizable
+as a coordination act.
+
+The cryptoeconomic literature has applied the apparatus
+repeatedly without always citing it.
+\citet{markey-towler2018schelling} examines tokens as Schelling
+points in a behavioral-economics register; \citet{daian_etal_2017}
+and the broader Robust Incentives Group treat focal-point
+properties as design objectives in mechanism analysis;
+\citet{buterin2020credible} on \emph{credible neutrality}
+articulates the design discipline for tokens whose focality is to
+be sustained over time. The classical economic-theory antecedents
+worth naming are \citet{hayek1945knowledge} on the
+distributed-coordination role of prices (a non-token analogue of
+the focal-point function) and \citet{selgin1988theory} on the
+emergence of focal monetary instruments without central authority.
+
 \paragraph{Crypto and Schelling points.}
 The structure has been rediscovered repeatedly in crypto design.
 \citet{nakamoto2008bitcoin} did not use the word ``Schelling,''
@@ -240,57 +276,74 @@ develops what that refusal looks like in practice.
 \section{Why the \figaro{} Ecosystem Is Well-Suited to a Focal-Point Token}
 \label{sec:ecosystem-need}
 
-\paragraph{What underpins \fig{}'s value.}
-A Schelling-point token requires focal convergence, but focal
-convergence coordinates \emph{which} token participants pick; it
-does not by itself create value. Each token in the lineage
-invoked above has a distinct economic underpinning, sitting at a
-distinct layer of the economic stack.
+\paragraph{What underpins \fig{}'s value, said honestly.}
+A Schelling-point token requires focal convergence, and focal
+convergence is itself a value-formation mechanism in the
+strict sense: a holder values the token because other aligned
+holders value it for the same reason, and the shared
+recognition is what gives the token its content. We need to be
+careful here, because earlier framings of this paper (and the
+adjacent crypto literature broadly) have invited a misreading
+that conflates focal convergence with mechanism-coupled token
+demand. The two are different and should be kept apart.
 
-\begin{itemize}
-  \item \textbf{Bitcoin} is underpinned by the \emph{cost of
-    production}: proof-of-work consumes real energy, hardware,
-    and electricity, putting a floor on rational issuance. The
-    underpinning is at the factor-input layer.
-  \item \textbf{Ethereum} is underpinned by \emph{transaction
-    demand}: every Ethereum transaction requires gas denominated
-    in \textsc{Eth}, with EIP-1559 burn reinforcing the floor.
-    The underpinning is at the transaction-execution layer.
-  \item \textbf{\fig{}} is underpinned by \emph{trade}: every
-    bonded commitment in the \figaro{} ecosystem is a real
-    transfer of value --- goods for payment, services for
-    payment, coordination for payment. The aggregate volume and
-    quality of these transfers is the economic content of the
-    ecosystem; \fig{} is the token denomination of alignment with
-    the value-adding activity that produces them. The
-    underpinning is at the trade layer --- the layer at which
-    actual economic value is created.
-\end{itemize}
+The standard lineage --- Bitcoin underpinned by the cost of
+proof-of-work, Ethereum underpinned by gas demand, FIG
+underpinned by trade --- is rhetorically tidy and mechanically
+misleading. Bitcoin and Ethereum each have a
+\emph{mechanism-coupled} demand source: Bitcoin's PoW
+issuance consumes real factors and puts a marginal-cost floor
+under issuance; Ethereum's gas requirement makes \textsc{Eth}
+necessary for any transaction on the Ethereum L1, with
+EIP-1559 burn reinforcing the floor. \fig{} has neither.
+The \figaro{} kernel uses any ERC-20 as its bond and payment
+currency; a participant who settles every bonded commitment
+in \texttt{USDC} pays zero \fig{}, contributes zero
+\fig{}-denominated demand, and the kernel is indifferent to
+their choice. Saying \fig{} is ``underpinned by trade'' in
+the way Bitcoin is underpinned by proof-of-work elides this
+asymmetry and overstates the case.
 
-This places \fig{} not at a weaker position in the lineage than
-its predecessors but at a different one, attached to a different
-primary economic quantity. Bitcoin is underpinned by the cost of
-the infrastructure it runs on; Ethereum by the demand for
-executing transactions on its substrate; \fig{} by the value
-produced when the substrate is used to coordinate trade. In
-classical-economics terms: factor cost, transaction utility,
-value-added. The three answers sit at three different points in
-the economic chain; \fig{}'s is the most proximate to end-value
-creation.
+\fig{} is a \emph{pure focal-point token} in the sense
+\Cref{sec:design-category} defined. Its value derives from
+the focal-convergence mechanism alone --- aligned holders
+recognize \fig{} as the coordination anchor for the
+\figaro{}-ecosystem question, and the coordination is itself
+the token's content. There is no settlement coupling, no gas
+coupling, no fee path that routes ecosystem activity through
+\fig{}-denominated demand. We do not introduce one, and the
+design rules of \Cref{sec:design-rules} below explicitly
+forbid us from doing so.
 
-A consequence worth stating explicitly: \fig{}'s value is fully
-endogenous to \figaro{}'s trade activity. If little trade flows
-through the ecosystem, \fig{} is correspondingly worth little; if
-substantial trade flows, \fig{}'s value rises with it. This
-coupling is direct, on-chain visible, and participant-auditable
---- the volume of bonded commitments is a public ledger fact ---
-which makes \fig{}'s value-formation more legible than the
-factor-cost or transaction-fee underpinnings of its predecessors,
-both of which require external accounting (electricity prices,
-fee-market depth) to interpret. The coupling is the right
-relation between a coordination token and the activity it
-coordinates: the token is worth the trade it identifies aligned
-participants in, and no more.
+This is a more honest version of the standard lineage claim,
+and we think it is also the correct version. \fig{} occupies
+a different category from Bitcoin and Ethereum, not a
+homologous position in the same category. Bitcoin and
+Ethereum are tokens whose mechanism-couplings happen to
+support focal convergence on top; \fig{} is a token whose
+focal convergence is the mechanism, with no coupling beneath
+it. The question is whether such a category can sustain
+value, and the answer is uncertain in the way any pure
+coordination phenomenon is uncertain: focality can be
+sustained through participant convergence, can be diluted by
+holders whose reason to hold is not focal alignment, and can
+be lost altogether if the convergence breaks. The design
+discipline below is the work of keeping the convergence
+intact.
+
+A reader sympathetic to the cost-of-production or
+transaction-demand framings should understand the present
+paper as conceding their mechanical correctness and arguing
+that they do not apply to \fig{}, rather than claiming
+\fig{} sits in the same category. The trade-volume of the
+\figaro{} ecosystem is a useful public signal of the
+ecosystem's health, and a holder of \fig{} may correctly
+expect that ecosystem health correlates with the maintenance
+of focal alignment, but the correlation is reflexive (held
+together by participant belief) rather than mechanical (held
+together by required-token-flow). Reflexive value is real
+and durable when the focality is durable; it is not the same
+thing as cost-floor or fee-floor value.
 
 \paragraph{Why a general-purpose token cannot carry this signal.}
 The \figaro{} kernel is token-agnostic. Any ERC-20 can serve as
@@ -490,6 +543,46 @@ retains, and we have chosen to forgo the option. The prior
 question --- whether founder allocation at this magnitude is the
 right allocation at all --- is a political-economy question we
 do not attempt to answer in a cryptoeconomic paper.
+
+\paragraph{The bootstrap-dump scenario.}
+A fair objection to the no-vesting choice is the bootstrap-dump
+scenario: between genesis (year 0) and the year-2 first airdrop
+stage, the founder cohort holds a 10\% liquid position and the
+focal-point convergence has not yet had time to establish the
+Schelling stickiness that would make later dump events
+self-correcting. A founder dump in this window could foreclose
+focality emergence by signaling to potential aligned holders
+that the alignment is not credibly committed. The §8 attack-surface
+analysis treats general dump attacks but does not specifically
+address the bootstrap window where the structural defenses are
+weakest.
+
+The honest answer is that the design has accepted this risk
+rather than mitigated it through vesting. Two reasons. First,
+vesting would import the same focality-dilution problem the
+non-vesting choice was designed to avoid: a founder who must
+vest will be a holder for schedule-driven reasons that are not
+alignment, and the schedule itself becomes a Schelling object
+that competes with the underlying alignment signal. Second, a
+public lock-up commitment outside a vesting contract --- e.g.,
+self-custody with stated non-sale intent for a specified
+window --- is available to a founder who wishes to mitigate the
+bootstrap risk through credible signal rather than through
+mechanism. We have not committed to a specific lock-up window
+in the present paper because the signal's content depends on
+the founder's standing relationship with the participant
+cohort rather than on a contractual instrument; the
+appropriate commitment is a matter for the founders to make
+publicly and is not a property of the protocol itself.
+
+A reader skeptical of this trade-off should weight the
+bootstrap-dump risk against the focality-dilution risk and
+make their own judgment about which is structurally worse. We
+think the focality-dilution risk is the larger one because it
+is irreversible in a way the bootstrap-dump risk is not (a
+dump can be survived if alignment is durable; a focality
+diluted by vested-holder noise cannot be recovered without
+restarting), but we do not pretend the trade-off is settled.
 
 \paragraph{DAO allocation (30\%).}
 A treasury share, available immediately at genesis. The DAO is
@@ -916,6 +1009,135 @@ merkle leaves are committed at deploy. Focal-point participants
 assessing \fig{} can verify this directly from on-chain state.
 
 % ════════════════════════════════════════════════════════════════════
+\section{Regulatory Framing}
+\label{sec:regulatory}
+
+A token paper that takes itself seriously must address the
+regulatory-status question, even if the answer it produces is
+provisional and jurisdictionally bounded. We address the
+question here in three registers --- US securities law,
+EU MiCA, and a structural register prior to specific regimes.
+
+\paragraph{The Howey four-prong test.}
+Under \emph{SEC v. W.J. Howey Co.}, 328 U.S. 293 (1946) and its
+extensive subsequent application to token offerings, an investment
+contract exists where there is (i)~an investment of money,
+(ii)~in a common enterprise, (iii)~with an expectation of profit,
+(iv)~derived from the entrepreneurial or managerial efforts of
+others. The SEC's 2019 \emph{Framework for Investment Contract
+Analysis of Digital Assets} extended the test to digital-asset
+arrangements specifically \citep{sec2019framework}, weighing
+factors that bear on each prong. \fig{}'s position relative to
+the four prongs is, on our reading, the following.
+
+(i)~\emph{Investment of money.} A participant acquires \fig{}
+through a merkle-claim airdrop or through secondary-market
+purchase. The airdrop is not an investment of money in the
+ordinary sense (no consideration is delivered to the issuer);
+the secondary purchase is an investment of money in the same
+sense any token acquisition is. Prong (i) is satisfied for
+secondary acquisition and not for airdrop receipt. Most analyses
+treat this asymmetry as not dispositive --- the secondary market
+is the more material context --- so we proceed assuming
+prong (i) is met for the relevant population.
+
+(ii)~\emph{Common enterprise.} The doctrinal test for ``common
+enterprise'' is jurisdictionally split (horizontal vs. vertical
+commonality) but typically asks whether the investor's fortunes
+are tied to the enterprise's fortunes through pooling of assets
+or sharing of profits. \fig{} is not pooled, has no
+profit-sharing arrangement, and is not tied to a treasury whose
+performance distributes to holders. The DAO treasury holds 30\%
+of supply (\Cref{sec:allocation}) and disburses grants under
+its own governance, but treasury distributions are not pro-rata
+to \fig{} holdings and do not constitute profit-sharing. Prong
+(ii) is the weakest of the four for \fig{}; we read it as
+likely \emph{not} satisfied under either commonality test for
+\fig{} as currently constituted, with the caveat that the DAO's
+disbursement policy is the relevant variable and a sufficiently
+mechanistic disbursement policy could re-implicate the prong.
+
+(iii)~\emph{Expectation of profit.} Holders may reasonably
+expect \fig{} to appreciate if the focal convergence
+strengthens. This is an expectation of profit in the ordinary
+sense, and prong (iii) is met.
+
+(iv)~\emph{Derived from the efforts of others.} This is the
+prong on which most token cases turn under the SEC framework.
+The framework weighs whether an active participant (developer,
+foundation, promoter) is undertaking essential managerial efforts
+on which the holder's profit expectation depends. \fig{}'s
+deploy script registers the deployer as a one-shot minter,
+mints the founder and DAO allocations, and renounces ---
+permanently, by code-enforced one-way latch
+(\Cref{sec:supply}). After deploy, the founder's effort is not
+managerial in any sense the framework recognizes: the founder
+holds liquid \fig{} as any holder does, has no protocol-level
+authority, cannot mint, cannot upgrade, cannot freeze, and has
+no fiduciary relationship to other holders. The DAO has
+treasury authority over its own allocation but not protocol
+authority over \fig{}. The development of the underlying
+\figaro{} protocol is a separate question, governed by a
+separate and ongoing analysis; \fig{} is not coupled to that
+development through any protocol-level mechanism. Prong (iv)
+is, on our reading, partially met (insofar as ecosystem
+development is happening and holder profit expectations may
+depend on it) and partially not met (insofar as the
+relationship between holder profit and developer effort is
+reflexive, not contractual or fiduciary). The prong is the
+hardest to assess because the SEC framework's factors were
+written with team-managed token projects in mind, and \fig{}
+is structurally a less-managed instrument than the framework
+contemplates.
+
+The honest summary is that \fig{}'s position relative to Howey
+is uncertain and varies with the development trajectory of the
+broader \figaro{} ecosystem. We do not claim \fig{} is not a
+security; we claim that the design is engineered to minimize
+the prongs' applicability, and that the resulting position is
+defensible but not assured. This is the most we believe a
+cryptoeconomic paper can responsibly say. Specific
+jurisdictional advice belongs in a regulatory submission, not
+in this venue.
+
+\paragraph{EU MiCA.}
+The Markets in Crypto-Assets Regulation (Regulation (EU)
+2023/1114) classifies crypto-assets into asset-referenced
+tokens, e-money tokens, and ``other'' crypto-assets, with
+distinct disclosure and authorization regimes. \fig{} is not
+asset-referenced (no reserve), not e-money (no nominal-value
+stability target), and would fall in the residual ``other''
+category, subject to the white-paper publication requirement
+of MiCA Title II. The MiCA regime is more permissive of
+focal-point-style instruments than Howey is, conditional on
+disclosure compliance, and we treat MiCA as a tractable
+disclosure obligation rather than as an existential
+classification question.
+
+\paragraph{Structural register.}
+A reader may ask why a paper that has spent itself arguing for
+\fig{} as a focal-point coordination instrument should
+nonetheless engage securities law at all. The answer is that
+``what \fig{} is for'' (focal-point coordination) and ``what
+\fig{} is in regulatory-classification space'' (a question
+about the prongs) are different questions, and a paper that
+addresses the first without acknowledging the second is doing
+its readers a disservice. The DAO-allocation contradiction
+flagged in \Cref{sec:allocation} is, in part, a regulatory
+contradiction: a 30\% treasury with grant-disbursement
+authority is exactly the structural feature most likely to
+re-implicate prong (iv) of Howey if the disbursement policy
+becomes mechanically tied to holding behavior. Keeping the
+disbursement policy at human discretion, separated from
+holding by the two layers of friction we identified there
+(off-chain discretion, revocable grants), is also a regulatory
+discipline as well as a focality-protection discipline. The
+two disciplines align, and we have written the design to
+satisfy both, but the alignment is not coincidental and should
+not be relied on as a substitute for legal advice in any
+specific jurisdiction.
+
+% ════════════════════════════════════════════════════════════════════
 \section{Conclusion}
 \label{sec:conclusion}
 
@@ -1011,6 +1233,60 @@ Nakamoto, S.
 \newblock Bitcoin: A Peer-to-Peer Electronic Cash System.
 \newblock White paper, 2008.
 \newblock \url{https://bitcoin.org/bitcoin.pdf}
+
+\bibitem[Sugden(1995)]{sugden1995theory}
+Sugden, R.
+\newblock A Theory of Focal Points.
+\newblock \emph{Economic Journal}, 105(430):533--550, 1995.
+
+\bibitem[Bacharach(2006)]{bacharach2006beyond}
+Bacharach, M.
+\newblock \emph{Beyond Individual Choice: Teams and Frames in
+  Game Theory}, edited by N.~Gold and R.~Sugden.
+\newblock Princeton University Press, Princeton, NJ, 2006.
+
+\bibitem[Mehta et al.(1994)]{mehta_starmer_sugden_1994}
+Mehta, J., Starmer, C., and Sugden, R.
+\newblock The Nature of Salience: An Experimental Investigation
+  of Pure Coordination Games.
+\newblock \emph{American Economic Review}, 84(3):658--673, 1994.
+
+\bibitem[Markey-Towler(2018)]{markey-towler2018schelling}
+Markey-Towler, B.
+\newblock Anarchy, Blockchain and Utopia: A Theory of Political-Economic
+  Systems and the Coordination of Blockchain Networks.
+\newblock \emph{Journal of the British Blockchain Association},
+  1(1):1--15, 2018.
+
+\bibitem[Daian et al.(2017)]{daian_etal_2017}
+Daian, P., Pass, R., and Shi, E.
+\newblock On the Instability of Bitcoin Without the Block Reward.
+\newblock In \emph{Proceedings of the 2016 ACM SIGSAC Conference on
+  Computer and Communications Security}, 154--167, 2016.
+
+\bibitem[Buterin(2020)]{buterin2020credible}
+Buterin, V.
+\newblock Credible Neutrality As A Guiding Principle.
+\newblock Personal blog, 2020.
+\newblock \url{https://nakamoto.com/credible-neutrality/}
+
+\bibitem[Hayek(1945)]{hayek1945knowledge}
+Hayek, F.~A.
+\newblock The Use of Knowledge in Society.
+\newblock \emph{American Economic Review}, 35(4):519--530, 1945.
+
+\bibitem[Selgin(1988)]{selgin1988theory}
+Selgin, G.~A.
+\newblock \emph{The Theory of Free Banking: Money Supply Under
+  Competitive Note Issue}.
+\newblock Rowman \& Littlefield, Totowa, NJ, 1988.
+
+\bibitem[SEC(2019)]{sec2019framework}
+US Securities and Exchange Commission.
+\newblock \emph{Framework for ``Investment Contract'' Analysis of
+  Digital Assets}.
+\newblock SEC Strategic Hub for Innovation and Financial Technology,
+  April 3, 2019.
 
 \bibitem[Schelling(1960)]{schelling1960strategy}
 Schelling, T.~C.

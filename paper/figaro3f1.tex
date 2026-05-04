@@ -211,6 +211,45 @@ employer's processes --- these are all labels for the same underlying
 relationship: subordination of the worker's conduct to the employer's
 authority, in exchange for a wage.
 
+\paragraph{Where the labor-law literature has located subordination.}
+The point is not original to the present paper.
+\citet{collins1986employment} argued that the contract of
+employment is a legal construction that aligns ordinary contract
+principles with the operational reality of subordinated work, and
+that the construction is contingent on the firm-shaped container
+within which most employment historically takes place.
+\citet{deakin2001changing, deakin_morris_2012} traces the
+contract of employment as a legal construct that emerged in
+response to nineteenth-century factory production, with
+subordination as its constitutive marker rather than its
+incidental feature. \citet{freedland_kountouris_2011} extends the
+analysis with their \emph{personal work nexus} framework, which
+treats personal service relationships as a continuous category
+that the employee/contractor binary partitions imperfectly; the
+binary partition is a doctrinal achievement of legal regimes
+rather than a property of the relationships themselves.
+\citet{fudge2006new} examines the boundary problem from the
+labor-protection side: as platform work, gig arrangements, and
+other ``new forms of personal work'' proliferate, the binary
+partition produces increasing classification arbitrariness, and
+the response of regulators has been to extend protections by
+status (presumption rules, minimum-protection floors) rather than
+to revise the partition itself. \citet{veitch2017obligations}
+takes the political-philosophical step further: subordination is
+itself a relation of asymmetric obligation that requires its own
+justification, and the consent supplied by the employment
+contract is conditioned on the absence of viable alternatives that
+could supply equivalent income without the subordination overlay.
+
+The present argument enters this literature with a structural
+move the literature has not had occasion to make: it asks what
+the doctrinal test does when the firm-shaped container itself
+becomes economically optional in a region of transactions. The
+answer below is that the test does not so much fail as run out of
+applicants: it asks a question that has no party to be its
+subject when the parties to a transaction are bonded
+counterparties rather than employer and employee.
+
 \subsection{The Philosophical Position}
 
 A scholarly tradition with roots in classical liberalism and in
@@ -333,13 +372,30 @@ Solidity implementation and formal verification
 in the implementation paper; the evidentiary framework for off-chain
 dispute adjudication in the evidence-and-law paper.
 
+The primitive composes two mechanisms whose institutional work the
+present argument relies on. \emph{Asymmetric bonding} makes
+defection more expensive than cooperation at every bonded edge.
+\emph{Buyer dominance with atomic resolution} makes the entire
+process tree resolvable from a single signature, with all orders
+settling together or not at all. The first mechanism is what
+removes the standing arbitrator from the bilateral case; the
+second is what removes the firm-shaped container from the
+$N$-party case. The labor-law argument below depends on both:
+without Mechanism~1 the bilateral counterparties have no
+self-enforcing escrow; without Mechanism~2 the multi-party
+fulfillment workflow would still require an organizing nucleus
+to clear all parties simultaneously, and that nucleus would
+inherit the subordination apparatus the primitive is supposed
+to retire.
+
 \paragraph{Bonded counterparties.}
 A transaction between two parties is consummated by dual-signed
 EIP-712 commitments. Each party signs from their own wallet. Each
 party locks collateral against their own performance --- the buyer
 locks $2P$, the seller locks $2G$ where $G$ is the cumulative
 upstream value bonded in the process. Only the buyer can trigger
-resolution. Defection is structurally more expensive than
+resolution, and resolution settles every active order in the
+process atomically. Defection is structurally more expensive than
 cooperation. There is no platform between the parties, no
 arbitrator authorized to resolve disputes on-chain, and no admin
 key permitting external override.
@@ -393,6 +449,50 @@ is the wallet itself (whether operated by a natural person, a
 software agent, or an organizational treasury), the classical
 \emph{persona}/\emph{res} partition no longer partitions. The
 wallet is what it controls and it controls what it is.
+
+\paragraph{The Hohfeldian reading.}
+The collapse is easier to see in Hohfeldian than in Roman terms.
+\citet{hohfeld1913fundamental} disaggregated the omnibus concept
+of a ``right'' into four jural correlatives: right/duty,
+privilege/no-right, power/liability, and immunity/disability.
+Ownership in the property-rights tradition is a bundle of
+Hohfeldian incidents allocated by some legal arrangement: the
+owner has rights to certain uses, privileges to others, and
+powers to alter the arrangement (sale, lease, license,
+abandonment) that correspond to liabilities in counterparties.
+What the wallet in the bonded primitive holds is precisely a
+Hohfeldian bundle keyed to its private key: the power to commit
+under EIP-712 (with the correlative liability of the
+counterparty's settlement obligation), the right to receive
+$\pi_{s,i}$ or $\pi_{b,i}$ on resolution, the privilege of not
+committing, and the immunity from external override (no third
+party can rewrite an executed resolution; this is a Hohfeldian
+immunity in the strong sense). The Roman \emph{persona}/\emph{res}
+distinction is doing rough work that the Hohfeldian apparatus
+sharpens: the wallet is not a \emph{persona} acting on
+\emph{res}, but a Hohfeldian \emph{position} whose incidents are
+held together by the cryptographic key.
+
+The personhood literature tracks the move.
+\citet{naffine_law_2009} taxonomies legal personhood into three
+registers (P1: capacity to bear rights; P2: rational agency; P3:
+moral personhood); the wallet in the bonded primitive sits
+unambiguously in P1, contingently in P2 (depending on whether a
+human, an agent, or a treasury operates it), and is silent on P3
+(which the kernel does not address and the off-chain forum
+inherits per the companion evidence-and-law paper).
+\citet{bayern_2014} and \citet{lopucki2017algorithmic} have
+argued separately that algorithmic entities can be made to fit
+existing personhood doctrine through LLC-style legal scaffolding,
+and \citet{fairfield2017owned} has examined property-in-data and
+property-in-code as a related doctrinal frontier;
+\citet{pasquale2015blackbox} treats algorithmic personhood from
+the opacity-and-accountability side. The wallet collapses the
+constructs the personhood literature has been keeping
+separate --- it is a P1 holder of Hohfeldian incidents whose
+operator may or may not be a P2 agent and whose moral status is
+a separate question --- and the labor-law analysis below tracks
+the consequences of that collapse.
 
 \paragraph{Three consequences.}
 \begin{enumerate}[label=(\alph*)]
@@ -532,12 +632,83 @@ management would trigger the presumption. The Directive applies to
 the platform-mediated region of the contemporary labor market;
 Figaro moves exchanges out of that region entirely.
 
+\paragraph{The substance-over-form rejoinder.}
+A labor-law reader will respond to the four re-readings above with
+a structural objection. The doctrinal innovations of the past
+decade --- ABC test prong B, the \emph{Aslam} substance-over-form
+analysis, the Directive's presumption rule --- were designed
+precisely to defeat formal restructuring of the employment relation
+into the language of independent contracting. A platform whose
+contracts call its workers ``independent contractors'' has not
+escaped the protective regime; the doctrines reach behind the
+contractual label to the operational reality. If a bonded
+counterparty performs forty hours a week for a single buyer, on a
+schedule effectively dictated by that buyer, with rating-driven
+flow control producing economic dependence, then on
+\emph{Aslam}-style reasoning the parties may still be in something
+that quacks like an employment relation regardless of how the
+bonded commitments are denominated. The structure of the test
+survives because the test was about substance, not form.
+
+The objection is correct in spirit and partially correct on the
+facts, and the present paper does not argue that Figaro defeats
+the substance-over-form move. We argue something narrower: that
+the bonded primitive enlarges the choice set of how a productive
+relationship can be structured, and that substance-over-form
+tests applied within the new choice set will reach different
+conclusions because the substance has changed. A worker who
+holds attestations from many counterparties, settles
+commitment-by-commitment, owns their own tooling and credentials,
+and is bonded against performance rather than directed by
+authority is not a substance-over-form employee in the sense the
+doctrines were drafted to capture --- the substantive markers
+(direction, control, integration into the buyer's processes,
+exclusive engagement, rating-driven flow) need not be present.
+A worker who, by contrast, bonds against a single counterparty
+on terms that effectively replicate the platform-mediated
+arrangement may still be reached by substance-over-form analysis,
+and we do not argue otherwise. The regime change is in the choice
+set; whether any given working relationship is substantively
+employment-shaped remains a fact-pattern question that the
+applicable doctrine answers in the usual way.
+
+\paragraph{The endogenous-platform-emergence concern.}
+A related concern is that platforms are likely to re-emerge on
+top of the bonded primitive. Even with the kernel
+non-discretionary, surrounding layers --- discoverability, dispatch,
+reputation aggregation, credit provision, identity vouching, key
+custody --- will be supplied by some entity. That entity, once it
+reaches scale, will recreate the platform's economic position
+relative to the bonded counterparties on its layer. The
+substance-over-form doctrines will then have purchase against
+\emph{that} entity exactly as they have purchase against existing
+platforms.
+
+We accept this concern without qualification. The primitive does
+not preclude platform-shaped intermediation at the runtime tier;
+it precludes platform-shaped intermediation at the kernel and
+protocol tiers. The kernel is the layer at which the
+direction-and-control finding has no subject; surrounding layers
+that introduce direction-and-control into the working relationship
+remain, on the present analysis, fully subject to the doctrinal
+test. The architectural claim of this paper is not that
+subordination is impossible on top of a bonded substrate; it is
+that subordination is no longer architecturally required, and
+where it appears it appears as a runtime-tier choice that the
+existing labor-law apparatus is well-equipped to evaluate.
+
 \paragraph{The pattern.}
 Each measure engages the subordination variable directly, and each
 would be either vacuous or inapplicable if the parties to an
-exchange were bonded counterparties rather than parties to a
-platform-mediated or firm-mediated employment relation. The cases
-do not fail in the Figaro setting; they have no application there.
+exchange were bonded counterparties on the kernel/protocol-tier
+terms described in this paper. Where the parties are runtime-tier
+participants in a platform-shaped arrangement that happens to
+\emph{use} the kernel for settlement, the doctrines apply with
+their full force: substance-over-form is the right reading and
+the protective machinery is the right tool. The point is that
+the bonded primitive is now one of the substantive options the
+labor-law tests have to reckon with, not that the tests are
+defeated by the existence of the option.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Leveller and Privatizer}
@@ -635,6 +806,51 @@ primitive changes is that the fight becomes explicit: the
 attachment of protections to employment was a historical
 contingency that looked like a natural fact; once the category
 is removable, the attachment becomes a policy choice.
+
+\paragraph{Voluntary participation as a scope condition.}
+A scope condition that the present paper has not yet named, and
+that the companion mechanism paper makes explicit in its
+conclusion, deserves treatment here. The mechanism's equilibrium
+results hold under the assumption that both parties are legally
+and materially free to enter the bonding game --- that entering
+is a choice, and that capital sufficient to post the required
+bond is available. For a labor-law analysis this assumption is
+load-bearing in a way it is not for the mechanism analysis
+itself. A worker whose only realistic income path runs through
+bonded assemblies, and who lacks access to the capital needed to
+post the required bond, faces a choice set that is not
+substantively voluntary in the sense the equilibrium argument
+presupposes. Such a worker is not freed by the substrate change
+in the way \Cref{sec:leveller} above suggests; they are bonded
+into asymmetric capital relations that the substrate equally well
+supports. The primitive is symmetric in form and asymmetric in
+the access conditions that make use of the form possible.
+
+The labor-law implication is that the leveller register of
+\Cref{sec:leveller} applies fully only to the participants for
+whom the bonding option is substantively available, and the
+distributional question of how that availability is itself
+distributed is, in our view, the most important policy question
+the primitive raises. A regime that delivers symmetric form
+under asymmetric access produces a labor market that looks
+levelled at the moment of transaction and is not, in the
+relevant economic sense, levelled at all. Address attention to
+this question is what we owe the readers most likely to be
+worse off under partial implementation.
+
+The four political-response options above can be read against
+this caveat. Option (ii), attaching protections to citizenship,
+addresses the access asymmetry directly by uncoupling
+productive participation from social-protection access. Options
+(i) and (iii) leave the access asymmetry where the historical
+employment relation left it (with whoever has capital relative
+to the bond requirement) and propose that the bonded
+counterparty purchase protections from earnings. Option (iv)
+treats the asymmetric-access region as the residual-employment
+region and accepts the partition. The choice among them is a
+policy question this paper does not adjudicate. It is, however,
+the question on which the leveller-versus-privatizer reading of
+the primitive ultimately turns.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Conclusion}
@@ -770,6 +986,74 @@ Taleb, N.~N.
 \newblock Random House, New York, 2018.
 \newblock See especially Book~4 (``Wolves Among Dogs''), Chapter~3
   (``How to Legally Own Another Person'').
+
+\bibitem[Collins(1986)]{collins1986employment}
+Collins, H.
+\newblock Market Power, Bureaucratic Power, and the Contract of
+  Employment.
+\newblock \emph{Industrial Law Journal}, 15(1):1--14, 1986.
+
+\bibitem[Deakin(2001)]{deakin2001changing}
+Deakin, S.
+\newblock The Changing Concept of the `Employer' in Labour Law.
+\newblock \emph{Industrial Law Journal}, 30(1):72--84, 2001.
+
+\bibitem[Deakin and Morris(2012)]{deakin_morris_2012}
+Deakin, S. and Morris, G.~S.
+\newblock \emph{Labour Law}, 6th edition.
+\newblock Hart Publishing, Oxford, 2012.
+
+\bibitem[Freedland and Kountouris(2011)]{freedland_kountouris_2011}
+Freedland, M. and Kountouris, N.
+\newblock \emph{The Legal Construction of Personal Work Relations}.
+\newblock Oxford University Press, Oxford, 2011.
+
+\bibitem[Fudge(2006)]{fudge2006new}
+Fudge, J.
+\newblock The Legal Boundaries of the Employer, Precarious Workers,
+  and Labour Protection.
+\newblock In G.~Davidov and B.~Langille, eds., \emph{Boundaries and
+  Frontiers of Labour Law}, Hart Publishing, Oxford, 2006.
+
+\bibitem[Veitch(2017)]{veitch2017obligations}
+Veitch, S.
+\newblock \emph{Obligations: New Trajectories in Law}.
+\newblock Routledge, Abingdon, 2017.
+
+\bibitem[Hohfeld(1913)]{hohfeld1913fundamental}
+Hohfeld, W.~N.
+\newblock Some Fundamental Legal Conceptions as Applied in Judicial
+  Reasoning.
+\newblock \emph{Yale Law Journal}, 23(1):16--59, 1913.
+
+\bibitem[Naffine(2009)]{naffine_law_2009}
+Naffine, N.
+\newblock \emph{Law's Meaning of Life: Philosophy, Religion, Darwin
+  and the Legal Person}.
+\newblock Hart Publishing, Oxford, 2009.
+
+\bibitem[Bayern(2014)]{bayern_2014}
+Bayern, S.
+\newblock Of Bitcoins, Independently Wealthy Software, and the
+  Zero-Member LLC.
+\newblock \emph{Northwestern University Law Review}, 108:1485--1500, 2014.
+
+\bibitem[LoPucki(2017)]{lopucki2017algorithmic}
+LoPucki, L.~M.
+\newblock Algorithmic Entities.
+\newblock \emph{Washington University Law Review}, 95:887--953, 2017.
+
+\bibitem[Fairfield(2017)]{fairfield2017owned}
+Fairfield, J.~A.~T.
+\newblock \emph{Owned: Property, Privacy, and the New Digital
+  Serfdom}.
+\newblock Cambridge University Press, Cambridge, 2017.
+
+\bibitem[Pasquale(2015)]{pasquale2015blackbox}
+Pasquale, F.
+\newblock \emph{The Black Box Society: The Secret Algorithms That
+  Control Money and Information}.
+\newblock Harvard University Press, Cambridge, MA, 2015.
 
 \bibitem[Uber v Aslam(2021)]{uber_aslam_2021}
 \emph{Uber BV and others v Aslam and others}, [2021] UKSC 5.

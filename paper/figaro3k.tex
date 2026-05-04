@@ -1,0 +1,1133 @@
+% Figaro Paper K: A Permissionless, Ownerless Container-Shipping Assembly
+% Industrial / Systems Engineering register; the TradeLens replacement
+% worked example.
+% Audience: industrial-engineering and systems-engineering scholars,
+% supply-chain-coordination researchers, maritime-shipping practitioners,
+% trade-finance professionals.
+% Companion to Paper J (scheduled-service / Spirit Air worked example).
+% Preprint, May 2026
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\figaro}{\textsc{Figaro}}
+\newcommand{\pay}{P}
+\newcommand{\cumval}{G}
+
+\title{%
+  A Permissionless, Ownerless Supply-Chain Assembly:\\
+  Why TradeLens Failed and the Consumer-Rooted Architecture That Succeeds It%
+}
+
+\author{
+  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+}
+
+\date{May 2026}
+
+\begin{document}
+
+\maketitle
+
+% ════════════════════════════════════════════════════════════════════
+\begin{abstract}
+TradeLens (2018--2023), the IBM--Maersk container-shipping consortium
+that aimed to produce a tamper-proof shared record of every container's
+journey, shut down with only one major non-Maersk carrier on board. The
+shutdown was not a software failure. It was a governance failure
+visible from the consortium's structural shape: a competitor-controlled
+platform, requiring participation from carriers who would not ratify a
+competitor's gatekeeping over an industry resource, with high
+integration cost and no settlement guarantee binding parties to the
+arrangement. We argue the failure was structural, predictable from the
+shape of the architecture, and not specific to TradeLens.
+
+TradeLens addressed the maritime portion of a longer chain. The
+architectural alternative we develop reaches further: from factory
+to consumer. We present a permissionless, ownerless supply-chain
+assembly built on the bonded settlement primitive of the companion
+mechanism paper. The assembly has no consortium, no foundation, no
+admin function, no upgrade path, and no central party who can be
+ratified or refused. The \emph{final consumer} is the
+\texttt{rootBuyer} of the supply-chain process, committing directly
+to every party that contributes to the goods arriving at the
+consumer's door --- factory, packaging, origin logistics, port
+authorities at origin and destination, ocean carrier, customs
+broker, customs authority (for import duties), domestic logistics,
+state government (for sales tax), and any other resource provider
+the goods draw on. Carriers who want to participate compose;
+carriers who do not do not, with no consequence for either decision.
+Bonded commitments at each commit lock skin in the game proportional
+to the cumulative process value; atomic resolution by the consumer
+settles the whole process on receipt of the goods. The firm-shape
+intermediaries the conventional supply chain inserts at every tier
+(shipper-of-record, distributor, wholesaler, retailer) become
+structurally unnecessary because the consumer's bonded commits reach
+the operational sellers directly.
+The schemas the assembly draws on are largely existing infrastructure
+(commerce, geo, handoff, jurisdiction, fulfilment, GHG family,
+proximity); two new schemas (container-seal, Incoterms-2020-as-anchor)
+extend the protocol's surface in ways that respect the
+extension-doctrine. We also treat the bill-of-lading transferability
+question through the cancellable-seller / counter-process pattern that
+expresses transferability at the protocol layer without weakening the
+kernel's invariants.
+
+The paper is in industrial-engineering register: the contribution is
+the assembly DAG and its operational properties, not novel
+mechanism-design results. Why TradeLens failed and what its successor
+looks like architecturally are answerable as supply-chain coordination
+questions.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:}
+container shipping, supply-chain coordination, bills of lading,
+Incoterms, MLETR, transferable records, process modeling
+
+% ════════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+Container shipping is a coordination problem of unusual scale: a
+single 20{,}000-TEU vessel carries cargo from thousands of shippers,
+moves through multiple ports under multiple jurisdictions, transfers
+to multiple consignees, and is documented by a stack of bills of
+lading, customs filings, GHG attestations, and operational handoffs
+that no single party originates and no single party owns. The
+information problem is real --- duplicated paper-based records,
+opaque vessel-position data, contested seal-integrity claims --- and
+the industry has been searching for a digital solution for two
+decades.
+
+TradeLens, the consortium platform jointly developed by IBM and
+Maersk between 2018 and 2023, was the most ambitious attempt at
+that solution. Its approach was a permissioned blockchain on which
+participants would publish operational records that all parties to
+a shipment could read. The platform shut down in early 2023 after
+failing to attract more than one major non-Maersk carrier (CMA CGM)
+into participation; MSC, Hapag-Lloyd, ONE, and Evergreen all
+declined. The platform was technically functional; the consortium
+was not.
+
+\paragraph{Reading the failure structurally.}
+The standard reading of TradeLens's failure focuses on adoption
+dynamics: the network-effects argument that any shared-ledger
+platform requires a critical-mass coalition before it is useful.
+This is not wrong, but it is incomplete. The critical-mass argument
+explains why TradeLens \emph{failed to grow}; it does not explain
+why the carriers who declined to join made what was, from their
+perspective, a rational decision. The carriers' decision was not
+about technology adoption. It was about ratifying a competitor's
+control of an industry resource, which a competitor-controlled
+platform necessarily asks them to do.
+
+The \emph{governance} structure of the platform was the binding
+constraint, not the network effects. A competitor-controlled
+platform requires the other competitors to accept the gatekeeping
+authority of the controlling competitor; the other competitors
+have correctly read this as conceding strategic position and have
+declined. The network-effects collapse follows from the governance
+choice; it does not cause it. A platform with neutral governance
+might have faced its own difficulties, but it would not have faced
+the specific difficulty TradeLens did.
+
+\paragraph{The architectural alternative.}
+We argue that the structural fix is not better governance but no
+governance at the platform layer at all. A permissionless,
+ownerless settlement primitive --- the bonded commitment of the
+companion mechanism paper --- removes the governance question from
+the architecture. There is no consortium to join; there is a
+public protocol that any wallet can compose with. There is no
+gatekeeping authority to refuse; carriers participate by signing
+commitments and decline by not signing. The network-effects
+question becomes more manageable because the platform-as-veto
+problem disappears: a competitor's participation does not require
+the competitor's consent to a competitor's gatekeeping.
+
+The assembly described in this paper is what supply-chain
+coordination looks like under such a substrate. TradeLens
+addressed the maritime portion of the chain --- carrier-to-carrier
+and carrier-to-port records of cargo movement; the bonded
+architecture reaches further. It admits the \emph{full chain from
+factory to consumer} under a single settlement primitive, with
+the final consumer as the \texttt{rootBuyer} of the supply-chain
+process and every operational party (factory, packaging, origin
+logistics, port authorities, ocean carrier, customs broker,
+customs authority for tariffs, domestic logistics, state
+government for sales tax, and any other resource provider the
+goods draw on) as a seller in that process. The firm-shape
+intermediaries of the conventional chain --- shipper-of-record,
+distributor, wholesaler, retailer --- become structurally
+unnecessary because the consumer's bonded commits reach the
+operational sellers directly. It is not a TradeLens replacement
+in the sense of a drop-in alternative product; it is a
+re-architecture of the supply-chain coordination problem in which
+the firm-tiered chain is replaced by a consumer-rooted bonded
+process.
+
+\paragraph{Paper organization.}
+\Cref{sec:tradelens} reviews the TradeLens history and the
+structural reading of its failure (the maritime case).
+\Cref{sec:primitive} summarizes the settlement primitive in the
+register the present paper uses.
+\Cref{sec:assembly} develops the consumer-rooted assembly: the
+organizational DAG (factory to consumer), the schema-attested
+operational handoffs along it, and the kernel commit structure
+that backs it (consumer as \texttt{rootBuyer}, every commit
+consumer-to-seller, all in one process).
+\Cref{sec:bonds} works out the bond posture and cohort-compensation
+mechanics across the resource providers, with a worked example
+including realistic numbers, tariffs, and sales tax.
+\Cref{sec:schemas} treats the schema requirements: most existing
+infrastructure, two new schemas (container-seal-v1 and
+Incoterms-2020-as-anchor), and the deliberate non-inclusion of
+transferable-BoL semantics in the kernel-layer schema set.
+\Cref{sec:bol} treats bill-of-lading transferability as a
+protocol-layer composition pattern (CancellableSeller wrapper +
+counter-process).
+\Cref{sec:comparison} compares the architecture to CargoX,
+TradeTrust, MLETR, and TradeLens itself.
+\Cref{sec:scope} states the scope conditions and what the
+architecture deliberately does not address.
+\Cref{sec:conclusion} concludes.
+
+% ════════════════════════════════════════════════════════════════════
+\section{What TradeLens Was and Why It Failed}
+\label{sec:tradelens}
+
+We treat the failure structurally rather than narratively.
+
+\paragraph{What TradeLens was.}
+TradeLens was a permissioned blockchain platform for global
+container shipping, jointly developed by IBM and Maersk and
+operational from 2018 to 2023. The platform's stated goal was a
+shared, tamper-proof record of every container's journey ---
+bills of lading, customs filings, port handoffs, vessel positions
+--- accessible to all parties in a shipment.
+
+The technical architecture was Hyperledger-Fabric-based: a
+permissioned ledger where participating carriers, ports, and
+customs authorities could publish operational records. The
+platform's value proposition rested on the assumption that all
+major ocean carriers would join, producing a single ledger that
+shippers could rely on as comprehensive cross-carrier reference.
+\citet{jensen_etal_2019} and \citet{sarker_etal_2021} document
+the platform's value proposition and use-case design as it stood
+mid-deployment; both papers predate the shutdown and frame the
+platform around adoption potential rather than around the
+governance refusal we read as the binding constraint below.
+The governance-was-binding reading is original to this paper;
+Jensen and Sarker supply the value-proposition baseline against
+which the reading is offered.
+
+\paragraph{The adoption shape.}
+By 2022, only CMA CGM (a Maersk competitor) had joined as a major
+non-Maersk carrier. MSC (the largest carrier by capacity),
+Hapag-Lloyd, Ocean Network Express (ONE), and Evergreen had all
+declined to participate. In November 2022, IBM and Maersk
+announced the platform's shutdown; production ended in Q1 2023
+\citep{lloyd_loadstar_2022}.
+
+\paragraph{Why the carriers declined.}
+The standard adoption-dynamics reading explains the shutdown
+through a familiar mechanism: shippers want a single ledger
+covering 90\%+ of their cargo volume; without MSC and Hapag-Lloyd
+the data was incomplete; without complete data, shippers wouldn't
+pay for the platform; without revenue, carriers had no
+incremental reason to join; the equilibrium was reflexive
+non-adoption. This is correct as far as it goes.
+
+The deeper reading is that the non-Maersk carriers correctly
+identified a strategic problem with the platform's governance
+shape. A platform controlled by Maersk, with IBM as the technical
+operator and Maersk as the principal customer, is structurally a
+Maersk asset that other carriers are being asked to provision
+with their operational data. The asset's governance accountability
+runs to Maersk in any contested case. Whatever the platform's
+formal governance arrangements, the controlling-competitor
+dynamic is the binding constraint on competitors' participation.
+
+The argument is not that Maersk acted in bad faith or that the
+formal governance was inadequate. The argument is that the
+platform's shape \emph{is} the problem: a competitor-controlled
+infrastructure requires other competitors to ratify the
+controller's strategic position relative to the industry, and
+there is no formal-governance fix that dissolves this
+requirement. MSC and Hapag-Lloyd are not joining a Maersk-controlled
+platform regardless of how its governance is configured.
+
+\paragraph{The general lesson.}
+TradeLens's failure is not specific to IBM, to Maersk, or to
+shipping. It is the recurring pattern of consortium-governance
+infrastructure: any platform whose governance accountability runs
+to a participant of the industry the platform is meant to serve
+will face structural participation refusal from that
+participant's competitors. The fix is not better consortium
+governance; the fix is no consortium at the platform layer.
+
+Several adjacent industries have run the same experiment with
+the same outcome: SWIFT and its alternatives in payments,
+various consortium attempts at securities settlement,
+healthcare-records consortia. The pattern is robust. The
+structural alternative is permissionless, ownerless infrastructure
+at the platform layer, with whatever industry-specific arrangements
+the participants want to compose on top.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Settlement Primitive}
+\label{sec:primitive}
+
+The bonded primitive is developed formally in the companion
+mechanism paper, with the deployed Solidity implementation
+verified through the companion implementation paper's
+multi-method stack (TLA\textsuperscript{+}, symbolic execution,
+property-based fuzzing, Certora specifications). We summarize
+the features the present argument uses.
+
+\paragraph{Asymmetric bonding (Mechanism~1).}
+For a transaction with payment $\pay > 0$ and cumulative upstream
+value $\cumval \geq \pay$, the buyer locks $2\pay$ and the seller
+locks $2\cumval$. Cooperation is the unique profile surviving
+iterated elimination of weakly dominated strategies. The
+mechanism scales to $N$-party process trees through progressive
+collateralization: each seller bonds against the cumulative value
+of all upstream commitments, producing a mesh of independently
+secured bilateral edges, each carrying its own equilibrium.
+
+\paragraph{Buyer dominance with atomic resolution (Mechanism~2).}
+Only the root buyer can trigger resolution; resolution settles all
+active orders in the process simultaneously or not at all. The
+all-or-nothing rule induces a weakest-link subgame among sellers,
+producing cooperation pressure of magnitude $\pay_i + 2\cumval_i$
+on every other seller from each seller's perspective, without
+explicit communication, governance, or managerial layer.
+
+\paragraph{What this implies for shipping coordination.}
+Mechanism~1 prices each leg's enforcement in proportional bond
+posture without requiring any consortium or platform to underwrite
+it. Mechanism~2 enforces the multi-leg coordination at resolution
+without requiring any party to govern the multi-leg arrangement.
+The two mechanisms together supply the coordination function that
+TradeLens attempted to supply through a consortium-governed shared
+ledger; they supply it without needing the consortium.
+
+% ════════════════════════════════════════════════════════════════════
+\section{The Assembly}
+\label{sec:assembly}
+
+We now describe the assembly of bonded commitments that
+re-architects the supply chain as a permissionless, ownerless
+coordination protocol. The assembly has two layers that should be
+kept clearly separate: the \emph{organizational DAG} (how the
+goods physically flow from factory to consumer, documented via
+schema attestations) and the \emph{kernel commit structure} (who
+commits to whom on-chain, governed by the kernel's
+\texttt{buyer} $=$ \texttt{rootBuyer} rule). The kernel is
+DAG-blind; the schema layer is DAG-aware. The two layers co-exist
+in one process.
+
+\paragraph{The organizational DAG.}
+The supply chain is a sequence of operational handoffs from the
+factory to the consumer. We sketch the canonical
+international-DTC flow:
+
+\begin{verbatim}
+            factory (origin country)
+                |
+                | handoff: goods packaged, ready to ship
+                v
+            origin logistics (truck to port)
+                |
+                | handoff: container stuffed and sealed
+                v
+            port-of-loading (terminal services)
+                |
+                | handoff: container loaded
+                v
+            ocean carrier
+                |
+                | vessel-position stream (geo-v1),
+                | container-seal-v1 sequence
+                v
+            port-of-discharge (terminal services)
+                |
+                | handoff: container discharged
+                v
+            customs broker + customs authority
+                |   (broker attests to authority's
+                |    determination; authority bonded
+                |    for tariff service)
+                v
+            domestic logistics (warehouse + last-mile)
+                |
+                | fulfilment-v1 (delivery)
+                v
+            consumer
+\end{verbatim}
+
+Variations on the structure (factory-direct shipment without a
+warehouse intermediary, intermodal rail substituted for ocean,
+etc.) instantiate the same pattern with the operational divisions
+shifted to reflect the route. Every handoff along this DAG is
+documented via a schema-typed attestation: \texttt{handoff-v1}
+for cargo transfers, \texttt{container-seal-v1} for seal-state
+changes, \texttt{geo-v1} for vessel-position updates,
+\texttt{jurisdiction-v1} for customs clearance,
+\texttt{fulfilment-v1} for delivery confirmation. None of these
+attestations is a kernel commit; they are evidentiary records
+that document the organizational reality of the goods' flow.
+
+\paragraph{The kernel commit structure.}
+The kernel commits, in contrast, are consumer-rooted: the kernel
+enforces \texttt{buyer} $=$ \texttt{rootBuyer} in every order in
+a process, so every kernel commit in the supply-chain process has
+the consumer as buyer. The commits document who the consumer pays
+and how much: consumer $\to$ factory, consumer $\to$ origin
+logistics, consumer $\to$ origin port authority, consumer $\to$
+ocean carrier, consumer $\to$ destination port authority,
+consumer $\to$ customs broker, consumer $\to$ customs authority
+(for the import tariff), consumer $\to$ domestic logistics,
+consumer $\to$ state government (for sales tax), and any other
+resource provider the goods draw on. The commits are independent
+of who hands the goods to whom in the organizational DAG above.
+The consumer alone calls \texttt{resolveProcess} on receipt,
+settling the process atomically.
+
+\paragraph{Why this is not a chain of B2B transactions.}
+In the conventional supply chain the same goods are sold and
+resold at every tier --- factory to wholesaler, wholesaler to
+distributor, distributor to retailer, retailer to consumer ---
+and each tier extracts margin in exchange for absorbing the
+coordination cost between adjacent tiers. The bonded primitive
+collapses that coordination cost: the consumer's bonded commits
+reach the operational sellers directly, with no margin-extracting
+tier in between. The factory is paid by the consumer, not by a
+wholesaler. The ocean carrier is paid by the consumer, not by a
+shipper-of-record. The firm-shape parties of the conventional
+chain (shipper-of-record, distributor, wholesaler, retailer)
+become structurally unnecessary at the kernel layer; off-chain
+roles such as discovery, curation, brand-as-quality-signal, or
+returns handling can still be filled by parties who provide those
+specific services, but they cannot insert themselves as kernel
+intermediaries between the consumer and the operational sellers.
+
+\paragraph{Per-commit schema clauses.}
+Each kernel commit carries the schema clauses relevant to the
+seller's role.
+
+\begin{itemize}
+  \item \emph{consumer $\to$ factory}: \texttt{commerce-v1}
+    payment, \texttt{handoff-v1} on goods packaged for shipment,
+    optional \texttt{ghg-protocol-v1} disclosure for the
+    manufacturing emissions.
+  \item \emph{consumer $\to$ origin logistics}: \texttt{commerce-v1}
+    payment, \texttt{handoff-v1} on cargo receipt and on
+    container stuffing, \texttt{container-seal-v1} applied at the
+    factory dock or origin warehouse.
+  \item \emph{consumer $\to$ origin port authority} and
+    \emph{consumer $\to$ destination port authority}:
+    \texttt{commerce-v1} payment for terminal handling and gate
+    access, \texttt{handoff-v1} at port-side transfers, and
+    \texttt{container-seal-v1} inspected-intact attestation at
+    the port handoff.
+  \item \emph{consumer $\to$ ocean carrier}: \texttt{commerce-v1}
+    payment, an \texttt{incoterms-2020-v1} clause anchoring the
+    shipment term and named place, \texttt{handoff-v1} on cargo
+    transfer to the vessel and at discharge,
+    \texttt{container-seal-v1} sealing events through the voyage,
+    \texttt{geo-v1} vessel-position attestations on the voyage
+    cadence, and \texttt{ghg-protocol-v1} disclosure for the
+    voyage emissions.
+  \item \emph{consumer $\to$ customs broker}: \texttt{commerce-v1}
+    payment plus \texttt{jurisdiction-v1} attestation recording
+    the customs authority's determination.
+  \item \emph{consumer $\to$ customs authority (import duty /
+    tariff)}: \texttt{commerce-v1} payment for the import-duty
+    obligation. The customs authority is a bonded seller of
+    border-services in this commit and a sovereign decisional
+    authority on the broker's parallel attestation; the two
+    roles are distinct but compose in one process.
+  \item \emph{consumer $\to$ domestic logistics}:
+    \texttt{commerce-v1} payment plus \texttt{fulfilment-v1}
+    attestation at delivery.
+  \item \emph{consumer $\to$ state government (sales tax)}:
+    \texttt{commerce-v1} payment for the sales-tax obligation.
+    The state government is a bonded seller of public services
+    funded through the sales tax, on the same composition pattern
+    as the customs authority.
+\end{itemize}
+
+\paragraph{Operational sub-procurement as separate processes.}
+A factory's procurement of materials, labor, and energy; a
+carrier's procurement of fuel, crew, and maintenance; a
+domestic-logistics provider's procurement of warehouse space and
+delivery vehicles --- each of these is a separate process under
+the operational party as its own \texttt{rootBuyer}. The kernel
+does not link those processes to the consumer's. Cross-process
+coordination is achieved through within-process cohort-pressure
+on each side and through off-chain reconciliation, not through
+cross-process atomic resolution.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Bond Posture and Cascade Mechanics}
+\label{sec:bonds}
+
+The architecture's structural contribution is that each leg's
+risk is priced and propagated by the bonding rule of the kernel,
+without consortium intermediation.
+
+\paragraph{Bond posture per commit.}
+The kernel maintains a single process-wide cumulative-value
+accumulator $G$ that grows monotonically as each commit lands
+($G \leftarrow G + P_i$). At every commit the consumer (as
+\texttt{rootBuyer}) posts $2P_i$ for that specific payment, and
+the seller posts $2G_{\text{at commit time}}$ --- the full
+cumulative process value at the moment they commit. Bond posture
+is asymmetric: the consumer's per-commit bond scales with the
+immediate payment, while each seller's bond scales with the
+cumulative value of every upstream commit in the process.
+Sellers committing later post correspondingly larger bonds; the
+last seller bonds against the full retail value of the goods.
+
+\paragraph{A bond-posture worked example.}
+Consider a stylized \$200 imported consumer good (a piece of
+consumer electronics manufactured in an exporting country and
+delivered to a consumer in an importing country with a 25\%
+import duty assessed on the CIF landed cost and a 7.5\% sales
+tax assessed on the pre-tax retail price) under one
+consumer-rooted process. The table below traces one illustrative
+commit sequence.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Commit (in sequence) & $P_i$ & $G$ after commit & Consumer bond $2P_i$ & Seller bond $2G$ \\
+\midrule
+Root: consumer $\rightarrow$ factory (FOB) & $\$85$ & $\$85$ & $\$170$ & $\$170$ \\
+Sub: consumer $\rightarrow$ origin logistics & $\$5$ & $\$90$ & $\$10$ & $\$180$ \\
+Sub: consumer $\rightarrow$ origin port authority & $\$5$ & $\$95$ & $\$10$ & $\$190$ \\
+Sub: consumer $\rightarrow$ ocean carrier & $\$15$ & $\$110$ & $\$30$ & $\$220$ \\
+Sub: consumer $\rightarrow$ destination port authority & $\$5$ & $\$115$ & $\$10$ & $\$230$ \\
+Sub: consumer $\rightarrow$ customs broker & $\$3$ & $\$118$ & $\$6$ & $\$236$ \\
+Sub: consumer $\rightarrow$ customs authority (import duty) & $\$29$ & $\$147$ & $\$58$ & $\$294$ \\
+Sub: consumer $\rightarrow$ domestic logistics & $\$39$ & $\$186$ & $\$78$ & $\$372$ \\
+Sub: consumer $\rightarrow$ state government (sales tax) & $\$14$ & $\$200$ & $\$28$ & $\$400$ \\
+\midrule
+Total bond locked across the process & --- & --- & $\$400$ & $\$2{,}292$ \\
+\bottomrule
+\end{tabular}
+\caption{Stylized per-commit bond posture for a \$200 imported
+consumer good under one consumer-rooted process. The import duty
+($\$29$) is $25\%$ of the CIF landed cost ($\$115 = \$85 + \$5 +
+\$5 + \$15 + \$5$, the cumulative process value at point of
+arrival at the destination port), not of the retail price. The
+sales tax ($\$14$) is $7.5\%$ of the pre-tax retail ($\$186 =
+\$200 - \$14$). $G$ is the process-wide cumulative-value
+accumulator. The consumer's bond at each commit scales with the
+immediate payment to that seller; each seller's bond scales with
+the cumulative process value at the moment that seller commits.
+The customs authority and the state government are bonded sellers
+in their respective commits, on the same composition pattern as
+the federal aviation system in the companion scheduled-service
+paper. Per-resource payments are illustrative; absolute
+magnitudes vary with the goods, route, tariff schedule, and tax
+jurisdiction.}
+\label{tab:k-bond-posture}
+\end{table}
+
+The asymmetry between consumer-side and seller-cohort bonds is
+visible: the consumer's aggregate locked bond is $\$400$
+($= 2 \times P_{\text{retail}}$, the standard buyer posture),
+while the seller cohort's aggregate locked bond is $\$2{,}292$,
+nearly six times the consumer's. The seller cohort's bond is a
+multiple of the retail value because each seller bonds against
+the cumulative $G$ that has grown across upstream commits.
+
+\paragraph{Slip propagation as cohort-compensation pressure.}
+When a slip occurs --- a defective unit shipped, a port
+congestion delay, a customs hold, a damaged delivery --- the
+kernel's atomic-resolution rule means \emph{every} seller's bond
+in the consumer's process is at risk: the consumer alone
+resolves, and the consumer can withhold resolution while the
+seller cohort negotiates compensation. The unit whose performance
+failed bears the larger share of cohort-internal compensation;
+sellers whose service was unaffected contribute less or not at
+all. Compensation flows directly from the seller cohort to the
+consumer before any external mechanism (specialized mechanism
+contracts, dispute forums, insurance, regulators) is engaged.
+The mechanism is the same one developed for scheduled passenger
+service in the companion industrial-engineering paper: buyer
+dominance plus atomic resolution under bond pressure. The
+off-chain question of which operational unit caused the slip ---
+factory defect, packaging fault, ocean-leg damage, customs
+inspection delay --- is adjudicated by external forums with the
+bonded record as input, under the framework of the companion
+evidence-and-law paper.
+
+\paragraph{Cohort pressure across the resource provider set.}
+The architecture exhibits cohort pressure across the seller set
+in the consumer's process. Each seller's bond is at risk if any
+other seller's slip propagates to a resolution-withholding by the
+consumer. Sellers therefore have direct economic interest in
+each other's reliability: a factory whose defect rate forces
+repeat compensation negotiations loses repeat consumer business
+not because of reputation effects but because the cohort's
+expected bond-loss exposure on goods from that factory is direct
+and measurable; a port that consistently produces cascading
+delays does likewise. The mechanism operates without a
+managerial layer; the bonded structure does the work that a
+consortium-governed shared ledger was meant to do through
+information transparency alone.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Schemas}
+\label{sec:schemas}
+
+The assembly draws mostly on existing schema infrastructure. Two
+new schemas are required: a container-seal attestation and an
+Incoterms-2020 anchor. The bill-of-lading transferability
+question is treated separately in \Cref{sec:bol}.
+
+\paragraph{Existing schemas.}
+The assembly composes the following existing schemas.
+\texttt{figaro-commerce-v1} carries the per-leg payment
+commitment.
+\texttt{figaro-geo-v1} carries pickup / drop-off geohashes and
+vessel-position updates.
+\texttt{figaro-handoff-v1} carries each container handoff at
+transfer points.
+\texttt{figaro-jurisdiction-v1} carries the customs-clearance
+attestation.
+\texttt{figaro-courier-process-v1} carries the carrier's
+internal sub-process tree (the multi-stop carrier process).
+\texttt{figaro-fulfilment-v1} carries the final delivery to
+consignee.
+\texttt{figaro-ghg-protocol-v1} (with sister schemas for ISO
+14064, PAS 2050, EN 16258) carries per-leg emissions
+disclosure on every transport edge.
+\texttt{figaro-proximity-policy-v1} together with
+\texttt{figaro-proximity-proof-v1} support geofence enforcement
+at port handoffs where required.
+
+The composition is non-trivial but draws on established
+infrastructure. No agent work is required for these schemas;
+they are already on chain and bound to validators.
+
+\paragraph{New schema: \texttt{figaro-container-seal-v1}.}
+Container seals are the integrity mechanism for ocean shipping.
+A uniquely-numbered seal is applied at the origin and broken only
+at customs or at the destination consignee. Multiple parties
+(carrier, ports, customs, consignee) need a single canonical
+attestation of when the seal was applied, when it was inspected
+intact, and if it was breached.
+
+The schema's Layer~A spec carries:
+
+\begin{itemize}
+  \item \texttt{containerNumber} (string, ISO 6346 format)
+  \item \texttt{sealNumber} (string)
+  \item \texttt{event} (enum: applied, inspected\_intact,
+    transferred, breached, removed\_by\_customs)
+  \item \texttt{inspectorAddress} (address-hex; the wallet
+    making the attestation)
+  \item \texttt{timestamp} (ISO 8601 datetime)
+  \item \texttt{locationGeohash} (string, 8-character precision)
+  \item \texttt{evidenceHash} (bytes-hex, optional content hash
+    of a photo or inspection report)
+\end{itemize}
+
+The schema is the seed of a \emph{container-integrity} family
+that could later cover seal-equivalents in other transport modes
+(rail container seals, air-freight tamper-evident packaging, etc.)
+without reauthoring the family. The schemaId binds permanently
+under the \texttt{SchemaRegistry}'s first-write-wins discipline.
+
+\paragraph{New schema: \texttt{figaro-incoterms-2020-v1}.}
+Incoterms~2020 (from the International Chamber of Commerce) are
+the international trade vocabulary for risk-transfer points and
+cost allocation across legs of a shipment: EXW, FCA, CPT, CIP,
+DAP, DPU, DDP, FAS, FOB, CFR, CIF
+\citep{icc_incoterms_2020, ramberg2010icc}. The vocabulary is
+useful as cross-party shared reference, but the traditional
+Incoterms semantics come from a context without the bonded
+primitive's invariants and may not all map cleanly. We treat
+this carefully because it is the canonical worked example of
+how traditional commercial vocabulary smuggles in assumptions
+the bonded architecture cannot honor.
+
+Three structural mismatches deserve direct treatment.
+
+\emph{Risk transfer is a Figaro-foreign concept.} Incoterms
+encode a discretionary risk-transfer point: ``risk transfers from
+seller to buyer at point X.'' Under the bonded primitive, risk
+follows bond --- the bonded party is at stake until they perform
+per the agreed clauses, and there is no separate
+\emph{risk-transfer} concept distinct from the bonding rule. A
+clean port from Incoterms to bonded clauses requires reinterpreting
+``risk transfer at X'' as ``the seller's
+\texttt{handoff-v1} attestation due at X discharges the seller's
+bond exposure for the upstream segment.''
+
+\emph{Cost-vs-risk separation collapses.} Incoterms separate
+``who pays for transport'' from ``who bears risk during
+transport.'' Under the bonded primitive, both follow from process
+structure: a party who bonds for a sub-process is the buyer of
+that sub-process, and risk is what the bonding rule already
+prices. Some Incoterms features (CIP/CIF's seller-pays-insurance
+feature, for instance) require composition with a parallel
+insurance process rather than direct encoding in the
+delivery-clause specification.
+
+\emph{Buyer dominance changes the resolution model.} Incoterms
+assume good-faith resolution between parties; the bonded
+primitive encodes buyer dominance plus mutually-assured
+bond-loss as the equilibrium that produces good-faith resolution.
+Some Incoterms' implicit dispute-resolution paths --- which
+typically rely on local commercial-court adjudication --- continue
+to function under the bonded architecture but at the off-chain
+forum the parties name in their agreement, not as an internal
+property of the term.
+
+The right schema is therefore not ``Incoterm as a traditional
+contract clause'' but \emph{Incoterm as a reference to a
+Figaro-native delivery-clause specification}. The schema anchors
+the term plus the named place; the term-to-delivery-clause
+mapping lives in the off-chain ICC publication (the canonical
+text) and a runtime term-to-clause table that the assembly's
+participants compose from. The validator contract enforces the
+anchor (term enum, named place string, place geohash for
+cross-reference with \texttt{geo-v1}) but does not encode
+per-term semantics in Solidity.
+
+The Layer~A spec carries:
+
+\begin{itemize}
+  \item \texttt{term} (enum: EXW, FCA, CPT, CIP, DAP, DPU, DDP,
+    FAS, FOB, CFR, CIF)
+  \item \texttt{namedPlace} (string; every Incoterm requires a
+    named place)
+  \item \texttt{placeGeohash} (string, 8-character precision
+    for cross-reference with \texttt{figaro-geo-v1})
+\end{itemize}
+
+This split lets future Incoterms revisions ship as new schemaIds
+(\texttt{figaro-incoterms-2030-v1}, etc.) without mutating prior
+anchors. Per-term mapping verification --- which terms map
+directly, which require composition with parallel processes
+(insurance, customs), and which do not transfer at all --- is
+work the schema-author performs against the kernel code before
+the schema is registered. Likely outcomes from that verification
+are the following.
+
+\emph{EXW, FCA, DAP, DPU, DDP, FAS, FOB} probably map directly,
+each becoming a delivery-clause specification: \texttt{handoff-v1}
+attestation at the named place, with auxiliary clauses for
+customs (DDP) or unloading (DPU) where the term requires them.
+
+\emph{CPT and CFR} map structurally. The ``seller pays carriage''
+feature becomes a separate sub-process where the seller is the
+buyer of carriage. The ``risk transfers at first carrier''
+feature becomes the goods-commit's delivery-clause specification.
+
+\emph{CIP and CIF} map similarly to CPT and CFR plus the
+``seller insures for buyer's benefit'' feature. The insurance
+assignment may not transfer directly --- it likely requires
+composition with a parallel insurance process where the seller
+buys insurance from an external insurer naming the buyer as the
+beneficiary. The schema-author's verification report identifies
+this as a composition requirement rather than as a refusal.
+
+The Incoterms schema is therefore a clean illustration of the
+extension-doctrine principle that the protocol anchors shared
+references but does not import every contractual assumption that
+travels with traditional vocabulary. The vocabulary is useful;
+the assumptions are sometimes incompatible; the schema separates
+them.
+
+\paragraph{Schemas the assembly does not include.}
+The assembly does not include a multi-currency-cross-leg schema
+(would break same-unit comparability and the bonding equilibrium),
+a force-majeure-escape schema (would re-introduce the kind of
+unilateral exit the kernel forbids), or a transferability schema
+internal to \texttt{commerce-v1}. The transferability question is
+treated separately in \Cref{sec:bol} as a protocol-layer
+composition pattern.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Bill of Lading Transferability}
+\label{sec:bol}
+
+The bill of lading is the carrier's receipt of cargo, the
+contract of carriage, and (in the negotiable case) a document of
+title. The transferability question --- whether the right to
+receive cargo at destination can be transferred mid-shipment from
+the original consignee to a new consignee --- is doctrinally
+significant because container-shipping commerce often involves
+cargo sale in transit, and the canonical legal artifact for that
+sale is endorsement of the bill of lading.
+
+The bonded primitive's kernel does not support party substitution
+within a single bonded order. Three kernel invariants each
+independently rule it out: the buyer is fixed at root commitment
+and identical across every sub-order in the process; the parties
+to each commitment are fixed at the moment of commit; and the
+no-escape-hatches discipline forbids unilateral exit paths from a
+bonded state. A literal endorsement of the BoL during shipment
+would require any of these invariants to bend, and they do not
+bend.
+
+The architectural direction we propose, and which we treat as
+\emph{open architectural research} rather than as a deliverable
+production-ready pattern, is that BoL transferability is a
+\emph{protocol-layer composition} not a kernel-layer property
+\citep{bol_research_2026}. The candidate pattern is a
+\emph{cancellable-seller wrapper plus counter-process}: the
+original buyer, who wants to transfer the right to the cargo
+mid-shipment, commits a parallel \emph{cancellation process}
+$P_{\text{cancel}}$ in which each sub-seller is compensated for
+early exit through a fee owed by the original buyer (and bonded
+under the standard kernel rule), and the new buyer commits a
+fresh transport process for the remaining legs.
+
+Several open questions hold the pattern back from being a
+deliverable mechanism. First, the cancellable-seller wrapper as
+sketched in \citet{bol_research_2026} relies on programmatic
+acknowledgement of the cancellation by the affected sub-seller
+under a pre-agreed fee schedule; whether this constitutes
+sub-seller consent in the kernel-discipline sense, or
+constitutes a unilateral exit dressed in counterparty clothing,
+is unsettled. A sub-seller bonded under a CancellableSeller
+wrapper has consented to the wrapper's terms at commit time,
+but consent at commit time to a future programmatic
+acknowledgement is structurally different from consent at the
+moment of cancellation; the design discipline reading depends
+on which framing one accepts. Second, the cargo-handoff
+operationalization is unaddressed: a fresh transport process
+for the remaining legs requires the original carrier to release
+cargo to the new carrier, which is a real-world handoff with no
+described attestation surface. Third, the cancellation-fee
+arithmetic is undefended; setting the fee too low produces an
+early-exit option the original sub-sellers will refuse, setting
+it too high forecloses the transfer use case, and the
+present paper does not defend any specific fee schedule.
+
+The pattern is therefore not a recommended deployment artifact
+in the way the schemas of \Cref{sec:schemas} are. We include the
+sketch because the BoL-transferability question is the
+load-bearing concern for any container-shipping deployment, and
+because the conventional answer (negotiable bills of lading
+endorsed mid-transit) is precisely what the kernel's
+buyer-fixed invariant rules out. The honest position is that
+the pattern is open architectural research; deployments
+requiring BoL transferability should plan to rely on conventional
+BoL doctrine through the off-chain agreement until the pattern
+matures, or to constrain their use cases to the
+non-transferable region the kernel admits directly.
+
+\paragraph{Why MLETR-style transferable-record analysis applies.}
+The companion evidence-and-law paper develops a Class~A /
+Class~B records taxonomy that frames the MLETR analysis here
+precisely. \emph{Class~A} records are kernel byproducts
+(commitment digests, bond deposits, the cumulative-value
+accumulator state, resolution events): they are emitted by the
+kernel itself, schema-typed at the kernel level, and
+cryptographically authenticated. The MLETR Article~10--11
+analysis applies directly to Class~A records: kernel structural
+properties (singularity through the cumulative-value
+accumulator, control through buyer-dominance, integrity through
+the chain's consensus) discharge the control and singularity
+tests for transferable records. \emph{Class~B} records ---
+discretionary schema-validated attestations such as the
+\texttt{container-seal-v1} events or
+\texttt{handoff-v1} attestations of \Cref{sec:assembly} ---
+are evidentiary artifacts \emph{about} the underlying
+transferable record (the commitment), not separate transferable
+records inheriting MLETR status in their own right. The
+cancellable-seller / counter-process pattern preserves the
+Class~A fit because the transfer is achieved through bilateral
+signing on two separate processes rather than through unilateral
+endorsement of a single record; the protocol-layer transfer
+pattern does not violate either MLETR test.
+
+\paragraph{What the bonded architecture does and does not preserve.}
+A useful organizing distinction is between order-form (named
+consignee, transferred by endorsement to a designated party)
+and bearer-form (transferred by physical delivery of the
+instrument without endorsement) bills of lading. Order-form
+endorsement is partially expressible through the cancellable-seller
+pattern above (subject to the open questions). Bearer-form BoLs
+are functionally equivalent to a
+transfer-without-counterparty-consent pattern that the bonded
+architecture does not support. Bearer-instrument practices
+remain common in commodity trading (oil cargoes, grain shipments)
+where the bill is treated as a near-money instrument
+\citep{goode_gullifer_2017}; non-bearer order-form practice
+predominates in container shipping but is not the only
+operational pattern. We treat the bearer-form exclusion as an
+honest exclusion: parties whose operations depend on
+bearer-instrument liquidity should plan around the conventional
+regime for that part of their workflow.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Comparison with Existing Approaches}
+\label{sec:comparison}
+
+The architecture should be located against the existing landscape
+of digital-shipping infrastructures.
+
+\paragraph{TradeLens.}
+TradeLens was a permissioned consortium ledger; the architecture
+proposed here is a permissionless bonded settlement primitive.
+The functional comparison is asymmetric: TradeLens supplied
+information transparency without settlement; the bonded
+architecture supplies settlement (with information transparency
+emerging as a byproduct of the bonded record). The governance
+comparison is also asymmetric: TradeLens was governed by
+IBM--Maersk; the bonded architecture has no governance at the
+kernel layer. The carriers who declined TradeLens did so for a
+governance reason; the architecture proposed here removes the
+reason.
+
+\paragraph{CargoX.}
+CargoX is a blockchain-based bill-of-lading platform that
+emphasizes transferable-electronic-record functionality and
+MLETR compliance \citep{cargox_2023}. CargoX is a focused product
+addressing the BoL transferability problem; the bonded
+architecture is a more general settlement primitive whose
+relationship to CargoX is composable rather than competitive. A
+shipper using the bonded architecture for the bilateral
+transport coordination could compose CargoX (or its successor) at
+the BoL layer, with the bonded record providing the underlying
+settlement evidence and the CargoX layer providing the
+transferable-instrument semantics. The two are not in
+competition; they address adjacent layers of the stack.
+
+\paragraph{TradeTrust.}
+TradeTrust, a Singapore-government-backed framework for
+electronic transferable records, supplies open-source tools and
+standards for issuing and managing electronic BoLs and similar
+instruments \citep{tradetrust_2023}. Like CargoX, it is composable
+with the bonded architecture rather than competitive with it.
+TradeTrust's standards-based approach to MLETR fit produces
+artifacts that are interoperable with the
+bonded-architecture's evidence record under the framework
+developed in the companion evidence-and-law paper.
+
+\paragraph{MLETR.}
+The UNCITRAL Model Law on Electronic Transferable Records (2017)
+is a legal framework rather than a technology platform
+\citep{uncitral_mletr_2017}. The bonded architecture's fit with
+MLETR is treated in the companion evidence-and-law paper. The
+short summary is that the kernel-layer artifacts satisfy
+Articles~10 and 11 (functional equivalence, control, singularity)
+for non-bearer transferable records, with bearer-instrument
+semantics noted as an honest exclusion (\Cref{sec:bol}).
+
+\paragraph{The architectural distinction.}
+The TradeLens replacement is not a better TradeLens. It is a
+re-architecture of the underlying coordination function from
+\emph{shared ledger maintained by consortium} to
+\emph{bonded settlement primitive composed by participants}. The
+shift is structurally substantial: the consortium's role is
+absorbed into the kernel's permissionless protocol; the carriers'
+participation decision is reduced to whether to compose with the
+protocol on individual shipments rather than whether to ratify a
+competitor's gatekeeping. The carriers who refused to ratify
+TradeLens are not asked to ratify anything in the bonded
+architecture; they participate by signing commitments to specific
+shipments and decline by not signing. The decision is made at
+the level of individual commerce rather than at the level of
+industry governance.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Scope}
+\label{sec:scope}
+
+The argument bounds itself by several scope conditions.
+
+\paragraph{Asset specificity at the port layer.}
+Major ports are functional monopolies for the slot, terminal
+capacity, and operational infrastructure they provide; carriers
+have limited alternative-supplier leverage at congested hubs.
+The architecture's competitive properties at the port-supply
+layer are constrained accordingly: where the port-of-call is
+dictated by the route and the port operator is a near-monopolist,
+the buyer-dominance leverage at the sub-procurement is
+attenuated. The architecture continues to function in these
+cases (the bond posture is well-defined; the resolution path is
+clean) but it does not produce price competition in port
+services where structural conditions don't admit it.
+
+\paragraph{Customs and sovereign authorities.}
+Customs authorities are not Figaro counterparties; their
+decisions are sovereign and the architecture treats them as
+attestation sources rather than bonded parties. The architecture
+does not propose to re-engineer customs administration. It does
+provide a verifiable evidence record on which customs decisions
+can operate and which customs decisions are recorded against,
+which we take as an unambiguous improvement over the contemporary
+paper-and-database situation but not as a substitute for the
+sovereign authority itself.
+
+\paragraph{Bond-currency at the small-shipper end.}
+Small shippers without crypto-treasury infrastructure face
+operational friction at the bonding step. The constraint is
+real but solvable through standard treasury-of-record
+arrangements (a forwarder bonds on behalf of small shippers,
+with the small shipper paying conventional fees off-chain to the
+forwarder for the bonding service). This is a runtime-tier
+implementation question rather than a substrate-tier question;
+the substrate is denomination-agnostic.
+
+\paragraph{Insurance and reinsurance.}
+Marine insurance, P\&I clubs, and the general apparatus of
+shipping-risk underwriting continue to operate. The bonded
+architecture changes the risk profile that the marine-insurance
+markets price (smaller residual after bond allocation;
+concentrated risk at the carrier-bond layer; a new class of
+bond-default risk at the port-supplier layer) but does not
+displace the insurance function. We expect the marine-insurance
+markets to develop fluent products around the bonded
+architecture as the architecture diffuses.
+
+\paragraph{Network effects and adoption.}
+The architecture's adoption dynamics differ from TradeLens's in
+that no participant must ratify any other participant's
+governance position. A shipper, forwarder, or carrier can
+participate on individual shipments without joining anything;
+the participation decision is shipment-by-shipment rather than
+platform-membership-shaped. We do not model the diffusion
+trajectory beyond noting that the structural barrier that
+defeated TradeLens (consortium ratification by competitors) is
+absent here.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+TradeLens failed for governance reasons that no
+consortium-governance fix can resolve, and the structural
+alternative is permissionless, ownerless infrastructure at the
+platform layer rather than a better consortium. The bonded
+settlement primitive of the companion mechanism paper supplies
+the architectural shape: each leg of a shipment is a bilateral
+bonded commitment; progressive collateralization scales the
+primitive across the multi-leg fan-out; buyer dominance plus
+atomic resolution propagates damage to the unit causing the
+slip; the schemas the assembly composes are largely existing
+infrastructure with two well-bounded additions.
+
+The contribution is the assembly DAG, the per-edge mechanism,
+the bond-posture mechanics, the schema-set composition, the
+Incoterms-as-anchor pattern, and the
+cancellable-seller / counter-process pattern for BoL
+transferability. None of these is novel mechanism design; the
+mechanism-design work was done in the companion mechanism paper.
+The contribution is industrial-engineering: a specific
+re-architecture of container shipping as a bonded coordination
+problem with operational properties demonstrably different from
+the consortium-platform regime that has been tried and has
+failed.
+
+A natural next step is empirical: a small-corridor pilot
+implementation of the architecture for a specific high-volume
+trade lane (US-Asia container, intra-EU short-sea, intra-Asia
+trade) with measurement of bond-loss frequency, port-supplier
+slip rates, and consignee-side recovery proportionality compared
+to the conventional regime. We do not undertake the pilot; we
+identify it as the experimental work the architecture invites.
+
+\section*{Acknowledgments}
+The TradeLens worked example originated in a project repository
+of agent-coordination scenarios, with comparative research at
+\citet{bol_research_2026}. The present paper formalizes the
+scenario into an industrial-engineering register.
+
+% ════════════════════════════════════════════════════════════════════
+\begin{thebibliography}{99}
+
+\bibitem[Jensen et al.(2019)]{jensen_etal_2019}
+Jensen, T., Hedman, J., and Henningsson, S.
+\newblock How TradeLens Delivers Business Value With Blockchain
+  Technology.
+\newblock \emph{MIS Quarterly Executive}, 18(4):221--243, 2019.
+
+\bibitem[Sarker et al.(2021)]{sarker_etal_2021}
+Sarker, S., Henningsson, S., Jensen, T., and Hedman, J.
+\newblock Use Cases for Blockchain in the Enterprise: TradeLens.
+\newblock \emph{MIS Quarterly Executive}, 20(4):257--276, 2021.
+
+\bibitem[Lloyd's Loadstar(2022)]{lloyd_loadstar_2022}
+The Loadstar.
+\newblock IBM and Maersk to Sink TradeLens Blockchain Platform.
+\newblock The Loadstar, November~30, 2022.
+
+\bibitem[ICC(2020)]{icc_incoterms_2020}
+International Chamber of Commerce.
+\newblock \emph{Incoterms 2020: ICC Rules for the Use of Domestic and
+  International Trade Terms}.
+\newblock ICC Publication 723E, 2020.
+
+\bibitem[Ramberg(2010)]{ramberg2010icc}
+Ramberg, J.
+\newblock \emph{ICC Guide to Incoterms 2010}.
+\newblock ICC Publication 720E, 2010.
+
+\bibitem[CargoX(2023)]{cargox_2023}
+CargoX d.o.o.
+\newblock \emph{CargoX Platform: Blockchain Document Transfer
+  Solution for Shipping}.
+\newblock CargoX product documentation, 2023.
+
+\bibitem[TradeTrust(2023)]{tradetrust_2023}
+Government of Singapore.
+\newblock \emph{TradeTrust: Open-Source Framework for Electronic
+  Transferable Records}.
+\newblock TradeTrust technical documentation, 2023.
+
+\bibitem[UNCITRAL(2017)]{uncitral_mletr_2017}
+United Nations Commission on International Trade Law.
+\newblock \emph{UNCITRAL Model Law on Electronic Transferable
+  Records}.
+\newblock UN Publication, 2017.
+
+\bibitem[BoL Research(2026)]{bol_research_2026}
+Daliana, A.
+\newblock Bill of Lading Research: CargoX, TradeTrust, MLETR,
+  TradeLens vs Figaro.
+\newblock Internal research deliverable, April 28, 2026.
+
+\bibitem[Goode and Gullifer(2017)]{goode_gullifer_2017}
+Goode, R. and Gullifer, L.
+\newblock \emph{Goode and Gullifer on Legal Problems of Credit and
+  Security}, 6th edition.
+\newblock Sweet \& Maxwell, London, 2017.
+
+\end{thebibliography}
+
+\end{document}

@@ -156,21 +156,83 @@ to seriously entertain.
 
 Gramsci's own formulation of hegemony~\citep{gramsci1971} is the
 starting point; subsequent scholarship
-(\citealt{anderson1976antinomies,hall1986gramsci}) has debated how
-its apparatus extends beyond the class-political setting Gramsci
-originally addressed. The reading we use here is closer to
-\citet{hall1986gramsci}: hegemony as the saturating work that
-secures consent to a particular configuration of forces by making
-that configuration appear natural. The adjacent theoretical frames
-we draw on are Polanyi's analysis of the disembedding of markets
-from the social fabric they presuppose~\citep{polanyi1944}, the
-infrastructure-studies tradition on visibility and invisibility of
-coordination systems~\citep{bowker_star_1999,star1999ethnography},
-and recent political-economy analyses of platform capitalism as a
-particular historical form of coordination
-rent~\citep{srnicek2017platform}. The present paper is a short
-essay at the intersection of these traditions, not a full
-engagement with any of them.
+(\citealt{anderson1976antinomies,hall1986gramsci,
+hall1988hardroad,laclau_mouffe_1985}) has debated how its
+apparatus extends beyond the class-political setting Gramsci
+originally addressed. The reading we use here draws on three
+strands of that scholarship in particular. From \citet{gramsci1971}
+itself we take the distinction between \emph{war of manoeuvre}
+(direct confrontation with the dominant configuration) and
+\emph{war of position} (the slower, more durable work of
+establishing alternative common sense in the institutions and
+vocabulary through which the configuration is reproduced); the
+present argument belongs to the latter register, since the bonded
+primitive does not displace the platform at the level of operation
+but in the longer-term register of what coordination looks like.
+From \citeauthor{gramsci1971} we also take \emph{passive revolution} ---
+the process by which a hegemonic bloc absorbs the vocabulary and
+some of the demands of a counter-hegemonic challenge while
+neutralizing its substantive claim --- as a recurring caution: the
+likely path through which the bonded primitive's vocabulary will
+enter mainstream discourse is via incumbents adopting the words
+``decentralized,'' ``self-sovereign,'' ``trustless'' for products
+that retain the structural properties the primitive eliminates.
+The Gramscian distinction we owe the reader is between adoption of
+vocabulary and substitution of substrate; only the latter is
+what we describe.
+
+From \citet{hall1986gramsci, hall1988hardroad} we take hegemony as
+the saturating work that secures consent to a particular
+configuration of forces by making that configuration appear
+natural; \citeauthor{hall1988hardroad}'s \emph{The Hard Road to
+Renewal} is the closer methodological precedent because it
+analyzes a specific hegemonic project (Thatcherism) as an
+articulation of common sense rather than as an elite program, and
+the analytic posture transfers directly to platform/firm/corridor
+configuration. From \citet{laclau_mouffe_1985} we take the
+discursive-formation reading of hegemony as articulation of
+otherwise-disjoint elements into a coherent ideological
+configuration: the platform, the firm, and the corridor are
+articulated together in the dominant discourse not because they
+share a structural origin but because they have become mutually
+referring within the language of mainstream economics, business
+journalism, and policy.
+
+The adjacent theoretical frames we draw on are Polanyi's analysis
+of the disembedding of markets from the social fabric they
+presuppose~\citep{polanyi1944}; the infrastructure-studies
+tradition on visibility and invisibility of coordination
+systems~\citep{bowker_star_1999, star1999ethnography};
+\citet{srnicek2017platform}'s typology of platform capitalism
+into rentier, lean, industrial, product, and advertising
+platforms (each of which extracts coordination rent through
+different attributes of the same underlying intermediation
+function); \citet{zuboff2019surveillance}'s analysis of
+\emph{instrumentarian power} as a register of control distinct
+from both classical disciplinary power and from market exchange;
+and \citet{pasquale2015blackbox}'s analysis of opacity as the
+operating logic of contemporary algorithmic intermediation. The
+present paper is a short essay at the intersection of these
+traditions, not a full engagement with any of them.
+
+\paragraph{Platform hegemony, distinct from generic platform-critique.}
+A natural worry, given the citation density above, is that
+``platform hegemony'' is just generic platform-critique with
+Gramscian vocabulary attached. The distinction is structural
+rather than terminological. A non-Gramscian platform-critique
+typically argues that the platform's rent extraction is
+\emph{exploitative} and that better regulation, public ownership,
+or worker cooperatives would deliver the same coordination
+function on better terms. The Gramscian critique here is that
+the platform is the form coordination has taken under a
+particular historical configuration, and that the ``coordination
+function'' as currently bundled --- search, matching, escrow,
+dispute resolution, reputation, enforcement --- is itself a
+hegemonic production rather than a list of services that any
+sufficiently advanced civilization must produce. The bonded
+primitive lets us see the bundle as a bundle, and disaggregating
+it is the war-of-position move; rebundling it under different
+ownership is what passive revolution would look like.
 
 \paragraph{Three hegemonic propositions.}
 We identify three propositions about contemporary coordination
@@ -258,14 +320,21 @@ of the mechanism paper makes the coordination function
 visible by separating it from the entities that currently perform
 it. We offer this as an interpretive claim of the present paper,
 not as a theorem of the mechanism paper: Paper A establishes
-equilibrium properties of a bonding game; the separation reading
-is the political-economy lens through which we propose those
-properties be understood. Under that lens, the platform's
+equilibrium properties of a bonding game composed of two
+mechanisms --- asymmetric bonding (which prices enforcement) and
+buyer dominance with atomic resolution (which propagates
+coordination through the bonded mesh) --- and the separation
+reading is the political-economy lens through which we propose
+those properties be understood. Under that lens, the platform's
 coordination function (matching, enforcement, dispute resolution)
 becomes a public smart contract. The firm's coordination function
 (search, negotiation, enforcement) becomes three reducible costs.
 The corridor's coordination function (settlement, standards,
-access control) becomes a bilateral mechanism.
+access control) becomes a bilateral mechanism. Crucially, the
+\emph{multi-party coordination} function of these legacy entities
+--- the work of holding $N$ parties in synchronized commitment
+through to a single resolution --- becomes the work of Mechanism~2
+rather than of an organizational nucleus.
 
 The crucial move is not replacement but separation. In each case,
 the entity does not need to be \emph{replaced}; it needs to be
@@ -424,14 +493,20 @@ empowered to adjudicate disputes. The attempts recurrently drift
 into governance because participants have no other tool for the
 coordination function: once dispute resolution is on the table, a
 voting apparatus is the default answer. The bonded primitive
-provides the tool. Asymmetric bonding handles the enforcement
-function that the chamber would otherwise have to adjudicate;
+provides the tool, and the work splits cleanly across its two
+mechanisms. Mechanism~1 (asymmetric bonding) handles the
+enforcement function that the chamber would otherwise have to
+adjudicate; Mechanism~2 (buyer dominance with atomic resolution)
+handles the inter-party coordination function that the chamber
+would otherwise have to govern, by making the entire bonded mesh
+resolvable from a single signature without a vote;
 permissionless operator registration handles the membership
-function that the chamber would otherwise have to gatekeep;
-transaction-scoped assemblies handle the coordination function
-that the chamber would otherwise have to govern. The
-chamber-without-arbiters ambition is not obviated by the primitive;
-it is made architecturally achievable, which it was not before.
+function that the chamber would otherwise have to gatekeep.
+The chamber-without-arbiters ambition is not obviated by the
+primitive; it is made architecturally achievable, which it was
+not before --- and the architectural availability traces directly
+to the two-mechanism composition rather than to either mechanism
+alone.
 
 \paragraph{Climate and cross-sovereignty coordination.}
 Climate change is a coordination problem that has resisted
@@ -666,6 +741,30 @@ Srnicek, N.
 Star, S.~L.
 \newblock The Ethnography of Infrastructure.
 \newblock \emph{American Behavioral Scientist}, 43(3):377--391, 1999.
+
+\bibitem[Hall(1988)]{hall1988hardroad}
+Hall, S.
+\newblock \emph{The Hard Road to Renewal: Thatcherism and the Crisis
+  of the Left}.
+\newblock Verso, London, 1988.
+
+\bibitem[Laclau and Mouffe(1985)]{laclau_mouffe_1985}
+Laclau, E. and Mouffe, C.
+\newblock \emph{Hegemony and Socialist Strategy: Towards a Radical
+  Democratic Politics}.
+\newblock Verso, London, 1985.
+
+\bibitem[Zuboff(2019)]{zuboff2019surveillance}
+Zuboff, S.
+\newblock \emph{The Age of Surveillance Capitalism: The Fight for a
+  Human Future at the New Frontier of Power}.
+\newblock PublicAffairs, New York, 2019.
+
+\bibitem[Pasquale(2015)]{pasquale2015blackbox}
+Pasquale, F.
+\newblock \emph{The Black Box Society: The Secret Algorithms That
+  Control Money and Information}.
+\newblock Harvard University Press, Cambridge, MA, 2015.
 
 \bibitem[West et al.(2020)]{west2020overcrediting}
 West, T.~A.~P., B\"orner, J., Sills, E.~O., and Kontoleon, A.

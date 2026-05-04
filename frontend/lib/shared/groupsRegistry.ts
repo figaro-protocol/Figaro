@@ -13,20 +13,14 @@ import type { DisciplineIndex } from "@/components/shared/DisciplineGlyph";
  * convened yet" rather than as a fully-furnished group block. The
  * asymmetry surfaces where the project actually is.
  *
- * Project-wide coordination lives at `FIGARO_TELEGRAM_URL` (set the real
- * handle in this file when the channel is live; placeholder until then).
- * Per-group `venue` overrides exist only if a discipline has its own
- * dedicated channel separate from the project-wide one.
+ * Per-group `venue` overrides surface a dedicated channel when a
+ * discipline has one. There is no project-wide coordination channel
+ * today; PRs against this file are the canonical contribution path.
  *
  * To amend an entry, open a PR against this file. PRs are reviewed at
  * merge time like any other; the registry shape is the contract, not
  * the merge process.
  */
-
-// PLACEHOLDER — set the real Telegram handle here once the channel is live.
-// Searched the frontend, docs, and memory on 2026-04-30: no prior Telegram
-// URL exists in this repo; this is a fresh wiring point.
-export const FIGARO_TELEGRAM_URL = "https://t.me/figaro_protocol";
 
 export interface PaperRef {
     /** Short paper id, e.g. "A", "B1", "D". Renders as a font-mono prefix. */
@@ -94,17 +88,21 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         disciplineIndex: 2,
         name: "Industrial and Systems Engineering",
         discipline: "Process modeling · supply-chain coordination",
-        charter: "How bonded commitments compose into multi-party process trees with auditable handoffs, lifecycle attestation, and proximity proof. Open call for contributed articles.",
-        papers: [],
+        charter: "How bonded commitments compose into multi-party process trees with auditable handoffs, lifecycle attestation, and proximity proof. Two worked examples: scheduled-service coordination (cascading-delay risk re-architected as unit-level bonded commitments) and permissionless container shipping (an ownerless successor to the failed TradeLens consortium).",
+        papers: [
+            { id: "J", title: "Scheduled-Service Coordination as a Bonded Process Tree", href: "/papers/figaro-scheduled-service.pdf" },
+            { id: "K", title: "A Permissionless, Ownerless Container-Shipping Assembly", href: "/papers/figaro-container-shipping.pdf" },
+        ],
     },
     {
         slug: "computer-science-cryptography",
         disciplineIndex: 3,
         name: "Computer Science and Cryptography",
-        discipline: "Cryptographic primitives · adversarial review · formal verification",
-        charter: "Adversarial and formal review of FigaroCore, the attestation coordinator, schema validators, and the batch verifier. EIP-712 dual-signed commitments, merkle-bound attestation receipts, SP1-proven batch execution. This group reads the substrate as cryptographers and systems-security practitioners — where does the invariant break, and what proves that it does not? Implementation work (schema authoring, contract development, assembly composition, frontend) organizes separately at /builders.",
+        discipline: "Cryptographic primitives · adversarial review · formal verification · protocol extension · runtime architecture",
+        charter: "Two complementary lenses on the protocol's CS surface. Paper C reads the kernel adversarially: where does the invariant break, and what proves that it does not? EIP-712 dual-signed commitments, merkle-bound attestation receipts, SP1-proven batch execution, the formal-verification stack. Paper N reads what stands above the kernel as a research object: schema design as a CS discipline (four-layer verification stack, append-only identity, first-write-wins binding, atomic-bind pattern), the coordinator pattern with formal composition semantics and equilibrium-preservation conditions, and the seven-layer runtime composition pipeline. Implementation work (schema authoring, contract development, assembly composition, frontend) organizes separately at /builders.",
         papers: [
             { id: "C", title: "The Figaro Kernel: A Verified Solidity Implementation", href: "/papers/figaro-verification.pdf" },
+            { id: "N", title: "Protocol Extension and Runtime Composition", href: "/papers/figaro-protocol-extension.pdf" },
         ],
         currentWork: [
             "Adversarial audit of the attestation coordinator's merkle-inclusion gate",
@@ -123,7 +121,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         slug: "philosophy-law-ethics",
         disciplineIndex: 4,
         name: "Philosophy, Law and Ethics",
-        discipline: "Contract theory · evidence law · labor law · stateless subjecthood",
+        discipline: "Contract theory · evidence law · labor law · stateless subjecthood · political philosophy",
         charter: "A Figaro commitment is a signed contract: payment = consideration, schemas = terms and conditions, agreementHash = the contract document. Settlement happens on-chain by nature; adjudication happens off-chain by nature. The wallet collapses the Roman res/persona distinction, and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
         papers: [
             { id: "E", title: "On-Chain Evidence, Off-Chain Adjudication", href: "/papers/figaro-legal.pdf" },
@@ -153,17 +151,16 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         papers: [
             { id: "G", title: "Bookkeeping as Protocol Byproduct", href: "/papers/figaro-accounting.pdf" },
         ],
-        references: [
-            { label: "Treasuries — composition patterns", href: "/treasuries", note: "multisig-as-buyer, governance-executor-as-buyer" },
-        ],
     },
     {
         slug: "ai-optimization-control",
         disciplineIndex: 7,
         name: "AI, Optimization and Control Theory",
         discipline: "Agent coordination · allocation · control of the mesh",
-        charter: "Agent-mediated coordination over bonded commitments. An Agent SDK exists at the runtime tier (see /integrate); academic articles in this discipline are an open call.",
-        papers: [],
+        charter: "Agent-mediated coordination over bonded commitments. The kernel's actor-neutrality property turns bonded commitments into the missing enforcement layer for mutually-untrusted multi-agent systems: the same equilibrium argument that makes cooperation weakly dominant for human counterparties makes it weakly dominant for autonomous agents, on the same arithmetic. The Agent SDK at the runtime tier (FigaroContext, proposer, policy gateway, executor) is the operational realization; the paper develops the control-theory reading.",
+        papers: [
+            { id: "L", title: "Agent Coordination over Bonded Commitments", href: "/papers/figaro-agent-coordination.pdf" },
+        ],
         references: [
             { label: "SDK — agent surface", href: "/integrate", note: "FigaroContext, ActionQueue, proposer" },
         ],
@@ -173,8 +170,10 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         disciplineIndex: 8,
         name: "Psychology and Decisions Science",
         discipline: "Behavioral game theory · incentive legibility · interface cognition",
-        charter: "How participants read a bonded equilibrium under uncertainty; the legibility of incentive structure to non-specialist readers. Open call for contributed articles.",
-        papers: [],
+        charter: "How participants read a bonded equilibrium under uncertainty; the legibility of incentive structure to non-specialist readers. The bonded mechanism is dominance-solvable at the per-player level — the cognitive operation a participant must perform is a single comparison at the margin, amplified by loss aversion at the kink between cooperation and defection. The Van Huyck coordination-failure result does not transfer; the Grameen peer-pressure dynamics do.",
+        papers: [
+            { id: "M", title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment", href: "/papers/figaro-behavioral.pdf" },
+        ],
     },
 ];
 

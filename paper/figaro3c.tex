@@ -78,7 +78,7 @@ checking exhaustively explores 6{,}087{,}113 distinct states across
 seven kernel invariants; Echidna fuzzes seven property invariants
 under a 50{,}000-call campaign budget; Halmos symbolically proves
 seven kernel properties via the z3 SMT solver; Certora cloud proves
-twenty-four declared CVL rules (twenty-five sub-rules in the cloud
+twenty-two declared CVL rules (twenty-three sub-rules in the cloud
 report) across the kernel, the attestation surface, and a
 token-operations conservation surface that gates every ERC-20 call
 site in the source tree.
@@ -370,7 +370,7 @@ Certora's cloud service. Strength: rules can quantify over methods
 modifies $X$''. Weakness: paid service; rule encoding is non-trivial.
 
 \paragraph{Foundry as the regression spine.}
-A Foundry test suite (14 files, 225 tests as of snapshot date)
+A Foundry test suite (31 files, 420 tests as of snapshot date)
 serves as the continuous-integration spine. Foundry tests are not
 counted toward formal verification but provide the harness the other
 three techniques compile against.
@@ -498,12 +498,13 @@ the headline rule for each.
 \texttt{rootBuyerImmutable},
 \texttt{currencyImmutable}.
 
-\paragraph{Attestation surface (\texttt{AttestationCoordinator.spec}, 9 rules).}
-Six role-gate rules:
+\paragraph{Attestation surface (\texttt{AttestationCoordinator.spec}, 7 rules).}
+Two role-gate rules:
 \texttt{nonBuyerCannotAttestAsBuyer},
-\texttt{unknownProcessRevertsAsBuyer},
-\texttt{successfulBuyerAttestationImpliesBuyer},
-\texttt{buyerAttestationEnforcesProcessBoundary},
+\texttt{successfulBuyerAttestationImpliesBuyer}.
+Two parametric Core-immutability rules (the attestation surface cannot
+change kernel state, quantified over every public function on the
+coordinator):
 \texttt{attestationCannotChangeOrderStatus},
 \texttt{attestationCannotChangeProcessState}.
 Three validator-gate rules (verified on Certora cloud
@@ -538,13 +539,20 @@ registry. Both are out of scope for the kernel claim of this paper
 but ship in the same repository and are verified together.
 
 \paragraph{Total Certora kernel-relevant rules.}
-$8 + 9 + 7 = 24$ declared rules across three specs (Certora reports
-25 sub-rules green when sub-case splits are counted). All
-discharged on Certora cloud as of the snapshot date.
+$8 + 7 + 7 = 22$ declared rules across three specs. Certora's prover
+splits \texttt{resolveSingleOrderConservation} into two sub-cases, so
+the cloud report shows $23$ sub-rules green for the kernel-relevant
+total. All discharged on Certora cloud as of the snapshot date. The
+repository ships a sixth spec
+(\texttt{BatchVerifierTokenOps.spec}, $4$ rules) covering the optional
+batch-settlement path; it is verified together with the kernel
+specs but is out of scope for the kernel claim of this paper, so
+the kernel-relevant total is $22$ across three specs while the
+full repository total is $35$ across six specs.
 
 \subsection{Foundry Regression Spine}
 
-14 test suites, 225 tests (including
+31 test suites, 420 tests (including
 \texttt{FigaroCoreRevertBranchTest} which targets every custom error
 listed in \Cref{sec:non-decisions}; \texttt{ParityVectors} which
 asserts EIP-712-digest parity between the SDK's TypeScript hash
@@ -896,12 +904,9 @@ value. The stack reduces risk; it does not retire it.
 
 \section*{Acknowledgments}
 The verification surface described here owes its current shape to
-many hands. I want in particular to acknowledge Vitalik Buterin for
-the Safe Remote Purchase primitive that seeded the work, Vlad Zamfir
-for the mechanism-design lens that made the generalization legible,
-Fabrizio Romano Genovese for his contributions to \figaro{}, the
-Coalition of Automated Legal Applications (COALA), and the
-maintainers of TLA\textsuperscript{+}, Echidna, Halmos, and Certora.
+many hands, and in particular to the maintainers of
+TLA\textsuperscript{+}, Echidna, Halmos, and Certora, whose tooling
+made the multi-method verification stack practical to assemble.
 
 
 % ════════════════════════════════════════════════════════════════════

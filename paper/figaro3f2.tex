@@ -169,6 +169,16 @@ The mechanism is established in the mechanism paper; the
 Solidity implementation and formal verification
 in the implementation paper.
 
+The primitive composes two mechanisms. \emph{Asymmetric bonding}
+makes defection more expensive than cooperation at every bonded
+edge. \emph{Buyer dominance with atomic resolution} settles every
+active order in a process simultaneously, at the buyer's
+signature, with no third-party adjudicator. The first mechanism
+removes the trusted enforcer; the second removes the trusted
+clearing house. For the present paper, both are load-bearing:
+the displaced or stateless subject lacks access to either, and
+the primitive's contribution is to make both unnecessary.
+
 A transaction between two parties is consummated by dual-signed
 EIP-712 commitments. Each party signs from their own wallet. Each
 party locks collateral against their own performance --- the buyer
@@ -224,6 +234,202 @@ party to a bonded commitment can transact, settle, and accumulate
 verifiable performance history without first acquiring civil-legal
 subjecthood, because the kernel does not consult the polity for
 permission to settle a bond.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Self-Sovereignty: The Cryptographic Key as Precondition}
+\label{sec:self-sovereignty}
+
+The previous section established that the wallet can be a party
+where no civil-legal party exists. The deeper observation, which
+the self-sovereign-identity literature has been developing
+independently of the bonded-primitive context, is that this
+arrangement is a particular kind of agency that deserves a name
+distinct from both \emph{civil-legal personhood} and the older
+\emph{natural personhood} the philosophical tradition has
+analyzed under that heading. The name we adopt, following
+\citet{allen2016path} and the broader self-sovereign-identity
+literature \citep{tobin_reed_2017, w3c_did_2022}, is
+\emph{self-sovereignty}: the condition of an agent whose
+capacity to bind, transact, and accumulate verifiable history
+derives from cryptographic self-control rather than from
+recognition by a polity.
+
+\paragraph{Three acts, three preconditions discharged.}
+A bonded transaction reduces to three acts at the participant's
+side, and each act has historically required a civil-legal
+precondition that the bonded primitive replaces with a
+cryptographic one.
+
+\emph{Signing.} The act of binding oneself to terms has
+historically required a recognized capacity to enter contracts ---
+adulthood, sound mind, jurisdictional standing, and the
+authority to act for oneself in the relevant forum. Under the
+bonded primitive the capacity to sign is the capacity to control
+a private key. EIP-712 typed-structured-data signatures verify
+through public-key cryptography against the address that signed;
+the verification does not consult any registry of recognized
+subjects. A cryptographic key is the precondition; a passport is
+not.
+
+\emph{Bonding.} The act of pledging assurance has historically
+required a counterparty willing to extend credit, a court willing
+to enforce a guarantee, or a recognized residency status enabling
+a banking relationship. Under the bonded primitive the act of
+pledging assurance is the act of locking collateral in a
+permissionless token. The token's transferability is enforced by
+the chain's consensus, not by any host institution. The bond's
+return on cooperation is enforced by the kernel, not by a court.
+A wallet that holds the bond-denomination currency can pledge
+without intermediation.
+
+\emph{Settling.} The act of receiving consideration has
+historically required a banking relationship with an institution
+that can credit the receiving party's account in the receiving
+jurisdiction's currency. Under the bonded primitive settlement
+is direct wallet-to-wallet on resolution. The chain is the
+clearing layer at the architectural level. The architectural
+property is unconditional; the operational property in any given
+denomination is not, since the bond-denomination currency is
+itself a jurisdictional artifact (USDC is freezable by Circle on
+Treasury request; ETH is acquired through KYC-gated exchanges).
+The bond-currency embedding constraint is developed in
+\Cref{sec:constraints} below; here we register that the
+architectural elimination of the banking precondition is real
+but its practical realization for any specific participant
+remains conditional on the bond-currency layer's own
+jurisdictional reach.
+
+The three acts together constitute a complete commercial
+participation. The three preconditions historically required for
+the acts --- recognized capacity, intermediated assurance,
+banked settlement --- are each replaced by cryptographic
+substitutes that do not require recognition by the civil-legal
+order. This is what self-sovereignty in our usage means: the
+agent's commercial agency is constituted by what the agent can
+prove cryptographically rather than by what the agent has been
+recognized as politically.
+
+\paragraph{What self-sovereignty does and does not mean.}
+The term has been used in several adjacent senses, and we owe
+the reader a precise scope.
+
+The \emph{self-sovereign-identity} (SSI) literature
+\citep{allen2016path, tobin_reed_2017} is grounded in identity
+specifically: the participant holds verifiable credentials about
+themselves rather than depending on identity providers to attest
+to their identity. \citet{allen2016path} articulates ten
+principles for self-sovereign identity --- existence, control,
+access, transparency, persistence, portability, interoperability,
+consent, minimization, and protection --- several of which
+extend beyond credential-holding into the agency-of-interaction
+register: control over how identity data is used, persistence
+across institutional change, portability across providers. The
+``operational self-sovereignty'' sense we develop in this paper
+is the commerce-specific narrowing of Allen's broader
+agency-of-interaction principles, applied to the bonding,
+signing, and settling acts of bilateral commerce rather than to
+identity per se. The W3C Decentralized Identifiers specification
+\citep{w3c_did_2022} formalizes the architectural shape:
+identifiers controlled by the subject through cryptographic
+keys, resolvable to documents the subject publishes, with no
+central registrar. SSI in the W3C-DID register is about
+\emph{identity}, and the bonded primitive does not implement
+identity (the kernel knows wallets, not persons; identity is a
+runtime-tier concern composed by parties who want it).
+
+The \emph{libertarian / Lockean} sense of sovereignty
+\citep{nozick1974anarchy, locke1689treatises} is normative: the
+agent has natural rights of self-ownership that political
+arrangements must respect or violate. The bonded primitive is
+silent on natural rights; it provides architecture, not ethics.
+A reader who takes self-sovereignty in this sense should read
+our usage as compatible with but not requiring the normative
+framework: the architecture supplies a substrate on which a
+self-ownership reading \emph{can} be expressed, but the
+substrate makes no claim about whether self-ownership is
+morally fundamental.
+
+The sense we adopt in this paper is narrower than either: an
+agent whose commercial agency is operationally constituted by
+cryptographic self-control rather than by polity recognition.
+This is a structural fact about how the bonded primitive
+operates, not a normative claim about how it should. The
+displaced participant who sign-bonds-settles a process is
+exercising self-sovereignty in this operational sense, regardless
+of how their natural-rights status is read by any external
+philosophical framework. The architectural fact is what we
+claim; the normative reading is an interpretation that readers
+in different traditions will compose differently.
+
+\paragraph{Why this matters specifically for the displaced.}
+The general operational sense of self-sovereignty applies
+universally: any wallet that signs-bonds-settles is exercising
+this kind of agency. But the marginal value of the architecture
+is asymmetric. A participant whose civil-legal subjecthood is
+already conferred and stable has plenty of paths through which
+to express their commercial agency; the bonded primitive is one
+substrate among many, and self-sovereignty in the operational
+sense adds modestly to a position that was already operational.
+A participant whose civil-legal subjecthood is denied or
+unstable does not have those paths. For them, the operational
+self-sovereignty the bonded primitive supplies \emph{is} the
+agency, not an augmentation to it. The displaced or stateless
+participant whose signing-bonding-settling is enabled by
+nothing more than control of a private key has acquired a
+commercial-participation capacity that the surrounding
+infrastructure does not grant.
+
+This is what the present paper has been calling the capacity to
+have commerce. Self-sovereignty is the precise architectural
+property that makes the capacity available to a population for
+which it was not previously available. The Arendtian distinction
+of the previous section --- right to have rights versus capacity
+to have commerce --- decomposes once self-sovereignty is named
+explicitly. The right to have rights is conferred by a polity
+recognizing the agent. Self-sovereignty is constituted by the
+agent's cryptographic control of their own commercial agency.
+The two are different things, and conflating them has been a
+recurring error in the literature this paper has been pushing
+back against in both directions: those who claim cryptographic
+infrastructure restores Arendtian rights overstate; those who
+claim cryptographic infrastructure cannot do meaningful work for
+the displaced because it does not restore Arendtian rights also
+overstate. Self-sovereignty is real, modest, and operationally
+load-bearing where conventional infrastructure fails; it is not
+a substitute for political belonging where conventional
+infrastructure succeeds.
+
+\paragraph{Key custody as the load-bearing operational variable.}
+Self-sovereignty's architectural cleanness should not obscure
+its operational fragility. The architecture turns on the
+participant's ability to hold and use a private key reliably.
+For the displaced and stateless populations of greatest interest
+to this paper, key custody is exactly where the architecture
+meets the hardest constraints: unstable access to power and
+connectivity, devices vulnerable to seizure or loss, environments
+where social-recovery networks are themselves disrupted by the
+displacement. Self-sovereignty in the operational sense
+collapses to the participant's actual capacity to retain
+exclusive control of their key over time. The
+\Cref{sec:constraints} treatment of these constraints is
+therefore not parenthetical; it is where the architectural
+property cashes out into deliverable agency.
+
+The self-sovereign-identity community has invested significant
+effort in mitigations: social-recovery wallets where
+participant-trusted contacts can collectively recover a lost key
+\citep{buterin2021socialrecovery, argent_social_recovery,
+safe_social_recovery}, secure
+elements in inexpensive hardware, mnemonic backup standards
+encoded in widely-spoken languages, and emerging
+biometric-binding schemes that tie key control to a physical
+attribute. None of these is perfect; each is an engineering
+artifact with its own threat model. We do not endorse any
+specific mitigation here. We name the constraint because
+self-sovereignty without durable key custody is structurally
+incomplete, and the engineering of durable key custody for
+displaced populations is the work that translates the
+architectural availability into deliverable agency.
 
 % ════════════════════════════════════════════════════════════════════
 \section{The Capacity to Have Commerce}
@@ -331,6 +537,56 @@ rights; they are deprived of the institutional setting in which
 having-rights is even a coherent claim. The remedy is political,
 not technological.
 
+The Arendtian objection to the present paper's reading is sharper
+than the surface formulation, and the paper is improved by
+engaging it directly. Part II Chapter 9 of \emph{The Origins of
+Totalitarianism} (``The Decline of the Nation-State and the End
+of the Rights of Man'') is not only a diagnosis of statelessness;
+it is an analysis of a specific kind of \emph{worldlessness} --- the
+loss not of particular entitlements but of the standing of the
+human person within a public world that confers significance on
+their actions. \citet{arendt1958human}'s later distinction
+between \emph{labor}, \emph{work}, and \emph{action} sharpens
+this: the world is constituted through action visible to others,
+in a public space within which the actor is recognized as an
+actor; loss of polity-membership is loss of the public space
+within which action is constitutive of the world.
+
+The Arendtian objection to a ``capacity to have commerce''
+framing is therefore not that commerce is unimportant for the
+displaced; it is that commerce-without-polity may be the
+deepening of worldlessness rather than its alleviation. To
+exchange goods with strangers across a substrate that confers no
+membership and recognizes no public standing is, on a strict
+Arendtian reading, to participate in \emph{labor} (the metabolic
+necessity of staying alive) without re-entering \emph{action}
+(the recognized public act). The bonded substrate looks, on this
+reading, like a more efficient form of bare life rather than a
+restoration of the world.
+
+We take the objection seriously and decline it on these terms.
+The capacity-to-have-commerce we describe is not a substitute
+for membership; it is a structural precondition that membership
+historically subsumed and that, where membership is denied, can
+be supplied separately. The bonded transaction does include a
+recognition function in Arendt's sense, on a small scale: the
+commitment is dual-signed, the performance is attested, the
+record is public, and the counterparty acknowledges the
+participant as a party with whom binding agreements can be made.
+This is not the political recognition Arendt regarded as
+fundamental --- the recognition of co-membership in a polity ---
+but it is not nothing in her register either. It is bilateral
+recognition of capacity-to-bind, conferred not by a political
+authority but by a counterparty who has chosen to bond with the
+participant. The accumulated record of such recognitions across
+many bonded relationships does not constitute a polity, but it
+does constitute a public visibility of the participant's actions
+that statelessness conventionally denies. The paper's claim is
+therefore narrower than the Arendtian framing of restoration:
+the substrate supplies a portable evidentiary subjecthood that
+is not coextensive with political membership, but that fills a
+gap statelessness has historically left empty.
+
 The bonded primitive does not grant the right to have rights; it
 grants, more narrowly, a capacity to have commerce. The two
 should not be confused. The right to have rights is political and
@@ -346,6 +602,39 @@ primitive's leverage is asymmetric: where the conventional
 infrastructure works, it adds modestly; where the conventional
 infrastructure fails, it adds the architectural condition for
 participation at all.
+
+\paragraph{The protection-gap residue the substrate cannot reach.}
+The 1951 Refugee Convention and its 1967 Protocol enumerate a set
+of rights that the host state owes to refugees within its
+territory: \emph{non-refoulement} (Article~33), access to courts
+(Article~16), identity papers (Article~27), travel documents
+(Article~28), employment, public education, and public relief
+\citep{refugee_convention_1951, goodwin_gill_mcadam_2021}. The
+\emph{Right to Have Rights} as Arendt names it is closer to the
+spirit of the Convention than to any single article; the
+Convention operationalizes the spirit through specific institutional
+duties \citep{kesby2012right, benhabib2004rights}. The bonded
+primitive supplies none of these: it cannot prevent
+\emph{refoulement} (which is a sovereign decision on territorial
+admission); it cannot grant access to courts (which is a
+jurisdictional decision); it cannot issue identity papers,
+travel documents, or work permits. The protection gap that
+\citeauthor{goodwin_gill_mcadam_2021} describe is real, vast, and
+political; the substrate addresses one of its many components
+(the inability to bind in commerce without a recognized
+counterparty) and leaves the others where they were.
+
+A reader sympathetic to refugee policy should take this honestly:
+the present paper is not an argument for de-prioritizing the
+political work of Convention enforcement, host-state obligations,
+or international protection regimes. The substrate is a
+\emph{useful adjunct} where it works, not a substitute for the
+broader regime. The position we hope to occupy is closer to
+\citeauthor{benhabib2004rights}: the rights-of-others framework
+identifies layers of moral and legal claim that are differently
+secured by different institutional arrangements, and the bonded
+substrate adds one such layer (commerce-binding capacity) without
+displacing the others.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Operational Constraints}
@@ -398,7 +687,50 @@ asset loss. Possible mitigations exist at the assembly tier ---
 sponsor pools, cooperative bonding, assembly-aggregated bonds,
 microfinance-style group guarantees --- but each of these is a
 construction on top of the primitive, not a property of the
-primitive itself, and none are yet built at scale.
+primitive itself, and none are yet built at scale. This
+constraint is not minor: the companion mechanism paper makes
+explicit in its conclusion that the equilibrium results assume
+both parties are legally and materially free to enter the bonding
+game --- that entering is a choice, and that capital sufficient
+to post the required bond is available. For displaced populations
+whose displacement is itself the loss of capital, the assumption
+fails on the second clause. The primitive is symmetric in form
+and asymmetric in the access conditions that make use of the
+form possible. Among the four constraints listed, this is the
+one most likely to determine whether the primitive's contribution
+to the population in question is real or merely technical.
+
+\paragraph{Bond-currency jurisdictional embedding.}
+A constraint adjacent to the four above and more easily missed:
+the bond's denomination currency is itself a jurisdictional
+artifact. The primitive is denomination-agnostic, but the
+denominations available in practice are not. The principal
+US-dollar-pegged stablecoin (USDC) is issued by Circle, a
+US-jurisdictional entity subject to OFAC sanctions enforcement
+and capable of freezing addresses on Treasury request; the
+\emph{Tornado Cash} sanctions of August 2022, which targeted a
+piece of immutable open-source code rather than an entity, made
+explicit how far the regulatory reach can extend
+\citep{ofac2022tornado, vanvalkenburgh2022tornado}. ETH is a
+neutral substrate at the protocol level but is acquired through
+exchanges that KYC, and on-ramps from local fiat to ETH require
+banking relationships that the displaced participant typically
+lacks. A wallet that the bonded primitive cannot reach because
+the currency-layer gatekeepers refuse to bridge to it is not
+made reachable by anything the substrate does.
+
+The choice of denomination therefore matters for the
+displaced-participant case in a way it does not for the
+counterparty case. We recommend, where the architecture admits
+it, denominations whose issuance and transfer are not subject to
+discretionary freeze authority (which excludes most fiat-pegged
+stablecoins as currently constituted) and whose acquisition does
+not run through KYC-gated exchanges (which excludes most retail
+on-ramp paths). In practice the operational candidate is
+permissionless on-chain assets with deep secondary-market
+liquidity and no issuer-level freeze authority; the universe is
+narrower than the universe of all crypto-assets, and the
+selection criterion is structural rather than ideological.
 
 The cumulative effect of these constraints is that the primitive
 is not a solved-problem deliverable for displaced populations
@@ -407,6 +739,37 @@ commerce-without-recognition is now possible to build, where it
 was not before, and the constraints that remain are engineering
 problems with engineering solutions rather than structural
 features of the legal infrastructure.
+
+\paragraph{Prior art the paper should engage.}
+The constraints listed above are not theoretical: they have been
+surfaced and partially addressed by humanitarian programs that
+have piloted blockchain-based assistance over the past decade.
+The UN High Commissioner for Refugees' \emph{Building Blocks}
+program, deployed in Jordan since 2017 and expanded across
+several refugee operations, uses on-chain transaction records to
+coordinate cash assistance from multiple humanitarian agencies to
+the same beneficiaries while reducing duplicate disbursement and
+intermediary cost \citep{unhcr2024buildingblocks,
+coppi_fast_2019}. The World Food Programme's similar pilots
+have produced substantial operational experience with the
+key-custody, fiat-on-ramp, and counterparty-recognition
+constraints we name above. The independent evaluations
+\citep{coppi_fast_2019, caribou_digital_2018} are mixed: the
+programs achieve real operational improvements in coordination
+and disbursement, but the binding constraint identified across
+evaluations is not architectural recognition of the participant
+on chain --- which the architecture supplies straightforwardly ---
+but the host-state and on-ramp gatekeeping that we list above as
+distinct constraints. The displaced beneficiaries in these
+programs do not bond; they receive. The bonded primitive
+extends the architecture to a use case the existing programs
+have not yet exercised at scale: the displaced participant as
+\emph{counterparty} in a productive bilateral exchange rather
+than as recipient of one-sided disbursement. The empirical
+record above is informative about what the engineering will
+require; it is not yet informative about what will happen when
+displaced participants are bonded counterparties, because the
+relevant pilots have not been run.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Conclusion}
@@ -480,6 +843,106 @@ Pritchett, L.
 \newblock \emph{Let Their People Come: Breaking the Gridlock on
   Global Labor Mobility}.
 \newblock Center for Global Development, Washington, DC, 2006.
+
+\bibitem[Allen(2016)]{allen2016path}
+Allen, C.
+\newblock The Path to Self-Sovereign Identity.
+\newblock Personal blog, April 25, 2016.
+\newblock \url{https://www.lifewithalacrity.com/article/the-path-to-self-sovereign-identity/}
+
+\bibitem[Buterin(2021)]{buterin2021socialrecovery}
+Buterin, V.
+\newblock Why We Need Wide Adoption of Social Recovery Wallets.
+\newblock Personal blog, January 11, 2021.
+
+\bibitem[Tobin and Reed(2017)]{tobin_reed_2017}
+Tobin, A. and Reed, D.
+\newblock The Inevitable Rise of Self-Sovereign Identity.
+\newblock Sovrin Foundation White Paper, 2017.
+
+\bibitem[W3C(2022)]{w3c_did_2022}
+W3C.
+\newblock Decentralized Identifiers (DIDs) v1.0: Core Architecture,
+  Data Model, and Representations.
+\newblock W3C Recommendation, July 2022.
+
+\bibitem[Locke(1689)]{locke1689treatises}
+Locke, J.
+\newblock \emph{Two Treatises of Government}.
+\newblock Awnsham Churchill, London, 1689.
+
+\bibitem[Nozick(1974)]{nozick1974anarchy}
+Nozick, R.
+\newblock \emph{Anarchy, State, and Utopia}.
+\newblock Basic Books, New York, 1974.
+
+\bibitem[Argent(2020)]{argent_social_recovery}
+Argent.
+\newblock Social Recovery: Reinventing Wallet Security.
+\newblock Argent Documentation, ongoing.
+
+\bibitem[Safe(2022)]{safe_social_recovery}
+Safe.
+\newblock Social Recovery via Threshold Multi-Signature.
+\newblock Safe (formerly Gnosis Safe) Documentation, ongoing.
+
+\bibitem[Arendt(1958)]{arendt1958human}
+Arendt, H.
+\newblock \emph{The Human Condition}.
+\newblock University of Chicago Press, Chicago, 1958.
+
+\bibitem[Benhabib(2004)]{benhabib2004rights}
+Benhabib, S.
+\newblock \emph{The Rights of Others: Aliens, Residents, and
+  Citizens}.
+\newblock Cambridge University Press, Cambridge, 2004.
+
+\bibitem[Goodwin-Gill and McAdam(2021)]{goodwin_gill_mcadam_2021}
+Goodwin-Gill, G.~S. and McAdam, J.
+\newblock \emph{The Refugee in International Law}, 4th edition.
+\newblock Oxford University Press, Oxford, 2021.
+
+\bibitem[Kesby(2012)]{kesby2012right}
+Kesby, A.
+\newblock \emph{The Right to Have Rights: Citizenship, Humanity, and
+  International Law}.
+\newblock Oxford University Press, Oxford, 2012.
+
+\bibitem[Refugee Convention(1951)]{refugee_convention_1951}
+United Nations.
+\newblock \emph{Convention Relating to the Status of Refugees}.
+\newblock 189 UNTS 137, 1951; expanded by the 1967 Protocol,
+  606 UNTS 267.
+
+\bibitem[OFAC(2022)]{ofac2022tornado}
+US Department of the Treasury, Office of Foreign Assets Control.
+\newblock \emph{Treasury Sanctions Notorious Virtual Currency
+  Mixer Tornado Cash}.
+\newblock Press release, August~8, 2022.
+
+\bibitem[Van Valkenburgh(2022)]{vanvalkenburgh2022tornado}
+Van Valkenburgh, P.
+\newblock Analysis of the Tornado Cash Sanctions: How Far Does
+  Treasury's Authority Reach?
+\newblock Coin Center Report, 2022.
+
+\bibitem[UNHCR(2017)]{unhcr2024buildingblocks}
+UN High Commissioner for Refugees.
+\newblock \emph{Building Blocks: Blockchain for Humanitarian
+  Assistance}.
+\newblock UNHCR Innovation Service, ongoing since 2017.
+
+\bibitem[Coppi and Fast(2019)]{coppi_fast_2019}
+Coppi, G. and Fast, L.
+\newblock Blockchain and Distributed Ledger Technologies in the
+  Humanitarian Sector.
+\newblock Humanitarian Policy Group Commissioned Report, Overseas
+  Development Institute, 2019.
+
+\bibitem[Caribou Digital(2018)]{caribou_digital_2018}
+Caribou Digital.
+\newblock \emph{Blockchain for Development: Hope or Hype?}
+\newblock Caribou Digital Publishing, 2018.
 
 \bibitem[UNHCR(2024)]{unhcr2024globaltrends}
 United Nations High Commissioner for Refugees.

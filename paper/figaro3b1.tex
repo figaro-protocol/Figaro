@@ -154,10 +154,29 @@ signal that supplants standing platform credentialing.
 \section{The Settlement Primitive}
 \label{sec:primitive}
 
+The settlement primitive composes two distinct mechanisms that
+together do the institutional work this paper draws on.
+\emph{Asymmetric bonding} produces the bilateral Nash equilibrium
+and scales it to $N$-party process trees through progressive
+collateralization: each party locks capital against the
+transaction's cumulative value, and cooperation is the unique
+profile surviving iterated elimination of weakly dominated
+strategies at every chain position. \emph{Buyer dominance with
+atomic resolution} operates on the already-scaled mesh: only the
+buyer can trigger resolution, and resolution settles all orders in
+a process simultaneously or not at all. The two mechanisms are
+inseparable: bonding alone yields independently secured bilateral
+edges that cannot multi-party coordinate without external
+choreography; buyer dominance alone is without force absent the
+bonding equilibrium. Together they make the mesh resolvable from a
+single signature with cooperation pressure propagating through it.
+We use ``Mechanism 1'' and ``Mechanism 2'' below where the
+distinction is load-bearing.
+
 We summarize here only the properties of the primitive that the
-present argument uses. The full definitions and theorems are
-in the mechanism paper; the implementation and verification
-in the implementation paper.
+present argument uses. The full definitions and theorems are in
+the companion mechanism paper; the implementation and
+verification in the companion implementation paper.
 
 \paragraph{Asymmetric bonding.}
 For a transaction with payment $\pay > 0$ and cumulative upstream
@@ -298,7 +317,33 @@ per-transaction capital lockup is easiest to absorb.
 The proposition therefore narrows rather than overturns TCE. It
 identifies a region of the asset-specificity / uncertainty /
 frequency space where hierarchical governance was previously the
-equilibrium outcome but is no longer.
+equilibrium outcome but is no longer. \citet{tadelis_williamson_2013}
+update this picture for the contemporary literature, treating the
+transaction as the unit of analysis and the choice among market,
+hybrid, and hierarchy as turning on transaction attributes;
+\Cref{prop:coasean-shift} adds a new entry to that menu of
+governance modes --- the bonded transaction-scoped assembly --- whose
+attributes are different from any of the three Williamson catalogs.
+
+\paragraph{Holmstrom and Roberts' caution.}
+\citet{holmstrom_roberts_1998} argue that asset-specificity-based
+hold-up is not by itself sufficient to explain firm boundaries:
+firms also do work that markets do not, particularly in promoting
+cooperation and coordinating decisions that no single contract can
+fully specify. The caution applies to our argument. Mechanism~1
+prices the enforcement cost; that addresses one component of the
+firm's bundle, not all of it. The cooperation-promotion work that
+Holmstrom and Roberts attribute to firms is precisely what
+Mechanism~2 supplies through the weakest-link subgame analyzed in
+the companion mechanism paper: each seller's payout depends on
+universal cooperation, so the cooperation-promotion function is
+discharged by the bonding mesh's structure rather than by a
+manager. The two-mechanism composition addresses both components
+of the firm's bundle that the Holmstrom--Roberts critique
+identifies. The non-coordination components --- capital aggregation,
+risk pooling, organizational knowledge --- remain durable
+requirements, and we return to them in
+\Cref{sec:patterns}.
 
 % ════════════════════════════════════════════════════════════════════
 \section{The Firm as One Pattern Among Many}
@@ -348,6 +393,27 @@ that historically secured them.
 
 \subsection{What Emerges in the Shifted Region}
 
+The viability of the alternative patterns named below rests on a
+property of the primitive that \Cref{sec:primitive} introduced but
+that the Coasean argument of \Cref{sec:threshold} did not yet
+deploy: atomic resolution. Mechanism~1 (asymmetric bonding)
+supplies the bilateral equilibrium at every edge of an arbitrary
+process tree, but a mesh of independently secured bilateral edges
+is not by itself an organization --- coordinating an
+$N$-party process to a single settlement under Mechanism~1 alone
+would still require either a standing intermediary, an arbitrator,
+or an $N$-way mutual signing at the moment of resolution. Any of
+those three responses re-introduces the firm-shaped container
+under a different name. Mechanism~2 (buyer dominance with atomic
+resolution) makes the mesh of edges resolvable as a unit at the
+buyer's signature, and the weakest-link subgame the companion
+mechanism paper develops propagates cooperation pressure through
+the mesh without managerial authority or external choreography.
+The transaction-scoped assembly clears itself. The Coasean shift
+of \Cref{sec:threshold} is what makes the assembly competitive
+with the firm at the cost margin; Mechanism~2 is what makes the
+assembly structurally available at all.
+
 Where subordination is no longer load-bearing, the firm becomes one
 organizational pattern among several. The organizational space in
 that region admits multiple viable coordination patterns that were
@@ -363,6 +429,70 @@ given industry is an empirical question about the parameters of
 \Cref{prop:coasean-shift} and the non-coordination functions
 (capital aggregation, risk pooling, legal personhood) that the
 primitive does not itself address.
+
+\paragraph{Hansmann's typology of ownership.}
+The closest comparator in the existing literature is
+\citet{hansmann1996ownership}, who classifies firms by the patron
+class that holds residual claims and control rights: investor-owned,
+worker-owned, customer-owned, supplier-owned, and mutual. Each
+form is an ownership nucleus, and Hansmann's central observation is
+that one form dominates within an industry when the costs of
+contracting with the other patron classes exceed the costs of
+ownership by the dominant class. Transaction-scoped assemblies sit
+outside this typology: they have no standing residual claim to
+allocate, because resolution dissolves the per-process residual
+into deterministic per-order payouts (the conservation law of the
+mechanism paper). This is not a fifth Hansmann form; it is what
+becomes available when the residual-claim allocation question is
+discharged at settlement rather than carried over time. Hansmann's
+heterogeneity-cost objection to worker cooperatives --- that
+collective decision-making among workers with different preferences
+is expensive enough to outweigh the benefits of worker ownership ---
+does not bind here because the assembly's lifespan is bounded by a
+single process: there is no continuing collective decision to make.
+Where the assembly form is feasible and the firm form is not (the
+shifted region of \Cref{prop:coasean-shift}), the assembly is
+chosen for the same Hansmann-style reason that a particular firm
+form is chosen elsewhere: the contracting costs against the
+alternative are higher.
+
+\paragraph{Ostrom's design principles.}
+\citet{ostrom1990governing} identifies eight design principles
+that long-enduring self-governing institutions tend to share:
+clearly defined boundaries, congruence between rules and local
+conditions, collective-choice arrangements, monitoring, graduated
+sanctions, conflict-resolution mechanisms, recognition by external
+authorities, and (for systems above a threshold size) nested
+enterprises. Transaction-scoped assemblies satisfy several of
+these structurally rather than by governance: boundaries are
+defined by who has signed a process commitment; sanctions are
+graduated by the bonded mesh's payoff structure (each seller's
+bond is forfeit, not penalty-as-a-policy); conflict resolution
+defaults to atomic resolution at the buyer's signature, with
+external legal forums available as evidentiary consumers per the
+companion evidence-and-law paper. Other principles --- collective
+choice, congruence with local conditions --- are properties of the
+graph the parties compose on top of the kernel, not of the kernel
+itself. The point is not that the assembly is an Ostrom commons
+(it is not); it is that several Ostrom-identified properties of
+durable institutions appear here as architectural rather than as
+governance achievements.
+
+\paragraph{Relational contracts and \citeauthor{macneil1980new}.}
+The relational-contract literature \citep{macneil1980new,
+gibbons2005four} treats long-running counterparty relationships
+as governance structures in their own right --- self-enforcing
+through reputation and continuation value when formal contracting
+is incomplete. The bonded primitive does not replace relational
+contracting; it composes with it. A standing peer network or
+treasury community is precisely a long-running relationship in
+\citeauthor{macneil1980new}'s sense, and the primitive supplies
+the per-transaction enforcement that the relational contract
+would otherwise have to underwrite via reputation. The two
+substitute for each other along one axis (formal enforcement of
+each transaction) and complement each other along another (the
+relational layer carries reputation; the bonded layer carries
+the equilibrium).
 
 \paragraph{Holacracy as an intra-firm precedent.}
 Intra-firm experiments with flat coordination --- most visibly the
@@ -426,13 +556,21 @@ The property-rights tradition~\citep{hart1995, grossman_hart_1986,
 hart_moore_1990} locates the firm boundary at the allocation of
 residual control rights over non-contractible decisions. The
 primitive does not abolish non-contractibility; rather, it changes
-\emph{where} residual control rights are allocated. In the firm
-model, those rights are allocated to the ownership nucleus. In the
-wallet model, they are allocated to whoever controls the wallet ---
+\emph{where} residual control rights are allocated, and it
+narrows the temporal window over which they are exercised. In the
+firm model, those rights are allocated to the ownership nucleus and
+exercised continuously through managerial authority. In the wallet
+model, they are allocated to whoever controls the wallet ---
 which, under self-sovereign key management and NFT-anchored
 credentials, is the productive asset itself (or the individual
-operating it). Residual control rights do not disappear; they are
-held by the asset rather than aggregated under an ownership layer.
+operating it) --- and Mechanism~2 closes the temporal window:
+atomic resolution dissolves the per-process residual claim into
+deterministic per-order payouts at settlement, leaving no
+ongoing residual that requires standing custody. Residual control
+rights do not disappear; they are held by the asset rather than
+aggregated under an ownership layer, and the per-process residual
+claim is discharged at the moment of resolution rather than
+accumulated over time.
 
 This is the institutional-economics translation of what
 \Cref{sec:patterns} has been describing throughout: the decision
@@ -554,9 +692,14 @@ Airbnb~14\%, Amazon Marketplace~15\%). Credit card networks layer
 2--3\% interchange plus double-digit annual interest on revolving
 balances. Financial markets intermediate trillions in notional
 value against a fraction of that in real economic exchange.
-Asymmetric bonding prices the cost of trust at $2\times$ the
-transaction value in temporarily locked (not spent) capital, with
-zero recurring extraction.
+Asymmetric bonding (Mechanism~1) prices the cost of trust at
+$2\times$ the transaction value in temporarily locked (not spent)
+capital, with zero recurring extraction. Buyer dominance with
+atomic resolution (Mechanism~2) makes the resulting mesh of
+bonded edges resolvable as a single coordinated unit at the buyer's
+signature. The Coasean threshold shift is the work of Mechanism~1;
+the structural availability of transaction-scoped assemblies as a
+firm-substituting organizational form is the work of Mechanism~2.
 
 For any economic activity where the coordination rent exceeds the
 opportunity cost of locked capital, the standing firm --- as Coase
@@ -671,6 +814,41 @@ Schelling, T.~C.
 Williamson, O.~E.
 \newblock \emph{The Economic Institutions of Capitalism}.
 \newblock Free Press, New York, 1985.
+
+\bibitem[Holmstrom and Roberts(1998)]{holmstrom_roberts_1998}
+Holmstrom, B. and Roberts, J.
+\newblock The Boundaries of the Firm Revisited.
+\newblock \emph{Journal of Economic Perspectives}, 12(4):73--94, 1998.
+
+\bibitem[Hansmann(1996)]{hansmann1996ownership}
+Hansmann, H.
+\newblock \emph{The Ownership of Enterprise}.
+\newblock Harvard University Press, Cambridge, MA, 1996.
+
+\bibitem[Ostrom(1990)]{ostrom1990governing}
+Ostrom, E.
+\newblock \emph{Governing the Commons: The Evolution of Institutions
+  for Collective Action}.
+\newblock Cambridge University Press, Cambridge, 1990.
+
+\bibitem[Gibbons(2005)]{gibbons2005four}
+Gibbons, R.
+\newblock Four Formal(izable) Theories of the Firm?
+\newblock \emph{Journal of Economic Behavior \& Organization},
+  58(2):200--245, 2005.
+
+\bibitem[Tadelis and Williamson(2013)]{tadelis_williamson_2013}
+Tadelis, S. and Williamson, O.~E.
+\newblock Transaction Cost Economics.
+\newblock In R.~Gibbons and J.~Roberts, editors, \emph{Handbook of
+  Organizational Economics}, chapter~4. Princeton University Press,
+  Princeton, NJ, 2013.
+
+\bibitem[Macneil(1980)]{macneil1980new}
+Macneil, I.~R.
+\newblock \emph{The New Social Contract: An Inquiry into Modern
+  Contractual Relations}.
+\newblock Yale University Press, New Haven, 1980.
 
 \end{thebibliography}
 

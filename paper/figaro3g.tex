@@ -198,6 +198,26 @@ account balances into a balance sheet (assets, liabilities,
 equity) and an income statement (revenues, expenses, net
 income).
 
+Pacioli's exposition organizes the method into three books that
+together constitute the merchant's record. The \emph{memoriale}
+(memorandum) is the rough chronological record, kept at the point
+of transaction and informal in style. The \emph{giornale} (journal)
+is the formal chronological record, where each transaction is
+re-entered as a balanced pair of debits and credits in a fixed
+format. The \emph{quaderno} (ledger) is the categorial record,
+where journal entries are posted to individual accounts and the
+running balance of each account is maintained. The trial balance
+is taken from the quaderno, and the period's financial statements
+are derived from the trial balance through closing entries that
+move period results into permanent accounts. The three books are
+not redundant; each serves a distinct evidentiary and analytical
+function, and the sequence \emph{memoriale} $\to$ \emph{giornale}
+$\to$ \emph{quaderno} is the path by which a transaction enters
+the merchant's cumulative position. We return to this triad in
+\Cref{sec:process-as-period}: the bonded process, on the reading
+we will develop, supplies the equivalent of all three books as a
+single byproduct of the settlement event.
+
 \paragraph{Why the innovation was decisive.}
 \citet{sombart1916moderne} argued --- in a claim that has been
 debated but not decisively refuted --- that double-entry
@@ -322,15 +342,40 @@ five-hundred-year-old institutional stack.
 
 The idea that Pacioli's double-entry might be extended to
 solve additional problems has a small but identifiable
-literature. \citet{ijiri1986triple} proposed triple-entry
-bookkeeping in which transactions create not two entries but
-three: one for each party and a third for a ``commitment'' or
-``force'' record that captures the economic momentum of the
-activity. Ijiri's motivation was accounting-theoretic --- he
-argued that conventional double-entry under-records the
-forces that drive economic change --- but the structural move
-(three records per transaction rather than two) anticipated
-later cryptographic proposals.
+literature. The closer ancestor for our purposes is
+\citet{ijiri1989momentum}'s \emph{momentum accounting}, which
+proposes that conventional double-entry under-records the
+forces driving economic change: a balance sheet captures stocks
+and a flow statement captures changes in stocks, but neither
+captures the rate at which stocks are changing. Ijiri introduces
+a third dimension --- the \emph{force} or \emph{momentum} of an
+account --- and a corresponding third book that tracks not the
+balance and not the change but the second derivative.
+\citet{ijiri1986triple} extends this into triple-entry
+bookkeeping: each transaction generates not two entries but
+three, with the third recording the momentum the transaction
+imparts to the entity's position. The structural fact that matters
+for the Figaro reading is that Ijiri identifies a \emph{cumulative
+upstream quantity} --- the integral of force over time --- that
+a fully informative accounting system must record alongside
+stocks and flows. That cumulative quantity is exactly what the
+bonded process's cumulative-value accumulator $G_i$ already
+records, by mechanism, before any accounting takes place: the
+monotonic accumulator is a momentum-style record built into the
+settlement primitive. We return to this point in
+\Cref{sec:process-as-period}.
+
+A more deeply formal antecedent is
+\citet{mattessich1964accounting}, who develops accounting as an
+axiomatic system: the double-entry identity is an algebraic
+invariant on a set of basic propositions about value flows,
+analogous to the conservation laws of physics. The custodial
+identity we will define in
+\Cref{sec:process-as-period} below is, in Mattessich's sense,
+the same algebraic invariant restated for the bonded process:
+total assets in the contract's escrow equal total liabilities to
+the bonded parties at every moment of the process's life, with
+the equality discharged at settlement.
 
 \citet{grigg2005triple} revived the idea in a
 blockchain-adjacent register. Grigg's triple-entry proposes
@@ -394,6 +439,16 @@ accumulator snapshot at order $i$. The conservation law
 (Remark 3.5 of the mechanism paper) states that
 $\pi_{s,i} + \pi_{b,i} = C_{s,i} + C_{b,i}$ for every order:
 the total distributed equals the total locked.
+
+The accounting argument that follows depends specifically on
+Mechanism~2 of the primitive --- buyer dominance with atomic
+resolution. Mechanism~1 (asymmetric bonding) supplies the
+balance-sheet positions during process life; Mechanism~2 supplies
+the period-close, since atomic resolution is what guarantees
+that every active order in the process settles in a single
+moment. A non-atomic resolution would yield partial closes that
+are not period-closes in the accounting sense, and the
+self-closing-ledger-period claim below would not survive.
 
 We claim this structure is equivalent to a self-closing
 ledger period in the accounting sense. We proceed in three
@@ -596,13 +651,19 @@ this asset or liability worth?), impairment judgments, and
 the full range of \emph{interpretive} accounting work remain
 genuinely human. The protocol records what happened; it does
 not determine how what happened should be interpreted under
-a particular accounting framework (GAAP, IFRS, tax code, or
-sector-specific regulation). A wallet cohort that has
-received $N$ FIG tokens via staged merkle airdrop has a
-record that this happened; whether those tokens constitute
-revenue, a capital contribution, an airdrop deemed
-non-recognition-triggering, or something else depends on
-interpretive work that requires human judgment.
+a particular accounting framework. The interpretive frameworks
+that the protocol does not displace are precisely the ones
+codified in current professional standards: ASC~606 / IFRS~15
+on revenue recognition, IFRS~13 on fair-value measurement,
+ISA~315 (revised) and AICPA AU-C~315 on understanding the
+entity and assessing risks of material misstatement, and
+sector-specific tax codes \citep{aicpa2020auc315,
+fasbasc606, ifrs2014ifrs15}. A wallet cohort that has received
+$N$ FIG tokens via staged merkle airdrop has a record that
+this happened; whether those tokens constitute revenue, a
+capital contribution, an airdrop deemed non-recognition-triggering,
+or something else depends on interpretive work governed by these
+standards and requiring human judgment.
 
 \paragraph{Translation for non-technical readers.}
 Narrative management discussion and analysis (MD\&A),
@@ -623,12 +684,20 @@ actually deliver it? Did the attested GHG disclosure
 actually reflect the measured quantity? These questions ask
 whether the on-chain record is a faithful representation of
 off-chain reality. The protocol cannot answer them; it can
-only record what was signed. An auditor attesting that
-on-chain records correspond to measured off-chain
-performance is doing genuinely new work, and may become the
-core function of the post-Pacioli audit profession. This is
-not the work of reconciling records to other records; it is
-the work of reconciling records to the world.
+only record what was signed. The professional standards
+already distinguish the two questions: AICPA AU-C~500 on
+audit evidence treats sufficiency and appropriateness of
+evidence as the two dimensions of audit-evidence quality, and
+explicitly distinguishes \emph{existence} (the asset or
+transaction is real) from \emph{accuracy of recording} (it
+was recorded faithfully) \citep{aicpa2020auc500}. The bonded
+process discharges the second of these by construction; the
+first remains open and is precisely what an auditor
+attesting on-chain-to-off-chain correspondence is doing. This
+auditor is not reconciling records to other records; they
+are doing the AU-C~500 existence work that records have
+never been able to do alone. We expect this to become the
+core function of the post-Pacioli audit profession.
 
 \paragraph{Regulatory compliance ahead of regulatory catch-up.}
 Tax law, securities law, and sector-specific regulation
@@ -640,6 +709,146 @@ This translation work is a professional function. Eventually
 regulation may update to reference chain state directly; in
 the interim, the accountant's role includes producing
 traditional outputs from non-traditional inputs.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Treasury Composition Patterns}
+\label{sec:treasury-composition}
+
+The self-closing-ledger property the previous sections developed
+is a property of every process. An institution that disburses
+through Figaro processes therefore inherits the property without
+needing any institution-specific accommodation in the kernel: the
+kernel reads a wallet, an EIP-712 signature, and a bond, and the
+institutional shape behind that wallet --- a multisig, a DAO
+governance executor, a streaming contract, a single-key treasury
+agent --- is invisible to the kernel and irrelevant to the
+ledger-period guarantee. We catalogue the four composition
+patterns by which on-chain treasuries operate as buyers in
+practice, and identify the four operational constraints the
+patterns inherit from the bonded primitive.
+
+\paragraph{Multisig as buyer.}
+A Safe (or any threshold multisig) commits as the buyer. The
+signer set approves the commitment using the same approval flow
+the multisig uses for any other transaction; EIP-1271 enables
+the kernel to verify smart-contract-wallet signatures alongside
+EOA signatures
+\citep{eip1271, safe_doc_2024}. From the ledger-period
+perspective the multisig is a single buyer wallet; the
+internal-governance complexity of how the signer set arrived at
+the approval is below the kernel's resolution and does not affect
+the closing of the period at \texttt{resolveProcess}. This is
+the operational form of the kernel/protocol/runtime distinction
+applied to the buyer side: the kernel sees a wallet; the
+governance shape is a runtime-tier choice the wallet's operators
+make for themselves.
+
+\paragraph{Governance executor as buyer.}
+A DAO governance vote authorizes a commitment; the executor
+contract calls \texttt{commit} after the vote passes
+\citep{compound_governor_2020, openzeppelin_governor_2024}. The
+kernel sees a signed commitment from the executor's wallet;
+\emph{how} the signature was produced --- a token-weighted vote,
+a quadratic vote, a working-group endorsement, an
+optimistically-passed proposal --- is below the kernel's resolution.
+The DAO's accounting treatment of the commitment (whether the
+disbursement is a revenue, a grant, a capital contribution, or
+something else) is the interpretive work \Cref{sec:continues}
+discusses; the closing of the ledger period for the disbursed
+process is automatic at resolution. The DAO's books and the
+chain's ledger period are aligned by construction.
+
+\paragraph{Streaming upstream of commit.}
+A streaming contract \citep{sablier_2023, superfluid_2023} drips
+payment continuously to an intermediary wallet that commits
+processes as work arrives. Figaro does not replace the streaming
+function; the streaming contract handles the continuous-flow
+disbursement to the intermediary, and the intermediary commits
+discrete bonded processes downstream as specific work is
+contracted. The ledger periods produced by the bonded processes
+are nested inside the streaming contract's longer-running
+disbursement: each bonded process is a closed period, and the
+streaming contract's flow is the continuous-time integral of
+those periods. The accounting reading is straightforward --- the
+streaming flow is the parent stock movement, the bonded periods
+are the discrete journal entries against that flow --- and the
+two compose without either's accounting model needing to bend.
+
+\paragraph{Bookkeeping from chain state.}
+Accounting tooling reads chain state directly. Every
+\texttt{OrderCommitted} and \texttt{OrderResolved} event pair is
+a complete disbursement record with full context: the parties,
+the amount, the schemaIds, the agreement-hash, the cumulative
+position. No reconciliation against a separate institutional
+ledger is required; the chain \emph{is} the ledger, and the
+treasury's books for the disbursed-via-Figaro portion of its
+activity are derivable from chain state without bookkeeping
+intermediation. This is the natural extension of the
+audit-against-reality function \Cref{sec:continues} discusses:
+the AU-C~500 existence work remains, and the AU-C~500
+accuracy-of-recording work is discharged by the protocol.
+
+\paragraph{Operational constraints these patterns inherit.}
+The patterns inherit four constraints from the bonded primitive
+that an operator considering treasury composition needs to
+understand.
+
+\emph{Counterparty bond required.} Every process requires the
+seller to post $2G$ collateral, where $G$ is the cumulative
+value of upstream commitments at the seller's order. Counterparties
+without in-hand capital cannot enter the process directly without
+external bond financing; bond-financing is its own composition
+surface and is one of the runtime-tier ecosystems the substrate
+admits. A treasury committing into a bonded process must
+therefore choose counterparties that can post bond, or compose
+with a bond-financing layer that does.
+
+\emph{No clawback after resolution.} Settlement is terminal in
+the kernel sense; once \texttt{resolveProcess} executes, the
+disbursement cannot be reversed by any party. Milestone-gated
+disbursement is achieved through process-tree composition --- the
+treasury commits a sequence of small processes against
+deliverables rather than a single large process --- not through
+kernel-level reversal. This is structurally what the closing
+entry of double-entry bookkeeping has always done: once posted,
+the closing entry is final.
+
+\emph{No kernel-level arbitration.} The kernel produces
+evidence; the agreement specifies the forum that adjudicates
+disputes off-chain. Treasuries that need a particular dispute
+resolution profile (regulated arbitration, court of competent
+jurisdiction, internal grievance procedure) name that forum in
+the agreement and the kernel produces the evidence that forum
+operates on. The companion evidence-and-law paper develops this
+in detail.
+
+\emph{Public visibility of participation.} Commitment events
+are emitted on a public ledger. The agreement content is hashed
+(only \texttt{agreementHash} is public, not the agreement text),
+but participation --- which wallets committed, against whom, for
+what cumulative value --- is visible. Confidential disbursement
+is not within the protocol's guarantees; treasuries that require
+confidentiality are using the wrong substrate or are composing
+with a confidentiality layer above the protocol. Most treasury
+disbursement (grants, public-goods funding, vendor payments) is
+already disclosed by accounting practice or by regulatory
+requirement, so the visibility property aligns with most
+operational settings rather than against them.
+
+\paragraph{What the patterns add to the accounting argument.}
+The treasury composition patterns are not exotic compositions; they
+are the standard institutional shapes already in use in DAO and
+treasury operations \citep{messari_dao_treasury_2023,
+deepdao_treasury_2024}. Their composition with Figaro's
+self-closing-ledger property gives the treasury a complete
+chain-derivable accounting record for the disbursed-via-Figaro
+portion of its activity, with the ledger periods closing
+automatically at each \texttt{resolveProcess} call. The
+treasury's audit and reporting functions for that activity become
+chain-state-reading functions rather than book-keeping functions,
+which is the same point \Cref{sec:continues} makes about the
+audit profession in general, applied to the specific case of
+treasuries that disburse through bonded processes.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Connection to the Institutional-Economics Argument}
@@ -956,6 +1165,83 @@ Yamey, B.~S.
 \newblock In \emph{The Development of Accounting in the
   Late Medieval and Early Modern Periods}, Pacioli Society,
   2005.
+
+\bibitem[Mattessich(1964)]{mattessich1964accounting}
+Mattessich, R.
+\newblock \emph{Accounting and Analytical Methods: Measurement and
+  Projection of Income and Wealth in the Micro- and Macro-Economy}.
+\newblock Richard D. Irwin, Homewood, IL, 1964.
+
+\bibitem[Ijiri(1989)]{ijiri1989momentum}
+Ijiri, Y.
+\newblock \emph{Momentum Accounting and Triple-Entry Bookkeeping:
+  Exploring the Dynamic Structure of Accounting Measurements}.
+\newblock American Accounting Association, Sarasota, FL, 1989.
+
+\bibitem[FASB(2014)]{fasbasc606}
+Financial Accounting Standards Board.
+\newblock \emph{Accounting Standards Codification Topic 606:
+  Revenue from Contracts with Customers}.
+\newblock FASB, Norwalk, CT, 2014.
+
+\bibitem[IASB(2014)]{ifrs2014ifrs15}
+International Accounting Standards Board.
+\newblock \emph{IFRS 15: Revenue from Contracts with Customers}.
+\newblock IFRS Foundation, London, 2014.
+
+\bibitem[AICPA(2020a)]{aicpa2020auc315}
+American Institute of Certified Public Accountants.
+\newblock \emph{AU-C Section 315: Understanding the Entity and Its
+  Environment and Assessing the Risks of Material Misstatement}.
+\newblock AICPA, Durham, NC, 2020.
+
+\bibitem[AICPA(2020b)]{aicpa2020auc500}
+American Institute of Certified Public Accountants.
+\newblock \emph{AU-C Section 500: Audit Evidence}.
+\newblock AICPA, Durham, NC, 2020.
+
+\bibitem[ERC-1271(2018)]{eip1271}
+Giordano, F., Lockyer, M., and Castonguay, P.
+\newblock EIP-1271: Standard Signature Validation Method for
+  Contracts.
+\newblock Ethereum Improvement Proposal 1271, July 2018.
+\newblock \url{https://eips.ethereum.org/EIPS/eip-1271}
+
+\bibitem[Safe(2024)]{safe_doc_2024}
+Safe.
+\newblock \emph{Safe Smart Account Documentation}.
+\newblock Safe Foundation, ongoing as of 2024.
+
+\bibitem[Compound(2020)]{compound_governor_2020}
+Compound Labs.
+\newblock \emph{Compound Governor: On-Chain Governance Module}.
+\newblock Compound Protocol Documentation, 2020.
+
+\bibitem[OpenZeppelin(2024)]{openzeppelin_governor_2024}
+OpenZeppelin.
+\newblock \emph{Governor Contracts: Reference Implementation for
+  On-Chain Governance}.
+\newblock OpenZeppelin Contracts Documentation, ongoing as of 2024.
+
+\bibitem[Sablier(2023)]{sablier_2023}
+Sablier Labs.
+\newblock \emph{Sablier Protocol: Token Streaming Infrastructure}.
+\newblock Sablier Documentation, 2023.
+
+\bibitem[Superfluid(2023)]{superfluid_2023}
+Superfluid Finance.
+\newblock \emph{Superfluid Protocol: Continuous Money Streams}.
+\newblock Superfluid Documentation, 2023.
+
+\bibitem[Messari(2023)]{messari_dao_treasury_2023}
+Messari Research.
+\newblock \emph{State of DAO Treasuries 2023}.
+\newblock Messari Quarterly Report, 2023.
+
+\bibitem[DeepDAO(2024)]{deepdao_treasury_2024}
+DeepDAO.
+\newblock \emph{DAO Treasury Aggregate Statistics}.
+\newblock DeepDAO Analytics Platform, ongoing as of 2024.
 
 \bibitem[Yermack(2017)]{yermack2017corporate}
 Yermack, D.
