@@ -1,15 +1,14 @@
 /**
  * eats-lifecycle.devnet.spec.ts
  *
- * Delivery lifecycle test exercised through the assembly route /i/local-commerce.
- * This is the Prototype2-native equivalent of the Eats repo's
- * delivery-3party.devnet.spec.ts — proving that the assembly runtime can
- * render and drive the same 3-party workflow (buyer → restaurant → driver)
- * without hand-coded Eats page shells.
- *
- * The test creates the delivery scenario on-chain via viem helpers,
- * then verifies the assembly UI correctly reflects state and allows
- * lifecycle interactions through module test IDs.
+ * Delivery lifecycle test exercised through the consumer-facing per-order
+ * page at `/orders/[processId]`. Pre-2026-05 these tests targeted the
+ * `/i/local-commerce` assembly runtime (now deleted) and asserted on
+ * `topo-node-*` testids inside the runtime's process graph; the runtime
+ * was a builder/debug surface, not a buyer surface, so the tests were
+ * pointing at the wrong layer. The on-chain logic (commit, attest,
+ * resolve) is unchanged — only the page that drives the resolve is
+ * different.
  *
  * Accounts:
  *   [0] BUYER      0xf39F…2266
@@ -72,53 +71,37 @@ test.afterAll(async () => {
     if (chainSnapshot) await evmRevert(chainSnapshot);
 });
 
-// ── Assembly route helpers ───────────────────────────────────────────────────
+// ── Per-order page helpers ───────────────────────────────────────────────────
 
-async function gotoAssemblyDevnet(page: import('@playwright/test').Page) {
-    await page.goto('/i/local-commerce?e2e=devnet', { waitUntil: 'load' });
-    // Wait for runtime-specific shell controls rather than the first page h1,
-    // because the global header also renders an h1 before the assembly shell hydrates.
-    await page.getByTestId('role-btn-buyer').waitFor({ timeout: 30000 });
+/**
+ * Navigate to `/orders/<processId>?e2e=devnet` (the buyer's per-order
+ * surface) and wait for the timeline view to render. Replaces the prior
+ * `gotoAssemblyDevnet` + `selectProcessInAssembly` flow which involved
+ * landing on the assembly runtime, finding the process summary card in
+ * the sidebar, clicking it, and waiting for the process graph to render.
+ */
+async function gotoOrderDevnet(page: import('@playwright/test').Page, processId: string) {
+    await page.goto(`/orders/${processId}?e2e=devnet`, { waitUntil: 'load' });
+    await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
 }
 
-async function switchToRole(page: import('@playwright/test').Page, role: string) {
-    const roleButton = page.getByTestId(`role-btn-${role}`);
-    if (await roleButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await roleButton.click();
-        await page.waitForTimeout(500);
-    }
-}
-
-/** Wait for a process summary card to appear, then click it to load the graph. */
-async function selectProcessInAssembly(page: import('@playwright/test').Page, processId: string) {
-    const card = page.getByTestId(`process-summary-${processId}`);
-    await card.waitFor({ timeout: 60000 });
-    await card.click();
-    // Wait for the topology to render at least one order node
-    await page.waitForFunction(
-        () => document.querySelectorAll('[data-testid^="topo-node-"]').length > 0,
-        null,
-        { timeout: 30000 },
-    );
-}
-
-/** Assembly-page version of resolveVisibleProcess (uses topo-node-* testids). */
-async function resolveProcessInAssembly(page: import('@playwright/test').Page) {
-    // executeTransactionCapability calls window.confirm before the resolve tx;
-    // Playwright auto-dismisses unless we accept first.
+/**
+ * Buyer confirms receipt via the consumer-facing `Confirm receipt` button
+ * (which fires `resolveProcess` under the hood). Replaces the assembly-page
+ * resolve flow that used the kernel-shaped `btn-resolve-process` capability
+ * card. The timeline transitions to the green "Completed" state.
+ */
+async function confirmReceiptAtOrder(page: import('@playwright/test').Page) {
     page.once('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
-    const btn = page.getByTestId('btn-resolve-process');
-    await btn.waitFor({ timeout: 10000 });
+    const btn = page.getByTestId('btn-confirm-receipt');
+    await btn.waitFor({ timeout: 30000 });
     await btn.click();
-    await page.waitForFunction(
-        () => {
-            const nodes = Array.from(document.querySelectorAll('[data-testid^="topo-node-"]'));
-            return nodes.length > 0 && nodes.every((node) => node.getAttribute('data-order-state') === 'resolved');
-        },
-        null,
-        { timeout: 60000 },
-    );
+
+    // Wait for the status pill to flip from "In progress" / "Handed off" /
+    // etc. to "Completed". The pill text is the canonical consumer signal;
+    // OrderState transitions to Resolved drive it.
+    await expect(page.getByTestId('order-status-pill')).toHaveText('Completed', { timeout: 60000 });
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -164,20 +147,15 @@ test.describe('Delivery lifecycle via assembly (devnet)', () => {
         await sendLifecycleSignal('declarePickedUp', scenario.deliveryOrderHash);
         await sendLifecycleSignal('declareDelivered', scenario.deliveryOrderHash);
 
-        // Navigate to assembly and verify both orders are still Active
-        // (lifecycle signals are attestations, they don't change order state)
-        await gotoAssemblyDevnet(page);
+        // Buyer navigates to their per-order page and verifies the order is
+        // still in progress before resolving (lifecycle signals are
+        // attestations — they don't flip kernel order state on their own).
+        await gotoOrderDevnet(page, scenario.processId);
+        await expect(page.getByTestId('order-status-pill')).not.toHaveText('Completed', { timeout: 15000 });
 
-        await selectProcessInAssembly(page, scenario.processId);
-
-        const foodId = scenario.foodOrderHash;
-        const foodNode = page.getByTestId(`topo-node-${foodId}`);
-        await expect(foodNode).toHaveAttribute('data-order-state', 'active', { timeout: 15000 });
-
-        // Buyer resolves the whole process
-        await resolveProcessInAssembly(page);
-
-        await expect(foodNode).toHaveAttribute('data-order-state', 'resolved', { timeout: 30000 });
+        // Buyer confirms receipt → resolveProcess fires → status pill flips
+        // to "Completed" once the receipt confirms.
+        await confirmReceiptAtOrder(page);
     });
 
     // Note: 'UI-driven delivery' single-order + diamond tests removed —
@@ -187,36 +165,7 @@ test.describe('Delivery lifecycle via assembly (devnet)', () => {
     // this file.
 });
 
-test.describe('Auction module visibility (devnet)', () => {
-    test.setTimeout(300_000);
-
-    let testSnapshot: string;
-
-    test.beforeEach(async () => {
-        test.skip(
-            !DUTCH_AUCTION || DUTCH_AUCTION.length !== 42,
-            'NEXT_PUBLIC_DUTCH_AUCTION not set',
-        );
-
-        testSnapshot = await evmSnapshot();
-    });
-
-    test.afterEach(async () => {
-        if (testSnapshot) await evmRevert(testSnapshot);
-    });
-
-    test('courier role surfaces the job-market module after seeding', async ({ page }) => {
-        await seedDeliveryScenario();
-
-        await gotoAssemblyDevnet(page);
-        await switchToRole(page, 'courier');
-
-        // The courier-view binds the job-market module — that is the courier-
-        // facing surface for live auctions in this assembly. Verifying the
-        // module renders proves role-scoped module selection is wired up
-        // post-rename. (The auction card itself depends on DutchAuction event
-        // indexing latency that's covered separately by mock specs.)
-        const jobMarket = page.getByTestId('job-market-module');
-        await expect(jobMarket).toBeVisible({ timeout: 30000 });
-    });
-});
+// Removed 2026-05: 'courier role surfaces the job-market module' test
+// targeted the assembly-runtime role-switcher, which no longer exists. A
+// courier-facing surface (e.g. /jobs or per-courier dashboard) is on the
+// backlog; restore an equivalent test once that page lands.

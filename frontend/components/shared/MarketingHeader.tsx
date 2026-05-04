@@ -1,3 +1,4 @@
+import { BuildButton } from "@/components/shared/BuildButton";
 import { DiscoverButton } from "@/components/shared/DiscoverButton";
 import { HeaderShell } from "@/components/shared/HeaderShell";
 
@@ -10,15 +11,27 @@ import { HeaderShell } from "@/components/shared/HeaderShell";
  * and reference routes mount the full `Header.tsx` via
  * `app/(app)/layout.tsx`.
  *
- * Discover lives here (and only here): on marketing surfaces the user is
- * exploring, so the curriculum CTA belongs. The (app) tier is for
- * transacting — Connect Wallet there, no Discover.
+ * Two parallel audience CTAs live here (and only here):
+ *   - Discover → /discover (consumers) — filled
+ *   - Build → /builders (builders) — outline
+ * Both are marketing-surface CTAs. The (app) tier is for transacting —
+ * Connect Wallet there, no Discover, no Build.
  */
 export function MarketingHeader() {
     return (
         <HeaderShell
-            right={<DiscoverButton />}
-            mobileTopCta={<DiscoverButton className="inline-flex w-full justify-center" />}
+            right={
+                <>
+                    <DiscoverButton />
+                    <BuildButton />
+                </>
+            }
+            mobileTopCta={
+                <div className="flex flex-col gap-2">
+                    <DiscoverButton className="inline-flex w-full justify-center" />
+                    <BuildButton className="inline-flex w-full justify-center" />
+                </div>
+            }
         />
     );
 }

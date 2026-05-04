@@ -170,6 +170,11 @@ export const TOPOLOGY_SCHEMA_KEY = "figaro-topology-v1";
 export const FULFILMENT_SCHEMA_KEY = "figaro-fulfilment-v1";
 export const HANDOFF_SCHEMA_KEY = "figaro-handoff-v1";
 export const JURISDICTION_SCHEMA_KEY = "figaro-jurisdiction-v1";
+/** Consent attestation: a wallet binds itself to an off-chain legal document
+ *  by its keccak256 hash + version + title. Reusable as a designer-time clause
+ *  on any assembly that needs cryptographic consent (beta participation,
+ *  ToS acceptance, NDA, governance vote receipts, etc.). */
+export const CONSENT_SCHEMA_KEY = "figaro-consent-v1";
 /** Default GHG disclosure schema used by single-standard manifest flows. */
 export const GHG_SCHEMA_KEY = "figaro-ghg-iso-14064-v1";
 /** All five GHG disclosure sister schemas (one per accounting standard). */
@@ -358,6 +363,7 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
         encodeGHGScopeContent,
         encodeProximityPolicyContent,
         encodeCommerceContent,
+        encodeConsentContent,
     } = schemasMod;
     // Cast `data.*` strings to the SDK encoder enum types at the call site.
     // Runtime mismatches (unknown enum values) surface as TypeError inside the
@@ -394,6 +400,12 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
         case "figaro-proximity-policy-v1":
             return (data) => encodeProximityPolicyContent({
                 band: asAny(data.band),
+            });
+        case "figaro-consent-v1":
+            return (data) => encodeConsentContent({
+                documentHash: data.documentHash as `0x${string}`,
+                documentVersion: data.documentVersion as string,
+                documentTitle: data.documentTitle as string,
             });
         case "figaro-commerce-v1":
             return (data) => encodeCommerceContent({

@@ -37,6 +37,7 @@ vi.mock('wagmi', () => ({
         isConnected: true,
     }),
     useReadContract: () => ({ data: 999999999999n }),
+    useChainId: () => 31337,
 }));
 
 vi.mock('@/hooks/core/useTokenApproval', () => ({

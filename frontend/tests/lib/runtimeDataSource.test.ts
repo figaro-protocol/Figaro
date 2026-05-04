@@ -158,13 +158,13 @@ describe('runtime data source helpers', () => {
         );
 
         expect(manifestSource.version).toBe('1.0.0');
-        expect(manifestSource.listSubjectRecords()).toHaveLength(3);
-        expect(manifestSource.listAssemblyBindings()).toHaveLength(3);
-        expect(manifestSource.listSellerCatalogueMetadata()).toHaveLength(1);
-        expect(manifestSource.listAssetDocuments?.()).toHaveLength(3);
-        expect(manifestSource.subjectProvenance).toHaveLength(3);
-        expect(manifestSource.listSubjectProvenanceRecords?.()).toHaveLength(3);
-        expect(manifestSource.listValidationIssues?.()).toHaveLength(2);
+        expect(manifestSource.listSubjectRecords()).toHaveLength(7);
+        expect(manifestSource.listAssemblyBindings()).toHaveLength(8);
+        expect(manifestSource.listSellerCatalogueMetadata()).toHaveLength(7);
+        expect(manifestSource.listAssetDocuments?.()).toHaveLength(7);
+        expect(manifestSource.subjectProvenance).toHaveLength(7);
+        expect(manifestSource.listSubjectProvenanceRecords?.()).toHaveLength(7);
+        expect(manifestSource.listValidationIssues?.()).toHaveLength(6);
         expect(manifestSource.listAssemblyBindings()[0]?.roleBindings[0]?.assemblyRoleKinds).toEqual(['merchant']);
     });
 
@@ -184,6 +184,26 @@ describe('runtime data source helpers', () => {
                 severity: 'warning',
                 code: 'missing-signature-refs',
                 subjectAddress: '0x90F79bf6EB2c4f870365E785982E1f101E93b906',
+            }),
+            expect.objectContaining({
+                severity: 'warning',
+                code: 'missing-signature-refs',
+                subjectAddress: '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65',
+            }),
+            expect.objectContaining({
+                severity: 'warning',
+                code: 'missing-signature-refs',
+                subjectAddress: '0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc',
+            }),
+            expect.objectContaining({
+                severity: 'warning',
+                code: 'missing-signature-refs',
+                subjectAddress: '0xa0Ee7A142d267C1f36714E4a8F75612F20a79720',
+            }),
+            expect.objectContaining({
+                severity: 'warning',
+                code: 'missing-signature-refs',
+                subjectAddress: '0xBcd4042DE499D14e55001CcbB24a551F3b954096',
             }),
         ]);
     });

@@ -29,8 +29,8 @@ describe('runtime fetch source', () => {
 
         expect(fetcher).toHaveBeenCalledWith('https://example.com/runtime-identity.json', undefined);
         expect(dataSource.version).toBe('1.0.0');
-        expect(dataSource.listSubjectRecords()).toHaveLength(3);
-        expect(dataSource.listValidationIssues?.()).toHaveLength(2);
+        expect(dataSource.listSubjectRecords()).toHaveLength(7);
+        expect(dataSource.listValidationIssues?.()).toHaveLength(6);
         expect(dataSource.getSourceMetadata?.()).toEqual({
             sourceKind: 'remote',
             sourceLabel: 'https://example.com/runtime-identity.json',

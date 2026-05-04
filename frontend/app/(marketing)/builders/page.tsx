@@ -1,6 +1,23 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/shared/MarketingHero";
 import { MarketingSection } from "@/components/shared/MarketingSection";
+import { REFERENCE_ASSEMBLIES } from "@/lib/shared/assembly";
+
+export const metadata: Metadata = {
+    title: "Build on Figaro — Trade Infrastructure",
+    description: "Design a trade workflow from protocol components. The protocol handles enforcement. Three levels of composition — no new contract risk required at Level 1.",
+    openGraph: {
+        title: "Build on Figaro Protocol",
+        description: "Design a trade workflow from protocol components. The protocol handles enforcement.",
+        type: "website",
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "Build on Figaro Protocol",
+        description: "Design a trade workflow from protocol components. The protocol handles enforcement.",
+    },
+};
 
 export default function BuildersPage() {
     return (
@@ -60,18 +77,18 @@ export default function BuildersPage() {
 
                 <div className="border-l-2 border-gray-300 pl-6 mb-8">
                     <p className="text-base font-semibold text-black mb-1">Tier 1 &mdash; Compose against existing primitives</p>
-                    <p className="text-sm text-gray-600 mb-4">Property statement on <Link href="/composability#tier-1" className="underline hover:text-black">Composability</Link>.</p>
+                    <p className="text-sm text-gray-600 mb-4">Architecture on <Link href="/builders/composability#tier-1" className="underline hover:text-black">Composability — Builder architecture</Link>.</p>
                     <ul className="space-y-3 text-sm">
                         <li>
                             <Link href="/builders/designer" className="text-black font-medium hover:underline">Designer</Link>
-                            <span className="text-gray-700"> &mdash; DAG-of-orders editor: spawn sub-orders from a parent node, merge fan-in by dropping onto an existing node, and swap the per-edge fulfilment method (consume-onsite, pickup, deliver:buyer-assigned, deliver:seller-assigned, deliver:dutch-auction); per-node baseline-graph clauses (Geo, GHG, Handoff, Proximity, Jurisdiction) edit in a side drawer. Drafts persist locally; live instances render at <code>/i/[slug]</code>.</span>
+                            <span className="text-gray-700"> &mdash; DAG-of-orders editor: spawn sub-orders from a parent node, merge fan-in by dropping onto an existing node, and swap the per-edge fulfilment method (consume-onsite, pickup, deliver:buyer-assigned, deliver:seller-assigned, deliver:dutch-auction); per-node baseline-graph clauses (Geo, GHG, Handoff, Proximity, Jurisdiction) edit in a side drawer. Drafts persist locally. Buyer surface: <code>/m/&lt;merchant&gt;</code>, <code>/orders/&lt;processId&gt;</code>. Merchant surface: <code>/inbox</code>.</span>
                         </li>
                     </ul>
                 </div>
 
                 <div className="border-l-2 border-gray-500 pl-6 mb-8">
                     <p className="text-base font-semibold text-black mb-1">Tier 2 &mdash; Add a typed clause</p>
-                    <p className="text-sm text-gray-600 mb-4">Property statement on <Link href="/composability#tier-2" className="underline hover:text-black">Composability</Link>.</p>
+                    <p className="text-sm text-gray-600 mb-4">Architecture on <Link href="/builders/composability#tier-2" className="underline hover:text-black">Composability — Builder architecture</Link>.</p>
                     <ul className="space-y-3 text-sm">
                         <li>
                             <Link href="/schemas" className="text-black font-medium hover:underline">Schemas</Link>
@@ -86,7 +103,7 @@ export default function BuildersPage() {
 
                 <div className="border-l-2 border-black pl-6 mb-8">
                     <p className="text-base font-semibold text-black mb-1">Tier 3 &mdash; Add a mechanism</p>
-                    <p className="text-sm text-gray-600 mb-4">Property statement on <Link href="/composability#tier-3" className="underline hover:text-black">Composability</Link>.</p>
+                    <p className="text-sm text-gray-600 mb-4">Architecture on <Link href="/builders/composability#tier-3" className="underline hover:text-black">Composability — Builder architecture</Link>.</p>
                     <ul className="space-y-3 text-sm">
                         <li>
                             <Link href="/spec" className="text-black font-medium hover:underline">Contracts</Link>
@@ -104,6 +121,10 @@ export default function BuildersPage() {
                     <p className="text-sm text-gray-600 mb-4">Tools that operate across all three tiers.</p>
                     <ul className="space-y-3 text-sm">
                         <li>
+                            <Link href="/integrate" className="text-black font-medium hover:underline">Modules &mdash; UI authoring</Link>
+                            <span className="text-gray-700"> &mdash; React components that bind to mechanisms via slot bindings on the assembly. Used at every tier: Tier-2 schemas need forms to enter and display clause content; Tier-3 mechanisms need action surfaces; assembly designers wire modules into views without authoring them. <code>@figaro/core/extensions</code> for module utilities, <code>@figaro/core/agent</code> for agent-driven action submission, <code>@figaro/core/schemas</code> for content encoders. Canonical entry: <Link href="/integrate" className="underline hover:text-black">Integrate</Link>.</span>
+                        </li>
+                        <li>
                             <Link href="/console" className="text-black font-medium hover:underline">Console</Link>
                             <span className="text-gray-700"> &mdash; supervision surface for live processes and assembly drafts. Action queue for human-in-the-loop approval or autonomous submission.</span>
                         </li>
@@ -111,9 +132,54 @@ export default function BuildersPage() {
                 </div>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Reference implementation" eyebrowAsHeading bottomPad="wide">
-                <p className="text-sm text-gray-700 leading-relaxed">
-                    <Link href="/i/local-commerce" className="text-black font-medium hover:underline">Figaro Local Commerce</Link> &mdash; three roles (buyer, merchant, courier), bonded ordering, Dutch-auction dispatch, attestation coordinator, operator registry, optional GHG disclosure. Composes existing primitives, declares custom clauses, and uses no new mechanism contracts &mdash; a Tier-1 + Tier-2 assembly with no Tier-3 code authored.
+            <MarketingSection eyebrow="Reference assemblies" eyebrowAsHeading bottomPad="wide">
+                <p className="text-sm text-gray-700 leading-relaxed mb-6 max-w-2xl">
+                    Six reference assemblies ship with the protocol. Each is a forkable starting point at a different composition tier &mdash; from the Level-1 minimum (kernel only, no extensions) to a Level-3 multi-mechanism vertical. All six are runtime-reachable today; merchants registered against each are listed on <Link href="/discover" className="underline hover:text-black">/discover</Link>.
+                </p>
+                <ul className="space-y-4">
+                    {REFERENCE_ASSEMBLIES.map((a) => {
+                        const enabledMechanisms = a.mechanisms.filter((m) => m.enabled).length;
+                        return (
+                            <li
+                                key={a.identity.slug}
+                                className="rounded-lg border border-gray-200 bg-white px-5 py-4 flex items-start gap-4"
+                            >
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-base font-semibold text-black">
+                                        {a.identity.name}
+                                    </p>
+                                    <p className="font-mono text-xs text-gray-500 mt-0.5">
+                                        /{a.identity.slug}
+                                    </p>
+                                    {a.identity.description && (
+                                        <p className="text-sm text-gray-700 leading-relaxed mt-2">
+                                            {a.identity.description}
+                                        </p>
+                                    )}
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        {a.roles.length} {a.roles.length === 1 ? "role" : "roles"} &middot; {enabledMechanisms} active {enabledMechanisms === 1 ? "mechanism" : "mechanisms"}
+                                    </p>
+                                </div>
+                                <div className="flex flex-col gap-2 shrink-0">
+                                    <Link
+                                        href={`/builders/designer/view/${a.identity.slug}`}
+                                        className="text-xs px-3 py-1.5 rounded border border-black bg-white hover:bg-gray-100 text-black text-center font-semibold"
+                                    >
+                                        Inspect
+                                    </Link>
+                                    <Link
+                                        href={`/builders/designer/edit/${a.identity.slug}`}
+                                        className="text-xs px-3 py-1.5 rounded border border-gray-300 bg-white hover:border-gray-500 text-gray-700 text-center"
+                                    >
+                                        Fork
+                                    </Link>
+                                </div>
+                            </li>
+                        );
+                    })}
+                </ul>
+                <p className="text-xs text-gray-500 leading-relaxed mt-6">
+                    <strong>Runtime</strong> opens the live assembly instance &mdash; the same surface a consumer arriving from <Link href="/discover" className="underline hover:text-black">/discover</Link> sees. <strong>View</strong> renders the canonical DAG read-only on the designer canvas. <strong>Fork</strong> opens the assembly in the DAG editor as a starting point for your own composition; drafts persist locally.
                 </p>
             </MarketingSection>
         </>

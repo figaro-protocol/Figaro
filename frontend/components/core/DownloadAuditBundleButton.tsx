@@ -69,7 +69,7 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
                     while preserving the agreement merkle root, totals, currency,
                     and every other clause. The recipient verifies the root
                     against chain; you can selectively reveal individual sections
-                    later via /verify Mode B if needed.
+                    later via /audit Mode B if needed.
                 </p>
             )}
             <button

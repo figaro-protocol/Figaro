@@ -13,22 +13,27 @@ import { Watermark } from "@/components/shared/Watermark";
 export const dynamic = "force-dynamic";
 
 /**
- * Layout for reference + transactional routes — everything that's not pure
- * marketing. Mounts the full `<Providers>` stack (WagmiProvider, RainbowKit,
- * QueryClient, ChainGuard, CommerceProvider, HandoffCleanupProvider,
- * CommitmentSignPreviewProvider, ConfigurationBanner, ClientInit, Toaster,
- * RpcBanner) and the wallet-aware `<Header>` (with ConnectButton +
- * NotificationBell).
+ * Layout for the (app) tier — wallet-aware routes that mount the full
+ * `<Providers>` stack (WagmiProvider, RainbowKit, QueryClient, ChainGuard,
+ * CommerceProvider, HandoffCleanupProvider, CommitmentSignPreviewProvider,
+ * ConfigurationBanner, ClientInit, Toaster, RpcBanner) and the
+ * wallet-aware `<Header>` (with ConnectButton + NotificationBell).
  *
- * Reference routes (read-only, may surface inline write affordances via
- * `WalletGate`): `/builders*`, `/integrate`, `/schemas`, `/groups*`,
- * `/grants`, `/treasuries`, `/i/[slug]`.
+ * The canonical inventory of (app) routes is the directory listing of
+ * `app/(app)/`.
+ * As of 2026-05-01: `/audit`, `/audit/[processId]`, `/consent`, `/console`,
+ * `/discover`, `/dispute`, `/evidence-display`, `/fig`, `/i/[slug]`,
+ * `/operators`, `/sign`, `/terminal`, plus the designer sub-routes under
+ * `/builders/designer/*`. (`/builders` itself moved to `(marketing)/`;
+ * `/financials/[processId]` and `/verify` were merged into `/audit/*`.)
  *
- * Transactional routes (require connected wallet): `/terminal`, `/sign`,
- * `/operators*`, `/console`, `/admin`, `/fig*`, `/evidence-display`,
- * `/accounting`, `/local-commerce`.
+ * Routes that read like reference but live in `app/(marketing)/` —
+ * `/integrate`, `/schemas`, `/groups`, `/local-commerce`, `/spec`,
+ * `/compliance`, `/builders` (publication) — are intentionally NOT here:
+ * they're publication-shaped and don't pull the wallet provider. Don't
+ * cross-list them in (app) navs (see `feedback_two_navs_allowed.md`).
  *
- * See CLAUDE.md "Wallet-provider scope per route" for the canonical
+ * See CLAUDE.md "Wallet-provider scope per route" for the route-tier
  * classification rule.
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {

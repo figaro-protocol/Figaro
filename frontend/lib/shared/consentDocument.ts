@@ -230,9 +230,9 @@ The parties further acknowledge that Kleros arbitration is novel and may
 not be recognized as binding in all jurisdictions. To the extent
 supplementary legal venues are required — particularly for emergency
 injunctive relief or where Kleros decisions are not enforceable — this
-Agreement shall be governed by the laws of [JURISDICTION TO BE SPECIFIED
-BY LEGAL COUNSEL], and the parties consent to the exclusive jurisdiction
-of the courts of [JURISDICTION] for such matters.
+Agreement shall be governed by the laws of the State of New York, USA,
+and the parties consent to the exclusive jurisdiction of the courts of
+the State of New York, USA, for such matters.
 
 11. ACKNOWLEDGEMENT
 
@@ -245,7 +245,7 @@ control this wallet. A PDF receipt of the signed message is generated and
 pinned to IPFS for durable preservation independent of testnet state.`;
 
 /** Semver-style version of the document. Bump on every content edit. */
-export const CONSENT_DOCUMENT_VERSION = "1.0.0";
+export const CONSENT_DOCUMENT_VERSION = "1.1.0";
 
 /** Human-readable title carried into the EIP-712 message. */
 export const CONSENT_DOCUMENT_TITLE = "Figaro Beta Informed Consent Agreement";

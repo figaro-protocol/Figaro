@@ -2,7 +2,7 @@
  * Audit-bundle assembler — composes the per-order extractor outputs into
  * one structured deliverable.
  *
- * Phase D's PDF renderer consumes this. Phase E's `/verify` page also
+ * Phase D's PDF renderer consumes this. Phase E's `/audit` surface also
  * reads it (or a subset) to drive recomputation of each hash against
  * user-supplied content.
  *

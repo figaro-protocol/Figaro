@@ -3,14 +3,23 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { HeaderShell } from "@/components/shared/HeaderShell";
+import { NavLinksRow } from "@/components/shared/NavLinksRow";
+import { NAV_LINKS_APP_PRIMARY, NAV_LINKS_APP_DRAWER } from "@/components/shared/navLinks";
 import { useWalletConnected } from "@/hooks/useWalletConnected";
 
 /**
- * Wagmi-aware header for `(app)` routes. Mounts the same chrome as
- * `MarketingHeader` plus the right-cluster pair: `<NotificationBell>`
- * (when connected) and `<ConnectButton>`. The Discover button is
- * intentionally absent here — Discover is a marketing-tier curriculum
- * CTA; the (app) tier is for transacting. The two never coexist.
+ * Wagmi-aware header for `(app)` routes. Same shell chrome as
+ * `MarketingHeader`, with two divergences (per
+ * `feedback_two_navs_allowed.md`):
+ *
+ *  1. Right cluster is `<NotificationBell>` (when connected) +
+ *     `<ConnectButton>`. Discover is intentionally absent — that rule is
+ *     in `feedback_header_buttons.md` and is independent of the two-nav
+ *     decision.
+ *  2. A second nav row sits under the main row, listing protocol-surface
+ *     routes via `NAV_LINKS_APP_PRIMARY`. The mobile drawer uses
+ *     `NAV_LINKS_APP_DRAWER` (grouped publication + reference +
+ *     transactional sections). Marketing tier renders neither.
  */
 export function Header() {
     const walletConnected = useWalletConnected();
@@ -21,6 +30,14 @@ export function Header() {
                     {walletConnected && <NotificationBell theme="light" />}
                     <ConnectButton />
                 </>
+            }
+            mobileLinks={NAV_LINKS_APP_DRAWER}
+            bottomRow={
+                <NavLinksRow
+                    links={NAV_LINKS_APP_PRIMARY}
+                    testId="desktop-nav-app"
+                    variant="secondary"
+                />
             }
         />
     );

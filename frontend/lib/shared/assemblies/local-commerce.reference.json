@@ -236,6 +236,7 @@
                 "mechanism-inspector",
                 "process-capital-summary",
                 "incoming-orders",
+                "merchant-fulfilment",
                 "coordinator-actions",
                 "catalogue-editor",
                 "event-timeline",
@@ -302,14 +303,19 @@
             "priority": 1
         },
         {
-            "moduleId": "coordinator-actions",
+            "moduleId": "merchant-fulfilment",
             "slot": "main",
             "priority": 2
         },
         {
-            "moduleId": "catalogue-editor",
+            "moduleId": "coordinator-actions",
             "slot": "main",
             "priority": 3
+        },
+        {
+            "moduleId": "catalogue-editor",
+            "slot": "main",
+            "priority": 4
         },
         {
             "moduleId": "job-market",

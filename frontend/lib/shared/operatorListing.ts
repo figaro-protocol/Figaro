@@ -149,15 +149,17 @@ export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): 
 
 /**
  * Given a listing's bindings, pick the destination URL for a card click.
- * - 0 bindings → `/terminal?seller=<address>` (kernel-direct commit)
- * - 1+ bindings → `/i/<primary.assemblySlug>?operator=<address>`
- * Multi-binding disambiguation is deferred — first binding is treated as
- * primary for now; richer disambiguation is future work.
+ * - 1+ bindings → `/m/<address>` (per-merchant detail page)
+ * - 0 bindings → `/terminal?seller=<address>` (kernel-direct commit fallback)
+ *
+ * The merchant detail page (Increment 3) replaces the prior shape that
+ * routed buyers into a generic assembly runtime keyed by `?operator=`. The
+ * /m page itself reads the merchant's catalogue and bindings — assembly
+ * disambiguation now happens inside that page when relevant.
  */
 export function listingClickThroughHref(listing: Listing): string {
     if (listing.bindings.length === 0) {
         return `/terminal?seller=${listing.address}`;
     }
-    const primary = listing.bindings[0];
-    return `/i/${primary.assemblySlug}?operator=${listing.address}`;
+    return `/m/${listing.address}`;
 }

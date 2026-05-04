@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useChainId } from "wagmi";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { useCommerce, useCheckout } from "@/lib/commerce";
 import { useCartStore, type FulfillmentMode } from "@/lib/marketplace/cartStore";
@@ -10,6 +12,7 @@ import { broadcastSharedCommitment } from "@/lib/core/commitmentBroadcast";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { calculateBonds } from "@figaro/core";
+import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { formatToken, parseToken } from "@/lib/shared/utils";
@@ -143,6 +146,48 @@ export function CartModule({ moduleId, context }: ModuleProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isApproveSuccess]);
 
+    // Post-broadcast: route the buyer to the per-order page so they have a
+    // confirmation surface + live status timeline. Replaces the prior
+    // "panel closes silently" UX. Watches commitStep === "done", which is
+    // set when the on-chain `commit` tx succeeds (root commitments only;
+    // CartModule never produces sub-orders).
+    const router = useRouter();
+    const chainId = useChainId();
+    const redirectedForCommitment = useRef<string | null>(null);
+    useEffect(() => {
+        if (commitStep !== "done") return;
+        if (!payload?.commitment) return;
+        // Dedupe: useEffect can fire multiple times for the same "done"
+        // transition (e.g., panel re-renders). Track the salt+agreementHash
+        // pair we've already redirected for.
+        const fingerprint = `${payload.commitment.agreementHash}:${payload.commitment.salt}`;
+        if (redirectedForCommitment.current === fingerprint) return;
+        redirectedForCommitment.current = fingerprint;
+        try {
+            const processId = computeCommitmentProcessId(
+                payload.commitment,
+                chainId,
+                CONTRACTS.core,
+            );
+            clearCart();
+            setDeliveryAddress("");
+            setStep("cart");
+            setIsOpen(false);
+            resetCommitment();
+            router.push(`/orders/${processId}`);
+        } catch (cause) {
+            // computeCommitmentProcessId throws if domain inputs are wrong;
+            // fall back to the prior close-panel behaviour without redirect.
+            console.error("Failed to compute processId for redirect", cause);
+            clearCart();
+            setDeliveryAddress("");
+            setStep("cart");
+            setIsOpen(false);
+            resetCommitment();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [commitStep, payload, chainId]);
+
     if (selectedRoleKind !== "buyer") return null;
 
     const handleToggle = () => {
@@ -186,11 +231,6 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                     prepared.commitmentMeta,
                     "buyer",
                 );
-                // Immediate commit succeeded — clear cart and close panel
-                clearCart();
-                setDeliveryAddress("");
-                setStep("cart");
-                setIsOpen(false);
             } else {
                 await initiateAsParty(
                     prepared.commitment,
@@ -198,6 +238,9 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                     prepared.commitmentMeta,
                 );
             }
+            // Post-broadcast cleanup + redirect to /orders/<processId> is
+            // owned by the commitStep === "done" useEffect above. Both paths
+            // converge there.
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Signing failed";
             setCheckoutError(msg);

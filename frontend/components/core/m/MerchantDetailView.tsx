@@ -1,0 +1,514 @@
+"use client";
+
+/**
+ * MerchantDetailView — per-merchant landing page rendered at `/m/[merchant]`.
+ *
+ * Replaces the prior `/i/<assembly>?operator=<addr>` UX where the buyer
+ * landed in a generic assembly runtime that re-listed all merchants. This
+ * page is merchant-shaped: hero with branding, full menu grid, inline cart
+ * with explicit "Place order" CTA, and post-commit redirect to
+ * `/orders/<processId>` (Increment 2).
+ *
+ * Data sources:
+ *  - `useRegisteredCatalogues` — IPFS / fixture catalogue discovery.
+ *  - `resolveRuntimeSubjectByAddress` — display name + branding metadata.
+ *  - `useCheckout` — token balance, approval, commit flow.
+ *  - `useCartStore` — global cart state (shared with CartModule).
+ *
+ * Keeps the existing `MerchantBrandingModule` wrapper so accent colour /
+ * logo bleed-through still works under the same merchant-skin convention.
+ */
+
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useChainId } from "wagmi";
+import { Button } from "@/components/ui/Button";
+import { ContentImage } from "@/components/shared/ContentImage";
+import { MerchantBrandingModule, MerchantLogo } from "@/components/modules/MerchantBrandingModule";
+import { useCommerce, useCheckout } from "@/lib/commerce";
+import { useCartStore, type FulfillmentMode } from "@/lib/marketplace/cartStore";
+import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
+import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
+import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
+import { CONTRACTS } from "@/lib/core/contracts";
+import { calculateBonds } from "@figaro/core";
+import { formatToken, parseToken } from "@/lib/shared/utils";
+import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
+import {
+    FULFILMENT_MODE_LABELS,
+    isDeliveryFulfilment,
+    mapFulfilmentToHandoff,
+} from "@/lib/marketplace/fulfilmentRouting";
+import type { MenuItem, Restaurant } from "@/lib/marketplace/types";
+
+const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
+    "consume-onsite",
+    "pickup",
+    "deliver:buyer-assigned",
+    "deliver:seller-assigned",
+    "deliver:dutch-auction",
+];
+
+interface Props {
+    merchantAddress: string;
+}
+
+export function MerchantDetailView({ merchantAddress }: Props) {
+    const merchantAddressLower = merchantAddress.toLowerCase();
+    const merchantAddressTyped = merchantAddressLower.startsWith("0x")
+        ? (merchantAddressLower as `0x${string}`)
+        : undefined;
+
+    const router = useRouter();
+    const chainId = useChainId();
+    const { restaurants, isLoading: cataloguesLoading } = useRegisteredCatalogues();
+
+    const restaurant = useMemo(
+        () => restaurants.find((r) => r.address.toLowerCase() === merchantAddressLower) ?? null,
+        [restaurants, merchantAddressLower],
+    );
+
+    // Identity lookup is reserved for follow-on enrichment (operator
+    // attestations, did:web profiles). The runtime fixture's accent colour
+    // currently lives in the catalogue branding metadata, not the
+    // SubjectRecord — `MerchantBrandingModule` reads the catalogue path
+    // already. Surface accent here only when we can read it cheaply; default
+    // to undefined so MerchantBrandingModule's CSS variable wins.
+    const accentTone: string | undefined = undefined;
+
+    const { address: buyer } = useCommerce();
+    const currency = (CONTRACTS.mockToken || CONTRACTS.permitToken) as `0x${string}`;
+    const {
+        decimals: tokenDecimals,
+        balance: tokenBalance,
+        needsAuthorization: needsApproval,
+        authorize: approve,
+        authorization: { isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess },
+        signAndPlace,
+        initiateAsParty,
+        order: { step: commitStep, error: commitError, payload },
+        resetOrder: resetCommitment,
+    } = useCheckout(currency);
+
+    const { items, addItem, removeItem, clearCart, getTotalPrice, getItemCount, fulfillmentMode, setFulfillmentMode } = useCartStore();
+
+    const itemCount = getItemCount();
+    const totalPrice = getTotalPrice();
+    const totalPriceAmount = items.length > 0 && totalPrice ? parseToken(totalPrice, tokenDecimals) : 0n;
+    const buyerBondAmount = totalPriceAmount > 0n
+        ? calculateBonds(totalPriceAmount, totalPriceAmount).buyerBond
+        : 0n;
+
+    const supportedModes: FulfillmentMode[] = useMemo(() => {
+        if (!restaurant?.fulfillmentModes || restaurant.fulfillmentModes.length === 0) {
+            return ALL_FULFILMENT_MODES;
+        }
+        return ALL_FULFILMENT_MODES.filter((m) => restaurant.fulfillmentModes!.includes(m));
+    }, [restaurant?.fulfillmentModes]);
+
+    // Snap fulfilment mode if the cart's persisted choice isn't supported here.
+    useEffect(() => {
+        if (supportedModes.length > 0 && !supportedModes.includes(fulfillmentMode)) {
+            setFulfillmentMode(supportedModes[0]);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [supportedModes]);
+
+    const balance = tokenBalance ?? 0n;
+    const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
+    const isApproving = isApprovePending || isApproveConfirming;
+    const pendingCheckout = useRef(false);
+    const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+    // Auto-chain: when approval confirms, proceed to commit signing.
+    useEffect(() => {
+        if (pendingCheckout.current && isApproveSuccess) {
+            pendingCheckout.current = false;
+            void executeCheckout();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isApproveSuccess]);
+
+    // Post-broadcast: route to /orders/<processId>. Mirrors CartModule's
+    // redirect from Increment 2 — both surfaces converge on the per-order
+    // page after a successful commit.
+    const redirectedForCommitment = useRef<string | null>(null);
+    useEffect(() => {
+        if (commitStep !== "done") return;
+        if (!payload?.commitment) return;
+        const fingerprint = `${payload.commitment.agreementHash}:${payload.commitment.salt}`;
+        if (redirectedForCommitment.current === fingerprint) return;
+        redirectedForCommitment.current = fingerprint;
+        try {
+            const processId = computeCommitmentProcessId(
+                payload.commitment,
+                chainId,
+                CONTRACTS.core,
+            );
+            clearCart();
+            resetCommitment();
+            router.push(`/orders/${processId}`);
+        } catch (cause) {
+            console.error("MerchantDetailView: failed to compute processId", cause);
+            clearCart();
+            resetCommitment();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [commitStep, payload, chainId]);
+
+    if (cataloguesLoading) {
+        return (
+            <div className="container mx-auto px-6 py-16 max-w-3xl">
+                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-3">Merchant</p>
+                <h1 className="text-3xl font-bold text-black">Loading…</h1>
+            </div>
+        );
+    }
+
+    if (!restaurant) {
+        return (
+            <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-3">Merchant not found</p>
+                <h1 className="text-3xl font-bold text-black">No merchant registered for {merchantAddressLower.slice(0, 10)}…</h1>
+                <p className="text-sm text-neutral-600">
+                    The merchant may not be on the local-anvil network you&apos;re connected to,
+                    or may have withdrawn from the operator registry.
+                </p>
+                <Link href="/discover" className="inline-block underline text-sm text-black hover:text-neutral-600">
+                    ← Back to discover
+                </Link>
+            </div>
+        );
+    }
+
+    const handleAddItem = (menuItem: MenuItem) => {
+        addItem({
+            menuItemId: menuItem.id,
+            restaurantId: restaurant.id,
+            restaurantAddress: restaurant.address,
+            restaurantName: restaurant.name,
+            name: menuItem.name,
+            price: menuItem.price,
+            quantity: 1,
+            imageURI: menuItem.image || undefined,
+        });
+    };
+
+    const handleRemoveItem = (menuItemId: string) => {
+        removeItem(menuItemId, restaurant.id);
+    };
+
+    const getItemQuantity = (menuItemId: string) => {
+        const cartItem = items.find(
+            (item) => item.menuItemId === menuItemId && item.restaurantId === restaurant.id,
+        );
+        return cartItem?.quantity || 0;
+    };
+
+    // Filter cart to items from THIS merchant only — the inline cart on this
+    // page is merchant-scoped. Items from other merchants live in the global
+    // cart but aren't shown here.
+    const merchantCartItems = items.filter((it) => it.restaurantId === restaurant.id);
+    const merchantTotalAmount = merchantCartItems.reduce(
+        (sum, item) => sum + parseToken(item.price, tokenDecimals) * BigInt(item.quantity),
+        0n,
+    );
+    const merchantBuyerBond = merchantTotalAmount > 0n
+        ? calculateBonds(merchantTotalAmount, merchantTotalAmount).buyerBond
+        : 0n;
+
+    const executeCheckout = async () => {
+        if (!buyer) {
+            setCheckoutError("Connect your wallet to place an order.");
+            return;
+        }
+        if (merchantCartItems.length === 0) return;
+        const sellerAddress = restaurant.address as `0x${string}`;
+        try {
+            setCheckoutError(null);
+            const prepared = await prepareOrderCommitment({
+                buyer,
+                seller: sellerAddress,
+                currency,
+                payment: merchantTotalAmount,
+                lineItems: merchantCartItems.map((item) => ({
+                    itemId: item.menuItemId,
+                    name: item.name,
+                    quantity: item.quantity,
+                    unitPrice: item.price,
+                })),
+                manifestFields: {
+                    origin: "",
+                    destination: "",
+                    fulfilmentMethod: fulfillmentMode,
+                    handoffMode: mapFulfilmentToHandoff(fulfillmentMode),
+                },
+            });
+            const immediateCommit = isE2EMockSession() || isE2EDevnetSession();
+            if (immediateCommit) {
+                await signAndPlace(
+                    prepared.commitment,
+                    prepared.commitmentMeta,
+                    "buyer",
+                );
+            } else {
+                await initiateAsParty(
+                    prepared.commitment,
+                    "buyer",
+                    prepared.commitmentMeta,
+                );
+            }
+            // Redirect is owned by the commitStep === "done" useEffect above.
+        } catch (cause: unknown) {
+            const msg = cause instanceof Error ? cause.message : "Signing failed";
+            setCheckoutError(msg);
+        }
+    };
+
+    const handlePlaceOrder = () => {
+        if (!buyer) {
+            setCheckoutError("Connect your wallet to place an order.");
+            return;
+        }
+        if (merchantCartItems.length === 0) return;
+        if (hasInsufficientBalance) {
+            setCheckoutError(
+                `Insufficient funds. Required: ${formatToken(merchantBuyerBond, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
+            );
+            return;
+        }
+        setCheckoutError(null);
+        if (needsApproval(merchantBuyerBond)) {
+            try {
+                pendingCheckout.current = true;
+                approve(merchantBuyerBond * 10n);
+            } catch {
+                pendingCheckout.current = false;
+                setCheckoutError("Payment authorization failed. Please try again.");
+            }
+        } else {
+            void executeCheckout();
+        }
+    };
+
+    const categories = Array.from(new Set(restaurant.menu.map((item) => item.category)));
+    const placingOrder = commitStep === "signing" || commitStep === "broadcasting" || commitStep === "ready";
+
+    return (
+        <MerchantBrandingModule sellerAddress={merchantAddressTyped}>
+            <div data-testid="merchant-detail-view" data-merchant-address={merchantAddressLower} className="container mx-auto px-6 py-10 max-w-5xl space-y-8">
+                <div>
+                    <Link
+                        href="/discover"
+                        className="text-sm text-neutral-500 hover:text-black"
+                    >
+                        ← Back to discover
+                    </Link>
+                </div>
+
+                {/* Hero */}
+                <header className="rounded-3xl border border-neutral-200 bg-white p-8 space-y-4">
+                    <div className="flex flex-wrap items-start gap-5">
+                        <MerchantLogo
+                            sellerAddress={merchantAddressTyped}
+                            fallbackEmoji={restaurant.image}
+                            size={88}
+                        />
+                        <div className="flex-1 min-w-0">
+                            <p
+                                className="text-xs font-semibold uppercase tracking-widest text-neutral-500"
+                                style={accentTone ? { color: accentTone } : undefined}
+                            >
+                                {restaurant.cuisine}
+                            </p>
+                            <h1 className="mt-1 text-4xl font-bold text-black">{restaurant.name}</h1>
+                            <p className="mt-3 max-w-2xl text-base text-neutral-700">{restaurant.description}</p>
+                            <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
+                                {restaurant.deliveryTime && <span>⏱️ {restaurant.deliveryTime}</span>}
+                                {restaurant.minimumOrder && <span>Min order: {restaurant.minimumOrder} ETH</span>}
+                                {restaurant.acceptedTokens && restaurant.acceptedTokens.length > 0 && (
+                                    <span data-testid="merchant-accepted-tokens">
+                                        Accepts: {restaurant.acceptedTokens.map((t) => t.symbol).join(", ")}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-8 items-start">
+                    {/* Menu */}
+                    <section className="space-y-8" data-testid="merchant-menu">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Menu</p>
+                        {categories.map((category) => (
+                            <div key={category}>
+                                <h2 className="text-lg font-semibold text-black mb-3">{category}</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {restaurant.menu
+                                        .filter((item) => item.category === category)
+                                        .map((menuItem) => {
+                                            const quantity = getItemQuantity(menuItem.id);
+                                            return (
+                                                <div
+                                                    key={menuItem.id}
+                                                    className="bg-white border border-neutral-200 rounded-lg p-4 hover:border-blue-400 transition-all shadow-sm"
+                                                    data-testid={`menu-item-${menuItem.id}`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <ContentImage
+                                                            src={menuItem.image}
+                                                            alt={menuItem.name}
+                                                            className="w-12 h-12 rounded object-cover text-3xl flex items-center justify-center"
+                                                        />
+                                                        <div className="flex-1">
+                                                            <h3 className="font-semibold text-black mb-1">{menuItem.name}</h3>
+                                                            <p className="text-sm text-neutral-500 mb-2">{menuItem.description}</p>
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="font-semibold text-blue-700" style={accentTone ? { color: accentTone } : undefined}>
+                                                                    {menuItem.price} ETH
+                                                                </span>
+                                                                {quantity === 0 ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleAddItem(menuItem)}
+                                                                        disabled={!menuItem.available}
+                                                                        className="rounded border border-black px-3 py-1.5 text-sm font-semibold text-black hover:bg-neutral-100 disabled:opacity-40"
+                                                                        style={menuItem.available && accentTone ? { backgroundColor: accentTone, borderColor: accentTone, color: "#ffffff" } : undefined}
+                                                                        data-testid={`btn-add-${menuItem.id}`}
+                                                                    >
+                                                                        Add
+                                                                    </button>
+                                                                ) : (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleRemoveItem(menuItem.id)}
+                                                                            className="w-8 h-8 rounded border border-neutral-300 bg-white text-black hover:bg-neutral-100"
+                                                                            aria-label={`Remove one ${menuItem.name}`}
+                                                                        >
+                                                                            −
+                                                                        </button>
+                                                                        <span className="w-6 text-center text-black font-semibold">{quantity}</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleAddItem(menuItem)}
+                                                                            className="w-8 h-8 rounded border border-black bg-black text-white hover:bg-neutral-800"
+                                                                            style={accentTone ? { backgroundColor: accentTone, borderColor: accentTone } : undefined}
+                                                                            aria-label={`Add another ${menuItem.name}`}
+                                                                        >
+                                                                            +
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                </div>
+                            </div>
+                        ))}
+                    </section>
+
+                    {/* Inline cart */}
+                    <aside
+                        className="sticky top-6 rounded-lg border border-neutral-200 bg-white p-5 space-y-4"
+                        data-testid="merchant-cart"
+                    >
+                        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Order</p>
+                        {merchantCartItems.length === 0 ? (
+                            <p className="text-sm text-neutral-500">
+                                Your cart is empty. Add items from the menu to start an order with{" "}
+                                <span className="font-semibold text-black">{restaurant.name}</span>.
+                            </p>
+                        ) : (
+                            <>
+                                <ul className="space-y-2 text-sm">
+                                    {merchantCartItems.map((item) => (
+                                        <li key={item.menuItemId} className="flex justify-between gap-3">
+                                            <span className="text-neutral-700">
+                                                {item.quantity}× {item.name}
+                                            </span>
+                                            <span className="text-neutral-900 font-semibold">
+                                                {(parseFloat(item.price) * item.quantity).toFixed(4)} ETH
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <div className="border-t border-neutral-200 pt-3 space-y-1 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-neutral-600">Total</span>
+                                        <span className="font-semibold text-black">
+                                            {formatToken(merchantTotalAmount, tokenDecimals)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-neutral-500">Your buyer bond (locked, returned at settlement)</span>
+                                        <span className="text-neutral-700">
+                                            {formatToken(merchantBuyerBond, tokenDecimals)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1">
+                                        Fulfilment
+                                    </p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {supportedModes.map((mode) => (
+                                            <button
+                                                key={mode}
+                                                type="button"
+                                                onClick={() => setFulfillmentMode(mode)}
+                                                className={`text-xs rounded border px-2 py-1 ${
+                                                    fulfillmentMode === mode
+                                                        ? "border-black bg-black text-white"
+                                                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
+                                                }`}
+                                                style={fulfillmentMode === mode && accentTone
+                                                    ? { backgroundColor: accentTone, borderColor: accentTone }
+                                                    : undefined}
+                                                data-testid={`btn-fulfilment-${mode}`}
+                                            >
+                                                {FULFILMENT_MODE_LABELS[mode] ?? mode}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <Button
+                                    onClick={handlePlaceOrder}
+                                    disabled={
+                                        !buyer
+                                        || isApproving
+                                        || placingOrder
+                                        || merchantCartItems.length === 0
+                                    }
+                                    data-testid="btn-place-order"
+                                    className="w-full"
+                                >
+                                    {!buyer
+                                        ? "Connect wallet to order"
+                                        : isApproving
+                                            ? "Approving payment…"
+                                            : placingOrder
+                                                ? "Placing order…"
+                                                : "Place order"}
+                                </Button>
+
+                                {(checkoutError || commitError) && (
+                                    <p className="text-sm text-red-600" data-testid="merchant-checkout-error">
+                                        {checkoutError ?? commitError}
+                                    </p>
+                                )}
+                            </>
+                        )}
+                    </aside>
+                </div>
+            </div>
+        </MerchantBrandingModule>
+    );
+}

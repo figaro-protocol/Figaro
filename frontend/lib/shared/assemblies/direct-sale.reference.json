@@ -129,6 +129,7 @@
                 "capability-rail",
                 "process-capital-summary",
                 "incoming-orders",
+                "merchant-fulfilment",
                 "catalogue-editor",
                 "handoff-details",
                 "event-timeline"
@@ -170,19 +171,24 @@
             "priority": 1
         },
         {
-            "moduleId": "catalogue-editor",
+            "moduleId": "merchant-fulfilment",
             "slot": "main",
             "priority": 2
         },
         {
-            "moduleId": "handoff-details",
+            "moduleId": "catalogue-editor",
             "slot": "main",
             "priority": 3
         },
         {
-            "moduleId": "event-timeline",
+            "moduleId": "handoff-details",
             "slot": "main",
             "priority": 4
+        },
+        {
+            "moduleId": "event-timeline",
+            "slot": "main",
+            "priority": 5
         }
     ],
     "capabilityPresentation": [

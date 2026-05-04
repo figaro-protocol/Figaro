@@ -50,6 +50,11 @@ export const config = createConfig({
         [activeChain.id]: mockAwareHttp(rpcUrl, { batch: false }),
     } as Record<number, ReturnType<typeof mockAwareHttp>>,
     connectors,
+    // EIP-6963 multi-injected-provider discovery. Default in wagmi v2 is `true`;
+    // setting explicitly because multiple call sites (ClientInit, useCommitmentFlow)
+    // assume discovery is happening. Disabling it would silently break MetaMask /
+    // Rabby / Frame side-by-side selection.
+    multiInjectedProviderDiscovery: true,
 });
 
 export default config;

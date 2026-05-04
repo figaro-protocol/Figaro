@@ -17,7 +17,9 @@ import type { Order } from "@/lib/core/store";
 import {
     collectDescendants,
     createSyntheticSubOrder,
+    deriveFulfilmentMethod,
     editSyntheticAgreement,
+    FULFILMENT_METHOD_LABELS,
     isRootOrder,
     mergeSyntheticParent,
     swapSyntheticFulfilmentMethod,
@@ -25,6 +27,7 @@ import {
     type CanonicalFulfilmentMethod,
     type SyntheticProcessSession,
 } from "@/lib/designer/syntheticProcess";
+import { CANONICAL_FULFILMENT_METHODS_LIST } from "@/lib/core/orderAgreement";
 import {
     clearCurrentSession,
     saveCurrentSession,
@@ -232,6 +235,12 @@ export default function EditAssemblyPage({ params }: Props) {
         return `Stage 2+ — ${orders.length}-node DAG`;
     }, [orders.length]);
 
+    const rootOrder = useMemo(
+        () => orders.find((o) => isRootOrder(o.id, orders)) ?? null,
+        [orders],
+    );
+    const rootFulfilment = rootOrder ? deriveFulfilmentMethod(rootOrder) : null;
+
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
         if (slug) return `Saved as draft "${name}" · autosaved ${formatRelative(savedAt)}`;
@@ -259,6 +268,28 @@ export default function EditAssemblyPage({ params }: Props) {
                     Forked from {reference.identity.name}
                 </span>
                 <span className="text-xs text-neutral-500">{stageLabel}</span>
+                {rootOrder && rootFulfilment && (
+                    <label className="text-xs text-neutral-500 flex items-center gap-1.5">
+                        <span>Root fulfilment</span>
+                        <select
+                            data-testid="designer-root-fulfilment"
+                            value={rootFulfilment}
+                            onChange={(e) =>
+                                handleSwapMechanism(
+                                    rootOrder.id,
+                                    e.target.value as CanonicalFulfilmentMethod,
+                                )
+                            }
+                            className="text-xs px-2 py-1 rounded border border-neutral-300 bg-white hover:border-neutral-400 text-black"
+                        >
+                            {CANONICAL_FULFILMENT_METHODS_LIST.map((method) => (
+                                <option key={method} value={method}>
+                                    {FULFILMENT_METHOD_LABELS[method]}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                )}
                 <button
                     type="button"
                     onClick={handleSaveDraft}
@@ -287,7 +318,7 @@ export default function EditAssemblyPage({ params }: Props) {
                         Forked design
                     </p>
                     <p className="text-sm text-neutral-700 leading-relaxed max-w-2xl">
-                        Pre-populated from <strong>{reference.identity.name}</strong> ({reference.roles.length} roles · {reference.mechanisms.filter((m) => m.enabled).length} active mechanisms). The seed produced the canonical tree (root commitment + sub-orders implied by the assembly&apos;s declarations). Modify it: drag the green handle on any node to add a sub-order, click an edge pill to swap fulfilment method, click a node to edit its baseline-graph clauses (Geo · GHG · Topology). Save as a draft (local storage); publishing to the on-chain registry is a follow-up.
+                        Pre-populated from <strong>{reference.identity.name}</strong> ({reference.roles.length} roles · {reference.mechanisms.filter((m) => m.enabled).length} active mechanisms). The seed produced the canonical tree (root commitment + sub-orders implied by the assembly&apos;s declarations). Modify it: drag the green handle on any node to add a sub-order, click an edge pill to swap fulfilment method on a sub-order, change the root&apos;s fulfilment with the toolbar selector above, click a node to edit its baseline-graph clauses (Geo · GHG · Topology). Save as a draft (local storage); publishing to the on-chain registry is a follow-up.
                     </p>
                 </div>
                 <ProcessGraphCanvas

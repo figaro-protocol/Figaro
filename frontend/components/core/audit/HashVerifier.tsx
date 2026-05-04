@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /verify — in-browser hash verification for the audit-bundle pipeline.
+ * HashVerifier — in-browser hash verification for the audit-bundle pipeline.
  *
  * Phase E of the financial-statements deliverable. Auditors / reviewers
  * paste content (an Agreement JSON, a single section, or a raw hash) and
@@ -14,11 +14,11 @@
  *     its leaf hash, optionally compare to an expected leaf.
  *
  *   • Mode C — Search: paste any hex hash (e.g. from the audit-bundle
- *     PDF's hash appendix); the page searches the locally-loaded
+ *     PDF's hash appendix); the component searches the locally-loaded
  *     orders + agreements and reports which event field / section / leaf
- *     matches it. Useful when an auditor has the PDF in hand and wants
- *     to chase a hash to its on-chain anchor without re-reading the
- *     whole bundle.
+ *     matches it. Used both standalone (auditor with a hash but no
+ *     process) and inside `/audit/[processId]` (search scoped to the
+ *     wallet's visible orders, including the current process).
  *
  * No server round-trip; all computation is client-side via the same
  * `computeAgreementHash` / `computeSectionLeaf` SDK functions the protocol
@@ -41,16 +41,16 @@ import { loadAgreement } from "@/lib/core/agreementStore";
 
 type Mode = "agreement" | "section" | "search";
 
-export default function VerifyPage() {
+export function HashVerifier() {
     const [mode, setMode] = useState<Mode>("agreement");
 
     return (
-        <div className="container mx-auto px-6 py-10 max-w-3xl space-y-8" data-testid="verify-page">
+        <div className="space-y-6" data-testid="verify-page">
             <header className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
                     Verification
                 </p>
-                <h1 className="text-2xl font-bold text-black">Audit-bundle hash verifier</h1>
+                <h2 className="text-xl font-bold text-black">Audit-bundle hash verifier</h2>
                 <p className="text-sm text-neutral-700 max-w-2xl">
                     Paste content or a hash from an audit bundle to verify against
                     chain. All computation is client-side via the same SDK
@@ -369,8 +369,8 @@ function SearchMode() {
             {hash.trim() && hits.length === 0 && (
                 <div className="rounded border border-neutral-200 bg-neutral-50 p-4 text-xs text-neutral-600" data-testid="verify-search-no-hits">
                     No match in locally-loaded orders + agreements. Try modes A or B
-                    with the hash&apos;s source content, or load the relevant
-                    process via /financials/[processId] first.
+                    with the hash&apos;s source content, or open the relevant
+                    process audit at /audit/[processId] first.
                 </div>
             )}
             {hits.length > 0 && (

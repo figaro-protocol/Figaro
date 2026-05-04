@@ -80,6 +80,7 @@ describe('analytical modules in assembly schema', () => {
             'job-market',
             'catalogue-editor',
             'incoming-orders',
+            'merchant-fulfilment',
         ]);
         expect(BUILT_IN_RUNTIME_SHELL_MODULE_IDS.some((moduleId) => BUILT_IN_ASSEMBLY_COMPOSITION_MODULE_IDS.includes(moduleId))).toBe(false);
     });

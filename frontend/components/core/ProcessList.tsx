@@ -210,14 +210,14 @@ export function ProcessList() {
                                     )}
                                 </button>
 
-                                {/* Financials link — process consolidated view */}
+                                {/* Audit link — process-consolidated audit surface */}
                                 <div className="ml-4 mt-1">
                                     <Link
-                                        href={`/financials/${s.processId}`}
-                                        data-testid={`process-financials-link-${s.processId.slice(0, 10)}`}
+                                        href={`/audit/${s.processId}`}
+                                        data-testid={`process-audit-link-${s.processId.slice(0, 10)}`}
                                         className="text-[10px] font-mono text-neutral-500 hover:text-black hover:underline"
                                     >
-                                        Financials →
+                                        Audit →
                                     </Link>
                                 </div>
 

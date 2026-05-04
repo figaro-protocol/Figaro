@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /financials/[processId] — consolidated process-level financials.
+ * ProcessFinancialsView — consolidated process-level financials view.
  *
  * Reads orders for the process from useProcessOrders, projects them via
  * `projectFinancials`, and renders an invoice-style view:
@@ -18,18 +18,15 @@
  *   • Cash-flow log: every commit/resolve transfer with on-chain amount,
  *     collapsible per-line.
  *
- * Phase B of the financial-statements deliverable. Phases C–E layer the
- * 5-document PDF auditor bundle on top.
+ * Used by `/audit/[processId]`. Phase B of the financial-statements
+ * deliverable. Phases C–E layer the 5-document PDF auditor bundle on top.
  */
 
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import { formatUnits } from "viem";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import {
     projectFinancials,
     checkBalanceSheetIdentity,
-    type BalanceSheetEntry,
     type FinancialsModel,
     type OrderLineItem,
 } from "@/lib/semantic/financialsProjection";
@@ -56,24 +53,17 @@ function shortHash(hash: string | undefined): string {
     return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
 }
 
-export default function ProcessFinancialsPage() {
-    const params = useParams<{ processId: string }>();
-    const processId = params?.processId ?? null;
+interface Props {
+    processId: string;
+}
+
+export function ProcessFinancialsView({ processId }: Props) {
     const orders = useProcessOrders(processId);
-
-    if (!processId) {
-        return (
-            <div className="container mx-auto px-6 py-12">
-                <p className="text-sm text-neutral-500">No process id in URL.</p>
-            </div>
-        );
-    }
-
     const model = projectFinancials(orders, "process", processId);
     const buyer = orders[0]?.buyer;
 
     return (
-        <div className="container mx-auto px-6 py-10 max-w-5xl space-y-10" data-testid="financials-page">
+        <div className="space-y-10" data-testid="financials-view">
             {/* Header */}
             <header className="space-y-2">
                 <div className="flex items-start justify-between gap-4">
@@ -81,9 +71,9 @@ export default function ProcessFinancialsPage() {
                         <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
                             Process financials
                         </p>
-                        <h1 className="text-2xl font-bold text-black">
+                        <h2 className="text-xl font-bold text-black">
                             Consolidated statement
-                        </h1>
+                        </h2>
                     </div>
                     <DownloadAuditBundleButton processId={processId} orders={orders} />
                 </div>
@@ -107,10 +97,7 @@ export default function ProcessFinancialsPage() {
                     — interpretation under GAAP/IFRS requires accountant judgment
                     (see Paper G). Amounts displayed in 18-decimal units; per-token
                     decimals lookup is a future enhancement — reconcile against
-                    chain using the raw smallest-units value if needed.{" "}
-                    <Link href="/verify" className="underline hover:text-black" data-testid="financials-verify-link">
-                        Verify a hash from the bundle →
-                    </Link>
+                    chain using the raw smallest-units value if needed.
                 </p>
             </header>
 
@@ -132,9 +119,9 @@ export default function ProcessFinancialsPage() {
             {/* Cash flow log */}
             {model.cashFlow.length > 0 && (
                 <section className="space-y-3" data-testid="financials-cashflow">
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-700">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-700">
                         Cash flow
-                    </h2>
+                    </h3>
                     <p className="text-[11px] text-neutral-500">
                         Every transfer recorded by the kernel for orders in this process,
                         in input order. Each row is one on-chain ERC-20 transfer.
@@ -185,9 +172,9 @@ function CurrencySegment({ currency, model }: { currency: string; model: Financi
     return (
         <section className="space-y-6" data-testid={`financials-currency-${currency}`}>
             <div className="flex items-baseline justify-between">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-700">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-700">
                     Currency {shortAddr(currency)}
-                </h2>
+                </h3>
                 <span
                     className={`text-[10px] font-mono px-2 py-0.5 rounded ${identityHolds ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}
                     title="Assets = Liabilities + Retained earnings"
@@ -213,9 +200,9 @@ function CurrencySegment({ currency, model }: { currency: string; model: Financi
 
             {/* Income statement */}
             <div className="bg-white border border-neutral-200 rounded-lg p-5 space-y-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-600 mb-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-600 mb-3">
                     Income statement
-                </h3>
+                </h4>
                 <Row label="Sales (commit-time)" amount={ist.sales} />
                 <Row label="Cost (resolve-time)" amount={ist.cost} />
                 <div className="border-t border-neutral-200 mt-2 pt-2">
@@ -225,9 +212,9 @@ function CurrencySegment({ currency, model }: { currency: string; model: Financi
 
             {/* Line items — invoice-style detail */}
             <div className="space-y-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-600">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-600">
                     Line items ({lineItems.length})
-                </h3>
+                </h4>
                 <p className="text-[11px] text-neutral-500">
                     One row per order in the process tree. Sum of contributions across
                     rows reconciles to the aggregates above.
@@ -266,9 +253,9 @@ function BalanceSheetColumn({ title, rows, total }: {
 }) {
     return (
         <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-600 mb-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-600 mb-3">
                 {title}
-            </h3>
+            </h4>
             <div className="space-y-1">
                 {rows.map(([label, amount]) => (
                     <Row key={label} label={label} amount={amount} small />
@@ -321,6 +308,3 @@ function LineItemRow({ item }: { item: OrderLineItem }) {
         </tr>
     );
 }
-
-// Suppress unused warning for the imported type — used at typecheck time only.
-export type { BalanceSheetEntry };

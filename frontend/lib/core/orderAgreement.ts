@@ -11,6 +11,8 @@ import {
     GHG_SCHEMA_TO_STANDARD,
     HANDOFF_SCHEMA_KEY,
     JURISDICTION_SCHEMA_KEY,
+    CONSENT_SCHEMA_KEY,
+    MERCHANT_PROCESS_SCHEMA_KEY,
     PROXIMITY_POLICY_SCHEMA_KEY,
     getSection,
     manifestFieldsToGeoSection,
@@ -147,6 +149,9 @@ export interface AgreementSummary {
     fulfilment?: Record<string, unknown>;
     handoff?: Record<string, unknown>;
     ghg?: Record<string, unknown>;
+    proximity?: Record<string, unknown>;
+    jurisdiction?: Record<string, unknown>;
+    consent?: Record<string, unknown>;
 }
 
 export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreement {
@@ -185,6 +190,15 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         sections.push({
             schema: FULFILMENT_SCHEMA_KEY,
             data: { method: canonicalFulfilmentMethod },
+        });
+        // Authorize the seller's sovereign merchant event log against this
+        // order's agreementHash. Category-1: empty sectionData; the runtime
+        // attestation supplies the eventType + evidenceUri content. Without
+        // this section the on-chain inclusion proof for figaro-merchant-
+        // process-v1 attestations cannot open.
+        sections.push({
+            schema: MERCHANT_PROCESS_SCHEMA_KEY,
+            data: {},
         });
     }
 
@@ -229,6 +243,16 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         sections.push({
             schema: JURISDICTION_SCHEMA_KEY,
             data,
+        });
+    }
+
+    const documentHash = readManifestExtra(params.manifestFields, ["documentHash"]);
+    const documentVersion = readManifestExtra(params.manifestFields, ["documentVersion"]);
+    const documentTitle = readManifestExtra(params.manifestFields, ["documentTitle"]);
+    if (documentHash && documentVersion && documentTitle) {
+        sections.push({
+            schema: CONSENT_SCHEMA_KEY,
+            data: { documentHash, documentVersion, documentTitle },
         });
     }
 
@@ -278,6 +302,9 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
     const topologySection = getSection(agreement, TOPOLOGY_SCHEMA_KEY);
     const fulfilmentSection = getSection(agreement, FULFILMENT_SCHEMA_KEY);
     const handoffSection = getSection(agreement, HANDOFF_SCHEMA_KEY);
+    const proximitySection = getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
+    const jurisdictionSection = getSection(agreement, JURISDICTION_SCHEMA_KEY);
+    const consentSection = getSection(agreement, CONSENT_SCHEMA_KEY);
     // GHG disclosure can be under any of 5 sister schemaIds — find whichever is present.
     const ghgSectionEntry = GHG_DISCLOSURE_SCHEMA_KEYS
         .map((key) => ({ key, section: getSection(agreement, key) }))
@@ -312,5 +339,8 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
         ghg: ghgSection
             ? { ...(ghgStandard ? { standard: ghgStandard } : {}), ...ghgSection.data }
             : undefined,
+        proximity: proximitySection?.data,
+        jurisdiction: jurisdictionSection?.data,
+        consent: consentSection?.data,
     };
 }

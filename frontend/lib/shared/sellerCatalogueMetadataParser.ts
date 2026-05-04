@@ -148,6 +148,7 @@ export function parseSellerCatalogueDocument(value: unknown, sourceLabel = "sell
             record.archetypeId,
             new Set([
                 "merchant-one-hop-delivery",
+                "merchant-direct-sale",
                 "bonded-procurement-supplier",
                 "disclosure-review-operator",
                 "equipment-rental-operator",

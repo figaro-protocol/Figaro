@@ -1,0 +1,41 @@
+"use client";
+
+/**
+ * /audit — generic hash-verification surface (no processId).
+ *
+ * The auditor case: someone with a hash from an audit-bundle PDF but no
+ * specific process id wants to chase the hash to its on-chain source. The
+ * `<HashVerifier>` component's search mode walks every order + agreement
+ * the connected wallet can see; the agreement and section modes are
+ * standalone (paste the JSON, get the hash).
+ *
+ * For process-bound audit (financials + audit bundle + verify scoped to
+ * the current process), use `/audit/[processId]`.
+ *
+ * The legacy `/verify` route redirects here.
+ */
+
+import { HashVerifier } from "@/components/core/audit/HashVerifier";
+
+export default function AuditPage() {
+    return (
+        <div className="container mx-auto px-6 py-10 max-w-3xl space-y-8" data-testid="audit-generic-page">
+            <header className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                    Audit
+                </p>
+                <h1 className="text-2xl font-bold text-black">
+                    Hash verifier
+                </h1>
+                <p className="text-sm text-neutral-700 max-w-2xl">
+                    Paste content or a hash from an audit bundle to verify against
+                    chain. For process-bound audit (financials, audit-bundle PDF,
+                    and verifier scoped to the process), open <code>/audit/[processId]</code>{" "}
+                    directly.
+                </p>
+            </header>
+
+            <HashVerifier />
+        </div>
+    );
+}

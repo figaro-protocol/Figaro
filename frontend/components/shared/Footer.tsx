@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { FIGARO_TELEGRAM_URL } from "@/lib/shared/groupsRegistry";
 
 const COL_HEADER_CLS =
     "text-xs uppercase tracking-wider text-gray-500 font-semibold mb-4";
@@ -26,17 +25,18 @@ export function Footer() {
                         <div className="space-y-2">
                             <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
                             <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
+                            <Link href="/builders/composability" className={COL_LINK_CLS}>Composability — architecture</Link>
+                            <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
                             <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
                             <Link href="/operators" className={COL_LINK_CLS}>Operators</Link>
-                            <Link href="/verify" className={COL_LINK_CLS}>Verify</Link>
+                            <Link href="/audit" className={COL_LINK_CLS}>Audit</Link>
                         </div>
                     </div>
                     <div>
                         <h4 className={COL_HEADER_CLS}>Ecosystem</h4>
                         <div className="space-y-2">
                             <Link href="/groups" className={COL_LINK_CLS}>Working Groups</Link>
-                            <Link href="/treasuries" className={COL_LINK_CLS}>Treasuries</Link>
-                            <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce</Link>
+                            <Link href="/discover" className={COL_LINK_CLS}>Discover operators</Link>
                             <Link href="/fig" className={COL_LINK_CLS}>FIG Token</Link>
                             <Link href="/fig/design" className={COL_LINK_CLS}>FIG Design</Link>
                         </div>
@@ -52,14 +52,6 @@ export function Footer() {
                                 className={COL_LINK_CLS}
                             >
                                 GitHub
-                            </a>
-                            <a
-                                href={FIGARO_TELEGRAM_URL}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={COL_LINK_CLS}
-                            >
-                                Telegram
                             </a>
                         </div>
                     </div>

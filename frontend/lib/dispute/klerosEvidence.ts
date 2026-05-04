@@ -96,7 +96,7 @@ export interface KlerosEvidence {
  * — pinned to IPFS as a binary blob. This wrapper points the arbitrator
  * at it. When `redacted` is true, commerce line items are sealed (the
  * merkle root still verifies; individual sections can be revealed via
- * Mode B on /verify if the arbitrator requests them).
+ * Mode B on /audit if the arbitrator requests them).
  */
 export function buildAuditBundleEvidence(
     processId: string,

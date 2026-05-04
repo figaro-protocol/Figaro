@@ -4,7 +4,6 @@ import { DisciplineGlyph } from "@/components/shared/DisciplineGlyph";
 import { MarketingHero } from "@/components/shared/MarketingHero";
 import { MarketingSection } from "@/components/shared/MarketingSection";
 import {
-    FIGARO_TELEGRAM_URL,
     GROUPS_REGISTRY,
     disciplineHasConvenedGroup,
 } from "@/lib/shared/groupsRegistry";
@@ -59,21 +58,6 @@ export default function Groups() {
                     </>
                 }
             />
-
-            <MarketingSection eyebrow="Conversation">
-                <p className="text-sm text-gray-700 leading-relaxed">
-                    Project-wide coordination happens on{" "}
-                    <a
-                        href={FIGARO_TELEGRAM_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline hover:text-black"
-                    >
-                        Telegram
-                    </a>
-                    . Groups with their own dedicated channels surface them inline below. Local meetups and international correspondences are encouraged; the taxonomy is fixed but geography and cadence are whatever contributors decide.
-                </p>
-            </MarketingSection>
 
             <MarketingSection eyebrow="Cryptoeconomic working groups" title="Eight disciplines, eight lenses.">
                 <p className="text-sm text-gray-700 leading-relaxed mb-8">

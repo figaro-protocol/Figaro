@@ -77,6 +77,34 @@
                 }
             ],
             "version": "1.0.0"
+        },
+        {
+            "subjectAddress": "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
+            "subjectKind": "merchant",
+            "displayName": "Carlo's Espresso Bar",
+            "profileURI": "ipfs://figaro/subjects/carlos-espresso-bar.profile.json",
+            "bindingRefs": [
+                {
+                    "refKind": "binding",
+                    "uri": "ipfs://figaro/bindings/carlos-espresso-bar.binding.json",
+                    "contentHash": "bafybeicarlosbinding"
+                }
+            ],
+            "version": "1.0.0"
+        },
+        {
+            "subjectAddress": "0xBcd4042DE499D14e55001CcbB24a551F3b954096",
+            "subjectKind": "merchant",
+            "displayName": "Union Square Greens Stand",
+            "profileURI": "ipfs://figaro/subjects/union-square-greens.profile.json",
+            "bindingRefs": [
+                {
+                    "refKind": "binding",
+                    "uri": "ipfs://figaro/bindings/union-square-greens.binding.json",
+                    "contentHash": "bafybeiunionsquarebinding"
+                }
+            ],
+            "version": "1.0.0"
         }
     ],
     "assemblyBindings": [
@@ -251,6 +279,62 @@
             "metadataHash": "bafybeimariametadatahash",
             "assetURI": "ipfs://figaro/freelance/maria-castelli.assets.json",
             "assetHash": "bafybeimariaassethash",
+            "effectiveFrom": "2026-03-19T00:00:00Z",
+            "version": "1.0.0"
+        },
+        {
+            "bindingId": "binding:carlos-espresso-bar:direct-sale:local-anvil",
+            "subjectAddress": "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
+            "archetypeId": "merchant-direct-sale",
+            "assemblySlug": "direct-sale",
+            "networkTargets": [
+                "local-anvil"
+            ],
+            "roleBindings": [
+                {
+                    "roleKind": "merchant-operator",
+                    "assemblyRoleKinds": [
+                        "merchant"
+                    ],
+                    "scope": "assembly",
+                    "mechanismIds": [
+                        "core-orders"
+                    ],
+                    "notes": "Direct-sale binding for Carlo's Espresso Bar — counter-service coffee shop covering consume-onsite (cafe seating) and pickup (counter / takeaway). Direct-sale only; no delivery."
+                }
+            ],
+            "metadataURI": "ipfs://figaro/merchants/carlos-espresso-bar.metadata.json",
+            "metadataHash": "bafybeicarlosmetadatahash",
+            "assetURI": "ipfs://figaro/merchants/carlos-espresso-bar.assets.json",
+            "assetHash": "bafybeicarlosassethash",
+            "effectiveFrom": "2026-03-19T00:00:00Z",
+            "version": "1.0.0"
+        },
+        {
+            "bindingId": "binding:union-square-greens:direct-sale:local-anvil",
+            "subjectAddress": "0xBcd4042DE499D14e55001CcbB24a551F3b954096",
+            "archetypeId": "merchant-direct-sale",
+            "assemblySlug": "direct-sale",
+            "networkTargets": [
+                "local-anvil"
+            ],
+            "roleBindings": [
+                {
+                    "roleKind": "merchant-operator",
+                    "assemblyRoleKinds": [
+                        "merchant"
+                    ],
+                    "scope": "assembly",
+                    "mechanismIds": [
+                        "core-orders"
+                    ],
+                    "notes": "Direct-sale binding for Union Square Greens — farmers'-market produce stall, pickup-at-stall only."
+                }
+            ],
+            "metadataURI": "ipfs://figaro/merchants/union-square-greens.metadata.json",
+            "metadataHash": "bafybeiunionsquaremetadatahash",
+            "assetURI": "ipfs://figaro/merchants/union-square-greens.assets.json",
+            "assetHash": "bafybeiunionsquareassethash",
             "effectiveFrom": "2026-03-19T00:00:00Z",
             "version": "1.0.0"
         }
@@ -478,6 +562,114 @@
                 "themeClass": "freelancer-castelli"
             },
             "version": "1.0.0"
+        },
+        {
+            "subjectAddress": "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
+            "archetypeId": "merchant-direct-sale",
+            "merchantId": "carlos-espresso-bar",
+            "slug": "carlos-espresso-bar",
+            "name": "Carlo's Espresso Bar",
+            "description": "Counter-service espresso bar. Italian roast, Neapolitan style. Cafe seating + takeaway.",
+            "cuisine": "Coffee",
+            "fulfillmentModes": [
+                "consume-onsite",
+                "pickup"
+            ],
+            "location": {
+                "geohash": "dr5ru",
+                "addressText": "West Village, NY"
+            },
+            "serviceAreas": [
+                {
+                    "geohashPrefix": "dr5",
+                    "label": "NYC metro"
+                }
+            ],
+            "estimatedFulfillment": "3-5 min",
+            "menu": [
+                {
+                    "id": "espresso-double",
+                    "name": "Double Espresso",
+                    "description": "Standard double shot.",
+                    "price": "0.0015",
+                    "currencySymbol": "ETH",
+                    "category": "Coffee",
+                    "available": true
+                },
+                {
+                    "id": "cappuccino",
+                    "name": "Cappuccino",
+                    "description": "Espresso with steamed milk and microfoam.",
+                    "price": "0.002",
+                    "currencySymbol": "ETH",
+                    "category": "Coffee",
+                    "available": true
+                },
+                {
+                    "id": "cornetto",
+                    "name": "Cornetto",
+                    "description": "Italian-style breakfast pastry.",
+                    "price": "0.001",
+                    "currencySymbol": "ETH",
+                    "category": "Pastry",
+                    "available": true
+                }
+            ],
+            "branding": {
+                "displayName": "Carlo's Espresso Bar",
+                "logoURI": "ipfs://example/carlos-logo.png",
+                "accentColor": "#78350f",
+                "themeClass": "merchant-coffee"
+            },
+            "version": "1.0.0"
+        },
+        {
+            "subjectAddress": "0xBcd4042DE499D14e55001CcbB24a551F3b954096",
+            "archetypeId": "merchant-direct-sale",
+            "merchantId": "union-square-greens",
+            "slug": "union-square-greens",
+            "name": "Union Square Greens Stand",
+            "description": "Hudson Valley produce, herbs, and preserves. Farmers'-market stall — pickup only.",
+            "fulfillmentModes": [
+                "pickup"
+            ],
+            "location": {
+                "geohash": "dr5ru",
+                "addressText": "Union Square Greenmarket, NY"
+            },
+            "serviceAreas": [
+                {
+                    "geohashPrefix": "dr5",
+                    "label": "NYC metro"
+                }
+            ],
+            "menu": [
+                {
+                    "id": "heirloom-tomatoes",
+                    "name": "Heirloom Tomatoes (1 lb)",
+                    "description": "Mixed Brandywine + Green Zebra. Hudson Valley grown.",
+                    "price": "0.0025",
+                    "currencySymbol": "ETH",
+                    "category": "Produce",
+                    "available": true
+                },
+                {
+                    "id": "basil-bunch",
+                    "name": "Basil Bunch",
+                    "description": "Fresh-cut Genovese basil, large bunch.",
+                    "price": "0.0008",
+                    "currencySymbol": "ETH",
+                    "category": "Herbs",
+                    "available": true
+                }
+            ],
+            "branding": {
+                "displayName": "Union Square Greens Stand",
+                "logoURI": "ipfs://example/union-square-greens-logo.png",
+                "accentColor": "#15803d",
+                "themeClass": "merchant-market-stall"
+            },
+            "version": "1.0.0"
         }
     ],
     "assetDocuments": [
@@ -550,6 +742,34 @@
             },
             "assets": {
                 "cssURI": "ipfs://example/castelli-theme.css"
+            },
+            "version": "1.0.0"
+        },
+        {
+            "assetURI": "ipfs://figaro/merchants/carlos-espresso-bar.assets.json",
+            "name": "Carlo's Espresso Bar Runtime Skin",
+            "branding": {
+                "displayName": "Carlo's Espresso Bar",
+                "logoURI": "ipfs://example/carlos-logo.png",
+                "accentColor": "#78350f",
+                "themeClass": "runtime-shell-coffee"
+            },
+            "assets": {
+                "cssURI": "ipfs://example/coffee-theme.css"
+            },
+            "version": "1.0.0"
+        },
+        {
+            "assetURI": "ipfs://figaro/merchants/union-square-greens.assets.json",
+            "name": "Union Square Greens Runtime Skin",
+            "branding": {
+                "displayName": "Union Square Greens Stand",
+                "logoURI": "ipfs://example/union-square-greens-logo.png",
+                "accentColor": "#15803d",
+                "themeClass": "runtime-shell-market-stall"
+            },
+            "assets": {
+                "cssURI": "ipfs://example/market-stall-theme.css"
             },
             "version": "1.0.0"
         }

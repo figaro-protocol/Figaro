@@ -218,7 +218,7 @@ export function publishAssemblyToWorkspace(
         assembly,
         outputPath,
         registryPath,
-        prototypePath: `/i/${assembly.identity.slug}`,
+        prototypePath: `/builders/designer/view/${assembly.identity.slug}`,
     };
 }
 

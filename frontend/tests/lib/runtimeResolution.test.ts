@@ -129,8 +129,8 @@ const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
 describe('runtime resolution', () => {
     it.each([
         { slug: 'local-commerce', displayName: "Bob's Pizza Palace", merchantId: 'bobs-pizza-palace' },
-        { slug: 'figaro-procurement', displayName: 'Acme Components Supply', merchantId: undefined },
-        { slug: 'figaro-disclosure-review', displayName: 'GreenLedger Review Desk', merchantId: undefined },
+        { slug: 'figaro-procurement', displayName: 'Acme Components Supply', merchantId: 'acme-components-supply' },
+        { slug: 'figaro-disclosure-review', displayName: 'GreenLedger Review Desk', merchantId: 'greenledger-review-desk' },
     ])('resolves a combined assembly runtime context for $slug', ({ slug, displayName, merchantId }) => {
         const context = resolveAssemblyRuntimeContext(slug, 'local-anvil');
 

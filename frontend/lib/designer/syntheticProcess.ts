@@ -404,6 +404,8 @@ export function collectDescendants(rootId: string, orders: Order[]): Set<string>
 export function readAgreementFields(order: Order): ManifestFields {
     const summary = summarizeAgreement(loadAgreement(order.agreementHash));
     const fields: ManifestFields = { origin: summary?.geo?.origin ?? "—" };
+
+    // ── geo ────────────────────────────────────────────────────
     if (summary?.geo?.destination) fields.destination = summary.geo.destination;
     if (summary?.geo?.mass !== undefined) {
         fields.mass = typeof summary.geo.mass === "number" ? String(summary.geo.mass) : summary.geo.mass;
@@ -412,9 +414,36 @@ export function readAgreementFields(order: Order): ManifestFields {
         fields.volume = typeof summary.geo.volume === "number" ? String(summary.geo.volume) : summary.geo.volume;
     }
     if (summary?.geo?.classOfService) fields.class_ = summary.geo.classOfService;
+
+    // ── ghg ────────────────────────────────────────────────────
     const ghgStandard = summary?.ghg?.standard;
     if (typeof ghgStandard === "string") fields.ghgStandard = ghgStandard;
     const ghgScope = summary?.ghg?.scope;
     if (ghgScope !== undefined) fields.ghgScope = String(ghgScope);
+
+    // ── handoff ────────────────────────────────────────────────
+    const handoffMode = summary?.handoff?.mode;
+    if (typeof handoffMode === "string") fields.handoffMode = handoffMode;
+
+    // ── proximity ──────────────────────────────────────────────
+    const proximityBand = summary?.proximity?.band;
+    if (typeof proximityBand === "string") fields.proximityBand = proximityBand;
+
+    // ── jurisdiction ───────────────────────────────────────────
+    const applicableLaw = summary?.jurisdiction?.applicableLaw;
+    if (typeof applicableLaw === "string") fields.applicableLaw = applicableLaw;
+    const forum = summary?.jurisdiction?.forum;
+    if (typeof forum === "string") fields.forum = forum;
+    const language = summary?.jurisdiction?.language;
+    if (typeof language === "string") fields.language = language;
+
+    // ── consent ────────────────────────────────────────────────
+    const documentHash = summary?.consent?.documentHash;
+    if (typeof documentHash === "string") fields.documentHash = documentHash;
+    const documentVersion = summary?.consent?.documentVersion;
+    if (typeof documentVersion === "string") fields.documentVersion = documentVersion;
+    const documentTitle = summary?.consent?.documentTitle;
+    if (typeof documentTitle === "string") fields.documentTitle = documentTitle;
+
     return fields;
 }

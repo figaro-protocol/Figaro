@@ -31,16 +31,6 @@ async function gotoRoute(page: import('@playwright/test').Page, href: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('Builders page — composition links', () => {
-    test('Registered assemblies link targets the assemblies route', async ({ page }) => {
-        await gotoRoute(page, '/builders');
-        const link = page.getByRole('link', { name: 'Registered assemblies' });
-        await expect(link).toBeVisible({ timeout: 10_000 });
-        await expect(link).toHaveAttribute('href', '/builders/assemblies');
-
-        await gotoRoute(page, '/builders/assemblies?e2e=mock');
-        await expect(page.getByRole('heading', { name: 'Browse Assemblies' })).toBeVisible({ timeout: 15_000 });
-    });
-
     test('Designer link targets the designer route', async ({ page }) => {
         await gotoRoute(page, '/builders');
         // Designer also appears in the footer; scope to main content.
@@ -49,25 +39,36 @@ test.describe('Builders page — composition links', () => {
         await expect(link).toHaveAttribute('href', '/builders/designer');
     });
 
-    test('SDK link targets the integrate route', async ({ page }) => {
+    test('SDK schema encoders link targets the integrate route', async ({ page }) => {
         await gotoRoute(page, '/builders');
-        const link = page.getByRole('link', { name: '@figaro/core (SDK)' });
+        const link = page.locator('#main-content').getByRole('link', { name: 'SDK schema encoders' });
         await expect(link).toBeVisible({ timeout: 10_000 });
         await expect(link).toHaveAttribute('href', '/integrate');
+    });
+
+    test('Schemas link targets the schemas route', async ({ page }) => {
+        await gotoRoute(page, '/builders');
+        const link = page.locator('#main-content').getByRole('link', { name: 'Schemas', exact: true });
+        await expect(link).toBeVisible({ timeout: 10_000 });
+        await expect(link).toHaveAttribute('href', '/schemas');
     });
 });
 
 test.describe('Route loading', () => {
-    // Per the 2026-04-27 mock audit: 'terminal route loads' + 'builders
-    // route loads' (2 trivial URL-arrives-at-URL checks) collapsed into
-    // the assembly-runtime test below which is the meaningful "route
-    // loads + key surface renders" smoke test. /terminal and /builders
-    // route loading is implicitly exercised by ~every other mock test
-    // in this suite which navigates through those routes.
+    // Replaces the prior 'live assembly route loads assembly runtime shell'
+    // smoke test, which targeted `/i/local-commerce` (deleted 2026-05). The
+    // consumer entry points are `/discover` (operator catalogue) and the
+    // per-merchant detail page; loading either is a meaningful "route
+    // hydrates + key surface renders" check.
 
-    test('live assembly route loads assembly runtime shell', async ({ page }) => {
+    test('discover route loads operator catalogue', async ({ page }) => {
+        await gotoRoute(page, '/discover?e2e=mock');
+        await expect(page.getByTestId('operator-card').first()).toBeVisible({ timeout: 15_000 });
+    });
+
+    test('legacy /i/<slug> redirects to /discover', async ({ page }) => {
         await gotoRoute(page, '/i/local-commerce?e2e=mock');
-        await expect(page.getByTestId('assembly-runtime')).toBeVisible({ timeout: 15_000 });
+        await expect(page).toHaveURL(/\/discover/, { timeout: 10_000 });
     });
 });
 

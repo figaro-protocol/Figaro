@@ -22,6 +22,7 @@ import { CartModule } from "@/components/modules/CartModule";
 import { JobMarketModule } from "@/components/modules/JobMarketModule";
 import { CatalogueEditorModule } from "@/components/modules/CatalogueEditorModule";
 import { IncomingOrdersModule } from "@/components/modules/IncomingOrdersModule";
+import { MerchantFulfilmentModule } from "@/components/modules/MerchantFulfilmentModule";
 
 // ── Mechanism-package modules (re-imported here so block metadata can reference them) ──
 
@@ -133,6 +134,16 @@ const STANDALONE_BLOCKS: readonly BlockMetadata[] = [
         modules: [{ moduleId: "incoming-orders", component: IncomingOrdersModule }],
         compatibility: { roles: ["seller", "merchant"], requiresMechanisms: [], requiresCapabilities: [] },
         paletteOrder: 50,
+    },
+    {
+        blockId: "merchant-fulfilment",
+        displayName: "Merchant fulfilment",
+        description: "Merchant-side post-acceptance event log: accepted, prep-started, ready-for-pickup, handed-off (figaro-merchant-process-v1).",
+        category: "handoff",
+        schemaIds: ["figaro-merchant-process-v1"],
+        modules: [{ moduleId: "merchant-fulfilment", component: MerchantFulfilmentModule }],
+        compatibility: { roles: ["merchant"], requiresMechanisms: [], requiresCapabilities: [] },
+        paletteOrder: 60,
     },
 ];
 

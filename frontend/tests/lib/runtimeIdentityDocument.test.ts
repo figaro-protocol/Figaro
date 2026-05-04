@@ -10,7 +10,7 @@ describe('runtime manifest validation', () => {
             'local-runtime-identity.json'
         );
 
-        expect(manifest.subjectProvenance).toHaveLength(3);
+        expect(manifest.subjectProvenance).toHaveLength(7);
         expect(manifest.validationIssues).toEqual([
             expect.objectContaining({
                 severity: 'warning',
@@ -21,6 +21,26 @@ describe('runtime manifest validation', () => {
                 severity: 'warning',
                 code: 'missing-signature-refs',
                 subjectAddress: '0x90F79bf6EB2c4f870365E785982E1f101E93b906',
+            }),
+            expect.objectContaining({
+                severity: 'warning',
+                code: 'missing-signature-refs',
+                subjectAddress: '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65',
+            }),
+            expect.objectContaining({
+                severity: 'warning',
+                code: 'missing-signature-refs',
+                subjectAddress: '0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc',
+            }),
+            expect.objectContaining({
+                severity: 'warning',
+                code: 'missing-signature-refs',
+                subjectAddress: '0xa0Ee7A142d267C1f36714E4a8F75612F20a79720',
+            }),
+            expect.objectContaining({
+                severity: 'warning',
+                code: 'missing-signature-refs',
+                subjectAddress: '0xBcd4042DE499D14e55001CcbB24a551F3b954096',
             }),
         ]);
     });
@@ -43,16 +63,16 @@ describe('runtime manifest validation', () => {
         );
     });
 
-    it('throws when seller catalogue metadata has no local-commerce binding', () => {
+    it('throws when seller catalogue metadata has no assembly binding', () => {
         const invalidManifest = {
             ...localRuntimeIdentityDocument,
             assemblyBindings: localRuntimeIdentityDocument.assemblyBindings.filter(
-                (binding) => binding.assemblySlug !== 'local-commerce'
+                (binding) => binding.subjectAddress !== '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
             ),
         };
 
         expect(() => parseRuntimeIdentityDocument(invalidManifest, 'invalid.manifest.json')).toThrow(
-            /seller catalogue metadata .* has no local-commerce assembly binding/
+            /seller catalogue metadata .* has no assembly binding/
         );
     });
 

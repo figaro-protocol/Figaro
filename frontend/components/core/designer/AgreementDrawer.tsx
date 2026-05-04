@@ -4,13 +4,16 @@
  * AgreementDrawer — right-side panel for editing a single order's
  * baseline-graph clauses.
  *
- * Surfaces the six designer-time baseline graphs as focused panels:
+ * Surfaces designer-time baseline graphs as focused panels:
  *   - Geo (figaro-geo-v1)
  *   - GHG disclosure (figaro-ghg-iso-14064-v1)
  *   - Handoff (figaro-handoff-v1)
  *   - Proximity (figaro-proximity-policy-v1) — band committed at agreement time;
  *     the runtime witness payload travels in figaro-proximity-proof-v1
  *   - Jurisdiction (figaro-jurisdiction-v1) — off-chain forum + applicable law
+ *   - Consent (figaro-consent-v1) — cryptographic consent to an off-chain
+ *     legal document (hash + version + title); reusable on any assembly
+ *     that needs participant consent (beta enrolment, ToS, NDA, governance)
  *   - Topology (read-only, derived from the DAG)
  *
  * The seventh baseline (capital flow / payment) is NOT exposed here —
@@ -50,7 +53,7 @@ const PROXIMITY_BANDS = ["", "none", "zone-wifi", "nearby-ble", "contact-nfc"] a
 /** Top offset to stay below the global sticky Header band. */
 const HEADER_OFFSET_PX = 80;
 
-type SectionKey = "geo" | "ghg" | "handoff" | "proximity" | "jurisdiction" | "topology";
+type SectionKey = "geo" | "ghg" | "handoff" | "proximity" | "jurisdiction" | "consent" | "topology";
 
 const SECTION_LABELS: Record<SectionKey, string> = {
     geo: "Geo",
@@ -58,6 +61,7 @@ const SECTION_LABELS: Record<SectionKey, string> = {
     handoff: "Handoff",
     proximity: "Proximity",
     jurisdiction: "Jurisdiction",
+    consent: "Consent",
     topology: "Topology",
 };
 
@@ -106,6 +110,9 @@ const SECTION_SCHEMA_OPTIONS: Record<SectionKey, readonly SectionSchemaOption[]>
     ],
     jurisdiction: [
         { schemaId: "figaro-jurisdiction-v1", label: "v1" },
+    ],
+    consent: [
+        { schemaId: "figaro-consent-v1", label: "v1" },
     ],
     topology: [
         { schemaId: "figaro-topology-v1", label: "v1" },
@@ -390,6 +397,40 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                                 onChange={(v) => patch("language" as keyof ManifestFields, v)}
                                 data-testid="drawer-input-language"
                             />
+                        </div>
+                    </section>
+                )}
+
+                {openSection === "consent" && (
+                    <section data-testid="drawer-section-consent" className="mb-5 pt-2 border-t border-neutral-100">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
+                            Consent · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("consent", fields)}</span>
+                        </p>
+                        <div className="space-y-3">
+                            <Field
+                                label="Document hash"
+                                description="keccak256 of the canonical document text. 32-byte hex (0x…)."
+                                value={(fields.documentHash as string | undefined) ?? ""}
+                                onChange={(v) => patch("documentHash" as keyof ManifestFields, v)}
+                                data-testid="drawer-input-documentHash"
+                            />
+                            <Field
+                                label="Document version"
+                                description="Semver-style identifier (≤32 chars), e.g. 1.0.0 or beta-2026-05."
+                                value={(fields.documentVersion as string | undefined) ?? ""}
+                                onChange={(v) => patch("documentVersion" as keyof ManifestFields, v)}
+                                data-testid="drawer-input-documentVersion"
+                            />
+                            <Field
+                                label="Document title"
+                                description="Human-readable name (≤200 chars)."
+                                value={(fields.documentTitle as string | undefined) ?? ""}
+                                onChange={(v) => patch("documentTitle" as keyof ManifestFields, v)}
+                                data-testid="drawer-input-documentTitle"
+                            />
+                            <p className="text-[11px] text-neutral-500">
+                                Cryptographic consent to an off-chain legal document. The signed agreement carries a clause under <code className="text-neutral-700">figaro-consent-v1</code>; participants attest by signing the bonded commitment, and the document hash + version + title pin which document was consented to. All three fields are required for the clause to land.
+                            </p>
                         </div>
                     </section>
                 )}

@@ -142,6 +142,12 @@ const BUILT_IN_MODULE_DEFAULTS: Record<string, BuiltInModuleDefaults> = {
         slot: 'main',
         priority: 5,
     },
+    'merchant-fulfilment': {
+        componentKind: 'MerchantFulfilmentPanel',
+        semanticInput: 'OrderNodeModel',
+        slot: 'main',
+        priority: 5,
+    },
 };
 
 export const BUILT_IN_MODULE_IDS = Object.freeze(Object.keys(BUILT_IN_MODULE_DEFAULTS));

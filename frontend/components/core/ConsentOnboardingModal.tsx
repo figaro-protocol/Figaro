@@ -83,9 +83,9 @@ export function ConsentOnboardingModal({ onDismiss }: ConsentOnboardingModalProp
                         <h3 className="font-semibold text-black mb-1">What you are testing</h3>
                         <p>
                             The Figaro runtime — the user-facing surfaces (terminal,
-                            operators, designer, financials, /verify, audit-bundle
-                            export) — running against a development chain. No real
-                            funds are at risk.
+                            operators, designer, audit, audit-bundle export) —
+                            running against a development chain. No real funds are
+                            at risk.
                         </p>
                     </div>
 

@@ -88,7 +88,7 @@ describe('assembly publication', () => {
         expect(registrySource).toContain('import figaroReturnsReference from "@/lib/shared/assemblies/figaro-returns.reference.json";');
         expect(registrySource).toContain('export const FIGARO_RETURNS_REFERENCE_ASSEMBLY = parseAssemblyDocument(');
         expect(registrySource).toContain('FIGARO_RETURNS_REFERENCE_ASSEMBLY,');
-        expect(result.prototypePath).toBe('/i/figaro-returns');
+        expect(result.prototypePath).toBe('/builders/designer/view/figaro-returns');
     });
 
     it('rejects publication when the slug is already registered', () => {

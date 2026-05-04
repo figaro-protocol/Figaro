@@ -33,8 +33,15 @@ const nextConfig = {
             { source: '/workbench/:path*', destination: '/terminal/:path*', permanent: true },
             { source: '/figaro-eats', destination: '/local-commerce', permanent: true },
             { source: '/figaro-eats/:path*', destination: '/local-commerce/:path*', permanent: true },
-            { source: '/i/figaro-eats', destination: '/i/local-commerce', permanent: true },
-            { source: '/i/figaro-eats/:path*', destination: '/i/local-commerce/:path*', permanent: true },
+            // /i/[slug] removed 2026-05: the assembly runtime was a
+            // builder/debug surface that doubled as a parameterised
+            // operator shell. Consumers now go through /m/<merchant> →
+            // /orders/<processId> (buyer) and /inbox (merchant); builders
+            // inspect via /builders/designer/view/<slug>. Inbound legacy
+            // bookmarks redirect to /discover.
+            { source: '/i/:slug', destination: '/discover', permanent: true },
+            { source: '/i/:slug/:path*', destination: '/discover', permanent: true },
+            // The pre-rename /i/figaro-eats path passes through /i/:slug above.
             // Marketing-tier restructure (2026-04):
             // - /research and /publications were replaced by /cryptoeconomics
             //   (the Voshmgir & Zargham 8-discipline taxonomy + paper portfolio).
@@ -69,6 +76,13 @@ const nextConfig = {
             // (Q&A → property pages) or pure index (link directory).
             { source: '/help', destination: '/about', permanent: true },
             { source: '/resources', destination: '/spec', permanent: true },
+            // Audit unification (2026-05): /financials and /verify were merged
+            // into /audit. /audit/[processId] is the process-bound view (was
+            // /financials/[processId] + /verify search scoped to that process);
+            // /audit (no param) is the generic hash-verification surface (was
+            // /verify with no process context).
+            { source: '/financials/:processId', destination: '/audit/:processId', permanent: true },
+            { source: '/verify', destination: '/audit', permanent: true },
         ];
     },
 

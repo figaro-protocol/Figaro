@@ -168,36 +168,49 @@ export async function waitForCreateConfirm(page: Page): Promise<void> {
     await dismissConfirmationModal(page);
 }
 
-export async function gotoAssemblyMock(page: Page, slug = 'local-commerce') {
-    await page.goto(`/i/${slug}?e2e=mock`, { waitUntil: 'load' });
-    await page.getByTestId('role-btn-buyer').waitFor({ timeout: 30000 });
-    // Wait for React hydration by detecting fiber internals on a known element.
-    // SSR delivers the DOM immediately; event handlers only attach after hydration.
+/**
+ * Navigate to /discover (the buyer entry point) in mock mode and wait for
+ * hydration. Use this in place of the old `gotoAssemblyMock(slug)` — the
+ * `/i/[slug]` route was deleted 2026-05 in favour of purpose-shaped pages
+ * (`/discover`, `/m/[merchant]`, `/orders`, `/inbox`).
+ */
+export async function gotoDiscoverMock(page: Page) {
+    await page.goto('/discover?e2e=mock', { waitUntil: 'load' });
+    await page.getByTestId('operator-card').first().waitFor({ timeout: 30000 });
     await page.waitForFunction(
         () => {
-            const el = document.querySelector('[data-testid="role-btn-buyer"]');
+            const el = document.querySelector('[data-testid="operator-card"]');
             if (!el) return false;
             return Object.keys(el).some(k => k.startsWith('__reactFiber') || k.startsWith('__reactProps'));
         },
-        { timeout: 5000 }
+        { timeout: 5000 },
     ).catch(() => {});
 }
 
-export async function switchToAssemblyRole(page: Page, role: string) {
-    const roleButton = page.getByTestId(`role-btn-${role}`);
-    if (!await roleButton.isVisible({ timeout: 5000 }).catch(() => false)) return;
+/**
+ * Navigate to /m/<merchantAddress> in mock mode. Used by buyer-shaped tests
+ * that need the merchant detail surface (hero, menu, inline cart, place
+ * order). Hydration wait keys off the merchant-detail-view testid.
+ */
+export async function gotoMerchantMock(page: Page, merchantAddress: string) {
+    await page.goto(`/m/${merchantAddress}?e2e=mock`, { waitUntil: 'load' });
+    await page.getByTestId('merchant-detail-view').waitFor({ timeout: 30000 });
+    await page.waitForFunction(
+        () => {
+            const el = document.querySelector('[data-testid="merchant-detail-view"]');
+            if (!el) return false;
+            return Object.keys(el).some(k => k.startsWith('__reactFiber') || k.startsWith('__reactProps'));
+        },
+        { timeout: 5000 },
+    ).catch(() => {});
+}
 
-    // Retry until aria-pressed becomes true — the first click may land before React
-    // has attached its event handlers (hydration not yet complete).
-    for (let attempt = 0; attempt < 5; attempt++) {
-        await roleButton.click();
-        try {
-            await expect(roleButton).toHaveAttribute('aria-pressed', 'true', { timeout: 2000 });
-            return;
-        } catch {
-            await page.waitForTimeout(500);
-        }
-    }
+/**
+ * Navigate to /inbox in mock mode (merchant entry point).
+ */
+export async function gotoInboxMock(page: Page) {
+    await page.goto('/inbox?e2e=mock', { waitUntil: 'load' });
+    await page.getByTestId('merchant-inbox').waitFor({ timeout: 30000 });
 }
 
 export async function clickByTestId(page: Page, testId: string) {

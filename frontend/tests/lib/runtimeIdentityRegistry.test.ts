@@ -10,8 +10,8 @@ import {
 
 describe('runtime identity registry', () => {
     it('exposes fixture-backed subject records and bindings', () => {
-        expect(listRuntimeSubjectRecords()).toHaveLength(3);
-        expect(listRuntimeAssemblyBindings()).toHaveLength(3);
+        expect(listRuntimeSubjectRecords()).toHaveLength(7);
+        expect(listRuntimeAssemblyBindings()).toHaveLength(8);
     });
 
     it('resolves seller catalogue metadata by subject address', () => {
@@ -71,7 +71,7 @@ describe('runtime identity registry', () => {
         expect(summaries[0]?.roleKinds).toEqual(['supplier']);
         expect(summaries[0]?.assemblyRoleKinds).toEqual(['supplier']);
         expect(summaries[0]?.assetDocument?.branding?.themeClass).toBe('runtime-shell-acme');
-        expect(summaries[0]?.sellerCatalogueMetadata).toBeUndefined();
+        expect(summaries[0]?.sellerCatalogueMetadata?.merchantId).toBe('acme-components-supply');
     });
 
     it('lists assembly-bound subject summaries for figaro-disclosure-review', () => {
@@ -83,6 +83,6 @@ describe('runtime identity registry', () => {
         expect(summaries[0]?.roleKinds).toEqual(['reviewer']);
         expect(summaries[0]?.assemblyRoleKinds).toEqual(['reviewer']);
         expect(summaries[0]?.assetDocument?.branding?.themeClass).toBe('runtime-shell-greenledger');
-        expect(summaries[0]?.sellerCatalogueMetadata).toBeUndefined();
+        expect(summaries[0]?.sellerCatalogueMetadata?.merchantId).toBe('greenledger-review-desk');
     });
 });
