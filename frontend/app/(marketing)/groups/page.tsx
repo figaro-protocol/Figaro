@@ -3,10 +3,7 @@ import Link from "next/link";
 import { DisciplineGlyph } from "@/components/shared/DisciplineGlyph";
 import { MarketingHero } from "@/components/shared/MarketingHero";
 import { MarketingSection } from "@/components/shared/MarketingSection";
-import {
-    GROUPS_REGISTRY,
-    disciplineHasConvenedGroup,
-} from "@/lib/shared/groupsRegistry";
+import { GROUPS_REGISTRY } from "@/lib/shared/groupsRegistry";
 
 export const metadata: Metadata = {
     title: "Working Groups — Figaro Protocol",
@@ -68,59 +65,50 @@ export default function Groups() {
                     .
                 </p>
                 <div className="space-y-8">
-                    {GROUPS_REGISTRY.map((g) => {
-                        const convened = disciplineHasConvenedGroup(g);
-                        return (
-                            <article
-                                key={g.slug}
-                                id={`discipline-${g.disciplineIndex}`}
-                                className="scroll-mt-24"
-                            >
-                                <div className="flex items-start gap-4">
-                                    <DisciplineGlyph index={g.disciplineIndex} />
-                                    <div className="min-w-0 flex-1">
-                                        <h3 className="text-lg font-bold text-black leading-snug">
-                                            {g.name}
-                                        </h3>
-                                        <p className="text-xs text-gray-500 italic">
-                                            {g.discipline}
-                                        </p>
-                                    </div>
+                    {GROUPS_REGISTRY.map((g) => (
+                        <article
+                            key={g.slug}
+                            id={`discipline-${g.disciplineIndex}`}
+                            className="scroll-mt-24"
+                        >
+                            <div className="flex items-start gap-4">
+                                <DisciplineGlyph index={g.disciplineIndex} />
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="text-lg font-bold text-black leading-snug">
+                                        {g.name}
+                                    </h3>
+                                    <p className="text-xs text-gray-500 italic">
+                                        {g.discipline}
+                                    </p>
                                 </div>
-                                <div className="mt-3 ml-16">
-                                    {convened ? (
-                                        <p className="text-sm text-gray-700 leading-relaxed">
-                                            {g.charter}
-                                        </p>
-                                    ) : (
-                                        <p className="text-xs text-gray-500 italic">
-                                            Open call &mdash; no group convened yet.
-                                        </p>
-                                    )}
-                                    {g.currentWork && g.currentWork.length > 0 && (
-                                        <ul className="mt-3 space-y-1 text-xs text-gray-600 list-disc pl-5">
-                                            {g.currentWork.map((w, i) => (
-                                                <li key={i}>{w}</li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                    {g.venue && (
-                                        <p className="text-xs text-gray-500 mt-2">
-                                            Dedicated channel:{" "}
-                                            <a
-                                                href={g.venue.href}
-                                                target={g.venue.href.startsWith("http") ? "_blank" : undefined}
-                                                rel={g.venue.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                                                className="underline hover:text-black"
-                                            >
-                                                {g.venue.label}
-                                            </a>
-                                        </p>
-                                    )}
-                                </div>
-                            </article>
-                        );
-                    })}
+                            </div>
+                            <div className="mt-3 ml-16">
+                                <p className="text-sm text-gray-700 leading-relaxed">
+                                    {g.charter}
+                                </p>
+                                {g.currentWork && g.currentWork.length > 0 && (
+                                    <ul className="mt-3 space-y-1 text-xs text-gray-600 list-disc pl-5">
+                                        {g.currentWork.map((w, i) => (
+                                            <li key={i}>{w}</li>
+                                        ))}
+                                    </ul>
+                                )}
+                                {g.venue && (
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        Dedicated channel:{" "}
+                                        <a
+                                            href={g.venue.href}
+                                            target={g.venue.href.startsWith("http") ? "_blank" : undefined}
+                                            rel={g.venue.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                                            className="underline hover:text-black"
+                                        >
+                                            {g.venue.label}
+                                        </a>
+                                    </p>
+                                )}
+                            </div>
+                        </article>
+                    ))}
                 </div>
             </MarketingSection>
 

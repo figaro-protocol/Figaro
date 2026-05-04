@@ -3,7 +3,7 @@
         "id": "local-commerce-reference",
         "name": "Figaro Local Commerce",
         "slug": "local-commerce",
-        "description": "Reference assembly for bonded local-commerce coordination: three roles, one root commitment, two sub-orders, atomic settlement. Generic across local-commerce verticals (food, retail, services). Surfaced at /local-commerce (explainer) and /i/local-commerce (runtime instance).",
+        "description": "Reference assembly for bonded local-commerce coordination: three roles, one root commitment, one sub-order, atomic settlement. Generic across local-commerce verticals (food, retail, services). Surfaced at /local-commerce (explainer); runtime entry at /discover.",
         "networkTargets": [
             "local-anvil",
             "evm-compatible"

@@ -13,16 +13,22 @@ export default function About() {
         <>
             <MarketingHero
                 eyebrow="About"
-                title="The factotum of the network."
+                title="What Figaro is &mdash; and what it is not."
                 lead={
                     <>
-                        Figaro is a coordination protocol &mdash; closer to TCP/IP than
-                        to a bank or a DEX. A primitive for enforcing bilateral
-                        agreements between strangers, deployable on any EVM network,
-                        permissionless and ownerless.
+                        Figaro is a small protocol that coordinates trade between strangers &mdash; the factotum of the network, holding collateral, executing commitments, releasing settlement. The sections below say what kinds of arrangements it accepts, what it deliberately refuses to do, and where the metaphor comes from.
                     </>
                 }
             />
+
+            <MarketingSection eyebrow="Posture" title="What the kernel will not do.">
+                <ul className="space-y-3 text-base text-gray-700 leading-relaxed list-disc pl-6">
+                    <li>No owner, no admin, no pause function.</li>
+                    <li>No protocol fee at the kernel.</li>
+                    <li>FIG is not a governance token. It is a coordination Schelling point.</li>
+                    <li>No arbitrator. No timeout.</li>
+                </ul>
+            </MarketingSection>
 
             <MarketingSection eyebrow="The name" title="Figaro is the factotum of the city.">
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
@@ -55,52 +61,6 @@ export default function About() {
                         VISION.md &quot;Appendix: Project Lineage&quot;
                     </a>{" "}
                     for the lineage.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection eyebrow="Three tiers" title="Kernel, protocol, runtime.">
-                <dl className="space-y-6 text-sm">
-                    <div>
-                        <dt className="text-base font-semibold text-black">
-                            <Link href="/spec" className="hover:underline">Kernel</Link>
-                        </dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">
-                            <code>FigaroCore</code>. The irreducible settlement
-                            primitive &mdash; two external functions, three mappings,
-                            zero owners. EIP-712 dual-signed commitments;
-                            asymmetric bonding; direct transfer at resolution.
-                        </dd>
-                    </div>
-                    <div>
-                        <dt className="text-base font-semibold text-black">
-                            <Link href="/protocol" className="hover:underline">Protocol</Link>
-                        </dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">
-                            Kernel + extension doctrine + public graphs. The
-                            permissionless surface: attestation coordinator,
-                            schema registry, canonical validators, token, batch
-                            verifier. Mechanism derivation and the contract-law
-                            mapping live here.
-                        </dd>
-                    </div>
-                    <div>
-                        <dt className="text-base font-semibold text-black">
-                            <Link href="/builders" className="hover:underline">Runtime</Link>
-                        </dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">
-                            Protocol + semantic layer + builder surfaces + UI.
-                            The runtime is not a product. It is the composable
-                            layer in which assemblies are rendered, roles are
-                            filled, and processes play out.
-                        </dd>
-                    </div>
-                </dl>
-                <p className="text-sm text-gray-600 mt-6">
-                    Each commitment carries the structural shape of a contract
-                    &mdash; consideration, terms, formation, acceptor, discharge.
-                    Full glossary on the{" "}
-                    <Link href="/protocol" className="underline">Protocol</Link>{" "}
-                    page.
                 </p>
             </MarketingSection>
 
@@ -139,25 +99,6 @@ export default function About() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Substrate" title="Chain-agnostic.">
-                <p className="text-base text-gray-700 leading-relaxed mb-4">
-                    The kernel is a Solidity 0.8.26 contract. It compiles and
-                    deploys for any EVM network. Canonical deployments are listed
-                    in the{" "}
-                    <Link href="/spec" className="underline">Specifications</Link>{" "}
-                    index.
-                </p>
-                <p className="text-base text-gray-700 leading-relaxed">
-                    The chain itself is the kernel&apos;s substrate. <code>FigaroCore</code>{" "}
-                    does not establish trust; it inherits it from the network
-                    underneath &mdash; from the network&apos;s consensus, its
-                    tamper-evident history, its deterministic execution, and its
-                    finality guarantees. Different chain, different security
-                    assumptions; same kernel, same invariants once those
-                    assumptions hold.
-                </p>
-            </MarketingSection>
-
             <MarketingSection eyebrow="Enforcement" title="Three layers carry the equilibrium.">
                 <p className="text-base text-gray-700 leading-relaxed">
                     Economic (asymmetric bonding makes defection irrational), social
@@ -169,13 +110,18 @@ export default function About() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Posture" title="What the kernel will not do.">
-                <ul className="space-y-3 text-base text-gray-700 leading-relaxed list-disc pl-6">
-                    <li>No owner, no admin, no pause function.</li>
-                    <li>No protocol fee at the kernel.</li>
-                    <li>FIG is not a governance token. It is a coordination Schelling point.</li>
-                    <li>No arbitrator. No timeout.</li>
-                </ul>
+            <MarketingSection eyebrow="Substrate" title="Chain-agnostic.">
+                <p className="text-base text-gray-700 leading-relaxed">
+                    The kernel deploys for any EVM-compatible network. It does not establish trust; it inherits it from the network underneath &mdash; from the network&apos;s consensus, its tamper-evident history, its deterministic execution, its finality guarantees. Different chain, different security assumptions; same kernel, same invariants once those assumptions hold. Canonical deployments are listed in the{" "}
+                    <Link href="/spec" className="underline">Specifications</Link>{" "}
+                    index.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection eyebrow="Three tiers" title="Kernel, protocol, runtime.">
+                <p className="text-base text-gray-700 leading-relaxed">
+                    Three composable tiers: <Link href="/spec" className="underline">kernel</Link> (the irreducible settlement primitive), <Link href="/protocol" className="underline">protocol</Link> (kernel + extension doctrine + public graphs), and <Link href="/builders" className="underline">runtime</Link> (UI surfaces + builder tools). Each composes on top of the one below. Mechanism derivation lives on <Link href="/protocol" className="underline">/protocol</Link>; the kernel surface is documented at <Link href="/spec" className="underline">/spec</Link>.
+                </p>
             </MarketingSection>
 
             <MarketingSection eyebrow="License" title="MIT. Source-available." bottomPad="wide">

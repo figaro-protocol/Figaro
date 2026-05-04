@@ -17,7 +17,7 @@ export default function LocalCommercePage() {
                     Three roles, one bonded process.
                 </h1>
                 <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
-                    An assembly composing a local-commerce process from protocol primitives. Three roles (buyer, merchant, courier), one root bonded commitment, two sub-orders, atomic settlement. Generic across food, retail, and service verticals; the reference instance uses food delivery as the concrete shape.
+                    An assembly composing a local-commerce process from protocol primitives. Three roles (buyer, merchant, courier), one root bonded commitment, one sub-order, atomic settlement. Generic across food, retail, and service verticals; the reference instance uses food delivery as the concrete shape.
                 </p>
             </section>
 
@@ -28,15 +28,15 @@ export default function LocalCommercePage() {
                 <dl className="space-y-4 text-sm">
                     <div>
                         <dt className="text-base font-semibold text-black">Buyer</dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">Commits the root order against a merchant. Bonds 2× the goods payment. Triggers <code>resolveProcess</code> once delivery is confirmed.</dd>
+                        <dd className="text-gray-700 leading-relaxed mt-1">Root buyer of the process. Commits the root order to a merchant for goods, bonding 2× the goods payment. Commits a delivery sub-order to a courier (chosen via <code>DutchAuction</code>), bonding 2× the delivery payment. Triggers <code>resolveProcess</code> once delivery is confirmed; the kernel atomically settles the whole process.</dd>
                     </div>
                     <div>
                         <dt className="text-base font-semibold text-black">Merchant</dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">Counter-signs the root commitment. Bonds 2× the goods value. Commits a sub-order against a courier for delivery, bonding 2× the goods value again (progressive collateralization). Maps to a restaurant in food, a retailer in retail, a service-provider in services.</dd>
+                        <dd className="text-gray-700 leading-relaxed mt-1">Counter-signs the buyer&apos;s root commitment as the seller of goods. Bonds 2× the goods value. The kernel enforces <code>buyer == rootBuyer</code> in every order, so the merchant doesn&apos;t itself commit sub-orders &mdash; the buyer&apos;s sub-order to the courier is a parallel commit in the same process. The merchant&apos;s bond is at risk across the whole process at atomic resolution; the merchant&apos;s operational obligation (packaging, declaring ready-for-pickup) carries direct economic interest in the courier completing the delivery. Maps to a restaurant in food, a retailer in retail, a service-provider in services.</dd>
                     </div>
                     <div>
                         <dt className="text-base font-semibold text-black">Courier</dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">Counter-signs the sub-order at an auction-determined delivery fee. Bonds 2× cumulative value (goods + delivery). Maps to a driver, cyclist, walker, drone, or any other delivery modality the merchant chooses.</dd>
+                        <dd className="text-gray-700 leading-relaxed mt-1">Counter-signs the buyer&apos;s delivery sub-order at an auction-determined fee. Bonds 2× cumulative process value (goods + delivery) &mdash; progressive collateralization in operation. Maps to a driver, cyclist, walker, drone, or any other delivery modality.</dd>
                     </div>
                 </dl>
             </section>

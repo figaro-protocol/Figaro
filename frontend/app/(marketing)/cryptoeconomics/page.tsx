@@ -66,31 +66,21 @@ export default function Cryptoeconomics() {
                             </div>
 
                             <div className="mt-4 ml-16">
-                                {g.papers.length > 0 ? (
-                                    <ul className="space-y-1 text-sm">
-                                        {g.papers.map((p) => (
-                                            <li key={p.id}>
-                                                <a
-                                                    href={p.href}
-                                                    className="text-gray-700 hover:text-black hover:underline"
-                                                >
-                                                    <span className="font-mono text-xs text-gray-500">
-                                                        {p.id}
-                                                    </span>{" "}
-                                                    &mdash; {p.title}
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <p className="text-xs text-gray-500 italic">
-                                        No published papers yet. Contribute via{" "}
-                                        <Link href="/groups" className="underline">
-                                            /groups
-                                        </Link>
-                                        .
-                                    </p>
-                                )}
+                                <ul className="space-y-1 text-sm">
+                                    {g.papers.map((p) => (
+                                        <li key={p.id}>
+                                            <a
+                                                href={p.href}
+                                                className="text-gray-700 hover:text-black hover:underline"
+                                            >
+                                                <span className="font-mono text-xs text-gray-500">
+                                                    {p.id}
+                                                </span>{" "}
+                                                &mdash; {p.title}
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         </article>
                     ))}

@@ -27,6 +27,56 @@ export default function Protocol() {
                 }
             />
 
+            <MarketingSection eyebrow="Stack" title="A small kernel; the layers above compose freely.">
+                <ol className="space-y-0 text-sm border border-gray-200 rounded-lg overflow-hidden mb-4">
+                    <li className="border-b border-gray-100 px-5 py-3 bg-gray-50 flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="text-black font-semibold">Trade</span>
+                        <span className="text-xs text-gray-500 font-mono">humans + agents</span>
+                    </li>
+                    <li className="border-b border-gray-100 px-5 py-3 bg-gray-100 flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="text-black font-semibold">UI &middot; Runtime</span>
+                        <span className="text-xs text-gray-500 font-mono">assemblies &middot; modules &middot; views</span>
+                    </li>
+                    <li className="border-b border-gray-100 px-5 py-3 bg-gray-200 flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="text-black font-semibold">Services</span>
+                        <span className="text-xs text-gray-600 font-mono">messaging &middot; storage &middot; identity</span>
+                    </li>
+                    <li className="border-b border-gray-100 px-5 py-3 bg-gray-300 flex items-baseline justify-between gap-3 flex-wrap">
+                        <Link href="/schemas" className="text-black font-semibold hover:underline">Schemas</Link>
+                        <span className="text-xs text-gray-700 font-mono">typed content &middot; 3-layer validation</span>
+                    </li>
+                    <li className="border-b border-gray-100 px-5 py-3 bg-gray-400 flex items-baseline justify-between gap-3 flex-wrap">
+                        <Link href="/spec" className="text-black font-semibold hover:underline">Protocol contracts</Link>
+                        <span className="text-xs text-gray-800 font-mono">attestation &middot; auction &middot; registries</span>
+                    </li>
+                    <li className="border-b border-gray-800 px-5 py-3 bg-black text-white flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="font-semibold">Kernel</span>
+                        <span className="text-xs text-gray-300 font-mono">FigaroCore &mdash; asymmetric bonding + atomic resolution</span>
+                    </li>
+                    <li className="px-5 py-3 bg-gray-50 flex items-baseline justify-between gap-3 flex-wrap">
+                        <span className="text-black font-semibold">Network</span>
+                        <span className="text-xs text-gray-500 font-mono">any EVM-compatible chain</span>
+                    </li>
+                </ol>
+
+                <div className="border border-dashed border-gray-300 rounded-lg px-5 py-3 flex items-baseline justify-between gap-3 flex-wrap">
+                    <span className="text-black font-semibold">Edge</span>
+                    <span className="text-xs text-gray-500 font-mono">Kleros &middot; courts (evidentiary fallback)</span>
+                </div>
+
+                <p className="text-xs text-gray-500 mt-3 leading-relaxed">
+                    Adjacent dimension &mdash; <Link href="/fig/design" className="underline hover:text-black">FIG</Link> coordinates funding; <Link href="/cryptoeconomics" className="underline hover:text-black">Cryptoeconomics</Link> organizes the paper portfolio and working-group activity for work above the kernel.
+                </p>
+
+                <p className="text-base text-gray-700 leading-relaxed mt-8">
+                    The kernel takes no position on currency, jurisdiction, identity, arbitration, role structure, or contribution metric. A market-liberal assembly, a cooperative assembly, and a mutual-aid assembly all use the same kernel. The kernel is ideologically agnostic; the graph is the politics.
+                </p>
+
+                <p className="text-sm text-gray-600 leading-relaxed mt-6">
+                    Any internal exit path weakens the Nash equilibrium (Theorem 4.7). Extensions live outside the kernel and compose via the coordinator pattern &mdash; full treatment on <Link href="/composability" className="underline hover:text-black">Composability</Link>.
+                </p>
+            </MarketingSection>
+
             <MarketingSection eyebrow="The bonded commitment" title="A signed contract at the protocol level.">
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
                     Every commitment carries the structural shape of a contract. The
@@ -39,11 +89,18 @@ export default function Protocol() {
                     enforcement.
                 </p>
                 <p className="text-base text-gray-700 leading-relaxed mb-4">
-                    An N-party process tree is a chain of linked bilateral
-                    contracts, each with its own buyer-seller pair, composed
-                    through progressive collateralization. The kitchen-operator
-                    role contracts with the courier role; the kitchen operator
-                    becomes the buyer of the delivery sub-contract.
+                    A multi-party process is a set of bilateral commits sharing
+                    one root buyer. The kernel enforces <code>buyer == rootBuyer</code>{" "}
+                    in every order &mdash; in a local-commerce process the eater
+                    commits directly to the kitchen-operator and to the courier
+                    as parallel sellers, not in a chain. The kernel&apos;s
+                    cumulative-value accumulator <code>G</code> grows monotonically
+                    as each commit lands; each seller bonds against <code>G</code>{" "}
+                    at the moment of their commit, which is progressive
+                    collateralization in operation. Multi-process composition
+                    handles depth: a seller in one process can be the root
+                    buyer of a separate process they coordinate, settling
+                    independently.
                 </p>
                 <p className="text-sm text-gray-600">
                     Bonding ratio: buyer locks <code>2P</code>, seller locks{" "}
@@ -68,7 +125,7 @@ export default function Protocol() {
                     <Link href="/local-commerce" className="underline">
                         local commerce
                     </Link>{" "}
-                    &mdash; three roles, one root commitment, two sub-orders, atomic
+                    &mdash; three roles, one root commitment, one sub-order, atomic
                     settlement.
                 </p>
             </MarketingSection>
@@ -112,7 +169,7 @@ export default function Protocol() {
                             approve a half-complete process. Figaro reproduces the
                             Grameen joint-liability peer-enforcement outcome under
                             strictly weaker assumptions: no repeated interaction,
-                            no local information, no social sanction (Theorem 6.1).
+                            no local information, no social sanction (Proposition 6.1).
                         </dd>
                     </div>
                     <div>
