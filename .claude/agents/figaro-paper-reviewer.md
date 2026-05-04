@@ -59,11 +59,53 @@ For each claim, output one of three verdicts:
 - ⚠ **Drift** — claim is wrong or stale. Cite both the paper passage AND the code that disagrees. Recommend either updating the paper or fixing the code (your job is to surface; the operator decides which way the fix goes).
 - ❓ **Unverifiable** — claim is qualitative or refers to off-tree material (e.g., "see the published Paper E"). Note and skip.
 
-Where the claim is a theorem reference, check both that the theorem name exists in `paper/figaro3.tex` (or wherever the proofs live) AND that the proof's stated property still holds in the code. A theorem named correctly but whose property has shifted is silent drift.
+Where the claim is a theorem reference, check both that the theorem name exists in `paper/figaro3a.tex` (mechanism paper, where the kernel-relevant proofs live) AND that the proof's stated property still holds in the code. A theorem named correctly but whose property has shifted is silent drift.
 
 ---
 
-## Step 4 — Schema and inventory checks
+## Step 4 — Process semantics and asymmetric bonding (multi-edge claims)
+
+When a paper presents bond-posture for a multi-edge assembly (a process tree, a worked example, a stylized chain or fan-out), apply these checks **before** declaring any per-edge bond formula "verified":
+
+**ONE process, ONE rootBuyer, ONE monotonic G accumulator, BUYER = rootBuyer in every order.** A process in `src/FigaroCore.sol` has a single `rootBuyer` set on the first commit (line 182). Every subsequent commit in the same process is checked at line 188:
+
+```solidity
+if (c.buyer != ps.rootBuyer) revert NotProcessBuyer();
+```
+
+This is the rule the paper-author and paper-reviewer most commonly miss: **the kernel does not admit chain DAGs, intermediate buyers, or coordinators at the root.** The shape of a single process is a star: one rootBuyer at the center, N sellers around, every order directly between the rootBuyer and a seller. Depth-greater-than-one structures only exist via multi-process composition (one process's seller becoming another process's rootBuyer), and atomic resolution operates per-process, not across.
+
+Verify in any multi-edge claim:
+- Does the paper present ALL the parties as part of one process under one rootBuyer?
+- Does the paper introduce a "root counterparty," "aggregator," "Tier-1 contractor," "brand-tier coordinator," or any other intermediate party that buys from sub-suppliers on behalf of the named rootBuyer? **THIS IS A KERNEL VIOLATION.** Cite line 188 of `src/FigaroCore.sol` and flag as ⚠ DRIFT.
+- Does the paper claim a "DAG" or "tree" with depth > 1 within one process? Same violation.
+- Does the paper claim atomic resolution across multiple processes? The kernel's `resolveProcess` operates on one `processId`; multi-process atomic resolution is impossible.
+
+Process-internal G accumulation is monotonic: `G_new = G_prev + P_sub` (kernel line 191). The first commit has `G = P_root` (kernel line 177). Subsequent commits increment.
+
+**Asymmetric bonding scaling.** The whole point of Paper A's Theorem 5.3 (progressive collateralization) is that seller bonds GROW as G accumulates down the tree. The kernel pulls `2 × G_at_commit_time` from each seller; G has grown since the previous commit; therefore the seller bonds asymmetrically more than the buyer at the same edge (buyer still bonds only 2P_sub for that edge). Verify:
+- Does the paper show G accumulating across sub-orders, or does it (silently) reset G to P at each sub-edge?
+- Are seller bonds for sub-orders shown as `2 × cumulative_G` (correct) or as `2 × P_sub` (WRONG — that's symmetric bonding repeated, the "fresh-root-per-sub-edge" anti-pattern)?
+- Does the LAST seller to commit post the BIGGEST bond? (If not, G is not being treated as monotonic.)
+
+**The fresh-root-per-sub-edge anti-pattern.** This is the specific failure mode to watch for: the paper treats each sub-edge as if it were an independent leaf order with `G_i = P_i`. That collapses the asymmetric-bonding mesh into a string of symmetric two-party deals — exactly the architecture the bonded primitive is supposed to NOT be. Symptoms in the manuscript:
+- Per-edge bond pool stated as `4 × P_i` (= `2P_i + 2P_i`) for sub-edges. This is only correct at a true leaf where no further sub-procurement happens AND G has not grown from upstream commits.
+- A "bond posture" table where every sub-edge's seller bond equals `2P_sub` regardless of upstream value.
+- Total cohort bond stated as `4 × Σ P_i`, ignoring G accumulation.
+- Sub-edges presented as parallel/symmetric to the root edge rather than progressively-collateralized under it.
+
+If the paper exhibits this anti-pattern, mark the multi-edge claim as ⚠ DRIFT regardless of whether each per-edge formula is locally correct. Cite Paper A Theorem 5.3 and the asymmetric-bonding rule in `src/FigaroCore.sol` commit logic. Recommend the paper restructure the bond-posture presentation to show G monotonically growing across sequential commits.
+
+**The "many root orders" anti-pattern.** Closely related: the paper treats the assembly as N independent commitments that happen to share the same buyer, rather than as one process tree under one rootBuyer. Symptoms:
+- "Passenger commits separately to each resource provider" without a single rootBuyer→rootSeller commitment binding them.
+- Each commitment presented as having its own G_root = its own P (instead of one G shared across the process).
+- No coordinator party at the root, but atomic resolution still claimed across the parties.
+
+If atomic resolution is claimed across the parties but the structure is multi-process, that's a CRITICAL drift — the architecture's Mechanism 2 doesn't apply across processes.
+
+---
+
+## Step 5 — Schema and inventory checks
 
 Several papers reference schema counts, invariant counts, validator counts. These drift quietly when new schemas land. Check:
 
@@ -75,7 +117,7 @@ Off-by-one on these is the most common drift mode after rename / add operations.
 
 ---
 
-## Step 5 — Output
+## Step 6 — Output
 
 ```
 ## Paper(s) reviewed
@@ -110,3 +152,4 @@ If the paper is fully in lockstep, lead with that explicitly: "All <N> load-bear
 - A theorem reference verifies on TWO axes: (a) the theorem name exists in the proof source, (b) the property the theorem claims still holds in the code. Both must check.
 - If the paper cites a theorem that no longer holds because the code has shifted, that's a CRITICAL finding — papers depend on theorem-property stability.
 - Do not propose paper rewrites. Surface drift; the operator (or a paper-author agent, if one exists later) decides direction.
+- **Process-semantics checks (Step 4) are not optional when the paper has a bond-posture table or a worked multi-edge example.** A locally-correct per-edge formula that violates whole-process G accumulation or splits the assembly into multiple processes is the most common failure mode in papers that translate the kernel into domain-specific assemblies. Read the table as a whole, not as a sum of independent rows.

@@ -94,7 +94,7 @@ Authoritative docs that must stay in sync:
 - `.github/copilot-instructions.md` — same inventory, Copilot framing
 - `sdk/README.md` — SDK entry points
 - `docs/v5/VERIFICATION_MAP.md` — invariant → test → formal layer map
-- User-facing schema surfaces in `frontend/app/`. Use `grep -rl "<schemaId>" frontend/app/` to find every page that needs updating; canonical surfaces include `app/(app)/schemas/page.tsx`, `app/(app)/integrate/page.tsx`, `app/(marketing)/spec/page.tsx`, `app/(marketing)/help/page.tsx`. Update when a new schema lands.
+- User-facing schema surfaces in `frontend/app/`. Use `grep -rl "<schemaId>" frontend/app/` to find every page that needs updating; canonical surfaces include `app/(marketing)/schemas/page.tsx`, `app/(marketing)/integrate/page.tsx`, `app/(marketing)/spec/page.tsx`, `app/(marketing)/local-commerce/page.tsx`. Update when a new schema lands.
 
 ### Test Commands
 
@@ -156,11 +156,12 @@ and resolution is **atomic** — all orders in the process settle together or
 not at all): operates on the already-scaled mesh to enforce inter-seller
 coordination, cooperation, and communication. The atomic-resolution rule is
 buyer dominance's forcing function: it induces a weakest-link subgame among
-sellers (Proposition 5.8) — endogenous peer pressure of magnitude Pᵢ + 2Gᵢ
-on every co-seller, without explicit communication or governance. This
-reproduces Grameen joint-liability microfinance's peer-enforcement outcome
-under strictly weaker assumptions (no repeated interaction, no local
-information, no exogenous punishment technology; Theorem 6.1).
+sellers (Proposition 5.11, Endogenous Coordination Pressure) — endogenous
+peer pressure of magnitude Pᵢ + 2Gᵢ on every co-seller, without explicit
+communication or governance. This reproduces Grameen joint-liability
+microfinance's peer-enforcement outcome under strictly weaker assumptions
+(no repeated interaction, no local information, no exogenous punishment
+technology; Proposition 6.1, Assumption Reduction on Cooperation Pressure).
 
 The mechanisms are inseparable in practice. Bonding alone gives a mesh of
 independently bonded edges — multi-party coordination would still require N
@@ -632,19 +633,20 @@ needed, it ships in `frontend/` only.
 
 ### Routes (`frontend/app/`)
 
-`/`, `/admin`, `/builders`, `/builders/assemblies`, `/builders/authoring`,
-`/builders/designer`, `/builders/prototype`, `/builders/prototype/[slug]`,
-`/console`, `/evidence-display`, `/fig`, `/fig/claim`, `/local-commerce`,
-`/help`, `/i/[slug]`, `/onboarding`, `/operators`, `/operators/catalogue`,
-`/sign`, `/terminal` (with `/workbench` → `/terminal` 308 redirect preserved
-in `next.config.mjs`), `/api/semantic/agreements`,
-`/api/semantic/agreements/[agreementHash]`, `/api/semantic/assemblies`,
-`/api/semantic/runtime`.
+Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory listing, not this paragraph.
 
-`/i/[slug]` is the canonical assembly instance route, authored as declarative
-composition over the module registry via `useAssemblyRuntime`. The
-`/builders/designer` three-column tool (palette + canvas + inspector) ships a
-publish-readiness drawer.
+**`(marketing)/` (no wallet provider):** `/` (root), `/about`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig` (informational, no wallet), `/groups`, `/integrate`, `/local-commerce` (worked example), `/protocol`, `/schemas`, `/spec`.
+
+**`(app)/` (wallet provider mounted):** `/audit/[processId]`, `/builders` (hub), `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/builders/designer/view/[slug]`, `/consent` (beta-only ceremony), `/console`, `/discover` (operator catalogue), `/dispute` (beta-consent dispute), `/evidence-display` (Kleros juror iframe target), `/fig` (transactional surface, with `/fig/claim`), `/inbox` (merchant inbox), `/m/[merchant]` (merchant detail + cart), `/operators` (enrolment), `/orders` (buyer order list), `/orders/[processId]` (per-order live timeline), `/sign`, `/terminal`.
+
+**API:** `/api/semantic/agreements`, `/api/semantic/agreements/[agreementHash]`, `/api/semantic/assemblies`, `/api/semantic/runtime`.
+
+**Consumer flow** (May 2026 split, replaces the prior `/i/[slug]` operator-runtime shape):
+- Buyers: `/discover` → `/m/[merchant]` (browse + cart) → `/orders/[processId]` (live timeline + Confirm receipt) → `/orders` (history).
+- Merchants: `/inbox` (incoming + active + completed) → `/orders/[processId]` (fire merchant-process events).
+- Builders: `/builders/designer/view/[slug]` (assembly inspector). The prior `/i/[slug]` route was deleted; its inbound bookmarks redirect to `/discover`.
+
+The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `AgreementDrawer`); the palette/canvas/inspector three-column shape was rejected as "wrong-direction" — see `feedback_designer_dag_is_canonical.md`.
 
 ### Key Library Areas (`lib/`)
 
@@ -669,27 +671,22 @@ via `listBlockMetadata()` / `listBlocksByCategory(category)` / `getBlockForModul
 
 ### Designer tool surface (`frontend/`)
 
-Lives at `/builders/designer`. Three-column layout:
+The Designer is a DAG editor — assembly designers fork a reference assembly or start blank, modify the bonded-process tree on the canvas, edit per-node clauses in a side drawer, and save drafts to local storage. The three-column palette/canvas/inspector shape was rejected during this project's evolution — see `feedback_designer_dag_is_canonical.md`.
 
-- **Palette** (`components/core/designer/DesignerPalette.tsx`) — left rail.
-  Lists registered blocks grouped by visible category, with per-block Layer A
-  schema-availability signal (✓ = spec loaded, ⚠ = missing).
-- **Canvas** (`components/core/designer/DesignerCanvas.tsx`) — middle. Shows
-  identity / roles / mechanisms / views×slots×bindings. Read-only by default;
-  becomes interactive when callbacks are passed (slot selection, binding
-  selection, remove `×`).
-- **Inspector** (`components/core/designer/DesignerInspector.tsx`) — right
-  rail. Edits the selected binding's `componentKind` / `semanticInput` /
-  `priority`; surfaces the owning block.
-- **Publish drawer** (`components/core/designer/DesignerPublishDrawer.tsx`)
-  — overlay. Runs `validateDraftPublicationReadiness` (collision checks
-  suppressed for the demo), shows readiness badge + issue list + serialized
-  assembly JSON with clipboard copy.
+**Routes:**
+- `/builders/designer` — landing. Lists local drafts (`<DraftsList>`) and the 6 forkable reference assemblies (`REFERENCE_ASSEMBLIES`).
+- `/builders/designer/new` — blank DAG editor. Three init paths: `?draft=slug` query, autosaved current session, or fresh blank.
+- `/builders/designer/edit/[slug]` — fork an existing reference assembly into the editor.
+- `/builders/designer/view/[slug]` — read-only view of a reference assembly.
 
-Pure draft-mutation helpers live in `lib/shared/designerOps.ts`:
-`addBlockToSlot` (auto-priority, dedup per `moduleId`+`slot`),
-`removeBindingFromSlot`, `updateBinding`. All return the same Assembly
-reference on no-op so React re-renders are minimal.
+**Components:**
+- `components/core/ProcessGraphCanvas.tsx` — the DAG canvas. Drag green handle to spawn sub-orders; drag onto another node to merge fan-in; click edge pill to swap fulfilment method.
+- `components/core/designer/AgreementDrawer.tsx` — per-node clause editor (Geo / GHG / Topology baseline-graph clauses).
+- `components/core/designer/DraftsList.tsx` — saved-drafts list on the landing.
+
+**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `swapSyntheticFulfilmentMethod`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/assemblyToSyntheticOrders.ts` (forks an `Assembly` into an `Order[]`).
+
+No publish-to-registry path exists today; saved drafts stay in localStorage. `DesignerPublishDrawer.tsx` was specified in this doc historically but never built.
 
 ### Schema validation in the frontend
 
@@ -702,7 +699,7 @@ reference on no-op so React re-renders are minimal.
 ### Components (`components/`)
 
 - **`core/`** — order flows, bond/token, builder/assembly, semantic. Assembly rendering shells: `AssemblyShell`, `AssemblyInspector`, `AssemblyProcessWorkspace`, `RegisteredAssemblyWorkspace` (all `Institution*` names have been renamed)
-- **`modules/`** — composable mechanism components registered via `registerAllModules.ts`. Base-slot registry entries consumed by the declarative `/i/[slug]` route.
+- **`modules/`** — composable mechanism components registered via `registerAllModules.ts`. Module registry remains for assembly-tier composition (designer view, future tooling); the prior consumer-facing `/i/[slug]` runtime that rendered them was deleted in favour of purpose-shaped pages (`/m/[merchant]`, `/orders/[processId]`, `/inbox`).
 - **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs; **`console/`** and **`operators/`** — route-specific panels
 
 ### Wallet-provider scope per route
@@ -710,9 +707,9 @@ reference on no-op so React re-renders are minimal.
 Every route in `frontend/app/` is classified into one of three tiers
 governing wallet-provider load:
 
-- **Marketing** — pure publication / explanation. Must NOT trigger wallet-provider load. Examples: `/`, `/about`, `/help`, `/legal`, `/research`, `/publications`, `/spec`, `/verification`, `/sovereign-commerce`, `/economics`, `/labor-law`, `/displaced`, `/compliance`, `/mechanism`, `/resources`.
-- **Reference / read-only** — registries and tools whose primary purpose is read-only inspection. May surface inline write affordances via `WalletGate`, but the page renders fully without a connected wallet. Examples: `/builders`, `/builders/assemblies`, `/builders/authoring`, `/builders/designer*` (DesignDraft is localStorage), `/builders/prototype*`, `/integrate`, `/schemas`, `/groups`, `/groups/[slug]`, `/grants`, `/treasuries`, `/i/[slug]` (read-mode views).
-- **Transactional** — primary purpose is signing or sending transactions. Must require a connected wallet (route-guard or `WalletGate` at the page top). Examples: `/terminal`, `/sign`, `/operators`, `/operators/catalogue`, `/console`, `/admin`, `/fig`, `/fig/claim`, `/fig/design`, `/evidence-display`, `/accounting`, `/local-commerce`.
+- **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current routes: `/`, `/about`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig` (informational), `/groups`, `/integrate`, `/local-commerce`, `/protocol`, `/schemas`, `/spec`.
+- **Reference / read-only (in `(app)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. Current: `/builders` (hub, currently publication-shaped — could move to `(marketing)/`), `/builders/designer*` (drafts in localStorage), `/discover` (operator catalogue), `/audit/[processId]` (audit / forensics), `/m/[merchant]` (read-mode catalogue with WalletGate-protected place-order CTA).
+- **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/terminal`, `/sign`, `/operators`, `/console`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` + `/orders/[processId]` (buyer order list + per-order timeline; resolveProcess fires here), `/inbox` (merchant inbox; counter-sign + merchant-process attestations fire here).
 
 **Rules:**
 

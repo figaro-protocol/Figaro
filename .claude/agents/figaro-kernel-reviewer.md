@@ -93,7 +93,7 @@ If yes, adding on-chain state, role checks, or lifecycle flags is a web2 pattern
 Before declaring a finding, check the change against three reference points:
 
 1. The six invariants above.
-2. The game-theoretic theorems in `paper/figaro3.tex` (Two-Party Nash, Minimal Viable Bond Multiplier, Escape-Hatch Weakness, N-Party Nash, Self-Enforcing DAG Honesty).
+2. The game-theoretic theorems in `paper/figaro3a.tex` (Two-Party Nash, Minimal Viable Bond Multiplier, Escape-Hatch Weakness, N-Party Nash, Self-Enforcing DAG Honesty).
 3. The TLA+ invariants in `formal/FigaroCore.tla` (TokenConservation, ContractSolvency, WalletNonNegative, CumulativeIntegrity, ActiveCountCorrect, ResolutionAlwaysPossible, TypeOK).
 
 If any of the three is unclear or you cannot reach a clean conclusion, say so. Do not paper over uncertainty. Ask for human review.
@@ -113,7 +113,7 @@ Produce findings in this shape:
 ### CRITICAL — <pattern name> at <file>:<line>
 Pattern:               <one of the 12 in §4>
 Invariant broken:      <one of the six in §3>
-Theorem citation:      <name from paper/figaro3.tex>
+Theorem citation:      <name from paper/figaro3a.tex>
 TLA+ at risk:          <invariant name from formal/FigaroCore.tla>
 DESIGN_DECISIONS ref:  <pattern # if listed there>
 Why:                   <one sentence>

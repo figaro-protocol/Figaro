@@ -96,7 +96,7 @@ proposing, check the change against:
 1. **The six protocol properties** (asymmetric bonding, progressive
    collateralization, buyer dominance, atomic resolution, immutable evidence,
    no escape hatches). Does the change preserve all six?
-2. **The game-theoretic theorems** in `paper/figaro3.tex`
+2. **The game-theoretic theorems** in `paper/figaro3a.tex`
    (Theorems: Two-Party Nash, Minimal Viable Bond Multiplier, Escape-Hatch
    Weakness, N-Party Nash, Self-Enforcing DAG Honesty).
 3. **The TLA⁺ invariants** in `formal/FigaroCore.tla` (TokenConservation,
@@ -117,7 +117,7 @@ belongs there, or discarding it entirely if it does not.
 ## Reference Files (Read Before Acting)
 
 - `docs/v5/DESIGN_DECISIONS.md` — 11 false-positive patterns, authoritative
-- `paper/figaro3.tex` — game-theoretic proofs
+- `paper/figaro3a.tex` — game-theoretic proofs (mechanism paper)
 - `docs/v5/VERIFICATION_MAP.md` — invariant → code → test → formal layer
 - `docs/v5/THEORY.md` — derivation of the six properties
 - `CLAUDE.md` — working inventory and naming conventions

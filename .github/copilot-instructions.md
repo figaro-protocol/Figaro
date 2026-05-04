@@ -333,8 +333,9 @@ in `frontend/lib/shared/schemas/`, TS encoder in `sdk/src/schemas/encode.ts`,
 Solidity validator + Foundry tests. Topology ships only the JSON spec — it
 lives inside the signed agreement manifest at commit time.
 
-User-facing copy lives at `/builders` "Schema validators in force" and
-`/help` "Schema validation". Both must be updated when adding a new schema.
+User-facing copy lives at `/schemas` (the canonical schema catalogue) and
+`/spec` "Schema validators in force". Both must be updated when adding a
+new schema, alongside the worked-example references on `/local-commerce`.
 
 ---
 
@@ -404,25 +405,36 @@ active frontend.** The prior `frontend/` directory was archived to
 
 ### Routes (`frontend/app/`)
 
-- `/` — Landing page
-- `/admin` — Stubbed (V5 has no owner, no fee — infrastructure is free)
-- `/builders` — Builder landing
-- `/builders/assemblies` — Browse published assemblies
-- `/builders/authoring` — Author new assemblies
-- `/builders/prototype` + `/builders/prototype/[slug]` — Prototype a live instance from an assembly
-- `/builders/designer` — Three-column Designer tool: palette + canvas + inspector + publish drawer. See "Designer tool surface" below.
-- `/console` — Console HITL surface for queued operating and build actions
-- `/evidence-display` — Kleros evidence display interface (iframed by Kleros court)
-- `/fig` + `/fig/claim` — FIG token explainer, dashboard, and merkle-claim surface
-- `/local-commerce` — Local Commerce archetype marketing/landing
-- `/help` — FAQ and guides
-- `/i/[slug]` — Live assembly rendering from slug. Authored declaratively against `components/modules/` registry via `useAssemblyRuntime`.
-- `/onboarding` — New-user onboarding
-- `/operators` + `/operators/catalogue` — Operator self-registration and catalogue authoring
-- `/sign` — Signature and agreement tooling surface
-- `/terminal` — Direct kernel-level interaction: raw orders, processes, protocol stats, graph. (Replaces `/workbench`; `/workbench` issues a 308 permanent redirect via `next.config.mjs`.)
-- `/api/semantic/agreements`, `/api/semantic/agreements/[agreementHash]`
-- `/api/semantic/assemblies`, `/api/semantic/runtime`
+Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory listing, not this list.
+
+**`(marketing)/` (no wallet provider):** `/`, `/about`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig` (informational), `/groups`, `/integrate`, `/local-commerce` (worked example), `/protocol`, `/schemas`, `/spec`.
+
+**`(app)/` (wallet provider mounted):**
+- `/builders` — builder hub
+- `/builders/designer` — DAG editor landing (drafts list + reference assemblies)
+- `/builders/designer/new` — blank DAG editor
+- `/builders/designer/edit/[slug]` — fork an existing reference
+- `/builders/designer/view/[slug]` — read-only DAG view
+- `/consent` — beta-only consent ceremony
+- `/console` — HITL supervision surface
+- `/discover` — operator catalogue (entry point for buyers)
+- `/dispute` — beta-consent dispute submission flow
+- `/evidence-display` — Kleros evidence display interface (iframed by the Kleros court)
+- `/fig` + `/fig/claim` — FIG token transactional surface (dashboard + merkle claim)
+- `/audit/[processId]` — consolidated process-level audit + financials (replaces `/financials` + `/verify`)
+- `/m/[merchant]` — per-merchant detail page (hero + menu + cart + place-order)
+- `/orders` — buyer's orders list (active + completed)
+- `/orders/[processId]` — per-order live timeline (consumer-facing event copy, role-aware actions)
+- `/inbox` — merchant inbox (XMTP pending + active + completed orders)
+- `/operators` — operator enrolment surface
+- `/sign` — counter-sign incoming commitment
+- `/terminal` — direct kernel-level interaction (`/workbench` 308-redirects here per `next.config.mjs`)
+
+**Removed/redirected** (May 2026):
+- `/i/[slug]` — assembly runtime; deleted in favour of purpose-shaped pages above. Inbound bookmarks 308 to `/discover`.
+- `/financials/[processId]` → `/audit/[processId]`. `/verify` → `/audit`.
+
+**API:** `/api/semantic/agreements`, `/api/semantic/agreements/[agreementHash]`, `/api/semantic/assemblies`, `/api/semantic/runtime`.
 
 ### Components (`frontend/components/`)
 
@@ -430,8 +442,7 @@ active frontend.** The prior `frontend/` directory was archived to
 - Order flows: `OrderControls`, `OrderConfirmationModal`, `OrderGraph`,
   `OrderErrorMessage`, `OrderNodeSemanticCard`
 - Bond/token: `BondApprovalPanel`, `PermitControl`, `TokenApprovalFlow`, `TokenBalances`
-- Builder/assembly: `BuilderAuthoringStudio`, `BuilderPrototypeIndexShell`,
-  `BuilderPrototypeShell`, `AssemblyInspector`, `AssemblyShell`,
+- Builder/assembly: `AssemblyInspector`, `AssemblyShell`,
   `AssemblyWorkspace`, `AssemblyProcessWorkspace`, `RegisteredAssemblyWorkspace`,
   `CapabilityRail`, `RoleSwitcher`
 - Semantic/analytical: `SemanticProcessWorkspacePanel`, `ProcessSummaryCard`,
@@ -465,9 +476,9 @@ active frontend.** The prior `frontend/` directory was archived to
 
 Routes are classified into three tiers:
 
-- **Marketing** — pure publication / explanation, must NOT trigger wallet-provider load. `/`, `/about`, `/help`, `/legal`, `/research`, `/publications`, `/spec`, `/verification`, `/sovereign-commerce`, `/economics`, `/labor-law`, `/displaced`, `/compliance`, `/mechanism`, `/resources`.
-- **Reference / read-only** — registries and tools whose primary purpose is read-only inspection. May surface inline write affordances via `WalletGate`. `/builders`, `/builders/assemblies`, `/builders/authoring`, `/builders/designer*`, `/builders/prototype*`, `/integrate`, `/schemas`, `/groups`, `/groups/[slug]`, `/grants`, `/treasuries`, `/i/[slug]` (read-mode views).
-- **Transactional** — primary purpose is signing or sending transactions. Must require connected wallet. `/terminal`, `/sign`, `/operators`, `/operators/catalogue`, `/console`, `/admin`, `/fig`, `/fig/claim`, `/fig/design`, `/evidence-display`, `/accounting`, `/local-commerce`.
+- **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current: `/`, `/about`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig` (informational), `/groups`, `/integrate`, `/local-commerce`, `/protocol`, `/schemas`, `/spec`.
+- **Reference / read-only (in `(app)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. Current: `/builders` (hub), `/builders/designer*` (drafts in localStorage), `/discover`, `/audit/[processId]`, `/m/[merchant]` (read-mode catalogue with WalletGate-protected place-order CTA).
+- **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/terminal`, `/sign`, `/operators`, `/console`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` + `/orders/[processId]` (resolveProcess fires here), `/inbox` (counter-sign + merchant-process attestations fire here).
 
 Rules: don't gate read-only pages behind `useAccount` (wallet-connect is not auth); use `WalletGate` for inline gates on Reference pages. Today the root layout loads `<Providers>` for every route — splitting `app/` into `(marketing)` / `(transactional)` route groups is a known follow-on; the classification above is the canonical reference for that future refactor.
 
@@ -492,18 +503,23 @@ Rules: don't gate read-only pages behind `useAccount` (wallet-connect is not aut
 
 **`marketplace/`**, **`commerce/`**, **`console/`**
 
-**`shared/`** — Wagmi config, runtime identity, assembly schema/parser/registry/validation, IPFS, module system, vocabulary (`vocab.ts`), reference assemblies (`assemblies/*.reference.json`), runtime fixtures. Key entries: `assembly.ts` (schema types `Assembly`, `MechanismAssembly`, `RoleAssembly`, `ModuleBinding`), `assemblyParser.ts` (`parseAssemblyDocument`), `assemblyRegistry.ts` (`getAssemblyBySlug`, `getRegisteredAssemblyBySlug`, `listAssemblies`, `listRegisteredAssemblies`), `assemblyValidation.ts`, `assemblyPublication.ts`, `runtimeResolution.ts` (`resolveAssemblyRuntimeContext`), `moduleRegistry.ts` (`ModuleRenderContext`, `getModule`, `registerModule`), `blockMetadata.ts` (designer block registry: `BlockMetadata`, `registerBlock`, `listBlockMetadata`, `listBlocksByCategory`, `getBlockForModule`), `designerOps.ts` (pure draft-mutation helpers: `addBlockToSlot`, `removeBindingFromSlot`, `updateBinding`)
+**`shared/`** — Wagmi config, runtime identity, assembly schema/parser/registry/validation, IPFS, module system, vocabulary (`vocab.ts`), reference assemblies (`assemblies/*.reference.json`), runtime fixtures. Key entries: `assembly.ts` (schema types `Assembly`, `MechanismAssembly`, `RoleAssembly`, `ModuleBinding`), `assemblyParser.ts` (`parseAssemblyDocument`), `assemblyRegistry.ts` (`getAssemblyBySlug`, `getRegisteredAssemblyBySlug`, `listAssemblies`, `listRegisteredAssemblies`), `assemblyValidation.ts`, `assemblyPublication.ts`, `runtimeResolution.ts` (`resolveAssemblyRuntimeContext`), `moduleRegistry.ts` (`ModuleRenderContext`, `getModule`, `registerModule`), `blockMetadata.ts` (block registry consumed by other parts of the runtime: `BlockMetadata`, `registerBlock`, `listBlockMetadata`, `listBlocksByCategory`, `getBlockForModule`).
 
-### Designer tool surface (`frontend/components/core/designer/`)
+### Designer tool surface (`frontend/`)
 
-The `/builders/designer` route mounts a three-column editor:
+The Designer is a DAG editor — assembly designers fork a reference assembly or start blank, modify the bonded-process tree on the canvas, edit per-node clauses in a side drawer, and save drafts to local storage. The three-column palette/canvas/inspector shape was rejected during this project's evolution — see `feedback_designer_dag_is_canonical.md`.
 
-- `DesignerPalette.tsx` — left rail. Renders blocks grouped by category with per-block Layer A schema-availability signal (✓ / ⚠).
-- `DesignerCanvas.tsx` — middle. Identity / roles / mechanisms / views×slots×bindings. Read-only by default; becomes interactive when `onSelectSlot` / `onSelectBinding` / `onRemoveBinding` callbacks are passed.
-- `DesignerInspector.tsx` — right rail. Edits the selected binding's `componentKind` / `semanticInput` / `priority`; surfaces the owning block.
-- `DesignerPublishDrawer.tsx` — overlay. Runs `validateDraftPublicationReadiness` (collision checks suppressed for the demo), shows readiness badge + issue list + serialized assembly JSON with clipboard copy.
+**Routes:**
+- `app/(app)/builders/designer/page.tsx` — landing. Lists local drafts (`<DraftsList>`) and the 6 forkable reference assemblies (`REFERENCE_ASSEMBLIES`).
+- `app/(app)/builders/designer/new/page.tsx` — blank DAG editor. Three init paths: `?draft=slug` query, autosaved current session, or fresh blank.
+- `app/(app)/builders/designer/edit/[slug]/page.tsx` — fork an existing reference assembly into the editor.
+- `app/(app)/builders/designer/view/[slug]/page.tsx` — read-only DAG view.
 
-All four components are state-free; the host page (`app/builders/designer/page.tsx`) holds draft-by-slug state and routes selection across them. Pure draft mutations live in `lib/shared/designerOps.ts` (return same `Assembly` reference on no-op for cheap re-renders).
+**Components:** `components/core/ProcessGraphCanvas.tsx` (the DAG canvas — drag green handle to spawn sub-orders, drag onto another node for fan-in, click edge pill to swap fulfilment method); `components/core/designer/AgreementDrawer.tsx` (per-node clause editor); `components/core/designer/DraftsList.tsx` (saved-drafts list).
+
+**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers), `lib/designer/syntheticDesignStore.ts` (localStorage persistence), `lib/designer/assemblyToSyntheticOrders.ts` (forks an `Assembly` into an `Order[]`).
+
+No publish-to-registry path exists today; saved drafts stay in localStorage. `DesignerPublishDrawer.tsx` was specified in this doc historically but never built.
 
 ### Hooks (`frontend/hooks/core/`)
 
