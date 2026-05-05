@@ -182,8 +182,10 @@ A human or autonomous agent operates the wallet on the asset's
 behalf. Public-authority wallets (port authorities, customs
 authorities) participate on the same footing as commercial
 providers; the kernel does not distinguish a tax from a fee for
-service. The full RWA-as-wallet apparatus is developed in the
-accounting paper of this corpus.
+service. A wallet is an active counterparty in the composition
+iff the underlying asset is alive and its credentials are
+current --- the asset / wallet / operator three-layer split is
+load-bearing throughout what follows.
 
 \paragraph{The perimeter the paper develops.}
 This paper develops the bonded composition at the same perimeter
@@ -201,8 +203,11 @@ Granularity within the perimeter is a design choice the
 contracting parties make, not a kernel constraint --- the same
 movement of goods can be composed as a coarser process (a few
 commits to aggregator wallets) or a finer one (more commits to
-specialised value-adders), with the bonding equilibrium holding at
-every edge regardless. The composition is not a TradeLens
+specialised value-adders). The per-edge bonding equilibrium holds
+under either composition; the cohort-pressure topology under
+buyer-dominance does shift with cardinality, since coarsening
+collapses N small bonded edges into one larger one and changes
+which co-sellers carry the weakest-link load. The composition is not a TradeLens
 replacement in the sense of a drop-in alternative product; it is a
 re-architecture of the inter-logistics coordination problem in
 which the consortium-platform layer dissolves into a
@@ -249,17 +254,16 @@ bills of lading, customs filings, port handoffs, vessel positions
 The technical architecture was Hyperledger-Fabric-based: a
 permissioned ledger where participating carriers, ports, and
 customs authorities could publish operational records. The
-platform's value proposition rested on the assumption that all
+platform's use-case design rested on the assumption that all
 major ocean carriers would join, producing a single ledger that
 shippers could rely on as comprehensive cross-carrier reference.
 \citet{jensen_etal_2019} and \citet{sarker_etal_2021} document
-the platform's value proposition and use-case design as it stood
-mid-deployment; both papers predate the shutdown and frame the
-platform around adoption potential rather than around the
-governance refusal we read as the binding constraint below.
-The governance-was-binding reading is original to this paper;
-Jensen and Sarker supply the value-proposition baseline against
-which the reading is offered.
+the platform's use-case design as it stood mid-deployment; both
+papers predate the shutdown and frame the platform around
+adoption potential rather than around the governance refusal we
+read as the binding constraint below. The governance-was-binding
+reading is original to this paper; Jensen and Sarker supply the
+use-case baseline against which the reading is offered.
 
 \paragraph{The adoption shape.}
 By 2022, only CMA CGM (a Maersk competitor) had joined as a major
@@ -282,11 +286,13 @@ The deeper reading is that the non-Maersk carriers correctly
 identified a strategic problem with the platform's governance
 shape. A platform controlled by Maersk, with IBM as the technical
 operator and Maersk as the principal customer, is structurally a
-Maersk asset that other carriers are being asked to provision
-with their operational data. The asset's governance accountability
-runs to Maersk in any contested case. Whatever the platform's
-formal governance arrangements, the controlling-competitor
-dynamic is the binding constraint on competitors' participation.
+coordination layer whose governance accountability runs to a
+single industry participant; other carriers are being asked to
+provision their operational data into a layer whose contested
+cases will resolve in that participant's favour. Whatever the
+platform's formal governance arrangements, the
+controlling-competitor dynamic is the binding constraint on
+competitors' participation.
 
 The argument is not that Maersk acted in bad faith or that the
 formal governance was inadequate. The argument is that the
@@ -466,12 +472,17 @@ into one bonded commit) or finely (each value-adder a separate
 commit, as enumerated above). The kernel sees only commits; it
 does not reify any tier-role or aggregation choice. Granularity is
 chosen by the contracting parties to suit their coordination
-needs, with the bonding equilibrium holding at every edge
-regardless. This paper develops the fine-grained version because
+needs. The per-edge bonding equilibrium is invariant to the
+choice (each commit's $2\pay$ / $2\cumval$ posture is independent
+of how many other commits the process carries); the cohort-pressure
+topology induced by atomic resolution is not, since the magnitude
+$\pay_i + 2\cumval_i$ on every co-seller depends on cohort
+cardinality. This paper develops the fine-grained version because
 the value-adder structure is the substantive content of the
 TradeLens-perimeter coordination problem; coarse aggregations are
-admissible and may be operationally appropriate in many
-deployments.
+admissible, may be operationally appropriate in many deployments,
+and produce a different cohort-pressure topology that the assembly
+designer can engineer for.
 
 \paragraph{Off-chain organizational shapes.}
 The conventional inter-logistics chain involves named
@@ -482,11 +493,13 @@ each tier-role is whichever wallet the contracting parties
 designate at agreement signing. Off-chain organizational shapes
 that today perform discovery, curation, brand-as-quality-signal,
 or coordination services around the inter-logistics layer can
-still be filled by parties providing those specific services, but
-they cannot insert themselves as kernel intermediaries between
-the buyer-of-record and the operational sellers; the kernel
-forbids any party other than the rootBuyer from being the buyer
-of within-process commits.
+still be filled by wallets representing the assets that provide
+those services and operated by whichever human or agent stack
+the asset's owner runs --- but those wallets cannot insert
+themselves as kernel intermediaries between the buyer-of-record
+and the operational sellers, since the kernel forbids any party
+other than the rootBuyer from being the buyer of within-process
+commits.
 
 \paragraph{Per-commit schema clauses.}
 Each kernel commit carries the schema clauses relevant to the
@@ -526,14 +539,17 @@ clause with the schema clauses appropriate to the seller's role.
   \item \emph{Customs agent}: \texttt{jurisdiction-v1}
     attestation recording the customs authority's determination,
     plus payment for entry-filing services.
-  \item \emph{Customs authority}: payment for the import duty.
-    The customs-authority wallet is an RWA-as-wallet of the same
-    kind as a commercial provider --- a public service sustained
-    by receipts covering its operating expenses --- in the role
-    of a bonded seller of border-clearance service. The
-    sovereign decisional authority on the customs agent's
-    parallel attestation is an off-chain regulatory function
-    the kernel does not encode.
+  \item \emph{Customs authority}: the import-duty payment lands
+    in the customs-authority wallet at this commit. The authority
+    has two distinct functions, only one of which the kernel
+    sees: as a bonded receiver of a sovereign extraction
+    (the duty itself, a tax on the cargo) the kernel sees a
+    wallet that committed and a payment that flowed; as the
+    sovereign decisional authority on whether the cargo clears
+    under the relevant tariff schedule, the authority continues
+    to operate off-chain. Both functions sit in the same wallet
+    operationally; only the first is kernel-visible.
+    \Cref{sec:scope} treats the dual function in detail.
   \item \emph{Marine insurer}: payment of the policy premium;
     the insurer's bond is the underwriting capacity at risk
     against the insured cargo value. Insurance composes with
@@ -612,17 +628,17 @@ Total bond locked across the process & --- & --- & $\$2{,}000$ & $\$21{,}886$ \\
 \end{tabular}
 \caption{Stylized per-commit bond posture for a \$1{,}000 cargo
 shipment under one TradeLens-perimeter process with the
-importer-of-record as \texttt{rootBuyer}. The import duty (\$39)
-is $5\%$ of the declared CIF value (\$775 = \$700 cargo + \$15
-marine insurance + \$60 ocean freight). $G$ is the process-wide
+importer-of-record as \texttt{rootBuyer}. The import duty
+(\$39, rounded from $0.05 \times \$775 = \$38.75$) is $5\%$ of
+the declared CIF value (\$775 = \$700 cargo + \$15 marine
+insurance + \$60 ocean freight). $G$ is the process-wide
 cumulative-value accumulator, monotonically growing with each
 commit. The importer's bond at each commit scales with the
 immediate payment; each seller's bond scales with the cumulative
 process value at the moment that seller commits. The
 customs-authority wallet is an RWA-as-wallet on the same footing
 as commercial providers --- a public service whose continued
-operation depends on receipts covering its operating expenses ---
-in the role of a bonded seller of border-clearance service.
+operation depends on receipts covering its operating expenses.
 Per-leg payments are illustrative; absolute magnitudes vary with
 cargo class, route, tariff schedule, and the operational
 arrangement (open-account vs.\ documentary-credit, FOB vs.\ CIF,
@@ -899,33 +915,37 @@ the original buyer (and bonded under the standard kernel rule),
 and the new buyer commits a fresh transport process for the
 remaining legs.
 
-\paragraph{Axes of underspecification.}
-The pattern is sketched here as a candidate, not asserted as a
-deliverable mechanism. It is underspecified along three axes
-that bound how seriously a deployment can rely on it.
+\paragraph{Scope of the sketch.}
+The pattern is a sketch, not a deliverable mechanism. Three
+elements lie outside the kernel-discipline guarantee and must be
+specified by the parties at agreement signing rather than relied
+on as architectural invariants.
 
-\emph{Sub-seller consent under the wrapper.} The cancellable-seller
-wrapper relies on programmatic acknowledgement of the
-cancellation by the affected sub-seller under a pre-agreed fee
-schedule. Whether this constitutes sub-seller consent in the
-kernel-discipline sense, or constitutes a unilateral exit dressed
-in counterparty clothing, is unsettled. A sub-seller bonded under
-a CancellableSeller wrapper has consented to the wrapper's terms
-at commit time, but consent at commit time to a future programmatic
-acknowledgement is structurally different from consent at the
-moment of cancellation; the design-discipline reading depends on
-which framing one accepts.
+\emph{Sub-seller consent under the wrapper.} The wrapper turns
+on programmatic acknowledgement of cancellation by the affected
+sub-seller under a fee schedule pre-agreed at commit time. The
+sub-seller bonded under the wrapper has consented to its terms;
+whether that consent at commit time satisfies the
+kernel-discipline reading of counterparty consent at the moment
+of cancellation is a design-discipline question the parties
+resolve in the off-chain agreement, not an architectural
+property the sketch supplies.
 
-\emph{Cargo-handoff operationalization.} A fresh transport process
-for the remaining legs requires the original carrier to release
-cargo to the new carrier, which is a real-world handoff with no
-described attestation surface in the present sketch.
+\emph{Cargo-handoff operationalization.} A fresh transport
+process for the remaining legs requires the original carrier to
+release cargo to the new carrier. The cargo handoff is a
+real-world event the off-chain agreement attaches an attestation
+surface to (a \texttt{handoff-v1} attestation between the two
+carriers, with the original buyer counter-signing); the present
+sketch does not pin a specific attestation schema for the
+handoff because the choice is deployment-shaped.
 
-\emph{Cancellation-fee arithmetic.} Setting the fee too low
-produces an early-exit option the original sub-sellers will
-refuse; setting it too high forecloses the transfer use case.
-The present paper does not defend any specific fee schedule;
-the arithmetic is left for the deployment-specific design.
+\emph{Cancellation-fee arithmetic.} The fee schedule must be set
+high enough that sub-sellers do not face an early-exit option
+they will refuse, and low enough that the transfer use case
+remains operational. Specific values are agreement-shaped, not
+architectural; the present paper sets out the structure of the
+arithmetic without prescribing values.
 
 The pattern is therefore not a recommended deployment artifact in
 the way the schemas of \Cref{sec:schemas} are. We include the
