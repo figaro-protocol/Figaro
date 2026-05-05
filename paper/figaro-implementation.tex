@@ -1,7 +1,6 @@
-% Figaro Paper C: The Figaro Kernel — A Verified Solidity Implementation
-% Implementation + verification snapshot. The mechanism is presented in
-% the companion paper figaro3a.tex; organizational implications appear
-% in figaro3b.tex.
+% Figaro Paper C: A Verified Solidity Implementation of Asymmetric Bonding
+% and Buyer Dominance.
+% Implementation + verification snapshot.
 % Snapshot: 2026-04-23
 
 \documentclass[11pt,a4paper]{article}
@@ -51,12 +50,12 @@
 % ────────────────────────────────────────────────────────────────────
 
 \title{%
-  The \figaro{} Kernel:\\
-  A Verified Solidity Implementation of Asymmetric Bonding%
+  Asymmetric Bonding and Buyer Dominance:\\
+  A Verified Solidity Implementation%
 }
 
 \author{
-  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+  Alessandro Daliana
 }
 
 \date{April 2026 (snapshot: 2026-04-23)}
@@ -67,17 +66,21 @@
 
 % ════════════════════════════════════════════════════════════════════
 \begin{abstract}
-We describe a reference Solidity implementation of the
-asymmetric-bonding settlement mechanism developed
-in the mechanism paper, together with the formal-verification
-stack used to audit it. The kernel (\texttt{FigaroCore}) is
-\textbf{ownerless, fee-less, and admin-less}: two external functions,
-three storage mappings, no upgrade path, no escape hatch from the
-bonded state. Verification is layered: TLA\textsuperscript{+} model
-checking exhaustively explores 6{,}087{,}113 distinct states across
-seven kernel invariants; Echidna fuzzes seven property invariants
-under a 50{,}000-call campaign budget; Halmos symbolically proves
-seven kernel properties via the z3 SMT solver; Certora cloud proves
+We describe a reference Solidity implementation of the two-mechanism
+bonded commitment settlement primitive --- \emph{asymmetric bonding}
+(each party locks $2\times$ collateral, with the seller bonding
+against cumulative upstream value) and \emph{buyer dominance with
+atomic resolution} (only the root buyer may extend or resolve, and
+resolution settles every active order in the process simultaneously
+or not at all) --- together with the formal-verification stack used
+to audit it. The kernel (\texttt{FigaroCore}) is \textbf{ownerless,
+fee-less, and admin-less}: two external functions, three storage
+mappings, no upgrade path, no escape hatch from the bonded state.
+Verification is layered: TLA\textsuperscript{+} model checking
+exhaustively explores 6{,}087{,}113 distinct states across seven
+kernel invariants; Echidna fuzzes seven property invariants under a
+50{,}000-call campaign budget; Halmos symbolically proves seven
+kernel properties via the z3 SMT solver; Certora cloud proves
 twenty-two declared CVL rules (twenty-three sub-rules in the cloud
 report) across the kernel, the attestation surface, and a
 token-operations conservation surface that gates every ERC-20 call
@@ -86,11 +89,10 @@ site in the source tree.
 The implementation also realizes a \emph{coordinator pattern}: an
 extension discipline under which external mechanisms (Dutch auction,
 schema-typed attestation coordinator, schema and operator registries)
-compose with the kernel without weakening the bonding equilibrium
-of the mechanism paper. We give the four sufficient
-conditions and three concrete instances. Finally, we describe the
-three-layer enforcement architecture---economic (bonding),
-coordinational (atomic resolution), evidentiary (immutable
+compose with the kernel without weakening the bonding equilibrium.
+We give the four sufficient conditions and three concrete instances.
+Finally, we describe the three-layer enforcement architecture---economic
+(bonding), coordinational (atomic resolution), evidentiary (immutable
 log)---and the threat model under which the layers compose.
 
 This paper is a snapshot at commit-of-record 2026-04-23. Verification
@@ -107,54 +109,65 @@ Certora, Echidna, EIP-712, settlement layer, coordinator pattern
 \section{Introduction}
 \label{sec:intro}
 
-The asymmetric-bonding mechanism developed
-in the mechanism paper establishes that, given a settlement
-layer with the operations \texttt{commit} and \texttt{resolveProcess},
-cooperation is the unique outcome surviving iterated elimination of
-weakly dominated strategies in an $N$-party process tree. The
-mechanism is implementation-agnostic. This paper presents one
-implementation of the mechanism---a Solidity smart contract
-\texttt{FigaroCore} on the EVM---and the verification methodology
+The bonded commitment settlement primitive composes two mechanisms.
+\emph{Asymmetric bonding}: for an order with payment $\pay$ and
+cumulative upstream value $\cumval \geq \pay$, the buyer locks
+$2\pay$ and the seller locks $2\cumval$, so cooperation is the
+weakly dominant strategy at every position in an $N$-party process
+chain and the cooperative profile is the unique outcome surviving
+iterated elimination of weakly dominated strategies. \emph{Buyer
+dominance with atomic resolution}: only the root buyer may extend or
+resolve a process, and resolution settles every active order in the
+process simultaneously or not at all, inducing a weakest-link subgame
+among co-sellers under which cooperation pressure propagates without
+explicit communication.
+
+The mechanism is settlement-substrate-agnostic; it admits realisation
+on any state machine that maintains a monotonic cumulative-value
+accumulator and authenticates buyer signatures. This paper presents
+\emph{one} such realisation --- a Solidity smart contract
+\texttt{FigaroCore} on the EVM --- and the verification methodology
 applied to it.
 
 The core property the verification is asked to deliver is precisely
-the gap between mechanism and code: the mechanism's theorems hold
-\emph{by assumption} that the settlement layer enforces buyer
-dominance, monotonic accumulation, and atomic resolution. The code
-must \emph{actually} enforce them, in every reachable path, against
-all reasonable adversaries. Bridging that gap is the work of the
-verification stack.
+the gap between mechanism and code: the equilibrium analysis assumes
+the settlement layer enforces (i) the asymmetric bond formula
+$\bbond = 2\pay$, $\sbond = 2\cumval$ on \texttt{commit} with a
+monotonic accumulator, and (ii) buyer dominance with atomic
+resolution on \texttt{resolveProcess}. The code must \emph{actually}
+enforce those, in every reachable path, against all reasonable
+adversaries. Bridging that gap is the work of the verification stack.
 
-\paragraph{What verification does and does not transfer from the mechanism paper.}
-A distinction worth naming up front: the companion mechanism paper
-proves \emph{equilibrium} properties of a bonding game --- that
-cooperation weakly dominates defection at every position in an
-$N$-party process tree, under specified rationality assumptions.
-The present paper verifies \emph{structural preconditions} that
-those equilibrium properties assume --- buyer dominance, monotonic
-accumulation, atomic resolution, conservation of value. These are
-different kinds of claim. The equilibrium itself is a property of
-rational play over a payoff structure; it is not a property of
-code and it is not verified by any of the four tools we apply.
-What we verify is that the code implements the payoff structure
-faithfully in every reachable path. When the companion
-FIG token paper asserts that a
-token-emission policy ``preserves the kernel's bonding
-equilibrium,'' it is invoking the mechanism paper's equilibrium
-claim (which holds by rational play) and not the verification
-claim made here (which holds by code inspection). Keeping the two
-claims distinct matters for any reader who wants to know exactly
-which property is backed by which evidence.
+\paragraph{What verification does and does not deliver.}
+A distinction worth naming up front: the equilibrium argument is a
+property of rational play over a payoff structure --- cooperation
+weakly dominates defection at every position in an $N$-party process
+chain, under specified rationality assumptions --- and it is not a
+property of code. The four verification tools we apply do not verify
+the equilibrium itself; they verify the \emph{structural
+preconditions} that the equilibrium assumes (asymmetric bond
+formula, monotonic accumulation, buyer dominance, atomic resolution,
+conservation of value). What we verify is that the code implements
+the payoff structure faithfully in every reachable path. Claims that
+some external mechanism ``preserves the kernel's bonding
+equilibrium'' invoke the equilibrium argument (which holds by
+rational play) and not the verification claim made here (which holds
+by code inspection). Keeping the two claims distinct matters for any
+reader who wants to know exactly which property is backed by which
+evidence.
 
-\paragraph{Brief recap of the mechanism.}
-For a transaction with payment $\pay$ and cumulative upstream value
-$\cumval \geq \pay$, the buyer locks $2\pay$ and the seller locks
-$2\cumval$. Only the buyer can trigger resolution; on resolution the
-buyer recovers $\pay$ and the seller recovers $2\cumval + \pay$. All
-orders within a process resolve atomically. The full game-theoretic
-treatment, including the two-party Nash result, the $N$-party
-generalization, the escape-hatch impossibility, and the reduction
-over joint-liability microfinance, is in the mechanism paper.
+\paragraph{Brief recap of the settlement primitive.}
+The two mechanisms together yield: for each committed order, the
+buyer locks $2\pay$ and the seller locks $2\cumval$; only the root
+buyer can trigger resolution; on resolution the buyer recovers $\pay$
+and each seller recovers $2\cumval_i + \pay_i$, with every order in
+the process settling simultaneously or none. This is the full
+state-machine surface that the kernel must enforce; the
+game-theoretic derivation (two-party Nash, $N$-party generalisation,
+escape-hatch impossibility, the reduction over joint-liability
+microfinance, and the marginality of dispute resolution) is
+mechanism-design content and lies outside the scope of the present
+implementation paper.
 
 \paragraph{Paper organization.}
 \Cref{sec:architecture} describes the contract architecture and the
@@ -166,9 +179,7 @@ methodology. \Cref{sec:verification-results} presents the current
 results. \Cref{sec:security} develops the threat model and
 three-layer enforcement architecture.
 \Cref{sec:composition} formulates the coordinator pattern and
-exhibits three concrete instances. \Cref{sec:conclusion} concludes
-with notes on agent-native operation and execution-environment
-portability.
+exhibits three concrete instances. \Cref{sec:conclusion} concludes.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Smart Contract Architecture}
@@ -275,8 +286,9 @@ exactly reconstructs \texttt{processes}, \texttt{orderStatus}, and
 \label{sec:non-decisions}
 
 The following features are deliberately absent. Each absence
-preserves a mechanism property
-from the mechanism paper.
+preserves a mechanism-design property of the bonded commitment
+primitive (asymmetric bonding, buyer dominance, atomic resolution,
+or the no-escape-hatch security constraint).
 
 \begin{enumerate}
   \item \textbf{No owner, admin, or upgrade.} There is no
@@ -644,11 +656,14 @@ the order hash, so the front-runner's order would be a distinct
 order, not a conflicting one. No extractable MEV exists.
 
 \paragraph{Cumulative value manipulation.}
-Per the self-enforcing-DAG-honesty result
-in the mechanism paper, overstating cumulative value is
-strictly dominated (greater capital at risk, same payoff).
-Understating is prevented by the contract's monotonic accumulator
-check (\texttt{CumulativeValueMismatch} revert).
+Overstating cumulative value is strictly dominated under the bond
+formula $\sbond = 2\cumval'$: a seller who reports
+$\cumval' > \cumval_{\text{true}}$ posts a larger bond
+($2\cumval'$) for the same payment recovery $\pay$, leaving expected
+utility strictly decreasing in the reported value (the mechanism's
+\emph{cumulative-value reporting honesty} result). Understating is
+prevented by the contract's monotonic accumulator check
+(\texttt{CumulativeValueMismatch} revert).
 
 \subsection{Liveness}
 
@@ -696,9 +711,9 @@ evidence).
 \end{table}
 
 \paragraph{Layer 1 (economic).}
-The bonding equilibrium of the mechanism paper handles
-rational participants; cooperation strictly dominates defection at
-every node.
+The bonding equilibrium handles rational participants: cooperation
+strictly dominates defection at every node under the asymmetric
+bond formula.
 
 \paragraph{Layer 2 (coordinational).}
 Atomic resolution induces the weakest-link subgame; honest sellers
@@ -743,8 +758,7 @@ implementation, by the \emph{coordinator pattern}.
 \begin{proposition}[Coordinator Pattern --- Sufficient Conditions]
 \label{prop:coordinator}
 An external mechanism $M$ composed with \texttt{FigaroCore} preserves
-the bonding equilibrium of the mechanism paper if it
-satisfies:
+the kernel's bonding equilibrium if it satisfies:
 \begin{enumerate}[label=(\roman*)]
   \item \textbf{Read-only kernel access}: $M$ interacts with kernel
     state via \texttt{staticcall} or event consumption only.
@@ -825,61 +839,24 @@ in this paper does not extend to the resulting harm. Liability in
 such a case is allocated by the legal regime governing the
 extension deployer's conduct, the audit artifacts (or their
 absence) accompanying the extension, and the disclosures made to
-users --- all of which sit outside the kernel and are treated in
-the companion evidence-and-law paper. The
-kernel claims it is correct; it does not claim that every
-extension built against it is correct, nor does it claim that
-the legal chain from kernel correctness to user remedy is
-closed.
+users --- all of which sit outside the kernel and outside the
+present paper's scope. The kernel claims it is correct; it does
+not claim that every extension built against it is correct, nor
+does it claim that the legal chain from kernel correctness to
+user remedy is closed.
 
 % ════════════════════════════════════════════════════════════════════
-\section{Conclusion and Future Work}
+\section{Conclusion}
 \label{sec:conclusion}
 
 We have presented a verified Solidity implementation of the
-asymmetric-bonding mechanism of the mechanism paper: an
-ownerless, fee-less kernel of two functions and three mappings, with
-a four-layer verification stack (TLA\textsuperscript{+}, Echidna,
+two-mechanism bonded commitment settlement primitive: an ownerless,
+fee-less kernel of two functions and three mappings, with a
+four-layer verification stack (TLA\textsuperscript{+}, Echidna,
 Halmos, Certora) that exercises the same invariants from four
 methodological directions. The coordinator pattern of
 \Cref{sec:composition} provides a discipline for extending the
 kernel without weakening its equilibrium.
-
-\paragraph{Agent-native operation.}
-The kernel is designed for autonomous agent participation as a
-first-class concern. EIP-712 typed commitments allow agents to
-build, verify, and sign structured data using standard libraries.
-Event-sourced state reconstruction means agents can derive the
-complete process graph from on-chain logs without subgraph
-dependencies. The companion SDK exposes a typed action proposer
-(\texttt{proposeActions}) and a dual-mode execution queue
-(\texttt{ActionQueue}) that supports both human-in-the-loop approval
-and fully autonomous submission. Nothing in the kernel
-distinguishes a human signer from an autonomous agent: the bonding
-equilibrium holds for any rational actor capable of controlling an
-address and bearing capital risk.
-
-\paragraph{Execution-environment portability.}
-A Cairo/Starknet port of the kernel is in progress. The mechanism is
-execution-environment-agnostic; what varies between EVM and Cairo is
-the cryptographic primitive (ECDSA vs.\ STARK signatures), the
-storage cost model, and the event surface. The verification stack
-must be re-instantiated per environment: TLA\textsuperscript{+} and
-Certora rules are mostly portable (state-machine reasoning); Halmos
-is EVM-specific; Echidna ditto. The conformance specification
-between EVM and Cairo is the SP1 prover's Rust kernel, which mirrors
-the TS validator and Solidity hashing byte-for-byte.
-
-\paragraph{Verification gaps the present snapshot does not close.}
-The Echidna corpus is accumulated but not minimized; corpus
-maintenance is a continuous task, not a release event.
-\Cref{prop:coordinator} is currently asserted at the implementation
-level (the four conditions are checked by inspection per extension
-contract); a formal Certora rule that checks
-``$M$ does not call \texttt{commit}'' for arbitrary $M$ has not yet
-been authored. A future revision of this snapshot will include it,
-along with the reverse direction (no kernel storage write reachable
-from any extension entry point).
 
 \paragraph{The deeper claim: defense in depth, not a probability bound.}
 Beyond the headline numbers, the value of the verification stack
