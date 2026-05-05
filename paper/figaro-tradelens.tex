@@ -492,65 +492,55 @@ of within-process commits.
 Each kernel commit carries the schema clauses relevant to the
 seller's role.
 
+Each commit pairs the standard \texttt{commerce-v1} payment
+clause with the schema clauses appropriate to the seller's role.
+
 \begin{itemize}
-  \item \emph{importer $\to$ shipper-of-record}:
-    \texttt{commerce-v1} payment for the cargo's invoice value,
-    \texttt{handoff-v1} on goods presented for shipment, optional
-    \texttt{ghg-protocol-v1} disclosure for the manufacturing
-    emissions.
-  \item \emph{importer $\to$ freight forwarder}:
-    \texttt{commerce-v1} payment, \texttt{handoff-v1} on cargo
-    receipt at consolidation, \texttt{container-seal-v1} applied
+  \item \emph{Shipper-of-record}: \texttt{handoff-v1} on goods
+    presented for shipment, optional \texttt{ghg-protocol-v1}
+    disclosure for manufacturing emissions.
+  \item \emph{Freight forwarder}: \texttt{handoff-v1} on cargo
+    receipt at consolidation; \texttt{container-seal-v1} applied
     at the consolidation point.
-  \item \emph{importer $\to$ NVOCC}: \texttt{commerce-v1} payment,
-    house bill-of-lading reference (the BoL itself is treated as
-    a protocol-layer composition pattern in
+  \item \emph{NVOCC}: house bill-of-lading reference (the BoL
+    itself is treated as a protocol-layer composition pattern in
     \Cref{sec:bol}).
-  \item \emph{importer $\to$ origin inland carrier} and
-    \emph{importer $\to$ destination inland carrier}:
-    \texttt{commerce-v1} payment, \texttt{handoff-v1} at pickup
-    and dropoff, \texttt{geo-v1} pickup and dropoff geohashes.
-  \item \emph{importer $\to$ inspection service}:
-    \texttt{commerce-v1} payment, \texttt{container-seal-v1}
-    inspection event, optional evidence-hash pointer to a
-    pre-shipment inspection report.
-  \item \emph{importer $\to$ port-of-loading authority} and
-    \emph{importer $\to$ port-of-discharge authority}:
-    \texttt{commerce-v1} payment for terminal handling and gate
-    access, \texttt{handoff-v1} at port-side transfers,
+  \item \emph{Origin and destination inland carriers}:
+    \texttt{handoff-v1} at pickup and dropoff;
+    \texttt{geo-v1} pickup and dropoff geohashes.
+  \item \emph{Inspection service}:
+    \texttt{container-seal-v1} inspection event; optional
+    evidence-hash pointer to a pre-shipment inspection report.
+  \item \emph{Port-of-loading and port-of-discharge authorities}:
+    payment for terminal handling and gate access;
+    \texttt{handoff-v1} at port-side transfers;
     \texttt{container-seal-v1} inspected-intact attestations at
-    the port handoffs.
-  \item \emph{importer $\to$ ocean carrier}: \texttt{commerce-v1}
-    payment, an \texttt{incoterms-2020-v1} clause anchoring the
-    shipment term and named place, \texttt{handoff-v1} on cargo
-    transfer to the vessel and at discharge,
-    \texttt{container-seal-v1} sealing events through the voyage,
-    \texttt{geo-v1} vessel-position attestations on the voyage
-    cadence, \texttt{ghg-protocol-v1} disclosure for the voyage
-    emissions, and (for reefer cargo)
-    cold-chain-monitoring attestations.
-  \item \emph{importer $\to$ customs agent}: \texttt{commerce-v1}
-    payment for entry-filing services plus
-    \texttt{jurisdiction-v1} attestation recording the customs
-    authority's determination.
-  \item \emph{importer $\to$ customs authority}:
-    \texttt{commerce-v1} payment for the import duty. The customs
-    authority is an RWA-as-wallet of the same kind as a
-    commercial provider --- a public service whose continued
-    operation depends on receipts covering its operating expenses
-    --- in the role of a bonded seller of border-clearance service
-    in this commit, with the sovereign decisional authority on
-    the customs agent's parallel attestation handled as an
-    off-chain regulatory function the kernel does not encode.
-  \item \emph{importer $\to$ marine insurer}: \texttt{commerce-v1}
-    payment for the policy premium; the insurer's bond is the
-    underwriting capacity at risk against the insured cargo
-    value. Insurance composes with the bonded primitive without
-    modifying the kernel.
-  \item \emph{importer $\to$ LC issuer (if applicable)}:
-    \texttt{commerce-v1} payment for the LC issuance fee; the
-    issuer's bond is the credit capacity backing the LC
-    documentary-payment arrangement.
+    each port handoff.
+  \item \emph{Ocean carrier}: an \texttt{incoterms-2020-v1}
+    clause anchoring the shipment term and named place;
+    \texttt{handoff-v1} on transfer to the vessel and at
+    discharge; \texttt{container-seal-v1} sealing events through
+    the voyage; \texttt{geo-v1} vessel-position attestations on
+    the voyage cadence; \texttt{ghg-protocol-v1} disclosure for
+    voyage emissions; for reefer cargo, cold-chain attestations.
+  \item \emph{Customs agent}: \texttt{jurisdiction-v1}
+    attestation recording the customs authority's determination,
+    plus payment for entry-filing services.
+  \item \emph{Customs authority}: payment for the import duty.
+    The customs-authority wallet is an RWA-as-wallet of the same
+    kind as a commercial provider --- a public service sustained
+    by receipts covering its operating expenses --- in the role
+    of a bonded seller of border-clearance service. The
+    sovereign decisional authority on the customs agent's
+    parallel attestation is an off-chain regulatory function
+    the kernel does not encode.
+  \item \emph{Marine insurer}: payment of the policy premium;
+    the insurer's bond is the underwriting capacity at risk
+    against the insured cargo value. Insurance composes with
+    the bonded primitive without modifying the kernel.
+  \item \emph{LC issuer} (if applicable): payment of the LC
+    issuance fee; the issuer's bond is the credit capacity
+    backing the documentary-payment arrangement.
 \end{itemize}
 
 \paragraph{Operational sub-procurement as separate processes.}
@@ -710,27 +700,30 @@ Incoterms-2020 anchor. The bill-of-lading transferability
 question is treated separately in \Cref{sec:bol}.
 
 \paragraph{Existing schemas.}
-The composition reuses the following existing schemas.
-\texttt{figaro-commerce-v1} carries the per-leg payment
-commitment.
-\texttt{figaro-geo-v1} carries pickup / drop-off geohashes and
-vessel-position updates.
-\texttt{figaro-handoff-v1} carries each container handoff at
-transfer points.
-\texttt{figaro-jurisdiction-v1} carries the customs-clearance
-attestation.
-\texttt{figaro-courier-process-v1} carries the carrier's
-per-role event log over the multi-stop carrier process.
-\texttt{figaro-fulfilment-v1} carries the final delivery to the
-consignee.
-\texttt{figaro-ghg-protocol-v1} (with sister schemas for ISO
-14064, PAS 2050, EN 16258) carries per-leg emissions
-disclosure on every transport edge.
-\texttt{figaro-proximity-policy-v1} together with
-\texttt{figaro-proximity-proof-v1} support geofence enforcement
-at port handoffs where required. These schemas are already on
-chain and bound to validators; no further protocol-extension
-work is needed for them.
+The composition reuses the following.
+
+\begin{itemize}
+  \item \texttt{figaro-commerce-v1} --- per-leg payment commitment.
+  \item \texttt{figaro-geo-v1} --- pickup / drop-off geohashes and
+    vessel-position updates.
+  \item \texttt{figaro-handoff-v1} --- each container handoff at
+    transfer points.
+  \item \texttt{figaro-jurisdiction-v1} --- customs-clearance
+    attestation.
+  \item \texttt{figaro-courier-process-v1} --- the carrier's
+    per-role event log over the multi-stop carrier process.
+  \item \texttt{figaro-fulfilment-v1} --- final delivery to the
+    consignee.
+  \item \texttt{figaro-ghg-protocol-v1} (with sister schemas for
+    ISO 14064, PAS 2050, EN 16258) --- per-leg emissions
+    disclosure on every transport edge.
+  \item \texttt{figaro-proximity-policy-v1} together with
+    \texttt{figaro-proximity-proof-v1} --- geofence enforcement
+    at port handoffs where required.
+\end{itemize}
+
+These schemas are already on chain and bound to validators; no
+further protocol-extension work is needed for them.
 
 \paragraph{New schema: \texttt{figaro-container-seal-v1}.}
 Container seals are the integrity mechanism for ocean shipping.
