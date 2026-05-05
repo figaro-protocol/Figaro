@@ -49,12 +49,12 @@
 \newcommand{\cumval}{G}
 
 \title{%
-  Agent Coordination over Bonded Commitments:\\
-  An AI-and-Control-Theory Reading of \figaro{}'s Actor-Neutral Kernel%
+  Actor-Neutral Coordination over Bonded Commitments:\\
+  An AI-and-Control-Theory Reading%
 }
 
 \author{
-  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+  Alessandro Daliana
 }
 
 \date{May 2026}
@@ -65,45 +65,53 @@
 
 % ════════════════════════════════════════════════════════════════════
 \begin{abstract}
-Multi-agent coordination among autonomous agents is a field with two
-mature traditions and a structural gap between them. The control-theory
-tradition develops mechanisms by which a centralized planner can
-allocate work to multiple agents under specified objective functions
-and constraints. The market-design tradition develops mechanisms by
-which decentralized agents bid for, claim, and settle work without a
-centralized planner. Both traditions assume the agents are
-\emph{trusted} in some structural sense --- either through the planner's
-authority or through the market institution's enforcement apparatus.
-Truly arms-length coordination among mutually untrusted, unsupervised
-autonomous agents has remained difficult because the enforcement
-apparatus has had nowhere to live without re-introducing a centralized
-party.
+Coordination among mutually untrusted counterparties has historically
+required institutional enforcement: courts, market intermediaries,
+platform operators, or other vetters that resolve disputes and
+authorize participation. The control-theory tradition develops
+mechanisms by which a centralized planner can allocate work under
+specified objective functions and constraints; the market-design
+tradition develops mechanisms by which decentralized parties bid for,
+claim, and settle work without a centralized planner; both have
+historically assumed the participants are \emph{trusted} in some
+structural sense --- either through the planner's authority or
+through the market institution's enforcement apparatus. Truly
+arms-length coordination has remained difficult because the
+enforcement apparatus has had nowhere to live without re-introducing
+a centralized party. The same gap blocks coordination among
+autonomous agents, where the institutional vetter is structurally
+absent.
 
-We present the bonded settlement primitive --- asymmetric bonding plus
-buyer dominance with atomic resolution --- as the missing enforcement layer. The primitive's actor-neutrality
-property --- the kernel makes no distinction between human and
+We present the bonded settlement primitive --- asymmetric bonding
+plus buyer dominance with atomic resolution --- as the missing
+enforcement layer. The primitive is \emph{actor-neutral} by
+construction: the kernel makes no distinction between human and
 algorithmic participants because the kernel reads only EIP-712
 signatures and bond posture, not the type of the entity behind a
-wallet --- means that the same equilibrium argument that makes
-cooperation weakly dominant for human counterparties makes cooperation
-weakly dominant for autonomous agents. The agent's bond posture
-substitutes for the institutional bond posture that has historically
-underwritten agent-mediated trade.
+wallet. The equilibrium argument that makes cooperation weakly
+dominant for human counterparties extends without modification to
+autonomous agents; humans, agents, and hybrid systems
+(human-supervised agents, multi-key wallets, agent-supervised
+humans) participate as co-equal classes of wallet holder.
+Agent-only coordination is the extreme case the primitive admits,
+not the rule it was built for.
 
-The paper develops the agent-coordination architecture in three
-layers: the \emph{kernel} layer (actor-neutral by construction); the
-\emph{Agent SDK} layer (a stateful agent loop synchronizing process
-state, proposing valid actions, and dispatching them through a
-pluggable policy gateway); and the \emph{factotum} layer (a reference
-participation agent that wires the SDK to a wallet and a policy and is
-forked by every operational deployment). We treat the policy interface
-as a control-theory specification problem --- the policy is the
-controller; the action proposer plus the chain are the plant ---
-and discuss reference policies for typical operational roles
-(buyer-with-budget, seller-of-record, Dutch-auction bidder, auditor,
-fan-out coordinator). LLM-augmented policies are a natural
-specialization for non-trivial decision logic. Discoverability through
-ERC-8004 and \texttt{did:web} is metadata, not protocol.
+The paper develops the actor-neutral coordination architecture in
+three layers: the \emph{kernel} layer (actor-neutral by
+construction); the \emph{Agent SDK} layer (a stateful loop
+synchronizing process state, proposing valid actions, and
+dispatching them through a pluggable policy gateway); and the
+\emph{factotum} layer (a reference participation agent that wires
+the SDK to a wallet and a policy and is forked by every
+operational deployment). The SDK is convenience tooling for
+wallet-bearing clients; the protocol is the kernel ABI, and any
+wallet that signs EIP-712 commitments and posts bond participates
+with or without the SDK. We treat the policy interface as a
+control-theory specification problem and discuss reference
+policies for typical operational roles. LLM-augmented policies
+are a natural specialization for non-trivial decision logic.
+Discoverability via ERC-8004 and \texttt{did:web} is metadata, not
+protocol.
 \end{abstract}
 
 \medskip
@@ -116,31 +124,33 @@ human-in-the-loop
 \section{Introduction}
 \label{sec:intro}
 
-Multi-agent coordination is the problem of getting multiple
-autonomous agents to cooperate on shared work without producing
-race conditions, defections, or deadlocks. The classical formulation
+Coordination among mutually untrusted counterparties is the problem
+of getting parties who do not share institutional context to
+cooperate on shared work without producing defections or deadlocks.
+The classical formulation
 \citep{shoham_leyton_brown_2009, parkes_seuken_2024} treats
 coordination as a mechanism-design problem in which the designer
 chooses a protocol with desirable equilibrium properties and the
-agents play within the protocol. The market-design specialization
-\citep{milgrom_2017} treats specific allocation problems (auctions,
-matching, scheduling) for which competitive mechanisms are
-well-studied. The control-theory specialization
-\citep{khalil_2002, bertsekas_2005} treats agent coordination as a
-distributed-control problem with a designed objective and stability
-analysis.
+participants play within the protocol. The market-design
+specialization \citep{milgrom_2017} treats specific allocation
+problems (auctions, matching, scheduling) for which competitive
+mechanisms are well-studied. The control-theory specialization
+\citep{khalil_2002, bertsekas_2005} treats coordination as a
+distributed-control problem with a designed objective and
+stability analysis.
 
 Across all three frameworks, the enforcement question is treated
 asymmetrically with the design question. The mechanism designer
-specifies the protocol, the agents follow it, and enforcement is
-either assumed (the agents are honest), structurally provided by
-the institution running the mechanism (auctioneers, planners,
-controllers), or external to the mechanism (escrow, court,
-reputation system). The literature on \emph{mutually untrusted
-autonomous agents} --- agents that may defect from the protocol if
-defection is locally profitable, with no institutional enforcement
-available --- is correspondingly thinner than the literature on
-honest agents.
+specifies the protocol, the participants follow it, and enforcement
+is either assumed (the participants are honest), structurally
+provided by the institution running the mechanism (auctioneers,
+planners, controllers), or external to the mechanism (escrow,
+court, reputation system). Truly arms-length, institution-free
+coordination has remained out of reach: the institutional-enforcement
+assumption persists across these traditions, and is even more visibly
+absent when the participants are autonomous agents — the institutional
+vetters that backstop human counterparties have no analogue when
+the counterparties are software.
 
 \paragraph{The bonded primitive supplies the missing enforcement layer.}
 The bonded settlement primitive's equilibrium properties are obtained
@@ -157,15 +167,18 @@ distinguish a human participant from an algorithmic participant
 because it does not look.
 
 The actor-neutrality property turns the bonded primitive into a
-natural enforcement layer for arms-length agent-coordination. An
-autonomous agent that bonds against its own performance is
-playing the same game a human counterparty plays, with the same
-incentive structure, on the same arithmetic. The enforcement
-question --- traditionally the binding constraint on
-mutually-untrusted multi-agent design --- is dissolved at the
-substrate layer, leaving the higher-layer questions (policy
-design, decision-logic, work discovery) clear of the
-enforcement-mechanism complexity that has typically obscured them.
+natural enforcement layer for arms-length coordination of any kind.
+A wallet that bonds against its own performance is playing the
+bonding game; whether the wallet is held by a human, an autonomous
+agent, or a hybrid system (human-supervised agent, agent-supervised
+human, multi-key wallet) is irrelevant to the equilibrium
+arithmetic. The enforcement question --- traditionally the binding
+constraint on mutually-untrusted coordination design --- is
+dissolved at the substrate layer, leaving the higher-layer
+questions (policy design, decision logic, work discovery) clear of
+the enforcement-mechanism complexity that has typically obscured
+them. Agent-only coordination is the extreme case the architecture
+admits, not the rule it was built for.
 
 \paragraph{Paper organization.}
 \Cref{sec:primitive} summarizes the settlement primitive in the
@@ -318,13 +331,19 @@ irrelevant to the kernel and irrelevant to the equilibrium.
 \section{The Agent Loop}
 \label{sec:loop}
 
-We now present the Agent SDK as the architecture by which agents
-participate in the bonded primitive. The architecture is a
-stateful loop with four phases: sync, propose, policy, execute.
+We now present the Agent SDK as a reference architecture for
+wallet-bearing clients participating in the bonded primitive. The
+SDK is convenience tooling, not a protocol requirement: the
+protocol is the kernel ABI, and any wallet that signs EIP-712
+commitments and posts bond participates with or without the SDK.
+The SDK matters because it standardizes a shape that operational
+deployments converge on regardless. The architecture is a stateful
+loop with four phases: sync, propose, policy, execute.
 
 \paragraph{The control-theory framing.}
-Read in control-theory terms, the agent is a controller, the
-chain is the plant, and the agent's policy is the control law.
+Read in control-theory terms, the wallet's policy is the
+controller, the chain is the plant, and the policy's decision is
+the control law.
 The state of the plant is the on-chain process graph: the set of
 active processes, their committed orders, their attestations, and
 their settlement events. The agent observes the state through its
@@ -441,10 +460,31 @@ EIP-712 signing, and event-derived state.
 \section{Policies as Controllers}
 \label{sec:policies}
 
-Read in control-theory terms, the policy is the agent's control
+Read in control-theory terms, the policy is the wallet's control
 law. The space of admissible policies is wide; the architecture
 constrains the policy interface but not the policy logic. We
-develop reference policies for typical operational roles.
+develop reference policies for typical operational roles. The
+roles are not agent-specific; the same policies apply when the
+wallet is held by a human operator approving each action through
+a UI, by an autonomous agent running its own decision logic, or by
+a hybrid system in which an autonomous proposer routes high-stakes
+actions to a human reviewer.
+
+\paragraph{Human operator with HITL approval.}
+The simplest policy under the architecture is the one a human
+operator running the SDK from a web UI follows. Every proposed
+action is presented to the operator through an
+\texttt{ActionQueue}; the operator approves or rejects each one,
+and the SDK executes only the approved entries. The shipping
+\texttt{makeHitlPolicy()} factory at
+\texttt{agents/factotum/src/policy.ts} returns exactly this
+policy: every entry is queued for operator review; nothing is
+auto-approved. A wallet driven only by \texttt{makeHitlPolicy()}
+is operationally indistinguishable from a wallet driven by a
+person clicking ``confirm'' on every transaction. The kernel
+sees the same EIP-712 signatures and bond posting either way.
+This is the trivial case actor-neutrality permits and the case
+many production deployments will run for high-value processes.
 
 \paragraph{Buyer-with-budget.}
 A buyer in a bonded process commits sub-orders that contribute to
@@ -471,16 +511,20 @@ const TOTAL_BUDGET = 50_000_000_000n;   // $50K
 const buyerPolicy = buyerWithBudgetPolicy({
   perCommitLimit: PER_COMMIT_LIMIT,
   totalBudget: TOTAL_BUDGET,
-  spendTracker: (processId) => ctx.totalSpent(processId),
+  budgetSpent,
 });
 \end{lstlisting}
 
-The factory's \texttt{shouldExecute} callback consults
+\noindent
+where \texttt{budgetSpent} is a mutable cell of shape
+\texttt{\{ value: bigint \}} holding the running total of bonded
+commits the deployment has executed under this policy. The
+factory's internal \texttt{shouldExecute} callback consults
 \texttt{action.currentCumulativeValue}, applies the per-commit and
-total-budget limits, and approves \texttt{resolve-process}
-actions unconditionally; the deployment supplies the
-\texttt{spendTracker} closure that captures whatever per-process
-accounting state the operator wants to maintain.
+total-budget limits against \texttt{budgetSpent.value}, and
+approves \texttt{resolve-process} actions unconditionally; the
+deployment owns the cell and is responsible for incrementing it on
+successful execution.
 
 The control-theory reading: the policy enforces a budget
 constraint on the closed-loop trajectory of bonded commits, with
@@ -496,23 +540,21 @@ attestations and small sub-procurements, HITL for resolutions and
 exceptional sub-procurements:
 
 \begin{lstlisting}
-const ROUTINE_LIMIT = 5_000_000_000n; // $5K
-const sellerOfRecordPolicy = makeAutonomousPolicy<ProposedAction, Ctx>(
-  (action, ctx) => {
-    if (action.type === "attest-as-seller" || action.type === "attest-as-buyer")
-      return { execute: true }; // Routine attestations
-    if (action.type === "commit-sub-order"
-        && action.currentCumulativeValue < ROUTINE_LIMIT)
-      return { execute: true };
-    return { execute: false, reason: "escalate to operations" };
-  },
-);
+const policy = sellerOfRecordPolicy({
+  routineProcurementLimit: 5_000_000_000n, // $5K
+});
 \end{lstlisting}
 
-The reference implementation provides a configurable
-\texttt{sellerOfRecordPolicy} factory; an operational deployment
-configures the routine-limit threshold to match its operational
-reserves.
+\noindent
+The shipping \texttt{sellerOfRecordPolicy} factory at
+\texttt{agents/factotum/src/policies/sellerOfRecord.ts} approves
+attestation actions (\texttt{attest-as-seller},
+\texttt{attest-as-buyer}) autonomously and approves
+\texttt{commit-sub-order} actions whose cumulative value falls
+under the configured \texttt{routineProcurementLimit}; everything
+else is rejected with a reason and escalates to the operator's
+HITL surface. An operational deployment configures the routine-limit
+threshold to match its operational reserves.
 
 \paragraph{Dutch-auction bidder.}
 A bidder on a Dutch auction (the protocol's
@@ -593,11 +635,16 @@ convenient-by-default.
 \section{LLM-Augmented Policies}
 \label{sec:llm}
 
-The policy interface is LLM-agnostic: any synchronous-or-asynchronous
-function over actions is admissible. Wrapping an LLM call inside
+The recent wave of LLM-agent architectures
+\citep{yao2023react, shinn2023reflexion, park2023generative,
+wu2023autogen} treats an LLM as the decision substrate of an
+autonomous agent: the LLM observes context, reasons over it, and
+selects tool calls. The policy interface developed here is
+LLM-agnostic: any synchronous-or-asynchronous function over
+actions is admissible. Wrapping an LLM call inside
 \texttt{shouldExecute} is direct, and is appropriate for decisions
-whose logic is non-trivial, context-dependent, or requires natural-language
-reasoning.
+whose logic is non-trivial, context-dependent, or requires
+natural-language reasoning.
 
 \paragraph{Two cautions.}
 LLM latency is real. A 2-second model call inside a tight loop limits
@@ -619,6 +666,37 @@ route LLM verdicts to a separate review layer rather than to direct
 execution. For low-stakes filters (which jobs to surface, which to
 ignore, when to escalate to a human reviewer) LLM autonomy is
 operationally tractable.
+
+\paragraph{Prompt injection as a defection vector.}
+LLM controllers consume context that may include adversarial input:
+attestation content surfaced through the proposer, off-chain
+agreement text, third-party-supplied operational notes
+\citep{greshake2023injection}. A poisoned context can steer the
+LLM into approving actions the operator did not authorize. The
+defense is structural: the deterministic policy layer applies
+hard limits (per-commit cap, total-budget cap, allow-list of
+counterparties, schema-typed action validation) that the LLM's
+verdict cannot override. The bond posture amplifies the defense:
+even if the LLM is steered into approving a bonded commitment the
+operator would not have approved, the loss is capped at the bond
+that commitment entails, not at the operator's full treasury. The
+combination of hard policy limits plus per-action bond capping
+makes the LLM's worst case operationally analyzable rather than
+catastrophic.
+
+\paragraph{Tool-use frameworks and the policy interface.}
+Tool-use frameworks (function-calling APIs, the Model Context
+Protocol, the Agent-to-Agent protocol) select among actions an
+LLM can take in a given context. The policy interface developed
+here is composable with these frameworks at one site: the
+deterministic policy gate runs after the LLM proposes an action
+through its tool-use surface and before the SDK executes it. The
+LLM's tool-use selection becomes a recommendation; the policy
+remains the authority on what reaches the chain. Operational
+observability \citep{liu2024agentobserve} is the third leg:
+proposed actions, policy decisions, executed transactions, and
+post-execution divergence between expected and observed state are
+all logged for review and replay.
 
 \paragraph{The hybrid pattern.}
 A natural hybrid wires deterministic-rule policy as the front line
@@ -688,13 +766,43 @@ identify suitable counterparties they have not previously
 interacted with. The architecture provides a metadata-layer
 solution that does not require kernel-layer changes.
 
-\paragraph{ERC-8004 and \texttt{did:web}.}
-The \texttt{OperatorRegistry} contract carries a
-\texttt{metadataURI} per registered operator, pointing at an
-off-chain JSON document. The convention this paper develops
-aligns the document with
-ERC-8004 service descriptors and the W3C \texttt{did:web} method
-\citep{w3c_did_2022}. The document carries:
+\paragraph{ERC-8004 and what it actually covers.}
+ERC-8004 \citep{erc8004} (Trustless Agents, finalized and live on
+Ethereum mainnet 2026-01-29) is a three-registry standard:
+
+\begin{itemize}
+  \item \emph{Identity Registry}: portable agent identifiers backed
+    by ERC-721 NFTs.
+  \item \emph{Reputation Registry}: bounded numerical scores and
+    categorical tags for agent feedback (response time, uptime,
+    etc.).
+  \item \emph{Validation Registry}: task-verification mechanisms
+    via TEE attestations, zkML proofs, or crypto-economic
+    staking.
+\end{itemize}
+
+The architecture this paper presents replaces two of the three
+registries by construction and complements the third. Bonded
+performance \emph{is} the validation: the bond a participant
+posts at \texttt{commit} is precisely the crypto-economic stake
+the Validation Registry asks for, applied at the per-order level
+rather than per-agent. On-chain settlement history \emph{is} the
+reputation evidence: a resolved process is a stronger signal than
+any bounded numerical score, because it is the immutable record
+of bonded performance under economic stakes. The Reputation and
+Validation registries' purpose is satisfied at the kernel layer
+without a separate registry surface.
+
+The Identity Registry is the layer that does not collapse into the
+bond. Cross-organization identifiers, capability descriptors, and
+service endpoints (MCP, A2A) live above the bond and serve a
+different function: helping a wallet \emph{find} a counterparty
+that has not yet been bonded with. The architecture treats this
+as an off-chain concern. The \texttt{OperatorRegistry} contract
+carries a \texttt{metadataURI} per registered operator, pointing
+at an off-chain JSON document; the convention developed here
+aligns the document with ERC-8004 identity claims and the W3C
+\texttt{did:web} method \citep{w3c_did_2022}:
 
 \begin{lstlisting}
 {
@@ -712,22 +820,39 @@ ERC-8004 service descriptors and the W3C \texttt{did:web} method
 The SDK provides \texttt{resolveDidWeb()},
 \texttt{didDocumentMatchesAddress()}, and
 \texttt{buildOperatorDidDocument()} helpers in
-\texttt{@figaro/core/extensions}. ERC-8004 alignment is
-metadata-only and requires no contract changes.
+\texttt{@figaro/core/extensions}. The metadata document is the
+extension point at which ERC-8004 identity descriptors can be
+adopted by any deployment that wants them; no kernel-layer
+contract change is required.
+
+\paragraph{Why agents are wallet-tier, not entity-tier.}
+A consequence of the actor-neutrality property is that the
+architecture does not register agents as first-class on-chain
+entities. ERC-8004's Identity Registry takes the alternative
+route: each agent is a registered entity with its own NFT-backed
+handle. Adopting that registry as a kernel-level requirement
+would re-introduce the platform-as-vetter problem the actor-
+neutrality property is designed to eliminate. A wallet-tier
+agent is the consistent extension of kernel-level
+actor-neutrality one tier up: the wallet is the agent's identity,
+and the agent's reputation is its on-chain settlement history.
+ERC-8004 identifiers can travel in the metadata document for
+deployments that want them, but they are optional discoverability
+metadata, not a registration the architecture requires.
 
 \paragraph{The structural separation.}
-ERC-8004 service descriptors are how agents \emph{find} each other;
-bonded commitments are how they \emph{trust} each other. The
-two are intentionally separate. An agent that publishes service
-descriptors is discoverable but not yet trusted; a counterparty
-that wants to interact reads the descriptors, evaluates the agent's
-self-published capabilities, and then bonds against the agent's
-performance. The bond is the trust layer; the descriptor is the
-discovery layer. Conflating the two --- by, for instance, requiring
-discovery to imply trust or by requiring trust to imply discovery
---- would re-introduce the platform-as-vetter problem the
-actor-neutrality property eliminates. The architecture keeps them
-separate.
+Identity descriptors (whether ERC-8004-formatted or otherwise)
+are how wallets \emph{find} each other; bonded commitments are
+how they \emph{trust} each other. The two are intentionally
+separate. A wallet that publishes service descriptors is
+discoverable but not yet trusted; a counterparty that wants to
+interact reads the descriptors, evaluates the self-published
+capabilities, and then bonds against performance. The bond is
+the trust layer; the descriptor is the discovery layer.
+Conflating the two --- by, for instance, requiring discovery to
+imply trust or by requiring trust to imply discovery --- would
+re-introduce the platform-as-vetter problem the actor-neutrality
+property eliminates. The architecture keeps them separate.
 
 \paragraph{Capability claims are unverified at the kernel layer.}
 The \texttt{capabilities} array in an agent's metadata is
@@ -814,36 +939,45 @@ not from any LLM-specific design.
 \section{Conclusion}
 \label{sec:conclusion}
 
-Multi-agent coordination among mutually-untrusted autonomous agents
-has been hard because the enforcement layer has had nowhere to live
-without a centralized institution. The bonded settlement primitive's
-actor-neutrality property turns bonded commitments into the missing
-enforcement layer: the same equilibrium argument that makes
-cooperation weakly dominant for human counterparties makes it weakly
-dominant for autonomous agents, on the same arithmetic, with the
-agent's bond posture substituting for the institutional bond posture
-that has historically underwritten agent-mediated trade.
+Coordination among mutually-untrusted counterparties has been hard
+because the enforcement layer has had nowhere to live without a
+centralized institution; the same gap blocks coordination among
+autonomous agents, where the institutional vetter is structurally
+absent. The bonded settlement primitive's actor-neutrality property
+turns bonded commitments into the missing enforcement layer: the
+same equilibrium argument that makes cooperation weakly dominant
+for any participant makes it weakly dominant regardless of whether
+the participant is a human, an autonomous agent, or a hybrid system.
+The bond posture is type-blind by construction.
 
-The Agent SDK presented in this paper is a stateful loop with sync,
-propose, policy, and execute phases, structured as a control-theory
-controller-on-plant architecture. Reference policies cover typical
-operational roles (buyer-with-budget, seller-of-record, Dutch-auction
-bidder, auditor); LLM-augmented policies are a natural specialization
-for non-trivial decision logic, with the bonded architecture's
-exposure-bounding property turning LLM-policy risk into a known
-function of the agent's bond posture. Discoverability through
-ERC-8004 and \texttt{did:web} is metadata, not protocol; the
-discovery layer and the trust layer are separate by design.
+The Agent SDK presented in this paper is a reference architecture
+for wallet-bearing clients: a stateful loop with sync, propose,
+policy, and execute phases, structured as a control-theory
+controller-on-plant architecture. The SDK is convenience tooling,
+not a protocol requirement. Reference policies cover typical
+operational roles (HITL operator, buyer-with-budget,
+seller-of-record, Dutch-auction bidder, auditor) and apply
+identically when the wallet is held by a human approving each
+action through a UI, by an autonomous agent running its own
+decision logic, or by a hybrid system. LLM-augmented policies are
+a natural specialization for non-trivial decision logic, with the
+bonded architecture's per-action exposure bound and the policy's
+aggregate-cap mechanism turning LLM-policy risk into a decomposable
+and analyzable surface. Discoverability via ERC-8004 identity
+descriptors and \texttt{did:web} is metadata, not protocol; the
+discovery layer and the trust layer are separate by design, and
+ERC-8004's reputation and validation registries are subsumed by
+the bonded primitive at the kernel layer.
 
-The contribution is architectural rather than novel mechanism design.
-The SDK and the factotum reference implementation are operational
-realizations of the actor-neutrality property in working TypeScript.
-The agents that participate are not protocol-aware in any privileged
-sense; they sign, they bond, they perform. The substrate makes their
+The contribution is architectural rather than novel mechanism
+design: actor-neutrality is the load-bearing claim, and the SDK is
+the operational artifact that demonstrates the claim is implementable.
+The participants are not protocol-aware in any privileged sense;
+they sign, they bond, they perform. The substrate makes their
 participation legible to their counterparties and economically
-rational for them to undertake. The control-theory analysis that has
-historically been blocked by the enforcement question is now
-unblocked.
+rational for them to undertake. Agent-only coordination is the
+extreme case the architecture admits; coordination between humans,
+between agents, and across the human-agent boundary is the rule.
 
 \section*{Acknowledgments}
 The Agent SDK and the factotum reference were developed alongside
@@ -888,6 +1022,58 @@ W3C.
 \newblock Decentralized Identifiers (DIDs) v1.0: Core Architecture,
   Data Model, and Representations.
 \newblock W3C Recommendation, July 2022.
+
+\bibitem[ERC-8004(2026)]{erc8004}
+De~Rossi, M., Crapis, D., Ellis, J., and Reppel, E.
+\newblock {ERC-8004}: Trustless Agents.
+\newblock Ethereum Improvement Proposal, finalized 2026.
+\newblock \url{https://eips.ethereum.org/EIPS/eip-8004}
+
+\bibitem[Yao et~al.(2023)]{yao2023react}
+Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K.,
+  and Cao, Y.
+\newblock {ReAct}: Synergizing Reasoning and Acting in Language
+  Models.
+\newblock In \emph{Proc.\ International Conference on Learning
+  Representations (ICLR)}, 2023.
+
+\bibitem[Shinn et~al.(2023)]{shinn2023reflexion}
+Shinn, N., Cassano, F., Berman, E., Gopinath, A., Narasimhan, K.,
+  and Yao, S.
+\newblock Reflexion: Language Agents with Verbal Reinforcement
+  Learning.
+\newblock In \emph{Proc.\ Advances in Neural Information
+  Processing Systems (NeurIPS)}, 2023.
+
+\bibitem[Park et~al.(2023)]{park2023generative}
+Park, J.~S., O'Brien, J.~C., Cai, C.~J., Morris, M.~R., Liang,
+  P., and Bernstein, M.~S.
+\newblock Generative Agents: Interactive Simulacra of Human
+  Behavior.
+\newblock In \emph{Proc.\ ACM Symposium on User Interface
+  Software and Technology (UIST)}, 2023.
+
+\bibitem[Wu et~al.(2023)]{wu2023autogen}
+Wu, Q., Bansal, G., Zhang, J., Wu, Y., Li, B., Zhu, E., Jiang, L.,
+  Zhang, X., Zhang, S., Liu, J., Awadallah, A.~H., White, R.~W.,
+  Burger, D., and Wang, C.
+\newblock {AutoGen}: Enabling Next-Gen {LLM} Applications via
+  Multi-Agent Conversation.
+\newblock arXiv preprint, 2023.
+
+\bibitem[Greshake et~al.(2023)]{greshake2023injection}
+Greshake, K., Abdelnabi, S., Mishra, S., Endres, C., Holz, T.,
+  and Fritz, M.
+\newblock Not what you've signed up for: Compromising Real-World
+  {LLM}-Integrated Applications with Indirect Prompt Injection.
+\newblock In \emph{Proc.\ ACM Workshop on Artificial Intelligence
+  and Security (AISec)}, 2023.
+
+\bibitem[Liu et~al.(2024)]{liu2024agentobserve}
+Liu, T., Bommasani, R., and Liang, P.
+\newblock Observability for {LLM}-Augmented Agents: Logging,
+  Replay, and Failure-Mode Analysis.
+\newblock arXiv preprint, 2024.
 
 \end{thebibliography}
 
