@@ -156,7 +156,6 @@ contract DeployMainnet is Script {
         );
         schemas.registerSchema(keccak256("figaro-jurisdiction-v1"), 1, keccak256("ipfs://figaro-jurisdiction/v1"));
         schemas.registerSchema(keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"));
-        schemas.registerSchema(keccak256("erc8004-agent-services-v1"), 1, keccak256("ipfs://erc8004-agent-services/v1"));
         console.log("SchemaRegistry: 18 reference schemas registered");
 
         // ── OperatorRegistry ────────────────────────────────────────

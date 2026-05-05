@@ -100,7 +100,7 @@ Authoritative docs that must stay in sync:
 
 Every paper in `paper/` must stand on its own. The corpus was derived from a single archive paper (`paper/archive.figaro3.tex`) and the derivative-paper artifacts must not survive into preprint. When authoring or revising any paper, audit against all of the following — and surface any drift before declaring the paper done:
 
-- **No companion-paper references.** No "in the companion implementation paper", no "developed in the institutional-economics paper", no `\Cref` to sections in other files. If a claim isn't in this paper, it isn't in this paper.
+- **No companion-paper references.** No "in the companion implementation paper", no "developed in the institutional-economics paper", no `\Cref` to sections in other files. If a claim isn't in this paper, it isn't in this paper. Refer to results by their substance — "the escape-hatch theorem", "the bonding equilibrium", "the verification stack" — not by which paper carries them. The rule applies to every paper in the corpus, including synthesis papers; if synthesis is what a paper does, it must do so by re-stating or naming-by-result, not by punting to other papers.
 - **Topic discipline.** A mechanism-design paper contains mechanism design — no Solidity, no DAG, no legal/normative framing, no overlays (interest-bearing bonds, time-varying multipliers, etc.). A kernel-implementation paper doesn't contain economics. An institutional-economics paper doesn't contain Solidity. Match the paper's stated subject and stop there.
 - **Process chains are LINEAR at the kernel level.** The kernel sees a sequence of `commit` calls updating a monotonic cumulative-value accumulator. There is no parent-child structure on-chain (`src/FigaroCore.sol:82-89`: `ProcessState` carries `rootBuyer`, `currency`, `cumulativeValue`, `activeOrderCount` — no DAG fields). DAG topology lives at the assembly/topology layer (off-chain manifest, reconstructed by indexers), never in the kernel. Mechanism papers must use **"process chain"**, never "process tree" or "DAG". This corrects an earlier framing in this file and elsewhere where "process tree" was used loosely.
 - **No "open questions" / "future work" / scope-padding sections.** Papers stand finished. Open questions belong in private notes or in subsequent papers, not as scope-padding in the current one. A "scope exclusion" paragraph is fine when it's a kernel-level exclusion (e.g., single-denomination per process); a "scope note on what we didn't address" is not.
@@ -360,8 +360,8 @@ composer. Use for any post-deploy third-party schema registration.
 invalid content; binds to one schemaId via `schemaId() view returns (bytes32)`.
 Validators are pure / view, no admin, no mutable state.
 
-**`src/schemaValidators/`** — 16 production validator contracts, one per
-*runtime-attestable* schemaId (local-commerce use case + jurisdiction baseline):
+**`src/schemaValidators/`** — 17 production validator contracts, one per
+*runtime-attestable* schemaId (local-commerce use case + jurisdiction baseline + consent):
 `FigaroHandoffV1Validator`,
 `FigaroCommerceV1Validator`, `FigaroGeoV1Validator`,
 `FigaroFulfilmentV1Validator`, plus the 5 GHG sister schemas
@@ -372,7 +372,8 @@ Validators are pure / view, no admin, no mutable state.
 `FigaroProximityPolicyV1Validator` (Category-2, committed band) +
 `FigaroProximityProofV1Validator` (Category-1, runtime witness),
 `FigaroMerchantProcessV1Validator`,
-`FigaroCourierProcessV1Validator`, `FigaroJurisdictionV1Validator`.
+`FigaroCourierProcessV1Validator`, `FigaroJurisdictionV1Validator`,
+`FigaroConsentV1Validator`.
 Each ABI-decodes per-schema content (no on-chain JSON parsing) and reverts with
 typed custom errors. Foundry tests in `test/schemaValidators/`.
 

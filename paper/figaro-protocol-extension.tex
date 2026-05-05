@@ -1,14 +1,10 @@
 % Figaro Paper N: Protocol Extension and Runtime Composition
-% Computer Science and Cryptography register; second paper alongside C in
-% the discipline. C covers the verified kernel implementation; the present
-% paper covers what stands above the kernel as a research object — schema
-% design as a CS discipline, the coordinator pattern formally, and runtime
-% composition.
-% Audience: software-architecture researchers, mechanism-design /
-% protocol-extension theorists, the COALA-adjacent protocol-design
-% community, computer-science readers approaching the protocol from a
-% systems-architecture vantage.
-% Companion to Paper C (verified Solidity implementation).
+% Computer Science and Cryptography register. The paper covers what stands
+% above the kernel as a research object — schema design as a CS discipline,
+% the coordinator pattern formally, and runtime composition.
+% Audience: software-architecture researchers, protocol-extension theorists,
+% the COALA-adjacent protocol-design community, computer-science readers
+% approaching the protocol from a systems-architecture vantage.
 % Preprint, May 2026
 
 \documentclass[11pt,a4paper]{article}
@@ -71,13 +67,15 @@
 
 % ════════════════════════════════════════════════════════════════════
 \begin{abstract}
-The companion mechanism paper presents the \figaro{} kernel as a
-settlement primitive: two operations (\texttt{commit} and
-\texttt{resolveProcess}), three storage mappings, no upgrade path, no
-escape hatches. The companion implementation paper develops the
-verification surface: TLA\textsuperscript{+}, symbolic execution,
+The \figaro{} kernel is a settlement primitive: two operations
+(\texttt{commit} and \texttt{resolveProcess}), three storage mappings,
+no upgrade path, no escape hatches. Its mechanism-design derivation
+(asymmetric bonding, buyer dominance with atomic resolution, and the
+escape-hatch-weakness theorem) and its multi-method formal
+verification (TLA\textsuperscript{+}, symbolic execution,
 property-based fuzzing, and Certora specifications discharging the
-kernel's invariants. Both papers stay strictly at the kernel tier.
+kernel's invariants) are treated separately and stay strictly at the
+kernel tier.
 
 This paper covers what stands above the kernel as a research object.
 The kernel by itself is not a useful protocol; it is a settlement
@@ -124,13 +122,13 @@ runtime architecture, software composition, content-addressed identity
 \section{Introduction}
 \label{sec:intro}
 
-The companion mechanism paper formalizes the \figaro{} kernel as a
-settlement primitive whose two operations, three storage mappings,
-and frozen invariants produce a Nash equilibrium under specified
-bonding rules. The companion implementation paper shows that the
-kernel as deployed satisfies those invariants under multiple
-formal-verification methods. Both papers stop at the kernel
-boundary because that is where the formal results live.
+The \figaro{} kernel is a settlement primitive whose two operations,
+three storage mappings, and frozen invariants produce a Nash
+equilibrium under asymmetric bonding rules and buyer dominance with
+atomic resolution. As deployed, the kernel satisfies those
+invariants under multiple formal-verification methods. The kernel
+itself stops at its boundary because that is where the formal
+results live.
 
 The kernel by itself is not a useful protocol. A settlement primitive
 needs a graph above it that participants can compose: schemas typing
@@ -138,15 +136,12 @@ the agreement content, mechanism contracts coordinating specific
 patterns, runtime surfaces letting humans and agents interact with
 the resulting institutional shapes. The graph is what makes the
 kernel applied; the kernel is what makes the graph trustworthy. The
-two are inseparable in any working deployment, and yet the second
-half — what stands above the kernel — has been treated in the corpus
-to date only inline in worked examples (the Spirit Air assembly of
-Paper~J, the TradeLens replacement of Paper~K, the Agent SDK reading
-of Paper~L). The general design discipline by which protocol
-extensions are written and runtime compositions are organized has
-not had a paper of its own.
+two are inseparable in any working deployment, and the discipline
+that governs the second half — how protocol extensions are written
+and how runtime compositions are organized — is the subject of the
+present paper.
 
-This paper supplies that paper. The argument is in three parts.
+The argument is in three parts.
 
 \paragraph{The protocol extension doctrine.}
 Extensions to the kernel must preserve the kernel's equilibrium
@@ -169,15 +164,14 @@ as such. The 18-schema catalogue currently shipped in the protocol
 is the worked-example reference set.
 
 \paragraph{The coordinator pattern formally.}
-The implementation paper introduces the \emph{coordinator pattern}
-as Proposition~1: an external mechanism contract composes with the
-kernel without breaking the bonding equilibrium when it satisfies
-specified conditions on its read/write profile against kernel state.
-The implementation paper states the conditions informally; we
-restate them as a formal proposition with composition semantics
-and prove that the conditions are sufficient. The
-\texttt{AttestationCoordinator} contract is the worked verification
-example, with the parametric Core-immutability rules in
+The \emph{coordinator pattern} is the discipline under which an
+external mechanism contract composes with the kernel without breaking
+the bonding equilibrium: an extension contract satisfies specified
+conditions on its read/write profile against kernel state. We state
+the conditions formally with composition semantics and prove that
+the conditions are sufficient. The \texttt{AttestationCoordinator}
+contract is the worked verification example, with the parametric
+Core-immutability rules in
 \texttt{certora/AttestationCoordinator.spec} discharging the
 sufficient conditions.
 
@@ -207,9 +201,9 @@ register the present paper uses.
 \section{The Settlement Primitive}
 \label{sec:primitive}
 
-The bonded primitive is developed formally in the companion
-mechanism paper and verified formally in the companion implementation
-paper. We summarize the features the present paper relies on.
+The bonded primitive's mechanism-design derivation and its formal
+verification are out of scope for the present paper. We summarize the
+kernel features the present paper relies on.
 
 \paragraph{Kernel surface.}
 Two state-changing operations: \texttt{commit} (dual-signed EIP-712
@@ -235,16 +229,16 @@ unilateral exit).
 the kernel together with extensions composed under the discipline of
 this paper. \emph{Runtime}: the protocol together with semantic
 layers, builder surfaces, and rendered institutional shapes that
-humans and agents interact with. The companion mechanism paper
-introduces the three-tier distinction; the present paper develops it.
+humans and agents interact with. The present paper takes the
+three-tier distinction as given and develops the protocol and
+runtime tiers.
 
 % ════════════════════════════════════════════════════════════════════
 \section{The Protocol Extension Doctrine}
 \label{sec:doctrine}
 
 The kernel is intentionally narrow. Its narrowness is what produces
-the equilibrium of the mechanism paper; widening it would weaken the
-equilibrium. Extensions to the kernel therefore must add capability
+the bonding equilibrium; widening it would weaken the equilibrium. Extensions to the kernel therefore must add capability
 without widening the kernel itself. The doctrine answers the question
 of how this is done.
 
@@ -291,12 +285,20 @@ reference. The anchor does not carry the semantics themselves.
 \begin{definition}[Anchor record]
 \label{def:anchor}
 A protocol-layer anchor for an artifact family is a tuple
-$\langle \schemaid, \mathrm{version}, \mathrm{contentHash},
-\mathrm{active} \rangle$ where $\schemaid$ is the anchor identity,
+$\langle \schemaid, \mathrm{version}, \mathrm{uriHash},
+\mathrm{admitted} \rangle$ where $\schemaid$ is the anchor identity,
 $\mathrm{version}$ is the version within the family,
-$\mathrm{contentHash}$ is an immutable cryptographic hash of the
-off-chain content, and $\mathrm{active}$ is the binding's admission
-status.
+$\mathrm{uriHash}$ is an immutable cryptographic hash of the
+URI pointing at the off-chain content, and $\mathrm{admitted}$ is
+the binding's monotone admission flag (false until first
+registration, true thereafter; the discipline forbids
+deactivation).\footnote{In the deployed implementation
+(\texttt{src/SchemaRegistry.sol}), the admission flag is stored as
+\texttt{mapping(bytes32 \(\Rightarrow\) bool) public registered};
+\texttt{version} and \texttt{uriHash} live on the
+\texttt{SchemaRegistered} event log rather than as queryable storage.
+The conceptual anchor is reconstructed by reading the event log under
+the append-only-identity discipline of \Cref{sec:append-only}.}
 \end{definition}
 
 The minimal-anchor surface is intentional. Larger anchors would
@@ -422,7 +424,13 @@ declaration; everything below it is derived from it. Per-stage
 overrides express the staged-attestation pattern (an
 \texttt{applied}-stage attestation may carry different fields than
 an \texttt{inspected\_intact}-stage attestation against the same
-schema).
+schema). The specification also carries a
+\texttt{categories} array of short tags
+(\texttt{handoff}, \texttt{commerce}, \texttt{emissions},
+\texttt{lifecycle}, \texttt{jurisdiction}, \texttt{evidence-law},
+etc.) that runtime UIs use for discoverability and grouping; the tags
+are non-normative for validation but form the discoverability surface
+for a schema's runtime presentation.
 
 \paragraph{Layer B: prover mirror (pending).}
 A Rust implementation of the Layer~A validator running in the SP1
@@ -459,13 +467,18 @@ exists on chain and not in any product.
 A new schema is not done until all four layers ship in lockstep. If
 Layer~A says one thing and Layer~C says another, attestations
 silently divide into two interpretations and the schema's reference
-integrity collapses. The lockstep contract is enforced at the
-deploy-script level (the schema's registration script registers the
-\texttt{schemaId} and binds the validator atomically) and at the
+integrity collapses. The lockstep contract is operational discipline,
+not a formal soundness theorem: Layer~A and Layer~C agreement is
+enforced by the test suite and the deploy-script structure rather
+than proven by the verification stack. The lockstep contract is
+enforced at the deploy-script level (the schema's registration script
+registers the \texttt{schemaId} and binds the validator atomically)
+and at the
 test-suite level (Foundry tests in \texttt{test/schemaValidators/}
 cover well-formed input plus every typed-error revert path).
 
 \subsection{Append-only identity}
+\label{sec:append-only}
 
 Schema identity is append-only. The discipline produces three
 operational rules:
@@ -476,10 +489,9 @@ operational rules:
     record at $\schemaid$ is immutable from the moment of
     registration.
   \item No silent mutation of the content reference behind an
-    existing identity. The \texttt{contentHash} field of the anchor
-    is immutable; off-chain documents may be mirrored for
-    availability but the canonical reference is the hash, not any
-    URI.
+    existing identity. The \texttt{uriHash} field of the anchor is
+    immutable; off-chain documents may be mirrored for availability
+    but the canonical reference is the hash, not any URI.
   \item New meaning requires a new version or a new schema identity.
     A schema family that needs a substantive change registers a new
     \texttt{schemaId} (e.g., \texttt{figaro-foo-v1} $\to$
@@ -536,10 +548,12 @@ are bound this way at genesis (the 18th catalogue schema,
 \texttt{figaro-topology-v1}, is manifest-only and has no on-chain
 validator), with
 \texttt{script/Deploy.s.sol:\_deployAndRegisterValidators}
-composing the calls in a single deployment transaction. For third-party
-schemas registered post-deploy, the
-\texttt{SchemaRegistrationHelper} contract supplies the same
-atomic-bind pattern as a stateless, no-admin, no-fee public helper:
+composing the calls in a single deployment broadcast session
+controlled by one signer (no third-party interleaving against the
+deployer's nonce stream). For third-party schemas registered
+post-deploy, the \texttt{SchemaRegistrationHelper} contract supplies
+genuine single-transaction atomicity as a stateless, no-admin,
+no-fee public helper:
 
 \begin{lstlisting}
 function registerSchemaAndValidator(
@@ -617,25 +631,23 @@ catalogue's authors made deliberately, and each is reusable by
 future schemas in the family.
 
 \paragraph{Class A and Class B records.}
-The companion evidence-and-law paper introduces a taxonomy that
-schema design intersects with directly. \emph{Class~A} records
-are kernel byproducts (commitment digest, bond deposits,
-cumulative-value accumulator state, order status transitions,
-resolution events): emitted by the kernel, schema-typed at the
-kernel level, discretion-free, and cryptographically
-authenticated. \emph{Class~B} records are discretionary
-schema-validated attestations (delivery confirmations, GHG
-disclosures, handoff attestations, custody-of-seal events,
-lifecycle stage transitions): produced by participants through
-the \texttt{AttestationCoordinator}, schema-typed at the
-\emph{protocol} level, validator-gated, and substantively
-contestable on truth-of-content grounds. The schema-design
-discipline of this paper produces Class~B records: Layer~A
-specifies the content shape, Layer~C enforces the shape at the
-on-chain validator, the runtime tier renders and submits, and
-the resulting attestation enters the off-chain forum's
-evidentiary record as Class~B input under the framework
-developed in the companion evidence-and-law paper.
+A useful evidentiary taxonomy distinguishes records the kernel
+produces by construction from records participants attest under
+schema discipline. \emph{Class~A} records are kernel byproducts
+(commitment digest, bond deposits, cumulative-value accumulator
+state, order status transitions, resolution events): emitted by
+the kernel, schema-typed at the kernel level, discretion-free, and
+cryptographically authenticated. \emph{Class~B} records are
+discretionary schema-validated attestations (delivery confirmations,
+GHG disclosures, handoff attestations, custody-of-seal events,
+lifecycle stage transitions): produced by participants through the
+\texttt{AttestationCoordinator}, schema-typed at the \emph{protocol}
+level, validator-gated, and substantively contestable on
+truth-of-content grounds. The schema-design discipline of this paper
+produces Class~B records: Layer~A specifies the content shape,
+Layer~C enforces the shape at the on-chain validator, the runtime
+tier renders and submits, and the resulting attestation enters the
+evidentiary record as Class~B input.
 
 \subsection{What schema design is not}
 
@@ -667,10 +679,12 @@ re-introduces the discretionary actor.
 
 We turn now to the second discipline question: under what conditions
 does an external mechanism contract compose with the kernel without
-breaking the bonding equilibrium? The implementation paper introduces
-the \emph{coordinator pattern} as Proposition~1, asserted at the
-implementation level. We restate the proposition with formal
-composition semantics and prove that the conditions are sufficient.
+breaking the bonding equilibrium? The discipline that answers this
+is the \emph{coordinator pattern}: a set of sufficient conditions on
+an extension contract's read/write profile against kernel state
+under which the bonding equilibrium is preserved by composition. We
+state the conditions formally with composition semantics and prove
+that they are sufficient.
 
 \subsection{Composition semantics}
 
@@ -751,13 +765,13 @@ the following conditions:
 \end{proposition}
 
 The conditions are stated in the claims they constrain: condition
-(i) preserves the kernel state predicates the implementation paper's
-verification establishes (status monotonicity, transition
-correctness, cumulative integrity, etc.); condition (ii) preserves
-buyer dominance; condition (iii) preserves the no-escape-hatches
-discipline; condition (iv) preserves the schema-validation surface.
-A mechanism that satisfies all four can be composed onto the kernel
-with the kernel's equilibrium guarantees still in force.
+(i) preserves the kernel state predicates the verification stack
+establishes (status monotonicity, transition correctness, cumulative
+integrity, etc.); condition (ii) preserves buyer dominance; condition
+(iii) preserves the no-escape-hatches discipline; condition (iv)
+preserves the schema-validation surface. A mechanism that satisfies
+all four can be composed onto the kernel with the kernel's
+equilibrium guarantees still in force.
 
 \begin{proof}[Sketch]
 The kernel's bonding equilibrium rests on the six invariants of
@@ -768,7 +782,7 @@ Condition (i) preserves invariants (i)--(v): if
 $\mathcal{M}$ cannot mutate kernel state, the kernel's existing
 invariants remain invariants under composition. Formally, if
 $P : \mathcal{S}_{\mathcal{K}} \to \mathrm{Bool}$ is invariant under
-$\delta_{\mathcal{K}}$ (verified in the implementation paper), and
+$\delta_{\mathcal{K}}$ (formally verified at the kernel tier), and
 $\delta_{\mathcal{M}}$ does not produce state changes in
 $\mathcal{S}_{\mathcal{K}}$, then $P$ is invariant under
 $\delta_{\mathcal{K} \otimes \mathcal{M}}$ since the latter is the
@@ -779,8 +793,7 @@ invariant (iv) (atomic resolution) by ruling out alternative paths
 that would bypass them. If $\mathcal{M}$ provided an operation
 producing the value flows of \texttt{resolveProcess} without
 satisfying the buyer-only and all-or-nothing preconditions, the
-mechanism paper's escape-hatch-weakness theorem applies and the
-equilibrium is broken.
+escape-hatch-weakness theorem applies and the equilibrium is broken.
 
 Condition (iii) preserves invariant (vi) (no escape hatches) by
 ruling out lock-bypass operations.
@@ -798,16 +811,15 @@ break any kernel invariant or any schema-validation surface
 property. The conditions are also \emph{necessary in the worst
 case} (relaxing any one produces a documented anti-pattern): a
 mechanism that mutates kernel state directly (relax condition i)
-breaks the invariants the implementation paper proves; a
-mechanism with an alternative settlement path (relax condition ii)
-implements the timeout / arbitrator / governance-override
-escape-hatch the mechanism paper's Theorem~4.7 forbids; a
-mechanism with a discretionary lock-bypass (relax condition iii)
-implements an admin-controlled fund-withdrawal path the
-no-escape-hatches discipline forbids; a mechanism that accepts
-unvalidated schema-typed content (relax condition iv) creates a
-content surface that downstream consumers cannot trust as
-protocol-grade. We do not claim the conditions are necessary in
+breaks the verified kernel invariants; a mechanism with an
+alternative settlement path (relax condition ii) implements the
+timeout / arbitrator / governance-override escape-hatch the
+escape-hatch-weakness theorem forbids; a mechanism with a
+discretionary lock-bypass (relax condition iii) implements an
+admin-controlled fund-withdrawal path the no-escape-hatches
+discipline forbids; a mechanism that accepts unvalidated schema-typed
+content (relax condition iv) creates a content surface that
+downstream consumers cannot trust as protocol-grade. We do not claim the conditions are necessary in
 every model; weaker conditions on a mechanism with sufficiently
 restricted power (e.g., a pure view contract) might suffice for
 narrower preservation claims. The four conditions are sufficient
@@ -821,12 +833,19 @@ The \texttt{AttestationCoordinator} contract is the canonical worked
 example of the coordinator pattern. The contract accepts attestations
 against bonded orders, gates them through registered
 \texttt{ISchemaValidator} contracts, and emits typed events without
-ever modifying kernel state. The contract's verification surface
-discharges \Cref{prop:coordinator}'s conditions explicitly.
+ever modifying kernel state. A second admission gate enforces a
+Merkle-inclusion proof against the order's signed
+\texttt{agreementHash}: only clauses committed at contract-signing
+time can be attested under, so a clause that was not part of the
+bilateral agreement cannot land an attestation against the order.
+The contract's verification surface discharges
+\Cref{prop:coordinator}'s conditions explicitly.
 
 \paragraph{Conditions discharged.}
 The Certora specification \texttt{certora/AttestationCoordinator.spec}
-contains seven CVL rules. Two of them are parametric over every
+contains seven declared CVL rules (eight including the parametric
+expansion of one rule reported in the cloud verification artifact).
+Two of them are parametric over every
 public function on \texttt{AttestationCoordinator} and are the
 direct discharge of condition~(i):
 \texttt{attestationCannotChangeOrderStatus} and
@@ -1043,8 +1062,10 @@ The discipline the canvas enforces is structural: an assembly that
 violates the runtime's composition rules cannot be saved. A
 fan-out node where one fan-out lacks a corresponding mechanism
 package is flagged; an attestation node referencing an unbound
-schemaId is flagged; a process-tree topology that fails the
-N-party-Nash conditions is flagged. The canvas surfaces the
+schemaId is flagged; structural composition failures (mismatched
+mechanism packages, dangling sub-orders, topology shapes the
+runtime does not admit) are surfaced before the draft can be
+persisted. The canvas surfaces the
 discipline rather than hiding it; an author who saves an assembly
 through the canvas has by construction produced one that satisfies
 the runtime's structural integrity.
@@ -1095,10 +1116,10 @@ prevents.
 \paragraph{Kernel changes.}
 The kernel is frozen. Any proposed extension that requires a kernel
 change is, by the discipline, not a candidate extension; it is a
-proposal for a different protocol. The companion mechanism paper's
-escape-hatch-weakness theorem makes this not a stylistic preference
-but a mathematical necessity: any unilateral exit path from the
-bonded state weakens the Nash equilibrium. The protocol's
+proposal for a different protocol. The escape-hatch-weakness theorem
+makes this not a stylistic preference but a mathematical necessity:
+any unilateral exit path from the bonded state weakens the Nash
+equilibrium. The protocol's
 narrowness is its security property.
 
 \paragraph{Admin paths.}
@@ -1155,20 +1176,19 @@ semantics writes a different assembly, not a different skin.
 \paragraph{Soulbound reputation as protocol primitive.}
 Any proposed extension that introduces a non-transferable
 reputation token bound to a wallet at the protocol layer is
-refused. The mechanism paper's analysis is that reputation is a
-graph-tier signal, not a kernel-tier construct; introducing
-soulbound reputation at the protocol layer reifies what is
-appropriately a graph-level pattern (settlement history is
-already on chain and readable as reputation by any party who
-wants to read it that way) into a privileged-credential
+refused. Reputation is a graph-tier signal, not a kernel-tier
+construct; introducing soulbound reputation at the protocol layer
+reifies what is appropriately a graph-level pattern (settlement
+history is already on chain and readable as reputation by any party
+who wants to read it that way) into a privileged-credential
 construct that weakens the kernel's actor-neutrality property.
 
 \paragraph{Fee discounts conditioned on protocol-tier signals.}
 Any proposed extension that conditions kernel-tier or
 protocol-tier behavior on a fee discount, a green-bond
 adjustment, or any other rate-modifying signal is refused. The
-2$\times$ bonding ratio is the minimum viable equilibrium per
-the mechanism paper's Theorem~4.6; introducing a fee-discount
+2$\times$ bonding ratio is the minimum viable equilibrium under
+the minimum-multiplier result; introducing a fee-discount
 mechanism that modifies the effective ratio for some class of
 participant breaks the equilibrium for that class. Whatever
 incentive a fee discount would supply belongs at the assembly
@@ -1198,10 +1218,10 @@ documentation.
 mechanically per coordinator (\texttt{AttestationCoordinator} is the
 worked example), but a parametric meta-verification that proves the
 discipline is correct for any coordinator that satisfies the
-conditions is not currently in the verification stack. The
-implementation paper acknowledges this. The open question is
-whether parametric verification at the coordinator-pattern level is
-worth the work, or whether per-coordinator verification suffices.
+conditions is not currently in the verification stack. The open
+question is whether parametric verification at the coordinator-pattern
+level is worth the work, or whether per-coordinator verification
+suffices.
 
 \paragraph{Runtime-tier verification.}
 The runtime tier currently has no formal-verification surface
@@ -1267,24 +1287,19 @@ operationally checkable, and the open question is whether formal
 verification at the runtime tier is worth the work.
 
 The contribution is the discipline itself, made explicit and
-research-grade. The mechanism-design and verification work the
-discipline rests on is in the companion mechanism and implementation
-papers; the operational worked examples are in the companion
-industrial-engineering papers (J for scheduled service, K for
-container shipping). The present paper supplies the connecting tissue:
+research-grade. The present paper supplies the connecting tissue:
 how the kernel becomes a protocol becomes a runtime, with the
 discipline at each layer specified well enough that an extension
 author or runtime architect can apply it.
 
 \section*{Acknowledgments}
 The protocol-extension and runtime-composition work developed
-incrementally alongside the kernel and the companion papers. The
-extension doctrine document originated as an architectural note on
-GHG schema anchoring and generalized; the runtime model emerged
-from operational requirements of the local-commerce reference
-archetype and generalized. The COALA collaborators have been a
-consistent interlocutor on the legal-tier interactions of the
-protocol-extension and schema-validation surfaces.
+incrementally alongside the kernel. The extension doctrine document
+originated as an architectural note on GHG schema anchoring and
+generalized; the runtime model emerged from operational requirements
+of the local-commerce reference archetype and generalized. The COALA
+collaborators have been a consistent interlocutor on the legal-tier
+interactions of the protocol-extension and schema-validation surfaces.
 
 % ════════════════════════════════════════════════════════════════════
 \begin{thebibliography}{99}
