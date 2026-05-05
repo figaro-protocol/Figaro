@@ -91,7 +91,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         charter: "How bonded commitments compose into multi-party processes with auditable handoffs, lifecycle attestation, and proximity proof. Two worked examples: air service as coordinated resource markets (cascading-delay risk re-architected as unit-level bonded commitments) and permissionless container shipping (an ownerless successor to the failed TradeLens consortium).",
         papers: [
             { id: "J", title: "Air Service as Coordinated Resource Markets", href: "/papers/figaro-airways.pdf" },
-            { id: "K", title: "A Permissionless, Ownerless Container-Shipping Assembly", href: "/papers/figaro-container-shipping.pdf" },
+            { id: "K", title: "After TradeLens: A Permissionless Bonded Replacement", href: "/papers/figaro-tradelens.pdf" },
         ],
     },
     {

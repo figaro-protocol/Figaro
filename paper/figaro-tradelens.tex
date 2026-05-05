@@ -1,10 +1,9 @@
-% Figaro Paper K: A Permissionless, Ownerless Container-Shipping Assembly
+% Figaro Paper K: After TradeLens — A Permissionless Bonded Replacement
 % Industrial / Systems Engineering register; the TradeLens replacement
-% worked example.
+% worked example at the inter-logistics perimeter.
 % Audience: industrial-engineering and systems-engineering scholars,
 % supply-chain-coordination researchers, maritime-shipping practitioners,
 % trade-finance professionals.
-% Companion to Paper J (scheduled-service / Spirit Air worked example).
 % Preprint, May 2026
 
 \documentclass[11pt,a4paper]{article}
@@ -37,12 +36,12 @@
 \newcommand{\cumval}{G}
 
 \title{%
-  A Permissionless, Ownerless Supply-Chain Assembly:\\
-  Why TradeLens Failed and the Consumer-Rooted Architecture That Succeeds It%
+  After TradeLens:\\
+  A Permissionless Bonded Replacement%
 }
 
 \author{
-  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+  Alessandro Daliana
 }
 
 \date{May 2026}
@@ -61,32 +60,33 @@ visible from the consortium's structural shape: a competitor-controlled
 platform, requiring participation from carriers who would not ratify a
 competitor's gatekeeping over an industry resource, with high
 integration cost and no settlement guarantee binding parties to the
-arrangement. We argue the failure was structural, predictable from the
-shape of the architecture, and not specific to TradeLens.
+arrangement. The failure was structural, predictable from the shape of
+the architecture, and not specific to TradeLens.
 
-TradeLens addressed the maritime portion of a longer chain. The
-architectural alternative we develop reaches further: from factory
-to consumer. We present a permissionless, ownerless supply-chain
-assembly built on the bonded settlement primitive of the companion
-mechanism paper. The assembly has no consortium, no foundation, no
-admin function, no upgrade path, and no central party who can be
-ratified or refused. The \emph{final consumer} is the
-\texttt{rootBuyer} of the supply-chain process, committing directly
-to every party that contributes to the goods arriving at the
-consumer's door --- factory, packaging, origin logistics, port
-authorities at origin and destination, ocean carrier, customs
-broker, customs authority (for import duties), domestic logistics,
-state government (for sales tax), and any other resource provider
-the goods draw on. Carriers who want to participate compose;
-carriers who do not do not, with no consequence for either decision.
-Bonded commitments at each commit lock skin in the game proportional
-to the cumulative process value; atomic resolution by the consumer
-settles the whole process on receipt of the goods. The firm-shape
-intermediaries the conventional supply chain inserts at every tier
-(shipper-of-record, distributor, wholesaler, retailer) become
-structurally unnecessary because the consumer's bonded commits reach
-the operational sellers directly.
-The schemas the assembly draws on are largely existing infrastructure
+The architectural alternative we develop operates at the same
+perimeter TradeLens attempted: inter-logistics coordination among
+ocean carriers, ports of loading and discharge, customs authorities,
+freight forwarders, NVOCCs, customs agents, trade-finance parties /
+LC issuers, marine insurers, and inspection services. We present a
+permissionless, ownerless bonded composition built on the Figaro
+kernel's two mechanisms (asymmetric bonding plus buyer dominance with
+atomic resolution). The composition has no consortium, no foundation,
+no admin function, no upgrade path, and no central party who can be
+ratified or refused. Each provider is an off-chain real-world asset
+(RWA) whose on-chain participation is mediated by a wallet, with a
+human or autonomous agent operating the wallet on the asset's behalf.
+The \texttt{rootBuyer} at this perimeter is the buyer-of-record at the
+relevant tier --- typically the importer-of-record, the
+forwarder-of-record, or the consignee depending on the Incoterm and
+the operational arrangement; the kernel is agnostic about which
+party occupies the buyer slot. Bonded commitments at each commit lock
+skin in the game proportional to the cumulative process value; atomic
+resolution by the buyer-of-record settles the whole process on receipt
+of the goods at the agreed delivery point. Carriers who want to
+participate compose; carriers who do not do not, with no consequence
+for either decision.
+
+The schemas the composition draws on are largely existing infrastructure
 (commerce, geo, handoff, jurisdiction, fulfilment, GHG family,
 proximity); two new schemas (container-seal, Incoterms-2020-as-anchor)
 extend the protocol's surface in ways that respect the
@@ -96,10 +96,10 @@ expresses transferability at the protocol layer without weakening the
 kernel's invariants.
 
 The paper is in industrial-engineering register: the contribution is
-the assembly DAG and its operational properties, not novel
-mechanism-design results. Why TradeLens failed and what its successor
-looks like architecturally are answerable as supply-chain coordination
-questions.
+the composition and its operational properties, not novel
+mechanism-design results. Why TradeLens failed and what a bonded
+replacement at the same perimeter looks like architecturally are
+answerable as supply-chain coordination questions.
 \end{abstract}
 
 \medskip
@@ -155,52 +155,70 @@ might have faced its own difficulties, but it would not have faced
 the specific difficulty TradeLens did.
 
 \paragraph{The architectural alternative.}
-We argue that the structural fix is not better governance but no
-governance at the platform layer at all. A permissionless,
-ownerless settlement primitive --- the bonded commitment of the
-companion mechanism paper --- removes the governance question from
-the architecture. There is no consortium to join; there is a
-public protocol that any wallet can compose with. There is no
-gatekeeping authority to refuse; carriers participate by signing
-commitments and decline by not signing. The network-effects
-question becomes more manageable because the platform-as-veto
-problem disappears: a competitor's participation does not require
-the competitor's consent to a competitor's gatekeeping.
+The structural fix is not better governance but no governance at
+the platform layer at all. A permissionless, ownerless settlement
+primitive --- the Figaro kernel's bonded commitment --- removes the
+governance question from the architecture. There is no consortium
+to join; there is a public protocol that any wallet can compose
+with. There is no gatekeeping authority to refuse; carriers
+participate by signing commitments and decline by not signing. The
+network-effects question becomes more manageable because the
+platform-as-veto problem disappears: a competitor's participation
+does not require the competitor's consent to a competitor's
+gatekeeping.
 
-The assembly described in this paper is what supply-chain
-coordination looks like under such a substrate. TradeLens
-addressed the maritime portion of the chain --- carrier-to-carrier
-and carrier-to-port records of cargo movement; the bonded
-architecture reaches further. It admits the \emph{full chain from
-factory to consumer} under a single settlement primitive, with
-the final consumer as the \texttt{rootBuyer} of the supply-chain
-process and every operational party (factory, packaging, origin
-logistics, port authorities, ocean carrier, customs broker,
-customs authority for tariffs, domestic logistics, state
-government for sales tax, and any other resource provider the
-goods draw on) as a seller in that process. The firm-shape
-intermediaries of the conventional chain --- shipper-of-record,
-distributor, wholesaler, retailer --- become structurally
-unnecessary because the consumer's bonded commits reach the
-operational sellers directly. It is not a TradeLens replacement
-in the sense of a drop-in alternative product; it is a
-re-architecture of the supply-chain coordination problem in which
-the firm-tiered chain is replaced by a consumer-rooted bonded
-process.
+\paragraph{Wallets, real-world assets, and the perimeter.}
+Every party in the bonded composition is a wallet representing an
+off-chain real-world asset (RWA) with productive, commercial value
+--- an ocean-going vessel, a port terminal's berth and crane
+capacity, a customs authority's clearance service, a forwarder's
+multi-modal coordination capability, an inspection service's
+on-the-ground presence, a marine insurer's underwriting capacity.
+The wallet holds the asset's earnings as token balances and points
+to the asset's off-chain credentials through NFTs (a vessel's
+classification certificate, a port operator's authority licence, a
+customs broker's customs licence, an insurer's policy authorisation).
+A human or autonomous agent operates the wallet on the asset's
+behalf. Public-authority wallets (port authorities, customs
+authorities) participate on the same footing as commercial
+providers; the kernel does not distinguish a tax from a fee for
+service. The full RWA-as-wallet apparatus is developed in the
+accounting paper of this corpus.
+
+\paragraph{The perimeter the paper develops.}
+This paper develops the bonded composition at the same perimeter
+TradeLens attempted: \emph{inter-logistics coordination} among the
+parties that move a container from origin to destination ---
+ocean carriers, ports of loading and discharge, customs
+authorities, freight forwarders, NVOCCs, customs agents,
+trade-finance parties / letter-of-credit issuers, marine insurers,
+inspection services, and cold-chain monitors. The
+\texttt{rootBuyer} at this perimeter is the buyer-of-record at
+the relevant tier (importer-of-record, forwarder-of-record, or
+consignee, depending on the Incoterm and operational arrangement);
+the kernel is agnostic about which party occupies the buyer slot.
+Granularity within the perimeter is a design choice the
+contracting parties make, not a kernel constraint --- the same
+movement of goods can be composed as a coarser process (a few
+commits to aggregator wallets) or a finer one (more commits to
+specialised value-adders), with the bonding equilibrium holding at
+every edge regardless. The composition is not a TradeLens
+replacement in the sense of a drop-in alternative product; it is a
+re-architecture of the inter-logistics coordination problem in
+which the consortium-platform layer dissolves into a
+permissionless settlement primitive.
 
 \paragraph{Paper organization.}
 \Cref{sec:tradelens} reviews the TradeLens history and the
-structural reading of its failure (the maritime case).
+structural reading of its failure.
 \Cref{sec:primitive} summarizes the settlement primitive in the
 register the present paper uses.
-\Cref{sec:assembly} develops the consumer-rooted assembly: the
-organizational DAG (factory to consumer), the schema-attested
-operational handoffs along it, and the kernel commit structure
-that backs it (consumer as \texttt{rootBuyer}, every commit
-consumer-to-seller, all in one process).
+\Cref{sec:assembly} develops the inter-logistics composition: the
+organizational DAG (origin to destination through the
+inter-logistics value-adders), the schema-attested operational
+handoffs along it, and the kernel commit structure that backs it.
 \Cref{sec:bonds} works out the bond posture and cohort-compensation
-mechanics across the resource providers, with a worked example
-including realistic numbers, tariffs, and sales tax.
+mechanics across the resource providers, with a worked example.
 \Cref{sec:schemas} treats the schema requirements: most existing
 infrastructure, two new schemas (container-seal-v1 and
 Incoterms-2020-as-anchor), and the deliberate non-inclusion of
@@ -300,19 +318,15 @@ the participants want to compose on top.
 \section{The Settlement Primitive}
 \label{sec:primitive}
 
-The bonded primitive is developed formally in the companion
-mechanism paper, with the deployed Solidity implementation
-verified through the companion implementation paper's
-multi-method stack (TLA\textsuperscript{+}, symbolic execution,
-property-based fuzzing, Certora specifications). We summarize
-the features the present argument uses.
+The bonded primitive in \texttt{FigaroCore} has two mechanisms.
+We summarize the features the present argument uses.
 
 \paragraph{Asymmetric bonding (Mechanism~1).}
 For a transaction with payment $\pay > 0$ and cumulative upstream
 value $\cumval \geq \pay$, the buyer locks $2\pay$ and the seller
 locks $2\cumval$. Cooperation is the unique profile surviving
 iterated elimination of weakly dominated strategies. The
-mechanism scales to $N$-party process trees through progressive
+mechanism scales to $N$-party processes through progressive
 collateralization: each seller bonds against the cumulative value
 of all upstream commitments, producing a mesh of independently
 secured bilateral edges, each carrying its own equilibrium.
@@ -338,283 +352,365 @@ ledger; they supply it without needing the consortium.
 \section{The Assembly}
 \label{sec:assembly}
 
-We now describe the assembly of bonded commitments that
-re-architects the supply chain as a permissionless, ownerless
-coordination protocol. The assembly has two layers that should be
-kept clearly separate: the \emph{organizational DAG} (how the
-goods physically flow from factory to consumer, documented via
-schema attestations) and the \emph{kernel commit structure} (who
-commits to whom on-chain, governed by the kernel's
-\texttt{buyer} $=$ \texttt{rootBuyer} rule). The kernel is
-DAG-blind; the schema layer is DAG-aware. The two layers co-exist
-in one process.
+We now describe the bonded composition that operates at the
+TradeLens perimeter. The composition has two layers that must be
+kept distinct: the \emph{organizational DAG} (how the container
+physically moves from origin to destination through the
+inter-logistics value-adders, documented via schema attestations)
+and the \emph{kernel commit structure} (who commits to whom
+on-chain, governed by the kernel's \texttt{buyer} $=$
+\texttt{rootBuyer} rule). The kernel is DAG-blind; the schema
+layer is DAG-aware. The two layers co-exist in one process.
 
 \paragraph{The organizational DAG.}
-The supply chain is a sequence of operational handoffs from the
-factory to the consumer. We sketch the canonical
-international-DTC flow:
+A container shipment is a sequence of operational handoffs from
+origin to destination. We sketch a canonical international flow,
+with the inter-logistics value-adders made explicit:
 
 \begin{verbatim}
-            factory (origin country)
+            shipper-of-record (origin country)
                 |
-                | handoff: goods packaged, ready to ship
+                | handoff: goods presented for shipment
                 v
-            origin logistics (truck to port)
+            freight forwarder + NVOCC
+                |   (forwarder coordinates multimodal
+                |    movement; NVOCC issues house BoL)
+                v
+            origin inland leg (truck or rail to port)
                 |
                 | handoff: container stuffed and sealed
                 v
+            inspection service (pre-shipment, optional)
+                |
+                | container-seal-v1 inspection
+                v
             port-of-loading (terminal services)
                 |
-                | handoff: container loaded
+                | handoff: container loaded; master BoL issued
                 v
             ocean carrier
                 |
                 | vessel-position stream (geo-v1),
-                | container-seal-v1 sequence
+                | container-seal-v1 sequence,
+                | cold-chain monitor (if reefer)
                 v
             port-of-discharge (terminal services)
                 |
                 | handoff: container discharged
                 v
-            customs broker + customs authority
-                |   (broker attests to authority's
-                |    determination; authority bonded
-                |    for tariff service)
+            customs agent + customs authority
+                |   (agent files entries on behalf of
+                |    importer; authority bonded for
+                |    clearance service and tariff)
                 v
-            domestic logistics (warehouse + last-mile)
+            destination inland leg
                 |
-                | fulfilment-v1 (delivery)
+                | fulfilment-v1 (delivery to consignee)
                 v
-            consumer
+            consignee (importer-of-record / buyer-at-tier)
 \end{verbatim}
 
-Variations on the structure (factory-direct shipment without a
-warehouse intermediary, intermodal rail substituted for ocean,
+Marine insurance and trade-finance / letter-of-credit issuance
+operate as parallel value-adders bonded against the same process
+without sitting on the cargo-flow line --- the marine insurer's
+wallet bonds against the goods' value, the LC issuer's wallet
+bonds against the payment-on-documents arrangement, and both are
+sellers in the bonded composition without owning a physical
+handoff. Variations on the structure (intermodal rail substituted
+for inland truck, multiple consolidation points, transhipment ports,
 etc.) instantiate the same pattern with the operational divisions
 shifted to reflect the route. Every handoff along this DAG is
-documented via a schema-typed attestation: \texttt{handoff-v1}
-for cargo transfers, \texttt{container-seal-v1} for seal-state
-changes, \texttt{geo-v1} for vessel-position updates,
+documented via a schema-typed attestation: \texttt{handoff-v1} for
+cargo transfers, \texttt{container-seal-v1} for seal-state changes,
+\texttt{geo-v1} for vessel-position updates,
 \texttt{jurisdiction-v1} for customs clearance,
 \texttt{fulfilment-v1} for delivery confirmation. None of these
 attestations is a kernel commit; they are evidentiary records
-that document the organizational reality of the goods' flow.
+documenting the operational reality of the container's flow.
 
 \paragraph{The kernel commit structure.}
-The kernel commits, in contrast, are consumer-rooted: the kernel
+The kernel commits, by contrast, all share one buyer. The kernel
 enforces \texttt{buyer} $=$ \texttt{rootBuyer} in every order in
-a process, so every kernel commit in the supply-chain process has
-the consumer as buyer. The commits document who the consumer pays
-and how much: consumer $\to$ factory, consumer $\to$ origin
-logistics, consumer $\to$ origin port authority, consumer $\to$
-ocean carrier, consumer $\to$ destination port authority,
-consumer $\to$ customs broker, consumer $\to$ customs authority
-(for the import tariff), consumer $\to$ domestic logistics,
-consumer $\to$ state government (for sales tax), and any other
-resource provider the goods draw on. The commits are independent
-of who hands the goods to whom in the organizational DAG above.
-The consumer alone calls \texttt{resolveProcess} on receipt,
+a process; the rootBuyer at this perimeter is the
+\emph{buyer-of-record at the relevant tier}. Depending on the
+Incoterm and the operational arrangement, that party can be the
+importer-of-record, the consignee, a forwarder-of-record acting
+on the importer's behalf, or in seller-arranged shipments the
+shipper-of-record itself. The kernel is agnostic about which
+party occupies the buyer slot. We use \emph{importer-of-record}
+as the running illustration; the apparatus is the same with any
+of the alternatives.
+
+The commits document who the importer-of-record pays and how
+much: importer $\to$ shipper-of-record (for the cargo's invoice
+value, if the Incoterm assigns the import side that obligation),
+importer $\to$ freight forwarder, importer $\to$ NVOCC, importer
+$\to$ origin inland carrier, importer $\to$ inspection service,
+importer $\to$ port-of-loading authority, importer $\to$ ocean
+carrier, importer $\to$ port-of-discharge authority, importer
+$\to$ customs agent, importer $\to$ customs authority (for the
+import duty), importer $\to$ destination inland carrier, importer
+$\to$ marine insurer (if buyer-procured cover), importer $\to$
+LC issuer (if the payment is letter-of-credit-arranged), and any
+other resource provider the operational arrangement draws on.
+The commits are independent of who hands the container to whom in
+the organizational DAG above. The importer alone calls
+\texttt{resolveProcess} on receipt at the agreed delivery point,
 settling the process atomically.
 
-\paragraph{Why this is not a chain of B2B transactions.}
-In the conventional supply chain the same goods are sold and
-resold at every tier --- factory to wholesaler, wholesaler to
-distributor, distributor to retailer, retailer to consumer ---
-and each tier extracts margin in exchange for absorbing the
-coordination cost between adjacent tiers. The bonded primitive
-collapses that coordination cost: the consumer's bonded commits
-reach the operational sellers directly, with no margin-extracting
-tier in between. The factory is paid by the consumer, not by a
-wholesaler. The ocean carrier is paid by the consumer, not by a
-shipper-of-record. The firm-shape parties of the conventional
-chain (shipper-of-record, distributor, wholesaler, retailer)
-become structurally unnecessary at the kernel layer; off-chain
-roles such as discovery, curation, brand-as-quality-signal, or
-returns handling can still be filled by parties who provide those
-specific services, but they cannot insert themselves as kernel
-intermediaries between the consumer and the operational sellers.
+\paragraph{Granularity is a design choice.}
+The same shipment can be composed coarsely (a few commits to
+aggregator wallets --- the forwarder absorbs origin inland +
+port-of-loading + carrier + port-of-discharge + destination inland
+into one bonded commit) or finely (each value-adder a separate
+commit, as enumerated above). The kernel sees only commits; it
+does not reify any tier-role or aggregation choice. Granularity is
+chosen by the contracting parties to suit their coordination
+needs, with the bonding equilibrium holding at every edge
+regardless. This paper develops the fine-grained version because
+the value-adder structure is the substantive content of the
+TradeLens-perimeter coordination problem; coarse aggregations are
+admissible and may be operationally appropriate in many
+deployments.
+
+\paragraph{Off-chain organizational shapes.}
+The conventional inter-logistics chain involves named
+organizational shapes (shipper-of-record, consignee, forwarder,
+NVOCC, customs broker, importer-of-record, customs agent). Under
+the bonded composition the kernel does not see these tier-roles;
+each tier-role is whichever wallet the contracting parties
+designate at agreement signing. Off-chain organizational shapes
+that today perform discovery, curation, brand-as-quality-signal,
+or coordination services around the inter-logistics layer can
+still be filled by parties providing those specific services, but
+they cannot insert themselves as kernel intermediaries between
+the buyer-of-record and the operational sellers; the kernel
+forbids any party other than the rootBuyer from being the buyer
+of within-process commits.
 
 \paragraph{Per-commit schema clauses.}
 Each kernel commit carries the schema clauses relevant to the
 seller's role.
 
 \begin{itemize}
-  \item \emph{consumer $\to$ factory}: \texttt{commerce-v1}
-    payment, \texttt{handoff-v1} on goods packaged for shipment,
-    optional \texttt{ghg-protocol-v1} disclosure for the
-    manufacturing emissions.
-  \item \emph{consumer $\to$ origin logistics}: \texttt{commerce-v1}
-    payment, \texttt{handoff-v1} on cargo receipt and on
-    container stuffing, \texttt{container-seal-v1} applied at the
-    factory dock or origin warehouse.
-  \item \emph{consumer $\to$ origin port authority} and
-    \emph{consumer $\to$ destination port authority}:
+  \item \emph{importer $\to$ shipper-of-record}:
+    \texttt{commerce-v1} payment for the cargo's invoice value,
+    \texttt{handoff-v1} on goods presented for shipment, optional
+    \texttt{ghg-protocol-v1} disclosure for the manufacturing
+    emissions.
+  \item \emph{importer $\to$ freight forwarder}:
+    \texttt{commerce-v1} payment, \texttt{handoff-v1} on cargo
+    receipt at consolidation, \texttt{container-seal-v1} applied
+    at the consolidation point.
+  \item \emph{importer $\to$ NVOCC}: \texttt{commerce-v1} payment,
+    house bill-of-lading reference (the BoL itself is treated as
+    a protocol-layer composition pattern in
+    \Cref{sec:bol}).
+  \item \emph{importer $\to$ origin inland carrier} and
+    \emph{importer $\to$ destination inland carrier}:
+    \texttt{commerce-v1} payment, \texttt{handoff-v1} at pickup
+    and dropoff, \texttt{geo-v1} pickup and dropoff geohashes.
+  \item \emph{importer $\to$ inspection service}:
+    \texttt{commerce-v1} payment, \texttt{container-seal-v1}
+    inspection event, optional evidence-hash pointer to a
+    pre-shipment inspection report.
+  \item \emph{importer $\to$ port-of-loading authority} and
+    \emph{importer $\to$ port-of-discharge authority}:
     \texttt{commerce-v1} payment for terminal handling and gate
-    access, \texttt{handoff-v1} at port-side transfers, and
-    \texttt{container-seal-v1} inspected-intact attestation at
-    the port handoff.
-  \item \emph{consumer $\to$ ocean carrier}: \texttt{commerce-v1}
+    access, \texttt{handoff-v1} at port-side transfers,
+    \texttt{container-seal-v1} inspected-intact attestations at
+    the port handoffs.
+  \item \emph{importer $\to$ ocean carrier}: \texttt{commerce-v1}
     payment, an \texttt{incoterms-2020-v1} clause anchoring the
     shipment term and named place, \texttt{handoff-v1} on cargo
     transfer to the vessel and at discharge,
     \texttt{container-seal-v1} sealing events through the voyage,
     \texttt{geo-v1} vessel-position attestations on the voyage
-    cadence, and \texttt{ghg-protocol-v1} disclosure for the
-    voyage emissions.
-  \item \emph{consumer $\to$ customs broker}: \texttt{commerce-v1}
-    payment plus \texttt{jurisdiction-v1} attestation recording
-    the customs authority's determination.
-  \item \emph{consumer $\to$ customs authority (import duty /
-    tariff)}: \texttt{commerce-v1} payment for the import-duty
-    obligation. The customs authority is a bonded seller of
-    border-services in this commit and a sovereign decisional
-    authority on the broker's parallel attestation; the two
-    roles are distinct but compose in one process.
-  \item \emph{consumer $\to$ domestic logistics}:
-    \texttt{commerce-v1} payment plus \texttt{fulfilment-v1}
-    attestation at delivery.
-  \item \emph{consumer $\to$ state government (sales tax)}:
-    \texttt{commerce-v1} payment for the sales-tax obligation.
-    The state government is a bonded seller of public services
-    funded through the sales tax, on the same composition pattern
-    as the customs authority.
+    cadence, \texttt{ghg-protocol-v1} disclosure for the voyage
+    emissions, and (for reefer cargo)
+    cold-chain-monitoring attestations.
+  \item \emph{importer $\to$ customs agent}: \texttt{commerce-v1}
+    payment for entry-filing services plus
+    \texttt{jurisdiction-v1} attestation recording the customs
+    authority's determination.
+  \item \emph{importer $\to$ customs authority}:
+    \texttt{commerce-v1} payment for the import duty. The customs
+    authority is an RWA-as-wallet of the same kind as a
+    commercial provider --- a public service whose continued
+    operation depends on receipts covering its operating expenses
+    --- in the role of a bonded seller of border-clearance service
+    in this commit, with the sovereign decisional authority on
+    the customs agent's parallel attestation handled as an
+    off-chain regulatory function the kernel does not encode.
+  \item \emph{importer $\to$ marine insurer}: \texttt{commerce-v1}
+    payment for the policy premium; the insurer's bond is the
+    underwriting capacity at risk against the insured cargo
+    value. Insurance composes with the bonded primitive without
+    modifying the kernel.
+  \item \emph{importer $\to$ LC issuer (if applicable)}:
+    \texttt{commerce-v1} payment for the LC issuance fee; the
+    issuer's bond is the credit capacity backing the LC
+    documentary-payment arrangement.
 \end{itemize}
 
 \paragraph{Operational sub-procurement as separate processes.}
-A factory's procurement of materials, labor, and energy; a
-carrier's procurement of fuel, crew, and maintenance; a
-domestic-logistics provider's procurement of warehouse space and
-delivery vehicles --- each of these is a separate process under
-the operational party as its own \texttt{rootBuyer}. The kernel
-does not link those processes to the consumer's. Cross-process
-coordination is achieved through within-process cohort-pressure
-on each side and through off-chain reconciliation, not through
-cross-process atomic resolution.
+Each value-adder's own procurement (the carrier's fuel + crew +
+maintenance, the forwarder's IT + staffing, the inspection
+service's labour + equipment, the port authority's terminal
+operations, etc.) is a separate process under that wallet's
+operator as its own \texttt{rootBuyer}. The kernel does not link
+those processes to the importer's. Cross-process coordination is
+achieved through within-process cohort-pressure on each side and
+through off-chain reconciliation, not through cross-process atomic
+resolution. This is the standard wallet-as-RWA composition
+pattern: each provider wallet sustains its participation in this
+market through receipts that cover the asset's off-chain
+operating expenses, and runs its own bonded processes for those
+expenses against its own counterparties.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Bond Posture and Cascade Mechanics}
 \label{sec:bonds}
 
-The architecture's structural contribution is that each leg's
+The composition's structural contribution is that each leg's
 risk is priced and propagated by the bonding rule of the kernel,
 without consortium intermediation.
 
 \paragraph{Bond posture per commit.}
 The kernel maintains a single process-wide cumulative-value
 accumulator $G$ that grows monotonically as each commit lands
-($G \leftarrow G + P_i$). At every commit the consumer (as
-\texttt{rootBuyer}) posts $2P_i$ for that specific payment, and
-the seller posts $2G_{\text{at commit time}}$ --- the full
+($G \leftarrow G + P_i$). At every commit the importer-of-record
+(as \texttt{rootBuyer}) posts $2P_i$ for that specific payment,
+and the seller posts $2G_{\text{at commit time}}$ --- the full
 cumulative process value at the moment they commit. Bond posture
-is asymmetric: the consumer's per-commit bond scales with the
+is asymmetric: the importer's per-commit bond scales with the
 immediate payment, while each seller's bond scales with the
-cumulative value of every upstream commit in the process.
-Sellers committing later post correspondingly larger bonds; the
-last seller bonds against the full retail value of the goods.
+cumulative value of every upstream commit in the process. Sellers
+committing later post correspondingly larger bonds; the last
+seller bonds against the full landed value of the cargo.
 
 \paragraph{A bond-posture worked example.}
-Consider a stylized \$200 imported consumer good (a piece of
-consumer electronics manufactured in an exporting country and
-delivered to a consumer in an importing country with a 25\%
-import duty assessed on the CIF landed cost and a 7.5\% sales
-tax assessed on the pre-tax retail price) under one
-consumer-rooted process. The table below traces one illustrative
-commit sequence.
+Consider a stylized \$1{,}000 cargo invoice (containerised goods
+shipped from an exporting country to an importing country with a
+$5\%$ import duty assessed on the CIF declared value), with the
+importer-of-record as \texttt{rootBuyer}. The table below traces
+one illustrative commit sequence.
 
 \begin{table}[h]
 \centering
 \small
 \begin{tabular}{lrrrr}
 \toprule
-Commit (in sequence) & $P_i$ & $G$ after commit & Consumer bond $2P_i$ & Seller bond $2G$ \\
+Seller (commit sequence) & $P_i$ & $G$ after commit & Importer bond $2P_i$ & Seller bond $2G$ \\
 \midrule
-Root: consumer $\rightarrow$ factory (FOB) & $\$85$ & $\$85$ & $\$170$ & $\$170$ \\
-Sub: consumer $\rightarrow$ origin logistics & $\$5$ & $\$90$ & $\$10$ & $\$180$ \\
-Sub: consumer $\rightarrow$ origin port authority & $\$5$ & $\$95$ & $\$10$ & $\$190$ \\
-Sub: consumer $\rightarrow$ ocean carrier & $\$15$ & $\$110$ & $\$30$ & $\$220$ \\
-Sub: consumer $\rightarrow$ destination port authority & $\$5$ & $\$115$ & $\$10$ & $\$230$ \\
-Sub: consumer $\rightarrow$ customs broker & $\$3$ & $\$118$ & $\$6$ & $\$236$ \\
-Sub: consumer $\rightarrow$ customs authority (import duty) & $\$29$ & $\$147$ & $\$58$ & $\$294$ \\
-Sub: consumer $\rightarrow$ domestic logistics & $\$39$ & $\$186$ & $\$78$ & $\$372$ \\
-Sub: consumer $\rightarrow$ state government (sales tax) & $\$14$ & $\$200$ & $\$28$ & $\$400$ \\
+Shipper-of-record (cargo, root) & $\$700$ & $\$700$ & $\$1{,}400$ & $\$1{,}400$ \\
+Marine insurer & $\$15$ & $\$715$ & $\$30$ & $\$1{,}430$ \\
+Freight forwarder & $\$30$ & $\$745$ & $\$60$ & $\$1{,}490$ \\
+NVOCC (house BoL) & $\$15$ & $\$760$ & $\$30$ & $\$1{,}520$ \\
+Origin inland carrier & $\$20$ & $\$780$ & $\$40$ & $\$1{,}560$ \\
+Inspection service (pre-shipment) & $\$10$ & $\$790$ & $\$20$ & $\$1{,}580$ \\
+Port-of-loading authority & $\$25$ & $\$815$ & $\$50$ & $\$1{,}630$ \\
+Ocean carrier & $\$60$ & $\$875$ & $\$120$ & $\$1{,}750$ \\
+Port-of-discharge authority & $\$25$ & $\$900$ & $\$50$ & $\$1{,}800$ \\
+Customs agent & $\$20$ & $\$920$ & $\$40$ & $\$1{,}840$ \\
+Customs authority (import duty) & $\$39$ & $\$959$ & $\$78$ & $\$1{,}918$ \\
+Destination inland carrier & $\$25$ & $\$984$ & $\$50$ & $\$1{,}968$ \\
+LC issuer (documentary credit fee) & $\$16$ & $\$1{,}000$ & $\$32$ & $\$2{,}000$ \\
 \midrule
-Total bond locked across the process & --- & --- & $\$400$ & $\$2{,}292$ \\
+Total bond locked across the process & --- & --- & $\$2{,}000$ & $\$21{,}886$ \\
 \bottomrule
 \end{tabular}
-\caption{Stylized per-commit bond posture for a \$200 imported
-consumer good under one consumer-rooted process. The import duty
-($\$29$) is $25\%$ of the CIF landed cost ($\$115 = \$85 + \$5 +
-\$5 + \$15 + \$5$, the cumulative process value at point of
-arrival at the destination port), not of the retail price. The
-sales tax ($\$14$) is $7.5\%$ of the pre-tax retail ($\$186 =
-\$200 - \$14$). $G$ is the process-wide cumulative-value
-accumulator. The consumer's bond at each commit scales with the
-immediate payment to that seller; each seller's bond scales with
-the cumulative process value at the moment that seller commits.
-The customs authority and the state government are bonded sellers
-in their respective commits, on the same composition pattern as
-the federal aviation system in the companion scheduled-service
-paper. Per-resource payments are illustrative; absolute
-magnitudes vary with the goods, route, tariff schedule, and tax
-jurisdiction.}
+\caption{Stylized per-commit bond posture for a \$1{,}000 cargo
+shipment under one TradeLens-perimeter process with the
+importer-of-record as \texttt{rootBuyer}. The import duty (\$39)
+is $5\%$ of the declared CIF value (\$775 = \$700 cargo + \$15
+marine insurance + \$60 ocean freight). $G$ is the process-wide
+cumulative-value accumulator, monotonically growing with each
+commit. The importer's bond at each commit scales with the
+immediate payment; each seller's bond scales with the cumulative
+process value at the moment that seller commits. The
+customs-authority wallet is an RWA-as-wallet on the same footing
+as commercial providers --- a public service whose continued
+operation depends on receipts covering its operating expenses ---
+in the role of a bonded seller of border-clearance service.
+Per-leg payments are illustrative; absolute magnitudes vary with
+cargo class, route, tariff schedule, and the operational
+arrangement (open-account vs.\ documentary-credit, FOB vs.\ CIF,
+buyer-procured vs.\ seller-procured insurance, etc.).}
 \label{tab:k-bond-posture}
 \end{table}
 
-The asymmetry between consumer-side and seller-cohort bonds is
-visible: the consumer's aggregate locked bond is $\$400$
-($= 2 \times P_{\text{retail}}$, the standard buyer posture),
-while the seller cohort's aggregate locked bond is $\$2{,}292$,
-nearly six times the consumer's. The seller cohort's bond is a
-multiple of the retail value because each seller bonds against
-the cumulative $G$ that has grown across upstream commits.
+The asymmetry between importer-side and seller-cohort bonds is
+visible: the importer's aggregate locked bond is \$2{,}000
+($= 2 \times P_{\text{cargo invoice}}$, the standard buyer
+posture), while the seller cohort's aggregate locked bond is
+\$21{,}886, nearly eleven times the importer's. The seller cohort's
+bond is a large multiple of the cargo invoice because each seller
+bonds against the cumulative $G$ that has grown across upstream
+commits, and the inter-logistics perimeter has a substantial
+number of value-adders. As the composition adds more value-adders
+(e.g., transhipment ports, additional inland legs, multiple
+inspection services) the seller-side total grows super-linearly
+while the importer's side stays at $2 P_{\text{cargo invoice}}$.
 
 \paragraph{Slip propagation as cohort-compensation pressure.}
-When a slip occurs --- a defective unit shipped, a port
-congestion delay, a customs hold, a damaged delivery --- the
-kernel's atomic-resolution rule means \emph{every} seller's bond
-in the consumer's process is at risk: the consumer alone
-resolves, and the consumer can withhold resolution while the
-seller cohort negotiates compensation. The unit whose performance
-failed bears the larger share of cohort-internal compensation;
-sellers whose service was unaffected contribute less or not at
-all. Compensation flows directly from the seller cohort to the
-consumer before any external mechanism (specialized mechanism
-contracts, dispute forums, insurance, regulators) is engaged.
-The mechanism is the same one developed for scheduled passenger
-service in the companion industrial-engineering paper: buyer
-dominance plus atomic resolution under bond pressure. The
-off-chain question of which operational unit caused the slip ---
-factory defect, packaging fault, ocean-leg damage, customs
-inspection delay --- is adjudicated by external forums with the
-bonded record as input, under the framework of the companion
-evidence-and-law paper.
+When a slip occurs --- a damaged container, a port congestion
+delay, a customs hold, a documentary discrepancy, a cold-chain
+breach --- the kernel's atomic-resolution rule means
+\emph{every} seller's bond in the importer's process is at risk:
+the importer alone resolves, and the importer can withhold
+resolution while the seller cohort negotiates compensation. The
+unit whose performance failed bears the larger share of
+cohort-internal compensation; sellers whose service was unaffected
+contribute less or not at all. Compensation flows directly from
+the seller cohort to the importer before any external mechanism
+(specialized mechanism contracts, dispute forums, insurance,
+regulators) is engaged. The mechanism is buyer dominance plus
+atomic resolution under bond pressure: cooperation is the unique
+profile surviving iterated elimination of weakly dominated
+strategies, induced by atomic resolution operating on the bonded
+mesh. The same structural shape produces the joint-liability
+dynamic in Grameen-style microfinance, but operating without the
+social-substrate prerequisites Grameen requires (no repeated
+interaction, no local information, no exogenous punishment
+technology). Buyer dominance with atomic resolution is in this
+sense a \emph{social mechanism}: it produces social-coordination
+behavior (peer pressure, cohort negotiation, burden-sharing,
+coverage of a struggling counterpart) endogenously through the
+bond architecture, with each provider wallet's continued
+participation in its market making the negotiation rationally
+compelled rather than socially expected. The off-chain question of
+which operational unit caused the slip --- forwarder coordination
+failure, terminal damage, ocean-leg damage, customs inspection
+delay, documentary discrepancy at the LC stage --- is adjudicated
+by external forums with the bonded record as input.
 
 \paragraph{Cohort pressure across the resource provider set.}
-The architecture exhibits cohort pressure across the seller set
-in the consumer's process. Each seller's bond is at risk if any
+The composition exhibits cohort pressure across the seller set in
+the importer's process. Each seller's bond is at risk if any
 other seller's slip propagates to a resolution-withholding by the
-consumer. Sellers therefore have direct economic interest in
-each other's reliability: a factory whose defect rate forces
-repeat compensation negotiations loses repeat consumer business
-not because of reputation effects but because the cohort's
-expected bond-loss exposure on goods from that factory is direct
-and measurable; a port that consistently produces cascading
-delays does likewise. The mechanism operates without a
-managerial layer; the bonded structure does the work that a
-consortium-governed shared ledger was meant to do through
-information transparency alone.
+importer. Sellers therefore have direct economic interest in
+each other's reliability: a forwarder whose coordination failures
+force repeat compensation negotiations loses repeat
+importer-of-record business not through reputation effects but
+because the cohort's expected bond-loss exposure on shipments
+through that forwarder is direct and measurable; a port whose
+congestion consistently produces cascading delays does likewise.
+The mechanism operates without a managerial layer; the bonded
+structure does the work that a consortium-governed shared ledger
+was meant to do through information transparency alone.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Schemas}
 \label{sec:schemas}
 
-The assembly draws mostly on existing schema infrastructure. Two
-new schemas are required: a container-seal attestation and an
+The composition draws mostly on existing schema infrastructure.
+Two new schemas are required: a container-seal attestation and an
 Incoterms-2020 anchor. The bill-of-lading transferability
 question is treated separately in \Cref{sec:bol}.
 
 \paragraph{Existing schemas.}
-The assembly composes the following existing schemas.
+The composition reuses the following existing schemas.
 \texttt{figaro-commerce-v1} carries the per-leg payment
 commitment.
 \texttt{figaro-geo-v1} carries pickup / drop-off geohashes and
@@ -624,19 +720,17 @@ transfer points.
 \texttt{figaro-jurisdiction-v1} carries the customs-clearance
 attestation.
 \texttt{figaro-courier-process-v1} carries the carrier's
-internal sub-process tree (the multi-stop carrier process).
-\texttt{figaro-fulfilment-v1} carries the final delivery to
+per-role event log over the multi-stop carrier process.
+\texttt{figaro-fulfilment-v1} carries the final delivery to the
 consignee.
 \texttt{figaro-ghg-protocol-v1} (with sister schemas for ISO
 14064, PAS 2050, EN 16258) carries per-leg emissions
 disclosure on every transport edge.
 \texttt{figaro-proximity-policy-v1} together with
 \texttt{figaro-proximity-proof-v1} support geofence enforcement
-at port handoffs where required.
-
-The composition is non-trivial but draws on established
-infrastructure. No agent work is required for these schemas;
-they are already on chain and bound to validators.
+at port handoffs where required. These schemas are already on
+chain and bound to validators; no further protocol-extension
+work is needed for them.
 
 \paragraph{New schema: \texttt{figaro-container-seal-v1}.}
 Container seals are the integrity mechanism for ocean shipping.
@@ -801,94 +895,92 @@ bonded state. A literal endorsement of the BoL during shipment
 would require any of these invariants to bend, and they do not
 bend.
 
-The architectural direction we propose, and which we treat as
-\emph{open architectural research} rather than as a deliverable
-production-ready pattern, is that BoL transferability is a
-\emph{protocol-layer composition} not a kernel-layer property
-\citep{bol_research_2026}. The candidate pattern is a
-\emph{cancellable-seller wrapper plus counter-process}: the
-original buyer, who wants to transfer the right to the cargo
-mid-shipment, commits a parallel \emph{cancellation process}
-$P_{\text{cancel}}$ in which each sub-seller is compensated for
-early exit through a fee owed by the original buyer (and bonded
-under the standard kernel rule), and the new buyer commits a
-fresh transport process for the remaining legs.
+The architectural direction is that BoL transferability is a
+\emph{protocol-layer composition}, not a kernel-layer property.
+The candidate pattern is a \emph{cancellable-seller wrapper plus
+counter-process}: the original buyer, who wants to transfer the
+right to the cargo mid-shipment, commits a parallel
+\emph{cancellation process} $P_{\text{cancel}}$ in which each
+sub-seller is compensated for early exit through a fee owed by
+the original buyer (and bonded under the standard kernel rule),
+and the new buyer commits a fresh transport process for the
+remaining legs.
 
-Several open questions hold the pattern back from being a
-deliverable mechanism. First, the cancellable-seller wrapper as
-sketched in \citet{bol_research_2026} relies on programmatic
-acknowledgement of the cancellation by the affected sub-seller
-under a pre-agreed fee schedule; whether this constitutes
-sub-seller consent in the kernel-discipline sense, or
-constitutes a unilateral exit dressed in counterparty clothing,
-is unsettled. A sub-seller bonded under a CancellableSeller
-wrapper has consented to the wrapper's terms at commit time,
-but consent at commit time to a future programmatic
+\paragraph{Axes of underspecification.}
+The pattern is sketched here as a candidate, not asserted as a
+deliverable mechanism. It is underspecified along three axes
+that bound how seriously a deployment can rely on it.
+
+\emph{Sub-seller consent under the wrapper.} The cancellable-seller
+wrapper relies on programmatic acknowledgement of the
+cancellation by the affected sub-seller under a pre-agreed fee
+schedule. Whether this constitutes sub-seller consent in the
+kernel-discipline sense, or constitutes a unilateral exit dressed
+in counterparty clothing, is unsettled. A sub-seller bonded under
+a CancellableSeller wrapper has consented to the wrapper's terms
+at commit time, but consent at commit time to a future programmatic
 acknowledgement is structurally different from consent at the
-moment of cancellation; the design discipline reading depends
-on which framing one accepts. Second, the cargo-handoff
-operationalization is unaddressed: a fresh transport process
+moment of cancellation; the design-discipline reading depends on
+which framing one accepts.
+
+\emph{Cargo-handoff operationalization.} A fresh transport process
 for the remaining legs requires the original carrier to release
 cargo to the new carrier, which is a real-world handoff with no
-described attestation surface. Third, the cancellation-fee
-arithmetic is undefended; setting the fee too low produces an
-early-exit option the original sub-sellers will refuse, setting
-it too high forecloses the transfer use case, and the
-present paper does not defend any specific fee schedule.
+described attestation surface in the present sketch.
 
-The pattern is therefore not a recommended deployment artifact
-in the way the schemas of \Cref{sec:schemas} are. We include the
+\emph{Cancellation-fee arithmetic.} Setting the fee too low
+produces an early-exit option the original sub-sellers will
+refuse; setting it too high forecloses the transfer use case.
+The present paper does not defend any specific fee schedule;
+the arithmetic is left for the deployment-specific design.
+
+The pattern is therefore not a recommended deployment artifact in
+the way the schemas of \Cref{sec:schemas} are. We include the
 sketch because the BoL-transferability question is the
 load-bearing concern for any container-shipping deployment, and
 because the conventional answer (negotiable bills of lading
-endorsed mid-transit) is precisely what the kernel's
-buyer-fixed invariant rules out. The honest position is that
-the pattern is open architectural research; deployments
-requiring BoL transferability should plan to rely on conventional
-BoL doctrine through the off-chain agreement until the pattern
-matures, or to constrain their use cases to the
-non-transferable region the kernel admits directly.
+endorsed mid-transit) is precisely what the kernel's buyer-fixed
+invariant rules out. Deployments requiring BoL transferability
+can rely on conventional BoL doctrine through the off-chain
+agreement, or constrain their use cases to the non-transferable
+region the kernel admits directly.
 
 \paragraph{Why MLETR-style transferable-record analysis applies.}
-The companion evidence-and-law paper develops a Class~A /
-Class~B records taxonomy that frames the MLETR analysis here
-precisely. \emph{Class~A} records are kernel byproducts
-(commitment digests, bond deposits, the cumulative-value
-accumulator state, resolution events): they are emitted by the
-kernel itself, schema-typed at the kernel level, and
-cryptographically authenticated. The MLETR Article~10--11
-analysis applies directly to Class~A records: kernel structural
-properties (singularity through the cumulative-value
-accumulator, control through buyer-dominance, integrity through
-the chain's consensus) discharge the control and singularity
-tests for transferable records. \emph{Class~B} records ---
-discretionary schema-validated attestations such as the
-\texttt{container-seal-v1} events or
-\texttt{handoff-v1} attestations of \Cref{sec:assembly} ---
-are evidentiary artifacts \emph{about} the underlying
-transferable record (the commitment), not separate transferable
-records inheriting MLETR status in their own right. The
-cancellable-seller / counter-process pattern preserves the
-Class~A fit because the transfer is achieved through bilateral
-signing on two separate processes rather than through unilateral
-endorsement of a single record; the protocol-layer transfer
-pattern does not violate either MLETR test.
+The MLETR analysis distinguishes records emitted by the kernel
+itself --- commitment digests, bond deposits, the cumulative-value
+accumulator state, resolution events --- from discretionary
+schema-validated attestations such as \texttt{container-seal-v1}
+events or \texttt{handoff-v1} attestations. The kernel byproducts
+are schema-typed at the kernel level and cryptographically
+authenticated; the MLETR Article~10--11 analysis applies to them
+directly, with the kernel's structural properties (singularity
+through the cumulative-value accumulator, control through
+buyer-dominance, integrity through the chain's consensus)
+discharging the control and singularity tests for transferable
+records. The discretionary schema-validated attestations are
+evidentiary artifacts \emph{about} the underlying transferable
+record (the commitment), not separate transferable records
+inheriting MLETR status in their own right. The cancellable-seller
+/ counter-process pattern preserves the kernel-byproduct fit
+because the transfer is achieved through bilateral signing on
+two separate processes rather than through unilateral endorsement
+of a single record; the protocol-layer transfer pattern does not
+violate either MLETR test.
 
-\paragraph{What the bonded architecture does and does not preserve.}
+\paragraph{What the bonded composition does and does not preserve.}
 A useful organizing distinction is between order-form (named
-consignee, transferred by endorsement to a designated party)
-and bearer-form (transferred by physical delivery of the
-instrument without endorsement) bills of lading. Order-form
-endorsement is partially expressible through the cancellable-seller
-pattern above (subject to the open questions). Bearer-form BoLs
-are functionally equivalent to a
-transfer-without-counterparty-consent pattern that the bonded
-architecture does not support. Bearer-instrument practices
-remain common in commodity trading (oil cargoes, grain shipments)
-where the bill is treated as a near-money instrument
-\citep{goode_gullifer_2017}; non-bearer order-form practice
-predominates in container shipping but is not the only
-operational pattern. We treat the bearer-form exclusion as an
+consignee, transferred by endorsement to a designated party) and
+bearer-form (transferred by physical delivery of the instrument
+without endorsement) bills of lading. Order-form endorsement is
+partially expressible through the cancellable-seller pattern above
+(subject to the underspecification axes). Bearer-form BoLs are
+functionally equivalent to a transfer-without-counterparty-consent
+pattern that the bonded composition does not support.
+Bearer-instrument practices remain common in commodity trading
+(oil cargoes, grain shipments) where the bill is treated as a
+near-money instrument \citep{goode_gullifer_2017}; non-bearer
+order-form practice predominates in container shipping but is not
+the only operational pattern. The bearer-form exclusion is an
 honest exclusion: parties whose operations depend on
 bearer-instrument liquidity should plan around the conventional
 regime for that part of their workflow.
@@ -934,16 +1026,13 @@ standards for issuing and managing electronic BoLs and similar
 instruments \citep{tradetrust_2023}. Like CargoX, it is composable
 with the bonded architecture rather than competitive with it.
 TradeTrust's standards-based approach to MLETR fit produces
-artifacts that are interoperable with the
-bonded-architecture's evidence record under the framework
-developed in the companion evidence-and-law paper.
+artifacts that are interoperable with the bonded composition's
+evidence record.
 
 \paragraph{MLETR.}
 The UNCITRAL Model Law on Electronic Transferable Records (2017)
 is a legal framework rather than a technology platform
-\citep{uncitral_mletr_2017}. The bonded architecture's fit with
-MLETR is treated in the companion evidence-and-law paper. The
-short summary is that the kernel-layer artifacts satisfy
+\citep{uncitral_mletr_2017}. The kernel-layer artifacts satisfy
 Articles~10 and 11 (functional equivalence, control, singularity)
 for non-bearer transferable records, with bearer-instrument
 semantics noted as an honest exclusion (\Cref{sec:bol}).
@@ -984,15 +1073,21 @@ clean) but it does not produce price competition in port
 services where structural conditions don't admit it.
 
 \paragraph{Customs and sovereign authorities.}
-Customs authorities are not Figaro counterparties; their
-decisions are sovereign and the architecture treats them as
-attestation sources rather than bonded parties. The architecture
-does not propose to re-engineer customs administration. It does
-provide a verifiable evidence record on which customs decisions
-can operate and which customs decisions are recorded against,
-which we take as an unambiguous improvement over the contemporary
-paper-and-database situation but not as a substitute for the
-sovereign authority itself.
+Customs authorities have two distinct functions in this
+composition. As bonded sellers of border-clearance service
+(charging the importer for handling, examination capacity,
+filing-receipt processing, etc.) they are RWA-as-wallet on the
+same footing as commercial providers, and their participation in
+the bonded process is unproblematic at the kernel layer. As
+sovereign decisional authorities on whether specific goods clear
+under the relevant tariff schedule, they continue to operate in
+their own register, off-chain; the architecture does not
+re-engineer customs administration and the kernel does not
+encode the sovereign decision. The bonded composition produces a
+verifiable evidence record on which customs decisions can operate
+and which customs decisions are recorded against; this is an
+improvement over the paper-and-database baseline but not a
+substitute for the sovereign authority itself.
 
 \paragraph{Bond-currency at the small-shipper end.}
 Small shippers without crypto-treasury infrastructure face
@@ -1034,39 +1129,41 @@ TradeLens failed for governance reasons that no
 consortium-governance fix can resolve, and the structural
 alternative is permissionless, ownerless infrastructure at the
 platform layer rather than a better consortium. The bonded
-settlement primitive of the companion mechanism paper supplies
-the architectural shape: each leg of a shipment is a bilateral
-bonded commitment; progressive collateralization scales the
-primitive across the multi-leg fan-out; buyer dominance plus
-atomic resolution propagates damage to the unit causing the
-slip; the schemas the assembly composes are largely existing
-infrastructure with two well-bounded additions.
+primitive in \texttt{FigaroCore} supplies the architectural
+shape: each leg of a shipment is a bilateral bonded commitment;
+progressive collateralization scales the primitive across the
+multi-leg fan-out; buyer dominance plus atomic resolution
+propagates damage to the unit causing the slip; the schemas the
+composition reuses are largely existing infrastructure with two
+well-bounded additions.
 
-The contribution is the assembly DAG, the per-edge mechanism,
-the bond-posture mechanics, the schema-set composition, the
-Incoterms-as-anchor pattern, and the
-cancellable-seller / counter-process pattern for BoL
-transferability. None of these is novel mechanism design; the
-mechanism-design work was done in the companion mechanism paper.
-The contribution is industrial-engineering: a specific
-re-architecture of container shipping as a bonded coordination
-problem with operational properties demonstrably different from
-the consortium-platform regime that has been tried and has
-failed.
+The composition operates at the same perimeter TradeLens attempted
+--- inter-logistics coordination among carriers, ports, customs
+authorities, freight forwarders, NVOCCs, customs agents,
+trade-finance parties, marine insurers, and inspection services
+--- with the buyer-of-record at the relevant tier as the
+\texttt{rootBuyer}. Each provider is an RWA-as-wallet whose
+participation in this market is sustained by receipts covering
+the asset's off-chain operating expenses; public-authority
+wallets participate on the same footing as commercial.
+Granularity within the perimeter is a kernel-blind design choice;
+the fine-grained version developed here makes the value-adder
+structure explicit, and coarser aggregations are admissible
+where operational arrangements support them.
 
-A natural next step is empirical: a small-corridor pilot
-implementation of the architecture for a specific high-volume
-trade lane (US-Asia container, intra-EU short-sea, intra-Asia
-trade) with measurement of bond-loss frequency, port-supplier
-slip rates, and consignee-side recovery proportionality compared
-to the conventional regime. We do not undertake the pilot; we
-identify it as the experimental work the architecture invites.
+What the present paper supplies is the composition --- the
+organizational DAG, the per-edge bonding mechanics, the
+schema set including the two new schemas
+(\texttt{container-seal-v1}, \texttt{incoterms-2020-v1}), and
+the cancellable-seller / counter-process pattern for BoL
+transferability --- that turns the bonded primitive into a
+working inter-logistics coordination architecture at the same
+perimeter TradeLens attempted and could not sustain.
 
 \section*{Acknowledgments}
 The TradeLens worked example originated in a project repository
-of agent-coordination scenarios, with comparative research at
-\citet{bol_research_2026}. The present paper formalizes the
-scenario into an industrial-engineering register.
+of agent-coordination scenarios. The present paper formalises
+the scenario into an industrial-engineering register.
 
 % ════════════════════════════════════════════════════════════════════
 \begin{thebibliography}{99}
@@ -1115,12 +1212,6 @@ United Nations Commission on International Trade Law.
 \newblock \emph{UNCITRAL Model Law on Electronic Transferable
   Records}.
 \newblock UN Publication, 2017.
-
-\bibitem[BoL Research(2026)]{bol_research_2026}
-Daliana, A.
-\newblock Bill of Lading Research: CargoX, TradeTrust, MLETR,
-  TradeLens vs Figaro.
-\newblock Internal research deliverable, April 28, 2026.
 
 \bibitem[Goode and Gullifer(2017)]{goode_gullifer_2017}
 Goode, R. and Gullifer, L.
