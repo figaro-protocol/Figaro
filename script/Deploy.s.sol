@@ -80,7 +80,7 @@ contract Deploy is Script {
         SchemaRegistry schemas = new SchemaRegistry();
         console.log("SchemaRegistry deployed at:", address(schemas));
 
-        // Register reference schemas (17 figaro-* production schemas + ERC-8004)
+        // Register reference schemas (18 figaro-* schemas: 17 runtime-attestable + figaro-topology-v1 manifest-only)
         schemas.registerSchema(keccak256("figaro-topology-v1"), 1, keccak256("ipfs://figaro-topology/v1"));
         schemas.registerSchema(keccak256("figaro-handoff-v1"), 1, keccak256("ipfs://figaro-handoff/v1"));
         schemas.registerSchema(keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"));

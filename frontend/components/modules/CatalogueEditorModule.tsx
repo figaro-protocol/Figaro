@@ -223,7 +223,6 @@ const WELL_KNOWN_SCHEMAS: { key: string; label: string; description: string }[] 
     { key: "figaro-proximity-proof-v1", label: "Proximity Proof", description: "Per-handoff nonce + signed witness payload at runtime (Category-1)" },
     { key: "figaro-commerce-v1", label: "Commerce", description: "Commerce attestation schema for general trade" },
     { key: "figaro-handoff-v1", label: "Handoff", description: "Manifest encoding for order handoff data" },
-    { key: "erc8004-agent-services-v1", label: "Agent Services", description: "ERC-8004 autonomous agent service declarations" },
 ];
 
 // ── Main module ───────────────────────────────────────────────────────────────
