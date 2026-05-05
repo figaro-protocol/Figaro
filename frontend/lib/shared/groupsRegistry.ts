@@ -101,7 +101,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         discipline: "Cryptographic primitives · adversarial review · formal verification · protocol extension · runtime architecture",
         charter: "Two complementary lenses on the protocol's CS surface. Paper C reads the kernel adversarially: where does the invariant break, and what proves that it does not? EIP-712 dual-signed commitments, merkle-bound attestation receipts, SP1-proven batch execution, the formal-verification stack. Paper N reads what stands above the kernel as a research object: schema design as a CS discipline (four-layer verification stack, append-only identity, first-write-wins binding, atomic-bind pattern), the coordinator pattern with formal composition semantics and equilibrium-preservation conditions, and the seven-layer runtime composition pipeline. Implementation work (schema authoring, contract development, assembly composition, frontend) organizes separately at /builders.",
         papers: [
-            { id: "C", title: "The Figaro Kernel: A Verified Solidity Implementation", href: "/papers/figaro-verification.pdf" },
+            { id: "C", title: "Asymmetric Bonding and Buyer Dominance: A Verified Solidity Implementation", href: "/papers/figaro-implementation.pdf" },
             { id: "N", title: "Protocol Extension and Runtime Composition", href: "/papers/figaro-protocol-extension.pdf" },
         ],
         currentWork: [
