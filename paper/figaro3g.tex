@@ -33,7 +33,7 @@
 }
 
 \author{
-  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+  Alessandro Daliana
 }
 
 \date{April 2026}
@@ -57,15 +57,16 @@ top of it: bookkeeping, accounting, auditing, tax preparation,
 and the commercial law that treats books as the authoritative
 record of the firm's economic acts.
 
-This paper argues that the \figaro{} settlement primitive
-formalized in the mechanism paper and implemented
-in the implementation paper makes that apparatus optional for a
+This paper argues that the \figaro{} settlement primitive ---
+the asymmetric bonding and buyer-dominance mechanisms in
+\texttt{FigaroCore} --- makes that apparatus optional for a
 class of economic activity. A \figaro{} process --- a root
 bonded commitment together with its sub-orders, terms of
 agreement, and lifecycle attestations --- is a \emph{self-closing
 ledger period} in the precise accounting sense. Every entry is
-on chain, content-addressed, and signed; the conservation law
-proven in the mechanism paper is the bookkeeping identity;
+on chain, content-addressed, and signed; the kernel's
+conservation law (locked bonds plus committed payments equal
+prior balances at every point) is the bookkeeping identity;
 resolution is the closing entries; process dissolution is the
 period close. The contract holds a complete balance-sheet
 position during the life of the process; the events constitute
@@ -103,10 +104,12 @@ what the firm owns (assets), what it owes (liabilities), what
 has flowed in and out (revenues and expenses), and how these
 quantities have changed over a defined period. The books make
 the firm legible to itself, to its investors, to its
-regulators, and to its counterparties. The books are the
-foundation of the firm's legal personality in a precise sense:
-the existence of books is what distinguishes a firm as a
-trackable economic entity from a loose arrangement of exchange.
+regulators, and to its counterparties. They do not constitute
+the firm's legal personality --- which flows from
+incorporation --- but they are the artefact through which the
+firm's legal personality is exercised in practice: regulators
+read books, contracts reference books, disputes are
+adjudicated against books.
 
 The books are not an incidental feature. They are the
 infrastructure on which much of modern commercial law rests.
@@ -161,15 +164,15 @@ profession itself.
 double-entry, the apparatus on top, and the costs and benefits
 of the arrangement. \Cref{sec:triple-entry} treats the prior
 literature on triple-entry bookkeeping and blockchain-accounting,
-acknowledging the antecedents we extend. \Cref{sec:process-as-period}
+acknowledging the antecedents we depart from. \Cref{sec:process-as-period}
 develops the central technical claim: a Figaro process is a
 self-closing ledger period. \Cref{sec:stops} describes what
 stops being necessary. \Cref{sec:continues} describes what
-continues and why. \Cref{sec:institutional-connection}
-connects to the institutional-economics companion paper.
-\Cref{sec:legal-connection} connects to the law-and-evidence
-companion paper. \Cref{sec:scope} states what the paper does
-not claim. \Cref{sec:conclusion} concludes.
+continues and why. \Cref{sec:treasury-composition} canonicalises
+the wallet-as-RWA apparatus and catalogues treasury composition
+patterns. \Cref{sec:legal-connection} treats admissibility,
+primacy, and the two classes of record. \Cref{sec:scope} states
+what the paper does not claim. \Cref{sec:conclusion} concludes.
 
 % ════════════════════════════════════════════════════════════════════
 \section{The Pacioli Stack}
@@ -250,17 +253,17 @@ verification by credentialed third parties is the default
 response to questions of organizational reliability.
 
 The apparatus is real, well-established, and substantially
-functional. It is also costly. Compliance-related accounting
-costs for public companies in mature jurisdictions run into
-percentages of revenue; small firms spend a meaningful
-fraction of their overhead on tax and financial-statement
-preparation; audit budgets are substantial; forensic-accounting
-specialists are expensive. The apparatus is justified, under
-the existing model, because it answers a question that cannot
-be answered otherwise --- is the firm's position as its
-managers say it is? --- and because the alternative (believe
-the firm's own claim) has been tried historically and
-repeatedly failed.
+functional. It is also costly. Compliance costs for public
+companies in mature jurisdictions are non-trivial relative
+to revenue; small firms spend a meaningful fraction of
+their overhead on tax filings and financial-statement
+preparation; audit budgets are substantial;
+forensic-accounting specialists are expensive.
+The apparatus is justified, under the existing model, because
+it answers a question that cannot be answered otherwise ---
+is the firm's position as its managers say it is? --- and
+because the alternative (believe the firm's own claim) has
+been tried historically and repeatedly failed.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Banking as Coordinating Infrastructure Since the Renaissance}
@@ -342,28 +345,24 @@ five-hundred-year-old institutional stack.
 
 The idea that Pacioli's double-entry might be extended to
 solve additional problems has a small but identifiable
-literature. The closer ancestor for our purposes is
-\citet{ijiri1989momentum}'s \emph{momentum accounting}, which
-proposes that conventional double-entry under-records the
-forces driving economic change: a balance sheet captures stocks
-and a flow statement captures changes in stocks, but neither
-captures the rate at which stocks are changing. Ijiri introduces
-a third dimension --- the \emph{force} or \emph{momentum} of an
-account --- and a corresponding third book that tracks not the
-balance and not the change but the second derivative.
+literature. \citet{ijiri1989momentum}'s \emph{momentum
+accounting} proposes that conventional double-entry
+under-records the forces driving economic change: a balance
+sheet captures stocks and a flow statement captures changes in
+stocks, but neither captures the rate at which stocks are
+changing. Ijiri introduces a third dimension --- the
+\emph{force} or \emph{momentum} of an account --- and a
+corresponding third book tracking the second derivative.
 \citet{ijiri1986triple} extends this into triple-entry
 bookkeeping: each transaction generates not two entries but
 three, with the third recording the momentum the transaction
-imparts to the entity's position. The structural fact that matters
-for the Figaro reading is that Ijiri identifies a \emph{cumulative
-upstream quantity} --- the integral of force over time --- that
-a fully informative accounting system must record alongside
-stocks and flows. That cumulative quantity is exactly what the
-bonded process's cumulative-value accumulator $G_i$ already
-records, by mechanism, before any accounting takes place: the
-monotonic accumulator is a momentum-style record built into the
-settlement primitive. We return to this point in
-\Cref{sec:process-as-period}.
+imparts. We name Ijiri as inspiration rather than as an
+ancestor we extend. The bonded process's cumulative-value
+accumulator $G_i$ records cumulative \emph{payment} (a stock,
+in Ijiri's vocabulary), not force or its integral. What the
+two share is the structural commitment to recording an
+additional dimension beyond stocks and flows; what they do
+not share is the dimension itself.
 
 A more deeply formal antecedent is
 \citet{mattessich1964accounting}, who develops accounting as an
@@ -426,19 +425,17 @@ the next section.
 \label{sec:process-as-period}
 
 We now develop the central technical claim. Let a
-\emph{process} be the object defined
-in the mechanism paper: a root bonded commitment,
-zero or more sub-order commitments sharing a common root
-buyer and currency, a monotonic cumulative-value accumulator,
-and a buyer-initiated atomic resolution. Every commit is a
-pair of dual-signed EIP-712 payloads; every resolution is an
-atomic distribution governed by the payout functions
+\emph{process} be the kernel object: a root bonded commitment,
+zero or more sub-order commitments sharing a common root buyer
+and currency, a monotonic cumulative-value accumulator, and a
+buyer-initiated atomic resolution. Every commit is a pair of
+dual-signed EIP-712 payloads; every resolution is an atomic
+distribution governed by the payout functions
 $\pi_{s,i} = 2G_i + P_i$ and $\pi_{b,i} = P_i$, where $P_i$ is
 the payment for order $i$ and $G_i$ is the cumulative value
-accumulator snapshot at order $i$. The conservation law
-(Remark 3.5 of the mechanism paper) states that
-$\pi_{s,i} + \pi_{b,i} = C_{s,i} + C_{b,i}$ for every order:
-the total distributed equals the total locked.
+accumulator snapshot at order $i$. The kernel's conservation
+law states that $\pi_{s,i} + \pi_{b,i} = C_{s,i} + C_{b,i}$ for
+every order: the total distributed equals the total locked.
 
 The accounting argument that follows depends specifically on
 Mechanism~2 of the primitive --- buyer dominance with atomic
@@ -482,10 +479,21 @@ against the contract:
 \end{equation}
 \end{definition}
 
-This is the bookkeeping identity in escrow-accounting form.
+This is the bookkeeping identity in escrow-accounting form
+--- the same algebraic shape that lawyers' trust accounts,
+IOLTA arrangements, and AICPA-standard custody accounts use to
+keep client funds segregated from the custodian's own books.
 Assets held equal liabilities owed. The contract is not an
 economic entity in its own right; it is a custodian whose
 position reconciles to zero net at all times.
+
+The buyers and sellers in this identity are wallets
+representing real-world assets, with the wallet, the asset,
+and the operator distinct in ways that matter when the
+identity is read at scale; \Cref{sec:treasury-composition}
+canonicalises that apparatus and shows how treasury operators
+compose it. The present section's identity holds independently
+of the wallet's institutional shape behind the address.
 
 \subsection{Commits as journal entries; resolution as closing entries}
 
@@ -498,27 +506,40 @@ form:
   \item Credit: \emph{Liability to $S_i$ (payout obligation)} \quad $+\, 2G_i$
 \end{itemize}
 
-The journal entry balances by construction (debits = credits)
-and is recorded as an \texttt{OrderCommitted} event (with
-companion events \texttt{OrderSeller}, \texttt{OrderCurrency}
-for index completeness) with a cryptographic signature from
-each party and a block timestamp.
+The journal entry balances by construction (debits = credits).
+The kernel records it as an \texttt{OrderCommitted} event,
+plus paired index events for seller and currency, with a
+cryptographic signature from each party and a block timestamp.
 
 The \texttt{resolveProcess} call produces, for each active
-order, a closing entry:
+order, a closing entry on the custodian's (i.e., the kernel's)
+books:
 \begin{itemize}
   \item Debit: \emph{Liability to $S_i$} \quad $+\, (2G_i + P_i)$
   \item Debit: \emph{Liability to $B$} \quad $+\, P_i$
   \item Credit: \emph{Custody --- seller $S_i$ bond} \quad $2G_i$
   \item Credit: \emph{Custody --- buyer $B$ bond} \quad $2P_i$
-  \item (Net movement: the payment $P_i$ transfers from buyer
-    to seller.)
 \end{itemize}
 
 The closing entries zero out all custodial accounts and
 liability accounts for the process. The contract returns to
 zero position with respect to this process, and the process
 itself is marked resolved.
+
+These are the \emph{custodian's} entries. The contracting
+parties' own books, which run in parallel, do not close to
+zero --- the resolution moves $P_i$ from the buyer's books
+(where it was a deposit / asset against the custodian) into
+the seller's books, where it lands as revenue under the
+applicable revenue-recognition standard. The seller's
+$2G_i$ component is bond returned --- an asset
+reclassification (cash equivalent ex-custody back to cash
+equivalent in-wallet) with no P\&L impact. Symmetrically,
+the buyer's $2P_i$ bond returns as an asset reclassification.
+The custodian's books closing to zero is the period-close;
+the parties' books continue, with the period's net economic
+result --- revenue earned, expense incurred --- captured at
+the resolution moment in the parties' own classification.
 
 \subsection{Supporting documentation and the complete record}
 
@@ -535,16 +556,14 @@ The accounting record of a process consists of:
     (contract text, specification, order details). The
     document's content can be anything the parties choose;
     the hash proves which document is at issue.
-  \item \emph{Contemporaneous lifecycle evidence}: the
-    schema-typed attestations emitted via
-    \texttt{AttestationCoordinator} during process life ---
-    proximity proofs, handoff attestations, quality
-    disclosures, lifecycle-stage transitions. These are the
+  \item \emph{Contemporaneous lifecycle evidence}:
+    schema-typed attestations emitted during process life
+    (proximity proofs, handoff attestations, quality
+    disclosures, lifecycle-stage transitions). These are the
     analogue of working papers and supporting receipts in
-    conventional accounting, with the important distinction
-    that their class (settlement byproduct vs.\ discretionary
-    attestation) matters for evidentiary
-    weight (evidence-and-law paper).
+    conventional accounting. Their class (settlement byproduct
+    vs.\ discretionary attestation) matters for evidentiary
+    weight; \Cref{sec:legal-connection} treats this.
 \end{itemize}
 
 Together, these constitute a complete and contemporaneously
@@ -554,9 +573,8 @@ record is complete without them.
 
 \subsection{Reconstruction}
 
-The companion implementation paper documents
-the SDK primitive \texttt{reconstruct()} which replays events
-into a state machine that exactly reproduces the kernel
+The SDK ships a \texttt{reconstruct()} primitive that replays
+events into a state machine that exactly reproduces the kernel
 state. This primitive is equivalent to a universal
 trial-balance generator: any reader with read access to the
 chain can reconstruct the complete ledger state of any
@@ -564,6 +582,43 @@ process, at any historical moment, without any party's
 cooperation. The reconstruction is deterministic, verifiable
 against the chain, and does not depend on any off-chain
 record beyond the \texttt{agreementHash} references.
+
+\paragraph{Cohort-compensation transactions and their accounting.}
+The buyer's leverage during process life is the bond pool
+locked across every commit. When something goes wrong --- a
+defective unit, a missed delivery, a quality slip --- the
+buyer can withhold resolution while the seller cohort
+negotiates compensation directly. The pattern that emerges is
+that the unit at fault transfers tokens to the buyer (or to
+other co-sellers who absorb the cost) to make the buyer whole
+enough to resolve. These compensation transfers are real
+transactions that land on chain during the process's open
+window, before resolution.
+
+For the accountant, three classification questions arise.
+First, the failing seller's transfer to the buyer is
+typically variable consideration under ASC~606 /
+IFRS~15 \citep{fasbasc606, ifrs2014ifrs15} --- a refund or
+rebate that reduces the seller's revenue, recognised at the
+moment of the compensation transfer rather than at process
+resolution. Second, a transfer between co-sellers (one seller
+helping another stay whole during the negotiation) may be a
+related-party transaction, a loan, a contribution to a
+joint-and-several arrangement, or a fee for risk-pooling
+services; the substance depends on the agreement the parties
+have signed and the relationships the agreement describes.
+Third, the buyer's receipt of compensation: if it offsets a
+prior payment, it reduces the buyer's recorded cost; if it
+exceeds the prior payment, the excess may be other income.
+
+The kernel records the transfers; the substance is
+classification work the accountant performs against the
+agreement and the economic relationship it describes. The
+mechanism producing these transactions --- buyer dominance
+plus atomic resolution operating on a cohort with shared bond
+fate --- is the same one that produces joint-liability
+behaviour in microfinance contexts, here induced by the bond
+architecture rather than by social substrate.
 
 \paragraph{The period-end property.}
 When a process resolves, its ledger period closes. All
@@ -602,12 +657,23 @@ content-addressing, and the reconstruction primitive.
 \paragraph{Period-end close.}
 The conventional period-end procedure --- posting adjusting
 entries, preparing trial balance, reconciling bank statements,
-accruing revenues and expenses, running the closing entries
---- is performed automatically when a process resolves. The
-protocol has no accrual ambiguity (every commitment has
-definite amount and timing), no reconciliation step (there is
-nothing to reconcile against), and no closing adjustments
-beyond the resolution itself.
+running the closing entries --- is performed automatically
+when a process resolves. Every commitment in the process has
+definite amount and timing, every receipt and disbursement has
+a chain-recorded counterparty, no reconciliation step is
+required against records the kernel itself produces, and no
+closing adjustments are needed beyond the resolution itself.
+
+This applies \emph{within} a process. At the entity-period
+level, the wallet's operator may run dozens or thousands of
+processes per fiscal quarter; revenue-recognition timing
+across those processes (when the performance obligation is
+satisfied under ASC 606 / IFRS 15, whether revenue lands at
+commit or at resolution, how multi-process arrangements are
+unbundled) is interpretive accrual work the kernel does not
+discharge. The chain produces the dated cash-flow record;
+mapping that to the entity's reporting period under the
+applicable framework remains the controller's responsibility.
 
 \paragraph{Internal audit of the records.}
 The internal-audit function that verifies the firm's own books
@@ -619,12 +685,19 @@ nothing to verify because there is no second record to
 reconcile against.
 
 \paragraph{External audit of records-to-records correspondence.}
-The external-audit function --- verifying that the firm's
-reported position reconciles to its underlying records --- is
-also subsumed. There is no ``reported position'' separate
-from the chain; the chain \emph{is} the position. An audit
-function that attested to this correspondence would be
-attesting to an identity.
+The external-audit function in its narrowest sense ---
+verifying that the firm's reported position reconciles to its
+underlying records --- relocates rather than vanishes. There
+is no ``reported position'' separate from the chain that
+needs records-to-records reconciliation; the chain is the
+primary record from which any reported position derives. The
+audit function that attested to records-to-records
+correspondence is structurally inapplicable. What replaces it
+is wallet-control attestation (verifying that the entity's
+claimed wallets are the wallets the entity actually controls,
+and that off-chain narrative classification of receipts and
+disbursements faithfully maps to the on-chain log) ---
+treated under \Cref{sec:continues}.
 
 \paragraph{Disputes over what the books say.}
 Commercial-law disputes whose subject matter is what the
@@ -685,19 +758,59 @@ actually reflect the measured quantity? These questions ask
 whether the on-chain record is a faithful representation of
 off-chain reality. The protocol cannot answer them; it can
 only record what was signed. The professional standards
-already distinguish the two questions: AICPA AU-C~500 on
-audit evidence treats sufficiency and appropriateness of
-evidence as the two dimensions of audit-evidence quality, and
-explicitly distinguishes \emph{existence} (the asset or
-transaction is real) from \emph{accuracy of recording} (it
-was recorded faithfully) \citep{aicpa2020auc500}. The bonded
-process discharges the second of these by construction; the
-first remains open and is precisely what an auditor
-attesting on-chain-to-off-chain correspondence is doing. This
-auditor is not reconciling records to other records; they
-are doing the AU-C~500 existence work that records have
-never been able to do alone. We expect this to become the
-core function of the post-Pacioli audit profession.
+distinguish the substantive audit assertions explicitly: AICPA
+AU-C~500 separates \emph{existence} (the asset or transaction
+is real), \emph{accuracy of recording} (it was recorded
+faithfully), \emph{valuation and allocation} (it is recorded
+at appropriate amounts), \emph{rights and obligations} (the
+entity holds the rights or controls the obligation),
+\emph{completeness} (all transactions that should have been
+recorded are recorded), \emph{cutoff} (transactions are
+recorded in the correct period), and \emph{classification}
+(transactions are recorded in the appropriate accounts)
+\citep{aicpa2020auc500}.
+
+The bonded process discharges \emph{accuracy of recording} by
+construction --- the kernel cannot record what was not signed,
+and what was signed is recorded immutably. The other six
+assertions remain substantive audit work, with the burden
+distributed differently than under conventional bookkeeping:
+
+\begin{itemize}
+  \item \emph{Existence} is the on-chain-to-off-chain
+    correspondence question above --- did the substantive
+    economic event the records describe actually occur?
+  \item \emph{Valuation and allocation} remains interpretive ---
+    fair value, impairment, depreciation, and similar
+    measurement decisions are not what the chain records.
+  \item \emph{Rights and obligations} relocates to wallet
+    control --- does the entity actually control the wallet
+    that holds the asset, and does the wallet's holding
+    actually represent the entity's economic claim? This is
+    a new audit surface specific to the bonded regime.
+  \item \emph{Completeness} relocates to the boundary between
+    on-chain and off-chain activity --- are there transactions
+    the entity engaged in that should have been on-chain but
+    were not, and is the chain's record of the entity's
+    activity comprehensive within the relevant scope?
+  \item \emph{Cutoff} reduces to within-process clarity (the
+    process resolution moment is unambiguous) but rises again
+    at the entity-period boundary, where the question is which
+    processes' resolutions fall within the reporting period
+    under the applicable framework.
+  \item \emph{Classification} is interpretive: addresses are
+    not chart-of-accounts categories, and an entity's
+    receipts and disbursements still need to be classified as
+    revenue, expense, capital movement, or financing event
+    under the applicable framework. The chain produces the
+    cash-flow record; classification is professional work.
+\end{itemize}
+
+The post-Pacioli audit profession's core function becomes the
+substantive assertion work the records have never been able to
+do alone, with accuracy of recording discharged by the
+protocol and the other assertions distributed across new and
+familiar surfaces.
 
 \paragraph{Regulatory compliance ahead of regulatory catch-up.}
 Tax law, securities law, and sector-specific regulation
@@ -722,19 +835,38 @@ is.
 \paragraph{Wallets represent real-world assets.}
 Every party to a Figaro process is a wallet, and what each
 wallet \emph{represents} is a real-world asset (RWA) with
-productive, commercial value. The wallet is the on-chain
-representation of the asset's participation: token balances in
-the denominations the asset transacts in, plus NFTs that point
-to off-chain credentials, certificates, or other documents the
-asset's participation requires. The asset itself is off-chain by
-definition --- a piece of physical capital (an aircraft, a
-delivery van, a landing slot, a kitchen, a server), a
-credentialed individual (a pilot, a courier, a maintenance
-engineer, a doctor), a public service (a security checkpoint, a
-customs clearance, a road network), or any other commercial-value
-unit whose participation in a process needs an on-chain handle.
-The wallet does not contain the asset; it represents the
-asset's participation in the markets the asset operates in.
+productive, commercial value. The wallet is not a
+balance-sheet representation of the asset --- the asset
+remains on the entity's balance sheet at its carrying value,
+under the applicable measurement basis, exactly as before.
+The wallet is a \emph{signing apparatus and token-holding
+pocket} through which the asset transacts: it holds the
+asset's on-chain earnings (typically as token balances in the
+denominations the asset transacts in), holds NFT pointers to
+the off-chain credentials, certificates, or licences the
+asset's participation requires, and produces the EIP-712
+signatures that bind the asset to bonded commitments.
+
+The asset itself is off-chain by definition --- a piece of
+physical capital (an aircraft, a delivery van, a landing slot,
+a kitchen, a server), a credentialed individual (a pilot, a
+courier, a maintenance engineer, a doctor), a public service
+(a security checkpoint, a customs clearance, a road network),
+or any other commercial-value unit whose participation in a
+process needs an on-chain handle. The wallet does not contain
+the asset; it represents the asset's participation in the
+markets the asset operates in.
+
+\emph{Worked example.} An airline holds an aircraft on its
+balance sheet at, say, \$40~M depreciated cost. The aircraft's
+wallet holds USDC receipts from charter and ticket-share
+arrangements, plus NFTs pointing to the airworthiness
+certificate, the engine maintenance log, and the operating
+permit. The USDC balance is cash equivalent in the entity's
+hands --- the same accounting category as a bank balance, not
+a re-representation of the aircraft. The aircraft remains the
+asset; the wallet is the cash-equivalent + signing-instrument
+through which the aircraft earns and contracts.
 
 \paragraph{Three layers: asset, wallet, operator.}
 Three layers must be kept distinct. The \emph{asset} is the
@@ -752,24 +884,25 @@ conditional is maintained operationally by the operator and
 verified at agreement signing through whichever credential
 schemas the assembly designer composes, not by the kernel.
 
-\paragraph{The node analogy: economic sustainability.}
-A wallet sustains itself the way a node on a blockchain network
-sustains itself. A node earns fees and rewards from its
-participation in the network, and those receipts must cover the
-node's off-chain operating expenses --- machines, electricity,
-HVAC, maintenance, rent --- or the operator stops running the
-node and the node drops out. An RWA-as-wallet operates on the
-same logic: the wallet's receipts from its participation in
-processes must cover the asset's off-chain operating expenses
-(fuel, parts, labor, premises, regulatory fees, capital cost), or
-the operator stops bonding the wallet into processes and the
-wallet drops out of the market it serves. The kernel does not
-enforce sustainability; the market does, through ordinary
-rational exit. The accounting consequence is that the receipts
-from a process \emph{are} the asset's earnings and the
-disbursements \emph{are} the asset's payments --- the chain is
-the asset's ledger, with the period-closing property the prior
-sections developed.
+\paragraph{The going-concern condition.}
+A wallet sustains its participation in the same sense a
+business sustains its operation under the going-concern
+assertion (ISA~570 / AICPA AU-C~570
+\citep{aicpa2020auc570}): receipts from on-chain participation
+must, in aggregate over time, cover the asset's off-chain
+operating expenses (fuel, parts, labour, premises, regulatory
+fees, capital amortisation), or the operator ceases bonding
+the wallet into processes and the wallet drops out of the
+market it serves. The kernel does not enforce going-concern;
+the market does, through ordinary rational exit. The
+accounting consequence is that the chain produces a complete
+record of the asset's on-chain receipts and disbursements ---
+the cash-flow record from which any going-concern assessment
+of the asset's market participation derives --- with the
+period-closing property the prior sections developed. The
+going-concern assertion itself remains the auditor's work,
+performed against the chain's record plus whatever off-chain
+information is relevant.
 
 \paragraph{Public-authority wallets are RWA-as-wallet too.}
 The same definition covers government services that today move
@@ -789,8 +922,15 @@ general budget is an off-chain regulatory question; mechanically
 the kernel sees a wallet that committed and a payment that
 flowed. This brings public-authority participation into the
 self-closing-ledger framework on the same footing as commercial
-participation, without requiring a separate accounting register
-for tax-shaped revenue.
+participation at the settlement layer. The interpretive layer
+still distinguishes: GASB~33 (Accounting and Financial Reporting
+for Nonexchange Transactions) and GASB~34 (Basic Financial
+Statements for State and Local Governments)
+\citep{gasb1998n33, gasb1999n34} treat tax revenue and
+fee-for-service revenue under different rules, and that
+distinction continues to operate against the chain's record.
+The kernel does not encode the distinction; the accounting
+framework still does.
 
 \paragraph{Treasury composition patterns.}
 Below the wallet sits the operator. The operator can be a single
@@ -852,17 +992,18 @@ are the discrete journal entries against that flow --- and the
 two compose without either's accounting model needing to bend.
 
 \paragraph{Bookkeeping from chain state.}
-Accounting tooling reads chain state directly. Every
-\texttt{OrderCommitted} and \texttt{OrderResolved} event pair is
-a complete disbursement record with full context: the parties,
-the amount, the schemaIds, the agreement-hash, the cumulative
-position. No reconciliation against a separate institutional
-ledger is required; the chain \emph{is} the ledger, and the
-treasury's books for the disbursed-via-Figaro portion of its
-activity are derivable from chain state without bookkeeping
-intermediation. This is the natural extension of the
-audit-against-reality function \Cref{sec:continues} discusses:
-the AU-C~500 existence work remains, and the AU-C~500
+Accounting tooling reads chain state directly. Every commit /
+resolution event pair is a complete disbursement record with
+full context: the parties, the amount, the schemaIds, the
+agreement-hash, the cumulative position. No reconciliation
+against a separate institutional ledger is required. The chain
+is the primary record from which the treasury's books for the
+disbursed-via-Figaro portion of its activity are derived, with
+the off-chain content addressed by the chain (agreement texts,
+attestations, schema-typed documents) carrying the substantive
+content the records refer to. This is the natural extension of
+the audit-against-reality function \Cref{sec:continues}
+discusses: the AU-C~500 existence work remains, and the AU-C~500
 accuracy-of-recording work is discharged by the protocol.
 
 \paragraph{Operational constraints these patterns inherit.}
@@ -883,12 +1024,12 @@ with a bond-financing layer that does.
 \emph{No clawback after resolution.} Settlement is terminal in
 the kernel sense; once \texttt{resolveProcess} executes, the
 disbursement cannot be reversed by any party. Milestone-gated
-disbursement is achieved through process-tree composition --- the
-treasury commits a sequence of small processes against
-deliverables rather than a single large process --- not through
-kernel-level reversal. This is structurally what the closing
-entry of double-entry bookkeeping has always done: once posted,
-the closing entry is final.
+disbursement is achieved through composition --- the treasury
+commits a sequence of smaller processes against successive
+deliverables rather than a single large process --- not
+through kernel-level reversal. This is the same finality the
+closing entry of double-entry bookkeeping has always
+exhibited: once posted, the entry is final.
 
 \emph{No kernel-level arbitration.} The kernel produces
 evidence; the agreement specifies the forum that adjudicates
@@ -896,8 +1037,8 @@ disputes off-chain. Treasuries that need a particular dispute
 resolution profile (regulated arbitration, court of competent
 jurisdiction, internal grievance procedure) name that forum in
 the agreement and the kernel produces the evidence that forum
-operates on. The companion evidence-and-law paper develops this
-in detail.
+operates on. The evidentiary register is developed in
+\Cref{sec:legal-connection}.
 
 \emph{Public visibility of participation.} Commitment events
 are emitted on a public ledger. The agreement content is hashed
@@ -928,93 +1069,54 @@ audit profession in general, applied to the specific case of
 treasuries that disburse through bonded processes.
 
 % ════════════════════════════════════════════════════════════════════
-\section{Connection to the Institutional-Economics Argument}
-\label{sec:institutional-connection}
-
-The companion institutional-economics
-paper argues that the firm's
-coordination function dissolves in a precise region, and that
-the firm becomes one organizational pattern among several in
-that region. The present paper identifies an additional
-function of the firm that dissolves alongside the
-coordination function: the firm's \emph{self-knowledge}
-function.
-
-A firm is not only a coordination mechanism; it is also an
-entity that knows what it is through its books. The
-subordination overlay (§3.1 of the institutional-economics paper) is
-partially a solution to a coordination problem and partially
-a solution to a records problem: a firm that cannot maintain
-accurate books cannot grow, cannot attract investment,
-cannot pay taxes, cannot contract with third parties who
-require disclosure, cannot satisfy regulators. Bookkeeping
-is one of the functions that made the firm boundary
-necessary, not just because coordination was expensive but
-because self-knowledge at scale required the records
-apparatus.
-
-When the records apparatus becomes protocol byproduct, the
-firm boundary is less necessary for self-knowledge reasons
-as well. A wallet cohort that participates in many process
-trees has its aggregate position fully visible without any
-consolidation. A treasury that receives payments and
-disburses grants has its complete ledger readable from
-chain state. The firm is still one possible way to bundle
-the non-coordination, non-self-knowledge functions that
-remain (capital aggregation, organizational knowledge, risk
-pooling, legal personhood), but the motivation to bundle is
-weaker than it was in the pre-protocol environment.
-
-This tightens the institutional argument without changing
-its substance: the firm's demotion from privileged
-organizational container to one pattern among several
-(institutional-economics paper; \Cref*{sec:process-as-period}
-above) rests on both the coordination argument developed
-there and the self-knowledge argument developed here.
-
-% ════════════════════════════════════════════════════════════════════
-\section{Connection to the Legal-Evidence Argument}
+\section{Admissibility, Primacy, and the Two Classes of Record}
 \label{sec:legal-connection}
 
-The companion evidence-and-law paper
-argues that the on-chain record provides evidence that
-off-chain adjudicative forums already know how to use. The
-present paper extends this: the on-chain record is not only
-evidentiary; it is \emph{constitutive} of the accounting
-record.
-
-The distinction matters for two reasons.
+The bonded record is more than evidentiary: it is
+\emph{constitutive} of the accounting record for the process
+it describes. The distinction matters in two registers.
 
 \paragraph{Admissibility vs.\ primacy.}
-The evidence-and-law paper establishes that on-chain records
-are admissible as evidence under eIDAS, UCC, UNCITRAL, and
-similar frameworks. The admissibility question asks whether
-the record can be introduced in a proceeding and weighed.
-The primacy question asks whether the record is \emph{the}
-account of the economic activity or merely \emph{an} account
-of it. For Figaro processes, the on-chain record is the
-primary account; no other account exists unless a party
-chooses to maintain one separately. In a dispute about what
-the accounting record of a process says, the chain is not
-corroborating evidence for party-held books; the chain
-\emph{is} the books, and any party-held document is a
-summary or translation.
+On-chain records are admissible as evidence under eIDAS, the
+UCC, UNCITRAL frameworks, and analogous regimes elsewhere.
+The admissibility question asks whether the record can be
+introduced in a proceeding and weighed. The primacy question
+asks whether the record is \emph{the} account of the economic
+activity or merely \emph{an} account of it. For Figaro
+processes, the on-chain record is the primary account from
+which other accounts derive; no other account exists unless a
+party chooses to maintain one separately. In a dispute about
+what the accounting record of a process says, the chain is
+not corroborating evidence for party-held books; party-held
+documents are summaries or translations of the record the
+chain produces.
 
-\paragraph{Class A and Class B records, revisited.}
-The evidence-and-law paper distinguishes Class A records
-(settlement byproduct, produced mechanically by the bonding
-game) from Class B records (discretionary attestations,
-produced voluntarily by self-interested parties). The
-accounting framing of the present paper clarifies the
-distinction: Class A records are the primary ledger entries
-(journal and closing entries); Class B records are
-supporting documentation (working papers, evidentiary
-exhibits, operational attestations). Both are part of the
-complete accounting record, but they carry different
-evidentiary weight and support different classes of
-downstream use. An audit that tests the records against
-real-world performance (\Cref{sec:continues} above) is
-primarily an audit of Class B reliability, since Class A is
+\paragraph{Two classes of record.}
+The bonded record divides naturally into two classes that
+carry different evidentiary weight.
+
+\emph{Settlement-byproduct records} are produced mechanically
+by the bonding game --- commitment digests, bond deposits,
+the cumulative-value accumulator state, resolution events.
+They are emitted by the kernel itself, schema-typed at the
+kernel level, cryptographically authenticated, and
+self-verifying by construction. In the accounting register
+they are the primary ledger entries: journal and closing
+entries that no party can alter ex post.
+
+\emph{Discretionary attestation records} are produced
+voluntarily by self-interested parties --- proximity proofs,
+handoff attestations, lifecycle-stage transitions, quality
+disclosures. These are evidentiary artifacts \emph{about} the
+underlying settlement; they require schema validation but
+remain attestations, not byproducts. In the accounting
+register they are supporting documentation: working papers,
+evidentiary exhibits, operational attestations.
+
+Both classes are part of the complete accounting record. An
+audit that tests the records against real-world performance
+(\Cref{sec:continues} above) is primarily an audit of the
+discretionary class, since the byproduct class is
 self-verifying by construction.
 
 % ════════════════════════════════════════════════════════════════════
@@ -1060,6 +1162,22 @@ concentrated at the chain layer rather than distributed
 across party-held books; whether that is a net improvement
 depends on the relative reliability of the two regimes.
 
+\paragraph{Key custody is a first-order audit surface.}
+If the wallet is the books, key compromise is books
+compromise. The Pacioli equivalent is the safe holding the
+journal: physical and IT controls, segregation of duties,
+authorisation matrices. Under the bonded composition the
+analogous control surface is IT general controls (ITGCs) over
+key custody --- multisig thresholds, hardware-security-module
+custody, key-rotation procedures, signer-set governance,
+recovery procedures. ITGCs over key custody become a
+first-order concern for any audit of an entity operating
+on-chain. This is not a new audit assertion (it sits within
+existing IT-control frameworks such as COSO and COBIT) but it
+is a relocated emphasis: where the conventional regime puts
+its control weight on records-against-records reconciliation,
+the bonded regime puts it on key-control attestation.
+
 \paragraph{The argument does not claim accounting fraud is
 impossible.}
 Fraud in the Figaro-process regime takes different forms
@@ -1067,10 +1185,9 @@ than in the conventional regime: not the misstatement of
 internal books (which are unforgeable), but the
 misrepresentation of off-chain facts that the on-chain
 record hashes against (forged agreement documents, falsified
-attestations, collusive parties). The FIG token paper and
-the evidence-and-law paper both discuss adjacent fraud
-surfaces. The Pacioli apparatus did not eliminate accounting
-fraud; it reshaped it. So does the protocol.
+attestations, collusive parties). The Pacioli apparatus did
+not eliminate accounting fraud; it reshaped it. So does the
+protocol.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Conclusion}
@@ -1135,13 +1252,12 @@ of ordinary settlement makes the record available to
 participants who could not otherwise have afforded it. This
 is a distributional effect: accounting infrastructure becomes
 available at the protocol layer to participants who
-previously faced the full cost of the apparatus. The
-consequences --- for smaller economic units, for participants
-in jurisdictions without strong accounting-profession
-infrastructure, for machine and agent-led economic activity
-whose scale does not justify an accountant --- are worth
-working out in their own right, and we expect subsequent
-work in the portfolio or by others to address them.
+previously faced the full cost of the apparatus. Smaller
+economic units, participants in jurisdictions without strong
+accounting-profession infrastructure, and machine and
+agent-led economic activity whose scale does not justify an
+accountant all gain access to audit-grade records as a
+byproduct of settlement.
 
 \section*{Acknowledgments}
 I owe this paper's starting observation to an exchange with
@@ -1276,6 +1392,25 @@ American Institute of Certified Public Accountants.
 American Institute of Certified Public Accountants.
 \newblock \emph{AU-C Section 500: Audit Evidence}.
 \newblock AICPA, Durham, NC, 2020.
+
+\bibitem[AICPA(2020c)]{aicpa2020auc570}
+American Institute of Certified Public Accountants.
+\newblock \emph{AU-C Section 570: The Auditor's Consideration of
+  an Entity's Ability to Continue as a Going Concern}.
+\newblock AICPA, Durham, NC, 2020.
+
+\bibitem[GASB(1998)]{gasb1998n33}
+Governmental Accounting Standards Board.
+\newblock \emph{Statement No.~33: Accounting and Financial Reporting
+  for Nonexchange Transactions}.
+\newblock GASB, Norwalk, CT, December 1998.
+
+\bibitem[GASB(1999)]{gasb1999n34}
+Governmental Accounting Standards Board.
+\newblock \emph{Statement No.~34: Basic Financial Statements ---
+  and Management's Discussion and Analysis --- for State and
+  Local Governments}.
+\newblock GASB, Norwalk, CT, June 1999.
 
 \bibitem[ERC-1271(2018)]{eip1271}
 Giordano, F., Lockyer, M., and Castonguay, P.
