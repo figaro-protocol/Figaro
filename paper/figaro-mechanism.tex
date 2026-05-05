@@ -1,7 +1,5 @@
 % Figaro Paper A: Asymmetric Bonding and Buyer Dominance — Two Composing Mechanisms
-% Mechanism-design paper. Implementation and verification appear in the
-% companion paper figaro3c.tex. Organizational implications appear in
-% figaro3b.tex.
+% Mechanism-design paper. Self-contained.
 % Preprint, May 2026
 
 \documentclass[11pt,a4paper]{article}
@@ -40,8 +38,8 @@
 \newcommand{\bbond}{C_b}       % buyer bond
 \newcommand{\spay}{\pi_s}      % seller payout
 \newcommand{\bpay}{\pi_b}      % buyer payout
-\newcommand{\ub}{u_B}          % buyer utility
-\newcommand{\us}{u_S}          % seller utility
+\newcommand{\ub}{u_b}          % buyer utility
+\newcommand{\us}{u_s}          % seller utility
 \DeclareMathOperator{\Coop}{C}
 \DeclareMathOperator{\Def}{D}
 
@@ -53,7 +51,7 @@
 }
 
 \author{
-  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+  Alessandro Daliana
 }
 
 \date{April 2026}
@@ -69,37 +67,32 @@ agreements between mutually distrusting parties without arbitrators,
 timeouts, or governance. The mechanism composes two distinct primitives.
 \emph{Asymmetric bonding}: each party locks collateral equal to twice
 the transaction value, making cooperation the weakly dominant strategy
-in a one-shot game and the unique profile surviving iterated elimination
-of weakly dominated strategies.\ \emph{Buyer dominance with atomic
-resolution}: only the buyer can trigger resolution, and resolution
-settles all orders in a process simultaneously or not at all. The two
-mechanisms are inseparable: bonding alone gives independently secured
-bilateral edges that cannot multi-party coordinate; buyer dominance
-alone is without force absent the bonding equilibrium.
+in a one-shot game and the unique profile surviving iterated
+elimination of weakly dominated strategies. \emph{Buyer dominance
+with atomic resolution}: only the buyer can trigger resolution, and
+resolution settles all orders in a process simultaneously or not at
+all. The two mechanisms are inseparable: bonding alone gives
+independently secured bilateral edges that cannot coordinate at the
+multi-party level; buyer dominance alone is without force absent the
+bonding equilibrium.
 
-Asymmetric bonding scales from two-party exchange to $N$-party process
-trees through \emph{progressive collateralization}: each seller bonds
-against the cumulative value of all upstream work, preserving the Nash
-equilibrium at every chain position with the risk-to-reward ratio
-growing with chain depth. Buyer dominance with atomic resolution then
-operates on the already-scaled mesh: the all-or-nothing resolution rule
-induces a weakest-link subgame among sellers whose peer-enforcement
-properties we show to obtain under strictly weaker assumptions than the
+Asymmetric bonding scales naturally from two-party exchange to
+$N$-party process chains: because each seller's bond is tied to the
+cumulative value of all upstream work rather than to the local
+payment, the Nash equilibrium is preserved at every chain position
+and the seller's risk-to-reward ratio grows with chain depth. Buyer
+dominance with atomic resolution then operates on the already-scaled
+mesh: the all-or-nothing resolution rule induces a weakest-link
+subgame among sellers. We show that the resulting peer-enforcement
+properties obtain under strictly weaker assumptions than the
 joint-liability mechanisms classically analyzed in the microfinance
 literature.
-
-This paper is the mechanism-design half of a multi-paper development.
-The implementation as a Solidity smart contract, with formal
-verification across multiple methods, is presented in the
-implementation paper. Implications for organizational
-economics---specifically, the Coasean shift toward transaction-scoped
-institutions---are developed in the institutional-economics paper.
 \end{abstract}
 
 \medskip
 \noindent\textbf{Keywords:}
 mechanism design, Nash equilibrium, collateral bonding,
-multi-party coordination, process trees, peer enforcement
+multi-party coordination, process chains, peer enforcement
 
 % ════════════════════════════════════════════════════════════════════
 \section{Introduction}
@@ -127,7 +120,7 @@ Blockchain-based smart contracts have produced a rich literature on
 trustless exchange, but most protocols address financial
 operations---swaps, lending, derivatives---rather than general
 coordination. Those that target coordination
-(e.g.,~\citealt{kleros2019,aragon2017}) typically reintroduce the
+(e.g.,~\citep{kleros2019,aragon2017}) typically reintroduce the
 intermediary as an on-chain dispute resolution mechanism: a jury, a
 governance body, or a timeout that unilaterally releases funds.
 
@@ -135,15 +128,20 @@ governance body, or a timeout that unilaterally releases funds.
 
 We present \figaro{}, which achieves self-enforcing coordination
 through two composing mechanisms: \emph{asymmetric bonding}, which
-produces the bilateral Nash equilibrium and scales it to $N$-party
-process trees via progressive collateralization; and \emph{buyer
-dominance with atomic resolution}, which enforces inter-seller
-coordination on the already-scaled mesh. The two mechanisms are
-inseparable: bonding alone yields independently secured edges that
-cannot multi-party coordinate; buyer dominance alone is worthless
-without the bonding equilibrium. Together they make the mesh
-resolvable from a single signature with cooperation pressure
-propagating through it. The contributions are:
+produces the bilateral Nash equilibrium and scales it naturally to
+$N$-party process chains by tying each seller's bond to cumulative
+upstream value; and \emph{buyer dominance with atomic resolution},
+which enforces inter-seller coordination on the already-scaled mesh.
+The two mechanisms are inseparable: bonding alone yields independently
+secured edges that cannot coordinate at the multi-party level; buyer
+dominance alone is worthless without the bonding equilibrium. Together
+they make the mesh resolvable from a single signature with cooperation
+pressure propagating through it, and they create the conditions for
+participants to resolve performance among themselves as social agents:
+the bonded commitment puts buyer and sellers in a position where
+working out difficulties between them is the dominant strategy, and
+external dispute resolution is a marginal residual rather than the
+primary path (\Cref{sec:dispute}). The contributions are:
 
 \begin{enumerate}[label=(\roman*)]
   \item \textbf{A minimal settlement primitive} with no timeout, no
@@ -152,10 +150,10 @@ propagating through it. The contributions are:
     requirement}: every additional exit path weakens the Nash
     equilibrium (\Cref{thm:escape-hatch-weakness}).
 
-  \item \textbf{Progressive collateralization} for $N$-party process
-    trees. We prove (\Cref{thm:n-party-nash}) that cooperation remains
-    weakly dominant at every position in an arbitrary-depth process
-    tree (with strict dominance whenever at least one other player's
+  \item \textbf{Asymmetric bonding scales to $N$-party chains.} We
+    prove (\Cref{thm:n-party-nash}) that cooperation remains weakly
+    dominant at every position in an arbitrary-length process chain
+    (with strict dominance whenever at least one other player's
     cooperation is not already foreclosed), and is the unique profile
     surviving iterated elimination of weakly dominated strategies;
     the seller's risk-to-reward ratio increases with chain depth.
@@ -173,122 +171,61 @@ propagating through it. The contributions are:
     interaction, no local information, no exogenous punishment
     technology, and no joint-liability contracting.
 
-  \item \textbf{Self-enforcing DAG topology} without on-chain
-    validation. We prove (\Cref{thm:self-enforcing-dag}) that
-    misreporting cumulative value is a strictly dominated strategy
-    whenever the probability of non-resolution is positive,
-    making on-chain parent-relationship validation unnecessary.
-
 \end{enumerate}
-
-The mechanism's implementation as a Solidity smart contract, the
-formal-verification stack used to audit it, the threat model, and the
-three-layer enforcement architecture (economic / coordination /
-evidence) are developed in the companion implementation paper. The
-implications of a fixed-cost enforcement primitive for the boundary
-of the firm in the sense of \citet{coase1937}---and specifically the
-demotion of the firm from privileged organizational container to one
-pattern among many when the subordination overlay is no longer
-enforcement-driven---are developed in the companion
-institutional-economics paper.
 
 \subsection{Paper Organization}
 
 \Cref{sec:related} surveys related work. \Cref{sec:mechanism} presents
 the mechanism formally. \Cref{sec:game-theory} proves the
 game-theoretic properties. \Cref{sec:process-trees} extends the model
-to $N$-party process trees and DAGs. \Cref{sec:microfinance} states
-the reduction over joint-liability microfinance.
-\Cref{sec:conclusion} concludes with open theoretical questions.
+to $N$-party process chains, including a comparison with
+joint-liability microfinance (\Cref{sec:microfinance}).
+\Cref{sec:dispute} treats dispute resolution as a marginal external
+concern. \Cref{sec:conclusion} concludes.
 
-\subsection{Three Tiers: Kernel, Protocol, Runtime}
-\label{sec:three-tiers}
-\figaro{} as described in this paper is a mathematical object: a
-set of definitions, an equilibrium, and the theorems connecting
-them. Across the companion papers, three tiers are distinguished
-that the present paper uses only once but that subsequent
-companions invoke frequently:
+\subsection{Architectural Posture}
+\label{sec:architectural-posture}
 
-\begin{itemize}
-  \item \textbf{Kernel} --- the irreducible settlement primitive
-    formalized here: the \texttt{commit} and \texttt{resolveProcess}
-    operations, the bond structure, and the equilibrium they
-    induce. Every claim in the present paper is a claim at this
-    tier.
-  \item \textbf{Protocol} --- the kernel together with ancillary
-    mechanisms that compose with it under a preservation
-    discipline (attestation coordinators, schema registries,
-    auction primitives, operator registries). The composition
-    discipline itself is developed in the companion implementation
-    paper.
-  \item \textbf{Runtime} --- the protocol together with semantic
-    layers, builder surfaces, user interfaces, and the
-    vertical-specific deployments that instantiate it for a given
-    industry or community. Runtime choices (specific tokens,
-    specific schemas, specific operator communities) are
-    out-of-scope for the present paper.
-\end{itemize}
-
-Claims about ``the primitive'' that appear in companion papers
-refer, unless noted otherwise, to the kernel tier. Properties
-sometimes loosely attributed to the primitive --- schema-typed
-attestations, NFT-anchored credentials, specific token
-denominations, accepted-token lists --- live at the protocol or
-runtime tiers and are guaranteed only by the additional
-mechanisms that implement them.
-
-\paragraph{The kernel is ideologically agnostic; the graph is the
+\paragraph{The mechanism is ideologically agnostic; the graph is the
 politics.} A consequence of locating the whole of the present
-paper's argument at the kernel tier is that the kernel admits no
+paper's argument at the mechanism level is that the mechanism admits no
 commitments about \emph{what} is being coordinated or \emph{under
 what normative regime}. Currency, jurisdiction, identity type,
 arbitration forum, role structure, price-discovery mechanism,
-contribution metric --- none of these are in the kernel; all of
+contribution metric---none of these are in the mechanism; all of
 them are expressed in the \emph{graph} that parties compose on top
 of it. A Dutch-auction-and-private-operator graph expresses a
 market-liberal coordination pattern; a
 cooperative-bonding-and-contribution-weighted-resolution graph
 expresses a cooperative one; an interest-free risk-sharing graph
-expresses an Islamic-finance one. The kernel enables each and
+expresses an Islamic-finance one. The mechanism enables each and
 prefers none. This is not evasion. It is the architectural
 consequence of placing the enforcement function at TCP/IP altitude:
 a layer below which nothing remains to factor out, and a layer
 above which the normative choices become legible as choices rather
-than as properties of the infrastructure. Claims in the companion
-papers that bear on ideology or normative regime --- the
-political-economy companion paper on cultural
-hegemony; the labor-law companion paper on
-subordination --- are claims about what becomes \emph{expressible}
-in the graph once the kernel is in place, not claims about the
-kernel itself.
+than as properties of the infrastructure.
 
 \paragraph{Composability is external-first.} A second consequence
-of the kernel's narrow construction is that the protocol's useful
-extensions are predominantly \emph{external} rather than internal.
-The kernel does not include a dispute forum (Kleros, the Singapore
+of the mechanism's narrow construction is that its useful extensions
+are predominantly \emph{external} rather than internal.
+The mechanism does not include a dispute forum (Kleros, the Singapore
 International Arbitration Centre, or any court); it does not
 include a carbon-offset market (Klima DAO, Toucan, Moss); it does
 not include a prediction market, an insurance pool, a lending
 facility, a tax-reporting service, an identity provider, a storage
 layer, or a messaging fabric. Each of these exists as a working
-external protocol or institution, and an assembly composed at the
-runtime tier can name any of them in its graph: a forum-clause
+external protocol or institution, and an assembly composed on top
+of the mechanism can name any of them in its graph: a forum-clause
 names the dispute forum the parties agree to; an attestation
-clause names the offset operator the buyer wants to compose into
-the process tree; a sub-order edge in the tree carries the
-buyer's offset purchase to the named operator within the same
-atomic resolution as the original commerce. Modern wallets handle
-the multi-token bookkeeping that this composition implies, which
-is why the kernel itself does not need to (and, by
-\Cref{thm:escape-hatch-weakness}, must not). The composability
-posture is the architectural counterpart of the
-ideological-agnosticism claim above: the kernel makes the external
-surfaces composable; the graph names which externals it composes
-with. The companion implementation
-paper (§7) develops the formal
-\emph{coordinator pattern} that makes such composition
-equilibrium-preserving; the present paper records only the
-architectural posture from which the pattern follows.
+clause names the offset operator the buyer wants to compose;
+a sub-order carries the buyer's offset purchase to the named
+operator within the same atomic resolution as the original commerce.
+The mechanism itself need not (and, by
+\Cref{thm:escape-hatch-weakness}, must not) absorb the bookkeeping
+that such composition implies. The composability posture is the
+architectural counterpart of the ideological-agnosticism claim
+above: the mechanism makes external surfaces composable; the graph
+names which externals it composes with.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Related Work}
@@ -296,7 +233,7 @@ architectural posture from which the pattern follows.
 
 \paragraph{Mutual-destruction escrows.}
 The direct ancestor of \figaro{} is the Safe Remote Purchase
-contract~\citep{buterin2016}, included in the Solidity documentation
+contract~\citep{solidity2016}, included in the Solidity documentation
 as a reference pattern: buyer and seller each lock $2\times$ the item
 value, and only mutual agreement releases the funds. This two-party,
 single-order pattern is the seed from which \figaro{} grew.
@@ -309,16 +246,16 @@ parties must cooperate. This works for a single exchange but cannot
 compose: in a twelve-seller delivery workflow, there is no natural
 ``mutual agreement'' among all participants. \emph{Asymmetric bonding}
 (\Cref{def:asymmetric-bonding}) solves this. By scaling each seller's
-bond with cumulative upstream value rather than fixing it per-trade,
+bond with cumulative upstream value rather than fixing it per trade,
 the mechanism creates a mesh of independently secured edges. Each edge
 carries its own Nash equilibrium (\Cref{thm:two-party-nash}), and the
 mesh decomposes as finely as is operationally tolerable.
 
 \emph{Buyer dominance} then takes advantage of this mesh structure to
 make multi-party coordination resolvable from a single signature.
-Because a single party resolves the entire process tree atomically,
+Because a single party resolves the entire process atomically,
 coordination pressure propagates through the mesh without any
-management layer (\Cref{prop:coordination-pressure}).
+management layer (\Cref{thm:coordination-pressure}).
 
 \paragraph{State channels and payment networks.}
 The Lightning Network~\citep{poon2016} and Raiden~\citep{raiden2017}
@@ -335,7 +272,7 @@ Kleros~\citep{kleros2019} provides decentralized arbitration via
 Schelling-point juror selection. Aragon Court~\citep{aragon2017}
 offers similar functionality within DAO governance. Both reintroduce
 a \emph{discretionary human decision} into the resolution path,
-breaking the self-enforcing property
+which breaks the self-enforcing property
 (\Cref{thm:escape-hatch-weakness}, Case~2).
 
 \paragraph{Optimistic mechanisms.}
@@ -356,12 +293,12 @@ coordination need not involve message passing, reporting, or
 arbitration at all: locked capital \emph{is} the mechanism. The
 closest theoretical antecedent is the concept of \emph{deposit
 games}~\citep{asgaonkar2019}, which analyze two-party security
-deposits. We extend deposit-game analysis to $N$-party DAGs with
-progressive collateralization.
+deposits. We extend deposit-game analysis to $N$-party process chains
+under asymmetric bonding.
 
 \paragraph{Joint-liability microfinance.}
 Group lending models---most prominently the Grameen
-Bank~\citep{grameen1999} and its formalizations by
+Bank~\citep{yunus1999} and its formalizations by
 \citet{ghatak1999} and \citet{stiglitz1990}---show that joint
 liability combined with a social substrate can produce peer
 selection and peer monitoring outcomes. We return to these models in
@@ -388,7 +325,7 @@ cumulative value $\cumval \geq \pay$ is a pair of deposits:
   \sbond &= 2\cumval \quad (\text{seller bond}). \label{eq:seller-bond}
 \end{align}
 For a root transaction (no upstream value), $\cumval = \pay$, so both
-bonds equal $2\pay$. For sub-orders in a process tree,
+bonds equal $2\pay$. For sub-orders in a process chain,
 $\cumval > \pay$, creating an asymmetry where the seller's bond exceeds
 the buyer's.
 \end{definition}
@@ -398,9 +335,9 @@ the buyer's.
 A \emph{commitment} is a tuple $\langle B, S, \tau, \pay, h, \sigma,
 \delta \rangle$ where $B$ is the buyer identity, $S$ the seller
 identity, $\tau$ the unit of account, $\pay$ the payment, $h$ a
-content hash of the off-chain agreement, $\sigma$ a cryptographic
-salt, and $\delta$ a signature expiry deadline. Both parties sign the
-commitment off-chain.
+content hash of the underlying agreement, $\sigma$ a cryptographic
+salt, and $\delta$ a signature expiry deadline. Both parties sign
+the commitment.
 \end{definition}
 
 \begin{definition}[Process]
@@ -414,6 +351,75 @@ value, $n$ is the count of active orders, and $\mathcal{O}$ is the
 set of active order identifiers.
 \end{definition}
 
+\begin{remark}[Monotonicity Assumption]
+\label{rem:monotonicity-assumption}
+We assume the underlying settlement layer maintains $\cumval$ as a
+monotonic accumulator: every successful \texttt{commit} on $\Pi$
+increases $\cumval$ by exactly the new order's payment $\pay$, and
+no operation decreases $\cumval$. This is an assumption about the
+settlement layer's bookkeeping discipline, not a property derived
+from the mechanism. The equilibrium analyses that follow apply to
+any settlement substrate that satisfies it; an implementation must
+enforce the assumption for the analyses to apply. The mechanism
+itself is substrate-independent: it can be realised on a
+cryptographically settled state machine, on a clearing house, on a
+trusted ledger, or on any other settlement layer that maintains
+the monotone-accumulator discipline.
+\end{remark}
+
+\begin{definition}[Buyer Dominance]
+\label{def:buyer-dominance}
+A process $\Pi$ exhibits \emph{buyer dominance} when (i) extension
+of $\Pi$ via \texttt{commit} requires a dual-signed commitment
+authenticated by $B$'s signature, and (ii) only $B$ may trigger
+\texttt{resolveProcess}. No other identity---seller, third
+party, administrator, or governance body---has authority to
+extend or resolve $\Pi$.
+
+The two conditions gate on different identity surfaces. Condition
+(i) gates on the identity of the \emph{signer}, not on the agent
+that conveys the message: an authorized delegate carrying $B$'s
+signature may convey a \texttt{commit} on $B$'s behalf without
+breaking buyer dominance, since the substrate verifies the
+signature and admits the commitment if and only if it recovers to
+$B$. Condition (ii), in contrast, gates on the identity of the
+\emph{caller} that issues \texttt{resolveProcess} directly. In
+deployed settings $B$ may delegate the resolve action only through
+mechanisms that bind delegated authority to $B$'s identity at the
+substrate layer (multi-signature wallets, account abstraction, or
+key-recovery schemes), not through signature-only conveyance.
+\end{definition}
+
+\begin{definition}[Atomic Resolution]
+\label{def:atomic-resolution}
+Resolution is \emph{atomic}: when the buyer calls
+\texttt{resolveProcess}, every active order in the process settles
+simultaneously, or none does. There is no partial resolution and
+no per-order resolution path. Combined with buyer dominance,
+atomic resolution is the second mechanism: it operates on the
+mesh of independently bonded edges induced by asymmetric bonding
+and makes multi-party coordination resolvable from a single
+signature, while inducing the inter-seller weakest-link subgame
+analyzed in \Cref{sec:atomic-resolution}.
+\end{definition}
+
+\begin{remark}[Single-Currency Binding]
+\label{rem:single-currency}
+Every order in a process shares a single denomination $\tau$
+(\Cref{def:process}). This is not a notational convenience: the
+$2\times$ Nash-stability result of \Cref{thm:two-party-nash}
+relies on same-unit comparability between the buyer's bond
+$\bbond = 2\pay$ and the seller's bond $\sbond = 2\cumval$.
+Mixing denominations within one process would require an external
+rate of substitution (an oracle, an exchange, or a pre-agreed
+conversion rate), each of which introduces a discretionary actor
+outside the bond structure and re-opens the escape-hatch problem
+of \Cref{thm:escape-hatch-weakness}. Multi-denomination workflows
+are accordingly handled outside the mechanism, by parties
+converting into the process denomination before issuing a
+\texttt{commit}.
+\end{remark}
+
 \subsection{Protocol Operations}
 
 The mechanism exposes exactly two state-changing operations.
@@ -426,9 +432,13 @@ Given a commitment $c$ signed by both $B$ and $S$:
     from the commitment digest and initialize the process with
     $\cumval \gets \pay$ and $n \gets 1$.
   \item Otherwise verify that $c.\text{processId}$ identifies an
-    existing process, that signer $B$ matches the process root buyer
-    (\emph{buyer dominance}), and that
-    $c.\text{expectedCumulativeValue} = \Pi.\cumval + \pay$.
+    existing process, that the buyer field $c.B$ matches the process
+    root buyer $\Pi.B$ and that the buyer signature recovers to
+    $c.B$ (\emph{buyer dominance}), that the denomination
+    $c.\tau$ matches $\Pi.\tau$ (\emph{single-currency binding},
+    \Cref{rem:single-currency}), and that
+    $c.\text{expectedCumulativeValue} = \Pi.\cumval + \pay$
+    (\emph{monotonicity}, \Cref{rem:monotonicity-assumption}).
   \item Pull $\bbond = 2\pay$ from $B$ and
     $\sbond = 2c.\text{expectedCumulativeValue}$ from $S$.
   \item Create or extend the process accordingly, update the monotonic
@@ -578,7 +588,8 @@ In the bonding game $\Gamma$ of \Cref{def:bonding-game}:
     $(\Def, \Def)$ also satisfies the Nash condition (no
     \emph{profitable} deviation, since both yield the locked-bond
     payoff), but is weakly dominated and is removed in the first
-    elimination round; we adopt the IEWDS refinement, standard for
+    elimination round; we adopt the iterated-elimination-of-weakly-
+    dominated-strategies (IEWDS) refinement, standard for
     mechanism design~\citep{myerson1979}, as the operative
     equilibrium concept.
   \item $(\Coop, \Coop)$ is the unique Pareto-optimal outcome.
@@ -690,8 +701,8 @@ Thus $k = 2$ is the minimal \emph{integer} multiplier that yields
 weak dominance of $\Coop$ for both players, and is Pareto-optimal in
 capital efficiency among all integer multipliers; the underlying
 real-line cutoff is $k = 1$. The integer restriction reflects the
-discrete denomination of bonded transfers in the deployed setting,
-not a property of the equilibrium analysis itself.
+discrete denomination of bonded transfers in deployment,
+not a property of the equilibrium analysis.
 \end{theorem}
 
 \begin{proof}
@@ -767,7 +778,7 @@ defection cost drops from $2\pay$ to $2\pay(1 - \alpha)$, weakening
 the deterrent. The seller, anticipating the timeout, faces a modified
 game where the buyer's commitment to resolve is no longer credible---the
 timeout provides an alternative path to partial capital recovery,
-undermining the "no escape" property that sustains the equilibrium.
+undermining the ``no escape'' property that sustains the equilibrium.
 
 \emph{Case 2: Arbitrator override.}
 A third party $J$ can invoke $E$ on behalf of either player.
@@ -785,7 +796,7 @@ This is condition (b).
 A special case of Case~2 where $J$ is replaced by a set of voters
 $\{J_1, \ldots, J_m\}$ who collectively decide on $E$. This inherits
 all problems of Case~2, plus: (i)~coordination failures among voters,
-(ii)~plutocratic capture if voting power is token-weighted,
+(ii)~plutocratic capture when voting power is stake-weighted,
 (iii)~voter apathy (rational ignorance). Each voter $J_k$ is unbonded.
 
 In all three cases, either $\Coop$ ceases to weakly dominate all
@@ -797,7 +808,7 @@ agent (Cases 2--3). \qedhere
 \label{rem:judicial-review}
 The theorem's ``unbonded external agent'' condition targets actors
 whose decision is \emph{constitutive} of the resolution path
-internal to the mechanism --- arbitrators, juries, oracles, voters
+internal to the mechanism---arbitrators, juries, oracles, voters
 embedded in the bonding game itself. It does not target the
 external legal forum that may, on the evidence record, adjudicate
 a dispute \emph{outside} the bonding game under doctrines of
@@ -805,8 +816,7 @@ duress, frustration, impossibility, unconscionability, or public
 policy. Those forums are constrained by their own institutional
 bond structures (appellate review, professional sanction, doctrinal
 consistency) and operate on the bonded commitment as evidentiary
-input rather than as a resolution path within the mechanism. The
-distinction is elaborated in the companion evidence-and-law paper.
+input rather than as a resolution path within the mechanism.
 \end{remark}
 
 \begin{corollary}\label{cor:no-timeout}
@@ -817,43 +827,46 @@ game to a zero-cost option, making defection strictly dominant for
 the buyer.
 \end{corollary}
 
-\begin{remark}[Robustness to Bounded Rationality]
+\begin{remark}[Robustness to Weaker Rationality]
 \label{rem:bounded-rationality}
-The dominance results of this section assume full rationality. Two
-structural properties suggest the equilibrium is robust to weaker
-conditions. First, the payoff gap is not marginal: the cost of
-defection for seller $S_i$ is $2\cumval_i$, which grows with chain
-depth. The asymmetry between cooperation and defection at the
-choice margin, rather than at the absolute-magnitude margin,
-is what loss aversion sharpens: prospect theory predicts diminishing
-sensitivity \emph{within} the loss domain, but the kink at the
-reference point (between losing nothing and losing the bond) is
-amplified by loss aversion. The mechanism's deterrent therefore
-relies on the kink, not on a comparison of large losses against
-each other.
-Second, the dominance argument requires only one comparison per
-player: does cooperating yield a better outcome than defecting, given
-each possible counterparty action? This is the minimal reasoning task
-in any strategic setting. It does not require iterated reasoning about
-counterparty rationality, common knowledge of payoffs, or beliefs
-about types. What remains genuinely open is behaviour under
+The dominance results stated in monetary terms extend to a wider
+class of agent preferences than risk-neutral expected-payoff
+maximisation. Three observations.
+First, the dominance argument compares the payoff under cooperation
+($+\pay_i$ for $S_i$, $-\pay_i$ for $B$) to the payoff under
+defection ($-2\cumval_i$ for $S_i$, $-2\pay_i$ for $B$); since
+$\pay_i > -2\cumval_i$ and $-\pay_i > -2\pay_i$ are preserved under
+any strictly monotone utility transformation, weak dominance of
+$\Coop$ holds for any preference order that prefers more money to
+less, including arbitrary risk-averse and loss-averse utility
+specifications.
+Second, the cooperation--defection gap $\pay_i + 2\cumval_i$ is
+bounded away from zero (and grows with chain depth), so the
+dominance margin is not perturbation-sensitive: a trembling-hand
+refinement preserves $(\Coop, \ldots, \Coop)$ as the unique
+surviving profile, since small perturbations to other players'
+actions cannot flip a strictly positive gap.
+Third, the dominance argument requires only one comparison per
+player and does not depend on iterated reasoning about counterparty
+rationality, common knowledge of payoffs, or beliefs about types.
+What remains genuinely outside the analysis is behaviour under
 non-pecuniary preferences---spite, fairness norms, or intrinsic
-motivation to defect---where the payoff matrix does not capture all
-relevant utilities.
+motivation to defect---where the monetary payoff matrix does not
+capture all relevant utilities.
 \end{remark}
 
 % ════════════════════════════════════════════════════════════════════
-\section{$N$-Party Process Trees}
+\section{$N$-Party Process Chains}
 \label{sec:process-trees}
 
-\subsection{Progressive Collateralization}
+\subsection{$N$-Party Asymmetric Bonding}
 
 We now extend the two-party model to an arbitrary-length chain of
 sellers.
 
-\begin{definition}[Process Tree]
-\label{def:process-tree}
-A \emph{process tree} is a sequence of bonded orders
+\begin{definition}[Process Chain]
+\label{def:process-chain}
+A \emph{process chain} is a sequence of bonded orders
 $\langle o_1, o_2, \ldots, o_n \rangle$ sharing a common buyer $B$ and
 denomination $\tau$. Order $o_i$ has local payment $\pay_i > 0$ and
 cumulative value:
@@ -876,11 +889,12 @@ perfect monitoring, so $B$ perfectly observes whether each $S_i$
 delivered, and plays the conditional strategy ``resolve iff all
 sellers cooperated.'' The perfect-monitoring assumption
 corresponds to the deployed setting, in which the buyer receives
-either the agreed goods or not, and the off-chain observation is
-prior to the on-chain \texttt{resolveProcess} call. When
-monitoring is imperfect, the conditional strategy must be replaced
-by a signal-contingent resolution rule; we discuss this extension
-in \Cref{sec:conclusion}. Payoffs under perfect monitoring:
+either the agreed goods or not, and the buyer's observation of
+delivery is prior to the buyer's \texttt{resolveProcess} call.
+Imperfect monitoring is addressed at composable surfaces above
+the mechanism (attestation, schema-typed witness records,
+third-party signal authorization), which lie outside the present
+paper's scope. Payoffs under perfect monitoring:
 \begin{equation}\label{eq:n-party-seller-utility}
   u_{S_i}(a_B, a_{S_1}, \ldots, a_{S_n}) =
   \begin{cases}
@@ -899,6 +913,56 @@ The buyer's payoff is:
   \end{cases}
 \end{equation}
 \end{definition}
+
+\begin{remark}[Sequential vs Simultaneous Equivalence]
+\label{rem:sequential-simultaneous}
+The game $\Gamma_N$ is presented in simultaneous-move form, but in
+deployment the events of \texttt{commit}, delivery, and
+\texttt{resolveProcess} are sequential. The two representations are
+equivalent under asymmetric bonding: each seller $S_i$'s payoff
+function depends on $S_i$'s own action and the buyer's eventual
+\texttt{resolve}/\texttt{not-resolve} decision, and not on the
+order in which other sellers acted or on the temporal position of
+$S_i$'s \texttt{commit} relative to others'. Defection by any
+participant forces non-resolution
+(\Cref{def:atomic-resolution}), which yields the same locked-bond
+payoff $-2\cumval_i$ to $S_i$ regardless of when in the sequence
+the defection occurs. The dominance argument of
+\Cref{thm:two-party-nash} therefore applies edge-by-edge at every
+node of the corresponding extensive-form game, so the IEWDS
+profile of the simultaneous-move representation coincides with
+the subgame-perfect Nash equilibrium of the extensive-form game.
+We use the simultaneous-move representation for expositional
+clarity.
+\end{remark}
+
+\begin{lemma}[Buyer Best Response]
+\label{lem:buyer-best-response}
+The buyer's \emph{post-commit} action set in $\Gamma_N$ is
+$A_B = \{\text{resolve}, \text{not-resolve}\}$ (the buyer's
+prior \texttt{commit} actions establish the chain and are
+fixed at the point this lemma applies). Under perfect monitoring,
+the buyer's best response to the cooperative seller profile
+$(\Coop, \ldots, \Coop)$ is $\text{resolve}$. Under any profile
+in which at least one seller defects, the buyer is indifferent
+between $\text{resolve}$ and $\text{not-resolve}$ (both yield
+the locked-bond payoff $-\sum_i 2\pay_i$).
+\end{lemma}
+
+\begin{proof}
+The buyer's only post-commit decision is whether to call
+\texttt{resolveProcess}; there is no continuation action that
+strictly improves on $-\sum_i 2\pay_i$ once any seller has
+defected, by atomic resolution
+(\Cref{def:atomic-resolution}). Under $(\Coop, \ldots, \Coop)$,
+the buyer's payoff under $\text{resolve}$ is $-\sum_i \pay_i$
+versus $-\sum_i 2\pay_i$ under $\text{not-resolve}$; the
+cooperation--defection gap $\sum_i \pay_i > 0$ is the linear
+sum of the bilateral gaps of \Cref{thm:two-party-nash}(a),
+applied to each order independently. Hence $\text{resolve}$
+strictly dominates $\text{not-resolve}$ on the cooperative
+profile, and the two are payoff-equal off it.
+\end{proof}
 
 \begin{theorem}[$N$-Party Nash Equilibrium]
 \label{thm:n-party-nash}
@@ -932,38 +996,18 @@ Payoffs are equal.
 Combining both cases, $\Coop$ weakly dominates $\Def$ for $S_i$, with
 strict inequality in Case~1. Since the choice of $i$ was arbitrary,
 this holds for all $n$ sellers. The buyer's dominance follows from
-\Cref{thm:two-party-nash}(a), generalized: the buyer's payoff under
-cooperation ($-\sum \pay_i$) strictly exceeds the payoff under defection
-($-2\sum \pay_i$) when all sellers cooperate.
+\Cref{lem:buyer-best-response}: on the cooperative seller profile
+the buyer's best response is $\text{resolve}$, with payoff
+$-\sum \pay_i$ strictly exceeding the payoff $-2\sum \pay_i$ under
+$\text{not-resolve}$.
 
 Iterated elimination: in the first round, $\Def$ is eliminated for all
 players (weakly dominated). The unique surviving profile is
 $(\Coop, \ldots, \Coop)$.
 \end{proof}
 
-\begin{remark}[DAG Independence]
-\label{rem:dag-independence}
-The process tree in \Cref{def:process-tree} is stated as a chain for
-expositional clarity, but the Nash equilibrium result requires no
-sequential structure. Each order $o_i$ is an independently bonded
-bilateral commitment: the seller of $o_i$ bonds $2\cumval_i$ and
-the buyer bonds $2\pay_i$ regardless of how many other orders share
-the process, what fan-in or fan-out topology the process exhibits,
-or how deeply nested within the DAG $o_i$ sits. The cooperation
-dominance argument of \Cref{thm:n-party-nash} applies to each order
-edge independently; it does not traverse the DAG and is not
-affected by the DAG's shape. The formal extension of
-\Cref{thm:n-party-nash} to arbitrary DAG topologies therefore adds
-no new insight: the equilibrium holds at every edge by construction
-of the bonding rule, not by induction over a particular graph
-topology. This is a deliberate design choice: bonding requirements
-are per-order primitives; the DAG is a composition structure that
-the mechanism neither reads nor enforces. The two concerns are
-orthogonal by design.
-\end{remark}
-
 \begin{remark}[Strength of the $N$-Party Result]
-Note that the seller's dominance condition,
+The seller's dominance condition,
 $\pay_i + 2\cumval_i > 0$, holds with a margin that \emph{grows}
 with chain depth (since $\cumval_i = \sum_{j \leq i} \pay_j$ is
 monotonic). The cooperation-defection payoff gap for $S_i$ is:
@@ -1012,33 +1056,33 @@ Charlie risks \$24 to earn \$2 ($\rho = 12$). Bob risks \$20 to earn
 \$10 ($\rho = 2$). The deeper participant faces amplified consequences.
 \end{example}
 
-\subsection{Self-Enforcing DAG Topology}
-\label{sec:self-enforcing-dag}
+\subsection{Self-Enforcing Cumulative-Value Reporting}
+\label{sec:self-enforcing-reporting}
 
-Process trees can express arbitrary directed acyclic graph (DAG)
-topologies. A natural question: must the contract validate parent--child
-relationships on-chain? It need not. The bonding rule itself makes
-honest reporting of cumulative value the dominant strategy whenever
+A natural question: must the mechanism validate the cumulative value
+reported by each seller at commit time? It need not. The bonding
+rule itself makes honest reporting the dominant strategy whenever
 the probability of non-resolution is positive.
 
-\begin{theorem}[Self-Enforcing DAG Honesty]
-\label{thm:self-enforcing-dag}
+\begin{theorem}[Cumulative-Value Reporting Honesty]
+\label{thm:self-enforcing-reporting}
 In any game where seller $S_i$ chooses a reported cumulative value
 $\cumval'_i \geq \cumval_i$ (with $\cumval_i$ being the true value
-enforced by the contract's accumulator), truth-telling
+maintained by the settlement layer's accumulator under
+\Cref{rem:monotonicity-assumption}), truth-telling
 ($\cumval'_i = \cumval_i$) weakly dominates all alternatives. The
 dominance is strict whenever the probability of non-resolution is
 positive.
 \end{theorem}
 
 \begin{proof}
-The monotonic accumulator (\Cref{def:process}) enforces
-$\cumval'_i \geq \cumval_i \coloneqq \Pi.\cumval_{\text{prev}} + \pay_i$:
-any report $\cumval'_i < \cumval_i$ causes the \texttt{commit}
-operation to revert
-(see \Cref{def:process,def:commitment}, the
-\texttt{expectedCumulativeValue} check), so we restrict attention to
-$\cumval'_i \geq \cumval_i$.
+By \Cref{rem:monotonicity-assumption} the accumulator constraint
+$\cumval'_i \geq \cumval_i \coloneqq \Pi.\cumval_{\text{prev}} + \pay_i$
+holds: any report with $\cumval'_i < \cumval_i$ is rejected by the
+settlement layer at \texttt{commit} time and never enters the
+accumulator (cf.\ \Cref{def:process,def:commitment}, the
+\texttt{expectedCumulativeValue} clause). We therefore restrict
+attention to $\cumval'_i \geq \cumval_i$.
 
 Let $q \in [0, 1]$ be the probability that the buyer resolves the
 process (a function of all sellers' performance, exogenous to $S_i$'s
@@ -1050,13 +1094,13 @@ the report $\cumval'_i$:
              - \underbrace{2\cumval'_i}_{\text{bond}})
     + (1 - q) \cdot (-2\cumval'_i)
     = q \cdot \pay_i - (1 - q) \cdot 2\cumval'_i.
-  \label{eq:dag-expected-utility}
+  \label{eq:reporting-expected-utility}
 \end{equation}
 The derivative with respect to $\cumval'_i$ is:
 \begin{equation}
   \frac{\partial}{\partial \cumval'_i}
     \mathbb{E}[u_{S_i}] = -2(1 - q).
-  \label{eq:dag-derivative}
+  \label{eq:reporting-derivative}
 \end{equation}
 For $q < 1$ (non-zero probability of non-resolution), this derivative
 is strictly negative: expected utility is strictly decreasing in the
@@ -1072,30 +1116,26 @@ other sellers' cooperation), truth-telling strictly dominates
 overstating.
 \end{proof}
 
-\begin{remark}[Why no on-chain DAG validation is needed]
-The theorem licenses a deliberate omission in the kernel: there is
-no on-chain enforcement of parent--child relationships in the
-process tree. The mechanism reads only the cumulative-value
-accumulator and the per-order bond; the DAG itself is reconstructed
-off-chain from event logs. Misreporting upstream lineage cannot
-profit a seller because the bonding rule already makes overstating
-$\cumval_i$ strictly dominated.
+\begin{remark}[Why the Mechanism Does Not Validate Cumulative-Value Reports]
+The theorem licenses a deliberate omission in the mechanism: beyond
+enforcing monotonicity of the accumulator, the mechanism performs no
+validation of the cumulative-value reports it receives. Misreporting
+cannot profit a seller because the bonding rule already makes
+overstating $\cumval_i$ strictly dominated.
 \end{remark}
 
 \subsection{Atomic Resolution and Seller Coordination}
+\label{sec:atomic-resolution}
 
-\begin{definition}[Atomic Resolution]
-\label{def:atomic-resolution}
-Resolution is \emph{atomic}: the buyer must resolve all active orders
-in a process simultaneously, or none. There is no partial resolution.
-\end{definition}
+Atomic resolution was defined formally in \Cref{def:atomic-resolution};
+we now develop its game-theoretic consequence.
 
-\begin{proposition}[Endogenous Coordination Pressure]
-\label{prop:coordination-pressure}
+\begin{theorem}[Endogenous Coordination Pressure]
+\label{thm:coordination-pressure}
 The $N$-party bonding game under atomic resolution induces a
 \emph{weakest-link public goods game} among sellers, where each
 seller's payout depends on universal cooperation.
-\end{proposition}
+\end{theorem}
 
 \begin{proof}
 Consider the sellers' subgame (fixing the buyer's strategy at: resolve
@@ -1123,25 +1163,37 @@ game}~\citep{hirshleifer1983}:
 \begin{enumerate}
   \item The group outcome depends on the minimum individual effort
     (one defection collapses all payoffs to the non-cooperative level).
-  \item The cooperative outcome $(\Coop, \ldots, \Coop)$ is the unique
-    Pareto-optimal Nash equilibrium of the subgame.
-  \item The game exhibits \emph{strategic complementarity}: $S_i$'s
-    marginal return to cooperation is highest when all others cooperate.
+  \item The cooperative outcome $(\Coop, \ldots, \Coop)$ is Pareto
+    optimal among the subgame's Nash equilibria; the all-defect
+    profile satisfies the Nash condition (no profitable deviation
+    from a locked-bond payoff) but is removed by IEWDS, leaving
+    $(\Coop, \ldots, \Coop)$ as the unique IEWDS-surviving profile.
+  \item The action structure is \emph{weak-link best-response
+    coupling under perfect monitoring}: $S_i$'s cooperation--defection
+    gap is $\pay_i + 2\cumval_i$ when every other seller and the
+    buyer cooperate, and zero otherwise. The marginal value of
+    cooperation is therefore not monotonically increasing in others'
+    cooperation (the standard strategic-complementarity shape); it
+    is constant on the all-cooperate profile and zero elsewhere,
+    which is the characteristic structure of weak-link coordination
+    rather than strategic complementarity.
 \end{enumerate}
 
-In a repeated-interaction setting, this externality structure creates
-endogenous peer monitoring: $S_i$ has a direct economic interest of
-magnitude $\pay_i + 2\cumval_i$ in ensuring $S_k$ cooperates. This
-incentivizes information acquisition about co-sellers, pressure
-application on underperformers, and reputation-based exclusion of known
-defectors---all without explicit communication protocols or governance
-mechanisms.
+Under one-shot, anonymous interaction, this externality structure
+suffices for the cooperation-pressure result of
+\Cref{prop:microfinance-reduction}: every $S_i$ has a direct
+mechanism-level economic interest of magnitude $\pay_i + 2\cumval_i$
+in $S_k$'s cooperation, computable from the mechanism's monotonic
+accumulator alone. No information acquisition, repeated interaction,
+or social-substrate communication is required for the externality
+to be present; whether parties additionally engage in such
+practices in deployment is orthogonal to the equilibrium argument.
 \end{proof}
 
-\begin{remark}[Distinction from the experimental weakest-link literature]
+\begin{remark}[Distinction from the Experimental Weakest-Link Literature]
 \label{rem:vanhuyck}
 The experimental weakest-link literature, originating with
-\citet{vanhuyck1990} (Van Huyck, Battalio and Beil, \emph{AER} 1990),
+\citet{vanhuyck1990},
 finds that weakest-link games empirically produce coordination
 \emph{failure} in groups larger than two: players converge to the
 Pareto-inferior all-defect equilibrium via pessimistic beliefs about
@@ -1154,21 +1206,126 @@ is individually dominated regardless of what others do (Case~2 of the
 proof of \Cref{thm:n-party-nash}: even when all others defect, $S_i$
 incurs $-2\cumval_i$ whether it cooperates or defects, so there is no
 strategic incentive to defect). The cooperation pressure identified in
-\Cref{prop:coordination-pressure} therefore arises in a setting where
+\Cref{thm:coordination-pressure} therefore arises in a setting where
 coordination failure through pessimistic beliefs cannot occur: each
 seller's dominant strategy is already to cooperate, and the weakest-link
 structure adds the externality characterisation on top of that result,
 not as a substitute for it.
 \end{remark}
 
+\begin{proposition}[Collusion is Strictly Unprofitable]
+\label{prop:collusion-unprofitable}
+Let $K \subseteq \{S_1, \ldots, S_n\}$ be any non-empty coalition
+of sellers, and let $X \notin \{B, S_1, \ldots, S_n\}$ be any
+external party who pays a side transfer $T \geq 0$ to $K$ in
+exchange for joint defection by every member of $K$. Joint
+defection by $K$ is not a Pareto improvement over universal
+cooperation for the coalition $K \cup \{X\}$: the minimum side
+transfer at which $K$'s members are individually willing to
+defect strictly exceeds the maximum monetary benefit $X$ can
+obtain from $B$'s non-resolution. The dominance margin is at
+least $3 \sum_{i \in K} \pay_i$ versus a benefit upper-bounded
+by $3 \sum_{i \in K} \pay_i$ at the root order, with the gap
+strictly positive whenever $K$ contains any non-root seller.
+\end{proposition}
+
+\begin{proof}
+For each $S_i \in K$, the cooperation--defection gap is
+$\Delta_i = \pay_i - (-2\cumval_i) = \pay_i + 2\cumval_i$
+(\Cref{thm:n-party-nash}, Case~1). For $S_i$ to weakly accept
+the side payment, $X$ must transfer at least $\Delta_i$ to $S_i$.
+The minimum total side transfer is therefore
+\begin{equation}
+  T_{\min}(K) = \sum_{i \in K} \Delta_i
+    = \sum_{i \in K} (\pay_i + 2\cumval_i)
+    \geq 3 \sum_{i \in K} \pay_i,
+\end{equation}
+with equality only when every $S_i \in K$ is a root order
+($\cumval_i = \pay_i$).
+
+$X$'s monetary benefit from $K$'s joint defection is bounded by
+the most an arbitrary external party with spite preferences could
+rationally pay for the buyer's harm. That harm has two components.
+Non-resolution locks $B$'s bonds, totalling $\sum_{i=1}^n 2\pay_i$,
+and denies $B$ the goods themselves; the value of the goods to
+$B$ is bounded above by $B$'s willingness to pay,
+$\sum_{i=1}^n \pay_i$ (the participation constraint that says
+$B$ entered the bonding game). Restricting to the colluded
+orders, $X$'s upper bound on benefit is
+\begin{equation}
+  B_{\max}(K) \leq \sum_{i \in K} 2\pay_i
+    + \sum_{i \in K} \pay_i
+    = 3 \sum_{i \in K} \pay_i.
+\end{equation}
+
+Combining the bounds,
+$T_{\min}(K) \geq 3\sum_{i \in K} \pay_i \geq B_{\max}(K)$,
+with strict inequality on the first step whenever $K$ contains
+a seller $S_i$ with $\cumval_i > \pay_i$ (i.e., any non-root
+seller). For collusion to be Pareto-improving for $K \cup \{X\}$,
+$X$ would need benefit strictly greater than the side-payment
+cost; this is impossible. Joint defection is therefore strictly
+Pareto-dominated.
+\end{proof}
+
+\begin{remark}[Margin Grows with Chain Depth]
+\label{rem:collusion-depth}
+The dominance margin $T_{\min}(K) - B_{\max}(K) \geq
+2 \sum_{i \in K} (\cumval_i - \pay_i) \geq 0$ is monotone in
+chain depth: the deeper the colluded sellers sit in the chain,
+the larger the spread between their bonds $2\cumval_i$ and the
+harm imposable on the buyer. Coalitions of deep-chain sellers
+are accordingly the most strictly unprofitable.
+\end{remark}
+
 \subsection{Seller Non-Performance and Externality Handling}
 \label{sec:externalities}
 
 A natural question in any multi-party coordination mechanism is how
-negative externalities from one participant's non-performance are
-absorbed by the rest of the process. The bonded commitment mechanism
-handles this through the process structure itself, without requiring
-additional governance or protocol modifications.
+externalities are handled. Four categories arise, and the bonded
+commitment mechanism treats them with a single primitive ---
+bonded sub-orders, optionally layered with external risk products
+--- without requiring additional governance or protocol
+modifications.
+
+\begin{enumerate}[label=(\roman*)]
+  \item \emph{Intra-process externalities}---the loss one seller's
+    defection imposes on co-sellers---are handled by the bonding
+    mechanism itself: defection is weakly dominated for every seller
+    at every position (\Cref{thm:n-party-nash}), and the cooperation
+    pressure that propagates through atomic resolution
+    (\Cref{thm:coordination-pressure}) is the externality made
+    strategic. No additional handling is required.
+  \item \emph{Seller non-performance}---the focus of the two
+    paragraphs that follow---is absorbed either by the buyer
+    committing a substitute order before resolution, or by an
+    external risk product (performance guarantee, surety bond,
+    insurance) layered over the bonded position.
+  \item \emph{Buyer non-performance}---the buyer commits but
+    never resolves---is absorbed by the no-escape-hatch property:
+    the buyer's bond remains locked indefinitely, imposing a
+    $2\pay$ deterrent equal to the buyer's worst-case loss
+    (\Cref{rem:no-escape}, \Cref{thm:escape-hatch-weakness}). The
+    sellers' bonds are likewise locked indefinitely; recovery for
+    sellers in this case requires the same external risk products
+    as in (ii).
+  \item \emph{Third-party externalities}---harms imposed by the
+    bonded process on non-participants (a courier causing a
+    traffic accident, a kitchen polluting, a process generating
+    a data leak)---compose into the mechanism the same way as
+    (ii). The harmed party becomes a remediation buyer in a new
+    bonded sub-order against the harming party as remediation
+    seller; or an external risk product (liability insurance,
+    pollution bond) layers over the bonded process in advance.
+    The mechanism is uniform across externality types: the same
+    composition pattern handles internal and third-party
+    externalities, with the harmed party simply being internal
+    or external to the original process.
+\end{enumerate}
+
+The two paragraphs below develop case (ii) in detail; cases (i),
+(iii), and (iv) are addressed by cross-reference and by the same
+composition pattern.
 
 \paragraph{Seller substitution.}
 If seller $S_i$ fails to perform, the buyer holds a non-resolved
@@ -1188,45 +1345,28 @@ Where seller substitution is impractical---latency-sensitive
 processes, highly specialised roles, or cases where a replacement
 cannot be sourced---standard risk instruments such as performance
 guarantees, surety bonds, and insurance can layer over the bonded
-process without modifying the kernel. These instruments hold
+process without modifying the mechanism. These instruments hold
 independently bonded positions on the seller's behalf; they do not
-call \texttt{commit} or \texttt{resolveProcess}, hold no kernel
+call \texttt{commit} or \texttt{resolveProcess}, hold no mechanism
 state, and leave the bonding equilibrium intact. The mechanism is
 therefore not the only layer of externality protection available to
 parties; it is the settlement primitive over which such risk
 products compose.
 
-% ════════════════════════════════════════════════════════════════════
-\section{Reduction from Microfinance Mechanisms}
+\subsection{Comparison with Joint-Liability Microfinance}
 \label{sec:microfinance}
 
-The coordination pressure of \Cref{prop:coordination-pressure} is
-operationally analogous to the peer-enforcement dynamics documented
-in the microfinance literature on group lending---most prominently
-the Grameen Bank~\citep{grameen1999} and its formalizations by
-\citet{ghatak1999} and \citet{stiglitz1990}. The analogy is frequently
-drawn informally, but the precise relationship between the bonded
-commitment mechanism and the microfinance models has not, to our
-knowledge, been stated formally. We make it explicit here because
-it identifies what \figaro{} actually contributes relative to the prior
-literature on peer-enforced cooperation.
-
-\paragraph{The microfinance mechanisms.}
-Two canonical models frame group lending.
-\citet{ghatak1999} proves \emph{peer selection}: under
-joint-liability contracting, borrowers with private type information
-sort assortatively, attenuating adverse selection. The result requires
-a heterogeneous population, local information among borrowers, and
-voluntary group formation.
-\citet{stiglitz1990} proves \emph{peer monitoring}: joint liability
-combined with repeated social interaction lets group members observe
-and punish co-borrower deviation, attenuating moral hazard. The result
-requires repeated interaction, observability of co-borrower actions,
-and an exogenous punishment technology (social sanction, denial of
-future credit). In both cases the peer-pressure outcome is an
-\emph{emergent} property of a contract (joint liability) embedded in a
-social substrate (repeated interaction, local information). The
-contract alone is insufficient; the substrate does enforcement work.
+The coordination pressure of \Cref{thm:coordination-pressure} is
+operationally analogous to the peer-enforcement equilibrium documented
+in joint-liability microfinance, formalized by \citet{ghatak1999} and
+\citet{stiglitz1990} on the Grameen Bank model~\citep{yunus1999}.
+Those models obtain peer enforcement through a combination of
+joint-liability contracting and a social substrate (repeated
+interaction, local information, exogenous punishment via social
+sanction); the contract alone is insufficient, and the substrate
+does load-bearing enforcement work. The bonded commitment mechanism
+reproduces the same equilibrium-selection effect under strictly
+weaker assumptions.
 
 \begin{proposition}[Assumption Reduction on Cooperation Pressure]
 \label{prop:microfinance-reduction}
@@ -1244,20 +1384,19 @@ assumptions. Specifically, \figaro{} requires none of the following:
 \begin{proof}
 \Cref{thm:n-party-nash} establishes cooperation as the unique profile
 surviving iterated elimination of weakly dominated strategies in a
-one-shot game. The argument uses only the on-chain payoff function and
-makes no appeal to continuation value, trigger strategies, or
+one-shot game. The argument uses only the mechanism's payoff function
+and makes no appeal to continuation value, trigger strategies, or
 folk-theorem constructions; (i) is not required.
 
 The externality $\varepsilon_{k \to i} = \pay_i + 2\cumval_i$
-(\Cref{prop:coordination-pressure}) is computed from quantities
+(\Cref{thm:coordination-pressure}) is computed from quantities
 enforced by the settlement layer's monotonic accumulator, independent
 of any seller's information about co-sellers' types, actions, or
 identities; (ii) is not required.
 
 The punishment for a co-seller's defection is the loss of $S_i$'s own
-bond $C_{s,i} = 2\cumval_i$, imposed directly by the contract through
-non-resolution. No external punishment technology---social sanction,
-reputational downgrade, or denial of future credit---is invoked;
+bond $C_{s,i} = 2\cumval_i$, imposed directly by the mechanism through
+non-resolution. No external punishment technology is invoked;
 (iii) is not required.
 
 Finally, each $C_{s,i}$ is posted individually by $S_i$ against
@@ -1267,171 +1406,105 @@ atomic-resolution constraint (\Cref{def:atomic-resolution}), not from
 the bond structure; (iv) is not required.
 \end{proof}
 
-\paragraph{What is \emph{not} reproduced.}
-The proposition is scoped deliberately. Group-lending models
-derive two distinct equilibrium effects, and \figaro{} reproduces
-only the first.
+The reduction is scoped to cooperation pressure. Two further
+microfinance results---peer selection on private types
+\citep{ghatak1999} and peer monitoring under principal information
+asymmetry \citep{stiglitz1990}---are not directly reproduced; both
+require additional structure above the bonded primitive (attested
+credentials, signal-contingent resolution rules) and lie outside
+the present paper's scope.
 
-\begin{itemize}
-  \item \textbf{Cooperation under externality coupling (reproduced).}
-    Once a group is formed and joint liability is in force, each
-    member has incentive to perform because a co-member's failure
-    imposes direct loss. The bonded mechanism reproduces this
-    effect under strictly weaker assumptions as shown above.
-
-  \item \textbf{Peer selection under private type information (not
-    reproduced).} \citet{ghatak1999} shows that joint-liability
-    contracts induce \emph{assortative matching} among borrowers of
-    different unobservable risk types; this is an adverse-selection
-    result and requires both a heterogeneous type space and a group
-    formation stage. \figaro{} has no type-screening mechanism and
-    no group-formation stage that selects on unobservable seller
-    quality. Adverse-selection screening must be obtained by some
-    mechanism outside the bonded commitment (e.g., attested
-    credentials, operator registries).
-
-  \item \textbf{Peer monitoring under principal information asymmetry
-    (not directly reproduced).} \citet{stiglitz1990} treats a
-    setting where deliverable quality is unobservable to the
-    principal (lender) but observable to peer borrowers. The
-    equilibrium leverages the principal--peer information
-    asymmetry. \figaro{}'s bonded commitment assumes the buyer can
-    determine whether to resolve; it sidesteps rather than solves
-    the buyer-side moral hazard. When the buyer's performance
-    observation is itself noisy or delayed, the perfect-monitoring
-    assumption in \Cref{def:n-party-game} becomes load-bearing and
-    the cooperation-pressure reproduction depends on how that noise
-    is handled at the mechanism layer.
-\end{itemize}
-
-The honest summary of \Cref{prop:microfinance-reduction} is therefore
-that it reproduces one of the two classical group-lending equilibrium
-effects, under weaker assumptions, for a correspondingly narrower
-conclusion. The other effect --- assortative screening on
-unobservable types --- requires additional mechanism above the
-bonded kernel.
-
-\paragraph{What this repositions.}
-The reduction does not correct the microfinance theorems---they are
-sound under their assumptions---but it reframes them. Repeated
-interaction and local information were necessary for group lending
-because the enforcement primitive available in that setting was
-reputation within a social network. Once the settlement layer admits
-bilaterally signed, individually collateralized commitments with
-atomic resolution, the same mechanism outcome obtains among mutual
-strangers, in a single shot, with no social substrate. Repeated
-interaction and local information are thus not necessary conditions
-for endogenous peer monitoring; they are features of one particular
-settlement environment in which the mechanism was historically
-deployed. The weakest-link subgame (\Cref{prop:coordination-pressure}),
-the geometric risk amplification (\Cref{cor:geometric-pressure}), and
-the one-shot dominance argument (\Cref{thm:n-party-nash}) together
-give a purely mechanism-level construction of an effect the
-microfinance literature attributes to contract design combined with
-social embedding.
+The reduction reframes rather than corrects the microfinance theorems:
+they remain sound under their assumptions, but the assumptions
+characterize one particular settlement environment in which the
+mechanism was historically deployed (reputation within a social
+network), not necessary conditions for endogenous peer monitoring.
+Once the settlement layer admits bilaterally signed, individually
+collateralized commitments with atomic resolution, the same outcome
+obtains among mutual strangers in a single shot with no social
+substrate.
 
 % ════════════════════════════════════════════════════════════════════
-\section{Conclusion and Open Questions}
+\section{Dispute Resolution}
+\label{sec:dispute}
+
+Dispute resolution is marginal in this mechanism by design.
+Defection is weakly dominated for every party at every position
+(\Cref{thm:two-party-nash}, \Cref{thm:n-party-nash}); the
+cooperation pressure that propagates through atomic resolution
+(\Cref{thm:coordination-pressure}) sharpens this further by
+making each seller's payout contingent on universal cooperation
+among co-sellers; and the reduction over joint-liability
+microfinance (\Cref{prop:microfinance-reduction}) places the
+bonded mechanism in the same equilibrium-selection regime as
+group lending under strictly weaker assumptions. The bonded
+process itself absorbs almost all of the work that traditional
+arrangements externalise to courts, arbitrators, and platform
+adjudication.
+
+The microfinance literature provides a qualitative empirical
+reference. Joint-liability group lending, beginning with the
+Grameen Bank, has produced low documented default rates under
+conditions (repeated interaction, local information, social
+sanction) that the bonded mechanism replaces with one-shot
+collateral and atomic resolution~\citep{yunus1999, ghatak1999}.
+The fraction of bonded processes that require external dispute
+resolution is therefore expected to be small, but the present
+mechanism does not predict the rate quantitatively: the
+microfinance default rate emerges from the combined effect of
+peer selection, peer monitoring, and cooperation pressure, only
+the last of which the bonded mechanism reproduces
+(\Cref{prop:microfinance-reduction}). Calibration is an
+empirical matter for deployment data, not a theorem of the
+present paper.
+
+For the marginal cases where internal pressure does not resolve a
+dispute, the bonded commitment is compatible with external legal
+and arbitral forums. \Cref{rem:judicial-review} establishes the
+formal distinction: such forums adjudicate \emph{outside} the
+bonding game on the evidence record produced by the mechanism, rather
+than serving as a constitutive resolution path within the
+mechanism. Parties may name a forum-clause in their assembly graph
+(\Cref{sec:architectural-posture}) selecting Kleros, an arbitral
+body, a court, or any other forum~\citep{kleros2019}; the mechanism
+does not bind a forum, and the choice does not affect the bonding
+equilibrium. The composition is asymmetric in an important way:
+\figaro{} composes with external forums as evidentiary consumers
+of the bonded record, but external forums cannot compose with
+\figaro{} as a constitutive resolution path within the mechanism
+without breaking the equilibrium (\Cref{thm:escape-hatch-weakness},
+Case~2). The asymmetry is the formal expression of the design
+stance: dispute resolution is a marginal external concern, not an
+internal mechanism component.
+
+% ════════════════════════════════════════════════════════════════════
+\section{Conclusion}
 \label{sec:conclusion}
 
 We have presented \figaro{}, a settlement primitive that achieves
 self-enforcing multi-party coordination through two composing
 mechanisms: \emph{asymmetric bonding}, which produces the bilateral
-Nash equilibrium and scales it to $N$-party process trees via
-progressive collateralization; and \emph{buyer dominance with atomic
-resolution}, which enforces inter-seller coordination on the
-already-scaled mesh. The kernel is minimal---no timeout, no
-governance, no escape hatches---and the game-theoretic properties are
-strong: cooperation is weakly dominant at every position in an
-$N$-party process tree, and the cooperative profile is the unique
-outcome surviving iterated elimination of weakly dominated strategies.
-The mechanism reproduces the peer-enforcement effect of joint-liability
-microfinance under strictly weaker assumptions, with no appeal to
-repeated interaction, local information, or social sanction.
-
-\paragraph{Implementation and verification.}
-A reference implementation as a Solidity smart contract, together
-with the formal-verification stack (TLA\textsuperscript{+}, symbolic
-execution, property-based fuzzing, specification checking) and the
-threat model that accompanies it, is presented in the companion
-implementation paper. That paper also develops the
-\emph{coordinator pattern}: sufficient conditions under which an
-external mechanism composed with the kernel preserves the bonding
-equilibrium, and the corresponding three-layer enforcement
-architecture (economic / coordination / evidence).
-
-\paragraph{Organizational implications.}
-The implications of a fixed-cost enforcement primitive for the
-boundary of the firm in the sense of \citet{coase1937}---and
-specifically for the demotion of the firm from privileged
-organizational container to one pattern among many (alongside
-transaction-scoped assemblies, treasury communities, peer
-networks, and agent coalitions) when the subordination overlay
-is no longer enforcement-driven---are developed in the companion
-institutional-economics paper.
-
-\paragraph{Focal-point coordination among participants.}
-The companion FIG token paper develops \textsc{Fig}, a
-focal-point coordination token that operates without any
-kernel-level interaction: it does not call \texttt{commit} or
-\texttt{resolveProcess}, holds no kernel bonds, and modifies no
-kernel state, thereby preserving the bonding equilibrium trivially.
-
-\paragraph{The accounting byproduct.}
-A consequence of the conservation law (\Cref{rem:conservation})
-worth flagging: the kernel is at all times in custodial balance,
-and a process is, in the precise accounting sense, a
-self-closing ledger period. The companion accounting
-paper develops the implications
-for the bookkeeping apparatus that grew up around
-double-entry~\citep{pacioli1494summa} once that apparatus is
-made optional by protocol-level constitution of the records.
-
-\paragraph{Multi-currency scope exclusion.}
-The mechanism is defined for a single denomination per process.
-Mixing currencies within one process requires an external rate of
-substitution---oracle, DEX, or pre-agreed FX rate---each of which
-reintroduces a discretionary actor and breaks the same-unit
-comparability on which the $2\times$ Nash-stability result rests.
-This is an exclusion by design, not an open problem. Multi-token
-vendor workflows are handled at the wallet layer: a participant
-swaps into the process denomination before calling
-\texttt{commit}, so the kernel invariant is preserved trivially.
-
-\paragraph{Open theoretical question.}
-The relationship between the $2\times$ multiplier and the
-opportunity cost of locked capital warrants closer treatment: the
-present analysis shows that $k = 2$ is sufficient at zero
-opportunity cost and remains sufficient for $rt > 0$, but does not
-characterize the rate regime under which a richer dynamic mechanism
-(e.g., interest-bearing bonds, time-varying multipliers) would
-strictly Pareto-dominate the static $k = 2$ design.
-
-\paragraph{A scope note on voluntary participation.}
-The equilibrium results of this paper hold under the assumption
-that both parties are legally and materially free to enter the
-bonding game --- i.e., that entering is a choice and that capital
-sufficient to post the required bond is available. For
-participants whose only realistic income path runs through bonded
-assemblies, or who lack access to the bond-denomination currency,
-the ``voluntary'' framing is itself a variable whose treatment
-lies outside mechanism design. The distributional and labor-law
-consequences of this scope are developed in the companion
-institutional-economics and labor-law papers; the present paper
-establishes equilibrium properties conditional on voluntary
-participation, not the conditions under which participation is
-voluntary in any substantive sense.
+Nash equilibrium and scales it naturally to $N$-party process chains
+by tying each seller's bond to cumulative upstream value; and
+\emph{buyer dominance with atomic resolution}, which enforces
+inter-seller coordination on the already-scaled mesh. The mechanism is
+minimal---no timeout, no governance, no escape hatches---and the
+game-theoretic properties are strong: under perfect monitoring
+(\Cref{def:n-party-game}) and complete information, cooperation is
+weakly dominant at every position in an $N$-party process chain, and
+the cooperative profile is the unique outcome surviving iterated
+elimination of weakly dominated strategies. The mechanism reproduces
+the cooperation-pressure component of the peer-enforcement equilibrium
+in joint-liability microfinance under strictly weaker assumptions,
+with no appeal to repeated interaction, local information, or social
+sanction.
 
 \section*{Acknowledgments}
-I owe Vlad Zamfir a particular debt: his work in mechanism design and
-coordination economics gave me the conceptual vocabulary to recognize
-Buterin's Safe Remote Purchase contract not merely as an escrow pattern
-but as a \emph{coordination mechanism}---one that could, in principle,
-scale beyond two parties. Without that lens, the generalization to
-asymmetric bonding and $N$-party process trees would not have happened.
-I also want to acknowledge Vitalik Buterin for the Safe Remote Purchase
-primitive itself, Fabrizio Romano Genovese for his contributions to
-\figaro{}, and the Coalition of Automated Legal Applications (COALA).
+I thank the Solidity team for the Safe Remote Purchase pattern,
+Fabrizio Romano Genovese for his contributions to \figaro{}, and
+the broader Ethereum community for the body of work in mechanism
+design, coordination economics, and applied cryptographic
+settlement that this paper builds on.
 
 
 % ════════════════════════════════════════════════════════════════════
@@ -1455,38 +1528,29 @@ Cuende, L. and Izquierdo, J.
 \bibitem[Asgaonkar and Krishnamachari(2019)]{asgaonkar2019}
 Asgaonkar, A. and Krishnamachari, B.
 \newblock Solving the Buyer and Seller's Dilemma: A Dual-Deposit Escrow Smart
-  Contract for Provably Cheat-Proof Delivery and Payment for a Digital Good.
+  Contract for Provably Cheat-Proof Delivery and Payment for a Digital Good
+  without a Trusted Mediator.
 \newblock In \emph{Proc.\ IEEE International Conference on Blockchain and
   Cryptocurrency}, 2019.
 
-\bibitem[BitHalo(2014)]{bithalo2014}
-Dwyer, D.
-\newblock BitHalo: Decentralized Contracts and Escrow Without Trust.
+\bibitem[Zimbeck(2014)]{bithalo2014}
+Zimbeck, D.
+\newblock Two Party double deposit trustless escrow in cryptographic
+  networks and Bitcoin.
 \newblock BitHalo White Paper, 2014.
 
-\bibitem[Solidity Team(2016)]{buterin2016}
+\bibitem[Solidity Team(2016)]{solidity2016}
 Solidity Team.
 \newblock Safe Remote Purchase.
-\newblock In \emph{Solidity Documentation --- Solidity by Example}, 2016.
+\newblock In \emph{Solidity Documentation---Solidity by Example}, 2016.
 \newblock \url{https://docs.soliditylang.org/en/latest/solidity-by-example.html#safe-remote-purchase}
-
-\bibitem[Coase(1937)]{coase1937}
-Coase, R.~H.
-\newblock The Nature of the Firm.
-\newblock \emph{Economica}, 4(16):386--405, 1937.
-
-\bibitem[Pacioli(1494)]{pacioli1494summa}
-Pacioli, L.
-\newblock \emph{Summa de Arithmetica, Geometria, Proportioni
-  et Proportionalita}.
-\newblock Paganinus de Paganinis, Venice, 1494.
 
 \bibitem[Ghatak(1999)]{ghatak1999}
 Ghatak, M.
 \newblock Group lending, local information and peer selection.
 \newblock \emph{Journal of Development Economics}, 60(1):27--50, 1999.
 
-\bibitem[Yunus(1999)]{grameen1999}
+\bibitem[Yunus(1999)]{yunus1999}
 Yunus, M.
 \newblock Banker to the Poor: Micro-Lending and the Battle Against World
   Poverty.
@@ -1498,10 +1562,10 @@ Hirshleifer, J.
   goods.
 \newblock \emph{Public Choice}, 41(3):371--386, 1983.
 
-\bibitem[Kleros(2019)]{kleros2019}
-Ast, F. and Lesaege, C.
-\newblock Kleros: A Protocol for a Decentralized Justice System.
-\newblock Kleros White Paper, 2019.
+\bibitem[Lesaege et~al.(2019)]{kleros2019}
+Lesaege, C., George, W., and Ast, F.
+\newblock Kleros: Long Paper v1.0.7.
+\newblock Kleros, 2019.
 \newblock \url{https://kleros.io/yellowpaper.pdf}
 
 \bibitem[Myerson(1979)]{myerson1979}

@@ -96,6 +96,20 @@ Authoritative docs that must stay in sync:
 - `docs/v5/VERIFICATION_MAP.md` — invariant → test → formal layer map
 - User-facing schema surfaces in `frontend/app/`. Use `grep -rl "<schemaId>" frontend/app/` to find every page that needs updating; canonical surfaces include `app/(marketing)/schemas/page.tsx`, `app/(marketing)/integrate/page.tsx`, `app/(marketing)/spec/page.tsx`, `app/(marketing)/local-commerce/page.tsx`. Update when a new schema lands.
 
+### Paper Authorship Discipline
+
+Every paper in `paper/` must stand on its own. The corpus was derived from a single archive paper (`paper/archive.figaro3.tex`) and the derivative-paper artifacts must not survive into preprint. When authoring or revising any paper, audit against all of the following — and surface any drift before declaring the paper done:
+
+- **No companion-paper references.** No "in the companion implementation paper", no "developed in the institutional-economics paper", no `\Cref` to sections in other files. If a claim isn't in this paper, it isn't in this paper.
+- **Topic discipline.** A mechanism-design paper contains mechanism design — no Solidity, no DAG, no legal/normative framing, no overlays (interest-bearing bonds, time-varying multipliers, etc.). A kernel-implementation paper doesn't contain economics. An institutional-economics paper doesn't contain Solidity. Match the paper's stated subject and stop there.
+- **Process chains are LINEAR at the kernel level.** The kernel sees a sequence of `commit` calls updating a monotonic cumulative-value accumulator. There is no parent-child structure on-chain (`src/FigaroCore.sol:82-89`: `ProcessState` carries `rootBuyer`, `currency`, `cumulativeValue`, `activeOrderCount` — no DAG fields). DAG topology lives at the assembly/topology layer (off-chain manifest, reconstructed by indexers), never in the kernel. Mechanism papers must use **"process chain"**, never "process tree" or "DAG". This corrects an earlier framing in this file and elsewhere where "process tree" was used loosely.
+- **No "open questions" / "future work" / scope-padding sections.** Papers stand finished. Open questions belong in private notes or in subsequent papers, not as scope-padding in the current one. A "scope exclusion" paragraph is fine when it's a kernel-level exclusion (e.g., single-denomination per process); a "scope note on what we didn't address" is not.
+- **No corresponding-author / contact-email footers.** Author name only. No `\thanks{Corresponding author. ...}`, no contact-email footnote, no ORCID block.
+- **Attribution consistency.** Citation key ↔ `\bibitem` author label ↔ acknowledgement language must all agree. If the bibitem credits "Solidity Team", the cite key shouldn't be `buterin2016` and the acknowledgement shouldn't credit Vitalik. Pick one attribution and align all three sites.
+- **No "actors are legally free" framing in mechanism-design papers.** Actors have agency — that's the mechanism-design assumption. Don't dilute it with legality framing or punt to companion labor-law/institutional-economics papers; either the assumption is in scope (and stated as agency) or it's out of scope (and unstated).
+
+When asked to revise a paper, audit against all eight rules and surface drift. The `paper/figaro-mechanism.tex` revision on 2026-05-05 is the canonical example of this audit applied end-to-end.
+
 ### Test Commands
 
 ```bash
@@ -145,10 +159,14 @@ don't substitute. Match Paper A §2 line 300–311 directly.
 2× cumulative value): produces the bilateral Nash equilibrium (cooperation
 weakly dominates defection for both parties; unique profile surviving iterated
 elimination of weakly dominated strategies; Paper A Theorem 4.3) AND scales
-the bilateral primitive from 2-party to N-party trees via **progressive
-collateralization** (each seller bonds against cumulative upstream value,
-creating a mesh of independently secured edges, each edge carrying its own
-equilibrium at every depth; Theorem 5.3). 2× is the minimum viable multiplier
+the bilateral primitive from 2-party to N-party process chains via
+**progressive collateralization** (each seller bonds against cumulative
+upstream value, creating a mesh of independently secured edges, each edge
+carrying its own equilibrium at every depth; Theorem 5.3). The kernel only
+sees linear chains — `commit` calls extending a monotonic cumulative-value
+accumulator — so the equilibrium analysis is per-edge and never traverses a
+DAG. Whatever DAG topology an assembly composes lives in the upper
+composability layers, not in the kernel. 2× is the minimum viable multiplier
 (Theorem 4.6).
 
 **Mechanism 2 — Buyer dominance** (only the buyer can trigger `resolveProcess`,
@@ -199,8 +217,11 @@ Immutable evidence is produced by the on-chain composition layer, not the kernel
    mechanisms.
 
 Every participant is an independent value-adder. What traditional models call a
-"restaurant" is a process tree of independent contributors — a cook, a kitchen
-operator, an ingredient sourcer — each bonding and settling independently.
+"restaurant" is a process composed of independent contributors — a cook, a kitchen
+operator, an ingredient sourcer — each bonding and settling independently. The
+assembly that composes them may form any topology its designer chooses (the upper
+composability layer is where DAG shape lives); the kernel sees only the linear
+chains of `commit` calls that result.
 Each bonded process is a transaction-scoped institution that dissolves at settlement.
 
 Read `docs/v5/VISION.md` for the full extrapolation.
@@ -671,7 +692,7 @@ via `listBlockMetadata()` / `listBlocksByCategory(category)` / `getBlockForModul
 
 ### Designer tool surface (`frontend/`)
 
-The Designer is a DAG editor — assembly designers fork a reference assembly or start blank, modify the bonded-process tree on the canvas, edit per-node clauses in a side drawer, and save drafts to local storage. The three-column palette/canvas/inspector shape was rejected during this project's evolution — see `feedback_designer_dag_is_canonical.md`.
+The Designer is a DAG editor — assembly designers fork a reference assembly or start blank, modify the bonded-process DAG on the canvas, edit per-node clauses in a side drawer, and save drafts to local storage. The canvas DAG is an assembly-tier composition; the kernel itself only ever sees the linear `commit` chains that result at runtime. The three-column palette/canvas/inspector shape was rejected during this project's evolution — see `feedback_designer_dag_is_canonical.md`.
 
 **Routes:**
 - `/builders/designer` — landing. Lists local drafts (`<DraftsList>`) and the 6 forkable reference assemblies (`REFERENCE_ASSEMBLIES`).

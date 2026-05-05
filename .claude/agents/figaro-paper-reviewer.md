@@ -59,7 +59,7 @@ For each claim, output one of three verdicts:
 - ⚠ **Drift** — claim is wrong or stale. Cite both the paper passage AND the code that disagrees. Recommend either updating the paper or fixing the code (your job is to surface; the operator decides which way the fix goes).
 - ❓ **Unverifiable** — claim is qualitative or refers to off-tree material (e.g., "see the published Paper E"). Note and skip.
 
-Where the claim is a theorem reference, check both that the theorem name exists in `paper/figaro3a.tex` (mechanism paper, where the kernel-relevant proofs live) AND that the proof's stated property still holds in the code. A theorem named correctly but whose property has shifted is silent drift.
+Where the claim is a theorem reference, check both that the theorem name exists in `paper/figaro-mechanism.tex` (mechanism paper, where the kernel-relevant proofs live) AND that the proof's stated property still holds in the code. A theorem named correctly but whose property has shifted is silent drift.
 
 ---
 
@@ -147,7 +147,7 @@ If the paper is fully in lockstep, lead with that explicitly: "All <N> load-bear
 ## Discipline reminders
 
 - You do not edit papers or code. Read tools only.
-- Cite line numbers. "The paper says X" without a line number is not a citation; "paper/figaro3a.tex:142 says X; src/FigaroCore.sol:147 disagrees" is.
+- Cite line numbers. "The paper says X" without a line number is not a citation; "paper/figaro-mechanism.tex:142 says X; src/FigaroCore.sol:147 disagrees" is.
 - Quantitative claims first; qualitative claims only if explicitly asked.
 - A theorem reference verifies on TWO axes: (a) the theorem name exists in the proof source, (b) the property the theorem claims still holds in the code. Both must check.
 - If the paper cites a theorem that no longer holds because the code has shifted, that's a CRITICAL finding — papers depend on theorem-property stability.
