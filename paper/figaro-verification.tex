@@ -1,6 +1,5 @@
-% Figaro Paper C: A Verified Solidity Implementation of Asymmetric Bonding
-% and Buyer Dominance.
-% Implementation + verification snapshot.
+% Figaro Paper C: A Verified Solidity Settlement Kernel.
+% Multi-method formal verification of asymmetric bonding and buyer dominance.
 % Snapshot: 2026-04-23
 
 \documentclass[11pt,a4paper]{article}
@@ -51,7 +50,7 @@
 
 \title{%
   Asymmetric Bonding and Buyer Dominance:\\
-  A Verified Solidity Implementation%
+  A Verified Solidity Settlement Kernel%
 }
 
 \author{
@@ -167,7 +166,7 @@ game-theoretic derivation (two-party Nash, $N$-party generalisation,
 escape-hatch impossibility, the reduction over joint-liability
 microfinance, and the marginality of dispute resolution) is
 mechanism-design content and lies outside the scope of the present
-implementation paper.
+paper.
 
 \paragraph{Paper organization.}
 \Cref{sec:architecture} describes the contract architecture and the
@@ -382,10 +381,9 @@ Certora's cloud service. Strength: rules can quantify over methods
 modifies $X$''. Weakness: paid service; rule encoding is non-trivial.
 
 \paragraph{Foundry as the regression spine.}
-A Foundry test suite (31 files, 420 tests as of snapshot date)
-serves as the continuous-integration spine. Foundry tests are not
-counted toward formal verification but provide the harness the other
-three techniques compile against.
+A Foundry test suite serves as the continuous-integration spine.
+Foundry tests are not counted toward formal verification but
+provide the harness the other three techniques compile against.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Verification Results}
@@ -475,7 +473,10 @@ was exhausted, with no counterexample produced. Reproduced via
 \subsection{Halmos (\texttt{test/HalmosFigaroCore.t.sol})}
 
 Seven kernel properties, each implemented as a \texttt{check\_}
-function and discharged by z3 under symbolic-input quantification:
+function and discharged by z3 under symbolic-input quantification.
+A separate harness (\texttt{test/HalmosStagedMerkleAirdrop.t.sol})
+covers four additional properties of the staged airdrop contract;
+those are out of scope for the kernel claim made in this section.
 \begin{enumerate}[label=\textbf{H\arabic*}]
   \item \texttt{tokenConservation\_afterCommit}.
   \item \texttt{contractSolvency\_afterCommit}.
@@ -519,11 +520,11 @@ change kernel state, quantified over every public function on the
 coordinator):
 \texttt{attestationCannotChangeOrderStatus},
 \texttt{attestationCannotChangeProcessState}.
-Three validator-gate rules (verified on Certora cloud
-2026-04-23):
-\texttt{noValidatorBlocksBuyerAttestation},
+One validator-gate rule plus two \texttt{setValidator}
+storage-isolation invariants (verified on Certora cloud 2026-04-23):
+\texttt{noValidatorBlocksBuyerAttestation} (the gate);
 \texttt{setValidatorIsFirstWriteWins},
-\texttt{setValidatorPreservesOtherBindings}.
+\texttt{setValidatorPreservesOtherBindings} (the invariants).
 
 \paragraph{Token-operations conservation (\texttt{TokenOpsVerification.spec}, 7 declared rules).}
 \texttt{commitBuyerExactDelta},
@@ -564,13 +565,14 @@ full repository total is $35$ across six specs.
 
 \subsection{Foundry Regression Spine}
 
-31 test suites, 420 tests (including
-\texttt{FigaroCoreRevertBranchTest} which targets every custom error
-listed in \Cref{sec:non-decisions}; \texttt{ParityVectors} which
-asserts EIP-712-digest parity between the SDK's TypeScript hash
-function and the on-chain implementation; and
-\texttt{FigaroCoreEventEmissionTest} which asserts every event field
-encodes as the SDK expects).
+The Foundry suite includes \texttt{FigaroCoreRevertBranchTest}, which
+targets every custom error listed in \Cref{sec:non-decisions};
+\texttt{ParityVectors}, which asserts EIP-712-digest parity between
+the SDK's TypeScript hash function and the on-chain implementation;
+and \texttt{FigaroCoreEventEmissionTest}, which asserts every event
+field encodes as the SDK expects. Counts of files and tests in the
+suite are deliberately not stated here; they evolve with the test
+surface.
 
 \subsection{Scope of the Verification Claim}
 \label{sec:verification-scope}
@@ -665,6 +667,58 @@ utility strictly decreasing in the reported value (the mechanism's
 prevented by the contract's monotonic accumulator check
 (\texttt{CumulativeValueMismatch} revert).
 
+\paragraph{Reentrancy.}
+The kernel inherits OpenZeppelin's \texttt{ReentrancyGuard}, and both
+external entry points (\texttt{commit} and \texttt{resolveProcess})
+carry the \texttt{nonReentrant} modifier. The guard is load-bearing
+because the resolution loop performs two \texttt{safeTransfer} calls
+per iteration before writing the order's resolved status to storage:
+under a token whose transfer hooks call back into the caller (e.g.\
+ERC-777, ERC-1363, or any future ERC-20 extension implementing
+\texttt{tokensReceived}/\texttt{transferAndCall} semantics), the
+callback could otherwise re-enter \texttt{resolveProcess} on the same
+process. The \texttt{nonReentrant} mutex blocks this by reverting the
+nested call before any state can be observed in a half-resolved state.
+
+\paragraph{ECDSA signature malleability.}
+The kernel uses OpenZeppelin's \texttt{ECDSA.recover}, which from
+v5 onward rejects high-$s$ signatures (the secp256k1 malleability
+class) and rejects \texttt{v} values outside $\{27, 28\}$. A duplicate
+commitment cannot be constructed by malleating a valid signature into
+a different but equally valid one; combined with the
+\texttt{DuplicateCommitment} guard on \texttt{orderStatus}, the
+contract is immune to the malleability replay class.
+
+\paragraph{Integer-overflow safety.}
+The contract is compiled under Solidity 0.8.26, which checks
+arithmetic by default. Beyond the language guard, the contract
+carries an explicit pre-multiplication check at resolution time:
+inside \texttt{resolveProcess}, before computing the seller payout
+$2\cumval + \pay$, the contract reverts with the string
+\texttt{"CumulativeValueOverflow"} if any active commitment's
+\texttt{expectedCumulativeValue} exceeds
+$\mathrm{type(uint256).max}/3$. This pre-empts the bond-formula
+expression from overflowing during settlement and yields a clearer
+error than the language's generic \texttt{Panic(0x11)}. The check
+is asserted at resolution rather than at commit, so a commitment
+with an overflow-prone cumulative value can be admitted but cannot
+be settled --- harmless because the buyer is the only party who can
+trigger settlement and bears the locked bond as the cost of any
+admitted commitment.
+
+\paragraph{Resolution-loop gas bounding.}
+The resolution function iterates over the active commitment list and
+performs a fixed-cost block per order (struct hash, SLOAD, two
+ERC-20 transfers, SSTORE). Empirical measurement of the deployed
+bytecode shows approximately $14{,}000$ gas per order under a typical
+ERC-20, giving a ceiling of roughly $2{,}145$ orders resolvable in a
+single transaction at a $30{,}000{,}000$-gas block limit. Liveness
+(\Cref{thm:liveness} below) is conditional on
+$\text{activeOrderCount} \times g_{\text{per-order}} < g_{\text{block}}$;
+processes that exceed this bound must be composed via the
+multi-process pattern (a sub-order in process $A$ rooting a separate
+process $B$) rather than packed into a single resolvable process.
+
 \subsection{Liveness}
 
 \begin{theorem}[Liveness Under Rationality]
@@ -690,7 +744,15 @@ performance, (ii)~$\delta < 1$, and (iii)~no spite. Condition (iii)
 is the hardest to guarantee. When it fails, the mechanism cannot
 guarantee liveness by economic incentives alone---the residual case
 is addressed by Layer~3 (legal deterrence via immutable on-chain
-evidence).
+evidence). The theorem additionally assumes the buyer's resolve
+transaction can be admitted to the chain (no permanent censorship,
+no sequencer outage), that the resolution loop fits within the
+block-gas limit (the bound discussed under
+\emph{Resolution-loop gas bounding} above), that the buyer retains
+control of the signing key, and that the process denomination is
+itself live (transfers do not revert under blocklist or freeze
+conditions). \Cref{sec:scope} addresses these non-game-theoretic
+failure modes as scope displacements.
 \end{remark}
 
 \subsection{The Three-Layer Enforcement Architecture}
@@ -727,6 +789,7 @@ attempt on-chain dispute resolution; it provides the \emph{evidence}
 that off-chain dispute systems already accept.
 
 \subsection{Scope and Limitations}
+\label{sec:scope}
 
 \paragraph{Liveness under non-rational failure.}
 Catastrophic non-rational failure (lost keys, hardware failure,
@@ -768,18 +831,37 @@ the kernel's bonding equilibrium if it satisfies:
   \item \textbf{Bond non-modification}: $M$ holds no kernel bonds
     and does not interpose between the parties and the bond
     transfers.
-  \item \textbf{No bypass}: $M$ does not provide an alternative
-    resolution path or escape from \texttt{Active}.
+  \item \textbf{No bypass and no off-kernel side-payment}: $M$ does
+    not provide an alternative resolution path or escape from
+    \texttt{Active}, and $M$ does not commit (on-chain or off-chain)
+    to award value contingent on the kernel's bond outcome.
 \end{enumerate}
 \end{proposition}
+
+\noindent
+The second clause of (iv) closes a counterexample worth naming:
+a mechanism $M$ that custodies its own off-chain collateral and
+promises parties a side-payment indexed to the kernel's resolved
+state would satisfy (i)--(iii) and the first clause of (iv) ---
+$M$ touches no kernel bonds and never bypasses the kernel state
+machine --- yet would reintroduce an unbonded actor (the
+side-payment custodian) into the parties' decision calculus. The
+on-chain bond ratio would no longer be the marginal economic
+signal, and the equilibrium argument that licenses the
+proposition would degrade. Excluding off-kernel side-payments
+explicitly is therefore necessary for the proposition to bear on
+the equilibrium and not only on the kernel state machine.
 
 \Cref{prop:coordinator} is sufficient, not necessary; mechanisms
 that violate one of (i)--(iv) may still preserve the equilibrium
 under additional argument, but those arguments are per-mechanism.
 The four conditions are currently checked by inspection per
 extension contract rather than by a parametric Certora rule that
-quantifies over arbitrary $M$ --- see \Cref{sec:conclusion} for the
-verification status of this proposition. The envelope is the
+quantifies over arbitrary $M$. A parametric rule of the form
+``$M$ does not call \texttt{commit}'' for arbitrary $M$ has not
+yet been authored; the present coverage is therefore by-construction
+review of each named extension below rather than a closed-world
+proof over the universe of compositions. The envelope is the
 discipline that makes composition \emph{by construction} safe.
 We exhibit three instances.
 
@@ -822,16 +904,20 @@ are pure coordination surfaces with no kernel interaction at all.
 proposed extension. A mechanism that satisfies all four conditions
 can be composed without re-doing the equilibrium proof; a mechanism
 that violates one of them requires explicit mechanism-level argument
-and re-verification. In the reference implementation, all five
-extension contracts shipped to date satisfy
-\Cref{prop:coordinator} by construction.
+and re-verification. The four extensions exhibited above and one
+further (\texttt{src/SchemaRegistrationHelper.sol}, a stateless
+atomic-bind helper composing \texttt{SchemaRegistry.registerSchema}
+with \texttt{AttestationCoordinator.setValidator} in a single
+transaction; identical composition pattern to the registries above)
+satisfy \Cref{prop:coordinator} by construction. The on-chain SP1
+batch verifier (\texttt{src/FigaroBatchVerifier.sol}) is out of scope
+for the kernel claim of this paper and is not analysed here.
 
 \paragraph{A note on liability allocation when conditions fail.}
 The verification status of \Cref{prop:coordinator} is important
 for legal readers: the four conditions are presently checked by
 inspection per extension contract rather than by a parametric
-Certora rule that quantifies over arbitrary $M$ (see
-\Cref{sec:conclusion} for the verification gap this leaves open).
+Certora rule that quantifies over arbitrary $M$.
 If an extension contract silently violates condition (i), (ii),
 (iii), or (iv) and a downstream user is harmed when the kernel
 equilibrium breaks for that composition, the kernel verification
