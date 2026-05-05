@@ -79,8 +79,8 @@ autonomous agents has remained difficult because the enforcement
 apparatus has had nowhere to live without re-introducing a centralized
 party.
 
-We present the bonded settlement primitive of the companion mechanism
-paper as the missing enforcement layer. The primitive's actor-neutrality
+We present the bonded settlement primitive --- asymmetric bonding plus
+buyer dominance with atomic resolution --- as the missing enforcement layer. The primitive's actor-neutrality
 property --- the kernel makes no distinction between human and
 algorithmic participants because the kernel reads only EIP-712
 signatures and bond posture, not the type of the entity behind a
@@ -143,8 +143,7 @@ available --- is correspondingly thinner than the literature on
 honest agents.
 
 \paragraph{The bonded primitive supplies the missing enforcement layer.}
-The companion mechanism paper of this corpus (Paper A) presents a
-settlement primitive whose equilibrium properties are obtained
+The bonded settlement primitive's equilibrium properties are obtained
 without any institutional enforcement: cooperation is the unique
 profile surviving iterated elimination of weakly dominated
 strategies in the bonded game, with bonds posted by the parties
@@ -192,20 +191,20 @@ posture the architecture invites.
 \section{The Settlement Primitive}
 \label{sec:primitive}
 
-The bonded primitive is developed formally in the companion
-mechanism paper and the Solidity implementation is verified in
-the companion implementation paper through TLA\textsuperscript{+},
-Halmos symbolic execution, Echidna property-based fuzzing, and
-Certora specification rules. The features the present paper
-relies on are the following.
+The bonded primitive's mechanism-design derivation and its formal
+verification (TLA\textsuperscript{+}, Halmos symbolic execution,
+Echidna property-based fuzzing, Certora specification rules) are
+out of scope for the present paper. The features the agent
+architecture relies on are the following.
 
 \paragraph{Asymmetric bonding (Mechanism~1).}
 For a transaction with payment $\pay > 0$ and cumulative upstream
 value $\cumval \geq \pay$, the buyer locks $2\pay$ and the seller
 locks $2\cumval$. Cooperation is the unique profile surviving
 iterated elimination of weakly dominated strategies. The mechanism
-scales to $N$-party process trees through progressive
-collateralization.
+scales to $N$-party process chains through progressive
+collateralization; the organizational topology over which orders
+compose is an upper-layer concern.
 
 \paragraph{Buyer dominance with atomic resolution (Mechanism~2).}
 Only the root buyer can trigger resolution; resolution settles
@@ -251,7 +250,9 @@ The kernel's two operations (\texttt{commit} and
 listed in the definition. There is no wallet-type registry; the
 \texttt{OperatorRegistry} contract carries advisory metadata at the
 runtime tier but is not consulted by the kernel for any
-state-changing operation. There is no party-type input parameter;
+state-changing operation. Role and metadata travel with the
+\texttt{OperatorRegistered} event; the contract itself stores only
+a dedup guard and a deposit-lock timestamp. There is no party-type input parameter;
 the kernel's signatures are over typed agreements, and the typed
 agreement does not carry party-type information. The
 \texttt{commit} function verifies signatures, transfers bond
@@ -296,9 +297,9 @@ expressible in any specific assembly the parties compose.
 \paragraph{The same equilibrium for the agent.}
 The equilibrium properties of \Cref{sec:primitive} hold for any
 party in the bonded game, regardless of whether the party is human
-or autonomous. The proof in the mechanism paper makes no appeal to
-party-type; it constructs the dominance argument from the bonding
-arithmetic alone. An autonomous agent that defects forfeits its
+or autonomous. The dominance argument is constructed from the
+bonding arithmetic alone; no appeal to party-type enters the
+proof. An autonomous agent that defects forfeits its
 bond; the agent's expected payoff under defection is therefore
 $-2\cumval$ (seller side) or $-2\pay$ (buyer side), exactly the
 same as a human's. Cooperation is weakly dominant; the agent's
@@ -358,7 +359,7 @@ The propose phase is a pure function over process state:
 \texttt{proposeActions(process, myAddress)} returns the actions
 admissible to the address \texttt{myAddress} given the current
 process state. The action types are
-\texttt{commit-sub-order} (extending the process tree),
+\texttt{commit-sub-order} (extending the process chain),
 \texttt{resolve-process} (the buyer-dominance settlement),
 \texttt{attest-as-seller}, and \texttt{attest-as-buyer}.
 Each \texttt{ProposedAction} carries a human/LLM-readable
@@ -374,40 +375,55 @@ address; the policy's role is to select among those.
 
 \paragraph{Policy.}
 The policy is the agent's decision logic. The policy interface is
-a synchronous-or-asynchronous function over actions:
+batch-shaped: a policy decides on a list of pending action entries
+and returns a list of approve/reject decisions.
 
 \begin{lstlisting}[language=]
-type Policy<TAction, TContext> = (
-  action: TAction,
-  ctx: TContext,
-) => Promise<{ execute: boolean; reason?: string }>;
+interface Policy<TAction, TContext = unknown> {
+  name: string;
+  decide(
+    entries: PolicyEntry<TAction, TContext>[],
+  ): Promise<PolicyDecision<TAction, TContext>[]>;
+}
 \end{lstlisting}
 
-Two reference factories ship with the factotum reference
-implementation at \texttt{agents/factotum/src/policy.ts} (not in
-the \texttt{@figaro/core/agent} SDK itself, which exposes the
-lower-level \texttt{ActionQueue} HITL gateway and the
-\texttt{executeAction} autonomous helper as composition
-primitives): \texttt{makeHitlPolicy<...>()} returns a
-human-in-the-loop policy that always defers to operator approval,
-and \texttt{makeAutonomousPolicy<...>(rule)} returns an
-autonomous policy whose acceptance is governed by the supplied
-rule function. Beyond the two reference shapes, an operational
-deployment writes its own policy in the language of its
-operational role; we treat typical roles in
-\Cref{sec:policies}.
+The factotum reference implementation supplies the policy
+primitives at \texttt{agents/factotum/src/policy.ts} ---
+\texttt{makeHitlPolicy()}, which returns a human-in-the-loop
+policy that defers every action to operator approval, and
+\texttt{makeAutonomousPolicy(shouldExecute)}, which returns an
+autonomous policy whose per-action decision is delegated to a
+caller-supplied \texttt{(action, ctx) =>
+\{execute, reason?\}} callback. Role-shaped reference policies
+ship as separate factories at
+\texttt{agents/factotum/src/policies/}:
+\texttt{auditorPolicy}, \texttt{basicMerchantPolicy},
+\texttt{buyerWithBudgetPolicy}, \texttt{courierBidderPolicy}, and
+\texttt{sellerOfRecordPolicy}, each composing the primitives above
+with role-specific parameters. Operational deployments either
+fork one of these or compose the primitives directly; we treat
+typical roles in \Cref{sec:policies}.
 
 \paragraph{Execute.}
 The execute phase commits an approved action to the chain via the
-agent's wallet. The reference implementation
-(\texttt{executeAction} in \texttt{@figaro/core/agent}) builds
-the appropriate transaction (\texttt{commit},
-\texttt{resolveProcess}, \texttt{attestAsBuyer}, or
-\texttt{attestAsSeller}) and submits via a viem
-\texttt{WalletClient}. Execution is sequential: actions are
-committed one at a time, with the agent's nonce advancing per
-transaction. Parallel execution would race the kernel state and
-is explicitly avoided.
+agent's wallet. The SDK exposes two execution surfaces. For
+self-contained actions whose parameters are fully captured on the
+\texttt{ProposedAction}, \texttt{executeAction} in
+\texttt{@figaro/core/agent} builds and submits the transaction
+directly via a viem \texttt{WalletClient}; in the current SDK this
+covers \texttt{resolve-process}. For actions whose execution
+requires inputs beyond what the proposer carried (signed
+commitments, attestation \texttt{sectionData}, merkle proofs), the
+SDK exposes standalone direct functions --- \texttt{commit},
+\texttt{attestAsSeller}, \texttt{attestAsBuyer} --- which
+operational deployments call after assembling the additional
+inputs at submission time. A separate \texttt{SequencerClient}
+export covers the batched-execution path for deployments that
+prefer to consolidate multiple actions into a single sequencer
+submission rather than direct on-chain calls. Execution on either
+surface is sequential per agent: actions are committed one at a
+time, with the agent's nonce advancing per transaction. Parallel
+execution would race the kernel state and is explicitly avoided.
 
 \paragraph{The full loop.}
 A factotum (the reference participation agent at
@@ -441,29 +457,30 @@ exposed by \texttt{proposeActions} carries the cumulative-prior
 value (the sum of all previously-committed orders' payments),
 not the new sub-order's payment, and the new sub-order's payment
 is supplied by the off-chain agreement the agent is signing
-against rather than as a field on the proposed action. The
-policy therefore receives the proposed payment from its
-operating context (the agent's signing pipeline) rather than from
-the action itself:
+against rather than as a field on the proposed action. A
+buyer-with-budget policy therefore reads from
+\texttt{action.currentCumulativeValue} together with a
+deployment-supplied tracker of per-process spend; the shipping
+\texttt{buyerWithBudgetPolicy} factory at
+\texttt{agents/factotum/src/policies/buyerWithBudget.ts} composes
+the primitive \texttt{makeAutonomousPolicy} with this pattern:
 
 \begin{lstlisting}
 const PER_COMMIT_LIMIT = 1_000_000_000n; // $1K
 const TOTAL_BUDGET = 50_000_000_000n;   // $50K
-const buyerPolicy = makeAutonomousPolicy<ProposedAction, Ctx>(
-  (action, ctx) => {
-    if (action.type === "commit-sub-order") {
-      const proposedPayment = ctx.proposedPayment(action.processId);
-      if (proposedPayment > PER_COMMIT_LIMIT)
-        return { execute: false, reason: "above per-commit limit" };
-      if (ctx.totalSpent + proposedPayment > TOTAL_BUDGET)
-        return { execute: false, reason: "above total budget" };
-      return { execute: true };
-    }
-    if (action.type === "resolve-process") return { execute: true };
-    return { execute: false };
-  },
-);
+const buyerPolicy = buyerWithBudgetPolicy({
+  perCommitLimit: PER_COMMIT_LIMIT,
+  totalBudget: TOTAL_BUDGET,
+  spendTracker: (processId) => ctx.totalSpent(processId),
+});
 \end{lstlisting}
+
+The factory's \texttt{shouldExecute} callback consults
+\texttt{action.currentCumulativeValue}, applies the per-commit and
+total-budget limits, and approves \texttt{resolve-process}
+actions unconditionally; the deployment supplies the
+\texttt{spendTracker} closure that captures whatever per-process
+accounting state the operator wants to maintain.
 
 The control-theory reading: the policy enforces a budget
 constraint on the closed-loop trajectory of bonded commits, with
@@ -504,17 +521,21 @@ price curve and claims the position when the price meets a
 profitability threshold. A subtlety of the current SDK surface
 deserves naming: \texttt{proposeActions} as currently implemented
 emits \texttt{commit-sub-order} only for the address that holds
-the buyer-side role in the process tree, not for prospective
+the buyer-side role in the process chain, not for prospective
 sellers competing on a Dutch auction. A factotum acting as a
 prospective Dutch-auction-bidder therefore does not receive a
 \texttt{commit-sub-order} proposal directly; the bidder's
 work-discovery happens through the \texttt{DutchAuction} mechanism
-contract's own auction-state events (read off-chain through the
-\texttt{@figaro/core/extensions} auction helpers), and the policy
-acts at the moment the bidder is preparing a claim transaction
-rather than at the moment a kernel-level action is proposed. The
-bidder's logic, expressed as a pre-claim gate rather than as a
-factotum policy in the strict SDK sense, looks like:
+contract's own auction-state events, surfaced off-chain through
+the \texttt{@figaro/core/extensions} auction helpers
+(\texttt{computeCurrentPrice}, \texttt{evaluateClaim}). The
+policy acts at the moment the bidder is preparing a claim
+transaction rather than at the moment a kernel-level action is
+proposed. A reference \texttt{courierBidderPolicy} ships at
+\texttt{agents/factotum/src/policies/courierBidder.ts} as the
+shipping example of this pattern. The bidder's logic, expressed
+as a pre-claim gate rather than as a factotum policy in the
+strict SDK sense, looks like:
 
 \begin{lstlisting}
 const MIN_MARGIN_BPS = 500n; // 5% margin
@@ -536,12 +557,12 @@ controller on the price-vs-cost gap, with the threshold
 parameterized by minimum acceptable margin. The agent does not
 optimize across competing auctions; it claims the first auction
 that crosses its threshold, leaving cross-auction optimization to
-a higher-layer policy if the deployment wants one. A natural
-extension to the SDK's proposer would be to surface
-\texttt{claim-auction-position} as a first-class
-\texttt{ProposedAction} type for addresses competing on a known
-auction; the present SDK does not, and the bidder gate runs
-adjacent to the factotum loop rather than inside it.
+a higher-layer policy if the deployment wants one. The bidder
+gate runs adjacent to the factotum loop rather than inside it,
+reflecting the architectural split: kernel-level actions live in
+\texttt{proposeActions}; auction monitoring and evaluation live
+in the extensions surface; the bidder composes both at the
+deployment layer.
 
 \paragraph{Auditor.}
 A passive observer that emits attestations against process events
@@ -670,9 +691,8 @@ solution that does not require kernel-layer changes.
 \paragraph{ERC-8004 and \texttt{did:web}.}
 The \texttt{OperatorRegistry} contract carries a
 \texttt{metadataURI} per registered operator, pointing at an
-off-chain JSON document. The convention developed in the
-companion AI-agent-coordination doctrine document
-\citep{ai_agent_coordination_2026} aligns the document with
+off-chain JSON document. The convention this paper develops
+aligns the document with
 ERC-8004 service descriptors and the W3C \texttt{did:web} method
 \citep{w3c_did_2022}. The document carries:
 
@@ -765,12 +785,10 @@ context.
 Settlement disputes off-chain need an audit trail; the chain has
 half the story. An operational deployment logs proposed actions,
 policy decisions, executed transactions, and any divergence between
-the agent's expected and observed state. The companion
-evidence-and-law paper develops the off-chain dispute architecture
-in detail (Class~A kernel-byproduct records vs Class~B discretionary
-attestations; the three-layer mediation pipeline from MAD through
-coordination pressure to off-chain forum); the agent's audit trail
-is the operational complement on the agent's side. This is
+the agent's expected and observed state. Off-chain forums
+adjudicating bonded commitments treat the on-chain settlement
+record as evidentiary input; the agent's audit trail is the
+operational complement on the agent's side. This is
 standard operational practice for any autonomous system; the
 bonded architecture invites it because the agent's actions have
 material consequences that may be reviewed off-chain.
@@ -818,27 +836,20 @@ ERC-8004 and \texttt{did:web} is metadata, not protocol; the
 discovery layer and the trust layer are separate by design.
 
 The contribution is architectural rather than novel mechanism design.
-The mechanism-design work is in the companion mechanism paper. The
-SDK and the factotum reference implementation are operational
-realizations of that mechanism's actor-neutrality property in working
-TypeScript. The agents that participate are not protocol-aware in
-any privileged sense; they sign, they bond, they perform. The
-substrate makes their participation legible to their counterparties
-and economically rational for them to undertake. The control-theory
-analysis that has historically been blocked by the enforcement
-question is now unblocked.
-
-A natural next step is empirical: deployments of agent-coordination
-patterns under the bonded architecture in operational settings (the
-Spirit Air assembly of Paper~J, the TradeLens replacement of
-Paper~K, the local-commerce reference assembly of the runtime
-documentation). We do not undertake the empirical work here; we
-identify it as the work the architecture invites.
+The SDK and the factotum reference implementation are operational
+realizations of the actor-neutrality property in working TypeScript.
+The agents that participate are not protocol-aware in any privileged
+sense; they sign, they bond, they perform. The substrate makes their
+participation legible to their counterparties and economically
+rational for them to undertake. The control-theory analysis that has
+historically been blocked by the enforcement question is now
+unblocked.
 
 \section*{Acknowledgments}
 The Agent SDK and the factotum reference were developed alongside
-the kernel and the runtime; they are operational realizations of
-the actor-neutrality property analyzed in the mechanism paper.
+the kernel and the runtime; they are operational realizations of the
+actor-neutrality property the bonded settlement primitive carries
+by construction.
 
 % ════════════════════════════════════════════════════════════════════
 \begin{thebibliography}{99}
@@ -877,11 +888,6 @@ W3C.
 \newblock Decentralized Identifiers (DIDs) v1.0: Core Architecture,
   Data Model, and Representations.
 \newblock W3C Recommendation, July 2022.
-
-\bibitem[AI Agent Coordination(2026)]{ai_agent_coordination_2026}
-Daliana, A.
-\newblock AI Agent Coordination via Public Graphs.
-\newblock Internal protocol-doctrine document, ongoing.
 
 \end{thebibliography}
 
