@@ -385,9 +385,9 @@ signature and admits the commitment if and only if it recovers to
 $B$. Condition (ii), in contrast, gates on the identity of the
 \emph{caller} that issues \texttt{resolveProcess} directly. In
 deployed settings $B$ may delegate the resolve action only through
-mechanisms that bind delegated authority to $B$'s identity at the
-substrate layer (multi-signature wallets, account abstraction, or
-key-recovery schemes), not through signature-only conveyance.
+substrate-level delegation primitives that bind delegated authority
+to $B$'s identity at the settlement layer, not through
+signature-only conveyance.
 \end{definition}
 
 \begin{definition}[Atomic Resolution]
@@ -1040,8 +1040,10 @@ shape of the payment schedule.
 
 \begin{example}
 \label{ex:food-delivery}
-Alice orders food (\$10) from Bob, who needs delivery (\$2) from
-Charlie:
+Alice opens a process. Bob (seller 1) commits to provide the food
+(\$10) and Charlie (seller 2) commits to deliver it (\$2). Both
+sellers commit against Alice's cumulative-value accumulator under
+the standard bonding rule:
 \begin{center}
 \begin{tabular}{lccccc}
 \toprule
@@ -1066,11 +1068,12 @@ the probability of non-resolution is positive.
 
 \begin{theorem}[Cumulative-Value Reporting Honesty]
 \label{thm:self-enforcing-reporting}
-In any game where seller $S_i$ chooses a reported cumulative value
-$\cumval'_i \geq \cumval_i$ (with $\cumval_i$ being the true value
-maintained by the settlement layer's accumulator under
-\Cref{rem:monotonicity-assumption}), truth-telling
-($\cumval'_i = \cumval_i$) weakly dominates all alternatives. The
+Given the monotonic-accumulator assumption
+(\Cref{rem:monotonicity-assumption}), under-reports
+($\cumval'_i < \cumval_i$) are rejected by the settlement layer at
+\texttt{commit} time. Among the remaining feasible reports
+$\cumval'_i \geq \cumval_i$, truth-telling
+($\cumval'_i = \cumval_i$) weakly dominates every over-report. The
 dominance is strict whenever the probability of non-resolution is
 positive.
 \end{theorem}
@@ -1213,7 +1216,7 @@ structure adds the externality characterisation on top of that result,
 not as a substitute for it.
 \end{remark}
 
-\begin{proposition}[Collusion is Strictly Unprofitable]
+\begin{proposition}[Collusion is Unprofitable]
 \label{prop:collusion-unprofitable}
 Let $K \subseteq \{S_1, \ldots, S_n\}$ be any non-empty coalition
 of sellers, and let $X \notin \{B, S_1, \ldots, S_n\}$ be any
@@ -1222,11 +1225,12 @@ exchange for joint defection by every member of $K$. Joint
 defection by $K$ is not a Pareto improvement over universal
 cooperation for the coalition $K \cup \{X\}$: the minimum side
 transfer at which $K$'s members are individually willing to
-defect strictly exceeds the maximum monetary benefit $X$ can
+defect weakly exceeds the maximum monetary benefit $X$ can
 obtain from $B$'s non-resolution. The dominance margin is at
 least $3 \sum_{i \in K} \pay_i$ versus a benefit upper-bounded
-by $3 \sum_{i \in K} \pay_i$ at the root order, with the gap
-strictly positive whenever $K$ contains any non-root seller.
+by $3 \sum_{i \in K} \pay_i$, with equality only when every
+$S_i \in K$ is a root order and the gap strictly positive
+whenever $K$ contains any non-root seller.
 \end{proposition}
 
 \begin{proof}
@@ -1264,8 +1268,9 @@ with strict inequality on the first step whenever $K$ contains
 a seller $S_i$ with $\cumval_i > \pay_i$ (i.e., any non-root
 seller). For collusion to be Pareto-improving for $K \cup \{X\}$,
 $X$ would need benefit strictly greater than the side-payment
-cost; this is impossible. Joint defection is therefore strictly
-Pareto-dominated.
+cost; this is impossible. Joint defection is therefore
+Pareto-dominated, weakly when $K$ consists entirely of root
+orders and strictly otherwise.
 \end{proof}
 
 \begin{remark}[Margin Grows with Chain Depth]
@@ -1489,15 +1494,24 @@ by tying each seller's bond to cumulative upstream value; and
 \emph{buyer dominance with atomic resolution}, which enforces
 inter-seller coordination on the already-scaled mesh. The mechanism is
 minimal---no timeout, no governance, no escape hatches---and the
-game-theoretic properties are strong: under perfect monitoring
+minimality is itself a security requirement: any unilateral exit
+path weakens the Nash equilibrium
+(\Cref{thm:escape-hatch-weakness}), so the absence of admin overrides,
+timeouts, or arbitrators is not a simplification but a property the
+analysis depends on. Under perfect monitoring
 (\Cref{def:n-party-game}) and complete information, cooperation is
 weakly dominant at every position in an $N$-party process chain, and
 the cooperative profile is the unique outcome surviving iterated
-elimination of weakly dominated strategies. The mechanism reproduces
-the cooperation-pressure component of the peer-enforcement equilibrium
-in joint-liability microfinance under strictly weaker assumptions,
-with no appeal to repeated interaction, local information, or social
-sanction.
+elimination of weakly dominated strategies. The same per-edge
+asymmetric-bonding structure makes seller coalitions unprofitable
+even with external side-payment
+(\Cref{prop:collusion-unprofitable}): any coalition's defection cost
+weakly exceeds the harm imposable on the buyer, with strict
+inequality whenever the coalition contains any non-root seller.
+Finally, the mechanism reproduces the cooperation-pressure
+component of the peer-enforcement equilibrium in joint-liability
+microfinance under strictly weaker assumptions, with no appeal to
+repeated interaction, local information, or social sanction.
 
 \section*{Acknowledgments}
 I thank the Solidity team for the Safe Remote Purchase pattern,

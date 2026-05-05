@@ -234,6 +234,10 @@ Process and order identifiers are content-addressed:
   \text{processId} &= H_{\text{EIP-712}}(\text{root commitment}), \\
   \text{orderHash} &= \mathrm{keccak256}(\text{processId} \;\|\; \text{structHash}).
 \end{align}
+Here $H_{\text{EIP-712}}$ denotes the EIP-712 typed-data digest:
+$\mathrm{keccak256}(\texttt{0x1901} \;\|\; \text{domainSeparator}
+\;\|\; \text{structHash})$, computed via OpenZeppelin's
+\texttt{\_hashTypedDataV4} at \texttt{src/FigaroCore.sol:158}.
 The EIP-712 domain separator binds the root identifier to chain id
 and verifying contract, preventing replay across deployments. Sub-orders
 inherit \texttt{processId} from the signed commitment. No
@@ -555,7 +559,12 @@ but ship in the same repository and are verified together.
 $8 + 7 + 7 = 22$ declared rules across three specs. Certora's prover
 splits \texttt{resolveSingleOrderConservation} into two sub-cases, so
 the cloud report shows $23$ sub-rules green for the kernel-relevant
-total. All discharged on Certora cloud as of the snapshot date. The
+total.\footnote{Per-spec rule counts are tracked in
+\texttt{docs/v5/VERIFICATION\_MAP.md}; the $23$ sub-rule total
+corresponds to the cloud report identifier pinned in that document.
+Re-runs of the cloud prover may reorganize sub-cases; the declared
+count of $22$ is the stable artifact.}
+All discharged on Certora cloud as of the snapshot date. The
 repository ships a sixth spec
 (\texttt{BatchVerifierTokenOps.spec}, $4$ rules) covering the optional
 batch-settlement path; it is verified together with the kernel
@@ -718,6 +727,46 @@ $\text{activeOrderCount} \times g_{\text{per-order}} < g_{\text{block}}$;
 processes that exceed this bound must be composed via the
 multi-process pattern (a sub-order in process $A$ rooting a separate
 process $B$) rather than packed into a single resolvable process.
+
+\paragraph{Signature replay across forks and chain splits.}
+The EIP-712 domain separator binds the digest to the chain id and
+verifying contract, which prevents replay across distinct
+deployments under standard chain identification. OpenZeppelin's
+\texttt{\_hashTypedDataV4} recomputes the domain separator when
+\texttt{block.chainid} changes, so a chain split that updates
+chainId on one fork invalidates pre-fork signatures on that fork
+and they cannot be replayed against the post-fork state. A chain
+split that does \emph{not} update chainId leaves both forks
+sharing the same domain separator, in which case a single
+commitment is admittable on either fork; this is a property of
+the chain identification scheme, not of the kernel, and is
+addressed at the deployment layer (chainId update on fork).
+
+\paragraph{Cross-contract reentrancy via the attestation surface.}
+A malicious schema validator registered first-write-wins for some
+schema id could attempt to call \texttt{commit} or
+\texttt{resolveProcess} during validation. Two guards apply: the
+\texttt{ISchemaValidator} interface specifies \texttt{validate} as
+\texttt{pure}, so a validator that performs external calls violates
+the interface contract; and the kernel's \texttt{nonReentrant}
+modifier blocks the nested call regardless of validator behavior.
+The attestation surface itself is therefore a denial-of-service
+vector at worst (a malicious validator can revert), not a state-
+corruption vector against the kernel.
+
+\paragraph{Allowance front-running on bond pulls.}
+The kernel pulls the buyer and seller bonds via
+\texttt{safeTransferFrom} against pre-existing ERC-20 allowances.
+A buyer who approves the kernel for an amount sufficient for two
+distinct sub-orders can have either commitment landed first by an
+adversarial transaction-orderer, and the second commit will revert
+on insufficient allowance. This is the standard ERC-20 approval-
+race pattern. The kernel's content-addressed orderHash gating
+(\texttt{DuplicateCommitment} on the second admission of the same
+hash) ensures the adversary cannot duplicate a commitment, only
+reorder distinct ones; bond capital is never lost, only the order
+of process extension is non-deterministic at the wallet's approval
+boundary.
 
 \subsection{Liveness}
 
@@ -983,6 +1032,53 @@ Bloemen, R., Logvinov, L., and Evans, J.
 \newblock {EIP-712}: Ethereum typed structured data hashing and signing.
 \newblock Ethereum Improvement Proposal, 2017.
 \newblock \url{https://eips.ethereum.org/EIPS/eip-712}
+
+\bibitem[Lamport(2002)]{lamport2002}
+Lamport, L.
+\newblock \emph{Specifying Systems: The TLA\textsuperscript{+} Language
+  and Tools for Hardware and Software Engineers}.
+\newblock Addison-Wesley, 2002.
+
+\bibitem[de Moura and Bj{\o}rner(2008)]{demoura2008}
+de Moura, L. and Bj{\o}rner, N.
+\newblock {Z3}: An efficient {SMT} solver.
+\newblock In \emph{Tools and Algorithms for the Construction and
+  Analysis of Systems (TACAS)}, pages 337--340, 2008.
+
+\bibitem[Park et~al.(2024)]{halmos2024}
+Park, D., Hildenbrandt, E., Rosu, G., and the Halmos contributors.
+\newblock {Halmos}: A symbolic bounded model checker for {EVM}
+  smart contracts.
+\newblock a16z crypto / open-source project, 2024.
+\newblock \url{https://github.com/a16z/halmos}
+
+\bibitem[Grieco et~al.(2020)]{grieco2020}
+Grieco, G., Song, W., Cygan, A., Feist, J., and Groce, A.
+\newblock {Echidna}: Effective, usable, and fast fuzzing for smart
+  contracts.
+\newblock In \emph{Proc.\ ACM SIGSOFT International Symposium on
+  Software Testing and Analysis (ISSTA)}, pages 557--560, 2020.
+
+\bibitem[Certora(2024)]{certora2024}
+Certora.
+\newblock The {Certora} prover and the {CVL} specification language.
+\newblock Certora Technology Documentation, 2024.
+\newblock \url{https://docs.certora.com/}
+
+\bibitem[Foundry(2024)]{foundry2024}
+Paradigm.
+\newblock The {Foundry Book}: A blazing-fast, portable and modular
+  toolkit for {Ethereum} application development.
+\newblock Foundry Documentation, 2024.
+\newblock \url{https://book.getfoundry.sh/}
+
+\bibitem[OpenZeppelin(2024)]{openzeppelin2024}
+OpenZeppelin.
+\newblock OpenZeppelin Contracts: a library for secure smart-contract
+  development (\texttt{EIP712}, \texttt{ECDSA}, \texttt{ReentrancyGuard},
+  \texttt{SafeERC20}).
+\newblock OpenZeppelin Documentation, version 5.x, 2024.
+\newblock \url{https://docs.openzeppelin.com/contracts/}
 
 \end{thebibliography}
 
