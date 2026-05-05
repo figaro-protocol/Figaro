@@ -88,9 +88,9 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         disciplineIndex: 2,
         name: "Industrial and Systems Engineering",
         discipline: "Process modeling · supply-chain coordination",
-        charter: "How bonded commitments compose into multi-party process trees with auditable handoffs, lifecycle attestation, and proximity proof. Two worked examples: scheduled-service coordination (cascading-delay risk re-architected as unit-level bonded commitments) and permissionless container shipping (an ownerless successor to the failed TradeLens consortium).",
+        charter: "How bonded commitments compose into multi-party processes with auditable handoffs, lifecycle attestation, and proximity proof. Two worked examples: air service as coordinated resource markets (cascading-delay risk re-architected as unit-level bonded commitments) and permissionless container shipping (an ownerless successor to the failed TradeLens consortium).",
         papers: [
-            { id: "J", title: "Scheduled-Service Coordination as a Bonded Process Tree", href: "/papers/figaro-scheduled-service.pdf" },
+            { id: "J", title: "Air Service as Coordinated Resource Markets", href: "/papers/figaro-airways.pdf" },
             { id: "K", title: "A Permissionless, Ownerless Container-Shipping Assembly", href: "/papers/figaro-container-shipping.pdf" },
         ],
     },
