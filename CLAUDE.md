@@ -181,6 +181,22 @@ microfinance's peer-enforcement outcome under strictly weaker assumptions
 (no repeated interaction, no local information, no exogenous punishment
 technology; Proposition 6.1, Assumption Reduction on Cooperation Pressure).
 
+Under the RWA-as-wallet frame this cohort dynamic is a **social mechanism**
+in the precise sense: it produces social-coordination behavior (peer pressure,
+cohort negotiation, burden-sharing, coverage of struggling counterparts)
+endogenously through the bond architecture, with no social-substrate
+prerequisites — no repeated interaction, no shared community, no exogenous
+punishment technology. Each co-seller is an RWA-as-wallet whose continued
+participation in its markets depends on receipts covering the asset's
+off-chain operating expenses (the node analogy; full apparatus in
+`paper/figaro3g.tex` §7 and `~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/reference_rwa_as_wallet.md`).
+A failed resolution is not an isolated capital loss but a sustainability hit
+that propagates into the wallet's ability to keep operating. The weakest-link
+result tells you the cohort outcome; the RWA-sustainability frame tells you
+why each node in the cohort cares. See
+`~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/reference_social_mechanism.md`
+for the full framing and the papers it applies to.
+
 The mechanisms are inseparable in practice. Bonding alone gives a mesh of
 independently bonded edges — multi-party coordination would still require N
 mutual agreements at resolution. Buyer-dominance alone gives a single party

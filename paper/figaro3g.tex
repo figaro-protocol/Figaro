@@ -711,19 +711,96 @@ the interim, the accountant's role includes producing
 traditional outputs from non-traditional inputs.
 
 % ════════════════════════════════════════════════════════════════════
-\section{Treasury Composition Patterns}
+\section{Wallets, Real-World Assets, and Treasury Composition}
 \label{sec:treasury-composition}
 
 The self-closing-ledger property the previous sections developed
-is a property of every process. An institution that disburses
-through Figaro processes therefore inherits the property without
-needing any institution-specific accommodation in the kernel: the
+is a property of every process. To use the property at scale we
+need to be precise about what a participant in a process actually
+is.
+
+\paragraph{Wallets represent real-world assets.}
+Every party to a Figaro process is a wallet, and what each
+wallet \emph{represents} is a real-world asset (RWA) with
+productive, commercial value. The wallet is the on-chain
+representation of the asset's participation: token balances in
+the denominations the asset transacts in, plus NFTs that point
+to off-chain credentials, certificates, or other documents the
+asset's participation requires. The asset itself is off-chain by
+definition --- a piece of physical capital (an aircraft, a
+delivery van, a landing slot, a kitchen, a server), a
+credentialed individual (a pilot, a courier, a maintenance
+engineer, a doctor), a public service (a security checkpoint, a
+customs clearance, a road network), or any other commercial-value
+unit whose participation in a process needs an on-chain handle.
+The wallet does not contain the asset; it represents the
+asset's participation in the markets the asset operates in.
+
+\paragraph{Three layers: asset, wallet, operator.}
+Three layers must be kept distinct. The \emph{asset} is the
+off-chain real-world asset whose participation produces value.
+The \emph{wallet} is the on-chain representation of that
+participation: an address, the tokens and NFTs it holds, the
+signatures it can produce. The \emph{operator} is the human or
+autonomous agent who controls the wallet's signing key on the
+asset's behalf. The kernel sees only the wallet; the
+operator-acts-for-asset relationship is below the kernel's
+resolution and lives in the off-chain stack the operator runs.
+A wallet is an active counterparty in an assembly iff the
+underlying asset is alive and its credentials are current; that
+conditional is maintained operationally by the operator and
+verified at agreement signing through whichever credential
+schemas the assembly designer composes, not by the kernel.
+
+\paragraph{The node analogy: economic sustainability.}
+A wallet sustains itself the way a node on a blockchain network
+sustains itself. A node earns fees and rewards from its
+participation in the network, and those receipts must cover the
+node's off-chain operating expenses --- machines, electricity,
+HVAC, maintenance, rent --- or the operator stops running the
+node and the node drops out. An RWA-as-wallet operates on the
+same logic: the wallet's receipts from its participation in
+processes must cover the asset's off-chain operating expenses
+(fuel, parts, labor, premises, regulatory fees, capital cost), or
+the operator stops bonding the wallet into processes and the
+wallet drops out of the market it serves. The kernel does not
+enforce sustainability; the market does, through ordinary
+rational exit. The accounting consequence is that the receipts
+from a process \emph{are} the asset's earnings and the
+disbursements \emph{are} the asset's payments --- the chain is
+the asset's ledger, with the period-closing property the prior
+sections developed.
+
+\paragraph{Public-authority wallets are RWA-as-wallet too.}
+The same definition covers government services that today move
+through tax-and-appropriation channels. A security-screening
+authority's wallet collecting per-passenger screening fees, an
+airport authority's wallet collecting gate-use fees, a
+road-authority wallet collecting per-mile charges: each is the
+on-chain representation of a real-world service whose continued
+operation requires receipts that cover its expenses (personnel,
+equipment, premises, capital amortization). The kernel does not
+distinguish between a "tax" and a "fee for service"; both are
+payments to a service-providing wallet whose participation in
+the assembly costs the buyer the same way any other commit
+does. Whether the underlying authority's revenue is regulated
+as taxation, charged as a user fee, or appropriated from a
+general budget is an off-chain regulatory question; mechanically
+the kernel sees a wallet that committed and a payment that
+flowed. This brings public-authority participation into the
+self-closing-ledger framework on the same footing as commercial
+participation, without requiring a separate accounting register
+for tax-shaped revenue.
+
+\paragraph{Treasury composition patterns.}
+Below the wallet sits the operator. The operator can be a single
+human with a single key, or any of several institutional shapes
+that decide how a wallet's signing apparatus is composed. The
 kernel reads a wallet, an EIP-712 signature, and a bond, and the
-institutional shape behind that wallet --- a multisig, a DAO
-governance executor, a streaming contract, a single-key treasury
-agent --- is invisible to the kernel and irrelevant to the
-ledger-period guarantee. We catalogue the four composition
-patterns by which on-chain treasuries operate as buyers in
+institutional shape behind the wallet is invisible to the kernel
+and irrelevant to the ledger-period guarantee. We catalogue the
+four composition patterns by which on-chain treasuries (and
+RWA-as-wallet operators more generally) operate as buyers in
 practice, and identify the four operational constraints the
 patterns inherit from the bonded primitive.
 
