@@ -56,7 +56,7 @@
 }
 
 \author{
-  Alessandro Daliana\thanks{Corresponding author. \texttt{adaliana@figaro.org}}
+  Alessandro Daliana
 }
 
 \date{May 2026}
@@ -194,7 +194,6 @@ register the present paper uses.
 \Cref{sec:coordinator} formalizes the coordinator pattern.
 \Cref{sec:runtime} describes runtime composition.
 \Cref{sec:refusals} catalogues what the discipline refuses.
-\Cref{sec:open} states open questions and future work.
 \Cref{sec:conclusion} concludes.
 
 % ════════════════════════════════════════════════════════════════════
@@ -215,7 +214,7 @@ storage mappings: \texttt{processes} (\texttt{ProcessState}),
 
 \paragraph{Six invariants.}
 (i) asymmetric bonding (buyer locks $2P$, seller locks $2G$);
-(ii) progressive collateralization across $N$-party process trees;
+(ii) progressive collateralization across $N$-party process chains;
 (iii) buyer dominance (only the root buyer can resolve);
 (iv) atomic resolution (all active orders settle simultaneously or
 not at all);
@@ -1044,11 +1043,11 @@ attempted in the first place.
 
 A specialized runtime surface deserves separate treatment: the
 assembly designer canvas (\texttt{ProcessGraphCanvas} +
-\texttt{AgreementDrawer}). The canvas is a DAG editor where assembly
-authors fork an existing reference assembly or start from blank,
-modify the bonded-process tree on a node-and-edge graph, edit
-per-node clauses through a side drawer, and save drafts to local
-storage.
+\texttt{AgreementDrawer}). The canvas is a composition surface
+where assembly authors fork an existing reference assembly or
+start from blank, modify the bonded-process graph, bind schemas
+to per-node clauses through a side drawer, and save drafts to
+local storage.
 
 The canvas is not a wizard, not a recommendation engine, not a
 generative-AI interface; it is a structural editor for assemblies.
@@ -1143,7 +1142,7 @@ external-event-conditional release; insurance does. The two compose;
 neither replaces the other.
 
 \paragraph{Multi-currency cross-leg coordination.}
-Any proposed extension that lets a process tree denominate
+Any proposed extension that lets a process chain denominate
 different legs in different currencies is refused. Multi-currency
 coordination requires an external rate of substitution (oracle,
 DEX, pre-agreed FX rate) that re-introduces a discretionary actor
@@ -1194,64 +1193,6 @@ participant breaks the equilibrium for that class. Whatever
 incentive a fee discount would supply belongs at the assembly
 or operator-registry tier as a parameter the parties choose,
 not at the bonding rule.
-
-% ════════════════════════════════════════════════════════════════════
-\section{Open Questions}
-\label{sec:open}
-
-Several questions remain open under the discipline.
-
-\paragraph{Layer B prover deferral.}
-The TypeScript Layer~A validator and the Solidity Layer~C validator
-are jointly the conformance specification for the eventual Rust
-Layer~B port. The deferral is reasonable for the current deployment
-phase (single-chain, no batched zero-knowledge attestation), but
-the eventual port produces a verification question: is the Rust
-implementation byte-for-byte equivalent to the TypeScript
-specification? A property-based-equivalence test suite is the
-natural answer. The discipline-level question is whether the suite
-is part of the verification stack or part of the conformance
-documentation.
-
-\paragraph{Coordinator-pattern formal verification.}
-\Cref{prop:coordinator}'s sufficient conditions can be discharged
-mechanically per coordinator (\texttt{AttestationCoordinator} is the
-worked example), but a parametric meta-verification that proves the
-discipline is correct for any coordinator that satisfies the
-conditions is not currently in the verification stack. The open
-question is whether parametric verification at the coordinator-pattern
-level is worth the work, or whether per-coordinator verification
-suffices.
-
-\paragraph{Runtime-tier verification.}
-The runtime tier currently has no formal-verification surface
-analogous to the kernel's. The discipline is operational (modules
-go through the action model, lenses constrain context, the canvas
-flags compositional errors) but not theorem-discharged. The open
-question is whether the runtime tier is amenable to formal
-verification in any useful sense: typed-action correctness might
-be checkable; lens-context separation might be checkable;
-compositional integrity might be checkable. The work is open.
-
-\paragraph{Cross-chain composition.}
-The protocol is currently single-chain. Cross-chain extensions
-(commitments anchored on chain $A$ with attestations anchored on
-chain $B$) would require an extension of the schema-validation
-surface and the coordinator pattern to handle cross-chain
-references. The discipline-level question is whether such
-extensions belong in the protocol or in graph-tier composition; we
-conjecture the latter but the question is open.
-
-\paragraph{Schema deprecation.}
-The append-only identity rule makes schema introduction monotonic:
-schemas are added but never removed. Operationally this is correct
-(historical attestations remain interpretable), but it produces a
-catalogue that grows monotonically over time. The discipline
-question is whether deprecation (marking a schema as not-recommended
-for new use while leaving its on-chain anchor intact for historical
-reads) is a runtime-tier concern, a documentation concern, or a
-protocol-tier concern. The current treatment is documentation-only;
-whether more is needed is open.
 
 % ════════════════════════════════════════════════════════════════════
 \section{Conclusion}
