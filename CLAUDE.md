@@ -216,7 +216,7 @@ prerequisites — no repeated interaction, no shared community, no exogenous
 punishment technology. Each co-seller is an RWA-as-wallet whose continued
 participation in its markets depends on receipts covering the asset's
 off-chain operating expenses (the node analogy; full apparatus in
-`paper/figaro3g.tex` §7 and `~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/reference_rwa_as_wallet.md`).
+`paper/figaro-accounting.tex` §7 and `~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/reference_rwa_as_wallet.md`).
 A failed resolution is not an isolated capital loss but a sustainability hit
 that propagates into the wallet's ability to keep operating. The weakest-link
 result tells you the cohort outcome; the RWA-sustainability frame tells you

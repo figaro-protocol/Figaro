@@ -47,11 +47,7 @@ Testnet-relevant items only. The full backlog stays canonical.
 
 19 .tex files in `paper/`. Publication-track, **not testnet-gating** — but corpus consistency is needed before any arXiv batch.
 
-- [ ] **READY (6) — could ship today.** `figaro-mechanism`, `figaro-verification`, `figaro-agent-coordination`, `figaro-airways`, `figaro-tradelens`, `figaro3g`.
-- [ ] **DRIFTED (1).** `figaro-protocol-extension.tex` — three rule violations:
-  - [ ] Contact footer line 59 (`\thanks{Corresponding author...}`).
-  - [ ] "Open Questions" section lines 1199–1255 (TOC line 197).
-  - [ ] "process tree(s)" lines 218, 1049, 1146 — must be "process chain".
+- [ ] **READY (7) — could ship today.** `figaro-mechanism`, `figaro-verification`, `figaro-agent-coordination`, `figaro-airways`, `figaro-tradelens`, `figaro-accounting`, `figaro-protocol-extension`.
 - [ ] **OPEN-REMEDIATION (9).** Apply the eight-rule audit pattern from CLAUDE.md "Paper Authorship Discipline":
   - [ ] `figaro3b.tex`
   - [ ] `figaro3b1.tex`
@@ -67,7 +63,7 @@ Testnet-relevant items only. The full backlog stays canonical.
   - [ ] `figaro3i.tex`
   - [ ] `figaro3m.tex`
 
-Cross-corpus drift to resolve before mixed submission: process-chain terminology in 9 papers; companion-paper references in 12; contact-footer in 13.
+Cross-corpus drift to resolve before mixed submission: process-chain terminology in 8 papers; companion-paper references in 12; contact-footer in 12.
 
 ---
 
