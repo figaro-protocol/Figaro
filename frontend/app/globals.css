@@ -107,8 +107,7 @@
 
     html,
     body {
-        @apply font-sans antialiased;
-        background-color: #f5f5f2;
+        @apply bg-canvas font-sans antialiased;
         color: #3a322a;
         letter-spacing: 0.005em;
         font-size: 16px;
