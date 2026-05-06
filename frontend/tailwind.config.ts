@@ -7,6 +7,9 @@ const config: Config = {
         "./app/**/*.{js,ts,jsx,tsx,mdx}",
     ],
     theme: {
+        // Top-level palette replaces Tailwind defaults; preserved verbatim so
+        // existing `gray.*` consumers continue to compile during the Step 3
+        // migration. New MUJI tokens are added in `extend.colors` below.
         colors: {
             white: '#ffffff',
             black: '#000000',
@@ -24,6 +27,9 @@ const config: Config = {
                 900: '#111827',
             },
         },
+        // Top-level borderRadius replaces Tailwind defaults; preserved so
+        // existing `rounded-{sm,md,lg,xl}` consumers continue to compile.
+        // MUJI radii are added under role-based keys in `extend.borderRadius`.
         borderRadius: {
             none: '0',
             sm: '0.125rem',
@@ -32,6 +38,115 @@ const config: Config = {
             lg: '0.5rem',
             xl: '0.75rem',
             full: '9999px',
+        },
+        extend: {
+            // Per docs/v5/DESIGN_TOKENS.md §1 (Color tokens).
+            // The `bg./text./border.` namespacing in the spec is dropped because
+            // Tailwind class generation uses role names directly (`bg-canvas`,
+            // `text-muted`, `border-default`). Note the deliberate rename of
+            // `text.*` to `ink.*` to avoid the `text-text-*` class collision
+            // (Tailwind utility prefix `text-` + token key `text`).
+            colors: {
+                // Surfaces
+                canvas: '#f5f5f2',
+                paper: '#ffffff',     // alias for muji `bg.surface`
+                surface: '#ffffff',
+                subtle: '#fafaf8',
+                'subtle-hover': '#f0f0ed',
+                // Borders (consumed as `border-default`, `border-subtle`,
+                // `border-strong`; also reachable as `bg-default` etc., but
+                // border is the intended role).
+                default: '#ececec',
+                'default-strong': '#b3b3a8',
+                // Text (`ink.*` to avoid `text-text-*` collision).
+                ink: {
+                    primary: '#222222',
+                    heading: '#111111',
+                    body: '#333333',
+                    muted: '#555555',
+                    faint: '#888888',
+                },
+                // Focus ring colour — same value as `default-strong` but
+                // exposed under its own role key for `ring-focus` / `outline-focus`.
+                focus: '#b3b3a8',
+                // Status. `info` reuses `text.muted` per spec — muji-* declines
+                // to introduce blue; informational state gets emphasis via weight.
+                success: '#6b7a4a',
+                warning: '#a8762d',
+                error: '#9c4a3c',
+                info: '#555555',
+            },
+            // Per docs/v5/DESIGN_TOKENS.md §3 (Spacing tokens).
+            // Six-step scale aliasing the muji-* values; named `xs..2xl` so
+            // utilities read as `p-md`, `gap-lg`, `mt-2xl`. Container side-padding
+            // (1.5rem / sm:2.5rem) already lives in `space.lg` / `space.xl`.
+            spacing: {
+                xs: '0.5rem',
+                sm: '0.75rem',
+                md: '1rem',
+                lg: '1.5rem',
+                xl: '2.5rem',
+                '2xl': '3.5rem',
+            },
+            // Per docs/v5/DESIGN_TOKENS.md §4 (Radius tokens).
+            // Spec ties `link`, `button`, `input` all to 0.75rem; deduplicated
+            // here to a single `tile` key. `section`, `invariant`, `glyph`
+            // keep their distinct roles.
+            borderRadius: {
+                section: '1.25rem',
+                invariant: '1rem',
+                tile: '0.75rem',   // shared by .muji-links a, button, input
+                glyph: '0.25rem',
+            },
+            // Per docs/v5/DESIGN_TOKENS.md §2 (Typography tokens — Font stack).
+            // Namespaced `muji-sans` / `muji-mono` (not plain `sans`/`mono`)
+            // so Tailwind's default `font-sans` / `font-mono` stay reachable
+            // through the Step 3 migration.
+            fontFamily: {
+                'muji-sans': [
+                    'Noto Sans JP',
+                    'Inter',
+                    'Helvetica Neue',
+                    'Arial',
+                    'sans-serif',
+                ],
+                'muji-mono': [
+                    'JetBrains Mono',
+                    'ui-monospace',
+                    'SFMono-Regular',
+                    'Menlo',
+                    'monospace',
+                ],
+            },
+            // Per docs/v5/DESIGN_TOKENS.md §2 (Typography tokens — Type scale).
+            // Each entry is [size, { lineHeight?, letterSpacing?, fontWeight? }]
+            // so a single utility (e.g. `text-heading-h1`) carries the full
+            // metric set. The three muji-* invariant scales are kept under
+            // `muji-*` keys to mirror the spec's source-of-truth class names.
+            fontSize: {
+                'heading-h1': ['2.5rem', { lineHeight: '1.2', letterSpacing: '0.01em', fontWeight: '600' }],
+                'heading-h2': ['1.875rem', { lineHeight: '1.25', letterSpacing: '0.01em', fontWeight: '600' }],
+                'heading-h3': ['1.25rem', { lineHeight: '1.4', letterSpacing: '0.01em', fontWeight: '600' }],
+                'body-lead': ['1.25rem', { lineHeight: '1.6', letterSpacing: '0.01em', fontWeight: '400' }],
+                eyebrow: ['0.8125rem', { lineHeight: '1.4', letterSpacing: '0.08em', fontWeight: '600' }],
+                'muji-title': ['2.5rem', { letterSpacing: '0.01em', fontWeight: '600' }],
+                'muji-subtitle': ['1.25rem', {}],
+                'muji-invariant-label': ['1.5rem', {}],
+                'muji-invariant-body': ['1rem', {}],
+                'muji-footer': ['0.95rem', {}],
+            },
+            // Per docs/v5/DESIGN_TOKENS.md §5 (Shadow tokens).
+            // Only the section-card shadow is named; `link` and `invariant`
+            // are explicitly `none` in the spec and map to Tailwind's existing
+            // `shadow-none`, so no token is added for them.
+            boxShadow: {
+                section: '0 2px 8px 0 rgba(0, 0, 0, 0.03)',
+            },
+            // Per docs/v5/DESIGN_TOKENS.md §2 (Typography tokens — `type.eyebrow`).
+            // The 0.08em tracking value used by the eyebrow label.
+            letterSpacing: {
+                eyebrow: '0.08em',
+            },
         },
     },
     plugins: [],
