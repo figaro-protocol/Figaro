@@ -1,10 +1,26 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Noto_Sans_JP, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+    subsets: ["latin"],
+    variable: "--font-inter",
+    display: "swap",
+});
+
+const notoSansJP = Noto_Sans_JP({
+    subsets: ["latin"],
+    variable: "--font-noto-sans-jp",
+    display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+    subsets: ["latin"],
+    variable: "--font-jetbrains-mono",
+    display: "swap",
+});
 
 export const viewport: Viewport = {
     width: "device-width",
@@ -44,8 +60,11 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
-            <body className={inter.className}>
+        <html
+            lang="en"
+            className={`${inter.variable} ${notoSansJP.variable} ${jetbrainsMono.variable}`}
+        >
+            <body>
                 <a
                     href="#main-content"
                     className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-black focus:text-white focus:px-4 focus:py-2 focus:rounded"

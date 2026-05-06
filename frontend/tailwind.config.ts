@@ -6,39 +6,11 @@ const config: Config = {
         "./components/**/*.{js,ts,jsx,tsx,mdx}",
         "./app/**/*.{js,ts,jsx,tsx,mdx}",
     ],
+    // Class-based dark mode strategy. Registered but not yet enabled — no
+    // top-level `<html class="dark">` toggle exists. Reserved for the
+    // Console route's dark surface and any future opt-in dark theme.
+    darkMode: 'class',
     theme: {
-        // Top-level palette replaces Tailwind defaults; preserved verbatim so
-        // existing `gray.*` consumers continue to compile during the Step 3
-        // migration. New MUJI tokens are added in `extend.colors` below.
-        colors: {
-            white: '#ffffff',
-            black: '#000000',
-            transparent: 'transparent',
-            gray: {
-                50: '#f9fafb',
-                100: '#f3f4f6',
-                200: '#e5e7eb',
-                300: '#d1d5db',
-                400: '#9ca3af',
-                500: '#6b7280',
-                600: '#4b5563',
-                700: '#374151',
-                800: '#1f2937',
-                900: '#111827',
-            },
-        },
-        // Top-level borderRadius replaces Tailwind defaults; preserved so
-        // existing `rounded-{sm,md,lg,xl}` consumers continue to compile.
-        // MUJI radii are added under role-based keys in `extend.borderRadius`.
-        borderRadius: {
-            none: '0',
-            sm: '0.125rem',
-            DEFAULT: '0.25rem',
-            md: '0.375rem',
-            lg: '0.5rem',
-            xl: '0.75rem',
-            full: '9999px',
-        },
         extend: {
             // Per docs/v5/DESIGN_TOKENS.md §1 (Color tokens).
             // The `bg./text./border.` namespacing in the spec is dropped because
@@ -97,19 +69,35 @@ const config: Config = {
                 glyph: '0.25rem',
             },
             // Per docs/v5/DESIGN_TOKENS.md §2 (Typography tokens — Font stack).
-            // Namespaced `muji-sans` / `muji-mono` (not plain `sans`/`mono`)
-            // so Tailwind's default `font-sans` / `font-mono` stay reachable
-            // through the Step 3 migration.
+            // Fonts are loaded via `next/font/google` in `app/layout.tsx` and
+            // exposed as CSS variables so the Tailwind stacks resolve to the
+            // actually-fetched files at runtime. The default `sans` and `mono`
+            // keys are also overridden so any `font-sans` / `font-mono`
+            // consumer (including body inheritance) picks up the MUJI stack.
             fontFamily: {
+                sans: [
+                    'var(--font-noto-sans-jp)',
+                    'var(--font-inter)',
+                    'Helvetica Neue',
+                    'Arial',
+                    'sans-serif',
+                ],
+                mono: [
+                    'var(--font-jetbrains-mono)',
+                    'ui-monospace',
+                    'SFMono-Regular',
+                    'Menlo',
+                    'monospace',
+                ],
                 'muji-sans': [
-                    'Noto Sans JP',
-                    'Inter',
+                    'var(--font-noto-sans-jp)',
+                    'var(--font-inter)',
                     'Helvetica Neue',
                     'Arial',
                     'sans-serif',
                 ],
                 'muji-mono': [
-                    'JetBrains Mono',
+                    'var(--font-jetbrains-mono)',
                     'ui-monospace',
                     'SFMono-Regular',
                     'Menlo',
