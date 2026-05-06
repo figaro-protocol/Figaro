@@ -329,6 +329,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                         <MerchantLogo
                             sellerAddress={merchantAddressTyped}
                             fallbackEmoji={restaurant.image}
+                            fallbackName={restaurant.name}
                             size={88}
                         />
                         <div className="flex-1 min-w-0">
@@ -376,6 +377,11 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                                             src={menuItem.image}
                                                             alt={menuItem.name}
                                                             className="w-12 h-12 rounded object-cover text-3xl flex items-center justify-center"
+                                                            fallback={
+                                                                <div className="w-12 h-12 rounded shrink-0 bg-neutral-100 border border-neutral-200 flex items-center justify-center text-xs font-semibold text-neutral-600" aria-hidden="true">
+                                                                    {menuItem.name.slice(0, 2).toUpperCase()}
+                                                                </div>
+                                                            }
                                                         />
                                                         <div className="flex-1">
                                                             <h3 className="font-semibold text-black mb-1">{menuItem.name}</h3>

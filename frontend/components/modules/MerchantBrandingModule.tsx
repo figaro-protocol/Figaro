@@ -133,12 +133,25 @@ export function MerchantBrandingModule({
 }
 
 /**
- * MerchantLogo — renders the merchant's logo from IPFS/HTTP,
- * with an emoji fallback.
+ * MerchantLogo — renders the merchant's logo from IPFS/HTTP, with two
+ * possible fallbacks: an initials block (when `fallbackName` is supplied)
+ * coloured by the merchant's accent, or a plain emoji (backward-compatible
+ * default for consumers that don't pass a name).
  */
 interface MerchantLogoProps {
     sellerAddress: `0x${string}` | undefined;
+    /**
+     * Emoji to render when no logo loads AND no `fallbackName` is supplied.
+     * Backward-compatibility default; `fallbackName` is the preferred
+     * fallback path because it produces a per-merchant-distinct affordance.
+     */
     fallbackEmoji?: string;
+    /**
+     * Merchant's display name. When provided, the fallback path renders a
+     * 2-letter initials block tinted with the merchant's accentColor (or
+     * neutral gray if no accent). Mirrors the discover-card InitialsAvatar.
+     */
+    fallbackName?: string;
     className?: string;
     size?: number;
     brandingOverride?: ResolvedMerchantBranding | null;
@@ -147,6 +160,7 @@ interface MerchantLogoProps {
 export function MerchantLogo({
     sellerAddress,
     fallbackEmoji = "🍽️",
+    fallbackName,
     className,
     size = 48,
     brandingOverride,
@@ -187,6 +201,34 @@ export function MerchantLogo({
         );
     }
 
+    // Initials fallback — preferred when a name is supplied. Matches the
+    // discover-card InitialsAvatar pattern.
+    if (fallbackName) {
+        const initials = fallbackName.slice(0, 2).toUpperCase();
+        const accent = branding?.branding.accentColor ?? "#6b7280";
+        return (
+            <span
+                className={className}
+                style={{
+                    backgroundColor: accent,
+                    color: "#ffffff",
+                    fontWeight: 600,
+                    fontSize: `${Math.max(10, Math.floor(size * 0.32))}px`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: size,
+                    height: size,
+                    borderRadius: 6,
+                }}
+                aria-hidden="true"
+            >
+                {initials}
+            </span>
+        );
+    }
+
+    // Emoji fallback — backward-compatible default.
     return (
         <span
             className={className}
