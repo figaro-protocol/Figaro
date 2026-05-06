@@ -1,13 +1,13 @@
 import Link from "next/link";
 
 const COL_HEADER_CLS =
-    "text-xs uppercase tracking-wider text-gray-500 font-semibold mb-4";
+    "text-eyebrow uppercase text-ink-muted mb-4";
 const COL_LINK_CLS =
-    "block text-black hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black rounded";
+    "block text-ink-heading hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded";
 
 export function Footer() {
     return (
-        <footer className="border-t border-gray-300 bg-transparent">
+        <footer className="border-t border-default bg-canvas">
             <div className="container mx-auto px-6 py-16">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
                     <div>
@@ -56,14 +56,14 @@ export function Footer() {
                         </div>
                     </div>
                 </div>
-                <div className="mt-8 pt-8 border-t border-gray-300 text-center text-black text-sm">
+                <div className="mt-8 pt-8 border-t border-default text-center text-ink-heading text-sm">
                     <p>Figaro Protocol &mdash; The TCP/IP of Trade.</p>
                     <div className="flex flex-wrap gap-2 justify-center items-center mt-3">
                         <a
                             href="https://github.com/figaro-protocol/Figaro-Prototype2"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black rounded"
+                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
                             aria-label="GitHub repository star count"
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -77,7 +77,7 @@ export function Footer() {
                             href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/LICENSE"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black rounded"
+                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
                             aria-label="MIT license"
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -91,7 +91,7 @@ export function Footer() {
                             href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/AUDIT_REPORT.md"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black rounded"
+                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
                             aria-label="Audit report"
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -102,7 +102,7 @@ export function Footer() {
                             />
                         </a>
                     </div>
-                    <div className="mt-3 text-xs text-gray-500">
+                    <div className="mt-3 text-xs text-ink-muted">
                         <span>
                             Figaro is a registered trademark. &copy; {new Date().getFullYear()} Figaro Protocol. All rights reserved. Provided as-is, without warranty of any kind. No liability is accepted for loss, damages, or bugs. Use at your own risk.
                         </span>
