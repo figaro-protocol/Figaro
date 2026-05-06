@@ -3,34 +3,13 @@
 import Link from "next/link";
 import { ContentImage } from "@/components/shared/ContentImage";
 import {
+    assemblyLabel,
+    fulfilmentLabel,
+} from "@/lib/shared/assemblyLabels";
+import {
     type Listing,
     listingClickThroughHref,
 } from "@/lib/shared/operatorListing";
-
-const FULFILLMENT_LABELS: Record<string, string> = {
-    "consume-onsite": "On-site",
-    "pickup": "Pickup",
-    "delivery": "Delivery",
-    "deliver:buyer-assigned": "Delivery (buyer-arranged)",
-    "deliver:seller-assigned": "Delivery (seller-arranged)",
-    "deliver:dutch-auction": "Delivery (auction)",
-};
-
-const ASSEMBLY_LABELS: Record<string, string> = {
-    "local-commerce": "Local Commerce",
-    "figaro-procurement": "Procurement",
-    "figaro-disclosure-review": "Disclosure Review",
-    "figaro-equipment-rental": "Equipment Rental",
-    "figaro-freelance": "Freelance",
-};
-
-function assemblyLabel(slug: string): string {
-    return ASSEMBLY_LABELS[slug] ?? slug;
-}
-
-function fulfilmentLabel(mode: string): string {
-    return FULFILLMENT_LABELS[mode] ?? mode;
-}
 
 function distinctAssemblySlugs(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => b.assemblySlug)));
@@ -51,19 +30,40 @@ function InitialsAvatar({ listing }: { listing: Listing }) {
     );
 }
 
-export function OperatorCard({ listing }: { listing: Listing }) {
+interface OperatorCardProps {
+    listing: Listing;
+    /**
+     * Called when the user clicks an assembly pill on the card. Lifts
+     * filter state to the parent `OperatorDiscovery`. If omitted, pills
+     * render as non-interactive labels.
+     */
+    onAssemblyClick?: (slug: string) => void;
+    /**
+     * Called when the user clicks a fulfilment pill on the card.
+     */
+    onFulfilmentClick?: (mode: string) => void;
+}
+
+export function OperatorCard({
+    listing,
+    onAssemblyClick,
+    onFulfilmentClick,
+}: OperatorCardProps) {
     const href = listingClickThroughHref(listing);
     const assemblies = distinctAssemblySlugs(listing);
     const roles = distinctRoles(listing);
 
     return (
-        <Link
-            href={href}
-            className="group block rounded-lg border border-gray-200 bg-white p-4 hover:border-black hover:shadow-sm transition-all"
+        <article
+            className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm"
             data-testid="operator-card"
             data-operator-address={listing.address}
         >
-            <div className="flex items-start gap-3 mb-3">
+            {/* Title block — the only navigation target on the card. */}
+            <Link
+                href={href}
+                className="flex items-start gap-3 mb-3 group"
+            >
                 {listing.logoURI ? (
                     <ContentImage
                         src={listing.logoURI}
@@ -75,13 +75,16 @@ export function OperatorCard({ listing }: { listing: Listing }) {
                     <InitialsAvatar listing={listing} />
                 )}
                 <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-semibold text-black truncate">{listing.name}</h3>
+                    <h3 className="text-base font-semibold text-black truncate group-hover:underline">
+                        {listing.name}
+                    </h3>
                     <p className="text-xs text-gray-500 truncate">
                         {roles.length > 0 ? roles.join(" · ") : "Unbound operator"}
                     </p>
                 </div>
-            </div>
+            </Link>
 
+            {/* Description / specialty / location — informational, not interactive. */}
             {listing.description && (
                 <p className="text-sm text-gray-700 leading-snug mb-3 line-clamp-2">
                     {listing.description}
@@ -103,15 +106,28 @@ export function OperatorCard({ listing }: { listing: Listing }) {
                 </p>
             )}
 
+            {/* Assembly pills — clickable filter triggers when callback supplied. */}
             <div className="flex flex-wrap gap-1.5 mb-3">
-                {assemblies.map((slug) => (
-                    <span
-                        key={slug}
-                        className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200"
-                    >
-                        {assemblyLabel(slug)}
-                    </span>
-                ))}
+                {assemblies.map((slug) =>
+                    onAssemblyClick ? (
+                        <button
+                            key={slug}
+                            type="button"
+                            onClick={() => onAssemblyClick(slug)}
+                            className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:border-black hover:bg-gray-200 transition-colors cursor-pointer"
+                            aria-label={`Filter by ${assemblyLabel(slug)}`}
+                        >
+                            {assemblyLabel(slug)}
+                        </button>
+                    ) : (
+                        <span
+                            key={slug}
+                            className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200"
+                        >
+                            {assemblyLabel(slug)}
+                        </span>
+                    ),
+                )}
                 {assemblies.length === 0 && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200">
                         Kernel-direct
@@ -119,31 +135,38 @@ export function OperatorCard({ listing }: { listing: Listing }) {
                 )}
             </div>
 
+            {/* Fulfilment pills — clickable filter triggers. */}
             {listing.fulfillmentModes.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
-                    {listing.fulfillmentModes.map((mode) => (
-                        <span
-                            key={mode}
-                            className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
-                        >
-                            {fulfilmentLabel(mode)}
-                        </span>
-                    ))}
+                    {listing.fulfillmentModes.map((mode) =>
+                        onFulfilmentClick ? (
+                            <button
+                                key={mode}
+                                type="button"
+                                onClick={() => onFulfilmentClick(mode)}
+                                className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:border-blue-500 hover:bg-blue-100 transition-colors cursor-pointer"
+                                aria-label={`Filter by ${fulfilmentLabel(mode)}`}
+                            >
+                                {fulfilmentLabel(mode)}
+                            </button>
+                        ) : (
+                            <span
+                                key={mode}
+                                className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
+                            >
+                                {fulfilmentLabel(mode)}
+                            </span>
+                        ),
+                    )}
                 </div>
             )}
 
+            {/* Accepted tokens — plain text, not pills. Descriptive, not filterable. */}
             {listing.acceptedTokens.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-2 border-t border-gray-100">
-                    {listing.acceptedTokens.map((t) => (
-                        <span
-                            key={t.address}
-                            className="text-xs px-1.5 py-0.5 rounded bg-gray-50 text-gray-600 border border-gray-200 font-mono"
-                        >
-                            {t.symbol}
-                        </span>
-                    ))}
-                </div>
+                <p className="pt-2 border-t border-gray-100 text-xs text-gray-500">
+                    Accepts {listing.acceptedTokens.map((t) => t.symbol).join(", ")}
+                </p>
             )}
-        </Link>
+        </article>
     );
 }

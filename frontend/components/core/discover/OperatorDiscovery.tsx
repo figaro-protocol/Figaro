@@ -4,18 +4,14 @@ import { useMemo, useState } from "react";
 import { OperatorCard } from "@/components/core/discover/OperatorCard";
 import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
 import {
+    assemblyLabel,
+    fulfilmentLabel,
+} from "@/lib/shared/assemblyLabels";
+import {
     listOperatorsFromRuntimeIdentity,
     listingMatchesGeohash,
     type Listing,
 } from "@/lib/shared/operatorListing";
-
-const ASSEMBLY_LABELS: Record<string, string> = {
-    "local-commerce": "Local Commerce",
-    "figaro-procurement": "Procurement",
-    "figaro-disclosure-review": "Disclosure Review",
-    "figaro-equipment-rental": "Equipment Rental",
-    "figaro-freelance": "Freelance",
-};
 
 function listingAssemblies(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => b.assemblySlug)));
@@ -26,12 +22,21 @@ export function OperatorDiscovery() {
 
     const [searchQuery, setSearchQuery] = useState("");
     const [assemblyFilter, setAssemblyFilter] = useState<string | null>(null);
+    const [fulfilmentFilter, setFulfilmentFilter] = useState<string | null>(null);
     const location = useDeviceLocation(5);
 
     const knownAssemblies = useMemo(() => {
         const set = new Set<string>();
         for (const l of allListings) {
             for (const slug of listingAssemblies(l)) set.add(slug);
+        }
+        return Array.from(set).sort();
+    }, [allListings]);
+
+    const knownFulfilmentModes = useMemo(() => {
+        const set = new Set<string>();
+        for (const l of allListings) {
+            for (const mode of l.fulfillmentModes) set.add(mode);
         }
         return Array.from(set).sort();
     }, [allListings]);
@@ -54,12 +59,24 @@ export function OperatorDiscovery() {
             list = list.filter((l) => listingAssemblies(l).includes(assemblyFilter));
         }
 
+        if (fulfilmentFilter) {
+            list = list.filter((l) => l.fulfillmentModes.includes(fulfilmentFilter as Listing["fulfillmentModes"][number]));
+        }
+
         if (location.geohash) {
             list = list.filter((l) => listingMatchesGeohash(l, location.geohash!));
         }
 
         return list;
-    }, [allListings, searchQuery, assemblyFilter, location.geohash]);
+    }, [allListings, searchQuery, assemblyFilter, fulfilmentFilter, location.geohash]);
+
+    const handleAssemblyPillClick = (slug: string) => {
+        setAssemblyFilter((current) => (current === slug ? null : slug));
+    };
+
+    const handleFulfilmentPillClick = (mode: string) => {
+        setFulfilmentFilter((current) => (current === mode ? null : mode));
+    };
 
     return (
         <div className="space-y-6">
@@ -101,46 +118,84 @@ export function OperatorDiscovery() {
                 )}
             </section>
 
-            {/* Search + assembly filter */}
-            <section className="flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <section>
                 <input
                     type="search"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search operators…"
                     aria-label="Search operators"
-                    className="flex-1 min-w-[200px] max-w-md rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                    className="w-full max-w-md rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
                 />
+            </section>
 
-                <div className="flex flex-wrap gap-2 items-center">
+            {/* Assembly filter row */}
+            <section className="flex flex-wrap gap-2 items-center">
+                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mr-1">
+                    Assembly
+                </span>
+                <button
+                    type="button"
+                    onClick={() => setAssemblyFilter(null)}
+                    className={
+                        "text-xs px-2.5 py-1 rounded-full border transition-colors " +
+                        (assemblyFilter === null
+                            ? "bg-black text-white border-black"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-black")
+                    }
+                >
+                    All
+                </button>
+                {knownAssemblies.map((slug) => (
                     <button
+                        key={slug}
                         type="button"
-                        onClick={() => setAssemblyFilter(null)}
+                        onClick={() => setAssemblyFilter(slug === assemblyFilter ? null : slug)}
                         className={
                             "text-xs px-2.5 py-1 rounded-full border transition-colors " +
-                            (assemblyFilter === null
+                            (assemblyFilter === slug
                                 ? "bg-black text-white border-black"
                                 : "bg-white text-gray-700 border-gray-300 hover:border-black")
                         }
                     >
-                        All
+                        {assemblyLabel(slug)}
                     </button>
-                    {knownAssemblies.map((slug) => (
-                        <button
-                            key={slug}
-                            type="button"
-                            onClick={() => setAssemblyFilter(slug === assemblyFilter ? null : slug)}
-                            className={
-                                "text-xs px-2.5 py-1 rounded-full border transition-colors " +
-                                (assemblyFilter === slug
-                                    ? "bg-black text-white border-black"
-                                    : "bg-white text-gray-700 border-gray-300 hover:border-black")
-                            }
-                        >
-                            {ASSEMBLY_LABELS[slug] ?? slug}
-                        </button>
-                    ))}
-                </div>
+                ))}
+            </section>
+
+            {/* Fulfilment filter row */}
+            <section className="flex flex-wrap gap-2 items-center">
+                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mr-1">
+                    Fulfilment
+                </span>
+                <button
+                    type="button"
+                    onClick={() => setFulfilmentFilter(null)}
+                    className={
+                        "text-xs px-2.5 py-1 rounded border transition-colors " +
+                        (fulfilmentFilter === null
+                            ? "bg-blue-700 text-white border-blue-700"
+                            : "bg-white text-blue-700 border-blue-200 hover:border-blue-500")
+                    }
+                >
+                    All
+                </button>
+                {knownFulfilmentModes.map((mode) => (
+                    <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setFulfilmentFilter(mode === fulfilmentFilter ? null : mode)}
+                        className={
+                            "text-xs px-2.5 py-1 rounded border transition-colors " +
+                            (fulfilmentFilter === mode
+                                ? "bg-blue-700 text-white border-blue-700"
+                                : "bg-white text-blue-700 border-blue-200 hover:border-blue-500")
+                        }
+                    >
+                        {fulfilmentLabel(mode)}
+                    </button>
+                ))}
             </section>
 
             <p className="text-xs text-gray-500">
@@ -150,7 +205,12 @@ export function OperatorDiscovery() {
             {/* Listing grid */}
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map((l) => (
-                    <OperatorCard key={l.address} listing={l} />
+                    <OperatorCard
+                        key={l.address}
+                        listing={l}
+                        onAssemblyClick={handleAssemblyPillClick}
+                        onFulfilmentClick={handleFulfilmentPillClick}
+                    />
                 ))}
             </section>
 
