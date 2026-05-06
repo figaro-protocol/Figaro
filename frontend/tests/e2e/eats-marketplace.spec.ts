@@ -30,7 +30,10 @@ test.describe('Operator discovery (mock)', () => {
         await gotoDiscoverMock(page);
         const firstCard = page.getByTestId('operator-card').first();
         await expect(firstCard).toBeVisible({ timeout: 10000 });
-        await firstCard.click();
+        // Card structure: only the title block (first <a>) is the click
+        // target — pills are filter buttons, not links. Click the inner
+        // link explicitly rather than the article.
+        await firstCard.locator('a').first().click();
         await expect(page).toHaveURL(/\/m\/0x[0-9a-fA-F]{40}/, { timeout: 10000 });
         await expect(page.getByTestId('merchant-detail-view')).toBeVisible({ timeout: 15000 });
     });
@@ -60,9 +63,13 @@ test.describe('Merchant detail + cart (mock)', () => {
         const placeOrder = page.getByTestId('btn-place-order');
         await expect(placeOrder).toBeVisible({ timeout: 5000 });
 
-        // No wallet connected in mock mode → the button text is the wallet
-        // hint and the action is disabled.
+        // No wallet connected → the button text is the wallet hint. The
+        // button stays enabled — clicking it opens the RainbowKit
+        // connect modal via `useConnectModal().openConnectModal()`. The
+        // pre-2026-05 disabled-button shape was visually a "gate" but
+        // had no actionable affordance; the modal-trigger pattern is
+        // the standard wallet-connect entry point.
         await expect(placeOrder).toHaveText(/Connect wallet to order/i);
-        await expect(placeOrder).toBeDisabled();
+        await expect(placeOrder).toBeEnabled();
     });
 });

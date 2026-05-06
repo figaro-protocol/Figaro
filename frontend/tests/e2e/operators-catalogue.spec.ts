@@ -35,7 +35,10 @@ test.describe('/operators/catalogue — page structure', () => {
         await expect(page.getByRole('heading', { name: 'Build your catalogue.' })).toBeVisible();
         await expect(page.getByText('Operator Registry').first()).toBeVisible();
         await expect(page.getByText('Define your service items, publish them to IPFS')).toBeVisible();
-        await expect(page.getByRole('link', { name: 'Register' })).toHaveAttribute('href', '/operators');
+        // `exact: true` disambiguates from the brand-logo link in the header,
+        // whose accessible name is "Figaroregistered trademark" and would
+        // partial-match "Register" otherwise (strict-mode collision).
+        await expect(page.getByRole('link', { name: 'Register', exact: true })).toHaveAttribute('href', '/operators');
         await expect(page.getByText('Add catalogue', { exact: true })).toBeVisible();
     });
 });
