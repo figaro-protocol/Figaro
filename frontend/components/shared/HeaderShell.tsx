@@ -30,7 +30,7 @@ interface HeaderShellProps {
  */
 export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: HeaderShellProps) {
     return (
-        <header className="border-b border-gray-300 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+        <header className="border-b border-default bg-canvas/80 backdrop-blur-md sticky top-0 z-50">
             <div className="container mx-auto px-6 py-5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                     <MobileNav theme="light" topCta={mobileTopCta} links={mobileLinks} />
@@ -40,7 +40,7 @@ export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: Hea
                 <div className="flex items-center gap-3">{right}</div>
             </div>
             {bottomRow && (
-                <div className="border-t border-gray-200">
+                <div className="border-t border-default">
                     <div className="container mx-auto px-6 py-2 flex justify-center">
                         {bottomRow}
                     </div>
