@@ -25,10 +25,10 @@ export default function Specifications() {
             />
 
             <MarketingSection eyebrow="Inheritance" eyebrowAsHeading>
-                <p className="text-base text-gray-700 leading-relaxed mb-3">
+                <p className="text-base text-ink-body leading-relaxed mb-3">
                     This page catalogues the <strong>on-chain composition</strong> layer (the kernel plus the permissionless primitives built around it). Each contract below inherits the kernel&apos;s ownerless / tamper-evident / atomic-settlement properties &mdash; the invariants stated on <Link href="/protocol" className="underline">Protocol</Link>. The kernel in turn inherits execution security from whichever EVM chain it is deployed on &mdash; network → kernel → on-chain composition → off-chain composition → trade. Remove any floor and what&apos;s above collapses.
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-ink-muted">
                     Off-chain composition lives at <Link href="/builders" className="underline">/builders</Link>; the stack as a whole is summarised on <Link href="/" className="underline">the home page</Link>.
                 </p>
             </MarketingSection>
@@ -85,41 +85,41 @@ export default function Specifications() {
             </MarketingSection>
 
             <MarketingSection eyebrow="Schema validators in force" eyebrowAsHeading>
-                <p className="text-sm text-gray-600 mb-6">
+                <p className="text-sm text-ink-muted mb-6">
                     Seventeen runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-gray-300 text-left text-xs font-semibold uppercase tracking-widest text-gray-600">
+                            <tr className="border-b border-default text-left text-eyebrow uppercase text-ink-muted">
                                 <th scope="col" className="py-2 pr-4">schemaId</th>
                                 <th scope="col" className="py-2 pr-4">What it carries</th>
                                 <th scope="col" className="py-2">Attestation</th>
                             </tr>
                         </thead>
-                        <tbody className="[&>tr]:border-b [&>tr]:border-gray-100">
-                            <tr><td className="py-2 pr-4"><code>figaro-topology-v1</code></td><td className="py-2 pr-4 text-gray-700">DAG lineage (parent order hashes)</td><td className="py-2 text-gray-600">Manifest-only</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-handoff-v1</code></td><td className="py-2 pr-4 text-gray-700">Physical-exchange mode</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-commerce-v1</code></td><td className="py-2 pr-4 text-gray-700">Currency, payment, line items</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-geo-v1</code></td><td className="py-2 pr-4 text-gray-700">Origin / destination geohash</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-fulfilment-v1</code></td><td className="py-2 pr-4 text-gray-700">Fulfilment method (single canonical enum: modality + who-organizes)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-protocol-v1</code></td><td className="py-2 pr-4 text-gray-700">GHG Protocol Corporate Standard + scope (Category-2)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-iso-14064-v1</code></td><td className="py-2 pr-4 text-gray-700">ISO 14064 family + scope (Category-2)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-pas-2050-v1</code></td><td className="py-2 pr-4 text-gray-700">PAS 2050 product carbon footprint + scope (Category-2)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-en-16258-v1</code></td><td className="py-2 pr-4 text-gray-700">EN 16258 transport methodology + scope (Category-2)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-custom-v1</code></td><td className="py-2 pr-4 text-gray-700">Custom GHG methodology + scope (Category-2)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-measurement-v1</code></td><td className="py-2 pr-4 text-gray-700">Runtime grams CO₂e (Category-1)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-delivery-lifecycle-v1</code></td><td className="py-2 pr-4 text-gray-700">Stage progression (5 stages) + evidence URI</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-proximity-policy-v1</code></td><td className="py-2 pr-4 text-gray-700">Required detection band committed at agreement signing (Category-2)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-proximity-proof-v1</code></td><td className="py-2 pr-4 text-gray-700">Per-handoff nonce + signed witness payload at runtime (Category-1)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-merchant-process-v1</code></td><td className="py-2 pr-4 text-gray-700">Merchant per-role event log (sovereign log; generic across local-commerce verticals)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-courier-process-v1</code></td><td className="py-2 pr-4 text-gray-700">Courier per-role event log (sovereign log; generic across transport modes)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-jurisdiction-v1</code></td><td className="py-2 pr-4 text-gray-700">Off-chain dispute-resolution jurisdiction (applicable law + forum + language) &mdash; baseline graph per Paper E</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-consent-v1</code></td><td className="py-2 pr-4 text-gray-700">Cryptographic consent to an off-chain legal document (documentHash + version + title)</td><td className="py-2 text-gray-600">Layer A + C</td></tr>
+                        <tbody className="[&>tr]:border-b [&>tr]:border-default">
+                            <tr><td className="py-2 pr-4"><code>figaro-topology-v1</code></td><td className="py-2 pr-4 text-ink-body">DAG lineage (parent order hashes)</td><td className="py-2 text-ink-muted">Manifest-only</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-handoff-v1</code></td><td className="py-2 pr-4 text-ink-body">Physical-exchange mode</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-commerce-v1</code></td><td className="py-2 pr-4 text-ink-body">Currency, payment, line items</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-geo-v1</code></td><td className="py-2 pr-4 text-ink-body">Origin / destination geohash</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-fulfilment-v1</code></td><td className="py-2 pr-4 text-ink-body">Fulfilment method (single canonical enum: modality + who-organizes)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-ghg-protocol-v1</code></td><td className="py-2 pr-4 text-ink-body">GHG Protocol Corporate Standard + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-ghg-iso-14064-v1</code></td><td className="py-2 pr-4 text-ink-body">ISO 14064 family + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-ghg-pas-2050-v1</code></td><td className="py-2 pr-4 text-ink-body">PAS 2050 product carbon footprint + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-ghg-en-16258-v1</code></td><td className="py-2 pr-4 text-ink-body">EN 16258 transport methodology + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-ghg-custom-v1</code></td><td className="py-2 pr-4 text-ink-body">Custom GHG methodology + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-ghg-measurement-v1</code></td><td className="py-2 pr-4 text-ink-body">Runtime grams CO₂e (Category-1)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-delivery-lifecycle-v1</code></td><td className="py-2 pr-4 text-ink-body">Stage progression (5 stages) + evidence URI</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-proximity-policy-v1</code></td><td className="py-2 pr-4 text-ink-body">Required detection band committed at agreement signing (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-proximity-proof-v1</code></td><td className="py-2 pr-4 text-ink-body">Per-handoff nonce + signed witness payload at runtime (Category-1)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-merchant-process-v1</code></td><td className="py-2 pr-4 text-ink-body">Merchant per-role event log (sovereign log; generic across local-commerce verticals)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-courier-process-v1</code></td><td className="py-2 pr-4 text-ink-body">Courier per-role event log (sovereign log; generic across transport modes)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-jurisdiction-v1</code></td><td className="py-2 pr-4 text-ink-body">Off-chain dispute-resolution jurisdiction (applicable law + forum + language) &mdash; baseline graph per Paper E</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-consent-v1</code></td><td className="py-2 pr-4 text-ink-body">Cryptographic consent to an off-chain legal document (documentHash + version + title)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <p className="text-xs text-gray-600 mt-4">
+                <p className="text-xs text-ink-muted mt-4">
                     Layer A = client-side TypeScript validator. Layer C = on-chain Solidity validator. Both parse the same canonical JSON spec. See{" "}
                     <Link href="/schemas" className="underline">Schemas</Link> for the three-layer validation architecture.
                 </p>
@@ -148,7 +148,7 @@ export default function Specifications() {
                         desc="Single-method minter interface (mint(address, uint256)) implemented by FigToken. Anchors the minter-registry composition pattern."
                     />
                 </ul>
-                <p className="text-xs text-gray-600 mt-4">
+                <p className="text-xs text-ink-muted mt-4">
                     Allocation: 100M founders (genesis), 300M DAO (genesis), 600M community airdrop (300 / 200 / 100 at yr 2 / 5 / 9). See <Link href="/fig" className="underline">FIG</Link>.
                 </p>
             </MarketingSection>
@@ -193,19 +193,19 @@ export default function Specifications() {
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-gray-300 text-left text-xs font-semibold uppercase tracking-widest text-gray-600">
+                            <tr className="border-b border-default text-left text-eyebrow uppercase text-ink-muted">
                                 <th scope="col" className="py-2 pr-4">Network</th>
                                 <th scope="col" className="py-2 pr-4">Chain ID</th>
                                 <th scope="col" className="py-2">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="[&>tr]:border-b [&>tr]:border-gray-100">
-                            <tr><td className="py-2 pr-4">Local Anvil</td><td className="py-2 pr-4 font-mono">31337</td><td className="py-2 text-gray-600">Devnet (active)</td></tr>
-                            <tr><td className="py-2 pr-4">Ethereum mainnet</td><td className="py-2 pr-4 font-mono">1</td><td className="py-2 text-gray-600">Pending external audit</td></tr>
+                        <tbody className="[&>tr]:border-b [&>tr]:border-default">
+                            <tr><td className="py-2 pr-4">Local Anvil</td><td className="py-2 pr-4 font-mono">31337</td><td className="py-2 text-ink-muted">Devnet (active)</td></tr>
+                            <tr><td className="py-2 pr-4">Ethereum mainnet</td><td className="py-2 pr-4 font-mono">1</td><td className="py-2 text-ink-muted">Pending external audit</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <p className="text-xs text-gray-600 mt-4">
+                <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/RELEASE_READINESS.md" target="_blank" rel="noopener noreferrer" className="underline">RELEASE_READINESS.md</a>{" "}
                     for gate criteria, the frozen-surface declaration, and the hardening completion record.
@@ -213,7 +213,7 @@ export default function Specifications() {
             </MarketingSection>
 
             <MarketingSection eyebrow="Extension" eyebrowAsHeading bottomPad="wide">
-                <p className="text-sm text-gray-700 leading-relaxed">
+                <p className="text-sm text-ink-body leading-relaxed">
                     Mechanisms, schemas, and role models extend the protocol without altering the kernel. The kernel invariants the Extension doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md" target="_blank" rel="noopener noreferrer" className="underline">PROTOCOL_EXTENSION_DOCTRINE.md</a>{" "}
                     for the three tiers, and the{" "}
