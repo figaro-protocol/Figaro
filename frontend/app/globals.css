@@ -17,6 +17,9 @@
         scroll-behavior: smooth;
     }
 
+    /* Heading color applies to all six levels; spacing only to h1/h2/h3,
+       since h4-h6 typically appear inside components (footer columns,
+       card section labels) where the component sets its own rhythm. */
     h1,
     h2,
     h3,
@@ -24,8 +27,6 @@
     h5,
     h6 {
         @apply text-ink-heading;
-        margin-top: 2.5rem;
-        margin-bottom: 1.2rem;
     }
 
     h1 {
@@ -36,10 +37,14 @@
 
     h2 {
         @apply text-heading-h2;
+        margin-top: 2.5rem;
+        margin-bottom: 1.2rem;
     }
 
     h3 {
         @apply text-heading-h3;
+        margin-top: 2.5rem;
+        margin-bottom: 1.2rem;
     }
 
     /* Links: no underline by default; hover reveals underline + color shift.
