@@ -115,6 +115,22 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [supportedModes]);
 
+    // Cart hygiene: zustand `persist` middleware writes the cart to localStorage
+    // under one global key, so cart items survive cross-merchant navigation.
+    // When this view mounts on a merchant whose address doesn't match every
+    // existing cart item, clear the cart — otherwise stale items from a prior
+    // session leak in (the "Charlie's prepops with Cheeseburger" symptom).
+    useEffect(() => {
+        if (items.length === 0) return;
+        const allMatchCurrent = items.every(
+            (item) => item.restaurantAddress.toLowerCase() === merchantAddressLower,
+        );
+        if (!allMatchCurrent) {
+            clearCart();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [merchantAddressLower]);
+
     const balance = tokenBalance ?? 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
     const isApproving = isApprovePending || isApproveConfirming;
