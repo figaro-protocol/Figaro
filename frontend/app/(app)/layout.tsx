@@ -20,11 +20,7 @@ export const dynamic = "force-dynamic";
  * wallet-aware `<Header>` (with ConnectButton + NotificationBell).
  *
  * The canonical inventory of (app) routes is the directory listing of
- * `app/(app)/`.
- * As of 2026-05-01: `/audit`, `/audit/[processId]`, `/consent`, `/console`,
- * `/discover`, `/dispute`, `/evidence-display`, `/fig`, `/i/[slug]`,
- * `/operators`, `/sign`, `/terminal`, plus the designer sub-routes under
- * `/builders/designer/*`. (`/builders` itself moved to `(marketing)/`;
+ * `app/(app)/`. (`/builders` itself moved to `(marketing)/`;
  * `/financials/[processId]` and `/verify` were merged into `/audit/*`.)
  *
  * Routes that read like reference but live in `app/(marketing)/` —

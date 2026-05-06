@@ -2,10 +2,8 @@ import { MarketingHeader } from "@/components/shared/MarketingHeader";
 import { Footer } from "@/components/shared/Footer";
 
 /**
- * Layout for marketing-tier routes (`/`, `/about`, `/help`, `/research`,
- * `/publications`, `/spec`, `/verification`, `/sovereign-commerce`,
- * `/economics`, `/labor-law`, `/displaced`, `/legal`, `/compliance`,
- * `/mechanism`, `/resources`).
+ * Layout for marketing-tier routes. Canonical inventory is the directory
+ * listing of `app/(marketing)/`.
  *
  * Does NOT mount `<Providers>` (WagmiProvider + RainbowKit + ChainGuard
  * + CommerceProvider + HandoffCleanupProvider + CommitmentSignPreviewProvider
