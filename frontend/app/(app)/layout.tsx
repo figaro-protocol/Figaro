@@ -39,7 +39,7 @@ export const dynamic = "force-dynamic";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <Providers>
-            <div className="min-h-screen flex flex-col bg-white text-black">
+            <div className="min-h-screen flex flex-col">
                 <Header />
                 <main id="main-content" className="flex-1">{children}</main>
                 <Footer />
