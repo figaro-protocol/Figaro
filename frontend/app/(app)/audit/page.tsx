@@ -1,4 +1,4 @@
-"use client";
+import type { Metadata } from "next";
 
 /**
  * /audit — generic hash-verification surface (no processId).
@@ -12,10 +12,18 @@
  * For process-bound audit (financials + audit bundle + verify scoped to
  * the current process), use `/audit/[processId]`.
  *
+ * Server component — the top-level page doesn't use hooks itself; the
+ * `<HashVerifier />` child carries its own `"use client"`.
+ *
  * The legacy `/verify` route redirects here.
  */
 
 import { HashVerifier } from "@/components/core/audit/HashVerifier";
+
+export const metadata: Metadata = {
+    title: "Audit — Figaro Protocol",
+    description: "Verify a hash from an audit bundle against chain state.",
+};
 
 export default function AuditPage() {
     return (
