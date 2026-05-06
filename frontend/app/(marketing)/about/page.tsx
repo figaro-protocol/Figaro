@@ -21,7 +21,7 @@ export default function About() {
             />
 
             <MarketingSection eyebrow="Posture" title="What the kernel will not do.">
-                <ul className="space-y-3 text-base text-gray-700 leading-relaxed list-disc pl-6">
+                <ul className="space-y-3 text-base text-ink-body leading-relaxed list-disc pl-6">
                     <li>No owner, no admin, no pause function.</li>
                     <li>No protocol fee at the kernel.</li>
                     <li>FIG is not a governance token. It is a coordination Schelling point.</li>
@@ -30,7 +30,7 @@ export default function About() {
             </MarketingSection>
 
             <MarketingSection eyebrow="The name" title="Figaro is the factotum of the city.">
-                <p className="text-base text-gray-700 leading-relaxed mb-4">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
                     In Rossini&apos;s <em>Il Barbiere di Siviglia</em> (1816, libretto
                     by Sterbini, drawn from Beaumarchais&apos;s <em>Le Barbier de
                     Séville</em>, 1775), the character declares himself the
@@ -39,7 +39,7 @@ export default function About() {
                     parties of incommensurable standing, making commerce of the
                     whole household work without owning any of it.
                 </p>
-                <p className="text-base text-gray-700 leading-relaxed mb-4">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
                     The kernel is named for what it does: the factotum of the
                     network, the coordinator of everything without being the owner
                     of anything. <code>FigaroCore</code> holds collateral, executes
@@ -47,7 +47,7 @@ export default function About() {
                     coordination function the character performs, at protocol
                     scale.
                 </p>
-                <p className="text-base text-gray-700 leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed">
                     The naming dates to Figaro-Original (Genovese &amp; Daliana,
                     March 2022). <strong>FIG</strong> is the name by which the
                     token is invoked, the way ETH and USDC are. See{" "}
@@ -67,7 +67,7 @@ export default function About() {
                 eyebrow="Ideological agnosticism"
                 title="The kernel is narrow so the graph can be anything."
             >
-                <p className="text-base text-gray-700 leading-relaxed mb-4">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
                     <code>FigaroCore</code> takes no position on currency,
                     jurisdiction, identity, arbitration, role structure,
                     price-discovery, or contribution metric. Every other
@@ -75,20 +75,20 @@ export default function About() {
                     wide range of economic arrangements can be expressed on
                     top:
                 </p>
-                <ul className="space-y-2 text-base text-gray-700 leading-relaxed list-disc pl-6 mb-4">
+                <ul className="space-y-2 text-base text-ink-body leading-relaxed list-disc pl-6 mb-4">
                     <li>A market-liberal graph where every role is priced at auction.</li>
                     <li>A cooperative graph where surplus routes back to contributors via programmatic shares.</li>
                     <li>An Islamic-finance graph that forbids riba and structures returns through bonded profit-sharing.</li>
                     <li>A mutual-aid graph where bonds are reciprocal rather than monetary, denominated in a community currency.</li>
                     <li>A diaspora-network graph where jurisdictional identity is replaced by a cryptographic key and a social-graph attestation.</li>
                 </ul>
-                <p className="text-base text-gray-700 leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed">
                     Same kernel underneath all of them. The ideological commitments
                     live in the assembly &mdash; in which roles it defines, which
                     mechanisms it invokes, which clauses it requires. The kernel
                     is ideologically agnostic; the graph is the politics.
                 </p>
-                <p className="text-sm text-gray-600 mt-6">
+                <p className="text-sm text-ink-muted mt-6">
                     Mechanism derivation:{" "}
                     <Link href="/protocol" className="underline">/protocol</Link>.
                     Reading paths by discipline:{" "}
@@ -99,7 +99,7 @@ export default function About() {
             </MarketingSection>
 
             <MarketingSection eyebrow="Enforcement" title="Three layers carry the equilibrium.">
-                <p className="text-base text-gray-700 leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed">
                     Economic (asymmetric bonding makes defection irrational), social
                     (multi-party processes bind contributors together via the
                     weakest-link subgame), and legal (immutable evidence for
@@ -110,7 +110,7 @@ export default function About() {
             </MarketingSection>
 
             <MarketingSection eyebrow="Substrate" title="Chain-agnostic.">
-                <p className="text-base text-gray-700 leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed">
                     The kernel deploys for any EVM-compatible network. It does not establish trust; it inherits it from the network underneath &mdash; from the network&apos;s consensus, its tamper-evident history, its deterministic execution, its finality guarantees. Different chain, different security assumptions; same kernel, same invariants once those assumptions hold. Canonical deployments are listed in the{" "}
                     <Link href="/spec" className="underline">Specifications</Link>{" "}
                     index.
@@ -118,13 +118,13 @@ export default function About() {
             </MarketingSection>
 
             <MarketingSection eyebrow="Three tiers" title="Kernel, protocol, runtime.">
-                <p className="text-base text-gray-700 leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed">
                     Three composable tiers: <Link href="/spec" className="underline">kernel</Link> (the irreducible settlement primitive), <Link href="/protocol" className="underline">protocol</Link> (kernel + extension doctrine + public graphs), and <Link href="/builders" className="underline">runtime</Link> (UI surfaces + builder tools). Each composes on top of the one below. Mechanism derivation lives on <Link href="/protocol" className="underline">/protocol</Link>; the kernel surface is documented at <Link href="/spec" className="underline">/spec</Link>.
                 </p>
             </MarketingSection>
 
             <MarketingSection eyebrow="License" title="MIT. Source-available." bottomPad="wide">
-                <p className="text-base text-gray-700 leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed">
                     <a
                         href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/LICENSE"
                         target="_blank"
