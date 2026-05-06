@@ -13,7 +13,6 @@ export default function Composability() {
     return (
         <>
             <MarketingHero
-                eyebrow="Composability"
                 title="What the kernel's narrowness produces."
                 lead={
                     <>

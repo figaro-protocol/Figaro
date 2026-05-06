@@ -47,7 +47,6 @@ export default function Groups() {
     return (
         <>
             <MarketingHero
-                eyebrow="Working Groups"
                 title="Two axes. One substrate."
                 lead={
                     <>

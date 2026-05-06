@@ -13,7 +13,6 @@ export default function BuilderComposability() {
     return (
         <>
             <MarketingHero
-                eyebrow="Composability — Builder architecture"
                 title="The pattern that preserves the equilibrium."
                 lead={
                     <>

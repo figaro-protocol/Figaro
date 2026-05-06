@@ -145,7 +145,6 @@ export default function Schemas() {
     return (
         <>
             <MarketingHero
-                eyebrow="Schemas"
                 title="Three layers of validation."
                 lead={
                     <>

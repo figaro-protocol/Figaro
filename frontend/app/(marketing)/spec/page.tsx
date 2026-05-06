@@ -15,7 +15,6 @@ export default function Specifications() {
     return (
         <>
             <MarketingHero
-                eyebrow="Specifications"
                 title="The canonical surface."
                 lead={
                     <>

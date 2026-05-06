@@ -23,7 +23,6 @@ export default function BuildersPage() {
     return (
         <>
             <MarketingHero
-                eyebrow="Builders"
                 title="The operational catalogue."
                 lead={
                     <>

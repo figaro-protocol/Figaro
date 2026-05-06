@@ -13,7 +13,6 @@ export default function Protocol() {
     return (
         <>
             <MarketingHero
-                eyebrow="Protocol"
                 title="Two mechanisms, one bonded commitment."
                 lead={
                     <>

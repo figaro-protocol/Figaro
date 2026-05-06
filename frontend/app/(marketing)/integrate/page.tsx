@@ -14,7 +14,6 @@ export default function Integrate() {
     return (
         <>
             <MarketingHero
-                eyebrow="Integrate"
                 title="SDK and composition surface."
                 lead={
                     <>

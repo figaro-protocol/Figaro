@@ -12,7 +12,6 @@ export default function About() {
     return (
         <>
             <MarketingHero
-                eyebrow="About"
                 title="What Figaro is &mdash; and what it is not."
                 lead={
                     <>
