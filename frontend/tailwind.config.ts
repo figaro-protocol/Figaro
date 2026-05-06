@@ -47,34 +47,32 @@ const config: Config = {
             // `text.*` to `ink.*` to avoid the `text-text-*` class collision
             // (Tailwind utility prefix `text-` + token key `text`).
             colors: {
-                // Surfaces
+                // Surfaces — Step 3.3 revision: warmer recessed surfaces (R>G>B)
+                // so the muji palette reads as warm rather than near-cool-gray.
                 canvas: '#f5f5f2',
-                paper: '#ffffff',     // alias for muji `bg.surface`
+                paper: '#ffffff',
                 surface: '#ffffff',
-                subtle: '#fafaf8',
-                'subtle-hover': '#f0f0ed',
-                // Borders (consumed as `border-default`, `border-subtle`,
-                // `border-strong`; also reachable as `bg-default` etc., but
-                // border is the intended role).
-                default: '#ececec',
-                'default-strong': '#b3b3a8',
+                subtle: '#f0ede5',
+                'subtle-hover': '#e6e2d8',
+                // Borders — warm linen/taupe replacing neutral grays.
+                default: '#e0dccf',
+                'default-strong': '#b3a98f',
                 // Text (`ink.*` to avoid `text-text-*` collision).
+                // Step 3.3 revision: cool-neutral grays (#111/#222/#333/#555/#888)
+                // failed visible-warmth test against Tailwind's gray.* ramp;
+                // replaced with R>G>B warm-neutral ramp (sumi → cocoa → khaki).
                 ink: {
-                    primary: '#222222',
-                    heading: '#111111',
-                    body: '#333333',
-                    muted: '#555555',
-                    faint: '#888888',
+                    heading: '#1c1814',
+                    primary: '#3a322a',
+                    body: '#5a4f42',
+                    muted: '#857c6e',
+                    faint: '#a89e8d',
                 },
-                // Focus ring colour — same value as `default-strong` but
-                // exposed under its own role key for `ring-focus` / `outline-focus`.
-                focus: '#b3b3a8',
-                // Status. `info` reuses `text.muted` per spec — muji-* declines
-                // to introduce blue; informational state gets emphasis via weight.
+                focus: '#b3a98f',
                 success: '#6b7a4a',
                 warning: '#a8762d',
                 error: '#9c4a3c',
-                info: '#555555',
+                info: '#857c6e',
             },
             // Per docs/v5/DESIGN_TOKENS.md §3 (Spacing tokens).
             // Six-step scale aliasing the muji-* values; named `xs..2xl` so
@@ -124,10 +122,13 @@ const config: Config = {
             // metric set. The three muji-* invariant scales are kept under
             // `muji-*` keys to mirror the spec's source-of-truth class names.
             fontSize: {
-                'heading-h1': ['2.5rem', { lineHeight: '1.2', letterSpacing: '0.01em', fontWeight: '600' }],
-                'heading-h2': ['1.875rem', { lineHeight: '1.25', letterSpacing: '0.01em', fontWeight: '600' }],
-                'heading-h3': ['1.25rem', { lineHeight: '1.4', letterSpacing: '0.01em', fontWeight: '600' }],
-                'body-lead': ['1.25rem', { lineHeight: '1.6', letterSpacing: '0.01em', fontWeight: '400' }],
+                // Step 3.3 revision: prior scale (2.5rem / 1.875rem / 1.25rem +
+                // 17px base / 1.7 line-height / 0.01em tracking) produced "huge"
+                // rendering; reduced to MUJI catalog density.
+                'heading-h1': ['2rem', { lineHeight: '1.25', letterSpacing: '0.005em', fontWeight: '600' }],
+                'heading-h2': ['1.5rem', { lineHeight: '1.3', letterSpacing: '0.005em', fontWeight: '600' }],
+                'heading-h3': ['1.125rem', { lineHeight: '1.4', letterSpacing: '0.005em', fontWeight: '600' }],
+                'body-lead': ['1.125rem', { lineHeight: '1.6', letterSpacing: '0.005em', fontWeight: '400' }],
                 eyebrow: ['0.8125rem', { lineHeight: '1.4', letterSpacing: '0.08em', fontWeight: '600' }],
                 'muji-title': ['2.5rem', { letterSpacing: '0.01em', fontWeight: '600' }],
                 'muji-subtitle': ['1.25rem', {}],

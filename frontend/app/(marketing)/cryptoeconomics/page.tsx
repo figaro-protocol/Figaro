@@ -20,7 +20,7 @@ export default function Cryptoeconomics() {
                 lead={
                     <>
                         Voshmgir &amp; Zargham frame the field as eight disciplines converging on the same substrate &mdash; each asks the substrate a different question in its own vocabulary. Figaro&apos;s papers are organized along that taxonomy. Working groups, current work, grants, and community framing live on{" "}
-                        <Link href="/groups" className="underline hover:text-ink-primary">
+                        <Link href="/groups" className="text-ink-heading hover:text-ink-body">
                             /groups
                         </Link>
                         .
@@ -56,10 +56,10 @@ export default function Cryptoeconomics() {
                             <div className="flex items-start gap-4">
                                 <DisciplineGlyph index={g.disciplineIndex} />
                                 <div className="min-w-0 flex-1">
-                                    <h3 className="text-heading-h3 text-ink-heading mt-0 mb-1">
+                                    <h3 className="text-heading-h3 text-ink-primary mt-0 mb-1">
                                         {g.name}
                                     </h3>
-                                    <p className="text-sm text-ink-muted italic mt-0">
+                                    <p className="text-sm text-ink-primary mt-0">
                                         {g.discipline}
                                     </p>
                                 </div>
@@ -69,7 +69,7 @@ export default function Cryptoeconomics() {
                                 {g.papers.length === 0 ? (
                                     <p className="text-xs text-ink-muted italic">
                                         No published papers yet. Contribute via{" "}
-                                        <Link href="/groups" className="underline">
+                                        <Link href="/groups" className="text-ink-body hover:text-ink-heading">
                                             /groups
                                         </Link>
                                         .
@@ -80,7 +80,7 @@ export default function Cryptoeconomics() {
                                             <li key={p.href}>
                                                 <a
                                                     href={p.href}
-                                                    className="text-ink-heading underline underline-offset-4 hover:text-ink-primary"
+                                                    className="text-ink-body hover:text-ink-heading"
                                                 >
                                                     {p.title}
                                                 </a>
@@ -97,14 +97,14 @@ export default function Cryptoeconomics() {
             <MarketingSection eyebrow="Implementation">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Implementation work &mdash; schema authoring, contract development, assembly composition, frontend construction &mdash; organizes separately at{" "}
-                    <Link href="/builders" className="text-ink-heading underline underline-offset-4 hover:text-ink-primary">
+                    <Link href="/builders" className="text-ink-heading font-medium hover:text-ink-body">
                         /builders
                     </Link>
                     . The disciplines above frame the substrate; /builders is where the substrate gets built on.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The property the kernel&apos;s narrowness produces &mdash; that a wide range of economic arrangements compose on top while preserving the bonding equilibrium &mdash; is stated on{" "}
-                    <Link href="/composability" className="text-ink-heading underline underline-offset-4 hover:text-ink-primary">
+                    <Link href="/composability" className="text-ink-heading font-medium hover:text-ink-body">
                         /composability
                     </Link>
                     .
@@ -114,7 +114,7 @@ export default function Cryptoeconomics() {
             <MarketingSection eyebrow="Working groups" bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed">
                     Active work in each discipline &mdash; charters, current work, grants, dedicated channels &mdash; lives at{" "}
-                    <Link href="/groups" className="text-ink-heading underline font-semibold">
+                    <Link href="/groups" className="text-ink-heading font-medium hover:text-ink-body">
                         /groups
                     </Link>
                     , alongside the composability working groups (assembly composition, schema authoring) and grants &amp; capital sources.

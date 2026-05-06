@@ -15,7 +15,7 @@ interface BrandLogoProps {
  * The ® reflects the registered trademark status of "Figaro."
  */
 export function BrandLogo({ variant = "full", tone = "black", asLink = true }: BrandLogoProps) {
-    const colorClass = tone === "white" ? "text-white" : "text-black";
+    const colorClass = tone === "white" ? "text-white" : "text-ink-heading";
 
     const inner = (
         <span className={`text-xl md:text-2xl font-bold ${colorClass}`}>
@@ -29,7 +29,7 @@ export function BrandLogo({ variant = "full", tone = "black", asLink = true }: B
 
     if (!asLink) return inner;
     return (
-        <Link href="/" className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black rounded">
+        <Link href="/" className="flex items-center gap-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded">
             {inner}
         </Link>
     );

@@ -4,6 +4,17 @@
 
 Extracted from `frontend/app/globals.css` lines 1-98 (the eight `.muji-*` declarations) and lines 106-117 (the live `@layer base { html, body }` block). The `.muji-*` classes are currently dead code (zero consumers across `frontend/app/` and `frontend/components/`) but are the canonical declaration of the theme intent. Agents drift because there is no spec; this document is the north star for Steps 2 (Tailwind tokens) and 3 (component primitives + page refactor).
 
+## Step 3.3 revision (2026-05-06)
+
+The values originally extracted from `.muji-*` (cool-neutral grays `#111`/`#222`/`#333`/`#555`/`#888`; 17px / 1.7 line-height / 0.01em tracking; 2.5rem H1) failed the visible-warmth test against Tailwind's cool `gray.*` ramp and produced "huge" text rendering. The canonical values below are now Step 3.3-revised in `frontend/tailwind.config.ts` and `frontend/app/globals.css`. The tables in §1 and §2 below describe the *original* extraction; the *current* live values are:
+
+- **Ink ramp (warm, R>G>B):** `heading #1c1814` (sumi), `primary #3a322a` (umber), `body #5a4f42` (cocoa, body-text WCAG AA on canvas at 6.8:1), `muted #857c6e` (taupe, captions only), `faint #a89e8d` (khaki, decorative only).
+- **Surfaces:** `subtle #f0ede5`, `subtle-hover #e6e2d8`, `border.default #e0dccf` (warm linen), `border.strong #b3a98f` (warm taupe), `focus #b3a98f`.
+- **Type scale:** H1 `2rem`, H2 `1.5rem`, H3 `1.125rem`, body-lead `1.125rem`. Body defaults `16px / 1.65 / 0.005em`.
+- **Link contract:** site-wide ban on default underline; `a:hover` adds underline + color shift to `ink-body`. Buttons and brand marks rendered as `<a>` opt out via `hover:no-underline`. Inline body links use `font-medium` for weight contrast.
+
+The §1–§7 tables below remain as the historical extraction record. If a future operator reads them and the tailwind.config.ts disagrees, tailwind.config.ts wins.
+
 ---
 
 ## 1. Color tokens

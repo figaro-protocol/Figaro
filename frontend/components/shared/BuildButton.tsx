@@ -33,9 +33,9 @@ export function BuildButton({
         <Link
             href="/builders"
             className={
-                `${className} items-center gap-1 px-4 py-3 bg-white text-black border border-black text-sm font-semibold rounded-md ` +
-                `hover:bg-gray-100 transition-colors ` +
-                `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black`
+                `${className} items-center gap-1 px-9 py-sm bg-transparent text-ink-body text-sm font-medium rounded-tile border border-default-strong ` +
+                `hover:bg-subtle hover:text-ink-heading hover:no-underline transition-colors ` +
+                `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus`
             }
             data-testid="build-button"
         >

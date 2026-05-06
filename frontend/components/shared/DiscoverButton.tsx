@@ -26,8 +26,8 @@ export function DiscoverButton({
         <Link
             href="/discover"
             className={
-                `${className} items-center gap-1 px-9 py-sm bg-subtle text-ink-primary text-sm font-medium rounded-tile border border-subtle ` +
-                `hover:bg-subtle-hover hover:text-ink-heading hover:border-default-strong transition-colors ` +
+                `${className} items-center gap-1 px-9 py-sm bg-subtle text-ink-primary text-sm font-medium rounded-tile border border-default-strong ` +
+                `hover:bg-subtle-hover hover:text-ink-heading hover:border-ink-body hover:no-underline transition-colors ` +
                 `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus`
             }
             data-testid="discover-button"
