@@ -1,6 +1,5 @@
 import type { PublicClient } from 'viem';
 import { getActiveOperators } from '@/lib/core/indexer';
-import { MOCK_RESTAURANTS } from '@/lib/marketplace/restaurants';
 import type { Restaurant } from '@/lib/marketplace/types';
 import { MECHANISM_CONTRACTS } from '@/lib/mechanisms/contracts';
 import { resolveContentURI } from '@/lib/shared/merchantBranding';
@@ -11,6 +10,7 @@ import {
     tryParseCatalogueItems,
     operatorProfileToRestaurant,
 } from '@/lib/shared/operatorProfileAdapter';
+import { SELLER_CATALOGUE_METADATA_RECORDS } from '@/lib/shared/runtimeIdentityRegistry';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 
 /** Only allow safe URI schemes for operator-declared image URLs. */
@@ -52,15 +52,29 @@ function catalogueToRestaurant(
     };
 }
 
+/**
+ * Fixture catalogues projected from the runtime-identity manifest
+ * (`local-runtime-identity.json`). Single canonical source for example
+ * merchants — replaces the prior `MOCK_RESTAURANTS` table whose addresses
+ * collided with the manifest's addresses on Anvil dev accounts.
+ *
+ * `source.mock` field name retained on `DiscoveryResult` for backward
+ * compatibility with tests; semantically it now counts fixture catalogues
+ * from the manifest, not legacy mock data.
+ */
+const FIXTURE_RESTAURANTS: Restaurant[] = SELLER_CATALOGUE_METADATA_RECORDS.map(
+    (cat, index) => catalogueToRestaurant(cat, index),
+);
+
 function mergeRestaurantsWithFallback(ipfsRestaurants: Restaurant[]): DiscoveryResult {
     const ipfsAddresses = new Set(ipfsRestaurants.map((restaurant) => restaurant.address.toLowerCase()));
-    const mocksNotCovered = MOCK_RESTAURANTS.filter(
+    const fixturesNotCovered = FIXTURE_RESTAURANTS.filter(
         (restaurant) => !ipfsAddresses.has(restaurant.address.toLowerCase()),
     );
 
     return {
-        restaurants: [...ipfsRestaurants, ...mocksNotCovered],
-        source: { ipfs: ipfsRestaurants.length, mock: mocksNotCovered.length },
+        restaurants: [...ipfsRestaurants, ...fixturesNotCovered],
+        source: { ipfs: ipfsRestaurants.length, mock: fixturesNotCovered.length },
     };
 }
 
