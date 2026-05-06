@@ -45,6 +45,22 @@ The ink ramp is namespaced `ink.*` rather than `text.*` to avoid the `text-text-
 |---------|-----------|------------------|----------------------------------------------|
 | `focus` | `#b3a98f` | `ring-focus`     | Focus-visible outline; aliases `default-strong`. |
 
+### Accent
+
+The single CTA-only contrast color. Traditional MUJI aizome indigo: deep, cool, distinct from every warm-neutral on the rest of the palette. Used to make a primary call-to-action read as "different mode of action" against canvas — without leaving the MUJI register.
+
+| Token          | Hex       | Tailwind utility   | Use                                                   |
+|----------------|-----------|--------------------|-------------------------------------------------------|
+| `accent`       | `#1d3a5f` | `bg-accent`, `text-accent`, `border-accent` | Primary-CTA fill or border. |
+| `accent-hover` | `#162d4a` | `bg-accent-hover`  | Hover state of any `bg-accent` surface.               |
+
+**Discipline (load-bearing):**
+
+- **CTAs only.** Use `bg-accent` / `text-accent` on the primary call-to-action of a page (e.g., the marketing-header Discover button, a "Download paper" button, a "Sign commitment" button on a transactional surface). Do not use accent on body text, captions, eyebrow labels, status surfaces, or decorative dividers.
+- **Max one accent surface per page.** Two accent fills on one page produce CTA-stacking — neither reads as primary. The outline-strong-secondary pattern (border-ink-heading, paper fill) is the canonical companion shape for the secondary action.
+- **Never used as a text-on-canvas color** for prose. `text-accent` on canvas is decoratively visible but not body-text legible at small sizes. Reserve for short labels (button text uses `text-paper` on `bg-accent`).
+- **Hover transitions to `accent-hover`,** not to ink-heading. Switching hue families on hover (indigo → sumi) reads as a register break; keeping the hue and darkening reads as activation.
+
 ### Status
 
 Single-value tokens. Decorative or icon use only. **Do not use as text utilities** (`text-success`, `text-warning`, `text-error`, `text-info`) — `text-error` on `bg-canvas` computes ~3.0:1 contrast and fails WCAG AA. Status surfaces should pair token-as-fill (`bg-success/10`, `border-error`) with `text-ink-*` foreground. If a future surface needs a contrast-validated text/background pair, expand each status token to `<status>-bg` / `<status>-fg` rather than reaching for `text-error` directly.

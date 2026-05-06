@@ -41,6 +41,13 @@ const config: Config = {
                     faint: '#a89e8d',
                 },
                 focus: '#b3a98f',
+                // Accent — traditional MUJI aizome indigo. The single
+                // CTA-only contrast color in an otherwise warm-neutral
+                // palette. See DESIGN_TOKENS.md §1 for the discipline:
+                // accent surfaces appear at most once per page, on the
+                // primary call-to-action; never on body / status / icons.
+                accent: '#1d3a5f',
+                'accent-hover': '#162d4a',
                 success: '#6b7a4a',
                 warning: '#a8762d',
                 error: '#9c4a3c',
