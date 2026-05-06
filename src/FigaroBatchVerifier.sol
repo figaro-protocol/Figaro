@@ -72,12 +72,14 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     }
 
     /// @dev Operator events are a tagged union in the prover.
-    ///      tag: 1=Registered, 2=Updated, 3=Deactivated, 4=Reactivated
-    ///      role + metadataURI are only used for tags 1 and 2.
+    ///      tag: 1=Registered, 2=ProfileUpdated.
+    ///      Both tags carry the same payload — `operator` + `metadataURI`.
+    ///      The tag is preserved (rather than collapsing to two separate
+    ///      arrays) so additional event variants stay forward-compatible
+    ///      without changing the calldata shape.
     struct OperatorEventInput {
         uint8 tag;
         address operator;
-        uint8 role;
         string metadataURI;
     }
 
@@ -116,15 +118,10 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId);
 
     /// @dev WARNING: This event shares its topic hash with OperatorRegistry.OperatorRegistered. Indexers MUST filter by contract address.
-    event OperatorRegistered(address indexed operator, uint8 role, string metadataURI);
+    event OperatorRegistered(address indexed operator, string metadataURI);
 
-    /// @dev WARNING: This event shares its topic hash with OperatorRegistry.OperatorUpdated. Indexers MUST filter by contract address.
-    event OperatorUpdated(address indexed operator, uint8 role, string metadataURI);
-
-    /// @dev WARNING: This event shares its topic hash with OperatorRegistry.OperatorDeactivated. Indexers MUST filter by contract address.
-    event OperatorDeactivated(address indexed operator);
-    /// @dev WARNING: This event shares its topic hash with OperatorRegistry.OperatorReactivated. Indexers MUST filter by contract address.
-    event OperatorReactivated(address indexed operator);
+    /// @dev WARNING: This event shares its topic hash with OperatorRegistry.OperatorProfileUpdated. Indexers MUST filter by contract address.
+    event OperatorProfileUpdated(address indexed operator, string metadataURI);
 
     // ── Errors ────────────────────────────────────────────────────
 
@@ -330,48 +327,29 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     }
 
     /// @dev Tagged union matching Rust `compute_operator_events_hash`:
-    ///      0x01 Registered:  tag(1) + operator(20) + role(1) + keccak256(metadataURI)(32) = 54
-    ///      0x02 Updated:     tag(1) + operator(20) + role(1) + keccak256(metadataURI)(32) = 54
-    ///      0x03 Deactivated: tag(1) + operator(20) = 21
-    ///      0x04 Reactivated: tag(1) + operator(20) = 21
+    ///      0x01 Registered:    tag(1) + operator(20) + keccak256(metadataURI)(32) = 53
+    ///      0x02 ProfileUpdated: tag(1) + operator(20) + keccak256(metadataURI)(32) = 53
     function _hashOperatorEvents(OperatorEventInput[] calldata events) internal pure returns (bytes32) {
-        // Variable-length records — compute total size first, then fill.
         uint256 len = events.length;
-        uint256 totalBytes;
+        // All current tags share a 53-byte record. Validate first so the
+        // packed buffer never grows around an unknown tag.
         for (uint256 i = 0; i < len; i++) {
             uint8 tag = events[i].tag;
-            if (tag == 1 || tag == 2) {
-                totalBytes += 54;
-            } else if (tag == 3 || tag == 4) {
-                totalBytes += 21;
-            } else {
-                revert InvalidOperatorTag(tag);
-            }
+            if (tag != 1 && tag != 2) revert InvalidOperatorTag(tag);
         }
-        bytes memory packed = new bytes(totalBytes);
+        bytes memory packed = new bytes(len * 53);
         uint256 offset;
         for (uint256 i = 0; i < len; i++) {
             uint8 tag = events[i].tag;
             address op = events[i].operator;
-            if (tag == 1 || tag == 2) {
-                uint8 role = events[i].role;
-                bytes32 uriHash = keccak256(bytes(events[i].metadataURI));
-                assembly {
-                    let dst := add(add(packed, 32), offset)
-                    mstore8(dst, tag)
-                    mstore(add(dst, 1), shl(96, op))
-                    mstore8(add(dst, 21), role)
-                    mstore(add(dst, 22), uriHash)
-                }
-                offset += 54;
-            } else {
-                assembly {
-                    let dst := add(add(packed, 32), offset)
-                    mstore8(dst, tag)
-                    mstore(add(dst, 1), shl(96, op))
-                }
-                offset += 21;
+            bytes32 uriHash = keccak256(bytes(events[i].metadataURI));
+            assembly {
+                let dst := add(add(packed, 32), offset)
+                mstore8(dst, tag)
+                mstore(add(dst, 1), shl(96, op))
+                mstore(add(dst, 21), uriHash)
             }
+            offset += 53;
         }
         return keccak256(packed);
     }
@@ -445,13 +423,10 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         for (uint256 i = 0; i < events.length; i++) {
             uint8 tag = events[i].tag;
             if (tag == 1) {
-                emit OperatorRegistered(events[i].operator, events[i].role, events[i].metadataURI);
-            } else if (tag == 2) {
-                emit OperatorUpdated(events[i].operator, events[i].role, events[i].metadataURI);
-            } else if (tag == 3) {
-                emit OperatorDeactivated(events[i].operator);
+                emit OperatorRegistered(events[i].operator, events[i].metadataURI);
             } else {
-                emit OperatorReactivated(events[i].operator);
+                // tag == 2 — _hashOperatorEvents already rejects unknown tags
+                emit OperatorProfileUpdated(events[i].operator, events[i].metadataURI);
             }
         }
     }

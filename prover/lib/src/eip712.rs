@@ -157,15 +157,25 @@ pub fn set_mechanism_schema_struct_hash(schema_id: &B256) -> B256 {
 // ── Operator authorization ────────────────────────────────────────
 
 /// Struct hash for operator registration authorization.
-/// `RegisterOperator(uint8 role,string metadataURI)`
+/// `RegisterOperator(string metadataURI)`
 ///
 /// Per EIP-712: string values are hashed with keccak256.
-pub fn register_operator_struct_hash(role: u8, metadata_uri: &str) -> B256 {
-    let type_hash = keccak256(b"RegisterOperator(uint8 role,string metadataURI)");
+pub fn register_operator_struct_hash(metadata_uri: &str) -> B256 {
+    let type_hash = keccak256(b"RegisterOperator(string metadataURI)");
     let uri_hash = keccak256(metadata_uri.as_bytes());
-    let mut data = Vec::with_capacity(96);
+    let mut data = Vec::with_capacity(64);
     data.extend_from_slice(type_hash.as_slice());
-    data.extend_from_slice(&alloy_primitives::U256::from(role).to_be_bytes::<32>());
+    data.extend_from_slice(uri_hash.as_slice());
+    keccak256(&data)
+}
+
+/// Struct hash for operator profile-update authorization.
+/// `UpdateProfile(string metadataURI)`
+pub fn update_profile_struct_hash(metadata_uri: &str) -> B256 {
+    let type_hash = keccak256(b"UpdateProfile(string metadataURI)");
+    let uri_hash = keccak256(metadata_uri.as_bytes());
+    let mut data = Vec::with_capacity(64);
+    data.extend_from_slice(type_hash.as_slice());
     data.extend_from_slice(uri_hash.as_slice());
     keccak256(&data)
 }

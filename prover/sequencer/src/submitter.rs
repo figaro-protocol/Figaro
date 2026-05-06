@@ -45,7 +45,6 @@ sol! {
         struct OperatorEventInputCall {
             uint8 tag;
             address operator;
-            uint8 role;
             string metadataURI;
         }
 
@@ -146,16 +145,20 @@ pub async fn submit_batch(
         .operators
         .iter()
         .map(|o| match o {
-            OperatorEventData::Registered {
-                operator,
-                role,
-                metadata_uri,
-            } => IFigaroBatchVerifier::OperatorEventInputCall {
-                tag: 1,
-                operator: *operator,
-                role: *role,
-                metadataURI: metadata_uri.clone(),
-            },
+            OperatorEventData::Registered { operator, metadata_uri } => {
+                IFigaroBatchVerifier::OperatorEventInputCall {
+                    tag: 1,
+                    operator: *operator,
+                    metadataURI: metadata_uri.clone(),
+                }
+            }
+            OperatorEventData::ProfileUpdated { operator, metadata_uri } => {
+                IFigaroBatchVerifier::OperatorEventInputCall {
+                    tag: 2,
+                    operator: *operator,
+                    metadataURI: metadata_uri.clone(),
+                }
+            }
         })
         .collect();
 

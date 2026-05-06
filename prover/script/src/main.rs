@@ -77,7 +77,7 @@ async fn main() {
     let schema_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &schema_struct));
 
     // ── Operator registration ──
-    let op_struct = register_operator_struct_hash(OperatorRole::Merchant as u8, "ipfs://QmOp");
+    let op_struct = register_operator_struct_hash("ipfs://QmOp");
     let op_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &op_struct));
 
     // ── Seller attestation ──
@@ -113,7 +113,6 @@ async fn main() {
             },
             // 3. Register operator
             KernelOp::RegisterOperator {
-                role: OperatorRole::Merchant,
                 metadata_uri: "ipfs://QmOp".to_string(),
                 operator_sig: op_sig,
             },

@@ -121,14 +121,11 @@ contract FigaroBatchVerifierTest is Test {
         bytes memory packed;
         for (uint256 i = 0; i < events.length; i++) {
             uint8 tag = events[i].tag;
-            if (tag == 1 || tag == 2) {
-                packed = bytes.concat(
-                    packed,
-                    abi.encodePacked(tag, events[i].operator, events[i].role, keccak256(bytes(events[i].metadataURI)))
-                );
-            } else {
-                packed = bytes.concat(packed, abi.encodePacked(tag, events[i].operator));
-            }
+            // Tags 1 (Registered) and 2 (ProfileUpdated) share an encoding;
+            // unknown tags are rejected by the contract before hashing.
+            packed = bytes.concat(
+                packed, abi.encodePacked(tag, events[i].operator, keccak256(bytes(events[i].metadataURI)))
+            );
         }
         return keccak256(packed);
     }
@@ -554,7 +551,6 @@ contract FigaroBatchVerifierTest is Test {
         ops[0] = FigaroBatchVerifier.OperatorEventInput({
             tag: 1, // Registered
             operator: alice,
-            role: 1, // Merchant
             metadataURI: "ipfs://QmFoo"
         });
 
@@ -568,14 +564,14 @@ contract FigaroBatchVerifierTest is Test {
         );
 
         vm.expectEmit(true, false, false, true);
-        emit FigaroBatchVerifier.OperatorRegistered(alice, 1, "ipfs://QmFoo");
+        emit FigaroBatchVerifier.OperatorRegistered(alice, "ipfs://QmFoo");
 
         _settle(pv, positions, att, sch, mech, ops);
     }
 
-    // ── Operator deactivated/reactivated events ───────────────────
+    // ── Operator profile-updated event ────────────────────────────
 
-    function test_settleBatch_operatorDeactivateReactivate() public {
+    function test_settleBatch_operatorProfileUpdated() public {
         bytes32 newRoot = bytes32(uint256(0xA));
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
 
@@ -583,18 +579,11 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
 
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](2);
+        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](1);
         ops[0] = FigaroBatchVerifier.OperatorEventInput({
-            tag: 3, // Deactivated
+            tag: 2, // ProfileUpdated
             operator: bob,
-            role: 0,
-            metadataURI: ""
-        });
-        ops[1] = FigaroBatchVerifier.OperatorEventInput({
-            tag: 4, // Reactivated
-            operator: bob,
-            role: 0,
-            metadataURI: ""
+            metadataURI: "ipfs://QmBar"
         });
 
         bytes32 posHash = _hashPositions(positions);
@@ -606,11 +595,8 @@ contract FigaroBatchVerifierTest is Test {
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
         );
 
-        vm.expectEmit(true, false, false, false);
-        emit FigaroBatchVerifier.OperatorDeactivated(bob);
-
-        vm.expectEmit(true, false, false, false);
-        emit FigaroBatchVerifier.OperatorReactivated(bob);
+        vm.expectEmit(true, false, false, true);
+        emit FigaroBatchVerifier.OperatorProfileUpdated(bob, "ipfs://QmBar");
 
         _settle(pv, positions, att, sch, mech, ops);
     }
@@ -627,38 +613,23 @@ contract FigaroBatchVerifierTest is Test {
 
         FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](1);
         ops[0] = FigaroBatchVerifier.OperatorEventInput({
-            tag: 5, // Invalid
+            tag: 3, // first unsupported tag past {Registered=1, ProfileUpdated=2}
             operator: alice,
-            role: 0,
             metadataURI: ""
         });
 
-        // Hash won't match because tag 5 is invalid, but we pass a fabricated hash
-        // to test the hash function revert path
+        // The contract's `_hashOperatorEvents` rejects unknown tags up front,
+        // so the call reverts there regardless of what opHash we submit.
         bytes32 posHash = _hashPositions(positions);
         bytes32 attHash = _hashAttestations(att);
         bytes32 schHash = _hashSchemas(sch, mech);
-        // Can't compute the hash for invalid tag, so it will fail in _hashOperatorEvents
-        // But that's in the contract's internal function, so let's test the hash function
-        // revert directly by passing a correct-looking hash
-
-        // Actually, the contract's _hashOperatorEvents reverts on invalid tag.
-        // We need the hash check to pass first. Since we can't compute a valid hash
-        // for an invalid tag, this will actually revert at OperatorHashMismatch
-        // unless we set opHash = 0 and the contract's hash also happens to be 0.
-        // Let's test the revert at _hashOperatorEvents by using a valid opHash
-        // that forces the contract into _emitOperatorEvents path.
-
-        // The hash check in _hashOperatorEvents will revert before the emit function.
-        // Let's verify that.
-        bytes32 opHash = bytes32(0); // wrong hash, but doesn't matter
+        bytes32 opHash = bytes32(0);
 
         bytes memory pv = _encodePublicValues(
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
         );
 
-        // Will revert at _hashOperatorEvents with InvalidOperatorTag
-        vm.expectRevert(abi.encodeWithSelector(FigaroBatchVerifier.InvalidOperatorTag.selector, uint8(5)));
+        vm.expectRevert(abi.encodeWithSelector(FigaroBatchVerifier.InvalidOperatorTag.selector, uint8(3)));
         _settle(pv, positions, att, sch, mech, ops);
     }
 
@@ -693,7 +664,6 @@ contract FigaroBatchVerifierTest is Test {
         ops[0] = FigaroBatchVerifier.OperatorEventInput({
             tag: 1,
             operator: charlie,
-            role: 2, // Driver
             metadataURI: "ipfs://QmBar"
         });
 
@@ -805,7 +775,7 @@ contract FigaroBatchVerifierTest is Test {
         // Submit operator data but use empty hash
         FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](1);
         ops[0] =
-            FigaroBatchVerifier.OperatorEventInput({tag: 1, operator: alice, role: 1, metadataURI: "ipfs://QmTest"});
+            FigaroBatchVerifier.OperatorEventInput({tag: 1, operator: alice, metadataURI: "ipfs://QmTest"});
 
         // Use empty operator hash (wrong)
         FigaroBatchVerifier.OperatorEventInput[] memory emptyOps = new FigaroBatchVerifier.OperatorEventInput[](0);
@@ -827,7 +797,7 @@ contract FigaroBatchVerifierTest is Test {
 
     // ── Operator updated event (tag 2) ────────────────────────────
 
-    function test_settleBatch_operatorUpdatedEvent() public {
+    function test_settleBatch_operatorProfileUpdatedEvent_distinctTopic() public {
         bytes32 newRoot = bytes32(uint256(0x10A));
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
 
@@ -837,9 +807,8 @@ contract FigaroBatchVerifierTest is Test {
 
         FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](1);
         ops[0] = FigaroBatchVerifier.OperatorEventInput({
-            tag: 2, // Updated
+            tag: 2, // ProfileUpdated
             operator: alice,
-            role: 3,
             metadataURI: "ipfs://QmUpdated"
         });
 
@@ -853,7 +822,7 @@ contract FigaroBatchVerifierTest is Test {
         );
 
         vm.expectEmit(true, false, false, true);
-        emit FigaroBatchVerifier.OperatorUpdated(alice, 3, "ipfs://QmUpdated");
+        emit FigaroBatchVerifier.OperatorProfileUpdated(alice, "ipfs://QmUpdated");
 
         _settle(pv, positions, att, sch, mech, ops);
     }

@@ -178,15 +178,23 @@ impl Mempool {
                 Ok(())
             }
             KernelOp::RegisterOperator {
-                role,
                 metadata_uri,
                 operator_sig,
             } => {
-                let struct_hash =
-                    register_operator_struct_hash(*role as u8, metadata_uri);
+                let struct_hash = register_operator_struct_hash(metadata_uri);
                 let digest = typed_data_hash(&domain, &struct_hash);
                 recover_signer(&digest, operator_sig)
                     .map_err(|e| format!("invalid register-operator signature: {e}"))?;
+                Ok(())
+            }
+            KernelOp::UpdateProfile {
+                metadata_uri,
+                operator_sig,
+            } => {
+                let struct_hash = update_profile_struct_hash(metadata_uri);
+                let digest = typed_data_hash(&domain, &struct_hash);
+                recover_signer(&digest, operator_sig)
+                    .map_err(|e| format!("invalid update-profile signature: {e}"))?;
                 Ok(())
             }
         }

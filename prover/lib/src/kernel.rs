@@ -6,7 +6,7 @@ use crate::eip712::{
     compute_order_hash, domain_separator,
     recover_signer, register_operator_struct_hash,
     register_schema_struct_hash, resolve_struct_hash, set_mechanism_schema_struct_hash,
-    typed_data_hash,
+    typed_data_hash, update_profile_struct_hash,
 };
 use crate::state::KernelState;
 use crate::types::*;
@@ -548,25 +548,25 @@ fn apply_set_mechanism_schema(
 
 // ── OperatorRegistry operations ──────────────────────────────────
 //
-// Web2-strip (2026-04-26): only RegisterOperator survives. Update / deactivate
-// / reactivate were removed because they encoded web2 lifecycle CRUD on top
-// of a stateless coordination primitive. To switch role or metadata, the
-// operator submits a fresh RegisterOperator (after withdrawing on-chain — the
-// dedup guard is cleared on withdraw, not via a batched op).
+// Two operator-registry mutations survive in the batched kernel:
+//
+//   - RegisterOperator: sets the dedup guard and emits Registered.
+//   - UpdateProfile:    requires the dedup guard to already be set and emits
+//                       ProfileUpdated. Deposit + lock period are not touched.
+//
+// Lifecycle flags (deactivate / reactivate) and on-chain role tracking
+// stay out of the kernel — operator availability is signal-by-availability,
+// and the seller's role is whatever their catalogue (referenced by
+// metadata_uri) declares through its archetype.
 
 fn apply_register_operator(
     state: &mut KernelState,
     domain: &B256,
-    role: OperatorRole,
     metadata_uri: &str,
     operator_sig: &Signature,
     events: &mut Vec<OperatorEventData>,
 ) -> Result<(), KernelError> {
-    if role == OperatorRole::None {
-        return Err(KernelError::InvalidOperatorRole);
-    }
-
-    let struct_hash = register_operator_struct_hash(role as u8, metadata_uri);
+    let struct_hash = register_operator_struct_hash(metadata_uri);
     let digest = typed_data_hash(domain, &struct_hash);
     let operator = recover_signer(&digest, operator_sig)?;
 
@@ -584,7 +584,37 @@ fn apply_register_operator(
 
     events.push(OperatorEventData::Registered {
         operator,
-        role: role as u8,
+        metadata_uri: metadata_uri.to_string(),
+    });
+
+    Ok(())
+}
+
+fn apply_update_profile(
+    state: &KernelState,
+    domain: &B256,
+    metadata_uri: &str,
+    operator_sig: &Signature,
+    events: &mut Vec<OperatorEventData>,
+) -> Result<(), KernelError> {
+    let struct_hash = update_profile_struct_hash(metadata_uri);
+    let digest = typed_data_hash(domain, &struct_hash);
+    let operator = recover_signer(&digest, operator_sig)?;
+
+    // Caller must already be registered. There is no path through which one
+    // address can update another's metadata URI — the EIP-712 signature pins
+    // the caller and the dedup-guard check pins them to a registered slot.
+    if !state
+        .operators_registered
+        .get(&operator)
+        .copied()
+        .unwrap_or(false)
+    {
+        return Err(KernelError::OperatorNotRegistered);
+    }
+
+    events.push(OperatorEventData::ProfileUpdated {
+        operator,
         metadata_uri: metadata_uri.to_string(),
     });
 
@@ -627,23 +657,19 @@ pub fn compute_schema_events_hash(
 }
 
 /// Deterministic hash of operator events for inclusion in public values.
-/// Web2-strip (2026-04-26): only Registered survives. Tag byte preserved
-/// to keep the hash format compositional if future event variants are added.
+/// Tagged-union encoding (matches Solidity `_hashOperatorEvents`):
+///   0x01 Registered:    tag(1) + operator(20) + keccak256(metadata_uri)(32) = 53
+///   0x02 ProfileUpdated: tag(1) + operator(20) + keccak256(metadata_uri)(32) = 53
 pub fn compute_operator_events_hash(events: &[OperatorEventData]) -> B256 {
     let mut data = Vec::new();
     for e in events {
-        match e {
-            OperatorEventData::Registered {
-                operator,
-                role,
-                metadata_uri,
-            } => {
-                data.push(0x01); // tag
-                data.extend_from_slice(operator.as_slice());
-                data.push(*role);
-                data.extend_from_slice(&keccak256(metadata_uri.as_bytes()).0);
-            }
-        }
+        let (tag, operator, metadata_uri) = match e {
+            OperatorEventData::Registered { operator, metadata_uri } => (0x01u8, operator, metadata_uri),
+            OperatorEventData::ProfileUpdated { operator, metadata_uri } => (0x02u8, operator, metadata_uri),
+        };
+        data.push(tag);
+        data.extend_from_slice(operator.as_slice());
+        data.extend_from_slice(&keccak256(metadata_uri.as_bytes()).0);
     }
     keccak256(&data)
 }
@@ -791,14 +817,24 @@ fn apply_batch_inner(
 
             // ── Operator ──
             KernelOp::RegisterOperator {
-                role,
                 metadata_uri,
                 operator_sig,
             } => {
                 apply_register_operator(
                     &mut state,
                     &domain,
-                    *role,
+                    metadata_uri,
+                    operator_sig,
+                    &mut operator_events,
+                )?;
+            }
+            KernelOp::UpdateProfile {
+                metadata_uri,
+                operator_sig,
+            } => {
+                apply_update_profile(
+                    &state,
+                    &domain,
                     metadata_uri,
                     operator_sig,
                     &mut operator_events,

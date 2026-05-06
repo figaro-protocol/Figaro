@@ -216,12 +216,11 @@ async fn mempool_accepts_register_operator() {
     let domain = domain_separator(CHAIN_ID, CORE);
     let key = make_signing_key(SELLER1_KEY);
 
-    let struct_hash = register_operator_struct_hash(1, "ipfs://merchant-meta");
+    let struct_hash = register_operator_struct_hash("ipfs://merchant-meta");
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&key, &digest);
 
     let op = KernelOp::RegisterOperator {
-        role: OperatorRole::Merchant,
         metadata_uri: "ipfs://merchant-meta".to_string(),
         operator_sig: sig,
     };

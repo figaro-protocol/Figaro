@@ -37,29 +37,6 @@ pub struct Signature {
     pub s: B256,
 }
 
-// ── Operator role enum (matches OperatorRegistry.OperatorRole) ────
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[repr(u8)]
-pub enum OperatorRole {
-    None = 0,
-    Merchant = 1,
-    Driver = 2,
-    Both = 3,
-}
-
-impl OperatorRole {
-    pub fn from_u8(v: u8) -> Option<Self> {
-        match v {
-            0 => Some(Self::None),
-            1 => Some(Self::Merchant),
-            2 => Some(Self::Driver),
-            3 => Some(Self::Both),
-            _ => None,
-        }
-    }
-}
-
 // ── Batch operations ──────────────────────────────────────────────
 
 /// A single kernel operation within a proof batch.
@@ -128,10 +105,21 @@ pub enum KernelOp {
     // ── OperatorRegistry ──────────────────────────────────────────
 
     /// Register a new operator. Batched equivalent of register().
-    /// Role is event-only data; not stored on-chain (web2-strip 2026-04-26).
-    /// To switch role or metadata, withdraw and re-register.
+    /// Role is not an on-chain field — a seller's role is whatever their
+    /// catalogue (referenced by `metadata_uri`) declares through its archetype.
     RegisterOperator {
-        role: OperatorRole,
+        metadata_uri: String,
+        /// EIP-712 authorization from the operator.
+        operator_sig: Signature,
+    },
+
+    /// Update an operator's metadata URI. Batched equivalent of updateProfile().
+    /// Caller-only: only the registered operator may update its own profile.
+    /// The deposit and lock period are spam-protection knobs and are not
+    /// disturbed; discovery indexers compute "current metadata URI" as the
+    /// most-recent OperatorRegistered or OperatorProfileUpdated event for
+    /// an address.
+    UpdateProfile {
         metadata_uri: String,
         /// EIP-712 authorization from the operator.
         operator_sig: Signature,
@@ -223,14 +211,22 @@ pub struct MechanismSchemaEventData {
 }
 
 /// An operator registry event proven by the batch.
-/// Web2-strip (2026-04-26): only Registered survives. Role/metadata
-/// updates happen via withdraw + re-register; lifecycle flags are
-/// signal-by-availability, not registry state.
+///
+/// Two variants:
+///   - `Registered`     — first registration of an address (mirrors `OperatorRegistry.OperatorRegistered`).
+///   - `ProfileUpdated` — metadata URI replacement by a registered operator
+///     (mirrors `OperatorRegistry.OperatorProfileUpdated`).
+///
+/// Lifecycle flags (deactivate / reactivate) are signal-by-availability,
+/// not registry state.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum OperatorEventData {
     Registered {
         operator: Address,
-        role: u8,
+        metadata_uri: String,
+    },
+    ProfileUpdated {
+        operator: Address,
         metadata_uri: String,
     },
 }
@@ -285,7 +281,7 @@ pub enum KernelError {
     SchemaNotRegistered(B256),
     // OperatorRegistry errors
     OperatorAlreadyRegistered,
-    InvalidOperatorRole,
+    OperatorNotRegistered,
 }
 
 impl core::fmt::Display for KernelError {

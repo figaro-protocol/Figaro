@@ -479,7 +479,7 @@ fn test_register_operator() {
     let domain = domain_separator(CHAIN_ID, CORE);
     let metadata = "ipfs://QmOperator1";
 
-    let struct_hash = register_operator_struct_hash(OperatorRole::Merchant as u8, metadata);
+    let struct_hash = register_operator_struct_hash(metadata);
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&operator_key, &digest);
 
@@ -488,7 +488,6 @@ fn test_register_operator() {
         verifying_contract: CORE,
         block_timestamp: 1000,
         operations: vec![KernelOp::RegisterOperator {
-            role: OperatorRole::Merchant,
             metadata_uri: metadata.to_string(),
             operator_sig: sig,
         }],
@@ -499,9 +498,11 @@ fn test_register_operator() {
     let (pv, _positions, events) = apply_batch(&input).unwrap();
     assert_ne!(pv.prev_state_root, pv.new_state_root);
     assert_eq!(events.operators.len(), 1);
-    let OperatorEventData::Registered { operator, role, metadata_uri } = &events.operators[0];
+    let OperatorEventData::Registered { operator, metadata_uri } = &events.operators[0]
+    else {
+        panic!("expected Registered, got {:?}", &events.operators[0]);
+    };
     assert_eq!(*operator, SELLER1);
-    assert_eq!(*role, OperatorRole::Merchant as u8);
     assert_eq!(metadata_uri, metadata);
 }
 
@@ -511,7 +512,7 @@ fn test_register_operator_duplicate_fails() {
     let domain = domain_separator(CHAIN_ID, CORE);
 
     let make_sig = |uri: &str| {
-        let struct_hash = register_operator_struct_hash(OperatorRole::Driver as u8, uri);
+        let struct_hash = register_operator_struct_hash(uri);
         let digest = typed_data_hash(&domain, &struct_hash);
         sign_digest(&operator_key, &digest)
     };
@@ -522,12 +523,10 @@ fn test_register_operator_duplicate_fails() {
         block_timestamp: 1000,
         operations: vec![
             KernelOp::RegisterOperator {
-                role: OperatorRole::Driver,
                 metadata_uri: "ipfs://first".to_string(),
                 operator_sig: make_sig("ipfs://first"),
             },
             KernelOp::RegisterOperator {
-                role: OperatorRole::Driver,
                 metadata_uri: "ipfs://second".to_string(),
                 operator_sig: make_sig("ipfs://second"),
             },
@@ -541,37 +540,74 @@ fn test_register_operator_duplicate_fails() {
 }
 
 #[test]
-fn test_register_operator_invalid_role_fails() {
+fn test_update_profile_emits_profile_updated_event() {
     let operator_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
 
-    let struct_hash = register_operator_struct_hash(OperatorRole::None as u8, "ipfs://test");
-    let digest = typed_data_hash(&domain, &struct_hash);
-    let sig = sign_digest(&operator_key, &digest);
+    let reg_struct = register_operator_struct_hash("ipfs://v1");
+    let reg_digest = typed_data_hash(&domain, &reg_struct);
+    let reg_sig = sign_digest(&operator_key, &reg_digest);
+
+    let upd_struct = update_profile_struct_hash("ipfs://v2");
+    let upd_digest = typed_data_hash(&domain, &upd_struct);
+    let upd_sig = sign_digest(&operator_key, &upd_digest);
 
     let input = BatchInput {
         chain_id: CHAIN_ID,
         verifying_contract: CORE,
         block_timestamp: 1000,
-        operations: vec![KernelOp::RegisterOperator {
-            role: OperatorRole::None,
-            metadata_uri: "ipfs://test".to_string(),
-            operator_sig: sig,
+        operations: vec![
+            KernelOp::RegisterOperator {
+                metadata_uri: "ipfs://v1".to_string(),
+                operator_sig: reg_sig,
+            },
+            KernelOp::UpdateProfile {
+                metadata_uri: "ipfs://v2".to_string(),
+                operator_sig: upd_sig,
+            },
+        ],
+        prev_state: empty_snapshot(),
+        fig_token: Address::ZERO,
+    };
+
+    let (_pv, _positions, events) = apply_batch(&input).unwrap();
+    assert_eq!(events.operators.len(), 2);
+    assert!(matches!(
+        &events.operators[0],
+        OperatorEventData::Registered { .. }
+    ));
+    let OperatorEventData::ProfileUpdated { operator, metadata_uri } = &events.operators[1]
+    else {
+        panic!("expected ProfileUpdated, got {:?}", &events.operators[1]);
+    };
+    assert_eq!(*operator, SELLER1);
+    assert_eq!(metadata_uri, "ipfs://v2");
+}
+
+#[test]
+fn test_update_profile_unregistered_fails() {
+    let operator_key = make_signing_key(SELLER1_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+
+    let upd_struct = update_profile_struct_hash("ipfs://orphan");
+    let upd_digest = typed_data_hash(&domain, &upd_struct);
+    let upd_sig = sign_digest(&operator_key, &upd_digest);
+
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![KernelOp::UpdateProfile {
+            metadata_uri: "ipfs://orphan".to_string(),
+            operator_sig: upd_sig,
         }],
         prev_state: empty_snapshot(),
         fig_token: Address::ZERO,
     };
 
     let err = apply_batch(&input).unwrap_err();
-    assert!(matches!(err, KernelError::InvalidOperatorRole));
+    assert!(matches!(err, KernelError::OperatorNotRegistered));
 }
-
-// Web2-strip (2026-04-26): tests for UpdateOperator / DeactivateOperator /
-// ReactivateOperator / their failure modes (OperatorNotActive,
-// OperatorAlreadyDeactivated, OperatorAlreadyActive) deleted along with
-// the corresponding KernelOp variants. To switch role or metadata, an
-// operator now withdraws (off-chain via the contract's withdraw()) and
-// re-registers — the dedup guard is cleared on withdraw, not via batch.
 
 // ── Attestation tests ─────────────────────────────────────────────
 
@@ -795,7 +831,7 @@ fn test_mixed_batch_all_operations() {
     let schema_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &schema_struct));
 
     // Operator registration
-    let op_struct = register_operator_struct_hash(OperatorRole::Merchant as u8, "ipfs://op");
+    let op_struct = register_operator_struct_hash("ipfs://op");
     let op_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &op_struct));
 
     // Seller attestation
@@ -826,7 +862,6 @@ fn test_mixed_batch_all_operations() {
             },
             // 3. Register operator
             KernelOp::RegisterOperator {
-                role: OperatorRole::Merchant,
                 metadata_uri: "ipfs://op".to_string(),
                 operator_sig: op_sig,
             },
