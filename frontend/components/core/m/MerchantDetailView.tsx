@@ -23,6 +23,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChainId } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { MerchantBrandingModule, MerchantLogo } from "@/components/modules/MerchantBrandingModule";
@@ -91,7 +92,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         resetOrder: resetCommitment,
     } = useCheckout(currency);
 
-    const { items, addItem, removeItem, clearCart, getTotalPrice, getItemCount, fulfillmentMode, setFulfillmentMode } = useCartStore();
+    const { items, addItem, removeItem, removeLine, clearCart, getTotalPrice, getItemCount, fulfillmentMode, setFulfillmentMode } = useCartStore();
+    const { openConnectModal } = useConnectModal();
 
     const itemCount = getItemCount();
     const totalPrice = getTotalPrice();
@@ -284,7 +286,11 @@ export function MerchantDetailView({ merchantAddress }: Props) {
 
     const handlePlaceOrder = () => {
         if (!buyer) {
-            setCheckoutError("Connect your wallet to place an order.");
+            // No wallet connected — open the RainbowKit connect modal rather
+            // than reporting an error. Once the user signs in, the page
+            // re-renders with `buyer` set and the button text shifts to
+            // "Place order"; the user can then click again to commit.
+            openConnectModal?.();
             return;
         }
         if (merchantCartItems.length === 0) return;
@@ -449,13 +455,49 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                             <>
                                 <ul className="space-y-2 text-sm">
                                     {merchantCartItems.map((item) => (
-                                        <li key={item.menuItemId} className="flex justify-between gap-3">
-                                            <span className="text-neutral-700">
-                                                {item.quantity}× {item.name}
+                                        <li
+                                            key={item.menuItemId}
+                                            className="flex items-center gap-3"
+                                            data-testid={`cart-line-${item.menuItemId}`}
+                                        >
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeItem(item.menuItemId, restaurant.id)}
+                                                    className="w-6 h-6 rounded border border-neutral-300 bg-white text-black text-sm hover:bg-neutral-100"
+                                                    aria-label={`Remove one ${item.name}`}
+                                                    data-testid={`cart-line-decrement-${item.menuItemId}`}
+                                                >
+                                                    −
+                                                </button>
+                                                <span className="w-5 text-center text-black font-semibold tabular-nums">
+                                                    {item.quantity}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => addItem({ ...item, quantity: 1 })}
+                                                    className="w-6 h-6 rounded border border-neutral-300 bg-white text-black text-sm hover:bg-neutral-100"
+                                                    aria-label={`Add another ${item.name}`}
+                                                    data-testid={`cart-line-increment-${item.menuItemId}`}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                            <span className="flex-1 min-w-0 text-neutral-700 truncate">
+                                                {item.name}
                                             </span>
-                                            <span className="text-neutral-900 font-semibold">
+                                            <span className="text-neutral-900 font-semibold tabular-nums shrink-0">
                                                 {(parseFloat(item.price) * item.quantity).toFixed(4)} ETH
                                             </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeLine(item.menuItemId, restaurant.id)}
+                                                className="w-6 h-6 rounded text-neutral-400 hover:text-red-600 hover:bg-red-50 text-base shrink-0"
+                                                aria-label={`Remove ${item.name} from cart`}
+                                                data-testid={`cart-line-delete-${item.menuItemId}`}
+                                            >
+                                                ×
+                                            </button>
                                         </li>
                                     ))}
                                 </ul>
@@ -504,8 +546,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                 <Button
                                     onClick={handlePlaceOrder}
                                     disabled={
-                                        !buyer
-                                        || isApproving
+                                        isApproving
                                         || placingOrder
                                         || merchantCartItems.length === 0
                                     }

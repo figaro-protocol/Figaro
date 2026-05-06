@@ -17,7 +17,17 @@ interface CartStore {
     deliveryMaxPrice: string;
     fulfillmentMode: FulfillmentMode;
     addItem: (item: CartItem) => void;
+    /**
+     * Decrement an item's quantity by 1, removing the line entirely if the
+     * decrement reaches zero.
+     */
     removeItem: (menuItemId: string, sellerId: string) => void;
+    /**
+     * Remove a cart line entirely regardless of quantity. Used by cart-aside
+     * "remove" buttons where the user wants to drop a whole line in one click
+     * rather than tapping the decrement button N times.
+     */
+    removeLine: (menuItemId: string, sellerId: string) => void;
     clearCart: () => void;
     getTotalPrice: () => string;
     getItemCount: () => number;
@@ -69,6 +79,14 @@ export const useCartStore = create<CartStore>()(
                     }
                     return { items: updated };
                 }),
+
+            removeLine: (menuItemId, sellerId) =>
+                set((state) => ({
+                    items: state.items.filter(
+                        (item) =>
+                            !(item.menuItemId === menuItemId && item.sellerId === sellerId),
+                    ),
+                })),
 
             clearCart: () => set({ items: [], deliveryMaxPrice: "0.002", fulfillmentMode: "deliver:seller-assigned" as FulfillmentMode }),
 
