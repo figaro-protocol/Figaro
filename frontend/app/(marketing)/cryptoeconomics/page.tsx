@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/shared/MarketingSection";
 import { GROUPS_REGISTRY } from "@/lib/shared/groupsRegistry";
 
 export const metadata: Metadata = {
-    title: "Cryptoeconomics — Figaro",
+    title: "Cryptoeconomics — Figaro Protocol",
     description:
         "Voshmgir & Zargham, Foundations of Cryptoeconomic Systems (2024). Eight disciplines converge on the substrate; Figaro's papers are organized along that taxonomy.",
 };

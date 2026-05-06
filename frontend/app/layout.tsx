@@ -29,22 +29,22 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-    title: "Figaro Protocol — Trade Infrastructure",
-    description: "Figaro is a protocol primitive for trade between strangers. Both parties lock stakes before work begins. Breaking the agreement always costs more than keeping it. No intermediary needed.",
+    title: "Figaro Protocol — TCP/IP of Trade",
+    description: "Bonded trade between strangers. A coordination protocol for parties who have never met — cooperation pays better than cheating. The deal resolves itself.",
     robots: {
         index: false,
         follow: false,
     },
     openGraph: {
-        title: "Figaro Protocol — Trade Infrastructure",
-        description: "Figaro is a protocol primitive for trade between strangers. Both parties lock stakes before work begins. Breaking the agreement always costs more than keeping it. No intermediary needed.",
+        title: "Figaro Protocol — TCP/IP of Trade",
+        description: "Bonded trade between strangers. A coordination protocol for parties who have never met — cooperation pays better than cheating. The deal resolves itself.",
         siteName: "Figaro Protocol",
         type: "website",
     },
     twitter: {
         card: "summary_large_image",
-        title: "Figaro Protocol — Trade Infrastructure",
-        description: "Figaro is a protocol primitive for trade between strangers. Both parties lock stakes before work begins. Breaking the agreement always costs more than keeping it. No intermediary needed.",
+        title: "Figaro Protocol — TCP/IP of Trade",
+        description: "Bonded trade between strangers. A coordination protocol for parties who have never met — cooperation pays better than cheating. The deal resolves itself.",
     },
 };
 

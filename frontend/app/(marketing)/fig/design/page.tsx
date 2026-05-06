@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+    title: "FIG design — Figaro Protocol",
+    description: "FIG is a Schelling-point token for the Figaro ecosystem. Its value is focality — not utility, governance, or yield. 1B fixed cap, 10/30/60 allocation.",
+};
 
 export default function FigDesign() {
     return (

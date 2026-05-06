@@ -5,16 +5,16 @@ import { MarketingSection } from "@/components/shared/MarketingSection";
 import { REFERENCE_ASSEMBLIES } from "@/lib/shared/assembly";
 
 export const metadata: Metadata = {
-    title: "Build on Figaro — Trade Infrastructure",
+    title: "Builders — Figaro Protocol",
     description: "Design a trade workflow from protocol components. The protocol handles enforcement. Three levels of composition — no new contract risk required at Level 1.",
     openGraph: {
-        title: "Build on Figaro Protocol",
+        title: "Builders — Figaro Protocol",
         description: "Design a trade workflow from protocol components. The protocol handles enforcement.",
         type: "website",
     },
     twitter: {
         card: "summary_large_image",
-        title: "Build on Figaro Protocol",
+        title: "Builders — Figaro Protocol",
         description: "Design a trade workflow from protocol components. The protocol handles enforcement.",
     },
 };

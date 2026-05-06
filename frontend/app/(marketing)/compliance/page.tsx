@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+    title: "Compliance — Figaro Protocol",
+    description: "Every settled process carries its own evidence bundle. Terms, performance, timestamps, signatures — verifiable on chain without a platform.",
+};
 
 export default function Compliance() {
     return (

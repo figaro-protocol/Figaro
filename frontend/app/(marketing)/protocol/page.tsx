@@ -4,7 +4,7 @@ import { MarketingHero } from "@/components/shared/MarketingHero";
 import { MarketingSection } from "@/components/shared/MarketingSection";
 
 export const metadata: Metadata = {
-    title: "Protocol — Figaro",
+    title: "Protocol mechanisms — Figaro Protocol",
     description:
         "Figaro's protocol-level properties: two mechanisms producing a Nash equilibrium under bonded commitment, transaction-scoped institutions that form for one process and dissolve at settlement, the contract-law mapping the protocol carries, and the three layers of enforcement.",
 };

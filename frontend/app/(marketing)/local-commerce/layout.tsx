@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Figaro Local Commerce — Reference Implementation | Figaro Protocol",
+    title: "Local Commerce — Figaro Protocol",
     description: "A local-commerce workflow built on Figaro Protocol end to end. Generic across food, retail, and services. Both parties lock stakes before work begins. Breaking the agreement always costs more than keeping it. No intermediary needed.",
     openGraph: {
         title: "Figaro Local Commerce — Reference Implementation",

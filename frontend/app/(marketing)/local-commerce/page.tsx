@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-    title: "Figaro Local Commerce — Figaro Protocol",
+    title: "Local Commerce — Figaro Protocol",
     description: "An assembly composing a three-role bonded local-commerce process from protocol primitives. Generic across food, retail, and services.",
 };
 

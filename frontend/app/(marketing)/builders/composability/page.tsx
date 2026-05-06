@@ -4,7 +4,7 @@ import { MarketingHero } from "@/components/shared/MarketingHero";
 import { MarketingSection } from "@/components/shared/MarketingSection";
 
 export const metadata: Metadata = {
-    title: "Composability — Builder architecture",
+    title: "Composability (builder architecture) — Figaro Protocol",
     description:
         "Builder-tier composability: the coordinator pattern's three sufficient conditions, the three tiers of extension, and the security boundary that holds across them. Property-side framing on /composability.",
 };
