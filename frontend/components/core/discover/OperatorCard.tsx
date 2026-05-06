@@ -55,10 +55,19 @@ export function OperatorCard({
 
     return (
         <article
-            className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm"
+            className="relative rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm"
             data-testid="operator-card"
             data-operator-address={listing.address}
         >
+            {listing.provenance === "fixture" && (
+                <span
+                    className="absolute top-2 right-2 text-[9px] uppercase tracking-wider font-semibold text-gray-500 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded"
+                    aria-label="Protocol-seeded example operator"
+                    data-testid="operator-card-example-badge"
+                >
+                    Example
+                </span>
+            )}
             {/* Title block — the only navigation target on the card. */}
             <Link
                 href={href}

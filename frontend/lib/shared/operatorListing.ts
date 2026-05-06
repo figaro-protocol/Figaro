@@ -43,6 +43,15 @@ export interface ListingServiceArea {
 }
 
 export interface Listing {
+    /**
+     * Where this listing came from. `fixture` = bundled in the runtime-identity
+     * manifest (protocol-seeded example used to demonstrate an assembly).
+     * `registry` = registered on-chain via `OperatorRegistry`.
+     *
+     * Surfaced visually on the discover card so users can distinguish
+     * protocol-seeded examples from operators they've registered themselves.
+     */
+    provenance: "fixture" | "registry";
     /** Operator wallet address. */
     address: string;
     /** Display name. */
@@ -110,6 +119,7 @@ export function listOperatorsFromRuntimeIdentity(): Listing[] {
         const meta = metaByAddr.get(addr);
 
         return {
+            provenance: "fixture",
             address: s.subjectAddress,
             name: meta?.name ?? s.displayName ?? s.subjectAddress,
             description: meta?.description ?? "",
