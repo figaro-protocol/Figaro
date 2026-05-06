@@ -429,7 +429,14 @@ NEXT_PUBLIC_FIG_TOKEN_ADDRESS=0x...
 NEXT_PUBLIC_STAGED_AIRDROP=0x...
 NEXT_PUBLIC_BATCH_VERIFIER=0x...
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
-# Optional: Kleros, IPFS, sequencer
+
+# IPFS — used by ipfsService.ts (publishJSON, uploadFile) and merchantBranding.ts (logo resolution).
+# Defaults target a local Kubo node (`brew install ipfs && ipfs daemon`, or the official Docker image).
+# Both URLs accept any IPFS-API-compatible / gateway endpoint (Pinata, web3.storage, self-hosted Kubo, etc.).
+NEXT_PUBLIC_IPFS_API_URL=http://127.0.0.1:5001
+NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
+
+# Optional: Kleros, sequencer
 ```
 
 ### Scripts

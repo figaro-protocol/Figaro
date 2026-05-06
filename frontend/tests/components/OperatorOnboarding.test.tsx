@@ -108,7 +108,7 @@ describe('OperatorOnboarding — not registered', () => {
     it('renders the registration form', () => {
         render(<OperatorOnboarding />);
 
-        expect(screen.getByPlaceholderText('e.g. Tasty Burger')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('e.g. your service name')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /register/i })).toBeInTheDocument();
     });
 
@@ -130,7 +130,7 @@ describe('OperatorOnboarding — not registered', () => {
     it('submit button is enabled after typing a name', async () => {
         render(<OperatorOnboarding />);
 
-        await userEvent.type(screen.getByPlaceholderText('e.g. Tasty Burger'), 'My Shop');
+        await userEvent.type(screen.getByPlaceholderText('e.g. your service name'), 'My Shop');
 
         const btn = screen.getByRole('button', { name: /register/i });
         expect(btn).not.toBeDisabled();
@@ -143,7 +143,7 @@ describe('OperatorOnboarding — not registered', () => {
 
         render(<OperatorOnboarding />);
 
-        await userEvent.type(screen.getByPlaceholderText('e.g. Tasty Burger'), 'My Shop');
+        await userEvent.type(screen.getByPlaceholderText('e.g. your service name'), 'My Shop');
         await userEvent.click(screen.getByRole('button', { name: /register/i }));
 
         await waitFor(() => {
@@ -164,7 +164,7 @@ describe('OperatorOnboarding — not registered', () => {
 
         render(<OperatorOnboarding />);
 
-        await userEvent.type(screen.getByPlaceholderText('e.g. Tasty Burger'), 'My Shop');
+        await userEvent.type(screen.getByPlaceholderText('e.g. your service name'), 'My Shop');
         // Check "Pickup" service type (maps to Merchant)
         await userEvent.click(screen.getByRole('checkbox', { name: /pickup/i }));
         await userEvent.click(screen.getByRole('button', { name: /register/i }));
@@ -182,7 +182,7 @@ describe('OperatorOnboarding — not registered', () => {
 
         render(<OperatorOnboarding />);
 
-        await userEvent.type(screen.getByPlaceholderText('e.g. Tasty Burger'), 'My Shop');
+        await userEvent.type(screen.getByPlaceholderText('e.g. your service name'), 'My Shop');
         // Check "Delivery" service type (maps to Driver)
         await userEvent.click(screen.getByRole('checkbox', { name: /delivery/i }));
         await userEvent.click(screen.getByRole('button', { name: /register/i }));
@@ -198,7 +198,7 @@ describe('OperatorOnboarding — not registered', () => {
 
         render(<OperatorOnboarding />);
 
-        await userEvent.type(screen.getByPlaceholderText('e.g. Tasty Burger'), 'My Shop');
+        await userEvent.type(screen.getByPlaceholderText('e.g. your service name'), 'My Shop');
         await userEvent.click(screen.getByRole('button', { name: /register/i }));
 
         await waitFor(() => {
@@ -257,7 +257,7 @@ describe('OperatorOnboarding — registered operator (withdraw + re-register)', 
     it('does not render the registration form (no in-place updateProfile)', () => {
         render(<OperatorOnboarding />);
 
-        expect(screen.queryByPlaceholderText('e.g. Tasty Burger')).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('e.g. your service name')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /^register/i })).not.toBeInTheDocument();
     });
 
