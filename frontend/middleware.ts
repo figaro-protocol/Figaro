@@ -52,7 +52,13 @@ function buildCsp(nonce: string, frameAncestors: string): string {
         scriptSrc,
         // style-src keeps 'unsafe-inline' for Tailwind. See header comment.
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob: https:",
+        // `http://127.0.0.1:*` whitelists the local IPFS gateway (Kubo at
+        // 8080 by default) so `<img src="http://127.0.0.1:8080/ipfs/<cid>" />`
+        // loads. The same loopback pattern is already allowed in `connect-src`
+        // for the local Anvil RPC; mirroring it here for images keeps the
+        // policy consistent. Public gateways (testnet) use `https:`, already
+        // allowed.
+        "img-src 'self' data: blob: https: http://127.0.0.1:*",
         "font-src 'self' data: https://fonts.gstatic.com",
         "connect-src 'self' ws: wss: http://127.0.0.1:* https://*.walletconnect.com https://*.walletconnect.org https://*.infura.io",
         "frame-src 'self' https://*.walletconnect.com",
