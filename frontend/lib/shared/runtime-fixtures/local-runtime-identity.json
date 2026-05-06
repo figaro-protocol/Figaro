@@ -406,7 +406,7 @@
             ],
             "branding": {
                 "displayName": "Bob's Pizza Palace",
-                "logoURI": "ipfs://example/logo.png",
+                "logoURI": "ipfs://bafkreic3yuhrai5w5m3oyhnpgxz3zttjxlejm65zzj2uxe2tqydbabwjfa",
                 "heroImageURI": "ipfs://example/hero.png",
                 "accentColor": "#c2410c",
                 "themeClass": "merchant-pizza"
@@ -451,7 +451,7 @@
             ],
             "branding": {
                 "displayName": "Acme Components Supply",
-                "logoURI": "ipfs://example/acme-logo.png",
+                "logoURI": "ipfs://bafkreihj666a36vuujh6lab3zj6ymjvornbbweaxypewj3tttgcjlfnhum",
                 "accentColor": "#1d4ed8",
                 "themeClass": "supplier-acme"
             },
@@ -484,7 +484,7 @@
             ],
             "branding": {
                 "displayName": "GreenLedger Review Desk",
-                "logoURI": "ipfs://example/greenledger-logo.png",
+                "logoURI": "ipfs://bafkreic7liof5f3ptppew2ussphfatzem4v7buqoznlms2wclzynnjbydu",
                 "accentColor": "#15803d",
                 "themeClass": "reviewer-greenledger"
             },
@@ -524,7 +524,7 @@
             ],
             "branding": {
                 "displayName": "Hudson Tools Rental",
-                "logoURI": "ipfs://example/hudson-logo.png",
+                "logoURI": "ipfs://bafkreih7nvvfuzujxd2iw6zitkgymne3lcylkw7n7dfj2enlc7leptx3ke",
                 "accentColor": "#b45309",
                 "themeClass": "renter-hudson"
             },
@@ -557,7 +557,7 @@
             ],
             "branding": {
                 "displayName": "Maria Castelli Translations",
-                "logoURI": "ipfs://example/castelli-logo.png",
+                "logoURI": "ipfs://bafkreicj4dlfutf76iobwb3dp2zvred3rwufnrg2jlkpns26fiy6mbcvyy",
                 "accentColor": "#7c3aed",
                 "themeClass": "freelancer-castelli"
             },
@@ -617,7 +617,7 @@
             ],
             "branding": {
                 "displayName": "Carlo's Espresso Bar",
-                "logoURI": "ipfs://example/carlos-logo.png",
+                "logoURI": "ipfs://bafkreibbgiu77gkfu3luwlpzxey4huwx5do3vwzhay3v7lgd25v2c46d5a",
                 "accentColor": "#78350f",
                 "themeClass": "merchant-coffee"
             },
@@ -665,7 +665,7 @@
             ],
             "branding": {
                 "displayName": "Union Square Greens Stand",
-                "logoURI": "ipfs://example/union-square-greens-logo.png",
+                "logoURI": "ipfs://bafkreifeydw4xvqylqepzy4pftf67db4pqrkd74ya5ktzrfgowjj3uc7sq",
                 "accentColor": "#15803d",
                 "themeClass": "merchant-market-stall"
             },

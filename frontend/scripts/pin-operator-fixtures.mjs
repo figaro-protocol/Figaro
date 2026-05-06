@@ -36,13 +36,15 @@ const IPFS_GATEWAY_URL = process.env.IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080"
 
 /**
  * Extract a 2-letter uppercase monogram from a merchant name. Splits on
- * whitespace and apostrophes; takes the first letter of the first two
- * significant words. Example: "Bob's Pizza Palace" → "BP";
+ * whitespace only (NOT apostrophes — splitting on `'` leaves the
+ * possessive `s` in "Bob's" as a standalone "word" and produces "BS"
+ * instead of "BP"). Takes the first letter of the first two whitespace-
+ * separated words. Example: "Bob's Pizza Palace" → "BP";
  * "Acme Components Supply" → "AC"; "Carlo's Espresso Bar" → "CE".
  */
 function monogramFor(name) {
     const words = name
-        .split(/[\s'’]+/)
+        .split(/\s+/)
         .map((w) => w.trim())
         .filter((w) => w.length > 0);
     const letters = words.slice(0, 2).map((w) => w[0].toUpperCase());
