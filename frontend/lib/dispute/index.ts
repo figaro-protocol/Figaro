@@ -69,9 +69,6 @@ export type {
     KlerosConfig,
 } from "./klerosProxy";
 
-// IPFS pinning
-export { pinJSON, ipfsURI, ipfsGatewayURL } from "./ipfsPin";
-
 // Delivery attestations
 export {
     AttestationMode,

@@ -92,7 +92,7 @@ function ItemRow({
                             <input
                                 required
                                 type="text"
-                                placeholder="e.g. Classic Burger"
+                                placeholder="e.g. your offering"
                                 value={item.name}
                                 onChange={(e) => onChange({ ...item, name: e.target.value })}
                                 className={inputClass}
@@ -303,7 +303,7 @@ export function CatalogueBuilder() {
                     <input
                         required
                         type="text"
-                        placeholder="e.g. Tasty Burger Menu"
+                        placeholder="e.g. your catalogue name"
                         value={catalogueName}
                         onChange={(e) => setCatalogueName(e.target.value)}
                         className={inputClass}

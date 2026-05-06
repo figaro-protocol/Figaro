@@ -21,22 +21,26 @@ export default function CataloguePage() {
                     Define your service items, publish them to IPFS, then link the URI in your operator profile.
                 </p>
 
-                {/* Two-step flow indicator */}
+                {/* Two-step flow indicator. Catalogue first, then Register —
+                    the catalogue's IPFS URI feeds back into the operator
+                    profile form via ?catalogueURI=<uri> on registration.
+                    Reversing this order silently dead-ends already-registered
+                    operators (no on-chain `updateProfile` post-web2-strip). */}
                 <div className="flex items-center gap-3 mb-16 max-w-xs">
                     <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full border border-default text-ink-faint text-xs flex items-center justify-center font-bold flex-shrink-0">
+                        <span className="w-6 h-6 rounded-full bg-ink-heading text-paper text-xs flex items-center justify-center font-bold flex-shrink-0">
                             1
+                        </span>
+                        <span className="text-sm font-semibold text-ink-heading whitespace-nowrap">Catalogue</span>
+                    </div>
+                    <div className="flex-1 h-px bg-default" />
+                    <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full border border-default text-ink-faint text-xs flex items-center justify-center font-bold flex-shrink-0">
+                            2
                         </span>
                         <a href="/operators" className="text-sm text-ink-faint hover:text-ink-heading whitespace-nowrap transition-colors">
                             Register
                         </a>
-                    </div>
-                    <div className="flex-1 h-px bg-default" />
-                    <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-ink-heading text-paper text-xs flex items-center justify-center font-bold flex-shrink-0">
-                            2
-                        </span>
-                        <span className="text-sm font-semibold text-ink-heading whitespace-nowrap">Add catalogue</span>
                     </div>
                 </div>
 

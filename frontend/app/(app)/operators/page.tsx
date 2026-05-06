@@ -56,13 +56,13 @@ export default function OperatorsPage() {
                 </h2>
                 <div className="flex items-center gap-3 mb-10 max-w-xs">
                     <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-ink-heading text-paper text-xs flex items-center justify-center font-bold flex-shrink-0">1</span>
-                        <span className="text-sm font-semibold text-ink-heading whitespace-nowrap">Register</span>
+                        <span className="w-6 h-6 rounded-full border border-default text-ink-faint text-xs flex items-center justify-center font-bold flex-shrink-0">1</span>
+                        <a href="/operators/catalogue" className="text-sm text-ink-faint hover:text-ink-heading whitespace-nowrap transition-colors">Catalogue</a>
                     </div>
                     <div className="flex-1 h-px bg-default" />
                     <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full border border-default text-ink-faint text-xs flex items-center justify-center font-bold flex-shrink-0">2</span>
-                        <span className="text-sm text-ink-faint whitespace-nowrap">Catalogue</span>
+                        <span className="w-6 h-6 rounded-full bg-ink-heading text-paper text-xs flex items-center justify-center font-bold flex-shrink-0">2</span>
+                        <span className="text-sm font-semibold text-ink-heading whitespace-nowrap">Register</span>
                     </div>
                 </div>
                 <Suspense>

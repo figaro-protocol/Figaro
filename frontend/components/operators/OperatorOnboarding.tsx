@@ -482,7 +482,7 @@ export function OperatorOnboarding() {
                         <input
                             required
                             type="text"
-                            placeholder="e.g. Tasty Burger"
+                            placeholder="e.g. your service name"
                             value={form.name}
                             onChange={(e) => setForm({ ...form, name: e.target.value })}
                             className={inputClass}

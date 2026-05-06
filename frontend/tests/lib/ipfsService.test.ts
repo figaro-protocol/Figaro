@@ -82,4 +82,51 @@ describe("ipfsService", () => {
         );
         expect(DEFAULT_IPFS_SERVICE.resolveFetchUrl("not-a-uri")).toBeNull();
     });
+
+    it("rejects uploads over the 5 MB size limit", async () => {
+        const big = makeFile("large.png", "image/png", 6 * 1024 * 1024);
+        await expect(DEFAULT_IPFS_SERVICE.uploadFile(big)).rejects.toThrow("File too large");
+    });
+
+    it("rejects uploads of disallowed MIME types", async () => {
+        const txt = makeFile("test.txt", "text/plain", 100);
+        await expect(DEFAULT_IPFS_SERVICE.uploadFile(txt)).rejects.toThrow("Unsupported file type");
+    });
+
+    it("throws when the IPFS API returns a non-2xx response", async () => {
+        const file = makeFile("ok.png", "image/png", 500);
+        globalThis.fetch = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 500,
+            statusText: "Internal Server Error",
+        });
+
+        await expect(DEFAULT_IPFS_SERVICE.uploadFile(file)).rejects.toThrow("IPFS upload failed: 500");
+    });
+
+    it("throws when the IPFS API returns an empty CID", async () => {
+        const file = makeFile("ok.png", "image/png", 500);
+        globalThis.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ Hash: "" }),
+            text: async () => JSON.stringify({ Hash: "" }),
+        });
+
+        await expect(DEFAULT_IPFS_SERVICE.uploadFile(file)).rejects.toThrow("IPFS upload returned no CID");
+    });
+
+    it("accepts every allowed image MIME type", async () => {
+        const types = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
+        globalThis.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ Hash: "QmValid" }),
+            text: async () => JSON.stringify({ Hash: "QmValid" }),
+        });
+
+        for (const type of types) {
+            const file = makeFile("test", type, 100);
+            const result = await DEFAULT_IPFS_SERVICE.uploadFile(file);
+            expect(result.cid).toBe("QmValid");
+        }
+    });
 });

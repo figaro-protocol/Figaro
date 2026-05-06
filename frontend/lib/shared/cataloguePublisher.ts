@@ -1,12 +1,17 @@
 /**
  * lib/shared/cataloguePublisher.ts
  *
- * Write path for seller/courier catalogues.
+ * Write path for seller / courier catalogues.
  * Serializes a SellerCatalogueMetadata document → pins to IPFS → returns
- * the IPFS URI to be stored on-chain via OperatorRegistry.updateProfile().
+ * the IPFS URI. The URI is then referenced from the operator's profile
+ * document (as `catalogueURI`) which itself is pinned and registered
+ * on-chain via `OperatorRegistry.register(role, profileURI, deposit)`.
  *
- * The caller is responsible for the on-chain transaction (updateProfile).
- * This module handles only the off-chain publishing step.
+ * Note: post-2026-04-26 web2-strip, `OperatorRegistry` no longer exposes
+ * an `updateProfile` path. To replace an existing on-chain `metadataURI`,
+ * an operator must `withdraw()` their deposit (subject to the deposit
+ * lock period) and re-register with the new URI. This module handles the
+ * off-chain pin only; the caller orchestrates the registration.
  */
 
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
