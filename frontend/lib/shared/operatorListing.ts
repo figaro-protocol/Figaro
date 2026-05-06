@@ -11,7 +11,7 @@ import type {
 /**
  * Generic operator-listing surface for `/discover`.
  *
- * Independent of the local-commerce-shaped `Restaurant` type:
+ * Independent of the local-commerce-shaped `SellerCatalogue` type:
  * a `Listing` is the projection of (subject + bindings + optional metadata)
  * into a shape the `OperatorCard` can render across any assembly. An
  * operator with zero bindings still produces a `Listing`; clicking such a

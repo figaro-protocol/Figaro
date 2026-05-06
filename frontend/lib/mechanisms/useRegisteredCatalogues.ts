@@ -3,7 +3,7 @@
  *
  * Hook that discovers all registered merchants from OperatorRegistry events
  * (via the indexer), fetches their catalogues from IPFS, and converts them
- * to the marketplace Restaurant type for the buyer-side discovery module.
+ * to the marketplace SellerCatalogue type for the buyer-side discovery module.
  *
  * Falls back to MOCK_RESTAURANTS when no registry is available (mock mode)
  * or when no merchants are registered.
@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from "react";
 import { usePublicClient, useChainId } from "wagmi";
-import type { Restaurant } from "@/lib/marketplace/types";
+import type { SellerCatalogue } from "@/lib/seller/types";
 import {
     DEFAULT_DISCOVERY_SERVICE,
     type DiscoveryService,
@@ -20,7 +20,7 @@ import {
 
 export interface UseRegisteredCataloguesResult {
     /** Merged restaurant list: IPFS-fetched catalogues + mock fallbacks */
-    restaurants: Restaurant[];
+    restaurants: SellerCatalogue[];
     /** Whether the registry is being queried */
     isLoading: boolean;
     /** How many restaurants came from IPFS vs mock data */

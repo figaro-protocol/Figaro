@@ -29,7 +29,7 @@ import type {
     SupportedSchemaDeclaration,
 } from "@/lib/shared/sellerCatalogueMetadata";
 import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
-import { FULFILMENT_MODE_LABELS } from "@/lib/marketplace/fulfilmentRouting";
+import { FULFILMENT_MODE_LABELS } from "@/lib/seller/fulfilmentRouting";
 
 const ALL_FULFILMENT_MODES: CanonicalFulfilmentMethod[] = [
     "consume-onsite",

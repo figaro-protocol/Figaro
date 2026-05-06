@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
-import type { Restaurant } from "@/lib/marketplace/types";
+import type { SellerCatalogue } from "@/lib/seller/types";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
 import { MerchantBrandingModule, MerchantLogo } from "@/components/modules/MerchantBrandingModule";
 import { OperatorServiceDisplay } from "@/components/modules/OperatorRegistrationModule";
@@ -18,7 +18,7 @@ function TokenBadge({ symbol }: { symbol: string }) {
 }
 
 interface RestaurantCardInlineProps {
-    restaurant: Restaurant;
+    restaurant: SellerCatalogue;
     onSelect: () => void;
 }
 
@@ -106,7 +106,7 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
     const [cuisineFilter, setCuisineFilter] = useState<string | null>(null);
     const [tokenFilter, setTokenFilter] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<"default" | "tokens" | "deliveryTime">("default");
-    const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+    const [selectedRestaurant, setSelectedRestaurant] = useState<SellerCatalogue | null>(null);
     const [autoSelectAttempted, setAutoSelectAttempted] = useState(false);
 
     // Honor `?operator=<address>` from /discover by pre-selecting that
@@ -301,8 +301,8 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
 
 // ── Inline menu browsing (embedded in the discovery module) ──────────────────
 
-import { useCartStore } from "@/lib/marketplace/cartStore";
-import type { MenuItem } from "@/lib/marketplace/types";
+import { useCartStore } from "@/lib/seller/cartStore";
+import type { CatalogueItem } from "@/lib/seller/types";
 
 function MinusIcon({ className }: { className?: string }) {
     return (
@@ -327,7 +327,7 @@ function MenuBrowsingInline({
     accentTone,
     shellLabel,
 }: {
-    restaurant: Restaurant;
+    restaurant: SellerCatalogue;
     onBack: () => void;
     accentTone?: string;
     shellLabel?: string;
@@ -343,17 +343,17 @@ function MenuBrowsingInline({
 
     const getItemQuantity = (menuItemId: string) => {
         const cartItem = items.find(
-            (item) => item.menuItemId === menuItemId && item.restaurantId === restaurant.id
+            (item) => item.menuItemId === menuItemId && item.sellerId === restaurant.id
         );
         return cartItem?.quantity || 0;
     };
 
-    const handleAddItem = (menuItem: MenuItem) => {
+    const handleAddItem = (menuItem: CatalogueItem) => {
         addItem({
             menuItemId: menuItem.id,
-            restaurantId: restaurant.id,
-            restaurantAddress: restaurant.address,
-            restaurantName: restaurant.name,
+            sellerId: restaurant.id,
+            sellerAddress: restaurant.address,
+            sellerName: restaurant.name,
             name: menuItem.name,
             price: menuItem.price,
             quantity: 1,

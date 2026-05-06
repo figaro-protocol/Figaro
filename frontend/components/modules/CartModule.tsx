@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useChainId } from "wagmi";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { useCommerce, useCheckout } from "@/lib/commerce";
-import { useCartStore, type FulfillmentMode } from "@/lib/marketplace/cartStore";
-import type { CartItem } from "@/lib/marketplace/types";
+import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
+import type { CartItem } from "@/lib/seller/types";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { broadcastSharedCommitment } from "@/lib/core/commitmentBroadcast";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
@@ -23,7 +23,7 @@ import {
     isDeliveryFulfilment,
     mapFulfilmentToAssemblySlug,
     mapFulfilmentToHandoff,
-} from "@/lib/marketplace/fulfilmentRouting";
+} from "@/lib/seller/fulfilmentRouting";
 
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "consume-onsite",
@@ -104,7 +104,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
     // declared modes — surface everything rather than block the buyer).
     const cataloguesResult = useRegisteredCatalogues({});
     const restaurants = cataloguesResult?.restaurants ?? [];
-    const merchantAddress = items[0]?.restaurantAddress?.toLowerCase();
+    const merchantAddress = items[0]?.sellerAddress?.toLowerCase();
     const supportedModes = useMemo<FulfillmentMode[]>(() => {
         if (!merchantAddress) return ALL_FULFILMENT_MODES;
         const merchant = restaurants.find(
@@ -199,7 +199,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
 
     const executeCheckout = async () => {
         if (!buyer) return;
-        const sellerAddress = items[0].restaurantAddress as `0x${string}`;
+        const sellerAddress = items[0].sellerAddress as `0x${string}`;
         const paymentWei = totalPriceAmount;
         const prepared = await prepareOrderCommitment({
             buyer,
@@ -483,13 +483,13 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                                                     )}
                                                     <div>
                                                         <h4 className="font-medium text-black">{item.name}</h4>
-                                                        <p className="text-sm text-neutral-500">{item.restaurantName}</p>
+                                                        <p className="text-sm text-neutral-500">{item.sellerName}</p>
                                                         <p className="text-sm text-blue-600" style={labelStyle}>{item.price} ETH</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button
-                                                        onClick={() => removeItem(item.menuItemId, item.restaurantId)}
+                                                        onClick={() => removeItem(item.menuItemId, item.sellerId)}
                                                         className="p-1 bg-neutral-200 rounded hover:bg-neutral-300"
                                                         aria-label="Remove one"
                                                     >

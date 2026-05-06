@@ -13,7 +13,7 @@ vi.mock('@/lib/mechanisms/useRegisteredCatalogues', () => ({
     useRegisteredCatalogues: (...args: unknown[]) => useRegisteredCataloguesMock(...args),
 }));
 
-vi.mock('@/lib/marketplace/cartStore', () => ({
+vi.mock('@/lib/seller/cartStore', () => ({
     useCartStore: (...args: unknown[]) => useCartStoreMock(...args),
 }));
 
@@ -199,9 +199,9 @@ describe('runtime skin-aware buyer surfaces', () => {
             items: [
                 {
                     menuItemId: 'pizza-margherita',
-                    restaurantId: 'rest-1',
-                    restaurantAddress: '0x2222222222222222222222222222222222222222',
-                    restaurantName: 'Bob\'s Pizza Palace',
+                    sellerId: 'rest-1',
+                    sellerAddress: '0x2222222222222222222222222222222222222222',
+                    sellerName: 'Bob\'s Pizza Palace',
                     name: 'Margherita',
                     price: '0.01',
                     quantity: 2,

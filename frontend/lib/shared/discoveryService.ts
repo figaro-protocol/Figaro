@@ -1,6 +1,6 @@
 import type { PublicClient } from 'viem';
 import { getActiveOperators } from '@/lib/core/indexer';
-import type { Restaurant } from '@/lib/marketplace/types';
+import type { SellerCatalogue } from '@/lib/seller/types';
 import { MECHANISM_CONTRACTS } from '@/lib/mechanisms/contracts';
 import { resolveContentURI } from '@/lib/shared/merchantBranding';
 import { parseSellerCatalogueDocument } from '@/lib/shared/sellerCatalogueMetadataParser';
@@ -8,7 +8,7 @@ import type { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetada
 import {
     tryParseOperatorProfile,
     tryParseCatalogueItems,
-    operatorProfileToRestaurant,
+    operatorProfileToCatalogue,
 } from '@/lib/shared/operatorProfileAdapter';
 import { SELLER_CATALOGUE_METADATA_RECORDS } from '@/lib/shared/runtimeIdentityRegistry';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
@@ -19,14 +19,14 @@ function isSafeImageURI(uri: string): boolean {
 }
 
 export interface DiscoveryResult {
-    restaurants: Restaurant[];
+    restaurants: SellerCatalogue[];
     source: { ipfs: number; mock: number };
 }
 
-function catalogueToRestaurant(
+function metadataToCatalogue(
     cat: SellerCatalogueMetadata,
     index: number,
-): Restaurant {
+): SellerCatalogue {
     return {
         id: cat.merchantId || `ipfs-${index}`,
         name: cat.name,
@@ -62,28 +62,28 @@ function catalogueToRestaurant(
  * compatibility with tests; semantically it now counts fixture catalogues
  * from the manifest, not legacy mock data.
  */
-const FIXTURE_RESTAURANTS: Restaurant[] = SELLER_CATALOGUE_METADATA_RECORDS.map(
-    (cat, index) => catalogueToRestaurant(cat, index),
+const FIXTURE_CATALOGUES: SellerCatalogue[] = SELLER_CATALOGUE_METADATA_RECORDS.map(
+    (cat, index) => metadataToCatalogue(cat, index),
 );
 
-function mergeRestaurantsWithFallback(ipfsRestaurants: Restaurant[]): DiscoveryResult {
-    const ipfsAddresses = new Set(ipfsRestaurants.map((restaurant) => restaurant.address.toLowerCase()));
-    const fixturesNotCovered = FIXTURE_RESTAURANTS.filter(
+function mergeWithFixtures(registryCatalogues: SellerCatalogue[]): DiscoveryResult {
+    const ipfsAddresses = new Set(registryCatalogues.map((restaurant) => restaurant.address.toLowerCase()));
+    const fixturesNotCovered = FIXTURE_CATALOGUES.filter(
         (restaurant) => !ipfsAddresses.has(restaurant.address.toLowerCase()),
     );
 
     return {
-        restaurants: [...ipfsRestaurants, ...fixturesNotCovered],
-        source: { ipfs: ipfsRestaurants.length, mock: fixturesNotCovered.length },
+        restaurants: [...registryCatalogues, ...fixturesNotCovered],
+        source: { ipfs: registryCatalogues.length, mock: fixturesNotCovered.length },
     };
 }
 
-async function fetchOperatorAsRestaurant(
+async function fetchOperatorAsCatalogue(
     address: string,
     metadataURI: string,
     index: number,
     fetchFn: (url: string) => Promise<Response>,
-): Promise<Restaurant | null> {
+): Promise<SellerCatalogue | null> {
     const url = resolveContentURI(metadataURI);
     if (!url) return null;
 
@@ -94,7 +94,7 @@ async function fetchOperatorAsRestaurant(
     // Try SellerCatalogueMetadata format first (backward compat with seed data / CatalogueEditorModule)
     try {
         const cat = parseSellerCatalogueDocument(doc, metadataURI);
-        return catalogueToRestaurant(cat, index);
+        return metadataToCatalogue(cat, index);
     } catch {
         // fall through to operator profile format
     }
@@ -120,7 +120,7 @@ async function fetchOperatorAsRestaurant(
         }
     }
 
-    return operatorProfileToRestaurant(address, profile, items, index);
+    return operatorProfileToCatalogue(address, profile, items, index);
 }
 
 export interface DiscoveryService {
@@ -143,7 +143,7 @@ export function createDiscoveryService(
             return !!MECHANISM_CONTRACTS.operatorRegistry && MECHANISM_CONTRACTS.operatorRegistry.length === 42;
         },
         listFallbackRestaurants() {
-            return mergeRestaurantsWithFallback([]);
+            return mergeWithFixtures([]);
         },
         async listRestaurants(client: PublicClient, chainId: number) {
             if (!service.isRegistryConfigured()) {
@@ -162,7 +162,7 @@ export function createDiscoveryService(
                     merchants.map(async (operator, index) => {
                         try {
                             if (!operator.metadataURI) return null;
-                            return await fetchOperatorAsRestaurant(
+                            return await fetchOperatorAsCatalogue(
                                 operator.address,
                                 operator.metadataURI,
                                 index,
@@ -174,8 +174,8 @@ export function createDiscoveryService(
                     }),
                 );
 
-                const restaurants = results.filter((r): r is Restaurant => r !== null);
-                return mergeRestaurantsWithFallback(restaurants);
+                const restaurants = results.filter((r): r is SellerCatalogue => r !== null);
+                return mergeWithFixtures(restaurants);
             } catch {
                 return service.listFallbackRestaurants();
             }
@@ -187,4 +187,4 @@ export function createDiscoveryService(
 
 export const DEFAULT_DISCOVERY_SERVICE: DiscoveryService = createDiscoveryService();
 
-export { catalogueToRestaurant, mergeRestaurantsWithFallback };
+export { metadataToCatalogue, mergeWithFixtures };

@@ -17,7 +17,7 @@ interface CartStore {
     deliveryMaxPrice: string;
     fulfillmentMode: FulfillmentMode;
     addItem: (item: CartItem) => void;
-    removeItem: (menuItemId: string, restaurantId: string) => void;
+    removeItem: (menuItemId: string, sellerId: string) => void;
     clearCart: () => void;
     getTotalPrice: () => string;
     getItemCount: () => number;
@@ -37,7 +37,7 @@ export const useCartStore = create<CartStore>()(
                     const existingIndex = state.items.findIndex(
                         (item) =>
                             item.menuItemId === newItem.menuItemId &&
-                            item.restaurantId === newItem.restaurantId
+                            item.sellerId === newItem.sellerId
                     );
                     if (existingIndex >= 0) {
                         const updated = [...state.items];
@@ -50,12 +50,12 @@ export const useCartStore = create<CartStore>()(
                     return { items: [...state.items, newItem] };
                 }),
 
-            removeItem: (menuItemId, restaurantId) =>
+            removeItem: (menuItemId, sellerId) =>
                 set((state) => {
                     const existingIndex = state.items.findIndex(
                         (item) =>
                             item.menuItemId === menuItemId &&
-                            item.restaurantId === restaurantId
+                            item.sellerId === sellerId
                     );
                     if (existingIndex < 0) return state;
                     const updated = [...state.items];
@@ -87,6 +87,6 @@ export const useCartStore = create<CartStore>()(
                 return items.reduce((sum, item) => sum + item.quantity, 0);
             },
         }),
-        { name: "figaro-marketplace-cart" }
+        { name: "figaro-seller-cart" }
     )
 );

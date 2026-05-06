@@ -1,6 +1,6 @@
 import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 
-export interface MenuItem {
+export interface CatalogueItem {
     id: string;
     name: string;
     description: string;
@@ -10,7 +10,7 @@ export interface MenuItem {
     available: boolean;
 }
 
-export interface Restaurant {
+export interface SellerCatalogue {
     id: string;
     name: string;
     address: string;
@@ -21,7 +21,7 @@ export interface Restaurant {
     deliveryTime: string;
     minimumOrder: string;
     geohash?: string;
-    menu: MenuItem[];
+    menu: CatalogueItem[];
     acceptedTokens?: AcceptedTokenMetadata[];
     fulfillmentModes?: Array<
         | "consume-onsite"
@@ -35,9 +35,9 @@ export interface Restaurant {
 
 export interface CartItem {
     menuItemId: string;
-    restaurantId: string;
-    restaurantAddress: string;
-    restaurantName: string;
+    sellerId: string;
+    sellerAddress: string;
+    sellerName: string;
     name: string;
     price: string;
     quantity: number;

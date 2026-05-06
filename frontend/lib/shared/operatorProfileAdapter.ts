@@ -2,7 +2,7 @@
  * lib/shared/operatorProfileAdapter.ts
  *
  * Adapts the two-document structure that the operator onboarding flow produces
- * into the Restaurant type used by the discovery module.
+ * into the SellerCatalogue type used by the discovery module.
  *
  * OperatorOnboarding publishes an operator profile document (metadataURI on-chain):
  *   { name, serviceTypes, mechanisms, description, location, catalogueURI, acceptedTokens, services }
@@ -14,7 +14,7 @@
  * used by the CatalogueEditorModule and devnet seed data.
  */
 
-import type { Restaurant, MenuItem } from '@/lib/marketplace/types';
+import type { SellerCatalogue, CatalogueItem } from '@/lib/seller/types';
 import type { AcceptedTokenMetadata } from '@/lib/shared/sellerCatalogueMetadata';
 
 // ── Document shapes ────────────────────────────────────────────────────────────
@@ -110,19 +110,19 @@ function inferMinimumOrder(items: OperatorCatalogueItem[]): string {
 
 // ── Main converter ─────────────────────────────────────────────────────────────
 
-export function operatorProfileToRestaurant(
+export function operatorProfileToCatalogue(
     address: string,
     profile: OperatorProfileDocument,
     items: OperatorCatalogueItem[],
     index: number,
-): Restaurant {
+): SellerCatalogue {
     const acceptedTokens: AcceptedTokenMetadata[] = (profile.acceptedTokens ?? []).map((addr) => ({
         address: addr as `0x${string}`,
         symbol: '',
         name: '',
     }));
 
-    const menu: MenuItem[] = items.map((item) => ({
+    const menu: CatalogueItem[] = items.map((item) => ({
         id: item.id,
         name: item.name,
         description: item.description ?? '',

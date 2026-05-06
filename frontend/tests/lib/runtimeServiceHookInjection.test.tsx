@@ -23,7 +23,7 @@ import {
     RuntimeServicesProvider,
     useRuntimeServices,
 } from "@/lib/shared/runtimeServicesContext";
-import type { Restaurant } from "@/lib/marketplace/types";
+import type { SellerCatalogue } from "@/lib/seller/types";
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 import type { CatalogueService } from "@/lib/shared/catalogueService";
 import type { DiscoveryService } from "@/lib/shared/discoveryService";
@@ -146,7 +146,7 @@ const publicClient = {
     getBlockNumber: (...args: unknown[]) => getBlockNumberMock(...args),
     watchContractEvent: (...args: unknown[]) => watchContractEventMock(...args),
 };
-const fallbackRestaurant: Restaurant = {
+const fallbackRestaurant: SellerCatalogue = {
     id: "fallback-1",
     name: "Fallback Merchant",
     description: "Fallback catalogue",
@@ -161,7 +161,7 @@ const fallbackRestaurant: Restaurant = {
     rating: 4.5,
 };
 
-const injectedRestaurant: Restaurant = {
+const injectedRestaurant: SellerCatalogue = {
     id: "merchant-1",
     name: "Injected Merchant",
     description: "Injected discovery result",

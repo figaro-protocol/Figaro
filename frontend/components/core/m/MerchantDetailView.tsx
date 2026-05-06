@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/Button";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { MerchantBrandingModule, MerchantLogo } from "@/components/modules/MerchantBrandingModule";
 import { useCommerce, useCheckout } from "@/lib/commerce";
-import { useCartStore, type FulfillmentMode } from "@/lib/marketplace/cartStore";
+import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
 import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
@@ -39,8 +39,8 @@ import {
     FULFILMENT_MODE_LABELS,
     isDeliveryFulfilment,
     mapFulfilmentToHandoff,
-} from "@/lib/marketplace/fulfilmentRouting";
-import type { MenuItem, Restaurant } from "@/lib/marketplace/types";
+} from "@/lib/seller/fulfilmentRouting";
+import type { CatalogueItem, SellerCatalogue } from "@/lib/seller/types";
 
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "consume-onsite",
@@ -123,7 +123,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     useEffect(() => {
         if (items.length === 0) return;
         const allMatchCurrent = items.every(
-            (item) => item.restaurantAddress.toLowerCase() === merchantAddressLower,
+            (item) => item.sellerAddress.toLowerCase() === merchantAddressLower,
         );
         if (!allMatchCurrent) {
             clearCart();
@@ -198,12 +198,12 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         );
     }
 
-    const handleAddItem = (menuItem: MenuItem) => {
+    const handleAddItem = (menuItem: CatalogueItem) => {
         addItem({
             menuItemId: menuItem.id,
-            restaurantId: restaurant.id,
-            restaurantAddress: restaurant.address,
-            restaurantName: restaurant.name,
+            sellerId: restaurant.id,
+            sellerAddress: restaurant.address,
+            sellerName: restaurant.name,
             name: menuItem.name,
             price: menuItem.price,
             quantity: 1,
@@ -217,7 +217,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
 
     const getItemQuantity = (menuItemId: string) => {
         const cartItem = items.find(
-            (item) => item.menuItemId === menuItemId && item.restaurantId === restaurant.id,
+            (item) => item.menuItemId === menuItemId && item.sellerId === restaurant.id,
         );
         return cartItem?.quantity || 0;
     };
@@ -225,7 +225,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // Filter cart to items from THIS merchant only — the inline cart on this
     // page is merchant-scoped. Items from other merchants live in the global
     // cart but aren't shown here.
-    const merchantCartItems = items.filter((it) => it.restaurantId === restaurant.id);
+    const merchantCartItems = items.filter((it) => it.sellerId === restaurant.id);
     const merchantTotalAmount = merchantCartItems.reduce(
         (sum, item) => sum + parseToken(item.price, tokenDecimals) * BigInt(item.quantity),
         0n,
