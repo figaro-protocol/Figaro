@@ -47,7 +47,6 @@ const config: Config = {
                 // accent surfaces appear at most once per page, on the
                 // primary call-to-action; never on body / status / icons.
                 accent: '#2a578f',
-                'accent-hover': '#3d6ba3',
                 success: '#6b7a4a',
                 warning: '#a8762d',
                 error: '#9c4a3c',

@@ -49,17 +49,16 @@ The ink ramp is namespaced `ink.*` rather than `text.*` to avoid the `text-text-
 
 The single CTA-only contrast color. Traditional MUJI aizome indigo: deep, cool, distinct from every warm-neutral on the rest of the palette. Used to make a primary call-to-action read as "different mode of action" against canvas — without leaving the MUJI register.
 
-| Token          | Hex       | Tailwind utility   | Use                                                   |
-|----------------|-----------|--------------------|-------------------------------------------------------|
-| `accent`       | `#2a578f` | `bg-accent`, `text-accent`, `border-accent` | Primary-CTA fill or border. |
-| `accent-hover` | `#3d6ba3` | `bg-accent-hover`  | Hover state of any `bg-accent` surface (lighter — reads as "wake up"). |
+| Token    | Hex       | Tailwind utility                            | Use                          |
+|----------|-----------|---------------------------------------------|------------------------------|
+| `accent` | `#2a578f` | `bg-accent`, `text-accent`, `border-accent` | Primary-CTA fill or border. |
 
 **Discipline (load-bearing):**
 
 - **CTAs only.** Use `bg-accent` / `text-accent` on the primary call-to-action of a page (e.g., the marketing-header Discover button, a "Download paper" button, a "Sign commitment" button on a transactional surface). Do not use accent on body text, captions, eyebrow labels, status surfaces, or decorative dividers.
-- **Max one accent surface per page.** Two accent fills on one page produce CTA-stacking — neither reads as primary. The outline-strong-secondary pattern (border-ink-heading, paper fill) is the canonical companion shape for the secondary action.
+- **Max one accent surface per page.** Two accent fills on one page produce CTA-stacking — neither reads as primary. The outline-strong-secondary pattern (`border-ink-heading`, paper fill) is the canonical companion shape for the secondary action.
 - **Never used as a text-on-canvas color** for prose. `text-accent` on canvas is decoratively visible but not body-text legible at small sizes. Reserve for short labels (button text uses `text-paper` on `bg-accent`).
-- **Hover transitions to `accent-hover`,** not to ink-heading. Switching hue families on hover (indigo → sumi) reads as a register break; keeping the hue and darkening reads as activation.
+- **Hover inverts fill ⇄ outline within the same hue.** A filled `bg-accent text-paper` button hovers to `bg-paper text-accent` (with `border-accent` set in both states so the outline appears on hover). An outline-strong-sumi secondary button (`border-ink-heading bg-paper text-ink-heading`) hovers to filled-sumi (`bg-ink-heading text-paper`). The pair: filled-accent ⇄ outline-accent (primary), outline-sumi ⇄ filled-sumi (secondary). Crossing hue families on hover (indigo → sumi) reads as a register break; flipping fill state within the same hue reads as activation.
 
 ### Status
 
