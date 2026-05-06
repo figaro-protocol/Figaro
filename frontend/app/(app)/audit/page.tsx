@@ -21,13 +21,13 @@ export default function AuditPage() {
     return (
         <div className="container mx-auto px-6 py-10 max-w-3xl space-y-8" data-testid="audit-generic-page">
             <header className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                <p className="text-eyebrow uppercase text-ink-muted">
                     Audit
                 </p>
-                <h1 className="text-2xl font-bold text-black">
+                <h1 className="text-heading-h2 text-ink-heading">
                     Hash verifier
                 </h1>
-                <p className="text-sm text-neutral-700 max-w-2xl">
+                <p className="text-sm text-ink-body max-w-2xl">
                     Paste content or a hash from an audit bundle to verify against
                     chain. For process-bound audit (financials, audit-bundle PDF,
                     and verifier scoped to the process), open <code>/audit/[processId]</code>{" "}
