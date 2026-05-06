@@ -40,6 +40,17 @@ function distinctRoles(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => b.roleKind)));
 }
 
+function InitialsAvatar({ listing }: { listing: Listing }) {
+    return (
+        <div
+            className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-xs font-semibold text-white"
+            style={{ backgroundColor: listing.accentColor ?? "#6b7280" }}
+        >
+            {listing.name.slice(0, 2).toUpperCase()}
+        </div>
+    );
+}
+
 export function OperatorCard({ listing }: { listing: Listing }) {
     const href = listingClickThroughHref(listing);
     const assemblies = distinctAssemblySlugs(listing);
@@ -58,14 +69,10 @@ export function OperatorCard({ listing }: { listing: Listing }) {
                         src={listing.logoURI}
                         alt={`${listing.name} logo`}
                         className="w-10 h-10 rounded object-cover shrink-0"
+                        fallback={<InitialsAvatar listing={listing} />}
                     />
                 ) : (
-                    <div
-                        className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-xs font-semibold text-white"
-                        style={{ backgroundColor: listing.accentColor ?? "#6b7280" }}
-                    >
-                        {listing.name.slice(0, 2).toUpperCase()}
-                    </div>
+                    <InitialsAvatar listing={listing} />
                 )}
                 <div className="min-w-0 flex-1">
                     <h3 className="text-base font-semibold text-black truncate">{listing.name}</h3>
