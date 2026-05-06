@@ -51,8 +51,8 @@ The single CTA-only contrast color. Traditional MUJI aizome indigo: deep, cool, 
 
 | Token          | Hex       | Tailwind utility   | Use                                                   |
 |----------------|-----------|--------------------|-------------------------------------------------------|
-| `accent`       | `#1d3a5f` | `bg-accent`, `text-accent`, `border-accent` | Primary-CTA fill or border. |
-| `accent-hover` | `#162d4a` | `bg-accent-hover`  | Hover state of any `bg-accent` surface.               |
+| `accent`       | `#2a578f` | `bg-accent`, `text-accent`, `border-accent` | Primary-CTA fill or border. |
+| `accent-hover` | `#3d6ba3` | `bg-accent-hover`  | Hover state of any `bg-accent` surface (lighter — reads as "wake up"). |
 
 **Discipline (load-bearing):**
 
