@@ -10,79 +10,79 @@ export const metadata: Metadata = {
 
 export default function DesignerLanding() {
     return (
-        <div className="min-h-screen bg-neutral-50">
+        <div className="min-h-screen bg-canvas">
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-4">
+                <p className="text-eyebrow uppercase text-ink-muted mb-4">
                     Designer
                 </p>
-                <h1 className="text-5xl font-bold text-black leading-tight tracking-tight mb-6">
+                <h1 className="text-heading-h1 text-ink-heading mb-6">
                     Compose an assembly.
                 </h1>
-                <p className="text-xl text-neutral-700 leading-relaxed max-w-2xl mb-4">
+                <p className="text-body-lead text-ink-body max-w-2xl mb-4">
                     An assembly is a composition of roles, coordination mechanisms, and display views that use the Figaro kernel to coordinate a multi-party process.
                 </p>
-                <p className="text-base text-neutral-600 leading-relaxed max-w-2xl">
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
                     Every assembly inherits the seven baseline graphs — capital flow (committed at buy time), geolocation, GHG, handoff, proximity, jurisdiction, and DAG topology — automatically. On top of the baseline, you extend the process tree by spawning sub-orders from any node and choosing a fulfilment method per edge. Today the supported methods are consume-onsite, pickup, and three delivery variants — including Dutch-auction dispatch.
                 </p>
                 <div className="mt-8">
                     <Link
                         href="/builders/designer/new"
-                        className="inline-flex rounded border border-black bg-black text-white px-5 py-2.5 text-sm font-semibold hover:bg-neutral-800"
+                        className="inline-flex rounded-tile border border-ink-heading bg-ink-heading text-paper px-5 py-2.5 text-sm font-semibold hover:bg-ink-primary"
                     >
                         Start a blank assembly
                     </Link>
                 </div>
             </section>
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-neutral-200 pt-12">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-6">
+            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
+                <h2 className="text-eyebrow uppercase text-ink-muted mb-6">
                     Your drafts
                 </h2>
-                <p className="text-sm text-neutral-600 mb-6 max-w-2xl">
+                <p className="text-sm text-ink-muted mb-6 max-w-2xl">
                     Designs you&apos;ve saved from the DAG editor. Drafts are kept in this browser&apos;s local storage; they don&apos;t leave your machine.
                 </p>
                 <DraftsList />
             </section>
 
-            <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-neutral-200 pt-12">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-6">
+            <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-12">
+                <h2 className="text-eyebrow uppercase text-ink-muted mb-6">
                     Reference assemblies
                 </h2>
-                <p className="text-sm text-neutral-600 mb-6 max-w-2xl">
+                <p className="text-sm text-ink-muted mb-6 max-w-2xl">
                     Existing assemblies published to the registry. Fork one to use it as a starting point for your own; view one to read its composition without editing.
                 </p>
                 <ul className="space-y-4">
                     {REFERENCE_ASSEMBLIES.map((a) => (
                         <li
                             key={a.identity.slug}
-                            className="rounded-lg border border-neutral-200 bg-white px-5 py-4 flex items-start gap-4"
+                            className="rounded-lg border border-default bg-paper px-5 py-4 flex items-start gap-4"
                         >
                             <div className="flex-1 min-w-0">
-                                <p className="text-base font-semibold text-black">
+                                <p className="text-base font-semibold text-ink-heading">
                                     {a.identity.name}
                                 </p>
-                                <p className="font-mono text-xs text-neutral-500 mt-0.5">
+                                <p className="font-mono text-xs text-ink-muted mt-0.5">
                                     /{a.identity.slug}
                                 </p>
                                 {a.identity.description && (
-                                    <p className="text-sm text-neutral-600 leading-relaxed mt-2">
+                                    <p className="text-sm text-ink-muted leading-relaxed mt-2">
                                         {a.identity.description}
                                     </p>
                                 )}
-                                <p className="text-xs text-neutral-500 mt-2">
+                                <p className="text-xs text-ink-muted mt-2">
                                     {a.roles.length} roles · {a.mechanisms.length} mechanisms · {a.views.length} views
                                 </p>
                             </div>
                             <div className="flex flex-col gap-2 shrink-0">
                                 <Link
                                     href={`/builders/designer/edit/${a.identity.slug}`}
-                                    className="text-xs px-3 py-1.5 rounded border border-black bg-white hover:bg-neutral-100 text-black text-center"
+                                    className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading text-center"
                                 >
                                     Fork
                                 </Link>
                                 <Link
                                     href={`/builders/designer/view/${a.identity.slug}`}
-                                    className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white hover:border-neutral-500 text-neutral-700 text-center"
+                                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-body text-center"
                                 >
                                     View
                                 </Link>
