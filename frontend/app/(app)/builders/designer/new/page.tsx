@@ -261,24 +261,24 @@ export default function NewDesignerPage() {
     }, [savedAt, slug, name]);
 
     return (
-        <div className="min-h-screen bg-neutral-50">
+        <div className="min-h-screen bg-canvas">
             <div
                 data-testid="designer-canvas-toolbar"
-                className="px-8 py-4 border-b border-neutral-200 bg-white flex items-center gap-3 flex-wrap"
+                className="px-8 py-4 border-b border-default bg-paper flex items-center gap-3 flex-wrap"
             >
                 <Link
                     href="/builders/designer"
-                    className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white hover:border-neutral-400"
+                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong"
                 >
                     ← Assemblies
                 </Link>
-                <span className="text-sm font-semibold text-black truncate max-w-[200px]" title={name}>{name}</span>
-                <span className="text-xs text-neutral-500">{stageLabel}</span>
+                <span className="text-sm font-semibold text-ink-heading truncate max-w-[200px]" title={name}>{name}</span>
+                <span className="text-xs text-ink-muted">{stageLabel}</span>
                 <button
                     type="button"
                     onClick={handleSaveDraft}
                     data-testid="designer-save-draft"
-                    className="ml-auto text-xs px-3 py-1.5 rounded border border-black bg-white hover:bg-neutral-100 font-semibold"
+                    className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold"
                 >
                     {slug ? "Update draft" : "Save as draft"}
                 </button>
@@ -286,29 +286,29 @@ export default function NewDesignerPage() {
                     type="button"
                     onClick={handleReset}
                     disabled={orders.length === 1 && !slug}
-                    className={`text-xs px-3 py-1.5 rounded border bg-white disabled:opacity-40 disabled:cursor-not-allowed ${
+                    className={`text-xs px-3 py-1.5 rounded border bg-paper disabled:opacity-40 disabled:cursor-not-allowed ${
                         orders.length === 0
-                            ? "border-black hover:bg-neutral-100 font-semibold"
-                            : "border-neutral-300 hover:border-neutral-400"
+                            ? "border-ink-heading hover:bg-subtle font-semibold"
+                            : "border-default hover:border-default-strong"
                     }`}
                 >
                     {orders.length === 0 ? "Start a new unit" : "Reset to unit"}
                 </button>
             </div>
             {savedHint && (
-                <div className="px-8 py-1.5 text-[11px] text-neutral-500 bg-neutral-50 border-b border-neutral-200" data-testid="designer-saved-hint">
+                <div className="px-8 py-1.5 text-[11px] text-ink-muted bg-canvas border-b border-default" data-testid="designer-saved-hint">
                     {savedHint}
                 </div>
             )}
             <div className="container mx-auto px-6 pt-8 pb-16 max-w-5xl">
                 <div className="mb-6">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">
+                    <p className="text-eyebrow uppercase text-ink-muted mb-2">
                         The bonded commitment
                     </p>
-                    <p className="text-sm text-neutral-700 leading-relaxed max-w-2xl">
+                    <p className="text-sm text-ink-body leading-relaxed max-w-2xl">
                         One buyer, one seller, one agreement. Four baseline graphs are inherited automatically: <strong>Value</strong>, <strong>Geo</strong>, <strong>Capital</strong>, <strong>GHG</strong>. Toggle the lens buttons to inspect each graph. The agreementHash binds the four sections into one signed contract.
                     </p>
-                    <p className="text-sm text-neutral-700 leading-relaxed max-w-2xl mt-3">
+                    <p className="text-sm text-ink-body leading-relaxed max-w-2xl mt-3">
                         To extend the process: grab the <span className="inline-block align-middle w-3 h-3 rounded-full bg-green-600 border-2 border-white" /> handle at the bottom of any active node and drag it into empty space. A sub-order spawns connected to the parent. Cumulative value rolls up; the new node inherits the currency.
                     </p>
                 </div>
@@ -326,7 +326,7 @@ export default function NewDesignerPage() {
                         {mergeNotice}
                     </p>
                 )}
-                <p className="mt-6 text-xs text-neutral-500">
+                <p className="mt-6 text-xs text-ink-muted">
                     <strong>Drag</strong> a node&apos;s green handle to empty space to add a sub-order, or onto another node to merge it as an additional parent (enables diamond / fan-in). <strong>Click</strong> any edge pill to swap the fulfilment method (consume on-site · pickup · 3 delivery variants). <strong>Click</strong> any node to modify its baseline-graph clauses (Geo · GHG · Topology) or to delete it. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
                 </p>
             </div>
