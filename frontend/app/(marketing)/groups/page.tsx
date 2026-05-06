@@ -73,7 +73,7 @@ export default function Groups() {
                             <div className="flex items-start gap-4">
                                 <DisciplineGlyph index={g.disciplineIndex} />
                                 <div className="min-w-0 flex-1">
-                                    <h3 className="text-lg font-bold text-ink-heading leading-snug">
+                                    <h3 className="text-heading-h3 text-ink-heading leading-snug">
                                         {g.name}
                                     </h3>
                                     <p className="text-xs text-ink-muted italic">
@@ -125,7 +125,7 @@ export default function Groups() {
                             <p className="text-eyebrow uppercase text-ink-muted mb-1">
                                 {g.tier}
                             </p>
-                            <h3 className="text-lg font-bold text-ink-heading mb-2 leading-snug">
+                            <h3 className="text-heading-h3 text-ink-heading mb-2 leading-snug">
                                 {g.name}
                             </h3>
                             <p className="text-sm text-ink-body leading-relaxed mb-3">
