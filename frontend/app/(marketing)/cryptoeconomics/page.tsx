@@ -15,35 +15,13 @@ export default function Cryptoeconomics() {
     return (
         <>
             <MarketingHero
-                eyebrow="Cryptoeconomics"
-                title="Cryptoeconomic systems are multi-disciplinary."
+                title="Cryptoeconomic systems are multi-disciplinary by necessity."
                 lead={
                     <>
-                        Voshmgir &amp; Zargham frame the field as eight disciplines converging on the same substrate &mdash; each asks the substrate a different question in its own vocabulary. Figaro&apos;s papers are organized along that taxonomy. Working groups, current work, grants, and community framing live on{" "}
-                        <Link href="/groups" className="text-ink-heading hover:text-ink-body">
-                            /groups
-                        </Link>
-                        .
+                        Voshmgir &amp; Zargham frame the field as eight disciplines converging on the same substrate &mdash; each asks the substrate a different question in its own vocabulary. The disciplines are:
                     </>
                 }
             />
-
-            <MarketingSection>
-                <figure>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                        src="/images/foundations-zargham-2024.jpg"
-                        alt="Eight disciplines arranged around a central cryptoeconomic-systems node."
-                        width={1014}
-                        height={612}
-                        className="w-full h-auto rounded-lg border border-default"
-                    />
-                    <figcaption className="text-xs text-ink-muted italic mt-2">
-                        Figure from Voshmgir &amp; Zargham,{" "}
-                        <em>Foundations of Cryptoeconomic Systems</em> (2024, Figure 1). Reproduced with attribution.
-                    </figcaption>
-                </figure>
-            </MarketingSection>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl pt-2">
                 <div className="space-y-12">
