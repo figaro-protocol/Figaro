@@ -453,94 +453,100 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                             </p>
                         ) : (
                             <>
-                                <ul className="space-y-2 text-sm">
+                                <ul className="space-y-3 text-sm">
                                     {merchantCartItems.map((item) => (
                                         <li
                                             key={item.menuItemId}
-                                            className="flex items-center gap-3"
+                                            className="space-y-1"
                                             data-testid={`cart-line-${item.menuItemId}`}
                                         >
-                                            <div className="flex items-center gap-1 shrink-0">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeItem(item.menuItemId, restaurant.id)}
-                                                    className="w-6 h-6 rounded border border-neutral-300 bg-white text-black text-sm hover:bg-neutral-100"
-                                                    aria-label={`Remove one ${item.name}`}
-                                                    data-testid={`cart-line-decrement-${item.menuItemId}`}
-                                                >
-                                                    −
-                                                </button>
-                                                <span className="w-5 text-center text-black font-semibold tabular-nums">
-                                                    {item.quantity}
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="flex-1 min-w-0 text-black font-medium truncate">
+                                                    {item.name}
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    onClick={() => addItem({ ...item, quantity: 1 })}
-                                                    className="w-6 h-6 rounded border border-neutral-300 bg-white text-black text-sm hover:bg-neutral-100"
-                                                    aria-label={`Add another ${item.name}`}
-                                                    data-testid={`cart-line-increment-${item.menuItemId}`}
+                                                    onClick={() => removeLine(item.menuItemId, restaurant.id)}
+                                                    className="text-neutral-400 hover:text-red-600 text-lg leading-none px-1 shrink-0"
+                                                    aria-label={`Remove ${item.name} from cart`}
+                                                    data-testid={`cart-line-delete-${item.menuItemId}`}
                                                 >
-                                                    +
+                                                    ×
                                                 </button>
                                             </div>
-                                            <span className="flex-1 min-w-0 text-neutral-700 truncate">
-                                                {item.name}
-                                            </span>
-                                            <span className="text-neutral-900 font-semibold tabular-nums shrink-0">
-                                                {(parseFloat(item.price) * item.quantity).toFixed(4)} ETH
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => removeLine(item.menuItemId, restaurant.id)}
-                                                className="w-6 h-6 rounded text-neutral-400 hover:text-red-600 hover:bg-red-50 text-base shrink-0"
-                                                aria-label={`Remove ${item.name} from cart`}
-                                                data-testid={`cart-line-delete-${item.menuItemId}`}
-                                            >
-                                                ×
-                                            </button>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeItem(item.menuItemId, restaurant.id)}
+                                                        className="w-7 h-7 rounded border border-neutral-300 bg-white text-black text-base hover:bg-neutral-100"
+                                                        aria-label={`Remove one ${item.name}`}
+                                                        data-testid={`cart-line-decrement-${item.menuItemId}`}
+                                                    >
+                                                        −
+                                                    </button>
+                                                    <span className="w-6 text-center text-black font-semibold tabular-nums">
+                                                        {item.quantity}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => addItem({ ...item, quantity: 1 })}
+                                                        className="w-7 h-7 rounded border border-neutral-300 bg-white text-black text-base hover:bg-neutral-100"
+                                                        aria-label={`Add another ${item.name}`}
+                                                        data-testid={`cart-line-increment-${item.menuItemId}`}
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                                <span className="text-neutral-900 font-semibold tabular-nums">
+                                                    {(parseFloat(item.price) * item.quantity).toFixed(4)} ETH
+                                                </span>
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
 
-                                <div className="border-t border-neutral-200 pt-3 space-y-1 text-sm">
+                                <div className="border-t border-neutral-200 pt-3 space-y-1.5 text-sm">
                                     <div className="flex justify-between">
-                                        <span className="text-neutral-600">Total</span>
-                                        <span className="font-semibold text-black">
+                                        <span className="text-neutral-600">Payment to merchant</span>
+                                        <span className="text-neutral-900 tabular-nums">
                                             {formatToken(merchantTotalAmount, tokenDecimals)}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-neutral-500">Your buyer bond (locked, returned at settlement)</span>
-                                        <span className="text-neutral-700">
+                                    <div className="flex justify-between">
+                                        <span className="text-neutral-600">Your bond (refundable on resolve)</span>
+                                        <span className="text-neutral-900 tabular-nums">
+                                            {formatToken(merchantTotalAmount, tokenDecimals)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-semibold">
+                                        <span className="text-black">Locked at commit</span>
+                                        <span className="text-black tabular-nums">
                                             {formatToken(merchantBuyerBond, tokenDecimals)}
                                         </span>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1">
+                                    <label
+                                        htmlFor="fulfilment-mode-select"
+                                        className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1 block"
+                                    >
                                         Fulfilment
-                                    </p>
-                                    <div className="flex flex-wrap gap-1">
+                                    </label>
+                                    <select
+                                        id="fulfilment-mode-select"
+                                        value={fulfillmentMode}
+                                        onChange={(e) => setFulfillmentMode(e.target.value as FulfillmentMode)}
+                                        className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                                        data-testid="select-fulfilment-mode"
+                                    >
                                         {supportedModes.map((mode) => (
-                                            <button
-                                                key={mode}
-                                                type="button"
-                                                onClick={() => setFulfillmentMode(mode)}
-                                                className={`text-xs rounded border px-2 py-1 ${
-                                                    fulfillmentMode === mode
-                                                        ? "border-black bg-black text-white"
-                                                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-                                                }`}
-                                                style={fulfillmentMode === mode && accentTone
-                                                    ? { backgroundColor: accentTone, borderColor: accentTone }
-                                                    : undefined}
-                                                data-testid={`btn-fulfilment-${mode}`}
-                                            >
+                                            <option key={mode} value={mode} data-testid={`option-fulfilment-${mode}`}>
                                                 {FULFILMENT_MODE_LABELS[mode] ?? mode}
-                                            </button>
+                                            </option>
                                         ))}
-                                    </div>
+                                    </select>
                                 </div>
 
                                 <Button
