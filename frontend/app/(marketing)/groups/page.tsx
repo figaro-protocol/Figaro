@@ -56,7 +56,7 @@ export default function Groups() {
             />
 
             <MarketingSection eyebrow="Cryptoeconomic working groups" title="Eight disciplines, eight lenses.">
-                <p className="text-sm text-gray-700 leading-relaxed mb-8">
+                <p className="text-sm text-ink-body leading-relaxed mb-8">
                     The disciplinary list anchors to Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024). Detailed paper portfolios per discipline live on{" "}
                     <Link href="/cryptoeconomics" className="underline">
                         /cryptoeconomics
@@ -73,33 +73,33 @@ export default function Groups() {
                             <div className="flex items-start gap-4">
                                 <DisciplineGlyph index={g.disciplineIndex} />
                                 <div className="min-w-0 flex-1">
-                                    <h3 className="text-lg font-bold text-black leading-snug">
+                                    <h3 className="text-lg font-bold text-ink-heading leading-snug">
                                         {g.name}
                                     </h3>
-                                    <p className="text-xs text-gray-500 italic">
+                                    <p className="text-xs text-ink-muted italic">
                                         {g.discipline}
                                     </p>
                                 </div>
                             </div>
                             <div className="mt-3 ml-16">
-                                <p className="text-sm text-gray-700 leading-relaxed">
+                                <p className="text-sm text-ink-body leading-relaxed">
                                     {g.charter}
                                 </p>
                                 {g.currentWork && g.currentWork.length > 0 && (
-                                    <ul className="mt-3 space-y-1 text-xs text-gray-600 list-disc pl-5">
+                                    <ul className="mt-3 space-y-1 text-xs text-ink-muted list-disc pl-5">
                                         {g.currentWork.map((w, i) => (
                                             <li key={i}>{w}</li>
                                         ))}
                                     </ul>
                                 )}
                                 {g.venue && (
-                                    <p className="text-xs text-gray-500 mt-2">
+                                    <p className="text-xs text-ink-muted mt-2">
                                         Dedicated channel:{" "}
                                         <a
                                             href={g.venue.href}
                                             target={g.venue.href.startsWith("http") ? "_blank" : undefined}
                                             rel={g.venue.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                                            className="underline hover:text-black"
+                                            className="underline"
                                         >
                                             {g.venue.label}
                                         </a>
@@ -112,7 +112,7 @@ export default function Groups() {
             </MarketingSection>
 
             <MarketingSection eyebrow="Composability working groups" title="Output-oriented; cross-cut the disciplines.">
-                <p className="text-sm text-gray-700 leading-relaxed mb-8">
+                <p className="text-sm text-ink-body leading-relaxed mb-8">
                     Where the cryptoeconomic disciplines are reading lenses, the composability working groups are oriented around concrete builder outputs &mdash; assemblies and schemas. They cross-cut the disciplinary axis: a schema for GHG measurement pulls validator-implementation expertise from Computer Science and Cryptography while the content-definition expertise comes from Operations Research or Industrial Engineering. The tier framing comes from{" "}
                     <Link href="/composability" className="underline">
                         /composability
@@ -122,21 +122,21 @@ export default function Groups() {
                 <div className="space-y-8">
                     {COMPOSITION_GROUPS.map((g) => (
                         <article key={g.name}>
-                            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-1">
+                            <p className="text-eyebrow uppercase text-ink-muted mb-1">
                                 {g.tier}
                             </p>
-                            <h3 className="text-lg font-bold text-black mb-2 leading-snug">
+                            <h3 className="text-lg font-bold text-ink-heading mb-2 leading-snug">
                                 {g.name}
                             </h3>
-                            <p className="text-sm text-gray-700 leading-relaxed mb-3">
+                            <p className="text-sm text-ink-body leading-relaxed mb-3">
                                 {g.charter}
                             </p>
-                            <ul className="space-y-1 text-xs text-gray-600">
+                            <ul className="space-y-1 text-xs text-ink-muted">
                                 {g.references.map((r) => (
                                     <li key={r.href}>
                                         <Link
                                             href={r.href}
-                                            className="underline hover:text-black"
+                                            className="underline"
                                         >
                                             {r.label}
                                         </Link>
@@ -146,31 +146,31 @@ export default function Groups() {
                         </article>
                     ))}
                 </div>
-                <p className="text-sm text-gray-600 mt-8">
+                <p className="text-sm text-ink-muted mt-8">
                     Tier-3 work (authoring new mechanism contracts above the kernel) is absorbed into the existing Computer Science and Cryptography group (formal verification, adversarial review) and the Economics and Game Theory group (mechanism design). It does not require its own working group at this scale.
                 </p>
             </MarketingSection>
 
             <MarketingSection eyebrow="Grants &amp; capital sources">
-                <p className="text-base text-gray-700 leading-relaxed mb-4">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
                     Work on the Figaro substrate &mdash; research, review, verification, assembly design, schema authoring, documentation &mdash; is funded through permissionless channels. No application committee. No curated budget.
                 </p>
                 <dl className="space-y-4 text-sm">
-                    <div className="border-l-2 border-gray-200 pl-4">
-                        <dt className="text-base font-semibold text-black">DAO allocation</dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">
+                    <div className="border-l-2 border-default pl-4">
+                        <dt className="text-base font-semibold text-ink-heading">DAO allocation</dt>
+                        <dd className="text-ink-body leading-relaxed mt-1">
                             300M FIG (30% of supply) minted to the DAO wallet at genesis with no vesting. Allocation decisions will be made by the DAO&apos;s governance process; the DAO is not yet instantiated.
                         </dd>
                     </div>
-                    <div className="border-l-2 border-gray-200 pl-4">
-                        <dt className="text-base font-semibold text-black">Gitcoin rounds</dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">
+                    <div className="border-l-2 border-default pl-4">
+                        <dt className="text-base font-semibold text-ink-heading">Gitcoin rounds</dt>
+                        <dd className="text-ink-body leading-relaxed mt-1">
                             Quadratic funding for Figaro-adjacent work. No Figaro round is live yet; until then, groups can apply to general ecosystem rounds where they fit the theme.
                         </dd>
                     </div>
-                    <div className="border-l-2 border-gray-200 pl-4">
-                        <dt className="text-base font-semibold text-black">Direct contributions</dt>
-                        <dd className="text-gray-700 leading-relaxed mt-1">
+                    <div className="border-l-2 border-default pl-4">
+                        <dt className="text-base font-semibold text-ink-heading">Direct contributions</dt>
+                        <dd className="text-ink-body leading-relaxed mt-1">
                             Any wallet can send assets to a group&apos;s published address or to the DAO wallet. On-chain visibility preserves the funding graph.
                         </dd>
                     </div>
@@ -178,7 +178,7 @@ export default function Groups() {
             </MarketingSection>
 
             <MarketingSection eyebrow="Local &amp; international">
-                <p className="text-base text-gray-700 leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed">
                     Working groups self-organize across jurisdictions: local meetups, international correspondences, async pull requests against{" "}
                     <code>frontend/lib/shared/groupsRegistry.ts</code>
                     . Cadence and geography are whatever contributors decide. The taxonomy stays fixed; the activity inside it does not.
@@ -186,12 +186,12 @@ export default function Groups() {
             </MarketingSection>
 
             <MarketingSection eyebrow="Contributing" bottomPad="wide">
-                <p className="text-base text-gray-700 leading-relaxed mb-4">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
                     To declare current work, surface a received grant, publish a contributor handle, or amend a group&apos;s charter, open a pull request against{" "}
                     <code>frontend/lib/shared/groupsRegistry.ts</code>
                     . PRs are reviewed at merge time; conversation about scope happens on Telegram before codification.
                 </p>
-                <p className="text-sm text-gray-600 leading-relaxed">
+                <p className="text-sm text-ink-muted leading-relaxed">
                     The disciplinary list itself tracks Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em>. The composability tiers track the extension doctrine on{" "}
                     <Link href="/composability" className="underline">
                         /composability
