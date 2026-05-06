@@ -133,10 +133,10 @@ function SchemaListItem({ row }: { row: SchemaRow }) {
             id={`schema-${row.id}`}
             className="flex flex-col sm:flex-row gap-1 sm:gap-3 scroll-mt-24"
         >
-            <span className="font-mono text-xs text-gray-600 sm:w-56 sm:shrink-0">
+            <span className="font-mono text-xs text-ink-muted sm:w-56 sm:shrink-0">
                 {row.id}
             </span>
-            <span className="text-sm text-gray-700">{row.description}</span>
+            <span className="text-sm text-ink-body">{row.description}</span>
         </li>
     );
 }
@@ -154,37 +154,37 @@ export default function Schemas() {
             />
 
             <MarketingSection eyebrow="How it works" title="One spec. Three validators. Enforced in lockstep.">
-                <p className="text-sm text-gray-700 leading-relaxed mb-6">
+                <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Every registered schema is enforced at three layers. A new schema is not &ldquo;done&rdquo; until all required layers ship together:
                 </p>
-                <ul className="space-y-4 text-sm text-gray-700 leading-relaxed">
+                <ul className="space-y-4 text-sm text-ink-body leading-relaxed">
                     <li className="flex gap-4">
-                        <span className="font-mono text-xs text-gray-600 mt-1 w-20 shrink-0 uppercase">Layer A</span>
+                        <span className="font-mono text-xs text-ink-muted mt-1 w-20 shrink-0 uppercase">Layer A</span>
                         <span><strong>Client-side (TypeScript).</strong> The SDK&apos;s <code>parseSchemaSpec</code> and <code>validateContent</code> check that off-chain content conforms to the spec before anyone signs it. Closed subset of JSON Schema with domain types (hex bytes, addresses, ISO datetimes, enums). Catches form errors before they reach chain.</span>
                     </li>
                     <li className="flex gap-4">
-                        <span className="font-mono text-xs text-gray-600 mt-1 w-20 shrink-0 uppercase">Layer B</span>
+                        <span className="font-mono text-xs text-ink-muted mt-1 w-20 shrink-0 uppercase">Layer B</span>
                         <span><strong>Prover (Rust, deferred).</strong> A byte-for-byte mirror of the Layer A validator, compiled into the SP1 prover for batched attestation verification. Not yet live; the TypeScript validator is the conformance spec for the Rust port.</span>
                     </li>
                     <li className="flex gap-4">
-                        <span className="font-mono text-xs text-gray-600 mt-1 w-20 shrink-0 uppercase">Layer C</span>
+                        <span className="font-mono text-xs text-ink-muted mt-1 w-20 shrink-0 uppercase">Layer C</span>
                         <span><strong>On-chain (Solidity).</strong> The schemaId binds to an <code>ISchemaValidator</code> contract. The attestation coordinator calls it on every attestation; malformed content reverts with a typed custom error. First-write-wins and immutable &mdash; once bound to a schemaId, the validator address cannot be changed.</span>
                     </li>
                 </ul>
-                <p className="mt-6 text-sm text-gray-700 leading-relaxed">
+                <p className="mt-6 text-sm text-ink-body leading-relaxed">
                     All layers parse the same canonical JSON spec and apply the same validation rules. The cross-layer consistency is the discipline; today it&apos;s enforced between Layer A and Layer C, with Layer B closing the loop when shipped. Bytes that Layer A rejects will also be rejected by Layer C.
                 </p>
             </MarketingSection>
 
             <MarketingSection eyebrow="Shipped schemas" title="Eighteen schemas, six families.">
-                <p className="text-sm text-gray-700 leading-relaxed mb-6">
+                <p className="text-sm text-ink-body leading-relaxed mb-6">
                     The reference set covers manifest topology, commerce primitives, GHG disclosure and measurement, lifecycle and proximity, sovereign process logs, and legal anchoring. The full layer-status detail (which validators are deployed under each schemaId) lives on{" "}
                     <Link href="/spec" className="underline">/spec</Link>.
                 </p>
                 <div className="space-y-8">
                     {SCHEMA_FAMILIES.map((family) => (
                         <div key={family.name}>
-                            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">
+                            <p className="text-eyebrow uppercase text-ink-muted mb-3">
                                 {family.name}
                             </p>
                             <ul className="space-y-3">
@@ -198,7 +198,7 @@ export default function Schemas() {
             </MarketingSection>
 
             <MarketingSection eyebrow="Adding a schema" title="The nine-step checklist.">
-                <ol className="space-y-3 text-sm text-gray-700 leading-relaxed list-decimal pl-5">
+                <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
                     <li>Write the JSON spec at <code>sdk/src/schemas/examples/&lt;your-schema&gt;.json</code>.</li>
                     <li>Mirror it in <code>frontend/lib/shared/schemas/&lt;your-schema&gt;.json</code> so the UI can preload it.</li>
                     <li>Write the SDK content encoder in <code>sdk/src/schemas/encode.ts</code> and export from <code>index.ts</code>.</li>
@@ -213,13 +213,13 @@ export default function Schemas() {
                         instead &mdash; atomic register+bind in one transaction; closes the front-running window between separate <code>registerSchema</code> and <code>setValidator</code> calls.
                     </li>
                 </ol>
-                <p className="mt-6 text-sm text-gray-600 leading-relaxed">
+                <p className="mt-6 text-sm text-ink-muted leading-relaxed">
                     Skipping any step produces one of two failure modes: Layer A silently accepts content the on-chain validator would reject (spec drift), or Layer C rejects everything under the schemaId (missing registration). Lockstep is the invariant that makes the pattern worth using.
                 </p>
             </MarketingSection>
 
             <MarketingSection eyebrow="Where to look" bottomPad="extra">
-                <ul className="space-y-3 text-sm text-gray-700 leading-relaxed">
+                <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>SDK module:</strong> <code>@figaro/core/schemas</code> &mdash; meta-schema validator, <code>validateContent</code>, per-schema encoders. The canonical source of the spec format. See <Link href="/integrate" className="underline">Integrate</Link>.</li>
                     <li><strong>On-chain interface:</strong> <code>src/ISchemaValidator.sol</code> &mdash; the two-method interface every on-chain validator implements. Contract catalogue at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Registration path:</strong> <code>AttestationCoordinator.setValidator(schemaId, validator)</code> &mdash; permissionless, first-write-wins, immutable once set. Atomic register+bind via <code>SchemaRegistrationHelper.registerSchemaAndValidator(...)</code>.</li>
@@ -227,7 +227,7 @@ export default function Schemas() {
                     <li><strong>Academic frame:</strong> Paper E (jurisdiction baseline) and the Philosophy / Law / Ethics discipline on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>.</li>
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro-Prototype2</a>. The <code>CLAUDE.md</code> at the root is the authoritative inventory; the &ldquo;Adding a new schema&rdquo; checklist above mirrors the one there.</li>
                 </ul>
-                <p className="mt-6 text-sm text-gray-600">
+                <p className="mt-6 text-sm text-ink-muted">
                     Composition tools and the assembly designer: <Link href="/builders" className="underline">/builders</Link>.
                 </p>
             </MarketingSection>
