@@ -115,6 +115,7 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 - `FIG_TOKEN.md`, `GHG_PROTOCOL_SPEC.md` — protocol-specific
 - `BOL_RESEARCH.md` — bill-of-lading research, load-bearing reference for `DESIGN_DECISIONS.md` and `AUDIT_FINDINGS_*.md`
 - `TESTNET_READINESS.md` — single-source-of-truth punch list compiled 2026-05-06
+- `DESIGN_TOKENS.md` — MUJI theme spec; canonical token reference for Tailwind config and component primitives
 - `AUDIT_FINDINGS_<DATE>.md` — dated audit findings (glob; the only auto-allowed new-file pattern)
 
 **Delete on completion.** When a strategy/plan/audit/punch-list doc's work is closed, **delete the file**. Do not move it to `docs/archive/` (that path is for legacy v4 docs only, not v5 cleanups). Do not mark items done in place. Use git history to retrieve. The same rule that governs the backlog (`feedback_delete_done_backlog_items.md`) applies to docs.
