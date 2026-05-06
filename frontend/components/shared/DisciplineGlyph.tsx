@@ -60,8 +60,8 @@ export function DisciplineGlyph({ index, size = "md", as = "decorative" }: Disci
 
     const dimension = size === "md" ? "h-12 w-12 text-base" : "h-8 w-8 text-xs";
     const className =
-        `inline-flex shrink-0 items-center justify-center rounded ` +
-        `border border-gray-300 bg-white text-black font-mono font-semibold ${dimension}`;
+        `inline-flex shrink-0 items-center justify-center rounded-glyph ` +
+        `border border-default bg-surface text-ink-heading font-muji-mono font-semibold ${dimension}`;
 
     if (as === "labelled") {
         return (

@@ -19,14 +19,14 @@ interface MarketingHeroProps {
 export function MarketingHero({ eyebrow, title, lead, children }: MarketingHeroProps) {
     return (
         <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-4">
+            <p className="text-eyebrow uppercase text-ink-muted mb-4">
                 {eyebrow}
             </p>
-            <h1 className="text-5xl sm:text-6xl font-bold text-black leading-tight tracking-tight mb-6">
+            <h1 className="text-heading-h1 text-ink-heading mt-0 mb-6">
                 {title}
             </h1>
             {lead && (
-                <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
+                <p className="text-body-lead text-ink-muted max-w-2xl">
                     {lead}
                 </p>
             )}

@@ -39,13 +39,13 @@ export function MarketingSection({
     const scrollClass = sectionId ? " scroll-mt-24" : "";
 
     const eyebrowClass =
-        "text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3";
+        "text-eyebrow uppercase text-ink-muted mb-3";
     const renderEyebrowAsH2 = eyebrowAsHeading && !title;
 
     return (
         <section
             id={sectionId}
-            className={`container mx-auto px-6 ${pbClass} max-w-3xl border-t border-gray-200 pt-12${scrollClass}`}
+            className={`container mx-auto px-6 ${pbClass} max-w-3xl border-t border-default pt-xl${scrollClass}`}
         >
             {eyebrow && renderEyebrowAsH2 && (
                 <h2 className={`${eyebrowClass} mb-6`}>{eyebrow}</h2>
@@ -54,7 +54,7 @@ export function MarketingSection({
                 <p className={eyebrowClass}>{eyebrow}</p>
             )}
             {title && (
-                <h2 className="text-3xl font-bold text-black mb-6 leading-tight">
+                <h2 className="text-heading-h2 text-ink-heading mt-0 mb-6">
                     {title}
                 </h2>
             )}
