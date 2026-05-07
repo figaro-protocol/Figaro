@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { SELLER_CATALOGUE_METADATA_EXAMPLE } from '@/lib/shared/sellerCatalogueMetadata';
-import { RuntimeIdentityDataSource } from '@/lib/shared/runtimeDataSource';
 import {
     fetchRuntimeAssetDocument,
     requireAssemblyRuntimeContext,
@@ -15,19 +14,25 @@ import {
     resolveRuntimeRoleSelection,
     resolveAssemblyRuntimeContext,
 } from '@/lib/shared/runtimeResolution';
+import {
+    createMockRuntimeIdentityDataSource,
+    TEST_ADDR_B,
+    TEST_ADDR_C,
+    TEST_ADDR_D,
+} from './__fixtures__/runtimeIdentity';
 
-const injectedRuntimeSource: RuntimeIdentityDataSource = {
-    listSubjectRecords: () => [
+const injectedRuntimeSource = createMockRuntimeIdentityDataSource({
+    subjects: [
         {
-            subjectAddress: '0x2222222222222222222222222222222222222222',
+            subjectAddress: TEST_ADDR_B,
             displayName: 'Injected Runtime Merchant',
             version: '1.0.0',
         },
     ],
-    listAssemblyBindings: () => [
+    assemblyBindings: [
         {
             bindingId: 'binding-injected-runtime-merchant',
-            subjectAddress: '0x2222222222222222222222222222222222222222',
+            subjectAddress: TEST_ADDR_B,
             assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [
@@ -40,34 +45,34 @@ const injectedRuntimeSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
-    listOperatorProfileMetadata: () => [
+    operatorProfiles: [
         {
-            subjectAddress: '0x2222222222222222222222222222222222222222',
+            subjectAddress: TEST_ADDR_B,
             name: 'Injected Runtime Merchant',
             slug: 'injected-runtime-merchant',
             version: '1.0.0',
         },
     ],
-    listSellerCatalogueMetadata: () => [
+    sellerCatalogues: [
         {
             ...SELLER_CATALOGUE_METADATA_EXAMPLE,
-            subjectAddress: '0x2222222222222222222222222222222222222222',
+            subjectAddress: TEST_ADDR_B,
         },
     ],
-};
+});
 
-const unmappedRuntimeSource: RuntimeIdentityDataSource = {
-    listSubjectRecords: () => [
+const unmappedRuntimeSource = createMockRuntimeIdentityDataSource({
+    subjects: [
         {
-            subjectAddress: '0x3333333333333333333333333333333333333333',
+            subjectAddress: TEST_ADDR_C,
             displayName: 'Unmapped Runtime Merchant',
             version: '1.0.0',
         },
     ],
-    listAssemblyBindings: () => [
+    assemblyBindings: [
         {
             bindingId: 'binding-unmapped-runtime-merchant',
-            subjectAddress: '0x3333333333333333333333333333333333333333',
+            subjectAddress: TEST_ADDR_C,
             assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [
@@ -79,22 +84,20 @@ const unmappedRuntimeSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
-    listOperatorProfileMetadata: () => [],
-    listSellerCatalogueMetadata: () => [],
-};
+});
 
-const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
-    listSubjectRecords: () => [
+const transportSkinRuntimeSource = createMockRuntimeIdentityDataSource({
+    subjects: [
         {
-            subjectAddress: '0x4444444444444444444444444444444444444444',
+            subjectAddress: TEST_ADDR_D,
             displayName: 'Transport Skin Merchant',
             version: '1.0.0',
         },
     ],
-    listAssemblyBindings: () => [
+    assemblyBindings: [
         {
             bindingId: 'binding-transport-skin-merchant',
-            subjectAddress: '0x4444444444444444444444444444444444444444',
+            subjectAddress: TEST_ADDR_D,
             assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [
@@ -108,9 +111,9 @@ const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
-    listOperatorProfileMetadata: () => [
+    operatorProfiles: [
         {
-            subjectAddress: '0x4444444444444444444444444444444444444444',
+            subjectAddress: TEST_ADDR_D,
             name: 'Transport Skin Merchant',
             slug: 'transport-skin-merchant',
             branding: {
@@ -125,13 +128,13 @@ const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
-    listSellerCatalogueMetadata: () => [
+    sellerCatalogues: [
         {
             ...SELLER_CATALOGUE_METADATA_EXAMPLE,
-            subjectAddress: '0x4444444444444444444444444444444444444444',
+            subjectAddress: TEST_ADDR_D,
         },
     ],
-};
+});
 
 describe('runtime resolution', () => {
     it.each([
@@ -304,7 +307,7 @@ describe('runtime resolution', () => {
     it('hydrates a remote skin bundle and prefers it over seller metadata fallback', async () => {
         const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil', transportSkinRuntimeSource);
         const roleSelection = resolveRuntimeRoleSelection(
-            '0x4444444444444444444444444444444444444444',
+            TEST_ADDR_D,
             context?.boundSubjects ?? [],
             context?.artifact.model.roles ?? []
         );
@@ -353,7 +356,7 @@ describe('runtime resolution', () => {
     it('falls back to seller metadata skin when remote asset hydration fails', async () => {
         const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil', transportSkinRuntimeSource);
         const roleSelection = resolveRuntimeRoleSelection(
-            '0x4444444444444444444444444444444444444444',
+            TEST_ADDR_D,
             context?.boundSubjects ?? [],
             context?.artifact.model.roles ?? []
         );
@@ -382,7 +385,7 @@ describe('runtime resolution', () => {
     it('prefers explicit assembly role mappings over raw binding role labels', () => {
         const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil', injectedRuntimeSource);
         const roleSelection = resolveRuntimeRoleSelection(
-            '0x2222222222222222222222222222222222222222',
+            TEST_ADDR_B,
             context?.boundSubjects ?? [],
             context?.artifact.model.roles ?? []
         );
@@ -395,7 +398,7 @@ describe('runtime resolution', () => {
     it('does not infer assembly roles from raw binding role labels when explicit mappings are missing', () => {
         const context = resolveAssemblyRuntimeContext('local-commerce', 'local-anvil', unmappedRuntimeSource);
         const roleSelection = resolveRuntimeRoleSelection(
-            '0x3333333333333333333333333333333333333333',
+            TEST_ADDR_C,
             context?.boundSubjects ?? [],
             context?.artifact.model.roles ?? []
         );

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { SELLER_CATALOGUE_METADATA_EXAMPLE } from '@/lib/shared/sellerCatalogueMetadata';
-import { RuntimeIdentityDataSource } from '@/lib/shared/runtimeDataSource';
 import {
     createRuntimeIdentityDataSourceFromDocument,
     getAssetDocumentByUriFromSource,
@@ -13,11 +12,12 @@ import {
     resolveRuntimeSubjectByAddressFromSource,
 } from '@/lib/shared/runtimeDataSource';
 import localRuntimeIdentityDocument from '@/lib/shared/runtime-fixtures/local-runtime-identity.json';
+import { createMockRuntimeIdentityDataSource, TEST_ADDR_A } from './__fixtures__/runtimeIdentity';
 
-const testSource: RuntimeIdentityDataSource = {
-    listSubjectRecords: () => [
+const testSource = createMockRuntimeIdentityDataSource({
+    subjects: [
         {
-            subjectAddress: '0x1111111111111111111111111111111111111111',
+            subjectAddress: TEST_ADDR_A,
             displayName: 'Fixture Transport Merchant',
             bindingRefs: [
                 {
@@ -36,10 +36,10 @@ const testSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
-    listAssemblyBindings: () => [
+    assemblyBindings: [
         {
             bindingId: 'binding-fixture-transport-merchant',
-            subjectAddress: '0x1111111111111111111111111111111111111111',
+            subjectAddress: TEST_ADDR_A,
             assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [
@@ -58,21 +58,21 @@ const testSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
-    listOperatorProfileMetadata: () => [
+    operatorProfiles: [
         {
-            subjectAddress: '0x1111111111111111111111111111111111111111',
+            subjectAddress: TEST_ADDR_A,
             name: 'Fixture Transport Merchant',
             slug: 'fixture-transport-merchant',
             version: '1.0.0',
         },
     ],
-    listSellerCatalogueMetadata: () => [
+    sellerCatalogues: [
         {
             ...SELLER_CATALOGUE_METADATA_EXAMPLE,
-            subjectAddress: '0x1111111111111111111111111111111111111111',
+            subjectAddress: TEST_ADDR_A,
         },
     ],
-    listAssetDocuments: () => [
+    assetDocuments: [
         {
             assetURI: 'ipfs://example/fixture-transport-merchant.assets.json',
             name: 'Fixture Transport Merchant Skin',
@@ -88,16 +88,16 @@ const testSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
-};
+});
 
 describe('runtime data source helpers', () => {
     it('resolves merchant metadata from an injected data source', () => {
         const metadata = getSellerMetadataByAddressFromSource(
-            '0x1111111111111111111111111111111111111111',
+            TEST_ADDR_A,
             testSource
         );
 
-        expect(metadata?.subjectAddress).toBe('0x1111111111111111111111111111111111111111');
+        expect(metadata?.subjectAddress).toBe(TEST_ADDR_A);
     });
 
     it('resolves asset documents from an injected data source', () => {
@@ -112,7 +112,7 @@ describe('runtime data source helpers', () => {
 
     it('resolves an address against the injected data source', () => {
         const context = resolveRuntimeSubjectByAddressFromSource(
-            '0x1111111111111111111111111111111111111111',
+            TEST_ADDR_A,
             'local-anvil',
             testSource
         );
