@@ -33,7 +33,6 @@ import {
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
-import { truncateHex } from "@/lib/shared/formatHex";
 import { formatEther } from "viem";
 
 export function OperatorLanding() {
@@ -68,12 +67,11 @@ export function OperatorLanding() {
         return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
     }
 
-    const [metadataURI, registeredBlock] = profileData;
+    const [metadataURI] = profileData;
     return (
         <RegisteredCard
             address={address!}
             metadataURI={metadataURI}
-            registeredBlock={registeredBlock}
             deposit={deposit}
             onWithdrawn={() => refetch()}
         />
@@ -85,7 +83,6 @@ export function OperatorLanding() {
 interface RegisteredCardProps {
     address: `0x${string}`;
     metadataURI: string;
-    registeredBlock: bigint | null;
     deposit: bigint | undefined;
     onWithdrawn: () => void;
 }
@@ -93,7 +90,6 @@ interface RegisteredCardProps {
 function RegisteredCard({
     address,
     metadataURI,
-    registeredBlock,
     deposit,
     onWithdrawn,
 }: RegisteredCardProps) {
@@ -128,93 +124,76 @@ function RegisteredCard({
         };
     }, [metadataURI]);
 
-    const cid = extractCid(metadataURI);
-
     return (
-        <div className="space-y-6">
-            <Card className="p-8 space-y-5">
-                <div className="flex items-baseline justify-between gap-4">
-                    <div>
-                        <h2 className="text-heading-h3 text-ink-heading">
-                            {profile?.name ?? "Loading profile…"}
-                        </h2>
-                        {profile?.specialty && (
-                            <p className="text-sm text-ink-body mt-1">{profile.specialty}</p>
-                        )}
-                    </div>
-                    <Link
-                        href={`/m/${address}`}
-                        className="text-sm text-ink-faint hover:text-ink-heading underline whitespace-nowrap"
-                    >
-                        View public profile →
-                    </Link>
-                </div>
-
-                {profileError && (
-                    <p className="text-sm text-red-600" role="alert">{profileError}</p>
+        <div className="space-y-8">
+            <div className="space-y-1">
+                <h2 className="text-heading-h3 text-ink-heading">
+                    {profile?.name ?? "Loading profile…"}
+                </h2>
+                {profile?.specialty && (
+                    <p className="text-sm text-ink-body">{profile.specialty}</p>
                 )}
+                <Link
+                    href={`/m/${address}`}
+                    className="inline-block text-sm text-ink-faint hover:text-ink-heading underline mt-1"
+                >
+                    View public profile →
+                </Link>
+                {profileError && (
+                    <p className="text-sm text-red-600 mt-2" role="alert">{profileError}</p>
+                )}
+            </div>
 
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm">
-                    <DefRow label="Wallet" value={truncateHex(address, { head: 10, tail: 8 })} mono />
-                    <DefRow label="Deposit" value={deposit !== undefined ? `${formatEther(deposit)} ETH` : "…"} />
-                    <DefRow label="Profile CID" value={cid ? truncateHex(cid, { head: 10, tail: 6 }) : metadataURI} mono />
-                    <DefRow
-                        label="Registered at block"
-                        value={registeredBlock !== null ? `#${registeredBlock.toString()}` : "—"}
-                        mono
-                    />
-                </dl>
-            </Card>
-
-            <ManageGrid />
-
-            <WithdrawFooter deposit={deposit} onWithdrawn={onWithdrawn} />
+            <ManageList deposit={deposit} onWithdrawn={onWithdrawn} />
         </div>
     );
 }
 
-function ManageGrid() {
-    const items: Array<{ label: string; description: string }> = [
-        {
-            label: "Profile",
-            description: "Identity, branding, accepted tokens, location.",
-        },
-        {
-            label: "Catalogue",
-            description: "Items for sale or service offerings.",
-        },
-        {
-            label: "Assemblies",
-            description: "Which assemblies this wallet participates in.",
-        },
-        {
-            label: "Agents",
-            description: "ERC-8004 service endpoints (mcp, a2a, did, ens).",
-        },
+/**
+ * Single-column muted list of management entry-points. Profile,
+ * Catalogue, Assemblies, Agents are placeholders until the edit/
+ * delete UI ships; Withdraw is live but de-emphasised — last row,
+ * same visual weight, action revealed on click.
+ *
+ * "Muted that doesn't attract attention" per user direction: no
+ * card chrome, low-contrast text, simple divided rows. The page's
+ * focus is the operator's identity at the top; the manage list is
+ * a sidebar in disguise.
+ */
+function ManageList({
+    deposit,
+    onWithdrawn,
+}: {
+    deposit: bigint | undefined;
+    onWithdrawn: () => void;
+}) {
+    const items = [
+        { label: "Profile", description: "Identity, tokens, location." },
+        { label: "Catalogue", description: "Items." },
+        { label: "Assemblies", description: "Bindings." },
+        { label: "Agents", description: "Service endpoints." },
     ];
     return (
-        <div className="space-y-3">
-            <h3 className="text-heading-h3 text-ink-heading">Manage</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {items.map((item) => (
-                    <Card
-                        key={item.label}
-                        className="p-5 space-y-1 opacity-60 cursor-not-allowed"
-                        aria-disabled="true"
-                    >
-                        <div className="flex items-baseline justify-between gap-2">
-                            <h4 className="text-sm font-semibold text-ink-heading">{item.label}</h4>
-                            <span className="text-xs text-ink-faint">Edit coming next</span>
-                        </div>
-                        <p className="text-xs text-ink-body">{item.description}</p>
-                    </Card>
-                ))}
-            </div>
-        </div>
+        <ul className="border-t border-default text-sm">
+            {items.map((item) => (
+                <li
+                    key={item.label}
+                    className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint"
+                    aria-disabled="true"
+                >
+                    <div>
+                        <span className="text-ink-body">{item.label}</span>
+                        <span className="ml-2 text-xs">{item.description}</span>
+                    </div>
+                    <span className="text-xs">Edit coming next</span>
+                </li>
+            ))}
+            <WithdrawRow deposit={deposit} onWithdrawn={onWithdrawn} />
+        </ul>
     );
 }
 
-function WithdrawFooter({
+function WithdrawRow({
     deposit,
     onWithdrawn,
 }: {
@@ -242,57 +221,46 @@ function WithdrawFooter({
 
     if (!confirming) {
         return (
-            <div className="pt-6 border-t border-default text-xs text-ink-faint">
+            <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
+                <div>
+                    <span className="text-ink-body">Withdraw deposit</span>
+                    <span className="ml-2 text-xs">De-register and reclaim {deposit !== undefined ? `${formatEther(deposit)} ETH` : "deposit"} — only after the one-year lock has elapsed.</span>
+                </div>
                 <button
                     type="button"
                     onClick={() => setConfirming(true)}
-                    className="underline hover:text-ink-heading transition-colors"
+                    className="text-xs underline hover:text-ink-heading transition-colors"
                 >
-                    Withdraw deposit and de-register
+                    Begin
                 </button>
-            </div>
+            </li>
         );
     }
 
     return (
-        <div className="pt-6 border-t border-default space-y-3 text-sm">
-            <p className="text-ink-body">
-                Returns the {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit and clears the registration. Only works after the lock period has elapsed; the contract reverts otherwise. Catalogue and profile pins on IPFS are not affected.
+        <li className="py-3 border-b border-default space-y-2 text-sm text-ink-body">
+            <p className="text-xs">
+                Returns the {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit and clears the registration. Reverts if the one-year lock hasn&apos;t elapsed. Catalogue and profile pins on IPFS are not affected.
             </p>
             <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={handleWithdraw} disabled={isProcessing}>
+                <Button variant="outline" size="sm" onClick={handleWithdraw} disabled={isProcessing}>
                     {isProcessing ? "Withdrawing…" : "Confirm withdraw"}
                 </Button>
                 <button
                     type="button"
                     onClick={() => setConfirming(false)}
                     disabled={isProcessing}
-                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors disabled:opacity-50"
+                    className="text-xs text-ink-faint hover:text-ink-heading transition-colors disabled:opacity-50"
                 >
                     Cancel
                 </button>
             </div>
             {(submitError || error) && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-xs text-red-600" role="alert">
                     {submitError ?? (error instanceof Error ? error.message : String(error))}
                 </p>
             )}
-        </div>
+        </li>
     );
 }
 
-// ── Bits ─────────────────────────────────────────────────────────────────────
-
-function DefRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-    return (
-        <div className="flex flex-col">
-            <dt className="text-xs uppercase tracking-wider text-ink-faint">{label}</dt>
-            <dd className={`text-ink-heading ${mono ? "font-mono text-xs break-all" : ""}`}>{value}</dd>
-        </div>
-    );
-}
-
-function extractCid(uri: string): string | null {
-    const match = uri.match(/^ipfs:\/\/(.+)$/);
-    return match ? match[1] ?? null : null;
-}
