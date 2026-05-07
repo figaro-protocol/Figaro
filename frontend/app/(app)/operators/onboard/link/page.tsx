@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { OnboardingShell } from "@/components/operators/OnboardingShell";
-import { OnboardingPlaceholder } from "@/components/operators/OnboardingPlaceholder";
+import { OnboardingLinkForm } from "@/components/operators/OnboardingLinkForm";
 
 export const metadata: Metadata = { title: "Link — Operator onboarding" };
 
@@ -8,18 +8,14 @@ export default function OnboardingLinkPage() {
     return (
         <OnboardingShell
             stepId="link"
-            title="Link catalogue to profile"
+            title="Pin your catalogue"
             description={
                 <p>
-                    The catalogue&apos;s IPFS URI is embedded in your profile, then the profile is pinned. The on-chain <code>OperatorRegistry.metadataURI</code> will point to that profile document.
+                    We pin the catalogue document to IPFS and remember its URI. Step 7 pins the profile (with this URI inside) and submits the on-chain registration.
                 </p>
             }
         >
-            <OnboardingPlaceholder
-                description="Pin profile referencing catalogueURI, show the resulting profile CID."
-                prevPath="catalogue"
-                nextPath="assemblies"
-            />
+            <OnboardingLinkForm />
         </OnboardingShell>
     );
 }
