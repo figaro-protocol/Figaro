@@ -109,7 +109,7 @@ Live test inventory:
 - `AttestationCoordinator` (3 modes, cross-process rejection)
 - `SchemaRegistry` (permissionless registration, duplicate rejection)
 - `DutchAuction` (price curves, claim evaluation, edge cases)
-- `OperatorRegistry` (registration, deposit, withdrawal — web2-strip 2026-04-26 removed deactivate/reactivate/updateProfile)
+- `OperatorRegistry` (registration, in-place profile updates, deposit lock + withdrawal — role + lifecycle flags do not exist on-chain; a seller's role is whatever their catalogue archetype declares)
 - `FigaroBatchVerifier` (state root continuity, auxiliary data hash verification)
 - `FigToken` (cap enforcement, permit, minter registry)
 - `StagedMerkleAirdrop` (per-stage claim, per-stage one-shot, per-stage unlock timing, merkle proof validation)
@@ -371,9 +371,9 @@ registries, no Nash equilibrium is broken, forks can replace any
 convention. The risk is subtler: if downstream consumers treat the
 frontend ship-list as the canonical "valid schemas" source, the
 convention layer becomes a de facto gatekeeper. Mitigations: explicit
-permissionless framing in CLAUDE.md and `/schemas` page; web2-strip on
-`OperatorRegistry` (advisory metadata only, no kernel state-gating)
-landed the same week.
+permissionless framing in CLAUDE.md and `/schemas` page; advisory-metadata
+framing on `OperatorRegistry` (no kernel state-gating; role lives in the
+catalogue archetype, not in the registry).
 
 ## Security Posture
 
@@ -393,7 +393,7 @@ Mechanism modules remain outside the kernel payoff matrix:
 - `AttestationCoordinator` is zero-storage and role-gated
 - `SchemaRegistry` is permissionless and event-first
 - `DutchAuction` is coordination-only and does not intermediate funds
-- `OperatorRegistry` is event-sourced self-declaration with a dedup guard plus a deposit-lock-period timestamp (web2-strip 2026-04-26 collapsed prior `_role`/`_active` storage and removed updateProfile/deactivate/reactivate)
+- `OperatorRegistry` is event-sourced self-declaration with a dedup guard plus a deposit-lock-period timestamp; no role enum, no `_active` flag, and no lifecycle gates on settlement; profile updates happen in place via `updateProfile` without disturbing the deposit or lock
 - `FigaroBatchVerifier` verifies SP1 proofs before executing state transitions
 
 The verification suite explicitly covers the following enforcement edges:

@@ -134,7 +134,7 @@ export const SCHEMA_REGISTRATION_HELPER_ABI = parseAbi([
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch settlement ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 schemaId, uint64 version, bytes32 uriHash, address registrar)[] schemas, (address mechanism, bytes32 schemaId)[] mechanismSchemas, (uint8 tag, address operator, uint8 role, string metadataURI)[] operatorEvents) events) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 schemaId, uint64 version, bytes32 uriHash, address registrar)[] schemas, (address mechanism, bytes32 schemaId)[] mechanismSchemas, (uint8 tag, address operator, string metadataURI)[] operatorEvents) events) external",
 
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",
@@ -147,10 +147,8 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)",
     "event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, address indexed registrar)",
     "event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId)",
-    "event OperatorRegistered(address indexed operator, uint8 role, string metadataURI)",
-    "event OperatorUpdated(address indexed operator, uint8 role, string metadataURI)",
-    "event OperatorDeactivated(address indexed operator)",
-    "event OperatorReactivated(address indexed operator)",
+    "event OperatorRegistered(address indexed operator, string metadataURI)",
+    "event OperatorProfileUpdated(address indexed operator, string metadataURI)",
 ]);
 
 export const EV_BATCH_SETTLED = parseAbiItem(

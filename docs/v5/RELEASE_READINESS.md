@@ -225,7 +225,16 @@ to land a pre-audit batch of findings (FIG allocation restructured to
 genesis-mint + StagedMerkleAirdrop, `MerkleAirdrop`/`TrancheVesting`
 deleted, `figToken` dead-code field removed from `FigaroBatchVerifier`,
 `DOMAIN_SEPARATOR()` getter added, `totalRegisteredCap` sum-enforcement
-added to `FigToken`).
+added to `FigToken`); amended 2026-05-06 to revise the
+`OperatorRegistry` surface — the `role` parameter was dropped from
+`register` and from the `OperatorRegistered` event; `updateProfile`
+was added (caller-only metadata replacement, no deposit movement, emits
+`OperatorProfileUpdated`); the `OperatorRole` enum and `InvalidRole`
+error were removed. `FigaroBatchVerifier` was updated in lockstep:
+`OperatorEventInput` drops the `role` field; the tagged-union encoding
+shrinks to {1=Registered, 2=ProfileUpdated} with a 53-byte record;
+the dead `OperatorUpdated` / `OperatorDeactivated` / `OperatorReactivated`
+events were deleted.
 
 The following Solidity surface is declared frozen for external audit.
 No feature changes, refactors, or dependency upgrades will be made to

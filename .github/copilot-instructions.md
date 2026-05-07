@@ -213,14 +213,19 @@ delegated attestation.
 coordination primitive, no token handling.
 
 **`src/OperatorRegistry.sol`** — Permissionless operator self-registration.
-Two external functions: `register(role, metadataURI)` + `withdraw()`. Two
-events: `OperatorRegistered`, `OperatorWithdrawn`. State is dedup-only
-(`_registered: address → bool`) plus the registration timestamp that backs
-the immutable deposit-lock period. No `_active` flag, no `updateProfile`,
-no `deactivate` / `reactivate` (web2-strip 2026-04-26): operator
-availability is signal-by-availability off-chain. Role + metadata travel
-only in the `OperatorRegistered` event; switching role or metadata happens
-via withdraw + re-register (clears the dedup guard, restarts the lock).
+Three external functions: `register(metadataURI)` (sets the dedup guard,
+consumes the deposit, emits `OperatorRegistered`), `updateProfile(metadataURI)`
+(caller-only metadata replacement, no deposit movement, emits
+`OperatorProfileUpdated`), and `withdraw()` (returns the deposit and clears
+the dedup guard once the lock period has elapsed). Three events:
+`OperatorRegistered`, `OperatorProfileUpdated`, `OperatorWithdrawn`. State is
+dedup-only (`_registered: address → bool`) plus the registration timestamp
+that backs the immutable deposit-lock period. No `_active` flag, no role enum,
+no `deactivate` / `reactivate`: operator availability is
+signal-by-availability off-chain, and a seller's role is whatever their
+catalogue (referenced by `metadataURI`) declares through its archetype. The
+deposit and lock are spam-protection knobs only; profile updates do not
+require withdrawing.
 The kernel does not gate any operation on operator state — this registry
 is advisory metadata for off-chain discovery surfaces.
 
