@@ -1,70 +1,37 @@
 /**
  * lib/shared/catalogueFetcher.ts
  *
- * Fetches the full SellerCatalogueMetadata document from a seller's metadataURI
- * (on-chain pointer → IPFS/HTTP → parsed catalogue).
+ * Fetches the full SellerCatalogueMetadata document from a seller's
+ * metadataURI (on-chain pointer → IPFS/HTTP → parsed catalogue).
  *
  * This is the read path. The write path (pin + updateProfile) lives in
- * cataloguePublisher.ts.
+ * `cataloguePublisher.ts`. Backed by the generic `createUriFetcher`
+ * pipeline in `lib/shared/uriFetcher.ts`.
  */
 
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
-import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-
-// ── Cache ─────────────────────────────────────────────────────────────────────
+import { createUriFetcher } from "@/lib/shared/uriFetcher";
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
-interface CacheEntry {
-    data: SellerCatalogueMetadata;
-    ts: number;
-}
-
-const catalogueCache = new Map<string, CacheEntry>();
+const catalogueFetcher = createUriFetcher<SellerCatalogueMetadata>({
+    cacheTtlMs: CACHE_TTL_MS,
+    parse: (doc, sourceLabel) => parseSellerCatalogueDocument(doc, sourceLabel),
+});
 
 /**
  * Fetch and parse the full merchant metadata (including catalogue/menu)
- * from a content URI.
- *
- * Returns null if the URI is empty, the fetch fails, or parsing fails.
- * Results are cached in-memory by URI with a 15-minute TTL.
+ * from a content URI. Returns null if the URI is empty, the fetch fails,
+ * or parsing fails. Results are cached in-memory by URI with a 15-minute TTL.
  */
-export async function fetchMerchantCatalogue(
-    metadataURI: string
-): Promise<SellerCatalogueMetadata | null> {
-    if (!metadataURI) return null;
-
-    const cached = catalogueCache.get(metadataURI);
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
-
-    try {
-        const url = resolveContentURI(metadataURI);
-        const res = await fetch(url);
-        const doc = await safeJsonFromResponse(res);
-        if (!doc) return null;
-
-        const parsed = parseSellerCatalogueDocument(doc, metadataURI);
-
-        catalogueCache.set(metadataURI, { data: parsed, ts: Date.now() });
-        return parsed;
-    } catch {
-        return null;
-    }
-}
+export const fetchMerchantCatalogue = catalogueFetcher.fetch;
 
 /**
  * Invalidate a specific URI from the catalogue cache.
  * Call after publishing an update so the next read gets the new version.
  */
-export function invalidateCatalogueCache(metadataURI: string): void {
-    catalogueCache.delete(metadataURI);
-}
+export const invalidateCatalogueCache = catalogueFetcher.invalidate;
 
-/**
- * Clear the entire catalogue cache (for tests).
- */
-export function clearCatalogueCache(): void {
-    catalogueCache.clear();
-}
+/** Clear the entire catalogue cache (for tests). */
+export const clearCatalogueCache = catalogueFetcher.clear;

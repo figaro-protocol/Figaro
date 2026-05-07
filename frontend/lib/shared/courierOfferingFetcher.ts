@@ -1,66 +1,41 @@
 /**
  * lib/shared/courierOfferingFetcher.ts
  *
- * Fetches the full CourierOfferingMetadata document from a courier's metadataURI
- * (on-chain pointer → IPFS/HTTP → parsed offering).
+ * Fetches the full CourierOfferingMetadata document from a courier's
+ * metadataURI (on-chain pointer → IPFS/HTTP → parsed offering).
  *
- * Parallel to catalogueFetcher.ts for merchants.
+ * Parallel to `catalogueFetcher.ts` for merchants. Backed by the generic
+ * `createUriFetcher` pipeline in `lib/shared/uriFetcher.ts`. Discriminates
+ * a courier offering by structural typing (`courierId` + non-empty
+ * `serviceAreas`), not by a nominal `archetypeId` literal.
  */
 
 import type { CourierOfferingMetadata } from "@/lib/shared/courierOfferingMetadata";
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
-import { safeJsonFromResponse } from "@/lib/shared/safeJson";
+import { createUriFetcher } from "@/lib/shared/uriFetcher";
 
-// ── Cache ─────────────────────────────────────────────────────────────────────
+function parseCourierOffering(doc: unknown): CourierOfferingMetadata | null {
+    if (!doc || typeof doc !== "object") return null;
+    const record = doc as Record<string, unknown>;
+    if (!record.subjectAddress || typeof record.subjectAddress !== "string") return null;
+    if (!record.courierId || typeof record.courierId !== "string") return null;
+    if (!Array.isArray(record.serviceAreas) || record.serviceAreas.length === 0) return null;
+    return record as unknown as CourierOfferingMetadata;
+}
 
-const offeringCache = new Map<string, CourierOfferingMetadata>();
+const offeringFetcher = createUriFetcher<CourierOfferingMetadata>({
+    parse: parseCourierOffering,
+});
 
 /**
  * Fetch and parse a courier offering metadata document from a content URI.
- * Returns null if the URI is empty, the fetch fails, or the document is invalid.
- * Results are cached in-memory by URI.
+ * Returns null if the URI is empty, the fetch fails, or the document is
+ * not a recognisable courier offering shape. Results are cached in-memory
+ * by URI.
  */
-export async function fetchCourierOffering(
-    metadataURI: string
-): Promise<CourierOfferingMetadata | null> {
-    if (!metadataURI) return null;
+export const fetchCourierOffering = offeringFetcher.fetch;
 
-    const cached = offeringCache.get(metadataURI);
-    if (cached) return cached;
+/** Invalidate a specific URI from the offering cache. */
+export const invalidateOfferingCache = offeringFetcher.invalidate;
 
-    try {
-        const url = resolveContentURI(metadataURI);
-        const res = await fetch(url);
-        const doc = await safeJsonFromResponse<Record<string, unknown> | null>(res);
-
-        // Structural typing — discriminate by courier-specific shape, not a
-        // nominal type tag. A doc that carries `subjectAddress`, `courierId`,
-        // and a non-empty `serviceAreas` array is a courier offering. Whether
-        // the address is *actually* operating as a courier is event-derived
-        // (indexer), never a metadata-field claim.
-        if (!doc || typeof doc !== "object") return null;
-        if (!doc.subjectAddress || typeof doc.subjectAddress !== "string") return null;
-        if (!doc.courierId || typeof doc.courierId !== "string") return null;
-        if (!Array.isArray(doc.serviceAreas) || doc.serviceAreas.length === 0) return null;
-
-        const offering = doc as unknown as CourierOfferingMetadata;
-        offeringCache.set(metadataURI, offering);
-        return offering;
-    } catch {
-        return null;
-    }
-}
-
-/**
- * Invalidate a specific URI from the offering cache.
- */
-export function invalidateOfferingCache(metadataURI: string): void {
-    offeringCache.delete(metadataURI);
-}
-
-/**
- * Clear the entire offering cache (for tests).
- */
-export function clearOfferingCache(): void {
-    offeringCache.clear();
-}
+/** Clear the entire offering cache (for tests). */
+export const clearOfferingCache = offeringFetcher.clear;
