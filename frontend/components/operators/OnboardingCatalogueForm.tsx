@@ -1,0 +1,295 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { FormField } from "@/components/ui/FormField";
+import { Input } from "@/components/ui/Input";
+import { IpfsImageUpload } from "@/components/operators/IpfsImageUpload";
+import { useOnboardingState } from "@/lib/operators/onboardingState";
+import type { CatalogueItemMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+
+/**
+ * Step 3 of the onboarding wizard. Collects the catalogue items —
+ * the volatile sales-context payload that gets pinned to IPFS as
+ * `SellerCatalogueMetadata { subjectAddress, items, version }`.
+ *
+ * Each item: id (auto), name (required), price (required), category
+ * (required), description (optional), image (optional, via IPFS
+ * upload), available (default true). Pricing is denominated in the
+ * profile's `defaultTokenAddress` (set on step 2).
+ *
+ * Audit fix B7: every change is persisted to localStorage on the spot
+ * via `useOnboardingState`. Items don't disappear on refresh, on
+ * cross-screen navigation, or when the wallet disconnects briefly.
+ * The "Add item" button just appends a fresh blank row; the previous
+ * rows are already saved.
+ */
+
+interface FormItem {
+    id: string;
+    name: string;
+    description: string;
+    price: string;
+    category: string;
+    image: string;
+    available: boolean;
+}
+
+function uid(): string {
+    return Math.random().toString(36).slice(2, 10);
+}
+
+function emptyItem(): FormItem {
+    return { id: uid(), name: "", description: "", price: "", category: "", image: "", available: true };
+}
+
+function fromItem(item: CatalogueItemMetadata): FormItem {
+    return {
+        id: item.id,
+        name: item.name,
+        description: item.description ?? "",
+        price: item.price,
+        category: item.category,
+        image: item.image ?? "",
+        available: item.available,
+    };
+}
+
+function toItem(form: FormItem): CatalogueItemMetadata {
+    return {
+        id: form.id,
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        price: form.price.trim(),
+        category: form.category.trim() || "General",
+        image: form.image || undefined,
+        available: form.available,
+    };
+}
+
+function isItemComplete(form: FormItem): boolean {
+    return Boolean(form.name.trim()) && Boolean(form.price.trim());
+}
+
+export function OnboardingCatalogueForm() {
+    const router = useRouter();
+    const { address, isConnected } = useAccount();
+    const { state, update } = useOnboardingState(address);
+
+    const [items, setItems] = useState<FormItem[]>([emptyItem()]);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [hydrated, setHydrated] = useState(false);
+
+    // Hydrate from localStorage once the wallet-keyed state is available.
+    useEffect(() => {
+        if (hydrated || !isConnected) return;
+        const stored = state.catalogue?.items;
+        if (stored && stored.length > 0) {
+            setItems(stored.map(fromItem));
+        }
+        setHydrated(true);
+    }, [hydrated, state.catalogue, isConnected]);
+
+    // Persist on every form change.
+    useEffect(() => {
+        if (!hydrated || !isConnected) return;
+        const validItems = items.filter(isItemComplete).map(toItem);
+        update({ catalogue: { items: validItems } });
+    }, [items, hydrated, isConnected, update]);
+
+    // Pricing-token symbol for the per-item price label.
+    const defaultTokenSymbol = useMemo(() => {
+        const addr = state.profile?.defaultTokenAddress;
+        if (!addr || !state.profile?.acceptedTokens) return "";
+        const token = state.profile.acceptedTokens.find(
+            (t) => t.address.toLowerCase() === addr.toLowerCase(),
+        );
+        return token?.symbol ?? "";
+    }, [state.profile]);
+
+    function setItemField<K extends keyof FormItem>(index: number, key: K, value: FormItem[K]) {
+        setItems((prev) => prev.map((it, i) => (i === index ? { ...it, [key]: value } : it)));
+    }
+
+    function addItem() {
+        setItems((prev) => [...prev, emptyItem()]);
+    }
+
+    function removeItem(index: number) {
+        setItems((prev) => (prev.length === 1 ? [emptyItem()] : prev.filter((_, i) => i !== index)));
+    }
+
+    function validateAndContinue(e: React.FormEvent) {
+        e.preventDefault();
+        const completeItems = items.filter(isItemComplete);
+        if (completeItems.length === 0) {
+            setSubmitError("Add at least one item with a name and a price.");
+            return;
+        }
+        setSubmitError(null);
+        router.push("/operators/onboard/link");
+    }
+
+    if (!isConnected) {
+        return (
+            <Card className="p-6 space-y-4">
+                <p className="text-sm text-ink-body">
+                    Connect a wallet to load your catalogue draft.
+                </p>
+                <Link href="/operators/onboard/profile">
+                    <Button variant="outline">← Back to profile</Button>
+                </Link>
+            </Card>
+        );
+    }
+
+    if (!state.profile?.defaultTokenAddress) {
+        return (
+            <Card className="p-6 space-y-4">
+                <p className="text-sm text-ink-body">
+                    Your catalogue is priced in your profile&apos;s default token. Go back to step 2 and set it before adding items.
+                </p>
+                <Link href="/operators/onboard/profile">
+                    <Button variant="outline">← Set default token</Button>
+                </Link>
+            </Card>
+        );
+    }
+
+    return (
+        <form onSubmit={validateAndContinue} className="space-y-12">
+            <Card className="p-4 text-sm text-ink-body">
+                <p>
+                    Items are priced in <span className="font-semibold text-ink-heading">{defaultTokenSymbol || "your default token"}</span>.
+                    Buyers paying in another accepted token see a converted price at commit time.
+                </p>
+            </Card>
+
+            <div className="space-y-6">
+                {items.map((item, index) => (
+                    <ItemRow
+                        key={item.id}
+                        item={item}
+                        index={index}
+                        priceSymbol={defaultTokenSymbol}
+                        onChange={(key, value) => setItemField(index, key, value)}
+                        onRemove={items.length > 1 || isItemComplete(item) ? () => removeItem(index) : undefined}
+                    />
+                ))}
+                <button
+                    type="button"
+                    onClick={addItem}
+                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                >
+                    + Add item
+                </button>
+            </div>
+
+            {submitError && (
+                <p className="text-sm text-red-600" role="alert">{submitError}</p>
+            )}
+
+            <div className="flex items-center justify-between pt-4 border-t border-default">
+                <Link
+                    href="/operators/onboard/profile"
+                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                >
+                    ← Back
+                </Link>
+                <Button type="submit">Next →</Button>
+            </div>
+        </form>
+    );
+}
+
+interface ItemRowProps {
+    item: FormItem;
+    index: number;
+    priceSymbol: string;
+    onChange: <K extends keyof FormItem>(key: K, value: FormItem[K]) => void;
+    onRemove?: () => void;
+}
+
+function ItemRow({ item, index, priceSymbol, onChange, onRemove }: ItemRowProps) {
+    const idPrefix = `item-${item.id}`;
+    return (
+        <Card className="p-5 space-y-4">
+            <div className="flex items-baseline justify-between">
+                <h3 className="text-sm font-semibold text-ink-heading">Item {index + 1}</h3>
+                {onRemove && (
+                    <button
+                        type="button"
+                        onClick={onRemove}
+                        className="text-xs text-ink-faint hover:text-red-600 transition-colors"
+                    >
+                        Remove
+                    </button>
+                )}
+            </div>
+
+            <FormField label="Name" inputId={`${idPrefix}-name`} required>
+                <Input
+                    id={`${idPrefix}-name`}
+                    type="text"
+                    placeholder="e.g. Margherita Pizza"
+                    value={item.name}
+                    onChange={(e) => onChange("name", e.target.value)}
+                />
+            </FormField>
+
+            <FormField label="Description" inputId={`${idPrefix}-description`}>
+                <textarea
+                    id={`${idPrefix}-description`}
+                    rows={2}
+                    placeholder="Optional. One short sentence."
+                    value={item.description}
+                    onChange={(e) => onChange("description", e.target.value)}
+                    className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-black text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                />
+            </FormField>
+
+            <div className="grid grid-cols-2 gap-4">
+                <FormField label={`Price${priceSymbol ? ` (${priceSymbol})` : ""}`} inputId={`${idPrefix}-price`} required>
+                    <Input
+                        id={`${idPrefix}-price`}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0.01"
+                        value={item.price}
+                        onChange={(e) => onChange("price", e.target.value)}
+                    />
+                </FormField>
+                <FormField label="Category" inputId={`${idPrefix}-category`}>
+                    <Input
+                        id={`${idPrefix}-category`}
+                        type="text"
+                        placeholder="e.g. Pizza"
+                        value={item.category}
+                        onChange={(e) => onChange("category", e.target.value)}
+                    />
+                </FormField>
+            </div>
+
+            <FormField label="Image">
+                <IpfsImageUpload
+                    value={item.image}
+                    onChange={(uri) => onChange("image", uri)}
+                    label="Upload item image"
+                />
+            </FormField>
+
+            <label className="flex items-center gap-2 text-sm text-ink-body cursor-pointer">
+                <input
+                    type="checkbox"
+                    checked={item.available}
+                    onChange={(e) => onChange("available", e.target.checked)}
+                />
+                Available now
+            </label>
+        </Card>
+    );
+}
