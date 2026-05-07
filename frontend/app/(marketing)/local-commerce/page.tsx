@@ -80,7 +80,7 @@ export default function LocalCommercePage() {
                 </h2>
                 <ul className="space-y-2 text-sm">
                     <li>
-                        <Link href="/discover" data-testid="reference-archetype-runtime-link" className="text-ink-heading hover:underline">
+                        <Link href="/discover" data-testid="reference-runtime-link" className="text-ink-heading hover:underline">
                             Try it live &rarr;
                         </Link>
                     </li>

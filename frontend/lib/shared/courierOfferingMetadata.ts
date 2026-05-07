@@ -28,7 +28,6 @@ export type VehicleType = "bicycle" | "motorcycle" | "car" | "van" | "on-foot";
 
 export interface CourierOfferingMetadata {
     subjectAddress: `0x${string}`;
-    archetypeId: "courier-delivery";
     courierId: string;
     displayName: string;
     description?: string;
@@ -63,7 +62,6 @@ export interface CourierOfferingMetadata {
 
 export const COURIER_OFFERING_METADATA_EXAMPLE: CourierOfferingMetadata = {
     subjectAddress: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-    archetypeId: "courier-delivery",
     courierId: "eve-delivery-01",
     displayName: "Eve Express",
     description: "Fast bicycle delivery, downtown Manhattan",

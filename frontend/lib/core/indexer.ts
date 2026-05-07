@@ -57,7 +57,9 @@ export const EV_STAGED_AIRDROP_CLAIMED = parseAbiItem(
 // Three operator-registry events survive: registration, profile update, and
 // withdrawal. Lifecycle flags (deactivate/reactivate) and on-chain role
 // tracking remain stripped — operator availability is signal-by-availability,
-// and the seller's role lives in the catalogue's archetype, not the event log.
+// and there is no categorization field at any layer (no archetype, no role,
+// no serviceType). What an address does is reconstructed from the events
+// it has emitted (registrations, schema attestations, signed commitments).
 export const EV_OPERATOR_REGISTERED = parseAbiItem(
     "event OperatorRegistered(address indexed operator, string metadataURI)",
 );

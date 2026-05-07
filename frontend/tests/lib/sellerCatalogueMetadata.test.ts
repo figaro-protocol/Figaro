@@ -10,7 +10,6 @@ describe('seller catalogue metadata parser', () => {
     it('parses a valid seller catalogue metadata document', () => {
         const metadata = parseSellerCatalogueDocument(metadataFixture, 'bobs-pizza.seller-metadata.json');
 
-        expect(metadata.archetypeId).toBe('merchant-one-hop-delivery');
         expect(metadata.location.geohash).toBe('dr5reg');
         expect(metadata.menu).toHaveLength(2);
         expect(metadata.branding?.themeClass).toBe('merchant-pizza');
@@ -23,7 +22,7 @@ describe('seller catalogue metadata parser', () => {
         }, 'invalid-seller-metadata.json')).toThrow(/invalid-seller-metadata\.json\.fulfillmentModes\[0\] must be one of/);
     });
 
-    it('ships an example metadata object that matches the archetype shape', () => {
+    it('ships an example metadata object that round-trips through the parser', () => {
         expect(SELLER_CATALOGUE_METADATA_EXAMPLE.merchantId).toBe('bobs-pizza-palace');
         expect(SELLER_CATALOGUE_METADATA_EXAMPLE.fulfillmentModes).toContain('delivery');
         expect(SELLER_CATALOGUE_METADATA_EXAMPLE.menu[0]?.category).toBe('Pizza');

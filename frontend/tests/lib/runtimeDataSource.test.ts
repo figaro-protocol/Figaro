@@ -18,7 +18,6 @@ const testSource: RuntimeIdentityDataSource = {
     listSubjectRecords: () => [
         {
             subjectAddress: '0x1111111111111111111111111111111111111111',
-            subjectKind: 'merchant',
             displayName: 'Fixture Transport Merchant',
             bindingRefs: [
                 {
@@ -41,7 +40,6 @@ const testSource: RuntimeIdentityDataSource = {
         {
             bindingId: 'binding-fixture-transport-merchant',
             subjectAddress: '0x1111111111111111111111111111111111111111',
-            archetypeId: 'merchant-one-hop-delivery',
             assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [

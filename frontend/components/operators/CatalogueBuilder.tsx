@@ -30,7 +30,6 @@ import { TokenAddressInput, isValidAddress } from "./TokenAddressInput";
  * `sellerCatalogueMetadataParser.parseSellerCatalogueDocument`):
  *
  *   subjectAddress   — connected wallet (read via `useAccount`)
- *   archetypeId      — operator picks via dropdown
  *   merchantId, slug — slugified from name
  *   name             — input
  *   fulfillmentModes — multi-checkbox, ≥1 required
@@ -41,18 +40,13 @@ import { TokenAddressInput, isValidAddress } from "./TokenAddressInput";
  * Branding (logo upload), description, and acceptedTokens are also
  * collected — these populate the buyer-side surfaces (discover card
  * logo, merchant detail hero, token-accept badges).
+ *
+ * What this catalogue *does not* declare: any nominal categorization of
+ * the seller's business (no archetype / role / category / serviceType).
+ * A buyer infers what the seller does from the items themselves; role
+ * attribution at the protocol layer comes from event-derived state via
+ * the indexer, not from a metadata field.
  */
-
-// ── Archetype dropdown ────────────────────────────────────────────────────────
-
-const ARCHETYPES: ReadonlyArray<{ id: string; label: string; description: string }> = [
-    { id: "merchant-one-hop-delivery", label: "Local commerce — delivery", description: "On-site / pickup / courier-routed delivery (food, retail, services)." },
-    { id: "merchant-direct-sale", label: "Direct sale — counter", description: "On-site or pickup only; no delivery (cafe, market stall, kiosk)." },
-    { id: "bonded-procurement-supplier", label: "Procurement supplier", description: "Industrial / parts / B2B fulfilment under bonded delivery contracts." },
-    { id: "disclosure-review-operator", label: "Disclosure review", description: "Independent review / counter-attestation services (audit, compliance)." },
-    { id: "equipment-rental-operator", label: "Equipment rental", description: "Time-based rental with deposit-bonded return condition." },
-    { id: "freelance-operator", label: "Freelance / professional services", description: "Milestone-bonded knowledge work (translation, design, code, etc.)." },
-];
 
 // ── Fulfilment modes (mirror canonical enum) ─────────────────────────────────
 
@@ -398,7 +392,6 @@ type Status = { type: "idle" | "pinning" | "error"; message: string };
 interface FormState {
     name: string;
     description: string;
-    archetypeId: string;
     geohash: string;
     addressText: string;
     fulfillmentModes: FulfillmentMode[];
@@ -410,7 +403,6 @@ interface FormState {
 const INITIAL_STATE: FormState = {
     name: "",
     description: "",
-    archetypeId: ARCHETYPES[0].id,
     geohash: "",
     addressText: "",
     fulfillmentModes: ["consume-onsite"],
@@ -485,7 +477,6 @@ export function CatalogueBuilder() {
 
             const catalogue: SellerCatalogueMetadata = {
                 subjectAddress: address,
-                archetypeId: form.archetypeId,
                 merchantId: slug,
                 slug,
                 name: trimmedName,
@@ -543,23 +534,6 @@ export function CatalogueBuilder() {
                         onChange={(e) => setForm({ ...form, description: e.target.value })}
                         className={inputClass}
                     />
-                </Field>
-                <Field
-                    label="Archetype"
-                    hint="What kind of operator are you? Determines which assembly your catalogue routes through."
-                >
-                    <select
-                        value={form.archetypeId}
-                        onChange={(e) => setForm({ ...form, archetypeId: e.target.value })}
-                        className={inputClass}
-                    >
-                        {ARCHETYPES.map((a) => (
-                            <option key={a.id} value={a.id}>{a.label}</option>
-                        ))}
-                    </select>
-                    <p className="text-xs text-gray-400 mt-2">
-                        {ARCHETYPES.find((a) => a.id === form.archetypeId)?.description}
-                    </p>
                 </Field>
             </FormSection>
 

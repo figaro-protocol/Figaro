@@ -20,7 +20,6 @@ const injectedRuntimeSource: RuntimeIdentityDataSource = {
     listSubjectRecords: () => [
         {
             subjectAddress: '0x2222222222222222222222222222222222222222',
-            subjectKind: 'merchant',
             displayName: 'Injected Runtime Merchant',
             version: '1.0.0',
         },
@@ -29,7 +28,6 @@ const injectedRuntimeSource: RuntimeIdentityDataSource = {
         {
             bindingId: 'binding-injected-runtime-merchant',
             subjectAddress: '0x2222222222222222222222222222222222222222',
-            archetypeId: 'merchant-one-hop-delivery',
             assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [
@@ -56,7 +54,6 @@ const unmappedRuntimeSource: RuntimeIdentityDataSource = {
     listSubjectRecords: () => [
         {
             subjectAddress: '0x3333333333333333333333333333333333333333',
-            subjectKind: 'merchant',
             displayName: 'Unmapped Runtime Merchant',
             version: '1.0.0',
         },
@@ -65,7 +62,6 @@ const unmappedRuntimeSource: RuntimeIdentityDataSource = {
         {
             bindingId: 'binding-unmapped-runtime-merchant',
             subjectAddress: '0x3333333333333333333333333333333333333333',
-            archetypeId: 'merchant-one-hop-delivery',
             assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [
@@ -84,7 +80,6 @@ const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
     listSubjectRecords: () => [
         {
             subjectAddress: '0x4444444444444444444444444444444444444444',
-            subjectKind: 'merchant',
             displayName: 'Transport Skin Merchant',
             version: '1.0.0',
         },
@@ -93,7 +88,6 @@ const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
         {
             bindingId: 'binding-transport-skin-merchant',
             subjectAddress: '0x4444444444444444444444444444444444444444',
-            archetypeId: 'merchant-one-hop-delivery',
             assemblySlug: 'local-commerce',
             networkTargets: ['local-anvil'],
             roleBindings: [

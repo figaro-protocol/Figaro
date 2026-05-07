@@ -33,10 +33,14 @@ export async function fetchCourierOffering(
         const res = await fetch(url);
         const doc = await safeJsonFromResponse<Record<string, unknown> | null>(res);
 
-        // Basic shape validation
+        // Structural typing — discriminate by courier-specific shape, not a
+        // nominal type tag. A doc that carries `subjectAddress`, `courierId`,
+        // and a non-empty `serviceAreas` array is a courier offering. Whether
+        // the address is *actually* operating as a courier is event-derived
+        // (indexer), never a metadata-field claim.
         if (!doc || typeof doc !== "object") return null;
         if (!doc.subjectAddress || typeof doc.subjectAddress !== "string") return null;
-        if (doc.archetypeId !== "courier-delivery") return null;
+        if (!doc.courierId || typeof doc.courierId !== "string") return null;
         if (!Array.isArray(doc.serviceAreas) || doc.serviceAreas.length === 0) return null;
 
         const offering = doc as unknown as CourierOfferingMetadata;

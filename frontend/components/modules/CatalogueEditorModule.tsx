@@ -366,7 +366,6 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
         try {
             const doc: SellerCatalogueMetadata = {
                 subjectAddress: sellerAddr,
-                archetypeId: "merchant-one-hop-delivery",
                 merchantId: merchantName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
                 slug: merchantName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
                 name: merchantName.trim(),

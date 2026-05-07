@@ -4,7 +4,7 @@ import { parseAgentServices } from '@/lib/mechanisms/useOperatorRegistry';
 
 describe('parseAgentServices', () => {
     it('returns isAgent=false when no services key is present', () => {
-        const result = parseAgentServices({ name: 'Bob Pizza', archetypeId: 'merchant' });
+        const result = parseAgentServices({ name: 'Bob Pizza' });
         expect(result.isAgent).toBe(false);
         expect(result.services).toEqual({});
         expect(result.capabilities).toEqual([]);

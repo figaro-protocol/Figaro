@@ -90,7 +90,6 @@ export interface SupportedSchemaDeclaration {
 
 export interface SellerCatalogueMetadata {
     subjectAddress: `0x${string}`;
-    archetypeId: string;
     merchantId: string;
     slug: string;
     name: string;
@@ -141,7 +140,6 @@ export interface SellerCatalogueMetadata {
 
 export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {
     subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    archetypeId: "merchant-one-hop-delivery",
     merchantId: "bobs-pizza-palace",
     slug: "bobs-pizza-palace",
     name: "Bob's Pizza Palace",

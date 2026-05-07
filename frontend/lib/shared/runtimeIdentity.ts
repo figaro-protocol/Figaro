@@ -1,7 +1,5 @@
 import type { ServiceBinding } from "@/lib/shared/assembly";
 
-export type SubjectKind = "merchant" | "participant" | "operator" | "builder" | "institution";
-
 export type MetadataTruthClass =
     | "protocol-truth"
     | "derived-truth"
@@ -18,7 +16,6 @@ export interface SubjectReference {
 
 export interface SubjectRecord {
     subjectAddress: `0x${string}`;
-    subjectKind: SubjectKind;
     displayName?: string;
     profileURI?: string;
     bindingRefs?: SubjectReference[];
@@ -37,7 +34,6 @@ export interface RoleBindingRecord {
 export interface AssemblyBindingRecord {
     bindingId: string;
     subjectAddress: `0x${string}`;
-    archetypeId: string;
     assemblySlug: string;
     networkTargets: string[];
     roleBindings: RoleBindingRecord[];
@@ -65,7 +61,6 @@ export type SubjectProvenanceIssue =
 
 export interface SubjectProvenanceRecord {
     subjectAddress: `0x${string}`;
-    subjectKind: SubjectKind;
     displayName?: string;
     bindingIds: string[];
     referencedAssemblies: string[];
@@ -189,7 +184,6 @@ export function collectSubjectProvenance(
 
     return {
         subjectAddress: subject.subjectAddress,
-        subjectKind: subject.subjectKind,
         displayName: subject.displayName,
         bindingIds: bindings.map((binding) => binding.bindingId),
         referencedAssemblies: [...new Set(bindings.map((binding) => binding.assemblySlug))],

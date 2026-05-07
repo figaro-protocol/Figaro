@@ -40,9 +40,7 @@ export interface AssemblyBoundSubjectSummary {
     bindingId: string;
     assemblySlug: string;
     subjectAddress: `0x${string}`;
-    subjectKind: SubjectRecord['subjectKind'];
     displayName: string;
-    archetypeId: string;
     roleKinds: string[];
     assemblyRoleKinds: string[];
     roleBindings: Array<{
@@ -186,9 +184,7 @@ export function listAssemblyBoundSubjectSummariesFromSource(
                 bindingId: binding.bindingId,
                 assemblySlug: binding.assemblySlug,
                 subjectAddress: binding.subjectAddress,
-                subjectKind: subject?.subjectKind ?? 'participant',
                 displayName: subject?.displayName ?? sellerCatalogueMetadata?.name ?? binding.subjectAddress,
-                archetypeId: binding.archetypeId,
                 roleKinds: [...new Set(binding.roleBindings.map((entry) => entry.roleKind))],
                 assemblyRoleKinds: [
                     ...new Set(

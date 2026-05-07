@@ -53,7 +53,6 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-            archetypeId: 'merchant-one-hop-delivery',
             merchantId: 'merchant-a',
             slug: 'merchant-a',
             name: 'Merchant A',

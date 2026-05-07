@@ -157,9 +157,10 @@ export function createDiscoveryService(
                     return service.listFallbackRestaurants();
                 }
 
-                // Role lives in the catalogue (`archetypeId`), not on the
-                // registry. fetchOperatorAsCatalogue is the gate that filters
-                // out operators whose catalogue does not parse as a seller
+                // The catalogue's items signal what business the seller
+                // is in; there is no nominal categorization field to filter
+                // on. fetchOperatorAsCatalogue is the gate that drops
+                // operators whose document does not parse as a seller
                 // catalogue — anything that does parse is shown.
                 const results = await Promise.all(
                     operators.map(async (operator, index) => {

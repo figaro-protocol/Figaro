@@ -1,7 +1,6 @@
 import {
     AssemblyBindingRecord,
     RoleBindingRecord,
-    SubjectKind,
     SubjectRecord,
     SubjectReference,
 } from "@/lib/shared/runtimeIdentity";
@@ -9,7 +8,6 @@ import type { RuntimeServiceKey, ServiceBinding } from "@/lib/shared/assembly";
 
 type UnknownRecord = Record<string, unknown>;
 
-const SUBJECT_KINDS = new Set<SubjectKind>(["merchant", "participant", "operator", "builder", "institution"]);
 const REFERENCE_KINDS = new Set<SubjectReference["refKind"]>(["metadata", "asset", "signature", "binding"]);
 const ROLE_SCOPES = new Set<RoleBindingRecord["scope"]>(["assembly", "process", "order", "mechanism"]);
 const RUNTIME_SERVICE_KEYS = new Set<RuntimeServiceKey>([
@@ -137,7 +135,6 @@ export function parseSubjectRecordDocument(value: unknown, sourceLabel = "subjec
     const record = asRecord(value, sourceLabel);
     return {
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
-        subjectKind: asEnum(record.subjectKind, SUBJECT_KINDS, `${sourceLabel}.subjectKind`),
         displayName: asOptionalString(record.displayName, `${sourceLabel}.displayName`),
         profileURI: asOptionalString(record.profileURI, `${sourceLabel}.profileURI`),
         bindingRefs: parseReferenceArray(record.bindingRefs, `${sourceLabel}.bindingRefs`),
@@ -151,7 +148,6 @@ export function parseAssemblyBindingDocument(value: unknown, sourceLabel = "inst
     return {
         bindingId: asString(record.bindingId, `${sourceLabel}.bindingId`),
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
-        archetypeId: asString(record.archetypeId, `${sourceLabel}.archetypeId`),
         assemblySlug: asString(record.assemblySlug, `${sourceLabel}.assemblySlug`),
         networkTargets: asStringArray(record.networkTargets, `${sourceLabel}.networkTargets`),
         roleBindings: parseRoleBindingArray(record.roleBindings, `${sourceLabel}.roleBindings`),

@@ -16,7 +16,6 @@ describe('runtime identity parser', () => {
     it('parses a valid subject record document', () => {
         const subject = parseSubjectRecordDocument(subjectFixture, 'bobs-pizza.subject.json');
 
-        expect(subject.subjectKind).toBe('merchant');
         expect(subject.displayName).toBe("Bob's Pizza Palace");
         expect(subject.bindingRefs?.[0]?.refKind).toBe('binding');
     });

@@ -144,18 +144,6 @@ export function parseSellerCatalogueDocument(value: unknown, sourceLabel = "sell
 
     return {
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
-        archetypeId: asEnum(
-            record.archetypeId,
-            new Set([
-                "merchant-one-hop-delivery",
-                "merchant-direct-sale",
-                "bonded-procurement-supplier",
-                "disclosure-review-operator",
-                "equipment-rental-operator",
-                "freelance-operator",
-            ]),
-            `${sourceLabel}.archetypeId`,
-        ),
         merchantId: asString(record.merchantId, `${sourceLabel}.merchantId`),
         slug: asString(record.slug, `${sourceLabel}.slug`),
         name: asString(record.name, `${sourceLabel}.name`),

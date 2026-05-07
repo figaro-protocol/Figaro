@@ -40,7 +40,7 @@ export default function OperatorsPage() {
                             <code>OperatorRegistry.sol</code> exposes three caller-only functions: <code>register(metadataURI)</code> sets the dedup guard and emits <code>OperatorRegistered</code>; <code>updateProfile(metadataURI)</code> emits <code>OperatorProfileUpdated</code> without touching the deposit or lock; <code>withdraw()</code> returns the deposit and clears the binding once the lock period has elapsed.
                         </p>
                         <p>
-                            The deposit is a Sybil-resistance mechanism, not a fee. The protocol does not redistribute it. No party has authority to seize it. Withdrawal after the lock period frees the address to re-register; the lock restarts on each fresh registration. Role is not an on-chain field — a seller&apos;s role is whatever their catalogue declares through its archetype.
+                            The deposit is a Sybil-resistance mechanism, not a fee. The protocol does not redistribute it. No party has authority to seize it. Withdrawal after the lock period frees the address to re-register; the lock restarts on each fresh registration. There is no role enum on-chain and no categorization field anywhere — what a seller does is signalled by the items in their catalogue, and any role attribution at the runtime tier is derived from on-chain events via the indexer, not from a metadata field.
                         </p>
                         <p>
                             The registry does not rank, promote, or route. Discovery happens at the runtime tier: assembly frontends enumerate registered operators and their catalogues; public-graph indexers aggregate settlement history.

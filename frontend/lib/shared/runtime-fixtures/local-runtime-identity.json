@@ -3,7 +3,6 @@
     "subjects": [
         {
             "subjectAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-            "subjectKind": "merchant",
             "displayName": "Bob's Pizza Palace",
             "profileURI": "ipfs://figaro/subjects/bobs-pizza-palace.profile.json",
             "bindingRefs": [
@@ -24,7 +23,6 @@
         },
         {
             "subjectAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-            "subjectKind": "participant",
             "displayName": "Acme Components Supply",
             "profileURI": "ipfs://figaro/subjects/acme-components-supply.profile.json",
             "bindingRefs": [
@@ -38,7 +36,6 @@
         },
         {
             "subjectAddress": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
-            "subjectKind": "operator",
             "displayName": "GreenLedger Review Desk",
             "profileURI": "ipfs://figaro/subjects/greenledger-review.profile.json",
             "bindingRefs": [
@@ -52,7 +49,6 @@
         },
         {
             "subjectAddress": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-            "subjectKind": "operator",
             "displayName": "Hudson Tools Rental",
             "profileURI": "ipfs://figaro/subjects/hudson-tools-rental.profile.json",
             "bindingRefs": [
@@ -66,7 +62,6 @@
         },
         {
             "subjectAddress": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
-            "subjectKind": "operator",
             "displayName": "Maria Castelli Translations",
             "profileURI": "ipfs://figaro/subjects/maria-castelli.profile.json",
             "bindingRefs": [
@@ -80,7 +75,6 @@
         },
         {
             "subjectAddress": "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
-            "subjectKind": "merchant",
             "displayName": "Carlo's Espresso Bar",
             "profileURI": "ipfs://figaro/subjects/carlos-espresso-bar.profile.json",
             "bindingRefs": [
@@ -94,7 +88,6 @@
         },
         {
             "subjectAddress": "0xBcd4042DE499D14e55001CcbB24a551F3b954096",
-            "subjectKind": "merchant",
             "displayName": "Union Square Greens Stand",
             "profileURI": "ipfs://figaro/subjects/union-square-greens.profile.json",
             "bindingRefs": [
@@ -111,7 +104,6 @@
         {
             "bindingId": "binding:bobs-pizza-palace:local-anvil",
             "subjectAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-            "archetypeId": "merchant-one-hop-delivery",
             "assemblySlug": "local-commerce",
             "networkTargets": [
                 "local-anvil"
@@ -141,7 +133,6 @@
         {
             "bindingId": "binding:bobs-pizza-palace:direct-sale:local-anvil",
             "subjectAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-            "archetypeId": "merchant-direct-sale",
             "assemblySlug": "direct-sale",
             "networkTargets": [
                 "local-anvil"
@@ -156,7 +147,7 @@
                     "mechanismIds": [
                         "core-orders"
                     ],
-                    "notes": "Direct-sale binding for Bob's Pizza — covers consume-onsite (dine-in) and pickup (counter / takeaway). Sibling of the local-commerce binding above; the cart routes to whichever assembly matches the buyer's chosen fulfilment method."
+                    "notes": "Direct-sale binding for Bob's Pizza \u2014 covers consume-onsite (dine-in) and pickup (counter / takeaway). Sibling of the local-commerce binding above; the cart routes to whichever assembly matches the buyer's chosen fulfilment method."
                 }
             ],
             "metadataURI": "ipfs://figaro/merchants/bobs-pizza-palace.metadata.json",
@@ -169,7 +160,6 @@
         {
             "bindingId": "binding:acme-components-supply:local-anvil",
             "subjectAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-            "archetypeId": "bonded-procurement-supplier",
             "assemblySlug": "figaro-procurement",
             "networkTargets": [
                 "local-anvil"
@@ -198,7 +188,6 @@
         {
             "bindingId": "binding:greenledger-review-desk:local-anvil",
             "subjectAddress": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
-            "archetypeId": "disclosure-review-operator",
             "assemblySlug": "figaro-disclosure-review",
             "networkTargets": [
                 "local-anvil"
@@ -226,7 +215,6 @@
         {
             "bindingId": "binding:hudson-tools-rental:local-anvil",
             "subjectAddress": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-            "archetypeId": "equipment-rental-operator",
             "assemblySlug": "figaro-equipment-rental",
             "networkTargets": [
                 "local-anvil"
@@ -256,7 +244,6 @@
         {
             "bindingId": "binding:maria-castelli:local-anvil",
             "subjectAddress": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
-            "archetypeId": "freelance-operator",
             "assemblySlug": "figaro-freelance",
             "networkTargets": [
                 "local-anvil"
@@ -285,7 +272,6 @@
         {
             "bindingId": "binding:carlos-espresso-bar:direct-sale:local-anvil",
             "subjectAddress": "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
-            "archetypeId": "merchant-direct-sale",
             "assemblySlug": "direct-sale",
             "networkTargets": [
                 "local-anvil"
@@ -300,7 +286,7 @@
                     "mechanismIds": [
                         "core-orders"
                     ],
-                    "notes": "Direct-sale binding for Carlo's Espresso Bar — counter-service coffee shop covering consume-onsite (cafe seating) and pickup (counter / takeaway). Direct-sale only; no delivery."
+                    "notes": "Direct-sale binding for Carlo's Espresso Bar \u2014 counter-service coffee shop covering consume-onsite (cafe seating) and pickup (counter / takeaway). Direct-sale only; no delivery."
                 }
             ],
             "metadataURI": "ipfs://figaro/merchants/carlos-espresso-bar.metadata.json",
@@ -313,7 +299,6 @@
         {
             "bindingId": "binding:union-square-greens:direct-sale:local-anvil",
             "subjectAddress": "0xBcd4042DE499D14e55001CcbB24a551F3b954096",
-            "archetypeId": "merchant-direct-sale",
             "assemblySlug": "direct-sale",
             "networkTargets": [
                 "local-anvil"
@@ -328,7 +313,7 @@
                     "mechanismIds": [
                         "core-orders"
                     ],
-                    "notes": "Direct-sale binding for Union Square Greens — farmers'-market produce stall, pickup-at-stall only."
+                    "notes": "Direct-sale binding for Union Square Greens \u2014 farmers'-market produce stall, pickup-at-stall only."
                 }
             ],
             "metadataURI": "ipfs://figaro/merchants/union-square-greens.metadata.json",
@@ -342,7 +327,6 @@
     "sellerCatalogueMetadata": [
         {
             "subjectAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-            "archetypeId": "merchant-one-hop-delivery",
             "merchantId": "bobs-pizza-palace",
             "slug": "bobs-pizza-palace",
             "name": "Bob's Pizza Palace",
@@ -419,7 +403,6 @@
         },
         {
             "subjectAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-            "archetypeId": "bonded-procurement-supplier",
             "merchantId": "acme-components-supply",
             "slug": "acme-components-supply",
             "name": "Acme Components Supply",
@@ -459,7 +442,6 @@
         },
         {
             "subjectAddress": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
-            "archetypeId": "disclosure-review-operator",
             "merchantId": "greenledger-review-desk",
             "slug": "greenledger-review-desk",
             "name": "GreenLedger Review Desk",
@@ -492,7 +474,6 @@
         },
         {
             "subjectAddress": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-            "archetypeId": "equipment-rental-operator",
             "merchantId": "hudson-tools-rental",
             "slug": "hudson-tools-rental",
             "name": "Hudson Tools Rental",
@@ -532,7 +513,6 @@
         },
         {
             "subjectAddress": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
-            "archetypeId": "freelance-operator",
             "merchantId": "maria-castelli",
             "slug": "maria-castelli",
             "name": "Maria Castelli Translations",
@@ -547,7 +527,7 @@
             "menu": [
                 {
                     "id": "translation-it-en",
-                    "name": "Italian → English translation, per 1000 words",
+                    "name": "Italian \u2192 English translation, per 1000 words",
                     "description": "Technical and legal translation. Milestone-bonded; partial-delivery resolution.",
                     "price": "0.02",
                     "currencySymbol": "ETH",
@@ -565,7 +545,6 @@
         },
         {
             "subjectAddress": "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
-            "archetypeId": "merchant-direct-sale",
             "merchantId": "carlos-espresso-bar",
             "slug": "carlos-espresso-bar",
             "name": "Carlo's Espresso Bar",
@@ -625,11 +604,10 @@
         },
         {
             "subjectAddress": "0xBcd4042DE499D14e55001CcbB24a551F3b954096",
-            "archetypeId": "merchant-direct-sale",
             "merchantId": "union-square-greens",
             "slug": "union-square-greens",
             "name": "Union Square Greens Stand",
-            "description": "Hudson Valley produce, herbs, and preserves. Farmers'-market stall — pickup only.",
+            "description": "Hudson Valley produce, herbs, and preserves. Farmers'-market stall \u2014 pickup only.",
             "fulfillmentModes": [
                 "pickup"
             ],

@@ -1,7 +1,6 @@
 {
     "bindingId": "binding:greenledger-review-desk:local-anvil",
     "subjectAddress": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
-    "archetypeId": "disclosure-review-operator",
     "assemblySlug": "figaro-disclosure-review",
     "networkTargets": [
         "local-anvil"

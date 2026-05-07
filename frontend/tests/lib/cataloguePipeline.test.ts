@@ -16,7 +16,6 @@ import type { CourierOfferingMetadata } from "@/lib/shared/courierOfferingMetada
 
 const VALID_MERCHANT_DOC: SellerCatalogueMetadata = {
     subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    archetypeId: "merchant-one-hop-delivery",
     merchantId: "test-pizza",
     slug: "test-pizza",
     name: "Test Pizza",
@@ -48,7 +47,6 @@ const VALID_MERCHANT_DOC: SellerCatalogueMetadata = {
 
 const VALID_COURIER_DOC: CourierOfferingMetadata = {
     subjectAddress: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-    archetypeId: "courier-delivery",
     courierId: "test-courier-01",
     displayName: "Test Courier",
     description: "Fast bicycle delivery",
@@ -317,7 +315,6 @@ describe("courierOfferingMetadata", () => {
         const doc = COURIER_OFFERING_METADATA_EXAMPLE;
 
         expect(doc.subjectAddress).toMatch(/^0x/);
-        expect(doc.archetypeId).toBe("courier-delivery");
         expect(doc.courierId).toBeDefined();
         expect(doc.displayName).toBeDefined();
         expect(doc.serviceAreas.length).toBeGreaterThan(0);

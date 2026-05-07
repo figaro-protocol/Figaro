@@ -256,7 +256,6 @@ describe("runtime service hook injection", () => {
 
         const catalogue: SellerCatalogueMetadata = {
             subjectAddress: "0x0000000000000000000000000000000000000011",
-            archetypeId: "merchant-one-hop-delivery",
             merchantId: "merchant-a",
             slug: "merchant-a",
             name: "Merchant A",

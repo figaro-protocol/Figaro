@@ -4,10 +4,12 @@
  * Hooks for writing to the OperatorRegistry contract — register, updateProfile,
  * withdraw — and for reading event-derived operator state.
  *
- * The on-chain surface carries no role taxonomy: a seller's role is whatever
- * their catalogue (referenced by `metadataURI`) declares through its archetype.
- * Lifecycle / availability is signal-by-availability off-chain, not registry
- * state.
+ * The on-chain surface carries no role taxonomy and no categorization
+ * field. A seller's business is inferred from their catalogue items
+ * (referenced by `metadataURI`); role attribution at the runtime tier
+ * comes from event-derived state via the indexer, never from a metadata
+ * field. Lifecycle / availability is signal-by-availability off-chain,
+ * not registry state.
  */
 import { useState, useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";

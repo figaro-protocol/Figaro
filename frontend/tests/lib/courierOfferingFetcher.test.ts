@@ -9,7 +9,6 @@ import {
 
 const VALID_OFFERING = {
     subjectAddress: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-    archetypeId: "courier-delivery",
     courierId: "test-courier-01",
     displayName: "Speed Runner",
     description: "Fast delivery",
@@ -55,9 +54,10 @@ describe("courierOfferingFetcher", () => {
         expect(result).toBeNull();
     });
 
-    it("returns null when archetypeId is wrong", async () => {
-        mockFetch({ ...VALID_OFFERING, archetypeId: "merchant-one-hop-delivery" });
-        const result = await fetchCourierOffering("ipfs://QmWrong");
+    it("returns null when courierId is missing", async () => {
+        const { courierId, ...noCourierId } = VALID_OFFERING;
+        mockFetch(noCourierId);
+        const result = await fetchCourierOffering("ipfs://QmNoCourierId");
         expect(result).toBeNull();
     });
 
