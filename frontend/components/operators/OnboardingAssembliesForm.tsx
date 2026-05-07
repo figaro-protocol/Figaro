@@ -59,7 +59,34 @@ function buildBinding(
     };
 }
 
-export function OnboardingAssembliesForm() {
+export interface OnboardingAssembliesFormProps {
+    /**
+     * Edit-mode override. When provided, the submit handler calls
+     * `onSave(bindings)` instead of routing to the next wizard step.
+     * The caller re-pins the operator profile with the updated
+     * `assemblyBindings` array and dispatches `updateProfile`.
+     */
+    onSave?: (bindings: AssemblyBindingRecord[]) => Promise<void>;
+    /** Submit-button label override. Defaults to "Next →". */
+    submitLabel?: string;
+    /** Back-link href override. Defaults to "/operators/onboard/link". */
+    backHref?: string;
+    /** Back-link label override. Defaults to "← Back". */
+    backLabel?: string;
+    /** Whether the submit is currently in flight. Suppresses double-submission. */
+    submitInFlight?: boolean;
+    /** External error from `onSave`. */
+    externalError?: string | null;
+}
+
+export function OnboardingAssembliesForm({
+    onSave,
+    submitLabel,
+    backHref,
+    backLabel,
+    submitInFlight = false,
+    externalError = null,
+}: OnboardingAssembliesFormProps = {}) {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
@@ -99,6 +126,16 @@ export function OnboardingAssembliesForm() {
 
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
+        if (onSave) {
+            if (!address) return;
+            const bindings = choices
+                .filter((c) => selected.has(c.slug))
+                .map((c) => buildBinding(address, c));
+            onSave(bindings).catch(() => {
+                // Caller surfaces the error via `externalError`.
+            });
+            return;
+        }
         router.push("/operators/onboard/agents");
     }
 
@@ -176,14 +213,20 @@ export function OnboardingAssembliesForm() {
                 })}
             </div>
 
+            {externalError && (
+                <p className="text-sm text-red-600" role="alert">{externalError}</p>
+            )}
+
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href="/operators/onboard/link"
+                    href={backHref ?? "/operators/onboard/link"}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
-                    ← Back
+                    {backLabel ?? "← Back"}
                 </Link>
-                <Button type="submit">Next →</Button>
+                <Button type="submit" disabled={submitInFlight}>
+                    {submitInFlight ? "Saving…" : (submitLabel ?? "Next →")}
+                </Button>
             </div>
         </form>
     );
