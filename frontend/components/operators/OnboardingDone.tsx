@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { formatUnits } from "viem";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import {
     useDepositLockPeriod,
@@ -76,6 +77,7 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
 }
 
 export function OnboardingDone() {
+    const mounted = useMounted();
     const { address, isConnected } = useAccount();
     const { state, update } = useOnboardingState(address);
 
@@ -132,6 +134,10 @@ export function OnboardingDone() {
             setPinError(err instanceof Error ? err.message : String(err));
             setPinning(false);
         }
+    }
+
+    if (!mounted) {
+        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
     if (!isConnected) {

@@ -11,6 +11,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { TokenAddressInput, isValidAddress } from "@/components/operators/TokenAddressInput";
 import { IpfsImageUpload } from "@/components/operators/IpfsImageUpload";
+import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import type {
     OnboardingProfileDraft,
@@ -112,6 +113,7 @@ function toDraft(form: FormState): OnboardingProfileDraft {
 
 export function OnboardingProfileForm() {
     const router = useRouter();
+    const mounted = useMounted();
     const { address, isConnected } = useAccount();
     const { openConnectModal } = useConnectModal();
     const { state, update } = useOnboardingState(address);
@@ -189,6 +191,10 @@ export function OnboardingProfileForm() {
         if (Object.keys(next).length === 0) {
             router.push("/operators/onboard/catalogue");
         }
+    }
+
+    if (!mounted) {
+        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
     if (!isConnected) {

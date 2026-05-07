@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import { publishMerchantCatalogue } from "@/lib/shared/cataloguePublisher";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -26,6 +27,7 @@ import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetada
  */
 export function OnboardingLinkForm() {
     const router = useRouter();
+    const mounted = useMounted();
     const { address, isConnected } = useAccount();
     const { state, update } = useOnboardingState(address);
 
@@ -62,6 +64,10 @@ export function OnboardingLinkForm() {
         } finally {
             setPublishing(false);
         }
+    }
+
+    if (!mounted) {
+        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
     if (!isConnected) {

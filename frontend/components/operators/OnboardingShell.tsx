@@ -3,6 +3,7 @@
 import { ReactNode } from "react";
 import { useAccount } from "wagmi";
 import { OnboardingStepIndicator } from "@/components/operators/OnboardingStepIndicator";
+import { useMounted } from "@/lib/shared/useMounted";
 import {
     completedSteps,
     useOnboardingState,
@@ -33,9 +34,15 @@ export function OnboardingShell({
     description,
     children,
 }: OnboardingShellProps) {
+    const mounted = useMounted();
     const { address } = useAccount();
     const { state } = useOnboardingState(address);
-    const completed = completedSteps(state);
+
+    // Until the client has mounted, render the step indicator with only
+    // the welcome step marked complete. This matches the server render
+    // (no localStorage / no wagmi) regardless of any persisted draft, so
+    // hydration is stable.
+    const completed = mounted ? completedSteps(state) : new Set<OnboardingStep["id"]>(["welcome"]);
 
     return (
         <div className="space-y-12">

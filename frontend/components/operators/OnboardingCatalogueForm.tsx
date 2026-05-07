@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { IpfsImageUpload } from "@/components/operators/IpfsImageUpload";
+import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import type { CatalogueItemMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 
@@ -77,6 +78,7 @@ function isItemComplete(form: FormItem): boolean {
 
 export function OnboardingCatalogueForm() {
     const router = useRouter();
+    const mounted = useMounted();
     const { address, isConnected } = useAccount();
     const { state, update } = useOnboardingState(address);
 
@@ -132,6 +134,10 @@ export function OnboardingCatalogueForm() {
         }
         setSubmitError(null);
         router.push("/operators/onboard/link");
+    }
+
+    if (!mounted) {
+        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
     if (!isConnected) {

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import { REFERENCE_ASSEMBLIES, type Assembly } from "@/lib/shared/assembly";
 import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
@@ -60,6 +61,7 @@ function buildBinding(
 
 export function OnboardingAssembliesForm() {
     const router = useRouter();
+    const mounted = useMounted();
     const { address, isConnected } = useAccount();
     const { state, update } = useOnboardingState(address);
 
@@ -96,6 +98,10 @@ export function OnboardingAssembliesForm() {
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
         router.push("/operators/onboard/agents");
+    }
+
+    if (!mounted) {
+        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
     if (!isConnected) {

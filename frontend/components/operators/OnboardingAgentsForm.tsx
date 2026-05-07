@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
+import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import type { OperatorAgentServices } from "@/lib/shared/operatorProfileMetadata";
 
@@ -68,6 +69,7 @@ const FIELDS: FieldDef[] = [
 
 export function OnboardingAgentsForm() {
     const router = useRouter();
+    const mounted = useMounted();
     const { address, isConnected } = useAccount();
     const { state, update } = useOnboardingState(address);
 
@@ -97,6 +99,10 @@ export function OnboardingAgentsForm() {
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
         router.push("/operators/onboard/done");
+    }
+
+    if (!mounted) {
+        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
     if (!isConnected) {
