@@ -18,20 +18,28 @@ export interface CommonToken {
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
-function envAddress(key: string): `0x${string}` | undefined {
-    const value = (process.env[key] ?? "").trim();
-    if (!value || value === ZERO) return undefined;
-    if (!/^0x[a-fA-F0-9]{40}$/.test(value)) return undefined;
-    return value as `0x${string}`;
+/**
+ * Validates a literal env-var string and narrows it to a 0x address.
+ * Direct (literal) `process.env.FOO` access is required for Next.js
+ * to inline the value on the client at build time — `process.env[key]`
+ * (dynamic access) leaves the lookup as `undefined` in the browser
+ * bundle and silently drops every token. The call sites below MUST
+ * stay as direct property reads, not a dynamic helper.
+ */
+function normalizeAddress(value: string | undefined): `0x${string}` | undefined {
+    const trimmed = (value ?? "").trim();
+    if (!trimmed || trimmed === ZERO) return undefined;
+    if (!/^0x[a-fA-F0-9]{40}$/.test(trimmed)) return undefined;
+    return trimmed as `0x${string}`;
 }
 
 const localTokens: () => CommonToken[] = () => {
     const out: CommonToken[] = [];
-    const mock = envAddress("NEXT_PUBLIC_TOKEN_ADDRESS");
+    const mock = normalizeAddress(process.env.NEXT_PUBLIC_TOKEN_ADDRESS);
     if (mock) out.push({ address: mock, symbol: "MOCK", name: "Mock ERC-20 (devnet)" });
-    const permit = envAddress("NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS");
+    const permit = normalizeAddress(process.env.NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS);
     if (permit) out.push({ address: permit, symbol: "MOCKP", name: "Mock Permit token (devnet)" });
-    const fig = envAddress("NEXT_PUBLIC_FIG_TOKEN_ADDRESS");
+    const fig = normalizeAddress(process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS);
     if (fig) out.push({ address: fig, symbol: "FIG", name: "Figaro" });
     return out;
 };
