@@ -34,13 +34,26 @@ import { useUpdateProfile } from "@/lib/mechanisms/useOperatorRegistry";
 
 export type OperatorProfilePatch = Partial<OperatorProfileMetadata>;
 
+export interface SaveOptions {
+    /**
+     * Fields to explicitly clear in the merged profile. Useful for
+     * destructive actions that remove a pointer (e.g. clearing
+     * `catalogueURI` to delete the catalogue link from the profile)
+     * without touching the rest of the document.
+     *
+     * `undefined` in `patch` means "leave existing alone"; this
+     * `clear` list is the explicit "set to undefined" channel.
+     */
+    clear?: Array<keyof OperatorProfileMetadata>;
+}
+
 export interface UseUpdateOperatorProfileResult {
     /**
      * Build the merged profile, validate, pin, and dispatch
      * `updateProfile`. Resolves once the on-chain transaction has
      * confirmed; rejects with a typed error otherwise.
      */
-    save: (patch: OperatorProfilePatch) => Promise<void>;
+    save: (patch: OperatorProfilePatch, options?: SaveOptions) => Promise<void>;
     /** True while pinning OR while the on-chain transaction is in flight. */
     isPending: boolean;
     /** True only while the transaction is awaiting confirmation. */
@@ -76,7 +89,7 @@ export function useUpdateOperatorProfile(
         setPublishedURI(null);
     }, [existingProfile]);
 
-    async function save(patch: OperatorProfilePatch): Promise<void> {
+    async function save(patch: OperatorProfilePatch, options?: SaveOptions): Promise<void> {
         if (!existingProfile) {
             throw new Error("Can't update profile: no existing profile loaded.");
         }
@@ -86,7 +99,7 @@ export function useUpdateOperatorProfile(
 
         let merged: OperatorProfileMetadata;
         try {
-            merged = mergeProfile(existingProfile, patch);
+            merged = mergeProfile(existingProfile, patch, options?.clear);
             // Round-trip validation — throws if the document doesn't parse.
             parseOperatorProfileDocument(merged, "edit-profile");
         } catch (err) {
@@ -145,8 +158,9 @@ export function useUpdateOperatorProfile(
 function mergeProfile(
     existing: OperatorProfileMetadata,
     patch: OperatorProfilePatch,
+    clear: Array<keyof OperatorProfileMetadata> = [],
 ): OperatorProfileMetadata {
-    return {
+    const merged = {
         ...existing,
         ...Object.fromEntries(
             Object.entries(patch).filter(([, v]) => v !== undefined),
@@ -154,5 +168,15 @@ function mergeProfile(
         // Preserve the wallet stamp — the patch never touches subjectAddress.
         subjectAddress: existing.subjectAddress,
         version: patch.version ?? existing.version ?? "1.0.0",
-    };
+    } as OperatorProfileMetadata;
+
+    // Strip explicitly-cleared fields. `subjectAddress` is non-clearable
+    // (it's the on-chain identity); silently drop attempts to clear it.
+    for (const key of clear) {
+        if (key === "subjectAddress") continue;
+        if (key === "name" || key === "slug") continue; // required fields, can't be cleared
+        delete (merged as unknown as Record<string, unknown>)[key];
+    }
+
+    return merged;
 }

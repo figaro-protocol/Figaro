@@ -76,7 +76,37 @@ function isItemComplete(form: FormItem): boolean {
     return Boolean(form.name.trim()) && Boolean(form.price.trim());
 }
 
-export function OnboardingCatalogueForm() {
+export interface OnboardingCatalogueFormProps {
+    /**
+     * Edit-mode override. When provided, the submit handler calls
+     * `onSave(items)` instead of routing to the next wizard step.
+     * The caller assembles the SellerCatalogueMetadata document,
+     * pins it, and chases with `updateProfile`.
+     *
+     * Resolves on success (caller redirects); rejects on failure
+     * (caller surfaces the error via `externalError`).
+     */
+    onSave?: (items: CatalogueItemMetadata[]) => Promise<void>;
+    /** Submit-button label override. Defaults to "Next →". */
+    submitLabel?: string;
+    /** Back-link href override. Defaults to "/operators/onboard/profile". */
+    backHref?: string;
+    /** Back-link label override. Defaults to "← Back". */
+    backLabel?: string;
+    /** Whether the submit is currently in flight. Suppresses double-submission. */
+    submitInFlight?: boolean;
+    /** External error from `onSave` to render below the form. */
+    externalError?: string | null;
+}
+
+export function OnboardingCatalogueForm({
+    onSave,
+    submitLabel,
+    backHref,
+    backLabel,
+    submitInFlight = false,
+    externalError = null,
+}: OnboardingCatalogueFormProps = {}) {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
@@ -138,6 +168,14 @@ export function OnboardingCatalogueForm() {
             return;
         }
         setSubmitError(null);
+        if (onSave) {
+            // Edit mode: caller pins the catalogue + chases with
+            // updateProfile. The wizard navigation is suppressed.
+            onSave(completeItems.map(toItem)).catch(() => {
+                // The caller surfaces failures via `externalError`.
+            });
+            return;
+        }
         router.push("/operators/onboard/link");
     }
 
@@ -203,15 +241,20 @@ export function OnboardingCatalogueForm() {
             {submitError && (
                 <p className="text-sm text-red-600" role="alert">{submitError}</p>
             )}
+            {externalError && (
+                <p className="text-sm text-red-600" role="alert">{externalError}</p>
+            )}
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href="/operators/onboard/profile"
+                    href={backHref ?? "/operators/onboard/profile"}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
-                    ← Back
+                    {backLabel ?? "← Back"}
                 </Link>
-                <Button type="submit">Next →</Button>
+                <Button type="submit" disabled={submitInFlight}>
+                    {submitInFlight ? "Saving…" : (submitLabel ?? "Next →")}
+                </Button>
             </div>
         </form>
     );

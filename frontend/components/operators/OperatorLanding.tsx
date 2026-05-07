@@ -169,7 +169,7 @@ function ManageList({
 }) {
     const items: Array<{ label: string; description: string; href: string | null }> = [
         { label: "Profile", description: "Identity, tokens, location.", href: "/operators/edit/profile" },
-        { label: "Catalogue", description: "Items.", href: null },
+        { label: "Catalogue", description: "Items.", href: "/operators/edit/catalogue" },
         { label: "Assemblies", description: "Bindings.", href: null },
         { label: "Agents", description: "Service endpoints.", href: null },
     ];
