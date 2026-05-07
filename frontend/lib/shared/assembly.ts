@@ -32,7 +32,8 @@ export type RuntimeServiceKey =
     | "discovery"
     | "evidenceTransport"
     | "coordinationMessaging"
-    | "handoffPersistence";
+    | "handoffPersistence"
+    | "tokenConversion";
 
 export interface AssemblyIdentity {
     id: string;

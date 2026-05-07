@@ -186,6 +186,9 @@ function createAuctionProps(overrides?: Record<string, unknown>) {
                     schedulePurge: vi.fn(),
                     sweepDuePurges: vi.fn(),
                 },
+                tokenConversion: {
+                    quote: vi.fn().mockResolvedValue(null),
+                },
             },
             runtimeContext: undefined,
             selectedRoleKind: 'mock-role',
@@ -375,6 +378,9 @@ function createProcessProps(overrides?: Record<string, unknown>) {
                     purgeHandoffArtifacts: vi.fn(),
                     schedulePurge: vi.fn(),
                     sweepDuePurges: vi.fn(),
+                },
+                tokenConversion: {
+                    quote: vi.fn().mockResolvedValue(null),
                 },
             },
             runtimeContext: undefined,

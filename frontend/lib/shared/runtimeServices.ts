@@ -8,6 +8,8 @@ import type { HandoffPersistenceService } from "@/lib/shared/handoffPersistenceS
 import { DEFAULT_HANDOFF_PERSISTENCE_SERVICE } from "@/lib/shared/handoffPersistenceService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import type { TokenConversionService } from "@/lib/shared/tokenConversion";
+import { DEFAULT_TOKEN_CONVERSION_SERVICE } from "@/lib/shared/tokenConversion";
 import type { Assembly, RuntimeServiceKey, ServiceBinding } from "@/lib/shared/assembly";
 import type { AssemblyBoundSubjectSummary } from "@/lib/shared/runtimeDataSource";
 import type { RuntimeIdentityService } from "@/lib/shared/runtimeIdentityService";
@@ -20,6 +22,7 @@ export interface RuntimeServices {
     evidenceTransport: IpfsService;
     coordinationMessaging: CoordinationMessagingService;
     handoffPersistence: HandoffPersistenceService;
+    tokenConversion: TokenConversionService;
 }
 
 export type RuntimeServiceProviderKeys = Record<RuntimeServiceKey, string>;
@@ -31,6 +34,7 @@ export const DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS: Record<RuntimeServiceKey, st
     evidenceTransport: "default-ipfs",
     coordinationMessaging: "default-coordination-messaging",
     handoffPersistence: "default-handoff-persistence",
+    tokenConversion: "default-token-conversion",
 };
 
 export const DEFAULT_RUNTIME_SERVICES: RuntimeServices = {
@@ -40,6 +44,7 @@ export const DEFAULT_RUNTIME_SERVICES: RuntimeServices = {
     evidenceTransport: DEFAULT_IPFS_SERVICE,
     coordinationMessaging: DEFAULT_COORDINATION_MESSAGING_SERVICE,
     handoffPersistence: DEFAULT_HANDOFF_PERSISTENCE_SERVICE,
+    tokenConversion: DEFAULT_TOKEN_CONVERSION_SERVICE,
 };
 
 type RuntimeServiceBindingSource = Pick<AssemblyBoundSubjectSummary, "bindingId" | "serviceBindings">;
@@ -56,6 +61,7 @@ function createRuntimeServiceProviderRegistry(): RuntimeServiceProviderRegistry 
         evidenceTransport: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.evidenceTransport, DEFAULT_RUNTIME_SERVICES.evidenceTransport]]),
         coordinationMessaging: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.coordinationMessaging, DEFAULT_RUNTIME_SERVICES.coordinationMessaging]]),
         handoffPersistence: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.handoffPersistence, DEFAULT_RUNTIME_SERVICES.handoffPersistence]]),
+        tokenConversion: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.tokenConversion, DEFAULT_RUNTIME_SERVICES.tokenConversion]]),
     };
 }
 
@@ -120,6 +126,7 @@ export function resolveRuntimeServices(
         evidenceTransport: resolveService(assembly, "evidenceTransport", bindingSource),
         coordinationMessaging: resolveService(assembly, "coordinationMessaging", bindingSource),
         handoffPersistence: resolveService(assembly, "handoffPersistence", bindingSource),
+        tokenConversion: resolveService(assembly, "tokenConversion", bindingSource),
     };
 }
 
@@ -134,5 +141,6 @@ export function resolveRuntimeServiceProviderKeys(
         evidenceTransport: resolveProviderKey(assembly, "evidenceTransport", bindingSource),
         coordinationMessaging: resolveProviderKey(assembly, "coordinationMessaging", bindingSource),
         handoffPersistence: resolveProviderKey(assembly, "handoffPersistence", bindingSource),
+        tokenConversion: resolveProviderKey(assembly, "tokenConversion", bindingSource),
     };
 }
