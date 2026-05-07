@@ -26,7 +26,6 @@ import {
 import type {
     SellerCatalogueMetadata,
     CatalogueItemMetadata,
-    SupportedSchemaDeclaration,
 } from "@/lib/shared/sellerCatalogueMetadata";
 import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 import { FULFILMENT_MODE_LABELS } from "@/lib/seller/fulfilmentRouting";
@@ -276,30 +275,16 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
 
     useEffect(() => {
         if (!catalogue) return;
-        setMerchantName(catalogue.name);
-        setDescription(catalogue.description ?? "");
-        setCuisine(catalogue.cuisine ?? "");
-        setGeohash(catalogue.location.geohash);
-        setAddressText(catalogue.location.addressText ?? "");
-        setMinimumOrder(catalogue.minimumOrder ?? "0.01");
-        setEstimatedFulfillment(catalogue.estimatedFulfillment ?? "30-45 min");
+        // Identity, location, branding, fulfilment modes, and supported
+        // schemas now live on the operator profile (or per-assembly), not
+        // the catalogue. The catalogue carries items only. Group 3 will
+        // rewire this form against the profile; for now hydrate only
+        // items.
         setMenuItems(
             catalogue.menu.length > 0
                 ? catalogue.menu.map(metadataToMenuDraft)
                 : [newMenuItem()]
         );
-        setAccentColor(catalogue.branding?.accentColor ?? "");
-        setLogoURI(catalogue.branding?.logoURI ?? "");
-        if (catalogue.supportedSchemas) {
-            setSelectedSchemas(new Set(catalogue.supportedSchemas.map((s) => s.schemaKey)));
-        }
-        const declared = (catalogue.fulfillmentModes ?? []).filter(
-            (m): m is CanonicalFulfilmentMethod =>
-                (ALL_FULFILMENT_MODES as readonly string[]).includes(m),
-        );
-        if (declared.length > 0) {
-            setSelectedFulfilmentModes(new Set(declared));
-        }
     }, [catalogue]);
 
     // ── Menu item CRUD ────────────────────────────────────────────────────────
@@ -364,43 +349,23 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
         setPublishError(null);
 
         try {
+            // Profile fields (name, description, cuisine, location,
+            // fulfilment modes, branding, supportedSchemas, accepted
+            // tokens) are written separately to the operator profile in
+            // Group 3. This module currently writes only the slim
+            // catalogue (items + version).
+            void merchantName; void description; void cuisine; void geohash;
+            void addressText; void minimumOrder; void estimatedFulfillment;
+            void selectedFulfilmentModes; void selectedSchemas;
+            void accentColor; void logoURI;
             const doc: SellerCatalogueMetadata = {
                 subjectAddress: sellerAddr,
-                merchantId: merchantName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-                slug: merchantName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-                name: merchantName.trim(),
-                description: description.trim() || undefined,
-                cuisine: cuisine.trim() || undefined,
-                fulfillmentModes: selectedFulfilmentModes.size > 0
-                    ? Array.from(selectedFulfilmentModes)
-                    : ["deliver:seller-assigned"],
-                location: {
-                    geohash: geohash.trim(),
-                    addressText: addressText.trim() || undefined,
-                },
-                minimumOrder: minimumOrder || undefined,
-                estimatedFulfillment: estimatedFulfillment || undefined,
                 menu: validItems.map(menuItemToMetadata),
-                branding: (accentColor || logoURI)
-                    ? {
-                        displayName: merchantName.trim(),
-                        accentColor: accentColor || undefined,
-                        logoURI: logoURI || undefined,
-                    }
-                    : undefined,
-                supportedSchemas: selectedSchemas.size > 0
-                    ? Array.from(selectedSchemas).map((key): SupportedSchemaDeclaration => ({ schemaKey: key }))
-                    : undefined,
                 version: "1.0.0",
             };
 
             const { uri } = await catalogueService.publishMerchantCatalogue(doc);
 
-            // Already-registered operators: catalogue is pinned to IPFS but
-            // the on-chain metadataURI cannot be updated in-place (no
-            // updateProfile after web2-strip). The new URI is shown in the
-            // success state; the operator must withdraw + re-register if they
-            // want it bound on-chain.
             if (isRegistered) {
                 setPublishStatus("done");
                 await refetch();

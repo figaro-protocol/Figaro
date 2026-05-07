@@ -9,14 +9,16 @@ import {
 describe('operator profile metadata parser', () => {
     const VALID_DOC = {
         name: 'Bob Pizza',
+        slug: 'bob-pizza',
         description: 'Authentic NY-style',
-        location: 'Manhattan, NY',
+        specialty: 'Italian',
+        location: { geohash: 'dr5reg', addressText: 'Manhattan, NY' },
         catalogueURI: 'ipfs://QmCatalogue123',
         acceptedTokens: [
-            '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-            '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+            { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC', name: 'USD Coin' },
+            { address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8', symbol: 'FIG' },
         ],
-        mechanisms: ['core-orders', 'delivery-coordinator'],
+        defaultTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
         services: {
             mcp: 'https://example.com/mcp',
             a2a: 'https://example.com/a2a',
@@ -24,7 +26,6 @@ describe('operator profile metadata parser', () => {
             did: 'did:web:example.com',
             ens: 'example.figaro.eth',
         },
-        capabilities: ['route-optimization'],
         branding: {
             displayName: "Bob's Pizza",
             logoURI: 'ipfs://QmLogo',
@@ -45,19 +46,18 @@ describe('operator profile metadata parser', () => {
             expect(result.name).toBe('Bob Pizza');
             expect(result.description).toBe('Authentic NY-style');
             expect(result.acceptedTokens).toHaveLength(2);
-            expect(result.acceptedTokens?.[0]).toBe('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48');
-            expect(result.mechanisms).toEqual(['core-orders', 'delivery-coordinator']);
+            expect(result.acceptedTokens?.[0]?.address).toBe('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48');
             expect(result.services?.mcp).toBe('https://example.com/mcp');
-            expect(result.capabilities).toEqual(['route-optimization']);
             expect(result.branding?.themeClass).toBe('merchant-pizza');
             expect(result.assets?.cssURI).toBe('ipfs://QmCss');
             expect(result.version).toBe('1.0.0');
         });
 
-        it('parses a minimal profile with only name', () => {
-            const result = parseOperatorProfileDocument({ name: 'Minimal Operator' });
+        it('parses a minimal profile with only name + slug', () => {
+            const result = parseOperatorProfileDocument({ name: 'Minimal Operator', slug: 'minimal' });
 
             expect(result.name).toBe('Minimal Operator');
+            expect(result.slug).toBe('minimal');
             expect(result.description).toBeUndefined();
             expect(result.acceptedTokens).toBeUndefined();
             expect(result.services).toBeUndefined();
@@ -76,31 +76,23 @@ describe('operator profile metadata parser', () => {
         it('throws when acceptedTokens carries a malformed address', () => {
             expect(() => parseOperatorProfileDocument({
                 name: 'Bob',
-                acceptedTokens: ['not-an-address'],
-            })).toThrow(/acceptedTokens\[0\] must be a 20-byte hex address/);
-        });
-
-        it('accepts acceptedTokens as object-with-address (legacy form)', () => {
-            const result = parseOperatorProfileDocument({
-                name: 'Bob',
-                acceptedTokens: [
-                    { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' },
-                ],
-            });
-
-            expect(result.acceptedTokens?.[0]).toBe('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48');
+                slug: 'bob',
+                acceptedTokens: [{ address: 'not-an-address', symbol: 'BAD' }],
+            })).toThrow(/acceptedTokens\[0\]\.address must be a 20-byte hex address/);
         });
 
         it('throws when services is not an object', () => {
             expect(() => parseOperatorProfileDocument({
                 name: 'Bob',
+                slug: 'bob',
                 services: 'not-an-object',
             })).toThrow(/services must be an object/);
         });
 
-        it('drops services fields that are not strings', () => {
+        it('parses services with only some fields', () => {
             const result = parseOperatorProfileDocument({
                 name: 'Bob',
+                slug: 'bob',
                 services: { mcp: 'https://example.com/mcp' },
             });
 
@@ -135,7 +127,8 @@ describe('operator profile metadata parser', () => {
         it('returns null when acceptedTokens is malformed (does not throw)', () => {
             expect(tryParseOperatorProfileDocument({
                 name: 'Bob',
-                acceptedTokens: ['malformed'],
+                slug: 'bob',
+                acceptedTokens: [{ address: 'malformed', symbol: 'BAD' }],
             })).toBeNull();
         });
     });

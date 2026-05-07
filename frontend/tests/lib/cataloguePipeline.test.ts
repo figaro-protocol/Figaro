@@ -16,32 +16,16 @@ import type { CourierOfferingMetadata } from "@/lib/shared/courierOfferingMetada
 
 const VALID_MERCHANT_DOC: SellerCatalogueMetadata = {
     subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    merchantId: "test-pizza",
-    slug: "test-pizza",
-    name: "Test Pizza",
-    description: "The finest test pizza",
-    cuisine: "Italian",
-    fulfillmentModes: ["delivery"],
-    location: { geohash: "dr5reg", addressText: "Test St" },
-    serviceAreas: [{ geohashPrefix: "dr5", label: "Downtown" }],
-    minimumOrder: "0.01",
-    estimatedFulfillment: "30-45 min",
     menu: [
         {
             id: "item1",
             name: "Margherita",
             description: "Classic pizza",
             price: "0.01",
-            currencySymbol: "ETH",
             category: "Pizza",
             available: true,
         },
     ],
-    branding: {
-        displayName: "Test Pizza",
-        logoURI: "ipfs://QmLogo",
-        accentColor: "#c2410c",
-    },
     version: "1",
 };
 
@@ -79,7 +63,7 @@ describe("catalogueFetcher", () => {
 
         const result = await fetchMerchantCatalogue("ipfs://QmTest");
         expect(result).not.toBeNull();
-        expect(result!.name).toBe("Test Pizza");
+        expect(result!.subjectAddress).toBe("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
         expect(result!.menu).toHaveLength(1);
         expect(result!.menu[0].name).toBe("Margherita");
     });
@@ -194,7 +178,7 @@ describe("cataloguePublisher", () => {
         });
 
         it("rejects invalid merchant documents before pinning", async () => {
-            const bad = { ...VALID_MERCHANT_DOC, name: undefined } as unknown as SellerCatalogueMetadata;
+            const bad = { ...VALID_MERCHANT_DOC, menu: undefined } as unknown as SellerCatalogueMetadata;
 
             await expect(publishMerchantCatalogue(bad)).rejects.toThrow();
         });
@@ -272,37 +256,25 @@ describe("cataloguePublisher", () => {
     });
 });
 
-// ── catalogueToRestaurant mapping ─────────────────────────────────────────────
+// ── catalogue shape sanity ────────────────────────────────────────────────────
 
-// Import the mapping function indirectly through the hook's test
-// Since catalogueToRestaurant is not exported, test the mapping semantics
-describe("catalogueToRestaurant semantics", () => {
-    it("SellerCatalogueMetadata fields map to Restaurant type correctly", () => {
-        // Verify the mapping contract: all required Restaurant fields
-        // can be derived from SellerCatalogueMetadata fields
+describe("SellerCatalogueMetadata shape", () => {
+    it("carries only subjectAddress, items, and version after the schema split", () => {
         const cat = VALID_MERCHANT_DOC;
 
-        // These assertions document the expected mapping
-        expect(cat.merchantId).toBeDefined(); // → Restaurant.id
-        expect(cat.name).toBeDefined(); // → Restaurant.name
-        expect(cat.subjectAddress).toBeDefined(); // → Restaurant.address
-        expect(cat.description).toBeDefined(); // → Restaurant.description
-        expect(cat.cuisine).toBeDefined(); // → Restaurant.cuisine
-        expect(cat.branding?.logoURI).toBeDefined(); // → Restaurant.image
-        expect(cat.estimatedFulfillment).toBeDefined(); // → Restaurant.deliveryTime
-        expect(cat.minimumOrder).toBeDefined(); // → Restaurant.minimumOrder
-        expect(cat.location.geohash).toBeDefined(); // → Restaurant.geohash
-        expect(cat.menu.length).toBeGreaterThan(0); // → Restaurant.menu[]
+        expect(cat.subjectAddress).toBeDefined();
+        expect(cat.menu.length).toBeGreaterThan(0);
+        expect(cat.version).toBeDefined();
     });
 
-    it("EatsMenuItemMetadata fields map to MenuItem type correctly", () => {
+    it("each catalogue item carries id, name, price, category, available", () => {
         const item = VALID_MERCHANT_DOC.menu[0];
 
-        expect(item.id).toBeDefined(); // → MenuItem.id
-        expect(item.name).toBeDefined(); // → MenuItem.name
-        expect(item.price).toBeDefined(); // → MenuItem.price
-        expect(item.category).toBeDefined(); // → MenuItem.category
-        expect(typeof item.available).toBe("boolean"); // → MenuItem.available
+        expect(item.id).toBeDefined();
+        expect(item.name).toBeDefined();
+        expect(item.price).toBeDefined();
+        expect(item.category).toBeDefined();
+        expect(typeof item.available).toBe("boolean");
     });
 });
 

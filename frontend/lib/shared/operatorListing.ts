@@ -1,12 +1,10 @@
 import {
     listRuntimeAssemblyBindings,
     listRuntimeSubjectRecords,
-    SELLER_CATALOGUE_METADATA_RECORDS,
+    OPERATOR_PROFILE_METADATA_RECORDS,
 } from "@/lib/shared/runtimeIdentityRegistry";
-import type {
-    AcceptedTokenMetadata,
-    SellerCatalogueMetadata,
-} from "@/lib/shared/sellerCatalogueMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
 
 /**
  * Generic operator-listing surface for `/discover`.
@@ -84,10 +82,12 @@ function safeURI(uri: string | undefined): string | undefined {
     return SAFE_URI_RE.test(uri) ? uri : undefined;
 }
 
-function metadataByAddress(): Map<string, SellerCatalogueMetadata> {
-    const m = new Map<string, SellerCatalogueMetadata>();
-    for (const md of SELLER_CATALOGUE_METADATA_RECORDS) {
-        m.set(md.subjectAddress.toLowerCase(), md);
+function profileByAddress(): Map<string, OperatorProfileMetadata> {
+    const m = new Map<string, OperatorProfileMetadata>();
+    for (const profile of OPERATOR_PROFILE_METADATA_RECORDS) {
+        if (profile.subjectAddress) {
+            m.set(profile.subjectAddress.toLowerCase(), profile);
+        }
     }
     return m;
 }
@@ -95,11 +95,18 @@ function metadataByAddress(): Map<string, SellerCatalogueMetadata> {
 /**
  * Project the bundled runtime-identity manifest into the generic `Listing`
  * shape. Each subject becomes one listing, regardless of its assembly count.
+ *
+ * Identity / branding / accepted tokens come from the operator profile;
+ * fulfillment-mode and service-area declarations no longer exist on the
+ * profile (the assembly defines those). The Listing's `fulfillmentModes`
+ * and `serviceAreas` arrays therefore default to empty for fixture-driven
+ * discovery; once on-chain assembly bindings drive discovery, this
+ * projection will derive them from each binding's assembly definition.
  */
 export function listOperatorsFromRuntimeIdentity(): Listing[] {
     const subjects = listRuntimeSubjectRecords();
     const bindings = listRuntimeAssemblyBindings();
-    const metaByAddr = metadataByAddress();
+    const profileByAddr = profileByAddress();
 
     const bindingsByAddr = new Map<string, ListingBinding[]>();
     for (const b of bindings) {
@@ -116,25 +123,21 @@ export function listOperatorsFromRuntimeIdentity(): Listing[] {
 
     return subjects.map((s): Listing => {
         const addr = s.subjectAddress.toLowerCase();
-        const meta = metaByAddr.get(addr);
+        const profile = profileByAddr.get(addr);
 
         return {
             provenance: "fixture",
             address: s.subjectAddress,
-            name: meta?.name ?? s.displayName ?? s.subjectAddress,
-            description: meta?.description ?? "",
-            specialty: meta?.cuisine,
-            logoURI: safeURI(meta?.branding?.logoURI),
-            accentColor: meta?.branding?.accentColor,
-            geohash: meta?.location.geohash,
-            addressText: meta?.location.addressText,
-            serviceAreas:
-                meta?.serviceAreas?.map((a) => ({
-                    geohashPrefix: a.geohashPrefix,
-                    label: a.label,
-                })) ?? [],
-            fulfillmentModes: (meta?.fulfillmentModes ?? []) as FulfillmentMode[],
-            acceptedTokens: meta?.acceptedTokens ?? [],
+            name: profile?.name ?? s.displayName ?? s.subjectAddress,
+            description: profile?.description ?? "",
+            specialty: profile?.specialty,
+            logoURI: safeURI(profile?.branding?.logoURI),
+            accentColor: profile?.branding?.accentColor,
+            geohash: profile?.location?.geohash,
+            addressText: profile?.location?.addressText,
+            serviceAreas: [],
+            fulfillmentModes: [],
+            acceptedTokens: profile?.acceptedTokens ?? [],
             bindings: bindingsByAddr.get(addr) ?? [],
         };
     });

@@ -5,19 +5,25 @@
  * IPFS by the operator-onboarding form and pointed to by
  * `OperatorRegistry.metadataURI`.
  *
- * Single source of truth for the document shape. Replaces the three
- * lenient parsers that previously inspected this document independently
- * (`tryParseOperatorProfile` in `operatorProfileAdapter`, `parseAgentServices`
- * in `useOperatorRegistry`, and `fetchMerchantBranding`'s passthrough
- * extraction in `merchantBranding`). Each call-site now projects the
- * fields it needs from the canonical parsed shape.
+ * The profile is the stable identity envelope: name, branding/CSS/images,
+ * location, accepted-token list (the wallet's "freaky flag" of
+ * value-system memberships), default pricing token, assembly bindings,
+ * agent endpoints, and the URI of the volatile catalogue document. Item
+ * lists live in the catalogue (`SellerCatalogueMetadata`) so item edits
+ * re-pin one small JSON instead of the whole identity envelope.
  *
- * Carries no role / archetype / category field — what an address does is
- * reconstructed from on-chain events via the indexer, never from a
- * metadata-document field. See `feedback_state_from_events.md`.
+ * Carries no role / archetype / category / cuisine / specialty taxonomy
+ * field. Buyers infer what the seller does from the items in the
+ * catalogue; protocol-tier role attribution is event-derived via the
+ * indexer (see `feedback_state_from_events.md`).
  */
 
-import type { SellerBrandingMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import type {
+    AcceptedTokenMetadata,
+    SellerBrandingMetadata,
+} from "@/lib/shared/sellerCatalogueMetadata";
+import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
+import { parseAssemblyBindingDocument } from "@/lib/shared/runtimeIdentityParser";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -30,48 +36,79 @@ export interface OperatorAgentServices {
     ens?: string;
 }
 
-/** Asset URIs associated with the operator's branding. */
+/** Asset URIs associated with the operator's branding (CSS + images). */
 export interface OperatorAssetReferences {
     cssURI?: string;
     imageBaseURI?: string;
 }
 
+/** Geographic anchor for the operator. */
+export interface OperatorLocation {
+    geohash: string;
+    addressText?: string;
+}
+
 /**
  * The operator profile document.
  *
- * `name` is required; everything else is optional. The form's submit
- * path writes only the fields the operator filled in.
- *
- * Note: `serviceTypes` is retained for backwards compatibility with
- * legacy fixtures that pre-date catalogue-derived fulfillment-mode
- * resolution. It is NOT a structured categorization of the operator;
- * it carries fulfillment hints only and will be dropped once the
- * catalogue's `fulfillmentModes` is wired through to discovery.
+ * `name` and `slug` are required (slug drives pretty `/m/<slug>` URLs);
+ * everything else is optional. The form's submit path writes only the
+ * fields the operator filled in.
  */
 export interface OperatorProfileMetadata {
+    /**
+     * Wallet address that owns this profile. Optional in the on-chain-pinned
+     * shape (the kernel binds wallet → metadataURI; the profile does not
+     * need to repeat the wallet). Present when the profile is materialised
+     * by an indexer or fixture loader, where multiple profiles live in a
+     * single array and the address is the join key.
+     */
+    subjectAddress?: `0x${string}`;
+    /** Human-readable name. */
     name: string;
+    /** URL-safe handle used for `/m/<slug>` discovery routes. */
+    slug: string;
+    /** Free-form description. */
     description?: string;
-    location?: string;
-    catalogueURI?: string;
-    /** ERC-20 contract addresses the operator accepts for settlement. */
-    acceptedTokens?: `0x${string}`[];
-    /** Allocation mechanisms the operator declares (legacy; planned for removal). */
-    mechanisms?: string[];
+    /** Free-form self-description ("Italian café", "immigration law", "bicycle repair"). Not a closed taxonomy. */
+    specialty?: string;
+    /** Geographic anchor — geohash plus optional human-readable address. */
+    location?: OperatorLocation;
+    /** Branding (logo, hero, accent, theme class). Pinned on the profile so buyer frontends can skin against the seller's identity. */
+    branding?: SellerBrandingMetadata;
+    /** External asset references (CSS, image base URI). Pinned on the profile. */
+    assets?: OperatorAssetReferences;
+    /**
+     * The wallet's "freaky flag" — the set of ERC-20s the operator
+     * accepts for settlement. Token acceptance is identity: it signals
+     * value-system membership (DAO tokens, ethnic-support tokens,
+     * stablecoins, etc.), not financial-market position.
+     */
+    acceptedTokens?: AcceptedTokenMetadata[];
+    /**
+     * The token in which the catalogue is denominated. Must be the
+     * address of one of the entries in `acceptedTokens`. Frontends
+     * convert from this default to whatever accepted token the buyer
+     * commits in via Uniswap quote at commit time.
+     */
+    defaultTokenAddress?: `0x${string}`;
+    /**
+     * Assembly bindings — one entry per assembly the wallet
+     * participates in. Mechanism participation, service-provider
+     * choices, role declarations all live inside each binding's
+     * `roleBindings` and `serviceBindings`. See
+     * `runtimeIdentity.AssemblyBindingRecord` for the shape.
+     */
+    assemblyBindings?: AssemblyBindingRecord[];
     /** ERC-8004 agent service endpoints (mcp, a2a, rest, did, ens). */
     services?: OperatorAgentServices;
-    /** Free-form capability declarations for agent-flavoured operators. */
-    capabilities?: string[];
-    /** Branding (logo, hero, accent, theme class). */
-    branding?: SellerBrandingMetadata;
-    /** External asset references (CSS, image base URI). */
-    assets?: OperatorAssetReferences;
-    /** Legacy fulfillment-type hints (deprecated; will be dropped). */
-    serviceTypes?: string[];
+    /** IPFS URI of the wallet's catalogue document. */
+    catalogueURI?: string;
     /** Document-shape version. */
     version?: string;
 }
 
-// ── Validation primitives (mirror the catalogue parser's helpers) ──────────────
+// ── Validation primitives ─────────────────────────────────────────────────────
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -94,14 +131,6 @@ function asOptionalString(value: unknown, path: string): string | undefined {
     return asString(value, path);
 }
 
-function asOptionalStringArray(value: unknown, path: string): string[] | undefined {
-    if (value === undefined) return undefined;
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-    return value.map((entry, index) => asString(entry, `${path}[${index}]`));
-}
-
 function asAddress(value: unknown, path: string): `0x${string}` {
     const address = asString(value, path);
     if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
@@ -110,23 +139,49 @@ function asAddress(value: unknown, path: string): `0x${string}` {
     return address as `0x${string}`;
 }
 
-function parseAcceptedTokenAddresses(value: unknown, path: string): `0x${string}`[] | undefined {
+function asOptionalAddress(value: unknown, path: string): `0x${string}` | undefined {
+    if (value === undefined) return undefined;
+    return asAddress(value, path);
+}
+
+function parseAcceptedToken(value: unknown, path: string): AcceptedTokenMetadata {
+    const record = asRecord(value, path);
+    return {
+        address: asAddress(record.address, `${path}.address`),
+        symbol: asString(record.symbol, `${path}.symbol`),
+        name: asOptionalString(record.name, `${path}.name`),
+        logoURI: asOptionalString(record.logoURI, `${path}.logoURI`),
+    };
+}
+
+function parseAcceptedTokens(value: unknown, path: string): AcceptedTokenMetadata[] | undefined {
     if (value === undefined) return undefined;
     if (!Array.isArray(value)) {
         throw new Error(`${path} must be an array.`);
     }
     return value.map((entry, index) => {
+        // Tolerate bare-address strings from legacy profiles; upgrade in place.
         if (typeof entry === "string") {
-            return asAddress(entry, `${path}[${index}]`);
+            return {
+                address: asAddress(entry, `${path}[${index}]`),
+                symbol: "",
+            };
         }
-        // Tolerate { address, ... } shapes pre-emptively — the form has
-        // historically read either bare-string or object-with-address.
-        if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-            const record = entry as UnknownRecord;
-            return asAddress(record.address, `${path}[${index}].address`);
-        }
-        throw new Error(`${path}[${index}] must be a 20-byte hex address or an object with an address field.`);
+        return parseAcceptedToken(entry, `${path}[${index}]`);
     });
+}
+
+function parseLocation(value: unknown, path: string): OperatorLocation | undefined {
+    if (value === undefined) return undefined;
+    // Tolerate legacy free-form string by wrapping into a stub geohash entry.
+    if (typeof value === "string") {
+        return value.trim() ? { geohash: "", addressText: value } : undefined;
+    }
+    const record = asRecord(value, path);
+    return {
+        geohash: asString(record.geohash, `${path}.geohash`),
+        addressText: asOptionalString(record.addressText, `${path}.addressText`),
+    };
 }
 
 function parseAgentServicesField(value: unknown, path: string): OperatorAgentServices | undefined {
@@ -162,6 +217,16 @@ function parseAssetsField(value: unknown, path: string): OperatorAssetReferences
     };
 }
 
+function parseAssemblyBindings(value: unknown, path: string): AssemblyBindingRecord[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be an array.`);
+    }
+    return value.map((entry, index) =>
+        parseAssemblyBindingDocument(entry, `${path}[${index}]`)
+    );
+}
+
 // ── Parsers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -176,17 +241,21 @@ export function parseOperatorProfileDocument(
     const record = asRecord(value, sourceLabel);
 
     return {
+        subjectAddress: record.subjectAddress === undefined
+            ? undefined
+            : asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
         name: asString(record.name, `${sourceLabel}.name`),
+        slug: asString(record.slug, `${sourceLabel}.slug`),
         description: asOptionalString(record.description, `${sourceLabel}.description`),
-        location: asOptionalString(record.location, `${sourceLabel}.location`),
-        catalogueURI: asOptionalString(record.catalogueURI, `${sourceLabel}.catalogueURI`),
-        acceptedTokens: parseAcceptedTokenAddresses(record.acceptedTokens, `${sourceLabel}.acceptedTokens`),
-        mechanisms: asOptionalStringArray(record.mechanisms, `${sourceLabel}.mechanisms`),
-        services: parseAgentServicesField(record.services, `${sourceLabel}.services`),
-        capabilities: asOptionalStringArray(record.capabilities, `${sourceLabel}.capabilities`),
+        specialty: asOptionalString(record.specialty, `${sourceLabel}.specialty`),
+        location: parseLocation(record.location, `${sourceLabel}.location`),
         branding: parseBrandingField(record.branding, `${sourceLabel}.branding`),
         assets: parseAssetsField(record.assets, `${sourceLabel}.assets`),
-        serviceTypes: asOptionalStringArray(record.serviceTypes, `${sourceLabel}.serviceTypes`),
+        acceptedTokens: parseAcceptedTokens(record.acceptedTokens, `${sourceLabel}.acceptedTokens`),
+        defaultTokenAddress: asOptionalAddress(record.defaultTokenAddress, `${sourceLabel}.defaultTokenAddress`),
+        assemblyBindings: parseAssemblyBindings(record.assemblyBindings, `${sourceLabel}.assemblyBindings`),
+        services: parseAgentServicesField(record.services, `${sourceLabel}.services`),
+        catalogueURI: asOptionalString(record.catalogueURI, `${sourceLabel}.catalogueURI`),
         version: asOptionalString(record.version, `${sourceLabel}.version`),
     };
 }
@@ -206,6 +275,37 @@ export function tryParseOperatorProfileDocument(
         return null;
     }
 }
+
+// ── Example ────────────────────────────────────────────────────────────────
+
+export const OPERATOR_PROFILE_METADATA_EXAMPLE: OperatorProfileMetadata = {
+    subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    name: "Bob's Pizza Palace",
+    slug: "bobs-pizza-palace",
+    description: "Authentic New York style pizza.",
+    specialty: "Italian café",
+    location: {
+        geohash: "dr5reg",
+        addressText: "Lower Manhattan, NY",
+    },
+    branding: {
+        displayName: "Bob's Pizza Palace",
+        logoURI: "ipfs://example/logo.png",
+        heroImageURI: "ipfs://example/hero.png",
+        accentColor: "#c2410c",
+        themeClass: "merchant-pizza",
+    },
+    assets: {
+        cssURI: "ipfs://example/theme.css",
+        imageBaseURI: "ipfs://example/assets/",
+    },
+    acceptedTokens: [
+        { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", symbol: "USDC", name: "USD Coin" },
+    ],
+    defaultTokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    catalogueURI: "ipfs://example/catalogue.json",
+    version: "1.0.0",
+};
 
 // ── Convenience projections (used by call-sites that need a subset) ───────────
 

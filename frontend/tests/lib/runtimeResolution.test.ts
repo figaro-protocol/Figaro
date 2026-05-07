@@ -40,12 +40,18 @@ const injectedRuntimeSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
+    listOperatorProfileMetadata: () => [
+        {
+            subjectAddress: '0x2222222222222222222222222222222222222222',
+            name: 'Injected Runtime Merchant',
+            slug: 'injected-runtime-merchant',
+            version: '1.0.0',
+        },
+    ],
     listSellerCatalogueMetadata: () => [
         {
             ...SELLER_CATALOGUE_METADATA_EXAMPLE,
             subjectAddress: '0x2222222222222222222222222222222222222222',
-            merchantId: 'injected-runtime-merchant',
-            name: 'Injected Runtime Merchant',
         },
     ],
 };
@@ -73,6 +79,7 @@ const unmappedRuntimeSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
+    listOperatorProfileMetadata: () => [],
     listSellerCatalogueMetadata: () => [],
 };
 
@@ -101,12 +108,11 @@ const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
-    listSellerCatalogueMetadata: () => [
+    listOperatorProfileMetadata: () => [
         {
-            ...SELLER_CATALOGUE_METADATA_EXAMPLE,
             subjectAddress: '0x4444444444444444444444444444444444444444',
-            merchantId: 'transport-skin-merchant',
             name: 'Transport Skin Merchant',
+            slug: 'transport-skin-merchant',
             branding: {
                 displayName: 'Transport Skin Merchant',
                 logoURI: 'ipfs://example/catalogue-logo.png',
@@ -116,25 +122,30 @@ const transportSkinRuntimeSource: RuntimeIdentityDataSource = {
             assets: {
                 cssURI: 'ipfs://example/catalogue-theme.css',
             },
+            version: '1.0.0',
+        },
+    ],
+    listSellerCatalogueMetadata: () => [
+        {
+            ...SELLER_CATALOGUE_METADATA_EXAMPLE,
+            subjectAddress: '0x4444444444444444444444444444444444444444',
         },
     ],
 };
 
 describe('runtime resolution', () => {
     it.each([
-        { slug: 'local-commerce', displayName: "Bob's Pizza Palace", merchantId: 'bobs-pizza-palace' },
-        { slug: 'figaro-procurement', displayName: 'Acme Components Supply', merchantId: 'acme-components-supply' },
-        { slug: 'figaro-disclosure-review', displayName: 'GreenLedger Review Desk', merchantId: 'greenledger-review-desk' },
-    ])('resolves a combined assembly runtime context for $slug', ({ slug, displayName, merchantId }) => {
+        { slug: 'local-commerce', displayName: "Bob's Pizza Palace", profileSlug: 'bobs-pizza-palace' },
+        { slug: 'figaro-procurement', displayName: 'Acme Components Supply', profileSlug: 'acme-components-supply' },
+        { slug: 'figaro-disclosure-review', displayName: 'GreenLedger Review Desk', profileSlug: 'greenledger-review-desk' },
+    ])('resolves a combined assembly runtime context for $slug', ({ slug, displayName, profileSlug }) => {
         const context = resolveAssemblyRuntimeContext(slug, 'local-anvil');
 
         expect(context?.artifact.assembly.identity.slug).toBe(slug);
         expect(context?.boundSubjects).toHaveLength(1);
         expect(context?.boundSubjects[0]?.displayName).toBe(displayName);
-        if (merchantId) {
-            expect(context?.boundSubjects[0]?.sellerCatalogueMetadata?.merchantId).toBe(merchantId);
-        } else {
-            expect(context?.boundSubjects[0]?.sellerCatalogueMetadata).toBeUndefined();
+        if (profileSlug) {
+            expect(context?.boundSubjects[0]?.operatorProfile?.slug).toBe(profileSlug);
         }
     });
 
@@ -158,7 +169,7 @@ describe('runtime resolution', () => {
         expect(context?.artifact.assembly.identity.slug).toBe('local-commerce');
         expect(context?.boundSubjects).toHaveLength(1);
         expect(context?.boundSubjects[0]?.displayName).toBe('Injected Runtime Merchant');
-        expect(context?.boundSubjects[0]?.sellerCatalogueMetadata?.merchantId).toBe('injected-runtime-merchant');
+        expect(context?.boundSubjects[0]?.operatorProfile?.slug).toBe('injected-runtime-merchant');
         expect(context?.sourceMetadata).toEqual({
             sourceKind: 'unknown',
             sourceLabel: 'runtime-data-source',

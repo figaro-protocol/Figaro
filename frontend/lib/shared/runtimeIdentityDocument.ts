@@ -1,6 +1,10 @@
 import { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
 import { parseSellerCatalogueDocument } from '@/lib/shared/sellerCatalogueMetadataParser';
 import {
+    OperatorProfileMetadata,
+    parseOperatorProfileDocument,
+} from '@/lib/shared/operatorProfileMetadata';
+import {
     AssemblyBindingRecord,
     listSubjectProvenanceRecords,
     SubjectProvenanceRecord,
@@ -52,6 +56,9 @@ export interface ParsedRuntimeIdentityDocument {
     version: string;
     subjects: SubjectRecord[];
     assemblyBindings: AssemblyBindingRecord[];
+    /** Operator profile records — identity, branding, accepted tokens. */
+    operatorProfileMetadata: OperatorProfileMetadata[];
+    /** Catalogue records — items only. */
     sellerCatalogueMetadata: SellerCatalogueMetadata[];
     assetDocuments: RuntimeAssetDocument[];
     subjectProvenance: SubjectProvenanceRecord[];
@@ -292,7 +299,24 @@ export function parseRuntimeIdentityDocument(
 
     const parsedSubjects = subjects.map((entry, index) => parseSubjectRecordDocument(entry, `${sourceLabel}.subjects[${index}]`));
     const parsedAssemblyBindings = assemblyBindings.map((entry, index) => parseAssemblyBindingDocument(entry, `${sourceLabel}.assemblyBindings[${index}]`));
-    const parsedSellerCatalogueMetadata = sellerCatalogueMetadata.map((entry, index) => parseSellerCatalogueDocument(entry, `${sourceLabel}.sellerCatalogueMetadata[${index}]`));
+    /**
+     * Fixture records are "fat" — they pre-date the profile/catalogue
+     * split and conflate identity (name, branding, accepted tokens) with
+     * the items list. Project them into both arrays:
+     *   - profile parser pulls name, branding, location, accepted tokens
+     *   - catalogue parser pulls only {subjectAddress, menu, version}
+     */
+    const parsedOperatorProfileMetadata = sellerCatalogueMetadata.map(
+        (entry, index) => parseOperatorProfileDocument(entry, `${sourceLabel}.sellerCatalogueMetadata[${index}]`)
+    );
+    const parsedSellerCatalogueMetadata = sellerCatalogueMetadata.map((entry, index) => {
+        const record = (entry ?? {}) as UnknownRecord;
+        return parseSellerCatalogueDocument({
+            subjectAddress: record.subjectAddress,
+            menu: record.menu,
+            version: record.version,
+        }, `${sourceLabel}.sellerCatalogueMetadata[${index}]`);
+    });
     const parsedAssetDocuments = assetDocuments.map((entry, index) => parseRuntimeAssetDocument(entry, `${sourceLabel}.assetDocuments[${index}]`));
     const subjectProvenance = listSubjectProvenanceRecords(parsedSubjects, parsedAssemblyBindings);
     const validationIssues = buildManifestValidationIssues(
@@ -312,6 +336,7 @@ export function parseRuntimeIdentityDocument(
         version: asString(record.version, `${sourceLabel}.version`),
         subjects: parsedSubjects,
         assemblyBindings: parsedAssemblyBindings,
+        operatorProfileMetadata: parsedOperatorProfileMetadata,
         sellerCatalogueMetadata: parsedSellerCatalogueMetadata,
         assetDocuments: parsedAssetDocuments,
         subjectProvenance,
@@ -330,6 +355,7 @@ export function createRuntimeIdentityDataSourceFromDocument(
         ...parsedManifest,
         listSubjectRecords: () => parsedManifest.subjects,
         listAssemblyBindings: () => parsedManifest.assemblyBindings,
+        listOperatorProfileMetadata: () => parsedManifest.operatorProfileMetadata,
         listSellerCatalogueMetadata: () => parsedManifest.sellerCatalogueMetadata,
         listAssetDocuments: () => parsedManifest.assetDocuments,
         listSubjectProvenanceRecords: () => parsedManifest.subjectProvenance,

@@ -53,15 +53,11 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-            merchantId: 'merchant-a',
             slug: 'merchant-a',
             name: 'Merchant A',
             description: 'Test merchant',
-            cuisine: 'Italian',
-            fulfillmentModes: ['delivery'],
+            specialty: 'Italian',
             location: { geohash: 'dr5reg' },
-            minimumOrder: '0.01',
-            estimatedFulfillment: '15-25 min',
             menu: [
                 {
                     id: 'pizza',
@@ -83,7 +79,6 @@ describe('discoveryService', () => {
             id: 'merchant-a',
             name: 'Merchant A',
             cuisine: 'Italian',
-            deliveryTime: '15-25 min',
         }));
         expect(result.restaurants.some((r) => r.name === "Bob's Pizza Palace")).toBe(false);
         expect(result.source.mock).toBeGreaterThan(0);
@@ -100,9 +95,11 @@ describe('discoveryService', () => {
         // First fetch: operator profile
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             name: 'Street Tacos',
+            slug: 'street-tacos',
             description: 'Local taco stand',
-            serviceTypes: ['pickup'],
-            acceptedTokens: ['0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'],
+            acceptedTokens: [
+                { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' },
+            ],
             catalogueURI: 'ipfs://op-catalogue',
         }));
         // Second fetch: catalogue document
@@ -118,7 +115,6 @@ describe('discoveryService', () => {
         expect(result.source.ipfs).toBe(1);
         expect(result.restaurants[0]).toEqual(expect.objectContaining({
             name: 'Street Tacos',
-            fulfillmentModes: ['pickup'],
         }));
         expect(result.restaurants[0].menu).toHaveLength(1);
         expect(result.restaurants[0].menu[0].name).toBe('Al Pastor');
@@ -134,7 +130,7 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             name: 'Ghost Kitchen',
-            serviceTypes: ['delivery'],
+            slug: 'ghost-kitchen',
         }));
 
         const result = await discoveryService.listRestaurants({} as never, 31337);

@@ -256,17 +256,7 @@ describe("runtime service hook injection", () => {
 
         const catalogue: SellerCatalogueMetadata = {
             subjectAddress: "0x0000000000000000000000000000000000000011",
-            merchantId: "merchant-a",
-            slug: "merchant-a",
-            name: "Merchant A",
-            description: "Injected catalogue",
-            cuisine: "Italian",
-            fulfillmentModes: ["delivery"],
-            location: { geohash: "dr5reg" },
-            minimumOrder: "0.01",
-            estimatedFulfillment: "15-25 min",
             menu: [],
-            acceptedTokens: [],
             version: "1.0.0",
         };
         const fetchMerchantCatalogue = vi.fn().mockResolvedValue(catalogue);

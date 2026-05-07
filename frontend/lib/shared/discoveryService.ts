@@ -3,14 +3,16 @@ import { getActiveOperators } from '@/lib/core/indexer';
 import type { SellerCatalogue } from '@/lib/seller/types';
 import { MECHANISM_CONTRACTS } from '@/lib/mechanisms/contracts';
 import { resolveContentURI } from '@/lib/shared/merchantBranding';
-import { parseSellerCatalogueDocument } from '@/lib/shared/sellerCatalogueMetadataParser';
 import type { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
 import {
-    tryParseOperatorProfile,
-    tryParseCatalogueItems,
-    operatorProfileToCatalogue,
-} from '@/lib/shared/operatorProfileAdapter';
-import { SELLER_CATALOGUE_METADATA_RECORDS } from '@/lib/shared/runtimeIdentityRegistry';
+    OperatorProfileMetadata,
+    tryParseOperatorProfileDocument,
+} from '@/lib/shared/operatorProfileMetadata';
+import { tryParseCatalogueItems } from '@/lib/shared/operatorProfileAdapter';
+import {
+    OPERATOR_PROFILE_METADATA_RECORDS,
+    SELLER_CATALOGUE_METADATA_RECORDS,
+} from '@/lib/shared/runtimeIdentityRegistry';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 
 /** Only allow safe URI schemes for operator-declared image URLs. */
@@ -23,22 +25,25 @@ export interface DiscoveryResult {
     source: { ipfs: number; mock: number };
 }
 
-function metadataToCatalogue(
-    cat: SellerCatalogueMetadata,
+function profileToRestaurant(
+    profile: OperatorProfileMetadata,
+    catalogue: SellerCatalogueMetadata | undefined,
     index: number,
 ): SellerCatalogue {
     return {
-        id: cat.merchantId || `ipfs-${index}`,
-        name: cat.name,
-        address: cat.subjectAddress,
-        description: cat.description ?? '',
-        cuisine: cat.cuisine ?? 'General',
-        image: cat.branding?.logoURI && isSafeImageURI(cat.branding.logoURI) ? cat.branding.logoURI : '🍽️',
+        id: profile.slug || `ipfs-${index}`,
+        name: profile.name,
+        address: profile.subjectAddress ?? catalogue?.subjectAddress ?? '0x0',
+        description: profile.description ?? '',
+        cuisine: profile.specialty ?? 'General',
+        image: profile.branding?.logoURI && isSafeImageURI(profile.branding.logoURI)
+            ? profile.branding.logoURI
+            : '🍽️',
         rating: 0,
-        deliveryTime: cat.estimatedFulfillment ?? '30-60 min',
-        minimumOrder: cat.minimumOrder ?? '0.01',
-        geohash: cat.location.geohash,
-        menu: cat.menu.map((item) => ({
+        deliveryTime: '30-60 min',
+        minimumOrder: '0.01',
+        geohash: profile.location?.geohash,
+        menu: (catalogue?.menu ?? []).map((item) => ({
             id: item.id,
             name: item.name,
             description: item.description ?? '',
@@ -47,23 +52,26 @@ function metadataToCatalogue(
             category: item.category,
             available: item.available,
         })),
-        acceptedTokens: cat.acceptedTokens,
-        fulfillmentModes: cat.fulfillmentModes,
+        acceptedTokens: profile.acceptedTokens,
+        fulfillmentModes: [],
     };
 }
 
 /**
- * Fixture catalogues projected from the runtime-identity manifest
- * (`local-runtime-identity.json`). Single canonical source for example
- * merchants — replaces the prior `MOCK_RESTAURANTS` table whose addresses
- * collided with the manifest's addresses on Anvil dev accounts.
- *
- * `source.mock` field name retained on `DiscoveryResult` for backward
- * compatibility with tests; semantically it now counts fixture catalogues
- * from the manifest, not legacy mock data.
+ * Fixture restaurants projected from the runtime-identity manifest.
+ * Each fixture wallet has both a profile record (identity / branding /
+ * accepted tokens) and a catalogue record (items only); we zip them by
+ * subjectAddress to build the UI Restaurant shape.
  */
-const FIXTURE_CATALOGUES: SellerCatalogue[] = SELLER_CATALOGUE_METADATA_RECORDS.map(
-    (cat, index) => metadataToCatalogue(cat, index),
+const FIXTURE_CATALOGUES: SellerCatalogue[] = OPERATOR_PROFILE_METADATA_RECORDS.map(
+    (profile, index) => {
+        const catalogue = profile.subjectAddress
+            ? SELLER_CATALOGUE_METADATA_RECORDS.find(
+                (c) => c.subjectAddress.toLowerCase() === profile.subjectAddress!.toLowerCase()
+            )
+            : undefined;
+        return profileToRestaurant(profile, catalogue, index);
+    },
 );
 
 function mergeWithFixtures(registryCatalogues: SellerCatalogue[]): DiscoveryResult {
@@ -91,28 +99,31 @@ async function fetchOperatorAsCatalogue(
     const doc = await safeJsonFromResponse<unknown>(res);
     if (!doc) return null;
 
-    // Try SellerCatalogueMetadata format first (backward compat with seed data / CatalogueEditorModule)
-    try {
-        const cat = parseSellerCatalogueDocument(doc, metadataURI);
-        return metadataToCatalogue(cat, index);
-    } catch {
-        // fall through to operator profile format
-    }
-
-    // Try operator profile format (OperatorOnboarding two-document structure)
-    const profile = tryParseOperatorProfile(doc);
+    // The on-chain metadataURI points to the operator profile document.
+    // The profile carries identity / branding / accepted tokens, plus a
+    // catalogueURI pointing to the (separately-pinned) volatile items
+    // list.
+    const profile = tryParseOperatorProfileDocument(doc);
     if (!profile) return null;
 
-    let items = tryParseCatalogueItems(doc) ?? [];
+    // Stamp the wallet onto the profile so downstream renderers can
+    // route from the listing back to /m/<address>.
+    const stamped: OperatorProfileMetadata = {
+        ...profile,
+        subjectAddress: profile.subjectAddress ?? (address as `0x${string}`),
+    };
 
-    if (profile.catalogueURI && items.length === 0) {
+    let items: ReturnType<typeof tryParseCatalogueItems> = null;
+
+    // First-class items live in the catalogue document at profile.catalogueURI.
+    if (profile.catalogueURI) {
         try {
             const catUrl = resolveContentURI(profile.catalogueURI);
             if (catUrl) {
                 const catRes = await fetchFn(catUrl);
                 const catDoc = await safeJsonFromResponse<unknown>(catRes);
                 if (catDoc) {
-                    items = tryParseCatalogueItems(catDoc) ?? [];
+                    items = tryParseCatalogueItems(catDoc);
                 }
             }
         } catch {
@@ -120,7 +131,27 @@ async function fetchOperatorAsCatalogue(
         }
     }
 
-    return operatorProfileToCatalogue(address, profile, items, index);
+    // Backward-compat: legacy fat profiles inlined the items as `menu`.
+    if (!items) {
+        items = tryParseCatalogueItems(doc);
+    }
+
+    const catalogue: SellerCatalogueMetadata | undefined = items && items.length > 0
+        ? {
+            subjectAddress: stamped.subjectAddress!,
+            menu: items.map((i) => ({
+                id: i.id,
+                name: i.name,
+                description: i.description,
+                price: i.price ?? '0',
+                category: i.category ?? 'General',
+                available: i.available ?? true,
+            })),
+            version: '1.0.0',
+        }
+        : undefined;
+
+    return profileToRestaurant(stamped, catalogue, index);
 }
 
 export interface DiscoveryService {
@@ -191,4 +222,4 @@ export function createDiscoveryService(
 
 export const DEFAULT_DISCOVERY_SERVICE: DiscoveryService = createDiscoveryService();
 
-export { metadataToCatalogue, mergeWithFixtures };
+export { profileToRestaurant, mergeWithFixtures };

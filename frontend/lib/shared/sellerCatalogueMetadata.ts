@@ -1,22 +1,8 @@
-export interface SellerHoursWindow {
-    open: string;
-    close: string;
-}
-
-export interface SellerHours {
-    timezone: string;
-    windows: Partial<Record<
-        "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday",
-        SellerHoursWindow[]
-    >>;
-}
-
 export interface CatalogueItemMetadata {
     id: string;
     name: string;
     description?: string;
     price: string;
-    currencySymbol?: string;
     category: string;
     image?: string;
     available: boolean;
@@ -33,11 +19,6 @@ export interface CatalogueItemMetadata {
      *   { "figaro-certification-v1": { "certifier": "USDA", "type": "organic" } }
      */
     schemaAttestations?: Record<string, Record<string, unknown>>;
-}
-
-export interface ServiceAreaMetadata {
-    geohashPrefix: string;
-    label?: string;
 }
 
 export interface SellerBrandingMetadata {
@@ -88,80 +69,33 @@ export interface SupportedSchemaDeclaration {
     config?: Record<string, unknown>;
 }
 
+/**
+ * The catalogue document — a wallet's list of items for sale.
+ *
+ * Identity, location, branding, accepted tokens, agent endpoints,
+ * assembly bindings, and operational config all live on the operator
+ * profile (`OperatorProfileMetadata`); the catalogue carries only the
+ * volatile sales-context payload, so an item edit re-pins one small
+ * JSON instead of the whole identity envelope.
+ *
+ * Pricing: the catalogue is denominated in the profile's
+ * `defaultTokenAddress`. Frontends convert to whatever accepted token
+ * the buyer commits in via Uniswap quote at commit time.
+ */
 export interface SellerCatalogueMetadata {
     subjectAddress: `0x${string}`;
-    merchantId: string;
-    slug: string;
-    name: string;
-    description?: string;
-    cuisine?: string;
-    /**
-     * Fulfillment modes supported by this operator. Mirrors the canonical
-     * `figaro-fulfilment-v1` schema enum:
-     *   - "consume-onsite" — no movement; on-premise consumption
-     *   - "pickup" — buyer organizes pickup
-     *   - "deliver:buyer-assigned" — buyer chooses courier
-     *   - "deliver:seller-assigned" — merchant arranges courier directly
-     *   - "deliver:dutch-auction" — courier selected via Dutch auction
-     * Legacy values "pickup" / "delivery" continue to parse for backward
-     * compat with older fixture data.
-     */
-    fulfillmentModes: Array<
-        | "consume-onsite"
-        | "pickup"
-        | "delivery"
-        | "deliver:buyer-assigned"
-        | "deliver:seller-assigned"
-        | "deliver:dutch-auction"
-    >;
-    location: {
-        geohash: string;
-        addressText?: string;
-    };
-    serviceAreas?: ServiceAreaMetadata[];
-    minimumOrder?: string;
-    estimatedFulfillment?: string;
-    hours?: SellerHours;
     menu: CatalogueItemMetadata[];
-    branding?: SellerBrandingMetadata;
-    acceptedTokens?: AcceptedTokenMetadata[];
-    /**
-     * Schemas this seller operates under. Defines their composability surface.
-     * Each entry maps to a schema registered in SchemaRegistry.
-     * Replaces V3 TemplateRegistry — seller-defined, not protocol-imposed.
-     */
-    supportedSchemas?: SupportedSchemaDeclaration[];
-    assets?: {
-        cssURI?: string;
-        imageBaseURI?: string;
-    };
     version: string;
 }
 
 export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {
     subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    merchantId: "bobs-pizza-palace",
-    slug: "bobs-pizza-palace",
-    name: "Bob's Pizza Palace",
-    description: "Authentic New York style pizza.",
-    cuisine: "Italian",
-    fulfillmentModes: ["delivery"],
-    location: {
-        geohash: "dr5reg",
-        addressText: "Lower Manhattan, NY",
-    },
-    serviceAreas: [
-        { geohashPrefix: "dr5", label: "Downtown Manhattan" },
-    ],
-    minimumOrder: "0.01",
-    estimatedFulfillment: "30-45 min",
     menu: [
         {
             id: "pizza1",
             name: "Margherita Pizza",
             description: "Classic tomato, mozzarella, and basil",
             price: "0.01",
-            currencySymbol: "ETH",
             category: "Pizza",
             image: "ipfs://example/margherita.png",
             available: true,
@@ -177,69 +111,11 @@ export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {
             name: "Soft Drink",
             description: "Cola, Sprite, or Fanta",
             price: "0.002",
-            currencySymbol: "ETH",
             category: "Drinks",
             image: "ipfs://example/drink.png",
             available: true,
         },
     ],
-    branding: {
-        displayName: "Bob's Pizza Palace",
-        logoURI: "ipfs://example/logo.png",
-        heroImageURI: "ipfs://example/hero.png",
-        accentColor: "#c2410c",
-        themeClass: "merchant-pizza",
-    },
-    acceptedTokens: [
-        { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", symbol: "USDC", name: "USD Coin" },
-        { address: "0x0000000000000000000000000000000000000FIG", symbol: "FIG", name: "Figaro" },
-    ],
-    supportedSchemas: [
-        {
-            schemaKey: "figaro-delivery-lifecycle-v1",
-        },
-        {
-            schemaKey: "figaro-ghg-iso-14064-v1",
-            config: {
-                methodology: "iso-14064-1",
-                scopes: [1, 2, 3],
-            },
-        },
-        {
-            schemaKey: "figaro-proximity-policy-v1",
-        },
-        {
-            schemaKey: "figaro-proximity-proof-v1",
-        },
-    ],
-    assets: {
-        cssURI: "ipfs://example/theme.css",
-        imageBaseURI: "ipfs://example/assets/",
-    },
     version: "1.0.0",
 };
 
-// ── Schema resolution utilities ─────────────────────────────────────────────
-
-/**
- * Check whether a seller's metadata declares support for a given schema key.
- * Use this to gate rendering of schema-specific modules (e.g. GHG panels only
- * appear if the seller supports "figaro-ghg-iso-14064-v1").
- */
-export function sellerSupportsSchema(
-    metadata: SellerCatalogueMetadata | null | undefined,
-    schemaKey: string,
-): boolean {
-    return metadata?.supportedSchemas?.some((s) => s.schemaKey === schemaKey) ?? false;
-}
-
-/**
- * Retrieve the seller-specific config for a given schema, or undefined.
- * e.g. sellerSchemaConfig(meta, "figaro-ghg-iso-14064-v1")?.methodology
- */
-export function sellerSchemaConfig(
-    metadata: SellerCatalogueMetadata | null | undefined,
-    schemaKey: string,
-): Record<string, unknown> | undefined {
-    return metadata?.supportedSchemas?.find((s) => s.schemaKey === schemaKey)?.config;
-}

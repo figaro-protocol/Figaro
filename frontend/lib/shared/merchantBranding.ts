@@ -3,25 +3,24 @@
  *
  * Merchant branding metadata fetcher.
  * Resolves IPFS/HTTP URIs from OperatorRegistry.metadataURI, fetches the
- * merchant metadata document, and extracts branding + asset fields.
+ * operator profile document, and extracts branding + asset fields.
  *
- * The metadata document shape mirrors SellerCatalogueMetadata from
- * lib/shared/sellerCatalogueMetadata.ts. Only the branding-relevant subset
- * is extracted here.
+ * The metadata document the on-chain `metadataURI` points to is an
+ * `OperatorProfileMetadata` record; only its branding-relevant subset
+ * (name, branding, assets) is extracted here. The profile pins the
+ * branding payload (logo, hero, CSS, image base URI) so buyer
+ * frontends can skin against the seller's identity.
  */
 
-import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import type {
+    SellerBrandingMetadata,
+} from "@/lib/shared/sellerCatalogueMetadata";
+import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface MerchantBranding {
-    displayName?: string;
-    logoURI?: string;
-    heroImageURI?: string;
-    accentColor?: string;
-    themeClass?: string;
-}
+export type MerchantBranding = SellerBrandingMetadata;
 
 export interface MerchantAssets {
     cssURI?: string;
@@ -101,8 +100,8 @@ export function resolveMerchantBrandingDocument(input: {
     };
 }
 
-export function resolveMerchantBrandingFromSellerCatalogue(
-    metadata: Pick<SellerCatalogueMetadata, "name" | "branding" | "assets"> | null | undefined,
+export function resolveMerchantBrandingFromOperatorProfile(
+    metadata: Pick<OperatorProfileMetadata, "name" | "branding" | "assets"> | null | undefined,
 ): ResolvedMerchantBranding | null {
     if (!metadata) {
         return null;
@@ -128,6 +127,9 @@ export function resolveMerchantBrandingFromSellerCatalogue(
         assets: metadata.assets,
     });
 }
+
+/** @deprecated Renamed to `resolveMerchantBrandingFromOperatorProfile`. Branding lives on the profile, not the catalogue. */
+export const resolveMerchantBrandingFromSellerCatalogue = resolveMerchantBrandingFromOperatorProfile;
 
 /**
  * Fetch merchant metadata from a content URI and extract branding fields.

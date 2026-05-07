@@ -1,4 +1,5 @@
-import { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
+import { SellerBrandingMetadata, SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
+import type { OperatorAssetReferences, OperatorProfileMetadata } from '@/lib/shared/operatorProfileMetadata';
 import type { ServiceBinding } from '@/lib/shared/assembly';
 import type { RuntimeIdentityDocumentValidationIssue } from '@/lib/shared/runtimeIdentityDocument';
 import {
@@ -21,6 +22,17 @@ export interface RuntimeIdentitySourceMetadata {
 export interface RuntimeIdentityDataSource {
     listSubjectRecords(): SubjectRecord[];
     listAssemblyBindings(): AssemblyBindingRecord[];
+    /**
+     * Operator profile records — identity, branding, accepted-token list,
+     * default-token address, etc. The profile is the stable identity
+     * envelope on-chain via `OperatorRegistry.metadataURI`.
+     */
+    listOperatorProfileMetadata(): OperatorProfileMetadata[];
+    /**
+     * Catalogue records — the volatile sales-context payload (items only).
+     * Pinned independently from the profile so item edits re-pin one
+     * small JSON instead of the whole identity envelope.
+     */
     listSellerCatalogueMetadata(): SellerCatalogueMetadata[];
     listAssetDocuments?(): RuntimeAssetDocument[];
     listSubjectProvenanceRecords?(): SubjectProvenanceRecord[];
@@ -31,8 +43,8 @@ export interface RuntimeIdentityDataSource {
 export interface RuntimeAssetDocument {
     assetURI: string;
     name?: string;
-    branding?: SellerCatalogueMetadata['branding'];
-    assets?: SellerCatalogueMetadata['assets'];
+    branding?: SellerBrandingMetadata;
+    assets?: OperatorAssetReferences;
     version: string;
 }
 
@@ -57,6 +69,9 @@ export interface AssemblyBoundSubjectSummary {
     assetURI?: string;
     assetHash?: string;
     assetDocument?: RuntimeAssetDocument;
+    /** Profile record — identity, branding, accepted tokens. */
+    operatorProfile?: OperatorProfileMetadata;
+    /** Catalogue record — items only. */
     sellerCatalogueMetadata?: SellerCatalogueMetadata;
     provenance?: SubjectProvenanceRecord;
 }
@@ -90,6 +105,25 @@ export function getSellerMetadataByAddressFromSource(
     return dataSource
         .listSellerCatalogueMetadata()
         .find((entry) => normalizeAddress(entry.subjectAddress) === normalizedAddress);
+}
+
+/**
+ * Resolve the profile record for an address. Profile carries identity,
+ * branding, accepted tokens, and the default-pricing token; everything
+ * the discover/merchant surfaces need for display (other than items).
+ */
+export function getOperatorProfileByAddressFromSource(
+    address: string,
+    dataSource: RuntimeIdentityDataSource
+): OperatorProfileMetadata | undefined {
+    const normalizedAddress = normalizeAddress(address);
+    return dataSource
+        .listOperatorProfileMetadata()
+        .find((entry) =>
+            entry.subjectAddress
+                ? normalizeAddress(entry.subjectAddress) === normalizedAddress
+                : false
+        );
 }
 
 export function getAssetDocumentByUriFromSource(
@@ -177,6 +211,7 @@ export function listAssemblyBoundSubjectSummariesFromSource(
                 (entry) => normalizeAddress(entry.subjectAddress) === normalizeAddress(binding.subjectAddress)
             );
             const sellerCatalogueMetadata = getSellerMetadataByAddressFromSource(binding.subjectAddress, dataSource);
+            const operatorProfile = getOperatorProfileByAddressFromSource(binding.subjectAddress, dataSource);
             const assetDocument = getAssetDocumentByUriFromSource(binding.assetURI, dataSource);
             const provenance = getSubjectProvenanceByAddressFromSource(binding.subjectAddress, dataSource);
 
@@ -184,7 +219,7 @@ export function listAssemblyBoundSubjectSummariesFromSource(
                 bindingId: binding.bindingId,
                 assemblySlug: binding.assemblySlug,
                 subjectAddress: binding.subjectAddress,
-                displayName: subject?.displayName ?? sellerCatalogueMetadata?.name ?? binding.subjectAddress,
+                displayName: subject?.displayName ?? operatorProfile?.name ?? binding.subjectAddress,
                 roleKinds: [...new Set(binding.roleBindings.map((entry) => entry.roleKind))],
                 assemblyRoleKinds: [
                     ...new Set(
@@ -205,6 +240,7 @@ export function listAssemblyBoundSubjectSummariesFromSource(
                 assetURI: binding.assetURI,
                 assetHash: binding.assetHash,
                 assetDocument,
+                operatorProfile,
                 sellerCatalogueMetadata,
                 provenance,
             };

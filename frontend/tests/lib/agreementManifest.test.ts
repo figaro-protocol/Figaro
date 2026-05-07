@@ -310,32 +310,13 @@ describe("manifestFieldsToGeoSection", () => {
 });
 
 // ── sellerCatalogueMetadata utilities (cross-module) ─────────────────────────
+// Schema-support / schema-config helpers were removed when supportedSchemas
+// moved off the catalogue (capability declarations live in per-assembly
+// bindings now). The only catalogue-level assertion that still applies is
+// that example items round-trip schemaAttestations.
 
-describe("sellerCatalogueMetadata schema utilities", () => {
-    it("sellerSupportsSchema returns true for declared schemas", async () => {
-        const { sellerSupportsSchema, SELLER_CATALOGUE_METADATA_EXAMPLE } = await import(
-            "@/lib/shared/sellerCatalogueMetadata"
-        );
-        expect(sellerSupportsSchema(SELLER_CATALOGUE_METADATA_EXAMPLE, "figaro-ghg-iso-14064-v1")).toBe(true);
-        expect(sellerSupportsSchema(SELLER_CATALOGUE_METADATA_EXAMPLE, "figaro-delivery-lifecycle-v1")).toBe(true);
-    });
-
-    it("sellerSupportsSchema returns false for undeclared schemas", async () => {
-        const { sellerSupportsSchema, SELLER_CATALOGUE_METADATA_EXAMPLE } = await import(
-            "@/lib/shared/sellerCatalogueMetadata"
-        );
-        expect(sellerSupportsSchema(SELLER_CATALOGUE_METADATA_EXAMPLE, "figaro-nonexistent-v1")).toBe(false);
-    });
-
-    it("sellerSchemaConfig returns config for declared schema", async () => {
-        const { sellerSchemaConfig, SELLER_CATALOGUE_METADATA_EXAMPLE } = await import(
-            "@/lib/shared/sellerCatalogueMetadata"
-        );
-        const config = sellerSchemaConfig(SELLER_CATALOGUE_METADATA_EXAMPLE, "figaro-ghg-iso-14064-v1");
-        expect(config).toEqual({ methodology: "iso-14064-1", scopes: [1, 2, 3] });
-    });
-
-    it("example item has schemaAttestations", async () => {
+describe("sellerCatalogueMetadata example", () => {
+    it("example item carries schemaAttestations", async () => {
         const { SELLER_CATALOGUE_METADATA_EXAMPLE } = await import(
             "@/lib/shared/sellerCatalogueMetadata"
         );

@@ -21,6 +21,7 @@ import type { IpfsService } from '@/lib/shared/ipfsService';
 import { parseRuntimeAssetDocument } from '@/lib/shared/runtimeIdentityDocument';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 import type { SellerBrandingMetadata, SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
+import type { OperatorAssetReferences, OperatorProfileMetadata } from '@/lib/shared/operatorProfileMetadata';
 import type { RuntimeIdentityDocumentValidationIssue } from '@/lib/shared/runtimeIdentityDocument';
 import { FIXTURE_RUNTIME_IDENTITY_SOURCE } from '@/lib/shared/runtimeIdentityRegistry';
 import type { RuntimeServiceProviderKeys } from '@/lib/shared/runtimeServices';
@@ -60,7 +61,8 @@ export interface ResolvedAssemblyShellPresentation {
     assetHash?: string;
     assetDocument?: RuntimeAssetDocument;
     branding?: SellerBrandingMetadata;
-    assets?: SellerCatalogueMetadata['assets'];
+    assets?: OperatorAssetReferences;
+    operatorProfile?: OperatorProfileMetadata;
     sellerCatalogueMetadata?: SellerCatalogueMetadata;
 }
 
@@ -168,15 +170,16 @@ export function resolveAssemblyShellPresentation(
     assembly: Assembly,
     matchedSubject?: AssemblyBoundSubjectSummary
 ): ResolvedAssemblyShellPresentation {
+    const operatorProfile = matchedSubject?.operatorProfile;
     const sellerCatalogueMetadata = matchedSubject?.sellerCatalogueMetadata;
     const title = pickFirstText(
-        sellerCatalogueMetadata?.branding?.displayName,
-        sellerCatalogueMetadata?.name,
+        operatorProfile?.branding?.displayName,
+        operatorProfile?.name,
         matchedSubject?.displayName,
         assembly.identity.name,
     ) ?? assembly.identity.name;
     const subtitle = pickFirstText(
-        sellerCatalogueMetadata?.description,
+        operatorProfile?.description,
         assembly.narrative?.assemblySummary,
     ) ?? '';
 
@@ -191,8 +194,9 @@ export function resolveAssemblyShellPresentation(
         assetURI: matchedSubject?.assetURI,
         assetHash: matchedSubject?.assetHash,
         assetDocument: matchedSubject?.assetDocument,
-        branding: sellerCatalogueMetadata?.branding,
-        assets: sellerCatalogueMetadata?.assets,
+        branding: operatorProfile?.branding,
+        assets: operatorProfile?.assets,
+        operatorProfile,
         sellerCatalogueMetadata,
     };
 }
@@ -214,7 +218,7 @@ export function resolveAssemblySkinBundle(
             branding: shellPresentation.assetDocument.branding,
             assets: shellPresentation.assetDocument.assets,
         })
-        : resolveMerchantBrandingFromSellerCatalogue(shellPresentation.sellerCatalogueMetadata);
+        : resolveMerchantBrandingFromSellerCatalogue(shellPresentation.operatorProfile);
 
     if (!branding) {
         return undefined;

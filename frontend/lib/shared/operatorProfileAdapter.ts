@@ -48,12 +48,18 @@ export function tryParseOperatorProfile(doc: unknown): OperatorProfileDocument |
     return parsed;
 }
 
-/** Parse catalogue items from a CatalogueBuilder document. Returns null if absent. */
+/**
+ * Parse catalogue items from a CatalogueBuilder document. Returns null if
+ * absent. Accepts items under either `items` (new shape) or `menu`
+ * (legacy fat-profile shape) for backward compatibility while consumers
+ * are migrating.
+ */
 export function tryParseCatalogueItems(doc: unknown): OperatorCatalogueItem[] | null {
     if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return null;
     const r = doc as Record<string, unknown>;
-    if (!Array.isArray(r.items)) return null;
-    return r.items
+    const raw = Array.isArray(r.items) ? r.items : Array.isArray(r.menu) ? r.menu : null;
+    if (!raw) return null;
+    return raw
         .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
         .map((item) => ({
             id: typeof item.id === 'string' ? item.id : `item-${Math.random().toString(36).slice(2, 8)}`,
@@ -97,10 +103,10 @@ export function operatorProfileToCatalogue(
     items: OperatorCatalogueItem[],
     index: number,
 ): SellerCatalogue {
-    const acceptedTokens: AcceptedTokenMetadata[] = (profile.acceptedTokens ?? []).map((addr) => ({
-        address: addr,
-        symbol: '',
-        name: '',
+    const acceptedTokens: AcceptedTokenMetadata[] = (profile.acceptedTokens ?? []).map((token) => ({
+        address: token.address,
+        symbol: token.symbol,
+        name: token.name,
     }));
 
     const menu: CatalogueItem[] = items.map((item) => ({
@@ -125,6 +131,9 @@ export function operatorProfileToCatalogue(
         minimumOrder: inferMinimumOrder(items),
         menu,
         acceptedTokens: acceptedTokens.length > 0 ? acceptedTokens : undefined,
-        fulfillmentModes: serviceTypesToFulfillmentModes(profile.serviceTypes),
+        // Fulfillment-mode declaration moved off the operator profile in
+        // the schema split. Discovery-tier default until the per-assembly
+        // binding-driven fulfilment model lands.
+        fulfillmentModes: ['pickup', 'delivery'],
     };
 }

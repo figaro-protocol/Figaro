@@ -6,9 +6,9 @@ import {
     resolveContentURI,
     fetchMerchantBranding,
     clearBrandingCache,
-    resolveMerchantBrandingFromSellerCatalogue,
+    resolveMerchantBrandingFromOperatorProfile,
 } from '@/lib/shared/merchantBranding';
-import { SELLER_CATALOGUE_METADATA_EXAMPLE } from '@/lib/shared/sellerCatalogueMetadata';
+import { OPERATOR_PROFILE_METADATA_EXAMPLE } from '@/lib/shared/operatorProfileMetadata';
 
 describe('merchantBranding', () => {
     describe('resolveContentURI', () => {
@@ -218,7 +218,7 @@ describe('merchantBranding', () => {
         });
 
         it('resolves branding directly from seller catalogue metadata', () => {
-            const result = resolveMerchantBrandingFromSellerCatalogue(SELLER_CATALOGUE_METADATA_EXAMPLE);
+            const result = resolveMerchantBrandingFromOperatorProfile(OPERATOR_PROFILE_METADATA_EXAMPLE);
 
             expect(result).not.toBeNull();
             expect(result!.branding.displayName).toBe("Bob's Pizza Palace");
@@ -228,7 +228,7 @@ describe('merchantBranding', () => {
         });
 
         it('applies a branding override without fetching operator metadata', async () => {
-            const brandingOverride = resolveMerchantBrandingFromSellerCatalogue(SELLER_CATALOGUE_METADATA_EXAMPLE);
+            const brandingOverride = resolveMerchantBrandingFromOperatorProfile(OPERATOR_PROFILE_METADATA_EXAMPLE);
             const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
                 ok: true,
                 text: () => Promise.resolve('.merchant-pizza { color: red; }'),

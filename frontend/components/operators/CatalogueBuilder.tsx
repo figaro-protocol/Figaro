@@ -50,7 +50,13 @@ import { TokenAddressInput, isValidAddress } from "./TokenAddressInput";
 
 // ── Fulfilment modes (mirror canonical enum) ─────────────────────────────────
 
-type FulfillmentMode = SellerCatalogueMetadata["fulfillmentModes"][number];
+type FulfillmentMode =
+    | "consume-onsite"
+    | "pickup"
+    | "delivery"
+    | "deliver:buyer-assigned"
+    | "deliver:seller-assigned"
+    | "deliver:dutch-auction";
 
 const FULFILMENT_OPTIONS: ReadonlyArray<{ id: FulfillmentMode; label: string; description: string }> = [
     { id: "consume-onsite", label: "On-site", description: "Buyer consumes at your premises." },
@@ -475,22 +481,15 @@ export function CatalogueBuilder() {
                     }))
                     : undefined;
 
+            // Identity (name, description, location, branding) and the
+            // accepted-token list belong on the operator profile, not the
+            // catalogue. Group 3 rewires this form against the profile;
+            // for now, write the slim catalogue and discard the local
+            // form fields that don't have a home here yet.
+            void slug; void trimmedName; void acceptedTokens;
             const catalogue: SellerCatalogueMetadata = {
                 subjectAddress: address,
-                merchantId: slug,
-                slug,
-                name: trimmedName,
-                description: form.description.trim() || undefined,
-                fulfillmentModes: form.fulfillmentModes,
-                location: {
-                    geohash: form.geohash.trim(),
-                    addressText: form.addressText.trim() || undefined,
-                },
                 menu,
-                branding: form.logoURI
-                    ? { displayName: trimmedName, logoURI: form.logoURI }
-                    : undefined,
-                acceptedTokens,
                 version: "1.0.0",
             };
 

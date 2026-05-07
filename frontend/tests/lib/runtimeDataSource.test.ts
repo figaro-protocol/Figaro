@@ -58,12 +58,18 @@ const testSource: RuntimeIdentityDataSource = {
             version: '1.0.0',
         },
     ],
+    listOperatorProfileMetadata: () => [
+        {
+            subjectAddress: '0x1111111111111111111111111111111111111111',
+            name: 'Fixture Transport Merchant',
+            slug: 'fixture-transport-merchant',
+            version: '1.0.0',
+        },
+    ],
     listSellerCatalogueMetadata: () => [
         {
             ...SELLER_CATALOGUE_METADATA_EXAMPLE,
             subjectAddress: '0x1111111111111111111111111111111111111111',
-            merchantId: 'fixture-transport-merchant',
-            name: 'Fixture Transport Merchant',
         },
     ],
     listAssetDocuments: () => [
@@ -91,7 +97,7 @@ describe('runtime data source helpers', () => {
             testSource
         );
 
-        expect(metadata?.merchantId).toBe('fixture-transport-merchant');
+        expect(metadata?.subjectAddress).toBe('0x1111111111111111111111111111111111111111');
     });
 
     it('resolves asset documents from an injected data source', () => {
@@ -143,7 +149,7 @@ describe('runtime data source helpers', () => {
                 }),
             })
         );
-        expect(summaries[0]?.sellerCatalogueMetadata?.merchantId).toBe('fixture-transport-merchant');
+        expect(summaries[0]?.operatorProfile?.slug).toBe('fixture-transport-merchant');
         expect(summaries[0]?.provenance?.hasSignatures).toBe(true);
         expect(summaries[0]?.provenance?.bindingRefs).toHaveLength(1);
         expect(summaries[0]?.provenance?.quality).toBe('signed');
