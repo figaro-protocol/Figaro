@@ -32,6 +32,7 @@
 
 import type { Address, Hex } from "viem";
 import type { KlerosMetaEvidence, KlerosEvidence } from "./klerosEvidence";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 // ---------------------------------------------------------------------------
 // MetaEvidence
@@ -241,7 +242,7 @@ function assertClaimText(value: string): void {
 }
 
 function shortAddr(addr: string): string {
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+    return truncateHex(addr);
 }
 
 /**

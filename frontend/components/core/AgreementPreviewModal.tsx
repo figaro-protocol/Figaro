@@ -20,6 +20,7 @@
 import { formatUnits } from "viem";
 import type { Commitment } from "@figaro/core";
 import type { Agreement, AgreementSection } from "@/lib/core/agreementManifest";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 interface Props {
     commitment: Commitment;
@@ -29,8 +30,7 @@ interface Props {
 }
 
 function shortAddress(addr: string): string {
-    if (!addr || addr.length < 12) return addr;
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+    return truncateHex(addr);
 }
 
 function formatPayment(commitment: Commitment): string {

@@ -32,6 +32,7 @@ import {
 } from "@/lib/semantic/financialsProjection";
 import { OrderState } from "@/lib/core/store";
 import { DownloadAuditBundleButton } from "@/components/core/DownloadAuditBundleButton";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 // 18-decimal formatting is the universal default for ERC20 + ETH. A future
 // enhancement is per-currency decimals lookup; for now we surface the raw
@@ -45,12 +46,12 @@ function formatAmount(amount: bigint): string {
 
 function shortAddr(addr: string): string {
     if (!addr) return "—";
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+    return truncateHex(addr);
 }
 
 function shortHash(hash: string | undefined): string {
     if (!hash) return "—";
-    return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
+    return truncateHex(hash, { head: 10, tail: 6 });
 }
 
 interface Props {

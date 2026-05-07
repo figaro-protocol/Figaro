@@ -9,6 +9,7 @@ import {
     getOrderCommittedBySeller,
 } from "@/lib/core/indexer";
 import { calculateBonds } from "@figaro/core";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 interface OrderEvent {
     orderHash: string;
@@ -72,7 +73,7 @@ function fmt(value: bigint, decimals = 18): string {
 }
 
 function shortAddr(addr: string): string {
-    return addr.length >= 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
+    return truncateHex(addr);
 }
 
 async function getBlockTimestamp(

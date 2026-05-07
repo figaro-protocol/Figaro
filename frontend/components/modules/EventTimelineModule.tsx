@@ -5,6 +5,7 @@ import { OrderNodeModel } from "@/lib/semantic/models";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { ModuleEmptyStateCard } from "@/components/shared/ModuleEmptyStateCard";
 import { vocab } from "@/lib/shared/vocab";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 interface TimelineEvent {
     orderId: string;
@@ -41,7 +42,7 @@ function deriveTimeline(orders: OrderNodeModel[]): TimelineEvent[] {
 }
 
 function shortAddr(addr: string): string {
-    return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
+    return truncateHex(addr);
 }
 
 function formatAmount(amount: bigint): string {

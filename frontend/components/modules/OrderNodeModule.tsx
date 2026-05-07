@@ -4,6 +4,7 @@ import { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { ModuleEmptyStateCard } from "@/components/shared/ModuleEmptyStateCard";
 import { formatUnits } from "viem";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 export function OrderNodeModule({ context }: ModuleProps) {
     const order = context.selectedOrder;
@@ -48,11 +49,11 @@ export function OrderNodeModule({ context }: ModuleProps) {
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <p className="text-xs text-neutral-500">Buyer</p>
-                        <p className="font-mono text-xs">{order.buyer.slice(0, 6)}...{order.buyer.slice(-4)}</p>
+                        <p className="font-mono text-xs">{truncateHex(order.buyer)}</p>
                     </div>
                     <div>
                         <p className="text-xs text-neutral-500">Seller</p>
-                        <p className="font-mono text-xs">{order.seller.slice(0, 6)}...{order.seller.slice(-4)}</p>
+                        <p className="font-mono text-xs">{truncateHex(order.seller)}</p>
                     </div>
                 </div>
 

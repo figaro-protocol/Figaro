@@ -28,6 +28,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 const STORAGE_KEY = "figaro-beta-access-code";
 const QUERY_PARAM = "code";
@@ -48,8 +49,7 @@ async function generateQRDataURL(payload: string, size: number): Promise<string>
  * full code to a screen-shoulder observer.
  */
 function shortCode(code: string): string {
-    if (code.length <= 10) return code;
-    return `${code.slice(0, 6)}…${code.slice(-4)}`;
+    return truncateHex(code);
 }
 
 /**

@@ -19,9 +19,10 @@ import { formatUnits } from "viem";
 import { WalletGate } from "@/components/core/WalletGate";
 import { useWalletProcessRows } from "@/lib/core/walletProcessQueries";
 import { resolveRuntimeSubjectByAddress } from "@/lib/shared/runtimeIdentityRegistry";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 function formatAddress(addr: string): string {
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+    return truncateHex(addr);
 }
 
 function counterpartyDisplayName(address: string): string {

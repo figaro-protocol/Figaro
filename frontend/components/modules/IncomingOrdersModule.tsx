@@ -14,6 +14,7 @@ import { calculateBonds } from "@figaro/core";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { formatToken } from "@/lib/shared/utils";
 import { isE2EMockSession } from "@/lib/shared/e2e";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 // ── Pending commitment card ──────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ function PendingOrderCard({ payload, onAccept, onDismiss, isAccepting, accentTon
                         Incoming Order
                     </p>
                     <p className="text-sm font-mono text-neutral-500 truncate">
-                        From {commitment.buyer.slice(0, 6)}…{commitment.buyer.slice(-4)}
+                        From {truncateHex(commitment.buyer)}
                     </p>
                 </div>
                 <div className="text-right shrink-0">

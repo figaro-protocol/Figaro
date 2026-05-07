@@ -3,6 +3,7 @@
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 /**
  * HandoffTrackerModule — visual progress tracker for any physical-handoff
@@ -17,7 +18,7 @@ type TrackerTone = "neutral" | "amber" | "blue" | "green";
 
 function shortAddress(addr?: string): string {
     if (!addr || addr === ZERO_ADDRESS) return "Not assigned yet";
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+    return truncateHex(addr);
 }
 
 function toneClasses(tone: TrackerTone): string {

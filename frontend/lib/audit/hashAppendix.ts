@@ -29,6 +29,7 @@ import {
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import type { ExtractedDocument } from "./types";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 export type HashAnchorKind =
     | "agreement-root"
@@ -126,6 +127,5 @@ export function buildHashAppendix(
 }
 
 function shortHex(hex: string): string {
-    if (!hex || hex.length < 12) return hex;
-    return `${hex.slice(0, 8)}…${hex.slice(-4)}`;
+    return truncateHex(hex, { head: 8 });
 }

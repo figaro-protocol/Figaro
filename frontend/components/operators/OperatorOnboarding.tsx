@@ -17,6 +17,7 @@ import {
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { TokenAddressInput, isValidAddress } from "./TokenAddressInput";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 interface OperatorMetadata {
     name: string;
@@ -371,7 +372,7 @@ export function OperatorOnboarding() {
                         <span className="text-sm font-semibold text-black">Registered operator</span>
                     </div>
                     <span className="text-xs text-gray-400 font-mono">
-                        {address?.slice(0, 6)}&hellip;{address?.slice(-4)}
+                        {truncateHex(address)}
                     </span>
                 </div>
             )}

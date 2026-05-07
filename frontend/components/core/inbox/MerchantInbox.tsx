@@ -37,9 +37,10 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { resolveRuntimeSubjectByAddress } from "@/lib/shared/runtimeIdentityRegistry";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 function formatAddress(addr: string): string {
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+    return truncateHex(addr);
 }
 
 function counterpartyDisplayName(address: string): string {

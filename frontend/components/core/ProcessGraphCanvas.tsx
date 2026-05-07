@@ -57,6 +57,7 @@ import {
     type CanonicalFulfilmentMethod,
 } from "@/lib/designer/syntheticProcess";
 import { CANONICAL_FULFILMENT_METHODS_LIST } from "@/lib/core/orderAgreement";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 /**
  * Edge pills represent the *child* order's fulfilment method (root orders
@@ -169,9 +170,9 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
     const ghgStandard = typeof ghg?.standard === "string" ? ghg.standard : undefined;
     const ghgScope = typeof ghg?.scope === "number" || typeof ghg?.scope === "string" ? ghg.scope : undefined;
 
-    const buyerShort = data.buyer ? `${data.buyer.slice(0, 6)}…${data.buyer.slice(-4)}` : "—";
-    const sellerShort = data.seller ? `${data.seller.slice(0, 6)}…${data.seller.slice(-4)}` : "—";
-    const tokenShort = data.currency ? `${data.currency.slice(0, 6)}…${data.currency.slice(-4)}` : null;
+    const buyerShort = data.buyer ? truncateHex(data.buyer) : "—";
+    const sellerShort = data.seller ? truncateHex(data.seller) : "—";
+    const tokenShort = data.currency ? truncateHex(data.currency) : null;
 
     return (
         <div
@@ -300,7 +301,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             ) : (
                                 <div className="flex justify-between" data-testid={`order-location-${data.id}`}>
                                     <span>Agreement</span>
-                                    <span className="font-mono">{`${data.agreementHash.slice(0, 8)}…${data.agreementHash.slice(-4)}`}</span>
+                                    <span className="font-mono">{truncateHex(data.agreementHash, { head: 8 })}</span>
                                 </div>
                             )}
                         </div>

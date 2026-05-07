@@ -24,6 +24,7 @@ import {
 } from "@react-pdf/renderer";
 import { pdf } from "@react-pdf/renderer";
 import type { Hex, Address } from "viem";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 // ── Styles (mirrored from pdfBundle.tsx for visual continuity) ──────────────
 
@@ -157,8 +158,7 @@ function shortHex(hex: string | undefined, head = 10, tail = 6): string {
 }
 
 function shortCode(code: string): string {
-    if (code.length <= 10) return code;
-    return `${code.slice(0, 6)}…${code.slice(-4)}`;
+    return truncateHex(code);
 }
 
 // ── Data shape ─────────────────────────────────────────────────────────────

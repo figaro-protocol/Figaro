@@ -25,6 +25,7 @@ import { computeOrderHash } from "@/lib/console/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { strippingReviver } from "@/lib/shared/safeJson";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 // ── Serialization helpers ──────────────────────────────────────
 
@@ -377,5 +378,5 @@ export function CommitmentSharePanel({
 }
 
 function shortAddr(addr: string): string {
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+    return truncateHex(addr);
 }

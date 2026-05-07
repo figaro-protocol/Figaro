@@ -33,6 +33,7 @@ import { MERCHANT_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import type { MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
 
@@ -68,7 +69,7 @@ const HAPPY_PATH_EVENTS: readonly MerchantEvent[] = [
 ];
 
 function formatAddress(addr: string): string {
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+    return truncateHex(addr);
 }
 
 function deriveBuyerStatus(

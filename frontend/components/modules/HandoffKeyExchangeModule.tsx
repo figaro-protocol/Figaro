@@ -5,6 +5,7 @@ import { useAccount, useWalletClient } from "wagmi";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 /**
  * HandoffKeyExchangeModule — buyer-side panel that auto-sends the per-order
@@ -159,13 +160,13 @@ export function HandoffKeyExchangeModule({ moduleId, context }: ModuleProps) {
                 <div className="flex-1 min-w-0">
                     {sendStatus === "sending" && (
                         <p data-testid="key-exchange-status" className="text-sm font-semibold text-green-900">
-                            Sending encrypted key to fulfiller {fulfillerAddress?.slice(0, 6)}…{fulfillerAddress?.slice(-4)}…
+                            Sending encrypted key to fulfiller {truncateHex(fulfillerAddress)}…
                         </p>
                     )}
 
                     {sendStatus === "sent" && (
                         <p data-testid="key-exchange-status" className="text-sm font-semibold text-green-900">
-                            Key sent to fulfiller {sentTo?.slice(0, 6)}…{sentTo?.slice(-4)} via secure channel.
+                            Key sent to fulfiller {truncateHex(sentTo)} via secure channel.
                         </p>
                     )}
 

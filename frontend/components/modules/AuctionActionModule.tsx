@@ -6,6 +6,7 @@ import { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { useDutchAuction, AuctionOrder } from "@/lib/mechanisms/useDutchAuction";
 import { isClaimAuctionCapability } from "@/lib/semantic/models";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 function AuctionLiveStatePanel({
     context,
@@ -48,7 +49,7 @@ function AuctionLiveStatePanel({
                     <div>
                         <p className="text-xs text-neutral-500">Assigned Provider</p>
                         <p className="font-mono text-xs text-black">
-                            {auction.assignedProvider.slice(0, 6)}...{auction.assignedProvider.slice(-4)}
+                            {truncateHex(auction.assignedProvider)}
                         </p>
                     </div>
                 )}
