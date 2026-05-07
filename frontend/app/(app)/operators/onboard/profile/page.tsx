@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { OnboardingShell } from "@/components/operators/OnboardingShell";
-import { OnboardingPlaceholder } from "@/components/operators/OnboardingPlaceholder";
+import { OnboardingProfileForm } from "@/components/operators/OnboardingProfileForm";
 
 export const metadata: Metadata = { title: "Profile — Operator onboarding" };
 
@@ -11,15 +11,11 @@ export default function OnboardingProfilePage() {
             title="Your profile"
             description={
                 <p>
-                    Your stable identity: name, description, location, branding (logo, CSS, images), accepted tokens, and the default-pricing token. Pinned to IPFS.
+                    Your stable identity: name, description, location, branding, and the set of tokens you accept for settlement. Pinned to IPFS in step 4.
                 </p>
             }
         >
-            <OnboardingPlaceholder
-                description="Profile-form fields, with localStorage persistence and required-field validation."
-                prevPath=""
-                nextPath="catalogue"
-            />
+            <OnboardingProfileForm />
         </OnboardingShell>
     );
 }
