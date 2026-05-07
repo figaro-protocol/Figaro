@@ -12,42 +12,13 @@ import {
     CatalogueItemMetadata,
     SellerCatalogueMetadata,
 } from "@/lib/shared/sellerCatalogueMetadata";
-
-type UnknownRecord = Record<string, unknown>;
-
-function asRecord(value: unknown, path: string): UnknownRecord {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-        throw new Error(`${path} must be an object.`);
-    }
-    return value as UnknownRecord;
-}
-
-function asString(value: unknown, path: string): string {
-    if (typeof value !== "string") {
-        throw new Error(`${path} must be a string.`);
-    }
-    return value;
-}
-
-function asOptionalString(value: unknown, path: string): string | undefined {
-    if (value === undefined) return undefined;
-    return asString(value, path);
-}
-
-function asBoolean(value: unknown, path: string): boolean {
-    if (typeof value !== "boolean") {
-        throw new Error(`${path} must be a boolean.`);
-    }
-    return value;
-}
-
-function asAddress(value: unknown, path: string): `0x${string}` {
-    const address = asString(value, path);
-    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-        throw new Error(`${path} must be a 20-byte hex address.`);
-    }
-    return address as `0x${string}`;
-}
+import {
+    asAddress,
+    asBoolean,
+    asOptionalString,
+    asRecord,
+    asString,
+} from "@/lib/shared/parseHelpers";
 
 function parseSchemaAttestations(value: unknown, path: string): Record<string, Record<string, unknown>> | undefined {
     if (value === undefined) return undefined;

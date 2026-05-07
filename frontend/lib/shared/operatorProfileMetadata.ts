@@ -24,6 +24,14 @@ import type {
 } from "@/lib/shared/sellerCatalogueMetadata";
 import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
 import { parseAssemblyBindingDocument } from "@/lib/shared/runtimeIdentityParser";
+import {
+    asAddress,
+    asOptionalAddress,
+    asOptionalString,
+    asRecord,
+    asString,
+    type UnknownRecord,
+} from "@/lib/shared/parseHelpers";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -108,41 +116,7 @@ export interface OperatorProfileMetadata {
     version?: string;
 }
 
-// ── Validation primitives ─────────────────────────────────────────────────────
-
-type UnknownRecord = Record<string, unknown>;
-
-function asRecord(value: unknown, path: string): UnknownRecord {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-        throw new Error(`${path} must be an object.`);
-    }
-    return value as UnknownRecord;
-}
-
-function asString(value: unknown, path: string): string {
-    if (typeof value !== "string") {
-        throw new Error(`${path} must be a string.`);
-    }
-    return value;
-}
-
-function asOptionalString(value: unknown, path: string): string | undefined {
-    if (value === undefined) return undefined;
-    return asString(value, path);
-}
-
-function asAddress(value: unknown, path: string): `0x${string}` {
-    const address = asString(value, path);
-    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-        throw new Error(`${path} must be a 20-byte hex address.`);
-    }
-    return address as `0x${string}`;
-}
-
-function asOptionalAddress(value: unknown, path: string): `0x${string}` | undefined {
-    if (value === undefined) return undefined;
-    return asAddress(value, path);
-}
+// ── Type-specific parsers ────────────────────────────────────────────────────
 
 function parseAcceptedToken(value: unknown, path: string): AcceptedTokenMetadata {
     const record = asRecord(value, path);

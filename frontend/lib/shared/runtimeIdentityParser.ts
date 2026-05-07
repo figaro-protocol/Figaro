@@ -5,8 +5,14 @@ import {
     SubjectReference,
 } from "@/lib/shared/runtimeIdentity";
 import type { RuntimeServiceKey, ServiceBinding } from "@/lib/shared/assembly";
-
-type UnknownRecord = Record<string, unknown>;
+import {
+    asAddress,
+    asEnum,
+    asOptionalString,
+    asRecord,
+    asString,
+    asStringArray,
+} from "@/lib/shared/parseHelpers";
 
 const REFERENCE_KINDS = new Set<SubjectReference["refKind"]>(["metadata", "asset", "signature", "binding"]);
 const ROLE_SCOPES = new Set<RoleBindingRecord["scope"]>(["assembly", "process", "order", "mechanism"]);
@@ -17,56 +23,8 @@ const RUNTIME_SERVICE_KEYS = new Set<RuntimeServiceKey>([
     "evidenceTransport",
     "coordinationMessaging",
     "handoffPersistence",
+    "tokenConversion",
 ]);
-
-function asRecord(value: unknown, path: string): UnknownRecord {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-        throw new Error(`${path} must be an object.`);
-    }
-
-    return value as UnknownRecord;
-}
-
-function asString(value: unknown, path: string): string {
-    if (typeof value !== "string") {
-        throw new Error(`${path} must be a string.`);
-    }
-
-    return value;
-}
-
-function asOptionalString(value: unknown, path: string): string | undefined {
-    if (value === undefined) {
-        return undefined;
-    }
-
-    return asString(value, path);
-}
-
-function asStringArray(value: unknown, path: string): string[] {
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-
-    return value.map((entry, index) => asString(entry, `${path}[${index}]`));
-}
-
-function asEnum<T extends string>(value: unknown, allowed: Set<T>, path: string): T {
-    const stringValue = asString(value, path);
-    if (!allowed.has(stringValue as T)) {
-        throw new Error(`${path} must be one of: ${[...allowed].join(", ")}.`);
-    }
-
-    return stringValue as T;
-}
-
-function asAddress(value: unknown, path: string): `0x${string}` {
-    const address = asString(value, path);
-    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-        throw new Error(`${path} must be a 20-byte hex address.`);
-    }
-    return address as `0x${string}`;
-}
 
 function parseSubjectReference(value: unknown, path: string): SubjectReference {
     const record = asRecord(value, path);

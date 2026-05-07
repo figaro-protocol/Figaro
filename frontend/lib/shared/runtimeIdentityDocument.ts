@@ -19,8 +19,13 @@ import {
     RuntimeIdentityDataSource,
     RuntimeIdentitySourceMetadata,
 } from '@/lib/shared/runtimeDataSource';
-
-type UnknownRecord = Record<string, unknown>;
+import {
+    asArray,
+    asOptionalString,
+    asRecord,
+    asString,
+    type UnknownRecord,
+} from '@/lib/shared/parseHelpers';
 
 export type RuntimeIdentityDocumentValidationSeverity = 'error' | 'warning';
 
@@ -65,37 +70,6 @@ export interface ParsedRuntimeIdentityDocument {
     validationIssues: RuntimeIdentityDocumentValidationIssue[];
 }
 
-function asRecord(value: unknown, path: string): UnknownRecord {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        throw new Error(`${path} must be an object.`);
-    }
-
-    return value as UnknownRecord;
-}
-
-function asString(value: unknown, path: string): string {
-    if (typeof value !== 'string') {
-        throw new Error(`${path} must be a string.`);
-    }
-
-    return value;
-}
-
-function asOptionalString(value: unknown, path: string): string | undefined {
-    if (value === undefined) {
-        return undefined;
-    }
-
-    return asString(value, path);
-}
-
-function asArray(value: unknown, path: string): unknown[] {
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-
-    return value;
-}
 
 export function parseRuntimeAssetDocument(value: unknown, sourceLabel = 'runtime asset document'): RuntimeAssetDocument {
     const record = asRecord(value, sourceLabel);

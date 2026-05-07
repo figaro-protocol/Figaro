@@ -25,8 +25,15 @@ import {
     getBuiltInViewModuleSlots,
     getBuiltInViewRoute,
 } from "@/lib/shared/builtInModuleDefaults";
-
-type UnknownRecord = Record<string, unknown>;
+import {
+    asBoolean,
+    asEnum,
+    asNumber,
+    asOptionalString,
+    asRecord,
+    asString,
+    asStringArray,
+} from "@/lib/shared/parseHelpers";
 
 const MECHANISM_RISK_CLASSES = new Set<MechanismRiskClass>([
     "read-only-inherited",
@@ -45,55 +52,8 @@ const RUNTIME_SERVICE_KEYS = new Set<RuntimeServiceKey>([
     "evidenceTransport",
     "coordinationMessaging",
     "handoffPersistence",
+    "tokenConversion",
 ]);
-
-function asRecord(value: unknown, path: string): UnknownRecord {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-        throw new Error(`${path} must be an object.`);
-    }
-
-    return value as UnknownRecord;
-}
-
-function asString(value: unknown, path: string): string {
-    if (typeof value !== "string") {
-        throw new Error(`${path} must be a string.`);
-    }
-
-    return value;
-}
-
-function asOptionalString(value: unknown, path: string): string | undefined {
-    if (value === undefined) {
-        return undefined;
-    }
-
-    return asString(value, path);
-}
-
-function asBoolean(value: unknown, path: string): boolean {
-    if (typeof value !== "boolean") {
-        throw new Error(`${path} must be a boolean.`);
-    }
-
-    return value;
-}
-
-function asNumber(value: unknown, path: string): number {
-    if (typeof value !== "number" || Number.isNaN(value)) {
-        throw new Error(`${path} must be a number.`);
-    }
-
-    return value;
-}
-
-function asStringArray(value: unknown, path: string): string[] {
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-
-    return value.map((entry, index) => asString(entry, `${path}[${index}]`));
-}
 
 function asRecordOfScalar(value: unknown, path: string): Record<string, string | number | boolean> | undefined {
     if (value === undefined) {
@@ -123,15 +83,6 @@ function asRecordOfStrings(value: unknown, path: string): Record<string, string>
     }
 
     return record as Record<string, string>;
-}
-
-function asEnum<T extends string>(value: unknown, allowed: Set<T>, path: string): T {
-    const stringValue = asString(value, path);
-    if (!allowed.has(stringValue as T)) {
-        throw new Error(`${path} must be one of: ${[...allowed].join(", ")}.`);
-    }
-
-    return stringValue as T;
 }
 
 function parseIdentity(value: unknown, path: string): AssemblyIdentity {
