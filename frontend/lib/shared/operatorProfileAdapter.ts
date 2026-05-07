@@ -1,34 +1,28 @@
 /**
  * lib/shared/operatorProfileAdapter.ts
  *
- * Adapts the two-document structure that the operator onboarding flow produces
- * into the SellerCatalogue type used by the discovery module.
+ * Adapts the two-document structure produced by the operator onboarding
+ * flow into the SellerCatalogue type used by the discovery module.
  *
- * OperatorOnboarding publishes an operator profile document (metadataURI on-chain):
- *   { name, serviceTypes, mechanisms, description, location, catalogueURI, acceptedTokens, services }
- *
- * CatalogueBuilder publishes a catalogue document (linked via catalogueURI):
- *   { version, name, denominatedIn, items: [{ id, name, description, price, category, available }] }
- *
- * Neither document matches SellerCatalogueMetadata, which is the richer format
- * used by the CatalogueEditorModule and devnet seed data.
+ * Profile document parsing is delegated to the canonical strict parser
+ * in `operatorProfileMetadata.ts`; this file holds only the SellerCatalogue
+ * conversion + the bare-items reader for the catalogue link target.
  */
 
 import type { SellerCatalogue, CatalogueItem } from '@/lib/seller/types';
 import type { AcceptedTokenMetadata } from '@/lib/shared/sellerCatalogueMetadata';
+import {
+    OperatorProfileMetadata,
+    tryParseOperatorProfileDocument,
+} from '@/lib/shared/operatorProfileMetadata';
 
 // ── Document shapes ────────────────────────────────────────────────────────────
 
-export interface OperatorProfileDocument {
-    name: string;
-    serviceTypes?: string[];
-    mechanisms?: string[];
-    description?: string;
-    location?: string;
-    catalogueURI?: string;
-    acceptedTokens?: string[];
-    services?: Record<string, string>;
-}
+/**
+ * Re-export of the canonical profile shape under the historical name.
+ * New code should import `OperatorProfileMetadata` directly.
+ */
+export type OperatorProfileDocument = OperatorProfileMetadata;
 
 export interface OperatorCatalogueItem {
     id: string;
@@ -41,30 +35,17 @@ export interface OperatorCatalogueItem {
 
 // ── Parsers ────────────────────────────────────────────────────────────────────
 
-/** Leniently parse an operator profile document. Returns null if it is not recognisable. */
+/**
+ * Leniently parse an operator profile document. Returns null if it does
+ * not have the expected shape (e.g. missing `name`).
+ *
+ * Delegates to `tryParseOperatorProfileDocument`. Retained as a thin
+ * wrapper so call-sites that import this name keep working.
+ */
 export function tryParseOperatorProfile(doc: unknown): OperatorProfileDocument | null {
-    if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return null;
-    const r = doc as Record<string, unknown>;
-    if (typeof r.name !== 'string' || !r.name.trim()) return null;
-    return {
-        name: r.name,
-        serviceTypes: Array.isArray(r.serviceTypes)
-            ? r.serviceTypes.filter((s): s is string => typeof s === 'string')
-            : undefined,
-        mechanisms: Array.isArray(r.mechanisms)
-            ? r.mechanisms.filter((s): s is string => typeof s === 'string')
-            : undefined,
-        description: typeof r.description === 'string' ? r.description : undefined,
-        location: typeof r.location === 'string' ? r.location : undefined,
-        catalogueURI: typeof r.catalogueURI === 'string' ? r.catalogueURI : undefined,
-        acceptedTokens: Array.isArray(r.acceptedTokens)
-            ? r.acceptedTokens.filter((s): s is string => typeof s === 'string')
-            : undefined,
-        services:
-            r.services && typeof r.services === 'object' && !Array.isArray(r.services)
-                ? (r.services as Record<string, string>)
-                : undefined,
-    };
+    const parsed = tryParseOperatorProfileDocument(doc);
+    if (!parsed || !parsed.name.trim()) return null;
+    return parsed;
 }
 
 /** Parse catalogue items from a CatalogueBuilder document. Returns null if absent. */
@@ -117,7 +98,7 @@ export function operatorProfileToCatalogue(
     index: number,
 ): SellerCatalogue {
     const acceptedTokens: AcceptedTokenMetadata[] = (profile.acceptedTokens ?? []).map((addr) => ({
-        address: addr as `0x${string}`,
+        address: addr,
         symbol: '',
         name: '',
     }));

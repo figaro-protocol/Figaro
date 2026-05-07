@@ -16,51 +16,32 @@ import { useWriteContract, useWaitForTransactionReceipt, usePublicClient, useCha
 import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "./contracts";
 import { getOperatorState, getOperatorMetadataURI } from "@/lib/core/indexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
+import {
+    AgentServiceInfo,
+    OperatorAgentServices,
+    projectAgentServices,
+} from "@/lib/shared/operatorProfileMetadata";
 
 const registry = getOperatorRegistry();
 
 // ── Agent service types (ERC-8004 interop) ───────────────────────────────────
 
-/** Service endpoints an autonomous agent may declare in its metadataURI JSON. */
-export interface AgentServices {
-    mcp?: string;
-    a2a?: string;
-    rest?: string;
-    did?: string;
-    ens?: string;
-}
+/**
+ * Service endpoints an autonomous agent may declare in its metadataURI
+ * JSON. Re-exported under the historical name; new code should import
+ * `OperatorAgentServices` from `operatorProfileMetadata`.
+ */
+export type AgentServices = OperatorAgentServices;
 
-/** Parsed agent service info from operator metadata. */
-export interface AgentServiceInfo {
-    services: AgentServices;
-    capabilities: string[];
-    isAgent: boolean;
-}
+export type { AgentServiceInfo };
 
 /**
  * Extract agent service endpoints from a fetched metadata JSON object.
- * Returns { isAgent: false } if no services key is present.
+ * Delegates to the canonical projection in `operatorProfileMetadata`;
+ * retained as a thin wrapper so existing call-sites keep working.
  */
 export function parseAgentServices(metadata: Record<string, unknown>): AgentServiceInfo {
-    const services = metadata.services;
-    if (!services || typeof services !== "object") {
-        return { services: {}, capabilities: [], isAgent: false };
-    }
-    const s = services as Record<string, unknown>;
-    const caps = Array.isArray(metadata.capabilities)
-        ? (metadata.capabilities as unknown[]).filter((c): c is string => typeof c === "string")
-        : [];
-    return {
-        services: {
-            mcp: typeof s.mcp === "string" ? s.mcp : undefined,
-            a2a: typeof s.a2a === "string" ? s.a2a : undefined,
-            rest: typeof s.rest === "string" ? s.rest : undefined,
-            did: typeof s.did === "string" ? s.did : undefined,
-            ens: typeof s.ens === "string" ? s.ens : undefined,
-        },
-        capabilities: caps,
-        isAgent: true,
-    };
+    return projectAgentServices(metadata);
 }
 
 // ── Read hooks (indexer-backed) ──────────────────────────────────────────────

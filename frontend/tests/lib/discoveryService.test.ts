@@ -72,7 +72,7 @@ describe('discoveryService', () => {
                     available: true,
                 },
             ],
-            acceptedTokens: [{ address: '0x1', symbol: 'FIG' }],
+            acceptedTokens: [{ address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'FIG' }],
             version: '1.0.0',
         }));
 
@@ -102,7 +102,7 @@ describe('discoveryService', () => {
             name: 'Street Tacos',
             description: 'Local taco stand',
             serviceTypes: ['pickup'],
-            acceptedTokens: ['0xABC123'],
+            acceptedTokens: ['0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'],
             catalogueURI: 'ipfs://op-catalogue',
         }));
         // Second fetch: catalogue document

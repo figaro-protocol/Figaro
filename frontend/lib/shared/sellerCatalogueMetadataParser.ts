@@ -1,4 +1,11 @@
-import { SellerCatalogueMetadata, SellerHours, CatalogueItemMetadata, ServiceAreaMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import {
+    AcceptedTokenMetadata,
+    CatalogueItemMetadata,
+    SellerCatalogueMetadata,
+    SellerHours,
+    ServiceAreaMetadata,
+    SupportedSchemaDeclaration,
+} from "@/lib/shared/sellerCatalogueMetadata";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -82,6 +89,57 @@ function parseServiceAreas(value: unknown, path: string): ServiceAreaMetadata[] 
     return value.map((entry, index) => parseServiceArea(entry, `${path}[${index}]`));
 }
 
+function parseAcceptedToken(value: unknown, path: string): AcceptedTokenMetadata {
+    const record = asRecord(value, path);
+    return {
+        address: asAddress(record.address, `${path}.address`),
+        symbol: asString(record.symbol, `${path}.symbol`),
+        name: asOptionalString(record.name, `${path}.name`),
+        logoURI: asOptionalString(record.logoURI, `${path}.logoURI`),
+    };
+}
+
+function parseAcceptedTokens(value: unknown, path: string): AcceptedTokenMetadata[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be an array.`);
+    }
+    return value.map((entry, index) => parseAcceptedToken(entry, `${path}[${index}]`));
+}
+
+function parseSupportedSchema(value: unknown, path: string): SupportedSchemaDeclaration {
+    const record = asRecord(value, path);
+    const config = record.config;
+    if (config !== undefined && (!config || typeof config !== "object" || Array.isArray(config))) {
+        throw new Error(`${path}.config must be an object.`);
+    }
+    return {
+        schemaKey: asString(record.schemaKey, `${path}.schemaKey`),
+        config: config as Record<string, unknown> | undefined,
+    };
+}
+
+function parseSupportedSchemas(value: unknown, path: string): SupportedSchemaDeclaration[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be an array.`);
+    }
+    return value.map((entry, index) => parseSupportedSchema(entry, `${path}[${index}]`));
+}
+
+function parseSchemaAttestations(value: unknown, path: string): Record<string, Record<string, unknown>> | undefined {
+    if (value === undefined) return undefined;
+    const record = asRecord(value, path);
+    const out: Record<string, Record<string, unknown>> = {};
+    for (const [key, raw] of Object.entries(record)) {
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+            throw new Error(`${path}.${key} must be an object.`);
+        }
+        out[key] = raw as Record<string, unknown>;
+    }
+    return out;
+}
+
 function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
     const record = asRecord(value, path);
     return {
@@ -93,6 +151,7 @@ function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
         category: asString(record.category, `${path}.category`),
         image: asOptionalString(record.image, `${path}.image`),
         available: asBoolean(record.available, `${path}.available`),
+        schemaAttestations: parseSchemaAttestations(record.schemaAttestations, `${path}.schemaAttestations`),
     };
 }
 
@@ -166,6 +225,8 @@ export function parseSellerCatalogueDocument(value: unknown, sourceLabel = "sell
             accentColor: asOptionalString(branding.accentColor, `${sourceLabel}.branding.accentColor`),
             themeClass: asOptionalString(branding.themeClass, `${sourceLabel}.branding.themeClass`),
         } : undefined,
+        acceptedTokens: parseAcceptedTokens(record.acceptedTokens, `${sourceLabel}.acceptedTokens`),
+        supportedSchemas: parseSupportedSchemas(record.supportedSchemas, `${sourceLabel}.supportedSchemas`),
         assets: assets ? {
             cssURI: asOptionalString(assets.cssURI, `${sourceLabel}.assets.cssURI`),
             imageBaseURI: asOptionalString(assets.imageBaseURI, `${sourceLabel}.assets.imageBaseURI`),
