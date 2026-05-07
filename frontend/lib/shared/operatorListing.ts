@@ -144,6 +144,74 @@ export function listOperatorsFromRuntimeIdentity(): Listing[] {
 }
 
 /**
+ * Project an on-chain-registered operator's profile into a `Listing` with
+ * `provenance: "registry"`. The discover surface merges these with the
+ * fixture listings so users see both protocol-seeded examples and
+ * operators they (or anyone else) have registered via the wizard.
+ *
+ * `assemblyBindings` from the profile JSON drives the `bindings` field —
+ * the wizard writes these from `OnboardingState.assemblies`, so a
+ * freshly-registered seller appears in the assembly-filter chips.
+ */
+export function profileToListing(
+    profile: OperatorProfileMetadata,
+    address: string,
+): Listing {
+    const bindings: ListingBinding[] = [];
+    for (const b of profile.assemblyBindings ?? []) {
+        if (b.roleBindings.length === 0) {
+            // No explicit roles authored — surface the assembly itself
+            // so it still flows through the assembly filter chips.
+            bindings.push({
+                assemblySlug: b.assemblySlug,
+                roleKind: "",
+                assemblyRoleKinds: [],
+            });
+        } else {
+            for (const rb of b.roleBindings) {
+                bindings.push({
+                    assemblySlug: b.assemblySlug,
+                    roleKind: rb.roleKind,
+                    assemblyRoleKinds: rb.assemblyRoleKinds ?? [],
+                });
+            }
+        }
+    }
+
+    return {
+        provenance: "registry",
+        address,
+        name: profile.name,
+        description: profile.description ?? "",
+        specialty: profile.specialty,
+        logoURI: safeURI(profile.branding?.logoURI),
+        accentColor: profile.branding?.accentColor,
+        geohash: profile.location?.geohash,
+        addressText: profile.location?.addressText,
+        serviceAreas: [],
+        fulfillmentModes: [],
+        acceptedTokens: profile.acceptedTokens ?? [],
+        bindings,
+    };
+}
+
+/**
+ * Merge chain-registered listings with fixture listings. Chain takes
+ * precedence on address collision (an on-chain registration overrides
+ * the fixture seed for the same wallet).
+ */
+export function mergeListings(
+    fromRegistry: Listing[],
+    fromFixtures: Listing[],
+): Listing[] {
+    const seen = new Set(fromRegistry.map((l) => l.address.toLowerCase()));
+    const fixturesNotCovered = fromFixtures.filter(
+        (l) => !seen.has(l.address.toLowerCase()),
+    );
+    return [...fromRegistry, ...fixturesNotCovered];
+}
+
+/**
  * Geohash prefix-overlap check for filtering listings against a viewer's
  * device geohash. An operator matches if any of its serviceArea prefixes is
  * a prefix of the viewer's geohash, or vice versa. Falls back to

@@ -8,17 +8,17 @@ import {
     fulfilmentLabel,
 } from "@/lib/shared/assemblyLabels";
 import {
-    listOperatorsFromRuntimeIdentity,
     listingMatchesGeohash,
     type Listing,
 } from "@/lib/shared/operatorListing";
+import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
 
 function listingAssemblies(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => b.assemblySlug)));
 }
 
 export function OperatorDiscovery() {
-    const allListings = useMemo(() => listOperatorsFromRuntimeIdentity(), []);
+    const { listings: allListings, isLoading } = useOperatorListings();
 
     const [searchQuery, setSearchQuery] = useState("");
     const [assemblyFilter, setAssemblyFilter] = useState<string | null>(null);
@@ -199,7 +199,9 @@ export function OperatorDiscovery() {
             </section>
 
             <p className="text-xs text-gray-500">
-                {filtered.length} {filtered.length === 1 ? "operator" : "operators"} shown of {allListings.length} total.
+                {isLoading
+                    ? "Loading operators…"
+                    : `${filtered.length} ${filtered.length === 1 ? "operator" : "operators"} shown of ${allListings.length} total.`}
             </p>
 
             {/* Listing grid */}
