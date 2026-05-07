@@ -1,8 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { useMounted } from "@/lib/shared/useMounted";
+import { useOperatorProfile } from "@/lib/mechanisms/useOperatorRegistry";
 
 /**
  * Welcome screen body. Explains the seven-step flow in concrete terms,
@@ -10,8 +15,24 @@ import { Button } from "@/components/ui/Button";
  *
  * Does NOT require a connected wallet — the wallet check happens on the
  * profile screen, where the wallet's address is needed to scope state.
+ *
+ * If the connected wallet is already registered, redirects to /operators
+ * (the management surface). Onboarding is for unregistered wallets;
+ * registered wallets shouldn't see the "start onboarding" CTA.
  */
 export function OnboardingWelcome() {
+    const router = useRouter();
+    const mounted = useMounted();
+    const { address, isConnected } = useAccount();
+    const { data: profileData, isLoading } = useOperatorProfile(address);
+
+    useEffect(() => {
+        if (!mounted) return;
+        if (!isConnected) return;
+        if (isLoading) return;
+        if (profileData) router.replace("/operators");
+    }, [mounted, isConnected, isLoading, profileData, router]);
+
     return (
         <div className="space-y-8">
             <Card className="p-6 space-y-4">
@@ -42,7 +63,7 @@ export function OnboardingWelcome() {
                 <h2 className="text-heading-h2 text-ink-heading">Before you start</h2>
                 <ul className="space-y-2 text-sm text-ink-body list-disc pl-5">
                     <li>You need a connected wallet on the active network. Connect it on the next screen.</li>
-                    <li>You need a small reclaimable ETH deposit (anti-spam). The exact amount is shown before you sign.</li>
+                    <li>A 0.001 ETH deposit (devnet value), reclaimable after a one-year lock. The lock starts when you register; the contract reverts <code>withdraw</code> until it elapses. The deposit is Sybil-resistance, not a fee — no party can seize it.</li>
                     <li>
                         Your draft is saved to this browser&apos;s local storage as you go — you can leave the flow and return without losing
                         what you filled in. The draft is keyed by your wallet address; switching wallets switches drafts.

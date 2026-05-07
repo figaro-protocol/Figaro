@@ -1,34 +1,33 @@
 "use client";
 
 /**
- * OperatorLanding — the wallet-aware landing for `/operators`.
+ * OperatorLanding — registered-only management surface for `/operators`.
  *
- * Three states, picked from wallet + on-chain registry state:
+ * One page, one purpose: show the connected wallet's operator profile
+ * and let them manage it. Three users → three URLs at the route
+ * level, not three states inside one component:
  *
- *   - not connected → connect prompt.
- *   - connected, never registered → onboarding CTA → `/operators/onboard`.
- *   - connected, registered → registered card with profile summary,
- *     management cards (currently disabled — edit/delete UI ships
- *     in the next item), withdraw control.
+ *   - Anonymous → redirected to /operators/onboard (handled here on
+ *     mount via router.replace).
+ *   - Connected, not registered → redirected to /operators/onboard.
+ *   - Connected, registered → renders the dashboard below.
  *
- * Detection:
- *   useOperatorProfile(address) returns [metadataURI, registeredBlock]
- *   from indexed events. `undefined` => never registered or withdrawn
- *   since most-recent registration. The profile JSON is fetched
- *   from the metadataURI for display.
+ * The state-aware variant lived here previously; the redirect-on-miss
+ * pattern keeps each page semantically single-purpose so users can
+ * bookmark, share, and navigate without the page mutating its
+ * meaning under them.
  */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
 import {
     useOperatorProfile,
     useRegistrationDeposit,
-    useDepositLockPeriod,
     useWithdrawDeposit,
 } from "@/lib/mechanisms/useOperatorRegistry";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
@@ -38,35 +37,35 @@ import { truncateHex } from "@/lib/shared/formatHex";
 import { formatEther } from "viem";
 
 export function OperatorLanding() {
+    const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { openConnectModal } = useConnectModal();
     const { data: profileData, isLoading: profileLoading, refetch } = useOperatorProfile(address);
     const { data: deposit } = useRegistrationDeposit();
-    const { data: lockPeriod } = useDepositLockPeriod();
 
-    if (!mounted) {
+    // Route-level state-awareness: if the current wallet isn't registered,
+    // this page has nothing to show — bounce to the onboarding entry. The
+    // bounce only fires after the wallet + registry reads have settled,
+    // so we don't redirect prematurely while indexer fetches are inflight.
+    useEffect(() => {
+        if (!mounted) return;
+        if (!isConnected) {
+            router.replace("/operators/onboard");
+            return;
+        }
+        if (!profileLoading && !profileData) {
+            router.replace("/operators/onboard");
+        }
+    }, [mounted, isConnected, profileLoading, profileData, router]);
+
+    if (!mounted || !isConnected || (profileLoading && !profileData)) {
         return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
     }
 
-    if (!isConnected) {
-        return (
-            <Card className="p-8 space-y-4">
-                <h2 className="text-heading-h3 text-ink-heading">Connect a wallet</h2>
-                <p className="text-sm text-ink-body">
-                    Connect a wallet to register a new operator profile or manage an existing one.
-                </p>
-                <Button onClick={() => openConnectModal?.()}>Connect wallet</Button>
-            </Card>
-        );
-    }
-
-    if (profileLoading && !profileData) {
-        return <Card className="p-8 text-sm text-ink-faint">Reading registry…</Card>;
-    }
-
     if (!profileData) {
-        return <FirstTimeCard deposit={deposit} lockPeriod={lockPeriod} />;
+        // Redirect is in flight; render the same loading state to avoid
+        // a flash of empty content.
+        return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
     }
 
     const [metadataURI, registeredBlock] = profileData;
@@ -76,50 +75,8 @@ export function OperatorLanding() {
             metadataURI={metadataURI}
             registeredBlock={registeredBlock}
             deposit={deposit}
-            lockPeriod={lockPeriod}
             onWithdrawn={() => refetch()}
         />
-    );
-}
-
-// ── First-time state ─────────────────────────────────────────────────────────
-
-function FirstTimeCard({
-    deposit,
-    lockPeriod,
-}: {
-    deposit: bigint | undefined;
-    lockPeriod: bigint | undefined;
-}) {
-    return (
-        <Card className="p-8 space-y-5">
-            <h2 className="text-heading-h3 text-ink-heading">You&apos;re not registered yet.</h2>
-            <p className="text-sm text-ink-body">
-                Registration posts a reclaimable ETH deposit and binds the wallet to an off-chain profile envelope (identity, accepted tokens, catalogue, assembly bindings, agent endpoints). The wizard walks you through it in seven screens.
-            </p>
-            <ul className="text-sm text-ink-body space-y-1.5 list-disc list-inside marker:text-ink-faint">
-                <li>
-                    Deposit:{" "}
-                    <span className="font-semibold text-ink-heading">
-                        {deposit !== undefined ? `${formatEther(deposit)} ETH` : "…"}
-                    </span>{" "}
-                    (Sybil-resistance, not a fee — fully reclaimable via withdraw)
-                </li>
-                <li>
-                    Lock period:{" "}
-                    <span className="font-semibold text-ink-heading">
-                        {lockPeriod !== undefined ? formatLockPeriod(lockPeriod) : "…"}
-                    </span>{" "}
-                    (deposit reclaimable after this elapses)
-                </li>
-                <li>Profile + catalogue stored on IPFS at a URI you control. Replace any time via <code>updateProfile</code> — the deposit and lock are not touched.</li>
-            </ul>
-            <div className="pt-2">
-                <Link href="/operators/onboard">
-                    <Button>Start onboarding →</Button>
-                </Link>
-            </div>
-        </Card>
     );
 }
 
@@ -130,7 +87,6 @@ interface RegisteredCardProps {
     metadataURI: string;
     registeredBlock: bigint | null;
     deposit: bigint | undefined;
-    lockPeriod: bigint | undefined;
     onWithdrawn: () => void;
 }
 
@@ -139,7 +95,6 @@ function RegisteredCard({
     metadataURI,
     registeredBlock,
     deposit,
-    lockPeriod,
     onWithdrawn,
 }: RegisteredCardProps) {
     const [profile, setProfile] = useState<OperatorProfileMetadata | null>(null);
@@ -174,29 +129,25 @@ function RegisteredCard({
     }, [metadataURI]);
 
     const cid = extractCid(metadataURI);
-    const slug = profile?.slug;
 
     return (
         <div className="space-y-6">
             <Card className="p-8 space-y-5">
                 <div className="flex items-baseline justify-between gap-4">
                     <div>
-                        <p className="text-eyebrow uppercase text-ink-muted">Registered</p>
-                        <h2 className="text-heading-h3 text-ink-heading mt-1">
+                        <h2 className="text-heading-h3 text-ink-heading">
                             {profile?.name ?? "Loading profile…"}
                         </h2>
                         {profile?.specialty && (
                             <p className="text-sm text-ink-body mt-1">{profile.specialty}</p>
                         )}
                     </div>
-                    {slug && (
-                        <Link
-                            href={`/m/${address}`}
-                            className="text-sm text-ink-faint hover:text-ink-heading underline whitespace-nowrap"
-                        >
-                            View public profile →
-                        </Link>
-                    )}
+                    <Link
+                        href={`/m/${address}`}
+                        className="text-sm text-ink-faint hover:text-ink-heading underline whitespace-nowrap"
+                    >
+                        View public profile →
+                    </Link>
                 </div>
 
                 {profileError && (
@@ -217,12 +168,7 @@ function RegisteredCard({
 
             <ManageGrid />
 
-            <WithdrawSection
-                deposit={deposit}
-                lockPeriod={lockPeriod}
-                registeredBlock={registeredBlock}
-                onWithdrawn={onWithdrawn}
-            />
+            <WithdrawFooter deposit={deposit} onWithdrawn={onWithdrawn} />
         </div>
     );
 }
@@ -248,7 +194,7 @@ function ManageGrid() {
     ];
     return (
         <div className="space-y-3">
-            <h3 className="text-eyebrow uppercase text-ink-muted">Manage</h3>
+            <h3 className="text-heading-h3 text-ink-heading">Manage</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {items.map((item) => (
                     <Card
@@ -268,19 +214,16 @@ function ManageGrid() {
     );
 }
 
-function WithdrawSection({
+function WithdrawFooter({
     deposit,
-    lockPeriod,
-    registeredBlock,
     onWithdrawn,
 }: {
     deposit: bigint | undefined;
-    lockPeriod: bigint | undefined;
-    registeredBlock: bigint | null;
     onWithdrawn: () => void;
 }) {
     const { withdraw, isPending, isConfirming, isSuccess, error } = useWithdrawDeposit();
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [confirming, setConfirming] = useState(false);
     const isProcessing = isPending || isConfirming;
 
     useEffect(() => {
@@ -291,33 +234,50 @@ function WithdrawSection({
         setSubmitError(null);
         try {
             await withdraw();
+            setConfirming(false);
         } catch (e: unknown) {
             setSubmitError(e instanceof Error ? e.message : String(e));
         }
     }
 
-    // Lock-elapsed check is timestamp-based on-chain (block.timestamp >=
-    // _registeredAt + depositLockPeriod). We don't have access to
-    // _registeredAt off-chain (it's an internal mapping), so the gate
-    // here is best-effort UX only — the contract is authoritative and
-    // will revert with DepositLocked() on a too-early withdraw call.
-    void lockPeriod; void registeredBlock;
+    if (!confirming) {
+        return (
+            <div className="pt-6 border-t border-default text-xs text-ink-faint">
+                <button
+                    type="button"
+                    onClick={() => setConfirming(true)}
+                    className="underline hover:text-ink-heading transition-colors"
+                >
+                    Withdraw deposit and de-register
+                </button>
+            </div>
+        );
+    }
 
     return (
-        <Card className="p-6 space-y-3">
-            <h3 className="text-eyebrow uppercase text-ink-muted">Withdraw</h3>
-            <p className="text-sm text-ink-body">
-                Returns the {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit and clears the registration after the lock period has elapsed. The wallet is then free to re-register with fresh metadata. Catalogue and profile pins on IPFS are not affected.
+        <div className="pt-6 border-t border-default space-y-3 text-sm">
+            <p className="text-ink-body">
+                Returns the {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit and clears the registration. Only works after the lock period has elapsed; the contract reverts otherwise. Catalogue and profile pins on IPFS are not affected.
             </p>
-            <Button variant="outline" onClick={handleWithdraw} disabled={isProcessing}>
-                {isProcessing ? "Withdrawing…" : "Withdraw deposit"}
-            </Button>
+            <div className="flex items-center gap-3">
+                <Button variant="outline" onClick={handleWithdraw} disabled={isProcessing}>
+                    {isProcessing ? "Withdrawing…" : "Confirm withdraw"}
+                </Button>
+                <button
+                    type="button"
+                    onClick={() => setConfirming(false)}
+                    disabled={isProcessing}
+                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors disabled:opacity-50"
+                >
+                    Cancel
+                </button>
+            </div>
             {(submitError || error) && (
                 <p className="text-sm text-red-600" role="alert">
                     {submitError ?? (error instanceof Error ? error.message : String(error))}
                 </p>
             )}
-        </Card>
+        </div>
     );
 }
 
@@ -335,17 +295,4 @@ function DefRow({ label, value, mono }: { label: string; value: string; mono?: b
 function extractCid(uri: string): string | null {
     const match = uri.match(/^ipfs:\/\/(.+)$/);
     return match ? match[1] ?? null : null;
-}
-
-function formatLockPeriod(seconds: bigint): string {
-    const s = Number(seconds);
-    if (s >= 86400) {
-        const days = Math.round(s / 86400);
-        return `${days} day${days === 1 ? "" : "s"}`;
-    }
-    if (s >= 3600) {
-        const hours = Math.round(s / 3600);
-        return `${hours} hour${hours === 1 ? "" : "s"}`;
-    }
-    return `${s} second${s === 1 ? "" : "s"}`;
 }

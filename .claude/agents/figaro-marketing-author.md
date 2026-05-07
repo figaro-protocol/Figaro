@@ -78,6 +78,8 @@ These are not stylistic preferences; each one breaks the project's framing or im
 | **Inaccurate competitor comparisons** | If comparing to other protocols or systems, cite the comparison; vague "unlike X" copy is liability bait. |
 | **Implying mainnet status when on testnet** | "Live," "production," "available" imply mainnet. Only use when literally true. The single most common false-advertising failure mode in crypto marketing. |
 | **Bait-and-switch — leading with one thing, delivering another** | Lead with what the protocol does *today*. The 200-year extrapolation is honest about being projection — never present projections as current state. |
+| **Page-top eyebrows on ANY page (marketing or app)** | Per `feedback_no_marketing_hero_eyebrow.md` — header nav + page `<h1>` already establish identity; an eyebrow above the `<h1>` is a third repetition of the same name in seconds. Rule was originally scoped to marketing; user broadened 2026-05-07: NO eyebrows on any page, including sub-section eyebrows when in doubt. Has regressed three times across sessions. Never propose `eyebrow:` text in any copy draft. |
+| **Hidden friction — costs, time constraints, prerequisites, failure modes, irreversibility omitted from action copy** | Per `feedback_manage_expectations.md` — "Better manage expectations than disappoint the user." Surface every knowable friction inline. Quote durations ("reclaimable after one year", not "reclaimable"). Quote costs ("0.001 ETH deposit", not "small fee"). State prerequisites before the action. Name failure conditions. Read the on-chain/off-chain parameter before quoting numbers; never guess. |
 
 When you find any of these in existing copy or in a draft request, refuse and surface the replacement.
 
