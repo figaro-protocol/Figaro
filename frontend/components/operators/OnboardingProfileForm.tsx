@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
-import { TokenAddressInput, isValidAddress } from "@/components/operators/TokenAddressInput";
+import { TokenAddressInput, isValidAddress, useTokenSymbol } from "@/components/operators/TokenAddressInput";
 import { IpfsImageUpload } from "@/components/operators/IpfsImageUpload";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
@@ -232,7 +232,13 @@ export function OnboardingProfileForm() {
         setForm((prev) => ({
             ...prev,
             acceptedTokens: prev.acceptedTokens.map((t, i) =>
-                i === index ? { ...t, [key]: value } : t,
+                i === index
+                    ? key === "address"
+                        // Address change resets the symbol; the row's
+                        // useTokenSymbol effect will re-fetch.
+                        ? { address: value, symbol: "" }
+                        : { ...t, symbol: value }
+                    : t,
             ),
         }));
     }
@@ -479,30 +485,28 @@ export function OnboardingProfileForm() {
 
                 <div className="space-y-3">
                     {form.acceptedTokens.map((token, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                            <div className="flex-1">
-                                <TokenAddressInput
-                                    value={token.address}
-                                    onChange={(v) => setTokenField(index, "address", v)}
-                                    onRemove={form.acceptedTokens.length > 1 ? () => removeTokenRow(index) : undefined}
-                                />
-                            </div>
-                            <Input
-                                type="text"
-                                placeholder="symbol"
-                                value={token.symbol}
-                                onChange={(e) => setTokenField(index, "symbol", e.target.value)}
-                                className="w-24"
-                            />
-                        </div>
+                        <AcceptedTokenRow
+                            key={index}
+                            value={token}
+                            onChange={(next) => setForm((prev) => ({
+                                ...prev,
+                                acceptedTokens: prev.acceptedTokens.map((t, i) => (i === index ? next : t)),
+                            }))}
+                            onRemove={form.acceptedTokens.length > 1 ? () => removeTokenRow(index) : undefined}
+                        />
                     ))}
                     <button
                         type="button"
                         onClick={addTokenRow}
                         className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                     >
-                        + Add token manually
+                        + Add token
                     </button>
+                    {commonTokens.length === 0 && form.acceptedTokens.every((t) => !t.address.trim()) && (
+                        <p className="text-xs text-ink-faint">
+                            No quick-add tokens registered for this network. Paste an ERC-20 address above to fetch its symbol from the contract.
+                        </p>
+                    )}
                 </div>
 
                 {validTokens.length > 0 && (
@@ -550,5 +554,51 @@ export function OnboardingProfileForm() {
                 <Button type="submit">Next →</Button>
             </div>
         </form>
+    );
+}
+
+interface AcceptedTokenRowProps {
+    value: { address: string; symbol: string };
+    onChange: (next: { address: string; symbol: string }) => void;
+    onRemove?: () => void;
+}
+
+/**
+ * One accepted-token row: just the address input. Symbol is fetched
+ * from the contract via `useTokenSymbol(address)` and persisted to
+ * state when it resolves. Replaces the previous two-input layout
+ * (manual address + manual symbol) — the chain already knows the
+ * symbol; users shouldn't have to type it.
+ */
+function AcceptedTokenRow({ value, onChange, onRemove }: AcceptedTokenRowProps) {
+    const { data: resolvedSymbol, isLoading } = useTokenSymbol(value.address);
+    const validAddr = isValidAddress(value.address);
+
+    // When the on-chain symbol resolves, persist it. Guard avoids loops.
+    useEffect(() => {
+        if (!resolvedSymbol) return;
+        if (resolvedSymbol === value.symbol) return;
+        onChange({ ...value, symbol: resolvedSymbol });
+    }, [resolvedSymbol, value, onChange]);
+
+    const symbolHint = !value.address.trim()
+        ? null
+        : !validAddr
+            ? <span className="text-red-600">Not a valid 20-byte hex address.</span>
+            : isLoading
+                ? "Reading symbol from contract…"
+                : resolvedSymbol
+                    ? <>Symbol: <span className="font-semibold text-ink-heading">{resolvedSymbol}</span></>
+                    : <span className="text-red-600">Address is not an ERC-20 (no <code>symbol()</code>). Remove or correct.</span>;
+
+    return (
+        <div className="space-y-1">
+            <TokenAddressInput
+                value={value.address}
+                onChange={(addr) => onChange({ address: addr, symbol: "" })}
+                onRemove={onRemove}
+            />
+            {symbolHint && <p className="text-xs text-ink-faint">{symbolHint}</p>}
+        </div>
     );
 }
