@@ -415,6 +415,15 @@ cd sdk && npm run lint    # tsc --noEmit
 
 ## Local Development
 
+### Docker-hosted services
+
+Two project services run in Docker, not natively on the host:
+
+- **IPFS (Kubo).** `lib/shared/ipfsService.ts` pins operator profiles, catalogues, manifests, and uploaded media. Default endpoint `http://127.0.0.1:5001`. Image: `ipfs/kubo:latest`. Kubo's default CORS policy rejects browser requests from the dev server; the container needs `API.HTTPHeaders.Access-Control-Allow-Origin` set to the dev origin and a restart before pinning works.
+- **LaTeX → PDF.** `paper/` builds compile via the `texlive/texlive` image (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citation resolution). No native LaTeX on the host.
+
+**Convention: the agent handles Docker, not the user.** When a session needs IPFS up, a paper rebuilt, or a container reconfigured, the agent runs the `docker run` / `docker exec` / `docker compose` / `docker restart` commands. The user keeps Docker Desktop running and doesn't drop into the daemon directly. (Caveat the agent should know: containers I start with `run_in_background` may be reaped by the harness lifecycle — for services that need to outlive a single conversation turn, ask the user to start them in their own terminal, same convention as Anvil.)
+
 ### Environment Variables (`.env.local` in `frontend/`)
 
 ```
