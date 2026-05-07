@@ -130,7 +130,7 @@ export function OnboardingProfileForm() {
     const chainId = useChainId();
     const { address, isConnected } = useAccount();
     const { openConnectModal } = useConnectModal();
-    const { state, update } = useOnboardingState(address);
+    const { state, loaded, update } = useOnboardingState(address);
 
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -149,20 +149,23 @@ export function OnboardingProfileForm() {
     );
 
     // Hydrate from localStorage once the wallet-keyed state is available.
+    // `loaded` (not `state.profile !== undefined`) is the correct gate:
+    // new users have no draft, so `state.profile` never changes, and
+    // the previous gate left them stuck unhydrated — which then
+    // disabled the persistence effect below, so nothing they typed
+    // ever reached localStorage.
     useEffect(() => {
-        if (hydrated) return;
-        if (state.profile !== undefined || !isConnected) {
-            const next = fromDraft(state.profile);
-            setForm(next);
-            // If the loaded slug differs from the slug we'd derive from
-            // the loaded name, treat the slug as user-edited so we don't
-            // overwrite it later.
-            if (next.slug && next.slug !== slugify(next.name)) {
-                setSlugTouched(true);
-            }
-            setHydrated(true);
+        if (hydrated || !loaded) return;
+        const next = fromDraft(state.profile);
+        setForm(next);
+        // If the loaded slug differs from the slug we'd derive from
+        // the loaded name, treat the slug as user-edited so we don't
+        // overwrite it later.
+        if (next.slug && next.slug !== slugify(next.name)) {
+            setSlugTouched(true);
         }
-    }, [hydrated, state.profile, isConnected]);
+        setHydrated(true);
+    }, [hydrated, loaded, state.profile]);
 
     // Persist on every form change so a refresh / navigation doesn't lose work.
     useEffect(() => {
@@ -282,12 +285,33 @@ export function OnboardingProfileForm() {
         } else if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]?$/.test(form.slug.trim())) {
             next.slug = "Use lowercase letters, digits, and hyphens. No spaces.";
         }
-        if (validTokens.length > 0 && !form.defaultTokenAddress) {
+        if (validTokens.length === 0) {
+            next.acceptedTokens = "Add at least one accepted token. Catalogue prices are denominated in your default token.";
+        } else if (!form.defaultTokenAddress) {
             next.defaultTokenAddress = "Pick which accepted token your catalogue is priced in.";
         }
         setErrors(next);
         if (Object.keys(next).length === 0) {
             router.push("/operators/onboard/catalogue");
+            return;
+        }
+        // Focus the first invalid field so the user sees the error
+        // without having to scroll up the page.
+        const firstErrorKey = ["name", "slug", "acceptedTokens", "defaultTokenAddress"].find((k) => next[k]);
+        if (firstErrorKey) {
+            // Radio group has no `id`; the accepted-tokens section
+            // isn't a single field. Map the error key to a focus
+            // target.
+            const selector = firstErrorKey === "defaultTokenAddress"
+                ? 'input[name="defaultTokenAddress"]'
+                : firstErrorKey === "acceptedTokens"
+                    ? "#accepted-tokens-section"
+                    : `#profile-${firstErrorKey}`;
+            const el = document.querySelector<HTMLElement>(selector);
+            if (el) {
+                el.focus({ preventScroll: false });
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
         }
     }
 
@@ -308,8 +332,10 @@ export function OnboardingProfileForm() {
         );
     }
 
+    const errorCount = Object.keys(errors).length;
+
     return (
-        <form onSubmit={validateAndContinue} className="space-y-12">
+        <form onSubmit={validateAndContinue} className="space-y-12" noValidate>
             {/* ── Identity ───────────────────────────────────────────── */}
             <section className="space-y-6">
                 <h2 className="text-eyebrow uppercase text-ink-muted">Identity</h2>
@@ -321,7 +347,7 @@ export function OnboardingProfileForm() {
                         value={form.name}
                         onChange={(e) => setName(e.target.value)}
                         hasError={!!errors.name}
-                        required
+                        errorId={errors.name ? "profile-name-error" : undefined}
                         aria-required="true"
                     />
                 </FormField>
@@ -338,7 +364,7 @@ export function OnboardingProfileForm() {
                         value={form.slug}
                         onChange={(e) => setSlug(e.target.value)}
                         hasError={!!errors.slug}
-                        required
+                        errorId={errors.slug ? "profile-slug-error" : undefined}
                         aria-required="true"
                     />
                     <p className="text-xs text-ink-faint mt-1">
@@ -456,7 +482,7 @@ export function OnboardingProfileForm() {
             </section>
 
             {/* ── Tokens ────────────────────────────────────────────── */}
-            <section className="space-y-6">
+            <section id="accepted-tokens-section" tabIndex={-1} className="space-y-6 scroll-mt-20">
                 <h2 className="text-eyebrow uppercase text-ink-muted">Accepted tokens</h2>
                 <p className="text-sm text-ink-body">
                     The set of ERC-20s you accept for settlement. This is the
@@ -507,6 +533,9 @@ export function OnboardingProfileForm() {
                             No quick-add tokens registered for this network. Paste an ERC-20 address above to fetch its symbol from the contract.
                         </p>
                     )}
+                    {errors.acceptedTokens && (
+                        <p className="text-sm text-red-600" role="alert">{errors.acceptedTokens}</p>
+                    )}
                 </div>
 
                 {validTokens.length > 0 && (
@@ -544,14 +573,23 @@ export function OnboardingProfileForm() {
             </section>
 
             {/* ── Nav ───────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between pt-4 border-t border-default">
-                <Link
-                    href="/operators/onboard"
-                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
-                >
-                    ← Back
-                </Link>
-                <Button type="submit">Next →</Button>
+            <div className="space-y-3 pt-4 border-t border-default">
+                {errorCount > 0 && (
+                    <p className="text-sm text-red-600" role="alert">
+                        {errorCount === 1
+                            ? "Fix the highlighted field to continue."
+                            : `Fix the ${errorCount} highlighted fields to continue.`}
+                    </p>
+                )}
+                <div className="flex items-center justify-between">
+                    <Link
+                        href="/operators/onboard"
+                        className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                    >
+                        ← Back
+                    </Link>
+                    <Button type="submit">Next →</Button>
+                </div>
             </div>
         </form>
     );

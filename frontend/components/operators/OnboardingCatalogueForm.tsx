@@ -80,21 +80,26 @@ export function OnboardingCatalogueForm() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { state, update } = useOnboardingState(address);
+    const { state, loaded, update } = useOnboardingState(address);
 
     const [items, setItems] = useState<FormItem[]>([emptyItem()]);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [hydrated, setHydrated] = useState(false);
 
-    // Hydrate from localStorage once the wallet-keyed state is available.
+    // Hydrate once the wallet-keyed state has actually been read from
+    // localStorage (`loaded === true`). Gating on `state.catalogue`
+    // alone races the hook's read-effect — for users with stored
+    // items, hydration could fire against the EMPTY_STATE snapshot
+    // and the persistence effect would then overwrite their saved
+    // items with the local default `[emptyItem()]`.
     useEffect(() => {
-        if (hydrated || !isConnected) return;
+        if (hydrated || !loaded) return;
         const stored = state.catalogue?.items;
         if (stored && stored.length > 0) {
             setItems(stored.map(fromItem));
         }
         setHydrated(true);
-    }, [hydrated, state.catalogue, isConnected]);
+    }, [hydrated, loaded, state.catalogue]);
 
     // Persist on every form change.
     useEffect(() => {

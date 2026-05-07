@@ -63,19 +63,21 @@ export function OnboardingAssembliesForm() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { state, update } = useOnboardingState(address);
+    const { state, loaded, update } = useOnboardingState(address);
 
     const choices = useMemo(() => REFERENCE_ASSEMBLIES.map(describeAssembly), []);
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [hydrated, setHydrated] = useState(false);
 
-    // Hydrate from localStorage on mount.
+    // Hydrate once `loaded === true` (the wallet-keyed state has
+    // actually been read from localStorage). See the matching comment
+    // in OnboardingProfileForm for the race this avoids.
     useEffect(() => {
-        if (hydrated || !isConnected) return;
+        if (hydrated || !loaded) return;
         const existing = state.assemblies ?? [];
         setSelected(new Set(existing.map((b) => b.assemblySlug)));
         setHydrated(true);
-    }, [hydrated, state.assemblies, isConnected]);
+    }, [hydrated, loaded, state.assemblies]);
 
     // Persist on every change.
     useEffect(() => {

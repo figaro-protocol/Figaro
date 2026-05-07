@@ -71,16 +71,18 @@ export function OnboardingAgentsForm() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { state, update } = useOnboardingState(address);
+    const { state, loaded, update } = useOnboardingState(address);
 
     const [services, setServices] = useState<OperatorAgentServices>({});
     const [hydrated, setHydrated] = useState(false);
 
+    // Hydrate once `loaded === true` — see OnboardingProfileForm for
+    // the race-condition rationale.
     useEffect(() => {
-        if (hydrated || !isConnected) return;
+        if (hydrated || !loaded) return;
         setServices(state.services ?? {});
         setHydrated(true);
-    }, [hydrated, state.services, isConnected]);
+    }, [hydrated, loaded, state.services]);
 
     useEffect(() => {
         if (!hydrated || !isConnected) return;

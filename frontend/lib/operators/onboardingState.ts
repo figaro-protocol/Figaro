@@ -127,6 +127,14 @@ function removeState(wallet: string | undefined): void {
 
 export interface UseOnboardingStateResult {
     state: OnboardingState;
+    /**
+     * `true` once the localStorage read for `walletAddress` has run.
+     * Forms must gate hydration on this flag — gating on
+     * `state.X !== undefined` is unreliable because new users have no
+     * draft (so `state` never transitions from `EMPTY_STATE`), and
+     * returning users can have their hydration race the read.
+     */
+    loaded: boolean;
     /** Replace the entire state. */
     setState: (next: OnboardingState) => void;
     /** Merge a partial update. */
@@ -143,9 +151,12 @@ export interface UseOnboardingStateResult {
  */
 export function useOnboardingState(walletAddress: `0x${string}` | undefined): UseOnboardingStateResult {
     const [state, setStateInternal] = useState<OnboardingState>(EMPTY_STATE);
+    const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
+        setLoaded(false);
         setStateInternal(readState(walletAddress));
+        setLoaded(true);
     }, [walletAddress]);
 
     const setState = useCallback((next: OnboardingState) => {
@@ -166,7 +177,7 @@ export function useOnboardingState(walletAddress: `0x${string}` | undefined): Us
         removeState(walletAddress);
     }, [walletAddress]);
 
-    return { state, setState, update, clear };
+    return { state, loaded, setState, update, clear };
 }
 
 // ── Step progress ────────────────────────────────────────────────────────────
