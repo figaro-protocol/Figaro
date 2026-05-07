@@ -8,6 +8,10 @@
  * For a single user-initiated click ("Use this address" in the
  * onboarding form) this is well under the rate limit. Callers that
  * automate geocoding need to add their own throttling.
+ *
+ * Returns a discriminated outcome — callers can distinguish
+ * "no match for this query" from "we couldn't reach the geocoder"
+ * and surface a useful message.
  */
 
 export interface GeocodeResult {
@@ -15,32 +19,74 @@ export interface GeocodeResult {
     lon: number;
 }
 
+export type GeocodeFailureReason =
+    /** The query was empty after trimming. */
+    | "empty-query"
+    /** Nominatim returned 0 results. */
+    | "no-match"
+    /** HTTP error (non-2xx response). */
+    | "http-error"
+    /** Network failure (CORS, DNS, offline, browser block). */
+    | "network-error"
+    /** Response wasn't an array, or first row had non-numeric lat/lon. */
+    | "malformed";
+
+export type GeocodeOutcome =
+    | { ok: true; result: GeocodeResult }
+    | { ok: false; reason: GeocodeFailureReason; detail?: string };
+
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 
 /**
- * Resolve an address string to lat/lon. Returns null on no match,
- * malformed response, or fetch failure.
+ * Resolve an address string to lat/lon. Returns a structured outcome;
+ * the caller decides how to surface each failure reason.
  */
-export async function geocodeAddress(query: string): Promise<GeocodeResult | null> {
+export async function geocodeAddress(query: string): Promise<GeocodeOutcome> {
     const trimmed = query.trim();
-    if (!trimmed) return null;
+    if (!trimmed) return { ok: false, reason: "empty-query" };
 
+    let res: Response;
     try {
         const url = `${NOMINATIM_URL}?q=${encodeURIComponent(trimmed)}&format=json&limit=1`;
-        const res = await fetch(url, {
+        res = await fetch(url, {
             headers: { Accept: "application/json" },
         });
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) return null;
-        const first = data[0] as { lat?: string; lon?: string };
-        const lat = first.lat ? parseFloat(first.lat) : NaN;
-        const lon = first.lon ? parseFloat(first.lon) : NaN;
-        if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
-        return { lat, lon };
-    } catch {
-        return null;
+    } catch (err) {
+        return {
+            ok: false,
+            reason: "network-error",
+            detail: err instanceof Error ? err.message : String(err),
+        };
     }
+
+    if (!res.ok) {
+        return { ok: false, reason: "http-error", detail: `HTTP ${res.status}` };
+    }
+
+    let data: unknown;
+    try {
+        data = await res.json();
+    } catch (err) {
+        return {
+            ok: false,
+            reason: "malformed",
+            detail: err instanceof Error ? err.message : String(err),
+        };
+    }
+
+    if (!Array.isArray(data)) {
+        return { ok: false, reason: "malformed", detail: "expected array" };
+    }
+    if (data.length === 0) {
+        return { ok: false, reason: "no-match" };
+    }
+    const first = data[0] as { lat?: string; lon?: string };
+    const lat = first.lat ? parseFloat(first.lat) : NaN;
+    const lon = first.lon ? parseFloat(first.lon) : NaN;
+    if (Number.isNaN(lat) || Number.isNaN(lon)) {
+        return { ok: false, reason: "malformed", detail: "lat/lon not parseable" };
+    }
+    return { ok: true, result: { lat, lon } };
 }
 
 /**

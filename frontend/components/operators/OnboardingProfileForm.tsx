@@ -18,7 +18,7 @@ import type {
 } from "@/lib/operators/onboardingState";
 import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 import { encodeGeohash } from "@/lib/handoff/manifest";
-import { geocodeAddress, getDeviceLocation } from "@/lib/shared/geocode";
+import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/shared/geocode";
 import { getCommonTokens, type CommonToken } from "@/lib/shared/commonTokens";
 
 /**
@@ -64,6 +64,21 @@ const PRECISION_LABELS: Record<FormState["geohashPrecision"], string> = {
     7: "7 chars (~150 m)",
     8: "8 chars (~38 m)",
 };
+
+function geocodeErrorMessage(reason: GeocodeFailureReason): string {
+    switch (reason) {
+        case "empty-query":
+            return "Type an address first.";
+        case "no-match":
+            return "Couldn't find that address. Try a more specific query.";
+        case "http-error":
+            return "Geocoder is rate-limiting or temporarily down. Wait a moment and try again.";
+        case "network-error":
+            return "Couldn't reach the geocoder. Check your connection (or browser extensions blocking the request) and try again.";
+        case "malformed":
+            return "Geocoder returned an unexpected response. Try a different query.";
+    }
+}
 
 function slugify(input: string): string {
     return input
@@ -219,12 +234,12 @@ export function OnboardingProfileForm() {
         setLocating("address");
         setLocateError(null);
         try {
-            const position = await geocodeAddress(form.addressText);
-            if (!position) {
-                setLocateError("Couldn't find that address. Try a more specific query.");
+            const outcome = await geocodeAddress(form.addressText);
+            if (!outcome.ok) {
+                setLocateError(geocodeErrorMessage(outcome.reason));
                 return;
             }
-            const hash = encodeGeohash(position.lat, position.lon, form.geohashPrecision);
+            const hash = encodeGeohash(outcome.result.lat, outcome.result.lon, form.geohashPrecision);
             setField("geohash", hash);
         } finally {
             setLocating(null);
@@ -519,6 +534,7 @@ export function OnboardingProfileForm() {
                                 acceptedTokens: prev.acceptedTokens.map((t, i) => (i === index ? next : t)),
                             }))}
                             onRemove={form.acceptedTokens.length > 1 ? () => removeTokenRow(index) : undefined}
+                            hasError={Boolean(errors.acceptedTokens) && !isValidAddress(token.address)}
                         />
                     ))}
                     <button
@@ -599,6 +615,7 @@ interface AcceptedTokenRowProps {
     value: { address: string; symbol: string };
     onChange: (next: { address: string; symbol: string }) => void;
     onRemove?: () => void;
+    hasError?: boolean;
 }
 
 /**
@@ -608,7 +625,7 @@ interface AcceptedTokenRowProps {
  * (manual address + manual symbol) — the chain already knows the
  * symbol; users shouldn't have to type it.
  */
-function AcceptedTokenRow({ value, onChange, onRemove }: AcceptedTokenRowProps) {
+function AcceptedTokenRow({ value, onChange, onRemove, hasError = false }: AcceptedTokenRowProps) {
     const { data: resolvedSymbol, isLoading } = useTokenSymbol(value.address);
     const validAddr = isValidAddress(value.address);
 
@@ -635,6 +652,7 @@ function AcceptedTokenRow({ value, onChange, onRemove }: AcceptedTokenRowProps) 
                 value={value.address}
                 onChange={(addr) => onChange({ address: addr, symbol: "" })}
                 onRemove={onRemove}
+                hasError={hasError}
             />
             {symbolHint && <p className="text-xs text-ink-faint">{symbolHint}</p>}
         </div>

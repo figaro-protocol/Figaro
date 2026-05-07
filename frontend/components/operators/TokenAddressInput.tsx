@@ -23,14 +23,22 @@ export function TokenAddressInput({
     value,
     onChange,
     onRemove,
+    hasError = false,
 }: {
     value: string;
     onChange: (v: string) => void;
     onRemove?: () => void;
+    /**
+     * Force the red-border error state regardless of input contents.
+     * Set by callers that have an external validation error attached
+     * to this row (e.g. an empty row when the form requires ≥1 token).
+     */
+    hasError?: boolean;
 }) {
     const { data: symbol, isLoading } = useTokenSymbol(value);
     const valid = isValidAddress(value);
     const invalid = value.length > 0 && !valid;
+    const showError = invalid || hasError;
 
     return (
         <div className="flex items-center gap-2">
@@ -40,8 +48,9 @@ export function TokenAddressInput({
                     placeholder="0x… token address"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
+                    aria-invalid={showError || undefined}
                     className={`w-full border rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-black ${
-                        invalid ? "border-red-300 focus:border-red-400" : "border-gray-300"
+                        showError ? "border-red-300 focus:border-red-400" : "border-gray-300"
                     }`}
                 />
                 {valid && (
