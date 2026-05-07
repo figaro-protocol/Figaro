@@ -4,7 +4,7 @@
     "slug": "bobs-pizza-palace",
     "name": "Bob's Pizza Palace",
     "description": "Authentic New York style pizza.",
-    "cuisine": "Italian",
+    "specialty": "Italian",
     "fulfillmentModes": [
         "delivery"
     ],
@@ -18,7 +18,6 @@
             "label": "Downtown Manhattan"
         }
     ],
-    "minimumOrder": "0.01",
     "estimatedFulfillment": "30-45 min",
     "hours": {
         "timezone": "America/New_York",

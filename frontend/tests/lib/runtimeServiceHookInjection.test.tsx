@@ -150,30 +150,24 @@ const fallbackRestaurant: SellerCatalogue = {
     id: "fallback-1",
     name: "Fallback Merchant",
     description: "Fallback catalogue",
-    cuisine: "Test",
-    deliveryTime: "20 min",
-    minimumOrder: "0.01",
+    specialty: "Test",
     image: "🍽️",
     address: "0x0000000000000000000000000000000000000001",
     menu: [],
     acceptedTokens: [],
     fulfillmentModes: ["delivery"],
-    rating: 4.5,
 };
 
 const injectedRestaurant: SellerCatalogue = {
     id: "merchant-1",
     name: "Injected Merchant",
     description: "Injected discovery result",
-    cuisine: "Italian",
-    deliveryTime: "15-20 min",
-    minimumOrder: "0.02",
+    specialty: "Italian",
     image: "🍕",
     address: "0x0000000000000000000000000000000000000011",
     menu: [],
     acceptedTokens: [],
     fulfillmentModes: ["delivery"],
-    rating: 4.5,
 };
 
 function createRuntimeServices(overrides: Partial<RuntimeServices> = {}): RuntimeServices {

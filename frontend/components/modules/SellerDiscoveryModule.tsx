@@ -37,7 +37,7 @@ function RestaurantCardInline({ restaurant, onSelect }: RestaurantCardInlineProp
                 role="button"
                 tabIndex={0}
                 data-testid="restaurant-card"
-                aria-label={`${restaurant.name}, ${restaurant.cuisine}, ${restaurant.deliveryTime} delivery`}
+                aria-label={`${restaurant.name}${restaurant.specialty ? `, ${restaurant.specialty}` : ""}`}
                 onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
@@ -51,7 +51,9 @@ function RestaurantCardInline({ restaurant, onSelect }: RestaurantCardInlineProp
                         <h3 className="text-lg font-semibold text-black group-hover:text-blue-600 transition-colors">
                             {restaurant.name}
                         </h3>
-                        <p className="text-sm text-neutral-500">{restaurant.cuisine}</p>
+                        {restaurant.specialty && (
+                            <p className="text-sm text-neutral-500">{restaurant.specialty}</p>
+                        )}
                     </div>
                 </div>
                 <p className="text-sm text-neutral-600 mb-3">{restaurant.description}</p>
@@ -81,10 +83,6 @@ function RestaurantCardInline({ restaurant, onSelect }: RestaurantCardInlineProp
                     </div>
                 )}
 
-                <div className="flex items-center gap-4 text-xs">
-                    <div className="text-neutral-500">⏱️ {restaurant.deliveryTime}</div>
-                    <div className="text-neutral-500">Min: {restaurant.minimumOrder} ETH</div>
-                </div>
                 <div className="mt-3 pt-3 border-t border-neutral-200">
                     {sellerAddr && <OperatorServiceDisplay address={sellerAddr} />}
                 </div>
@@ -103,9 +101,9 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
     });
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [cuisineFilter, setCuisineFilter] = useState<string | null>(null);
+    const [specialtyFilter, setSpecialtyFilter] = useState<string | null>(null);
     const [tokenFilter, setTokenFilter] = useState<string | null>(null);
-    const [sortBy, setSortBy] = useState<"default" | "tokens" | "deliveryTime">("default");
+    const [sortBy, setSortBy] = useState<"default" | "tokens">("default");
     const [selectedRestaurant, setSelectedRestaurant] = useState<SellerCatalogue | null>(null);
     const [autoSelectAttempted, setAutoSelectAttempted] = useState(false);
 
@@ -128,8 +126,8 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
         setAutoSelectAttempted(true);
     }, [autoSelectAttempted, cataloguesLoading, requestedOperator, allRestaurants]);
 
-    const cuisines = useMemo(
-        () => Array.from(new Set(allRestaurants.map((r) => r.cuisine))).sort(),
+    const specialties = useMemo(
+        () => Array.from(new Set(allRestaurants.map((r) => r.specialty).filter(Boolean))).sort(),
         [allRestaurants]
     );
 
@@ -144,21 +142,15 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
     const filteredRestaurants = useMemo(() => {
         let list = allRestaurants.filter((r) => {
             if (searchQuery && !r.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-            if (cuisineFilter && r.cuisine !== cuisineFilter) return false;
+            if (specialtyFilter && r.specialty !== specialtyFilter) return false;
             if (tokenFilter && !r.acceptedTokens?.some((t) => t.symbol === tokenFilter)) return false;
             return true;
         });
         if (sortBy === "tokens") {
             list = [...list].sort((a, b) => (b.acceptedTokens?.length ?? 0) - (a.acceptedTokens?.length ?? 0));
-        } else if (sortBy === "deliveryTime") {
-            list = [...list].sort((a, b) => {
-                const aMin = parseInt(a.deliveryTime) || 0;
-                const bMin = parseInt(b.deliveryTime) || 0;
-                return aMin - bMin;
-            });
         }
         return list;
-    }, [searchQuery, cuisineFilter, tokenFilter, sortBy, allRestaurants]);
+    }, [searchQuery, specialtyFilter, tokenFilter, sortBy, allRestaurants]);
 
     if (selectedRoleKind !== "buyer") return null;
 
@@ -210,29 +202,29 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
                         className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white text-black placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-black"
                     />
                 </div>
-                <div className="flex gap-2 flex-wrap" data-testid="cuisine-filters">
+                <div className="flex gap-2 flex-wrap" data-testid="specialty-filters">
                     <button
-                        onClick={() => setCuisineFilter(null)}
-                        className={`px-3 py-2 text-sm rounded-full border transition-colors min-h-[44px] ${cuisineFilter === null
+                        onClick={() => setSpecialtyFilter(null)}
+                        className={`px-3 py-2 text-sm rounded-full border transition-colors min-h-[44px] ${specialtyFilter === null
                             ? "bg-black text-white border-black"
                             : "bg-white text-neutral-700 border-neutral-300 hover:border-neutral-400"
                             }`}
-                        style={cuisineFilter === null && accentTone
+                        style={specialtyFilter === null && accentTone
                             ? { backgroundColor: accentTone, borderColor: accentTone }
                             : undefined}
                     >
                         All
                     </button>
-                    {cuisines.map((c) => (
+                    {specialties.map((c) => (
                         <button
                             key={c}
-                            data-testid={`cuisine-filter-${c}`}
-                            onClick={() => setCuisineFilter(cuisineFilter === c ? null : c)}
-                            className={`px-3 py-2 text-sm rounded-full border transition-colors min-h-[44px] ${cuisineFilter === c
+                            data-testid={`specialty-filter-${c}`}
+                            onClick={() => setSpecialtyFilter(specialtyFilter === c ? null : c)}
+                            className={`px-3 py-2 text-sm rounded-full border transition-colors min-h-[44px] ${specialtyFilter === c
                                 ? "bg-black text-white border-black"
                                 : "bg-white text-neutral-700 border-neutral-300 hover:border-neutral-400"
                                 }`}
-                            style={cuisineFilter === c && accentTone
+                            style={specialtyFilter === c && accentTone
                                 ? { backgroundColor: accentTone, borderColor: accentTone }
                                 : undefined}
                         >
@@ -275,12 +267,11 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
                 <select
                     data-testid="sort-select"
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as "default" | "tokens" | "deliveryTime")}
+                    onChange={(e) => setSortBy(e.target.value as "default" | "tokens")}
                     className="px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white text-black focus:outline-none focus:ring-2 focus:ring-black min-h-[44px]"
                 >
                     <option value="default">Sort by</option>
                     <option value="tokens">Most payment methods</option>
-                    <option value="deliveryTime">Fastest delivery</option>
                 </select>
             </div>
 
@@ -391,10 +382,9 @@ function MenuBrowsingInline({
                         )}
                         <h2 className="text-2xl font-bold text-black mb-2">{restaurant.name}</h2>
                         <p className="text-neutral-600 mb-2">{restaurant.description}</p>
-                        <div className="flex items-center gap-4 text-sm text-neutral-500">
-                            <span>⏱️ {restaurant.deliveryTime}</span>
-                            <span>Min order: {restaurant.minimumOrder} ETH</span>
-                        </div>
+                        {restaurant.specialty && (
+                            <p className="text-sm text-neutral-500 mb-2">{restaurant.specialty}</p>
+                        )}
                         {restaurant.acceptedTokens && restaurant.acceptedTokens.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
                                 {restaurant.acceptedTokens.map((t) => (

@@ -102,10 +102,8 @@ const skinBundle: ResolvedAssemblySkinBundle = {
 const restaurant = {
     id: 'rest-1',
     name: 'Bob\'s Pizza Palace',
-    cuisine: 'Pizza',
+    specialty: 'Pizza',
     description: 'Wood-fired pizzas and bonded checkout.',
-    deliveryTime: '25 min',
-    minimumOrder: '0.02',
     image: '🍕',
     address: '0x2222222222222222222222222222222222222222',
     acceptedTokens: [
@@ -185,8 +183,8 @@ describe('runtime skin-aware buyer surfaces', () => {
         expect(screen.getByTestId('seller-discovery-module')).toHaveAttribute('data-skin', skinBundle.skinId);
         expect(screen.getByText('Neighbourhood Eats')).toHaveStyle({ color: '#1f6feb' });
 
-        fireEvent.click(screen.getByTestId('cuisine-filter-Pizza'));
-        expect(screen.getByTestId('cuisine-filter-Pizza')).toHaveStyle({ backgroundColor: '#1f6feb' });
+        fireEvent.click(screen.getByTestId('specialty-filter-Pizza'));
+        expect(screen.getByTestId('specialty-filter-Pizza')).toHaveStyle({ backgroundColor: '#1f6feb' });
 
         fireEvent.click(screen.getByTestId('restaurant-card'));
 

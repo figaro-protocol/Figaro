@@ -331,7 +331,7 @@
             "slug": "bobs-pizza-palace",
             "name": "Bob's Pizza Palace",
             "description": "Authentic New York style pizza.",
-            "cuisine": "Italian",
+            "specialty": "Italian",
             "fulfillmentModes": [
                 "consume-onsite",
                 "pickup",
@@ -347,7 +347,6 @@
                     "label": "Downtown Manhattan"
                 }
             ],
-            "minimumOrder": "0.01",
             "estimatedFulfillment": "30-45 min",
             "hours": {
                 "timezone": "America/New_York",
@@ -549,7 +548,7 @@
             "slug": "carlos-espresso-bar",
             "name": "Carlo's Espresso Bar",
             "description": "Counter-service espresso bar. Italian roast, Neapolitan style. Cafe seating + takeaway.",
-            "cuisine": "Coffee",
+            "specialty": "Coffee",
             "fulfillmentModes": [
                 "consume-onsite",
                 "pickup"

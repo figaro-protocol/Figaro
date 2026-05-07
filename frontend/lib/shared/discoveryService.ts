@@ -35,14 +35,12 @@ function profileToCatalogue(
         name: profile.name,
         address: profile.subjectAddress ?? catalogue?.subjectAddress ?? '0x0',
         description: profile.description ?? '',
-        cuisine: profile.specialty ?? 'General',
+        specialty: profile.specialty ?? '',
         image: profile.branding?.logoURI && isSafeImageURI(profile.branding.logoURI)
             ? profile.branding.logoURI
             : '🍽️',
-        rating: 0,
-        deliveryTime: '30-60 min',
-        minimumOrder: '0.01',
         geohash: profile.location?.geohash,
+        addressText: profile.location?.addressText,
         menu: (catalogue?.menu ?? []).map((item) => ({
             id: item.id,
             name: item.name,
@@ -53,6 +51,8 @@ function profileToCatalogue(
             available: item.available,
         })),
         acceptedTokens: profile.acceptedTokens,
+        defaultTokenAddress: profile.defaultTokenAddress,
+        agentServices: profile.services,
         fulfillmentModes: [],
     };
 }

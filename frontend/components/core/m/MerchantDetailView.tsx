@@ -33,6 +33,7 @@ import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogue
 import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { CONTRACTS } from "@/lib/core/contracts";
+import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
@@ -79,7 +80,19 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     const accentTone: string | undefined = undefined;
 
     const { address: buyer } = useCommerce();
-    const currency = (CONTRACTS.mockToken || CONTRACTS.permitToken) as `0x${string}`;
+    // The merchant's value-system flag: pricing-token + accepted-tokens come
+    // from THEIR profile, not from project-level CONTRACTS.* env vars. The
+    // env-var fallback only kicks in for fixture / pre-schema-split
+    // catalogues that don't carry a defaultTokenAddress.
+    const currency = (restaurant?.defaultTokenAddress
+        ?? CONTRACTS.mockToken
+        ?? CONTRACTS.permitToken) as `0x${string}`;
+    const { data: resolvedSymbol } = useTokenSymbol(currency);
+    const tokenSymbol = resolvedSymbol
+        ?? restaurant?.acceptedTokens?.find(
+            (t) => t.address.toLowerCase() === currency.toLowerCase(),
+        )?.symbol
+        ?? "";
     const {
         decimals: tokenDecimals,
         balance: tokenBalance,
@@ -117,21 +130,24 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [supportedModes]);
 
-    // Cart hygiene: zustand `persist` middleware writes the cart to localStorage
-    // under one global key, so cart items survive cross-merchant navigation.
-    // When this view mounts on a merchant whose address doesn't match every
-    // existing cart item, clear the cart — otherwise stale items from a prior
-    // session leak in (the "Charlie's prepops with Cheeseburger" symptom).
+    // Cart hygiene — two cases, both clear the persisted cart on mount:
+    //   1. Cross-merchant leak: cart items belong to a different merchant
+    //      than the one being viewed (zustand persists to one global key).
+    //   2. Self-view: the connected wallet IS the merchant. Buyer == seller
+    //      is allowed by the protocol but degenerate — leftover items from
+    //      a prior testing session shouldn't auto-prepopulate the cart on
+    //      a merchant's own profile page.
     useEffect(() => {
         if (items.length === 0) return;
         const allMatchCurrent = items.every(
             (item) => item.sellerAddress.toLowerCase() === merchantAddressLower,
         );
-        if (!allMatchCurrent) {
+        const isSelfView = !!buyer && buyer.toLowerCase() === merchantAddressLower;
+        if (!allMatchCurrent || isSelfView) {
             clearCart();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [merchantAddressLower]);
+    }, [merchantAddressLower, buyer]);
 
     const balance = tokenBalance ?? 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
@@ -339,20 +355,28 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                             size={88}
                         />
                         <div className="flex-1 min-w-0">
-                            <p
-                                className="text-xs font-semibold uppercase tracking-widest text-neutral-500"
-                                style={accentTone ? { color: accentTone } : undefined}
-                            >
-                                {restaurant.cuisine}
-                            </p>
+                            {restaurant.specialty && (
+                                <p
+                                    className="text-xs font-semibold uppercase tracking-widest text-neutral-500"
+                                    style={accentTone ? { color: accentTone } : undefined}
+                                >
+                                    {restaurant.specialty}
+                                </p>
+                            )}
                             <h1 className="mt-1 text-4xl font-bold text-black">{restaurant.name}</h1>
                             <p className="mt-3 max-w-2xl text-base text-neutral-700">{restaurant.description}</p>
+                            {restaurant.addressText && (
+                                <p className="mt-2 text-sm text-neutral-500">{restaurant.addressText}</p>
+                            )}
                             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-                                {restaurant.deliveryTime && <span>⏱️ {restaurant.deliveryTime}</span>}
-                                {restaurant.minimumOrder && <span>Min order: {restaurant.minimumOrder} ETH</span>}
                                 {restaurant.acceptedTokens && restaurant.acceptedTokens.length > 0 && (
                                     <span data-testid="merchant-accepted-tokens">
                                         Accepts: {restaurant.acceptedTokens.map((t) => t.symbol).join(", ")}
+                                    </span>
+                                )}
+                                {tokenSymbol && (
+                                    <span data-testid="merchant-pricing-token">
+                                        Priced in: <span className="font-semibold text-neutral-700">{tokenSymbol}</span>
                                     </span>
                                 )}
                             </div>
@@ -394,7 +418,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                                             <p className="text-sm text-neutral-500 mb-2">{menuItem.description}</p>
                                                             <div className="flex items-center justify-between">
                                                                 <span className="font-semibold text-blue-700" style={accentTone ? { color: accentTone } : undefined}>
-                                                                    {menuItem.price} ETH
+                                                                    {menuItem.price}{tokenSymbol ? ` ${tokenSymbol}` : ""}
                                                                 </span>
                                                                 {quantity === 0 ? (
                                                                     <button
@@ -499,7 +523,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                                     </button>
                                                 </div>
                                                 <span className="text-neutral-900 font-semibold tabular-nums">
-                                                    {(parseFloat(item.price) * item.quantity).toFixed(4)} ETH
+                                                    {(parseFloat(item.price) * item.quantity).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
                                                 </span>
                                             </div>
                                         </li>

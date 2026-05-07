@@ -83,18 +83,6 @@ function serviceTypesToFulfillmentModes(serviceTypes: string[] = []): Array<'pic
     return modes.size > 0 ? [...modes] : ['pickup', 'delivery'];
 }
 
-function inferCuisineFromItems(items: OperatorCatalogueItem[]): string {
-    const first = items.find((i) => i.category?.trim());
-    return first?.category ?? 'General';
-}
-
-function inferMinimumOrder(items: OperatorCatalogueItem[]): string {
-    const prices = items
-        .map((i) => (i.price ? parseFloat(i.price) : NaN))
-        .filter((p) => !isNaN(p) && p > 0);
-    return prices.length > 0 ? String(Math.min(...prices)) : '0.01';
-}
-
 // ── Main converter ─────────────────────────────────────────────────────────────
 
 export function operatorProfileToCatalogue(
@@ -124,13 +112,13 @@ export function operatorProfileToCatalogue(
         name: profile.name,
         address,
         description: profile.description ?? '',
-        cuisine: inferCuisineFromItems(items),
+        specialty: profile.specialty ?? '',
         image: '🍽️',
-        rating: 0,
-        deliveryTime: '30-60 min',
-        minimumOrder: inferMinimumOrder(items),
+        addressText: profile.location?.addressText,
         menu,
         acceptedTokens: acceptedTokens.length > 0 ? acceptedTokens : undefined,
+        defaultTokenAddress: profile.defaultTokenAddress,
+        agentServices: profile.services,
         // Fulfillment-mode declaration moved off the operator profile in
         // the schema split. Discovery-tier default until the per-assembly
         // binding-driven fulfilment model lands.

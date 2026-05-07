@@ -78,7 +78,7 @@ describe('discoveryService', () => {
         expect(result.catalogues[0]).toEqual(expect.objectContaining({
             id: 'merchant-a',
             name: 'Merchant A',
-            cuisine: 'Italian',
+            specialty: 'Italian',
         }));
         expect(result.catalogues.some((r) => r.name === "Bob's Pizza Palace")).toBe(false);
         expect(result.source.mock).toBeGreaterThan(0);
