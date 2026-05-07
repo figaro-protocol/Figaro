@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { OnboardingShell } from "@/components/operators/OnboardingShell";
-import { OnboardingPlaceholder } from "@/components/operators/OnboardingPlaceholder";
+import { OnboardingAssembliesForm } from "@/components/operators/OnboardingAssembliesForm";
 
 export const metadata: Metadata = { title: "Assemblies — Operator onboarding" };
 
@@ -11,15 +11,11 @@ export default function OnboardingAssembliesPage() {
             title="Assemblies you participate in"
             description={
                 <p>
-                    Pick from the assemblies registered on this network. Per-assembly, you can declare counterparty addresses you trust (e.g. couriers you work with) and any mechanism configuration the assembly asks for.
+                    Pick the assemblies registered on this network that you bind to. Per-assembly customization (trusted counterparties, mechanism configuration) is added after first registration.
                 </p>
             }
         >
-            <OnboardingPlaceholder
-                description="Assembly picker (multi-select), per-assembly trusted-seller list, per-assembly mechanism config."
-                prevPath="link"
-                nextPath="agents"
-            />
+            <OnboardingAssembliesForm />
         </OnboardingShell>
     );
 }
