@@ -54,11 +54,15 @@ export const EV_STAGED_AIRDROP_CLAIMED = parseAbiItem(
     "event Claimed(uint8 indexed stageIndex, address indexed account, uint256 amount)",
 );
 
-// Web2-strip (2026-04-26): Updated / Deactivated / Reactivated event ABIs
-// removed alongside their on-chain emitters. Only Registered + Withdrawn
-// survive — role/metadata changes happen via withdraw + re-register.
+// Three operator-registry events survive: registration, profile update, and
+// withdrawal. Lifecycle flags (deactivate/reactivate) and on-chain role
+// tracking remain stripped — operator availability is signal-by-availability,
+// and the seller's role lives in the catalogue's archetype, not the event log.
 export const EV_OPERATOR_REGISTERED = parseAbiItem(
-    "event OperatorRegistered(address indexed operator, uint8 role, string metadataURI)",
+    "event OperatorRegistered(address indexed operator, string metadataURI)",
+);
+export const EV_OPERATOR_PROFILE_UPDATED = parseAbiItem(
+    "event OperatorProfileUpdated(address indexed operator, string metadataURI)",
 );
 export const EV_OPERATOR_WITHDRAWN = parseAbiItem(
     "event OperatorWithdrawn(address indexed operator, uint256 deposit)",
@@ -290,6 +294,14 @@ export async function getAllOperatorRegistered(client: PublicClient, chainId: nu
     );
 }
 
+export async function getAllOperatorProfileUpdated(client: PublicClient, chainId: number) {
+    if (!MECHANISM_CONTRACTS.operatorRegistry && !CONTRACTS.batchVerifier) return [];
+    return cachedGetLogsMulti(client, chainId,
+        [MECHANISM_CONTRACTS.operatorRegistry, CONTRACTS.batchVerifier],
+        { event: EV_OPERATOR_PROFILE_UPDATED, eventName: "OperatorProfileUpdated" },
+    );
+}
+
 export async function getAllOperatorWithdrawn(client: PublicClient, chainId: number) {
     if (!MECHANISM_CONTRACTS.operatorRegistry && !CONTRACTS.batchVerifier) return [];
     return cachedGetLogsMulti(client, chainId,
@@ -299,17 +311,19 @@ export async function getAllOperatorWithdrawn(client: PublicClient, chainId: num
 }
 
 /**
- * Derive the current operator roster: latest metadataURI + role per address,
+ * Derive the current operator roster: latest metadataURI per address,
  * filtered to only those currently registered (Registered minus Withdrawn).
  *
- * Web2-strip (2026-04-26): no more deactivated/reactivated/updated event
- * tracking. An operator is "current" iff they have a Registered event newer
- * than any Withdrawn event for the same address. Role/metadata updates
- * happen via withdraw + re-register.
+ * "Current metadataURI" is the most recent OperatorRegistered or
+ * OperatorProfileUpdated event for an address, provided no Withdrawn
+ * event sits at or after the registration block (withdraw clears the
+ * dedup guard, voiding any subsequent profile updates from a stale
+ * registration).
  */
 export async function getActiveOperators(client: PublicClient, chainId: number) {
-    const [registered, withdrawn] = await Promise.all([
+    const [registered, profileUpdated, withdrawn] = await Promise.all([
         getAllOperatorRegistered(client, chainId),
+        getAllOperatorProfileUpdated(client, chainId),
         getAllOperatorWithdrawn(client, chainId),
     ]);
 
@@ -330,8 +344,8 @@ export async function getActiveOperators(client: PublicClient, chainId: number) 
         if (block > prev) latestWithdraw.set(addr, block);
     }
 
-    // Pick the latest Registered event per address that has not been withdrawn after it.
-    const operators = new Map<string, { role: number; metadataURI: string; block: bigint }>();
+    // Latest Registered event per address that survives Withdrawn.
+    const operators = new Map<string, { metadataURI: string; registeredBlock: bigint; latestBlock: bigint }>();
     for (const log of registered) {
         const addr = getStringArg(log, "operator")?.toLowerCase();
         if (!addr) continue;
@@ -339,18 +353,31 @@ export async function getActiveOperators(client: PublicClient, chainId: number) 
         const withdrawnAfter = (latestWithdraw.get(addr) ?? 0n) >= block;
         if (withdrawnAfter) continue;
         const prev = operators.get(addr);
-        if (!prev || block > prev.block) {
+        if (!prev || block > prev.registeredBlock) {
             operators.set(addr, {
-                role: Number(getLogArgs(log).role ?? 0),
                 metadataURI: getStringArg(log, "metadataURI") ?? "",
-                block,
+                registeredBlock: block,
+                latestBlock: block,
             });
+        }
+    }
+
+    // Apply ProfileUpdated events that post-date the surviving Registered event.
+    for (const log of profileUpdated) {
+        const addr = getStringArg(log, "operator")?.toLowerCase();
+        if (!addr) continue;
+        const entry = operators.get(addr);
+        if (!entry) continue;
+        const block = toBlockBigInt(log);
+        if (block < entry.registeredBlock) continue;
+        if (block > entry.latestBlock) {
+            entry.metadataURI = getStringArg(log, "metadataURI") ?? entry.metadataURI;
+            entry.latestBlock = block;
         }
     }
 
     return Array.from(operators.entries()).map(([address, op]) => ({
         address,
-        role: op.role,
         metadataURI: op.metadataURI,
     }));
 }
@@ -370,18 +397,20 @@ export async function getOperatorMetadataURI(client: PublicClient, chainId: numb
 /**
  * Full state for a single operator, derived from events.
  * Returns null if the operator has never registered or has withdrawn after
- * the most recent registration. The registration block backs the deposit
- * lock-expiry computation.
+ * the most recent registration. `registeredBlock` backs the deposit lock-
+ * expiry computation; `metadataURI` is the most recent value carried by
+ * either the surviving Registered event or any subsequent ProfileUpdated.
  */
 export async function getOperatorState(
     client: PublicClient,
     chainId: number,
     operator: string,
-): Promise<{ role: number; metadataURI: string; registeredBlock: bigint | null } | null> {
+): Promise<{ metadataURI: string; registeredBlock: bigint | null } | null> {
     const lc = operator.toLowerCase();
 
-    const [registered, withdrawn] = await Promise.all([
+    const [registered, profileUpdated, withdrawn] = await Promise.all([
         getAllOperatorRegistered(client, chainId),
+        getAllOperatorProfileUpdated(client, chainId),
         getAllOperatorWithdrawn(client, chainId),
     ]);
 
@@ -422,9 +451,22 @@ export async function getOperatorState(
         if (lastWithdrawBlock >= regBlock) return null;
     }
 
+    // Apply the most recent ProfileUpdated that post-dates the surviving
+    // registration, if any.
+    let metadataURI = getStringArg(regLog, "metadataURI") ?? "";
+    let metadataBlock = regBlock;
+    for (const log of profileUpdated) {
+        if (getStringArg(log, "operator")?.toLowerCase() !== lc) continue;
+        const b = toBlockBigInt(log);
+        if (b < regBlock) continue;
+        if (b > metadataBlock) {
+            metadataURI = getStringArg(log, "metadataURI") ?? metadataURI;
+            metadataBlock = b;
+        }
+    }
+
     return {
-        role: Number(getLogArgs(regLog).role ?? 0),
-        metadataURI: getStringArg(regLog, "metadataURI") ?? "",
+        metadataURI,
         registeredBlock: regBlock > 0n ? regBlock : null,
     };
 }

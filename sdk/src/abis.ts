@@ -172,17 +172,13 @@ export const ERC20_ABI = parseAbi([
 // ── OperatorRegistry ABI ────────────────────────────────────────────────────
 
 export const OPERATOR_REGISTRY_ABI = parseAbi([
-    "function register(uint8 role, string metadataURI) external payable",
-    "function updateProfile(uint8 role, string metadataURI) external",
-    "function deactivate() external",
-    "function reactivate() external",
+    "function register(string metadataURI) external payable",
+    "function updateProfile(string metadataURI) external",
     "function withdraw() external",
     "function registrationDeposit() view returns (uint256)",
     "function depositLockPeriod() view returns (uint256)",
-    "event OperatorRegistered(address indexed operator, uint8 role, string metadataURI)",
-    "event OperatorUpdated(address indexed operator, uint8 role, string metadataURI)",
-    "event OperatorDeactivated(address indexed operator)",
-    "event OperatorReactivated(address indexed operator)",
+    "event OperatorRegistered(address indexed operator, string metadataURI)",
+    "event OperatorProfileUpdated(address indexed operator, string metadataURI)",
     "event OperatorWithdrawn(address indexed operator, uint256 deposit)",
 ]);
 

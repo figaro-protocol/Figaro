@@ -243,13 +243,10 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
     });
     const { data: profile } = useOperatorProfile(sellerAddr);
 
-    const isRegistered = profile
-        ? profile[0] !== 0
-        : false;
-    // Web2-strip (2026-04-26): in-place metadata updates were removed. The
-    // catalogue editor now only wires through the register-operator capability.
-    // Already-registered operators must withdraw + re-register to update their
-    // catalogue URI on-chain (the dedup guard is cleared on withdraw).
+    const isRegistered = !!profile;
+    // Already-registered operators flow through the update-operator-profile
+    // capability; first-time operators flow through register-operator.
+    // Both replace the catalogue URI bound to the address.
     const operatorProfileCapability = context.capabilities.find(
         (capability) => capability.action.executionType === "transaction"
             && capability.action.kind === "register-operator"

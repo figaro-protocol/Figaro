@@ -909,12 +909,6 @@ function OperatorRegistryPage({ doc }: { doc: AuditBundle["operatorRegistry"] })
                         {doc.registered ? "Yes" : "NOT REGISTERED"}
                     </Text>
                 </View>
-                {doc.registered && doc.roleLabel && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>declared role</Text>
-                        <Text style={styles.metadataValue}>{doc.roleLabel}</Text>
-                    </View>
-                )}
                 {doc.registered && doc.metadataURI && (
                     <View style={styles.metadataRow}>
                         <Text style={styles.metadataKey}>metadataURI</Text>

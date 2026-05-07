@@ -5,15 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OperatorOnboarding } from '@/components/operators/OperatorOnboarding';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
-//
-// Web2-strip (2026-04-26): updateProfile / deactivate / reactivate hooks
-// removed. The test surface now covers register + withdraw only.
 
 const useAccountMock = vi.fn();
 const useOperatorProfileMock = vi.fn();
 const useRegistrationDepositMock = vi.fn();
 const useDepositLockPeriodMock = vi.fn();
 const useRegisterOperatorMock = vi.fn();
+const useUpdateProfileMock = vi.fn();
 const useWithdrawDepositMock = vi.fn();
 const publishJSONMock = vi.fn();
 const getBlockMock = vi.fn();
@@ -38,11 +36,11 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/lib/mechanisms/useOperatorRegistry', () => ({
-    OperatorRole: { None: 0, Merchant: 1, Courier: 2, Both: 3 },
     useOperatorProfile: (...args: unknown[]) => useOperatorProfileMock(...args),
     useRegistrationDeposit: () => useRegistrationDepositMock(),
     useDepositLockPeriod: () => useDepositLockPeriodMock(),
     useRegisterOperator: () => useRegisterOperatorMock(),
+    useUpdateProfile: () => useUpdateProfileMock(),
     useWithdrawDeposit: () => useWithdrawDepositMock(),
 }));
 
@@ -75,6 +73,7 @@ function setupConnected() {
     useRegistrationDepositMock.mockReturnValue({ data: 1000000000000000n });
     useDepositLockPeriodMock.mockReturnValue({ data: 0n });
     useRegisterOperatorMock.mockReturnValue({ ...defaultWriteHook(), register: vi.fn() });
+    useUpdateProfileMock.mockReturnValue({ ...defaultWriteHook(), updateProfile: vi.fn() });
     useWithdrawDepositMock.mockReturnValue({ ...defaultWriteHook(), withdraw: vi.fn() });
     getBlockMock.mockResolvedValue({ timestamp: 1000000n });
     publishJSONMock.mockReset();
@@ -89,6 +88,7 @@ describe('OperatorOnboarding — not connected', () => {
         useRegistrationDepositMock.mockReturnValue({ data: undefined });
         useDepositLockPeriodMock.mockReturnValue({ data: undefined });
         useRegisterOperatorMock.mockReturnValue({ ...defaultWriteHook(), register: vi.fn() });
+        useUpdateProfileMock.mockReturnValue({ ...defaultWriteHook(), updateProfile: vi.fn() });
         useWithdrawDepositMock.mockReturnValue({ ...defaultWriteHook(), withdraw: vi.fn() });
     });
 
@@ -136,7 +136,7 @@ describe('OperatorOnboarding — not registered', () => {
         expect(btn).not.toBeDisabled();
     });
 
-    it('calls publishJSON and then register on submit with Both role when no service types selected', async () => {
+    it('calls publishJSON and then register on submit', async () => {
         const registerMock = vi.fn().mockResolvedValue(undefined);
         useRegisterOperatorMock.mockReturnValue({ ...defaultWriteHook(), register: registerMock });
         publishJSONMock.mockResolvedValue({ uri: 'ipfs://QmNew', cid: 'QmNew', gatewayUrl: '' });
@@ -151,45 +151,11 @@ describe('OperatorOnboarding — not registered', () => {
                 expect.objectContaining({ name: 'My Shop' }),
             );
         });
-        // no service types selected → OperatorRole.Both (3)
+        // Role is no longer carried in the contract call — register takes
+        // (metadataURI, depositValue) only. The seller's role lives in the
+        // catalogue referenced by the metadataURI.
         await waitFor(() => {
-            expect(registerMock).toHaveBeenCalledWith(3, 'ipfs://QmNew', 1000000000000000n);
-        });
-    });
-
-    it('derives Merchant role when only merchant service types are selected', async () => {
-        const registerMock = vi.fn().mockResolvedValue(undefined);
-        useRegisterOperatorMock.mockReturnValue({ ...defaultWriteHook(), register: registerMock });
-        publishJSONMock.mockResolvedValue({ uri: 'ipfs://QmMerchant', cid: 'QmMerchant', gatewayUrl: '' });
-
-        render(<OperatorOnboarding />);
-
-        await userEvent.type(screen.getByPlaceholderText('e.g. your service name'), 'My Shop');
-        // Check "Pickup" service type (maps to Merchant)
-        await userEvent.click(screen.getByRole('checkbox', { name: /pickup/i }));
-        await userEvent.click(screen.getByRole('button', { name: /register/i }));
-
-        await waitFor(() => {
-            // OperatorRole.Merchant = 1
-            expect(registerMock).toHaveBeenCalledWith(1, 'ipfs://QmMerchant', 1000000000000000n);
-        });
-    });
-
-    it('derives Driver role when only delivery service type is selected', async () => {
-        const registerMock = vi.fn().mockResolvedValue(undefined);
-        useRegisterOperatorMock.mockReturnValue({ ...defaultWriteHook(), register: registerMock });
-        publishJSONMock.mockResolvedValue({ uri: 'ipfs://QmDriver', cid: 'QmDriver', gatewayUrl: '' });
-
-        render(<OperatorOnboarding />);
-
-        await userEvent.type(screen.getByPlaceholderText('e.g. your service name'), 'My Shop');
-        // Check "Delivery" service type (maps to Driver)
-        await userEvent.click(screen.getByRole('checkbox', { name: /delivery/i }));
-        await userEvent.click(screen.getByRole('button', { name: /register/i }));
-
-        await waitFor(() => {
-            // OperatorRole.Courier = 2
-            expect(registerMock).toHaveBeenCalledWith(2, 'ipfs://QmDriver', 1000000000000000n);
+            expect(registerMock).toHaveBeenCalledWith('ipfs://QmNew', 1000000000000000n);
         });
     });
 
@@ -238,11 +204,11 @@ describe('OperatorOnboarding — loading', () => {
     });
 });
 
-describe('OperatorOnboarding — registered operator (withdraw + re-register)', () => {
+describe('OperatorOnboarding — registered operator (in-place updateProfile + withdraw)', () => {
     beforeEach(() => {
         setupConnected();
         useOperatorProfileMock.mockReturnValue({
-            data: [1, 'ipfs://QmProfile', 100n] as const,
+            data: ['ipfs://QmProfile', 100n] as const,
             isLoading: false,
             refetch: vi.fn(),
         });
@@ -254,11 +220,29 @@ describe('OperatorOnboarding — registered operator (withdraw + re-register)', 
         expect(screen.getByText('Registered operator')).toBeInTheDocument();
     });
 
-    it('does not render the registration form (no in-place updateProfile)', () => {
+    it('still renders the form so an operator can edit metadata in place', () => {
         render(<OperatorOnboarding />);
 
-        expect(screen.queryByPlaceholderText('e.g. your service name')).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /^register/i })).not.toBeInTheDocument();
+        expect(screen.getByPlaceholderText('e.g. your service name')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /save profile changes/i })).toBeInTheDocument();
+    });
+
+    it('submitting the form calls updateProfile, not register', async () => {
+        const updateProfileMock = vi.fn().mockResolvedValue(undefined);
+        const registerMock = vi.fn().mockResolvedValue(undefined);
+        useUpdateProfileMock.mockReturnValue({ ...defaultWriteHook(), updateProfile: updateProfileMock });
+        useRegisterOperatorMock.mockReturnValue({ ...defaultWriteHook(), register: registerMock });
+        publishJSONMock.mockResolvedValue({ uri: 'ipfs://QmNew', cid: 'QmNew', gatewayUrl: '' });
+
+        render(<OperatorOnboarding />);
+
+        await userEvent.type(screen.getByPlaceholderText('e.g. your service name'), 'Updated Name');
+        await userEvent.click(screen.getByRole('button', { name: /save profile changes/i }));
+
+        await waitFor(() => {
+            expect(updateProfileMock).toHaveBeenCalledWith('ipfs://QmNew');
+        });
+        expect(registerMock).not.toHaveBeenCalled();
     });
 
     it('shows the Withdraw deposit button (or the lock countdown)', () => {

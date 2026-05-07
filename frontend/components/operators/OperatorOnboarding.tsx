@@ -9,29 +9,20 @@ import { useSearchParams } from "next/navigation";
 import {
     useOperatorProfile,
     useRegisterOperator,
+    useUpdateProfile,
     useWithdrawDeposit,
     useRegistrationDeposit,
     useDepositLockPeriod,
-    OperatorRole,
 } from "@/lib/mechanisms/useOperatorRegistry";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { TokenAddressInput, isValidAddress } from "./TokenAddressInput";
-
-/**
- * Web2-strip (2026-04-26): the prior updateProfile / deactivate / reactivate
- * UI was removed alongside the on-chain functions. To switch role or metadata
- * an operator now withdraws (after the deposit lock) and re-registers — the
- * dedup guard is cleared on withdraw. Operator availability is
- * signal-by-availability off-chain, not registry state.
- */
 
 interface OperatorMetadata {
     name: string;
     description: string;
     location: string;
     catalogueURI: string;
-    serviceTypes: string[];
     mechanisms: string[];
     acceptedTokens: string[];
     services: { mcp: string; a2a: string; rest: string; did: string; ens: string };
@@ -42,17 +33,10 @@ const EMPTY: OperatorMetadata = {
     description: "",
     location: "",
     catalogueURI: "",
-    serviceTypes: [],
     mechanisms: [],
     acceptedTokens: [] as string[],
     services: { mcp: "", a2a: "", rest: "", did: "", ens: "" },
 };
-
-const SERVICE_TYPES = [
-    { id: "on-site", label: "On-site", desc: "Service provided at the buyer's location" },
-    { id: "pickup", label: "Pickup", desc: "Buyer collects from your location" },
-    { id: "delivery", label: "Delivery", desc: "You ship or deliver to the buyer" },
-];
 
 const MECHANISMS = [
     { id: "assigned", label: "Assigned", desc: "Assembly assigns you to the job" },
@@ -62,15 +46,6 @@ const MECHANISMS = [
 
 function toggle(arr: string[], item: string): string[] {
     return arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item];
-}
-
-function deriveRoleFromServiceTypes(serviceTypes: string[]): number {
-    const hasMerchant = serviceTypes.some((t) => t === "on-site" || t === "pickup");
-    const hasCourier = serviceTypes.includes("delivery");
-    if (hasMerchant && hasCourier) return OperatorRole.Both;
-    if (hasCourier) return OperatorRole.Courier;
-    if (hasMerchant) return OperatorRole.Merchant;
-    return OperatorRole.Both;
 }
 
 function TokenList({ tokens, onChange }: { tokens: string[]; onChange: (next: string[]) => void }) {
@@ -169,6 +144,7 @@ export function OperatorOnboarding() {
     const { data: depositRaw } = useRegistrationDeposit();
     const { data: lockPeriodRaw } = useDepositLockPeriod();
     const { register, isPending: regPending, isConfirming: regConfirming, isSuccess: regSuccess } = useRegisterOperator();
+    const { updateProfile, isPending: updPending, isConfirming: updConfirming, isSuccess: updSuccess } = useUpdateProfile();
     const { withdraw, isPending: withdrawing, isConfirming: withdrawConfirming, isSuccess: withdrawSuccess } = useWithdrawDeposit();
 
     const [form, setForm] = useState<OperatorMetadata>(EMPTY);
@@ -178,14 +154,14 @@ export function OperatorOnboarding() {
     const [unlockTimestamp, setUnlockTimestamp] = useState<bigint | null>(null);
 
     const isRegistered = !!profile;
-    const currentURI = profile ? profile[1] : undefined;
-    const registeredBlock = profile ? profile[2] : null;
+    const currentURI = profile ? profile[0] : undefined;
+    const registeredBlock = profile ? profile[1] : null;
     const hasCatalogue = !!(profile && form.catalogueURI);
     const deposit = depositRaw as bigint | undefined;
     const lockPeriod = lockPeriodRaw as bigint | undefined;
     const busy =
         ["pinning", "pending"].includes(status.type) ||
-        regPending || regConfirming || withdrawing || withdrawConfirming;
+        regPending || regConfirming || updPending || updConfirming || withdrawing || withdrawConfirming;
 
     // Pre-fill catalogue URI from URL param (handoff from catalogue builder)
     useEffect(() => {
@@ -209,7 +185,6 @@ export function OperatorOnboarding() {
                     location: m.location ?? "",
                     // URL param takes precedence over stored value
                     catalogueURI: prev.catalogueURI || (m.catalogueURI ?? ""),
-                    serviceTypes: Array.isArray(m.serviceTypes) ? m.serviceTypes : [],
                     mechanisms: Array.isArray(m.mechanisms) ? m.mechanisms : [],
                     acceptedTokens: Array.isArray(m.acceptedTokens)
                         ? m.acceptedTokens.map((t) =>
@@ -244,8 +219,8 @@ export function OperatorOnboarding() {
 
     // Confirmation feedback — emitted after tx lands in a block
     useEffect(() => {
-        if (regConfirming) setStatus({ type: "pending", message: "Waiting for confirmation..." });
-    }, [regConfirming]);
+        if (regConfirming || updConfirming) setStatus({ type: "pending", message: "Waiting for confirmation..." });
+    }, [regConfirming, updConfirming]);
     useEffect(() => {
         if (withdrawConfirming) setStatus({ type: "pending", message: "Waiting for confirmation..." });
     }, [withdrawConfirming]);
@@ -255,12 +230,15 @@ export function OperatorOnboarding() {
         if (regSuccess) { setShowSuccess(true); setStatus({ type: "idle", message: "" }); refetch(); }
     }, [regSuccess, refetch]);
     useEffect(() => {
-        if (withdrawSuccess) { setStatus({ type: "success", message: "Deposit withdrawn. Registration cleared — register again to update role or metadata." }); refetch(); }
+        if (updSuccess) { setStatus({ type: "success", message: "Profile updated. New metadata URI is live for this address." }); refetch(); }
+    }, [updSuccess, refetch]);
+    useEffect(() => {
+        if (withdrawSuccess) { setStatus({ type: "success", message: "Deposit withdrawn. The address is free to register again." }); refetch(); }
     }, [withdrawSuccess, refetch]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!isConnected || !form.name.trim() || isRegistered) return;
+        if (!isConnected || !form.name.trim()) return;
         try {
             const services: Record<string, string> = {};
             for (const [k, v] of Object.entries(form.services)) {
@@ -269,7 +247,6 @@ export function OperatorOnboarding() {
             const validTokens = form.acceptedTokens.filter(isValidAddress);
             const metadata: Record<string, unknown> = {
                 name: form.name.trim(),
-                serviceTypes: form.serviceTypes,
                 mechanisms: form.mechanisms,
             };
             if (form.description.trim()) metadata.description = form.description.trim();
@@ -281,9 +258,12 @@ export function OperatorOnboarding() {
             setStatus({ type: "pinning", message: "Pinning profile to IPFS..." });
             const { uri } = await DEFAULT_IPFS_SERVICE.publishJSON(metadata);
 
-            const role = deriveRoleFromServiceTypes(form.serviceTypes);
             setStatus({ type: "pending", message: "Confirm in wallet..." });
-            await register(role, uri, deposit);
+            if (isRegistered) {
+                await updateProfile(uri);
+            } else {
+                await register(uri, deposit);
+            }
         } catch (err) {
             setStatus({ type: "error", message: err instanceof Error ? err.message : String(err) });
         }
@@ -356,18 +336,35 @@ export function OperatorOnboarding() {
         return <p className="text-sm text-gray-400 py-8">Loading...</p>;
     }
 
-    // ── Registered operator: profile summary + withdraw ───────────────────────
+    // ── Registration / update form ────────────────────────────────────────────
+    //
+    // The same form serves first-time registration and in-place profile
+    // updates. When the wallet is already registered, the form prefills from
+    // the current metadataURI (see the effect above) and the submit button
+    // routes through `updateProfile` instead of `register` — no deposit
+    // movement, no lock reset.
 
-    if (isRegistered) {
-        const now = BigInt(Math.floor(Date.now() / 1000));
-        const canWithdraw = unlockTimestamp !== null && now >= unlockTimestamp;
-        const secondsRemaining = unlockTimestamp !== null && !canWithdraw
-            ? Number(unlockTimestamp - now)
-            : 0;
-        const daysRemaining = Math.ceil(secondsRemaining / 86400);
+    const inputClass =
+        "w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-black";
 
-        return (
-            <div className="space-y-6">
+    const submitLabel = busy
+        ? (status.message || "Working...")
+        : isRegistered
+            ? "Save profile changes"
+            : deposit
+                ? `Register — deposit ${formatEther(deposit)} ETH`
+                : "Register";
+
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const canWithdraw = unlockTimestamp !== null && now >= unlockTimestamp;
+    const secondsRemaining = unlockTimestamp !== null && !canWithdraw
+        ? Number(unlockTimestamp - now)
+        : 0;
+    const daysRemaining = Math.ceil(secondsRemaining / 86400);
+
+    return (
+        <div className="space-y-10">
+            {isRegistered && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-green-500 inline-block flex-shrink-0" />
@@ -377,103 +374,8 @@ export function OperatorOnboarding() {
                         {address?.slice(0, 6)}&hellip;{address?.slice(-4)}
                     </span>
                 </div>
+            )}
 
-                {form.name && (
-                    <div className="border border-gray-200 rounded-lg px-6 py-5 space-y-3">
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">Name</p>
-                            <p className="text-sm text-black">{form.name}</p>
-                        </div>
-                        {form.description && (
-                            <div>
-                                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">Description</p>
-                                <p className="text-sm text-gray-700">{form.description}</p>
-                            </div>
-                        )}
-                        {form.location && (
-                            <div>
-                                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">Location</p>
-                                <p className="text-sm text-gray-700">{form.location}</p>
-                            </div>
-                        )}
-                        {currentURI && (
-                            <div>
-                                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">Metadata URI</p>
-                                <p className="text-xs text-gray-500 font-mono break-all">{currentURI}</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {!hasCatalogue && form.catalogueURI === "" && (
-                    <div className="border border-gray-200 rounded-lg px-6 py-5">
-                        <p className="text-sm font-semibold text-black mb-1">Build your catalogue</p>
-                        <p className="text-xs text-gray-500 mb-3">
-                            Publish a service catalogue so assemblies know what you offer.
-                        </p>
-                        <Link
-                            href="/operators/catalogue"
-                            className="inline-block px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
-                        >
-                            Build your catalogue &rarr;
-                        </Link>
-                    </div>
-                )}
-
-                <div className="border border-red-100 rounded-lg px-6 py-5">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-red-400 mb-3">
-                        Withdraw &amp; re-register
-                    </p>
-                    <p className="text-sm text-gray-600 mb-2">
-                        To switch role or update your metadata, withdraw your deposit and register again
-                        with the new values. Withdraw clears the registry binding for this address; the
-                        deposit returns to your wallet.
-                    </p>
-                    {lockPeriod && lockPeriod > 0n && (
-                        <p className="text-xs text-gray-500 mb-3">
-                            Deposits lock for {Math.ceil(Number(lockPeriod) / 86400)} days after registration.
-                            {!canWithdraw && daysRemaining > 0 && (
-                                <> Yours unlocks in {daysRemaining} day{daysRemaining !== 1 ? "s" : ""}.</>
-                            )}
-                        </p>
-                    )}
-                    <button
-                        onClick={handleWithdraw}
-                        disabled={withdrawing || withdrawConfirming || !canWithdraw}
-                        title={!canWithdraw && daysRemaining > 0 ? `Deposit locked for ${daysRemaining} more day${daysRemaining !== 1 ? "s" : ""}` : undefined}
-                        className="px-4 py-2 text-sm border border-red-300 text-red-600 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {withdrawing || withdrawConfirming
-                            ? "Withdrawing..."
-                            : !canWithdraw && daysRemaining > 0
-                                ? `Locked — ${daysRemaining}d remaining`
-                                : "Withdraw deposit"}
-                    </button>
-                </div>
-
-                {(status.type === "error" || status.type === "pending" || status.type === "success") && (
-                    <StatusBox
-                        type={status.type === "pending" ? "progress" : status.type === "error" ? "error" : "success"}
-                        message={status.message}
-                    />
-                )}
-            </div>
-        );
-    }
-
-    // ── Registration form (not yet registered) ────────────────────────────────
-
-    const inputClass =
-        "w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-black";
-
-    const submitLabel = busy
-        ? (status.message || "Working...")
-        : deposit
-            ? `Register — deposit ${formatEther(deposit)} ETH`
-            : "Register";
-
-    return (
-        <div className="space-y-10">
             <form onSubmit={handleSubmit} className="space-y-0">
 
                 {/* Section: Identity */}
@@ -508,15 +410,8 @@ export function OperatorOnboarding() {
                     </Field>
                 </FormSection>
 
-                {/* Section: Capabilities */}
+                {/* Section: Capabilities — role lives in the catalogue, not here. */}
                 <FormSection title="Capabilities">
-                    <Field label="Service types" hint="Which delivery modes do you support?">
-                        <CheckGroup
-                            options={SERVICE_TYPES}
-                            selected={form.serviceTypes}
-                            onChange={(next) => setForm({ ...form, serviceTypes: next })}
-                        />
-                    </Field>
                     <Field label="Accepted mechanisms" hint="Which allocation mechanisms do you accept?">
                         <CheckGroup
                             options={MECHANISMS}
@@ -610,7 +505,7 @@ export function OperatorOnboarding() {
 
                 {/* Deposit info + submit */}
                 <div className="border-t border-gray-100 pt-8 space-y-4">
-                    {deposit && (
+                    {!isRegistered && deposit && (
                         <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-4">
                             <p className="text-sm font-semibold text-black mb-1">
                                 Required deposit: {formatEther(deposit)} ETH
@@ -636,8 +531,47 @@ export function OperatorOnboarding() {
                     >
                         {submitLabel}
                     </button>
+
+                    {currentURI && (
+                        <p className="text-xs text-gray-400 font-mono break-all">
+                            current: {currentURI}
+                        </p>
+                    )}
                 </div>
             </form>
+
+            {isRegistered && (
+                <div className="border border-red-100 rounded-lg px-6 py-5">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-red-400 mb-3">
+                        Withdraw deposit
+                    </p>
+                    <p className="text-sm text-gray-600 mb-2">
+                        Withdrawing returns your deposit and clears the registry binding for this
+                        address. Profile updates do not require this — use Save profile changes
+                        above to replace your metadata in place without touching the deposit.
+                    </p>
+                    {lockPeriod && lockPeriod > 0n && (
+                        <p className="text-xs text-gray-500 mb-3">
+                            Deposits lock for {Math.ceil(Number(lockPeriod) / 86400)} days after registration.
+                            {!canWithdraw && daysRemaining > 0 && (
+                                <> Yours unlocks in {daysRemaining} day{daysRemaining !== 1 ? "s" : ""}.</>
+                            )}
+                        </p>
+                    )}
+                    <button
+                        onClick={handleWithdraw}
+                        disabled={withdrawing || withdrawConfirming || !canWithdraw}
+                        title={!canWithdraw && daysRemaining > 0 ? `Deposit locked for ${daysRemaining} more day${daysRemaining !== 1 ? "s" : ""}` : undefined}
+                        className="px-4 py-2 text-sm border border-red-300 text-red-600 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {withdrawing || withdrawConfirming
+                            ? "Withdrawing..."
+                            : !canWithdraw && daysRemaining > 0
+                                ? `Locked — ${daysRemaining}d remaining`
+                                : "Withdraw deposit"}
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

@@ -43,18 +43,16 @@ export interface OpenSubOrderComposerCapabilityAction {
 export interface RegisterOperatorCapabilityAction {
     executionType: "transaction";
     kind: "register-operator";
-    operatorRole: number;
 }
 
-/**
- * Replaces the prior UpdateOperatorProfileCapabilityAction (web2-strip
- * 2026-04-26). To switch role or metadata an operator now withdraws and
- * re-registers; the dedup guard is cleared on withdraw.
- */
+export interface UpdateOperatorProfileCapabilityAction {
+    executionType: "transaction";
+    kind: "update-operator-profile";
+}
+
 export interface WithdrawOperatorDepositCapabilityAction {
     executionType: "transaction";
     kind: "withdraw-operator-deposit";
-    operatorRole: number;
 }
 
 export interface SubmitDisclosureCommitmentCapabilityAction {
@@ -122,6 +120,7 @@ export type CapabilityActionDescriptor =
     | ResolveProcessCapabilityAction
     | OpenSubOrderComposerCapabilityAction
     | RegisterOperatorCapabilityAction
+    | UpdateOperatorProfileCapabilityAction
     | WithdrawOperatorDepositCapabilityAction
     | SubmitDisclosureCommitmentCapabilityAction
     | SubmitDisclosureInventoryCapabilityAction
@@ -168,6 +167,11 @@ export interface RegisterOperatorCapabilityInput {
     metadataURI?: string;
 }
 
+export interface UpdateOperatorProfileCapabilityInput {
+    kind: "update-operator-profile";
+    metadataURI?: string;
+}
+
 export interface WithdrawOperatorDepositCapabilityInput {
     kind: "withdraw-operator-deposit";
 }
@@ -193,6 +197,7 @@ export interface SubmitDeliveryLifecycleProofCapabilityInput {
 
 export type CapabilityExecutionInput =
     | RegisterOperatorCapabilityInput
+    | UpdateOperatorProfileCapabilityInput
     | WithdrawOperatorDepositCapabilityInput
     | SubmitDisclosureCommitmentCapabilityInput
     | SubmitDisclosureInventoryCapabilityInput

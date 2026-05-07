@@ -566,22 +566,18 @@ describe("extractOperatorRegistry", () => {
         const doc = extractOperatorRegistry(order, []);
         expect(doc.registered).toBe(false);
         expect(doc.notice).toContain("NOT registered");
-        expect(doc.role).toBeUndefined();
         expect(doc.metadataURI).toBeUndefined();
     });
 
     it("surfaces the seller's registration record when present", () => {
         const ev: OperatorRegisteredEvent = {
             operator: order.seller,
-            role: 1, // Merchant
             metadataURI: "ipfs://QmMerchantMeta",
             blockNumber: 50,
             transactionHash: "0xREG",
         };
         const doc = extractOperatorRegistry(order, [ev]);
         expect(doc.registered).toBe(true);
-        expect(doc.role).toBe(1);
-        expect(doc.roleLabel).toBe("Merchant");
         expect(doc.metadataURI).toBe("ipfs://QmMerchantMeta");
         expect(doc.registeredAtBlock).toBe(50);
         expect(doc.notice).toBe("");
@@ -590,7 +586,7 @@ describe("extractOperatorRegistry", () => {
     it("filters out events for other operators (cross-operator leakage)", () => {
         const ev: OperatorRegisteredEvent = {
             operator: "0xOTHER_OPERATOR",
-            role: 1, metadataURI: "ipfs://other",
+            metadataURI: "ipfs://other",
             blockNumber: 50, transactionHash: "0xREG",
         };
         const doc = extractOperatorRegistry(order, [ev]);
@@ -599,15 +595,14 @@ describe("extractOperatorRegistry", () => {
 
     it("uses the latest registration when the seller re-registered after withdraw", () => {
         const old: OperatorRegisteredEvent = {
-            operator: order.seller, role: 1, metadataURI: "ipfs://old",
+            operator: order.seller, metadataURI: "ipfs://old",
             blockNumber: 50, transactionHash: "0xOLD",
         };
         const fresh: OperatorRegisteredEvent = {
-            operator: order.seller, role: 2, metadataURI: "ipfs://fresh",
+            operator: order.seller, metadataURI: "ipfs://fresh",
             blockNumber: 200, transactionHash: "0xFRESH",
         };
         const doc = extractOperatorRegistry(order, [old, fresh]);
-        expect(doc.role).toBe(2);
         expect(doc.metadataURI).toBe("ipfs://fresh");
         expect(doc.registeredAtBlock).toBe(200);
     });

@@ -152,14 +152,17 @@ export function createDiscoveryService(
 
             try {
                 const operators = await getActiveOperators(client, chainId);
-                const merchants = operators.filter((operator) => operator.role === 1 || operator.role === 3);
 
-                if (merchants.length === 0) {
+                if (operators.length === 0) {
                     return service.listFallbackRestaurants();
                 }
 
+                // Role lives in the catalogue (`archetypeId`), not on the
+                // registry. fetchOperatorAsCatalogue is the gate that filters
+                // out operators whose catalogue does not parse as a seller
+                // catalogue — anything that does parse is shown.
                 const results = await Promise.all(
-                    merchants.map(async (operator, index) => {
+                    operators.map(async (operator, index) => {
                         try {
                             if (!operator.metadataURI) return null;
                             return await fetchOperatorAsCatalogue(

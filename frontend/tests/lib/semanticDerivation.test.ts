@@ -157,20 +157,19 @@ describe('assembly artifact registry', () => {
                     action: expect.objectContaining({
                         executionType: 'transaction',
                         kind: 'register-operator',
-                        operatorRole: 1,
                     }),
                 }),
             ])
         );
         expect(buyerCapabilities).toEqual([]);
 
-        // Web2-strip (2026-04-26): registered operators get the
-        // withdraw-operator-deposit capability (no in-place updateProfile).
+        // Registered operators get update-operator-profile (in-place metadata
+        // replacement) and withdraw-operator-deposit (clears the binding).
         const registeredRestaurantCapabilities = deriveAssemblyCapabilities(
             artifact!.assembly.identity.id,
             restaurantRole!.roleKind,
             restaurantMechanisms,
-            [1, 'ipfs://merchant/profile.json'],
+            ['ipfs://merchant/profile.json', 100n],
         );
 
         expect(registeredRestaurantCapabilities).toEqual(
@@ -178,8 +177,13 @@ describe('assembly artifact registry', () => {
                 expect.objectContaining({
                     action: expect.objectContaining({
                         executionType: 'transaction',
+                        kind: 'update-operator-profile',
+                    }),
+                }),
+                expect.objectContaining({
+                    action: expect.objectContaining({
+                        executionType: 'transaction',
                         kind: 'withdraw-operator-deposit',
-                        operatorRole: 1,
                     }),
                 }),
             ])

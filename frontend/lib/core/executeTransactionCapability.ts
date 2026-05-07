@@ -6,9 +6,12 @@ type TransactionExecutionResult = Promise<Hex | undefined | void>;
 export interface TransactionCapabilityExecutors {
     waitForTransactionConfirmation?: (txHash?: Hex) => Promise<void>;
     resolveProcess?: (processId: string) => TransactionExecutionResult;
-    registerOperator?: (operatorRole: number, metadataURI: string, value?: bigint) => TransactionExecutionResult;
-    /** Web2-strip (2026-04-26): replaces updateOperatorProfile. Switching role
-     *  or metadata happens via withdraw + re-register. */
+    registerOperator?: (metadataURI: string, value?: bigint) => TransactionExecutionResult;
+    /** Replaces the registered operator's metadataURI in place; deposit and
+     *  lock period untouched. Maps to OperatorRegistry.updateProfile. */
+    updateOperatorProfile?: (metadataURI: string) => TransactionExecutionResult;
+    /** Withdraws the deposit and clears the dedup guard, freeing the address
+     *  to re-register. Subject to the deploy-time lock period. */
     withdrawOperatorDeposit?: () => TransactionExecutionResult;
     submitDisclosureCommitment?: (orderHash: string, disclosureRole: "merchant" | "courier") => TransactionExecutionResult;
     submitDisclosureInventory?: (orderHash: string, grams: bigint) => TransactionExecutionResult;
@@ -57,7 +60,17 @@ export async function executeTransactionCapabilityAction(
             txHash = await ensureExecutor(
                 executors.registerOperator,
                 "Operator registration is unavailable.",
-            )(action.operatorRole, metadataURI);
+            )(metadataURI);
+            break;
+        }
+        case "update-operator-profile": {
+            const metadataURI = input?.kind === "update-operator-profile"
+                ? (input.metadataURI ?? "")
+                : "";
+            txHash = await ensureExecutor(
+                executors.updateOperatorProfile,
+                "Operator profile update is unavailable.",
+            )(metadataURI);
             break;
         }
         case "withdraw-operator-deposit": {

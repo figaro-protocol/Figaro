@@ -47,7 +47,7 @@ test.describe('/operators — wallet connected (devnet)', () => {
         await gotoOperators(page);
 
         // Registration form shows — wallet connected, not yet registered
-        await expect(page.getByPlaceholder('e.g. Tasty Burger')).toBeVisible({ timeout: 30000 });
+        await expect(page.getByPlaceholder('e.g. your service name')).toBeVisible({ timeout: 30000 });
         await expect(page.getByText('Connect your wallet to continue')).not.toBeVisible();
     });
 });
@@ -68,9 +68,9 @@ test.describe('/operators — registration lifecycle (devnet)', () => {
     // 1. Register (account[0] starts unregistered)
     test('registers a new operator and shows success state', async ({ page }) => {
         await gotoOperators(page);
-        await page.getByPlaceholder('e.g. Tasty Burger').waitFor({ timeout: 30000 });
+        await page.getByPlaceholder('e.g. your service name').waitFor({ timeout: 30000 });
 
-        await page.getByPlaceholder('e.g. Tasty Burger').fill('E2E Test Operator');
+        await page.getByPlaceholder('e.g. your service name').fill('E2E Test Operator');
         await page.getByRole('button', { name: /register/i }).click();
 
         // IPFS mocked → wallet auto-sign → tx confirmed → success card
@@ -78,10 +78,9 @@ test.describe('/operators — registration lifecycle (devnet)', () => {
         await expect(page.getByRole('link', { name: 'Build your catalogue →' })).toBeVisible();
     });
 
-    // Note: edit / deactivate / reactivate tests removed — those functions
-    // were stripped from OperatorRegistry on 2026-04-26 (web2-strip). To
-    // switch role or update metadata, an operator now withdraws (after the
-    // deposit lock) and re-registers.
+    // updateProfile / withdraw devnet tests are not yet covered here; they
+    // hit the wallet-auto-sign flow the same way as register. Lifecycle
+    // flags (deactivate / reactivate) do not exist on the contract.
 });
 
 // ── Catalogue URI handoff ─────────────────────────────────────────────────────
@@ -97,7 +96,7 @@ test.describe('/operators — catalogue URI handoff (devnet)', () => {
         );
 
         // Form renders (wallet connected)
-        await page.getByPlaceholder('e.g. Tasty Burger').waitFor({ timeout: 30000 });
+        await page.getByPlaceholder('e.g. your service name').waitFor({ timeout: 30000 });
         // Catalogue URI field is pre-filled from the URL param. `hasText`
         // matches DOM textContent, not input value, so we must check the
         // value directly. The input value is the same string we passed via

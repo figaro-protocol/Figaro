@@ -21,11 +21,12 @@ export default function CataloguePage() {
                     Define your service items, publish them to IPFS, then link the URI in your operator profile.
                 </p>
 
-                {/* Two-step flow indicator. Catalogue first, then Register —
-                    the catalogue's IPFS URI feeds back into the operator
-                    profile form via ?catalogueURI=<uri> on registration.
-                    Reversing this order silently dead-ends already-registered
-                    operators (no on-chain `updateProfile` post-web2-strip). */}
+                {/* Two-step flow indicator. Catalogue first, then Profile —
+                    the catalogue's IPFS URI feeds into the operator profile
+                    form via ?catalogueURI=<uri>. The profile step routes
+                    through `register` for first-time operators or
+                    `updateProfile` for already-registered operators (no
+                    deposit movement on the update path). */}
                 <div className="flex items-center gap-3 mb-16 max-w-xs">
                     <div className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-ink-heading text-paper text-xs flex items-center justify-center font-bold flex-shrink-0">
@@ -39,7 +40,7 @@ export default function CataloguePage() {
                             2
                         </span>
                         <a href="/operators" className="text-sm text-ink-faint hover:text-ink-heading whitespace-nowrap transition-colors">
-                            Register
+                            Profile
                         </a>
                     </div>
                 </div>

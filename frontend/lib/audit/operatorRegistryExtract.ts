@@ -1,8 +1,8 @@
 /**
  * Operator-registry extractor — surfaces the seller's
- * `OperatorRegistry.OperatorRegistered(operator, role, metadataURI)` event
- * (if any) so the audit bundle includes the seller's claimed off-chain
- * identity at registration time.
+ * `OperatorRegistry.OperatorRegistered(operator, metadataURI)` event (if any)
+ * so the audit bundle includes the seller's claimed off-chain identity at
+ * registration time.
  *
  * Note on kernel design: `src/FigaroCore.sol` does NOT enforce that
  * sellers be registered in the OperatorRegistry — the kernel "does not
@@ -22,27 +22,8 @@
 import type { Order } from "@/lib/core/store";
 import type { ExtractedDocument } from "./types";
 
-/**
- * `OperatorRole` enum mirror — kept as numeric constants so this module
- * has no import dependency on the on-chain ABI.
- *
- *   0 = None        (invalid; should never appear in events)
- *   1 = Merchant
- *   2 = Courier     (renamed from Driver in 2026-04-26 role-rename)
- *   3 = Both
- */
-export type OperatorRoleNumeric = 0 | 1 | 2 | 3;
-
-export const OPERATOR_ROLE_LABEL: Record<OperatorRoleNumeric, string> = {
-    0: "None",
-    1: "Merchant",
-    2: "Courier",
-    3: "Both (Merchant + Courier)",
-};
-
 export interface OperatorRegisteredEvent {
     operator: string;
-    role: OperatorRoleNumeric;
     metadataURI: string;
     blockNumber?: number;
     transactionHash?: string;
@@ -51,10 +32,6 @@ export interface OperatorRegisteredEvent {
 export interface OperatorRegistryDocument extends ExtractedDocument {
     /** Whether the seller has an `OperatorRegistered` event on chain. */
     registered: boolean;
-    /** Numeric role from the registration event, if registered. */
-    role?: OperatorRoleNumeric;
-    /** Human-readable role label. */
-    roleLabel?: string;
     /** IPFS / HTTPS URI pointing to the operator's metadata JSON, if registered. */
     metadataURI?: string;
     /** Block at which the seller registered. */
@@ -111,8 +88,6 @@ export function extractOperatorRegistry(
     return {
         ...base,
         registered: true,
-        role: latest.role,
-        roleLabel: OPERATOR_ROLE_LABEL[latest.role],
         metadataURI: latest.metadataURI,
         registeredAtBlock: latest.blockNumber,
         registrationTransactionHash: latest.transactionHash,

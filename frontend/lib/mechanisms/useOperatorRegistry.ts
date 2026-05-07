@@ -1,23 +1,19 @@
 /**
  * lib/mechanisms/useOperatorRegistry.ts
  *
- * Hook for writing to the OperatorRegistry contract.
- * Read state derived from indexer events (event-only contract).
+ * Hooks for writing to the OperatorRegistry contract — register, updateProfile,
+ * withdraw — and for reading event-derived operator state.
  *
- * Web2-strip (2026-04-26): updateProfile / deactivate / reactivate hooks
- * removed alongside their on-chain functions. To switch role or metadata,
- * an operator withdraws and re-registers — the dedup guard is cleared on
- * withdraw. Lifecycle / availability is signal-by-availability off-chain,
- * not registry state.
+ * The on-chain surface carries no role taxonomy: a seller's role is whatever
+ * their catalogue (referenced by `metadataURI`) declares through its archetype.
+ * Lifecycle / availability is signal-by-availability off-chain, not registry
+ * state.
  */
 import { useState, useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
 import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "./contracts";
 import { getOperatorState, getOperatorMetadataURI } from "@/lib/core/indexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-
-// Mirror the Solidity enum: None=0, Merchant=1, Courier=2, Both=3
-export const OperatorRole = { None: 0, Merchant: 1, Courier: 2, Both: 3 } as const;
 
 const registry = getOperatorRegistry();
 
@@ -67,13 +63,13 @@ export function parseAgentServices(metadata: Record<string, unknown>): AgentServ
 
 // ── Read hooks (indexer-backed) ──────────────────────────────────────────────
 
-/** [role, metadataURI, registeredBlock] — derived from OperatorRegistered events. */
-export type OperatorProfileData = readonly [number, string, bigint | null];
+/** [metadataURI, registeredBlock] — derived from operator-registry events. */
+export type OperatorProfileData = readonly [string, bigint | null];
 
 /**
- * Returns the operator's role and metadataURI from indexed events.
- * Returns undefined if the address has not registered (or has registered
- * and then withdrawn — withdraw clears the dedup guard).
+ * Returns the operator's current metadataURI and registration block from
+ * indexed events. Returns undefined if the address has never registered or
+ * has withdrawn since (withdraw clears the dedup guard).
  */
 export function useOperatorProfile(address: `0x${string}` | undefined) {
     const client = usePublicClient();
@@ -94,7 +90,7 @@ export function useOperatorProfile(address: `0x${string}` | undefined) {
         getOperatorState(client, chainId, address).then((state) => {
             if (cancelled) return;
             if (state) {
-                setData([state.role, state.metadataURI, state.registeredBlock] as const);
+                setData([state.metadataURI, state.registeredBlock] as const);
             } else {
                 setData(undefined);
             }
@@ -115,18 +111,35 @@ export function useRegisterOperator() {
     const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-    async function register(role: number, metadataURI: string, value?: bigint) {
+    async function register(metadataURI: string, value?: bigint) {
         if (!registry) return;
         return writeContractAsync({
             address: registry,
             abi: OPERATOR_REGISTRY_ABI,
             functionName: "register",
-            args: [role, metadataURI],
+            args: [metadataURI],
             value: value ?? 0n,
         });
     }
 
     return { register, isPending, isConfirming, isSuccess, error, hash };
+}
+
+export function useUpdateProfile() {
+    const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
+    const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+    async function updateProfile(metadataURI: string) {
+        if (!registry) return;
+        return writeContractAsync({
+            address: registry,
+            abi: OPERATOR_REGISTRY_ABI,
+            functionName: "updateProfile",
+            args: [metadataURI],
+        });
+    }
+
+    return { updateProfile, isPending, isConfirming, isSuccess, error, hash };
 }
 
 export function useWithdrawDeposit() {

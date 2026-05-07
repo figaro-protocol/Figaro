@@ -21,8 +21,10 @@ import { TokenAddressInput, isValidAddress } from "./TokenAddressInput";
  *
  * On success, hands off to `/operators?catalogueURI=<ipfs-uri>` — the
  * operator-onboarding form picks the URI up via `useSearchParams` and
- * inlines it into the profile JSON pinned and registered on-chain via
- * `OperatorRegistry.register(role, profileURI, deposit)`.
+ * inlines it into the profile JSON. The same form routes through
+ * `OperatorRegistry.register(profileURI)` for first-time operators or
+ * `OperatorRegistry.updateProfile(profileURI)` for already-registered
+ * operators; the deposit is only consumed on first registration.
  *
  * Required `SellerCatalogueMetadata` fields (per
  * `sellerCatalogueMetadataParser.parseSellerCatalogueDocument`):
@@ -375,7 +377,7 @@ function PublishedPanel({ uri, onReset }: { uri: string; onReset: () => void }) 
                         href={`/operators?catalogueURI=${encodeURIComponent(uri)}`}
                         className="px-4 py-2 text-sm bg-black text-white rounded hover:bg-gray-800 transition-colors"
                     >
-                        Continue to register &rarr;
+                        Continue to your profile &rarr;
                     </a>
                     <button
                         onClick={onReset}

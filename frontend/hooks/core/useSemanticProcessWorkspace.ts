@@ -11,7 +11,7 @@ import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { useDeliveryLifecycleActions } from "@/lib/mechanisms/useDeliveryLifecycle";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { useGhgDisclosureActions } from "@/lib/mechanisms/useGHGDisclosure";
-import { useRegisterOperator, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/mechanisms/useOperatorRegistry";
+import { useRegisterOperator, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/mechanisms/useOperatorRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { buildResolutionCommitments } from "@/lib/console/commitmentStore";
@@ -52,6 +52,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const deliveryLifecycleActions = useDeliveryLifecycleActions();
     const dutchAuctionActions = useDutchAuctionActions();
     const registerOperator = useRegisterOperator();
+    const updateOperatorProfile = useUpdateProfile();
     const withdrawOperatorDeposit = useWithdrawDeposit();
     const registrationDeposit = useRegistrationDeposit();
     const ghgDisclosureActions = useGhgDisclosureActions();
@@ -71,12 +72,14 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         || deliveryLifecycleActions.isPending
         || dutchAuctionActions.isPending
         || registerOperator.isPending
+        || updateOperatorProfile.isPending
         || withdrawOperatorDeposit.isPending
         || ghgDisclosureActions.isPending;
     const isActionConfirming = isConfirming
         || deliveryLifecycleActions.isConfirming
         || dutchAuctionActions.isConfirming
         || registerOperator.isConfirming
+        || updateOperatorProfile.isConfirming
         || withdrawOperatorDeposit.isConfirming
         || ghgDisclosureActions.isConfirming;
     const isActionSuccess = isSuccess
@@ -84,6 +87,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         || deliveryLifecycleActions.isSuccess
         || dutchAuctionActions.isSuccess
         || registerOperator.isSuccess
+        || updateOperatorProfile.isSuccess
         || withdrawOperatorDeposit.isSuccess
         || ghgDisclosureActions.isSuccess;
 
@@ -176,7 +180,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
             await executeTransactionCapabilityAction(action, {
                 waitForTransactionConfirmation,
                 resolveProcess: resolveActiveProcess,
-                registerOperator: (operatorRole, metadataURI) => registerOperator.register(operatorRole, metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
+                registerOperator: (metadataURI) => registerOperator.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
+                updateOperatorProfile: (metadataURI) => updateOperatorProfile.updateProfile(metadataURI),
                 withdrawOperatorDeposit: () => withdrawOperatorDeposit.withdraw(),
                 submitDisclosureCommitment: ghgDisclosureActions.submitCommitmentForOrder,
                 submitDisclosureInventory: ghgDisclosureActions.submitActualForOrder,

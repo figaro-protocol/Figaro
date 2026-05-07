@@ -18,12 +18,11 @@ test.describe('/operators/catalogue — page structure', () => {
         await expect(page.getByRole('heading', { name: 'Build your catalogue.' })).toBeVisible({ timeout: 15000 });
         await expect(page.getByText('Operator Registry').first()).toBeVisible();
         await expect(page.getByText('Define your service items, publish them to IPFS')).toBeVisible();
-        // Step indicator: catalogue (active) → register (link to /operators).
-        // Inverted from the pre-2026-05 ordering, which dead-ended already-
-        // registered operators because there is no on-chain `updateProfile`.
-        // `exact: true` disambiguates from the brand-logo link in the header,
-        // whose accessible name is "Figaroregistered trademark".
-        await expect(page.getByRole('link', { name: 'Register', exact: true })).toHaveAttribute('href', '/operators');
+        // Step indicator: catalogue (active) → profile (link to /operators).
+        // The /operators form routes through register or updateProfile based
+        // on whether the wallet has registered before.
+        // `exact: true` disambiguates from the brand-logo link in the header.
+        await expect(page.getByRole('link', { name: 'Profile', exact: true })).toHaveAttribute('href', '/operators');
         await expect(page.getByText('Catalogue', { exact: true }).first()).toBeVisible();
     });
 });

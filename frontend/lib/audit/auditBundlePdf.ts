@@ -27,7 +27,6 @@ import type {
 } from "@/lib/audit/dutchAuctionExtract";
 import type {
     OperatorRegisteredEvent,
-    OperatorRoleNumeric,
 } from "@/lib/audit/operatorRegistryExtract";
 import {
     projectFinancials,
@@ -111,11 +110,8 @@ function toAuctionClaimed(log: IndexedLog): DutchAuctionClaimedEvent | null {
 function toOperatorRegistered(log: IndexedLog): OperatorRegisteredEvent | null {
     const a = log.args;
     if (!a || typeof a.operator !== "string") return null;
-    const role = Number(a.role ?? 0);
-    if (role < 0 || role > 3) return null;
     return {
         operator: a.operator,
-        role: role as OperatorRoleNumeric,
         metadataURI: typeof a.metadataURI === "string" ? a.metadataURI : "",
         blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
         transactionHash: log.transactionHash,

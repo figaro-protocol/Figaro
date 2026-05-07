@@ -1,39 +1,46 @@
 import { CapabilityModel, MechanismModel } from "@/lib/semantic/models";
 
-const OPERATOR_ROLE_NONE = 0;
-const OPERATOR_ROLE_MERCHANT = 1;
-const OPERATOR_ROLE_COURIER = 2;
-const OPERATOR_ROLE_BOTH = 3;
-
-function deriveOperatorRole(roleKind: string): number {
-    if (roleKind === "courier") return OPERATOR_ROLE_COURIER;
-    if (roleKind === "merchant" || roleKind === "seller") {
-        return OPERATOR_ROLE_MERCHANT;
-    }
-    return OPERATOR_ROLE_BOTH;
-}
-
 export function deriveAssemblyCapabilities(
     assemblyId: string,
     roleKind: string | undefined,
     mechanisms: MechanismModel[],
-    /** [role, metadataURI, registeredBlock] from `useOperatorProfile`. */
-    operatorProfile?: readonly [number, string, ...unknown[]],
+    /** [metadataURI, registeredBlock] from `useOperatorProfile`; undefined when
+     *  the wallet has never registered (or has withdrawn since). */
+    operatorProfile?: readonly [string, ...unknown[]],
 ): CapabilityModel[] {
     if (!roleKind) return [];
 
     const operatorRegistryMechanism = mechanisms.find((mechanism) => mechanism.id === "operator-registration");
     if (!operatorRegistryMechanism) return [];
 
-    const currentRole = operatorProfile?.[0] ?? OPERATOR_ROLE_NONE;
+    const isRegistered = !!operatorProfile;
 
-    // Web2-strip (2026-04-26): when an operator is already registered, the
-    // only on-chain action available is `withdraw` (which clears the dedup
-    // guard and frees the address to re-register with new role/metadata).
-    // Profile-edit / deactivate / reactivate were removed — they were web2
-    // CRUD lifecycle on top of an event-sourced primitive.
-    if (currentRole !== OPERATOR_ROLE_NONE) {
+    // A registered operator can either replace its metadataURI in place
+    // (updateProfile, no deposit/lock impact) or withdraw the deposit and
+    // clear the registry binding for the address.
+    if (isRegistered) {
         return [
+            {
+                id: `${assemblyId}:${roleKind}:update-operator-profile`,
+                label: "Update Operator Profile",
+                actionKind: "update-operator-profile",
+                action: {
+                    executionType: "transaction",
+                    kind: "update-operator-profile",
+                },
+                mechanismId: operatorRegistryMechanism.id,
+                scopeType: "assembly",
+                scopeId: assemblyId,
+                preconditions: ["registered-operator-wallet"],
+                riskLabel: "standard",
+                writeTarget: "OperatorRegistry.updateProfile",
+                uiPriority: 95,
+                source: {
+                    truthClass: "protocol-derived",
+                    sourceLabel: "connected operator is registered; updateProfile replaces the metadataURI in place",
+                    referenceId: `${assemblyId}:${roleKind}:update-operator-profile`,
+                },
+            },
             {
                 id: `${assemblyId}:${roleKind}:withdraw-operator-deposit`,
                 label: "Withdraw Operator Deposit",
@@ -41,7 +48,6 @@ export function deriveAssemblyCapabilities(
                 action: {
                     executionType: "transaction",
                     kind: "withdraw-operator-deposit",
-                    operatorRole: currentRole,
                 },
                 mechanismId: operatorRegistryMechanism.id,
                 scopeType: "assembly",
@@ -52,7 +58,7 @@ export function deriveAssemblyCapabilities(
                 uiPriority: 90,
                 source: {
                     truthClass: "protocol-derived",
-                    sourceLabel: "connected operator is registered; withdraw frees the address to re-register",
+                    sourceLabel: "connected operator is registered; withdraw clears the binding after the lock period",
                     referenceId: `${assemblyId}:${roleKind}:withdraw-operator-deposit`,
                 },
             },
@@ -67,7 +73,6 @@ export function deriveAssemblyCapabilities(
             action: {
                 executionType: "transaction",
                 kind: "register-operator",
-                operatorRole: deriveOperatorRole(roleKind),
             },
             mechanismId: operatorRegistryMechanism.id,
             scopeType: "assembly",

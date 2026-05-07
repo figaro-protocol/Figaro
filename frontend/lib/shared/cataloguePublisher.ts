@@ -5,13 +5,11 @@
  * Serializes a SellerCatalogueMetadata document → pins to IPFS → returns
  * the IPFS URI. The URI is then referenced from the operator's profile
  * document (as `catalogueURI`) which itself is pinned and registered
- * on-chain via `OperatorRegistry.register(role, profileURI, deposit)`.
- *
- * Note: post-2026-04-26 web2-strip, `OperatorRegistry` no longer exposes
- * an `updateProfile` path. To replace an existing on-chain `metadataURI`,
- * an operator must `withdraw()` their deposit (subject to the deposit
- * lock period) and re-register with the new URI. This module handles the
- * off-chain pin only; the caller orchestrates the registration.
+ * on-chain via `OperatorRegistry.register(profileURI)` for first-time
+ * operators or `OperatorRegistry.updateProfile(profileURI)` for already-
+ * registered operators (the latter does not consume the deposit or
+ * restart the lock period). This module handles the off-chain pin only;
+ * the caller orchestrates the on-chain call.
  */
 
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
