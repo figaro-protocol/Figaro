@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     ZERO_ADDRESS,
     addressIntegrity,
+    classifyTokenError,
     isValidAddress,
 } from "@/components/operators/TokenAddressInput";
 
@@ -53,5 +54,56 @@ describe("isValidAddress", () => {
         expect(isValidAddress("")).toBe(false);
         expect(isValidAddress("0x1234")).toBe(false);
         expect(isValidAddress("nope")).toBe(false);
+    });
+});
+
+describe("classifyTokenError", () => {
+    it("returns null for null / undefined", () => {
+        expect(classifyTokenError(null)).toBeNull();
+        expect(classifyTokenError(undefined)).toBeNull();
+    });
+
+    it("returns 'no-rpc' for HttpRequestError class", () => {
+        const err = Object.assign(new Error("HTTP request failed"), { name: "HttpRequestError" });
+        expect(classifyTokenError(err)).toBe("no-rpc");
+    });
+
+    it("returns 'no-rpc' for connection-refused messages", () => {
+        const err = new Error("fetch failed: connect ECONNREFUSED 127.0.0.1:8545");
+        expect(classifyTokenError(err)).toBe("no-rpc");
+    });
+
+    it("returns 'no-rpc' for 'failed to fetch' (browser network failure)", () => {
+        const err = new TypeError("Failed to fetch");
+        expect(classifyTokenError(err)).toBe("no-rpc");
+    });
+
+    it("returns 'no-rpc' for 'chain not configured'", () => {
+        const err = Object.assign(new Error("Chain not configured for id 31337"), {
+            name: "ChainNotConfiguredError",
+        });
+        expect(classifyTokenError(err)).toBe("no-rpc");
+    });
+
+    it("classifies via the cause field too (wrapped wagmi errors)", () => {
+        const cause = Object.assign(new Error("Connection refused"), { name: "HttpRequestError" });
+        const wrapped = Object.assign(new Error("Contract call failed"), {
+            name: "ContractFunctionExecutionError",
+            cause,
+        });
+        expect(classifyTokenError(wrapped)).toBe("no-rpc");
+    });
+
+    it("returns 'no-symbol' for execution-revert / no-data errors", () => {
+        const err = Object.assign(
+            new Error("returned no data ('0x'). The contract does not have the function 'symbol'."),
+            { name: "ContractFunctionZeroDataError" },
+        );
+        expect(classifyTokenError(err)).toBe("no-symbol");
+    });
+
+    it("returns 'no-symbol' for unknown errors that aren't transport-flavored", () => {
+        const err = new Error("Something went wrong");
+        expect(classifyTokenError(err)).toBe("no-symbol");
     });
 });

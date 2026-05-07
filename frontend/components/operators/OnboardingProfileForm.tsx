@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/Input";
 import {
     TokenAddressInput,
     addressIntegrity,
+    classifyTokenError,
     isValidAddress,
     useTokenSymbol,
 } from "@/components/operators/TokenAddressInput";
@@ -691,7 +692,8 @@ function AcceptedTokenRow({ value, onChange, onRemove, hasError = false, isDupli
     const formatOk = integrity === "lowercase" || integrity === "checksum-valid";
     // Only fetch symbol() once the address passes local checks AND
     // isn't a flagged duplicate — saves an RPC call per bad row.
-    const { data: resolvedSymbol, isLoading } = useTokenSymbol(formatOk && !isDuplicate ? value.address : "");
+    const { data: resolvedSymbol, isLoading, error } = useTokenSymbol(formatOk && !isDuplicate ? value.address : "");
+    const errorKind = classifyTokenError(error);
 
     // When the on-chain symbol resolves, persist it. Guard avoids loops.
     useEffect(() => {
@@ -710,11 +712,19 @@ function AcceptedTokenRow({ value, onChange, onRemove, hasError = false, isDupli
     } else if (isDuplicate) {
         symbolHint = <span className="text-red-600">You already added this token. Remove one of the duplicate rows.</span>;
     } else if (formatOk) {
-        symbolHint = isLoading
-            ? "Reading symbol from contract…"
-            : resolvedSymbol
-                ? <>Symbol: <span className="font-semibold text-ink-heading">{resolvedSymbol}</span></>
-                : <span className="text-red-600">Address is not an ERC-20 (no <code>symbol()</code>). Remove or correct.</span>;
+        if (isLoading) {
+            symbolHint = "Reading symbol from contract…";
+        } else if (resolvedSymbol) {
+            symbolHint = <>Symbol: <span className="font-semibold text-ink-heading">{resolvedSymbol}</span></>;
+        } else if (errorKind === "no-rpc") {
+            symbolHint = (
+                <span className="text-red-600">
+                    Can&apos;t verify — chain RPC unreachable. Make sure your wallet is connected to a chain that&apos;s running (devnet: <code>./deploy-local.sh</code>).
+                </span>
+            );
+        } else {
+            symbolHint = <span className="text-red-600">Address is not an ERC-20 (no <code>symbol()</code>) on the connected chain. Remove or correct.</span>;
+        }
     }
 
     const rowHasError =
