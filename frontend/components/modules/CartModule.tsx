@@ -103,19 +103,19 @@ export function CartModule({ moduleId, context }: ModuleProps) {
     // when the catalogue lookup hasn't resolved yet (or the merchant has no
     // declared modes — surface everything rather than block the buyer).
     const cataloguesResult = useRegisteredCatalogues({});
-    const restaurants = cataloguesResult?.restaurants ?? [];
+    const catalogues = cataloguesResult?.catalogues ?? [];
     const merchantAddress = items[0]?.sellerAddress?.toLowerCase();
     const supportedModes = useMemo<FulfillmentMode[]>(() => {
         if (!merchantAddress) return ALL_FULFILMENT_MODES;
-        const merchant = restaurants.find(
-            (r) => r.address.toLowerCase() === merchantAddress,
+        const merchant = catalogues.find(
+            (c) => c.address.toLowerCase() === merchantAddress,
         );
         const declared = merchant?.fulfillmentModes ?? [];
         const canonical = declared.filter((m): m is FulfillmentMode =>
             (ALL_FULFILMENT_MODES as readonly string[]).includes(m),
         );
         return canonical.length > 0 ? canonical : ALL_FULFILMENT_MODES;
-    }, [merchantAddress, restaurants]);
+    }, [merchantAddress, catalogues]);
 
     // If the cart's persisted fulfilment mode isn't supported by the
     // selected merchant, snap to the first supported mode so the manifest

@@ -21,11 +21,11 @@ function isSafeImageURI(uri: string): boolean {
 }
 
 export interface DiscoveryResult {
-    restaurants: SellerCatalogue[];
+    catalogues: SellerCatalogue[];
     source: { ipfs: number; mock: number };
 }
 
-function profileToRestaurant(
+function profileToCatalogue(
     profile: OperatorProfileMetadata,
     catalogue: SellerCatalogueMetadata | undefined,
     index: number,
@@ -58,10 +58,10 @@ function profileToRestaurant(
 }
 
 /**
- * Fixture restaurants projected from the runtime-identity manifest.
+ * Fixture catalogues projected from the runtime-identity manifest.
  * Each fixture wallet has both a profile record (identity / branding /
  * accepted tokens) and a catalogue record (items only); we zip them by
- * subjectAddress to build the UI Restaurant shape.
+ * subjectAddress to build the UI catalogue shape.
  */
 const FIXTURE_CATALOGUES: SellerCatalogue[] = OPERATOR_PROFILE_METADATA_RECORDS.map(
     (profile, index) => {
@@ -70,18 +70,18 @@ const FIXTURE_CATALOGUES: SellerCatalogue[] = OPERATOR_PROFILE_METADATA_RECORDS.
                 (c) => c.subjectAddress.toLowerCase() === profile.subjectAddress!.toLowerCase()
             )
             : undefined;
-        return profileToRestaurant(profile, catalogue, index);
+        return profileToCatalogue(profile, catalogue, index);
     },
 );
 
 function mergeWithFixtures(registryCatalogues: SellerCatalogue[]): DiscoveryResult {
-    const ipfsAddresses = new Set(registryCatalogues.map((restaurant) => restaurant.address.toLowerCase()));
+    const ipfsAddresses = new Set(registryCatalogues.map((cat) => cat.address.toLowerCase()));
     const fixturesNotCovered = FIXTURE_CATALOGUES.filter(
-        (restaurant) => !ipfsAddresses.has(restaurant.address.toLowerCase()),
+        (cat) => !ipfsAddresses.has(cat.address.toLowerCase()),
     );
 
     return {
-        restaurants: [...registryCatalogues, ...fixturesNotCovered],
+        catalogues: [...registryCatalogues, ...fixturesNotCovered],
         source: { ipfs: registryCatalogues.length, mock: fixturesNotCovered.length },
     };
 }
@@ -151,13 +151,13 @@ async function fetchOperatorAsCatalogue(
         }
         : undefined;
 
-    return profileToRestaurant(stamped, catalogue, index);
+    return profileToCatalogue(stamped, catalogue, index);
 }
 
 export interface DiscoveryService {
     isRegistryConfigured(): boolean;
-    listFallbackRestaurants(): DiscoveryResult;
-    listRestaurants(client: PublicClient, chainId: number): Promise<DiscoveryResult>;
+    listFallbackCatalogues(): DiscoveryResult;
+    listCatalogues(client: PublicClient, chainId: number): Promise<DiscoveryResult>;
 }
 
 export interface DiscoveryServiceOptions {
@@ -173,19 +173,19 @@ export function createDiscoveryService(
         isRegistryConfigured() {
             return !!MECHANISM_CONTRACTS.operatorRegistry && MECHANISM_CONTRACTS.operatorRegistry.length === 42;
         },
-        listFallbackRestaurants() {
+        listFallbackCatalogues() {
             return mergeWithFixtures([]);
         },
-        async listRestaurants(client: PublicClient, chainId: number) {
+        async listCatalogues(client: PublicClient, chainId: number) {
             if (!service.isRegistryConfigured()) {
-                return service.listFallbackRestaurants();
+                return service.listFallbackCatalogues();
             }
 
             try {
                 const operators = await getActiveOperators(client, chainId);
 
                 if (operators.length === 0) {
-                    return service.listFallbackRestaurants();
+                    return service.listFallbackCatalogues();
                 }
 
                 // The catalogue's items signal what business the seller
@@ -209,10 +209,10 @@ export function createDiscoveryService(
                     }),
                 );
 
-                const restaurants = results.filter((r): r is SellerCatalogue => r !== null);
-                return mergeWithFixtures(restaurants);
+                const catalogues = results.filter((r): r is SellerCatalogue => r !== null);
+                return mergeWithFixtures(catalogues);
             } catch {
-                return service.listFallbackRestaurants();
+                return service.listFallbackCatalogues();
             }
         },
     };
@@ -222,4 +222,4 @@ export function createDiscoveryService(
 
 export const DEFAULT_DISCOVERY_SERVICE: DiscoveryService = createDiscoveryService();
 
-export { profileToRestaurant, mergeWithFixtures };
+export { profileToCatalogue, mergeWithFixtures };

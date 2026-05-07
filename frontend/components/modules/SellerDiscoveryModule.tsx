@@ -98,7 +98,7 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
     const { discovery } = context.services;
     const accentTone = context.skinBundle?.branding.branding.accentColor;
     const labelStyle = accentTone ? { color: accentTone } : undefined;
-    const { restaurants: allRestaurants, isLoading: cataloguesLoading } = useRegisteredCatalogues({
+    const { catalogues: allRestaurants, isLoading: cataloguesLoading } = useRegisteredCatalogues({
         service: discovery,
     });
 

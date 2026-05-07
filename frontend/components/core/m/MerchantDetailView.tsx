@@ -63,7 +63,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
 
     const router = useRouter();
     const chainId = useChainId();
-    const { restaurants, isLoading: cataloguesLoading } = useRegisteredCatalogues();
+    const { catalogues: restaurants, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
     const restaurant = useMemo(
         () => restaurants.find((r) => r.address.toLowerCase() === merchantAddressLower) ?? null,

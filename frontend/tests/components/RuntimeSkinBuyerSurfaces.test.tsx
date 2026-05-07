@@ -171,7 +171,7 @@ describe('runtime skin-aware buyer surfaces', () => {
         const removeItem = vi.fn();
 
         useRegisteredCataloguesMock.mockReturnValue({
-            restaurants: [restaurant],
+            catalogues: [restaurant],
             isLoading: false,
         });
         useCartStoreMock.mockReturnValue({

@@ -279,28 +279,28 @@ describe("runtime service hook injection", () => {
     });
 
     it("uses an injected discovery service instead of the default provider", async () => {
-        const listFallbackRestaurants = vi.fn().mockReturnValue({
-            restaurants: [fallbackRestaurant],
+        const listFallbackCatalogues = vi.fn().mockReturnValue({
+            catalogues: [fallbackRestaurant],
             source: { ipfs: 0, mock: 1 },
         });
         const isRegistryConfigured = vi.fn().mockReturnValue(true);
-        const listRestaurants = vi.fn().mockResolvedValue({
-            restaurants: [injectedRestaurant],
+        const listCatalogues = vi.fn().mockResolvedValue({
+            catalogues: [injectedRestaurant],
             source: { ipfs: 1, mock: 0 },
         });
         const service = {
-            listFallbackRestaurants,
+            listFallbackCatalogues,
             isRegistryConfigured,
-            listRestaurants,
+            listCatalogues,
         } as unknown as DiscoveryService;
 
         const { result } = renderHook(() => useRegisteredCatalogues({ service }));
 
         await waitFor(() => {
-            expect(result.current.restaurants).toEqual([injectedRestaurant]);
+            expect(result.current.catalogues).toEqual([injectedRestaurant]);
         });
 
-        expect(listRestaurants).toHaveBeenCalledWith(publicClient, 31337);
+        expect(listCatalogues).toHaveBeenCalledWith(publicClient, 31337);
         expect(defaultListRestaurantsMock).not.toHaveBeenCalled();
     });
 

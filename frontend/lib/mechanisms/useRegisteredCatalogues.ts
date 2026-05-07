@@ -1,12 +1,14 @@
 /**
  * lib/mechanisms/useRegisteredCatalogues.ts
  *
- * Hook that discovers all registered merchants from OperatorRegistry events
- * (via the indexer), fetches their catalogues from IPFS, and converts them
- * to the marketplace SellerCatalogue type for the buyer-side discovery module.
+ * Hook that discovers all registered operators from OperatorRegistry
+ * events (via the indexer), fetches their catalogues from IPFS, and
+ * projects them to the buyer-side `SellerCatalogue` UI type for the
+ * discovery module. Plural-of-wallets — each wallet has at most one
+ * catalogue.
  *
- * Falls back to MOCK_RESTAURANTS when no registry is available (mock mode)
- * or when no merchants are registered.
+ * Falls back to bundled fixture data when no registry is configured
+ * or when no operators are registered.
  */
 "use client";
 
@@ -19,11 +21,11 @@ import {
 } from "@/lib/shared/discoveryService";
 
 export interface UseRegisteredCataloguesResult {
-    /** Merged restaurant list: IPFS-fetched catalogues + mock fallbacks */
-    restaurants: SellerCatalogue[];
+    /** Merged catalogue list: IPFS-fetched catalogues + bundled fixture fallbacks */
+    catalogues: SellerCatalogue[];
     /** Whether the registry is being queried */
     isLoading: boolean;
-    /** How many restaurants came from IPFS vs mock data */
+    /** How many catalogues came from IPFS vs bundled fixture data */
     source: { ipfs: number; mock: number };
 }
 
@@ -36,9 +38,9 @@ export function useRegisteredCatalogues(
 ): UseRegisteredCataloguesResult {
     const service = options.service ?? DEFAULT_DISCOVERY_SERVICE;
     const [discoveryResult, setDiscoveryResult] = useState<UseRegisteredCataloguesResult>({
-        restaurants: service.listFallbackRestaurants().restaurants,
+        catalogues: service.listFallbackCatalogues().catalogues,
         isLoading: false,
-        source: service.listFallbackRestaurants().source,
+        source: service.listFallbackCatalogues().source,
     });
     const [isLoading, setIsLoading] = useState(false);
     const client = usePublicClient();
@@ -47,7 +49,7 @@ export function useRegisteredCatalogues(
     useEffect(() => {
         if (!client || !service.isRegistryConfigured()) {
             setDiscoveryResult({
-                ...service.listFallbackRestaurants(),
+                ...service.listFallbackCatalogues(),
                 isLoading: false,
             });
             return;
@@ -56,7 +58,7 @@ export function useRegisteredCatalogues(
         let cancelled = false;
         setIsLoading(true);
 
-        service.listRestaurants(client, chainId)
+        service.listCatalogues(client, chainId)
             .then((result) => {
                 if (cancelled) return;
                 setDiscoveryResult({
@@ -68,7 +70,7 @@ export function useRegisteredCatalogues(
             .catch(() => {
                 if (!cancelled) {
                     setDiscoveryResult({
-                        ...service.listFallbackRestaurants(),
+                        ...service.listFallbackCatalogues(),
                         isLoading: false,
                     });
                     setIsLoading(false);
@@ -81,7 +83,7 @@ export function useRegisteredCatalogues(
     }, [client, chainId, service]);
 
     return {
-        restaurants: discoveryResult.restaurants,
+        catalogues: discoveryResult.catalogues,
         isLoading,
         source: discoveryResult.source,
     };

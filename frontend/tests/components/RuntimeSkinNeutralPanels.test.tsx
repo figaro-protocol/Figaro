@@ -134,8 +134,8 @@ function createAuctionProps(overrides?: Record<string, unknown>) {
                 },
                 discovery: {
                     isRegistryConfigured: () => true,
-                    listFallbackRestaurants: () => ({ restaurants: [], source: { ipfs: 0, mock: 1 } }),
-                    listRestaurants: async () => ({ restaurants: [], source: { ipfs: 0, mock: 1 } }),
+                    listFallbackCatalogues: () => ({ catalogues: [], source: { ipfs: 0, mock: 1 } }),
+                    listCatalogues: async () => ({ catalogues: [], source: { ipfs: 0, mock: 1 } }),
                 },
                 evidenceTransport: {
                     pinJSON: vi.fn(),
@@ -327,8 +327,8 @@ function createProcessProps(overrides?: Record<string, unknown>) {
                 },
                 discovery: {
                     isRegistryConfigured: () => true,
-                    listFallbackRestaurants: () => ({ restaurants: [], source: { ipfs: 0, mock: 1 } }),
-                    listRestaurants: async () => ({ restaurants: [], source: { ipfs: 0, mock: 1 } }),
+                    listFallbackCatalogues: () => ({ catalogues: [], source: { ipfs: 0, mock: 1 } }),
+                    listCatalogues: async () => ({ catalogues: [], source: { ipfs: 0, mock: 1 } }),
                 },
                 evidenceTransport: {
                     pinJSON: vi.fn(),

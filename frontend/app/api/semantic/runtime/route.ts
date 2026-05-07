@@ -25,7 +25,7 @@ function normalizeAddress(address: string) {
 /**
  * GET /api/semantic/runtime?slug=local-commerce
  * GET /api/semantic/runtime?slug=local-commerce&networkTarget=local-anvil&bindingId=...
- * GET /api/semantic/runtime?slug=local-commerce&subjectAddress=0x...&roleKind=restaurant
+ * GET /api/semantic/runtime?slug=local-commerce&subjectAddress=0x...&roleKind=merchant
  *
  * Returns the same resolved runtime context used by the live assembly shell,
  * including bound subjects, provider-key bindings, selected role context, visible
