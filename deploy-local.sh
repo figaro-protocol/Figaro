@@ -37,9 +37,14 @@ echo "   rpc=$RPC_URL"
 echo ""
 
 echo "📝 Running forge script..."
+# --slow: wait for each transaction's receipt before sending the
+# next, instead of pipelining all transactions at once. Without it,
+# forge's nonce tracking races anvil's instamine + receipt-polling
+# loop and a single missed nonce parks the rest in the queued pool,
+# hanging the whole deploy. Slightly slower; far more reliable.
 FORGE_OUT=$(forge script script/Deploy.s.sol:Deploy \
     --rpc-url "$RPC_URL" \
-    --broadcast --via-ir $VERIFY_FLAG 2>&1)
+    --broadcast --slow --via-ir $VERIFY_FLAG 2>&1)
 echo "$FORGE_OUT"
 
 # ── Parse addresses from console.log output (macOS-safe: no grep -P) ────────────
