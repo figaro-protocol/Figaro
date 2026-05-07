@@ -123,8 +123,14 @@ export function OperatorEditProfile() {
         }
     }, [updater.isSuccess, refetch, router]);
 
-    if (!mounted || !isConnected || registryLoading || !registryData) {
+    if (!mounted) {
         return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
+    }
+    if (!isConnected) {
+        return <Card className="p-8 text-sm text-ink-faint">Redirecting…</Card>;
+    }
+    if (registryLoading || !registryData) {
+        return <Card className="p-8 text-sm text-ink-faint">Reading registry…</Card>;
     }
 
     if (fetchError) {
@@ -138,8 +144,11 @@ export function OperatorEditProfile() {
         );
     }
 
-    if (!existingProfile || !seeded) {
-        return <Card className="p-8 text-sm text-ink-faint">Loading profile…</Card>;
+    if (!existingProfile) {
+        return <Card className="p-8 text-sm text-ink-faint">Fetching profile from IPFS…</Card>;
+    }
+    if (!seeded) {
+        return <Card className="p-8 text-sm text-ink-faint">Setting up editor…</Card>;
     }
 
     async function handleSave(draft: OnboardingProfileDraft): Promise<void> {

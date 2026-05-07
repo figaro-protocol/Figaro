@@ -171,7 +171,7 @@ function ManageList({
         { label: "Profile", description: "Identity, tokens, location.", href: "/operators/edit/profile" },
         { label: "Catalogue", description: "Items.", href: "/operators/edit/catalogue" },
         { label: "Assemblies", description: "Bindings.", href: "/operators/edit/assemblies" },
-        { label: "Agents", description: "Service endpoints.", href: null },
+        { label: "Agents", description: "Service endpoints.", href: "/operators/edit/agents" },
     ];
     return (
         <ul className="border-t border-default text-sm">

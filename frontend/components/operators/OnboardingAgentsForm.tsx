@@ -67,7 +67,34 @@ const FIELDS: FieldDef[] = [
     },
 ];
 
-export function OnboardingAgentsForm() {
+export interface OnboardingAgentsFormProps {
+    /**
+     * Edit-mode override. When provided, the submit handler calls
+     * `onSave(services)` instead of routing to the wizard's done
+     * step. The caller re-pins the operator profile with the
+     * updated `services` field and dispatches `updateProfile`.
+     */
+    onSave?: (services: OperatorAgentServices | undefined) => Promise<void>;
+    /** Submit-button label override. Defaults to "Next →". */
+    submitLabel?: string;
+    /** Back-link href override. Defaults to "/operators/onboard/assemblies". */
+    backHref?: string;
+    /** Back-link label override. Defaults to "← Back". */
+    backLabel?: string;
+    /** Whether the submit is currently in flight. Suppresses double-submission. */
+    submitInFlight?: boolean;
+    /** External error from `onSave`. */
+    externalError?: string | null;
+}
+
+export function OnboardingAgentsForm({
+    onSave,
+    submitLabel,
+    backHref,
+    backLabel,
+    submitInFlight = false,
+    externalError = null,
+}: OnboardingAgentsFormProps = {}) {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
@@ -100,6 +127,20 @@ export function OnboardingAgentsForm() {
 
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
+        if (onSave) {
+            // Build the same trim+filter logic as the persistence
+            // effect — only non-empty endpoints survive into the
+            // pinned profile, and an entirely empty set becomes
+            // `undefined` so the field gets stripped from the JSON.
+            const nonEmpty = Object.fromEntries(
+                Object.entries(services).filter(([, v]) => Boolean(v?.trim())),
+            ) as OperatorAgentServices;
+            const payload = Object.keys(nonEmpty).length > 0 ? nonEmpty : undefined;
+            onSave(payload).catch(() => {
+                // Caller surfaces failures via `externalError`.
+            });
+            return;
+        }
         router.push("/operators/onboard/done");
     }
 
@@ -152,14 +193,20 @@ export function OnboardingAgentsForm() {
                 ))}
             </div>
 
+            {externalError && (
+                <p className="text-sm text-red-600" role="alert">{externalError}</p>
+            )}
+
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href="/operators/onboard/assemblies"
+                    href={backHref ?? "/operators/onboard/assemblies"}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
-                    ← Back
+                    {backLabel ?? "← Back"}
                 </Link>
-                <Button type="submit">Next →</Button>
+                <Button type="submit" disabled={submitInFlight}>
+                    {submitInFlight ? "Saving…" : (submitLabel ?? "Next →")}
+                </Button>
             </div>
         </form>
     );

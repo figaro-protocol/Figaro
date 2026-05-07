@@ -1,19 +1,23 @@
 "use client";
 
 /**
- * OperatorEditAssemblies — re-uses the wizard's assemblies form to
- * edit the registered operator's `assemblyBindings`. Routes from
- * the `/operators` manage-list "Assemblies" row.
+ * OperatorEditAgents — re-uses the wizard's agents form to edit
+ * the registered operator's ERC-8004 service endpoints. Routes
+ * from the `/operators` manage-list "Agents" row.
  *
- * One-pin save sequence: re-pin the profile JSON with the updated
- * assemblyBindings array, dispatch OperatorRegistry.updateProfile.
+ * One-pin save sequence: re-pin profile JSON with updated
+ * `services` field, dispatch OperatorRegistry.updateProfile.
  *
- * Removing an assembly (un-checking it in the multi-select) is
- * handled by the form's existing toggle. Whole-assemblies clearing
- * isn't a separate destructive affordance — it's implicit when the
- * user un-checks every assembly. An operator with zero bindings is
- * still on-chain registered; the assemblies just don't surface to
- * assembly-scoped discovery.
+ * Per-endpoint clearing is handled in the form (blank a field to
+ * remove that endpoint). Whole-services clearing is implicit when
+ * every field is blank — the submit payload becomes `undefined`
+ * and the merge (with `clear: ["services"]`) strips the field
+ * entirely from the on-chain profile.
+ *
+ * Per `reference_erc8004_interop_only.md`: Figaro doesn't depend on
+ * ERC-8004; these endpoints are an OPTIONAL cross-protocol
+ * discoverability convention. Saving with no endpoints is a
+ * normal state for human-driven operators.
  */
 
 import { useEffect, useState } from "react";
@@ -26,11 +30,13 @@ import { useOnboardingState } from "@/lib/operators/onboardingState";
 import { useUpdateOperatorProfile } from "@/lib/operators/useUpdateOperatorProfile";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
-import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
-import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
-import { OnboardingAssembliesForm } from "@/components/operators/OnboardingAssembliesForm";
+import type {
+    OperatorAgentServices,
+    OperatorProfileMetadata,
+} from "@/lib/shared/operatorProfileMetadata";
+import { OnboardingAgentsForm } from "@/components/operators/OnboardingAgentsForm";
 
-export function OperatorEditAssemblies() {
+export function OperatorEditAgents() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
@@ -81,7 +87,7 @@ export function OperatorEditAssemblies() {
         if (seeded) return;
         if (!loaded) return;
         if (!existingProfile) return;
-        update({ assemblies: existingProfile.assemblyBindings ?? [] });
+        update({ services: existingProfile.services });
         setSeeded(true);
     }, [seeded, loaded, existingProfile, update]);
 
@@ -109,7 +115,7 @@ export function OperatorEditAssemblies() {
             <Card className="p-8 space-y-3">
                 <p className="text-sm text-red-600" role="alert">{fetchError}</p>
                 <p className="text-xs text-ink-faint">
-                    Couldn&apos;t load the existing profile, so editing the assemblies isn&apos;t safe — saving without the existing fields would clobber them.
+                    Couldn&apos;t load the existing profile, so editing the agent endpoints isn&apos;t safe — saving without the existing fields would clobber them.
                 </p>
             </Card>
         );
@@ -122,17 +128,19 @@ export function OperatorEditAssemblies() {
         return <Card className="p-8 text-sm text-ink-faint">Setting up editor…</Card>;
     }
 
-    async function handleSave(bindings: AssemblyBindingRecord[]): Promise<void> {
-        // Saving with an empty array is allowed — un-checking every
-        // assembly clears the bindings array on the profile (the
-        // operator stays registered, just with no assembly-scoped
-        // discovery). The hook's merge keeps the field present-but-
-        // empty rather than stripping it.
-        await updater.save({ assemblyBindings: bindings });
+    async function handleSave(services: OperatorAgentServices | undefined): Promise<void> {
+        if (services === undefined) {
+            // Caller blanked every field — clear the field entirely
+            // from the on-chain profile rather than leaving an empty
+            // object behind.
+            await updater.save({}, { clear: ["services"] });
+        } else {
+            await updater.save({ services });
+        }
     }
 
     return (
-        <OnboardingAssembliesForm
+        <OnboardingAgentsForm
             onSave={handleSave}
             submitLabel="Save changes"
             backHref="/operators"
