@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import Link from "next/link";
-import { OperatorOnboarding } from "@/components/operators/OperatorOnboarding";
+import { OperatorLanding } from "@/components/operators/OperatorLanding";
 
 export const metadata: Metadata = {
     title: "Operators — Figaro Protocol",
@@ -24,9 +23,7 @@ export default function OperatorsPage() {
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-2xl">
-                <Suspense>
-                    <OperatorOnboarding />
-                </Suspense>
+                <OperatorLanding />
             </section>
 
             <section className="container mx-auto px-6 pb-24 max-w-2xl border-t border-default pt-12">

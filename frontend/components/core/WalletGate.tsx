@@ -4,11 +4,11 @@
  * WalletGate — single wrapper for "if disconnected, show a Connect prompt;
  * otherwise render the gated children" pattern.
  *
- * Replaces the inline duplicates that were repeated in AssemblyRuntimeView,
- * AssemblyWorkspace, and OperatorOnboarding (each had its own
- * `if (!address) { hint + <ConnectButton /> } else { ... }` block). The
- * Web2 UI/UX audit (2026-04-26) flagged the duplication; this is the
- * one-place wrapper.
+ * Replaces the inline duplicates that used to be repeated in
+ * AssemblyRuntimeView, AssemblyWorkspace, and the legacy operator-
+ * onboarding form (each had its own `if (!address) { hint +
+ * <ConnectButton /> } else { ... }` block). The Web2 UI/UX audit
+ * (2026-04-26) flagged the duplication; this is the one-place wrapper.
  *
  * Usage:
  *

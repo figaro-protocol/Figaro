@@ -4,7 +4,7 @@
  * Wallet-scoped localStorage state for the multi-screen operator
  * onboarding flow at `/operators/onboard/*`. The state survives page
  * reloads (B7 — "items don't persist" was the user's complaint about the
- * old single-form CatalogueBuilder) and unblocks per-step authoring.
+ * old single-form catalogue builder) and unblocks per-step authoring.
  *
  * Storage key shape: `figaro:onboarding:0x<wallet-address>`.
  *

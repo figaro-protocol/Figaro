@@ -49,7 +49,7 @@ export function tryParseOperatorProfile(doc: unknown): OperatorProfileDocument |
 }
 
 /**
- * Parse catalogue items from a CatalogueBuilder document. Returns null if
+ * Parse catalogue items from a legacy operator-profile document. Returns null if
  * absent. Accepts items under either `items` (new shape) or `menu`
  * (legacy fat-profile shape) for backward compatibility while consumers
  * are migrating.
