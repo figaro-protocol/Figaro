@@ -167,27 +167,42 @@ function ManageList({
     deposit: bigint | undefined;
     onWithdrawn: () => void;
 }) {
-    const items = [
-        { label: "Profile", description: "Identity, tokens, location." },
-        { label: "Catalogue", description: "Items." },
-        { label: "Assemblies", description: "Bindings." },
-        { label: "Agents", description: "Service endpoints." },
+    const items: Array<{ label: string; description: string; href: string | null }> = [
+        { label: "Profile", description: "Identity, tokens, location.", href: "/operators/edit/profile" },
+        { label: "Catalogue", description: "Items.", href: null },
+        { label: "Assemblies", description: "Bindings.", href: null },
+        { label: "Agents", description: "Service endpoints.", href: null },
     ];
     return (
         <ul className="border-t border-default text-sm">
-            {items.map((item) => (
-                <li
-                    key={item.label}
-                    className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint"
-                    aria-disabled="true"
-                >
-                    <div>
-                        <span className="text-ink-body">{item.label}</span>
-                        <span className="ml-2 text-xs">{item.description}</span>
-                    </div>
-                    <span className="text-xs">Edit coming next</span>
-                </li>
-            ))}
+            {items.map((item) =>
+                item.href ? (
+                    <li key={item.label} className="border-b border-default">
+                        <Link
+                            href={item.href}
+                            className="flex items-baseline justify-between gap-4 py-3 text-ink-faint hover:bg-paper-200 -mx-3 px-3 transition-colors"
+                        >
+                            <div>
+                                <span className="text-ink-body">{item.label}</span>
+                                <span className="ml-2 text-xs">{item.description}</span>
+                            </div>
+                            <span className="text-xs underline">Edit →</span>
+                        </Link>
+                    </li>
+                ) : (
+                    <li
+                        key={item.label}
+                        className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint"
+                        aria-disabled="true"
+                    >
+                        <div>
+                            <span className="text-ink-body">{item.label}</span>
+                            <span className="ml-2 text-xs">{item.description}</span>
+                        </div>
+                        <span className="text-xs">Edit coming next</span>
+                    </li>
+                ),
+            )}
             <WithdrawRow deposit={deposit} onWithdrawn={onWithdrawn} />
         </ul>
     );

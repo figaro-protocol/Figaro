@@ -153,7 +153,40 @@ function toDraft(form: FormState): OnboardingProfileDraft {
     };
 }
 
-export function OnboardingProfileForm() {
+export interface OnboardingProfileFormProps {
+    /**
+     * When provided, the form's submit button calls this callback
+     * with the assembled draft instead of routing to the next wizard
+     * step. Used by the edit-profile page (`/operators/edit/profile`)
+     * to wire submit through `OperatorRegistry.updateProfile` rather
+     * than the wizard flow's `register`.
+     *
+     * Return a promise that rejects on failure; the form will surface
+     * the error inline via the existing summary alert. Return resolved
+     * to indicate success — the caller is responsible for any
+     * post-success navigation.
+     */
+    onSave?: (draft: OnboardingProfileDraft) => Promise<void>;
+    /** Submit-button label override. Defaults to "Next →". */
+    submitLabel?: string;
+    /** Back-link href override. Defaults to "/operators/onboard". */
+    backHref?: string;
+    /** Back-link label override. Defaults to "← Back". */
+    backLabel?: string;
+    /** Whether the submit is currently in flight. Suppresses double-submission. */
+    submitInFlight?: boolean;
+    /** External error from `onSave` to render alongside the form's own validation summary. */
+    externalError?: string | null;
+}
+
+export function OnboardingProfileForm({
+    onSave,
+    submitLabel,
+    backHref,
+    backLabel,
+    submitInFlight = false,
+    externalError = null,
+}: OnboardingProfileFormProps = {}) {
     const router = useRouter();
     const mounted = useMounted();
     const chainId = useChainId();
@@ -347,7 +380,16 @@ export function OnboardingProfileForm() {
         }
         setErrors(next);
         if (Object.keys(next).length === 0) {
-            router.push("/operators/onboard/catalogue");
+            if (onSave) {
+                // Edit mode: caller handles success/failure (re-pin + updateProfile).
+                // We don't navigate; the caller decides when and where to redirect.
+                onSave(toDraft(form)).catch(() => {
+                    // The caller should have surfaced the error via externalError;
+                    // we swallow here so React's unhandled-rejection logger stays quiet.
+                });
+            } else {
+                router.push("/operators/onboard/catalogue");
+            }
             return;
         }
         // Focus the first invalid field so the user sees the error
@@ -646,14 +688,19 @@ export function OnboardingProfileForm() {
                             : `Fix the ${errorCount} highlighted fields to continue.`}
                     </p>
                 )}
+                {externalError && (
+                    <p className="text-sm text-red-600" role="alert">{externalError}</p>
+                )}
                 <div className="flex items-center justify-between">
                     <Link
-                        href="/operators/onboard"
+                        href={backHref ?? "/operators/onboard"}
                         className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                     >
-                        ← Back
+                        {backLabel ?? "← Back"}
                     </Link>
-                    <Button type="submit">Next →</Button>
+                    <Button type="submit" disabled={submitInFlight}>
+                        {submitInFlight ? "Saving…" : (submitLabel ?? "Next →")}
+                    </Button>
                 </div>
             </div>
         </form>
