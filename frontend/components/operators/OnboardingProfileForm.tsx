@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -17,6 +17,9 @@ import type {
     OnboardingProfileDraft,
 } from "@/lib/operators/onboardingState";
 import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import { encodeGeohash } from "@/lib/handoff/manifest";
+import { geocodeAddress, getDeviceLocation } from "@/lib/shared/geocode";
+import { getCommonTokens, type CommonToken } from "@/lib/shared/commonTokens";
 
 /**
  * Step 2 of the onboarding wizard. Collects the stable identity fields
@@ -26,10 +29,6 @@ import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata
  * State is wallet-scoped and persisted to localStorage on every change
  * (via `useOnboardingState`). On Next, validates the required fields,
  * stamps the draft into the onboarding state, and routes to step 3.
- *
- * Branding (CSS, hero image, accent colour, theme class) and assets
- * (image base URI) are deferred to a later iteration; this commit
- * handles the most-used branding field (`logoURI`) only.
  */
 
 interface FormState {
@@ -39,6 +38,7 @@ interface FormState {
     specialty: string;
     geohash: string;
     addressText: string;
+    geohashPrecision: 4 | 5 | 6 | 7 | 8;
     logoURI: string;
     acceptedTokens: Array<{ address: string; symbol: string }>;
     defaultTokenAddress: string;
@@ -51,9 +51,18 @@ const EMPTY_FORM: FormState = {
     specialty: "",
     geohash: "",
     addressText: "",
+    geohashPrecision: 6,
     logoURI: "",
     acceptedTokens: [{ address: "", symbol: "" }],
     defaultTokenAddress: "",
+};
+
+const PRECISION_LABELS: Record<FormState["geohashPrecision"], string> = {
+    4: "4 chars (~20 km region)",
+    5: "5 chars (~5 km)",
+    6: "6 chars (~1 km — default)",
+    7: "7 chars (~150 m)",
+    8: "8 chars (~38 m)",
 };
 
 function slugify(input: string): string {
@@ -67,13 +76,17 @@ function slugify(input: string): string {
 
 function fromDraft(draft: OnboardingProfileDraft | undefined): FormState {
     if (!draft) return EMPTY_FORM;
+    const storedGeohash = draft.location?.geohash ?? "";
     return {
         name: draft.name ?? "",
         slug: draft.slug ?? "",
         description: draft.description ?? "",
         specialty: draft.specialty ?? "",
-        geohash: draft.location?.geohash ?? "",
+        geohash: storedGeohash,
         addressText: draft.location?.addressText ?? "",
+        geohashPrecision: (storedGeohash.length >= 4 && storedGeohash.length <= 8)
+            ? (storedGeohash.length as FormState["geohashPrecision"])
+            : 6,
         logoURI: draft.branding?.logoURI ?? "",
         acceptedTokens: draft.acceptedTokens && draft.acceptedTokens.length > 0
             ? draft.acceptedTokens.map((t) => ({ address: t.address, symbol: t.symbol }))
@@ -114,6 +127,7 @@ function toDraft(form: FormState): OnboardingProfileDraft {
 export function OnboardingProfileForm() {
     const router = useRouter();
     const mounted = useMounted();
+    const chainId = useChainId();
     const { address, isConnected } = useAccount();
     const { openConnectModal } = useConnectModal();
     const { state, update } = useOnboardingState(address);
@@ -121,12 +135,31 @@ export function OnboardingProfileForm() {
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [hydrated, setHydrated] = useState(false);
+    const [slugTouched, setSlugTouched] = useState(false);
+    const [locating, setLocating] = useState<"device" | "address" | null>(null);
+    const [locateError, setLocateError] = useState<string | null>(null);
+
+    const commonTokens = useMemo(
+        () => getCommonTokens(chainId).filter(
+            (t) => !form.acceptedTokens.some(
+                (existing) => existing.address.toLowerCase() === t.address.toLowerCase(),
+            ),
+        ),
+        [chainId, form.acceptedTokens],
+    );
 
     // Hydrate from localStorage once the wallet-keyed state is available.
     useEffect(() => {
         if (hydrated) return;
         if (state.profile !== undefined || !isConnected) {
-            setForm(fromDraft(state.profile));
+            const next = fromDraft(state.profile);
+            setForm(next);
+            // If the loaded slug differs from the slug we'd derive from
+            // the loaded name, treat the slug as user-edited so we don't
+            // overwrite it later.
+            if (next.slug && next.slug !== slugify(next.name)) {
+                setSlugTouched(true);
+            }
             setHydrated(true);
         }
     }, [hydrated, state.profile, isConnected]);
@@ -146,9 +179,52 @@ export function OnboardingProfileForm() {
         setForm((prev) => ({ ...prev, [key]: value }));
     }
 
-    function autoSlug() {
-        if (!form.slug.trim() && form.name.trim()) {
-            setField("slug", slugify(form.name));
+    function setName(value: string) {
+        setForm((prev) => ({
+            ...prev,
+            name: value,
+            slug: slugTouched ? prev.slug : slugify(value),
+        }));
+    }
+
+    function setSlug(value: string) {
+        setSlugTouched(true);
+        setField("slug", value);
+    }
+
+    async function locateFromDevice() {
+        setLocating("device");
+        setLocateError(null);
+        try {
+            const position = await getDeviceLocation();
+            if (!position) {
+                setLocateError("Couldn't read device location. Permission denied or unavailable.");
+                return;
+            }
+            const hash = encodeGeohash(position.lat, position.lon, form.geohashPrecision);
+            setField("geohash", hash);
+        } finally {
+            setLocating(null);
+        }
+    }
+
+    async function locateFromAddress() {
+        if (!form.addressText.trim()) {
+            setLocateError("Type an address first.");
+            return;
+        }
+        setLocating("address");
+        setLocateError(null);
+        try {
+            const position = await geocodeAddress(form.addressText);
+            if (!position) {
+                setLocateError("Couldn't find that address. Try a more specific query.");
+                return;
+            }
+            const hash = encodeGeohash(position.lat, position.lon, form.geohashPrecision);
+            setField("geohash", hash);
+        } finally {
+            setLocating(null);
         }
     }
 
@@ -173,6 +249,22 @@ export function OnboardingProfileForm() {
             ...prev,
             acceptedTokens: prev.acceptedTokens.filter((_, i) => i !== index),
         }));
+    }
+
+    function quickAddToken(token: CommonToken) {
+        setForm((prev) => {
+            // Drop the leading empty row if present so the quick-add lands cleanly.
+            const filtered = prev.acceptedTokens.filter(
+                (t) => t.address.trim() || t.symbol.trim(),
+            );
+            return {
+                ...prev,
+                acceptedTokens: [
+                    ...filtered,
+                    { address: token.address, symbol: token.symbol },
+                ],
+            };
+        });
     }
 
     function validateAndContinue(e: React.FormEvent) {
@@ -221,8 +313,7 @@ export function OnboardingProfileForm() {
                         type="text"
                         placeholder="e.g. Bob's Pizza Palace"
                         value={form.name}
-                        onChange={(e) => setField("name", e.target.value)}
-                        onBlur={autoSlug}
+                        onChange={(e) => setName(e.target.value)}
                         hasError={!!errors.name}
                         required
                         aria-required="true"
@@ -239,13 +330,13 @@ export function OnboardingProfileForm() {
                         type="text"
                         placeholder="bobs-pizza-palace"
                         value={form.slug}
-                        onChange={(e) => setField("slug", e.target.value)}
+                        onChange={(e) => setSlug(e.target.value)}
                         hasError={!!errors.slug}
                         required
                         aria-required="true"
                     />
                     <p className="text-xs text-ink-faint mt-1">
-                        Used in your public URL <code>/m/{form.slug || "your-handle"}</code>. Auto-derived from the name when blank.
+                        Used in your public URL <code>/m/{form.slug || "your-handle"}</code>. Auto-fills from the name as you type; edit to override.
                     </p>
                 </FormField>
                 <FormField label="Description" inputId="profile-description">
@@ -275,35 +366,71 @@ export function OnboardingProfileForm() {
             {/* ── Location ──────────────────────────────────────────── */}
             <section className="space-y-6">
                 <h2 className="text-eyebrow uppercase text-ink-muted">Location</h2>
-                <FormField label="Geohash" inputId="profile-geohash">
-                    <Input
-                        id="profile-geohash"
-                        type="text"
-                        placeholder="e.g. dr5reg"
-                        value={form.geohash}
-                        onChange={(e) => setField("geohash", e.target.value)}
-                    />
-                    <p className="text-xs text-ink-faint mt-1">
-                        Anchors your profile geographically. Use a 4–6 character geohash via{" "}
-                        <a
-                            href="https://geohash.softeng.co"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline hover:text-ink-heading"
-                        >
-                            geohash.softeng.co
-                        </a>{" "}
-                        or your map tool of choice.
-                    </p>
-                </FormField>
-                <FormField label="Address text" inputId="profile-address">
+                <FormField label="Address" inputId="profile-address">
                     <Input
                         id="profile-address"
                         type="text"
-                        placeholder="e.g. Lower Manhattan, NY"
+                        placeholder="e.g. 100 Bowery, Lower Manhattan, NY"
                         value={form.addressText}
                         onChange={(e) => setField("addressText", e.target.value)}
                     />
+                    <p className="text-xs text-ink-faint mt-1">
+                        Optional, public. Use a coarse description if you&apos;d rather not publish a precise address.
+                    </p>
+                </FormField>
+
+                <FormField label="Geohash precision" inputId="profile-geohash-precision">
+                    <select
+                        id="profile-geohash-precision"
+                        value={form.geohashPrecision}
+                        onChange={(e) => setField("geohashPrecision", Number(e.target.value) as FormState["geohashPrecision"])}
+                        className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-black text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                    >
+                        {([4, 5, 6, 7, 8] as const).map((p) => (
+                            <option key={p} value={p}>{PRECISION_LABELS[p]}</option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-ink-faint mt-1">
+                        Coarser precision (4–5 chars) hides your exact location while still anchoring you to a region. Finer precision (7–8 chars) helps proximity-based discovery.
+                    </p>
+                </FormField>
+
+                <FormField label="Geohash" inputId="profile-geohash">
+                    <div className="flex flex-col gap-2">
+                        <Input
+                            id="profile-geohash"
+                            type="text"
+                            placeholder="e.g. dr5reg"
+                            value={form.geohash}
+                            onChange={(e) => setField("geohash", e.target.value)}
+                        />
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={locateFromAddress}
+                                disabled={locating !== null || !form.addressText.trim()}
+                            >
+                                {locating === "address" ? "Geocoding…" : "From address above"}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={locateFromDevice}
+                                disabled={locating !== null}
+                            >
+                                {locating === "device" ? "Locating…" : "Use device location"}
+                            </Button>
+                        </div>
+                        {locateError && (
+                            <p className="text-xs text-red-600" role="alert">{locateError}</p>
+                        )}
+                        <p className="text-xs text-ink-faint">
+                            Auto-fill from the address (geocoded via OpenStreetMap) or your device&apos;s location. You can also paste a geohash from any tool — the encoding is standard base32.
+                        </p>
+                    </div>
                 </FormField>
             </section>
 
@@ -332,6 +459,24 @@ export function OnboardingProfileForm() {
                     pricing token at quote time. Add at least one token if you
                     want to publish a catalogue.
                 </p>
+
+                {commonTokens.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-ink-faint">Quick-add:</span>
+                        {commonTokens.map((token) => (
+                            <button
+                                key={token.address}
+                                type="button"
+                                onClick={() => quickAddToken(token)}
+                                className="text-xs px-3 py-1 rounded-full border border-default text-ink-heading hover:bg-paper-200 transition-colors"
+                                title={`${token.name} — ${token.address}`}
+                            >
+                                + {token.symbol}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <div className="space-y-3">
                     {form.acceptedTokens.map((token, index) => (
                         <div key={index} className="flex items-center gap-2">
@@ -356,7 +501,7 @@ export function OnboardingProfileForm() {
                         onClick={addTokenRow}
                         className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                     >
-                        + Add token
+                        + Add token manually
                     </button>
                 </div>
 
