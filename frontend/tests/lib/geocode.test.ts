@@ -27,10 +27,7 @@ describe("geocodeAddress", () => {
         expect(out).toEqual({ ok: true, result: { lat: 40.7177933, lon: -73.9954856 } });
         expect(fetchMock).toHaveBeenCalledOnce();
         const url = (fetchMock.mock.calls[0]?.[0] ?? "") as string;
-        expect(url).toContain("https://nominatim.openstreetmap.org/search");
-        expect(url).toContain("q=100%20Bowery%2C%20New%20York");
-        expect(url).toContain("format=json");
-        expect(url).toContain("limit=1");
+        expect(url).toBe("/api/geocode?q=100%20Bowery%2C%20New%20York");
     });
 
     it("rejects empty queries before hitting the network", async () => {

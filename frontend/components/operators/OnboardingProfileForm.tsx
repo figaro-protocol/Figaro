@@ -9,7 +9,12 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
-import { TokenAddressInput, isValidAddress, useTokenSymbol } from "@/components/operators/TokenAddressInput";
+import {
+    TokenAddressInput,
+    addressIntegrity,
+    isValidAddress,
+    useTokenSymbol,
+} from "@/components/operators/TokenAddressInput";
 import { IpfsImageUpload } from "@/components/operators/IpfsImageUpload";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
@@ -111,12 +116,20 @@ function fromDraft(draft: OnboardingProfileDraft | undefined): FormState {
 }
 
 function toDraft(form: FormState): OnboardingProfileDraft {
-    const validTokens: AcceptedTokenMetadata[] = form.acceptedTokens
-        .filter((t) => isValidAddress(t.address) && t.symbol.trim())
-        .map((t) => ({
+    const seen = new Set<string>();
+    const validTokens: AcceptedTokenMetadata[] = [];
+    for (const t of form.acceptedTokens) {
+        const integrity = addressIntegrity(t.address);
+        const formatOk = integrity === "lowercase" || integrity === "checksum-valid";
+        if (!formatOk || !t.symbol.trim()) continue;
+        const lc = t.address.toLowerCase();
+        if (seen.has(lc)) continue;
+        seen.add(lc);
+        validTokens.push({
             address: t.address as `0x${string}`,
             symbol: t.symbol.trim(),
-        }));
+        });
+    }
 
     const defaultToken = validTokens.find(
         (t) => t.address.toLowerCase() === form.defaultTokenAddress.toLowerCase(),
@@ -302,8 +315,34 @@ export function OnboardingProfileForm() {
         }
         if (validTokens.length === 0) {
             next.acceptedTokens = "Add at least one accepted token. Catalogue prices are denominated in your default token.";
-        } else if (!form.defaultTokenAddress) {
-            next.defaultTokenAddress = "Pick which accepted token your catalogue is priced in.";
+        } else {
+            // Reject zero-address, EIP-55 checksum mismatches, and
+            // duplicate entries before letting the form pass — these
+            // would either fail downstream or pin a corrupted profile.
+            const seen = new Set<string>();
+            let rowError: string | null = null;
+            for (const t of form.acceptedTokens) {
+                const integrity = addressIntegrity(t.address);
+                if (integrity === "zero") {
+                    rowError = "Remove the zero address from the accepted-token list.";
+                    break;
+                }
+                if (integrity === "checksum-invalid") {
+                    rowError = "Fix the address with the invalid EIP-55 checksum (highlighted below).";
+                    break;
+                }
+                const lc = t.address.trim().toLowerCase();
+                if (lc && seen.has(lc)) {
+                    rowError = "Remove the duplicate token (highlighted below).";
+                    break;
+                }
+                if (lc) seen.add(lc);
+            }
+            if (rowError) {
+                next.acceptedTokens = rowError;
+            } else if (!form.defaultTokenAddress) {
+                next.defaultTokenAddress = "Pick which accepted token your catalogue is priced in.";
+            }
         }
         setErrors(next);
         if (Object.keys(next).length === 0) {
@@ -525,18 +564,27 @@ export function OnboardingProfileForm() {
                 )}
 
                 <div className="space-y-3">
-                    {form.acceptedTokens.map((token, index) => (
-                        <AcceptedTokenRow
-                            key={index}
-                            value={token}
-                            onChange={(next) => setForm((prev) => ({
-                                ...prev,
-                                acceptedTokens: prev.acceptedTokens.map((t, i) => (i === index ? next : t)),
-                            }))}
-                            onRemove={form.acceptedTokens.length > 1 ? () => removeTokenRow(index) : undefined}
-                            hasError={Boolean(errors.acceptedTokens) && !isValidAddress(token.address)}
-                        />
-                    ))}
+                    {form.acceptedTokens.map((token, index) => {
+                        const lc = token.address.trim().toLowerCase();
+                        const isDuplicate =
+                            lc.length > 0 &&
+                            form.acceptedTokens.some(
+                                (other, i) => i !== index && other.address.trim().toLowerCase() === lc,
+                            );
+                        return (
+                            <AcceptedTokenRow
+                                key={index}
+                                value={token}
+                                onChange={(next) => setForm((prev) => ({
+                                    ...prev,
+                                    acceptedTokens: prev.acceptedTokens.map((t, i) => (i === index ? next : t)),
+                                }))}
+                                onRemove={form.acceptedTokens.length > 1 ? () => removeTokenRow(index) : undefined}
+                                hasError={Boolean(errors.acceptedTokens) && !isValidAddress(token.address)}
+                                isDuplicate={isDuplicate}
+                            />
+                        );
+                    })}
                     <button
                         type="button"
                         onClick={addTokenRow}
@@ -616,6 +664,7 @@ interface AcceptedTokenRowProps {
     onChange: (next: { address: string; symbol: string }) => void;
     onRemove?: () => void;
     hasError?: boolean;
+    isDuplicate?: boolean;
 }
 
 /**
@@ -624,10 +673,25 @@ interface AcceptedTokenRowProps {
  * state when it resolves. Replaces the previous two-input layout
  * (manual address + manual symbol) — the chain already knows the
  * symbol; users shouldn't have to type it.
+ *
+ * Validation surfaces in the symbolHint line below the input. Three
+ * categories, in priority order:
+ *   1. Format / integrity (caught locally): empty, malformed, zero
+ *      address, mixed-case with bad EIP-55 checksum, or duplicate
+ *      within this operator's own list.
+ *   2. On-chain check (caught by `useTokenSymbol`): contract doesn't
+ *      exist or doesn't expose `symbol()` → not an ERC-20.
+ *   3. Success: symbol shown.
+ *
+ * No central token registry — the chain is the registry. The
+ * `symbol()` read is the registry lookup.
  */
-function AcceptedTokenRow({ value, onChange, onRemove, hasError = false }: AcceptedTokenRowProps) {
-    const { data: resolvedSymbol, isLoading } = useTokenSymbol(value.address);
-    const validAddr = isValidAddress(value.address);
+function AcceptedTokenRow({ value, onChange, onRemove, hasError = false, isDuplicate = false }: AcceptedTokenRowProps) {
+    const integrity = addressIntegrity(value.address);
+    const formatOk = integrity === "lowercase" || integrity === "checksum-valid";
+    // Only fetch symbol() once the address passes local checks AND
+    // isn't a flagged duplicate — saves an RPC call per bad row.
+    const { data: resolvedSymbol, isLoading } = useTokenSymbol(formatOk && !isDuplicate ? value.address : "");
 
     // When the on-chain symbol resolves, persist it. Guard avoids loops.
     useEffect(() => {
@@ -636,15 +700,28 @@ function AcceptedTokenRow({ value, onChange, onRemove, hasError = false }: Accep
         onChange({ ...value, symbol: resolvedSymbol });
     }, [resolvedSymbol, value, onChange]);
 
-    const symbolHint = !value.address.trim()
-        ? null
-        : !validAddr
-            ? <span className="text-red-600">Not a valid 20-byte hex address.</span>
-            : isLoading
-                ? "Reading symbol from contract…"
-                : resolvedSymbol
-                    ? <>Symbol: <span className="font-semibold text-ink-heading">{resolvedSymbol}</span></>
-                    : <span className="text-red-600">Address is not an ERC-20 (no <code>symbol()</code>). Remove or correct.</span>;
+    let symbolHint: React.ReactNode = null;
+    if (integrity === "not-address" && value.address.length > 0) {
+        symbolHint = <span className="text-red-600">Not a valid 20-byte hex address.</span>;
+    } else if (integrity === "zero") {
+        symbolHint = <span className="text-red-600">Zero address can&apos;t be a token. Use a real ERC-20 contract address.</span>;
+    } else if (integrity === "checksum-invalid") {
+        symbolHint = <span className="text-red-600">Mixed-case address with invalid EIP-55 checksum — likely a typo. Re-paste from the source, or use the all-lowercase form.</span>;
+    } else if (isDuplicate) {
+        symbolHint = <span className="text-red-600">You already added this token. Remove one of the duplicate rows.</span>;
+    } else if (formatOk) {
+        symbolHint = isLoading
+            ? "Reading symbol from contract…"
+            : resolvedSymbol
+                ? <>Symbol: <span className="font-semibold text-ink-heading">{resolvedSymbol}</span></>
+                : <span className="text-red-600">Address is not an ERC-20 (no <code>symbol()</code>). Remove or correct.</span>;
+    }
+
+    const rowHasError =
+        hasError ||
+        integrity === "zero" ||
+        integrity === "checksum-invalid" ||
+        isDuplicate;
 
     return (
         <div className="space-y-1">
@@ -652,7 +729,7 @@ function AcceptedTokenRow({ value, onChange, onRemove, hasError = false }: Accep
                 value={value.address}
                 onChange={(addr) => onChange({ address: addr, symbol: "" })}
                 onRemove={onRemove}
-                hasError={hasError}
+                hasError={rowHasError}
             />
             {symbolHint && <p className="text-xs text-ink-faint">{symbolHint}</p>}
         </div>

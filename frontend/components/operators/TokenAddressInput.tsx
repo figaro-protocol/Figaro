@@ -1,12 +1,47 @@
 "use client";
 
 import { useReadContract } from "wagmi";
-import { parseAbi } from "viem";
+import { getAddress, isAddress, parseAbi } from "viem";
 
 const SYMBOL_ABI = parseAbi(["function symbol() view returns (string)"]);
 
+export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
+/**
+ * True iff `addr` is a 0x-prefixed 20-byte hex string. Format-only:
+ * accepts lowercase, valid checksum, AND mixed-case-with-bad-
+ * checksum (the last is flagged as `checksum-invalid` by
+ * `addressIntegrity`, but it's still a syntactically valid 40-hex
+ * address). Use `addressIntegrity` to distinguish.
+ */
 export function isValidAddress(addr: string): boolean {
-    return /^0x[0-9a-fA-F]{40}$/.test(addr);
+    return isAddress(addr, { strict: false });
+}
+
+export type AddressIntegrity =
+    /** Empty string. */
+    | "empty"
+    /** Doesn't match the 0x + 40 hex pattern at all. */
+    | "not-address"
+    /** All-lowercase (checksum not asserted by the user). */
+    | "lowercase"
+    /** Mixed case AND the EIP-55 checksum is correct. */
+    | "checksum-valid"
+    /** Mixed case BUT the EIP-55 checksum is wrong — likely typo. */
+    | "checksum-invalid"
+    /** The all-zero address (passes regex but is never a real token). */
+    | "zero";
+
+export function addressIntegrity(addr: string): AddressIntegrity {
+    if (!addr) return "empty";
+    if (!isAddress(addr, { strict: false })) return "not-address";
+    if (addr.toLowerCase() === ZERO_ADDRESS) return "zero";
+    if (addr === addr.toLowerCase()) return "lowercase";
+    try {
+        return addr === getAddress(addr) ? "checksum-valid" : "checksum-invalid";
+    } catch {
+        return "checksum-invalid";
+    }
 }
 
 export function useTokenSymbol(address: string) {

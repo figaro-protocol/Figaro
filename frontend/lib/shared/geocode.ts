@@ -1,17 +1,16 @@
 /**
  * lib/shared/geocode.ts
  *
- * Free-form address-text → lat/lon resolution. Backed by OpenStreetMap's
- * Nominatim public service: no API key, CORS-enabled for browsers, max
- * 1 request per second per Nominatim's usage policy.
- *
- * For a single user-initiated click ("Use this address" in the
- * onboarding form) this is well under the rate limit. Callers that
- * automate geocoding need to add their own throttling.
+ * Free-form address-text → lat/lon resolution. Calls the
+ * `/api/geocode` server-side proxy, which forwards to OpenStreetMap
+ * Nominatim with a project-identifying User-Agent. Routing through
+ * our own origin avoids browser extensions (uBlock Origin, Privacy
+ * Badger, Brave Shields) that block direct calls to Nominatim as a
+ * tracker.
  *
  * Returns a discriminated outcome — callers can distinguish
- * "no match for this query" from "we couldn't reach the geocoder"
- * and surface a useful message.
+ * "no match for this query" from "we couldn't reach the proxy" and
+ * surface a useful message.
  */
 
 export interface GeocodeResult {
@@ -35,7 +34,7 @@ export type GeocodeOutcome =
     | { ok: true; result: GeocodeResult }
     | { ok: false; reason: GeocodeFailureReason; detail?: string };
 
-const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
+const PROXY_URL = "/api/geocode";
 
 /**
  * Resolve an address string to lat/lon. Returns a structured outcome;
@@ -47,7 +46,7 @@ export async function geocodeAddress(query: string): Promise<GeocodeOutcome> {
 
     let res: Response;
     try {
-        const url = `${NOMINATIM_URL}?q=${encodeURIComponent(trimmed)}&format=json&limit=1`;
+        const url = `${PROXY_URL}?q=${encodeURIComponent(trimmed)}`;
         res = await fetch(url, {
             headers: { Accept: "application/json" },
         });
