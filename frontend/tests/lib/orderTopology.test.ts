@@ -4,9 +4,10 @@ import { saveAgreement } from "@/lib/core/agreementStore";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
 import { deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
 import { OrderState, type Order } from "@/lib/core/store";
+import { ANVIL_ACCOUNTS } from "../anvilAccounts";
 
-const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as `0x${string}`;
-const SELLER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as `0x${string}`;
+const BUYER = ANVIL_ACCOUNTS[0];
+const SELLER = ANVIL_ACCOUNTS[1];
 const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 const PROCESS_ID = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 

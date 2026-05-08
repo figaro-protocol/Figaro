@@ -4,13 +4,14 @@ import {
     checkBalanceSheetIdentity,
 } from "@/lib/semantic/financialsProjection";
 import { OrderState, type Order } from "@/lib/core/store";
+import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from "../anvilAccounts";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-const BUYER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
-const SELLER1 = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
-const SELLER2 = "0x90F79bf6EB2c4f870365E785982E1f101E93b906";
-const TOKEN_A = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const BUYER = ANVIL_ACCOUNTS[1];
+const SELLER1 = ANVIL_ACCOUNTS[2];
+const SELLER2 = ANVIL_ACCOUNTS[3];
+const TOKEN_A = DEFAULT_LOCAL_MOCK_TOKEN;
 const TOKEN_B = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
 function makeOrder(overrides: Partial<Order> = {}): Order {

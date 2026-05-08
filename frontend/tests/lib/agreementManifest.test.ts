@@ -17,9 +17,10 @@ import {
     type AgreementSection,
     type AgreementLineItem,
 } from "@/lib/core/agreementManifest";
+import { ANVIL_ACCOUNTS } from "../anvilAccounts";
 
-const SELLER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as `0x${string}`;
-const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as `0x${string}`;
+const SELLER = ANVIL_ACCOUNTS[1];
+const BUYER = ANVIL_ACCOUNTS[0];
 const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 
 // Category-2 schemas (commerce, geo, fulfilment, ghg, handoff) use ABI-encoded

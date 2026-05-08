@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OrderState, type Order } from "@/lib/core/store";
+import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from "../anvilAccounts";
 import {
     type Agreement,
     COMMERCE_SCHEMA_KEY,
@@ -37,9 +38,9 @@ import { DELIVERY_LIFECYCLE_STAGES } from "@/lib/audit/types";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-const BUYER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as `0x${string}`;
-const SELLER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as `0x${string}`;
-const TOKEN = "0x5FbDB2315678afecb367f032d93F642f64180aa3" as `0x${string}`;
+const BUYER = ANVIL_ACCOUNTS[1];
+const SELLER = ANVIL_ACCOUNTS[2];
+const TOKEN = DEFAULT_LOCAL_MOCK_TOKEN;
 
 function makeOrder(overrides: Partial<Order> = {}): Order {
     return {
