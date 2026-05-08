@@ -110,7 +110,7 @@ export function buildHashAppendix(
             kind: "attestation-content-ref",
             label: `Attestation contentRef — ${att.schemaId} stage ${att.stage}`,
             hash: att.contentRef,
-            sourceLocation: `Attestation(orderHash=${shortHex(att.orderHash)}, schemaId=${att.schemaId}, stage=${att.stage}).contentRef = keccak256(content). Original content recoverable from the transaction calldata.`,
+            sourceLocation: `Attestation(orderHash=${truncateHex(att.orderHash, { head: 8 })}, schemaId=${att.schemaId}, stage=${att.stage}).contentRef = keccak256(content). Original content recoverable from the transaction calldata.`,
             transactionHash: att.transactionHash ?? undefined,
         });
     }
@@ -126,6 +126,3 @@ export function buildHashAppendix(
     };
 }
 
-function shortHex(hex: string): string {
-    return truncateHex(hex, { head: 8 });
-}

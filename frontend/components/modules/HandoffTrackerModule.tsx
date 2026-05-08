@@ -16,11 +16,6 @@ import { truncateHex } from "@/lib/shared/formatHex";
 
 type TrackerTone = "neutral" | "amber" | "blue" | "green";
 
-function shortAddress(addr?: string): string {
-    if (!addr || addr === ZERO_ADDRESS) return "Not assigned yet";
-    return truncateHex(addr);
-}
-
 function toneClasses(tone: TrackerTone): string {
     switch (tone) {
         case "amber":
@@ -183,7 +178,7 @@ export function HandoffTrackerModule({ moduleId, context }: ModuleProps) {
                 </div>
                 <div>
                     <p className="text-neutral-500">Fulfiller</p>
-                    <p className="font-mono text-neutral-900">{shortAddress(assignedFulfiller)}</p>
+                    <p className="font-mono text-neutral-900">{hasFulfiller ? truncateHex(assignedFulfiller) : "Not assigned yet"}</p>
                 </div>
                 <div>
                     <p className="text-neutral-500">Dispatch</p>

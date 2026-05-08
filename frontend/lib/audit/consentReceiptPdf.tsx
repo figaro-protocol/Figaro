@@ -151,12 +151,6 @@ const styles = StyleSheet.create({
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function shortHex(hex: string | undefined, head = 10, tail = 6): string {
-    if (!hex) return "—";
-    if (hex.length <= head + tail + 1) return hex;
-    return `${hex.slice(0, head)}…${hex.slice(-tail)}`;
-}
-
 function shortCode(code: string): string {
     return truncateHex(code);
 }
@@ -213,7 +207,7 @@ function PageFooter({ documentHash, accessCode, watermarkQrDataUrl }: {
         <View style={styles.footer} fixed>
             <View>
                 <Text style={styles.footerHash}>
-                    documentHash {shortHex(documentHash, 14, 8)}
+                    documentHash {truncateHex(documentHash, { head: 14, tail: 8 }) || "—"}
                 </Text>
                 <Text
                     style={styles.footerHash}
