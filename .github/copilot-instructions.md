@@ -447,8 +447,7 @@ Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory list
 - Order flows: `OrderControls`, `OrderConfirmationModal`, `OrderGraph`,
   `OrderErrorMessage`, `OrderNodeSemanticCard`
 - Bond/token: `BondApprovalPanel`, `PermitControl`, `TokenApprovalFlow`, `TokenBalances`
-- Builder/assembly: `AssemblyShell`, `AssemblyProcessWorkspace`,
-  `CapabilityRail`, `RoleSwitcher`
+- Builder/assembly: `AssemblyProcessWorkspace`, `CapabilityRail`, `RoleSwitcher`
 - Semantic/analytical: `SemanticProcessWorkspacePanel`, `ProcessSummaryCard`,
   `ProcessTopologyPanel`, `EconomicBreakdownPanel`, `SettlementProceedsPanel`,
   `RiskBoundaryPanel`, `GuaranteeBadge`, `MechanismInspectorCard`
