@@ -12,9 +12,6 @@ export default function FigDesign() {
 
             {/* Hero */}
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
-                <p className="text-eyebrow uppercase text-ink-muted mb-4">
-                    FIG token design
-                </p>
                 <h1 className="text-heading-h1 text-ink-heading mb-6">
                     A Schelling-point token for the Figaro ecosystem.
                 </h1>
@@ -25,9 +22,6 @@ export default function FigDesign() {
 
             {/* The lineage */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-12">
-                <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                    The lineage
-                </p>
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Same pattern, new layer.
                 </h2>
@@ -49,9 +43,6 @@ export default function FigDesign() {
 
             {/* Schelling-point design category */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-12">
-                <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                    What a Schelling-point token is
-                </p>
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Held by choice, not by financial argument.
                 </h2>
@@ -70,9 +61,6 @@ export default function FigDesign() {
 
             {/* What underpins FIG */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-12">
-                <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                    What underpins FIG
-                </p>
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Trade. Value-added.
                 </h2>
@@ -81,11 +69,11 @@ export default function FigDesign() {
                 </p>
                 <div className="overflow-x-auto mb-6">
                     <table className="w-full text-sm text-left">
-                        <thead className="text-eyebrow uppercase text-ink-muted border-b border-default">
+                        <thead className="font-semibold text-ink-heading border-b border-default">
                             <tr>
-                                <th className="py-2 pr-4 font-semibold">Token</th>
-                                <th className="py-2 pr-4 font-semibold">Underpinning</th>
-                                <th className="py-2 font-semibold">Economic layer</th>
+                                <th className="py-2 pr-4">Token</th>
+                                <th className="py-2 pr-4">Underpinning</th>
+                                <th className="py-2">Economic layer</th>
                             </tr>
                         </thead>
                         <tbody className="text-ink-body">
@@ -122,9 +110,6 @@ export default function FigDesign() {
 
             {/* Why FIG */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-12">
-                <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                    Why Figaro needs one
-                </p>
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     General-purpose tokens can&apos;t carry the signal.
                 </h2>
@@ -143,9 +128,6 @@ export default function FigDesign() {
 
             {/* Design rules */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-12">
-                <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                    Four design rules
-                </p>
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     What a focal-point token can&apos;t afford.
                 </h2>
@@ -154,19 +136,19 @@ export default function FigDesign() {
                 </p>
                 <ul className="space-y-4 text-sm text-ink-body leading-relaxed">
                     <li className="flex gap-4">
-                        <span className="font-mono text-xs text-ink-muted mt-1 w-16 shrink-0 uppercase">Pure</span>
+                        <span className="font-mono text-xs text-ink-muted mt-1 w-16 shrink-0">Pure</span>
                         <span><strong>Pure signaling.</strong> The token must carry one unambiguous reason to hold it. Holders should be alignment-signalers &mdash; not yield-chasers, governance-speculators, utility-arbitrageurs, fee-path-optimizers.</span>
                     </li>
                     <li className="flex gap-4">
-                        <span className="font-mono text-xs text-ink-muted mt-1 w-16 shrink-0 uppercase">Pred</span>
+                        <span className="font-mono text-xs text-ink-muted mt-1 w-16 shrink-0">Pred</span>
                         <span><strong>Predictable supply.</strong> Focality is fragile under surprise inflation. Supply schedule committed at deploy, unmodifiable thereafter.</span>
                     </li>
                     <li className="flex gap-4">
-                        <span className="font-mono text-xs text-ink-muted mt-1 w-16 shrink-0 uppercase">Clean</span>
+                        <span className="font-mono text-xs text-ink-muted mt-1 w-16 shrink-0">Clean</span>
                         <span><strong>Clean distribution.</strong> Concentrated ownership makes Schelling convergence less credible. We&apos;re honest about the 40% founder+DAO share and address it in the attack-surface section below.</span>
                     </li>
                     <li className="flex gap-4">
-                        <span className="font-mono text-xs text-ink-muted mt-1 w-16 shrink-0 uppercase">Decouple</span>
+                        <span className="font-mono text-xs text-ink-muted mt-1 w-16 shrink-0">Decouple</span>
                         <span><strong>Absence of protocol-activity coupling.</strong> If supply is a function of protocol activity, holders acquire the token by doing things that are not alignment. The signal is muddied by dual-motivation holders.</span>
                     </li>
                 </ul>
@@ -174,23 +156,20 @@ export default function FigDesign() {
 
             {/* Supply integrity */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-12">
-                <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                    Supply integrity
-                </p>
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     1B fixed cap, two-tier enforcement, one-way latch.
                 </h2>
                 <ul className="space-y-4 text-sm text-ink-body leading-relaxed">
                     <li className="flex gap-4">
-                        <span className="font-mono text-xs text-ink-muted mt-1 w-24 shrink-0 uppercase">Per-mint</span>
+                        <span className="font-mono text-xs text-ink-muted mt-1 w-24 shrink-0">Per-mint</span>
                         <span><code>mint</code> reverts with <code>SupplyCapExceeded</code> if <code>totalSupply() + amount &gt; MAX_SUPPLY</code>. Atomic, non-reentrant.</span>
                     </li>
                     <li className="flex gap-4">
-                        <span className="font-mono text-xs text-ink-muted mt-1 w-24 shrink-0 uppercase">Pre-reg</span>
+                        <span className="font-mono text-xs text-ink-muted mt-1 w-24 shrink-0">Pre-reg</span>
                         <span><code>registerMinter</code> reverts if <code>totalRegisteredCap + cap &gt; MAX_SUPPLY</code>. Full allocation plan is bound to the 1B ceiling before any token is minted.</span>
                     </li>
                     <li className="flex gap-4">
-                        <span className="font-mono text-xs text-ink-muted mt-1 w-24 shrink-0 uppercase">Renounce</span>
+                        <span className="font-mono text-xs text-ink-muted mt-1 w-24 shrink-0">Renounce</span>
                         <span>One-way Boolean latch. Once set by deployer, no further minters can be registered. Set as the final action of the deploy transaction.</span>
                     </li>
                 </ul>
@@ -201,9 +180,6 @@ export default function FigDesign() {
 
             {/* Allocation */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-12">
-                <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                    Allocation
-                </p>
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     10 / 30 / 60.
                 </h2>
@@ -234,9 +210,6 @@ export default function FigDesign() {
 
             {/* Exclusions */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-12">
-                <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                    Exclusions as focality preservers
-                </p>
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Every &ldquo;not X&rdquo; removes a non-alignment holder class.
                 </h2>
@@ -256,9 +229,6 @@ export default function FigDesign() {
 
             {/* Rejected: Euler */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-12">
-                <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                    The rejected design: Euler oscillation
-                </p>
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Activity-coupled emission destroys focality.
                 </h2>
@@ -277,25 +247,19 @@ export default function FigDesign() {
 
             {/* Attack surface */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-12">
-                <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                    Attack surface &mdash; honestly
-                </p>
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Three ways FIG can lose focal status.
                 </h2>
                 <div className="space-y-6 text-sm text-ink-body leading-relaxed">
-                    <div>
-                        <div className="text-eyebrow uppercase text-ink-muted mb-2">Focal-shift attack</div>
-                        <p>An adversary tries to move focal convergence to a different token. Canonical example: the Bitcoin-Cash / Bitcoin-SV campaigns against Bitcoin&apos;s SoV status. Defense: Schelling stickiness &mdash; participants who have converged typically hold through the attempt, because moving costs coordination value.</p>
-                    </div>
-                    <div>
-                        <div className="text-eyebrow uppercase text-ink-muted mb-2">Dump attack</div>
-                        <p>An adversary with large holdings dumps to destabilize price. In the Schelling-point frame this is <em>less damaging</em> than in a yield-anchored frame: holders are holders by alignment choice, not by financial hedging, and a price crash that leaves alignment unchanged does not necessarily destroy the focal point. What destroys it is coordinated loss of participant alignment, not a price crash.</p>
-                    </div>
-                    <div>
-                        <div className="text-eyebrow uppercase text-ink-muted mb-2">Acquiescence attack</div>
-                        <p>The quietest attack: no attack at all. Nobody converges, and FIG fails to become a focal point. Defense is limited &mdash; we can support emergence but can&apos;t force it. If no cohort recognizes FIG as focal, the token has no Schelling-point value; the supply-integrity and allocation properties still hold but the signaling function fails.</p>
-                    </div>
+                    <p>
+                        <strong>Focal-shift attack.</strong> An adversary tries to move focal convergence to a different token. Canonical example: the Bitcoin-Cash / Bitcoin-SV campaigns against Bitcoin&apos;s SoV status. Defense: Schelling stickiness &mdash; participants who have converged typically hold through the attempt, because moving costs coordination value.
+                    </p>
+                    <p>
+                        <strong>Dump attack.</strong> An adversary with large holdings dumps to destabilize price. In the Schelling-point frame this is <em>less damaging</em> than in a yield-anchored frame: holders are holders by alignment choice, not by financial hedging, and a price crash that leaves alignment unchanged does not necessarily destroy the focal point. What destroys it is coordinated loss of participant alignment, not a price crash.
+                    </p>
+                    <p>
+                        <strong>Acquiescence attack.</strong> The quietest attack: no attack at all. Nobody converges, and FIG fails to become a focal point. Defense is limited &mdash; we can support emergence but can&apos;t force it. If no cohort recognizes FIG as focal, the token has no Schelling-point value; the supply-integrity and allocation properties still hold but the signaling function fails.
+                    </p>
                 </div>
                 <p className="mt-6 text-sm text-ink-muted leading-relaxed">
                     Schelling-point design is a matter of supporting emergence, not causing it. We document the design so those who choose to converge can do so legibly, and those who don&apos;t can see what they are declining.
@@ -306,9 +270,6 @@ export default function FigDesign() {
             <section className="container mx-auto px-6 pb-32 max-w-3xl border-t border-default pt-12">
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
                     <div className="max-w-xl">
-                        <p className="text-eyebrow uppercase text-ink-muted mb-3">
-                            Read the paper
-                        </p>
                         <p className="text-sm text-ink-body leading-relaxed">
                             The full cryptoeconomic argument, with Schelling (1960) and the Bitcoin/ETH lineage developed formally, and the verification surface (TLA⁺ FigToken / Halmos airdrop / Certora 9 rules), is in the cryptoeconomics paper.
                         </p>
