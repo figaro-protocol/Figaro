@@ -1,6 +1,7 @@
 import type { PublicClient } from "viem";
 import type { CommitmentPayloadMeta } from "@/lib/core/useCommitmentFlow";
 import type { Commitment } from "@figaro/core";
+import { hexEqual } from "@/lib/shared/evm";
 import { submitPermitTransaction, type SignedPermitPayload } from "@/lib/core/permitExecution";
 
 export interface PreparedCommitmentArtifact {
@@ -57,7 +58,7 @@ export async function submitPreparedCommitment({
         });
     }
 
-    if (immediateCommitEnabled || buyerAddress.toLowerCase() === sellerAddress.toLowerCase()) {
+    if (immediateCommitEnabled || hexEqual(buyerAddress, sellerAddress)) {
         const hash = await signAndBroadcastCommitment(
             prepared.commitment,
             prepared.commitmentMeta,

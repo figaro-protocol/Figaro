@@ -4,6 +4,7 @@ import {
     MechanismModel,
     OrderNodeModel,
 } from "@/lib/semantic/models";
+import { hexEqual } from "@/lib/shared/evm";
 
 const DELIVERY_SIGNAL_LABELS: Record<DeliveryLifecycleSignalActionKind, string> = {
     declarePreparationStarted: "Declare Preparation Started",
@@ -52,7 +53,7 @@ export function deriveSelectedOrderCapabilitiesFromRuntime(
         return [];
     }
 
-    const isSelectedSeller = order.seller.toLowerCase() === address.toLowerCase();
+    const isSelectedSeller = hexEqual(order.seller, address);
 
     const capabilities: CapabilityModel[] = [];
     const disclosureMechanism = findMechanism(mechanisms, ["disclosure", "ghg"]);

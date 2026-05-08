@@ -8,6 +8,7 @@ import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogue
 import { MerchantBrandingModule, MerchantLogo } from "@/components/modules/MerchantBrandingModule";
 import { OperatorServiceDisplay } from "@/components/modules/OperatorRegistrationModule";
 import { ContentImage } from "@/components/shared/ContentImage";
+import { hexEqual } from "@/lib/shared/evm";
 
 function TokenBadge({ symbol }: { symbol: string }) {
     return (
@@ -120,7 +121,7 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
             return;
         }
         const match = allRestaurants.find(
-            (r) => r.address.toLowerCase() === requestedOperator,
+            (r) => hexEqual(r.address, requestedOperator),
         );
         if (match) setSelectedRestaurant(match);
         setAutoSelectAttempted(true);

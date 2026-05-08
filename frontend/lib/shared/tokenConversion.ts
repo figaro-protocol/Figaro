@@ -27,6 +27,7 @@
  */
 
 import type { PublicClient } from "viem";
+import { hexEqual } from "@/lib/shared/evm";
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -62,7 +63,7 @@ export interface TokenConversionService {
  */
 export const DEFAULT_TOKEN_CONVERSION_SERVICE: TokenConversionService = {
     async quote(request) {
-        if (request.fromTokenAddress.toLowerCase() === request.toTokenAddress.toLowerCase()) {
+        if (hexEqual(request.fromTokenAddress, request.toTokenAddress)) {
             return {
                 fromTokenAddress: request.fromTokenAddress,
                 toTokenAddress: request.toTokenAddress,
@@ -141,7 +142,7 @@ export function createUniswapV3Quoter(config: UniswapV3QuoterConfig): TokenConve
     return {
         async quote(request) {
             // Identity: skip the quoter entirely.
-            if (request.fromTokenAddress.toLowerCase() === request.toTokenAddress.toLowerCase()) {
+            if (hexEqual(request.fromTokenAddress, request.toTokenAddress)) {
                 return {
                     fromTokenAddress: request.fromTokenAddress,
                     toTokenAddress: request.toTokenAddress,

@@ -9,6 +9,7 @@ import { useAccount } from "wagmi";
 import { useMemo } from "react";
 import { CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { formatToken } from "@/lib/shared/utils";
+import { hexEqual } from "@/lib/shared/evm";
 import { createDeliveryCoordinatorSource } from "@/lib/mechanisms/deliveryCoordinatorEvents";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { calculateBonds } from "@figaro/core";
@@ -205,7 +206,7 @@ export const OrderNodeSemanticCard = memo(function OrderNodeSemanticCard({
                 <DisputeStatusPanel
                     processId={order.processId as `0x${string}`}
                     klerosConfig={klerosConfig ?? undefined}
-                    role={address && address.toLowerCase() === order.seller.toLowerCase() ? "seller" : "buyer"}
+                    role={hexEqual(address, order.seller) ? "seller" : "buyer"}
                     coordinatorSources={coordinatorSources}
                     orders={processOrders}
                 />

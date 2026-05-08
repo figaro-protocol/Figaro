@@ -36,6 +36,7 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { hexEqual } from "@/lib/shared/evm";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
 import {
@@ -68,7 +69,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     const { catalogues: restaurants, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
     const restaurant = useMemo(
-        () => restaurants.find((r) => r.address.toLowerCase() === merchantAddressLower) ?? null,
+        () => restaurants.find((r) => hexEqual(r.address, merchantAddressLower)) ?? null,
         [restaurants, merchantAddressLower],
     );
 
@@ -91,7 +92,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     const { data: resolvedSymbol } = useTokenSymbol(currency);
     const tokenSymbol = resolvedSymbol
         ?? restaurant?.acceptedTokens?.find(
-            (t) => t.address.toLowerCase() === currency.toLowerCase(),
+            (t) => hexEqual(t.address, currency),
         )?.symbol
         ?? "";
     const {
@@ -141,9 +142,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     useEffect(() => {
         if (items.length === 0) return;
         const allMatchCurrent = items.every(
-            (item) => item.sellerAddress.toLowerCase() === merchantAddressLower,
+            (item) => hexEqual(item.sellerAddress, merchantAddressLower),
         );
-        const isSelfView = !!buyer && buyer.toLowerCase() === merchantAddressLower;
+        const isSelfView = hexEqual(buyer, merchantAddressLower);
         if (!allMatchCurrent || isSelfView) {
             clearCart();
         }

@@ -40,6 +40,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import type { Address, Hex } from "viem";
 import { Order, OrderState } from "@/lib/core/store";
+import { hexEqual } from "@/lib/shared/evm";
 import { formatToken } from "@/lib/shared/utils";
 import { Card } from "@/components/ui/Card";
 import { loadAgreement } from "@/lib/core/agreementStore";
@@ -570,9 +571,9 @@ export function ProcessGraphCanvas({
 
         const newNodes: Node[] = orders.map((order) => {
             const walletRole: WalletRole = walletAddress
-                ? walletAddress.toLowerCase() === order.buyer.toLowerCase()
+                ? hexEqual(walletAddress, order.buyer)
                     ? "proposer"
-                    : walletAddress.toLowerCase() === order.seller.toLowerCase()
+                    : hexEqual(walletAddress, order.seller)
                         ? "counterparty"
                         : null
                 : null;

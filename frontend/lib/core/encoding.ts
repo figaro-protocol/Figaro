@@ -1,5 +1,5 @@
 // Encoding helpers for frontend -> bytes32 conversions
-import { ZERO_BYTES32 } from "@/lib/shared/evm";
+import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 
 export function encodeToBytes32(s: string): `0x${string}` {
     const str = (s || "").toString();
@@ -184,5 +184,5 @@ export function computeManifestHash(manifestHex: string): `0x${string}` {
  * @returns true if the manifest hashes to the expected value
  */
 export function verifyManifestHash(manifestHex: string, expectedHash: string): boolean {
-    return computeManifestHash(manifestHex).toLowerCase() === expectedHash.toLowerCase();
+    return hexEqual(computeManifestHash(manifestHex), expectedHash);
 }

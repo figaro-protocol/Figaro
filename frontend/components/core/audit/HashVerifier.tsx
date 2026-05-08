@@ -38,6 +38,7 @@ import {
 } from "@/lib/core/agreementManifest";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { hexEqual } from "@/lib/shared/evm";
 import { loadAgreement } from "@/lib/core/agreementStore";
 
 type Mode = "agreement" | "section" | "search";
@@ -94,7 +95,7 @@ function HashResult({ computed, expected, label }: {
     label: string;
 }) {
     if (!computed) return null;
-    const match = expected.length > 0 && computed.toLowerCase() === expected.toLowerCase();
+    const match = expected.length > 0 && hexEqual(computed, expected);
     return (
         <div
             className="rounded border border-neutral-200 bg-neutral-50 p-4 space-y-2"
@@ -311,21 +312,21 @@ function SearchMode() {
 
         const found: HashHit[] = [];
         for (const order of orders) {
-            if (order.id.toLowerCase() === target) {
+            if (hexEqual(order.id, target)) {
                 found.push({
                     kind: "orderHash",
                     label: `Order hash for buyer ${order.buyer} ↔ seller ${order.seller}`,
                     location: `OrderCommitted.orderHash on FigaroCore (orderStatus[${order.id}] = ${order.state})`,
                 });
             }
-            if (order.processId.toLowerCase() === target) {
+            if (hexEqual(order.processId, target)) {
                 found.push({
                     kind: "processId",
                     label: `Process id (root buyer: ${order.buyer})`,
                     location: `OrderCommitted.processId / FigaroCore.processes[${order.processId}]`,
                 });
             }
-            if (order.agreementHash && order.agreementHash.toLowerCase() === target) {
+            if (hexEqual(order.agreementHash, target)) {
                 found.push({
                     kind: "agreementHash",
                     label: `Agreement merkle root (order ${order.id})`,
@@ -336,7 +337,7 @@ function SearchMode() {
             const agreement = loadAgreement(order.agreementHash);
             if (agreement) {
                 for (const section of agreement.sections) {
-                    if (computeSectionLeaf(section).toLowerCase() === target) {
+                    if (hexEqual(computeSectionLeaf(section), target)) {
                         found.push({
                             kind: "section-leaf",
                             label: `Section leaf — ${section.schema}`,

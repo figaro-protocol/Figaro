@@ -27,6 +27,7 @@ import { ModuleEmptyStateCard } from "@/components/shared/ModuleEmptyStateCard";
 import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import type { MerchantEvent } from "@figaro/core/schemas";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { hexEqual } from "@/lib/shared/evm";
 
 interface MerchantEventDefinition {
     eventType: MerchantEvent;
@@ -101,7 +102,7 @@ export function MerchantFulfilmentModule({ moduleId, context }: ModuleProps) {
         );
     }
 
-    const isOrderSeller = !!address && address.toLowerCase() === selectedOrder.seller.toLowerCase();
+    const isOrderSeller = hexEqual(address, selectedOrder.seller);
     if (!isOrderSeller) {
         return (
             <ModuleEmptyStateCard

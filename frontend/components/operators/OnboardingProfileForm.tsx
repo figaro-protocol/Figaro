@@ -27,6 +27,7 @@ import { encodeGeohash } from "@/lib/handoff/manifest";
 import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/shared/geocode";
 import { getCommonTokens, type CommonToken } from "@/lib/shared/commonTokens";
 import { slugify } from "@/lib/shared/slug";
+import { hexEqual } from "@/lib/shared/evm";
 
 /**
  * Step 2 of the onboarding wizard. Collects the stable identity fields
@@ -125,7 +126,7 @@ function toDraft(form: FormState): OnboardingProfileDraft {
     }
 
     const defaultToken = validTokens.find(
-        (t) => t.address.toLowerCase() === form.defaultTokenAddress.toLowerCase(),
+        (t) => hexEqual(t.address, form.defaultTokenAddress),
     );
 
     return {
@@ -196,7 +197,7 @@ export function OnboardingProfileForm({
     const commonTokens = useMemo(
         () => getCommonTokens(chainId).filter(
             (t) => !form.acceptedTokens.some(
-                (existing) => existing.address.toLowerCase() === t.address.toLowerCase(),
+                (existing) => hexEqual(existing.address, t.address),
             ),
         ),
         [chainId, form.acceptedTokens],
@@ -604,7 +605,7 @@ export function OnboardingProfileForm({
                         const isDuplicate =
                             lc.length > 0 &&
                             form.acceptedTokens.some(
-                                (other, i) => i !== index && other.address.trim().toLowerCase() === lc,
+                                (other, i) => i !== index && hexEqual(other.address.trim(), lc),
                             );
                         return (
                             <AcceptedTokenRow
@@ -658,7 +659,7 @@ export function OnboardingProfileForm({
                                         type="radio"
                                         name="defaultTokenAddress"
                                         value={token.address}
-                                        checked={form.defaultTokenAddress.toLowerCase() === token.address.toLowerCase()}
+                                        checked={hexEqual(form.defaultTokenAddress, token.address)}
                                         onChange={() => setField("defaultTokenAddress", token.address)}
                                         aria-required="true"
                                     />

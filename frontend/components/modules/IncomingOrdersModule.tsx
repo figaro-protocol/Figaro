@@ -15,6 +15,7 @@ import { formatToken } from "@/lib/shared/utils";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { hexEqual } from "@/lib/shared/evm";
 
 // ── Pending commitment card ──────────────────────────────────────────────────
 
@@ -130,7 +131,7 @@ export function IncomingOrdersModule({ moduleId, context }: ModuleProps) {
                     if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
 
                     // Only show commitments where we are the seller
-                    const isSeller = address.toLowerCase() === payload.commitment.seller.toLowerCase();
+                    const isSeller = hexEqual(address, payload.commitment.seller);
                     if (!isSeller) return;
 
                     receivedOrderIds.current.add(orderId);

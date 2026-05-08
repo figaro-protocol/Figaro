@@ -30,6 +30,7 @@ import {
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
+import { hexEqual } from "@/lib/shared/evm";
 import { DELIVERY_LIFECYCLE_STAGES, type ExtractedDocument } from "./types";
 
 /** Match a section by schema key, returning its cleartext form only.
@@ -88,7 +89,7 @@ function attestationMatchesLifecycleSchema(att: AttestationRecord): boolean {
     // keccak256("figaro-delivery-lifecycle-v1") — defensive match if the
     // indexer has not pre-decoded.
     const KECCAK_LIFECYCLE = "0xa9adfb6b1ad3e4c69a7afae4f21a05fd56c80b0ca0fdc63ac8e95dcd9bf73c40";
-    return att.schemaId.toLowerCase() === KECCAK_LIFECYCLE;
+    return hexEqual(att.schemaId, KECCAK_LIFECYCLE);
 }
 
 export function extractBillOfLading(

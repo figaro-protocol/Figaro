@@ -20,6 +20,7 @@
 import type { PublicClient } from "viem";
 import { parseAbiItem } from "viem";
 import { cachedGetLogs } from "./eventCache";
+import { hexEqual } from "@/lib/shared/evm";
 import { CONTRACTS } from "./contracts";
 import { MECHANISM_CONTRACTS } from "@/lib/mechanisms/contracts";
 import {
@@ -166,8 +167,7 @@ export async function getAllAuctionClaimed(client: PublicClient, chainId: number
 /** OrderCommitted logs where the indexed buyer matches. */
 export async function getOrderCommittedByBuyer(client: PublicClient, chainId: number, buyer: string) {
     const all = await getAllOrderCommitted(client, chainId);
-    const lc = buyer.toLowerCase();
-    return all.filter((log) => getStringArg(log, "buyer")?.toLowerCase() === lc);
+    return all.filter((log) => hexEqual(getStringArg(log, "buyer"), buyer));
 }
 
 /** OrderSeller logs — indexed seller lookup, no full-table scan. */
@@ -195,10 +195,9 @@ export async function getAllOrderCurrency(client: PublicClient, chainId: number)
  */
 export async function getOrderCommittedBySeller(client: PublicClient, chainId: number, seller: string) {
     const sellerLogs = await getAllOrderSeller(client, chainId);
-    const lc = seller.toLowerCase();
     const matchHashes = new Set(
         sellerLogs
-            .filter((log) => getStringArg(log, "seller")?.toLowerCase() === lc)
+            .filter((log) => hexEqual(getStringArg(log, "seller"), seller))
             .map((log) => getStringArg(log, "orderHash"))
             .filter((orderHash): orderHash is string => typeof orderHash === "string"),
     );
@@ -243,8 +242,7 @@ export async function getOrderStateMap(
 /** AuctionClaimed logs for a specific provider address. */
 export async function getAuctionClaimedByProvider(client: PublicClient, chainId: number, provider: string) {
     const all = await getAllAuctionClaimed(client, chainId);
-    const lc = provider.toLowerCase();
-    return all.filter((log) => getStringArg(log, "provider")?.toLowerCase() === lc);
+    return all.filter((log) => hexEqual(getStringArg(log, "provider"), provider));
 }
 
 // ---------------------------------------------------------------------------
@@ -408,7 +406,6 @@ export async function getOperatorState(
     chainId: number,
     operator: string,
 ): Promise<{ metadataURI: string; registeredBlock: bigint | null } | null> {
-    const lc = operator.toLowerCase();
 
     const [registered, profileUpdated, withdrawn] = await Promise.all([
         getAllOperatorRegistered(client, chainId),
@@ -430,7 +427,7 @@ export async function getOperatorState(
     let regLog: IndexedLog | undefined;
     let regBlock = 0n;
     for (const log of registered) {
-        if (getStringArg(log, "operator")?.toLowerCase() !== lc) continue;
+        if (!hexEqual(getStringArg(log, "operator"), operator)) continue;
         const b = toBlockBigInt(log);
         if (!regLog || b > regBlock) {
             regBlock = b;
@@ -445,7 +442,7 @@ export async function getOperatorState(
     // operator — otherwise a registration with blockNumber=null (regBlock=0n)
     // would spuriously look "withdrawn" against a default lastWithdrawBlock.
     const operatorWithdraws = withdrawn
-        .filter((log) => getStringArg(log, "operator")?.toLowerCase() === lc);
+        .filter((log) => hexEqual(getStringArg(log, "operator"), operator));
     if (operatorWithdraws.length > 0) {
         const lastWithdrawBlock = operatorWithdraws
             .map(toBlockBigInt)
@@ -458,7 +455,7 @@ export async function getOperatorState(
     let metadataURI = getStringArg(regLog, "metadataURI") ?? "";
     let metadataBlock = regBlock;
     for (const log of profileUpdated) {
-        if (getStringArg(log, "operator")?.toLowerCase() !== lc) continue;
+        if (!hexEqual(getStringArg(log, "operator"), operator)) continue;
         const b = toBlockBigInt(log);
         if (b < regBlock) continue;
         if (b > metadataBlock) {

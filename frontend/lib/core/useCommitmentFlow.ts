@@ -20,7 +20,7 @@ import { useAccount, useChainId, useSignTypedData } from "wagmi";
 import { COMMITMENT_TYPES } from "@figaro/core";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useFigaroActions, Commitment } from "@/lib/core/useFigaroActions";
-import { ZERO_ADDRESS, ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { isValidAddress } from "@/components/operators/TokenAddressInput";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { saveCommitment, computeOrderHash } from "@/lib/console/commitmentStore";
@@ -326,7 +326,7 @@ export function useCommitmentFlow() {
         const sig = await signCommitment(incoming.commitment);
 
         // Determine which role the current wallet fills
-        const isBuyer = address?.toLowerCase() === incoming.commitment.buyer.toLowerCase();
+        const isBuyer = hexEqual(address, incoming.commitment.buyer);
         const updated: CommitmentPayload = {
             ...incoming,
             buyerSig: isBuyer ? sig : incoming.buyerSig,
@@ -397,7 +397,7 @@ export function useCommitmentFlow() {
         const isE2EMock = e2eMode === "mock" && process.env.NODE_ENV !== "production";
         const isDevnet = e2eMode === "devnet" && process.env.NODE_ENV !== "production";
         const normalizedAddress = address?.toLowerCase();
-        const sameParty = commitment.buyer.toLowerCase() === commitment.seller.toLowerCase();
+        const sameParty = hexEqual(commitment.buyer, commitment.seller);
         const resolvedInitiatorRole = initiatorRole
             ?? (normalizedAddress === commitment.buyer.toLowerCase()
                 ? "buyer"

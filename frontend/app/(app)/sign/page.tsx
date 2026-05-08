@@ -15,7 +15,7 @@ import { useAccount, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useCommitmentFlow, type CommitmentPayload } from "@/lib/core/useCommitmentFlow";
-import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { calculateBonds } from "@figaro/core";
 import { deserializePayload } from "@/components/core/CommitmentSharePanel";
@@ -174,8 +174,8 @@ function SignPageContent() {
     const hasSellerSig = !!parsed?.sellerSig;
 
     // Determine which role the current wallet would fill
-    const isBuyer = address?.toLowerCase() === commitment?.buyer.toLowerCase();
-    const isSeller = address?.toLowerCase() === commitment?.seller.toLowerCase();
+    const isBuyer = hexEqual(address, commitment?.buyer);
+    const isSeller = hexEqual(address, commitment?.seller);
     const needsMySignature = (isBuyer && !hasBuyerSig) || (isSeller && !hasSellerSig);
     const myBondLabel = isBuyer ? "Your Buyer Bond (2x)" : isSeller ? "Your Seller Bond (2x)" : "Your Bond (2x)";
 

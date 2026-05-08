@@ -32,7 +32,7 @@ import { clearTestHelperAllowance } from "@/lib/core/orderApproval";
 import { useOrderApprovalFlow } from "@/lib/core/useOrderApprovalFlow";
 import { showError, showSuccess } from "@/lib/shared/toast";
 import { getE2EModeSession } from "@/lib/shared/e2e";
-import { ZERO_ADDRESS, ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
 
 export function OrderControls() {
@@ -327,7 +327,7 @@ export function OrderControls() {
             : commitStep === 'done'
                 ? 'shared-done'
                 : null;
-    const counterpartyMatchesConnectedWallet = !!counterparty && !!address && counterparty.toLowerCase() === address.toLowerCase();
+    const counterpartyMatchesConnectedWallet = hexEqual(counterparty, address);
     const missingRequirements: string[] = [];
 
     if (!mounted && !isE2EMock) {

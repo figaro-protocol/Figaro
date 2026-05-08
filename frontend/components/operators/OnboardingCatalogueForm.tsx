@@ -12,6 +12,7 @@ import { IpfsImageUpload } from "@/components/operators/IpfsImageUpload";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import type { CatalogueItemMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import { hexEqual } from "@/lib/shared/evm";
 
 /**
  * Step 3 of the onboarding wizard. Collects the catalogue items —
@@ -143,7 +144,7 @@ export function OnboardingCatalogueForm({
         const addr = state.profile?.defaultTokenAddress;
         if (!addr || !state.profile?.acceptedTokens) return "";
         const token = state.profile.acceptedTokens.find(
-            (t) => t.address.toLowerCase() === addr.toLowerCase(),
+            (t) => hexEqual(t.address, addr),
         );
         return token?.symbol ?? "";
     }, [state.profile]);

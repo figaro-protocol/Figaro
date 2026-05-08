@@ -1,7 +1,7 @@
 import { Order, OrderState } from "@/lib/core/store";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
-import { ZERO_BYTES32 } from "@/lib/shared/evm";
+import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import {
     AttachmentModel,
     CapabilityModel,
@@ -40,7 +40,7 @@ function roleCapabilities(_order: Order, _address?: string, _isE2EMock = false):
     const normalized = _address?.toLowerCase();
     const canComposeSubOrder = _isE2EMock
         ? true
-        : !!normalized && order.buyer.toLowerCase() === normalized;
+        : hexEqual(order.buyer, normalized);
 
     if (!canComposeSubOrder) return [];
 
@@ -79,7 +79,7 @@ function deriveProcessCapabilities(
     const canResolve = isE2EMock
         ? orders.some((order) => order.state === OrderState.Active)
         : orders.some(
-            (order) => order.state === OrderState.Active && order.buyer.toLowerCase() === normalized
+            (order) => order.state === OrderState.Active && hexEqual(order.buyer, normalized)
         );
 
     if (canResolve) {
@@ -112,8 +112,8 @@ function deriveProcessCapabilities(
 function deriveSettlementBreakdown(order: Order, address?: string): EconomicBreakdownModel | undefined {
     if (!address) return undefined;
     const normalized = address.toLowerCase();
-    const isBuyer = order.buyer.toLowerCase() === normalized;
-    const isSeller = order.seller.toLowerCase() === normalized;
+    const isBuyer = hexEqual(order.buyer, normalized);
+    const isSeller = hexEqual(order.seller, normalized);
 
     if (!isBuyer && !isSeller) return undefined;
 
@@ -190,11 +190,11 @@ function deriveProcessEconomicSummary(
     const normalized = address.toLowerCase();
     const totalPayment = orders.reduce((sum, order) => sum + order.payment, 0n);
     const actorBuyerBond = orders.reduce(
-        (sum, order) => sum + (order.buyer.toLowerCase() === normalized ? order.buyerBond : 0n),
+        (sum, order) => sum + (hexEqual(order.buyer, normalized) ? order.buyerBond : 0n),
         0n
     );
     const actorSellerBond = orders.reduce(
-        (sum, order) => sum + (order.seller.toLowerCase() === normalized ? order.sellerBond : 0n),
+        (sum, order) => sum + (hexEqual(order.seller, normalized) ? order.sellerBond : 0n),
         0n
     );
     const downstreamReferenced = orders
@@ -292,7 +292,7 @@ function deriveOrderAttachments(order: Order, address?: string): AttachmentModel
         });
     }
 
-    if (normalized && order.buyer.toLowerCase() === normalized) {
+    if (hexEqual(order.buyer, normalized)) {
         attachments.push({
             id: `${order.processId}:${orderId}:buyer-role`,
             mechanismId: "core-orders",
@@ -307,7 +307,7 @@ function deriveOrderAttachments(order: Order, address?: string): AttachmentModel
         });
     }
 
-    if (normalized && order.seller.toLowerCase() === normalized) {
+    if (hexEqual(order.seller, normalized)) {
         attachments.push({
             id: `${order.processId}:${orderId}:seller-role`,
             mechanismId: "core-orders",
@@ -412,8 +412,8 @@ function deriveProcessAttachments(
 
     const normalized = address?.toLowerCase();
     if (normalized) {
-        const buyerCount = orders.filter((order) => order.buyer.toLowerCase() === normalized).length;
-        const sellerCount = orders.filter((order) => order.seller.toLowerCase() === normalized).length;
+        const buyerCount = orders.filter((order) => hexEqual(order.buyer, normalized)).length;
+        const sellerCount = orders.filter((order) => hexEqual(order.seller, normalized)).length;
 
         if (buyerCount > 0) {
             attachments.push({

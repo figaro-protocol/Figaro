@@ -33,6 +33,7 @@ import { WalletGate } from "@/components/core/WalletGate";
 import { deserializePayload } from "@/components/core/CommitmentSharePanel";
 import { useCommitmentFlow, type CommitmentPayload } from "@/lib/core/useCommitmentFlow";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { hexEqual } from "@/lib/shared/evm";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { resolveRuntimeSubjectByAddress } from "@/lib/shared/runtimeIdentityRegistry";
@@ -179,7 +180,7 @@ export function MerchantInbox() {
                     try {
                         const payload = deserializePayload(payloadJson);
                         if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
-                        const isSeller = address.toLowerCase() === payload.commitment.seller.toLowerCase();
+                        const isSeller = hexEqual(address, payload.commitment.seller);
                         if (!isSeller) return;
                         receivedOrderIds.current.add(orderId);
                         setPending((prev) => [...prev, payload]);

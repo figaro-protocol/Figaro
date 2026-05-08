@@ -1,6 +1,7 @@
 import type { PublicClient } from 'viem';
 import { getActiveOperators } from '@/lib/core/indexer';
 import type { SellerCatalogue } from '@/lib/seller/types';
+import { hexEqual } from '@/lib/shared/evm';
 import { MECHANISM_CONTRACTS } from '@/lib/mechanisms/contracts';
 import { resolveContentURI } from '@/lib/shared/merchantBranding';
 import type { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
@@ -67,7 +68,7 @@ const FIXTURE_CATALOGUES: SellerCatalogue[] = OPERATOR_PROFILE_METADATA_RECORDS.
     (profile, index) => {
         const catalogue = profile.subjectAddress
             ? SELLER_CATALOGUE_METADATA_RECORDS.find(
-                (c) => c.subjectAddress.toLowerCase() === profile.subjectAddress!.toLowerCase()
+                (c) => hexEqual(c.subjectAddress, profile.subjectAddress)
             )
             : undefined;
         return profileToCatalogue(profile, catalogue, index);

@@ -34,6 +34,7 @@ import type { MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { hexEqual } from "@/lib/shared/evm";
 
 const MERCHANT_EVENT_BY_STAGE: Record<number, MerchantEvent> = {
     0: "order-received",
@@ -348,8 +349,8 @@ export function OrderTimelineView({ processId }: Props) {
     const buyerDisplayName = buyerIdentity?.subject.displayName
         ?? (rootOrder ? formatAddress(rootOrder.buyer) : "the buyer");
 
-    const isBuyer = !!address && !!rootOrder && address.toLowerCase() === rootOrder.buyer.toLowerCase();
-    const isSeller = !!address && !!rootOrder && address.toLowerCase() === rootOrder.seller.toLowerCase();
+    const isBuyer = !!rootOrder && hexEqual(address, rootOrder.buyer);
+    const isSeller = !!rootOrder && hexEqual(address, rootOrder.seller);
     const role: "buyer" | "merchant" | "spectator" = isBuyer ? "buyer" : isSeller ? "merchant" : "spectator";
 
     const allOrders = processModel?.orders ?? [];

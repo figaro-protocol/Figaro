@@ -16,6 +16,7 @@
 import path from 'path';
 import { test as base, expect, Browser, BrowserContext, Page } from '@playwright/test';
 import { ensureWalletHasMockTokens, ANVIL_ACCOUNTS } from './test-helpers';
+import { hexEqual } from '../../lib/shared/evm';
 
 const multiInjectPath = path.resolve(__dirname, './fixtures/inject-ethereum-multi.js');
 
@@ -75,7 +76,7 @@ export async function switchAccount(page: Page, account: string): Promise<void> 
         (addr: string) => {
             const normalized = addr.toLowerCase();
             const providerAccount = (window as any).__FIGARO_GET_ACCOUNT__?.();
-            if (typeof providerAccount !== 'string' || providerAccount.toLowerCase() !== normalized) {
+            if (typeof providerAccount !== 'string' || !hexEqual(providerAccount, addr)) {
                 return false;
             }
 

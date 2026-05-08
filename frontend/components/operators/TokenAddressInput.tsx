@@ -2,7 +2,7 @@
 
 import { useReadContract } from "wagmi";
 import { getAddress, isAddress, parseAbi } from "viem";
-import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 
 const SYMBOL_ABI = parseAbi(["function symbol() view returns (string)"]);
 
@@ -37,7 +37,7 @@ export type AddressIntegrity =
 export function addressIntegrity(addr: string): AddressIntegrity {
     if (!addr) return "empty";
     if (!isAddress(addr, { strict: false })) return "not-address";
-    if (addr.toLowerCase() === ZERO_ADDRESS) return "zero";
+    if (hexEqual(addr, ZERO_ADDRESS)) return "zero";
     if (addr === addr.toLowerCase()) return "lowercase";
     try {
         return addr === getAddress(addr) ? "checksum-valid" : "checksum-invalid";

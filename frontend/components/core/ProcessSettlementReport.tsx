@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { formatToken } from "@/lib/shared/utils";
+import { hexEqual } from "@/lib/shared/evm";
 import {
     getAllOrderCommitted,
     getAllOrderResolved,
@@ -350,8 +351,8 @@ export function ProcessSettlementReport({ processId: initialProcessId }: Props) 
                             </thead>
                             <tbody className="divide-y divide-neutral-100">
                                 {report.orders.map((order) => {
-                                    const isWalletBuyer = address?.toLowerCase() === order.buyer.toLowerCase();
-                                    const isWalletSeller = address?.toLowerCase() === order.seller.toLowerCase();
+                                    const isWalletBuyer = hexEqual(address, order.buyer);
+                                    const isWalletSeller = hexEqual(address, order.seller);
                                     const highlight = isWalletBuyer || isWalletSeller;
 
                                     return (

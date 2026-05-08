@@ -14,6 +14,7 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import { calculateBonds } from "@figaro/core";
 import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { hexEqual } from "@/lib/shared/evm";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { formatToken, parseToken } from "@/lib/shared/utils";
@@ -109,7 +110,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
     const supportedModes = useMemo<FulfillmentMode[]>(() => {
         if (!merchantAddress) return ALL_FULFILMENT_MODES;
         const merchant = catalogues.find(
-            (c) => c.address.toLowerCase() === merchantAddress,
+            (c) => hexEqual(c.address, merchantAddress),
         );
         const declared = merchant?.fulfillmentModes ?? [];
         const canonical = declared.filter((m): m is FulfillmentMode =>

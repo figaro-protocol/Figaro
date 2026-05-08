@@ -58,7 +58,7 @@
  * can reconstruct and verify it.
  */
 
-import { ZERO_BYTES32 } from "@/lib/shared/evm";
+import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 
 // ── Core types ───────────────────────────────────────────────────────────────
 
@@ -593,7 +593,7 @@ export function verifyRevealedSection(
     );
     if (!redacted || !isRedactedSection(redacted)) return false;
     const recomputed = computeSectionLeaf(revealed);
-    return redacted.leaf.toLowerCase() === recomputed.toLowerCase();
+    return hexEqual(redacted.leaf, recomputed);
 }
 
 /**
@@ -617,7 +617,7 @@ export function buildSectionInclusionProof(
     const leaves = agreement.sections.map(computeSectionLeaf);
     leaves.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 
-    let idx = leaves.findIndex((l) => l.toLowerCase() === targetLeaf.toLowerCase());
+    let idx = leaves.findIndex((l) => hexEqual(l, targetLeaf));
     if (idx < 0) {
         // Unreachable: we just generated the leaf from a section that
         // appears in the agreement.
@@ -663,7 +663,7 @@ export function verifyInclusionProof(
     for (const sibling of proof) {
         computed = hashPair(computed, sibling);
     }
-    return computed.toLowerCase() === root.toLowerCase();
+    return hexEqual(computed, root);
 }
 
 // ── Section helpers ──────────────────────────────────────────────────────────
@@ -693,8 +693,7 @@ export function getSectionById(
     schemaId: `0x${string}`,
 ): AgreementSection | undefined {
     if (!agreement) return undefined;
-    const target = schemaId.toLowerCase();
-    return agreement.sections.find((s) => schemaIdOf(s.schema).toLowerCase() === target);
+    return agreement.sections.find((s) => hexEqual(schemaIdOf(s.schema), schemaId));
 }
 
 /**

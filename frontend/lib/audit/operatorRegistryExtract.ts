@@ -21,6 +21,7 @@
 
 import type { Order } from "@/lib/core/store";
 import type { ExtractedDocument } from "./types";
+import { hexEqual } from "@/lib/shared/evm";
 
 export interface OperatorRegisteredEvent {
     operator: string;
@@ -68,8 +69,7 @@ export function extractOperatorRegistry(
         seller: order.seller,
     };
 
-    const sellerLc = order.seller.toLowerCase();
-    const sellerEvents = events.filter((e) => e.operator.toLowerCase() === sellerLc);
+    const sellerEvents = events.filter((e) => hexEqual(e.operator, order.seller));
     if (sellerEvents.length === 0) {
         return {
             ...base,

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain } from "@/lib/shared/chains";
 import { CONTRACTS, DUTCH_AUCTION_ABI } from "@/lib/core/contracts";
-import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 /**
@@ -115,7 +115,7 @@ export function useDutchAuction(order: AuctionOrder) {
 
     const started = creator !== ZERO_ADDRESS && startTime > 0n;
     const isClaimed = providerAddr !== ZERO_ADDRESS;
-    const isMyJob = !!address && isClaimed && providerAddr.toLowerCase() === address.toLowerCase();
+    const isMyJob = isClaimed && hexEqual(providerAddr, address);
 
     // Live auction: read the decaying price
     const { data: currentPrice, refetch: refetchPrice } = useReadContract({

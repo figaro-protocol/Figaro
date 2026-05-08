@@ -23,6 +23,7 @@
 
 import type { Order } from "@/lib/core/store";
 import type { ExtractedDocument } from "./types";
+import { hexEqual } from "@/lib/shared/evm";
 
 export interface DutchAuctionCreatedEvent {
     auctionId: string;
@@ -99,9 +100,8 @@ export function extractDutchAuction(
     // Find the AuctionClaimed where provider === order.seller AND
     // clearingPrice === order.payment. That's the unique link from
     // a committed order back to its auction.
-    const sellerLc = order.seller.toLowerCase();
     const matchingClaim = claimedEvents.find(
-        (e) => e.provider.toLowerCase() === sellerLc && e.clearingPrice === order.payment,
+        (e) => hexEqual(e.provider, order.seller) && e.clearingPrice === order.payment,
     );
 
     if (!matchingClaim) {

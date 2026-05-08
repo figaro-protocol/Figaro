@@ -6,6 +6,7 @@ import { OrderNodeSemanticCard } from "@/components/core/OrderNodeSemanticCard";
 import { ProcessTopologyPanel } from "@/components/core/ProcessTopologyPanel";
 import { SettlementProceedsPanel } from "@/components/core/SettlementProceedsPanel";
 import { CapabilityExecutionInput, CapabilityModel, ProcessModel } from "@/lib/semantic/models";
+import { hexEqual } from "@/lib/shared/evm";
 
 interface Props {
     process: ProcessModel;
@@ -38,7 +39,7 @@ export function AssemblyProcessWorkspace({
                 <SettlementProceedsPanel
                     sourceOrderId={rootOrder.orderId}
                     currency={rootOrder.currency ?? ("0x0" as `0x${string}`)}
-                    isSeller={rootOrder.seller.toLowerCase() === address.toLowerCase()}
+                    isSeller={hexEqual(rootOrder.seller, address)}
                 />
             )}
             {process.economicSummary && (

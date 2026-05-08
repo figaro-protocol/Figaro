@@ -13,6 +13,7 @@ import { usePublicClient, useWatchContractEvent } from "wagmi";
 import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
 import { Order, OrderState, useOrderStore } from "@/lib/core/store";
 import { mockSubscribe } from "@/lib/core/mockEventStore";
+import { hexEqual } from "@/lib/shared/evm";
 import {
     getAllOrderCommitted,
     getAllOrderResolved,
@@ -147,9 +148,7 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
             }
             const lc = address.toLowerCase();
             const relevant = allOrders.filter(
-                (o) =>
-                    o.buyer?.toLowerCase() === lc ||
-                    o.seller?.toLowerCase() === lc
+                (o) => hexEqual(o.buyer, address) || hexEqual(o.seller, address)
             );
             setSummaries(summarise(relevant));
         });
@@ -170,10 +169,10 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
                 if (cancelled) return;
 
                 const buyerOrders: Order[] = allCommitted
-                    .filter((log) => getStringArg(log, "buyer").toLowerCase() === lc)
+                    .filter((log) => hexEqual(getStringArg(log, "buyer"), address))
                     .map(toOrder);
                 const sellerOrders: Order[] = allCommitted
-                    .filter((log) => getStringArg(log, "seller").toLowerCase() === lc)
+                    .filter((log) => hexEqual(getStringArg(log, "seller"), address))
                     .map(toOrder);
 
                 const seen = new Set<string>();

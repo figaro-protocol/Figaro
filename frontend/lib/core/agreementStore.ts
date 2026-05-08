@@ -1,6 +1,7 @@
 import type { Hex } from "viem";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse, safeJsonParse } from "@/lib/shared/safeJson";
+import { hexEqual } from "@/lib/shared/evm";
 import {
     canonicalizeAgreement,
     computeAgreementHash,
@@ -200,7 +201,7 @@ export async function hydrateAgreement(
                 return null;
             }
             const computedHash = computeAgreementHash(agreement);
-            if (computedHash.toLowerCase() !== agreementHash.toLowerCase()) {
+            if (!hexEqual(computedHash, agreementHash)) {
                 return null;
             }
             saveAgreement(agreement, { uri });
@@ -225,7 +226,7 @@ export async function primeAgreementArtifact(params: {
 
     if (agreement) {
         const computedHash = computeAgreementHash(agreement);
-        if (computedHash.toLowerCase() !== agreementHash.toLowerCase()) {
+        if (!hexEqual(computedHash, agreementHash)) {
             throw new Error("Shared agreement artifact does not match commitment agreementHash");
         }
         saveAgreement(agreement, { uri: agreementUri });
