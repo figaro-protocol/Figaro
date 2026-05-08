@@ -148,9 +148,6 @@ export function decodeMeasurementGramsContent(content: Hex | null | undefined): 
     }
 }
 
-/** @deprecated Use `decodeMeasurementGramsContent` against the measurement schema. */
-export const decodeActualGramsContent = decodeMeasurementGramsContent;
-
 export function formatActualGrams(grams: bigint): string {
     if (grams < 1000n) return `${grams} g CO2e`;
     if (grams < 1_000_000n) return `${(Number(grams) / 1000).toFixed(2)} kg CO2e`;

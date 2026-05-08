@@ -148,7 +148,7 @@ export function extractEthereumAddresses(
  * Resolve a did:web identifier to its DID Document.
  * Returns { document, error, isLoading }.
  */
-export function useDidDocument(did: string | undefined) {
+function useDidDocument(did: string | undefined) {
     const [document, setDocument] = useState<DIDDocument | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);

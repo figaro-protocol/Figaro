@@ -24,7 +24,7 @@ import { MERCHANT_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 export const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
 
 /** uint8 stage values matching the `figaro-merchant-process-v1` enum. */
-export const MERCHANT_EVENT_STAGE: Record<MerchantEvent, number> = {
+const MERCHANT_EVENT_STAGE: Record<MerchantEvent, number> = {
     "order-received": 0,
     "accepted": 1,
     "prep-started": 2,

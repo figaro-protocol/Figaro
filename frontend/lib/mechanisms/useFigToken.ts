@@ -38,38 +38,6 @@ export function useFigTokenMetrics() {
     };
 }
 
-// ── Staged airdrop: per-stage claim action ──────────────────────────────────
-
-/** Claim the allocation for a specific airdrop stage (0=yr2, 1=yr5, 2=yr9). */
-export function useStagedAirdropClaim(stageIndex: number) {
-    const airdrop = getStagedAirdrop();
-    const { address } = useAccount();
-    const chain = activeChain;
-    const [error, setError] = useState("");
-
-    const { writeContractAsync, data: hash, isPending } = useWriteContract();
-    const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
-
-    const claim = async (amount: bigint, proof: `0x${string}`[]) => {
-        if (!airdrop) return;
-        setError("");
-        try {
-            return await writeContractAsync({
-                address: airdrop,
-                abi: STAGED_MERKLE_AIRDROP_ABI,
-                functionName: "claim",
-                args: [stageIndex, amount, proof],
-                account: address,
-                chain,
-            });
-        } catch (e: unknown) {
-            setError(extractErrorMessage(e, "Airdrop claim failed"));
-        }
-    };
-
-    return { claim, error, isPending, isConfirming, isSuccess, available: !!airdrop };
-}
-
 // ── Staged airdrop: per-stage claim status ─────────────────────────────────
 
 /** Returns true if `account` has already claimed stage `stageIndex`. */
