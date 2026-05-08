@@ -8,7 +8,7 @@ import { mockGetOrders } from "@/lib/core/mockEventStore";
 import { useOrderStore } from "@/lib/core/store";
 import { useCommitmentFlow } from "@/lib/core/useCommitmentFlow";
 import { useBondPreview } from "@/hooks/core/useBondPreview";
-import { useMounted } from "@/hooks/core/useMounted";
+import { useMounted } from "@/lib/shared/useMounted";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { ManifestForm, ManifestFields, EMPTY_MANIFEST_FIELDS } from "@/components/core/ManifestForm";
 import BondApprovalPanel from "@/components/core/BondApprovalPanel";

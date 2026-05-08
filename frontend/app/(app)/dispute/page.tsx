@@ -78,6 +78,7 @@ import {
     type KlerosConfig,
     type KlerosCourtKey,
 } from "@/lib/dispute";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -187,11 +188,6 @@ async function computeClaimDigest(
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
     return `0x${hex}` as Hex;
-}
-
-function shortAddr(addr: string | undefined | null): string {
-    if (!addr) return "—";
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
 function isValidCid(value: string): boolean {
@@ -997,7 +993,7 @@ function ReviewStep({
                 )}
                 {isConnected && (
                     <p className="text-[11px] text-neutral-500">
-                        Signing wallet: <span className="font-mono">{shortAddr(address)}</span>
+                        Signing wallet: <span className="font-mono">{truncateHex(address) || "—"}</span>
                     </p>
                 )}
 

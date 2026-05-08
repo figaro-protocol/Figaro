@@ -3,7 +3,7 @@
 import { useAccount } from "wagmi";
 import { useOrderStore, OrderState } from "@/lib/core/store";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
-import { useMounted } from "@/hooks/core/useMounted";
+import { useMounted } from "@/lib/shared/useMounted";
 import { useWalletProcessIds } from "@/hooks/core/useWalletProcessIds";
 import { Card } from "@/components/ui/Card";
 import Activity from "@/components/icons/Coins";

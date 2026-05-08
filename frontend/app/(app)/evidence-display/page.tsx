@@ -27,6 +27,7 @@ import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { decodeManifest, cosLabel } from "@/lib/handoff/manifest";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -43,11 +44,6 @@ function formatTimestamp(iso: string): string {
         second: "2-digit",
         hour12: false,
     });
-}
-
-function shortenAddress(addr: string): string {
-    if (addr.length <= 12) return addr;
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
 function errorMessage(cause: unknown, fallback: string): string {
@@ -242,7 +238,7 @@ function TimelineEventCard({ event, index }: { event: TimelineEvent; index: numb
                                 <span className="text-gray-500 font-mono">{key}</span>
                                 <span className="text-gray-600 font-mono truncate" title={val}>
                                     {key.toLowerCase().includes("address") || key === "buyer" || key === "seller"
-                                        ? shortenAddress(val)
+                                        ? truncateHex(val)
                                         : val}
                                 </span>
                             </div>
@@ -407,7 +403,7 @@ export default function EvidenceDisplayPage() {
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 font-mono">
                         <span>process: {timeline.processId}</span>
                         <span>chain: {chainIdParam ?? timeline.chainId}</span>
-                        <span>core: {shortenAddress(coreAddressParam ?? timeline.coreAddress)}</span>
+                        <span>core: {truncateHex(coreAddressParam ?? timeline.coreAddress)}</span>
                         <span>generated: {formatTimestamp(timeline.generatedAt)}</span>
                     </div>
                 </header>
@@ -423,7 +419,7 @@ export default function EvidenceDisplayPage() {
                                     className="inline-block bg-gray-100 text-gray-600 rounded px-2 py-0.5 text-xs font-mono"
                                     title={addr}
                                 >
-                                    {shortenAddress(addr)}
+                                    {truncateHex(addr)}
                                 </span>
                             ))}
                         </div>
@@ -450,7 +446,7 @@ export default function EvidenceDisplayPage() {
                 <footer className="mt-8 pt-4 border-t border-gray-200 text-center">
                     <p className="text-xs text-gray-500">
                         All data sourced from on-chain events emitted by FigaroCore at{" "}
-                        <span className="font-mono">{shortenAddress(timeline.coreAddress)}</span>
+                        <span className="font-mono">{truncateHex(timeline.coreAddress)}</span>
                         {" "}on chain {timeline.chainId}. Events are immutable and block-timestamped.
                     </p>
                 </footer>

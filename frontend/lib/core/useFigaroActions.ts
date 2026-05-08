@@ -5,7 +5,7 @@ import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId,
 import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/core/testHelpers';
 import { activeChain } from "@/lib/shared/chains";
-import { ZERO_PROCESS_ID as SHARED_ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { useOrderStore, generateProcessId, OrderState, Order } from "@/lib/core/store";
 import {
     mockEmitOrder,
@@ -16,9 +16,6 @@ import { calculateBonds } from "@figaro/core";
 
 // Re-export for existing consumers
 export type { Commitment };
-
-/** Zero processId signals a root order — the kernel derives processId from the EIP-712 digest. */
-export const ZERO_PROCESS_ID = SHARED_ZERO_PROCESS_ID;
 
 export const useFigaroActions = () => {
     // E2E mock mode: enable by visiting URL with `?e2e=mock` in development

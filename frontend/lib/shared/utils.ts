@@ -13,10 +13,6 @@ export function parseToken(amount: string, decimals: number = 18): bigint {
     return parseUnits(amount, decimals);
 }
 
-export function shortenAddress(address: string, chars: number = 4): string {
-    return `${address.slice(0, chars + 2)}...${address.slice(-chars)}`;
-}
-
 export function getOrderColor(state: number): string {
     switch (state) {
         case 0: // Virtual

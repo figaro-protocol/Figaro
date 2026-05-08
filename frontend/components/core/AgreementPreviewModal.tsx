@@ -29,10 +29,6 @@ interface Props {
     onCancel: () => void;
 }
 
-function shortAddress(addr: string): string {
-    return truncateHex(addr);
-}
-
 function formatPayment(commitment: Commitment): string {
     // Heuristic: if currency is the well-known USDC address pattern, scale by 6;
     // otherwise scale by 18 (ETH / FIG / most ERC-20s). This is for display

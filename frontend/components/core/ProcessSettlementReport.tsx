@@ -47,10 +47,6 @@ function fmt(value: bigint, decimals = 18): string {
     return Number(formatUnits(value, decimals)).toFixed(6);
 }
 
-function shortAddr(addr: string): string {
-    return truncateHex(addr);
-}
-
 async function getBlockTimestamp(
     client: NonNullable<ReturnType<typeof usePublicClient>>,
     blockNumber: bigint,
@@ -313,8 +309,8 @@ export function ProcessSettlementReport({ processId: initialProcessId }: Props) 
                         </div>
 
                         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                            <MetricCard label="Root Order" value={shortAddr(report.rootOrderHash)} />
-                            <MetricCard label="Currency" value={shortAddr(report.currency)} />
+                            <MetricCard label="Root Order" value={truncateHex(report.rootOrderHash)} />
+                            <MetricCard label="Currency" value={truncateHex(report.currency)} />
                             <MetricCard label="Gross Payment" value={fmt(report.totalPayment)} sub="tokens" />
                             <MetricCard label="Locked Bonds" value={fmt(report.totalBondsLocked)} sub="tokens" />
                         </div>
@@ -364,7 +360,7 @@ export function ProcessSettlementReport({ processId: initialProcessId }: Props) 
                                             className={highlight ? "bg-blue-50/50" : "hover:bg-neutral-50"}
                                         >
                                             <td className="px-4 py-2 font-mono text-xs">
-                                                {shortAddr(order.orderHash)}
+                                                {truncateHex(order.orderHash)}
                                             </td>
                                             <td className="px-4 py-2">
                                                 <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
@@ -382,7 +378,7 @@ export function ProcessSettlementReport({ processId: initialProcessId }: Props) 
                                                 </span>
                                             </td>
                                             <td className="px-4 py-2 font-mono text-xs">
-                                                {shortAddr(order.seller)}
+                                                {truncateHex(order.seller)}
                                                 {isWalletSeller && (
                                                     <span className="ml-1 text-xs text-green-600">(you)</span>
                                                 )}

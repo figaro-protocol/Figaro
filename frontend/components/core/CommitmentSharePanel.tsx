@@ -20,7 +20,7 @@ import type {
     CommitmentPayload,
     CommitmentFlowStep,
 } from "@/lib/core/useCommitmentFlow";
-import { ZERO_PROCESS_ID } from "@/lib/core/useFigaroActions";
+import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { computeOrderHash } from "@/lib/console/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
@@ -238,11 +238,11 @@ export function CommitmentSharePanel({
             <div className="text-xs space-y-1 text-gray-600">
                 <div className="flex justify-between">
                     <span>Buyer</span>
-                    <span className="font-mono">{shortAddr(commitment.buyer)}</span>
+                    <span className="font-mono">{truncateHex(commitment.buyer)}</span>
                 </div>
                 <div className="flex justify-between">
                     <span>Seller</span>
-                    <span className="font-mono">{shortAddr(commitment.seller)}</span>
+                    <span className="font-mono">{truncateHex(commitment.seller)}</span>
                 </div>
                 <div className="flex justify-between">
                     <span>Payment</span>
@@ -321,7 +321,7 @@ export function CommitmentSharePanel({
                             className="text-[11px] text-green-700 text-center max-w-sm"
                             data-testid="commitment-xmtp-status"
                         >
-                            Commitment payload sent over XMTP to {shortAddr(transportRecipient)}.
+                            Commitment payload sent over XMTP to {truncateHex(transportRecipient)}.
                         </p>
                     )}
                     {transportStatus === "error" && transportError && (
@@ -377,6 +377,3 @@ export function CommitmentSharePanel({
     );
 }
 
-function shortAddr(addr: string): string {
-    return truncateHex(addr);
-}

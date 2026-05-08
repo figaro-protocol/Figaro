@@ -27,7 +27,7 @@ import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import BondApprovalPanel from "@/components/core/BondApprovalPanel";
 import { type PermitSignature } from "@/hooks/core/useTokenApproval";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
-import { useMounted } from "@/hooks/core/useMounted";
+import { useMounted } from "@/lib/shared/useMounted";
 import { parsePositiveTokenInput } from "@/lib/core/orderEntryValidation";
 import { buildExpectedCumulativeValue, getLinearPredecessorOrderHash } from "@/lib/core/processOrderPreparation";
 import { useOrderApprovalFlow } from "@/lib/core/useOrderApprovalFlow";

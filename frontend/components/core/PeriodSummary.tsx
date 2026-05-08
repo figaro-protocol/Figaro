@@ -72,10 +72,6 @@ function fmt(value: bigint, decimals = 18): string {
     return Number(formatUnits(value, decimals)).toFixed(6);
 }
 
-function shortAddr(addr: string): string {
-    return truncateHex(addr);
-}
-
 async function getBlockTimestamp(
     client: NonNullable<ReturnType<typeof usePublicClient>>,
     blockNumber: bigint,
@@ -367,7 +363,7 @@ export function PeriodSummary() {
                 >
                     <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
-                            Currency: {shortAddr(summary.currency)}
+                            Currency: {truncateHex(summary.currency)}
                         </h3>
                         <span className="font-mono text-xs text-neutral-500">{summary.currency}</span>
                     </div>
@@ -422,7 +418,7 @@ export function PeriodSummary() {
                         <tbody className="divide-y divide-neutral-100">
                             {orderDetails.map((detail) => (
                                 <tr key={`${detail.orderHash}-${detail.role}`} className="hover:bg-neutral-50">
-                                    <td className="px-4 py-2 font-mono text-xs">{shortAddr(detail.orderHash)}</td>
+                                    <td className="px-4 py-2 font-mono text-xs">{truncateHex(detail.orderHash)}</td>
                                     <td className="px-4 py-2">
                                         <span
                                             className={`rounded px-1.5 py-0.5 text-xs font-semibold ${detail.role === "buyer"

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { FormField } from "@/components/ui/FormField";
 import { CORE_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/core/testHelpers';
-import { useMounted } from "@/hooks/core/useMounted";
+import { useMounted } from "@/lib/shared/useMounted";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import useTokenApproval from "@/hooks/core/useTokenApproval";
 import { useBondPreview } from "@/hooks/core/useBondPreview";
@@ -22,7 +22,7 @@ import BondApprovalPanel from "@/components/core/BondApprovalPanel";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { broadcastSharedCommitment } from "@/lib/core/commitmentBroadcast";
 import PermitControl from "@/components/core/PermitControl";
-import { useFigaroActions, ZERO_PROCESS_ID } from "@/lib/core/useFigaroActions";
+import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { useCommitmentFlow } from "@/lib/core/useCommitmentFlow";
 import { submitPreparedCommitment } from "@/lib/core/commitmentSubmission";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
@@ -32,7 +32,7 @@ import { clearTestHelperAllowance } from "@/lib/core/orderApproval";
 import { useOrderApprovalFlow } from "@/lib/core/useOrderApprovalFlow";
 import { showError, showSuccess } from "@/lib/shared/toast";
 import { getE2EModeSession } from "@/lib/shared/e2e";
-import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
 
 export function OrderControls() {

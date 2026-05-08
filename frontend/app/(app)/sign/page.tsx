@@ -15,7 +15,7 @@ import { useAccount, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useCommitmentFlow, type CommitmentPayload } from "@/lib/core/useCommitmentFlow";
-import { ZERO_PROCESS_ID } from "@/lib/core/useFigaroActions";
+import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { calculateBonds } from "@figaro/core";
 import { deserializePayload } from "@/components/core/CommitmentSharePanel";
 import { TokenApprovalFlow } from "@/components/core/TokenApprovalFlow";
@@ -23,12 +23,9 @@ import { primeAgreementArtifact } from "@/lib/core/agreementStore";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { formatToken } from "@/lib/shared/utils";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 type InboxStatus = "idle" | "listening" | "received" | "error";
-
-function shortAddr(addr: string): string {
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
-}
 
 function SignPageContent() {
     const { address } = useAccount();
@@ -256,11 +253,11 @@ function SignPageContent() {
                     <div className="text-xs space-y-1.5 text-neutral-600">
                         <div className="flex justify-between">
                             <span>Buyer</span>
-                            <span className="font-mono">{shortAddr(commitment.buyer)}</span>
+                            <span className="font-mono">{truncateHex(commitment.buyer)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span>Seller</span>
-                            <span className="font-mono">{shortAddr(commitment.seller)}</span>
+                            <span className="font-mono">{truncateHex(commitment.seller)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span>Payment</span>
@@ -303,7 +300,7 @@ function SignPageContent() {
                     {/* Warning if connected wallet is not a party */}
                     {address && !isBuyer && !isSeller && (
                         <p className="text-amber-600 text-xs bg-amber-50 border border-amber-200 rounded p-2">
-                            Your connected wallet ({shortAddr(address)}) is neither the buyer nor the seller in this commitment.
+                            Your connected wallet ({truncateHex(address)}) is neither the buyer nor the seller in this commitment.
                         </p>
                     )}
 

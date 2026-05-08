@@ -9,7 +9,7 @@ import Wallet from "@/components/icons/Wallet";
 import RefreshCw from "@/components/icons/RefreshCw";
 import { useEffect, useRef } from "react";
 import { useMockTokenMint } from "@/hooks/core/useMockTokenMint";
-import { useMounted } from "@/hooks/core/useMounted";
+import { useMounted } from "@/lib/shared/useMounted";
 
 
 export function TokenBalances() {

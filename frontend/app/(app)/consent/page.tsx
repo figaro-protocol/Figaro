@@ -44,6 +44,7 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { readAccessCode } from "@/components/shared/Watermark";
 import { ConsentOnboardingModal } from "@/components/core/ConsentOnboardingModal";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 const CONSENT_DOMAIN_NAME = "Figaro Beta Consent";
 const CONSENT_DOMAIN_VERSION = "1";
@@ -66,11 +67,6 @@ interface SignedReceipt {
     documentCid: string | null;
     receiptCid: string | null;
     pdfBlob: Blob;
-}
-
-function shortAddr(addr: string | undefined): string {
-    if (!addr) return "—";
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
 async function pinDocumentText(): Promise<string | null> {
@@ -311,7 +307,7 @@ export default function ConsentPage() {
                     <div className="text-xs space-y-1.5 text-neutral-600">
                         <div className="flex justify-between">
                             <span>Signer</span>
-                            <span className="font-mono">{shortAddr(address)}</span>
+                            <span className="font-mono">{truncateHex(address) || "—"}</span>
                         </div>
                         <div className="flex justify-between">
                             <span>Chain</span>
