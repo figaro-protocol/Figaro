@@ -21,7 +21,6 @@ vi.mock('@/lib/mechanisms/useMerchantCatalogue', () => ({
 }));
 
 vi.mock('@/lib/mechanisms/useOperatorRegistry', () => ({
-    OperatorRole: { None: 0, Merchant: 1, Driver: 2, Both: 3 },
     useOperatorProfile: (...args: unknown[]) => useOperatorProfileMock(...args),
     useRegistrationDeposit: () => ({ data: 1000000000000000n }),
     useWithdrawDeposit: () => ({ withdraw: vi.fn(), isPending: false, isConfirming: false, isSuccess: false, error: null, hash: undefined }),

@@ -20,7 +20,6 @@ vi.mock('wagmi', () => ({
 }));
 
 vi.mock('@/lib/mechanisms/useOperatorRegistry', () => ({
-    OperatorRole: { None: 0, Merchant: 1, Driver: 2, Both: 3 },
     useRegistrationDeposit: () => ({ data: 1000000000000000n }),
     useWithdrawDeposit: () => ({
         withdraw: vi.fn(),
