@@ -12,9 +12,6 @@ export default function DesignerLanding() {
     return (
         <div className="min-h-screen bg-canvas">
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
-                <p className="text-eyebrow uppercase text-ink-muted mb-4">
-                    Designer
-                </p>
                 <h1 className="text-heading-h1 text-ink-heading mb-6">
                     Compose an assembly.
                 </h1>
@@ -35,7 +32,7 @@ export default function DesignerLanding() {
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
-                <h2 className="text-eyebrow uppercase text-ink-muted mb-6">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Your drafts
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
@@ -45,7 +42,7 @@ export default function DesignerLanding() {
             </section>
 
             <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-12">
-                <h2 className="text-eyebrow uppercase text-ink-muted mb-6">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Reference assemblies
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
