@@ -10,9 +10,6 @@ export default function LocalCommercePage() {
     return (
         <>
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
-                <p className="text-eyebrow uppercase text-ink-muted mb-4">
-                    local-commerce
-                </p>
                 <h1 className="text-heading-h1 text-ink-heading mb-6">
                     Three roles, one bonded process.
                 </h1>
@@ -22,7 +19,7 @@ export default function LocalCommercePage() {
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
-                <h2 className="text-eyebrow uppercase text-ink-muted mb-6">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Roles
                 </h2>
                 <dl className="space-y-4 text-sm">
@@ -42,7 +39,7 @@ export default function LocalCommercePage() {
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
-                <h2 className="text-eyebrow uppercase text-ink-muted mb-6">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Mechanisms in use
                 </h2>
                 <ul className="space-y-4">
@@ -66,7 +63,7 @@ export default function LocalCommercePage() {
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
-                <h2 className="text-eyebrow uppercase text-ink-muted mb-6">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Privacy surface
                 </h2>
                 <p className="text-base text-ink-body leading-relaxed">
@@ -75,7 +72,7 @@ export default function LocalCommercePage() {
             </section>
 
             <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-12">
-                <h2 className="text-eyebrow uppercase text-ink-muted mb-6">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Where to go from here
                 </h2>
                 <ul className="space-y-2 text-sm">
