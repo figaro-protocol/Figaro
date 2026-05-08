@@ -23,6 +23,7 @@ import {
     isRedactedSection,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
 
 /** Match a section by schema key. Returns either form (cleartext or
@@ -201,7 +202,7 @@ export function extractContract(
         buyer: order.buyer,
         seller: order.seller,
         parties: { buyer: order.buyer, seller: order.seller },
-        currency: commerceCurrency ?? order.currency ?? "0x0000000000000000000000000000000000000000",
+        currency: commerceCurrency ?? order.currency ?? ZERO_ADDRESS,
         payment: order.payment,
         cumulativeValue: order.cumulativeValue,
         salt: order.salt,

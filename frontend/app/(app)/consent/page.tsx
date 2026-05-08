@@ -41,6 +41,7 @@ import {
     CONSENT_DOCUMENT_TITLE,
 } from "@/lib/shared/consentDocument";
 import { CONTRACTS } from "@/lib/core/contracts";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { readAccessCode } from "@/components/shared/Watermark";
 import { ConsentOnboardingModal } from "@/components/core/ConsentOnboardingModal";
@@ -165,7 +166,7 @@ export default function ConsentPage() {
 
     const accessCode = typeof window !== "undefined" ? readAccessCode() : null;
 
-    const verifyingContract = (CONTRACTS.core || ("0x0000000000000000000000000000000000000000" as Address)) as Address;
+    const verifyingContract = (CONTRACTS.core || ZERO_ADDRESS) as Address;
     const domain = {
         name: CONSENT_DOMAIN_NAME,
         version: CONSENT_DOMAIN_VERSION,

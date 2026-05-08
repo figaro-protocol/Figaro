@@ -134,6 +134,7 @@ vi.mock('@/components/core/CommitmentSharePanel', () => ({
 }));
 
 import { CreateOrderPanel } from '@/components/console/CreateOrderPanel';
+import { ZERO_ADDRESS } from '@/lib/shared/evm';
 
 describe('CreateOrderPanel', () => {
     beforeEach(() => {
@@ -236,7 +237,7 @@ describe('CreateOrderPanel', () => {
         render(<CreateOrderPanel />);
 
         await user.type(screen.getByPlaceholderText('0x...'), '0x9999999999999999999999999999999999999999');
-        await user.type(screen.getByPlaceholderText('0x0000000000000000000000000000000000000000'), '0x2222222222222222222222222222222222222222');
+        await user.type(screen.getByPlaceholderText(ZERO_ADDRESS), '0x2222222222222222222222222222222222222222');
         await user.click(screen.getByRole('button', { name: 'Create Commitment' }));
 
         await waitFor(() => {
@@ -257,7 +258,7 @@ describe('CreateOrderPanel', () => {
         render(<CreateOrderPanel />);
 
         const sellerInput = screen.getByPlaceholderText('0x...');
-        const currencyInput = screen.getByPlaceholderText('0x0000000000000000000000000000000000000000');
+        const currencyInput = screen.getByPlaceholderText(ZERO_ADDRESS);
         await user.type(sellerInput, '0x9999999999999999999999999999999999999999');
         await user.type(currencyInput, '0x2222222222222222222222222222222222222222');
 

@@ -64,6 +64,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { CONTRACTS } from "@/lib/core/contracts";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import {
     buildConsentDisputeEvidence,
     buildConsentDisputeMetaEvidence,
@@ -352,8 +353,7 @@ export default function DisputePage() {
                 claimDigest,
                 submittedAt,
             };
-            const verifyingContract = (CONTRACTS.core
-                || ("0x0000000000000000000000000000000000000000" as Address)) as Address;
+            const verifyingContract = (CONTRACTS.core || ZERO_ADDRESS) as Address;
             const domain = {
                 name: CLAIM_DOMAIN_NAME,
                 version: CLAIM_DOMAIN_VERSION,

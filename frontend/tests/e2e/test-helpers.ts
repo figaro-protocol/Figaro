@@ -1,5 +1,6 @@
 import { Locator, Page, expect } from '@playwright/test';
 import { canonicalizeAgreement, computeAgreementHash, type Agreement, type AgreementSection } from '../../lib/core/agreementManifest';
+import { ZERO_ADDRESS } from '../../lib/shared/evm';
 import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from '../anvilAccounts';
 
 export { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN };
@@ -546,7 +547,7 @@ export async function injectActiveOrder(
     const paymentBigInt = BigInt(payment);
     const orderCurrency = opts.currency && opts.currency.trim().length > 0
         ? opts.currency as `0x${string}`
-        : '0x0000000000000000000000000000000000000000';
+        : ZERO_ADDRESS;
 
     let agreementHash = opts.manifest ?? '';
     let serializedAgreement: string | null = null;

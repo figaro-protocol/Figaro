@@ -35,6 +35,7 @@
  */
 
 import { OrderState, type Order } from "@/lib/core/store";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 
 /**
  * Currency address normalised to lowercase. Multi-currency arithmetic is
@@ -171,18 +172,15 @@ function bondTwo(value: bigint): bigint {
  * Build the per-order line item — the invoice-style row capturing this
  * order's individual contribution to every aggregate. Pure; no side effects.
  */
-/** Currency address for a Figaro order. The kernel always emits currency on
- *  OrderCommitted; the store types it as optional to defer hydration. We
- *  fall back to the zero address as a sentinel — financial projection then
- *  segments any orders that arrived without a currency under "0x000…0",
- *  visible as a flag rather than silently aggregating with real currencies. */
-const ZERO_CURRENCY = "0x0000000000000000000000000000000000000000";
-
 function buildLineItem(order: Order): OrderLineItem {
     const P = order.payment;
     const G = order.cumulativeValue;
     const isActive = order.state === OrderState.Active;
-    const currency = (order.currency ?? ZERO_CURRENCY).toLowerCase();
+    /** Currency falls back to the zero address as a sentinel — financial
+     *  projection then segments any orders that arrived without a currency
+     *  under "0x000…0", visible as a flag rather than silently aggregating
+     *  with real currencies. */
+    const currency = (order.currency ?? ZERO_ADDRESS).toLowerCase();
     return {
         orderId: order.id,
         processId: order.processId,

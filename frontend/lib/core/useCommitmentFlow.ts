@@ -20,7 +20,7 @@ import { useAccount, useChainId, useSignTypedData } from "wagmi";
 import { COMMITMENT_TYPES } from "@figaro/core";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useFigaroActions, Commitment } from "@/lib/core/useFigaroActions";
-import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { saveCommitment, computeOrderHash } from "@/lib/console/commitmentStore";
 import type { Agreement } from "@/lib/core/agreementManifest";
 import { hydrateAgreement, loadAgreement, primeAgreementArtifact, saveAgreementUri } from "@/lib/core/agreementStore";
@@ -28,8 +28,6 @@ import { requestSignConfirmation } from "@/lib/core/commitmentSignPreviewStore";
 import { strippingReviver } from "@/lib/shared/safeJson";
 
 // ── EIP-712 Domain (V5: version "3") ──────────────────────────
-
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 function isValidVerifyingContract(addr: string | undefined): addr is `0x${string}` {
     if (!addr) return false;

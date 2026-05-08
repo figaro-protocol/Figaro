@@ -2,10 +2,9 @@
 
 import { useReadContract } from "wagmi";
 import { getAddress, isAddress, parseAbi } from "viem";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 
 const SYMBOL_ABI = parseAbi(["function symbol() view returns (string)"]);
-
-export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 /**
  * True iff `addr` is a 0x-prefixed 20-byte hex string. Format-only:

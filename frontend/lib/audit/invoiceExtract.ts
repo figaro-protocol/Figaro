@@ -22,6 +22,7 @@ import {
     isRedactedSection,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
 
 function findAnySection(
@@ -109,7 +110,7 @@ export function extractInvoice(
         // readable. Fall back to `order.currency` from the on-chain Commit
         // event — the kernel records currency on the commitment, so this
         // is always available regardless of redaction.
-        currency: commerceData?.currency ?? order.currency ?? "0x0000000000000000000000000000000000000000",
+        currency: commerceData?.currency ?? order.currency ?? ZERO_ADDRESS,
         lineItems,
         ...(sealed ? { lineItemsSealed: true } : {}),
         // Total comes from `order.payment`, recorded on-chain at commit.

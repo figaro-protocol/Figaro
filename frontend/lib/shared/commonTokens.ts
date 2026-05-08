@@ -10,13 +10,13 @@
  * env vars; production chains carry hardcoded canonical addresses.
  */
 
+import { ZERO_ADDRESS } from "./evm";
+
 export interface CommonToken {
     address: `0x${string}`;
     symbol: string;
     name: string;
 }
-
-const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
 /**
  * Validates a literal env-var string and narrows it to a 0x address.
@@ -28,7 +28,7 @@ const ZERO = "0x0000000000000000000000000000000000000000" as const;
  */
 function normalizeAddress(value: string | undefined): `0x${string}` | undefined {
     const trimmed = (value ?? "").trim();
-    if (!trimmed || trimmed === ZERO) return undefined;
+    if (!trimmed || trimmed === ZERO_ADDRESS) return undefined;
     if (!/^0x[a-fA-F0-9]{40}$/.test(trimmed)) return undefined;
     return trimmed as `0x${string}`;
 }

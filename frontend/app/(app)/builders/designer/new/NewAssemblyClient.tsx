@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProcessGraphCanvas } from "@/components/core/ProcessGraphCanvas";
 import type { Order } from "@/lib/core/store";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import {
     collectDescendants,
     createSyntheticRootOrder,
@@ -48,7 +49,7 @@ function buildInitialState(draftParam: string | null): InitialState {
             return {
                 session: {
                     processId: draft.processId as `0x${string}`,
-                    buyerAddress: (draft.orders[0]?.buyer ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+                    buyerAddress: (draft.orders[0]?.buyer ?? ZERO_ADDRESS) as `0x${string}`,
                     nextOrderIndex: draft.nextOrderIndex,
                     nextSellerIndex: draft.nextSellerIndex,
                 },
@@ -64,7 +65,7 @@ function buildInitialState(draftParam: string | null): InitialState {
         return {
             session: {
                 processId: restored.processId as `0x${string}`,
-                buyerAddress: (restored.orders[0]?.buyer ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+                buyerAddress: (restored.orders[0]?.buyer ?? ZERO_ADDRESS) as `0x${string}`,
                 nextOrderIndex: restored.nextOrderIndex,
                 nextSellerIndex: restored.nextSellerIndex,
             },

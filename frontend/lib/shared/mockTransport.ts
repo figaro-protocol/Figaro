@@ -1,4 +1,5 @@
 import { http, type HttpTransportConfig, type Transport } from "viem";
+import { ZERO_ADDRESS } from "./evm";
 
 export class MockRpcBlockedError extends Error {
     constructor(method: string) {
@@ -58,7 +59,7 @@ function mockResponse(
                 timestamp: "0x0",
                 gasLimit: "0x0",
                 gasUsed: "0x0",
-                miner: "0x0000000000000000000000000000000000000000",
+                miner: ZERO_ADDRESS,
                 baseFeePerGas: "0x0",
                 transactions: [],
                 logsBloom: `0x${"0".repeat(512)}`,

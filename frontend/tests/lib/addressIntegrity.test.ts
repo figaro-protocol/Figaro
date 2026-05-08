@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    ZERO_ADDRESS,
     addressIntegrity,
     classifyTokenError,
     isValidAddress,
 } from "@/components/operators/TokenAddressInput";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 
 // USDC mainnet — known checksum address.
 const USDC_CHECKSUM = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";

@@ -13,6 +13,7 @@
 
 import type { Hex } from "viem";
 import { Order, OrderState } from "@/lib/core/store";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ManifestFields } from "@/lib/core/encoding";
 import {
     buildOrderAgreement,
@@ -22,8 +23,6 @@ import {
 import { computeAgreementHash } from "@/lib/core/agreementManifest";
 import { loadAgreement, saveAgreement } from "@/lib/core/agreementStore";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
-
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 /** Address space for synthetic actors. Distinct prefix avoids visual confusion with live wallets. */
 function syntheticAddress(slot: number): `0x${string}` {
