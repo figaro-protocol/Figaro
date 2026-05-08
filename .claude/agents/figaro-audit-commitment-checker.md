@@ -47,8 +47,12 @@ Grade each:
 2. **All instances enumerated.** Re-run the operator's grep yourself with at least one variant naming (e.g. if finding is about `shortAddr`, also grep `shortAddress`, `shortenAddress`, `truncateAddr`). Confirm count matches. Flag missed sites.
 3. **No fabricated paths.** Every cited path resolves to a real file. Use Read or `ls` to verify a sample.
 4. **Categorization is faithful.** Spot-check 2–3 sites: are they really "identical" or just similar? Is the "merely related" bucket actually distinct?
-5. **Canonical version is the existing one.** No new helper / module / name introduced. The canonical must already exist in the codebase before the refactor — verify with grep.
-6. **No new names.** The refactor uses only names that already exist in the codebase (`truncateHex`, `ZERO_ADDRESS`, etc.). Flag any renames or new helper introductions.
+5. **Canonical placement.** The canonical home for the consolidated concept must satisfy ONE of:
+    - (a) **Already exists.** The refactor imports from a pre-existing canonical without changing its surface. Verify with grep.
+    - (b) **Newly introduced as a single home for N≥3 inline duplicates that had no prior canonical.** The artifact must explicitly justify the absence of any pre-existing canonical (search for plausible alternative names). The new canonical lives in `frontend/lib/shared/` (or another single agreed-upon home), not scattered.
+
+   Flag if the refactor adds a new canonical when an existing one would have served, OR if the new canonical is a wrapper around an existing canonical for cosmetic naming.
+6. **No name proliferation.** The refactor must not introduce a new name for a concept that already has a canonical name elsewhere in the codebase. This is the failure mode the gate exists for: e.g. `EMPTY_AGREEMENT_HASH` when `ZERO_BYTES32` exists, `formatAddress` when `truncateHex` exists, `errorMessage(cause, fallback)` when `extractErrorMessage` exists. Verify by grepping for plausible alternative names of the consolidated concept across the codebase. Introducing a new single canonical name under commitment 5(b) is allowed; introducing a new alias for an existing canonical is not.
 7. **No silent scope expansion.** If the refactor touches files outside the enumerated finding, those must be explicitly listed.
 8. **No file deletions without authorization.** If the diff includes any `D ` (deleted file) status, FAIL the finding. Dead files get flagged for review, not deleted.
 9. **Tests pass.** Verification artifacts include test command output showing pass count. If absent or showing failures, FAIL.
@@ -63,7 +67,7 @@ Grade each:
 1. **Read the artifact** the main Claude provides.
 2. **Re-run the headline grep** yourself. Confirm count.
 3. **Spot-check 2–3 enumerated sites** with Read.
-4. **Verify the canonical exists** with grep.
+4. **Verify the canonical**: if the artifact claims a pre-existing canonical, grep for it. If the artifact introduces a new canonical (5(b)), grep for plausible alternative names of the concept and confirm absence — that's the justification commitment 5(b) requires.
 5. **Verify no file deletions** in the diff stat.
 6. **Verify test + tsc artifacts** are real (they should be quoted from actual command output, not summarized).
 7. **Output the checklist** with PASS/FAIL/N/A per commitment.
