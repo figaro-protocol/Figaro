@@ -193,7 +193,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
             {/* Header bar with prominent close */}
             <div className="px-5 py-3 border-b border-neutral-200 bg-neutral-50 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                    <p className="text-xs font-semibold text-neutral-500">
                         Modify agreement
                     </p>
                     <p className="text-sm font-semibold text-black mt-0.5 truncate">
@@ -213,7 +213,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
             {/* Per-category toggle row — pills are the canonical control */}
             <div className="px-5 py-2 border-b border-neutral-200 bg-white flex items-center gap-1.5 overflow-x-auto">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mr-1 shrink-0">
+                <span className="text-xs font-semibold text-neutral-500 mr-1 shrink-0">
                     Modify:
                 </span>
                 {(Object.keys(SECTION_LABELS) as SectionKey[]).map((key) => {
@@ -256,7 +256,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "geo" && (
                     <section data-testid="drawer-section-geo" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
+                        <p className="text-sm font-semibold text-ink-heading mb-3">
                             Geo · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("geo", fields)}</span>
                         </p>
                         <div className="space-y-3">
@@ -300,7 +300,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "ghg" && (
                     <section data-testid="drawer-section-ghg" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
+                        <p className="text-sm font-semibold text-ink-heading mb-3">
                             GHG · <span className="font-mono normal-case text-neutral-400" data-testid="drawer-section-ghg-active-schema">{resolveActiveSchemaId("ghg", fields)}</span>
                         </p>
                         <div className="space-y-3">
@@ -324,7 +324,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "handoff" && (
                     <section data-testid="drawer-section-handoff" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
+                        <p className="text-sm font-semibold text-ink-heading mb-3">
                             Handoff · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("handoff", fields)}</span>
                         </p>
                         <div className="space-y-3">
@@ -345,7 +345,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "proximity" && (
                     <section data-testid="drawer-section-proximity" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
+                        <p className="text-sm font-semibold text-ink-heading mb-3">
                             Proximity · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("proximity", fields)}</span>
                         </p>
                         <div className="space-y-3">
@@ -372,7 +372,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "jurisdiction" && (
                     <section data-testid="drawer-section-jurisdiction" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
+                        <p className="text-sm font-semibold text-ink-heading mb-3">
                             Jurisdiction · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("jurisdiction", fields)}</span>
                         </p>
                         <div className="space-y-3">
@@ -403,7 +403,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "consent" && (
                     <section data-testid="drawer-section-consent" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
+                        <p className="text-sm font-semibold text-ink-heading mb-3">
                             Consent · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("consent", fields)}</span>
                         </p>
                         <div className="space-y-3">
@@ -437,7 +437,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "topology" && (
                     <section data-testid="drawer-section-topology" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 mb-3">
+                        <p className="text-sm font-semibold text-ink-heading mb-3">
                             Topology · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("topology", fields)}</span>
                         </p>
                         <div className="space-y-2 text-xs">
