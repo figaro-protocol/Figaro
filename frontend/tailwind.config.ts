@@ -119,7 +119,6 @@ const config: Config = {
                 'heading-h2': ['1.5rem', { lineHeight: '1.3', letterSpacing: '0.005em', fontWeight: '600' }],
                 'heading-h3': ['1.125rem', { lineHeight: '1.4', letterSpacing: '0.005em', fontWeight: '600' }],
                 'body-lead': ['1.125rem', { lineHeight: '1.6', letterSpacing: '0.005em', fontWeight: '400' }],
-                eyebrow: ['0.8125rem', { lineHeight: '1.4', letterSpacing: '0.08em', fontWeight: '600' }],
             },
             // Per docs/v5/DESIGN_TOKENS.md §5 (Shadow tokens).
             // Only the section-card shadow is named; link and invariant cards

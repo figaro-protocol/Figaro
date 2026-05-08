@@ -36,7 +36,7 @@ The ink ramp is namespaced `ink.*` rather than `text.*` to avoid the `text-text-
 | `ink.heading` | `#1c1814` | `text-ink-heading`  | Page H1, strong heading emphasis.                        |
 | `ink.primary` | `#3a322a` | `text-ink-primary`  | Default body text — set on `<body>`.                     |
 | `ink.body`    | `#5a4f42` | `text-ink-body`     | Lead paragraphs, body text on subtle surfaces.           |
-| `ink.muted`   | `#857c6e` | `text-ink-muted`    | Captions, eyebrow labels, secondary metadata.            |
+| `ink.muted`   | `#857c6e` | `text-ink-muted`    | Captions, secondary metadata.                            |
 | `ink.faint`   | `#a89e8d` | `text-ink-faint`    | Decorative only — fails WCAG AA on canvas for body text. |
 
 ### Focus
@@ -55,7 +55,7 @@ The single CTA-only contrast color. Traditional MUJI aizome indigo: deep, cool, 
 
 **Discipline (load-bearing):**
 
-- **CTAs only.** Use `bg-accent` / `text-accent` on the primary call-to-action of a page (e.g., the marketing-header Discover button, a "Download paper" button, a "Sign commitment" button on a transactional surface). Do not use accent on body text, captions, eyebrow labels, status surfaces, or decorative dividers.
+- **CTAs only.** Use `bg-accent` / `text-accent` on the primary call-to-action of a page (e.g., the marketing-header Discover button, a "Download paper" button, a "Sign commitment" button on a transactional surface). Do not use accent on body text, captions, status surfaces, or decorative dividers.
 - **Max one accent surface per page.** Two accent fills on one page produce CTA-stacking — neither reads as primary. The outline-strong-secondary pattern (`border-ink-heading`, paper fill) is the canonical companion shape for the secondary action.
 - **Never used as a text-on-canvas color** for prose. `text-accent` on canvas is decoratively visible but not body-text legible at small sizes. Reserve for short labels (button text uses `text-paper` on `bg-accent`).
 - **Hover inverts fill ⇄ outline within the same hue.** A filled `bg-accent text-paper` button hovers to `bg-paper text-accent` (with `border-accent` set in both states so the outline appears on hover). An outline-strong-sumi secondary button (`border-ink-heading bg-paper text-ink-heading`) hovers to filled-sumi (`bg-ink-heading text-paper`). The pair: filled-accent ⇄ outline-accent (primary), outline-sumi ⇄ filled-sumi (secondary). Crossing hue families on hover (indigo → sumi) reads as a register break; flipping fill state within the same hue reads as activation.
@@ -119,7 +119,6 @@ Each Tailwind utility carries the full metric set (size + line-height + letter-s
 | `heading-h2`  | `text-heading-h2`   | `1.5rem`   | 600    | `1.3`       | `0.005em`  | Section H2.                  |
 | `heading-h3`  | `text-heading-h3`   | `1.125rem` | 600    | `1.4`       | `0.005em`  | Subsection H3.               |
 | `body-lead`   | `text-body-lead`    | `1.125rem` | 400    | `1.6`       | `0.005em`  | Lead paragraph after H1.     |
-| `eyebrow`     | `text-eyebrow`      | `0.8125rem`| 600    | `1.4`       | `0.08em`   | Section eyebrow label (uppercase). Marketing-page top-level eyebrow is banned — see `MarketingHero` JSDoc. |
 
 ---
 
@@ -217,12 +216,6 @@ Section-card shape lifted off the page. Backdrop `rgba(58, 50, 42, 0.4)` (40% `i
 ```
 bg-surface border border-default rounded-glyph
 text-ink-heading font-mono font-semibold
-```
-
-### Eyebrow label
-
-```
-text-eyebrow uppercase text-ink-muted
 ```
 
 ### Status surfaces
