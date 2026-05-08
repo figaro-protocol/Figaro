@@ -12,16 +12,3 @@ export function formatToken(amount: bigint, decimals: number = 18): string {
 export function parseToken(amount: string, decimals: number = 18): bigint {
     return parseUnits(amount, decimals);
 }
-
-export function getOrderColor(state: number): string {
-    switch (state) {
-        case 0: // Virtual
-            return "gray";
-        case 1: // Active
-            return "yellow";
-        case 2: // Resolved
-            return "green";
-        default:
-            return "gray";
-    }
-}
