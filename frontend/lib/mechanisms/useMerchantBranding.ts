@@ -7,14 +7,11 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
-import { usePublicClient, useChainId } from "wagmi";
-import { getOperatorMetadataURI } from "@/lib/core/indexer";
-import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     fetchMerchantBranding,
     type ResolvedMerchantBranding,
 } from "@/lib/shared/merchantBranding";
+import { useAsyncMerchantResource } from "@/lib/mechanisms/useAsyncMerchantResource";
 
 export interface UseMerchantBrandingResult {
     branding: ResolvedMerchantBranding | null;
@@ -25,47 +22,9 @@ export interface UseMerchantBrandingResult {
 export function useMerchantBranding(
     sellerAddress: `0x${string}` | undefined
 ): UseMerchantBrandingResult {
-    const client = usePublicClient();
-    const chainId = useChainId();
-    const [branding, setBranding] = useState<ResolvedMerchantBranding | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!client || !sellerAddress) {
-            setBranding(null);
-            return;
-        }
-
-        let cancelled = false;
-        setIsLoading(true);
-        setError(null);
-
-        getOperatorMetadataURI(client, chainId, sellerAddress)
-            .then(async (metadataURI) => {
-                if (cancelled) return;
-                if (!metadataURI) {
-                    setBranding(null);
-                    setIsLoading(false);
-                    return;
-                }
-                const result = await fetchMerchantBranding(metadataURI);
-                if (!cancelled) {
-                    setBranding(result);
-                    setIsLoading(false);
-                }
-            })
-            .catch((err) => {
-                if (!cancelled) {
-                    setError(extractErrorMessage(err, "Failed to fetch branding"));
-                    setIsLoading(false);
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [client, chainId, sellerAddress]);
-
-    return { branding, isLoading, error };
+    const { data, isLoading, error } = useAsyncMerchantResource(sellerAddress, {
+        fetcher: fetchMerchantBranding,
+        failureMessage: "Failed to fetch branding",
+    });
+    return { branding: data, isLoading, error };
 }
