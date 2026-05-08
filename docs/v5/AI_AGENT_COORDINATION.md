@@ -233,7 +233,7 @@ the on-chain operator address.
 
 The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`, and
 `buildOperatorDidDocument()` in `@figaro/core/extensions`. The frontend
-provides `useDidDocument()` and `useDidVerification()` hooks in
+provides the `useDidVerification()` hook in
 `lib/mechanisms/useDidWeb.ts`.
 
 ### Trust Model Difference
