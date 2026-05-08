@@ -4,6 +4,7 @@ import {
     resolveAssemblyRuntimeContext,
     resolveSemanticRuntimeSnapshot,
 } from "@/lib/shared/runtimeResolution";
+import { isValidAddress } from "@/components/operators/TokenAddressInput";
 
 function serializeBigInts(obj: unknown): unknown {
     if (typeof obj === "bigint") return obj.toString();
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    if (subjectAddress && !/^0x[a-fA-F0-9]{40}$/.test(subjectAddress)) {
+    if (subjectAddress && !isValidAddress(subjectAddress)) {
         return NextResponse.json(
             { error: "Invalid subjectAddress format" },
             { status: 400 },

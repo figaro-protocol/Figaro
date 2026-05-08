@@ -21,6 +21,7 @@ import { COMMITMENT_TYPES } from "@figaro/core";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useFigaroActions, Commitment } from "@/lib/core/useFigaroActions";
 import { ZERO_ADDRESS, ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { isValidAddress } from "@/components/operators/TokenAddressInput";
 import { saveCommitment, computeOrderHash } from "@/lib/console/commitmentStore";
 import type { Agreement } from "@/lib/core/agreementManifest";
 import { hydrateAgreement, loadAgreement, primeAgreementArtifact, saveAgreementUri } from "@/lib/core/agreementStore";
@@ -32,7 +33,7 @@ import { strippingReviver } from "@/lib/shared/safeJson";
 function isValidVerifyingContract(addr: string | undefined): addr is `0x${string}` {
     if (!addr) return false;
     if (addr === ZERO_ADDRESS) return false;
-    return /^0x[0-9a-fA-F]{40}$/.test(addr);
+    return isValidAddress(addr);
 }
 
 function useFigaroDomain() {

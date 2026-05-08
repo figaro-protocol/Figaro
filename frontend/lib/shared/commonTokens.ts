@@ -11,6 +11,7 @@
  */
 
 import { ZERO_ADDRESS } from "./evm";
+import { isValidAddress } from "@/components/operators/TokenAddressInput";
 
 export interface CommonToken {
     address: `0x${string}`;
@@ -29,7 +30,7 @@ export interface CommonToken {
 function normalizeAddress(value: string | undefined): `0x${string}` | undefined {
     const trimmed = (value ?? "").trim();
     if (!trimmed || trimmed === ZERO_ADDRESS) return undefined;
-    if (!/^0x[a-fA-F0-9]{40}$/.test(trimmed)) return undefined;
+    if (!isValidAddress(trimmed)) return undefined;
     return trimmed as `0x${string}`;
 }
 

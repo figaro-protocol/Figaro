@@ -14,6 +14,8 @@
  * so error messages localise the failure for the user.
  */
 
+import { isValidAddress } from "@/components/operators/TokenAddressInput";
+
 export type UnknownRecord = Record<string, unknown>;
 
 export function asRecord(value: unknown, path: string): UnknownRecord {
@@ -73,7 +75,7 @@ export function asEnum<T extends string>(value: unknown, allowed: Set<T>, path: 
 
 export function asAddress(value: unknown, path: string): `0x${string}` {
     const address = asString(value, path);
-    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    if (!isValidAddress(address)) {
         throw new Error(`${path} must be a 20-byte hex address.`);
     }
     return address as `0x${string}`;

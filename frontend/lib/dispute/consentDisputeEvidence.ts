@@ -33,6 +33,7 @@
 import type { Address, Hex } from "viem";
 import type { KlerosMetaEvidence, KlerosEvidence } from "./klerosEvidence";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { isValidAddress } from "@/components/operators/TokenAddressInput";
 
 // ---------------------------------------------------------------------------
 // MetaEvidence
@@ -200,8 +201,6 @@ const MAX_CLAIM_LENGTH = 4000;
 const CID_PATTERN = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[a-z2-7]{55,})$/;
 const HEX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 const HEX_SIG_PATTERN = /^0x[0-9a-fA-F]{130}$/;
-const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
-
 function assertCid(value: string, fieldName: string): void {
     if (!CID_PATTERN.test(value)) {
         throw new Error(
@@ -223,7 +222,7 @@ function assertSignature(value: string, fieldName: string): void {
 }
 
 function assertAddress(value: string, fieldName: string): void {
-    if (!ADDRESS_PATTERN.test(value)) {
+    if (!isValidAddress(value)) {
         throw new Error(`${fieldName} must be a 0x-prefixed 20-byte address`);
     }
 }

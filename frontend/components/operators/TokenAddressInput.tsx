@@ -12,8 +12,11 @@ const SYMBOL_ABI = parseAbi(["function symbol() view returns (string)"]);
  * checksum (the last is flagged as `checksum-invalid` by
  * `addressIntegrity`, but it's still a syntactically valid 40-hex
  * address). Use `addressIntegrity` to distinguish.
+ *
+ * Returns a type predicate so callers can narrow `string` to
+ * `` `0x${string}` `` (= viem's `Address`) inside an `if` block.
  */
-export function isValidAddress(addr: string): boolean {
+export function isValidAddress(addr: string): addr is `0x${string}` {
     return isAddress(addr, { strict: false });
 }
 

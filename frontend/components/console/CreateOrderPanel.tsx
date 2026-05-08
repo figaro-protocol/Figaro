@@ -23,6 +23,7 @@ import { submitPreparedCommitment } from "@/lib/core/commitmentSubmission";
 import { prepareOrderCommitment, buildUnsignedOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { handleOrderSurfaceFailure, runOrderSurfaceAction } from "@/lib/core/orderSurfaceActions";
 import { useCommitmentFlow } from "@/lib/core/useCommitmentFlow";
+import { isValidAddress } from "@/components/operators/TokenAddressInput";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import BondApprovalPanel from "@/components/core/BondApprovalPanel";
 import { type PermitSignature } from "@/hooks/core/useTokenApproval";
@@ -59,10 +60,6 @@ function applyCreateOrderPrefill(prefill: ConsoleCreateOrderPrefill): FormState 
         isSubOrder: prefill.isSubOrder,
         processId: prefill.processId,
     };
-}
-
-function isValidAddress(s: string): s is Address {
-    return /^0x[0-9a-fA-F]{40}$/.test(s);
 }
 
 function isValidHex(s: string): s is Hex {

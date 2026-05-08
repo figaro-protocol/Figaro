@@ -65,6 +65,7 @@ import { Button } from "@/components/ui/Button";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { isValidAddress } from "@/components/operators/TokenAddressInput";
 import {
     buildConsentDisputeEvidence,
     buildConsentDisputeMetaEvidence,
@@ -201,10 +202,6 @@ function isValidHash(value: string): boolean {
 
 function isValidSignature(value: string): boolean {
     return /^0x[0-9a-fA-F]{130}$/.test(value);
-}
-
-function isValidAddress(value: string): boolean {
-    return /^0x[0-9a-fA-F]{40}$/.test(value);
 }
 
 // ---------------------------------------------------------------------------
