@@ -40,6 +40,7 @@ import type {
 } from "@/lib/semantic/financialsProjection";
 import { OrderState } from "@/lib/core/store";
 import type { ProcessTimeline, TimelineEvent } from "@/lib/dispute/evidenceTimeline";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 
@@ -179,9 +180,7 @@ function fmt(amount: bigint): string {
 }
 
 function shortHex(hex: string | undefined, head = 10, tail = 6): string {
-    if (!hex) return "—";
-    if (hex.length <= head + tail + 1) return hex;
-    return `${hex.slice(0, head)}…${hex.slice(-tail)}`;
+    return truncateHex(hex, { head, tail }) || "—";
 }
 
 function shortAddr(addr: string | undefined): string {

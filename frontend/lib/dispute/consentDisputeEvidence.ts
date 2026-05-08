@@ -241,10 +241,6 @@ function assertClaimText(value: string): void {
     }
 }
 
-function shortAddr(addr: string): string {
-    return truncateHex(addr);
-}
-
 /**
  * Build the per-submission Evidence JSON for a Figaro consent dispute.
  *
@@ -310,7 +306,7 @@ export function buildConsentDisputeEvidence(
     // one self-contained narrative, no IPFS dereferencing required by
     // a juror to grasp the dispute.
     const descriptionLines = [
-        `Submitter: ${submitterRole} (${shortAddr(input.claimSignature.submitter)})`,
+        `Submitter: ${submitterRole} (${truncateHex(input.claimSignature.submitter)})`,
         `Submitted at: ${input.claimSignature.submittedAt}`,
         `Chain ID: ${input.chainId}`,
         ``,
@@ -338,7 +334,7 @@ export function buildConsentDisputeEvidence(
     return {
         name:
             `Figaro Consent Dispute — ${input.citedSection} ` +
-            `(${shortAddr(input.attestation.signer)})`,
+            `(${truncateHex(input.attestation.signer)})`,
         description: descriptionLines.join("\n"),
         // Point fileURI at the PDF receipt — the canonical evidentiary
         // artifact that already carries the typed-data message, the

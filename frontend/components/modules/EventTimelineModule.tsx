@@ -41,10 +41,6 @@ function deriveTimeline(orders: OrderNodeModel[]): TimelineEvent[] {
     });
 }
 
-function shortAddr(addr: string): string {
-    return truncateHex(addr);
-}
-
 function formatAmount(amount: bigint): string {
     const whole = amount / 10n ** 18n;
     const frac = amount % 10n ** 18n;
@@ -131,8 +127,8 @@ export function EventTimelineModule({ context }: ModuleProps) {
                                 </span>
                             </div>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs opacity-80">
-                                <span>Buyer {shortAddr(event.buyer)}</span>
-                                <span>Seller {shortAddr(event.seller)}</span>
+                                <span>Buyer {truncateHex(event.buyer)}</span>
+                                <span>Seller {truncateHex(event.seller)}</span>
                                 <span>{formatAmount(event.payment)} payment</span>
                                 {event.parentCount > 0 && (
                                     <span>{event.parentCount} parent{event.parentCount !== 1 ? "s" : ""}</span>
