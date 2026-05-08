@@ -8,6 +8,7 @@ import {
     decodeLocationBytes32,
     type ManifestFields,
 } from "@/lib/core/encoding";
+import { ZERO_BYTES32 } from "@/lib/shared/evm";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // encodeManifest / decodeManifest — raw string round-trip
@@ -168,11 +169,11 @@ describe("encodeLocationBytes32 / decodeLocationBytes32 (legacy)", () => {
     });
 
     it("returns zero-bytes32 for empty input", () => {
-        expect(encodeLocationBytes32("")).toBe("0x" + "0".repeat(64));
+        expect(encodeLocationBytes32("")).toBe(ZERO_BYTES32);
     });
 
     it("returns empty string for zero-bytes32 input", () => {
-        expect(decodeLocationBytes32("0x" + "0".repeat(64))).toBe("");
+        expect(decodeLocationBytes32(ZERO_BYTES32)).toBe("");
     });
 
     it("payload is always 66 chars (0x + 64 hex digits)", () => {

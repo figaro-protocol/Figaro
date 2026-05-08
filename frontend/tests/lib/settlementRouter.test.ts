@@ -4,22 +4,21 @@ import {
     resetSettlementRouter,
     getSettlementRouter,
 } from "@/lib/core/settlementRouter";
+import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import type { Commitment } from "@figaro/core";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
-const ZERO_HASH =
-    "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 const DUMMY_SIG = ("0x" + "ab".repeat(32) + "cd".repeat(32) + "1b") as `0x${string}`;
 
 const testCommitment: Commitment = {
-    processId: ZERO_HASH,
+    processId: ZERO_BYTES32,
     buyer: "0x0000000000000000000000000000000000000001",
     seller: "0x0000000000000000000000000000000000000002",
     currency: "0x0000000000000000000000000000000000000003",
     payment: 100n,
     expectedCumulativeValue: 100n,
-    agreementHash: ZERO_HASH,
+    agreementHash: ZERO_BYTES32,
     salt: 42n,
     deadline: 9999n,
 };
@@ -77,7 +76,7 @@ describe("SettlementRouter", () => {
             sequencerUrl: "http://localhost:3001",
             preferDirect: true,
         });
-        const result = await router.routeResolve(ZERO_HASH, [testCommitment], DUMMY_SIG);
+        const result = await router.routeResolve(ZERO_BYTES32, [testCommitment], DUMMY_SIG);
         expect(result.mode).toBe("direct");
     });
 

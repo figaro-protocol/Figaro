@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCommitmentFlow } from "@/lib/core/useCommitmentFlow";
+import { ZERO_BYTES32 } from "@/lib/shared/evm";
 
 const mocked = vi.hoisted(() => ({
     signTypedDataAsync: vi.fn(),
@@ -29,7 +30,6 @@ vi.mock("@/lib/core/contracts", () => ({
 }));
 
 vi.mock("@/lib/core/useFigaroActions", () => ({
-    ZERO_PROCESS_ID: ("0x" + "0".repeat(64)) as `0x${string}`,
     useFigaroActions: () => ({
         commit: mocked.commit,
     }),
@@ -51,7 +51,7 @@ vi.mock("@/lib/core/agreementStore", () => ({
 
 function makeCommitment() {
     return {
-        processId: ("0x" + "0".repeat(64)) as `0x${string}`,
+        processId: ZERO_BYTES32,
         buyer: "0x00000000000000000000000000000000000000a1" as `0x${string}`,
         seller: "0x00000000000000000000000000000000000000b0" as `0x${string}`,
         currency: "0x00000000000000000000000000000000000000d0" as `0x${string}`,

@@ -8,6 +8,7 @@ import {
     listStoredCommitments,
 } from '@/lib/console/commitmentStore';
 import type { Commitment, Hex } from '@figaro/core';
+import { ZERO_BYTES32 } from '@/lib/shared/evm';
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -15,7 +16,7 @@ const ORDER_HASH_1 = '0x00000000000000000000000000000000000000000000000000000000
 const ORDER_HASH_2 = '0x0000000000000000000000000000000000000000000000000000000000000002' as Hex;
 
 const COMMITMENT_1: Commitment = {
-    processId: '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex,
+    processId: ZERO_BYTES32,
     buyer: '0x1234567890123456789012345678901234567890' as Hex,
     seller: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd' as Hex,
     currency: '0x0000000000000000000000000000000000000001' as Hex,

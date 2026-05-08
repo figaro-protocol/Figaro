@@ -1,5 +1,5 @@
 import { http, type HttpTransportConfig, type Transport } from "viem";
-import { ZERO_ADDRESS } from "./evm";
+import { ZERO_ADDRESS, ZERO_BYTES32 } from "./evm";
 
 export class MockRpcBlockedError extends Error {
     constructor(method: string) {
@@ -20,9 +20,6 @@ function isMockMode(): boolean {
 function toHexQuantity(value: number | bigint): `0x${string}` {
     return `0x${value.toString(16)}`;
 }
-
-const EMPTY_BLOCK_HASH =
-    "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 
 function mockResponse(
     method: string,
@@ -54,8 +51,8 @@ function mockResponse(
         case "eth_getBlockByHash":
             return {
                 number: "0x0",
-                hash: EMPTY_BLOCK_HASH,
-                parentHash: EMPTY_BLOCK_HASH,
+                hash: ZERO_BYTES32,
+                parentHash: ZERO_BYTES32,
                 timestamp: "0x0",
                 gasLimit: "0x0",
                 gasUsed: "0x0",

@@ -1,7 +1,9 @@
 // Encoding helpers for frontend -> bytes32 conversions
+import { ZERO_BYTES32 } from "@/lib/shared/evm";
+
 export function encodeToBytes32(s: string): `0x${string}` {
     const str = (s || "").toString();
-    if (!str) return "0x" + "0".repeat(64) as `0x${string}`;
+    if (!str) return ZERO_BYTES32;
     if (str.startsWith("0x") && str.length === 66) return str as `0x${string}`;
     const enc = new TextEncoder().encode(str);
     const buf = new Uint8Array(32);
@@ -17,7 +19,7 @@ export function encodeToBytes32(s: string): `0x${string}` {
  * Returns an empty string when the value is zero or unparseable.
  */
 export function decodeLocationBytes32(hex: string): string {
-    if (!hex || hex === "0x" + "0".repeat(64)) return "";
+    if (!hex || hex === ZERO_BYTES32) return "";
     try {
         const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
         const bytes = new Uint8Array((clean.match(/.{2}/g) ?? []).map(b => parseInt(b, 16)));
@@ -33,7 +35,7 @@ export function encodeLocationBytes32(origin: string, destination?: string): `0x
     const trimmedOrigin = (origin || "").trim();
     const trimmedDestination = (destination || "").trim();
     const payload = trimmedDestination ? `${trimmedOrigin}|${trimmedDestination}` : trimmedOrigin;
-    if (!payload) return "0x" + "0".repeat(64) as `0x${string}`;
+    if (!payload) return ZERO_BYTES32;
     // A8: warn when the combined string exceeds 32 bytes; bytes beyond that are silently dropped
     const byteLength = new TextEncoder().encode(payload).length;
     if (byteLength > 32) {

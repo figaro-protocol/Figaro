@@ -4,6 +4,7 @@ import { saveAgreement } from "@/lib/core/agreementStore";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
 import { deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
 import { OrderState, type Order } from "@/lib/core/store";
+import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
 
 const BUYER = ANVIL_ACCOUNTS[0];
@@ -24,7 +25,7 @@ function makeOrder(params: {
         buyer: BUYER,
         seller: SELLER,
         currency: CURRENCY,
-        agreementHash: params.agreementHash ?? "0x0000000000000000000000000000000000000000000000000000000000000000",
+        agreementHash: params.agreementHash ?? ZERO_BYTES32,
         cumulativeValue: params.cumulativeValue,
         payment: params.payment,
         state: OrderState.Active,

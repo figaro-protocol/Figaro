@@ -13,6 +13,7 @@ import {
     CONTRACTS,
     SCHEMA_REGISTRY_ABI,
 } from "../core/contracts";
+import { ZERO_BYTES32 } from "../shared/evm";
 
 /** Well-known schema IDs — shared constants for all archetypes. */
 export const HANDOFF_SCHEMA_KEY = "figaro-handoff-v1";
@@ -50,7 +51,7 @@ export function useManifestSchema(schemaId: `0x${string}` | undefined) {
             setSchema(isRegistered && schemaId ? {
                 schemaId,
                 version: 1,
-                uriHash: "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`,
+                uriHash: ZERO_BYTES32,
                 active: true,
             } : null);
             return;
@@ -70,14 +71,14 @@ export function useManifestSchema(schemaId: `0x${string}` | undefined) {
                 setSchema({
                     schemaId,
                     version: Number(a.version ?? 1),
-                    uriHash: (a.uriHash ?? "0x0000000000000000000000000000000000000000000000000000000000000000") as `0x${string}`,
+                    uriHash: (a.uriHash ?? ZERO_BYTES32) as `0x${string}`,
                     active: true,
                 });
             } else {
-                setSchema({ schemaId, version: 1, uriHash: "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`, active: true });
+                setSchema({ schemaId, version: 1, uriHash: ZERO_BYTES32, active: true });
             }
         }).catch(() => {
-            setSchema({ schemaId, version: 1, uriHash: "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`, active: true });
+            setSchema({ schemaId, version: 1, uriHash: ZERO_BYTES32, active: true });
         });
     }, [isRegistered, schemaId, publicClient, hasAddr, addr]);
 

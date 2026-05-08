@@ -24,9 +24,8 @@ import {
     getAllOrderCommitted,
     getAllOrderResolved,
 } from "@/lib/core/indexer";
+import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import { calculateBonds } from "@figaro/core";
-
-const EMPTY_AGREEMENT_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 // ---------------------------------------------------------------------------
 // Event arg types (match CORE_ABI event signatures)
@@ -227,7 +226,7 @@ export function useProcessOrders(processId: string | null): Order[] {
                 .map((order) => order.agreementHash)
                 .filter((agreementHash): agreementHash is string => (
                     Boolean(agreementHash)
-                    && agreementHash !== EMPTY_AGREEMENT_HASH
+                    && agreementHash !== ZERO_BYTES32
                     && !loadAgreement(agreementHash)
                 )),
         )];

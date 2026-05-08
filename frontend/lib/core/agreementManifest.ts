@@ -58,6 +58,8 @@
  * can reconstruct and verify it.
  */
 
+import { ZERO_BYTES32 } from "@/lib/shared/evm";
+
 // ── Core types ───────────────────────────────────────────────────────────────
 
 /**
@@ -313,8 +315,6 @@ function sortedReplacer(_key: string, value: unknown): unknown {
 
 // ── Agreement hash computation (merkle root over section leaves) ────────────
 
-const ZERO_HASH = `0x${"0".repeat(64)}` as `0x${string}`;
-
 /**
  * Canonicalize section data (not the whole agreement) for hashing into a leaf.
  * Mirrors `canonicalizeAgreement`'s key-sort rule but applied to a single
@@ -483,7 +483,7 @@ function hashPair(a: `0x${string}`, b: `0x${string}`): `0x${string}` {
  * Empty list returns bytes32(0); single-leaf list returns the leaf itself.
  */
 function buildMerkleRoot(leaves: readonly `0x${string}`[]): `0x${string}` {
-    if (leaves.length === 0) return ZERO_HASH;
+    if (leaves.length === 0) return ZERO_BYTES32;
     let layer: `0x${string}`[] = [...leaves];
     while (layer.length > 1) {
         const next: `0x${string}`[] = [];

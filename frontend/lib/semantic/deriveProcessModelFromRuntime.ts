@@ -1,6 +1,7 @@
 import { Order, OrderState } from "@/lib/core/store";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
+import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import {
     AttachmentModel,
     CapabilityModel,
@@ -321,7 +322,7 @@ function deriveOrderAttachments(order: Order, address?: string): AttachmentModel
         });
     }
 
-    if (order.agreementHash && order.agreementHash !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+    if (order.agreementHash && order.agreementHash !== ZERO_BYTES32) {
         attachments.push({
             id: `${order.processId}:${orderId}:agreement`,
             mechanismId: "core-orders",
