@@ -29,9 +29,6 @@ export default function AuditPage() {
     return (
         <div className="container mx-auto px-6 py-10 max-w-3xl space-y-8" data-testid="audit-generic-page">
             <header className="space-y-2">
-                <p className="text-eyebrow uppercase text-ink-muted">
-                    Audit
-                </p>
                 <h1 className="text-heading-h2 text-ink-heading">
                     Hash verifier
                 </h1>

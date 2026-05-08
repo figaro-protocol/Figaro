@@ -32,7 +32,7 @@ The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `Agreement
 - **`mechanisms/`** — Mechanism hooks, package registry
 - **`semantic/`** — Assembly derivation and capability models. Key entries: `deriveAssemblyModel.ts`, `deriveAssemblyCapabilities.ts`, `models.ts`
 - **`shared/`** — Wagmi config, runtime identity, assembly schema/parser/registry/validation, IPFS. Key entries: `assembly.ts` (schema types), `assemblyParser.ts`, `assemblyRegistry.ts`, `assemblyValidation.ts`, `assemblyPublication.ts`, `runtimeResolution.ts`, `moduleRegistry.ts`, `blockMetadata.ts` (designer block registry — see below), `schemaSpecSource.ts` (preloaded + lazy-fetched schema specs), `schemas/` (built-in schema spec JSONs)
-- **`commerce/`**, **`console/`**, **`marketplace/`**
+- **`commerce/`**, **`console/`**
 
 ## Block model (designer-tool foundation)
 
