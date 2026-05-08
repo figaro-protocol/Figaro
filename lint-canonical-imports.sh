@@ -29,6 +29,7 @@ set -euo pipefail
 # in non-zero hex).
 LITERAL_BANNED=(
     '0x0000000000000000000000000000000000000000~frontend/lib/shared/evm.ts~ZERO_ADDRESS'
+    '0x0000000000000000000000000000000000000000000000000000000000000000~frontend/lib/shared/evm.ts~ZERO_BYTES32'
 )
 
 # ── DECL bans ───────────────────────────────────────────────────
