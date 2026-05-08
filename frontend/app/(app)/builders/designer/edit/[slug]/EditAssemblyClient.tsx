@@ -36,6 +36,7 @@ import {
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "@/components/core/designer/AgreementDrawer";
 import { REFERENCE_ASSEMBLIES, type Assembly } from "@/lib/shared/assembly";
+import { slugify } from "@/lib/shared/slug";
 import { assemblyToSyntheticOrders } from "@/lib/designer/assemblyToSyntheticOrders";
 
 interface InitialState {
@@ -53,15 +54,6 @@ function buildInitialStateFromFork(reference: Assembly): InitialState {
         name: `Fork of ${reference.identity.name}`,
         slug: null,
     };
-}
-
-function slugify(input: string): string {
-    return input
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 64);
 }
 
 interface Props {
@@ -209,7 +201,7 @@ export function EditAssemblyClient({ params }: Props) {
     const handleSaveDraft = useCallback(() => {
         const proposedName = typeof window === "undefined" ? null : window.prompt("Name this draft:", name);
         if (!proposedName || !proposedName.trim()) return;
-        const proposedSlug = slug ?? slugify(proposedName);
+        const proposedSlug = slug ?? slugify(proposedName).slice(0, 64);
         if (!proposedSlug) {
             window.alert("Could not derive a URL slug from that name.");
             return;

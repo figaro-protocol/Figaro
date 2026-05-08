@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { ProcessGraphCanvas } from "@/components/core/ProcessGraphCanvas";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { slugify } from "@/lib/shared/slug";
 import {
     collectDescendants,
     createSyntheticRootOrder,
@@ -78,15 +79,6 @@ function buildInitialState(draftParam: string | null): InitialState {
     const fresh = startSyntheticSession();
     const root = createSyntheticRootOrder(fresh);
     return { session: fresh, orders: [root.order], name: "Untitled assembly", slug: null };
-}
-
-function slugify(input: string): string {
-    return input
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 64);
 }
 
 export function NewAssemblyClient() {
@@ -229,7 +221,7 @@ export function NewAssemblyClient() {
     const handleSaveDraft = useCallback(() => {
         const proposedName = typeof window === "undefined" ? null : window.prompt("Name this draft:", name);
         if (!proposedName || !proposedName.trim()) return;
-        const proposedSlug = slug ?? slugify(proposedName);
+        const proposedSlug = slug ?? slugify(proposedName).slice(0, 64);
         if (!proposedSlug) {
             window.alert("Could not derive a URL slug from that name.");
             return;

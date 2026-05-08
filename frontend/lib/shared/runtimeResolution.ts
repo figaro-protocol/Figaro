@@ -18,6 +18,7 @@ import {
     RuntimeIdentityDataSource,
 } from '@/lib/shared/runtimeDataSource';
 import type { IpfsService } from '@/lib/shared/ipfsService';
+import { slugify } from '@/lib/shared/slug';
 import { parseRuntimeAssetDocument } from '@/lib/shared/runtimeIdentityDocument';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 import type { SellerBrandingMetadata, SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
@@ -201,13 +202,6 @@ export function resolveAssemblyShellPresentation(
     };
 }
 
-function slugifySkinId(value: string): string {
-    return value
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-}
 
 export function resolveAssemblySkinBundle(
     shellPresentation: ResolvedAssemblyShellPresentation,
@@ -225,8 +219,8 @@ export function resolveAssemblySkinBundle(
     }
 
     const skinId = shellPresentation.bindingId
-        ? slugifySkinId(shellPresentation.bindingId)
-        : slugifySkinId(shellPresentation.subjectAddress ?? shellPresentation.title);
+        ? slugify(shellPresentation.bindingId)
+        : slugify(shellPresentation.subjectAddress ?? shellPresentation.title);
 
     return {
         sourceKind: shellPresentation.sourceKind,

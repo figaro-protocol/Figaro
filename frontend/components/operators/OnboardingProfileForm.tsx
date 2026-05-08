@@ -26,6 +26,7 @@ import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata
 import { encodeGeohash } from "@/lib/handoff/manifest";
 import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/shared/geocode";
 import { getCommonTokens, type CommonToken } from "@/lib/shared/commonTokens";
+import { slugify } from "@/lib/shared/slug";
 
 /**
  * Step 2 of the onboarding wizard. Collects the stable identity fields
@@ -84,15 +85,6 @@ function geocodeErrorMessage(reason: GeocodeFailureReason): string {
         case "malformed":
             return "Geocoder returned an unexpected response. Try a different query.";
     }
-}
-
-function slugify(input: string): string {
-    return input
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 64);
 }
 
 function fromDraft(draft: OnboardingProfileDraft | undefined): FormState {
@@ -223,7 +215,7 @@ export function OnboardingProfileForm({
         // If the loaded slug differs from the slug we'd derive from
         // the loaded name, treat the slug as user-edited so we don't
         // overwrite it later.
-        if (next.slug && next.slug !== slugify(next.name)) {
+        if (next.slug && next.slug !== slugify(next.name).slice(0, 64)) {
             setSlugTouched(true);
         }
         setHydrated(true);
@@ -248,7 +240,7 @@ export function OnboardingProfileForm({
         setForm((prev) => ({
             ...prev,
             name: value,
-            slug: slugTouched ? prev.slug : slugify(value),
+            slug: slugTouched ? prev.slug : slugify(value).slice(0, 64),
         }));
     }
 
