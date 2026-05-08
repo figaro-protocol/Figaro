@@ -13,6 +13,7 @@ import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { calculateBonds } from "@figaro/core";
 import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { formatToken, parseToken } from "@/lib/shared/utils";
@@ -242,7 +243,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
             // owned by the commitStep === "done" useEffect above. Both paths
             // converge there.
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Signing failed";
+            const msg = extractErrorMessage(err, "Signing failed");
             setCheckoutError(msg);
         }
     };

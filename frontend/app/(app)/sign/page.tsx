@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useCommitmentFlow, type CommitmentPayload } from "@/lib/core/useCommitmentFlow";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { calculateBonds } from "@figaro/core";
 import { deserializePayload } from "@/components/core/CommitmentSharePanel";
 import { TokenApprovalFlow } from "@/components/core/TokenApprovalFlow";
@@ -66,7 +67,7 @@ function SignPageContent() {
             setParsed(p);
             return p;
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : "Invalid payload";
+            const msg = extractErrorMessage(e, "Invalid payload");
             setParseError(msg);
             setParsed(null);
             return null;
@@ -136,7 +137,7 @@ function SignPageContent() {
             }
 
             setInboxStatus("error");
-            setInboxError(error instanceof Error ? error.message : "Could not open the XMTP inbox.");
+            setInboxError(extractErrorMessage(error, "Could not open the XMTP inbox."));
         });
 
         return () => {

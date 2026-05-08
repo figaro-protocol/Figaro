@@ -6,6 +6,7 @@ import type { AttestAction } from "@figaro/core/agent";
 import { useFigaro } from "@/lib/console/provider";
 import { hydrateAgreement } from "@/lib/core/agreementStore";
 import { computeSchemaId } from "@figaro/core/extensions";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 function shortenHex(hex: string, chars = 6): string {
     if (hex.length <= chars * 2 + 2) return hex;
@@ -60,7 +61,7 @@ export function AttestConfigurator({ action, onQueue }: Props) {
             })
             .catch((err) => {
                 if (cancelled) return;
-                setLoadError(err instanceof Error ? err.message : String(err));
+                setLoadError(extractErrorMessage(err, String(err)));
                 setSchemas([]);
             })
             .finally(() => {

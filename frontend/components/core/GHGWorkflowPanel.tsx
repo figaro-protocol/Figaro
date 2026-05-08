@@ -20,15 +20,7 @@ import {
 import { CapabilityModel } from "@/lib/semantic/models";
 import { DISCLOSURE_KIND, DISCLOSURE_KIND_LABELS, DISCLOSURE_KIND_DESCRIPTIONS, GHG_SCHEMA_KEY } from "@/lib/mechanisms/contracts";
 import type { Hex } from "viem";
-
-function errorMessage(cause: unknown, fallback: string): string {
-    if (cause instanceof Error && cause.message) return cause.message;
-    if (typeof cause === "object" && cause !== null) {
-        const withShortMessage = cause as { shortMessage?: string; message?: string };
-        return withShortMessage.shortMessage || withShortMessage.message || fallback;
-    }
-    return fallback;
-}
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 // ── Order-level attestation panel ────────────────────────────────────────────
 
@@ -78,7 +70,7 @@ function OrderAttestationDetail({
             await onExecuteCapability(commitmentCapability);
             await refresh();
         } catch (cause: unknown) {
-            setError(errorMessage(cause, "Commitment attestation failed"));
+            setError(extractErrorMessage(cause, "Commitment attestation failed"));
         } finally {
             setIsSubmitting(false);
         }
@@ -102,7 +94,7 @@ function OrderAttestationDetail({
             setActualInput("");
             await refresh();
         } catch (cause: unknown) {
-            setError(errorMessage(cause, "Actual attestation failed"));
+            setError(extractErrorMessage(cause, "Actual attestation failed"));
         } finally {
             setIsSubmitting(false);
         }

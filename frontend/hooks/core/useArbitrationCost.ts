@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { getArbitrationCost, type KlerosConfig } from "@/lib/dispute";
 import type { Address } from "viem";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 // ---------------------------------------------------------------------------
 // Config from environment
@@ -70,7 +71,7 @@ export function useArbitrationCost(): ArbitrationCostResult {
         getArbitrationCost(publicClient, klerosConfig)
             .then((c) => { if (!cancelled) setCost(c); })
             .catch((e: any) => {
-                if (!cancelled) setError(e?.shortMessage ?? e?.message ?? "Failed to fetch arbitration cost");
+                if (!cancelled) setError(extractErrorMessage(e, "Failed to fetch arbitration cost"));
             })
             .finally(() => { if (!cancelled) setLoading(false); });
 

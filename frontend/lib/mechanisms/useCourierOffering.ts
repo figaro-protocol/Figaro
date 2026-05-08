@@ -13,6 +13,7 @@ import { usePublicClient, useChainId } from "wagmi";
 import { getOperatorMetadataURI } from "@/lib/core/indexer";
 import { fetchCourierOffering, invalidateOfferingCache } from "@/lib/shared/courierOfferingFetcher";
 import type { CourierOfferingMetadata } from "@/lib/shared/courierOfferingMetadata";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 export interface UseCourierOfferingResult {
     offering: CourierOfferingMetadata | null;
@@ -58,7 +59,7 @@ export function useCourierOffering(
             })
             .catch((err) => {
                 if (cancelled) return;
-                setError(err instanceof Error ? err.message : "Failed to fetch courier offering");
+                setError(extractErrorMessage(err, "Failed to fetch courier offering"));
                 setIsLoading(false);
             });
 

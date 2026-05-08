@@ -28,6 +28,7 @@ import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { decodeManifest, cosLabel } from "@/lib/handoff/manifest";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,15 +45,6 @@ function formatTimestamp(iso: string): string {
         second: "2-digit",
         hour12: false,
     });
-}
-
-function errorMessage(cause: unknown, fallback: string): string {
-    if (cause instanceof Error && cause.message) return cause.message;
-    if (typeof cause === "object" && cause !== null) {
-        const withMessage = cause as { message?: string };
-        return withMessage.message || fallback;
-    }
-    return fallback;
 }
 
 /** Color map for event types */
@@ -353,7 +345,7 @@ export default function EvidenceDisplayPage() {
             const tl = await buildProcessTimeline(client, processId, coreAddressParam ?? undefined);
             setTimeline(tl);
         } catch (cause: unknown) {
-            setError(errorMessage(cause, "Failed to fetch process timeline."));
+            setError(extractErrorMessage(cause, "Failed to fetch process timeline."));
         } finally {
             setLoading(false);
         }

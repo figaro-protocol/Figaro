@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 /**
  * Server-side proxy for OpenStreetMap Nominatim geocoding. The
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(
             {
                 error: "fetch-failed",
-                detail: err instanceof Error ? err.message : String(err),
+                detail: extractErrorMessage(err, String(err)),
             },
             { status: 502 },
         );

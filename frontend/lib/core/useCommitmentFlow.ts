@@ -22,6 +22,7 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import { useFigaroActions, Commitment } from "@/lib/core/useFigaroActions";
 import { ZERO_ADDRESS, ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { isValidAddress } from "@/components/operators/TokenAddressInput";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { saveCommitment, computeOrderHash } from "@/lib/console/commitmentStore";
 import type { Agreement } from "@/lib/core/agreementManifest";
 import { hydrateAgreement, loadAgreement, primeAgreementArtifact, saveAgreementUri } from "@/lib/core/agreementStore";
@@ -288,7 +289,7 @@ export function useCommitmentFlow() {
             });
             return sig;
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : "Signature rejected";
+            const msg = extractErrorMessage(e, "Signature rejected");
             setError(msg);
             setStep("error");
             throw e;
@@ -378,7 +379,7 @@ export function useCommitmentFlow() {
             setStep("done");
             return txHash;
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : "Broadcast failed";
+            const msg = extractErrorMessage(e, "Broadcast failed");
             setError(msg);
             setStep("error");
             throw e;

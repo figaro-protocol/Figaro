@@ -34,6 +34,7 @@ import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import type { MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
 
@@ -390,7 +391,7 @@ export function OrderTimelineView({ processId }: Props) {
             // Re-fetch events on success
             setTick((t) => t + 1);
         } catch (cause: unknown) {
-            setMerchantError(cause instanceof Error ? cause.message : "Attestation failed");
+            setMerchantError(extractErrorMessage(cause, "Attestation failed"));
         } finally {
             setMerchantPending(false);
         }

@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/core/WalletGate";
 import { deserializePayload } from "@/components/core/CommitmentSharePanel";
 import { useCommitmentFlow, type CommitmentPayload } from "@/lib/core/useCommitmentFlow";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { resolveRuntimeSubjectByAddress } from "@/lib/shared/runtimeIdentityRegistry";
@@ -217,7 +218,7 @@ export function MerchantInbox() {
             setPending((prev) => prev.filter((_, i) => i !== index));
             reset();
         } catch (cause: unknown) {
-            setAcceptError(cause instanceof Error ? cause.message : "Signing failed");
+            setAcceptError(extractErrorMessage(cause, "Signing failed"));
         } finally {
             setAcceptingIndex(null);
         }

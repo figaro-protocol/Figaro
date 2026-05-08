@@ -26,6 +26,7 @@ import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { ModuleEmptyStateCard } from "@/components/shared/ModuleEmptyStateCard";
 import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import type { MerchantEvent } from "@figaro/core/schemas";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 interface MerchantEventDefinition {
     eventType: MerchantEvent;
@@ -79,7 +80,7 @@ export function MerchantFulfilmentModule({ moduleId, context }: ModuleProps) {
             });
             setLastFired(eventType);
         } catch (cause: unknown) {
-            setLastError(cause instanceof Error ? cause.message : "Attestation failed");
+            setLastError(extractErrorMessage(cause, "Attestation failed"));
         } finally {
             setPendingEventType(null);
         }

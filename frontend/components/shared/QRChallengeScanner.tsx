@@ -19,6 +19,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HandoffStep } from "@/lib/dispute";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 interface DetectedBarcode {
     rawValue: string;
@@ -118,7 +119,7 @@ export function QRChallengeScanner({
             setCameraActive(true);
             setCameraError(null);
         } catch (error: unknown) {
-            setCameraError(error instanceof Error ? error.message : "Camera access denied");
+            setCameraError(extractErrorMessage(error, "Camera access denied"));
             setCameraActive(false);
         }
     }, []);

@@ -13,6 +13,7 @@ import { deserializePayload } from "@/components/core/CommitmentSharePanel";
 import { calculateBonds } from "@figaro/core";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { formatToken } from "@/lib/shared/utils";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { truncateHex } from "@/lib/shared/formatHex";
 
@@ -170,7 +171,7 @@ export function IncomingOrdersModule({ moduleId, context }: ModuleProps) {
             setPending((prev) => prev.filter((_, i) => i !== index));
             reset();
         } catch (e: unknown) {
-            setAcceptError(e instanceof Error ? e.message : "Signing failed");
+            setAcceptError(extractErrorMessage(e, "Signing failed"));
         } finally {
             setAcceptingIndex(null);
         }

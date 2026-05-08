@@ -32,6 +32,7 @@ import {
 } from "@/lib/mechanisms/useOperatorRegistry";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
 import { formatEther } from "viem";
 
@@ -230,7 +231,7 @@ function WithdrawRow({
             await withdraw();
             setConfirming(false);
         } catch (e: unknown) {
-            setSubmitError(e instanceof Error ? e.message : String(e));
+            setSubmitError(extractErrorMessage(e, String(e)));
         }
     }
 
@@ -272,7 +273,7 @@ function WithdrawRow({
             </div>
             {(submitError || error) && (
                 <p className="text-xs text-red-600" role="alert">
-                    {submitError ?? (error instanceof Error ? error.message : String(error))}
+                    {submitError ?? extractErrorMessage(error, String(error))}
                 </p>
             )}
         </li>

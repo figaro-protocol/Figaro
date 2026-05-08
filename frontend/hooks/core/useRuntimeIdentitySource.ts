@@ -6,6 +6,7 @@ import {
     DEFAULT_RUNTIME_IDENTITY_SERVICE,
     type RuntimeIdentityService,
 } from '@/lib/shared/runtimeIdentityService';
+import { extractErrorMessage } from '@/lib/shared/errors';
 
 export type RuntimeSourceStatus = 'bundled' | 'loading' | 'remote' | 'error';
 
@@ -57,7 +58,7 @@ export function useRuntimeIdentitySource({
 
                 setRemoteRuntimeSource(null);
                 setRuntimeSourceStatus('error');
-                setRuntimeSourceError(error instanceof Error ? error.message : 'Failed to load runtime manifest.');
+                setRuntimeSourceError(extractErrorMessage(error, 'Failed to load runtime manifest.'));
             });
 
         return () => {

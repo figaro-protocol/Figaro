@@ -10,15 +10,7 @@ import {
 } from "@/lib/mechanisms/useGHGDisclosure";
 import { DISCLOSURE_KIND, DISCLOSURE_KIND_LABELS, DISCLOSURE_KIND_DESCRIPTIONS } from "@/lib/mechanisms/contracts";
 import { isDisclosureCommitmentCapability, isDisclosureInventoryCapability } from "@/lib/semantic/models";
-
-function errorMessage(cause: unknown, fallback: string): string {
-    if (cause instanceof Error && cause.message) return cause.message;
-    if (typeof cause === "object" && cause !== null) {
-        const withShortMessage = cause as { shortMessage?: string; message?: string };
-        return withShortMessage.shortMessage || withShortMessage.message || fallback;
-    }
-    return fallback;
-}
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 // ── Order-level disclosure panel ─────────────────────────────────────────────
 
@@ -87,7 +79,7 @@ function OrderDisclosurePanel({ context, orderHash, role }: { context: ModulePro
             setActualInput("");
             await refresh();
         } catch (cause: unknown) {
-            setError(errorMessage(cause, "Actual attestation failed"));
+            setError(extractErrorMessage(cause, "Actual attestation failed"));
         } finally {
             setIsSubmitting(false);
         }

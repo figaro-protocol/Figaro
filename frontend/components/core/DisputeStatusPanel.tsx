@@ -23,6 +23,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import {
@@ -190,7 +191,7 @@ export function DisputeStatusPanel({
             setDisputeId(newId);
             onDisputeCreated?.(newId);
         } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : String(e);
+            const message = extractErrorMessage(e, String(e));
             setError(message || "Failed to create dispute");
         } finally {
             setLoading(false);
@@ -234,7 +235,7 @@ export function DisputeStatusPanel({
             const txHash = await submitEvidence(walletClient, klerosConfig, disputeId, evidenceURI);
             setLastEvidenceTxHash(txHash);
         } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : String(e);
+            const message = extractErrorMessage(e, String(e));
             setError(message || "Failed to submit evidence");
         } finally {
             setLoading(false);

@@ -44,6 +44,7 @@ import { ZERO_BYTES32, useAttestationCoordinatorActions } from "@/lib/mechanisms
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { executeBuildAction } from "@/lib/console/buildActionExecutor";
 import { serializeAssemblyDocument } from "@/lib/shared/assemblyDraft";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { resolveSemanticRuntimeSnapshotForSubjectAddress } from "@/lib/shared/runtimeResolution";
 
 function getOperatingActionActorAddress(action: ProposedAction): Address | undefined {
@@ -421,7 +422,7 @@ export function FigaroProvider({ children }: { children: ReactNode }) {
                 return result;
             } catch (err: unknown) {
                 // Store error on the queue item for visibility
-                queueRef.current.reject(id, err instanceof Error ? err.message : String(err));
+                queueRef.current.reject(id, extractErrorMessage(err, String(err)));
                 refreshQueue();
                 return null;
             }
@@ -459,7 +460,7 @@ export function FigaroProvider({ children }: { children: ReactNode }) {
                 refreshQueue();
                 return { hash: outcome.txHash ?? ("0x" as Hex) };
             } catch (error) {
-                queueRef.current.reject(id, error instanceof Error ? error.message : String(error));
+                queueRef.current.reject(id, extractErrorMessage(error, String(error)));
                 refreshQueue();
                 return null;
             }

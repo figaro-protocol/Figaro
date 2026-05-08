@@ -32,6 +32,7 @@ import { useMounted } from "@/lib/shared/useMounted";
 import { useOperatorProfile } from "@/lib/mechanisms/useOperatorRegistry";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import { useUpdateOperatorProfile } from "@/lib/operators/useUpdateOperatorProfile";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 import type {
@@ -116,9 +117,10 @@ export function OperatorEditCatalogue() {
                     const catalogue = parseSellerCatalogueDocument(catDoc, "edit-catalogue");
                     setExistingCatalogue(catalogue);
                 } catch (err) {
+                    const detail = extractErrorMessage(err, "");
                     setFetchError(
-                        err instanceof Error
-                            ? `Catalogue JSON didn't parse: ${err.message}`
+                        detail
+                            ? `Catalogue JSON didn't parse: ${detail}`
                             : "Catalogue JSON didn't parse.",
                     );
                 }

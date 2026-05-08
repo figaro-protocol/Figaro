@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { publishMerchantCatalogue } from "@/lib/shared/cataloguePublisher";
 import { truncateHex } from "@/lib/shared/formatHex";
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
@@ -60,7 +61,7 @@ export function OnboardingLinkForm() {
             const { uri } = await publishMerchantCatalogue(catalogue);
             update({ publishedCatalogueURI: uri });
         } catch (err) {
-            setError(err instanceof Error ? err.message : String(err));
+            setError(extractErrorMessage(err, String(err)));
         } finally {
             setPublishing(false);
         }

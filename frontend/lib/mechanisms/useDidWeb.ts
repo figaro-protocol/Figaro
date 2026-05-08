@@ -7,6 +7,7 @@
 import { useState, useEffect } from "react";
 import { useChainId } from "wagmi";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 // ── SDK Types (inline to avoid ESM/CJS import issues with SDK) ──────────────
 
@@ -100,14 +101,14 @@ async function resolveDidWeb(did: string): Promise<DIDResolutionResult> {
 
     let url: string;
     try { url = didWebToUrl(did); } catch (e) {
-        return { document: null, error: e instanceof Error ? e.message : String(e) };
+        return { document: null, error: extractErrorMessage(e, String(e)) };
     }
 
     let response: Response;
     try {
         response = await fetch(url, { headers: { Accept: "application/json" } });
     } catch (e) {
-        return { document: null, error: `Failed to fetch DID Document: ${e instanceof Error ? e.message : String(e)}` };
+        return { document: null, error: `Failed to fetch DID Document: ${extractErrorMessage(e, String(e))}` };
     }
 
     if (!response.ok) return { document: null, error: `HTTP ${response.status} fetching ${url}` };
@@ -170,7 +171,7 @@ export function useDidDocument(did: string | undefined) {
             setIsLoading(false);
         }).catch((e) => {
             if (cancelled) return;
-            setError(e instanceof Error ? e.message : String(e));
+            setError(extractErrorMessage(e, String(e)));
             setIsLoading(false);
         });
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 interface IpfsImageUploadProps {
     /** Current IPFS URI (`ipfs://Qm…`). Empty string for "not yet uploaded". */
@@ -40,7 +41,7 @@ export function IpfsImageUpload({
             const result = await DEFAULT_IPFS_SERVICE.uploadFile(file);
             onChange(result.uri);
         } catch (err) {
-            onError?.(err instanceof Error ? err.message : String(err));
+            onError?.(extractErrorMessage(err, String(err)));
         } finally {
             setUploading(false);
             e.target.value = ""; // allow re-uploading the same file

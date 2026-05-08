@@ -4,6 +4,7 @@ import {
     ParsedRuntimeIdentityDocument,
 } from '@/lib/shared/runtimeIdentityDocument';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
+import { extractErrorMessage } from '@/lib/shared/errors';
 
 export interface RuntimeIdentityResponseLike {
     ok: boolean;
@@ -45,7 +46,7 @@ export async function fetchRuntimeIdentityDocument(
             throw new Error(`Unsupported URL scheme: ${parsed.protocol}`);
         }
     } catch (e) {
-        throw new Error(`Invalid identity URL: ${e instanceof Error ? e.message : 'malformed URL'}`);
+        throw new Error(`Invalid identity URL: ${extractErrorMessage(e, 'malformed URL')}`);
     }
 
     const fetcher = options.fetcher ?? getDefaultFetcher();

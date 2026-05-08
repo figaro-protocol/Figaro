@@ -21,6 +21,7 @@ import type {
     CommitmentFlowStep,
 } from "@/lib/core/useCommitmentFlow";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { computeOrderHash } from "@/lib/console/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
@@ -216,7 +217,7 @@ export function CommitmentSharePanel({
             setTransportStatus("sent");
         } catch (error) {
             setTransportStatus("error");
-            setTransportError(error instanceof Error ? error.message : "Failed to send the commitment payload over XMTP.");
+            setTransportError(extractErrorMessage(error, "Failed to send the commitment payload over XMTP."));
         }
     }, [address, chainId, coordinationMessaging, payload, recipientAddress, walletClient]);
 

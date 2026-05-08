@@ -7,6 +7,7 @@ import {
     serializeAssemblyDocument,
     validateDraftPublicationReadiness,
 } from "@/lib/shared/assemblyDraft";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 export interface AssemblyWorkspacePaths {
     assembliesDir: string;
@@ -239,7 +240,7 @@ export function unregisterAssemblyFromWorkspace(
             issues: [{
                 severity: "error",
                 path: "registry",
-                message: error instanceof Error ? error.message : String(error),
+                message: extractErrorMessage(error, String(error)),
             }],
         };
     }
@@ -253,7 +254,7 @@ export function unregisterAssemblyFromWorkspace(
             issues: [{
                 severity: "error",
                 path: "identity.slug",
-                message: error instanceof Error ? error.message : String(error),
+                message: extractErrorMessage(error, String(error)),
             }],
         };
     }

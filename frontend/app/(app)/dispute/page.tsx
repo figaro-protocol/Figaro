@@ -81,6 +81,7 @@ import {
     type KlerosCourtKey,
 } from "@/lib/dispute";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -373,7 +374,7 @@ export default function DisputePage() {
             setSignedClaim({ submittedAt, signature, submitter, claimDigest });
             setStep("submit");
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Claim signature rejected");
+            setError(extractErrorMessage(e, "Claim signature rejected"));
         }
     };
 
@@ -424,7 +425,7 @@ export default function DisputePage() {
             });
             setStep("confirmation");
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Submission to Kleros failed");
+            setError(extractErrorMessage(e, "Submission to Kleros failed"));
         } finally {
             setSubmitting(false);
         }

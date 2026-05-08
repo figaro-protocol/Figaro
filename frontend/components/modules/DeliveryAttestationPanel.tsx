@@ -26,6 +26,7 @@ import { QRChallengeScanner } from "@/components/shared/QRChallengeScanner";
 import type { CapabilityExecutionInput, CapabilityModel } from "@/lib/semantic/models";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import type { ResolvedAssemblySkinBundle } from "@/lib/shared/runtimeResolution";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -242,7 +243,7 @@ export function DeliveryAttestationPanel({
                     proof,
                 });
             } catch (error) {
-                onError?.(error instanceof Error ? error.message : "Delivery proof submission failed");
+                onError?.(extractErrorMessage(error, "Delivery proof submission failed"));
             }
             return;
         }
@@ -274,7 +275,7 @@ export function DeliveryAttestationPanel({
                     proof,
                 });
             } catch (error) {
-                onError?.(error instanceof Error ? error.message : "Delivery proof submission failed");
+                onError?.(extractErrorMessage(error, "Delivery proof submission failed"));
             }
             return;
         }
@@ -299,7 +300,7 @@ export function DeliveryAttestationPanel({
         try {
             setQRDisplayNonce(generateQRChallengeNonce());
         } catch (error) {
-            onError?.(error instanceof Error ? error.message : "Failed to generate QR challenge");
+            onError?.(extractErrorMessage(error, "Failed to generate QR challenge"));
         }
     }, [onError]);
 

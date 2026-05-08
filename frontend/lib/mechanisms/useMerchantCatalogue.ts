@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useChainId } from "wagmi";
 import { getOperatorMetadataURI } from "@/lib/core/indexer";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     DEFAULT_CATALOGUE_SERVICE,
     type CatalogueService,
@@ -66,7 +67,7 @@ export function useMerchantCatalogue(
             })
             .catch((err) => {
                 if (!cancelled) {
-                    setError(err instanceof Error ? err.message : "Failed to fetch catalogue");
+                    setError(extractErrorMessage(err, "Failed to fetch catalogue"));
                     setIsLoading(false);
                 }
             });

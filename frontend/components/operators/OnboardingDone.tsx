@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     useDepositLockPeriod,
     useOperatorProfile,
@@ -131,7 +132,7 @@ export function OnboardingDone() {
                 await register(uri, deposit ?? 0n);
             }
         } catch (err) {
-            setPinError(err instanceof Error ? err.message : String(err));
+            setPinError(extractErrorMessage(err, String(err)));
             setPinning(false);
         }
     }

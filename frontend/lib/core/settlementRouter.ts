@@ -15,6 +15,7 @@
 
 import { SequencerClient, toSequencerCommitment, toSequencerSig } from "@figaro/core/agent";
 import type { Commitment } from "@figaro/core";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 // ── Settlement mode ─────────────────────────────────────────────────────────
 
@@ -92,7 +93,7 @@ export class SettlementRouter {
             const result = await this.client.submitCommit(commitment, buyerSig, sellerSig);
             return { mode: "batch", operationId: result.id };
         } catch (e) {
-            const reason = e instanceof Error ? e.message : String(e);
+            const reason = extractErrorMessage(e, String(e));
             this.onFallback?.(`Batch commit failed, falling back to direct: ${reason}`);
             return { mode: "direct" };
         }
@@ -114,7 +115,7 @@ export class SettlementRouter {
             const result = await this.client.submitResolve(processId, commitments, buyerSig);
             return { mode: "batch", operationId: result.id };
         } catch (e) {
-            const reason = e instanceof Error ? e.message : String(e);
+            const reason = extractErrorMessage(e, String(e));
             this.onFallback?.(`Batch resolve failed, falling back to direct: ${reason}`);
             return { mode: "direct" };
         }

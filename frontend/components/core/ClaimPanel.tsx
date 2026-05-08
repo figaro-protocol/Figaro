@@ -8,6 +8,7 @@ import {
     STAGED_MERKLE_AIRDROP_ABI,
     getStagedAirdrop,
 } from "@/lib/mechanisms/contracts";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 /**
  * Per-stage allocation file shape. Indexers / airdrop generators should produce
@@ -82,7 +83,7 @@ export default function ClaimPanel({ stageIndex = 0 }: { stageIndex?: number }) 
             setTxStatus("Claim successful!");
             setClaimed(true);
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Claim failed";
+            const msg = extractErrorMessage(err, "Claim failed");
             setTxStatus(msg);
         }
     };

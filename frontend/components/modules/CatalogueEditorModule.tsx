@@ -29,6 +29,7 @@ import type {
 } from "@/lib/shared/sellerCatalogueMetadata";
 import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 import { FULFILMENT_MODE_LABELS } from "@/lib/seller/fulfilmentRouting";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 const ALL_FULFILMENT_MODES: CanonicalFulfilmentMethod[] = [
     "consume-onsite",
@@ -387,7 +388,7 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
             await refetch();
         } catch (err) {
             setPublishStatus("error");
-            setPublishError(err instanceof Error ? err.message : "Publish failed");
+            setPublishError(extractErrorMessage(err, "Publish failed"));
         }
     }, [
         catalogueService, sellerAddr, merchantName, description, cuisine, geohash, addressText,

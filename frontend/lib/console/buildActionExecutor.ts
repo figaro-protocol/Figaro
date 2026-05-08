@@ -5,6 +5,7 @@ import type {
     QueuedBuildAction,
 } from "@/lib/console/buildProvider";
 import type { Hex } from "viem";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 export interface LocalPublishedAssemblyResult {
     published: true;
@@ -91,7 +92,7 @@ export async function executeBuildAction(
             return {
                 result: {
                     ...fallback,
-                    fallbackReason: error instanceof Error ? error.message : String(error),
+                    fallbackReason: extractErrorMessage(error, String(error)),
                 },
             };
         }

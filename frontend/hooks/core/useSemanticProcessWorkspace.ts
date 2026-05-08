@@ -13,6 +13,7 @@ import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { useGhgDisclosureActions } from "@/lib/mechanisms/useGHGDisclosure";
 import { useRegisterOperator, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/mechanisms/useOperatorRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { buildResolutionCommitments } from "@/lib/console/commitmentStore";
 import { executeTransactionCapabilityAction } from "@/lib/core/executeTransactionCapability";
@@ -190,7 +191,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                 claimAuction: dutchAuctionActions.claim,
             }, input);
         } catch (error) {
-            setActionError(error instanceof Error ? error.message : "Action failed.");
+            setActionError(extractErrorMessage(error, "Action failed."));
             setExecutingCapabilityId(null);
         }
     };

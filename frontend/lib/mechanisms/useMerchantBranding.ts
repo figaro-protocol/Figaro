@@ -10,6 +10,7 @@
 import { useState, useEffect } from "react";
 import { usePublicClient, useChainId } from "wagmi";
 import { getOperatorMetadataURI } from "@/lib/core/indexer";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     fetchMerchantBranding,
     type ResolvedMerchantBranding,
@@ -56,7 +57,7 @@ export function useMerchantBranding(
             })
             .catch((err) => {
                 if (!cancelled) {
-                    setError(err instanceof Error ? err.message : "Failed to fetch branding");
+                    setError(extractErrorMessage(err, "Failed to fetch branding"));
                     setIsLoading(false);
                 }
             });

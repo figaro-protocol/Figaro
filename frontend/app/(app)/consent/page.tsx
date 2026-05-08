@@ -42,6 +42,7 @@ import {
 } from "@/lib/shared/consentDocument";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { readAccessCode } from "@/components/shared/Watermark";
 import { ConsentOnboardingModal } from "@/components/core/ConsentOnboardingModal";
@@ -225,7 +226,7 @@ export default function ConsentPage() {
             setStage("post-sign");
             setShowOnboarding(true);
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : "Signature rejected";
+            const msg = extractErrorMessage(e, "Signature rejected");
             setError(msg);
             setStage(isConnected && address ? "pre-sign" : "pre-connect");
         }

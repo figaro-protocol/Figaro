@@ -13,6 +13,8 @@
  * surface a useful message.
  */
 
+import { extractErrorMessage } from "@/lib/shared/errors";
+
 export interface GeocodeResult {
     lat: number;
     lon: number;
@@ -54,7 +56,7 @@ export async function geocodeAddress(query: string): Promise<GeocodeOutcome> {
         return {
             ok: false,
             reason: "network-error",
-            detail: err instanceof Error ? err.message : String(err),
+            detail: extractErrorMessage(err, String(err)),
         };
     }
 
@@ -69,7 +71,7 @@ export async function geocodeAddress(query: string): Promise<GeocodeOutcome> {
         return {
             ok: false,
             reason: "malformed",
-            detail: err instanceof Error ? err.message : String(err),
+            detail: extractErrorMessage(err, String(err)),
         };
     }
 

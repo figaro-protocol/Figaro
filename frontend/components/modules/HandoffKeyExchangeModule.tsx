@@ -6,6 +6,7 @@ import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 /**
  * HandoffKeyExchangeModule — buyer-side panel that auto-sends the per-order
@@ -102,7 +103,7 @@ export function HandoffKeyExchangeModule({ moduleId, context }: ModuleProps) {
             } catch (err) {
                 if (!cancelled) {
                     setSendStatus("error");
-                    setError(err instanceof Error ? err.message : "Failed to send key");
+                    setError(extractErrorMessage(err, "Failed to send key"));
                 }
                 sendAttemptKeyRef.current = null;
             }

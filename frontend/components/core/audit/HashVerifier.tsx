@@ -37,6 +37,7 @@ import {
     type RedactableAgreement,
 } from "@/lib/core/agreementManifest";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { loadAgreement } from "@/lib/core/agreementStore";
 
 type Mode = "agreement" | "section" | "search";
@@ -164,7 +165,7 @@ function AgreementMode() {
                 .map((s) => s.schema);
             return { kind: "ok" as const, hash, redactedSchemas };
         } catch (e) {
-            return { kind: "error" as const, message: e instanceof Error ? e.message : "JSON parse failed." };
+            return { kind: "error" as const, message: extractErrorMessage(e, "JSON parse failed.") };
         }
     }, [json]);
 
@@ -251,7 +252,7 @@ function SectionMode() {
             }
             return { kind: "ok" as const, hash: computeSectionLeaf(parsed) };
         } catch (e) {
-            return { kind: "error" as const, message: e instanceof Error ? e.message : "JSON parse failed." };
+            return { kind: "error" as const, message: extractErrorMessage(e, "JSON parse failed.") };
         }
     }, [json]);
 

@@ -6,15 +6,7 @@ import { useAccount, useChainId, useWaitForTransactionReceipt, useWriteContract 
 import { activeChain } from "@/lib/shared/chains";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { CONTRACTS, MOCK_MINT_ABI } from "@/lib/core/contracts";
-
-function formatMintError(cause: unknown, fallback: string): string {
-    if (cause instanceof Error && cause.message) return cause.message;
-    if (typeof cause === "object" && cause !== null) {
-        const withShortMessage = cause as { shortMessage?: string; message?: string };
-        return withShortMessage.shortMessage || withShortMessage.message || fallback;
-    }
-    return fallback;
-}
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 export function useMockTokenMint() {
     const { address } = useAccount();
@@ -45,7 +37,7 @@ export function useMockTokenMint() {
                 chain,
             });
         } catch (cause: unknown) {
-            const message = formatMintError(cause, "Mint failed");
+            const message = extractErrorMessage(cause, "Mint failed");
             setError(message);
             throw new Error(message);
         }

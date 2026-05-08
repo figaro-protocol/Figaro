@@ -35,6 +35,7 @@ import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
 import {
@@ -295,7 +296,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             }
             // Redirect is owned by the commitStep === "done" useEffect above.
         } catch (cause: unknown) {
-            const msg = cause instanceof Error ? cause.message : "Signing failed";
+            const msg = extractErrorMessage(cause, "Signing failed");
             setCheckoutError(msg);
         }
     };

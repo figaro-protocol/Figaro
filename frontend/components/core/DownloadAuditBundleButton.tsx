@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 interface DownloadAuditBundleButtonProps {
     processId: string;
@@ -83,7 +84,7 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
                         });
                         triggerDownload(blob, `audit-bundle-${processId.slice(0, 10)}${filenameSuffix}.pdf`);
                     } catch (e) {
-                        setError(e instanceof Error ? e.message : "PDF generation failed.");
+                        setError(extractErrorMessage(e, "PDF generation failed."));
                     } finally {
                         setBusy(false);
                     }
