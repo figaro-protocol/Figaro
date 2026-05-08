@@ -428,7 +428,7 @@ export function OnboardingProfileForm({
         <form onSubmit={validateAndContinue} className="space-y-12" noValidate>
             {/* ── Identity ───────────────────────────────────────────── */}
             <section className="space-y-6">
-                <h2 className="text-eyebrow uppercase text-ink-muted">Identity</h2>
+                <h2 className="text-base font-semibold text-ink-heading">Identity</h2>
                 <FormField label="Name" inputId="profile-name" required error={errors.name}>
                     <Input
                         id="profile-name"
@@ -487,7 +487,7 @@ export function OnboardingProfileForm({
 
             {/* ── Location ──────────────────────────────────────────── */}
             <section className="space-y-6">
-                <h2 className="text-eyebrow uppercase text-ink-muted">Location</h2>
+                <h2 className="text-base font-semibold text-ink-heading">Location</h2>
                 <FormField label="Address" inputId="profile-address">
                     <Input
                         id="profile-address"
@@ -558,7 +558,7 @@ export function OnboardingProfileForm({
 
             {/* ── Branding ──────────────────────────────────────────── */}
             <section className="space-y-6">
-                <h2 className="text-eyebrow uppercase text-ink-muted">Branding</h2>
+                <h2 className="text-base font-semibold text-ink-heading">Branding</h2>
                 <FormField label="Logo">
                     <IpfsImageUpload
                         value={form.logoURI}
@@ -573,7 +573,7 @@ export function OnboardingProfileForm({
 
             {/* ── Tokens ────────────────────────────────────────────── */}
             <section id="accepted-tokens-section" tabIndex={-1} className="space-y-6 scroll-mt-20">
-                <h2 className="text-eyebrow uppercase text-ink-muted">Accepted tokens</h2>
+                <h2 className="text-base font-semibold text-ink-heading">Accepted tokens</h2>
                 <p className="text-sm text-ink-body">
                     The set of ERC-20s you accept for settlement. This is the
                     seller&apos;s &ldquo;value-system flag&rdquo; — buyers pay in any one of these
