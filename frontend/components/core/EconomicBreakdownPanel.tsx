@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/Card";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { EconomicBreakdownModel, EconomicBreakdownValue } from "@/lib/semantic/models";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 
 interface Props {
     title: string;
@@ -22,7 +22,7 @@ function BreakdownValueRow({ value, currencyAddress }: { value: EconomicBreakdow
                     <p className="text-xs text-neutral-500">{value.source.sourceLabel}</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-sm font-mono text-black">{formatUnits(value.amount, decimals)}</p>
+                    <p className="text-sm font-mono text-black">{formatToken(value.amount, decimals)}</p>
                     {currencyAddress && <p className="text-[11px] text-neutral-500 font-mono">{currencyAddress.slice(0, 8)}...</p>}
                 </div>
             </div>

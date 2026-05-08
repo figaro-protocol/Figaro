@@ -2,7 +2,7 @@
 
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { activeChain } from "@/lib/shared/chains";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import { useState } from "react";
 import {
     FIG_TOKEN_ABI,
@@ -144,7 +144,7 @@ export function useFigBalance() {
 // ── Format helper ────────────────────────────────────────────────────────────
 
 export function formatFig(value: bigint): string {
-    const s = formatUnits(value, 18);
+    const s = formatToken(value);
     const n = parseFloat(s);
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
     if (n >= 1_000) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });

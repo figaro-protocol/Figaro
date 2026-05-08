@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { useDutchAuction, AuctionOrder } from "@/lib/mechanisms/useDutchAuction";
 import { isClaimAuctionCapability } from "@/lib/semantic/models";
@@ -42,7 +42,7 @@ function AuctionLiveStatePanel({
                 {auction.started && !auction.isClaimed && auction.currentPrice !== undefined && (
                     <div>
                         <p className="text-xs text-neutral-500">Current Price</p>
-                        <p className="font-mono font-semibold text-black" style={labelStyle}>{formatUnits(auction.currentPrice, context.tokenDecimals ?? 18)}</p>
+                        <p className="font-mono font-semibold text-black" style={labelStyle}>{formatToken(auction.currentPrice, context.tokenDecimals ?? 18)}</p>
                     </div>
                 )}
                 {auction.isClaimed && auction.assignedProvider && (
@@ -56,7 +56,7 @@ function AuctionLiveStatePanel({
                 {auction.isClaimed && auction.clearingPrice !== undefined && (
                     <div>
                         <p className="text-xs text-neutral-500">Clearing Price</p>
-                        <p className="font-mono font-semibold text-black" style={labelStyle}>{formatUnits(auction.clearingPrice, context.tokenDecimals ?? 18)}</p>
+                        <p className="font-mono font-semibold text-black" style={labelStyle}>{formatToken(auction.clearingPrice, context.tokenDecimals ?? 18)}</p>
                     </div>
                 )}
             </div>

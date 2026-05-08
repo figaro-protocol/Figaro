@@ -15,7 +15,7 @@
 
 import Link from "next/link";
 import { useAccount } from "wagmi";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import { WalletGate } from "@/components/core/WalletGate";
 import { useWalletProcessRows } from "@/lib/core/walletProcessQueries";
 import { resolveRuntimeSubjectByAddress } from "@/lib/shared/runtimeIdentityRegistry";
@@ -97,7 +97,7 @@ export function BuyerOrdersList() {
                                     <div className="text-right shrink-0">
                                         <p className="text-xs text-neutral-500">Order value</p>
                                         <p className="text-sm font-semibold text-black">
-                                            {formatUnits(row.payment, 18)}
+                                            {formatToken(row.payment)}
                                         </p>
                                     </div>
                                 </div>

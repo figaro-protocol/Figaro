@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useAccount, useChainId, useWalletClient } from "wagmi";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import type {
@@ -247,7 +247,7 @@ export function CommitmentSharePanel({
                 </div>
                 <div className="flex justify-between">
                     <span>Payment</span>
-                    <span>{formatUnits(commitment.payment, tokenDecimals)} tokens</span>
+                    <span>{formatToken(commitment.payment, tokenDecimals)} tokens</span>
                 </div>
                 {!isRoot && (
                     <div className="flex justify-between">

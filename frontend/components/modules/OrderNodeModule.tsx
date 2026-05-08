@@ -3,7 +3,7 @@
 import { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { ModuleEmptyStateCard } from "@/components/shared/ModuleEmptyStateCard";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function OrderNodeModule({ context }: ModuleProps) {
@@ -59,7 +59,7 @@ export function OrderNodeModule({ context }: ModuleProps) {
 
                 <div>
                     <p className="text-xs text-neutral-500">Payment</p>
-                    <p className="font-semibold">{formatUnits(order.payment, context.tokenDecimals ?? 18)} tokens</p>
+                    <p className="font-semibold">{formatToken(order.payment, context.tokenDecimals ?? 18)} tokens</p>
                 </div>
 
                 {order.parentOrderIds.length > 0 && (

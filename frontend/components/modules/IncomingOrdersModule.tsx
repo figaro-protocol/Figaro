@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, useWalletClient } from "wagmi";
-import { formatUnits } from "viem";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import {

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CapabilityExecutionInput, CapabilityModel, ProcessModel, ProcessRelationModel } from "@/lib/semantic/models";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 
 interface Props {
@@ -20,7 +20,7 @@ function shortId(value: string): string {
 }
 
 function compactAmount(amount: bigint, decimals: number): string {
-    const formatted = formatUnits(amount, decimals);
+    const formatted = formatToken(amount, decimals);
     const [whole, fraction = ""] = formatted.split(".");
     if (fraction.length === 0) return whole;
     return `${whole}.${fraction.slice(0, 3)}`;
@@ -255,7 +255,7 @@ export function ProcessTopologyPanel({
                                 </div>
                                 <div className="mt-3 space-y-2 text-xs text-neutral-600">
                                     <p>Parents: {order.parentOrderIds.length > 0 ? order.parentOrderIds.map(shortId).join(", ") : "root order"}</p>
-                                    <p>Payment: {formatUnits(order.payment, decimals)}</p>
+                                    <p>Payment: {formatToken(order.payment, decimals)}</p>
                                 </div>
                                 {order.parentOrderIds.length > 0 && (
                                     <div className="mt-3 rounded border border-neutral-200 bg-white p-2">

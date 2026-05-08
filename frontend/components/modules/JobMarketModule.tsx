@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import { useAccount, usePublicClient } from "wagmi";
 import { useCourierOffering } from "@/lib/mechanisms/useCourierOffering";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
@@ -190,8 +190,8 @@ function useAuctionJobs(): AuctionJob[] {
 }
 
 function AuctionJobCard({ job, accentTone, tokenDecimals = 18 }: { job: AuctionJob; accentTone?: string; tokenDecimals?: number }) {
-    const formattedPayment = formatUnits(job.payment, tokenDecimals);
-    const formattedPrice = job.currentPrice !== undefined ? formatUnits(job.currentPrice, tokenDecimals) : null;
+    const formattedPayment = formatToken(job.payment, tokenDecimals);
+    const formattedPrice = job.currentPrice !== undefined ? formatToken(job.currentPrice, tokenDecimals) : null;
     const cardStyle = accentTone ? { borderTopColor: accentTone, borderTopWidth: "2px" } : undefined;
     const accentStyle = accentTone ? { color: accentTone } : undefined;
 

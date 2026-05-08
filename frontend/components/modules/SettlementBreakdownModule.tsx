@@ -3,7 +3,7 @@
 import { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { ModuleEmptyStateCard } from "@/components/shared/ModuleEmptyStateCard";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 
 export function SettlementBreakdownModule({ context }: ModuleProps) {
     const breakdown = context.selectedOrder?.settlementBreakdown ?? context.processModel?.economicSummary;
@@ -37,25 +37,25 @@ export function SettlementBreakdownModule({ context }: ModuleProps) {
                 {breakdown.lockedBond && (
                     <div className="flex justify-between">
                         <span className="text-neutral-600">{breakdown.lockedBond.label}</span>
-                        <span className="font-mono">{formatUnits(breakdown.lockedBond.amount, decimals)}</span>
+                        <span className="font-mono">{formatToken(breakdown.lockedBond.amount, decimals)}</span>
                     </div>
                 )}
                 {breakdown.settledAvailable && (
                     <div className="flex justify-between">
                         <span className="text-neutral-600">{breakdown.settledAvailable.label}</span>
-                        <span className="font-mono">{formatUnits(breakdown.settledAvailable.amount, decimals)}</span>
+                        <span className="font-mono">{formatToken(breakdown.settledAvailable.amount, decimals)}</span>
                     </div>
                 )}
                 {breakdown.typedOutputs.map((output, i) => (
                     <div key={`${output.label}-${i}`} className="flex justify-between">
                         <span className="text-neutral-600">{output.label}</span>
-                        <span className="font-mono">{formatUnits(output.amount, decimals)}</span>
+                        <span className="font-mono">{formatToken(output.amount, decimals)}</span>
                     </div>
                 ))}
                 {breakdown.downstreamReferencedAmount && (
                     <div className="flex justify-between border-t border-neutral-200 pt-2">
                         <span className="text-neutral-600">{breakdown.downstreamReferencedAmount.label}</span>
-                        <span className="font-mono">{formatUnits(breakdown.downstreamReferencedAmount.amount, decimals)}</span>
+                        <span className="font-mono">{formatToken(breakdown.downstreamReferencedAmount.amount, decimals)}</span>
                     </div>
                 )}
             </div>

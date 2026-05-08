@@ -8,7 +8,7 @@ import { useArbitrationCost } from "@/hooks/core/useArbitrationCost";
 import { useAccount } from "wagmi";
 import { useMemo } from "react";
 import { CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import { createDeliveryCoordinatorSource } from "@/lib/mechanisms/deliveryCoordinatorEvents";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { calculateBonds } from "@figaro/core";
@@ -112,7 +112,7 @@ export const OrderNodeSemanticCard = memo(function OrderNodeSemanticCard({
                 </div>
                 <div>
                     <p className="text-neutral-500 text-xs">Payment</p>
-                    <p className="text-black">{formatUnits(order.payment, 18)}</p>
+                    <p className="text-black">{formatToken(order.payment)}</p>
                 </div>
                 <div>
                     <p className="text-neutral-500 text-xs">Capabilities</p>

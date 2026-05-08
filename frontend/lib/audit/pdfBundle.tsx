@@ -30,7 +30,7 @@ import {
     Text,
     StyleSheet,
 } from "@react-pdf/renderer";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import type { AuditBundle } from "./auditBundle";
 import type { BillOfLadingDocument } from "./billOfLadingExtract";
 import type {
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
 
 const DEFAULT_DECIMALS = 18;
 function fmt(amount: bigint): string {
-    return formatUnits(amount, DEFAULT_DECIMALS);
+    return formatToken(amount, DEFAULT_DECIMALS);
 }
 
 function shortHex(hex: string | undefined, head = 10, tail = 6): string {

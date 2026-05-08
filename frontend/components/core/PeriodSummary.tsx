@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import {
     getAllOrderResolved,
     getOrderCommittedByBuyer,
@@ -69,7 +69,7 @@ function endOfDay(dateStr: string): number {
 }
 
 function fmt(value: bigint, decimals = 18): string {
-    return Number(formatUnits(value, decimals)).toFixed(6);
+    return Number(formatToken(value, decimals)).toFixed(6);
 }
 
 async function getBlockTimestamp(

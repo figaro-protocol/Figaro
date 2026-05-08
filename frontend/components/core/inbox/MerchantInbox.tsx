@@ -26,7 +26,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, useWalletClient } from "wagmi";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import { calculateBonds } from "@figaro/core";
 import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/core/WalletGate";
@@ -81,7 +81,7 @@ function PendingOrderCard({ payload, onAccept, onDismiss, isAccepting }: Pending
                 <div className="text-right shrink-0">
                     <p className="text-xs text-neutral-500">Order value</p>
                     <p className="text-sm font-semibold text-black">
-                        {formatUnits(commitment.payment, decimals)}
+                        {formatToken(commitment.payment, decimals)}
                     </p>
                 </div>
             </div>
@@ -89,7 +89,7 @@ function PendingOrderCard({ payload, onAccept, onDismiss, isAccepting }: Pending
             <div className="rounded border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600 space-y-1">
                 <p>
                     <span className="font-medium text-neutral-700">Your seller bond:</span>{" "}
-                    {formatUnits(sellerBond, decimals)}
+                    {formatToken(sellerBond, decimals)}
                     <span className="text-neutral-400 ml-1">(returned at settlement)</span>
                 </p>
             </div>
@@ -138,7 +138,7 @@ function ActiveOrderRow({ row }: { row: ProcessRow }) {
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-neutral-500">Value</p>
-                    <p className="text-sm font-semibold text-black">{formatUnits(row.payment, 18)}</p>
+                    <p className="text-sm font-semibold text-black">{formatToken(row.payment, 18)}</p>
                 </div>
             </div>
         </Link>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAccount } from "wagmi";
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
@@ -258,7 +258,7 @@ export function OnboardingDone() {
                     <p className="text-sm text-ink-body">
                         Deposit:{" "}
                         <span className="font-semibold text-ink-heading">
-                            {formatUnits(deposit, 18)} ETH
+                            {formatToken(deposit)} ETH
                         </span>
                         {lockPeriod !== undefined && (
                             <>

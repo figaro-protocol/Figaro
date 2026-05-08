@@ -17,7 +17,7 @@
  * the provider opens this modal and resolves your promise on confirm/cancel.
  */
 
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import type { Commitment } from "@figaro/core";
 import type { Agreement, AgreementSection } from "@/lib/core/agreementManifest";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -35,7 +35,7 @@ function formatPayment(commitment: Commitment): string {
     // only — the bytes signed are the bigint exactly.
     try {
         // If it doesn't fit the typical 18-decimal path we fall back to raw.
-        return formatUnits(commitment.payment, 18);
+        return formatToken(commitment.payment);
     } catch {
         return commitment.payment.toString();
     }

@@ -22,7 +22,7 @@
  * deliverable. Phases C–E layer the 5-document PDF auditor bundle on top.
  */
 
-import { formatUnits } from "viem";
+import { formatToken } from "@/lib/shared/utils";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import {
     projectFinancials,
@@ -41,7 +41,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 const DEFAULT_DECIMALS = 18;
 
 function formatAmount(amount: bigint): string {
-    return formatUnits(amount, DEFAULT_DECIMALS);
+    return formatToken(amount, DEFAULT_DECIMALS);
 }
 
 function shortAddr(addr: string): string {
