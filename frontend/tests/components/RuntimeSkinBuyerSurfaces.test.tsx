@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CartModule } from '@/components/modules/CartModule';
 import { SellerDiscoveryModule } from '@/components/modules/SellerDiscoveryModule';
-import type { ResolvedAssemblySkinBundle } from '@/lib/shared/runtimeResolution';
+import { makeSkinBundle } from './_skinBundleFixture';
 
 const useRegisteredCataloguesMock = vi.fn();
 const useCartStoreMock = vi.fn();
@@ -81,23 +81,11 @@ vi.mock('@/components/core/CommitmentSharePanel', () => ({
     CommitmentSharePanel: () => <div data-testid="commitment-share-panel" />,
 }));
 
-const skinBundle: ResolvedAssemblySkinBundle = {
-    sourceKind: 'runtime-bound',
-    skinId: 'binding-neighbourhood-eats-local-anvil',
-    subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-    bindingId: 'binding:neighbourhood-eats:local-anvil',
-    branding: {
-        branding: {
-            displayName: 'Neighbourhood Eats',
-            accentColor: '#1f6feb',
-            themeClass: 'runtime-shell-neighbourhood',
-        },
-        assets: {},
-        logoURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-logo.png',
-        heroImageURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-hero.png',
-        cssURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-theme.css',
-    },
-};
+const skinBundle = makeSkinBundle({
+    slug: 'neighbourhood-eats',
+    displayName: 'Neighbourhood Eats',
+    themeClass: 'runtime-shell-neighbourhood',
+});
 
 const restaurant = {
     id: 'rest-1',

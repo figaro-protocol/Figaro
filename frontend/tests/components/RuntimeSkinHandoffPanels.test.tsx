@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HandoffDetailsModule } from '@/components/modules/HandoffDetailsModule';
 import { HandoffKeyExchangeModule } from '@/components/modules/HandoffKeyExchangeModule';
 import { HandoffTrackerModule } from '@/components/modules/HandoffTrackerModule';
-import type { ResolvedAssemblySkinBundle } from '@/lib/shared/runtimeResolution';
+import { makeSkinBundle } from './_skinBundleFixture';
 
 const useAccountMock = vi.fn();
 const useWalletClientMock = vi.fn();
@@ -14,23 +14,11 @@ vi.mock('wagmi', () => ({
     useWalletClient: () => useWalletClientMock(),
 }));
 
-const skinBundle: ResolvedAssemblySkinBundle = {
-    sourceKind: 'runtime-bound',
-    skinId: 'binding-handoff-guild-local-anvil',
-    subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-    bindingId: 'binding:handoff-guild:local-anvil',
-    branding: {
-        branding: {
-            displayName: 'Handoff Guild',
-            accentColor: '#1f6feb',
-            themeClass: 'runtime-shell-handoff-guild',
-        },
-        assets: {},
-        logoURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-logo.png',
-        heroImageURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-hero.png',
-        cssURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-theme.css',
-    },
-};
+const skinBundle = makeSkinBundle({
+    slug: 'handoff-guild',
+    displayName: 'Handoff Guild',
+    themeClass: 'runtime-shell-handoff-guild',
+});
 
 function createBaseContext(overrides?: Record<string, unknown>) {
     return {

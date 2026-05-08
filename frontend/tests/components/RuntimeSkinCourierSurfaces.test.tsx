@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { JobMarketModule } from '@/components/modules/JobMarketModule';
-import type { ResolvedAssemblySkinBundle } from '@/lib/shared/runtimeResolution';
+import { makeSkinBundle } from './_skinBundleFixture';
 
 const useCourierOfferingMock = vi.fn();
 
@@ -29,23 +29,11 @@ vi.mock('@/lib/core/contracts', () => ({
     DUTCH_AUCTION_ABI: [],
 }));
 
-const skinBundle: ResolvedAssemblySkinBundle = {
-    sourceKind: 'runtime-bound',
-    skinId: 'binding-courier-guild-local-anvil',
-    subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-    bindingId: 'binding:courier-guild:local-anvil',
-    branding: {
-        branding: {
-            displayName: 'Courier Guild',
-            accentColor: '#1f6feb',
-            themeClass: 'runtime-shell-courier-guild',
-        },
-        assets: {},
-        logoURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-logo.png',
-        heroImageURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-hero.png',
-        cssURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-theme.css',
-    },
-};
+const skinBundle = makeSkinBundle({
+    slug: 'courier-guild',
+    displayName: 'Courier Guild',
+    themeClass: 'runtime-shell-courier-guild',
+});
 
 function createProps(overrides?: Record<string, unknown>) {
     return {

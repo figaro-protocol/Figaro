@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CoordinatorActionModule } from '@/components/modules/CoordinatorActionModule';
 import { DisclosureModule } from '@/components/modules/DisclosureModule';
 import { DISCLOSURE_KIND } from '@/lib/mechanisms/contracts';
-import type { ResolvedAssemblySkinBundle } from '@/lib/shared/runtimeResolution';
+import { makeSkinBundle } from './_skinBundleFixture';
 
 const useOrderDisclosureTasksMock = vi.fn();
 const useProcessDisclosureSummaryMock = vi.fn();
@@ -15,23 +15,7 @@ vi.mock('@/lib/mechanisms/useGHGDisclosure', () => ({
     formatActualGrams: (grams: bigint) => `${grams.toString()} g CO2e`,
 }));
 
-const skinBundle: ResolvedAssemblySkinBundle = {
-    sourceKind: 'runtime-bound',
-    skinId: 'binding-bobs-pizza-palace-local-anvil',
-    subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-    bindingId: 'binding:bobs-pizza-palace:local-anvil',
-    branding: {
-        branding: {
-            displayName: "Bob's Pizza Palace",
-            accentColor: '#1f6feb',
-            themeClass: 'runtime-shell-pizza',
-        },
-        assets: {},
-        logoURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-logo.png',
-        heroImageURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-hero.png',
-        cssURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-theme.css',
-    },
-};
+const skinBundle = makeSkinBundle();
 
 function createCoordinatorProps(overrides?: Record<string, unknown>) {
     return {

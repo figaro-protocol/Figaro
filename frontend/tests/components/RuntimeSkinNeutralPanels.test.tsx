@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuctionActionModule } from '@/components/modules/AuctionActionModule';
 import { ProcessGraphModule } from '@/components/modules/ProcessGraphModule';
-import type { ResolvedAssemblySkinBundle } from '@/lib/shared/runtimeResolution';
+import { makeSkinBundle } from './_skinBundleFixture';
 
 const useDutchAuctionMock = vi.fn();
 const assemblyProcessWorkspaceMock = vi.fn();
@@ -22,23 +22,11 @@ vi.mock('@/components/core/AssemblyProcessWorkspace', () => ({
     },
 }));
 
-const skinBundle: ResolvedAssemblySkinBundle = {
-    sourceKind: 'runtime-bound',
-    skinId: 'binding-runtime-neutral-local-anvil',
-    subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-    bindingId: 'binding:runtime-neutral:local-anvil',
-    branding: {
-        branding: {
-            displayName: 'Runtime Neutral',
-            accentColor: '#1f6feb',
-            themeClass: 'runtime-shell-neutral',
-        },
-        logoURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-logo.png',
-        heroImageURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-hero.png',
-        cssURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-theme.css',
-        assets: {},
-    },
-};
+const skinBundle = makeSkinBundle({
+    slug: 'runtime-neutral',
+    displayName: 'Runtime Neutral',
+    themeClass: 'runtime-shell-neutral',
+});
 
 function createAuctionProps(overrides?: Record<string, unknown>) {
     const defaultMechanisms = [
