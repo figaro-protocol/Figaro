@@ -74,7 +74,7 @@ No publish-to-registry path exists today; saved drafts stay in localStorage. `De
 
 ## Components (`components/`)
 
-- **`core/`** — order flows, bond/token, builder/assembly, semantic. Assembly rendering shells: `AssemblyShell`, `AssemblyInspector`, `AssemblyProcessWorkspace`, `RegisteredAssemblyWorkspace` (all `Institution*` names have been renamed)
+- **`core/`** — order flows, bond/token, builder/assembly, semantic. Assembly rendering shells: `AssemblyShell`, `AssemblyProcessWorkspace` (all `Institution*` names have been renamed)
 - **`modules/`** — composable mechanism components registered via `registerAllModules.ts`. Module registry remains for assembly-tier composition (designer view, future tooling); the prior consumer-facing `/i/[slug]` runtime that rendered them was deleted in favour of purpose-shaped pages (`/m/[merchant]`, `/orders/[processId]`, `/inbox`).
 - **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs; **`console/`** and **`operators/`** — route-specific panels
 
