@@ -8,10 +8,13 @@
 # `frontend/**/*.{ts,tsx}`. Run via `bash lint-canonical-imports.sh`
 # (lint-staged spawn does not resolve `./` relative paths).
 #
-# Two checks:
-#   1. LITERAL — banned string literal in any quoted form (single,
+# Three checks:
+#   1. LITERAL  — banned string literal in any quoted form (single,
 #      double, or backtick). Allowlist file is the canonical home.
-#   2. DECL    — banned declaration of an identifier
+#   2. COMPUTED — banned synthesized form of the same value via
+#      `"0x" + "0".repeat(N)` or `\`0x\${"0".repeat(N)}\``. Catches
+#      the equivalence class that the literal grep misses.
+#   3. DECL     — banned declaration of an identifier
 #      (`function|const|let|var <NAME>`). Allowlist file is the
 #      canonical home.
 #
@@ -30,6 +33,17 @@ set -euo pipefail
 LITERAL_BANNED=(
     '0x0000000000000000000000000000000000000000~frontend/lib/shared/evm.ts~ZERO_ADDRESS'
     '0x0000000000000000000000000000000000000000000000000000000000000000~frontend/lib/shared/evm.ts~ZERO_BYTES32'
+)
+
+# ── COMPUTED bans ───────────────────────────────────────────────
+# Format: <zero-count>~<canonical-file>~<name>
+# Catches `"0x" + "0".repeat(N)` and `\`0x\${"0".repeat(N)}\`` forms
+# for the canonical's all-zero value of that byte length. N is the
+# number of hex zeros (40 for a 20-byte address, 64 for a 32-byte
+# bytes32).
+COMPUTED_BANNED=(
+    '40~frontend/lib/shared/evm.ts~ZERO_ADDRESS'
+    '64~frontend/lib/shared/evm.ts~ZERO_BYTES32'
 )
 
 # ── DECL bans ───────────────────────────────────────────────────
@@ -60,6 +74,27 @@ check_literal() {
     fi
 }
 
+check_computed() {
+    local file="$1" count="$2" canonical="$3" name="$4"
+
+    if [[ "$file" == */"$canonical" || "$file" == "$canonical" ]]; then
+        return 0
+    fi
+
+    # Match both the string-concat form (`"0x" + "0".repeat(N)`) and
+    # the template-literal form (`\`0x\${"0".repeat(N)}\``).
+    local concat_re='"0x"[[:space:]]*\+[[:space:]]*"0"\.repeat\([[:space:]]*'"$count"'[[:space:]]*\)'
+    local tmpl_re='`0x\$\{"0"\.repeat\([[:space:]]*'"$count"'[[:space:]]*\)\}`'
+
+    local hits
+    hits=$(grep -nE "${concat_re}|${tmpl_re}" "$file" || true)
+    if [[ -n "$hits" ]]; then
+        echo "[canonical-guard] $file synthesizes $name via \"0x\" + \"0\".repeat($count) — import from $canonical"
+        echo "$hits" | sed 's/^/    /'
+        violations=$((violations + 1))
+    fi
+}
+
 check_decl() {
     local file="$1" ident="$2" canonical="$3" message="$4"
 
@@ -84,6 +119,11 @@ for file in "$@"; do
     for entry in "${LITERAL_BANNED[@]}"; do
         IFS='~' read -r literal canonical name <<< "$entry"
         check_literal "$file" "$literal" "$canonical" "$name"
+    done
+
+    for entry in "${COMPUTED_BANNED[@]}"; do
+        IFS='~' read -r count canonical name <<< "$entry"
+        check_computed "$file" "$count" "$canonical" "$name"
     done
 
     for entry in "${DECL_BANNED[@]}"; do
