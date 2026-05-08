@@ -14,8 +14,6 @@ export const ANVIL_ACCOUNTS = [
     '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65', // [4] seller4
 ] as const;
 
-// Anvil default account[0] — matches inject-ethereum.js
-export const DEVNET_ACCOUNT = ANVIL_ACCOUNTS[0];
 export const DEFAULT_LOCAL_MOCK_TOKEN = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
 export async function clickWithRetry(locator: Locator, attempts = 5): Promise<void> {

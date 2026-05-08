@@ -15,19 +15,11 @@
  */
 import path from 'path';
 import { test as base, expect, Browser, BrowserContext, Page } from '@playwright/test';
-import { ensureWalletHasMockTokens } from './test-helpers';
+import { ensureWalletHasMockTokens, ANVIL_ACCOUNTS } from './test-helpers';
 
 const multiInjectPath = path.resolve(__dirname, './fixtures/inject-ethereum-multi.js');
 
-/** All five standard Anvil test accounts (index 0–4). */
-export const ANVIL_ACCOUNTS = [
-    '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', // [0] buyer (default)
-    '0x70997970C51812dc3A010C7d01b50e0d17dc79C8', // [1] seller1
-    '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC', // [2] seller2
-    '0x90F79bf6EB2c4f870365E785982E1f101E93b906', // [3] seller3
-    '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65', // [4] seller4
-] as const;
-
+export { ANVIL_ACCOUNTS };
 export type AnvilAccount = typeof ANVIL_ACCOUNTS[number];
 
 // Re-export expect for convenience
