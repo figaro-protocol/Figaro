@@ -19,6 +19,7 @@ import { useAccount } from "wagmi";
 import { encodeGeohash, geohashDistance } from "@/lib/handoff";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     AttestationMode,
     pinAttestation,
@@ -134,16 +135,16 @@ export function useDeliveryAttestation(
                 let gps: GPSReading;
                 try {
                     gps = await getCurrentPosition();
-                } catch (gpsErr: any) {
-                    throw new Error(`GPS failed: ${gpsErr.message}`);
+                } catch (gpsErr: unknown) {
+                    throw new Error(`GPS failed: ${extractErrorMessage(gpsErr, "unknown")}`);
                 }
 
                 let photoCID: string;
                 try {
                     const upload = await evidenceTransport.uploadFile(photoFile);
                     photoCID = upload.cid;
-                } catch (pinErr: any) {
-                    throw new Error(`Photo pin failed: ${pinErr.message}`);
+                } catch (pinErr: unknown) {
+                    throw new Error(`Photo pin failed: ${extractErrorMessage(pinErr, "unknown")}`);
                 }
 
                 const geohash = encodeGeohash(gps.latitude, gps.longitude, 7);
@@ -164,8 +165,8 @@ export function useDeliveryAttestation(
                 };
 
                 return await pinAttestation(attestation, evidenceTransport);
-            } catch (e: any) {
-                setError(e?.message ?? "Photo+GPS capture failed");
+            } catch (e: unknown) {
+                setError(extractErrorMessage(e, "Photo+GPS capture failed"));
                 return null;
             } finally {
                 setLoading(false);
@@ -195,8 +196,8 @@ export function useDeliveryAttestation(
                 let gps: GPSReading;
                 try {
                     gps = await getCurrentPosition();
-                } catch (gpsErr: any) {
-                    throw new Error(`GPS failed: ${gpsErr.message}`);
+                } catch (gpsErr: unknown) {
+                    throw new Error(`GPS failed: ${extractErrorMessage(gpsErr, "unknown")}`);
                 }
 
                 const fulfillerGeohash = encodeGeohash(
@@ -212,8 +213,8 @@ export function useDeliveryAttestation(
                 let distanceKm: number;
                 try {
                     distanceKm = geohashDistance(fulfillerGeohash, orderDropoffGeohash);
-                } catch (distErr: any) {
-                    throw new Error(`Distance calculation failed: ${distErr.message}`);
+                } catch (distErr: unknown) {
+                    throw new Error(`Distance calculation failed: ${extractErrorMessage(distErr, "unknown")}`);
                 }
 
                 const attestation: GeohashMatchAttestation = {
@@ -234,8 +235,8 @@ export function useDeliveryAttestation(
                 };
 
                 return await pinAttestation(attestation, evidenceTransport);
-            } catch (e: any) {
-                setError(e?.message ?? "Geohash check failed");
+            } catch (e: unknown) {
+                setError(extractErrorMessage(e, "Geohash check failed"));
                 return null;
             } finally {
                 setLoading(false);

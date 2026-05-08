@@ -34,7 +34,7 @@ export default function TerminalPage() {
     useEffect(() => {
         if (!isE2EMockSession()) return;
         // E2E test harness on window global.
-        (window as unknown as { __FIGARO_MOCK__: unknown }).__FIGARO_MOCK__ = {
+        window.__FIGARO_MOCK__ = {
             emitOrder: mockEmitOrder,
             resolveProcess: (pid: string, idStrs: string[]) => mockResolveProcess(pid, idStrs),
         };

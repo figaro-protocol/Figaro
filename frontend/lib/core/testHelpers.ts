@@ -34,15 +34,9 @@ export interface PendingPermitState {
     data: string;
 }
 
-export type TestHelperWindow = Window & Record<string, unknown> & {
-    __FIGARO_MOCK_API__?: unknown;
-    __FIGARO_PENDING_PERMIT__?: PendingPermitState;
-    __FIGARO_ALLOWANCES__?: Record<string, string>;
-};
-
-export function windowSafe(): TestHelperWindow | undefined {
+export function windowSafe(): Window | undefined {
     if (typeof window === 'undefined') return undefined;
-    return window as unknown as TestHelperWindow;
+    return window;
 }
 
 /**
@@ -54,7 +48,7 @@ export function getMockFn<T = (...args: unknown[]) => unknown>(name: string): T 
         if (!TEST_HELPERS_ENABLED) return null;
         const _win = windowSafe();
         if (!_win) return null;
-        const fn = _win[name];
+        const fn = (_win as unknown as Record<string, unknown>)[name];
         return typeof fn === 'function' ? (fn as T) : null;
     } catch {
         return null;

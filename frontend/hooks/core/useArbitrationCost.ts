@@ -70,7 +70,7 @@ export function useArbitrationCost(): ArbitrationCostResult {
 
         getArbitrationCost(publicClient, klerosConfig)
             .then((c) => { if (!cancelled) setCost(c); })
-            .catch((e: any) => {
+            .catch((e: unknown) => {
                 if (!cancelled) setError(extractErrorMessage(e, "Failed to fetch arbitration cost"));
             })
             .finally(() => { if (!cancelled) setLoading(false); });

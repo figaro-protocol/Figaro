@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { useConnect, useAccount } from "wagmi";
-import { TEST_HELPERS_ENABLED, windowSafe, type TestHelperWindow } from "@/lib/core/testHelpers";
+import { TEST_HELPERS_ENABLED, windowSafe } from "@/lib/core/testHelpers";
 import { useOrderStore } from "@/lib/core/store";
 import { calculateBonds } from "@figaro/core";
 
@@ -116,7 +116,6 @@ export default function ClientInit() {
 
             // Avoid overwriting if another script already set it
             const _win = windowSafe();
-            // @ts-ignore
             if (_win && typeof _win.__FIGARO_MOCK_API__ === 'object') return;
 
             async function tryIpfsAdd(json: unknown) {
@@ -136,7 +135,6 @@ export default function ClientInit() {
                 }
             }
 
-            // @ts-ignore
             if (_win) _win.__FIGARO_MOCK_API__ = {
                 createOrder: async (opts: { counterparty?: string; payment?: string; origin?: string; destination?: string; currency?: string }) => {
                     const paymentStr = opts?.payment || '0';

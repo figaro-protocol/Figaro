@@ -27,23 +27,6 @@ type DevSendTransactionArgs = Parameters<DevSignerWallet["sendTransaction"]>[0];
 type DebugClientLike = Record<string, unknown> & {
     readContract: (opts: DebugReadContractArgs) => Promise<unknown>;
 };
-type RpcRequestArgs = { method: string; params?: unknown };
-type DevProvider = {
-    isMetaMask?: boolean;
-    request?: (args: RpcRequestArgs) => Promise<unknown>;
-};
-type DevShimWindow = Window & {
-    figaroPublicClient?: DebugClientLike;
-    figaroReadFee?: (addr: `0x${string}`, abi: Abi | readonly unknown[]) => Promise<unknown>;
-    __figaro_fetch_wrapped?: boolean;
-    __viem_wallet_client?: DevSignerWallet;
-    ethereum?: DevProvider;
-};
-
-function getDevWindow(): DevShimWindow {
-    return window as unknown as DevShimWindow;
-}
-
 function asTransactionRecord(value: unknown): Record<string, unknown> {
     return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
@@ -66,7 +49,6 @@ function asDebugClientLike(client: DebugClient): DebugClientLike {
 export function attachDebugClient(): void {
     if (typeof window === "undefined") return;
     try {
-        const devWindow = getDevWindow();
         const client = createPublicClient({
             chain: localAnvil,
             transport: http("/rpc"),
@@ -86,22 +68,22 @@ export function attachDebugClient(): void {
                     throw err;
                 }
             };
-            devWindow.figaroPublicClient = {
+            window.figaroPublicClient = {
                 ...(client as unknown as Record<string, unknown>),
                 readContract: wrapped,
             };
         } else {
-            devWindow.figaroPublicClient = asDebugClientLike(client);
+            window.figaroPublicClient = asDebugClientLike(client);
         }
 
         // Convenience helper: window.figaroReadFee(address, abi)
-        devWindow.figaroReadFee = async (addr: `0x${string}`, abi: Abi | readonly unknown[]) => {
-            const c = devWindow.figaroPublicClient ?? asDebugClientLike(client);
+        window.figaroReadFee = async (addr: `0x${string}`, abi: Abi | readonly unknown[]) => {
+            const c = window.figaroPublicClient ?? asDebugClientLike(client);
             return c.readContract({ address: addr, abi, functionName: "feeRate" });
         };
 
         // Instrument window.fetch to surface /rpc calls in Playwright traces
-        if (!devWindow.__figaro_fetch_wrapped) {
+        if (!window.__figaro_fetch_wrapped) {
             const orig = window.fetch.bind(window);
             window.fetch = async (...args: Parameters<typeof fetch>) => {
                 log("fetch →", args[0]);
@@ -109,7 +91,7 @@ export function attachDebugClient(): void {
                 log("fetch ←", String(args[0]), res.status);
                 return res;
             };
-            devWindow.__figaro_fetch_wrapped = true;
+            window.__figaro_fetch_wrapped = true;
         }
     } catch (e) {
         log("attachDebugClient failed", e);
@@ -124,9 +106,8 @@ export function attachDevProvider(): void {
     const devAddr = process.env.NEXT_PUBLIC_DEV_ADDRESS;
     if (!devAddr) return;
     try {
-        const devWindow = getDevWindow();
-        if (!devWindow.ethereum) {
-            devWindow.ethereum = {
+        if (!window.ethereum) {
+            window.ethereum = {
                 isMetaMask: false,
                 request: async ({ method }: { method: string }) => {
                     if (
@@ -157,7 +138,6 @@ export function attachTestSigner(): void {
     const pk = process.env.NEXT_PUBLIC_TEST_PRIVATE_KEY;
     if (!pk) return;
     try {
-        const devWindow = getDevWindow();
         const account = privateKeyToAccount(pk as `0x${string}`);
         const wallet = createWalletClient({
             account,
@@ -168,10 +148,10 @@ export function attachTestSigner(): void {
             transport: http("/rpc"),
         });
 
-        if (!devWindow.ethereum) devWindow.ethereum = {};
-        devWindow.__viem_wallet_client = wallet;
+        if (!window.ethereum) window.ethereum = {};
+        window.__viem_wallet_client = wallet;
 
-        devWindow.ethereum.request = async ({
+        window.ethereum.request = async ({
             method,
             params,
         }: {

@@ -128,9 +128,7 @@ export function OrderControls() {
         try {
             if (TEST_HELPERS_ENABLED) {
                 const _win = windowSafe();
-                // @ts-ignore
                 if (_win && _win.__FIGARO_PENDING_PERMIT__) {
-                    // @ts-ignore
                     const p = _win.__FIGARO_PENDING_PERMIT__;
                     setPermitEnabled(true);
                     setPermitTarget(p.target || null);
