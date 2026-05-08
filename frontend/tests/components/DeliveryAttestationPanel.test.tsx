@@ -45,13 +45,13 @@ vi.mock("@/hooks/core/useDeliveryAttestation", () => ({
     }),
 }));
 
-vi.mock("@/components/shared/QRChallengeDisplay", () => ({
+vi.mock("@/components/modules/QRChallengeDisplay", () => ({
     QRChallengeDisplay: ({ nonce }: { nonce: string }) => (
         <div data-testid="qr-challenge-display">{nonce}</div>
     ),
 }));
 
-vi.mock("@/components/shared/QRChallengeScanner", () => ({
+vi.mock("@/components/modules/QRChallengeScanner", () => ({
     QRChallengeScanner: ({ onPayloadScanned, orderId, handoffStep }: {
         onPayloadScanned: (payload: { nonce: `0x${string}`; orderId: string; step: "pickup" | "delivery" }) => void;
         orderId: string;

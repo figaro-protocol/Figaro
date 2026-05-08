@@ -464,12 +464,12 @@ Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory list
 `HandoffTrackerModule`, `JobMarketModule`, `MechanismInspectorModule`,
 `MerchantBrandingModule`, `OperatorRegistrationModule`, `OrderActionModule`,
 `OrderNodeModule`, `ProcessCapitalSummaryModule`, `ProcessGraphModule`,
+`QRChallengeDisplay`, `QRChallengeScanner`,
 `RoleSwitcherModule`, `SellerDiscoveryModule`, `SettlementBreakdownModule`
 
-**`shared/`** — Shell and utility components (12):
-`Header`, `Footer`, `MobileNav`, `NotificationBell`, `CodeBlock`,
-`ContentImage`, `ErrorBoundary`, `QRChallengeDisplay`, `QRChallengeScanner`,
-`ModuleEmptyStateCard`, `RoutePostureBanner`, `Term`
+**`shared/`** — Shell and utility components:
+`Header`, `Footer`, `MobileNav`, `NotificationBell`,
+`ContentImage`, `ErrorBoundary`, `ModuleEmptyStateCard`
 
 **`ui/`** — Design primitives (4): `Button`, `Card`, `FormField`, `Input`
 

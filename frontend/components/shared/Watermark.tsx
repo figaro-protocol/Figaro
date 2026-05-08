@@ -22,7 +22,7 @@
  * the local-dev mechanism.
  *
  * Reuses the `qrcode` npm dependency already loaded by
- * `components/shared/QRChallengeDisplay.tsx` — same lazy-import pattern,
+ * `components/modules/QRChallengeDisplay.tsx` — same lazy-import pattern,
  * no extra runtime cost.
  */
 
