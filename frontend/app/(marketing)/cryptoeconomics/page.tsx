@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DisciplineGlyph } from "@/components/shared/DisciplineGlyph";
-import { MarketingHero } from "@/components/shared/MarketingHero";
-import { MarketingSection } from "@/components/shared/MarketingSection";
+import { MarketingHero } from "@/components/marketing/MarketingHero";
+import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { GROUPS_REGISTRY } from "@/lib/shared/groupsRegistry";
 
 export const metadata: Metadata = {

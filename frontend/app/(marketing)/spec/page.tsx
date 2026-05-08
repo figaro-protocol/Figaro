@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContractEntry } from "@/components/shared/ContractEntry";
-import { MarketingHero } from "@/components/shared/MarketingHero";
-import { MarketingSection } from "@/components/shared/MarketingSection";
+import { MarketingHero } from "@/components/marketing/MarketingHero";
+import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = {
     title: "Specifications — Figaro Protocol",

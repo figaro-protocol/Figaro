@@ -1,4 +1,4 @@
-import { MarketingHeader } from "@/components/shared/MarketingHeader";
+import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { Footer } from "@/components/shared/Footer";
 
 /**
