@@ -21,6 +21,7 @@ import { formatToken } from "@/lib/shared/utils";
 import type { Commitment } from "@figaro/core";
 import type { Agreement, AgreementSection } from "@/lib/core/agreementManifest";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { ModalChrome } from "@/components/ui/ModalChrome";
 
 interface Props {
     commitment: Commitment;
@@ -74,14 +75,12 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
     const deadlineDate = new Date(Number(commitment.deadline) * 1000);
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            data-testid="agreement-preview-modal"
-            role="dialog"
-            aria-modal="true"
+        <ModalChrome
+            onClose={onCancel}
             aria-labelledby="agreement-preview-title"
+            data-testid="agreement-preview-modal"
+            panelClassName="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
         >
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50">
                     <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1">
@@ -200,7 +199,6 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
                         Confirm &amp; sign
                     </button>
                 </div>
-            </div>
-        </div>
+        </ModalChrome>
     );
 }

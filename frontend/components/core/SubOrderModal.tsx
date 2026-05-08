@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAccount, usePublicClient, useSendTransaction } from "wagmi";
 import { isAddress, keccak256 } from "viem";
 import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
@@ -22,6 +22,7 @@ import { hasRequiredManifestLocations, parsePositiveTokenInput } from "@/lib/cor
 import { useOrderApprovalFlow } from "@/lib/core/useOrderApprovalFlow";
 import { getE2EModeSession } from "@/lib/shared/e2e";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { ModalChrome } from "@/components/ui/ModalChrome";
 
 interface SubOrderModalProps {
     /** The processId this sub-order will be added to. */
@@ -248,49 +249,14 @@ export function SubOrderModal({
         }
     };
 
-    const dialogRef = useRef<HTMLDivElement>(null);
-    const previouslyFocused = useRef<Element | null>(document.activeElement);
-    useEffect(() => {
-        document.body.style.overflow = 'hidden';
-        const dialog = dialogRef.current;
-        if (dialog) {
-            const focusable = dialog.querySelector<HTMLElement>('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
-            focusable?.focus();
-        }
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-            if (e.key === 'Tab' && dialog) {
-                const focusables = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-                if (focusables.length === 0) return;
-                const first = focusables[0];
-                const last = focusables[focusables.length - 1];
-                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-            }
-        };
-        document.addEventListener('keydown', handleKeyDown);
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-            document.body.style.overflow = '';
-            (previouslyFocused.current as HTMLElement | null)?.focus();
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     return (
-        /* Backdrop — scrollable so the modal can grow past viewport height */
-        <div
-            className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-6"
-            onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        <ModalChrome
+            onClose={onClose}
+            aria-label="Add Sub-order"
+            align="top"
+            panelTestId="suborder-modal"
+            panelClassName="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 relative flex-shrink-0 max-h-[calc(100vh-3rem)] overflow-y-auto"
         >
-            <div
-                ref={dialogRef}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Add Sub-order"
-                data-testid="suborder-modal"
-                className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 relative flex-shrink-0 max-h-[calc(100vh-3rem)] overflow-y-auto"
-            >
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-bold text-black">Add Sub-order</h2>
@@ -419,7 +385,6 @@ export function SubOrderModal({
                 >
                     {status === "busy" ? "Processing..." : immediateCommitEnabled ? "Commit Sub-order" : "Create Commitment"}
                 </button>
-            </div>
-        </div>
+        </ModalChrome>
     );
 }

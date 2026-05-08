@@ -21,6 +21,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ModalChrome } from "@/components/ui/ModalChrome";
 
 const STORAGE_KEY = "figaro-onboarding-shown";
 
@@ -61,99 +62,96 @@ export function ConsentOnboardingModal({ onDismiss }: ConsentOnboardingModalProp
     if (!visible) return null;
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            role="dialog"
-            aria-modal="true"
+        <ModalChrome
+            onClose={dismiss}
             aria-labelledby="consent-onboarding-title"
             data-testid="consent-onboarding-modal"
+            panelClassName="bg-white rounded-lg border border-neutral-200 max-w-lg w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto"
         >
-            <div className="bg-white rounded-lg border border-neutral-200 max-w-lg w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-                <header>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-                        Welcome
+            <header>
+                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                    Welcome
+                </p>
+                <h2 id="consent-onboarding-title" className="text-xl font-bold text-black mt-1">
+                    Figaro Beta
+                </h2>
+            </header>
+
+            <section className="space-y-3 text-sm text-neutral-700">
+                <div>
+                    <h3 className="font-semibold text-black mb-1">What you are testing</h3>
+                    <p>
+                        The Figaro runtime — the user-facing surfaces (terminal,
+                        operators, designer, audit, audit-bundle export) —
+                        running against a development chain. No real funds are
+                        at risk.
                     </p>
-                    <h2 id="consent-onboarding-title" className="text-xl font-bold text-black mt-1">
-                        Figaro Beta
-                    </h2>
-                </header>
+                </div>
 
-                <section className="space-y-3 text-sm text-neutral-700">
-                    <div>
-                        <h3 className="font-semibold text-black mb-1">What you are testing</h3>
-                        <p>
-                            The Figaro runtime — the user-facing surfaces (terminal,
-                            operators, designer, audit, audit-bundle export) —
-                            running against a development chain. No real funds are
-                            at risk.
-                        </p>
-                    </div>
+                <div>
+                    <h3 className="font-semibold text-black mb-1">Watermark and artifact custody</h3>
+                    <p>
+                        Every page in this beta carries your access code as a
+                        small QR in the bottom-right corner. The watermark is
+                        the link between you and your session — please do not
+                        share screenshots that omit it. The wallet address you
+                        connect is regenerable; the access code is not.
+                    </p>
+                </div>
 
-                    <div>
-                        <h3 className="font-semibold text-black mb-1">Watermark and artifact custody</h3>
-                        <p>
-                            Every page in this beta carries your access code as a
-                            small QR in the bottom-right corner. The watermark is
-                            the link between you and your session — please do not
-                            share screenshots that omit it. The wallet address you
-                            connect is regenerable; the access code is not.
-                        </p>
-                    </div>
+                <div>
+                    <h3 className="font-semibold text-black mb-1">Giving feedback</h3>
+                    <p>
+                        Report bugs, friction, and surprises through the
+                        in-app feedback channel (coming soon) or directly to
+                        the Operator at the address from your beta invitation.
+                        Concrete examples — what you tried, what you saw,
+                        what you expected — are most useful.
+                    </p>
+                </div>
 
-                    <div>
-                        <h3 className="font-semibold text-black mb-1">Giving feedback</h3>
-                        <p>
-                            Report bugs, friction, and surprises through the
-                            in-app feedback channel (coming soon) or directly to
-                            the Operator at the address from your beta invitation.
-                            Concrete examples — what you tried, what you saw,
-                            what you expected — are most useful.
-                        </p>
-                    </div>
+                <div>
+                    <h3 className="font-semibold text-black mb-1">Reaching the Operator</h3>
+                    <p>
+                        For questions about the beta, withdrawal, or anything
+                        else, contact the Operator at the address provided in
+                        your invitation. You may stop participating at any time
+                        without penalty.
+                    </p>
+                </div>
 
-                    <div>
-                        <h3 className="font-semibold text-black mb-1">Reaching the Operator</h3>
-                        <p>
-                            For questions about the beta, withdrawal, or anything
-                            else, contact the Operator at the address provided in
-                            your invitation. You may stop participating at any time
-                            without penalty.
-                        </p>
-                    </div>
+                <div>
+                    <h3 className="font-semibold text-black mb-1">Disputes and escalation</h3>
+                    <p>
+                        If you believe the Agreement has been breached or
+                        something has gone seriously wrong, contact the
+                        Operator first — most issues resolve directly. If a
+                        dispute remains unresolved, the formal escalation per
+                        §10 of the Agreement is <strong>Kleros</strong>, the
+                        decentralized arbitration protocol. You may invoke
+                        Kleros independently using your consent receipt PDF as
+                        evidence; the receipt contains the signed message and
+                        document hash needed to make a case. A project-side
+                        dispute submission flow is available at{" "}
+                        <a
+                            href="/dispute"
+                            className="underline"
+                            data-testid="onboarding-dispute-link"
+                        >
+                            /dispute
+                        </a>
+                        .
+                    </p>
+                </div>
+            </section>
 
-                    <div>
-                        <h3 className="font-semibold text-black mb-1">Disputes and escalation</h3>
-                        <p>
-                            If you believe the Agreement has been breached or
-                            something has gone seriously wrong, contact the
-                            Operator first — most issues resolve directly. If a
-                            dispute remains unresolved, the formal escalation per
-                            §10 of the Agreement is <strong>Kleros</strong>, the
-                            decentralized arbitration protocol. You may invoke
-                            Kleros independently using your consent receipt PDF as
-                            evidence; the receipt contains the signed message and
-                            document hash needed to make a case. A project-side
-                            dispute submission flow is available at{" "}
-                            <a
-                                href="/dispute"
-                                className="underline"
-                                data-testid="onboarding-dispute-link"
-                            >
-                                /dispute
-                            </a>
-                            .
-                        </p>
-                    </div>
-                </section>
-
-                <Button
-                    onClick={dismiss}
-                    data-testid="btn-onboarding-dismiss"
-                    className="w-full"
-                >
-                    I understand — continue
-                </Button>
-            </div>
-        </div>
+            <Button
+                onClick={dismiss}
+                data-testid="btn-onboarding-dismiss"
+                className="w-full"
+            >
+                I understand — continue
+            </Button>
+        </ModalChrome>
     );
 }
