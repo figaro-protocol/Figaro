@@ -67,26 +67,13 @@ export function listAssemblySelectorCards(): AssemblySelectorCardModel[] {
     }));
 }
 
-export function getAssemblyBySlug(slug: string): Assembly | undefined {
+function getAssemblyBySlug(slug: string): Assembly | undefined {
     return ASSEMBLIES.find((assembly) => assembly.identity.slug === slug);
 }
 
 export function getRegisteredAssemblyBySlug(slug: string): RegisteredAssembly | undefined {
     const assembly = getAssemblyBySlug(slug);
     return assembly ? resolveAssemblyArtifact(assembly) : undefined;
-}
-
-export function getAssemblyById(id: string): Assembly | undefined {
-    return ASSEMBLIES.find((assembly) => assembly.identity.id === id);
-}
-
-export function getRegisteredAssemblyById(id: string): RegisteredAssembly | undefined {
-    const assembly = getAssemblyById(id);
-    return assembly ? resolveAssemblyArtifact(assembly) : undefined;
-}
-
-export function validateRegisteredAssemblies() {
-    return INDEX_VALIDATION.perAssembly;
 }
 
 export function getRegisteredAssemblyIndexValidation() {

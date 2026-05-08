@@ -14,7 +14,7 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 /**
  * Parse a Viem error into a user-friendly message
  */
-export function parseContractError(error: unknown): string {
+function parseContractError(error: unknown): string {
     if (error instanceof BaseError) {
         // Handle contract revert errors
         const revertError = error.walk(err => err instanceof ContractFunctionRevertedError);
@@ -146,51 +146,8 @@ export function showError(error: unknown, fallbackMessage?: string) {
 }
 
 /**
- * Show a loading toast for pending transactions
- * Returns a function to dismiss the toast
- */
-export function showLoading(message: string): () => void {
-    const id = toast.loading(message);
-    return () => toast.dismiss(id);
-}
-
-/**
- * Show an info toast
- */
-export function showInfo(message: string) {
-    toast.info(message, { duration: 3000 });
-}
-
-/**
  * Show a warning toast
  */
 export function showWarning(message: string) {
     toast.warning(message, { duration: 4000 });
-}
-
-/**
- * Update a loading toast to success
- */
-export function updateToastSuccess(toastId: string | number, message: string, txHash?: string) {
-    if (txHash) {
-        toast.success(message, {
-            id: toastId,
-            description: `Transaction: ${txHash.slice(0, 10)}...${txHash.slice(-8)}`,
-            duration: 5000,
-        });
-    } else {
-        toast.success(message, { id: toastId, duration: 3000 });
-    }
-}
-
-/**
- * Update a loading toast to error
- */
-export function updateToastError(toastId: string | number, error: unknown) {
-    const message = parseContractError(error);
-    toast.error('Transaction Failed', {
-        id: toastId,
-        description: message,
-        duration: 5000,
-    });
 }

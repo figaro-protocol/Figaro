@@ -1,4 +1,4 @@
-export function isBrowserStorageAvailable(): boolean {
+function isBrowserStorageAvailable(): boolean {
     return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 
@@ -18,11 +18,6 @@ export function writeJsonStorage<T>(key: string, value: T) {
     localStorage.setItem(key, JSON.stringify(value, (_k, v) =>
         typeof v === "bigint" ? v.toString() : v
     ));
-}
-
-export function removeStorageItem(key: string) {
-    if (!isBrowserStorageAvailable()) return;
-    localStorage.removeItem(key);
 }
 
 // ---------------------------------------------------------------------------
@@ -45,9 +40,4 @@ export function writeSessionStorage<T>(key: string, value: T) {
     sessionStorage.setItem(key, JSON.stringify(value, (_k, v) =>
         typeof v === "bigint" ? v.toString() : v
     ));
-}
-
-export function removeSessionItem(key: string) {
-    if (typeof window === "undefined" || typeof sessionStorage === "undefined") return;
-    sessionStorage.removeItem(key);
 }

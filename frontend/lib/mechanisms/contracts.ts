@@ -52,14 +52,6 @@ export const GHG_NORM_REFERENCES = [
     { id: "ghg-protocol-scope3", label: "GHG Protocol Scope 3 Standard", scope: "Value-chain emissions" },
 ] as const;
 
-export const DUE_STAGE_LABELS = [
-    "Create",
-    "Accept",
-    "Active",
-    "Resolve",
-    "PostResolve",
-] as const;
-
 /**
  * GHG disclosure sister schemas — one per accounting standard. Each is a
  * separate registered schemaId; the standard identity lives in the schemaId,
@@ -115,14 +107,6 @@ export const MEASUREMENT_KIND_LABELS = [
     "Verification",
 ] as const;
 
-export const DUE_STAGE = {
-    create: 0,
-    accept: 1,
-    active: 2,
-    resolve: 3,
-    postResolve: 4,
-} as const;
-
 // ── Addresses ────────────────────────────────────────────────────────────────
 
 export const MECHANISM_CONTRACTS = {
@@ -142,10 +126,6 @@ function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
 
 export function getDutchAuction(): `0x${string}` | null {
     return resolveAddress(MECHANISM_CONTRACTS.dutchAuction);
-}
-
-export function getGhgReportingModule(): `0x${string}` | null {
-    return resolveAddress(MECHANISM_CONTRACTS.ghgReporting);
 }
 
 export function getOperatorRegistry(): `0x${string}` | null {

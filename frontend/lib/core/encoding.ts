@@ -1,7 +1,7 @@
 // Encoding helpers for frontend -> bytes32 conversions
-import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
+import { ZERO_BYTES32 } from "@/lib/shared/evm";
 
-export function encodeToBytes32(s: string): `0x${string}` {
+function encodeToBytes32(s: string): `0x${string}` {
     const str = (s || "").toString();
     if (!str) return ZERO_BYTES32;
     if (str.startsWith("0x") && str.length === 66) return str as `0x${string}`;
@@ -161,28 +161,3 @@ export function decodeManifestFields(hex: string): ManifestFields {
     return { origin: text };
 }
 
-// ---------------------------------------------------------------------------
-// Manifest hash verification
-// ---------------------------------------------------------------------------
-
-/**
- * Compute the keccak256 hash of a manifest hex string, matching the on-chain
- * `keccak256(manifest)` emitted in the OrderCreated event's `manifestHash` field.
- * @param manifestHex 0x-prefixed hex string (the raw manifest bytes)
- * @returns 0x-prefixed bytes32 hash
- */
-export function computeManifestHash(manifestHex: string): `0x${string}` {
-    const { keccak256 } = require("viem") as { keccak256: (data: `0x${string}`) => `0x${string}` };
-    const clean = manifestHex.startsWith("0x") ? manifestHex : `0x${manifestHex}`;
-    return keccak256(clean as `0x${string}`);
-}
-
-/**
- * Verify that a raw manifest matches the on-chain manifest hash.
- * @param manifestHex 0x-prefixed hex manifest bytes (from OrderCreated event)
- * @param expectedHash 0x-prefixed bytes32 hash (from OrderCreated event's manifestHash field)
- * @returns true if the manifest hashes to the expected value
- */
-export function verifyManifestHash(manifestHex: string, expectedHash: string): boolean {
-    return hexEqual(computeManifestHash(manifestHex), expectedHash);
-}

@@ -16,7 +16,7 @@ export const DELIVERY_SCHEMA_ID = keccak256(stringToHex(DELIVERY_LIFECYCLE_SCHEM
  * sister schema figaro-proximity-policy-v1 commits the required band at
  * agreement signing; off-chain consumers verify proof.band == policy.band.
  */
-export const PROXIMITY_SCHEMA_KEY = "figaro-proximity-proof-v1";
+const PROXIMITY_SCHEMA_KEY = "figaro-proximity-proof-v1";
 export const PROXIMITY_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_SCHEMA_KEY));
 
 /**
@@ -60,20 +60,11 @@ export interface ProximityProof {
  * Shape: `abi.encode(uint8 band, bytes32 nonce, bytes deviceSig)` — matches
  * the on-chain validator's `abi.decode(content, (uint8, bytes32, bytes))`.
  */
-export function encodeProximityProofContent(proof: ProximityProof): `0x${string}` {
+function encodeProximityProofContent(proof: ProximityProof): `0x${string}` {
     return encodeAbiParameters(
         [{ type: "uint8" }, { type: "bytes32" }, { type: "bytes" }],
         [proof.band, proof.nonce, proof.deviceSig],
     );
-}
-
-/** @deprecated Use `encodeProximityProofContent` — Phase-4a shipped bytes content. */
-export function encodeProximityProofRef(proof: ProximityProof): `0x${string}` {
-    return keccak256(stringToHex(JSON.stringify({
-        band: proof.band,
-        nonce: proof.nonce,
-        deviceSig: proof.deviceSig,
-    })));
 }
 
 export function useDeliveryLifecycleActions() {

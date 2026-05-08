@@ -26,32 +26,16 @@ import { MECHANISM_CONTRACTS } from "@/lib/mechanisms/contracts";
 import {
     EV_ORDER_COMMITTED,
     EV_ORDER_SELLER,
-    EV_ORDER_CURRENCY,
     EV_ORDER_RESOLVED,
-    EV_PROCESS_RESOLVED,
     EV_ATTESTATION,
     EV_AUCTION_CREATED,
     EV_AUCTION_CLAIMED,
-    EV_BATCH_SETTLED,
 } from "@figaro/core";
-
-// Re-export SDK event ABIs so existing consumers keep working
-export {
-    EV_ORDER_COMMITTED,
-    EV_ORDER_SELLER,
-    EV_ORDER_CURRENCY,
-    EV_ORDER_RESOLVED,
-    EV_PROCESS_RESOLVED,
-    EV_ATTESTATION,
-    EV_AUCTION_CREATED,
-    EV_AUCTION_CLAIMED,
-    EV_BATCH_SETTLED,
-};
 
 // ── OperatorRegistry events ──────────────────────────────────────────────────
 
 /** Event signature for StagedMerkleAirdrop.Claimed. */
-export const EV_STAGED_AIRDROP_CLAIMED = parseAbiItem(
+const EV_STAGED_AIRDROP_CLAIMED = parseAbiItem(
     "event Claimed(uint8 indexed stageIndex, address indexed account, uint256 amount)",
 );
 
@@ -61,13 +45,13 @@ export const EV_STAGED_AIRDROP_CLAIMED = parseAbiItem(
 // and there is no categorization field at any layer (no archetype, no role,
 // no serviceType). What an address does is reconstructed from the events
 // it has emitted (registrations, schema attestations, signed commitments).
-export const EV_OPERATOR_REGISTERED = parseAbiItem(
+const EV_OPERATOR_REGISTERED = parseAbiItem(
     "event OperatorRegistered(address indexed operator, string metadataURI)",
 );
-export const EV_OPERATOR_PROFILE_UPDATED = parseAbiItem(
+const EV_OPERATOR_PROFILE_UPDATED = parseAbiItem(
     "event OperatorProfileUpdated(address indexed operator, string metadataURI)",
 );
-export const EV_OPERATOR_WITHDRAWN = parseAbiItem(
+const EV_OPERATOR_WITHDRAWN = parseAbiItem(
     "event OperatorWithdrawn(address indexed operator, uint256 deposit)",
 );
 
@@ -134,14 +118,6 @@ export async function getAllOrderResolved(client: PublicClient, chainId: number)
     });
 }
 
-export async function getAllProcessResolved(client: PublicClient, chainId: number) {
-    return cachedGetLogs(client, chainId, {
-        address: CONTRACTS.core as `0x${string}`,
-        event: EV_PROCESS_RESOLVED,
-        eventName: "ProcessResolved",
-    });
-}
-
 export async function getAllAuctionCreated(client: PublicClient, chainId: number) {
     if (!CONTRACTS.dutchAuction) return [];
     return cachedGetLogs(client, chainId, {
@@ -171,20 +147,11 @@ export async function getOrderCommittedByBuyer(client: PublicClient, chainId: nu
 }
 
 /** OrderSeller logs — indexed seller lookup, no full-table scan. */
-export async function getAllOrderSeller(client: PublicClient, chainId: number) {
+async function getAllOrderSeller(client: PublicClient, chainId: number) {
     return cachedGetLogs(client, chainId, {
         address: CONTRACTS.core as `0x${string}`,
         event: EV_ORDER_SELLER,
         eventName: "OrderSeller",
-    });
-}
-
-/** OrderCurrency logs — indexed currency lookup, no full-table scan. */
-export async function getAllOrderCurrency(client: PublicClient, chainId: number) {
-    return cachedGetLogs(client, chainId, {
-        address: CONTRACTS.core as `0x${string}`,
-        event: EV_ORDER_CURRENCY,
-        eventName: "OrderCurrency",
     });
 }
 
@@ -209,58 +176,16 @@ export async function getOrderCommittedBySeller(client: PublicClient, chainId: n
     });
 }
 
-/** OrderCommitted logs for a specific processId. */
-export async function getOrderCommittedByProcess(client: PublicClient, chainId: number, processId: string) {
-    const all = await getAllOrderCommitted(client, chainId);
-    return all.filter((log) => getStringArg(log, "processId") === processId);
-}
-
-/**
- * State map for the live kernel: orders are Active at commit, Resolved after resolution.
- * Returns a Map<orderHash → "Resolved"> for resolved orders.
- * (All committed orders not in this map are Active.)
- */
-export async function getOrderStateMap(
-    client: PublicClient,
-    chainId: number,
-    processIds: string[],
-): Promise<Map<string, "Resolved">> {
-    const pidSet = new Set(processIds);
-    const resolved = await getAllOrderResolved(client, chainId);
-
-    const stateMap = new Map<string, "Resolved">();
-    for (const log of resolved) {
-        const resolvedProcessId = getStringArg(log, "processId");
-        const orderHash = getStringArg(log, "orderHash");
-        if (resolvedProcessId && orderHash && pidSet.has(resolvedProcessId)) {
-            stateMap.set(orderHash, "Resolved");
-        }
-    }
-    return stateMap;
-}
-
-/** AuctionClaimed logs for a specific provider address. */
-export async function getAuctionClaimedByProvider(client: PublicClient, chainId: number, provider: string) {
-    const all = await getAllAuctionClaimed(client, chainId);
-    return all.filter((log) => hexEqual(getStringArg(log, "provider"), provider));
-}
-
 // ---------------------------------------------------------------------------
 // AttestationCoordinator queries
 // ---------------------------------------------------------------------------
 
-export async function getAllAttestations(client: PublicClient, chainId: number) {
+async function getAllAttestations(client: PublicClient, chainId: number) {
     if (!CONTRACTS.attestationCoordinator && !CONTRACTS.batchVerifier) return [];
     return cachedGetLogsMulti(client, chainId,
         [CONTRACTS.attestationCoordinator, CONTRACTS.batchVerifier],
         { event: EV_ATTESTATION, eventName: "Attestation" },
     );
-}
-
-/** Attestation logs filtered by processId. */
-export async function getAttestationsByProcess(client: PublicClient, chainId: number, processId: string) {
-    const all = await getAllAttestations(client, chainId);
-    return all.filter((log) => getStringArg(log, "processId") === processId);
 }
 
 /** Attestation logs filtered by orderHash. */
@@ -468,19 +393,6 @@ export async function getOperatorState(
         metadataURI,
         registeredBlock: regBlock > 0n ? regBlock : null,
     };
-}
-
-// ---------------------------------------------------------------------------
-// BatchVerifier queries
-// ---------------------------------------------------------------------------
-
-export async function getAllBatchSettled(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.batchVerifier) return [];
-    return cachedGetLogs(client, chainId, {
-        address: CONTRACTS.batchVerifier as `0x${string}`,
-        event: EV_BATCH_SETTLED,
-        eventName: "BatchSettled",
-    });
 }
 
 // ---------------------------------------------------------------------------
