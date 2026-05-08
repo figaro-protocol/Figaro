@@ -295,11 +295,8 @@ export function NewAssemblyClient() {
             )}
             <div className="container mx-auto px-6 pt-8 pb-16 max-w-5xl">
                 <div className="mb-6">
-                    <p className="text-eyebrow uppercase text-ink-muted mb-2">
-                        The bonded commitment
-                    </p>
                     <p className="text-sm text-ink-body leading-relaxed max-w-2xl">
-                        One buyer, one seller, one agreement. Four baseline graphs are inherited automatically: <strong>Value</strong>, <strong>Geo</strong>, <strong>Capital</strong>, <strong>GHG</strong>. Toggle the lens buttons to inspect each graph. The agreementHash binds the four sections into one signed contract.
+                        <strong>The bonded commitment.</strong> One buyer, one seller, one agreement. Four baseline graphs are inherited automatically: <strong>Value</strong>, <strong>Geo</strong>, <strong>Capital</strong>, <strong>GHG</strong>. Toggle the lens buttons to inspect each graph. The agreementHash binds the four sections into one signed contract.
                     </p>
                     <p className="text-sm text-ink-body leading-relaxed max-w-2xl mt-3">
                         To extend the process: grab the <span className="inline-block align-middle w-3 h-3 rounded-full bg-green-600 border-2 border-white" /> handle at the bottom of any active node and drag it into empty space. A sub-order spawns connected to the parent. Cumulative value rolls up; the new node inherits the currency.

@@ -306,11 +306,8 @@ export function EditAssemblyClient({ params }: Props) {
             )}
             <div className="container mx-auto px-6 pt-8 pb-16 max-w-5xl">
                 <div className="mb-6">
-                    <p className="text-eyebrow uppercase text-ink-muted mb-2">
-                        Forked design
-                    </p>
                     <p className="text-sm text-ink-body leading-relaxed max-w-2xl">
-                        Pre-populated from <strong>{reference.identity.name}</strong> ({reference.roles.length} roles · {reference.mechanisms.filter((m) => m.enabled).length} active mechanisms). The seed produced the canonical tree (root commitment + sub-orders implied by the assembly&apos;s declarations). Modify it: drag the green handle on any node to add a sub-order, click an edge pill to swap fulfilment method on a sub-order, change the root&apos;s fulfilment with the toolbar selector above, click a node to edit its baseline-graph clauses (Geo · GHG · Topology). Save as a draft (local storage); publishing to the on-chain registry is a follow-up.
+                        <strong>Forked design.</strong> Pre-populated from <strong>{reference.identity.name}</strong> ({reference.roles.length} roles · {reference.mechanisms.filter((m) => m.enabled).length} active mechanisms). The seed produced the canonical tree (root commitment + sub-orders implied by the assembly&apos;s declarations). Modify it: drag the green handle on any node to add a sub-order, click an edge pill to swap fulfilment method on a sub-order, change the root&apos;s fulfilment with the toolbar selector above, click a node to edit its baseline-graph clauses (Geo · GHG · Topology). Save as a draft (local storage); publishing to the on-chain registry is a follow-up.
                     </p>
                 </div>
                 <ProcessGraphCanvas

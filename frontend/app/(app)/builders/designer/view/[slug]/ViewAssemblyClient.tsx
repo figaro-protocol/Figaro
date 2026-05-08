@@ -62,11 +62,8 @@ export function ViewAssemblyClient({ params }: Props) {
             </div>
             <div className="container mx-auto px-6 pt-8 pb-16 max-w-5xl">
                 <div className="mb-6">
-                    <p className="text-eyebrow uppercase text-ink-muted mb-2">
-                        Canonical tree
-                    </p>
                     <p className="text-sm text-ink-body leading-relaxed max-w-2xl">
-                        Read-only view of <strong>{reference.identity.name}</strong> ({reference.roles.length} roles · {reference.mechanisms.filter((m) => m.enabled).length} active mechanisms). The shape derives from the assembly&apos;s declared roles and mechanisms — root commitment plus sub-orders implied by sellers and auction mechanisms. Click <em>Fork to edit</em> to open the same tree on the editable canvas.
+                        <strong>Canonical tree.</strong> Read-only view of <strong>{reference.identity.name}</strong> ({reference.roles.length} roles · {reference.mechanisms.filter((m) => m.enabled).length} active mechanisms). The shape derives from the assembly&apos;s declared roles and mechanisms — root commitment plus sub-orders implied by sellers and auction mechanisms. Click <em>Fork to edit</em> to open the same tree on the editable canvas.
                     </p>
                 </div>
                 <ProcessGraphCanvas

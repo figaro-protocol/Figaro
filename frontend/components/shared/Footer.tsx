@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const COL_HEADER_CLS =
-    "text-eyebrow uppercase text-ink-muted mb-4";
+    "text-sm font-semibold text-ink-heading mb-4";
 const COL_LINK_CLS =
     "block text-ink-heading hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded";
 
