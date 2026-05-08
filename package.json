@@ -23,7 +23,8 @@
   },
   "lint-staged": {
     "frontend/**/*.{ts,tsx}": [
-      "bash -c 'cd frontend && npx tsc --noEmit'"
+      "bash -c 'cd frontend && npx tsc --noEmit'",
+      "./lint-canonical-imports.sh"
     ],
     "src/**/*.sol": [
       "forge fmt"
