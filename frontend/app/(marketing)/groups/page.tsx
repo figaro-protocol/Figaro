@@ -55,7 +55,7 @@ export default function Groups() {
                 }
             />
 
-            <MarketingSection eyebrow="Cryptoeconomic working groups" title="Eight disciplines, eight lenses.">
+            <MarketingSection title="Eight disciplines, eight lenses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
                     The disciplinary list anchors to Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024). Detailed paper portfolios per discipline live on{" "}
                     <Link href="/cryptoeconomics" className="underline">
@@ -111,7 +111,7 @@ export default function Groups() {
                 </div>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Composability working groups" title="Output-oriented; cross-cut the disciplines.">
+            <MarketingSection title="Output-oriented; cross-cut the disciplines.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
                     Where the cryptoeconomic disciplines are reading lenses, the composability working groups are oriented around concrete builder outputs &mdash; assemblies and schemas. They cross-cut the disciplinary axis: a schema for GHG measurement pulls validator-implementation expertise from Computer Science and Cryptography while the content-definition expertise comes from Operations Research or Industrial Engineering. The tier framing comes from{" "}
                     <Link href="/composability" className="underline">
@@ -122,7 +122,7 @@ export default function Groups() {
                 <div className="space-y-8">
                     {COMPOSITION_GROUPS.map((g) => (
                         <article key={g.name}>
-                            <p className="text-eyebrow uppercase text-ink-muted mb-1">
+                            <p className="text-xs font-semibold text-ink-muted mb-1">
                                 {g.tier}
                             </p>
                             <h3 className="text-heading-h3 text-ink-heading mb-2 leading-snug">
@@ -151,7 +151,7 @@ export default function Groups() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Grants &amp; capital sources">
+            <MarketingSection title="Grants &amp; capital sources">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Work on the Figaro substrate &mdash; research, review, verification, assembly design, schema authoring, documentation &mdash; is funded through permissionless channels. No application committee. No curated budget.
                 </p>
@@ -177,7 +177,7 @@ export default function Groups() {
                 </dl>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Local &amp; international">
+            <MarketingSection title="Local &amp; international">
                 <p className="text-base text-ink-body leading-relaxed">
                     Working groups self-organize across jurisdictions: local meetups, international correspondences, async pull requests against{" "}
                     <code>frontend/lib/shared/groupsRegistry.ts</code>
@@ -185,7 +185,7 @@ export default function Groups() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Contributing" bottomPad="wide">
+            <MarketingSection title="Contributing" bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     To declare current work, surface a received grant, publish a contributor handle, or amend a group&apos;s charter, open a pull request against{" "}
                     <code>frontend/lib/shared/groupsRegistry.ts</code>

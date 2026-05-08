@@ -21,7 +21,7 @@ export default function Composability() {
                 }
             />
 
-            <MarketingSection eyebrow="The property" title="Anyone can express anything; the equilibrium does not care.">
+            <MarketingSection title="Anyone can express anything; the equilibrium does not care.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Because the kernel only enforces bonded-commitment settlement, the graph above it is unconstrained. A market-liberal graph where every role is priced at auction, a cooperative graph where surplus routes back to contributors via programmatic shares, a mutual-aid graph where bonds are reciprocal rather than monetary &mdash; all use the same kernel. The ideological commitments live in the assembly, not in <code>FigaroCore</code>.
                 </p>
@@ -31,7 +31,7 @@ export default function Composability() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Builder architecture" title="The pattern that preserves the equilibrium.">
+            <MarketingSection title="The pattern that preserves the equilibrium.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     The property above is what the kernel produces. The architecture that preserves it &mdash; the coordinator pattern&apos;s three sufficient conditions, the three tiers of extension, the security boundary that holds across them &mdash; is builder-tier reading and lives on its own page.
                 </p>
@@ -42,7 +42,7 @@ export default function Composability() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Read next" bottomPad="wide">
+            <MarketingSection title="Read next" bottomPad="wide">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li>
                         <Link href="/protocol" className="text-ink-heading font-medium hover:underline">Protocol</Link>

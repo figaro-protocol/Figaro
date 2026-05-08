@@ -25,7 +25,7 @@ export default function BuilderComposability() {
                 }
             />
 
-            <MarketingSection eyebrow="The coordinator pattern" title="Three sufficient conditions preserve the equilibrium.">
+            <MarketingSection title="Three sufficient conditions preserve the equilibrium.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Any internal exit path weakens the Nash equilibrium (Paper A, Theorem 4.7). So extensions live <em>outside</em> the kernel and compose via the coordinator pattern: the external reads kernel state and emits its own evidence, but observes three sufficient conditions.
                 </p>
@@ -47,7 +47,7 @@ export default function BuilderComposability() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Three tiers of extension" title="Each tier carries a different blast radius.">
+            <MarketingSection title="Each tier carries a different blast radius.">
                 <dl className="space-y-6 text-sm">
                     <div id="tier-1" className="border-l-2 border-default pl-6 scroll-mt-24">
                         <dt className="text-base font-semibold text-ink-heading mb-1">Tier 1 — Compose against existing primitives</dt>
@@ -73,7 +73,7 @@ export default function BuilderComposability() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Security boundary" title="What the kernel guarantees stays guaranteed.">
+            <MarketingSection title="What the kernel guarantees stays guaranteed.">
                 <p className="text-base text-ink-body leading-relaxed mb-6">
                     Across every assembly that composes against the kernel, the same invariants hold. Across every extension authored above the kernel, the boundary of responsibility is the same.
                 </p>
@@ -106,7 +106,7 @@ export default function BuilderComposability() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Read next" bottomPad="wide">
+            <MarketingSection title="Read next" bottomPad="wide">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li>
                         <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>

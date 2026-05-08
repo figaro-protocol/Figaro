@@ -20,7 +20,7 @@ export default function About() {
                 }
             />
 
-            <MarketingSection eyebrow="Posture" title="What the kernel will not do.">
+            <MarketingSection title="What the kernel will not do.">
                 <ul className="space-y-3 text-base text-ink-body leading-relaxed list-disc pl-6">
                     <li>No owner, no admin, no pause function.</li>
                     <li>No protocol fee at the kernel.</li>
@@ -29,7 +29,7 @@ export default function About() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection eyebrow="The name" title="Figaro is the factotum of the city.">
+            <MarketingSection title="Figaro is the factotum of the city.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     In Rossini&apos;s <em>Il Barbiere di Siviglia</em> (1816, libretto
                     by Sterbini, drawn from Beaumarchais&apos;s <em>Le Barbier de
@@ -63,10 +63,7 @@ export default function About() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection
-                eyebrow="Ideological agnosticism"
-                title="The kernel is narrow so the graph can be anything."
-            >
+            <MarketingSection title="The kernel is narrow so the graph can be anything.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     <code>FigaroCore</code> takes no position on currency,
                     jurisdiction, identity, arbitration, role structure,
@@ -98,7 +95,7 @@ export default function About() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Enforcement" title="Three layers carry the equilibrium.">
+            <MarketingSection title="Three layers carry the equilibrium.">
                 <p className="text-base text-ink-body leading-relaxed">
                     Economic (asymmetric bonding makes defection irrational), social
                     (multi-party processes bind contributors together via the
@@ -109,7 +106,7 @@ export default function About() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Substrate" title="Chain-agnostic.">
+            <MarketingSection title="Chain-agnostic.">
                 <p className="text-base text-ink-body leading-relaxed">
                     The kernel deploys for any EVM-compatible network. It does not establish trust; it inherits it from the network underneath &mdash; from the network&apos;s consensus, its tamper-evident history, its deterministic execution, its finality guarantees. Different chain, different security assumptions; same kernel, same invariants once those assumptions hold. Canonical deployments are listed in the{" "}
                     <Link href="/spec" className="underline">Specifications</Link>{" "}
@@ -117,13 +114,13 @@ export default function About() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Three tiers" title="Kernel, protocol, runtime.">
+            <MarketingSection title="Kernel, protocol, runtime.">
                 <p className="text-base text-ink-body leading-relaxed">
                     Three composable tiers: <Link href="/spec" className="underline">kernel</Link> (the irreducible settlement primitive), <Link href="/protocol" className="underline">protocol</Link> (kernel + extension doctrine + public graphs), and <Link href="/builders" className="underline">runtime</Link> (UI surfaces + builder tools). Each composes on top of the one below. Mechanism derivation lives on <Link href="/protocol" className="underline">/protocol</Link>; the kernel surface is documented at <Link href="/spec" className="underline">/spec</Link>.
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="License" title="MIT. Source-available." bottomPad="wide">
+            <MarketingSection title="MIT. Source-available." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed">
                     <a
                         href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/LICENSE"

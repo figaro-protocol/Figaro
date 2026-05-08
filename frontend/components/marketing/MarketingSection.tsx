@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 
 interface MarketingSectionProps {
-    /** Optional uppercase tracking-widest eyebrow above the H2. */
-    eyebrow?: string;
-    /** Optional H2 title (`text-3xl font-bold leading-tight`). */
+    /** Optional H2 title (`text-heading-h2 text-ink-heading`). */
     title?: string;
     /** Anchor target for `#fragment` URLs. Adds `scroll-mt-24` automatically. */
     sectionId?: string;
@@ -13,46 +11,28 @@ interface MarketingSectionProps {
      *   - extra (pb-32): reserved for the rare hero-adjacent close
      */
     bottomPad?: "default" | "wide" | "extra";
-    /** When true and `title` is omitted, the eyebrow renders as a semantic
-     *  `<h2>` while keeping its small uppercase visual weight. Used for
-     *  flat-catalogue pages (e.g. `/spec`) where the heavy `text-3xl` H2
-     *  doesn't fit the page's scan rhythm but the document still needs
-     *  proper heading semantics for accessibility. */
-    eyebrowAsHeading?: boolean;
     children: ReactNode;
 }
 
 /**
- * Marketing-tier section. Top divider + eyebrow + H2 + body. Container width
+ * Marketing-tier section. Top divider + optional H2 + body. Container width
  * (`max-w-3xl`) matches the hero. Anchor support via `sectionId`.
  */
 export function MarketingSection({
-    eyebrow,
     title,
     sectionId,
     bottomPad = "default",
-    eyebrowAsHeading = false,
     children,
 }: MarketingSectionProps) {
     const pbClass =
         bottomPad === "extra" ? "pb-32" : bottomPad === "wide" ? "pb-24" : "pb-12";
     const scrollClass = sectionId ? " scroll-mt-24" : "";
 
-    const eyebrowClass =
-        "text-eyebrow uppercase text-ink-muted mb-3";
-    const renderEyebrowAsH2 = eyebrowAsHeading && !title;
-
     return (
         <section
             id={sectionId}
             className={`container mx-auto px-6 ${pbClass} max-w-3xl border-t border-default pt-xl${scrollClass}`}
         >
-            {eyebrow && renderEyebrowAsH2 && (
-                <h2 className={`${eyebrowClass} mb-6`}>{eyebrow}</h2>
-            )}
-            {eyebrow && !renderEyebrowAsH2 && (
-                <p className={eyebrowClass}>{eyebrow}</p>
-            )}
             {title && (
                 <h2 className="text-heading-h2 text-ink-heading mt-0 mb-6">
                     {title}

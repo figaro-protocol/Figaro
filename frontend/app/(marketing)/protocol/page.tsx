@@ -26,7 +26,7 @@ export default function Protocol() {
                 }
             />
 
-            <MarketingSection eyebrow="Stack" title="A small kernel; the layers above compose freely.">
+            <MarketingSection title="A small kernel; the layers above compose freely.">
                 <ol className="space-y-0 text-sm border border-default rounded-lg overflow-hidden mb-4">
                     <li className="border-b border-default px-5 py-3 bg-canvas flex items-baseline justify-between gap-3 flex-wrap">
                         <span className="text-ink-heading font-semibold">Trade</span>
@@ -76,7 +76,7 @@ export default function Protocol() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="The bonded commitment" title="A signed contract at the protocol level.">
+            <MarketingSection title="A signed contract at the protocol level.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Every commitment carries the structural shape of a contract. The
                     payment is consideration; the schemas in the agreement are the
@@ -109,7 +109,7 @@ export default function Protocol() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="The institution form" title="Each trade is a transaction-scoped institution.">
+            <MarketingSection title="Each trade is a transaction-scoped institution.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     A multi-party process is an assembly of independent value-adders
                     that forms for one trade and dissolves at settlement. The
@@ -130,7 +130,6 @@ export default function Protocol() {
             </MarketingSection>
 
             <MarketingSection
-                eyebrow="Enforcement"
                 title="Three layers, ordered by how often each fires."
                 sectionId="enforcement"
             >
@@ -141,7 +140,7 @@ export default function Protocol() {
                     <div>
                         <dt className="flex items-baseline gap-3 flex-wrap mb-2">
                             <span className="font-mono text-xs text-ink-muted">Layer 1</span>
-                            <span className="text-xs text-ink-muted uppercase tracking-widest">Economic</span>
+                            <span className="text-xs font-semibold text-ink-muted">Economic</span>
                         </dt>
                         <dd className="text-ink-body leading-relaxed">
                             <strong className="text-ink-heading">Asymmetric bonding makes cheating irrational.</strong>{" "}
@@ -157,7 +156,7 @@ export default function Protocol() {
                     <div>
                         <dt className="flex items-baseline gap-3 flex-wrap mb-2">
                             <span className="font-mono text-xs text-ink-muted">Layer 2</span>
-                            <span className="text-xs text-ink-muted uppercase tracking-widest">Social</span>
+                            <span className="text-xs font-semibold text-ink-muted">Social</span>
                         </dt>
                         <dd className="text-ink-body leading-relaxed">
                             <strong className="text-ink-heading">Multi-party processes bind contributors together.</strong>{" "}
@@ -174,7 +173,7 @@ export default function Protocol() {
                     <div>
                         <dt className="flex items-baseline gap-3 flex-wrap mb-2">
                             <span className="font-mono text-xs text-ink-muted">Layer 3</span>
-                            <span className="text-xs text-ink-muted uppercase tracking-widest">Legal</span>
+                            <span className="text-xs font-semibold text-ink-muted">Legal</span>
                         </dt>
                         <dd className="text-ink-body leading-relaxed">
                             <strong className="text-ink-heading">On-chain evidence for off-chain adjudication.</strong>{" "}
@@ -197,7 +196,6 @@ export default function Protocol() {
             </MarketingSection>
 
             <MarketingSection
-                eyebrow="Read deeper"
                 title="Two branches diverge here."
                 bottomPad="extra"
             >

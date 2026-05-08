@@ -40,7 +40,7 @@ export default function BuildersPage() {
                 }
             />
 
-            <MarketingSection eyebrow="What an assembly declares" eyebrowAsHeading>
+            <MarketingSection title="What an assembly declares">
                 <dl className="space-y-6 text-sm">
                     <div>
                         <dt className="text-base font-semibold text-ink-heading">Roles</dt>
@@ -65,7 +65,7 @@ export default function BuildersPage() {
                 </dl>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Tools by tier" eyebrowAsHeading>
+            <MarketingSection title="Tools by tier">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
                     The tiers below mirror the property gradient on{" "}
                     <Link href="/composability" className="underline">
@@ -131,7 +131,7 @@ export default function BuildersPage() {
                 </div>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Reference assemblies" eyebrowAsHeading bottomPad="wide">
+            <MarketingSection title="Reference assemblies" bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed mb-6 max-w-2xl">
                     Six reference assemblies ship with the protocol. Each is a forkable starting point at a different composition tier &mdash; from the Level-1 minimum (kernel only, no extensions) to a Level-3 multi-mechanism vertical. All six are runtime-reachable today; merchants registered against each are listed on <Link href="/discover" className="underline">/discover</Link>.
                 </p>

@@ -153,7 +153,7 @@ export default function Schemas() {
                 }
             />
 
-            <MarketingSection eyebrow="How it works" title="One spec. Three validators. Enforced in lockstep.">
+            <MarketingSection title="One spec. Three validators. Enforced in lockstep.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Every registered schema is enforced at three layers. A new schema is not &ldquo;done&rdquo; until all required layers ship together:
                 </p>
@@ -176,7 +176,7 @@ export default function Schemas() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Shipped schemas" title="Eighteen schemas, six families.">
+            <MarketingSection title="Eighteen schemas, six families.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     The reference set covers manifest topology, commerce primitives, GHG disclosure and measurement, lifecycle and proximity, sovereign process logs, and legal anchoring. The full layer-status detail (which validators are deployed under each schemaId) lives on{" "}
                     <Link href="/spec" className="underline">/spec</Link>.
@@ -184,9 +184,9 @@ export default function Schemas() {
                 <div className="space-y-8">
                     {SCHEMA_FAMILIES.map((family) => (
                         <div key={family.name}>
-                            <p className="text-eyebrow uppercase text-ink-muted mb-3">
+                            <h3 className="text-base font-semibold text-ink-heading mb-3">
                                 {family.name}
-                            </p>
+                            </h3>
                             <ul className="space-y-3">
                                 {family.rows.map((row) => (
                                     <SchemaListItem key={row.id} row={row} />
@@ -197,7 +197,7 @@ export default function Schemas() {
                 </div>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Adding a schema" title="The nine-step checklist.">
+            <MarketingSection title="The nine-step checklist.">
                 <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
                     <li>Write the JSON spec at <code>sdk/src/schemas/examples/&lt;your-schema&gt;.json</code>.</li>
                     <li>Mirror it in <code>frontend/lib/shared/schemas/&lt;your-schema&gt;.json</code> so the UI can preload it.</li>
@@ -218,7 +218,7 @@ export default function Schemas() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Where to look" bottomPad="extra">
+            <MarketingSection title="Where to look" bottomPad="extra">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>SDK module:</strong> <code>@figaro/core/schemas</code> &mdash; meta-schema validator, <code>validateContent</code>, per-schema encoders. The canonical source of the spec format. See <Link href="/integrate" className="underline">Integrate</Link>.</li>
                     <li><strong>On-chain interface:</strong> <code>src/ISchemaValidator.sol</code> &mdash; the two-method interface every on-chain validator implements. Contract catalogue at <Link href="/spec" className="underline">/spec</Link>.</li>

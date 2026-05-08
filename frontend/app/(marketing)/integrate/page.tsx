@@ -26,7 +26,7 @@ export default function Integrate() {
                 </p>
             </MarketingHero>
 
-            <MarketingSection eyebrow="Agent SDK" title="Agents participate as bonded counterparties.">
+            <MarketingSection title="Agents participate as bonded counterparties.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     Nothing in the kernel distinguishes a human signer from an agent &mdash; an EIP-712 signature is an EIP-712 signature. <code>@figaro/core/agent</code> ships <code>FigaroContext</code>, <code>proposeActions</code>, and <code>ActionQueue</code>: an agent receives kernel state, returns the set of valid actions, and submits via a wallet client. The queue runs in two modes &mdash; human-in-the-loop approval, or fully autonomous submission &mdash; without changes to the underlying call sites.
                 </p>
@@ -38,7 +38,7 @@ export default function Integrate() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Subpaths" title="Read, reconstruct, propose.">
+            <MarketingSection title="Read, reconstruct, propose.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     <code>@figaro/core</code> is a TypeScript SDK with a single runtime dependency (<code>viem</code>). ESM, four subpath exports. Used from React frontends, server-side indexers, and headless agents.
                 </p>
@@ -58,7 +58,7 @@ export default function Integrate() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection eyebrow="The event model" title="Seven event types is the whole event surface.">
+            <MarketingSection title="Seven event types is the whole event surface.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Every kernel state change emits an event. Replayed into a state machine, they produce the complete ledger position the contract itself holds.
                 </p>
@@ -90,7 +90,7 @@ export default function Integrate() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Quick start" title="Install, fetch, reconstruct.">
+            <MarketingSection title="Install, fetch, reconstruct.">
                 <pre
                     tabIndex={0}
                     className="font-mono text-xs bg-subtle border border-default rounded px-3 py-2 mb-3 overflow-x-auto whitespace-pre"
@@ -123,16 +123,10 @@ const state = reconstruct(events);
                 </p>
             </MarketingSection>
 
-            <MarketingSection
-                eyebrow="External composition"
-                title="The kernel is narrow. The ecosystem composes around it."
-            >
+            <MarketingSection title="The kernel is narrow. The ecosystem composes around it.">
                 <div className="border-l-2 border-default pl-6 mb-8">
-                    <p className="text-eyebrow uppercase text-ink-muted mb-2">
-                        Implementation status
-                    </p>
                     <p className="text-sm text-ink-body leading-relaxed">
-                        Currently wired: Kleros evidence export, XMTP messaging, IPFS storage, GHG disclosure attestations. Everything else below is a <strong>compositional surface</strong> &mdash; an architectural slot integrators can build against, with named vendors as illustrative examples rather than current integrations.
+                        <strong>Implementation status.</strong> Currently wired: Kleros evidence export, XMTP messaging, IPFS storage, GHG disclosure attestations. Everything else below is a <strong>compositional surface</strong> &mdash; an architectural slot integrators can build against, with named vendors as illustrative examples rather than current integrations.
                     </p>
                 </div>
 
@@ -141,9 +135,9 @@ const state = reconstruct(events);
                 </p>
 
                 <div className="border-l-2 border-default pl-6 mb-8">
-                    <p className="text-eyebrow uppercase text-ink-muted mb-3">
+                    <h3 className="text-base font-semibold text-ink-heading mb-3">
                         Architectural example &mdash; carbon offset before settlement
-                    </p>
+                    </h3>
                     <p className="text-sm text-ink-body leading-relaxed mb-4">
                         A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the GHG schema has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset operator registered with the assembly, adding the offset purchase to the same process before closing. (The offset operator is whichever counterparty the assembly admits; integrators could register Klima DAO, Toucan, Moss, or any bonded operator.)
                     </p>
@@ -195,7 +189,7 @@ const state = reconstruct(events);
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Where to look" bottomPad="extra">
+            <MarketingSection title="Where to look" bottomPad="extra">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro-Prototype2</a>. SDK lives at <code>sdk/</code>.</li>
                     <li><strong>SDK README:</strong> <code>sdk/README.md</code> in the repo. Covers every subpath export and the test-harness conventions.</li>

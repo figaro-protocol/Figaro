@@ -24,7 +24,7 @@ export default function Specifications() {
                 }
             />
 
-            <MarketingSection eyebrow="Inheritance" eyebrowAsHeading>
+            <MarketingSection title="Inheritance">
                 <p className="text-base text-ink-body leading-relaxed mb-3">
                     This page catalogues the <strong>on-chain composition</strong> layer (the kernel plus the permissionless primitives built around it). Each contract below inherits the kernel&apos;s ownerless / tamper-evident / atomic-settlement properties &mdash; the invariants stated on <Link href="/protocol" className="underline">Protocol</Link>. The kernel in turn inherits execution security from whichever EVM chain it is deployed on &mdash; network → kernel → on-chain composition → off-chain composition → trade. Remove any floor and what&apos;s above collapses.
                 </p>
@@ -33,7 +33,7 @@ export default function Specifications() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Kernel" eyebrowAsHeading>
+            <MarketingSection title="Kernel">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="FigaroCore"
@@ -51,7 +51,7 @@ export default function Specifications() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Attestation &amp; schema" eyebrowAsHeading>
+            <MarketingSection title="Attestation &amp; schema">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="AttestationCoordinator"
@@ -84,14 +84,14 @@ export default function Specifications() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Schema validators in force" eyebrowAsHeading>
+            <MarketingSection title="Schema validators in force">
                 <p className="text-sm text-ink-muted mb-6">
                     Seventeen runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-default text-left text-eyebrow uppercase text-ink-muted">
+                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
                                 <th scope="col" className="py-2 pr-4">schemaId</th>
                                 <th scope="col" className="py-2 pr-4">What it carries</th>
                                 <th scope="col" className="py-2">Attestation</th>
@@ -125,7 +125,7 @@ export default function Specifications() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Token" eyebrowAsHeading>
+            <MarketingSection title="Token">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="FigToken"
@@ -153,7 +153,7 @@ export default function Specifications() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Batch verification" eyebrowAsHeading>
+            <MarketingSection title="Batch verification">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="FigaroBatchVerifier"
@@ -171,7 +171,7 @@ export default function Specifications() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Optional protocol contracts" eyebrowAsHeading>
+            <MarketingSection title="Optional protocol contracts">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="DutchAuction"
@@ -189,11 +189,11 @@ export default function Specifications() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Canonical deployments" eyebrowAsHeading>
+            <MarketingSection title="Canonical deployments">
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-default text-left text-eyebrow uppercase text-ink-muted">
+                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
                                 <th scope="col" className="py-2 pr-4">Network</th>
                                 <th scope="col" className="py-2 pr-4">Chain ID</th>
                                 <th scope="col" className="py-2">Status</th>
@@ -212,7 +212,7 @@ export default function Specifications() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Extension" eyebrowAsHeading bottomPad="wide">
+            <MarketingSection title="Extension" bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed">
                     Mechanisms, schemas, and role models extend the protocol without altering the kernel. The kernel invariants the Extension doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md" target="_blank" rel="noopener noreferrer" className="underline">PROTOCOL_EXTENSION_DOCTRINE.md</a>{" "}

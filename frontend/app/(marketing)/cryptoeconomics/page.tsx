@@ -72,7 +72,7 @@ export default function Cryptoeconomics() {
                 </div>
             </section>
 
-            <MarketingSection eyebrow="Implementation">
+            <MarketingSection title="Implementation">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Implementation work &mdash; schema authoring, contract development, assembly composition, frontend construction &mdash; organizes separately at{" "}
                     <Link href="/builders" className="text-ink-heading font-medium hover:text-ink-body">
@@ -89,7 +89,7 @@ export default function Cryptoeconomics() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection eyebrow="Working groups" bottomPad="wide">
+            <MarketingSection title="Working groups" bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed">
                     Active work in each discipline &mdash; charters, current work, grants, dedicated channels &mdash; lives at{" "}
                     <Link href="/groups" className="text-ink-heading font-medium hover:text-ink-body">
