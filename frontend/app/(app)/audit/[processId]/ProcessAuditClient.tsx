@@ -1,8 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { ProcessFinancialsView } from "@/components/core/audit/ProcessFinancialsView";
-import { HashVerifier } from "@/components/core/audit/HashVerifier";
+import { ProcessFinancialsView } from "../_components/ProcessFinancialsView";
+import { HashVerifier } from "../_components/HashVerifier";
 
 export function ProcessAuditClient() {
     const params = useParams<{ processId: string }>();

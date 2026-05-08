@@ -34,7 +34,7 @@ import {
     saveNamedDraft,
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
-import { AgreementDrawer } from "@/components/core/designer/AgreementDrawer";
+import { AgreementDrawer } from "../../_components/AgreementDrawer";
 import { REFERENCE_ASSEMBLIES, type Assembly } from "@/lib/shared/assembly";
 import { slugify } from "@/lib/shared/slug";
 import { assemblyToSyntheticOrders } from "@/lib/designer/assemblyToSyntheticOrders";

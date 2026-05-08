@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { OperatorCard } from "@/components/core/discover/OperatorCard";
+import { OperatorCard } from "./OperatorCard";
 import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
 import {
     assemblyLabel,

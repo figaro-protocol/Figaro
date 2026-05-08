@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { OrderTimelineView } from "@/components/core/orders/OrderTimelineView";
+import { OrderTimelineView } from "../_components/OrderTimelineView";
 
 export const dynamic = "force-dynamic";
 

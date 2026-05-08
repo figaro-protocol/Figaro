@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MerchantDetailView } from "@/components/core/m/MerchantDetailView";
+import { MerchantDetailView } from "./_components/MerchantDetailView";
 
 export const dynamic = "force-dynamic";
 

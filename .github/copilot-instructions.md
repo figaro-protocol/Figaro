@@ -518,7 +518,7 @@ The Designer is a DAG editor — assembly designers fork a reference assembly or
 - `app/(app)/builders/designer/edit/[slug]/page.tsx` — fork an existing reference assembly into the editor.
 - `app/(app)/builders/designer/view/[slug]/page.tsx` — read-only DAG view.
 
-**Components:** `components/core/ProcessGraphCanvas.tsx` (the DAG canvas — drag green handle to spawn sub-orders, drag onto another node for fan-in, click edge pill to swap fulfilment method); `components/core/designer/AgreementDrawer.tsx` (per-node clause editor); `components/core/designer/DraftsList.tsx` (saved-drafts list).
+**Components:** `components/core/ProcessGraphCanvas.tsx` (the DAG canvas — drag green handle to spawn sub-orders, drag onto another node for fan-in, click edge pill to swap fulfilment method); `app/(app)/builders/designer/_components/AgreementDrawer.tsx` (per-node clause editor); `app/(app)/builders/designer/_components/DraftsList.tsx` (saved-drafts list).
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers), `lib/designer/syntheticDesignStore.ts` (localStorage persistence), `lib/designer/assemblyToSyntheticOrders.ts` (forks an `Assembly` into an `Order[]`).
 

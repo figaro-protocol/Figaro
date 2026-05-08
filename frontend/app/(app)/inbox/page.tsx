@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MerchantInbox } from "@/components/core/inbox/MerchantInbox";
+import { MerchantInbox } from "./_components/MerchantInbox";
 
 export const dynamic = "force-dynamic";
 

@@ -18,7 +18,7 @@ import type { Metadata } from "next";
  * The legacy `/verify` route redirects here.
  */
 
-import { HashVerifier } from "@/components/core/audit/HashVerifier";
+import { HashVerifier } from "./_components/HashVerifier";
 
 export const metadata: Metadata = {
     title: "Audit — Figaro Protocol",

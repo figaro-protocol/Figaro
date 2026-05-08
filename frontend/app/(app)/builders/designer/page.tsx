@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { REFERENCE_ASSEMBLIES } from "@/lib/shared/assembly";
-import { DraftsList } from "@/components/core/designer/DraftsList";
+import { DraftsList } from "./_components/DraftsList";
 
 export const metadata: Metadata = {
     title: "Designer — Figaro Protocol",

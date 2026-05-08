@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BuyerOrdersList } from "@/components/core/orders/BuyerOrdersList";
+import { BuyerOrdersList } from "./_components/BuyerOrdersList";
 
 export const dynamic = "force-dynamic";
 

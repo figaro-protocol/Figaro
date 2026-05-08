@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { OperatorDiscovery } from "@/components/core/discover/OperatorDiscovery";
+import { OperatorDiscovery } from "./_components/OperatorDiscovery";
 
 export const metadata: Metadata = {
     title: "Discover operators — Figaro Protocol",

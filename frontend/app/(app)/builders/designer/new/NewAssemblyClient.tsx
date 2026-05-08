@@ -28,7 +28,7 @@ import {
     saveNamedDraft,
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
-import { AgreementDrawer } from "@/components/core/designer/AgreementDrawer";
+import { AgreementDrawer } from "../_components/AgreementDrawer";
 
 interface InitialState {
     session: SyntheticProcessSession;

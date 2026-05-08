@@ -57,8 +57,8 @@ The Designer is a DAG editor — assembly designers fork a reference assembly or
 
 **Components:**
 - `components/core/ProcessGraphCanvas.tsx` — the DAG canvas. Drag green handle to spawn sub-orders; drag onto another node to merge fan-in; click edge pill to swap fulfilment method.
-- `components/core/designer/AgreementDrawer.tsx` — per-node clause editor (Geo / GHG / Topology baseline-graph clauses).
-- `components/core/designer/DraftsList.tsx` — saved-drafts list on the landing.
+- `app/(app)/builders/designer/_components/AgreementDrawer.tsx` — per-node clause editor (Geo / GHG / Topology baseline-graph clauses).
+- `app/(app)/builders/designer/_components/DraftsList.tsx` — saved-drafts list on the landing.
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `swapSyntheticFulfilmentMethod`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/assemblyToSyntheticOrders.ts` (forks an `Assembly` into an `Order[]`).
 
