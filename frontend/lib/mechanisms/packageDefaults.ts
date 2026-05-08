@@ -45,7 +45,7 @@ export const ATTESTATION_MECHANISM_PACKAGE_METADATA: MechanismPackageMetadata = 
     moduleIds: ["delivery-attestation"],
 };
 
-export const FIG_MECHANISM_PACKAGE_METADATA: MechanismPackageMetadata = {
+const FIG_MECHANISM_PACKAGE_METADATA: MechanismPackageMetadata = {
     kind: "fig",
     capabilityBindings: [
         "claim-airdrop",
@@ -75,7 +75,7 @@ export const OPERATOR_REGISTRY_MECHANISM_PACKAGE_METADATA: MechanismPackageMetad
     moduleIds: ["operator-registration-panel"],
 };
 
-export const BUILT_IN_MECHANISM_PACKAGE_METADATA = [
+const BUILT_IN_MECHANISM_PACKAGE_METADATA = [
     CORE_MECHANISM_PACKAGE_METADATA,
     DUTCH_AUCTION_MECHANISM_PACKAGE_METADATA,
     DISCLOSURE_MECHANISM_PACKAGE_METADATA,
@@ -96,7 +96,7 @@ function mergeUniqueBindings(
     return [...new Set([...packagedBindings, ...(explicitBindings ?? [])])];
 }
 
-export function getMechanismPackageMetadata(kind: string): MechanismPackageMetadata | undefined {
+function getMechanismPackageMetadata(kind: string): MechanismPackageMetadata | undefined {
     return MECHANISM_PACKAGE_METADATA_MAP.get(kind);
 }
 

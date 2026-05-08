@@ -48,7 +48,7 @@ import {
     OPERATOR_REGISTRY_MECHANISM_PACKAGE_METADATA,
 } from "@/lib/mechanisms/packageDefaults";
 
-export interface MechanismPackageModule {
+interface MechanismPackageModule {
     moduleId: string;
     component: ModuleComponent;
 }
@@ -61,7 +61,7 @@ export interface MechanismPackage {
     hooks?: Readonly<Record<string, unknown>>;
 }
 
-export const DUTCH_AUCTION_MECHANISM_PACKAGE: MechanismPackage = {
+const DUTCH_AUCTION_MECHANISM_PACKAGE: MechanismPackage = {
     kind: DUTCH_AUCTION_MECHANISM_PACKAGE_METADATA.kind,
     capabilityBindings: DUTCH_AUCTION_MECHANISM_PACKAGE_METADATA.capabilityBindings,
     modules: [
@@ -76,7 +76,7 @@ export const DUTCH_AUCTION_MECHANISM_PACKAGE: MechanismPackage = {
     },
 };
 
-export const CORE_MECHANISM_PACKAGE: MechanismPackage = {
+const CORE_MECHANISM_PACKAGE: MechanismPackage = {
     kind: CORE_MECHANISM_PACKAGE_METADATA.kind,
     capabilityBindings: CORE_MECHANISM_PACKAGE_METADATA.capabilityBindings,
     modules: [
@@ -112,7 +112,7 @@ export const CORE_MECHANISM_PACKAGE: MechanismPackage = {
     },
 };
 
-export const DISCLOSURE_MECHANISM_PACKAGE: MechanismPackage = {
+const DISCLOSURE_MECHANISM_PACKAGE: MechanismPackage = {
     kind: DISCLOSURE_MECHANISM_PACKAGE_METADATA.kind,
     capabilityBindings: DISCLOSURE_MECHANISM_PACKAGE_METADATA.capabilityBindings,
     modules: [
@@ -128,7 +128,7 @@ export const DISCLOSURE_MECHANISM_PACKAGE: MechanismPackage = {
     },
 };
 
-export const ATTESTATION_MECHANISM_PACKAGE: MechanismPackage = {
+const ATTESTATION_MECHANISM_PACKAGE: MechanismPackage = {
     kind: ATTESTATION_MECHANISM_PACKAGE_METADATA.kind,
     capabilityBindings: ATTESTATION_MECHANISM_PACKAGE_METADATA.capabilityBindings,
     modules: [
@@ -144,7 +144,7 @@ export const ATTESTATION_MECHANISM_PACKAGE: MechanismPackage = {
     },
 };
 
-export const COORDINATOR_MECHANISM_PACKAGE: MechanismPackage = {
+const COORDINATOR_MECHANISM_PACKAGE: MechanismPackage = {
     kind: COORDINATOR_MECHANISM_PACKAGE_METADATA.kind,
     capabilityBindings: COORDINATOR_MECHANISM_PACKAGE_METADATA.capabilityBindings,
     capabilityPrefixes: COORDINATOR_MECHANISM_PACKAGE_METADATA.capabilityPrefixes,
@@ -172,7 +172,7 @@ export const COORDINATOR_MECHANISM_PACKAGE: MechanismPackage = {
     },
 };
 
-export const OPERATOR_REGISTRY_MECHANISM_PACKAGE: MechanismPackage = {
+const OPERATOR_REGISTRY_MECHANISM_PACKAGE: MechanismPackage = {
     kind: OPERATOR_REGISTRY_MECHANISM_PACKAGE_METADATA.kind,
     capabilityBindings: OPERATOR_REGISTRY_MECHANISM_PACKAGE_METADATA.capabilityBindings,
     modules: [
