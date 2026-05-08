@@ -89,7 +89,7 @@ export function GHGAnchorPanel() {
 
                         {summary.attestations.length > 0 && (
                             <div className="border-t border-gray-100 pt-3 space-y-2">
-                                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
+                                <p className="text-[11px] font-semibold text-gray-500">
                                     Recent Attestations
                                 </p>
                                 {summary.attestations.slice(-5).reverse().map((a, i) => (

@@ -181,7 +181,7 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
             className="space-y-6"
         >
             <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2" style={labelStyle}>
+                <p className="text-xs font-semibold text-neutral-500 mb-2" style={labelStyle}>
                     {context.shellPresentation.title}
                 </p>
                 <h2 className="text-2xl font-bold text-black mb-2">Order from the best restaurants</h2>
@@ -377,7 +377,7 @@ function MenuBrowsingInline({
                     />
                     <div className="flex-1">
                         {shellLabel && (
-                            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2" style={labelStyle}>
+                            <p className="text-xs font-semibold text-neutral-500 mb-2" style={labelStyle}>
                                 {shellLabel}
                             </p>
                         )}

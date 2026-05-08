@@ -115,7 +115,7 @@ export function HandoffTrackerModule({ moduleId, context }: ModuleProps) {
             role="region"
             aria-label="Handoff tracking"
         >
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-500" style={labelStyle}>
+            <p className="mb-3 text-xs font-semibold text-neutral-500" style={labelStyle}>
                 {shellLabel}
             </p>
             {/* Header */}

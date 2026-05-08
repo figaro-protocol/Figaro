@@ -112,7 +112,7 @@ export function ProcessCapitalSummaryModule({ context }: ModuleProps) {
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1" style={labelStyle}>
+            <p className="text-xs font-semibold text-neutral-500 mb-1" style={labelStyle}>
                 Process Capital Summary
             </p>
             <p className="text-xs text-neutral-500 mb-4">

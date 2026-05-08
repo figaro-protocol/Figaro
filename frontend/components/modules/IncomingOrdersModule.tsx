@@ -41,7 +41,7 @@ function PendingOrderCard({ payload, onAccept, onDismiss, isAccepting, accentTon
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1" style={accentStyle}>
+                    <p className="text-xs font-semibold text-neutral-500 mb-1" style={accentStyle}>
                         Incoming Order
                     </p>
                     <p className="text-sm font-mono text-neutral-500 truncate">
@@ -193,7 +193,7 @@ export function IncomingOrdersModule({ moduleId, context }: ModuleProps) {
             style={cardStyle}
         >
             <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1" style={labelStyle}>
+                <p className="text-xs font-semibold text-neutral-500 mb-1" style={labelStyle}>
                     {context.shellPresentation.title}
                 </p>
                 <h2 className="text-xl font-bold text-black">Incoming Orders</h2>

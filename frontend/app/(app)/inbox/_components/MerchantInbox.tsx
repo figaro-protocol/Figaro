@@ -72,7 +72,7 @@ function PendingOrderCard({ payload, onAccept, onDismiss, isAccepting }: Pending
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1">
+                    <p className="text-xs font-semibold text-neutral-500 mb-1">
                         New order request
                     </p>
                     <p className="text-sm font-mono text-neutral-700">
@@ -235,7 +235,7 @@ export function MerchantInbox() {
     return (
         <div data-testid="merchant-inbox" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
             <header>
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Merchant inbox</p>
+                <p className="text-xs font-semibold text-neutral-500">Merchant inbox</p>
                 <h1 className="mt-1 text-3xl font-bold text-black">Inbox</h1>
                 <p className="mt-2 text-sm text-neutral-600">
                     Incoming orders awaiting acceptance, plus orders you&apos;re currently fulfilling.
@@ -252,7 +252,7 @@ export function MerchantInbox() {
                 <>
                     {/* Pending */}
                     <section className="space-y-3" data-testid="inbox-pending-section">
-                        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Awaiting acceptance</p>
+                        <p className="text-xs font-semibold text-neutral-500">Awaiting acceptance</p>
                         {isMock ? (
                             <div
                                 className="rounded-lg border border-neutral-200 bg-white p-5 text-sm text-neutral-500"
@@ -291,7 +291,7 @@ export function MerchantInbox() {
 
                     {/* Active */}
                     <section className="space-y-3" data-testid="inbox-active-section">
-                        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">In progress</p>
+                        <p className="text-xs font-semibold text-neutral-500">In progress</p>
                         {isLoading ? (
                             <p className="text-sm text-neutral-500" data-testid="inbox-active-loading">Loading…</p>
                         ) : activeRows.length === 0 ? (
@@ -315,7 +315,7 @@ export function MerchantInbox() {
                     {/* Completed */}
                     {completedRows.length > 0 && (
                         <section className="space-y-3" data-testid="inbox-completed-section">
-                            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Completed</p>
+                            <p className="text-xs font-semibold text-neutral-500">Completed</p>
                             <ul className="space-y-3" data-testid="inbox-completed-list">
                                 {completedRows.map((row) => (
                                     <li key={row.processId}>

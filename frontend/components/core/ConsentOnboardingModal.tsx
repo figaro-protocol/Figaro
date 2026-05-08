@@ -69,7 +69,7 @@ export function ConsentOnboardingModal({ onDismiss }: ConsentOnboardingModalProp
             panelClassName="bg-white rounded-lg border border-neutral-200 max-w-lg w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto"
         >
             <header>
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                <p className="text-xs font-semibold text-neutral-500">
                     Welcome
                 </p>
                 <h2 id="consent-onboarding-title" className="text-xl font-bold text-black mt-1">

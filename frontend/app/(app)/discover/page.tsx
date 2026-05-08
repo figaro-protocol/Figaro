@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function DiscoverPage() {
     return (
         <section className="container mx-auto px-6 pt-16 pb-24 max-w-5xl">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
+            <p className="text-xs font-semibold text-gray-600 mb-3">
                 Discover
             </p>
             <h1 className="text-4xl sm:text-5xl font-bold text-black leading-tight tracking-tight mb-3">

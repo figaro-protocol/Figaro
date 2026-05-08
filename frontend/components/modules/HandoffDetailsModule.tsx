@@ -135,7 +135,7 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
                 className="rounded-lg border border-green-200 bg-green-50 p-4"
                 style={cardStyle}
             >
-                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-500" style={labelStyle}>
+                <p className="mb-3 text-xs font-semibold text-neutral-500" style={labelStyle}>
                     {shellLabel}
                 </p>
                 <p className="text-sm font-semibold text-green-800">Handoff details confirmed</p>
@@ -161,7 +161,7 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
             className="rounded-lg border border-neutral-200 bg-white p-6 space-y-5"
             style={cardStyle}
         >
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500" style={labelStyle}>
+            <p className="text-xs font-semibold text-neutral-500" style={labelStyle}>
                 {shellLabel}
             </p>
             <h3 className="text-lg font-bold text-black">Handoff Details</h3>

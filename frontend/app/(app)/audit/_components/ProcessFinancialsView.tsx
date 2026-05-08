@@ -69,7 +69,7 @@ export function ProcessFinancialsView({ processId }: Props) {
             <header className="space-y-2">
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                        <p className="text-xs font-semibold text-neutral-500">
                             Process financials
                         </p>
                         <h2 className="text-xl font-bold text-black">

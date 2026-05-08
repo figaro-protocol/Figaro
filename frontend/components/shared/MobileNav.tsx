@@ -160,7 +160,7 @@ export function MobileNav({ links, logo, theme = "dark", topCta }: MobileNavProp
                                 {links.map((link, i) => (
                                     <li key={link.isSectionHeader ? `section-${link.label}` : link.href}>
                                         {link.isSectionHeader ? (
-                                            <div className={`px-4 pt-${i === 0 ? "1" : "4"} pb-1 text-[11px] font-semibold uppercase tracking-widest ${theme === "dark" ? "text-slate-500" : "text-neutral-500"}`}>
+                                            <div className={`px-4 pt-${i === 0 ? "1" : "4"} pb-1 text-[11px] font-semibold ${theme === "dark" ? "text-slate-500" : "text-neutral-500"}`}>
                                                 {link.label}
                                             </div>
                                         ) : (

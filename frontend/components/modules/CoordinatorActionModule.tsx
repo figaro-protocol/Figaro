@@ -74,7 +74,7 @@ export function CoordinatorActionModule({ context }: ModuleProps) {
             style={cardStyle}
         >
             <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500" style={labelStyle}>
+                <p className="text-xs font-semibold text-neutral-500" style={labelStyle}>
                     {coordinatorMechanism.name}
                 </p>
                 <span

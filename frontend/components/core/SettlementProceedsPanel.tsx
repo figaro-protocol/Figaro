@@ -33,7 +33,7 @@ export function SettlementProceedsPanel({
 
     return (
         <div className="mt-3 border border-neutral-200 rounded-lg p-4 bg-neutral-50 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+            <p className="text-xs font-semibold text-neutral-500">
                 Settlement Complete
             </p>
             <p className="text-sm text-neutral-700">

@@ -23,7 +23,7 @@ export function RoleSwitcher({
     return (
         <div className="rounded-lg border border-neutral-200 bg-white p-4" data-skin={skin?.skinId}>
             <p
-                className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1"
+                className="text-xs font-semibold text-neutral-500 mb-1"
                 style={accentColor ? { color: accentColor } : undefined}
             >
                 I am a…

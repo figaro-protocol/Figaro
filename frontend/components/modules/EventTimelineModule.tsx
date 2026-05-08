@@ -84,7 +84,7 @@ export function EventTimelineModule({ context }: ModuleProps) {
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1" style={labelStyle}>
+            <p className="text-xs font-semibold text-neutral-500 mb-1" style={labelStyle}>
                 {vocab.headings.orderTimeline}
             </p>
             <p className="text-xs text-neutral-500 mb-4">

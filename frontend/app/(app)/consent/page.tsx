@@ -256,7 +256,7 @@ export default function ConsentPage() {
     return (
         <div className="container mx-auto max-w-3xl px-4 py-10 space-y-6" data-testid="consent-page">
             <header className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                <p className="text-xs font-semibold text-neutral-500">
                     Figaro Beta
                 </p>
                 <h1 className="text-2xl font-bold text-black">Informed-consent ceremony</h1>

@@ -37,7 +37,7 @@ export function OrderNodeModule({ context }: ModuleProps) {
             style={cardStyle}
         >
             <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500" style={labelStyle}>
+                <p className="text-xs font-semibold text-neutral-500" style={labelStyle}>
                     Order #{order.orderId}
                 </p>
                 <span className={`rounded border px-2 py-1 text-xs font-semibold ${stateClass}`}>

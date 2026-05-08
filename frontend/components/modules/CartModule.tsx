@@ -320,7 +320,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                     >
                         <div className="p-6 border-b border-neutral-200 flex justify-between items-center">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2" style={labelStyle}>
+                                <p className="text-xs font-semibold text-neutral-500 mb-2" style={labelStyle}>
                                     {context.shellPresentation.title}
                                 </p>
                                 <h2 className="text-2xl font-bold text-black">

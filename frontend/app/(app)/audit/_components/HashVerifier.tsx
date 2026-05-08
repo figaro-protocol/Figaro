@@ -49,7 +49,7 @@ export function HashVerifier() {
     return (
         <div className="space-y-6" data-testid="verify-page">
             <header className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                <p className="text-xs font-semibold text-neutral-500">
                     Verification
                 </p>
                 <h2 className="text-xl font-bold text-black">Audit-bundle hash verifier</h2>

@@ -226,7 +226,7 @@ export function OperatorRegistrationModule({ context }: ModuleProps) {
             data-skin={context.skinBundle?.skinId}
             style={cardStyle}
         >
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-500" style={labelStyle}>Seller Setup</p>
+            <p className="text-[11px] font-semibold text-gray-500" style={labelStyle}>Seller Setup</p>
             <h3 className="text-sm font-semibold text-black">Operator Registration</h3>
             <p className="text-xs text-gray-500">{shellLabel}</p>
             <p className="text-xs text-gray-500">
@@ -257,7 +257,7 @@ export function OperatorRegistrationModule({ context }: ModuleProps) {
 
             {showAgentFields && (
                 <div className="space-y-2 border border-gray-100 rounded p-3 bg-gray-50" data-testid="agent-service-fields">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Agent Service Endpoints</p>
+                    <p className="text-xs font-semibold text-gray-500">Agent Service Endpoints</p>
                     <AgentServiceField label="MCP" placeholder="https://agent.example.com/mcp" value={mcp} onChange={setMcp} hint="Model Context Protocol endpoint" />
                     <AgentServiceField label="A2A" placeholder="https://agent.example.com/a2a" value={a2a} onChange={setA2a} hint="Agent-to-Agent protocol endpoint" />
                     <AgentServiceField label="REST" placeholder="https://agent.example.com/v1" value={rest} onChange={setRest} hint="REST API base URL" />
@@ -299,7 +299,7 @@ export function OperatorRegistrationModule({ context }: ModuleProps) {
             </button>
             {!isRegister && (
                 <div className="border-t border-gray-100 pt-3 mt-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-500 mb-2">Deposit Withdrawal</p>
+                    <p className="text-[11px] font-semibold text-gray-500 mb-2">Deposit Withdrawal</p>
                     <p className="text-xs text-gray-500 mb-2">
                         Withdraw clears your registry binding and returns the deposit. Lock period must
                         have elapsed since registration.

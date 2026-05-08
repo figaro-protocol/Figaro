@@ -143,7 +143,7 @@ export function MerchantFulfilmentModule({ moduleId, context }: ModuleProps) {
             aria-label="Merchant fulfilment events"
         >
             <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500" style={labelStyle}>
+                <p className="text-xs font-semibold text-neutral-500" style={labelStyle}>
                     {shellLabel}
                 </p>
                 <h2 className="text-lg font-bold text-black mt-1">Merchant fulfilment</h2>

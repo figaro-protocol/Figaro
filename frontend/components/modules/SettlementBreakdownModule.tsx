@@ -30,7 +30,7 @@ export function SettlementBreakdownModule({ context }: ModuleProps) {
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-3" style={labelStyle}>
+            <p className="text-xs font-semibold text-neutral-500 mb-3" style={labelStyle}>
                 Settlement Breakdown
             </p>
             <div className="space-y-3 text-sm text-black">

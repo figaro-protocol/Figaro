@@ -297,7 +297,7 @@ export function JobMarketModule({ moduleId, context }: ModuleProps) {
             <div className="flex items-center gap-2">
                 <ClockIcon className="w-6 h-6 text-black" />
                 <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2" style={labelStyle}>
+                    <p className="text-xs font-semibold text-neutral-500 mb-2" style={labelStyle}>
                         {context.shellPresentation.title}
                     </p>
                     <h2 className="text-2xl font-bold text-black">

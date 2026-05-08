@@ -35,7 +35,7 @@ export function MechanismInspectorCard({ mechanism, riskBoundary, skin }: Props)
             </div>
 
             <div className="mb-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">Guarantees</p>
+                <p className="text-xs font-semibold text-neutral-500 mb-2">Guarantees</p>
                 <div className="flex flex-wrap gap-2">
                     {guarantees.map((guarantee) => (
                         <GuaranteeBadge key={guarantee.id} guarantee={guarantee} />
@@ -45,20 +45,20 @@ export function MechanismInspectorCard({ mechanism, riskBoundary, skin }: Props)
 
             <div className="grid grid-cols-1 gap-3 mb-4 text-sm text-black md:grid-cols-2">
                 <div className="rounded border border-neutral-200 bg-neutral-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">Mechanism Scope</p>
+                    <p className="text-xs font-semibold text-neutral-500 mb-2">Mechanism Scope</p>
                     <p>Kind: <span className="font-mono">{mechanism.kind}</span></p>
                     <p>Contracts: <span className="font-mono">{mechanism.contracts.join(", ") || "none"}</span></p>
                     <p>Roles: <span className="font-mono">{mechanism.recognizedRoles.join(", ") || "none"}</span></p>
                 </div>
                 <div className="rounded border border-neutral-200 bg-neutral-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">Module Bindings</p>
+                    <p className="text-xs font-semibold text-neutral-500 mb-2">Module Bindings</p>
                     <p className="font-mono text-xs text-neutral-700 break-words">{mechanism.moduleBindings.join(", ") || "none"}</p>
                 </div>
             </div>
 
             {visibleAttachments.length > 0 && (
                 <div className="mb-4">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">Attachments</p>
+                    <p className="text-xs font-semibold text-neutral-500 mb-2">Attachments</p>
                     <div className="flex flex-wrap gap-2">
                         {visibleAttachments.map((attachment) => (
                             <span

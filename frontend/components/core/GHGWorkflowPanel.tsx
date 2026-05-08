@@ -278,7 +278,7 @@ export function GHGWorkflowPanel() {
                         {/* Per-order drill-down */}
                         {orderHashes.length > 0 && (
                             <div className="border-t border-gray-100 pt-3 space-y-2">
-                                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
+                                <p className="text-[11px] font-semibold text-gray-500">
                                     Orders with Attestations
                                 </p>
                                 {orderHashes.map((oh) => (

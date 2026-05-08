@@ -116,11 +116,11 @@ export function AuctionActionModule({ context }: ModuleProps) {
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >
-            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-neutral-500" style={labelStyle}>
+            <p className="mb-4 text-xs font-semibold text-neutral-500" style={labelStyle}>
                 {shellLabel}
             </p>
             <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                <p className="text-xs font-semibold text-neutral-500">
                     {auctionMechanism.name}
                 </p>
                 <span className="rounded border border-amber-400 px-2 py-1 text-[11px] font-semibold text-amber-700 bg-amber-50">

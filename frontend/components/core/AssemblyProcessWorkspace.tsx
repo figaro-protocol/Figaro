@@ -62,7 +62,7 @@ export function AssemblyProcessWorkspace({
             />
 
             <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-3">Process Workspace</p>
+                <p className="text-xs font-semibold text-neutral-500 mb-3">Process Workspace</p>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {process.orders.map((order) => (
                         <OrderNodeSemanticCard

@@ -29,7 +29,7 @@ export function OrderActionModule({ context }: ModuleProps) {
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-3" style={labelStyle}>
+            <p className="text-xs font-semibold text-neutral-500 mb-3" style={labelStyle}>
                 Order Actions
             </p>
             <div className="space-y-2">

@@ -83,7 +83,7 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
         >
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1">
+                    <p className="text-xs font-semibold text-neutral-500 mb-1">
                         Review before signing
                     </p>
                     <h2 id="agreement-preview-title" className="text-lg font-semibold text-black">
@@ -107,7 +107,7 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
 
                     {/* Parties */}
                     <section>
-                        <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">Parties</h3>
+                        <h3 className="text-xs font-semibold text-neutral-500 mb-2">Parties</h3>
                         <dl className="grid grid-cols-[80px_1fr] gap-y-1 text-sm">
                             <dt className="text-neutral-500">Buyer</dt>
                             <dd className="font-mono text-xs text-black" data-testid="preview-buyer">{commitment.buyer}</dd>
@@ -118,7 +118,7 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
 
                     {/* Payment */}
                     <section>
-                        <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">Payment</h3>
+                        <h3 className="text-xs font-semibold text-neutral-500 mb-2">Payment</h3>
                         <dl className="grid grid-cols-[80px_1fr] gap-y-1 text-sm">
                             <dt className="text-neutral-500">Currency</dt>
                             <dd className="font-mono text-xs text-black">{commitment.currency}</dd>
@@ -136,7 +136,7 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
                     {/* Commerce / line items */}
                     {lineItems.length > 0 && (
                         <section>
-                            <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">Line items</h3>
+                            <h3 className="text-xs font-semibold text-neutral-500 mb-2">Line items</h3>
                             <ul className="border border-neutral-200 rounded divide-y divide-neutral-200 text-sm" data-testid="preview-line-items">
                                 {lineItems.map((item, i) => (
                                     <li key={i} className="px-3 py-2 flex justify-between">
@@ -151,7 +151,7 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
                     {/* Other agreement sections */}
                     {otherSections.length > 0 && (
                         <section>
-                            <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">Clauses</h3>
+                            <h3 className="text-xs font-semibold text-neutral-500 mb-2">Clauses</h3>
                             <ul className="space-y-2 text-xs" data-testid="preview-clauses">
                                 {otherSections.map((section) => (
                                     <li key={section.schema} className="border border-neutral-200 rounded px-3 py-2">
@@ -167,7 +167,7 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
 
                     {/* Hash */}
                     <section className="border-t border-neutral-200 pt-4">
-                        <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">
+                        <h3 className="text-xs font-semibold text-neutral-500 mb-2">
                             agreementHash (signed value)
                         </h3>
                         <p className="font-mono text-xs text-black break-all bg-neutral-50 border border-neutral-200 rounded p-2" data-testid="preview-agreement-hash">

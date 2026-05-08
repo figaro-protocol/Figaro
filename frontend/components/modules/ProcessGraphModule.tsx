@@ -28,7 +28,7 @@ export function ProcessGraphModule({ context }: ModuleProps) {
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >
-            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-neutral-500" style={labelStyle}>
+            <p className="mb-4 text-xs font-semibold text-neutral-500" style={labelStyle}>
                 {shellLabel}
             </p>
             <AssemblyProcessWorkspace

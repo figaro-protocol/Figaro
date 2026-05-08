@@ -398,7 +398,7 @@ export function OrderTimelineView({ processId }: Props) {
     if (!processModel) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-3">
+                <p className="text-xs font-semibold text-neutral-500 mb-3">
                     Order
                 </p>
                 <h1 className="text-3xl font-bold text-black mb-4">Loading…</h1>
@@ -414,7 +414,7 @@ export function OrderTimelineView({ processId }: Props) {
     return (
         <div data-testid="order-timeline-view" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
             <header className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                <p className="text-xs font-semibold text-neutral-500">
                     Order
                 </p>
                 <div className="flex flex-wrap items-baseline gap-3">
@@ -438,7 +438,7 @@ export function OrderTimelineView({ processId }: Props) {
 
             {/* Primary action */}
             <section className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                <p className="text-xs font-semibold text-neutral-500">
                     {role === "buyer" ? "Your action" : role === "merchant" ? "Next step" : "Status"}
                 </p>
 
@@ -508,7 +508,7 @@ export function OrderTimelineView({ processId }: Props) {
 
             {/* Timeline */}
             <section className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                <p className="text-xs font-semibold text-neutral-500">
                     Timeline
                 </p>
                 <ol className="space-y-2" data-testid="order-timeline">

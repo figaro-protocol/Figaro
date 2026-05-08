@@ -38,7 +38,7 @@ export function BuyerOrdersList() {
     return (
         <div data-testid="buyer-orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-6">
             <header>
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Your orders</p>
+                <p className="text-xs font-semibold text-neutral-500">Your orders</p>
                 <h1 className="mt-1 text-3xl font-bold text-black">Orders</h1>
                 <p className="mt-2 text-sm text-neutral-600">
                     Every order you&apos;ve placed, active or settled.

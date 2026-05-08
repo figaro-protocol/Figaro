@@ -108,7 +108,7 @@ export default function FigPage() {
     return (
         <div className="container mx-auto px-6 pt-24 pb-24 max-w-3xl space-y-12">
             <section>
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-4">FIG</p>
+                <p className="text-xs font-semibold text-gray-600 mb-4">FIG</p>
                 <h1 className="text-5xl font-bold text-black leading-tight tracking-tight mb-6">
                     A coordination Schelling point.
                 </h1>

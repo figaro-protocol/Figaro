@@ -125,7 +125,7 @@ export function HandoffKeyExchangeModule({ moduleId, context }: ModuleProps) {
                 className="rounded-lg border border-neutral-200 bg-neutral-50 p-4"
                 style={cardStyle}
             >
-                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-500" style={labelStyle}>
+                <p className="mb-3 text-xs font-semibold text-neutral-500" style={labelStyle}>
                     {shellLabel}
                 </p>
                 <div className="flex items-start gap-3">
@@ -151,7 +151,7 @@ export function HandoffKeyExchangeModule({ moduleId, context }: ModuleProps) {
             className="rounded-lg border border-green-200 bg-green-50 p-4"
             style={cardStyle}
         >
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-500" style={labelStyle}>
+            <p className="mb-3 text-xs font-semibold text-neutral-500" style={labelStyle}>
                 {shellLabel}
             </p>
             <div className="flex items-start gap-3">

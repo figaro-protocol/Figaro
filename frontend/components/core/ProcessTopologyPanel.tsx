@@ -37,7 +37,7 @@ function MetricPill({
 }) {
     return (
         <div className={`rounded border px-2 py-1 ${toneClass}`}>
-            <p className="text-xs font-semibold uppercase tracking-widest">{label}</p>
+            <p className="text-xs font-semibold">{label}</p>
             <p className="text-xs font-mono">{value}</p>
         </div>
     );
@@ -223,7 +223,7 @@ export function ProcessTopologyPanel({
             <div className="grid gap-4 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
                 {orderedColumns.map(([depth, orders]) => (
                     <div key={depth} className="space-y-3">
-                        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Level {depth}</p>
+                        <p className="text-xs font-semibold text-neutral-500">Level {depth}</p>
                         {orders.map((order) => (
                             <div
                                 key={order.orderId}
@@ -259,7 +259,7 @@ export function ProcessTopologyPanel({
                                 </div>
                                 {order.parentOrderIds.length > 0 && (
                                     <div className="mt-3 rounded border border-neutral-200 bg-white p-2">
-                                        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">Edge Semantics</p>
+                                        <p className="text-xs font-semibold text-neutral-500 mb-2">Edge Semantics</p>
                                         <div className="space-y-2">
                                             {findIncomingRelations(process, order.orderId).map((relation) => (
                                                 <div key={relation.id} className="rounded border border-neutral-200 bg-neutral-50 p-2">

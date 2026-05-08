@@ -25,7 +25,7 @@ export function ModuleEmptyStateCard({
             style={cardStyle}
         >
             {title ? (
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1" style={labelStyle}>
+                <p className="text-xs font-semibold text-neutral-500 mb-1" style={labelStyle}>
                     {title}
                 </p>
             ) : null}

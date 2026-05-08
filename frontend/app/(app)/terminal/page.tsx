@@ -45,7 +45,7 @@ export default function TerminalPage() {
             <OnboardingBanner />
 
             <header className="border-b border-gray-100 pb-6">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">
+                <p className="text-xs font-semibold text-gray-500 mb-2">
                     Protocol Terminal
                 </p>
                 <h1 className="text-3xl font-bold text-black mb-2">

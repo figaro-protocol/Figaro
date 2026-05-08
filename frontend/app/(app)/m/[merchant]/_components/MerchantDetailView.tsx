@@ -196,7 +196,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     if (cataloguesLoading) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-3">Merchant</p>
+                <p className="text-xs font-semibold text-neutral-500 mb-3">Merchant</p>
                 <h1 className="text-3xl font-bold text-black">Loading…</h1>
             </div>
         );
@@ -205,7 +205,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     if (!restaurant) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-3">Merchant not found</p>
+                <p className="text-xs font-semibold text-neutral-500 mb-3">Merchant not found</p>
                 <h1 className="text-3xl font-bold text-black">No merchant registered for {merchantAddressLower.slice(0, 10)}…</h1>
                 <p className="text-sm text-neutral-600">
                     The merchant may not be on the local-anvil network you&apos;re connected to,
@@ -359,7 +359,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                         <div className="flex-1 min-w-0">
                             {restaurant.specialty && (
                                 <p
-                                    className="text-xs font-semibold uppercase tracking-widest text-neutral-500"
+                                    className="text-xs font-semibold text-neutral-500"
                                     style={accentTone ? { color: accentTone } : undefined}
                                 >
                                     {restaurant.specialty}
@@ -389,7 +389,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-8 items-start">
                     {/* Menu */}
                     <section className="space-y-8" data-testid="merchant-menu">
-                        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Menu</p>
+                        <p className="text-xs font-semibold text-neutral-500">Menu</p>
                         {categories.map((category) => (
                             <div key={category}>
                                 <h2 className="text-lg font-semibold text-black mb-3">{category}</h2>
@@ -471,7 +471,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                         className="sticky top-6 rounded-lg border border-neutral-200 bg-white p-5 space-y-4"
                         data-testid="merchant-cart"
                     >
-                        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Order</p>
+                        <p className="text-xs font-semibold text-neutral-500">Order</p>
                         {merchantCartItems.length === 0 ? (
                             <p className="text-sm text-neutral-500">
                                 Your cart is empty. Add items from the menu to start an order with{" "}
@@ -556,7 +556,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                 <div>
                                     <label
                                         htmlFor="fulfilment-mode-select"
-                                        className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1 block"
+                                        className="text-xs font-semibold text-neutral-500 mb-1 block"
                                     >
                                         Fulfilment
                                     </label>

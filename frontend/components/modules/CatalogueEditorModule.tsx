@@ -407,7 +407,7 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
                 data-skin={context.skinBundle?.skinId}
                 className="bg-white border border-neutral-200 rounded-lg p-6 shadow-sm"
                 style={accentCardStyle}>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-neutral-500" style={accentTextStyle}>Seller Setup</p>
+                <p className="mb-1 text-xs font-semibold text-neutral-500" style={accentTextStyle}>Seller Setup</p>
                 <h3 className="text-lg font-semibold text-black mb-2">Catalogue Editor</h3>
                 <p className="text-sm text-neutral-500 mb-2">{shellLabel}</p>
                 <p className="text-sm text-neutral-500">Connect your wallet to manage your catalogue.</p>
@@ -421,7 +421,7 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
                 data-skin={context.skinBundle?.skinId}
                 className="bg-white border border-neutral-200 rounded-lg p-6 shadow-sm"
                 style={accentCardStyle}>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-neutral-500" style={accentTextStyle}>Seller Setup</p>
+                <p className="mb-1 text-xs font-semibold text-neutral-500" style={accentTextStyle}>Seller Setup</p>
                 <h3 className="text-lg font-semibold text-black mb-2">Catalogue Editor</h3>
                 <p className="text-sm text-neutral-500 mb-3">{shellLabel}</p>
                 <div className="animate-pulse space-y-3">
@@ -441,7 +441,7 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
 
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-neutral-500" style={accentTextStyle}>Seller Setup</p>
+                    <p className="mb-1 text-xs font-semibold text-neutral-500" style={accentTextStyle}>Seller Setup</p>
                     <h3 className="text-lg font-semibold text-black">Catalogue Editor</h3>
                     <p className="text-sm text-neutral-500">{shellLabel}</p>
                 </div>
