@@ -109,7 +109,7 @@ export function computeCommitmentProcessId(
         : c.processId;
 }
 
-export function reconstructCommitmentFromOrder(
+function reconstructCommitmentFromOrder(
     source: CommitmentOrderSource,
 ): Commitment {
     return {
@@ -185,7 +185,7 @@ export function loadCommitment(orderHash: Hex): Commitment | null {
     }
 }
 
-export function loadOrReconstructCommitment(
+function loadOrReconstructCommitment(
     orderHash: Hex,
     source?: CommitmentOrderSource,
 ): Commitment | null {

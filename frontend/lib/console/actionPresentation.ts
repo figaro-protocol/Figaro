@@ -93,7 +93,7 @@ export function describeBuildAction(action: QueuedBuildAction): ConsoleActionPre
     }
 }
 
-export function describeConsoleEntry(entry: ConsoleEntry): ConsoleActionPresentation {
+function describeConsoleEntry(entry: ConsoleEntry): ConsoleActionPresentation {
     return entry.kind === "operating"
         ? describeOperatingAction(entry.action)
         : describeBuildAction(entry.action);

@@ -55,7 +55,7 @@ export interface UnpublishAssemblyOptions {
     paths?: AssemblyWorkspacePaths;
 }
 
-export function resolveAssemblyWorkspacePaths(rootDir = process.cwd()): AssemblyWorkspacePaths {
+function resolveAssemblyWorkspacePaths(rootDir = process.cwd()): AssemblyWorkspacePaths {
     return {
         assembliesDir: process.env.FIGARO_ASSEMBLIES_DIR
             ? path.resolve(process.env.FIGARO_ASSEMBLIES_DIR)

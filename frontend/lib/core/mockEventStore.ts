@@ -31,12 +31,6 @@ export function mockEmitOrder(order: Order): void {
     notify();
 }
 
-/** Transition an existing order's state. */
-export function mockUpdateOrderState(id: string, newState: OrderState): void {
-    _orders = _orders.map((o) => (o.id === id ? { ...o, state: newState } : o));
-    notify();
-}
-
 /**
  * resolveProcess mock: all Active orders in the process → Resolved.
  * Returns the ids of orders that were resolved.

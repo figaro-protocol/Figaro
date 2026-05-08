@@ -272,20 +272,6 @@ export function buildTopologySection(params: {
     };
 }
 
-/**
- * Declares a process as measuring in grams CO2e under
- * `figaro-ghg-measurement-v1`. Include this section in the agreement when the
- * seller plans to fire runtime grams attestations via `submitActualForOrder`.
- * Category-1: the unit-of-account lives in sectionData; actual grams values
- * travel in each attestation's `content` and are not cross-checked.
- */
-export function buildMeasurementSection(): AgreementSection {
-    return {
-        schema: GHG_MEASUREMENT_SCHEMA_KEY,
-        data: { unit: "grams-co2e" },
-    };
-}
-
 // ── Canonical serialization ──────────────────────────────────────────────────
 
 /**

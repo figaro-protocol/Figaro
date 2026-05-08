@@ -468,9 +468,9 @@ const edgeTypes: EdgeTypes = {
 };
 
 /** Hard limit enforced by FigaroCore (default 500). */
-export const MAX_ORDERS_HARD = 500;
+const MAX_ORDERS_HARD = 500;
 /** Soft-warn threshold — show a caution banner when approaching the limit. */
-export const MAX_ORDERS_WARN = 200;
+const MAX_ORDERS_WARN = 200;
 
 // ── Public component ────────────────────────────────────────────────────────
 

@@ -260,19 +260,3 @@ async function _fetchAndCache(
     return merged;
 }
 
-/**
- * Invalidate cache for a chain (or all chains). Call on chain switch or
- * when contract addresses change.
- */
-export function invalidateCache(chainId?: number): void {
-    if (chainId !== undefined) {
-        const prefix = `${chainId}:`;
-        for (const k of mem.keys()) {
-            if (k.startsWith(prefix)) mem.delete(k);
-        }
-    } else {
-        mem.clear();
-    }
-    // IDB invalidation is best-effort; stale entries are harmless because
-    // the cursor will cause a re-fetch from the right block.
-}

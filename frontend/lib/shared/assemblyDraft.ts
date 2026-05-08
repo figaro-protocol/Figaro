@@ -27,7 +27,7 @@ import {
 import { AssemblyModel, RiskBoundaryModel } from "@/lib/semantic/models";
 import { parseAssemblyDocument } from "@/lib/shared/assemblyParser";
 
-export const ASSEMBLY_SECTION_KEYS = [
+const ASSEMBLY_SECTION_KEYS = [
     "identity",
     "contracts",
     "mechanisms",

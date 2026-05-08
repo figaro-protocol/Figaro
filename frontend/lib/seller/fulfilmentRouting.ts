@@ -13,7 +13,7 @@
 
 import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 
-export const FULFILMENT_TO_HANDOFF: Record<CanonicalFulfilmentMethod, string> = {
+const FULFILMENT_TO_HANDOFF: Record<CanonicalFulfilmentMethod, string> = {
     "consume-onsite": "face-to-face",
     "pickup": "face-to-face",
     "deliver:buyer-assigned": "meet-at-door",

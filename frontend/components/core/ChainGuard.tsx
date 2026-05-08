@@ -100,30 +100,3 @@ export function ChainGuard({ children }: { children: React.ReactNode }) {
     );
 }
 
-/**
- * Hook to validate chain before contract interactions
- * Throws error if on wrong chain
- */
-export function useChainValidation() {
-    const chainId = useChainId();
-    const { isConnected } = useAccount();
-
-    const validateChain = () => {
-        if (!isConnected) {
-            throw new Error("Wallet not connected");
-        }
-
-        if (!SUPPORTED_CHAIN_IDS.includes(chainId)) {
-            throw new Error(
-                `Wrong network. Please switch to ${CHAIN_NAMES[SUPPORTED_CHAIN_IDS[0]]} (chain ID: ${SUPPORTED_CHAIN_IDS[0]})`
-            );
-        }
-    };
-
-    return {
-        isCorrectChain: SUPPORTED_CHAIN_IDS.includes(chainId),
-        validateChain,
-        currentChainId: chainId,
-        supportedChainIds: SUPPORTED_CHAIN_IDS,
-    };
-}

@@ -1,7 +1,7 @@
 import { http, type HttpTransportConfig, type Transport } from "viem";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "./evm";
 
-export class MockRpcBlockedError extends Error {
+class MockRpcBlockedError extends Error {
     constructor(method: string) {
         super(
             `Mock RPC blocked: method "${method}" is not stubbed. ` +

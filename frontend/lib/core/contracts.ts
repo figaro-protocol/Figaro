@@ -66,5 +66,3 @@ export function getMissingContractEnv(): string[] {
     if (!process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS) missing.push("NEXT_PUBLIC_FIG_TOKEN_ADDRESS");
     return missing;
 }
-
-export const CONTRACTS_VALID = getMissingContractEnv().length === 0;

@@ -228,7 +228,7 @@ function PageFooter({ documentHash, accessCode, watermarkQrDataUrl }: {
 
 // ── Document component ─────────────────────────────────────────────────────
 
-export function ConsentReceiptPdf({ data }: { data: ConsentReceiptData }) {
+function ConsentReceiptPdf({ data }: { data: ConsentReceiptData }) {
     const { domain, typedData, signature, signer, documentText, signedAt,
         generatedAt, documentCid, accessCode, watermarkQrDataUrl } = data;
     const documentHash = typedData.message.documentHash;

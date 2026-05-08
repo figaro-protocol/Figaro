@@ -172,7 +172,7 @@ export function getBuiltInModuleDefaults(moduleId: string): BuiltInModuleDefault
     return BUILT_IN_MODULE_DEFAULTS[moduleId];
 }
 
-export function getBuiltInViewDefaults(viewKind: string): BuiltInViewDefaults | undefined {
+function getBuiltInViewDefaults(viewKind: string): BuiltInViewDefaults | undefined {
     return BUILT_IN_VIEW_DEFAULTS[viewKind];
 }
 

@@ -17,7 +17,7 @@
  * surface picks it up automatically — no second edit.
  */
 
-export const ASSEMBLY_LABELS: Record<string, string> = {
+const ASSEMBLY_LABELS: Record<string, string> = {
     "local-commerce": "Local Commerce",
     "direct-sale": "Direct Sale",
     "figaro-procurement": "Procurement",
@@ -26,7 +26,7 @@ export const ASSEMBLY_LABELS: Record<string, string> = {
     "figaro-freelance": "Freelance",
 };
 
-export const FULFILLMENT_LABELS: Record<string, string> = {
+const FULFILLMENT_LABELS: Record<string, string> = {
     "consume-onsite": "On-site",
     "pickup": "Pickup",
     "delivery": "Delivery",

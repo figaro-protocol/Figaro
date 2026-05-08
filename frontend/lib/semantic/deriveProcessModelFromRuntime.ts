@@ -449,7 +449,7 @@ function deriveProcessAttachments(
     return attachments;
 }
 
-export function deriveOrderNodeModelFromOrder(
+function deriveOrderNodeModelFromOrder(
     order: Order,
     topology: Map<string, { parentOrderIds: string[] }>,
     address?: string,

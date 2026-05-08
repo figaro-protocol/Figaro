@@ -160,21 +160,3 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
     },
 ];
 
-export function getGroup(slug: string): GroupRegistryEntry | undefined {
-    return GROUPS_REGISTRY.find((g) => g.slug === slug);
-}
-
-/**
- * A discipline counts as having a "convened group" when contributors are
- * actively producing something under it: published papers, declared
- * `currentWork`, or recorded `grants`. Empty disciplines render as open
- * calls instead of fully-furnished group blocks.
- */
-export function disciplineHasConvenedGroup(entry: GroupRegistryEntry): boolean {
-    return (
-        entry.papers.length > 0 ||
-        (entry.currentWork && entry.currentWork.length > 0) ||
-        (entry.grants && entry.grants.length > 0) ||
-        false
-    );
-}

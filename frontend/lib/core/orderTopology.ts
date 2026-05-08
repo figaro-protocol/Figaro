@@ -29,7 +29,7 @@ function compareOrders(left: Order, right: Order): number {
     return 0;
 }
 
-export function sortOrdersForTopology(orders: Order[]): Order[] {
+function sortOrdersForTopology(orders: Order[]): Order[] {
     return [...orders].sort(compareOrders);
 }
 

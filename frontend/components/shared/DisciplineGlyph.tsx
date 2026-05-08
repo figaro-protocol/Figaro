@@ -20,7 +20,7 @@
  * discipline name).
  */
 
-export const DISCIPLINE_GLYPHS = {
+const DISCIPLINE_GLYPHS = {
     1: "Σ*",
     2: "⊢⊣",
     3: "0x",
@@ -31,7 +31,7 @@ export const DISCIPLINE_GLYPHS = {
     8: "E[·]",
 } as const;
 
-export const DISCIPLINE_NAMES = {
+const DISCIPLINE_NAMES = {
     1: "Economics and Game Theory",
     2: "Industrial and Systems Engineering",
     3: "Computer Science and Cryptography",

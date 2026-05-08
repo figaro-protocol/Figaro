@@ -59,7 +59,7 @@ export function isValidAgreementUri(value: string): boolean {
     return AGREEMENT_URI_PATTERN.test(value);
 }
 
-export function normalizeAgreementHash(value: string): `0x${string}` {
+function normalizeAgreementHash(value: string): `0x${string}` {
     return value.toLowerCase() as `0x${string}`;
 }
 

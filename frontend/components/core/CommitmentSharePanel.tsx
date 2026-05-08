@@ -31,7 +31,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 // ── Serialization helpers ──────────────────────────────────────
 
 /** Serialize commitment payload to a compact JSON string (bigints → hex strings). */
-export function serializePayload(p: CommitmentPayload): string {
+function serializePayload(p: CommitmentPayload): string {
     return JSON.stringify(p, (_key, value) =>
         typeof value === "bigint" ? `0x${value.toString(16)}` : value,
     );

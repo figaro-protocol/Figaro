@@ -1,9 +1,7 @@
 import localRuntimeIdentityDocument from '@/lib/shared/runtime-fixtures/local-runtime-identity.json';
 import { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
 import type { OperatorProfileMetadata } from '@/lib/shared/operatorProfileMetadata';
-import { AssemblyBindingRecord, SubjectRecord } from '@/lib/shared/runtimeIdentity';
 import {
-    getOperatorProfileByAddressFromSource,
     getSellerMetadataByAddressFromSource,
     listAssemblyBoundSubjectSummariesFromSource,
     resolveRuntimeSubjectByAddressFromSource,
@@ -22,10 +20,6 @@ const PARSED_RUNTIME_MANIFEST = createRuntimeIdentityDataSourceFromDocument(
         transport: 'static',
     }
 );
-
-export const RUNTIME_SUBJECT_RECORDS: SubjectRecord[] = PARSED_RUNTIME_MANIFEST.subjects;
-
-export const RUNTIME_INSTITUTION_BINDINGS: AssemblyBindingRecord[] = PARSED_RUNTIME_MANIFEST.assemblyBindings;
 
 export const SELLER_CATALOGUE_METADATA_RECORDS: SellerCatalogueMetadata[] = PARSED_RUNTIME_MANIFEST.sellerCatalogueMetadata;
 
@@ -46,13 +40,6 @@ export function getSellerMetadataByAddress(
     dataSource: RuntimeIdentityDataSource = FIXTURE_RUNTIME_IDENTITY_SOURCE
 ) {
     return getSellerMetadataByAddressFromSource(address, dataSource);
-}
-
-export function getOperatorProfileByAddress(
-    address: string,
-    dataSource: RuntimeIdentityDataSource = FIXTURE_RUNTIME_IDENTITY_SOURCE
-) {
-    return getOperatorProfileByAddressFromSource(address, dataSource);
 }
 
 export function resolveRuntimeSubjectByAddress(
