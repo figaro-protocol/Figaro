@@ -23,20 +23,17 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
-import { decodeAbiParameters, keccak256, stringToHex, type Hex, type PublicClient } from "viem";
+import { decodeAbiParameters, type Hex, type PublicClient } from "viem";
 import { Button } from "@/components/ui/Button";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
 import { getAttestationsByProcessAndSchema } from "@/lib/core/indexer";
 import { getAttestationContent } from "@/lib/mechanisms/useGHGDisclosure";
 import { resolveRuntimeSubjectByAddress } from "@/lib/shared/runtimeIdentityRegistry";
-import { MERCHANT_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
-import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
+import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import type { MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
-
-const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
 
 const MERCHANT_EVENT_BY_STAGE: Record<number, MerchantEvent> = {
     0: "order-received",

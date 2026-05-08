@@ -18,20 +18,9 @@
  */
 
 import type { PublicClient } from "viem";
-import { keccak256, stringToHex } from "viem";
 import type { CoordinatorEventSource, TimelineEvent } from "@/lib/dispute/evidenceTimeline";
 import { CONTRACTS, ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import {
-    DELIVERY_LIFECYCLE_SCHEMA_KEY,
-    PROXIMITY_PROOF_SCHEMA_KEY,
-} from "@/lib/core/agreementManifest";
-
-// ---------------------------------------------------------------------------
-// Delivery schema
-// ---------------------------------------------------------------------------
-
-const DELIVERY_SCHEMA_ID = keccak256(stringToHex(DELIVERY_LIFECYCLE_SCHEMA_KEY));
-const PROXIMITY_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_PROOF_SCHEMA_KEY));
+import { DELIVERY_SCHEMA_ID, PROXIMITY_SCHEMA_ID } from "@/lib/mechanisms/useDeliveryLifecycle";
 
 const STAGE_LABELS: Record<number, string> = {
     0: "Preparation Started",

@@ -10,7 +10,7 @@ import { DELIVERY_LIFECYCLE_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 /** keccak256 of the delivery-lifecycle schema key — matches on-chain
  *  registration. The schema key itself comes from the canonical export
  *  in `lib/core/agreementManifest`. */
-const DELIVERY_SCHEMA_ID = keccak256(stringToHex(DELIVERY_LIFECYCLE_SCHEMA_KEY));
+export const DELIVERY_SCHEMA_ID = keccak256(stringToHex(DELIVERY_LIFECYCLE_SCHEMA_KEY));
 /**
  * Runtime proximity-proof schema (Category-1, fresh per attestation). The
  * sister schema figaro-proximity-policy-v1 commits the required band at
