@@ -334,6 +334,36 @@ Use the correct tier. "Add yield to locked bonds" → kernel concern.
 "Add a new attestation mode" → protocol extension.
 "Change how roles display" → runtime concern.
 
+### Separation of Concerns — Artifact Families
+
+Each protocol artifact family has its own anchoring primitive. Families are
+parallel, not nested.
+
+- **Schemas** — anchored via `SchemaRegistry` + per-schema `ISchemaValidator`.
+- **Operators** — anchored via `OperatorRegistry` (event-emitting, metadataURI-pointing).
+- **Assemblies** — composition templates that USE schemas. On-chain anchor shape
+  TBD; must be parallel to schemas/operators, not subordinate to either.
+
+**The rule.** Each family gets its own registry/anchor, identity scheme, evolution
+path, and indexer event stream. Do not nest one inside another, even when an
+existing primitive could be made to host the new one.
+
+**The test.** Does the proposed reuse make Layer A reference Layer B's existence?
+The dependency arrows between families point one way: assemblies use schemas;
+schemas do not know assemblies exist. Operators declare assemblies in their
+metadata JSON; `OperatorRegistry` does not reference assemblyIds on-chain. If a
+proposal inverts an arrow, it is wrong, regardless of how much Solidity it saves.
+
+**The temptation to refuse.** "We already have `SchemaRegistry` — can we register
+this new artifact under it?" When the test answer is yes, refuse the reuse.
+"Avoiding a new contract" / "minimum new surface" is NOT a valid optimization
+criterion when it costs a layer boundary. Conceptual cleanliness is the
+protocol-scale optimization; code reuse is not.
+
+When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE
+recommending an anchoring or registry-reuse choice. This applies to every agent
+operating in this repo.
+
 ### Dispute Resolution — Three Layers
 
 1. **MAD via asymmetric bonding** — economic self-enforcement
