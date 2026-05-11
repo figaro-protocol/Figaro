@@ -12,6 +12,7 @@ import {
     JURISDICTION_SCHEMA_KEY,
     CONSENT_SCHEMA_KEY,
     MERCHANT_PROCESS_SCHEMA_KEY,
+    OFFSET_POLICY_SCHEMA_KEY,
     PROXIMITY_POLICY_SCHEMA_KEY,
     getSection,
     manifestFieldsToGeoSection,
@@ -46,6 +47,7 @@ const ALLOWED_MODALITIES: ReadonlyArray<string> = ["consume-onsite", "pickup", "
 const ALLOWED_COORDINATIONS: ReadonlyArray<string> = ["buyer-assigned", "seller-assigned", "dutch-auction"];
 const ALLOWED_HANDOFF_POINTS: ReadonlyArray<string> = ["face-to-face", "dead-drop", "parking-area", "locker"];
 const ALLOWED_PROXIMITY_BANDS: ReadonlyArray<string> = ["zone-wifi", "nearby-ble", "contact-nfc"];
+const ALLOWED_OFFSET_PROVIDERS: ReadonlyArray<string> = ["klima", "toucan", "moss", "custom"];
 
 /** Filter a manifest-field array down to known enum values. */
 function readManifestArray(
@@ -174,6 +176,10 @@ export interface AgreementSummary {
         /** Proximity-policy bands offered. */
         bands: readonly string[];
     };
+    offset?: {
+        /** Carbon-offset providers offered. */
+        providers: readonly string[];
+    };
     jurisdiction?: Record<string, unknown>;
     consent?: Record<string, unknown>;
 }
@@ -267,6 +273,14 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         });
     }
 
+    const offsetProviders = readManifestArray(params.manifestFields, "offsetProviders", ALLOWED_OFFSET_PROVIDERS);
+    if (offsetProviders.length > 0) {
+        sections.push({
+            schema: OFFSET_POLICY_SCHEMA_KEY,
+            data: { providers: offsetProviders },
+        });
+    }
+
     const applicableLaw = readManifestExtra(params.manifestFields, ["applicableLaw"]);
     const forum = readManifestExtra(params.manifestFields, ["forum"]);
     const language = readManifestExtra(params.manifestFields, ["language"]);
@@ -336,6 +350,7 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
     const topologySection = getSection(agreement, TOPOLOGY_SCHEMA_KEY);
     const fulfilmentSection = getSection(agreement, FULFILMENT_V2_SCHEMA_KEY);
     const proximitySection = getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
+    const offsetSection = getSection(agreement, OFFSET_POLICY_SCHEMA_KEY);
     const jurisdictionSection = getSection(agreement, JURISDICTION_SCHEMA_KEY);
     const consentSection = getSection(agreement, CONSENT_SCHEMA_KEY);
     // GHG disclosure is multi-valued: agreement may carry one section per
@@ -403,6 +418,13 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
             ? {
                 bands: Array.isArray(proximitySection.data.bands)
                     ? proximitySection.data.bands as readonly string[]
+                    : [],
+            }
+            : undefined,
+        offset: offsetSection
+            ? {
+                providers: Array.isArray(offsetSection.data.providers)
+                    ? offsetSection.data.providers as readonly string[]
                     : [],
             }
             : undefined,

@@ -1,0 +1,20 @@
+{
+    "schemaId": "figaro-offset-policy-v1",
+    "version": 1,
+    "title": "Carbon-offset providers",
+    "description": "Carbon-offset providers an assembly accepts for emissions compensation. Multi-valued — at template time a merchant declares which offset operators it composes with; at runtime a buyer's commitment carries the same shape with a single-element array reflecting the chosen provider. An order without an offset-policy clause has no offset path. The actual offset purchase is modeled as a sub-order against the chosen provider (operator-registry-bonded as seller); the burn receipt attaches as an attestation against that sub-order.",
+    "categories": ["emissions"],
+    "fields": [
+        {
+            "name": "providers",
+            "type": "array",
+            "items": {
+                "type": "enum",
+                "values": ["klima", "toucan", "moss", "custom"]
+            },
+            "minItems": 1,
+            "required": true,
+            "description": "Offset providers on offer. klima = Klima DAO, toucan = Toucan Protocol (BCT / NCT), moss = Moss.Earth (MCO2), custom = self-declared offset operator registered against this assembly. At least one must be set when this clause is included."
+        }
+    ]
+}

@@ -245,6 +245,36 @@ export function encodeProximityProofContent(content: ProximityProofContent): Hex
     );
 }
 
+// ── figaro-offset-policy-v1 ──────────────────────────────────────────────────
+//
+// Carbon-offset providers an assembly accepts for emissions compensation.
+// Multi-valued — same shape pattern as proximity-policy-v1. The actual offset
+// purchase is modeled as a sub-order against the chosen provider; this clause
+// anchors the policy declaration, not the purchase.
+
+export type OffsetProvider = "klima" | "toucan" | "moss" | "custom";
+
+const OFFSET_PROVIDER_INDEX: Record<OffsetProvider, number> = {
+    "klima": 1,
+    "toucan": 2,
+    "moss": 3,
+    "custom": 4,
+};
+
+export interface OffsetPolicyContent {
+    /** Non-empty list of offset providers the merchant offers (or the buyer
+     *  commits to) for this order. Empty would mean no offset path — express
+     *  that by omitting the policy clause entirely. */
+    providers: readonly OffsetProvider[];
+}
+
+export function encodeOffsetPolicyContent(content: OffsetPolicyContent): Hex {
+    return encodeAbiParameters(
+        [{ type: "uint8[]" }],
+        [content.providers.map((p) => OFFSET_PROVIDER_INDEX[p])],
+    );
+}
+
 // ── figaro-merchant-process-v1 ──────────────────────────────────────────────
 //
 // Sovereignty primitive: merchant attests their own internal events under this

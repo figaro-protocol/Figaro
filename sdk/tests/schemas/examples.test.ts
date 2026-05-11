@@ -15,6 +15,7 @@ import ghgMeasurementSpecRaw from "../../src/schemas/examples/figaro-ghg-measure
 import lifecycleSpecRaw from "../../src/schemas/examples/figaro-delivery-lifecycle-v1.json" with { type: "json" };
 import proximityPolicySpecRaw from "../../src/schemas/examples/figaro-proximity-policy-v1.json" with { type: "json" };
 import proximityProofSpecRaw from "../../src/schemas/examples/figaro-proximity-proof-v1.json" with { type: "json" };
+import offsetPolicySpecRaw from "../../src/schemas/examples/figaro-offset-policy-v1.json" with { type: "json" };
 import merchantSpecRaw from "../../src/schemas/examples/figaro-merchant-process-v1.json" with { type: "json" };
 import courierSpecRaw from "../../src/schemas/examples/figaro-courier-process-v1.json" with { type: "json" };
 
@@ -311,6 +312,34 @@ describe("example schema specs — parse + validate sample content", () => {
             nonce: "0x" + "ab".repeat(32),
             deviceSig: "0x" + "cd".repeat(65),
         }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-offset-policy-v1 ──
+
+    it("figaro-offset-policy-v1 accepts each declared provider", () => {
+        const parsed = parseSchemaSpec(offsetPolicySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        for (const provider of ["klima", "toucan", "moss", "custom"]) {
+            expect(validateContent({ providers: [provider] }, parsed.spec).ok).toBe(true);
+        }
+    });
+
+    it("figaro-offset-policy-v1 accepts multi-provider offers", () => {
+        const parsed = parseSchemaSpec(offsetPolicySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ providers: ["klima", "toucan"] }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-offset-policy-v1 rejects empty providers array", () => {
+        const parsed = parseSchemaSpec(offsetPolicySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ providers: [] }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-offset-policy-v1 rejects an unknown provider", () => {
+        const parsed = parseSchemaSpec(offsetPolicySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ providers: ["unicorn-tears"] }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-merchant-process-v1 ──

@@ -25,6 +25,7 @@ import "../src/schemaValidators/FigaroGHGMeasurementV1Validator.sol";
 import "../src/schemaValidators/FigaroDeliveryLifecycleV1Validator.sol";
 import "../src/schemaValidators/FigaroProximityPolicyV1Validator.sol";
 import "../src/schemaValidators/FigaroProximityProofV1Validator.sol";
+import "../src/schemaValidators/FigaroOffsetPolicyV1Validator.sol";
 import "../src/schemaValidators/FigaroMerchantProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroJurisdictionV1Validator.sol";
@@ -154,7 +155,10 @@ contract DeployMainnet is Script {
         );
         schemas.registerSchema(keccak256("figaro-jurisdiction-v1"), 1, keccak256("ipfs://figaro-jurisdiction/v1"));
         schemas.registerSchema(keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"));
-        console.log("SchemaRegistry: 17 reference schemas registered");
+        schemas.registerSchema(
+            keccak256("figaro-offset-policy-v1"), 1, keccak256("ipfs://figaro-offset-policy/v1")
+        );
+        console.log("SchemaRegistry: 18 reference schemas registered");
 
         // ── OperatorRegistry ────────────────────────────────────────
         // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
@@ -191,7 +195,7 @@ contract DeployMainnet is Script {
 
     // ── Schema validators ───────────────────────────────────────────
 
-    /// @dev Deploy 14 per-schema runtime validators and register each with the
+    /// @dev Deploy 15 per-schema runtime validators and register each with the
     ///      AttestationCoordinator via permissionless setValidator. The
     ///      coordinator enforces `validator.schemaId() == schemaId`, so any
     ///      cross-wired validator reverts InvalidValidatorBinding. Without
@@ -239,8 +243,10 @@ contract DeployMainnet is Script {
             keccak256("figaro-jurisdiction-v1"), address(new FigaroJurisdictionV1Validator()));
         _wireValidator(attestation, "ConsentV1Validator:            ",
             keccak256("figaro-consent-v1"), address(new FigaroConsentV1Validator()));
+        _wireValidator(attestation, "OffsetPolicyV1Validator:       ",
+            keccak256("figaro-offset-policy-v1"), address(new FigaroOffsetPolicyV1Validator()));
 
-        console.log("AttestationCoordinator: 17 validators wired");
+        console.log("AttestationCoordinator: 18 validators wired");
     }
 
     function _wireValidator(

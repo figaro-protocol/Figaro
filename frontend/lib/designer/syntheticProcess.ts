@@ -454,6 +454,11 @@ export function readAgreementFields(order: Order): ManifestFields {
         fields.proximityBands = [...summary.proximity.bands];
     }
 
+    // ── offset ─────────────────────────────────────────────────
+    if (summary?.offset && summary.offset.providers.length > 0) {
+        fields.offsetProviders = [...summary.offset.providers];
+    }
+
     // ── jurisdiction ───────────────────────────────────────────
     const applicableLaw = summary?.jurisdiction?.applicableLaw;
     if (typeof applicableLaw === "string") fields.applicableLaw = applicableLaw;

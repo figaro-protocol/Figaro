@@ -24,12 +24,14 @@ import {
     encodeGHGScopeContent,
     encodeCommerceContent,
     encodeProximityPolicyContent,
+    encodeOffsetPolicyContent,
     type GeoContent,
     type FulfilmentV2Content,
     type JurisdictionContent,
     type GHGScopeContent,
     type CommerceContent,
     type ProximityBand,
+    type OffsetProvider,
 } from "./schemas/encode.js";
 
 // ── Core types ──────────────────────────────────────────────────────────────
@@ -115,6 +117,9 @@ const CATEGORY_2_ENCODERS: Record<string, (data: Record<string, unknown>) => Hex
     "figaro-ghg-custom-v1": (data) => encodeGHGScopeContent(data as GHGScopeContent),
     "figaro-proximity-policy-v1": (data) => encodeProximityPolicyContent({
         bands: (data.bands as readonly ProximityBand[]) ?? [],
+    }),
+    "figaro-offset-policy-v1": (data) => encodeOffsetPolicyContent({
+        providers: (data.providers as readonly OffsetProvider[]) ?? [],
     }),
     "figaro-commerce-v1": (data) => encodeCommerceContent({
         currency: data.currency as Hex,
