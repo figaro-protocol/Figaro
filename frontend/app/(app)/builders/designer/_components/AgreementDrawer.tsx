@@ -53,7 +53,6 @@ type ArticleKey =
     | "parties"
     | "geo"
     | "fulfilment"
-    | "proximity"
     | "emissions"
     | "jurisdiction"
     | "topology"
@@ -63,7 +62,6 @@ const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
     { key: "parties", label: "Parties" },
     { key: "geo", label: "Geo" },
     { key: "fulfilment", label: "Fulfilment" },
-    { key: "proximity", label: "Proximity" },
     { key: "emissions", label: "Emissions" },
     { key: "jurisdiction", label: "Jurisdiction" },
     { key: "topology", label: "Topology" },
@@ -430,19 +428,12 @@ export function AgreementDrawer({
                                 modalities={fulfilmentModalities}
                                 coordinations={fulfilmentCoordinations}
                                 handoffPoints={fulfilmentHandoffPoints}
+                                proximityBands={proximityBands}
                                 onChange={updateFulfilment}
+                                onProximityChange={updateProximityBands}
                                 hasChildren={hasChildren}
                                 onDeliveryAdded={() => order && onDeliverySelected?.(order.id)}
                                 onDeliveryRemoved={() => order && onDeliveryUnselected?.(order.id)}
-                            />
-                        </section>
-                    )}
-
-                    {openSection === "proximity" && (
-                        <section data-testid="drawer-section-proximity">
-                            <ProximityArticle
-                                bands={proximityBands}
-                                onChange={updateProximityBands}
                             />
                         </section>
                     )}
@@ -562,17 +553,25 @@ function toggleInList<T>(list: readonly T[], value: T): T[] {
 }
 
 /**
- * Fulfilment article — multi-select across modalities, coordinations, and
- * handoff points. Every order has a fulfilment clause; there is no
- * "not-included" option. Picking Delivery implies a courier sub-order — the
- * page reacts to `onDeliveryAdded` to auto-add one (and to `onDeliveryRemoved`
- * to remove the auto-added one when Delivery is unchecked).
+ * Fulfilment article — multi-select across modalities, coordinations,
+ * handoff points, and proximity verification bands. Every order has a
+ * fulfilment clause; there is no "not-included" option. Picking Delivery
+ * implies a courier sub-order — the page reacts to `onDeliveryAdded` to
+ * auto-add one (and to `onDeliveryRemoved` to remove the auto-added one
+ * when Delivery is unchecked).
+ *
+ * Proximity bands live in a sister schema (figaro-proximity-policy-v1) but
+ * render inside this article because they verify the handoff event. The
+ * subsection hides when the only modality offered is `virtual` (no physical
+ * handoff to verify).
  */
 function FulfilmentArticle({
     modalities,
     coordinations,
     handoffPoints,
+    proximityBands,
     onChange,
+    onProximityChange,
     hasChildren,
     onDeliveryAdded,
     onDeliveryRemoved,
@@ -580,13 +579,17 @@ function FulfilmentArticle({
     modalities: string[];
     coordinations: string[];
     handoffPoints: string[];
+    proximityBands: string[];
     onChange: (next: { modalities: string[]; coordinations: string[]; handoffPoints: string[] }) => void;
+    onProximityChange: (next: string[]) => void;
     hasChildren: boolean;
     onDeliveryAdded: () => void;
     onDeliveryRemoved: () => void;
 }) {
     const info = getSchemaInfo("figaro-fulfilment-v2");
+    const proximityInfo = getSchemaInfo("figaro-proximity-policy-v1");
     const deliveryOffered = modalities.includes("delivery");
+    const hasPhysicalModality = modalities.some((m) => m !== "virtual");
 
     function toggleModality(value: string) {
         const nextModalities = toggleInList(modalities, value);
@@ -610,6 +613,10 @@ function FulfilmentArticle({
 
     function toggleHandoffPoint(value: string) {
         onChange({ modalities, coordinations, handoffPoints: toggleInList(handoffPoints, value) });
+    }
+
+    function toggleProximityBand(value: string) {
+        onProximityChange(toggleInList(proximityBands, value));
     }
 
     return (
@@ -677,6 +684,33 @@ function FulfilmentArticle({
                 ))}
             </div>
 
+            {hasPhysicalModality && (
+                <div data-testid="drawer-fulfilment-proximity" className="mt-4">
+                    <label className="block text-[11px] text-neutral-500 mb-1">
+                        Proximity verification offered
+                    </label>
+                    <p className="text-[11px] text-neutral-500 leading-relaxed mb-2">
+                        {proximityInfo?.description ?? ""}
+                    </p>
+                    <div className="space-y-1">
+                        {PROXIMITY_BAND_OPTIONS.map((opt) => (
+                            <label
+                                key={opt.value}
+                                className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={proximityBands.includes(opt.value)}
+                                    onChange={() => toggleProximityBand(opt.value)}
+                                    data-testid={`drawer-proximity-band-${opt.value}`}
+                                />
+                                <span>{opt.label}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {deliveryOffered && (
                 <p
                     className="text-[11px] text-neutral-500 leading-relaxed mt-4"
@@ -687,44 +721,6 @@ function FulfilmentArticle({
                         : "A courier sub-order was added to the canvas for the delivery leg."}
                 </p>
             )}
-        </div>
-    );
-}
-
-/**
- * Proximity article — multi-select detection bands committed in this
- * agreement's proximity-policy clause. Empty selection = clause omitted.
- */
-function ProximityArticle({
-    bands,
-    onChange,
-}: {
-    bands: string[];
-    onChange: (next: string[]) => void;
-}) {
-    const info = getSchemaInfo("figaro-proximity-policy-v1");
-    return (
-        <div>
-            <p className="text-sm text-black mb-1">{info?.title ?? "Proximity"}</p>
-            <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-                {info?.description ?? ""}
-            </p>
-            <div className="space-y-1">
-                {PROXIMITY_BAND_OPTIONS.map((opt) => (
-                    <label
-                        key={opt.value}
-                        className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
-                    >
-                        <input
-                            type="checkbox"
-                            checked={bands.includes(opt.value)}
-                            onChange={() => onChange(toggleInList(bands, opt.value))}
-                            data-testid={`drawer-proximity-band-${opt.value}`}
-                        />
-                        <span>{opt.label}</span>
-                    </label>
-                ))}
-            </div>
         </div>
     );
 }
