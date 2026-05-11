@@ -37,7 +37,6 @@ import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import {
     CONSENT_SCHEMA_KEY,
-    FULFILMENT_V2_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
     GHG_DISCLOSURE_SCHEMA_KEYS,
     GHG_SCHEMA_TO_STANDARD,
@@ -46,6 +45,7 @@ import {
 } from "@/lib/core/agreementManifest";
 import { getSchemaInfo } from "@/lib/shared/schemaCategories";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
+import type { FulfilmentModality } from "@figaro/core/schemas";
 
 /**
  * Articles of the agreement, in canonical contract-paper order.
@@ -83,7 +83,6 @@ type SectionKey = ArticleKey;
  */
 const SCHEMA_SENTINELS: Record<string, Record<string, string>> = {
     [GEO_SCHEMA_KEY]: { origin: "0", destination: "0" },
-    [FULFILMENT_V2_SCHEMA_KEY]: { fulfilmentMethod: "pickup" },
     [PROXIMITY_POLICY_SCHEMA_KEY]: { proximityBand: "none" },
     [JURISDICTION_SCHEMA_KEY]: { applicableLaw: "Kleros" },
     [CONSENT_SCHEMA_KEY]: {
@@ -100,11 +99,15 @@ const SCHEMA_SENTINELS: Record<string, Record<string, string>> = {
  */
 const SCHEMA_FIELDS: Record<string, readonly string[]> = {
     [GEO_SCHEMA_KEY]: ["origin", "destination", "mass", "volume", "class_"],
-    [FULFILMENT_V2_SCHEMA_KEY]: ["fulfilmentMethod", "auctionType", "handoffMode"],
     [PROXIMITY_POLICY_SCHEMA_KEY]: ["proximityBand"],
     [JURISDICTION_SCHEMA_KEY]: ["applicableLaw", "forum", "language"],
     [CONSENT_SCHEMA_KEY]: ["documentHash", "documentVersion", "documentTitle"],
 };
+
+/** Fields the Fulfilment article writes/clears. The drawer's selectFulfilmentMethod
+ *  manages these three keys; modality + (optional) coordination are encoded
+ *  into a single `fulfilmentMethod` value by `buildOrderAgreement`. */
+const FULFILMENT_MANIFEST_FIELDS = ["fulfilmentMethod", "auctionType", "handoffMode"] as const;
 
 function isFieldFilled(fields: ManifestFields, key: string): boolean {
     const v = (fields as Record<string, unknown>)[key];
@@ -121,7 +124,6 @@ function isSchemaIncluded(schemaId: string, fields: ManifestFields): boolean {
     if (schemaId === GEO_SCHEMA_KEY) {
         return isFieldFilled(fields, "origin") && isFieldFilled(fields, "destination");
     }
-    if (schemaId === FULFILMENT_V2_SCHEMA_KEY) return isFieldFilled(fields, "fulfilmentMethod");
     if (schemaId === PROXIMITY_POLICY_SCHEMA_KEY) return isFieldFilled(fields, "proximityBand");
     if (schemaId === JURISDICTION_SCHEMA_KEY) return isFieldFilled(fields, "applicableLaw");
     if (schemaId === CONSENT_SCHEMA_KEY) {
@@ -138,12 +140,29 @@ interface Props {
     onChange: (edits: AgreementEdits) => void;
     /** Optional — when provided, the drawer renders a Delete button. */
     onDelete?: (orderId: string) => void;
+    /** True when the current order already has at least one child sub-order.
+     *  Drives the Fulfilment article's auto-add rule: picking Delivery on a
+     *  node with no children triggers `onAddSubOrder`; on a node that already
+     *  has one, modality just updates in place. */
+    hasChildren?: boolean;
+    /** Add a courier sub-order beneath the current order. Required for the
+     *  Fulfilment article's auto-add path; omit to disable it (drawer then
+     *  treats Delivery as a no-op when no children exist). */
+    onAddSubOrder?: (parentOrderId: string) => void;
     /** When true, render as an inline flex-column block without fixed
         positioning. The page layout becomes responsible for placement. */
     embedded?: boolean;
 }
 
-export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded = false }: Props) {
+export function AgreementDrawer({
+    order,
+    onClose,
+    onChange,
+    onDelete,
+    hasChildren = false,
+    onAddSubOrder,
+    embedded = false,
+}: Props) {
     const [fields, setFields] = useState<ManifestFields>(() =>
         order ? readAgreementFields(order) : ({} as ManifestFields),
     );
@@ -219,6 +238,47 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
         }
         commitFields(next);
     }
+
+    /** Fulfilment article: pick modality only. Coordination lives on the
+     *  courier sub-order's edge pill, never in the drawer. Picking Delivery
+     *  on a node with no children auto-adds a courier sub-order so the rule
+     *  "delivery implies a sub-order" stays invariant. */
+    function selectModality(modality: FulfilmentModality | null) {
+        const next: ManifestFields = { ...fields };
+        if (modality === null) {
+            for (const k of FULFILMENT_MANIFEST_FIELDS) {
+                delete (next as Record<string, unknown>)[k];
+            }
+            commitFields(next);
+            return;
+        }
+        if (modality === "delivery") {
+            // Keep any existing canonical method (preserves coordination if
+            // already set); default to seller-assigned when fresh.
+            const existing = typeof fields.fulfilmentMethod === "string"
+                ? fields.fulfilmentMethod
+                : null;
+            const isExistingDelivery = existing?.startsWith("deliver:") ?? false;
+            (next as Record<string, unknown>).fulfilmentMethod = isExistingDelivery
+                ? existing
+                : "deliver:seller-assigned";
+            commitFields(next);
+            if (!hasChildren && order && onAddSubOrder) {
+                onAddSubOrder(order.id);
+            }
+            return;
+        }
+        (next as Record<string, unknown>).fulfilmentMethod = modality;
+        commitFields(next);
+    }
+
+    const activeModality: FulfilmentModality | null = (() => {
+        const v = fields.fulfilmentMethod;
+        if (typeof v !== "string") return null;
+        if (v === "consume-onsite" || v === "pickup") return v;
+        if (v.startsWith("deliver:")) return "delivery";
+        return null;
+    })();
 
     /** Emissions article: pick one of N GHG schemas or "Not included". */
     function selectEmissionsSchema(schemaId: string | null) {
@@ -375,10 +435,10 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
 
                     {openSection === "fulfilment" && (
                         <section data-testid="drawer-section-fulfilment">
-                            <SchemaToggleArticle
-                                schemaId={FULFILMENT_V2_SCHEMA_KEY}
-                                included={isSchemaIncluded(FULFILMENT_V2_SCHEMA_KEY, fields)}
-                                onToggle={(next) => toggleSchema(FULFILMENT_V2_SCHEMA_KEY, next)}
+                            <FulfilmentArticle
+                                activeModality={activeModality}
+                                onSelect={selectModality}
+                                hasChildren={hasChildren}
                             />
                         </section>
                     )}
@@ -485,6 +545,72 @@ function SchemaToggleArticle({
                     Included in this order&apos;s agreement
                 </span>
             </label>
+        </div>
+    );
+}
+
+/**
+ * Fulfilment article — pick modality only (consume-onsite / pickup /
+ * delivery). Modality is a structural choice the designer makes because it
+ * determines which other clauses make sense and whether a courier sub-order
+ * is required.
+ *
+ * Delivery implies a courier sub-order. If the current node has no children,
+ * picking Delivery triggers `onAddSubOrder`; coordination (buyer-assigned /
+ * seller-assigned / dutch-auction) is then chosen on that sub-order's edge
+ * pill in the canvas — never duplicated in the drawer.
+ */
+function FulfilmentArticle({
+    activeModality,
+    onSelect,
+    hasChildren,
+}: {
+    activeModality: FulfilmentModality | null;
+    onSelect: (modality: FulfilmentModality | null) => void;
+    hasChildren: boolean;
+}) {
+    const info = getSchemaInfo("figaro-fulfilment-v2");
+
+    return (
+        <div>
+            <p className="text-sm text-black mb-1">{info?.title ?? "Fulfilment"}</p>
+            <p className="text-xs text-neutral-500 leading-relaxed mb-4">
+                {info?.description ?? ""}
+            </p>
+
+            <div className="space-y-1">
+                {([
+                    { value: null, label: "Not included" },
+                    { value: "consume-onsite", label: "Consume on-site" },
+                    { value: "pickup", label: "Pickup" },
+                    { value: "delivery", label: "Delivery" },
+                ] as ReadonlyArray<{ value: FulfilmentModality | null; label: string }>).map((opt) => (
+                    <label
+                        key={opt.label}
+                        className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
+                    >
+                        <input
+                            type="radio"
+                            name="fulfilment-modality"
+                            checked={activeModality === opt.value}
+                            onChange={() => onSelect(opt.value)}
+                            data-testid={`drawer-fulfilment-modality-${opt.value ?? "none"}`}
+                        />
+                        <span>{opt.label}</span>
+                    </label>
+                ))}
+            </div>
+
+            {activeModality === "delivery" && (
+                <p
+                    className="text-[11px] text-neutral-500 leading-relaxed mt-4"
+                    data-testid="drawer-fulfilment-courier-hint"
+                >
+                    {hasChildren
+                        ? "Set courier coordination on the sub-order's edge pill in the canvas."
+                        : "A courier sub-order was added below. Set its coordination on the new edge pill."}
+                </p>
+            )}
         </div>
     );
 }

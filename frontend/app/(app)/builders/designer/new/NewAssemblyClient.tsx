@@ -29,6 +29,7 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "../_components/AgreementDrawer";
+import { deriveOrderTopology } from "@/lib/core/orderTopology";
 
 interface InitialState {
     session: SyntheticProcessSession;
@@ -410,6 +411,15 @@ export function NewAssemblyClient() {
                         if (selectedOrderId) handleEditAgreement(selectedOrderId, edits);
                     }}
                     onDelete={handleDeleteNode}
+                    hasChildren={(() => {
+                        if (!selectedOrderId) return false;
+                        const topology = deriveOrderTopology(orders);
+                        for (const info of topology.values()) {
+                            if (info.parentOrderIds.includes(selectedOrderId)) return true;
+                        }
+                        return false;
+                    })()}
+                    onAddSubOrder={handleAddSubOrder}
                     embedded
                 />
             </div>

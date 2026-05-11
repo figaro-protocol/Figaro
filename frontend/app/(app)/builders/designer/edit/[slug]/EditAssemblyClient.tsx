@@ -35,6 +35,7 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "../../_components/AgreementDrawer";
+import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { REFERENCE_ASSEMBLIES, type Assembly } from "@/lib/shared/assembly";
 import { slugify } from "@/lib/shared/slug";
 import { assemblyToSyntheticOrders } from "@/lib/designer/assemblyToSyntheticOrders";
@@ -332,12 +333,22 @@ export function EditAssemblyClient({ params }: Props) {
             {selectedOrderId && (() => {
                 const selected = orders.find((o) => o.id === selectedOrderId);
                 if (!selected) return null;
+                const topology = deriveOrderTopology(orders);
+                let hasChildren = false;
+                for (const info of topology.values()) {
+                    if (info.parentOrderIds.includes(selectedOrderId)) {
+                        hasChildren = true;
+                        break;
+                    }
+                }
                 return (
                     <AgreementDrawer
                         order={selected}
                         onClose={() => setSelectedOrderId(null)}
                         onChange={(edits) => handleEditAgreement(selectedOrderId, edits)}
                         onDelete={handleDeleteNode}
+                        hasChildren={hasChildren}
+                        onAddSubOrder={handleAddSubOrder}
                     />
                 );
             })()}
