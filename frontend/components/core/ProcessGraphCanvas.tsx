@@ -186,6 +186,16 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
     const sellerShort = data.seller ? truncateHex(data.seller) : "—";
     const tokenShort = data.currency ? truncateHex(data.currency) : null;
 
+    const nodeClassName = data.designerMode
+        ? `px-3 py-2 rounded min-w-[180px] border border-neutral-300 bg-white cursor-pointer hover:border-neutral-700`
+        : `px-3 py-2 rounded-lg border-2 shadow-md transition-shadow ${STATE_COLORS[data.state]} min-w-[180px] ${
+            data.walletRole === "proposer"
+                ? "ring-2 ring-offset-1 ring-blue-500"
+                : data.walletRole === "counterparty"
+                    ? "ring-2 ring-offset-1 ring-emerald-500"
+                    : ""
+        }`;
+
     return (
         <div
             data-testid={`order-node-${data.id}`}
@@ -196,12 +206,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                     ? "Click to edit this order's clauses"
                     : (data.timestamp ? new Date((data.timestamp > 1e12 ? data.timestamp : data.timestamp * 1000)).toLocaleString() : undefined)
             }
-            className={`px-3 py-2 rounded-lg border-2 shadow-md transition-shadow ${STATE_COLORS[data.state]} min-w-[180px] ${data.designerMode ? "cursor-pointer hover:shadow-lg" : ""} ${data.walletRole === "proposer"
-                ? "ring-2 ring-offset-1 ring-blue-500"
-                : data.walletRole === "counterparty"
-                    ? "ring-2 ring-offset-1 ring-emerald-500"
-                    : ""
-                }`}
+            className={nodeClassName}
         >
             <Handle
                 type="target"
@@ -213,7 +218,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                     <span className="text-xs font-semibold text-black">
                         Order #{data.id.toString().slice(0, 8)}
                     </span>
-                    {data.walletRole && (
+                    {!data.designerMode && data.walletRole && (
                         <span
                             className={`w-2 h-2 rounded-full ${data.walletRole === "proposer" ? "bg-blue-500" : "bg-emerald-500"
                                 }`}
@@ -223,11 +228,13 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                     )}
                 </span>
                 <span className="flex items-center gap-1.5">
-                    <span
-                        className={`w-2.5 h-2.5 rounded-full ${STATE_DOT[data.state]}`}
-                        role="img"
-                        aria-label={STATE_LABELS[data.state]}
-                    />
+                    {!data.designerMode && (
+                        <span
+                            className={`w-2.5 h-2.5 rounded-full ${STATE_DOT[data.state]}`}
+                            role="img"
+                            aria-label={STATE_LABELS[data.state]}
+                        />
+                    )}
                     {data.onDelete && !data.isRoot && (
                         <button
                             type="button"
@@ -342,11 +349,26 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                 position={Position.Bottom}
                 style={
                     data.state === OrderState.Active
-                        ? { background: "#16a34a", width: 14, height: 14, border: "2px solid white", cursor: "crosshair" }
-                        : { background: "#999", width: 8, height: 8 }
+                        ? {
+                            background: "white",
+                            border: "1px solid #999",
+                            color: "#666",
+                            width: 16,
+                            height: 16,
+                            fontSize: 12,
+                            lineHeight: "14px",
+                            fontWeight: "bold",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "crosshair",
+                        }
+                        : { background: "transparent", border: "1px solid #ccc", width: 8, height: 8 }
                 }
-                title={data.state === OrderState.Active ? "Drag into empty space to add a sub-order, or onto another node to merge as a parent" : undefined}
-            />
+                title={data.state === OrderState.Active ? "Drag to add a sub-order or another parent" : undefined}
+            >
+                {data.state === OrderState.Active && <span style={{ pointerEvents: "none" }}>+</span>}
+            </Handle>
         </div>
     );
 };

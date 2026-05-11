@@ -38,8 +38,6 @@ import { useEffect, useState } from "react";
 import type { Order } from "@/lib/core/store";
 import type { ManifestFields } from "@/lib/core/encoding";
 import {
-    deriveFulfilmentMethod,
-    FULFILMENT_METHOD_LABELS,
     readAgreementFields,
     type AgreementEdits,
 } from "@/lib/designer/syntheticProcess";
@@ -52,21 +50,19 @@ import {
     GHG_STANDARD_TO_SCHEMA,
 } from "@/lib/core/agreementManifest";
 import {
-    CATEGORY_LABELS,
     DESIGNER_SCHEMAS_BY_CATEGORY,
     type SchemaCategory,
 } from "@/lib/shared/schemaCategories";
 import {
     CLAUSE_CATEGORIES,
     SECTION_FIELDS,
-    sectionStatus,
 } from "@/lib/shared/clauseSectionStatus";
 
 const GHG_SCOPES = ["", "1", "2", "3"] as const;
 const HANDOFF_MODES = ["", "face-to-face", "dead-drop", "parking-area", "locker", "courier-relay"] as const;
 const PROXIMITY_BANDS = ["", "none", "zone-wifi", "nearby-ble", "contact-nfc"] as const;
 
-type SectionKey = SchemaCategory;
+type SectionKey = ArticleKey;
 
 /**
  * Per-section schema candidates — a section topic (the pill in the drawer)
@@ -128,41 +124,57 @@ function resolveActiveSchemaId(section: SchemaCategory, fields: ManifestFields):
 const GHG_STANDARDS: readonly string[] = ["", ...SECTION_SCHEMA_OPTIONS.emissions.map((opt) => opt.label)];
 
 /**
- * Unified header rendered at the top of every section. Shows category label
- * + active schemaId, plus an optional `Clear` button (omitted for read-only
- * sections like topology).
+ * Articles of the agreement, in canonical contract-paper order. Drives the
+ * vertical tab list on the left of the drawer + the auto-open default.
+ *   Parties first  (who is bound — the contract's identification block)
+ *   ... clauses ...
+ *   Topology       (where this order sits in the DAG)
+ *   Consent        (the assent — last article before signatures)
  */
-function SectionHeader({
-    category,
-    fields,
+type ArticleKey =
+    | "parties"
+    | "geo"
+    | "handoff"
+    | "proximity"
+    | "emissions"
+    | "jurisdiction"
+    | "topology"
+    | "consent";
+
+const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
+    { key: "parties", label: "Parties" },
+    { key: "geo", label: "Geo" },
+    { key: "handoff", label: "Handoff" },
+    { key: "proximity", label: "Proximity" },
+    { key: "emissions", label: "Emissions" },
+    { key: "jurisdiction", label: "Jurisdiction" },
+    { key: "topology", label: "Topology" },
+    { key: "consent", label: "Consent" },
+];
+
+/**
+ * Compact right-aligned `Clear` action at the top of an editable article.
+ * Read-only articles (parties, topology) pass no `onClear` and the row
+ * collapses to nothing.
+ */
+function ClearArticle({
+    articleKey,
     onClear,
 }: {
-    category: SchemaCategory;
-    fields: ManifestFields;
+    articleKey: string;
     onClear?: () => void;
 }) {
+    if (!onClear) return null;
     return (
-        <div className="flex items-baseline justify-between mb-3 gap-3">
-            <p className="text-sm font-semibold text-ink-heading">
-                {CATEGORY_LABELS[category]}
-                {" · "}
-                <span
-                    className="font-mono normal-case text-neutral-400"
-                    data-testid={`drawer-section-${category}-active-schema`}
-                >
-                    {resolveActiveSchemaId(category, fields)}
-                </span>
-            </p>
-            {onClear && (
-                <button
-                    type="button"
-                    onClick={onClear}
-                    data-testid={`drawer-clear-${category}`}
-                    className="text-[10px] text-neutral-500 hover:text-red-600 underline shrink-0"
-                >
-                    Clear
-                </button>
-            )}
+        <div className="flex justify-end mb-3">
+            <button
+                type="button"
+                onClick={onClear}
+                data-testid={`drawer-clear-${articleKey}`}
+                className="text-[10px] text-neutral-500 hover:text-red-600 underline"
+            >
+                Clear
+            </button>
         </div>
     );
 }
@@ -221,12 +233,12 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
         if (order) setFields(readAgreementFields(order));
     }, [order?.id, order?.agreementHash]);
 
-    // Auto-open Topology whenever a different order is selected — it's the
-    // first thing a user wants to see when clicking a node. Keyed on
-    // order.id only, so editing a clause (which mutates agreementHash) does
-    // NOT yank the user back to topology.
+    // Auto-open Parties whenever a different order is selected — contracts
+    // open with the parties block, not a clause. Keyed on order.id only so
+    // editing a clause (which mutates agreementHash) does NOT yank the user
+    // back to Parties.
     useEffect(() => {
-        if (order) setOpenSection("topology");
+        if (order) setOpenSection("parties");
     }, [order?.id]);
 
     // Empty state — only valid in embedded mode (legacy callers gate on
@@ -252,9 +264,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
         );
     }
 
-    const fulfilmentMethod = deriveFulfilmentMethod(order);
-    const summary = summarizeAgreement(loadAgreement(order.agreementHash));
-    const topology = summary?.topology;
+    const topology = summarizeAgreement(loadAgreement(order.agreementHash))?.topology;
 
     function applyManifest(next: ManifestFields) {
         setFields(next);
@@ -325,42 +335,32 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
                         ✕
                     </button>
                     <div className="border-t border-neutral-200 w-6 my-1" />
-                    {CLAUSE_CATEGORIES.map((key) => {
-                        const status = sectionStatus(key, fields);
-                        return (
-                            <button
-                                key={key}
-                                type="button"
-                                onClick={() => { setMinimized(false); setOpenSection(key); }}
-                                title={`${CATEGORY_LABELS[key]} — ${status}`}
-                                data-testid={`drawer-rail-${key}`}
-                                data-status={status}
-                                className="w-8 h-8 rounded-full border border-neutral-300 hover:border-neutral-700 bg-white flex items-center justify-center"
-                            >
-                                <span className={`w-3 h-3 rounded-full ${
-                                    status === "complete" ? "bg-emerald-500" : "bg-neutral-200"
-                                }`} />
-                            </button>
-                        );
-                    })}
+                    {ARTICLES.map((article) => (
+                        <button
+                            key={article.key}
+                            type="button"
+                            onClick={() => { setMinimized(false); setOpenSection(article.key); }}
+                            title={article.label}
+                            data-testid={`drawer-rail-${article.key}`}
+                            className="w-full text-[10px] text-neutral-500 hover:text-black px-1 py-1"
+                        >
+                            {article.label.slice(0, 3)}
+                        </button>
+                    ))}
                 </div>
             )}
             {!minimized && (<>
-            {/* Header bar with prominent close */}
-            <div className="px-5 py-3 border-b border-neutral-200 bg-neutral-50 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                    <p className="text-xs font-semibold text-neutral-500">
-                        Modify agreement
-                    </p>
-                </div>
+            {/* Header */}
+            <div className="px-5 py-3 border-b border-neutral-200 flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-black">Agreement</p>
                 <div className="flex items-center gap-2 shrink-0">
                     <button
                         type="button"
                         onClick={() => setMinimized(true)}
                         aria-label="Minimize drawer"
                         data-testid="drawer-minimize"
-                        title="Minimize to rail"
-                        className="rounded border border-neutral-300 bg-white px-2 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                        title="Minimize"
+                        className="text-xs text-neutral-500 hover:text-black px-1"
                     >
                         ›
                     </button>
@@ -369,69 +369,63 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
                         onClick={onClose}
                         aria-label="Close drawer"
                         data-testid="drawer-close"
-                        className="rounded border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                        className="text-xs text-neutral-500 hover:text-black px-1"
                     >
-                        Close ✕
+                        ✕
                     </button>
                 </div>
             </div>
 
-            {/* Per-category toggle row — pills are the canonical control. Wraps
-                to multiple lines on narrow widths rather than horizontal scroll
-                so no pill is hidden behind the right edge. */}
-            <div className="px-5 py-2 border-b border-neutral-200 bg-white flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-neutral-500 mr-1 shrink-0">
-                    Modify:
-                </span>
-                {CLAUSE_CATEGORIES.map((key) => {
-                    const isOpen = openSection === key;
-                    const status = sectionStatus(key, fields);
-                    return (
-                        <button
-                            key={key}
-                            type="button"
-                            onClick={() => selectSection(key)}
-                            data-testid={`drawer-toggle-${key}`}
-                            data-status={status}
-                            aria-pressed={isOpen}
-                            className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border transition-colors ${
-                                isOpen
-                                    ? "bg-gray-700 text-white border-gray-700"
-                                    : "bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-100"
-                            }`}
-                        >
-                            {status === "complete" && (
-                                <span
-                                    aria-label={status}
-                                    className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle bg-emerald-500"
-                                />
-                            )}
-                            {CATEGORY_LABELS[key]}
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* Body — scrollable, sections rendered only when their pill is on */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 text-sm">
-                <p className="text-[11px] text-neutral-500 mb-3">
-                    agreementHash recomputes live as you edit. Fulfilment method is{" "}
-                    <span className="font-semibold text-neutral-700">{FULFILMENT_METHOD_LABELS[fulfilmentMethod]}</span>{" "}
-                    (change via the edge pill on the canvas).
-                </p>
-                <p className="font-mono text-[10px] text-neutral-500 break-all mb-5" data-testid="drawer-agreement-hash">
-                    {order.agreementHash}
-                </p>
-
-                {openSection === null && (
-                    <p className="text-xs text-neutral-500 italic" data-testid="drawer-empty-hint">
-                        Click a Modify pill above to reveal a baseline-graph clause.
-                    </p>
-                )}
+            {/* Body: vertical article tabs on the left, active article content
+                on the right. Tabs mimic the articles of a paper agreement. */}
+            <div className="flex-1 flex flex-row overflow-hidden">
+                <nav
+                    data-testid="drawer-articles-nav"
+                    className="w-[96px] shrink-0 border-r border-neutral-200 overflow-y-auto"
+                >
+                    {ARTICLES.map((article) => {
+                        const isOpen = openSection === article.key;
+                        return (
+                            <button
+                                key={article.key}
+                                type="button"
+                                onClick={() => selectSection(article.key)}
+                                data-testid={`drawer-tab-${article.key}`}
+                                aria-pressed={isOpen}
+                                className={`w-full text-left text-xs px-4 py-2.5 ${
+                                    isOpen
+                                        ? "bg-neutral-100 text-black font-semibold"
+                                        : "text-neutral-600 hover:bg-neutral-50"
+                                }`}
+                            >
+                                {article.label}
+                            </button>
+                        );
+                    })}
+                </nav>
+                <div className="flex-1 overflow-y-auto px-5 py-4 text-sm">
+                    {openSection === "parties" && (
+                        <section data-testid="drawer-section-parties">
+                            <div className="space-y-4">
+                                <div>
+                                    <span className="text-[11px] text-neutral-500">Buyer</span>
+                                    <p className="font-mono text-xs text-neutral-700 break-all mt-0.5" data-testid="drawer-parties-buyer">
+                                        {order.buyer}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-[11px] text-neutral-500">Seller</span>
+                                    <p className="font-mono text-xs text-neutral-700 break-all mt-0.5" data-testid="drawer-parties-seller">
+                                        {order.seller}
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+                    )}
 
                 {openSection === "geo" && (
                     <section data-testid="drawer-section-geo" className="mb-5 pt-2 border-t border-neutral-100">
-                        <SectionHeader category="geo" fields={fields} onClear={() => clearSection("geo")} />
+                        <ClearArticle articleKey="geo" onClear={() => clearSection("geo")} />
                         <div className="space-y-3">
                             <Field
                                 label="Origin"
@@ -473,7 +467,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
 
                 {openSection === "emissions" && (
                     <section data-testid="drawer-section-emissions" className="mb-5 pt-2 border-t border-neutral-100">
-                        <SectionHeader category="emissions" fields={fields} onClear={() => clearSection("emissions")} />
+                        <ClearArticle articleKey="emissions" onClear={() => clearSection("emissions")} />
                         <div className="space-y-3">
                             <Select
                                 label="Standard"
@@ -495,7 +489,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
 
                 {openSection === "handoff" && (
                     <section data-testid="drawer-section-handoff" className="mb-5 pt-2 border-t border-neutral-100">
-                        <SectionHeader category="handoff" fields={fields} onClear={() => clearSection("handoff")} />
+                        <ClearArticle articleKey="handoff" onClear={() => clearSection("handoff")} />
                         <div className="space-y-3">
                             <Select
                                 label="Mode"
@@ -514,7 +508,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
 
                 {openSection === "proximity" && (
                     <section data-testid="drawer-section-proximity" className="mb-5 pt-2 border-t border-neutral-100">
-                        <SectionHeader category="proximity" fields={fields} onClear={() => clearSection("proximity")} />
+                        <ClearArticle articleKey="proximity" onClear={() => clearSection("proximity")} />
                         <div className="space-y-3">
                             <Select
                                 label="Band (policy)"
@@ -539,7 +533,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
 
                 {openSection === "jurisdiction" && (
                     <section data-testid="drawer-section-jurisdiction" className="mb-5 pt-2 border-t border-neutral-100">
-                        <SectionHeader category="jurisdiction" fields={fields} onClear={() => clearSection("jurisdiction")} />
+                        <ClearArticle articleKey="jurisdiction" onClear={() => clearSection("jurisdiction")} />
                         <div className="space-y-3">
                             <Field
                                 label="Applicable law"
@@ -568,7 +562,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
 
                 {openSection === "consent" && (
                     <section data-testid="drawer-section-consent" className="mb-5 pt-2 border-t border-neutral-100">
-                        <SectionHeader category="consent" fields={fields} onClear={() => clearSection("consent")} />
+                        <ClearArticle articleKey="consent" onClear={() => clearSection("consent")} />
                         <div className="space-y-3">
                             <Field
                                 label="Document hash"
@@ -599,29 +593,19 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
                 )}
 
                 {openSection === "topology" && (
-                    <section data-testid="drawer-section-topology" className="mb-5 pt-2 border-t border-neutral-100">
-                        <SectionHeader category="topology" fields={fields} />
-                        <div className="space-y-2 text-xs">
-                            <p>
-                                <span className="text-neutral-500">Mode: </span>
-                                <span className="font-mono text-neutral-700">{topology?.topologyMode ?? "root"}</span>
-                            </p>
-                            <p className="text-neutral-500">Parents:</p>
-                            {topology?.parentOrderHashes && topology.parentOrderHashes.length > 0 ? (
-                                <ul className="font-mono text-[10px] text-neutral-600 space-y-1 break-all">
-                                    {topology.parentOrderHashes.map((p) => (
-                                        <li key={p}>{p}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-neutral-400 italic text-[11px]">No parents — this is the root order.</p>
-                            )}
-                            <p className="text-[10px] text-neutral-400 mt-2">
-                                Topology is set by the DAG. Drag from a node onto another to add a parent.
-                            </p>
-                        </div>
+                    <section data-testid="drawer-section-topology">
+                        {topology?.parentOrderHashes && topology.parentOrderHashes.length > 0 ? (
+                            <ul className="font-mono text-[10px] text-neutral-600 space-y-1 break-all">
+                                {topology.parentOrderHashes.map((p) => (
+                                    <li key={p}>{p}</li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-xs text-neutral-500">Root order.</p>
+                        )}
                     </section>
                 )}
+                </div>
             </div>
             {onDelete && (
                 <div className="px-5 py-3 border-t border-neutral-200 bg-white">
