@@ -161,7 +161,15 @@ export interface AgreementSummary {
          *  null when modalities is empty, or delivery is offered without coordination. */
         method: CanonicalFulfilmentMethod | null;
     };
-    ghg?: Record<string, unknown>;
+    ghg?: {
+        /** Schema keys of each GHG disclosure clause in the agreement
+         *  (e.g., "figaro-ghg-iso-14064-v1"). Multi-valued. */
+        schemaKeys: readonly string[];
+        /** Human-readable label of the first declared standard (back-compat). */
+        standard?: string;
+        /** Scope from the first declared standard (back-compat). */
+        scope?: number;
+    };
     proximity?: {
         /** Proximity-policy bands offered. */
         bands: readonly string[];
@@ -228,19 +236,27 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         });
     }
 
-    const ghgStandard = readManifestExtra(params.manifestFields, ["ghgStandard", "ghgMethodology"]);
+    // Multi-valued: each declared GHG standard produces its own disclosure
+    // clause. `ghgStandards` (array of schemaIds OR legacy standard labels)
+    // is the new path; the legacy single `ghgStandard` + `ghgScope` is read
+    // as a fallback for any caller that hasn't migrated.
+    const ghgStandards = readManifestArray(
+        params.manifestFields,
+        "ghgStandards",
+        GHG_DISCLOSURE_SCHEMA_KEYS as ReadonlyArray<string>,
+    );
+    const legacyStandard = readManifestExtra(params.manifestFields, ["ghgStandard", "ghgMethodology"]);
     const ghgScope = readManifestExtra(params.manifestFields, ["ghgScope"]);
-    if (ghgStandard || ghgScope) {
-        const schemaKey = ghgStandard ? (GHG_STANDARD_TO_SCHEMA[ghgStandard] ?? GHG_SCHEMA_KEY) : GHG_SCHEMA_KEY;
+    const resolvedSchemaKeys: string[] = ghgStandards.length > 0
+        ? ghgStandards
+        : legacyStandard
+            ? [GHG_STANDARD_TO_SCHEMA[legacyStandard] ?? GHG_SCHEMA_KEY]
+            : [];
+    for (const schemaKey of resolvedSchemaKeys) {
         const data: Record<string, unknown> = {};
-        if (ghgScope) {
-            const parsedScope = Number(ghgScope);
-            data.scope = Number.isFinite(parsedScope) ? parsedScope : ghgScope;
-        }
-        sections.push({
-            schema: schemaKey,
-            data,
-        });
+        const parsedScope = ghgScope ? Number(ghgScope) : 1;
+        data.scope = Number.isFinite(parsedScope) ? parsedScope : 1;
+        sections.push({ schema: schemaKey, data });
     }
 
     const proximityBands = readManifestArray(params.manifestFields, "proximityBands", ALLOWED_PROXIMITY_BANDS);
@@ -322,12 +338,11 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
     const proximitySection = getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
     const jurisdictionSection = getSection(agreement, JURISDICTION_SCHEMA_KEY);
     const consentSection = getSection(agreement, CONSENT_SCHEMA_KEY);
-    // GHG disclosure can be under any of 5 sister schemaIds — find whichever is present.
-    const ghgSectionEntry = GHG_DISCLOSURE_SCHEMA_KEYS
+    // GHG disclosure is multi-valued: agreement may carry one section per
+    // standard the merchant reports under.
+    const ghgDisclosures = GHG_DISCLOSURE_SCHEMA_KEYS
         .map((key) => ({ key, section: getSection(agreement, key) }))
-        .find(({ section }) => section);
-    const ghgSection = ghgSectionEntry?.section;
-    const ghgStandard = ghgSectionEntry ? GHG_SCHEMA_TO_STANDARD[ghgSectionEntry.key] : undefined;
+        .filter(({ section }) => section);
 
     return {
         geo: geoSection
@@ -374,8 +389,15 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
                 };
             })()
             : undefined,
-        ghg: ghgSection
-            ? { ...(ghgStandard ? { standard: ghgStandard } : {}), ...ghgSection.data }
+        ghg: ghgDisclosures.length > 0
+            ? {
+                schemaKeys: ghgDisclosures.map((d) => d.key),
+                // Single-standard back-compat for callers that take one label.
+                standard: GHG_SCHEMA_TO_STANDARD[ghgDisclosures[0].key],
+                scope: typeof ghgDisclosures[0].section!.data.scope === "number"
+                    ? ghgDisclosures[0].section!.data.scope
+                    : undefined,
+            }
             : undefined,
         proximity: proximitySection
             ? {

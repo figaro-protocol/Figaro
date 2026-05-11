@@ -92,7 +92,11 @@ describe("buildOrderAgreement", () => {
         expect(summary?.fulfilment?.coordinations).toEqual(["dutch-auction"]);
         expect(summary?.fulfilment?.handoffPoints).toEqual(["face-to-face"]);
         expect(summary?.fulfilment?.method).toBe("deliver:dutch-auction");
-        expect(summary?.ghg).toEqual({ standard: "ISO-14064", scope: 1 });
+        expect(summary?.ghg).toEqual({
+            schemaKeys: ["figaro-ghg-iso-14064-v1"],
+            standard: "ISO-14064",
+            scope: 1,
+        });
     });
 
     it("auto-fills seller-assigned coordination when delivery is offered without one", () => {

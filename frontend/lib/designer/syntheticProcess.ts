@@ -432,10 +432,9 @@ export function readAgreementFields(order: Order): ManifestFields {
     if (summary?.geo?.classOfService) fields.class_ = summary.geo.classOfService;
 
     // ── ghg ────────────────────────────────────────────────────
-    const ghgStandard = summary?.ghg?.standard;
-    if (typeof ghgStandard === "string") fields.ghgStandard = ghgStandard;
-    const ghgScope = summary?.ghg?.scope;
-    if (ghgScope !== undefined) fields.ghgScope = String(ghgScope);
+    if (summary?.ghg && summary.ghg.schemaKeys.length > 0) {
+        fields.ghgStandards = [...summary.ghg.schemaKeys];
+    }
 
     // ── fulfilment ─────────────────────────────────────────────
     if (summary?.fulfilment) {

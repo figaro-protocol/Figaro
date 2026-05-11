@@ -39,7 +39,6 @@ import {
     CONSENT_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
     GHG_DISCLOSURE_SCHEMA_KEYS,
-    GHG_SCHEMA_TO_STANDARD,
     JURISDICTION_SCHEMA_KEY,
 } from "@/lib/core/agreementManifest";
 import { getSchemaInfo } from "@/lib/shared/schemaCategories";
@@ -269,25 +268,17 @@ export function AgreementDrawer({
         commitFields(out);
     }
 
-    /** Emissions article: pick one of N GHG schemas or "Not included". */
-    function selectEmissionsSchema(schemaId: string | null) {
-        const next: ManifestFields = { ...fields };
-        if (schemaId) {
-            next.ghgStandard = GHG_SCHEMA_TO_STANDARD[schemaId as keyof typeof GHG_SCHEMA_TO_STANDARD];
-            next.ghgScope = "1";
-        } else {
-            delete (next as Record<string, unknown>).ghgStandard;
-            delete (next as Record<string, unknown>).ghgScope;
-        }
-        commitFields(next);
-    }
+    /** Emissions article: multi-select across the 5 GHG accounting standards.
+     *  Each checked standard produces an independent disclosure clause in
+     *  the agreement (one section per standard, scope defaults to 1). */
+    const activeGhgStandards = readStringArray("ghgStandards");
 
-    const activeEmissionsSchemaId = (() => {
-        const standardLabel = fields.ghgStandard;
-        if (!standardLabel) return null;
-        const entry = Object.entries(GHG_SCHEMA_TO_STANDARD).find(([, label]) => label === standardLabel);
-        return entry ? entry[0] : null;
-    })();
+    function updateGhgStandards(next: string[]) {
+        const out: ManifestFields = { ...fields };
+        if (next.length > 0) out.ghgStandards = next;
+        else delete (out as Record<string, unknown>).ghgStandards;
+        commitFields(out);
+    }
 
     return (
         <aside
@@ -441,8 +432,8 @@ export function AgreementDrawer({
                     {openSection === "emissions" && (
                         <section data-testid="drawer-section-emissions">
                             <EmissionsArticle
-                                activeSchemaId={activeEmissionsSchemaId}
-                                onSelect={selectEmissionsSchema}
+                                checked={activeGhgStandards}
+                                onChange={updateGhgStandards}
                             />
                         </section>
                     )}
@@ -710,40 +701,29 @@ function CheckboxGroup({
 }
 
 /**
- * Emissions article — pick which GHG accounting standard the agreement
- * reports against, or none.
+ * Emissions article — multi-select across the 5 GHG accounting standards.
+ * Each checked standard produces its own disclosure clause in the agreement
+ * (one section per standard, scope defaults to 1). Empty selection = no
+ * emissions reporting in this agreement.
  */
 function EmissionsArticle({
-    activeSchemaId,
-    onSelect,
+    checked,
+    onChange,
 }: {
-    activeSchemaId: string | null;
-    onSelect: (schemaId: string | null) => void;
+    checked: string[];
+    onChange: (next: string[]) => void;
 }) {
+    const options = GHG_DISCLOSURE_SCHEMA_KEYS.map((schemaId) => ({
+        value: schemaId,
+        label: getSchemaInfo(schemaId)?.title ?? schemaId,
+    }));
     return (
-        <div>
-            <p className="text-sm text-black mb-1">Emissions</p>
-            <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-                GHG accounting reported against one of the standard
-                methodologies. Choose &ldquo;Not included&rdquo; to omit
-                emissions reporting from this order&apos;s agreement.
-            </p>
-            <select
-                value={activeSchemaId ?? ""}
-                onChange={(e) => onSelect(e.target.value || null)}
-                data-testid="drawer-emissions-standard"
-                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
-            >
-                <option value="">Not included</option>
-                {GHG_DISCLOSURE_SCHEMA_KEYS.map((schemaId) => {
-                    const info = getSchemaInfo(schemaId);
-                    return (
-                        <option key={schemaId} value={schemaId}>
-                            {info?.title ?? schemaId}
-                        </option>
-                    );
-                })}
-            </select>
-        </div>
+        <CheckboxGroup
+            label="GHG accounting standards"
+            options={options}
+            checked={checked}
+            onToggle={(value) => onChange(toggleInList(checked, value))}
+            testIdPrefix="drawer-emissions-standard"
+        />
     );
 }
