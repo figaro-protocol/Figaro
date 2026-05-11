@@ -1,32 +1,44 @@
 {
     "schemaId": "figaro-consent-v1",
     "version": 1,
-    "title": "Cryptographic consent attestation",
-    "description": "Records that a wallet has cryptographically attested to an off-chain legal document identified by its keccak256 content hash. The pattern is: off-chain document semantics, on-chain anchor for shared reference integrity. Per PROTOCOL_EXTENSION_DOCTRINE.md §'Decision Rule', the protocol needs the (consenter, documentHash, documentVersion, documentTitle) tuple to preserve shared reference integrity across counterparties (participant, operator, future auditors, possibly arbitrators, possibly courts) over time. Consenter address is recoverable from the EIP-712 signature on the AttestationCoordinator call (visible in the Attestation event) — not stored in content. Block timestamp captures when. Append-only: revocation is a separate off-chain process, not a content mutation; future revisions require figaro-consent-v2.",
+    "title": "Cryptographic consent attestations",
+    "description": "Records that a wallet has cryptographically attested to one or more off-chain legal documents identified by their keccak256 content hashes. Pattern: off-chain document semantics, on-chain anchor for shared reference integrity. Multi-valued — an agreement can bind to several documents simultaneously (e.g., ToS + Privacy Policy + NDA + custom merchant-buyer terms). Each entry preserves the (consenter, documentHash, documentVersion, documentTitle) tuple needed by counterparties, auditors, and arbitrators to reason about shared references over time. Consenter address is recoverable from the EIP-712 signature on the AttestationCoordinator call (not stored in content). Append-only: revocation is a separate off-chain process, not a content mutation; future revisions require figaro-consent-v2.",
     "categories": ["consent", "evidence-law"],
     "fields": [
         {
-            "name": "documentHash",
-            "type": "string",
-            "format": "bytes32-hex",
+            "name": "documents",
+            "type": "array",
+            "minItems": 1,
             "required": true,
-            "description": "keccak256 of the canonical legal document text. The 32-byte content anchor; the document itself lives off-chain (e.g., served as a PDF, pinned to IPFS, or distributed alongside the receipt). Any byte-level change to the document produces a different hash and therefore a different attestation."
-        },
-        {
-            "name": "documentVersion",
-            "type": "string",
-            "required": true,
-            "minLength": 1,
-            "maxLength": 32,
-            "description": "Semver-style version identifier (e.g., '1.0.0', '2025-04-29'). Bounded to 32 chars to prevent griefing via unbounded calldata. Pairs with documentHash so a reader can disambiguate two documents that share a title but differ in content."
-        },
-        {
-            "name": "documentTitle",
-            "type": "string",
-            "required": true,
-            "minLength": 1,
-            "maxLength": 200,
-            "description": "Human-readable document name (e.g., 'Figaro Beta Informed Consent Agreement', 'Privacy Policy'). Bounded to 200 chars. Provides a label for off-chain display and dispute reference; the documentHash is the binding identifier."
+            "items": {
+                "type": "object",
+                "fields": [
+                    {
+                        "name": "documentHash",
+                        "type": "string",
+                        "format": "bytes32-hex",
+                        "required": true,
+                        "description": "keccak256 of the canonical document text. 32-byte content anchor; any byte-level change rotates the hash."
+                    },
+                    {
+                        "name": "documentVersion",
+                        "type": "string",
+                        "required": true,
+                        "minLength": 1,
+                        "maxLength": 32,
+                        "description": "Semver-style version identifier (e.g., '1.0.0', '2025-04-29'). Bounded to prevent griefing via unbounded calldata."
+                    },
+                    {
+                        "name": "documentTitle",
+                        "type": "string",
+                        "required": true,
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "description": "Human-readable document name (e.g., 'Terms of Service', 'Privacy Policy'). Bounded for shared-reference legibility."
+                    }
+                ]
+            },
+            "description": "Non-empty list of consent-referenced documents. Each carries its own hash + version + title."
         }
     ]
 }

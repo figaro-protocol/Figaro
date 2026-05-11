@@ -90,16 +90,17 @@ export function decodeManifest(hex: string): string {
 // ---------------------------------------------------------------------------
 
 /** All recognised manifest fields. `class_` avoids the JS reserved word.
- *  Values may be strings or string-arrays — arrays carry multi-valued schema
- *  options (e.g., fulfilmentModalities, proximityBands) that the agreement
- *  composer reads but the on-chain manifest-bytes encoder skips. */
+ *  Values may be strings, string-arrays, or arrays of string-keyed records
+ *  (the latter for multi-valued composite schemas like consent documents).
+ *  The on-chain manifest-bytes encoder only writes string values; arrays of
+ *  any kind are agreement-only and skipped at the manifest-bytes layer. */
 export interface ManifestFields {
     origin: string;
     destination?: string;
     mass?: string;         // e.g. "5 kg"
     volume?: string;       // e.g. "10 L"
     class_?: string;       // freight/hazmat class, e.g. "Perishables", "Hazmat A"
-    [extra: string]: string | string[] | undefined; // extensible
+    [extra: string]: string | string[] | Array<Record<string, string>> | undefined; // extensible
 }
 
 const KV_SEP = ":";

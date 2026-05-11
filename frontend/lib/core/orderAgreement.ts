@@ -304,13 +304,29 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         });
     }
 
-    const documentHash = readManifestExtra(params.manifestFields, ["documentHash"]);
-    const documentVersion = readManifestExtra(params.manifestFields, ["documentVersion"]);
-    const documentTitle = readManifestExtra(params.manifestFields, ["documentTitle"]);
-    if (documentHash && documentVersion && documentTitle) {
+    // Consent: multi-document array. Each row must have non-empty hash +
+    // version + title; partial rows are silently dropped. The Layer-C
+    // validator catches structural violations downstream.
+    const rawConsentDocuments = params.manifestFields?.consentDocuments;
+    const consentDocuments = Array.isArray(rawConsentDocuments)
+        ? rawConsentDocuments.filter((doc): doc is {
+            documentHash: string;
+            documentVersion: string;
+            documentTitle: string;
+        } =>
+            typeof doc === "object" && doc !== null
+            && typeof (doc as Record<string, unknown>).documentHash === "string"
+            && typeof (doc as Record<string, unknown>).documentVersion === "string"
+            && typeof (doc as Record<string, unknown>).documentTitle === "string"
+            && (doc as Record<string, string>).documentHash.trim() !== ""
+            && (doc as Record<string, string>).documentVersion.trim() !== ""
+            && (doc as Record<string, string>).documentTitle.trim() !== "",
+        )
+        : [];
+    if (consentDocuments.length > 0) {
         sections.push({
             schema: CONSENT_SCHEMA_KEY,
-            data: { documentHash, documentVersion, documentTitle },
+            data: { documents: consentDocuments },
         });
     }
 

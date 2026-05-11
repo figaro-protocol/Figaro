@@ -398,9 +398,13 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
             });
         case "figaro-consent-v1":
             return (data) => encodeConsentContent({
-                documentHash: data.documentHash as `0x${string}`,
-                documentVersion: data.documentVersion as string,
-                documentTitle: data.documentTitle as string,
+                documents: Array.isArray(data.documents)
+                    ? (data.documents as Array<{
+                        documentHash: `0x${string}`;
+                        documentVersion: string;
+                        documentTitle: string;
+                    }>)
+                    : [],
             });
         case "figaro-commerce-v1":
             return (data) => encodeCommerceContent({

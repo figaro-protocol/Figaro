@@ -489,12 +489,16 @@ export function readAgreementFields(order: Order): ManifestFields {
     if (typeof language === "string") fields.language = language;
 
     // ── consent ────────────────────────────────────────────────
-    const documentHash = summary?.consent?.documentHash;
-    if (typeof documentHash === "string") fields.documentHash = documentHash;
-    const documentVersion = summary?.consent?.documentVersion;
-    if (typeof documentVersion === "string") fields.documentVersion = documentVersion;
-    const documentTitle = summary?.consent?.documentTitle;
-    if (typeof documentTitle === "string") fields.documentTitle = documentTitle;
+    const rawDocuments = summary?.consent?.documents;
+    if (Array.isArray(rawDocuments) && rawDocuments.length > 0) {
+        const cleaned = rawDocuments.filter((doc): doc is Record<string, string> =>
+            typeof doc === "object" && doc !== null
+            && typeof (doc as Record<string, unknown>).documentHash === "string"
+            && typeof (doc as Record<string, unknown>).documentVersion === "string"
+            && typeof (doc as Record<string, unknown>).documentTitle === "string",
+        );
+        if (cleaned.length > 0) fields.consentDocuments = cleaned;
+    }
 
     return fields;
 }

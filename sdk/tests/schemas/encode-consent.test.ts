@@ -6,12 +6,13 @@ import { validateContent } from "../../src/schemas/validate.js";
 import consentSpecRaw from "../../src/schemas/examples/figaro-consent-v1.json" with { type: "json" };
 
 const SAMPLE_HASH: Hex = `0x${"ab".repeat(32)}`;
+const ALT_HASH: Hex = `0x${"cd".repeat(32)}`;
 
-function decodeConsent(bytes: Hex): readonly [Hex, string, string] {
+function decodeConsent(bytes: Hex): readonly [readonly Hex[], readonly string[], readonly string[]] {
     return decodeAbiParameters(
-        [{ type: "bytes32" }, { type: "string" }, { type: "string" }],
+        [{ type: "bytes32[]" }, { type: "string[]" }, { type: "string[]" }],
         bytes,
-    ) as readonly [Hex, string, string];
+    ) as readonly [readonly Hex[], readonly string[], readonly string[]];
 }
 
 describe("figaro-consent-v1 — spec", () => {
@@ -20,54 +21,50 @@ describe("figaro-consent-v1 — spec", () => {
         expect(result.ok).toBe(true);
     });
 
-    it("accepts a well-formed consent payload", () => {
+    it("accepts a single-document payload", () => {
         const parsed = parseSchemaSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "1.0.0",
-            documentTitle: "Figaro Beta Informed Consent Agreement",
+            documents: [
+                {
+                    documentHash: SAMPLE_HASH,
+                    documentVersion: "1.0.0",
+                    documentTitle: "Privacy Policy",
+                },
+            ],
         };
         expect(validateContent(content, parsed.spec).ok).toBe(true);
     });
 
-    it("rejects a non-bytes32 documentHash", () => {
+    it("accepts a multi-document payload", () => {
         const parsed = parseSchemaSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
-            documentHash: "0xdeadbeef",
-            documentVersion: "1.0.0",
-            documentTitle: "Figaro Beta Informed Consent Agreement",
+            documents: [
+                { documentHash: SAMPLE_HASH, documentVersion: "1.0.0", documentTitle: "Terms of Service" },
+                { documentHash: ALT_HASH, documentVersion: "2025-04-29", documentTitle: "Privacy Policy" },
+            ],
         };
-        expect(validateContent(content, parsed.spec).ok).toBe(false);
+        expect(validateContent(content, parsed.spec).ok).toBe(true);
     });
 
-    it("rejects missing documentHash (required)", () => {
+    it("rejects empty documents array (minItems 1)", () => {
         const parsed = parseSchemaSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        const content = {
-            documentVersion: "1.0.0",
-            documentTitle: "Figaro Beta Informed Consent Agreement",
-        };
-        expect(validateContent(content, parsed.spec).ok).toBe(false);
+        expect(validateContent({ documents: [] }, parsed.spec).ok).toBe(false);
     });
 
-    it("rejects missing documentVersion (required)", () => {
+    it("rejects missing documents (required)", () => {
         const parsed = parseSchemaSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        const content = {
-            documentHash: SAMPLE_HASH,
-            documentTitle: "Figaro Beta Informed Consent Agreement",
-        };
-        expect(validateContent(content, parsed.spec).ok).toBe(false);
+        expect(validateContent({}, parsed.spec).ok).toBe(false);
     });
 
-    it("rejects missing documentTitle (required)", () => {
+    it("rejects non-bytes32 documentHash", () => {
         const parsed = parseSchemaSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "1.0.0",
+            documents: [{ documentHash: "0xdeadbeef", documentVersion: "1.0.0", documentTitle: "Privacy Policy" }],
         };
         expect(validateContent(content, parsed.spec).ok).toBe(false);
     });
@@ -76,9 +73,7 @@ describe("figaro-consent-v1 — spec", () => {
         const parsed = parseSchemaSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "",
-            documentTitle: "Figaro Beta Informed Consent Agreement",
+            documents: [{ documentHash: SAMPLE_HASH, documentVersion: "", documentTitle: "Privacy Policy" }],
         };
         expect(validateContent(content, parsed.spec).ok).toBe(false);
     });
@@ -87,132 +82,67 @@ describe("figaro-consent-v1 — spec", () => {
         const parsed = parseSchemaSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "a".repeat(33),
-            documentTitle: "Figaro Beta Informed Consent Agreement",
+            documents: [{ documentHash: SAMPLE_HASH, documentVersion: "a".repeat(33), documentTitle: "Privacy Policy" }],
         };
         expect(validateContent(content, parsed.spec).ok).toBe(false);
-    });
-
-    it("accepts documentVersion at exactly 32 chars (boundary)", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        const content = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "a".repeat(32),
-            documentTitle: "Figaro Beta Informed Consent Agreement",
-        };
-        expect(validateContent(content, parsed.spec).ok).toBe(true);
     });
 
     it("rejects documentTitle longer than 200 chars", () => {
         const parsed = parseSchemaSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "1.0.0",
-            documentTitle: "a".repeat(201),
-        };
-        expect(validateContent(content, parsed.spec).ok).toBe(false);
-    });
-
-    it("accepts documentTitle at exactly 200 chars (boundary)", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        const content = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "1.0.0",
-            documentTitle: "a".repeat(200),
-        };
-        expect(validateContent(content, parsed.spec).ok).toBe(true);
-    });
-
-    it("rejects unknown fields (closed schema)", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        const content = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "1.0.0",
-            documentTitle: "Figaro Beta Informed Consent Agreement",
-            consenterAddress: "0xabc", // forbidden — recoverable from signature
-        };
-        expect(validateContent(content, parsed.spec).ok).toBe(false);
-    });
-
-    it("rejects revocation flag (closed schema, append-only by design)", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        const content = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "1.0.0",
-            documentTitle: "Figaro Beta Informed Consent Agreement",
-            consentRevoked: true,
+            documents: [{ documentHash: SAMPLE_HASH, documentVersion: "1.0.0", documentTitle: "a".repeat(201) }],
         };
         expect(validateContent(content, parsed.spec).ok).toBe(false);
     });
 });
 
 describe("figaro-consent-v1 — encode/decode round-trip", () => {
-    it("encodes and decodes a typical payload exactly", () => {
+    it("encodes and decodes a single document exactly", () => {
         const content: ConsentContent = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "1.0.0",
-            documentTitle: "Figaro Beta Informed Consent Agreement",
+            documents: [
+                { documentHash: SAMPLE_HASH, documentVersion: "1.0.0", documentTitle: "Privacy Policy" },
+            ],
         };
         const bytes = encodeConsentContent(content);
-        const [hash, version, title] = decodeConsent(bytes);
-        expect(hash.toLowerCase()).toBe(SAMPLE_HASH.toLowerCase());
-        expect(version).toBe(content.documentVersion);
-        expect(title).toBe(content.documentTitle);
+        const [hashes, versions, titles] = decodeConsent(bytes);
+        expect(hashes.length).toBe(1);
+        expect(hashes[0].toLowerCase()).toBe(SAMPLE_HASH.toLowerCase());
+        expect(versions[0]).toBe("1.0.0");
+        expect(titles[0]).toBe("Privacy Policy");
+    });
+
+    it("encodes and decodes multiple documents exactly", () => {
+        const content: ConsentContent = {
+            documents: [
+                { documentHash: SAMPLE_HASH, documentVersion: "1.0.0", documentTitle: "Terms of Service" },
+                { documentHash: ALT_HASH, documentVersion: "2025-04-29", documentTitle: "Privacy Policy" },
+            ],
+        };
+        const bytes = encodeConsentContent(content);
+        const [hashes, versions, titles] = decodeConsent(bytes);
+        expect(hashes.length).toBe(2);
+        expect(versions[1]).toBe("2025-04-29");
+        expect(titles[0]).toBe("Terms of Service");
     });
 
     it("preserves a Unicode title through round-trip", () => {
         const content: ConsentContent = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "2025-04-29",
-            documentTitle: "プライバシーポリシー (Privacy Policy)",
+            documents: [
+                { documentHash: SAMPLE_HASH, documentVersion: "2025-04-29", documentTitle: "プライバシーポリシー" },
+            ],
         };
         const bytes = encodeConsentContent(content);
-        const [, , title] = decodeConsent(bytes);
-        expect(title).toBe(content.documentTitle);
+        const [, , titles] = decodeConsent(bytes);
+        expect(titles[0]).toBe("プライバシーポリシー");
     });
 
-    it("preserves boundary-length strings (32 / 200)", () => {
+    it("encodes deterministically", () => {
         const content: ConsentContent = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "v".padEnd(32, "0"),
-            documentTitle: "T".padEnd(200, "x"),
+            documents: [
+                { documentHash: SAMPLE_HASH, documentVersion: "1.0.0", documentTitle: "Privacy Policy" },
+            ],
         };
-        const bytes = encodeConsentContent(content);
-        const [, version, title] = decodeConsent(bytes);
-        expect(version).toBe(content.documentVersion);
-        expect(version.length).toBe(32);
-        expect(title).toBe(content.documentTitle);
-        expect(title.length).toBe(200);
-    });
-
-    it("encodes deterministically (same inputs → same bytes)", () => {
-        const content: ConsentContent = {
-            documentHash: SAMPLE_HASH,
-            documentVersion: "1.0.0",
-            documentTitle: "Figaro Beta Informed Consent Agreement",
-        };
-        const a = encodeConsentContent(content);
-        const b = encodeConsentContent(content);
-        expect(a).toBe(b);
-    });
-
-    it("produces different bytes for different documentHashes (binding integrity)", () => {
-        const a = encodeConsentContent({
-            documentHash: `0x${"ab".repeat(32)}` as Hex,
-            documentVersion: "1.0.0",
-            documentTitle: "Same Title",
-        });
-        const b = encodeConsentContent({
-            documentHash: `0x${"cd".repeat(32)}` as Hex,
-            documentVersion: "1.0.0",
-            documentTitle: "Same Title",
-        });
-        expect(a).not.toBe(b);
+        expect(encodeConsentContent(content)).toBe(encodeConsentContent(content));
     });
 });

@@ -68,6 +68,13 @@ function hasExtendedAdvancedValues(value: ManifestFields): boolean {
     );
 }
 
+/** Narrow a manifest-field value to a string for `<input value={...}>`.
+ *  ManifestFields permits string-arrays and object-arrays at the index
+ *  signature; this form only renders the string-typed legacy fields. */
+function asInputValue(v: ManifestFields[keyof ManifestFields]): string {
+    return typeof v === "string" ? v : "";
+}
+
 export function ManifestForm({ value, onChange, showValidation }: ManifestFormProps) {
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [touchedRequiredFields, setTouchedRequiredFields] = useState({ origin: false, destination: false });
@@ -195,7 +202,7 @@ export function ManifestForm({ value, onChange, showValidation }: ManifestFormPr
                                     <label className="text-xs font-medium text-black">Fulfilment Method</label>
                                     <select
                                         data-testid="manifest-input-fulfilment"
-                                        value={value.fulfilmentMethod ?? value.fulfillmentMethod ?? ""}
+                                        value={asInputValue(value.fulfilmentMethod ?? value.fulfillmentMethod)}
                                         onChange={setSelect("fulfilmentMethod")}
                                         className={FIELD_CLS}
                                     >
@@ -209,7 +216,7 @@ export function ManifestForm({ value, onChange, showValidation }: ManifestFormPr
                                     <label className="text-xs font-medium text-black">Handoff Mode</label>
                                     <select
                                         data-testid="manifest-input-handoff"
-                                        value={value.handoffMode ?? ""}
+                                        value={asInputValue(value.handoffMode)}
                                         onChange={setSelect("handoffMode")}
                                         className={FIELD_CLS}
                                     >
@@ -223,7 +230,7 @@ export function ManifestForm({ value, onChange, showValidation }: ManifestFormPr
                                     <label className="text-xs font-medium text-black">GHG Scope</label>
                                     <select
                                         data-testid="manifest-input-ghg-scope"
-                                        value={value.ghgScope ?? ""}
+                                        value={asInputValue(value.ghgScope)}
                                         onChange={setSelect("ghgScope")}
                                         className={FIELD_CLS}
                                     >
@@ -239,7 +246,7 @@ export function ManifestForm({ value, onChange, showValidation }: ManifestFormPr
                                         data-testid="manifest-input-ghg-standard"
                                         type="text"
                                         placeholder="e.g. iso-14064-1"
-                                        value={value.ghgStandard ?? value.ghgMethodology ?? ""}
+                                        value={asInputValue(value.ghgStandard ?? value.ghgMethodology)}
                                         onChange={set("ghgStandard")}
                                         className={FIELD_CLS}
                                     />

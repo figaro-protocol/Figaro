@@ -5,36 +5,20 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 
 /// @title FigaroConsentV1Validator
 /// @notice Validates `figaro-consent-v1` content — cryptographic consent
-///         attestation to an off-chain legal document.
+///         attestations to one or more off-chain legal documents.
 ///
 /// @dev Pattern: off-chain document semantics, on-chain anchor for shared
-///      reference integrity (per PROTOCOL_EXTENSION_DOCTRINE.md
-///      "Reusable Pattern Beyond GHG"). The 32-byte `documentHash` is the
-///      binding identifier; `documentVersion` and `documentTitle` are
-///      labels for off-chain rendering and dispute reference.
+///      reference integrity. Multi-valued — an agreement can bind to several
+///      documents simultaneously. Three parallel arrays of equal length
+///      carry the per-document (hash, version, title) tuples.
 ///
-/// @dev Consenter address is recoverable from the EIP-712 signature on the
-///      AttestationCoordinator call — visible as `attester` in the
-///      Attestation event. It is intentionally NOT a content field:
-///      duplicating it would let off-chain content drift from the
-///      cryptographically recovered signer. Block timestamp captures when.
+/// @dev Content ABI encoding:
+///        `abi.encode(bytes32[] documentHashes, string[] documentVersions, string[] documentTitles)`.
 ///
-/// @dev Append-only identity: revocation is a separate off-chain process
-///      (the participant withdraws via the consent agreement; the operator
-///      removes the wallet from active lists). Revocation does NOT mutate
-///      the on-chain attestation. A new document version requires
-///      figaro-consent-v2.
-///
-/// @dev Content ABI encoding: `abi.encode(bytes32 documentHash, string documentVersion, string documentTitle)`.
-///
-///      documentHash    — required, 32 bytes. keccak256 of the canonical
-///                        legal document text. The document itself lives
-///                        off-chain (PDF receipt, IPFS pin, etc.).
-///      documentVersion — required, 1-32 chars. Semver-style identifier
-///                        (e.g., "1.0.0", "2025-04-29"). Bounded to
-///                        prevent griefing via unbounded calldata.
-///      documentTitle   — required, 1-200 chars. Human-readable name
-///                        (e.g., "Figaro Beta Informed Consent Agreement").
+///      All three arrays MUST have the same length and MUST contain at
+///      least one entry. Each documentHashes[i] is bytes32 (keccak256 of
+///      the canonical document text). versions and titles are length-bounded
+///      to prevent griefing via unbounded calldata.
 contract FigaroConsentV1Validator is ISchemaValidator {
     bytes32 public constant override schemaId = keccak256("figaro-consent-v1");
 
@@ -44,15 +28,14 @@ contract FigaroConsentV1Validator is ISchemaValidator {
     uint256 internal constant MAX_TITLE_LEN = 200;
 
     error SchemaIdMismatch(bytes32 got, bytes32 expected);
-    error EmptyDocumentHash();
-    error DocumentVersionTooShort(uint256 length);
-    error DocumentVersionTooLong(uint256 length);
-    error DocumentTitleTooShort(uint256 length);
-    error DocumentTitleTooLong(uint256 length);
+    error DocumentsEmpty();
+    error ArrayLengthMismatch();
+    error EmptyDocumentHash(uint256 index);
+    error DocumentVersionTooShort(uint256 index, uint256 length);
+    error DocumentVersionTooLong(uint256 index, uint256 length);
+    error DocumentTitleTooShort(uint256 index, uint256 length);
+    error DocumentTitleTooLong(uint256 index, uint256 length);
     /// @dev Runtime `content` must byte-equal the committed clause `sectionData`.
-    ///      Consent is committed at agreement-signing time; runtime drift
-    ///      would let a participant claim consent to v1 of a document and
-    ///      attest under a different (documentHash, version, title) tuple.
     error SectionDataMismatch();
 
     function validate(
@@ -68,17 +51,24 @@ contract FigaroConsentV1Validator is ISchemaValidator {
     {
         if (id != schemaId) revert SchemaIdMismatch(id, schemaId);
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
-        (bytes32 documentHash, string memory documentVersion, string memory documentTitle) =
-            abi.decode(content, (bytes32, string, string));
 
-        if (documentHash == bytes32(0)) revert EmptyDocumentHash();
+        (bytes32[] memory documentHashes, string[] memory documentVersions, string[] memory documentTitles) =
+            abi.decode(content, (bytes32[], string[], string[]));
 
-        uint256 versionLen = bytes(documentVersion).length;
-        if (versionLen < MIN_VERSION_LEN) revert DocumentVersionTooShort(versionLen);
-        if (versionLen > MAX_VERSION_LEN) revert DocumentVersionTooLong(versionLen);
+        uint256 n = documentHashes.length;
+        if (n == 0) revert DocumentsEmpty();
+        if (documentVersions.length != n || documentTitles.length != n) revert ArrayLengthMismatch();
 
-        uint256 titleLen = bytes(documentTitle).length;
-        if (titleLen < MIN_TITLE_LEN) revert DocumentTitleTooShort(titleLen);
-        if (titleLen > MAX_TITLE_LEN) revert DocumentTitleTooLong(titleLen);
+        for (uint256 i = 0; i < n; i++) {
+            if (documentHashes[i] == bytes32(0)) revert EmptyDocumentHash(i);
+
+            uint256 versionLen = bytes(documentVersions[i]).length;
+            if (versionLen < MIN_VERSION_LEN) revert DocumentVersionTooShort(i, versionLen);
+            if (versionLen > MAX_VERSION_LEN) revert DocumentVersionTooLong(i, versionLen);
+
+            uint256 titleLen = bytes(documentTitles[i]).length;
+            if (titleLen < MIN_TITLE_LEN) revert DocumentTitleTooShort(i, titleLen);
+            if (titleLen > MAX_TITLE_LEN) revert DocumentTitleTooLong(i, titleLen);
+        }
     }
 }

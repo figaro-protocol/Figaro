@@ -36,7 +36,6 @@ import {
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import {
-    CONSENT_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
     GHG_DISCLOSURE_SCHEMA_KEYS,
 } from "@/lib/core/agreementManifest";
@@ -76,11 +75,6 @@ type SectionKey = ArticleKey;
  */
 const SCHEMA_SENTINELS: Record<string, Record<string, string>> = {
     [GEO_SCHEMA_KEY]: { origin: "0", destination: "0" },
-    [CONSENT_SCHEMA_KEY]: {
-        documentHash: ZERO_BYTES32,
-        documentVersion: "v0",
-        documentTitle: "Placeholder",
-    },
 };
 
 /**
@@ -90,7 +84,6 @@ const SCHEMA_SENTINELS: Record<string, Record<string, string>> = {
  */
 const SCHEMA_FIELDS: Record<string, readonly string[]> = {
     [GEO_SCHEMA_KEY]: ["origin", "destination", "mass", "volume", "class_"],
-    [CONSENT_SCHEMA_KEY]: ["documentHash", "documentVersion", "documentTitle"],
 };
 
 function isFieldFilled(fields: ManifestFields, key: string): boolean {
@@ -107,9 +100,6 @@ function isFieldFilled(fields: ManifestFields, key: string): boolean {
 function isSchemaIncluded(schemaId: string, fields: ManifestFields): boolean {
     if (schemaId === GEO_SCHEMA_KEY) {
         return isFieldFilled(fields, "origin") && isFieldFilled(fields, "destination");
-    }
-    if (schemaId === CONSENT_SCHEMA_KEY) {
-        return ["documentHash", "documentVersion", "documentTitle"].every((k) => isFieldFilled(fields, k));
     }
     return false;
 }
@@ -359,6 +349,38 @@ export function AgreementDrawer({
         commitFields(out);
     }
 
+    /** Consent article state — array of {documentHash, documentVersion,
+     *  documentTitle} rows. Each row is independently editable; partial
+     *  rows are silently dropped by buildOrderAgreement. */
+    const consentDocuments: Array<Record<string, string>> = Array.isArray(fields.consentDocuments)
+        ? (fields.consentDocuments as Array<Record<string, string>>)
+        : [];
+
+    function commitConsentDocuments(next: Array<Record<string, string>>) {
+        const out: ManifestFields = { ...fields };
+        if (next.length > 0) out.consentDocuments = next;
+        else delete (out as Record<string, unknown>).consentDocuments;
+        commitFields(out);
+    }
+
+    function addConsentDocument() {
+        commitConsentDocuments([
+            ...consentDocuments,
+            { documentTitle: "", documentVersion: "", documentHash: "" },
+        ]);
+    }
+
+    function updateConsentDocument(index: number, key: string, value: string) {
+        const next = consentDocuments.map((row, i) =>
+            i === index ? { ...row, [key]: value } : row,
+        );
+        commitConsentDocuments(next);
+    }
+
+    function removeConsentDocument(index: number) {
+        commitConsentDocuments(consentDocuments.filter((_, i) => i !== index));
+    }
+
     return (
         <aside
             data-testid="agreement-drawer"
@@ -558,10 +580,11 @@ export function AgreementDrawer({
 
                     {openSection === "consent" && (
                         <section data-testid="drawer-section-consent">
-                            <SchemaToggleArticle
-                                schemaId={CONSENT_SCHEMA_KEY}
-                                included={isSchemaIncluded(CONSENT_SCHEMA_KEY, fields)}
-                                onToggle={(next) => toggleSchema(CONSENT_SCHEMA_KEY, next)}
+                            <ConsentArticle
+                                documents={consentDocuments}
+                                onAdd={addConsentDocument}
+                                onUpdate={updateConsentDocument}
+                                onRemove={removeConsentDocument}
                             />
                         </section>
                     )}
@@ -1015,6 +1038,105 @@ function JurisdictionArticle({
                     </div>
                 )}
             </div>
+        </div>
+    );
+}
+
+/**
+ * Consent article — multi-document list. Each row carries a (title,
+ * version, hash) tuple. Empty rows are silently dropped by
+ * `buildOrderAgreement`; the on-chain validator enforces non-empty hash
+ * + 1-32 char version + 1-200 char title per row. The drawer offers free
+ * editing without inline validation (the validator is authoritative).
+ */
+function ConsentArticle({
+    documents,
+    onAdd,
+    onUpdate,
+    onRemove,
+}: {
+    documents: Array<Record<string, string>>;
+    onAdd: () => void;
+    onUpdate: (index: number, key: string, value: string) => void;
+    onRemove: (index: number) => void;
+}) {
+    return (
+        <div className="space-y-4">
+            <p className="text-[11px] text-neutral-500">
+                Off-chain documents this agreement binds to (ToS, NDA, privacy
+                policy, custom terms). Each document is referenced by its
+                keccak256 hash.
+            </p>
+            {documents.length === 0 && (
+                <p className="text-xs text-neutral-500" data-testid="drawer-consent-empty">
+                    No documents bound.
+                </p>
+            )}
+            {documents.map((doc, i) => (
+                <div
+                    key={i}
+                    className="border border-neutral-200 rounded p-3 space-y-2"
+                    data-testid={`drawer-consent-row-${i}`}
+                >
+                    <div className="flex items-baseline justify-between">
+                        <span className="text-[11px] text-neutral-500">Document {i + 1}</span>
+                        <button
+                            type="button"
+                            onClick={() => onRemove(i)}
+                            className="text-[11px] text-red-600 hover:text-red-800"
+                            data-testid={`drawer-consent-remove-${i}`}
+                        >
+                            Remove
+                        </button>
+                    </div>
+                    <div>
+                        <label className="block text-[11px] text-neutral-500 mb-1">Title</label>
+                        <input
+                            type="text"
+                            placeholder="Terms of Service · Privacy Policy · NDA"
+                            maxLength={200}
+                            value={doc.documentTitle ?? ""}
+                            onChange={(e) => onUpdate(i, "documentTitle", e.target.value)}
+                            data-testid={`drawer-consent-title-${i}`}
+                            className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[11px] text-neutral-500 mb-1">Version</label>
+                        <input
+                            type="text"
+                            placeholder="1.0.0 · 2025-04-29"
+                            maxLength={32}
+                            value={doc.documentVersion ?? ""}
+                            onChange={(e) => onUpdate(i, "documentVersion", e.target.value)}
+                            data-testid={`drawer-consent-version-${i}`}
+                            className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-40 bg-white"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[11px] text-neutral-500 mb-1">
+                            Hash (keccak256, 0x… 64-char hex)
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="0x…"
+                            maxLength={66}
+                            value={doc.documentHash ?? ""}
+                            onChange={(e) => onUpdate(i, "documentHash", e.target.value)}
+                            data-testid={`drawer-consent-hash-${i}`}
+                            className="text-xs font-mono border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
+                        />
+                    </div>
+                </div>
+            ))}
+            <button
+                type="button"
+                onClick={onAdd}
+                data-testid="drawer-consent-add"
+                className="text-xs px-3 py-1.5 rounded border border-neutral-300 hover:border-neutral-500 bg-white text-neutral-700"
+            >
+                + Add document
+            </button>
         </div>
     );
 }

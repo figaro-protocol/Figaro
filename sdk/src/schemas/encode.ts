@@ -341,8 +341,8 @@ export function encodeMerchantContent(content: MerchantContent): Hex {
 // Bounded inputs (length limits enforced both Layer A and Layer C) prevent
 // griefing via unbounded calldata.
 
-export interface ConsentContent {
-    /** keccak256 of the canonical legal document text. 32-byte hex (0x...). */
+export interface ConsentDocument {
+    /** keccak256 of the canonical document text. 32-byte hex (0x...). */
     documentHash: Hex;
     /** Semver-style version identifier; bounded to 32 chars. */
     documentVersion: string;
@@ -350,10 +350,18 @@ export interface ConsentContent {
     documentTitle: string;
 }
 
+export interface ConsentContent {
+    /** Non-empty list of referenced documents. */
+    documents: readonly ConsentDocument[];
+}
+
 export function encodeConsentContent(content: ConsentContent): Hex {
+    const hashes = content.documents.map((d) => d.documentHash);
+    const versions = content.documents.map((d) => d.documentVersion);
+    const titles = content.documents.map((d) => d.documentTitle);
     return encodeAbiParameters(
-        [{ type: "bytes32" }, { type: "string" }, { type: "string" }],
-        [content.documentHash, content.documentVersion, content.documentTitle],
+        [{ type: "bytes32[]" }, { type: "string[]" }, { type: "string[]" }],
+        [hashes, versions, titles],
     );
 }
 

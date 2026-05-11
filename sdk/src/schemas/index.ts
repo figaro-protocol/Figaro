@@ -61,6 +61,7 @@ export type {
     CourierEvent,
     CourierContent,
     ConsentContent,
+    ConsentDocument,
 } from "./encode.js";
 
 export {
