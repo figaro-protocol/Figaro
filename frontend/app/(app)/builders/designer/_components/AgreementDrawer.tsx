@@ -6,9 +6,9 @@
  *
  * Each tab represents an article of the bonded commitment. The designer
  * chooses which schemas appear in the order's agreement by toggling
- * inclusion; the toggle drops or restores per-schema sentinel manifest
- * fields (e.g., toggling Geo on sets sentinel `origin`/`destination`
- * geohashes; toggling Jurisdiction on sets `applicableLaw = "Kleros"`).
+ * inclusion or by filling structured controls (checkboxes for multi-valued
+ * fields; per-article custom widgets for Fulfilment, Emissions, and
+ * Jurisdiction).
  *
  * The actual values are filled in by the merchant or buyer at commit time
  * — the designer's job here is composition, not data entry. Rendering of
@@ -530,7 +530,6 @@ export function AgreementDrawer({
                                 forum={forumValue}
                                 language={languageValue}
                                 klerosOptedIn={klerosOptedIn}
-                                traditionalActive={traditionalActive}
                                 onKlerosCourtChange={setKlerosCourt}
                                 onKlerosMinJurorsChange={setKlerosMinJurors}
                                 onTraditionalFieldChange={setTraditionalField}
@@ -877,7 +876,6 @@ function JurisdictionArticle({
     forum,
     language,
     klerosOptedIn,
-    traditionalActive,
     onKlerosCourtChange,
     onKlerosMinJurorsChange,
     onTraditionalFieldChange,
@@ -889,12 +887,19 @@ function JurisdictionArticle({
     forum: string;
     language: string;
     klerosOptedIn: boolean;
-    traditionalActive: boolean;
     onKlerosCourtChange: (value: string) => void;
     onKlerosMinJurorsChange: (value: string) => void;
     onTraditionalFieldChange: (key: "applicableLaw" | "forum" | "language", value: string) => void;
     onClearTraditional: () => void;
 }) {
+    // Toggle reflects intent. Initialized from any persisted field value
+    // so that reopening a node with state/ADR already filled keeps the
+    // toggle in the right state.
+    const hasPersistedTraditional = applicableLaw !== "" || forum !== "" || language !== "";
+    const [stateAdrOpen, setStateAdrOpen] = useState(hasPersistedTraditional);
+    useEffect(() => {
+        if (hasPersistedTraditional) setStateAdrOpen(true);
+    }, [hasPersistedTraditional]);
     return (
         <div className="space-y-5">
             <div data-testid="drawer-jurisdiction-layer1">
@@ -951,16 +956,20 @@ function JurisdictionArticle({
                 <label className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer mb-2">
                     <input
                         type="checkbox"
-                        checked={traditionalActive}
+                        checked={stateAdrOpen}
                         onChange={(e) => {
-                            if (!e.target.checked) onClearTraditional();
-                            else onTraditionalFieldChange("applicableLaw", "US");
+                            if (e.target.checked) {
+                                setStateAdrOpen(true);
+                            } else {
+                                setStateAdrOpen(false);
+                                onClearTraditional();
+                            }
                         }}
                         data-testid="drawer-jurisdiction-traditional-toggle"
                     />
                     <span className="font-medium">State / ADR jurisdiction</span>
                 </label>
-                {traditionalActive && (
+                {stateAdrOpen && (
                     <div className="ml-6 space-y-2">
                         <div>
                             <label className="block text-[11px] text-neutral-500 mb-1">Applicable law</label>

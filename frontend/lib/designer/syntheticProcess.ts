@@ -61,16 +61,19 @@ export interface CreatedOrder {
 
 /**
  * Manifest field defaults applied to every freshly-spawned synthetic
- * order. The chosen fields make four sections appear in the agreement
- * by default — Geo (placeholder geohashes), Jurisdiction (Kleros),
- * Commerce (always), Topology (always) — matching the designer's
- * "default articles for any node" intent.
+ * order. The chosen fields make five sections appear in the agreement
+ * by default — Geo (placeholder geohashes), Jurisdiction (Kleros layer-2),
+ * Fulfilment (pickup), Commerce (always), Topology (always) — matching
+ * the designer's "default articles for any node" intent.
  *
  *   - `origin` / `destination` = "0" — single-character base32 geohashes
  *     that satisfy `figaro-geo-v1`'s pattern + minLength constraints.
- *   - `applicableLaw` = "Kleros" — the protocol's default off-chain
- *     dispute-resolution venue. `figaro-jurisdiction-v1` accepts
- *     free-form non-state legal orders.
+ *   - `klerosCourt` = "general" + `klerosMinJurors` = "3" — Kleros General
+ *     Court with 3 jurors. Layer 1 (kernel mechanisms) is always active
+ *     and not encoded; layer 3 (state / ADR / traditional) is opt-in via
+ *     the Jurisdiction tab.
+ *   - `fulfilmentModalities` = ["pickup"] — simplest single-modality
+ *     offering that doesn't imply a courier sub-order.
  */
 const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
     origin: "0",
@@ -464,12 +467,22 @@ export function readAgreementFields(order: Order): ManifestFields {
     }
 
     // ── jurisdiction ───────────────────────────────────────────
-    const klerosCourt = summary?.jurisdiction?.klerosCourt;
-    if (typeof klerosCourt === "string") fields.klerosCourt = klerosCourt;
-    const klerosMinJurors = summary?.jurisdiction?.klerosMinJurors;
-    if (typeof klerosMinJurors === "number") fields.klerosMinJurors = String(klerosMinJurors);
-    const applicableLaw = summary?.jurisdiction?.applicableLaw;
-    if (typeof applicableLaw === "string") fields.applicableLaw = applicableLaw;
+    // Legacy migration: pre-v2-jurisdiction synthetic orders carried
+    // applicableLaw: "Kleros" as a sentinel for Kleros opt-in. Kleros is
+    // not a body of law — it's the ODR venue. Re-interpret the legacy
+    // sentinel as layer-2 opt-in and drop the misleading applicableLaw.
+    const rawKlerosCourt = summary?.jurisdiction?.klerosCourt;
+    const rawApplicableLaw = summary?.jurisdiction?.applicableLaw;
+    const isLegacyKlerosSentinel = rawApplicableLaw === "Kleros" && typeof rawKlerosCourt !== "string";
+    if (isLegacyKlerosSentinel) {
+        fields.klerosCourt = "general";
+        fields.klerosMinJurors = "3";
+    } else {
+        if (typeof rawKlerosCourt === "string") fields.klerosCourt = rawKlerosCourt;
+        const klerosMinJurors = summary?.jurisdiction?.klerosMinJurors;
+        if (typeof klerosMinJurors === "number") fields.klerosMinJurors = String(klerosMinJurors);
+        if (typeof rawApplicableLaw === "string") fields.applicableLaw = rawApplicableLaw;
+    }
     const forum = summary?.jurisdiction?.forum;
     if (typeof forum === "string") fields.forum = forum;
     const language = summary?.jurisdiction?.language;
