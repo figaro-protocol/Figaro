@@ -74,7 +74,7 @@ export const CATEGORY_LABELS: Record<SchemaCategory, string> = {
     "role-process": "Role process",
     fulfilment: "Fulfilment",
     geo: "Geo",
-    emissions: "GHG",
+    emissions: "Emissions",
     handoff: "Handoff",
     jurisdiction: "Jurisdiction",
     proximity: "Proximity",

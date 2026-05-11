@@ -221,6 +221,14 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
         if (order) setFields(readAgreementFields(order));
     }, [order?.id, order?.agreementHash]);
 
+    // Auto-open Topology whenever a different order is selected — it's the
+    // first thing a user wants to see when clicking a node. Keyed on
+    // order.id only, so editing a clause (which mutates agreementHash) does
+    // NOT yank the user back to topology.
+    useEffect(() => {
+        if (order) setOpenSection("topology");
+    }, [order?.id]);
+
     // Empty state — only valid in embedded mode (legacy callers gate on
     // selection and pass a non-null order).
     if (!order) {
@@ -330,9 +338,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
                                 className="w-8 h-8 rounded-full border border-neutral-300 hover:border-neutral-700 bg-white flex items-center justify-center"
                             >
                                 <span className={`w-3 h-3 rounded-full ${
-                                    status === "empty" ? "bg-neutral-200" :
-                                    status === "partial" ? "bg-amber-500" :
-                                    "bg-emerald-500"
+                                    status === "complete" ? "bg-emerald-500" : "bg-neutral-200"
                                 }`} />
                             </button>
                         );
@@ -345,9 +351,6 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
                 <div className="min-w-0">
                     <p className="text-xs font-semibold text-neutral-500">
                         Modify agreement
-                    </p>
-                    <p className="text-sm font-semibold text-black mt-0.5 truncate">
-                        Order #{order.id.slice(0, 10)}…
                     </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -397,14 +400,10 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded =
                                     : "bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-100"
                             }`}
                         >
-                            {status !== "empty" && (
+                            {status === "complete" && (
                                 <span
                                     aria-label={status}
-                                    className={`inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle ${
-                                        status === "complete"
-                                            ? "bg-emerald-500"
-                                            : "bg-amber-500"
-                                    }`}
+                                    className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle bg-emerald-500"
                                 />
                             )}
                             {CATEGORY_LABELS[key]}
