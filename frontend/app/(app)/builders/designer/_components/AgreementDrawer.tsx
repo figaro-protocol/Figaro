@@ -48,21 +48,19 @@ import type { FulfilmentModality } from "@figaro/core/schemas";
  * Articles of the agreement, in canonical contract-paper order.
  */
 type ArticleKey =
-    | "parties"
+    | "identity"
     | "geo"
     | "fulfilment"
     | "emissions"
     | "jurisdiction"
-    | "topology"
     | "consent";
 
 const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
-    { key: "parties", label: "Parties" },
+    { key: "identity", label: "Identity" },
     { key: "geo", label: "Geo" },
     { key: "fulfilment", label: "Fulfilment" },
     { key: "emissions", label: "Emissions" },
     { key: "jurisdiction", label: "Jurisdiction" },
-    { key: "topology", label: "Topology" },
     { key: "consent", label: "Consent" },
 ];
 
@@ -182,9 +180,9 @@ export function AgreementDrawer({
         if (order) setFields(readAgreementFields(order));
     }, [order?.id, order?.agreementHash]);
 
-    // Auto-open Parties on each new order — contracts open with who is bound.
+    // Auto-open Identity on each new order — contracts open with who is bound + where in the DAG.
     useEffect(() => {
-        if (order) setOpenSection("parties");
+        if (order) setOpenSection("identity");
     }, [order?.id]);
 
     // Empty state — only valid in embedded mode.
@@ -465,20 +463,40 @@ export function AgreementDrawer({
                     })}
                 </nav>
                 <div className="flex-1 overflow-y-auto px-5 py-4 text-sm">
-                    {openSection === "parties" && (
-                        <section data-testid="drawer-section-parties">
-                            <div className="space-y-4">
+                    {openSection === "identity" && (
+                        <section data-testid="drawer-section-identity">
+                            <div className="space-y-5">
                                 <div>
                                     <span className="text-[11px] text-neutral-500">Buyer</span>
-                                    <p className="font-mono text-xs text-neutral-700 break-all mt-0.5" data-testid="drawer-parties-buyer">
+                                    <p className="font-mono text-xs text-neutral-700 break-all mt-0.5" data-testid="drawer-identity-buyer">
                                         {order.buyer}
                                     </p>
                                 </div>
                                 <div>
                                     <span className="text-[11px] text-neutral-500">Seller</span>
-                                    <p className="font-mono text-xs text-neutral-700 break-all mt-0.5" data-testid="drawer-parties-seller">
+                                    <p className="font-mono text-xs text-neutral-700 break-all mt-0.5" data-testid="drawer-identity-seller">
                                         {order.seller}
                                     </p>
+                                </div>
+                                <div>
+                                    <span className="text-[11px] text-neutral-500">Position</span>
+                                    {topology?.parentOrderHashes && topology.parentOrderHashes.length > 0 ? (
+                                        <ul
+                                            className="font-mono text-[10px] text-neutral-600 space-y-1 break-all mt-0.5"
+                                            data-testid="drawer-identity-parents"
+                                        >
+                                            {topology.parentOrderHashes.map((p) => (
+                                                <li key={p}>{p}</li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p
+                                            className="text-xs text-neutral-700 mt-0.5"
+                                            data-testid="drawer-identity-root"
+                                        >
+                                            Root order.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </section>
@@ -548,19 +566,6 @@ export function AgreementDrawer({
                         </section>
                     )}
 
-                    {openSection === "topology" && (
-                        <section data-testid="drawer-section-topology">
-                            {topology?.parentOrderHashes && topology.parentOrderHashes.length > 0 ? (
-                                <ul className="font-mono text-[10px] text-neutral-600 space-y-1 break-all">
-                                    {topology.parentOrderHashes.map((p) => (
-                                        <li key={p}>{p}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-xs text-neutral-500">Root order.</p>
-                            )}
-                        </section>
-                    )}
                 </div>
             </div>
             </>)}
