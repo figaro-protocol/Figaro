@@ -36,6 +36,8 @@ import {
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "../../_components/AgreementDrawer";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
+import { summarizeAgreement } from "@/lib/core/orderAgreement";
+import { loadAgreement } from "@/lib/core/agreementStore";
 import { REFERENCE_ASSEMBLIES, type Assembly } from "@/lib/shared/assembly";
 import { slugify } from "@/lib/shared/slug";
 import { assemblyToSyntheticOrders } from "@/lib/designer/assemblyToSyntheticOrders";
@@ -113,6 +115,55 @@ export function EditAssemblyClient({ params }: Props) {
     );
 
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
+    // Tracks courier sub-orders auto-spawned by the drawer's Delivery
+    // selection so a subsequent switch off Delivery can remove the same one.
+    const autoAddedCourierByParentRef = useRef<Map<string, string>>(new Map());
+
+    const handleDeliverySelected = useCallback(
+        (parentOrderId: string) => {
+            setOrders((prev) => {
+                const parent = prev.find((o) => o.id === parentOrderId);
+                if (!parent) return prev;
+                const hasAnyChild = prev.some((o) => {
+                    const summary = summarizeAgreement(loadAgreement(o.agreementHash));
+                    return summary?.topology?.parentOrderHashes.includes(parentOrderId) ?? false;
+                });
+                if (hasAnyChild) return prev;
+                const sub = createSyntheticSubOrder(session, parent);
+                autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
+                return [...prev, sub.order];
+            });
+        },
+        [session],
+    );
+
+    const handleDeliveryUnselected = useCallback(
+        (parentOrderId: string) => {
+            const trackedId = autoAddedCourierByParentRef.current.get(parentOrderId);
+            if (!trackedId) return;
+            setOrders((prev) => {
+                const tracked = prev.find((o) => o.id === trackedId);
+                if (!tracked) {
+                    autoAddedCourierByParentRef.current.delete(parentOrderId);
+                    return prev;
+                }
+                const hasDescendant = prev.some((o) => {
+                    if (o.id === trackedId) return false;
+                    const summary = summarizeAgreement(loadAgreement(o.agreementHash));
+                    return summary?.topology?.parentOrderHashes.includes(trackedId) ?? false;
+                });
+                if (hasDescendant) {
+                    autoAddedCourierByParentRef.current.delete(parentOrderId);
+                    return prev;
+                }
+                autoAddedCourierByParentRef.current.delete(parentOrderId);
+                if (selectedOrderId === trackedId) setSelectedOrderId(null);
+                return prev.filter((o) => o.id !== trackedId);
+            });
+        },
+        [selectedOrderId, session],
+    );
 
     const handleEditAgreement = useCallback(
         (orderId: string, edits: AgreementEdits) => {
@@ -348,7 +399,8 @@ export function EditAssemblyClient({ params }: Props) {
                         onChange={(edits) => handleEditAgreement(selectedOrderId, edits)}
                         onDelete={handleDeleteNode}
                         hasChildren={hasChildren}
-                        onAddSubOrder={handleAddSubOrder}
+                        onDeliverySelected={handleDeliverySelected}
+                        onDeliveryUnselected={handleDeliveryUnselected}
                     />
                 );
             })()}

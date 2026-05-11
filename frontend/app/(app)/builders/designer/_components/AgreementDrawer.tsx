@@ -141,14 +141,20 @@ interface Props {
     /** Optional — when provided, the drawer renders a Delete button. */
     onDelete?: (orderId: string) => void;
     /** True when the current order already has at least one child sub-order.
-     *  Drives the Fulfilment article's auto-add rule: picking Delivery on a
-     *  node with no children triggers `onAddSubOrder`; on a node that already
-     *  has one, modality just updates in place. */
+     *  Surfaced to the Fulfilment article so its hint copy reflects the
+     *  canvas state ("a sub-order was added" vs. "set coordination on the
+     *  existing sub-order"). */
     hasChildren?: boolean;
-    /** Add a courier sub-order beneath the current order. Required for the
-     *  Fulfilment article's auto-add path; omit to disable it (drawer then
-     *  treats Delivery as a no-op when no children exist). */
-    onAddSubOrder?: (parentOrderId: string) => void;
+    /** Fired when the user picks Delivery in the Fulfilment article. The
+     *  page is responsible for adding a courier sub-order if none exists
+     *  and tracking it so a subsequent `onDeliveryUnselected` can remove
+     *  the same one. */
+    onDeliverySelected?: (parentOrderId: string) => void;
+    /** Fired when the user picks a non-delivery modality (or Not included)
+     *  after previously having Delivery selected. The page should remove
+     *  any sub-order it auto-added in response to the matching
+     *  `onDeliverySelected`, leaving manually-added sub-orders alone. */
+    onDeliveryUnselected?: (parentOrderId: string) => void;
     /** When true, render as an inline flex-column block without fixed
         positioning. The page layout becomes responsible for placement. */
     embedded?: boolean;
@@ -160,7 +166,8 @@ export function AgreementDrawer({
     onChange,
     onDelete,
     hasChildren = false,
-    onAddSubOrder,
+    onDeliverySelected,
+    onDeliveryUnselected,
     embedded = false,
 }: Props) {
     const [fields, setFields] = useState<ManifestFields>(() =>
@@ -241,18 +248,19 @@ export function AgreementDrawer({
 
     /** Fulfilment article: pick modality only. Coordination lives on the
      *  courier sub-order's edge pill, never in the drawer. Picking Delivery
-     *  on a node with no children auto-adds a courier sub-order so the rule
-     *  "delivery implies a sub-order" stays invariant. */
+     *  signals the page to add a courier sub-order; switching off Delivery
+     *  signals the page to remove the auto-added one. The page owns the
+     *  add/remove tracking — the drawer only declares intent. */
     function selectModality(modality: FulfilmentModality | null) {
+        const wasDelivery = activeModality === "delivery";
+        const isDelivery = modality === "delivery";
+
         const next: ManifestFields = { ...fields };
         if (modality === null) {
             for (const k of FULFILMENT_MANIFEST_FIELDS) {
                 delete (next as Record<string, unknown>)[k];
             }
-            commitFields(next);
-            return;
-        }
-        if (modality === "delivery") {
+        } else if (isDelivery) {
             // Keep any existing canonical method (preserves coordination if
             // already set); default to seller-assigned when fresh.
             const existing = typeof fields.fulfilmentMethod === "string"
@@ -262,14 +270,17 @@ export function AgreementDrawer({
             (next as Record<string, unknown>).fulfilmentMethod = isExistingDelivery
                 ? existing
                 : "deliver:seller-assigned";
-            commitFields(next);
-            if (!hasChildren && order && onAddSubOrder) {
-                onAddSubOrder(order.id);
-            }
-            return;
+        } else {
+            (next as Record<string, unknown>).fulfilmentMethod = modality;
         }
-        (next as Record<string, unknown>).fulfilmentMethod = modality;
         commitFields(next);
+
+        if (!order) return;
+        if (isDelivery && !wasDelivery && onDeliverySelected) {
+            onDeliverySelected(order.id);
+        } else if (!isDelivery && wasDelivery && onDeliveryUnselected) {
+            onDeliveryUnselected(order.id);
+        }
     }
 
     const activeModality: FulfilmentModality | null = (() => {
@@ -606,9 +617,9 @@ function FulfilmentArticle({
                     className="text-[11px] text-neutral-500 leading-relaxed mt-4"
                     data-testid="drawer-fulfilment-courier-hint"
                 >
-                    {hasChildren
-                        ? "Set courier coordination on the sub-order's edge pill in the canvas."
-                        : "A courier sub-order was added below. Set its coordination on the new edge pill."}
+                    Set courier coordination on the sub-order&apos;s edge pill in
+                    the canvas. Switching off Delivery removes the auto-added
+                    sub-order if it has no descendants.
                 </p>
             )}
         </div>

@@ -30,6 +30,8 @@ import {
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "../_components/AgreementDrawer";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
+import { summarizeAgreement } from "@/lib/core/orderAgreement";
+import { loadAgreement } from "@/lib/core/agreementStore";
 
 interface InitialState {
     session: SyntheticProcessSession;
@@ -178,6 +180,8 @@ export function NewAssemblyClient() {
         setSavedAt(Date.now());
     }, [hydrated, orders, name, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
+    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
     const handleAddSubOrder = useCallback(
         (parentOrderId: string) => {
             setOrders((prev) => {
@@ -190,7 +194,61 @@ export function NewAssemblyClient() {
         [session],
     );
 
-    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+    // Tracks courier sub-orders auto-spawned by the drawer's Delivery
+    // selection so a subsequent switch off Delivery can remove the same one
+    // without touching manually-added sub-orders.
+    const autoAddedCourierByParentRef = useRef<Map<string, string>>(new Map());
+
+    const handleDeliverySelected = useCallback(
+        (parentOrderId: string) => {
+            setOrders((prev) => {
+                const parent = prev.find((o) => o.id === parentOrderId);
+                if (!parent) return prev;
+                // Skip if the parent already has a child (auto-added or
+                // otherwise) — Delivery on a node with children just updates
+                // modality in place.
+                const hasAnyChild = prev.some((o) => {
+                    const summary = summarizeAgreement(loadAgreement(o.agreementHash));
+                    return summary?.topology?.parentOrderHashes.includes(parentOrderId) ?? false;
+                });
+                if (hasAnyChild) return prev;
+                const sub = createSyntheticSubOrder(session, parent);
+                autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
+                return [...prev, sub.order];
+            });
+        },
+        [session],
+    );
+
+    const handleDeliveryUnselected = useCallback(
+        (parentOrderId: string) => {
+            const trackedId = autoAddedCourierByParentRef.current.get(parentOrderId);
+            if (!trackedId) return;
+            setOrders((prev) => {
+                const tracked = prev.find((o) => o.id === trackedId);
+                if (!tracked) {
+                    autoAddedCourierByParentRef.current.delete(parentOrderId);
+                    return prev;
+                }
+                // Only auto-remove if the tracked sub-order has no descendants
+                // of its own. If the user has built downstream from it, leave
+                // it alone — explicit Delete is required.
+                const hasDescendant = prev.some((o) => {
+                    if (o.id === trackedId) return false;
+                    const summary = summarizeAgreement(loadAgreement(o.agreementHash));
+                    return summary?.topology?.parentOrderHashes.includes(trackedId) ?? false;
+                });
+                if (hasDescendant) {
+                    autoAddedCourierByParentRef.current.delete(parentOrderId);
+                    return prev;
+                }
+                autoAddedCourierByParentRef.current.delete(parentOrderId);
+                if (selectedOrderId === trackedId) setSelectedOrderId(null);
+                return prev.filter((o) => o.id !== trackedId);
+            });
+        },
+        [selectedOrderId],
+    );
 
     const handleEditAgreement = useCallback(
         (orderId: string, edits: AgreementEdits) => {
@@ -419,7 +477,8 @@ export function NewAssemblyClient() {
                         }
                         return false;
                     })()}
-                    onAddSubOrder={handleAddSubOrder}
+                    onDeliverySelected={handleDeliverySelected}
+                    onDeliveryUnselected={handleDeliveryUnselected}
                     embedded
                 />
             </div>
