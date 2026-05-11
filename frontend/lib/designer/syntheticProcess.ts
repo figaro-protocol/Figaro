@@ -253,16 +253,6 @@ export const FULFILMENT_METHOD_LABELS: Record<CanonicalFulfilmentMethod, string>
     "deliver:dutch-auction": "Delivery (Dutch-auction courier)",
 };
 
-/** Short labels for the inline edge pill (limited horizontal space). */
-export const FULFILMENT_METHOD_PILL_LABELS: Record<CanonicalFulfilmentMethod, string> = {
-    "consume-onsite": "On-site",
-    "pickup": "Pickup",
-    "virtual": "Virtual",
-    "deliver:buyer-assigned": "Deliver · buyer",
-    "deliver:seller-assigned": "Deliver · seller",
-    "deliver:dutch-auction": "Deliver · auction",
-};
-
 /**
  * Default fulfilment method when an order's agreement carries no fulfilment
  * section. Picked as the most common case for a delivery sub-order — the

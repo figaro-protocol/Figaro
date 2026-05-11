@@ -15,7 +15,6 @@ import {
     isRootOrder,
     mergeSyntheticParent,
     startSyntheticSession,
-    swapSyntheticFulfilmentMethod,
     type AgreementEdits,
     type CanonicalFulfilmentMethod,
     type SyntheticProcessSession,
@@ -262,18 +261,6 @@ export function NewAssemblyClient() {
         [],
     );
 
-    const handleSwapMechanism = useCallback(
-        (childOrderId: string, method: CanonicalFulfilmentMethod) => {
-            setOrders((prev) => {
-                const child = prev.find((o) => o.id === childOrderId);
-                if (!child) return prev;
-                const updated = swapSyntheticFulfilmentMethod(child, method);
-                return prev.map((o) => (o.id === childOrderId ? updated : o));
-            });
-        },
-        [],
-    );
-
     const handleDeleteNode = useCallback(
         (orderId: string) => {
             setOrders((prev) => {
@@ -451,7 +438,6 @@ export function NewAssemblyClient() {
                             designerMode
                             onAddSubOrder={handleAddSubOrder}
                             onAddParent={handleAddParent}
-                            onSwapMechanism={handleSwapMechanism}
                             onSelectNode={setSelectedOrderId}
                             onDeleteNode={handleDeleteNode}
                         />

@@ -17,17 +17,12 @@ import type { Order } from "@/lib/core/store";
 import {
     collectDescendants,
     createSyntheticSubOrder,
-    deriveFulfilmentMethod,
     editSyntheticAgreement,
-    FULFILMENT_METHOD_LABELS,
     isRootOrder,
     mergeSyntheticParent,
-    swapSyntheticFulfilmentMethod,
     type AgreementEdits,
-    type CanonicalFulfilmentMethod,
     type SyntheticProcessSession,
 } from "@/lib/designer/syntheticProcess";
-import { CANONICAL_FULFILMENT_METHODS_LIST } from "@/lib/core/orderAgreement";
 import {
     clearCurrentSession,
     saveCurrentSession,
@@ -177,18 +172,6 @@ export function EditAssemblyClient({ params }: Props) {
         [],
     );
 
-    const handleSwapMechanism = useCallback(
-        (childOrderId: string, method: CanonicalFulfilmentMethod) => {
-            setOrders((prev) => {
-                const child = prev.find((o) => o.id === childOrderId);
-                if (!child) return prev;
-                const updated = swapSyntheticFulfilmentMethod(child, method);
-                return prev.map((o) => (o.id === childOrderId ? updated : o));
-            });
-        },
-        [],
-    );
-
     const handleDeleteNode = useCallback(
         (orderId: string) => {
             setOrders((prev) => {
@@ -279,12 +262,6 @@ export function EditAssemblyClient({ params }: Props) {
         return `Stage 2+ — ${orders.length}-node DAG`;
     }, [orders.length]);
 
-    const rootOrder = useMemo(
-        () => orders.find((o) => isRootOrder(o.id, orders)) ?? null,
-        [orders],
-    );
-    const rootFulfilment = rootOrder ? deriveFulfilmentMethod(rootOrder) : null;
-
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
         if (slug) return `Saved as draft "${name}" · autosaved ${formatRelative(savedAt)}`;
@@ -312,28 +289,6 @@ export function EditAssemblyClient({ params }: Props) {
                     Forked from {reference.identity.name}
                 </span>
                 <span className="text-xs text-ink-muted">{stageLabel}</span>
-                {rootOrder && rootFulfilment && (
-                    <label className="text-xs text-ink-muted flex items-center gap-1.5">
-                        <span>Root fulfilment</span>
-                        <select
-                            data-testid="designer-root-fulfilment"
-                            value={rootFulfilment}
-                            onChange={(e) =>
-                                handleSwapMechanism(
-                                    rootOrder.id,
-                                    e.target.value as CanonicalFulfilmentMethod,
-                                )
-                            }
-                            className="text-xs px-2 py-1 rounded border border-default bg-paper hover:border-default-strong text-ink-primary"
-                        >
-                            {CANONICAL_FULFILMENT_METHODS_LIST.map((method) => (
-                                <option key={method} value={method}>
-                                    {FULFILMENT_METHOD_LABELS[method]}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                )}
                 <button
                     type="button"
                     onClick={handleSaveDraft}
@@ -368,7 +323,6 @@ export function EditAssemblyClient({ params }: Props) {
                     designerMode
                     onAddSubOrder={handleAddSubOrder}
                     onAddParent={handleAddParent}
-                    onSwapMechanism={handleSwapMechanism}
                     onSelectNode={setSelectedOrderId}
                     onDeleteNode={handleDeleteNode}
                 />

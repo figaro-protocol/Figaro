@@ -47,7 +47,7 @@ export function isDeliveryFulfilment(method: CanonicalFulfilmentMethod): boolean
     return method.startsWith("deliver:");
 }
 
-/** Human-readable label for picker UIs. Keep in sync with `FULFILMENT_METHOD_PILL_LABELS`. */
+/** Human-readable labels for picker UIs. */
 export const FULFILMENT_MODE_LABELS: Record<CanonicalFulfilmentMethod, string> = {
     "consume-onsite": "Consume on-site",
     "pickup": "Pickup",

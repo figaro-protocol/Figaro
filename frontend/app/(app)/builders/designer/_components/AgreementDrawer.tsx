@@ -553,17 +553,15 @@ function toggleInList<T>(list: readonly T[], value: T): T[] {
 }
 
 /**
- * Fulfilment article — multi-select across modalities, coordinations,
- * handoff points, and proximity verification bands. Every order has a
- * fulfilment clause; there is no "not-included" option. Picking Delivery
- * implies a courier sub-order — the page reacts to `onDeliveryAdded` to
- * auto-add one (and to `onDeliveryRemoved` to remove the auto-added one
- * when Delivery is unchecked).
+ * Fulfilment article — modalities + (conditional) courier coordination +
+ * handoff points + (conditional) proximity bands. All four subsections are
+ * always rendered; coordination is gated on "delivery" in modalities and
+ * proximity is gated on at least one physical modality. Gated subsections
+ * show their options disabled with an inline hint so users see what the
+ * decision space is even before unlocking it.
  *
- * Proximity bands live in a sister schema (figaro-proximity-policy-v1) but
- * render inside this article because they verify the handoff event. The
- * subsection hides when the only modality offered is `virtual` (no physical
- * handoff to verify).
+ * Picking Delivery triggers `onDeliveryAdded` (the page auto-adds a courier
+ * sub-order); unchecking triggers `onDeliveryRemoved`.
  */
 function FulfilmentArticle({
     modalities,
@@ -586,8 +584,6 @@ function FulfilmentArticle({
     onDeliveryAdded: () => void;
     onDeliveryRemoved: () => void;
 }) {
-    const info = getSchemaInfo("figaro-fulfilment-v2");
-    const proximityInfo = getSchemaInfo("figaro-proximity-policy-v1");
     const deliveryOffered = modalities.includes("delivery");
     const hasPhysicalModality = modalities.some((m) => m !== "virtual");
 
@@ -597,8 +593,6 @@ function FulfilmentArticle({
         const becomingDelivery = isDelivery && !deliveryOffered;
         const removingDelivery = isDelivery && deliveryOffered;
         const stillDelivery = nextModalities.includes("delivery");
-        // Default delivery coordination to seller-assigned when first added;
-        // clear coordinations entirely when delivery is removed.
         const nextCoordinations = becomingDelivery && coordinations.length === 0
             ? ["seller-assigned"]
             : stillDelivery ? coordinations : [];
@@ -620,107 +614,97 @@ function FulfilmentArticle({
     }
 
     return (
-        <div>
-            <p className="text-sm text-black mb-1">{info?.title ?? "Fulfilment"}</p>
-            <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-                {info?.description ?? ""}
-            </p>
+        <div className="space-y-5">
+            <CheckboxGroup
+                label="Modalities"
+                options={MODALITY_OPTIONS}
+                checked={modalities}
+                onToggle={toggleModality}
+                testIdPrefix="drawer-fulfilment-modality"
+            />
 
-            <label className="block text-[11px] text-neutral-500 mb-1">Modalities offered</label>
-            <div className="space-y-1 mb-4">
-                {MODALITY_OPTIONS.map((opt) => (
-                    <label
-                        key={opt.value}
-                        className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
-                    >
-                        <input
-                            type="checkbox"
-                            checked={modalities.includes(opt.value)}
-                            onChange={() => toggleModality(opt.value)}
-                            data-testid={`drawer-fulfilment-modality-${opt.value}`}
-                        />
-                        <span>{opt.label}</span>
-                    </label>
-                ))}
-            </div>
+            <CheckboxGroup
+                label="Courier coordination"
+                hint={deliveryOffered ? undefined : "Check Delivery to enable."}
+                options={COORDINATION_OPTIONS}
+                checked={coordinations}
+                onToggle={toggleCoordination}
+                disabled={!deliveryOffered}
+                testIdPrefix="drawer-fulfilment-coordination"
+            />
 
-            {deliveryOffered && (
-                <div data-testid="drawer-fulfilment-coordination" className="mb-4">
-                    <label className="block text-[11px] text-neutral-500 mb-1">Courier coordination offered</label>
-                    <div className="space-y-1">
-                        {COORDINATION_OPTIONS.map((opt) => (
-                            <label
-                                key={opt.value}
-                                className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={coordinations.includes(opt.value)}
-                                    onChange={() => toggleCoordination(opt.value)}
-                                    data-testid={`drawer-fulfilment-coordination-${opt.value}`}
-                                />
-                                <span>{opt.label}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            )}
+            <CheckboxGroup
+                label="Handoff points"
+                options={HANDOFF_POINT_OPTIONS}
+                checked={handoffPoints}
+                onToggle={toggleHandoffPoint}
+                testIdPrefix="drawer-fulfilment-handoff"
+            />
 
-            <label className="block text-[11px] text-neutral-500 mb-1">Handoff points offered</label>
-            <div className="space-y-1">
-                {HANDOFF_POINT_OPTIONS.map((opt) => (
-                    <label
-                        key={opt.value}
-                        className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
-                    >
-                        <input
-                            type="checkbox"
-                            checked={handoffPoints.includes(opt.value)}
-                            onChange={() => toggleHandoffPoint(opt.value)}
-                            data-testid={`drawer-fulfilment-handoff-${opt.value}`}
-                        />
-                        <span>{opt.label}</span>
-                    </label>
-                ))}
-            </div>
-
-            {hasPhysicalModality && (
-                <div data-testid="drawer-fulfilment-proximity" className="mt-4">
-                    <label className="block text-[11px] text-neutral-500 mb-1">
-                        Proximity verification offered
-                    </label>
-                    <p className="text-[11px] text-neutral-500 leading-relaxed mb-2">
-                        {proximityInfo?.description ?? ""}
-                    </p>
-                    <div className="space-y-1">
-                        {PROXIMITY_BAND_OPTIONS.map((opt) => (
-                            <label
-                                key={opt.value}
-                                className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={proximityBands.includes(opt.value)}
-                                    onChange={() => toggleProximityBand(opt.value)}
-                                    data-testid={`drawer-proximity-band-${opt.value}`}
-                                />
-                                <span>{opt.label}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            )}
+            <CheckboxGroup
+                label="Proximity verification"
+                hint={hasPhysicalModality ? undefined : "Check a physical modality to enable."}
+                options={PROXIMITY_BAND_OPTIONS}
+                checked={proximityBands}
+                onToggle={toggleProximityBand}
+                disabled={!hasPhysicalModality}
+                testIdPrefix="drawer-proximity-band"
+            />
 
             {deliveryOffered && (
                 <p
-                    className="text-[11px] text-neutral-500 leading-relaxed mt-4"
+                    className="text-[11px] text-neutral-500"
                     data-testid="drawer-fulfilment-courier-hint"
                 >
                     {hasChildren
-                        ? "Delivery requires a courier sub-order — one is already on the canvas."
-                        : "A courier sub-order was added to the canvas for the delivery leg."}
+                        ? "Courier sub-order on the canvas."
+                        : "Courier sub-order added to the canvas."}
                 </p>
             )}
+        </div>
+    );
+}
+
+function CheckboxGroup({
+    label,
+    hint,
+    options,
+    checked,
+    onToggle,
+    disabled = false,
+    testIdPrefix,
+}: {
+    label: string;
+    hint?: string;
+    options: ReadonlyArray<{ value: string; label: string }>;
+    checked: string[];
+    onToggle: (value: string) => void;
+    disabled?: boolean;
+    testIdPrefix: string;
+}) {
+    return (
+        <div data-testid={`${testIdPrefix}-group`}>
+            <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-[11px] text-neutral-500">{label}</span>
+                {hint && <span className="text-[10px] text-neutral-400 italic">{hint}</span>}
+            </div>
+            <div className="space-y-1">
+                {options.map((opt) => (
+                    <label
+                        key={opt.value}
+                        className={`flex items-center gap-2 text-xs ${disabled ? "text-neutral-400 cursor-not-allowed" : "text-neutral-700 cursor-pointer"}`}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={checked.includes(opt.value)}
+                            onChange={() => !disabled && onToggle(opt.value)}
+                            disabled={disabled}
+                            data-testid={`${testIdPrefix}-${opt.value}`}
+                        />
+                        <span>{opt.label}</span>
+                    </label>
+                ))}
+            </div>
         </div>
     );
 }

@@ -31,11 +31,6 @@ import {
     Background,
     MiniMap,
     NodeTypes,
-    EdgeTypes,
-    EdgeProps,
-    BaseEdge,
-    EdgeLabelRenderer,
-    getBezierPath,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { Address, Hex } from "viem";
@@ -51,29 +46,8 @@ import {
     formatActualGrams,
 } from "@/lib/mechanisms/useGHGDisclosure";
 import { DISCLOSURE_KIND_LABELS } from "@/lib/mechanisms/contracts";
-import {
-    deriveFulfilmentMethod,
-    FULFILMENT_METHOD_LABELS,
-    FULFILMENT_METHOD_PILL_LABELS,
-    type CanonicalFulfilmentMethod,
-} from "@/lib/designer/syntheticProcess";
-import { CANONICAL_FULFILMENT_METHODS_LIST } from "@/lib/core/orderAgreement";
 import { truncateHex } from "@/lib/shared/formatHex";
 import type { LensId } from "@/lib/shared/schemaCategories";
-
-/**
- * Edge pills represent the *child* order's fulfilment method (root orders
- * have no incoming edge). A sub-order exists only because a seller
- * outsourced part of the work; under root-buyer-dominance the sub-order's
- * buyer IS the root buyer, so `consume-onsite` (buyer at sub-seller's site)
- * and `pickup` (buyer fetches from sub-seller) are nonsensical for sub-edges
- * — those are one-node-graph methods that imply no sub-order. Restrict the
- * picker to the three `deliver:*` variants. The root order's own
- * fulfilment method is set elsewhere (default: `deliver:seller-assigned`)
- * and is not edited via an edge pill.
- */
-const SUB_ORDER_FULFILMENT_OPTIONS: readonly CanonicalFulfilmentMethod[] =
-    CANONICAL_FULFILMENT_METHODS_LIST.filter((m) => m.startsWith("deliver:"));
 
 // ── Public types ────────────────────────────────────────────────────────────
 
@@ -415,96 +389,8 @@ const nodeTypes: NodeTypes = {
     order: OrderNode,
 };
 
-// ── Custom edge: fulfilment-method pill ────────────────────────────────────
-
-interface MechanismEdgeData {
-    method: CanonicalFulfilmentMethod;
-    /** Child order id — the order whose fulfilment method this edge represents. */
-    childOrderId: string;
-    /** When set, the pill is interactive and clicking it offers a swap. */
-    onSwap?: (childOrderId: string, method: CanonicalFulfilmentMethod) => void;
-    [key: string]: unknown;
-}
-
-const FULFILMENT_METHOD_PILL_STYLE: Record<CanonicalFulfilmentMethod, string> = {
-    "consume-onsite": "bg-white text-neutral-700 border-neutral-300",
-    "pickup": "bg-white text-neutral-700 border-neutral-300",
-    "virtual": "bg-white text-neutral-700 border-neutral-300",
-    "deliver:buyer-assigned": "bg-white text-neutral-700 border-neutral-300",
-    "deliver:seller-assigned": "bg-white text-neutral-700 border-neutral-300",
-    "deliver:dutch-auction": "bg-amber-50 text-amber-800 border-amber-400",
-};
-
-const DEFAULT_PILL_METHOD: CanonicalFulfilmentMethod = "deliver:seller-assigned";
-
-function MechanismEdge(props: EdgeProps) {
-    const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd, style } = props;
-    const [edgePath, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
-    const [open, setOpen] = useState(false);
-
-    const mechData = (data ?? {}) as MechanismEdgeData;
-    const method = mechData.method ?? DEFAULT_PILL_METHOD;
-    const onSwap = mechData.onSwap;
-    const childId = mechData.childOrderId;
-
-    return (
-        <>
-            <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={style} />
-            <EdgeLabelRenderer>
-                <div
-                    style={{
-                        position: "absolute",
-                        transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-                        pointerEvents: "all",
-                        zIndex: 10,
-                    }}
-                    className="nodrag nopan"
-                    data-testid={`mechanism-pill-${childId}`}
-                >
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (onSwap) setOpen((v) => !v);
-                        }}
-                        disabled={!onSwap}
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shadow-sm transition-colors inline-flex items-center gap-1 ${FULFILMENT_METHOD_PILL_STYLE[method]} ${onSwap ? "hover:shadow cursor-pointer" : "cursor-default"}`}
-                        title={onSwap ? "Click to change fulfilment method" : FULFILMENT_METHOD_LABELS[method]}
-                    >
-                        <span>{FULFILMENT_METHOD_PILL_LABELS[method]}</span>
-                        {onSwap && <span className="text-[8px] opacity-60">▾</span>}
-                    </button>
-                    {open && onSwap && (
-                        <div
-                            className="absolute top-full left-1/2 -translate-x-1/2 mt-1 rounded border border-neutral-300 bg-white shadow-lg py-1 min-w-[220px]"
-                            data-testid={`mechanism-popover-${childId}`}
-                        >
-                            {SUB_ORDER_FULFILMENT_OPTIONS.map((opt) => (
-                                <button
-                                    key={opt}
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setOpen(false);
-                                        if (opt !== method) onSwap(childId, opt);
-                                    }}
-                                    className={`w-full text-left text-xs px-3 py-1.5 hover:bg-neutral-100 ${opt === method ? "font-semibold text-black" : "text-neutral-700"}`}
-                                    data-testid={`mechanism-option-${childId}-${opt}`}
-                                >
-                                    {opt === method ? "✓ " : "  "}{FULFILMENT_METHOD_LABELS[opt]}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </EdgeLabelRenderer>
-        </>
-    );
-}
-
-const edgeTypes: EdgeTypes = {
-    mechanism: MechanismEdge,
-};
+// Fulfilment is edited in the drawer, not on edges. Edges render as plain
+// React Flow defaults — no per-edge pill or popover.
 
 /** Hard limit enforced by FigaroCore (default 500). */
 const MAX_ORDERS_HARD = 500;
@@ -543,13 +429,6 @@ export interface ProcessGraphCanvasProps {
      */
     onAddParent?: (childOrderId: string, parentOrderId: string) => void;
     /**
-     * When set, the fulfilment-method pill on each edge becomes interactive.
-     * Clicking an alternative in the popover invokes this with the child
-     * order's id and the new method. Consumers rebuild the agreement (or
-     * commit a fresh one in live mode) and update state.
-     */
-    onSwapMechanism?: (childOrderId: string, method: CanonicalFulfilmentMethod) => void;
-    /**
      * Single-click on a node fires this with the order id. Designer uses it
      * to open the agreement-editor drawer.
      */
@@ -583,7 +462,6 @@ export function ProcessGraphCanvas({
     emptySubtitle = "Visual representation of the value-added process",
     onAddSubOrder,
     onAddParent,
-    onSwapMechanism,
     onSelectNode,
     onDeleteNode,
     designerMode = false,
@@ -649,8 +527,6 @@ export function ProcessGraphCanvas({
                 (parentOrderId) => parentOrderId !== order.id && knownOrderIds.has(parentOrderId),
             );
 
-            const childMethod = deriveFulfilmentMethod(order);
-
             parentOrderIds.forEach((parentOrderId) => {
                 const valueLens = activeLens === "value";
                 const edgeDimmed = activeLens !== "default" && activeLens !== "value";
@@ -658,7 +534,6 @@ export function ProcessGraphCanvas({
                     id: `${parentOrderId}-${order.id}`,
                     source: parentOrderId,
                     target: order.id,
-                    type: "mechanism",
                     animated: order.state === OrderState.Active && !edgeDimmed,
                     markerEnd: { type: MarkerType.ArrowClosed, color: valueLens ? "#4f46e5" : "#555" },
                     style: {
@@ -666,18 +541,13 @@ export function ProcessGraphCanvas({
                         strokeWidth: valueLens ? 3 : 2,
                         opacity: edgeDimmed ? 0.15 : 1,
                     },
-                    data: {
-                        method: childMethod,
-                        childOrderId: order.id,
-                        onSwap: onSwapMechanism,
-                    } satisfies MechanismEdgeData,
                 });
             });
         });
 
         setNodes(newNodes);
         setEdges(newEdges);
-    }, [orders, walletAddress, decimals, activeLens, designerMode, setNodes, setEdges, onSwapMechanism, onDeleteNode]);
+    }, [orders, walletAddress, decimals, activeLens, designerMode, setNodes, setEdges, onDeleteNode]);
 
     return (
         <div>
@@ -753,7 +623,6 @@ export function ProcessGraphCanvas({
                             onNodesChange={onNodesChange}
                             onEdgesChange={onEdgesChange}
                             nodeTypes={nodeTypes}
-                            edgeTypes={edgeTypes}
                             fitView
                             onNodeClick={onSelectNode ? (_e, node) => onSelectNode(node.id) : undefined}
                             onNodeDoubleClick={(_e, node) =>
