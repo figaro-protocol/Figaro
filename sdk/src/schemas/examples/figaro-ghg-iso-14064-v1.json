@@ -1,7 +1,7 @@
 {
     "schemaId": "figaro-ghg-iso-14064-v1",
     "version": 1,
-    "title": "ISO 14064 GHG disclosure",
+    "title": "ISO 14064",
     "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under the ISO 14064 family (parts 1, 2, and 3).",
     "categories": ["emissions"],
     "fields": [

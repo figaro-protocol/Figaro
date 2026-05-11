@@ -1,7 +1,7 @@
 {
     "schemaId": "figaro-ghg-custom-v1",
     "version": 1,
-    "title": "Custom GHG disclosure",
+    "title": "Custom methodology",
     "description": "Disclosure that the seller will report scope 1 emissions under a custom or non-standard GHG accounting methodology. The methodology details are described in the off-chain agreement document; this schema only commits to the scope dimension.",
     "categories": ["emissions"],
     "fields": [

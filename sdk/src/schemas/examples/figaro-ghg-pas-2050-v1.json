@@ -1,7 +1,7 @@
 {
     "schemaId": "figaro-ghg-pas-2050-v1",
     "version": 1,
-    "title": "PAS 2050 GHG disclosure",
+    "title": "PAS 2050",
     "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under PAS 2050:2011 (BSI specification for the assessment of the life-cycle greenhouse gas emissions of goods and services).",
     "categories": ["emissions"],
     "fields": [

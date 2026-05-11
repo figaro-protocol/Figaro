@@ -65,11 +65,14 @@ export const DISCLOSURE_KIND_LABELS: Record<DisclosureKind, string> = {
 
 // ── GHG norm references ─────────────────────────────────────────────────────
 
+/** Normative-standard reference for each disclosure schema. 1:1 with
+ *  `GHG_DISCLOSURE_SCHEMA_KEYS`; each `id` IS the schemaId. */
 export const GHG_NORM_REFERENCES = [
-    { id: "iso-14064-1", label: "ISO 14064-1:2018", scope: "Quantification & reporting" },
-    { id: "iso-14064-3", label: "ISO 14064-3:2019", scope: "Verification & validation" },
-    { id: "ghg-protocol-corporate", label: "GHG Protocol Corporate Standard", scope: "Scope 1/2/3 accounting" },
-    { id: "ghg-protocol-scope3", label: "GHG Protocol Scope 3 Standard", scope: "Value-chain emissions" },
+    { id: "figaro-ghg-protocol-v1", label: "GHG Protocol Corporate Standard", scope: "Scope 1/2/3 corporate accounting" },
+    { id: "figaro-ghg-iso-14064-v1", label: "ISO 14064", scope: "Quantification, reporting & verification" },
+    { id: "figaro-ghg-pas-2050-v1", label: "PAS 2050", scope: "Product carbon footprint" },
+    { id: "figaro-ghg-en-16258-v1", label: "EN 16258", scope: "Transport energy & GHG" },
+    { id: "figaro-ghg-custom-v1", label: "Custom methodology", scope: "Self-declared accounting basis" },
 ] as const;
 
 // ── GHG content ref encoding/decoding ───────────────────────────────────────

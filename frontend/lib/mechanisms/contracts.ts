@@ -16,12 +16,6 @@ export {
 
 // ── GHG Disclosure — aligned to real reporting standards ──────────────────────
 //
-// Standards mapped:
-//   ISO 14064-1:2018  — Quantification and reporting of GHG emissions and removals
-//   ISO 14064-3:2019  — Specification for validation/verification of GHG statements
-//   GHG Protocol Corporate Standard — Scope 1 / 2 / 3 accounting
-//   GHG Protocol Scope 3 Standard  — Value-chain emissions
-//
 // Stage encoding in AttestationCoordinator:
 //   0 = Commitment   — Declaration of intent to disclose (ISO 14064-1 §5.1)
 //   1 = Inventory     — Quantified GHG statement (ISO 14064-1 §5.2–5.4)
@@ -44,14 +38,6 @@ export const DISCLOSURE_KIND_DESCRIPTIONS: Record<number, string> = {
     3: "Third-party verification or validation statement — ISO 14064-3",
 };
 
-/** Standard references applicable to this schema. */
-export const GHG_NORM_REFERENCES = [
-    { id: "iso-14064-1", label: "ISO 14064-1:2018", scope: "Quantification & reporting" },
-    { id: "iso-14064-3", label: "ISO 14064-3:2019", scope: "Verification & validation" },
-    { id: "ghg-protocol-corporate", label: "GHG Protocol Corporate Standard", scope: "Scope 1/2/3 accounting" },
-    { id: "ghg-protocol-scope3", label: "GHG Protocol Scope 3 Standard", scope: "Value-chain emissions" },
-] as const;
-
 /**
  * GHG disclosure sister schemas — one per accounting standard. Each is a
  * separate registered schemaId; the standard identity lives in the schemaId,
@@ -66,6 +52,16 @@ export const GHG_DISCLOSURE_SCHEMA_KEYS = [
     "figaro-ghg-custom-v1",
 ] as const;
 export type GHGDisclosureSchemaKey = (typeof GHG_DISCLOSURE_SCHEMA_KEYS)[number];
+
+/** Normative-standard reference for each disclosure schema. 1:1 with
+ *  `GHG_DISCLOSURE_SCHEMA_KEYS`; each `id` IS the schemaId. */
+export const GHG_NORM_REFERENCES = [
+    { id: "figaro-ghg-protocol-v1", label: "GHG Protocol Corporate Standard", scope: "Scope 1/2/3 corporate accounting" },
+    { id: "figaro-ghg-iso-14064-v1", label: "ISO 14064", scope: "Quantification, reporting & verification" },
+    { id: "figaro-ghg-pas-2050-v1", label: "PAS 2050", scope: "Product carbon footprint" },
+    { id: "figaro-ghg-en-16258-v1", label: "EN 16258", scope: "Transport energy & GHG" },
+    { id: "figaro-ghg-custom-v1", label: "Custom methodology", scope: "Self-declared accounting basis" },
+] as const;
 
 /** Default GHG disclosure schema used by single-standard UI flows. */
 export const GHG_SCHEMA_KEY: GHGDisclosureSchemaKey = "figaro-ghg-iso-14064-v1";

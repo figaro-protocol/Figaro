@@ -279,14 +279,28 @@ export function AgreementDrawer({
 
     /** Emissions article: multi-select across the 5 GHG accounting standards.
      *  Each checked standard produces an independent disclosure clause in
-     *  the agreement (one section per standard, scope defaults to 1). */
+     *  the agreement (one section per standard, scope defaults to 1).
+     *  Clearing the last disclosure also clears any active offset providers
+     *  (there's nothing to offset without a declared report) and removes
+     *  the auto-added offset sub-order via onOffsetUnselected. */
     const activeGhgStandards = readStringArray("ghgStandards");
 
     function updateGhgStandards(next: string[]) {
+        const hadDisclosures = activeGhgStandards.length > 0;
+        const willHaveDisclosures = next.length > 0;
+        const offsetActive = (
+            Array.isArray(fields.offsetProviders) && fields.offsetProviders.length > 0
+        );
         const out: ManifestFields = { ...fields };
         if (next.length > 0) out.ghgStandards = next;
         else delete (out as Record<string, unknown>).ghgStandards;
+        if (hadDisclosures && !willHaveDisclosures && offsetActive) {
+            delete (out as Record<string, unknown>).offsetProviders;
+        }
         commitFields(out);
+        if (hadDisclosures && !willHaveDisclosures && offsetActive && order && onOffsetUnselected) {
+            onOffsetUnselected(order.id);
+        }
     }
 
     /** Emissions article: multi-select across the 4 carbon-offset providers.
@@ -738,9 +752,10 @@ const OFFSET_PROVIDER_OPTIONS: ReadonlyArray<{ value: string; label: string }> =
 
 /**
  * Emissions article — two multi-select groups:
- *   - GHG accounting standards (1 disclosure clause per checked standard).
- *   - Carbon-offset providers — picking any provider spawns an offset
- *     sub-order on the canvas (handled by the page via onOffsetSelected).
+ *   - Emission disclosures (1 clause per checked standard).
+ *   - Carbon offsets — gated on at least one disclosure being checked
+ *     (there's nothing to offset without a declared emissions report).
+ *     Picking any provider spawns an offset sub-order on the canvas.
  */
 function EmissionsArticle({
     checked,
@@ -757,23 +772,26 @@ function EmissionsArticle({
         value: schemaId,
         label: getSchemaInfo(schemaId)?.title ?? schemaId,
     }));
+    const disclosuresActive = checked.length > 0;
     return (
         <div className="space-y-5">
             <CheckboxGroup
-                label="GHG accounting standards"
+                label="Emission disclosures"
                 options={standardOptions}
                 checked={checked}
                 onToggle={(value) => onChange(toggleInList(checked, value))}
                 testIdPrefix="drawer-emissions-standard"
             />
             <CheckboxGroup
-                label="Carbon-offset providers"
+                label="Carbon offsets"
+                hint={disclosuresActive ? undefined : "Check a disclosure to enable."}
                 options={OFFSET_PROVIDER_OPTIONS}
                 checked={offsetProviders}
                 onToggle={(value) => onOffsetProvidersChange(toggleInList(offsetProviders, value))}
+                disabled={!disclosuresActive}
                 testIdPrefix="drawer-emissions-offset"
             />
-            {offsetProviders.length > 0 && (
+            {disclosuresActive && offsetProviders.length > 0 && (
                 <p
                     className="text-[11px] text-neutral-500"
                     data-testid="drawer-emissions-offset-hint"

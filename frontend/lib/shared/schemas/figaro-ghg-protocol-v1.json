@@ -1,7 +1,7 @@
 {
     "schemaId": "figaro-ghg-protocol-v1",
     "version": 1,
-    "title": "GHG Protocol disclosure",
+    "title": "GHG Protocol Corporate Standard",
     "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under the GHG Protocol Corporate Standard (and related WRI/WBCSD GHG Protocol guidance documents).",
     "categories": ["emissions"],
     "fields": [
