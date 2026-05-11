@@ -69,6 +69,7 @@ export function ViewAssemblyClient({ params }: Props) {
                 <ProcessGraphCanvas
                     orders={orders}
                     title={`${reference.identity.name} (read-only)`}
+                    designerMode
                 />
             </div>
         </div>

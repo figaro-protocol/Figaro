@@ -313,6 +313,7 @@ export function EditAssemblyClient({ params }: Props) {
                 <ProcessGraphCanvas
                     orders={orders}
                     title={`${reference.identity.name} (forked)`}
+                    designerMode
                     onAddSubOrder={handleAddSubOrder}
                     onAddParent={handleAddParent}
                     onSwapMechanism={handleSwapMechanism}

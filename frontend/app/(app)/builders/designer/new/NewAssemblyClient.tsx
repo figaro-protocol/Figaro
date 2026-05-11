@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ProcessGraphCanvas } from "@/components/core/ProcessGraphCanvas";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -37,13 +37,18 @@ interface InitialState {
     slug: string | null;
 }
 
-/**
- * Decide initial canvas state on mount:
- *   1. ?draft=slug query param → load that named draft
- *   2. autosaved current session → restore
- *   3. fresh blank
- */
-function buildInitialState(draftParam: string | null): InitialState {
+// Initial render (SSR + first client pass) always uses this fresh seed so the
+// server-rendered HTML matches what the client hydrates with. localStorage is
+// read in a mount-effect (tryRestoreFromStorage) — never during render.
+function buildFreshInitial(): InitialState {
+    const fresh = startSyntheticSession();
+    const root = createSyntheticRootOrder(fresh);
+    return { session: fresh, orders: [root.order], name: "Untitled assembly", slug: null };
+}
+
+function tryRestoreFromStorage(draftParam: string | null): InitialState | null {
+    if (typeof window === "undefined") return null;
+
     if (draftParam) {
         const draft = loadNamedDraft(draftParam);
         if (draft) {
@@ -76,20 +81,20 @@ function buildInitialState(draftParam: string | null): InitialState {
         };
     }
 
-    const fresh = startSyntheticSession();
-    const root = createSyntheticRootOrder(fresh);
-    return { session: fresh, orders: [root.order], name: "Untitled assembly", slug: null };
+    return null;
 }
 
 export function NewAssemblyClient() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const draftParam = searchParams?.get("draft") ?? null;
+    const freshParam = searchParams?.get("fresh") ?? null;
 
-    // Build initial state once. Subsequent draft-param changes are not honored
-    // mid-session — the user navigates back to the landing to pick another draft.
+    // Build the fresh seed once. Stored drafts are hydrated below in a
+    // mount-effect so server and first-client render agree.
     const initialRef = useRef<InitialState | null>(null);
     if (initialRef.current === null) {
-        initialRef.current = buildInitialState(draftParam);
+        initialRef.current = buildFreshInitial();
     }
     const initial = initialRef.current;
 
@@ -100,9 +105,64 @@ export function NewAssemblyClient() {
 
     const [mergeNotice, setMergeNotice] = useState<string | null>(null);
     const [savedAt, setSavedAt] = useState<number | null>(null);
+    const [helpOpen, setHelpOpen] = useState(false);
+    const [headerHeight, setHeaderHeight] = useState(108);
 
-    // Autosave on every meaningful change.
+    // Lock body scroll while on /new — this is a canvas-app route, not a
+    // document route. Restore on unmount so other (app) pages scroll normally.
     useEffect(() => {
+        const prevBody = document.body.style.overflow;
+        const prevHtml = document.documentElement.style.overflow;
+        document.body.style.overflow = "hidden";
+        document.documentElement.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = prevBody;
+            document.documentElement.style.overflow = prevHtml;
+        };
+    }, []);
+
+    // Measure the (app) Header's actual rendered height so our fixed wrapper
+    // anchors exactly below it. Avoids hard-coded magic numbers that drift
+    // when nav rows resize. ResizeObserver re-measures on Header changes.
+    useEffect(() => {
+        const header = document.querySelector("header");
+        if (!header) return;
+        const measure = () => setHeaderHeight(header.getBoundingClientRect().height);
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(header);
+        return () => ro.disconnect();
+    }, []);
+
+    // Hydrate from localStorage after mount. Server has no localStorage, so
+    // reading it during render would cause an SSR/CSR text mismatch. Run once.
+    // The ?fresh=1 query param (set by "Start a blank assembly") clears the
+    // autosave and skips restore, then strips itself from the URL so a refresh
+    // doesn't wipe in-progress work.
+    const [hydrated, setHydrated] = useState(false);
+    useEffect(() => {
+        if (freshParam) {
+            clearCurrentSession();
+            router.replace("/builders/designer/new", { scroll: false });
+            setHydrated(true);
+            return;
+        }
+        const restored = tryRestoreFromStorage(draftParam);
+        if (restored) {
+            Object.assign(session, restored.session);
+            setOrders(restored.orders);
+            setName(restored.name);
+            setSlug(restored.slug);
+        }
+        setHydrated(true);
+        // Mount-only; subsequent draft-param changes are not honored mid-session.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Autosave on every meaningful change — but only after hydration, so we
+    // don't clobber stored drafts with the fresh seed before restore completes.
+    useEffect(() => {
+        if (!hydrated) return;
         const snap: DesignSnapshot = {
             slug: slug ?? "",
             name,
@@ -115,7 +175,7 @@ export function NewAssemblyClient() {
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [orders, name, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, orders, name, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     const handleAddSubOrder = useCallback(
         (parentOrderId: string) => {
@@ -241,12 +301,6 @@ export function NewAssemblyClient() {
         setSlug(snap.slug);
     }, [name, slug, orders, session]);
 
-    const stageLabel = useMemo(() => {
-        if (orders.length === 1) return "Stage 0 — the unit";
-        if (orders.length === 2) return "Stage 1 — first sub-order";
-        return `Stage 2+ — ${orders.length}-node DAG`;
-    }, [orders.length]);
-
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
         if (slug) return `Saved as draft "${name}" · autosaved ${formatRelative(savedAt)}`;
@@ -254,24 +308,39 @@ export function NewAssemblyClient() {
     }, [savedAt, slug, name]);
 
     return (
-        <div className="min-h-screen bg-canvas">
+        <div style={{ top: headerHeight }} className="fixed left-0 right-0 bottom-0 z-20 bg-canvas flex flex-col overflow-hidden">
             <div
                 data-testid="designer-canvas-toolbar"
-                className="px-8 py-4 border-b border-default bg-paper flex items-center gap-3 flex-wrap"
+                className="h-[48px] shrink-0 px-6 border-b border-default bg-paper flex items-center gap-3 overflow-hidden"
             >
                 <Link
                     href="/builders/designer"
-                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong"
+                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong shrink-0"
                 >
                     ← Assemblies
                 </Link>
                 <span className="text-sm font-semibold text-ink-heading truncate max-w-[200px]" title={name}>{name}</span>
-                <span className="text-xs text-ink-muted">{stageLabel}</span>
+                <button
+                    type="button"
+                    onClick={() => setHelpOpen((v) => !v)}
+                    aria-expanded={helpOpen}
+                    aria-controls="designer-help-panel"
+                    data-testid="designer-help-toggle"
+                    className="text-xs w-7 h-7 rounded-full border border-default bg-paper hover:bg-subtle shrink-0 flex items-center justify-center font-semibold text-ink-body"
+                    title="What is this?"
+                >
+                    ?
+                </button>
+                {savedHint && (
+                    <span className="ml-auto text-[11px] text-ink-muted truncate" data-testid="designer-saved-hint">
+                        {savedHint}
+                    </span>
+                )}
                 <button
                     type="button"
                     onClick={handleSaveDraft}
                     data-testid="designer-save-draft"
-                    className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold"
+                    className={`text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold shrink-0 ${savedHint ? "" : "ml-auto"}`}
                 >
                     {slug ? "Update draft" : "Save as draft"}
                 </button>
@@ -279,7 +348,7 @@ export function NewAssemblyClient() {
                     type="button"
                     onClick={handleReset}
                     disabled={orders.length === 1 && !slug}
-                    className={`text-xs px-3 py-1.5 rounded border bg-paper disabled:opacity-40 disabled:cursor-not-allowed ${
+                    className={`text-xs px-3 py-1.5 rounded border bg-paper disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${
                         orders.length === 0
                             ? "border-ink-heading hover:bg-subtle font-semibold"
                             : "border-default hover:border-default-strong"
@@ -288,50 +357,62 @@ export function NewAssemblyClient() {
                     {orders.length === 0 ? "Start a new unit" : "Reset to unit"}
                 </button>
             </div>
-            {savedHint && (
-                <div className="px-8 py-1.5 text-[11px] text-ink-muted bg-canvas border-b border-default" data-testid="designer-saved-hint">
-                    {savedHint}
+            {helpOpen && (
+                <div
+                    id="designer-help-panel"
+                    data-testid="designer-help-panel"
+                    className="absolute top-[48px] left-0 right-0 z-30 bg-paper border-b border-default shadow-md max-h-[calc(100%-48px)] overflow-y-auto"
+                >
+                    <div className="container mx-auto max-w-3xl px-6 py-5 flex flex-col gap-3">
+                        <p className="text-sm text-ink-body leading-relaxed">
+                            <strong>The bonded commitment.</strong> One buyer, one seller, one agreement. Four baseline graphs are inherited automatically: <strong>Value</strong>, <strong>Geo</strong>, <strong>Capital</strong>, <strong>GHG</strong>. Toggle the lens buttons to inspect each graph. The agreementHash binds the four sections into one signed contract.
+                        </p>
+                        <p className="text-sm text-ink-body leading-relaxed">
+                            To extend the process: grab the <span className="inline-block align-middle w-3 h-3 rounded-full bg-green-600 border-2 border-white" /> handle at the bottom of any active node and drag it into empty space. A sub-order spawns connected to the parent. Cumulative value rolls up; the new node inherits the currency.
+                        </p>
+                        <p className="text-sm text-ink-body leading-relaxed">
+                            <strong>Drag</strong> a node&apos;s green handle to empty space to add a sub-order, or onto another node to merge it as an additional parent (enables diamond / fan-in). <strong>Click</strong> any edge pill to swap the fulfilment method (consume on-site · pickup · 3 delivery variants). <strong>Click</strong> any node to modify its baseline-graph clauses (Geo · GHG · Topology) or to delete it. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setHelpOpen(false)}
+                            className="self-end text-xs px-3 py-1.5 rounded border border-default bg-paper hover:bg-subtle"
+                        >
+                            Close
+                        </button>
+                    </div>
                 </div>
             )}
-            <div className="container mx-auto px-6 pt-8 pb-16 max-w-5xl">
-                <div className="mb-6">
-                    <p className="text-sm text-ink-body leading-relaxed max-w-2xl">
-                        <strong>The bonded commitment.</strong> One buyer, one seller, one agreement. Four baseline graphs are inherited automatically: <strong>Value</strong>, <strong>Geo</strong>, <strong>Capital</strong>, <strong>GHG</strong>. Toggle the lens buttons to inspect each graph. The agreementHash binds the four sections into one signed contract.
-                    </p>
-                    <p className="text-sm text-ink-body leading-relaxed max-w-2xl mt-3">
-                        To extend the process: grab the <span className="inline-block align-middle w-3 h-3 rounded-full bg-green-600 border-2 border-white" /> handle at the bottom of any active node and drag it into empty space. A sub-order spawns connected to the parent. Cumulative value rolls up; the new node inherits the currency.
-                    </p>
+            <div className="flex-1 overflow-hidden flex flex-row">
+                <div className="flex-1 overflow-hidden">
+                    <div className="h-full px-6 py-4 flex flex-col">
+                        <ProcessGraphCanvas
+                            orders={orders}
+                            title="Bonded commitment"
+                            designerMode
+                            onAddSubOrder={handleAddSubOrder}
+                            onAddParent={handleAddParent}
+                            onSwapMechanism={handleSwapMechanism}
+                            onSelectNode={setSelectedOrderId}
+                            onDeleteNode={handleDeleteNode}
+                        />
+                        {mergeNotice && (
+                            <p className="mt-2 text-xs text-amber-700 shrink-0" data-testid="designer-merge-notice">
+                                {mergeNotice}
+                            </p>
+                        )}
+                    </div>
                 </div>
-                <ProcessGraphCanvas
-                    orders={orders}
-                    title="Bonded commitment"
-                    onAddSubOrder={handleAddSubOrder}
-                    onAddParent={handleAddParent}
-                    onSwapMechanism={handleSwapMechanism}
-                    onSelectNode={setSelectedOrderId}
-                    onDeleteNode={handleDeleteNode}
+                <AgreementDrawer
+                    order={selectedOrderId ? (orders.find((o) => o.id === selectedOrderId) ?? null) : null}
+                    onClose={() => setSelectedOrderId(null)}
+                    onChange={(edits) => {
+                        if (selectedOrderId) handleEditAgreement(selectedOrderId, edits);
+                    }}
+                    onDelete={handleDeleteNode}
+                    embedded
                 />
-                {mergeNotice && (
-                    <p className="mt-3 text-xs text-amber-700" data-testid="designer-merge-notice">
-                        {mergeNotice}
-                    </p>
-                )}
-                <p className="mt-6 text-xs text-ink-muted">
-                    <strong>Drag</strong> a node&apos;s green handle to empty space to add a sub-order, or onto another node to merge it as an additional parent (enables diamond / fan-in). <strong>Click</strong> any edge pill to swap the fulfilment method (consume on-site · pickup · 3 delivery variants). <strong>Click</strong> any node to modify its baseline-graph clauses (Geo · GHG · Topology) or to delete it. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
-                </p>
             </div>
-            {selectedOrderId && (() => {
-                const selected = orders.find((o) => o.id === selectedOrderId);
-                if (!selected) return null;
-                return (
-                    <AgreementDrawer
-                        order={selected}
-                        onClose={() => setSelectedOrderId(null)}
-                        onChange={(edits) => handleEditAgreement(selectedOrderId, edits)}
-                        onDelete={handleDeleteNode}
-                    />
-                );
-            })()}
         </div>
     );
 }

@@ -59,6 +59,7 @@ import {
 } from "@/lib/designer/syntheticProcess";
 import { CANONICAL_FULFILMENT_METHODS_LIST } from "@/lib/core/orderAgreement";
 import { truncateHex } from "@/lib/shared/formatHex";
+import type { LensId } from "@/lib/shared/schemaCategories";
 
 /**
  * Edge pills represent the *child* order's fulfilment method (root orders
@@ -76,7 +77,14 @@ const SUB_ORDER_FULFILMENT_OPTIONS: readonly CanonicalFulfilmentMethod[] =
 
 // ── Public types ────────────────────────────────────────────────────────────
 
-export type GraphLens = "default" | "value" | "geo" | "capital" | "ghg";
+/**
+ * `LensId` is owned by `@/lib/shared/schemaCategories` (the canonical
+ * taxonomy module); `GraphLens` adds the `"default"` "no overlay" state on
+ * top of it. Lenses are intentionally a different taxonomy from schema
+ * categories — see `LENS_TO_CATEGORIES` in that module for the explicit
+ * map between them.
+ */
+export type GraphLens = LensId | "default";
 
 export type WalletRole = "proposer" | "counterparty" | null;
 
@@ -122,6 +130,9 @@ type OrderNodeData = Order & {
     /** True when the node has no parents in the topology — root orders are
      *  not deletable from the canvas (use Reset to clear the whole design). */
     isRoot: boolean;
+    /** Designer-mode flag. When true the node renders the click-to-edit
+     *  affordance (cursor:pointer + tooltip). */
+    designerMode: boolean;
 };
 
 // ── Per-order GHG disclosure section ────────────────────────────────────────
@@ -180,8 +191,12 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
             data-testid={`order-node-${data.id}`}
             data-order-id={data.id.toString()}
             data-order-state={STATE_LABELS[data.state].toLowerCase()}
-            title={data.timestamp ? new Date((data.timestamp > 1e12 ? data.timestamp : data.timestamp * 1000)).toLocaleString() : undefined}
-            className={`px-3 py-2 rounded-lg border-2 shadow-md transition-shadow ${STATE_COLORS[data.state]} min-w-[180px] ${data.walletRole === "proposer"
+            title={
+                data.designerMode
+                    ? "Click to edit this order's clauses"
+                    : (data.timestamp ? new Date((data.timestamp > 1e12 ? data.timestamp : data.timestamp * 1000)).toLocaleString() : undefined)
+            }
+            className={`px-3 py-2 rounded-lg border-2 shadow-md transition-shadow ${STATE_COLORS[data.state]} min-w-[180px] ${data.designerMode ? "cursor-pointer hover:shadow-lg" : ""} ${data.walletRole === "proposer"
                 ? "ring-2 ring-offset-1 ring-blue-500"
                 : data.walletRole === "counterparty"
                     ? "ring-2 ring-offset-1 ring-emerald-500"
@@ -521,6 +536,17 @@ export interface ProcessGraphCanvasProps {
      * leaves this unset (orders can't be deleted on chain).
      */
     onDeleteNode?: (orderId: string) => void;
+    /**
+     * Designer-mode toggle. When true:
+     *   - Lens-button row is hidden (the designer's AgreementDrawer is the
+     *     canonical inspection surface; lenses add a second taxonomy).
+     *   - Each node renders a compact strip of category status dots
+     *     (empty / partial / complete per drawer category).
+     *   - Node `cursor:pointer` + a tooltip signal that nodes are
+     *     click-to-edit.
+     * Live workspaces (e.g. /terminal) omit this prop and keep the lens UI.
+     */
+    designerMode?: boolean;
 }
 
 export function ProcessGraphCanvas({
@@ -536,6 +562,7 @@ export function ProcessGraphCanvas({
     onSwapMechanism,
     onSelectNode,
     onDeleteNode,
+    designerMode = false,
 }: ProcessGraphCanvasProps) {
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -588,7 +615,7 @@ export function ProcessGraphCanvas({
                 id: order.id,
                 type: "order",
                 position: posMap.get(order.id) ?? { x: 0, y: 0 },
-                data: { ...order, decimals, walletRole, activeLens, agreementSummary, onDelete: onDeleteNode, isRoot } satisfies OrderNodeData,
+                data: { ...order, decimals, walletRole, activeLens, agreementSummary, onDelete: onDeleteNode, isRoot, designerMode } satisfies OrderNodeData,
             };
         });
 
@@ -626,7 +653,7 @@ export function ProcessGraphCanvas({
 
         setNodes(newNodes);
         setEdges(newEdges);
-    }, [orders, walletAddress, decimals, activeLens, setNodes, setEdges, onSwapMechanism, onDeleteNode]);
+    }, [orders, walletAddress, decimals, activeLens, designerMode, setNodes, setEdges, onSwapMechanism, onDeleteNode]);
 
     return (
         <div>
@@ -644,28 +671,30 @@ export function ProcessGraphCanvas({
                             </p>
                             {headerExtras?.(activeLens)}
                         </div>
-                        <div className="flex gap-1 flex-shrink-0">
-                            <button
-                                key="all"
-                                data-testid="lens-btn-all"
-                                onClick={() => setActiveLens("default")}
-                                className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-colors ${activeLens === "default" ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                                    }`}
-                            >
-                                All
-                            </button>
-                            {LENS_BUTTONS.map(({ id, label, activeClass }) => (
+                        {!designerMode && (
+                            <div className="flex gap-1 flex-shrink-0">
                                 <button
-                                    key={id}
-                                    data-testid={`lens-btn-${id}`}
-                                    onClick={() => setActiveLens(prev => prev === id ? "default" : id)}
-                                    className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-colors ${activeLens === id ? activeClass : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                                    key="all"
+                                    data-testid="lens-btn-all"
+                                    onClick={() => setActiveLens("default")}
+                                    className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-colors ${activeLens === "default" ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                                         }`}
                                 >
-                                    {label}
+                                    All
                                 </button>
-                            ))}
-                        </div>
+                                {LENS_BUTTONS.map(({ id, label, activeClass }) => (
+                                    <button
+                                        key={id}
+                                        data-testid={`lens-btn-${id}`}
+                                        onClick={() => setActiveLens(prev => prev === id ? "default" : id)}
+                                        className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-colors ${activeLens === id ? activeClass : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                                            }`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     {orders.length >= MAX_ORDERS_WARN && orders.length < MAX_ORDERS_HARD && (
                         <p data-testid="process-size-warning" className="text-xs text-amber-600 mt-0.5">

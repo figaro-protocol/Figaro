@@ -16,19 +16,25 @@
  *     that needs participant consent (beta enrolment, ToS, NDA, governance)
  *   - Topology (read-only, derived from the DAG)
  *
- * The seventh baseline (capital flow / payment) is NOT exposed here —
- * commerce (payment + currency) is a buyer-at-commit-time choice, not a
- * designer-time clause.
- *
- * NOT exposed here: Commerce (payment + currency). Those are buyer-at-
- * commit-time choices, not designer-time clauses.
+ * NOT exposed here: Commerce (payment + currency) — buyer-at-commit-time
+ * choice — and Fulfilment — set via edge pills on the canvas.
  *
  * Every change rebuilds the agreement, recomputes its hash, and persists
- * via syntheticProcess.editSyntheticAgreement. The page reflects the
- * updated agreementHash + lens content in the canvas.
+ * via syntheticProcess.editSyntheticAgreement.
+ *
+ * Rendering modes:
+ *   - `embedded` (default false): legacy fixed-overlay positioning used by
+ *     /edit. Drawer floats at viewport right with its own shadow/rounding.
+ *   - `embedded: true`: inline flex-column block. The page handles
+ *     positioning. Used by /new where the drawer is part of the layout.
+ *
+ * Drives section organization from the canonical taxonomy in
+ * `@/lib/shared/schemaCategories` + the shared clause-status helpers in
+ * `@/lib/shared/clauseSectionStatus`. Adding a new designer-time schema in
+ * an existing category auto-appears in the section picker.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Order } from "@/lib/core/store";
 import type { ManifestFields } from "@/lib/core/encoding";
 import {
@@ -45,48 +51,35 @@ import {
     GHG_SCHEMA_TO_STANDARD,
     GHG_STANDARD_TO_SCHEMA,
 } from "@/lib/core/agreementManifest";
+import {
+    CATEGORY_LABELS,
+    DESIGNER_SCHEMAS_BY_CATEGORY,
+    type SchemaCategory,
+} from "@/lib/shared/schemaCategories";
+import {
+    CLAUSE_CATEGORIES,
+    SECTION_FIELDS,
+    sectionStatus,
+} from "@/lib/shared/clauseSectionStatus";
 
 const GHG_SCOPES = ["", "1", "2", "3"] as const;
 const HANDOFF_MODES = ["", "face-to-face", "dead-drop", "parking-area", "locker", "courier-relay"] as const;
 const PROXIMITY_BANDS = ["", "none", "zone-wifi", "nearby-ble", "contact-nfc"] as const;
 
-/** Top offset to stay below the global sticky Header band. */
-const HEADER_OFFSET_PX = 80;
-
-type SectionKey = "geo" | "ghg" | "handoff" | "proximity" | "jurisdiction" | "consent" | "topology";
-
-const SECTION_LABELS: Record<SectionKey, string> = {
-    geo: "Geo",
-    ghg: "GHG",
-    handoff: "Handoff",
-    proximity: "Proximity",
-    jurisdiction: "Jurisdiction",
-    consent: "Consent",
-    topology: "Topology",
-};
+type SectionKey = SchemaCategory;
 
 /**
  * Per-section schema candidates — a section topic (the pill in the drawer)
- * can be served by N different schemaIds. The drawer picks the active one
- * from manifest fields; the section header displays it live.
+ * can be served by N different schemaIds, derived from the canonical
+ * taxonomy. The drawer picks the active one from manifest fields; the
+ * section header displays it live.
  *
- * GHG is the canonical multi-candidate case: 5 sister schemas, one per
- * accounting standard, sharing the `(uint8 scope)` content shape. The
- * picker stores a label (`ISO-14064`, etc.) in `manifestFields.ghgStandard`
- * and `GHG_STANDARD_TO_SCHEMA` resolves the active schemaId.
- *
- * **How to add a v2 of an existing section schema** (e.g. `figaro-geo-v2`
- * adds new fields):
- *   1. Land the v2 lockstep (JSON spec + frontend mirror + SDK encoder +
- *      `Figaro<Schema>V2Validator.sol` + Foundry tests + deploy-script
- *      entry + `DeployScriptTest`). See CLAUDE.md "Adding a new schema".
- *   2. Add `{ schemaId: "figaro-<section>-v2", label: "v2", ... }` to that
- *      section's option list below.
- *   3. Add a manifest field like `<section>SchemaVersion` that the resolver
- *      below reads to pick between v1 and v2 for that section.
- *   4. Add a Select to the section panel below to surface the picker.
- *   5. Update orderAgreement.ts to read the version field and emit the
- *      correct schemaId for that section.
+ * `emissions` is the canonical multi-candidate case: 5 sister schemas, one
+ * per accounting standard, sharing the `(uint8 scope)` content shape.
+ * Adding a v2 of an existing schema (`figaro-geo-v2` etc.) only requires
+ * landing the lockstep + adding to `SCHEMA_TIER_MAP`; this picker
+ * auto-includes it. A version selector field + per-section Select must
+ * still be added by hand when v2 introduces new fields.
  */
 interface SectionSchemaOption {
     schemaId: string;
@@ -94,71 +87,162 @@ interface SectionSchemaOption {
     description?: string;
 }
 
-const SECTION_SCHEMA_OPTIONS: Record<SectionKey, readonly SectionSchemaOption[]> = {
-    geo: [
-        { schemaId: "figaro-geo-v1", label: "v1" },
-    ],
-    ghg: GHG_DISCLOSURE_SCHEMA_KEYS.map((schemaId) => ({
-        schemaId,
-        label: GHG_SCHEMA_TO_STANDARD[schemaId],
-    })),
-    handoff: [
-        { schemaId: "figaro-handoff-v1", label: "v1" },
-    ],
-    proximity: [
-        { schemaId: "figaro-proximity-policy-v1", label: "policy (v1)" },
-    ],
-    jurisdiction: [
-        { schemaId: "figaro-jurisdiction-v1", label: "v1" },
-    ],
-    consent: [
-        { schemaId: "figaro-consent-v1", label: "v1" },
-    ],
-    topology: [
-        { schemaId: "figaro-topology-v1", label: "v1" },
-    ],
-};
+function labelForSchema(category: SchemaCategory, schemaId: string): string {
+    if (category === "emissions") {
+        const standard = GHG_SCHEMA_TO_STANDARD[schemaId as keyof typeof GHG_SCHEMA_TO_STANDARD];
+        return standard ?? schemaId;
+    }
+    const versionMatch = schemaId.match(/-v(\d+)$/);
+    return versionMatch ? `v${versionMatch[1]}` : schemaId;
+}
 
-/**
- * Resolve the active schemaId for a section from the current manifest fields.
- * Single-option sections always return their one schemaId. Multi-option
- * sections (GHG today; v2-bearing sections in future) read a manifest field
- * to pick. Returns the section's first option as the fallback when the
- * manifest field is unset or unknown.
- */
-function resolveActiveSchemaId(section: SectionKey, fields: ManifestFields): string {
-    if (section === "ghg") {
+const SECTION_SCHEMA_OPTIONS: Record<SchemaCategory, readonly SectionSchemaOption[]> =
+    (function buildSectionOptions() {
+        const result = {} as Record<SchemaCategory, readonly SectionSchemaOption[]>;
+        for (const cat of CLAUSE_CATEGORIES) {
+            // Preserve GHG's hand-curated ordering (by standard name) over
+            // the alphabetic order DESIGNER_SCHEMAS_BY_CATEGORY produces.
+            const schemaIds = cat === "emissions"
+                ? GHG_DISCLOSURE_SCHEMA_KEYS
+                : DESIGNER_SCHEMAS_BY_CATEGORY[cat];
+            result[cat] = schemaIds.map((schemaId) => ({
+                schemaId,
+                label: labelForSchema(cat, schemaId),
+            }));
+        }
+        return result;
+    })();
+
+function resolveActiveSchemaId(section: SchemaCategory, fields: ManifestFields): string {
+    if (section === "emissions") {
         const standard = (fields.ghgStandard as string | undefined)?.trim();
         if (standard && GHG_STANDARD_TO_SCHEMA[standard]) {
             return GHG_STANDARD_TO_SCHEMA[standard];
         }
         return GHG_SCHEMA_KEY;
     }
-    return SECTION_SCHEMA_OPTIONS[section][0].schemaId;
+    const options = SECTION_SCHEMA_OPTIONS[section];
+    return options[0]?.schemaId ?? "";
 }
 
-const GHG_STANDARDS: readonly string[] = ["", ...SECTION_SCHEMA_OPTIONS.ghg.map((opt) => opt.label)];
+const GHG_STANDARDS: readonly string[] = ["", ...SECTION_SCHEMA_OPTIONS.emissions.map((opt) => opt.label)];
+
+/**
+ * Unified header rendered at the top of every section. Shows category label
+ * + active schemaId, plus an optional `Clear` button (omitted for read-only
+ * sections like topology).
+ */
+function SectionHeader({
+    category,
+    fields,
+    onClear,
+}: {
+    category: SchemaCategory;
+    fields: ManifestFields;
+    onClear?: () => void;
+}) {
+    return (
+        <div className="flex items-baseline justify-between mb-3 gap-3">
+            <p className="text-sm font-semibold text-ink-heading">
+                {CATEGORY_LABELS[category]}
+                {" · "}
+                <span
+                    className="font-mono normal-case text-neutral-400"
+                    data-testid={`drawer-section-${category}-active-schema`}
+                >
+                    {resolveActiveSchemaId(category, fields)}
+                </span>
+            </p>
+            {onClear && (
+                <button
+                    type="button"
+                    onClick={onClear}
+                    data-testid={`drawer-clear-${category}`}
+                    className="text-[10px] text-neutral-500 hover:text-red-600 underline shrink-0"
+                >
+                    Clear
+                </button>
+            )}
+        </div>
+    );
+}
 
 interface Props {
-    order: Order;
+    /** Currently-selected order. May be null in `embedded` mode (renders an
+        empty state). Required in legacy fixed-overlay mode (caller gates on
+        selection). */
+    order: Order | null;
     onClose: () => void;
     onChange: (edits: AgreementEdits) => void;
     /** Optional — when provided, the drawer renders a Delete button. */
     onDelete?: (orderId: string) => void;
+    /** When true, render as an inline flex-column block (no fixed
+        positioning, no shadow, no top/height calc). The page layout becomes
+        responsible for placing the drawer. Default false preserves the
+        legacy fixed-overlay behavior. */
+    embedded?: boolean;
 }
 
-export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
-    const [fields, setFields] = useState<ManifestFields>(() => readAgreementFields(order));
+export function AgreementDrawer({ order, onClose, onChange, onDelete, embedded = false }: Props) {
+    const [fields, setFields] = useState<ManifestFields>(() =>
+        order ? readAgreementFields(order) : ({} as ManifestFields),
+    );
     /**
      * Single-select pills: at most one section open at a time. Clicking a
      * different pill flips to that section; clicking the active pill closes
      * it (no section visible).
      */
     const [openSection, setOpenSection] = useState<SectionKey | null>(null);
+    /**
+     * Minimize-to-rail: collapses the drawer to a narrow vertical strip
+     * showing one status dot per category. Clicking a dot expands the
+     * drawer back to full width and opens that section.
+     */
+    const [minimized, setMinimized] = useState(false);
+
+    /**
+     * Measure the (app) Header's actual height so the drawer's top edge
+     * anchors below it. Only used in legacy fixed-overlay mode; embedded
+     * mode lets the parent page handle positioning.
+     */
+    const [headerHeight, setHeaderHeight] = useState(108);
+    useEffect(() => {
+        if (embedded) return;
+        const header = document.querySelector("header");
+        if (!header) return;
+        const measure = () => setHeaderHeight(header.getBoundingClientRect().height);
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(header);
+        return () => ro.disconnect();
+    }, [embedded]);
 
     useEffect(() => {
-        setFields(readAgreementFields(order));
-    }, [order.id, order.agreementHash]);
+        if (order) setFields(readAgreementFields(order));
+    }, [order?.id, order?.agreementHash]);
+
+    // Empty state — only valid in embedded mode (legacy callers gate on
+    // selection and pass a non-null order).
+    if (!order) {
+        if (!embedded) return null;
+        return (
+            <aside
+                data-testid="agreement-drawer"
+                data-empty="true"
+                className="w-[360px] shrink-0 bg-white border-l border-neutral-200 flex flex-col items-center justify-center text-center px-6"
+            >
+                <div className="text-neutral-300 text-4xl mb-3" aria-hidden>←</div>
+                <p className="text-sm font-semibold text-neutral-700 mb-1">
+                    Select a node to edit
+                </p>
+                <p className="text-xs text-neutral-500 leading-relaxed max-w-[260px]">
+                    Click any node on the canvas to set its baseline-graph
+                    clauses — geo, GHG, handoff, proximity, jurisdiction,
+                    consent.
+                </p>
+            </aside>
+        );
+    }
 
     const fulfilmentMethod = deriveFulfilmentMethod(order);
     const summary = summarizeAgreement(loadAgreement(order.agreementHash));
@@ -184,12 +268,78 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
         setOpenSection((prev) => (prev === section ? null : section));
     }
 
+    function clearSection(category: SchemaCategory) {
+        const next: ManifestFields = { ...fields };
+        for (const key of SECTION_FIELDS[category]) {
+            delete (next as Record<string, unknown>)[key];
+        }
+        if (SECTION_FIELDS[category].includes("origin")) {
+            next.origin = "—";
+        }
+        applyManifest(next);
+    }
+
     return (
         <aside
             data-testid="agreement-drawer"
-            style={{ top: HEADER_OFFSET_PX, height: `calc(100vh - ${HEADER_OFFSET_PX}px)` }}
-            className="fixed right-0 w-[380px] bg-white border-l border-t border-neutral-200 shadow-xl z-30 overflow-hidden flex flex-col rounded-tl-lg"
+            data-minimized={minimized}
+            data-embedded={embedded}
+            style={
+                embedded
+                    ? { width: minimized ? 48 : 360 }
+                    : { top: headerHeight, height: `calc(100vh - ${headerHeight}px)`, width: minimized ? 48 : 380 }
+            }
+            className={
+                embedded
+                    ? "shrink-0 bg-white border-l border-neutral-200 overflow-hidden flex flex-col transition-[width] duration-150"
+                    : "fixed right-0 bg-white border-l border-t border-neutral-200 shadow-xl z-30 overflow-hidden flex flex-col rounded-tl-lg transition-[width] duration-150"
+            }
         >
+            {minimized && (
+                <div className="flex flex-col items-center py-3 gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setMinimized(false)}
+                        aria-label="Expand drawer"
+                        data-testid="drawer-expand"
+                        title="Expand"
+                        className="w-8 h-8 rounded border border-neutral-300 hover:border-neutral-700 bg-white text-neutral-600 text-xs"
+                    >
+                        ‹
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Close drawer"
+                        title="Close"
+                        className="w-8 h-8 rounded border border-neutral-300 hover:border-red-400 bg-white text-neutral-600 text-xs"
+                    >
+                        ✕
+                    </button>
+                    <div className="border-t border-neutral-200 w-6 my-1" />
+                    {CLAUSE_CATEGORIES.map((key) => {
+                        const status = sectionStatus(key, fields);
+                        return (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() => { setMinimized(false); setOpenSection(key); }}
+                                title={`${CATEGORY_LABELS[key]} — ${status}`}
+                                data-testid={`drawer-rail-${key}`}
+                                data-status={status}
+                                className="w-8 h-8 rounded-full border border-neutral-300 hover:border-neutral-700 bg-white flex items-center justify-center"
+                            >
+                                <span className={`w-3 h-3 rounded-full ${
+                                    status === "empty" ? "bg-neutral-200" :
+                                    status === "partial" ? "bg-amber-500" :
+                                    "bg-emerald-500"
+                                }`} />
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+            {!minimized && (<>
             {/* Header bar with prominent close */}
             <div className="px-5 py-3 border-b border-neutral-200 bg-neutral-50 flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -200,30 +350,46 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                         Order #{order.id.slice(0, 10)}…
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    aria-label="Close drawer"
-                    data-testid="drawer-close"
-                    className="shrink-0 rounded border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
-                >
-                    Close ✕
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => setMinimized(true)}
+                        aria-label="Minimize drawer"
+                        data-testid="drawer-minimize"
+                        title="Minimize to rail"
+                        className="rounded border border-neutral-300 bg-white px-2 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                    >
+                        ›
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Close drawer"
+                        data-testid="drawer-close"
+                        className="rounded border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                    >
+                        Close ✕
+                    </button>
+                </div>
             </div>
 
-            {/* Per-category toggle row — pills are the canonical control */}
-            <div className="px-5 py-2 border-b border-neutral-200 bg-white flex items-center gap-1.5 overflow-x-auto">
+            {/* Per-category toggle row — pills are the canonical control. Wraps
+                to multiple lines on narrow widths rather than horizontal scroll
+                so no pill is hidden behind the right edge. */}
+            <div className="px-5 py-2 border-b border-neutral-200 bg-white flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-semibold text-neutral-500 mr-1 shrink-0">
                     Modify:
                 </span>
-                {(Object.keys(SECTION_LABELS) as SectionKey[]).map((key) => {
+                {CLAUSE_CATEGORIES.map((key) => {
                     const isOpen = openSection === key;
+                    const status = sectionStatus(key, fields);
                     return (
                         <button
                             key={key}
                             type="button"
                             onClick={() => selectSection(key)}
                             data-testid={`drawer-toggle-${key}`}
+                            data-status={status}
                             aria-pressed={isOpen}
                             className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border transition-colors ${
                                 isOpen
@@ -231,7 +397,17 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                                     : "bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-100"
                             }`}
                         >
-                            {SECTION_LABELS[key]}
+                            {status !== "empty" && (
+                                <span
+                                    aria-label={status}
+                                    className={`inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle ${
+                                        status === "complete"
+                                            ? "bg-emerald-500"
+                                            : "bg-amber-500"
+                                    }`}
+                                />
+                            )}
+                            {CATEGORY_LABELS[key]}
                         </button>
                     );
                 })}
@@ -256,9 +432,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "geo" && (
                     <section data-testid="drawer-section-geo" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-sm font-semibold text-ink-heading mb-3">
-                            Geo · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("geo", fields)}</span>
-                        </p>
+                        <SectionHeader category="geo" fields={fields} onClear={() => clearSection("geo")} />
                         <div className="space-y-3">
                             <Field
                                 label="Origin"
@@ -298,11 +472,9 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                     </section>
                 )}
 
-                {openSection === "ghg" && (
-                    <section data-testid="drawer-section-ghg" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-sm font-semibold text-ink-heading mb-3">
-                            GHG · <span className="font-mono normal-case text-neutral-400" data-testid="drawer-section-ghg-active-schema">{resolveActiveSchemaId("ghg", fields)}</span>
-                        </p>
+                {openSection === "emissions" && (
+                    <section data-testid="drawer-section-emissions" className="mb-5 pt-2 border-t border-neutral-100">
+                        <SectionHeader category="emissions" fields={fields} onClear={() => clearSection("emissions")} />
                         <div className="space-y-3">
                             <Select
                                 label="Standard"
@@ -324,9 +496,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "handoff" && (
                     <section data-testid="drawer-section-handoff" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-sm font-semibold text-ink-heading mb-3">
-                            Handoff · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("handoff", fields)}</span>
-                        </p>
+                        <SectionHeader category="handoff" fields={fields} onClear={() => clearSection("handoff")} />
                         <div className="space-y-3">
                             <Select
                                 label="Mode"
@@ -345,9 +515,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "proximity" && (
                     <section data-testid="drawer-section-proximity" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-sm font-semibold text-ink-heading mb-3">
-                            Proximity · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("proximity", fields)}</span>
-                        </p>
+                        <SectionHeader category="proximity" fields={fields} onClear={() => clearSection("proximity")} />
                         <div className="space-y-3">
                             <Select
                                 label="Band (policy)"
@@ -372,9 +540,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "jurisdiction" && (
                     <section data-testid="drawer-section-jurisdiction" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-sm font-semibold text-ink-heading mb-3">
-                            Jurisdiction · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("jurisdiction", fields)}</span>
-                        </p>
+                        <SectionHeader category="jurisdiction" fields={fields} onClear={() => clearSection("jurisdiction")} />
                         <div className="space-y-3">
                             <Field
                                 label="Applicable law"
@@ -403,9 +569,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "consent" && (
                     <section data-testid="drawer-section-consent" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-sm font-semibold text-ink-heading mb-3">
-                            Consent · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("consent", fields)}</span>
-                        </p>
+                        <SectionHeader category="consent" fields={fields} onClear={() => clearSection("consent")} />
                         <div className="space-y-3">
                             <Field
                                 label="Document hash"
@@ -437,9 +601,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
 
                 {openSection === "topology" && (
                     <section data-testid="drawer-section-topology" className="mb-5 pt-2 border-t border-neutral-100">
-                        <p className="text-sm font-semibold text-ink-heading mb-3">
-                            Topology · <span className="font-mono normal-case text-neutral-400">{resolveActiveSchemaId("topology", fields)}</span>
-                        </p>
+                        <SectionHeader category="topology" fields={fields} />
                         <div className="space-y-2 text-xs">
                             <p>
                                 <span className="text-neutral-500">Mode: </span>
@@ -474,6 +636,7 @@ export function AgreementDrawer({ order, onClose, onChange, onDelete }: Props) {
                     </button>
                 </div>
             )}
+            </>)}
         </aside>
     );
 }
