@@ -363,9 +363,9 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
             });
         case "figaro-fulfilment-v2":
             return (data) => encodeFulfilmentV2Content({
-                modality: asAny(data.modality),
-                coordination: asAny(data.coordination),
-                handoffPoint: asAny(data.handoffPoint),
+                modalities: asAny(data.modalities ?? []),
+                coordinations: asAny(data.coordinations ?? []),
+                handoffPoints: asAny(data.handoffPoints ?? []),
             });
         case "figaro-jurisdiction-v1":
             return (data) => encodeJurisdictionContent({
@@ -383,7 +383,7 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
             });
         case "figaro-proximity-policy-v1":
             return (data) => encodeProximityPolicyContent({
-                band: asAny(data.band),
+                bands: asAny(data.bands ?? []),
             });
         case "figaro-consent-v1":
             return (data) => encodeConsentContent({

@@ -172,13 +172,14 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
     const isDefault = data.activeLens === "default";
     const geo = data.agreementSummary?.geo;
     const fulfilment = data.agreementSummary?.fulfilment;
-    const handoff = data.agreementSummary?.handoff;
     const ghg = data.agreementSummary?.ghg;
     const massLabel = typeof geo?.mass === "number" ? `${geo.mass} g` : geo?.mass;
     const volumeLabel = typeof geo?.volume === "number" ? `${geo.volume} mL` : geo?.volume;
-    // Single canonical method enum captures both modality and auction; no separate auction field.
-    const fulfilmentMethod = typeof fulfilment?.method === "string" ? fulfilment.method : undefined;
-    const handoffMode = typeof handoff?.mode === "string" ? handoff.mode : undefined;
+    // Single canonical method enum derived from the first offered modality +
+    // coordination. When the node offers multiple, downstream surfaces (cart,
+    // edge pill) collapse to the first.
+    const fulfilmentMethod = fulfilment?.method ?? undefined;
+    const handoffMode = fulfilment?.handoffPoints?.[0];
     const ghgStandard = typeof ghg?.standard === "string" ? ghg.standard : undefined;
     const ghgScope = typeof ghg?.scope === "number" || typeof ghg?.scope === "string" ? ghg.scope : undefined;
 
@@ -428,6 +429,7 @@ interface MechanismEdgeData {
 const FULFILMENT_METHOD_PILL_STYLE: Record<CanonicalFulfilmentMethod, string> = {
     "consume-onsite": "bg-white text-neutral-700 border-neutral-300",
     "pickup": "bg-white text-neutral-700 border-neutral-300",
+    "virtual": "bg-white text-neutral-700 border-neutral-300",
     "deliver:buyer-assigned": "bg-white text-neutral-700 border-neutral-300",
     "deliver:seller-assigned": "bg-white text-neutral-700 border-neutral-300",
     "deliver:dutch-auction": "bg-amber-50 text-amber-800 border-amber-400",

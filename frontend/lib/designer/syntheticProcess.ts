@@ -76,6 +76,9 @@ const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
     origin: "0",
     destination: "0",
     applicableLaw: "Kleros",
+    // Every order has a fulfilment clause. Default to pickup — the simplest
+    // single-modality offering that doesn't imply a courier sub-order.
+    fulfilmentModalities: ["pickup"],
 };
 
 export function createSyntheticRootOrder(session: SyntheticProcessSession): CreatedOrder {
@@ -238,11 +241,13 @@ export function mergeSyntheticParent(
 // ── Fulfilment method per child order ──────────────────────────────────────
 
 import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
+import { canonicalFulfilmentMethodToArrays } from "@/lib/core/orderAgreement";
 export type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 
 export const FULFILMENT_METHOD_LABELS: Record<CanonicalFulfilmentMethod, string> = {
     "consume-onsite": "Consume on-site",
     "pickup": "Pickup",
+    "virtual": "Virtual",
     "deliver:buyer-assigned": "Delivery (buyer chooses courier)",
     "deliver:seller-assigned": "Delivery (merchant arranges courier)",
     "deliver:dutch-auction": "Delivery (Dutch-auction courier)",
@@ -252,6 +257,7 @@ export const FULFILMENT_METHOD_LABELS: Record<CanonicalFulfilmentMethod, string>
 export const FULFILMENT_METHOD_PILL_LABELS: Record<CanonicalFulfilmentMethod, string> = {
     "consume-onsite": "On-site",
     "pickup": "Pickup",
+    "virtual": "Virtual",
     "deliver:buyer-assigned": "Deliver · buyer",
     "deliver:seller-assigned": "Deliver · seller",
     "deliver:dutch-auction": "Deliver · auction",
@@ -276,11 +282,13 @@ export function deriveFulfilmentMethod(order: Order): CanonicalFulfilmentMethod 
 }
 
 function manifestFieldsForFulfilmentMethod(method: CanonicalFulfilmentMethod): ManifestFields {
-    const fields: ManifestFields = { origin: "—", destination: "—", fulfilmentMethod: method };
-    if (method === "deliver:dutch-auction") {
-        fields.auctionType = "dutch-auction";
-    }
-    return fields;
+    const { modalities, coordinations } = canonicalFulfilmentMethodToArrays(method);
+    return {
+        origin: "—",
+        destination: "—",
+        fulfilmentModalities: modalities,
+        ...(coordinations.length > 0 ? { fulfilmentCoordinations: coordinations } : {}),
+    };
 }
 
 /**
@@ -439,13 +447,23 @@ export function readAgreementFields(order: Order): ManifestFields {
     const ghgScope = summary?.ghg?.scope;
     if (ghgScope !== undefined) fields.ghgScope = String(ghgScope);
 
-    // ── handoff ────────────────────────────────────────────────
-    const handoffMode = summary?.handoff?.mode;
-    if (typeof handoffMode === "string") fields.handoffMode = handoffMode;
+    // ── fulfilment ─────────────────────────────────────────────
+    if (summary?.fulfilment) {
+        if (summary.fulfilment.modalities.length > 0) {
+            fields.fulfilmentModalities = [...summary.fulfilment.modalities];
+        }
+        if (summary.fulfilment.coordinations.length > 0) {
+            fields.fulfilmentCoordinations = [...summary.fulfilment.coordinations];
+        }
+        if (summary.fulfilment.handoffPoints.length > 0) {
+            fields.fulfilmentHandoffPoints = [...summary.fulfilment.handoffPoints];
+        }
+    }
 
     // ── proximity ──────────────────────────────────────────────
-    const proximityBand = summary?.proximity?.band;
-    if (typeof proximityBand === "string") fields.proximityBand = proximityBand;
+    if (summary?.proximity && summary.proximity.bands.length > 0) {
+        fields.proximityBands = [...summary.proximity.bands];
+    }
 
     // ── jurisdiction ───────────────────────────────────────────
     const applicableLaw = summary?.jurisdiction?.applicableLaw;

@@ -468,7 +468,6 @@ export function NewAssemblyClient() {
                     onChange={(edits) => {
                         if (selectedOrderId) handleEditAgreement(selectedOrderId, edits);
                     }}
-                    onDelete={handleDeleteNode}
                     hasChildren={(() => {
                         if (!selectedOrderId) return false;
                         const topology = deriveOrderTopology(orders);

@@ -397,7 +397,6 @@ export function EditAssemblyClient({ params }: Props) {
                         order={selected}
                         onClose={() => setSelectedOrderId(null)}
                         onChange={(edits) => handleEditAgreement(selectedOrderId, edits)}
-                        onDelete={handleDeleteNode}
                         hasChildren={hasChildren}
                         onDeliverySelected={handleDeliverySelected}
                         onDeliveryUnselected={handleDeliveryUnselected}

@@ -70,7 +70,7 @@ describe("buildOrderAgreement", () => {
         ]);
     });
 
-    it("adds fulfilment, handoff, and ghg sections from extended manifest fields", () => {
+    it("adds a fulfilment-v2 section and ghg from multi-valued manifest arrays", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
@@ -79,37 +79,50 @@ describe("buildOrderAgreement", () => {
             manifestFields: {
                 origin: "dr5reg",
                 destination: "dr5reh",
-                // Legacy UI values — normalized to SDK encoder enums by
-                // buildOrderAgreement so getSectionDataBytes can encode.
-                fulfilmentMethod: "deliver",
-                auctionType: "dutch-auction",
-                handoffMode: "face-to-face",
+                fulfilmentModalities: ["delivery"],
+                fulfilmentCoordinations: ["dutch-auction"],
+                fulfilmentHandoffPoints: ["face-to-face"],
                 ghgStandard: "iso-14064-1",
                 ghgScope: "1",
             },
         });
 
         const summary = summarizeAgreement(agreement);
-        // Legacy `deliver` + `dutch-auction` combines to the canonical single-enum value.
-        expect(summary?.fulfilment).toEqual({ method: "deliver:dutch-auction" });
-        expect(summary?.handoff).toEqual({ mode: "face-to-face" });
+        expect(summary?.fulfilment?.modalities).toEqual(["delivery"]);
+        expect(summary?.fulfilment?.coordinations).toEqual(["dutch-auction"]);
+        expect(summary?.fulfilment?.handoffPoints).toEqual(["face-to-face"]);
+        expect(summary?.fulfilment?.method).toBe("deliver:dutch-auction");
         expect(summary?.ghg).toEqual({ standard: "ISO-14064", scope: 1 });
     });
 
-    it("normalizes legacy UI handoff aliases to encoder enums", () => {
-        for (const [legacy, canonical] of [
-            ["meet-at-door", "face-to-face"],
-            ["meet-at-car", "parking-area"],
-        ] as const) {
-            const agreement = buildOrderAgreement({
-                buyer: BUYER,
-                seller: SELLER,
-                currency: CURRENCY,
-                payment: 10n,
-                manifestFields: { origin: "dr5reg", fulfilmentMethod: "pickup", handoffMode: legacy },
-            });
-            expect(summarizeAgreement(agreement)?.handoff).toEqual({ mode: canonical });
-        }
+    it("auto-fills seller-assigned coordination when delivery is offered without one", () => {
+        const agreement = buildOrderAgreement({
+            buyer: BUYER,
+            seller: SELLER,
+            currency: CURRENCY,
+            payment: 10n,
+            manifestFields: { origin: "dr5reg", fulfilmentModalities: ["delivery"] },
+        });
+        expect(summarizeAgreement(agreement)?.fulfilment?.coordinations).toEqual(["seller-assigned"]);
+    });
+
+    it("supports multi-valued modalities and coordinations", () => {
+        const agreement = buildOrderAgreement({
+            buyer: BUYER,
+            seller: SELLER,
+            currency: CURRENCY,
+            payment: 10n,
+            manifestFields: {
+                origin: "dr5reg",
+                fulfilmentModalities: ["pickup", "delivery"],
+                fulfilmentCoordinations: ["buyer-assigned", "dutch-auction"],
+                fulfilmentHandoffPoints: ["face-to-face", "locker"],
+            },
+        });
+        const fulfilment = summarizeAgreement(agreement)?.fulfilment;
+        expect(fulfilment?.modalities).toEqual(["pickup", "delivery"]);
+        expect(fulfilment?.coordinations).toEqual(["buyer-assigned", "dutch-auction"]);
+        expect(fulfilment?.handoffPoints).toEqual(["face-to-face", "locker"]);
     });
 
     it("normalizes legacy GHG methodology ids to encoder standards", () => {
@@ -131,16 +144,18 @@ describe("buildOrderAgreement", () => {
         }
     });
 
-    it("drops unknown handoffPoint values (v2 enum is closed; encoder would throw downstream)", () => {
+    it("drops unknown handoffPoint values (v2 enum is closed; readManifestArray filters them out)", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            manifestFields: { origin: "dr5reg", fulfilmentMethod: "pickup", handoffMode: "teleport" },
+            manifestFields: {
+                origin: "dr5reg",
+                fulfilmentModalities: ["pickup"],
+                fulfilmentHandoffPoints: ["teleport"],
+            },
         });
-        // "teleport" is not a v2 handoffPoint value; normalizeHandoffPoint
-        // returns undefined and the section omits handoffPoint entirely.
-        expect(summarizeAgreement(agreement)?.handoff).toBeUndefined();
+        expect(summarizeAgreement(agreement)?.fulfilment?.handoffPoints).toEqual([]);
     });
 });

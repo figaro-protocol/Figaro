@@ -29,7 +29,7 @@ const GHG: AgreementSection = {
 };
 const FULFILMENT: AgreementSection = {
     schema: "figaro-fulfilment-v2",
-    data: { modality: "pickup", handoffPoint: "face-to-face" },
+    data: { modalities: ["pickup"], handoffPoints: ["face-to-face"] },
 };
 
 function agreement(sections: AgreementSection[]): Agreement {

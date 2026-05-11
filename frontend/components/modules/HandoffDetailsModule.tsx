@@ -62,7 +62,7 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
     // enforces when the agreement section opens.
     const fulfilmentValidator = useSchemaValidator("figaro-fulfilment-v2");
     const handoffValidation = useMemo(
-        () => fulfilmentValidator.validate({ modality: "delivery", handoffPoint }),
+        () => fulfilmentValidator.validate({ modalities: ["delivery"], coordinations: ["seller-assigned"], handoffPoints: [handoffPoint] }),
         [fulfilmentValidator, handoffPoint],
     );
     const handoffPointValid = handoffValidation.ok;
@@ -114,8 +114,9 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
         // on-chain FigaroFulfilmentV2Validator re-decodes and re-checks the
         // same fields when the attestation eventually fires.
         const fulfilmentContent = encodeFulfilmentV2Content({
-            modality: "delivery",
-            handoffPoint,
+            modalities: ["delivery"],
+            coordinations: ["seller-assigned"],
+            handoffPoints: [handoffPoint],
         });
 
         // Store manifest in context for downstream modules (checkout, key exchange)

@@ -23,7 +23,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 ///
 /// @dev Content ABI encoding: `abi.encode(uint8 band, bytes32 nonce, bytes deviceSig)`.
 ///
-///      band: 0 = none, 1 = zone-wifi, 2 = nearby-ble, 3 = contact-nfc
+///      band: 1 = zone-wifi, 2 = nearby-ble, 3 = contact-nfc (0 rejected)
 ///      nonce: per-handoff bytes32, must be non-zero
 ///      deviceSig: signed witness payload from a paired device.
 ///                 Length range 65–512 bytes (raw 65 = ECDSA r,s,v;
@@ -55,7 +55,7 @@ contract FigaroProximityProofV1Validator is ISchemaValidator {
     {
         if (id != schemaId) revert SchemaIdMismatch(id, schemaId);
         (uint8 band, bytes32 nonce, bytes memory deviceSig) = abi.decode(content, (uint8, bytes32, bytes));
-        if (band > MAX_BAND) revert InvalidBand(band);
+        if (band == 0 || band > MAX_BAND) revert InvalidBand(band);
         if (nonce == bytes32(0)) revert ZeroNonce();
         if (deviceSig.length < MIN_SIG_LEN) revert DeviceSigTooShort(deviceSig.length);
         if (deviceSig.length > MAX_SIG_LEN) revert DeviceSigTooLong(deviceSig.length);

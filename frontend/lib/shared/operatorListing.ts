@@ -21,7 +21,7 @@ import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetada
 export type FulfillmentMode =
     | "consume-onsite"
     | "pickup"
-    | "delivery"
+    | "virtual"
     | "deliver:buyer-assigned"
     | "deliver:seller-assigned"
     | "deliver:dutch-auction";

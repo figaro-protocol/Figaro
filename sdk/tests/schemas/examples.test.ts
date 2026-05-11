@@ -105,40 +105,54 @@ describe("example schema specs — parse + validate sample content", () => {
         expect(result.ok).toBe(true);
     });
 
-    it("figaro-fulfilment-v2 accepts minimal content (modality only)", () => {
+    it("figaro-fulfilment-v2 accepts each single-modality content", () => {
         const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const modality of ["consume-onsite", "pickup", "delivery"]) {
-            expect(validateContent({ modality }, parsed.spec).ok).toBe(true);
+        for (const modality of ["consume-onsite", "pickup", "delivery", "virtual"]) {
+            expect(validateContent({ modalities: [modality] }, parsed.spec).ok).toBe(true);
         }
+    });
+
+    it("figaro-fulfilment-v2 accepts multi-modality offers", () => {
+        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ modalities: ["pickup", "delivery"], coordinations: ["seller-assigned"] }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-fulfilment-v2 accepts each delivery coordination", () => {
         const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const coordination of ["buyer-assigned", "seller-assigned", "dutch-auction"]) {
-            expect(validateContent({ modality: "delivery", coordination }, parsed.spec).ok).toBe(true);
+            expect(validateContent({ modalities: ["delivery"], coordinations: [coordination] }, parsed.spec).ok).toBe(true);
         }
     });
 
-    it("figaro-fulfilment-v2 accepts each handoff point", () => {
+    it("figaro-fulfilment-v2 accepts multiple coordinations + handoff points", () => {
         const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const handoffPoint of ["face-to-face", "dead-drop", "parking-area", "locker"]) {
-            expect(validateContent({ modality: "pickup", handoffPoint }, parsed.spec).ok).toBe(true);
-        }
+        expect(validateContent({
+            modalities: ["delivery"],
+            coordinations: ["buyer-assigned", "dutch-auction"],
+            handoffPoints: ["face-to-face", "locker"],
+        }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-fulfilment-v2 rejects an unknown modality", () => {
         const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ modality: "teleport" }, parsed.spec).ok).toBe(false);
+        expect(validateContent({ modalities: ["teleport"] }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-fulfilment-v2 rejects missing modality", () => {
+    it("figaro-fulfilment-v2 rejects empty modalities array", () => {
         const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ coordination: "buyer-assigned" }, parsed.spec).ok).toBe(false);
+        expect(validateContent({ modalities: [] }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-fulfilment-v2 rejects missing modalities", () => {
+        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ coordinations: ["buyer-assigned"] }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-jurisdiction-v1 ──
@@ -242,25 +256,37 @@ describe("example schema specs — parse + validate sample content", () => {
 
     // ── figaro-proximity-policy-v1 ──
 
-    it("figaro-proximity-policy-v1 accepts each declared band", () => {
+    it("figaro-proximity-policy-v1 accepts each declared band as a single-element list", () => {
         const parsed = parseSchemaSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const band of ["none", "zone-wifi", "nearby-ble", "contact-nfc"]) {
-            expect(validateContent({ band }, parsed.spec).ok).toBe(true);
+        for (const band of ["zone-wifi", "nearby-ble", "contact-nfc"]) {
+            expect(validateContent({ bands: [band] }, parsed.spec).ok).toBe(true);
         }
+    });
+
+    it("figaro-proximity-policy-v1 accepts multi-band offers", () => {
+        const parsed = parseSchemaSpec(proximityPolicySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ bands: ["nearby-ble", "contact-nfc"] }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-proximity-policy-v1 rejects empty bands array", () => {
+        const parsed = parseSchemaSpec(proximityPolicySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ bands: [] }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-proximity-policy-v1 rejects an unknown band", () => {
         const parsed = parseSchemaSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ band: "psychic" }, parsed.spec).ok).toBe(false);
+        expect(validateContent({ bands: ["psychic"] }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-proximity-policy-v1 rejects unknown fields (closed schema — proof fields land in sister schema)", () => {
         const parsed = parseSchemaSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
-            band: "contact-nfc",
+            bands: ["contact-nfc"],
             nonce: "0x" + "ab".repeat(32),
         }, parsed.spec).ok).toBe(false);
     });

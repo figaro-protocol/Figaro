@@ -86,7 +86,11 @@ describe("HandoffDetailsModule — figaro-fulfilment-v2 wiring", () => {
         expect(detail.handoffPoint).toBe("locker");
         // Encoded bytes must match what the SDK encoder (and on-chain validator) expects.
         expect(detail.fulfilmentContent).toBe(
-            encodeFulfilmentV2Content({ modality: "delivery", handoffPoint: "locker" }),
+            encodeFulfilmentV2Content({
+                modalities: ["delivery"],
+                coordinations: ["seller-assigned"],
+                handoffPoints: ["locker"],
+            }),
         );
     });
 

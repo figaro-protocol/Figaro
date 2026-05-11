@@ -39,13 +39,14 @@ export function encodeGeoContent(content: GeoContent): Hex {
 
 // ── figaro-fulfilment-v2 ────────────────────────────────────────────────────
 //
-// Three orthogonal fields replacing fulfilment-v1's single conflated enum AND
-// handoff-v1's separate physical-mode enum. modality is required; coordination
-// is meaningful only when modality = delivery; handoffPoint records where the
-// physical exchange occurs. Proximity verification of the handoff lives in
-// figaro-proximity-policy-v1, not here.
+// Offered fulfilment options for an order. Three orthogonal multi-valued
+// dimensions: modalities (one or more of consume-onsite / pickup / delivery /
+// virtual), courier coordinations (meaningful only when delivery is among the
+// modalities), and handoff points. Every order has a fulfilment clause —
+// fully-virtual products carry modalities: ["virtual"]. Proximity verification
+// of the handoff lives in figaro-proximity-policy-v1, not here.
 
-export type FulfilmentModality = "consume-onsite" | "pickup" | "delivery";
+export type FulfilmentModality = "consume-onsite" | "pickup" | "delivery" | "virtual";
 export type FulfilmentCoordination = "buyer-assigned" | "seller-assigned" | "dutch-auction";
 export type FulfilmentHandoffPoint = "face-to-face" | "dead-drop" | "parking-area" | "locker";
 
@@ -53,6 +54,7 @@ const FULFILMENT_MODALITY_INDEX: Record<FulfilmentModality, number> = {
     "consume-onsite": 1,
     "pickup": 2,
     "delivery": 3,
+    "virtual": 4,
 };
 
 const FULFILMENT_COORDINATION_INDEX: Record<FulfilmentCoordination, number> = {
@@ -69,18 +71,22 @@ const FULFILMENT_HANDOFF_POINT_INDEX: Record<FulfilmentHandoffPoint, number> = {
 };
 
 export interface FulfilmentV2Content {
-    modality: FulfilmentModality;
-    coordination?: FulfilmentCoordination;
-    handoffPoint?: FulfilmentHandoffPoint;
+    /** Non-empty list of modalities on offer. */
+    modalities: readonly FulfilmentModality[];
+    /** Required non-empty when "delivery" is among `modalities`; rejected
+     *  non-empty otherwise. */
+    coordinations?: readonly FulfilmentCoordination[];
+    /** Optional list of handoff points on offer. */
+    handoffPoints?: readonly FulfilmentHandoffPoint[];
 }
 
 export function encodeFulfilmentV2Content(content: FulfilmentV2Content): Hex {
     return encodeAbiParameters(
-        [{ type: "uint8" }, { type: "uint8" }, { type: "uint8" }],
+        [{ type: "uint8[]" }, { type: "uint8[]" }, { type: "uint8[]" }],
         [
-            FULFILMENT_MODALITY_INDEX[content.modality],
-            content.coordination ? FULFILMENT_COORDINATION_INDEX[content.coordination] : 0,
-            content.handoffPoint ? FULFILMENT_HANDOFF_POINT_INDEX[content.handoffPoint] : 0,
+            content.modalities.map((m) => FULFILMENT_MODALITY_INDEX[m]),
+            (content.coordinations ?? []).map((c) => FULFILMENT_COORDINATION_INDEX[c]),
+            (content.handoffPoints ?? []).map((h) => FULFILMENT_HANDOFF_POINT_INDEX[h]),
         ],
     );
 }
@@ -205,20 +211,24 @@ export function encodeLifecycleContent(evidenceUri: string = ""): Hex {
 // Sister-schema split mirrors GHG-disclosure (committed) +
 // GHG-measurement (runtime).
 
-export type ProximityBand = "none" | "zone-wifi" | "nearby-ble" | "contact-nfc";
+/** Detection modalities. Indices match across the policy + proof schemas. */
+export type ProximityBand = "zone-wifi" | "nearby-ble" | "contact-nfc";
 
 const PROXIMITY_BAND_INDEX: Record<ProximityBand, number> = {
-    "none": 0, "zone-wifi": 1, "nearby-ble": 2, "contact-nfc": 3,
+    "zone-wifi": 1, "nearby-ble": 2, "contact-nfc": 3,
 };
 
 export interface ProximityPolicyContent {
-    band: ProximityBand;
+    /** Non-empty list of bands the merchant offers (or the buyer commits to)
+     *  for this order. Empty would mean "no proximity required" — express that
+     *  by omitting the policy clause entirely. */
+    bands: readonly ProximityBand[];
 }
 
 export function encodeProximityPolicyContent(content: ProximityPolicyContent): Hex {
     return encodeAbiParameters(
-        [{ type: "uint8" }],
-        [PROXIMITY_BAND_INDEX[content.band]],
+        [{ type: "uint8[]" }],
+        [content.bands.map((b) => PROXIMITY_BAND_INDEX[b])],
     );
 }
 

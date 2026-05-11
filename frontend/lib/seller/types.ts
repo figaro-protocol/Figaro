@@ -48,7 +48,7 @@ export interface SellerCatalogue {
     fulfillmentModes?: Array<
         | "consume-onsite"
         | "pickup"
-        | "delivery"
+        | "virtual"
         | "deliver:buyer-assigned"
         | "deliver:seller-assigned"
         | "deliver:dutch-auction"

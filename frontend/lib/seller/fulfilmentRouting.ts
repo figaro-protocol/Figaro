@@ -16,9 +16,10 @@ import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 const FULFILMENT_TO_HANDOFF: Record<CanonicalFulfilmentMethod, string> = {
     "consume-onsite": "face-to-face",
     "pickup": "face-to-face",
-    "deliver:buyer-assigned": "meet-at-door",
-    "deliver:seller-assigned": "meet-at-door",
-    "deliver:dutch-auction": "meet-at-door",
+    "virtual": "face-to-face",
+    "deliver:buyer-assigned": "face-to-face",
+    "deliver:seller-assigned": "face-to-face",
+    "deliver:dutch-auction": "face-to-face",
 };
 
 export function mapFulfilmentToHandoff(method: CanonicalFulfilmentMethod): string {
@@ -37,7 +38,7 @@ export function mapFulfilmentToHandoff(method: CanonicalFulfilmentMethod): strin
 export function mapFulfilmentToAssemblySlug(
     method: CanonicalFulfilmentMethod,
 ): "direct-sale" | "local-commerce" {
-    if (method === "consume-onsite" || method === "pickup") return "direct-sale";
+    if (method === "consume-onsite" || method === "pickup" || method === "virtual") return "direct-sale";
     return "local-commerce";
 }
 
@@ -50,6 +51,7 @@ export function isDeliveryFulfilment(method: CanonicalFulfilmentMethod): boolean
 export const FULFILMENT_MODE_LABELS: Record<CanonicalFulfilmentMethod, string> = {
     "consume-onsite": "Consume on-site",
     "pickup": "Pickup",
+    "virtual": "Virtual",
     "deliver:buyer-assigned": "Delivery (buyer chooses courier)",
     "deliver:seller-assigned": "Delivery (merchant arranges)",
     "deliver:dutch-auction": "Delivery (Dutch-auction courier)",

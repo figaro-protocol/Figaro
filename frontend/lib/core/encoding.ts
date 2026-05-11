@@ -89,14 +89,17 @@ export function decodeManifest(hex: string): string {
 // Backward-compatible: "Origin|Destination" (no keys) is also decoded.
 // ---------------------------------------------------------------------------
 
-/** All recognised manifest fields. `class_` avoids the JS reserved word. */
+/** All recognised manifest fields. `class_` avoids the JS reserved word.
+ *  Values may be strings or string-arrays — arrays carry multi-valued schema
+ *  options (e.g., fulfilmentModalities, proximityBands) that the agreement
+ *  composer reads but the on-chain manifest-bytes encoder skips. */
 export interface ManifestFields {
     origin: string;
     destination?: string;
     mass?: string;         // e.g. "5 kg"
     volume?: string;       // e.g. "10 L"
     class_?: string;       // freight/hazmat class, e.g. "Perishables", "Hazmat A"
-    [extra: string]: string | undefined; // extensible
+    [extra: string]: string | string[] | undefined; // extensible
 }
 
 const KV_SEP = ":";
@@ -114,10 +117,11 @@ export function encodeManifestFields(fields: ManifestFields): `0x${string}` {
     if (fields.mass?.trim()) parts.push(`mass${KV_SEP}${fields.mass.trim()}`);
     if (fields.volume?.trim()) parts.push(`vol${KV_SEP}${fields.volume.trim()}`);
     if (fields.class_?.trim()) parts.push(`class${KV_SEP}${fields.class_.trim()}`);
-    // Any extra keys (future extensibility)
+    // Any extra keys (future extensibility). Array-valued fields are skipped
+    // — they live in the agreement, not the on-chain manifest-bytes string.
     for (const [k, v] of Object.entries(fields)) {
         if (["origin", "destination", "mass", "volume", "class_"].includes(k)) continue;
-        if (v?.trim()) parts.push(`${k}${KV_SEP}${v.trim()}`);
+        if (typeof v === "string" && v.trim()) parts.push(`${k}${KV_SEP}${v.trim()}`);
     }
     return encodeManifest(parts.join(PART_SEP));
 }

@@ -25,9 +25,14 @@ contract FigaroProximityProofV1ValidatorTest is Test {
     }
 
     function test_acceptsEachBand() public view {
-        for (uint8 b = 0; b <= 3; b++) {
+        for (uint8 b = 1; b <= 3; b++) {
             validator.validate(ID, 0, "", abi.encode(b, NONCE, _validSig()));
         }
+    }
+
+    function test_rejectsZeroBand() public {
+        vm.expectRevert(abi.encodeWithSelector(FigaroProximityProofV1Validator.InvalidBand.selector, uint8(0)));
+        validator.validate(ID, 0, "", abi.encode(uint8(0), NONCE, _validSig()));
     }
 
     function test_rejectsBandAboveThree() public {
@@ -37,19 +42,19 @@ contract FigaroProximityProofV1ValidatorTest is Test {
 
     function test_rejectsZeroNonce() public {
         vm.expectRevert(FigaroProximityProofV1Validator.ZeroNonce.selector);
-        validator.validate(ID, 0, "", abi.encode(uint8(0), bytes32(0), _validSig()));
+        validator.validate(ID, 0, "", abi.encode(uint8(1), bytes32(0), _validSig()));
     }
 
     function test_rejectsTooShortSig() public {
         bytes memory shortSig = new bytes(64);
         vm.expectRevert(abi.encodeWithSelector(FigaroProximityProofV1Validator.DeviceSigTooShort.selector, uint256(64)));
-        validator.validate(ID, 0, "", abi.encode(uint8(0), NONCE, shortSig));
+        validator.validate(ID, 0, "", abi.encode(uint8(1), NONCE, shortSig));
     }
 
     function test_rejectsTooLongSig() public {
         bytes memory bigSig = new bytes(513);
         vm.expectRevert(abi.encodeWithSelector(FigaroProximityProofV1Validator.DeviceSigTooLong.selector, uint256(513)));
-        validator.validate(ID, 0, "", abi.encode(uint8(0), NONCE, bigSig));
+        validator.validate(ID, 0, "", abi.encode(uint8(1), NONCE, bigSig));
     }
 
     function test_acceptsContractSig_512Bytes() public view {
@@ -62,6 +67,6 @@ contract FigaroProximityProofV1ValidatorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(FigaroProximityProofV1Validator.SchemaIdMismatch.selector, other, ID)
         );
-        validator.validate(other, 0, "", abi.encode(uint8(0), NONCE, _validSig()));
+        validator.validate(other, 0, "", abi.encode(uint8(1), NONCE, _validSig()));
     }
 }

@@ -21,96 +21,20 @@ import {
     type TopologyMode,
 } from "@/lib/core/agreementManifest";
 
-// ── UI → SDK encoder enum normalization ─────────────────────────────────────
+// ── Multi-valued fulfilment + proximity composition ────────────────────────
 //
-// The UI accumulated enum values over time that don't match the canonical SDK
-// encoder enums (which are the on-chain byte-layout authority). Legacy UI
-// values are mapped here so `buildOrderAgreement` emits sections that
-// `getSectionDataBytes` can encode without throwing. Unknown values pass
-// through verbatim — the encoder throws, which is the correct failure mode.
-//
-// Known aliases are recorded below; expand as new UI vocabulary lands.
+// The drawer composes a per-node agreement by toggling sets of options into
+// the manifestFields object. Two array fields drive fulfilment (modalities,
+// coordinations, handoffPoints) and one drives proximity (bands). Empty
+// (or absent) array = clause not in the agreement.
 
-const HANDOFF_MODE_ALIASES: Record<string, string> = {
-    "meet-at-door": "face-to-face",
-    "meet-at-car": "parking-area",
-};
-
-/**
- * Map a canonical fulfilment method to the two v2 fields it expresses:
- * `modality` and (when delivery) `coordination`. The old single-enum
- * fulfilment string collapsed these two dimensions; v2 separates them.
- */
-function canonicalFulfilmentToV2(
-    method: string,
-): { modality: "consume-onsite" | "pickup" | "delivery"; coordination?: "buyer-assigned" | "seller-assigned" | "dutch-auction" } | null {
-    switch (method) {
-        case "consume-onsite":
-            return { modality: "consume-onsite" };
-        case "pickup":
-            return { modality: "pickup" };
-        case "deliver:buyer-assigned":
-            return { modality: "delivery", coordination: "buyer-assigned" };
-        case "deliver:seller-assigned":
-            return { modality: "delivery", coordination: "seller-assigned" };
-        case "deliver:dutch-auction":
-            return { modality: "delivery", coordination: "dutch-auction" };
-        default:
-            return null;
-    }
-}
-
-/**
- * Map a legacy `handoffMode` manifest field to a v2 `handoffPoint` value.
- * `courier-relay` was the old marker for "delivered by courier" — that's
- * now expressed via `modality = delivery`, so we drop it from
- * `handoffPoint` to avoid redundant double-encoding.
- */
-function normalizeHandoffPoint(mode: string | undefined): "face-to-face" | "dead-drop" | "parking-area" | "locker" | undefined {
-    if (!mode) return undefined;
-    const normalized = aliasLookup(HANDOFF_MODE_ALIASES, mode);
-    if (normalized === "courier-relay") return undefined;
-    const allowed: ReadonlyArray<string> = ["face-to-face", "dead-drop", "parking-area", "locker"];
-    if (!allowed.includes(normalized)) return undefined;
-    return normalized as "face-to-face" | "dead-drop" | "parking-area" | "locker";
-}
-
-/**
- * Reconstruct the legacy `fulfilment.method` shape from a v2 section's
- * `(modality, coordination)` pair, so that `AgreementSummary.fulfilment`
- * stays backward-compatible for callers (ProcessGraphCanvas lens display,
- * etc.) that haven't migrated to the structured form.
- */
-function deriveLegacyFulfilment(data: Record<string, unknown>): Record<string, unknown> | undefined {
-    const modality = typeof data.modality === "string" ? data.modality : undefined;
-    if (!modality) return undefined;
-    const coordination = typeof data.coordination === "string" ? data.coordination : undefined;
-    if (modality === "delivery" && coordination) {
-        return { method: `deliver:${coordination}` };
-    }
-    if (modality === "consume-onsite") return { method: "consume-onsite" };
-    if (modality === "pickup") return { method: "pickup" };
-    return undefined;
-}
-
-/**
- * Map a legacy UI fulfilmentMethod (+ optional auctionType) to the canonical
- * single-enum fulfilment method. The schema collapsed the prior two-field
- * shape (modality + auction) into one enum that captures both modality and
- * who-organizes-the-fulfiller. Legacy callers (pre-2026-04-26 cleanup) pass
- * `fulfilmentMethod = "deliver"` plus `auctionType = "dutch-auction"`; the
- * combiner translates this to `deliver:dutch-auction`. New callers pass the
- * canonical value directly and it passes through.
- */
-/**
- * The five canonical fulfilment-method values, ordered for UI display
- * (least → most coordination overhead). Single canonical enum capturing
- * both modality (consume-onsite / pickup / deliver) AND who-organizes-
- * the-fulfiller (buyer-assigned / seller-assigned / dutch-auction).
- */
+/** Canonical method strings used by single-selection consumers (canvas edge
+ *  pill, cart, swap-mechanism flow). Each value collapses a v2 (modality,
+ *  coordination) pair to a single string. */
 export const CANONICAL_FULFILMENT_METHODS_LIST = [
     "consume-onsite",
     "pickup",
+    "virtual",
     "deliver:buyer-assigned",
     "deliver:seller-assigned",
     "deliver:dutch-auction",
@@ -118,37 +42,21 @@ export const CANONICAL_FULFILMENT_METHODS_LIST = [
 
 export type CanonicalFulfilmentMethod = typeof CANONICAL_FULFILMENT_METHODS_LIST[number];
 
-const CANONICAL_FULFILMENT_METHODS = new Set<string>(CANONICAL_FULFILMENT_METHODS_LIST);
+const ALLOWED_MODALITIES: ReadonlyArray<string> = ["consume-onsite", "pickup", "delivery", "virtual"];
+const ALLOWED_COORDINATIONS: ReadonlyArray<string> = ["buyer-assigned", "seller-assigned", "dutch-auction"];
+const ALLOWED_HANDOFF_POINTS: ReadonlyArray<string> = ["face-to-face", "dead-drop", "parking-area", "locker"];
+const ALLOWED_PROXIMITY_BANDS: ReadonlyArray<string> = ["zone-wifi", "nearby-ble", "contact-nfc"];
 
-function combineToCanonicalFulfilmentMethod(
-    fulfilmentMethod: string | undefined,
-    auctionType: string | undefined,
-): string | undefined {
-    if (!fulfilmentMethod && !auctionType) return undefined;
-
-    // New canonical values pass through unchanged.
-    if (fulfilmentMethod && CANONICAL_FULFILMENT_METHODS.has(fulfilmentMethod)) {
-        return fulfilmentMethod;
-    }
-
-    // Legacy two-field shape: combine modality + auction.
-    const isDelivery = fulfilmentMethod === "deliver" || fulfilmentMethod === "delivery";
-    if (isDelivery) {
-        if (auctionType === "dutch-auction" || auctionType === "dutch") {
-            return "deliver:dutch-auction";
-        }
-        // Default delivery without auction = merchant arranges courier directly.
-        return "deliver:seller-assigned";
-    }
-    if (fulfilmentMethod === "pickup") return "pickup";
-    if (fulfilmentMethod === "consume-onsite") return "consume-onsite";
-
-    // Unknown — pass through; encoder will throw downstream.
-    return fulfilmentMethod;
-}
-
-function aliasLookup(table: Record<string, string>, value: string): string {
-    return table[value] ?? value;
+/** Filter a manifest-field array down to known enum values. */
+function readManifestArray(
+    fields: ManifestFields | undefined,
+    key: string,
+    allowed: ReadonlyArray<string>,
+): string[] {
+    if (!fields) return [];
+    const value = fields[key];
+    if (!Array.isArray(value)) return [];
+    return value.filter((v): v is string => typeof v === "string" && allowed.includes(v));
 }
 
 function readManifestExtra(fields: ManifestFields | undefined, keys: string[]): string | undefined {
@@ -162,6 +70,46 @@ function readManifestExtra(fields: ManifestFields | undefined, keys: string[]): 
     }
 
     return undefined;
+}
+
+/** Pull a canonical fulfilment method out of the v2 section's first
+ *  (modality, coordination) pair. Returns null when the section's modalities
+ *  array is empty or contains only unrecognized values. Used by downstream
+ *  single-selection consumers (canvas pill, cart). */
+export function deriveCanonicalFulfilmentMethod(
+    modalities: readonly string[],
+    coordinations: readonly string[],
+): CanonicalFulfilmentMethod | null {
+    const m = modalities[0];
+    if (!m) return null;
+    if (m === "consume-onsite") return "consume-onsite";
+    if (m === "pickup") return "pickup";
+    if (m === "virtual") return "virtual";
+    if (m === "delivery") {
+        const c = coordinations[0];
+        if (c === "buyer-assigned") return "deliver:buyer-assigned";
+        if (c === "seller-assigned") return "deliver:seller-assigned";
+        if (c === "dutch-auction") return "deliver:dutch-auction";
+        // Delivery without coordination is invalid at the schema level; the
+        // encoder will throw. Surface as null here so the caller knows.
+        return null;
+    }
+    return null;
+}
+
+/** Inverse of `deriveCanonicalFulfilmentMethod` — split a single canonical
+ *  method into the (modalities, coordinations) pair the v2 section expects. */
+export function canonicalFulfilmentMethodToArrays(
+    method: CanonicalFulfilmentMethod,
+): { modalities: string[]; coordinations: string[] } {
+    switch (method) {
+        case "consume-onsite": return { modalities: ["consume-onsite"], coordinations: [] };
+        case "pickup": return { modalities: ["pickup"], coordinations: [] };
+        case "virtual": return { modalities: ["virtual"], coordinations: [] };
+        case "deliver:buyer-assigned": return { modalities: ["delivery"], coordinations: ["buyer-assigned"] };
+        case "deliver:seller-assigned": return { modalities: ["delivery"], coordinations: ["seller-assigned"] };
+        case "deliver:dutch-auction": return { modalities: ["delivery"], coordinations: ["dutch-auction"] };
+    }
 }
 
 function hasGeoFields(fields: ManifestFields | undefined): boolean {
@@ -202,10 +150,22 @@ export interface AgreementSummary {
         topologyMode: TopologyMode;
         parentOrderHashes: string[];
     };
-    fulfilment?: Record<string, unknown>;
-    handoff?: Record<string, unknown>;
+    fulfilment?: {
+        /** Modalities offered for this order. */
+        modalities: readonly string[];
+        /** Courier coordinations offered. Non-empty IFF delivery is in modalities. */
+        coordinations: readonly string[];
+        /** Handoff points offered. */
+        handoffPoints: readonly string[];
+        /** Single canonical method derived from `modalities[0]` + `coordinations[0]`.
+         *  null when modalities is empty, or delivery is offered without coordination. */
+        method: CanonicalFulfilmentMethod | null;
+    };
     ghg?: Record<string, unknown>;
-    proximity?: Record<string, unknown>;
+    proximity?: {
+        /** Proximity-policy bands offered. */
+        bands: readonly string[];
+    };
     jurisdiction?: Record<string, unknown>;
     consent?: Record<string, unknown>;
 }
@@ -239,19 +199,20 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         sections.push(manifestFieldsToGeoSection(params.manifestFields!));
     }
 
-    const fulfilmentMethod = readManifestExtra(params.manifestFields, ["fulfilmentMethod", "fulfillmentMethod"]);
-    const auctionType = readManifestExtra(params.manifestFields, ["auctionType", "auctionMechanism"]);
-    const canonicalFulfilmentMethod = combineToCanonicalFulfilmentMethod(fulfilmentMethod, auctionType);
-    const handoffMode = readManifestExtra(params.manifestFields, ["handoffMode"]);
-    const v2 = canonicalFulfilmentMethod ? canonicalFulfilmentToV2(canonicalFulfilmentMethod) : null;
-    if (v2) {
-        // Single figaro-fulfilment-v2 section combining modality +
-        // coordination (from canonical fulfilment method) and handoffPoint
-        // (from legacy handoffMode).
-        const handoffPoint = normalizeHandoffPoint(handoffMode);
-        const data: Record<string, unknown> = { modality: v2.modality };
-        if (v2.coordination) data.coordination = v2.coordination;
-        if (handoffPoint) data.handoffPoint = handoffPoint;
+    const modalities = readManifestArray(params.manifestFields, "fulfilmentModalities", ALLOWED_MODALITIES);
+    const coordinations = readManifestArray(params.manifestFields, "fulfilmentCoordinations", ALLOWED_COORDINATIONS);
+    const handoffPoints = readManifestArray(params.manifestFields, "fulfilmentHandoffPoints", ALLOWED_HANDOFF_POINTS);
+    if (modalities.length > 0) {
+        const data: Record<string, unknown> = { modalities };
+        // The validator requires coordinations non-empty IFF delivery is
+        // offered. Default to "seller-assigned" when delivery has no
+        // coordination specified, and drop coordinations when delivery isn't
+        // offered (template/runtime mistakes shouldn't break encoding here —
+        // the schema validator catches genuine drift downstream).
+        if (modalities.includes("delivery")) {
+            data.coordinations = coordinations.length > 0 ? coordinations : ["seller-assigned"];
+        }
+        if (handoffPoints.length > 0) data.handoffPoints = handoffPoints;
         sections.push({
             schema: FULFILMENT_V2_SCHEMA_KEY,
             data,
@@ -282,11 +243,11 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         });
     }
 
-    const proximityBand = readManifestExtra(params.manifestFields, ["proximityBand"]);
-    if (proximityBand) {
+    const proximityBands = readManifestArray(params.manifestFields, "proximityBands", ALLOWED_PROXIMITY_BANDS);
+    if (proximityBands.length > 0) {
         sections.push({
             schema: PROXIMITY_POLICY_SCHEMA_KEY,
-            data: { band: proximityBand },
+            data: { bands: proximityBands },
         });
     }
 
@@ -391,15 +352,38 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
             }
             : undefined,
         fulfilment: fulfilmentSection
-            ? deriveLegacyFulfilment(fulfilmentSection.data)
-            : undefined,
-        handoff: fulfilmentSection?.data.handoffPoint
-            ? { mode: fulfilmentSection.data.handoffPoint }
+            ? (() => {
+                const modalities = Array.isArray(fulfilmentSection.data.modalities)
+                    ? fulfilmentSection.data.modalities as readonly string[]
+                    : [];
+                const coordinations = Array.isArray(fulfilmentSection.data.coordinations)
+                    ? fulfilmentSection.data.coordinations as readonly string[]
+                    : [];
+                const handoffPoints = Array.isArray(fulfilmentSection.data.handoffPoints)
+                    ? fulfilmentSection.data.handoffPoints as readonly string[]
+                    : [];
+                const method = deriveCanonicalFulfilmentMethod(modalities, coordinations);
+                return {
+                    modalities,
+                    coordinations,
+                    handoffPoints,
+                    // Single-method back-compat for downstream consumers
+                    // (canvas edge pill, cart). null when modalities is empty
+                    // or coordinations are missing for a delivery offer.
+                    method,
+                };
+            })()
             : undefined,
         ghg: ghgSection
             ? { ...(ghgStandard ? { standard: ghgStandard } : {}), ...ghgSection.data }
             : undefined,
-        proximity: proximitySection?.data,
+        proximity: proximitySection
+            ? {
+                bands: Array.isArray(proximitySection.data.bands)
+                    ? proximitySection.data.bands as readonly string[]
+                    : [],
+            }
+            : undefined,
         jurisdiction: jurisdictionSection?.data,
         consent: consentSection?.data,
     };

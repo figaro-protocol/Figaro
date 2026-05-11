@@ -41,7 +41,6 @@ import {
     GHG_DISCLOSURE_SCHEMA_KEYS,
     GHG_SCHEMA_TO_STANDARD,
     JURISDICTION_SCHEMA_KEY,
-    PROXIMITY_POLICY_SCHEMA_KEY,
 } from "@/lib/core/agreementManifest";
 import { getSchemaInfo } from "@/lib/shared/schemaCategories";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
@@ -83,7 +82,6 @@ type SectionKey = ArticleKey;
  */
 const SCHEMA_SENTINELS: Record<string, Record<string, string>> = {
     [GEO_SCHEMA_KEY]: { origin: "0", destination: "0" },
-    [PROXIMITY_POLICY_SCHEMA_KEY]: { proximityBand: "none" },
     [JURISDICTION_SCHEMA_KEY]: { applicableLaw: "Kleros" },
     [CONSENT_SCHEMA_KEY]: {
         documentHash: ZERO_BYTES32,
@@ -99,15 +97,9 @@ const SCHEMA_SENTINELS: Record<string, Record<string, string>> = {
  */
 const SCHEMA_FIELDS: Record<string, readonly string[]> = {
     [GEO_SCHEMA_KEY]: ["origin", "destination", "mass", "volume", "class_"],
-    [PROXIMITY_POLICY_SCHEMA_KEY]: ["proximityBand"],
     [JURISDICTION_SCHEMA_KEY]: ["applicableLaw", "forum", "language"],
     [CONSENT_SCHEMA_KEY]: ["documentHash", "documentVersion", "documentTitle"],
 };
-
-/** Fields the Fulfilment article writes/clears. The drawer's selectFulfilmentMethod
- *  manages these three keys; modality + (optional) coordination are encoded
- *  into a single `fulfilmentMethod` value by `buildOrderAgreement`. */
-const FULFILMENT_MANIFEST_FIELDS = ["fulfilmentMethod", "auctionType", "handoffMode"] as const;
 
 function isFieldFilled(fields: ManifestFields, key: string): boolean {
     const v = (fields as Record<string, unknown>)[key];
@@ -124,7 +116,6 @@ function isSchemaIncluded(schemaId: string, fields: ManifestFields): boolean {
     if (schemaId === GEO_SCHEMA_KEY) {
         return isFieldFilled(fields, "origin") && isFieldFilled(fields, "destination");
     }
-    if (schemaId === PROXIMITY_POLICY_SCHEMA_KEY) return isFieldFilled(fields, "proximityBand");
     if (schemaId === JURISDICTION_SCHEMA_KEY) return isFieldFilled(fields, "applicableLaw");
     if (schemaId === CONSENT_SCHEMA_KEY) {
         return ["documentHash", "documentVersion", "documentTitle"].every((k) => isFieldFilled(fields, k));
@@ -138,8 +129,6 @@ interface Props {
     order: Order | null;
     onClose: () => void;
     onChange: (edits: AgreementEdits) => void;
-    /** Optional — when provided, the drawer renders a Delete button. */
-    onDelete?: (orderId: string) => void;
     /** True when the current order already has at least one child sub-order.
      *  Surfaced to the Fulfilment article so its hint copy reflects the
      *  canvas state ("a sub-order was added" vs. "set coordination on the
@@ -164,7 +153,6 @@ export function AgreementDrawer({
     order,
     onClose,
     onChange,
-    onDelete,
     hasChildren = false,
     onDeliverySelected,
     onDeliveryUnselected,
@@ -246,50 +234,42 @@ export function AgreementDrawer({
         commitFields(next);
     }
 
-    /** Fulfilment article: pick modality only. Coordination lives on the
-     *  courier sub-order's edge pill, never in the drawer. Picking Delivery
-     *  signals the page to add a courier sub-order; switching off Delivery
-     *  signals the page to remove the auto-added one. The page owns the
-     *  add/remove tracking — the drawer only declares intent. */
-    function selectModality(modality: FulfilmentModality | null) {
-        const wasDelivery = activeModality === "delivery";
-        const isDelivery = modality === "delivery";
-
-        const next: ManifestFields = { ...fields };
-        if (modality === null) {
-            for (const k of FULFILMENT_MANIFEST_FIELDS) {
-                delete (next as Record<string, unknown>)[k];
-            }
-        } else if (isDelivery) {
-            // Keep any existing canonical method (preserves coordination if
-            // already set); default to seller-assigned when fresh.
-            const existing = typeof fields.fulfilmentMethod === "string"
-                ? fields.fulfilmentMethod
-                : null;
-            const isExistingDelivery = existing?.startsWith("deliver:") ?? false;
-            (next as Record<string, unknown>).fulfilmentMethod = isExistingDelivery
-                ? existing
-                : "deliver:seller-assigned";
-        } else {
-            (next as Record<string, unknown>).fulfilmentMethod = modality;
-        }
-        commitFields(next);
-
-        if (!order) return;
-        if (isDelivery && !wasDelivery && onDeliverySelected) {
-            onDeliverySelected(order.id);
-        } else if (!isDelivery && wasDelivery && onDeliveryUnselected) {
-            onDeliveryUnselected(order.id);
-        }
+    function readStringArray(key: string): string[] {
+        const v = fields[key];
+        return Array.isArray(v) ? v.filter((s): s is string => typeof s === "string") : [];
     }
 
-    const activeModality: FulfilmentModality | null = (() => {
-        const v = fields.fulfilmentMethod;
-        if (typeof v !== "string") return null;
-        if (v === "consume-onsite" || v === "pickup") return v;
-        if (v.startsWith("deliver:")) return "delivery";
-        return null;
-    })();
+    const fulfilmentModalities = readStringArray("fulfilmentModalities");
+    const fulfilmentCoordinations = readStringArray("fulfilmentCoordinations");
+    const fulfilmentHandoffPoints = readStringArray("fulfilmentHandoffPoints");
+    const proximityBands = readStringArray("proximityBands");
+
+    /** Fulfilment article: multi-select across modalities, coordinations,
+     *  and handoffPoints. The article emits whole-shape updates; the drawer
+     *  routes side-effects (auto-add / auto-remove courier sub-order) via
+     *  the onDeliveryAdded / onDeliveryRemoved callbacks the article fires
+     *  when delivery is toggled on or off. */
+    function updateFulfilment(next: {
+        modalities: string[];
+        coordinations: string[];
+        handoffPoints: string[];
+    }) {
+        const out: ManifestFields = { ...fields };
+        if (next.modalities.length > 0) out.fulfilmentModalities = next.modalities;
+        else delete (out as Record<string, unknown>).fulfilmentModalities;
+        if (next.coordinations.length > 0) out.fulfilmentCoordinations = next.coordinations;
+        else delete (out as Record<string, unknown>).fulfilmentCoordinations;
+        if (next.handoffPoints.length > 0) out.fulfilmentHandoffPoints = next.handoffPoints;
+        else delete (out as Record<string, unknown>).fulfilmentHandoffPoints;
+        commitFields(out);
+    }
+
+    function updateProximityBands(next: string[]) {
+        const out: ManifestFields = { ...fields };
+        if (next.length > 0) out.proximityBands = next;
+        else delete (out as Record<string, unknown>).proximityBands;
+        commitFields(out);
+    }
 
     /** Emissions article: pick one of N GHG schemas or "Not included". */
     function selectEmissionsSchema(schemaId: string | null) {
@@ -447,19 +427,22 @@ export function AgreementDrawer({
                     {openSection === "fulfilment" && (
                         <section data-testid="drawer-section-fulfilment">
                             <FulfilmentArticle
-                                activeModality={activeModality}
-                                onSelect={selectModality}
+                                modalities={fulfilmentModalities}
+                                coordinations={fulfilmentCoordinations}
+                                handoffPoints={fulfilmentHandoffPoints}
+                                onChange={updateFulfilment}
                                 hasChildren={hasChildren}
+                                onDeliveryAdded={() => order && onDeliverySelected?.(order.id)}
+                                onDeliveryRemoved={() => order && onDeliveryUnselected?.(order.id)}
                             />
                         </section>
                     )}
 
                     {openSection === "proximity" && (
                         <section data-testid="drawer-section-proximity">
-                            <SchemaToggleArticle
-                                schemaId={PROXIMITY_POLICY_SCHEMA_KEY}
-                                included={isSchemaIncluded(PROXIMITY_POLICY_SCHEMA_KEY, fields)}
-                                onToggle={(next) => toggleSchema(PROXIMITY_POLICY_SCHEMA_KEY, next)}
+                            <ProximityArticle
+                                bands={proximityBands}
+                                onChange={updateProximityBands}
                             />
                         </section>
                     )}
@@ -508,18 +491,6 @@ export function AgreementDrawer({
                     )}
                 </div>
             </div>
-            {onDelete && (
-                <div className="px-5 py-3 border-t border-neutral-200 bg-white">
-                    <button
-                        type="button"
-                        onClick={() => onDelete(order.id)}
-                        data-testid="drawer-delete-order"
-                        className="w-full text-xs px-3 py-2 rounded border border-red-300 bg-white text-red-700 hover:bg-red-50 hover:border-red-500 font-semibold"
-                    >
-                        Delete this order (and its descendants)
-                    </button>
-                </div>
-            )}
             </>)}
         </aside>
     );
@@ -560,27 +531,86 @@ function SchemaToggleArticle({
     );
 }
 
+const MODALITY_OPTIONS: ReadonlyArray<{ value: FulfilmentModality; label: string }> = [
+    { value: "consume-onsite", label: "Consume on-site" },
+    { value: "pickup", label: "Pickup" },
+    { value: "delivery", label: "Delivery" },
+    { value: "virtual", label: "Virtual" },
+];
+
+const COORDINATION_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+    { value: "buyer-assigned", label: "Buyer chooses courier" },
+    { value: "seller-assigned", label: "Merchant arranges courier" },
+    { value: "dutch-auction", label: "Dutch-auction courier" },
+];
+
+const HANDOFF_POINT_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+    { value: "face-to-face", label: "Face-to-face" },
+    { value: "dead-drop", label: "Dead-drop" },
+    { value: "parking-area", label: "Parking / curbside" },
+    { value: "locker", label: "Locker" },
+];
+
+const PROXIMITY_BAND_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+    { value: "zone-wifi", label: "Zone — same WiFi" },
+    { value: "nearby-ble", label: "Nearby — BLE" },
+    { value: "contact-nfc", label: "Contact — NFC" },
+];
+
+function toggleInList<T>(list: readonly T[], value: T): T[] {
+    return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+}
+
 /**
- * Fulfilment article — pick modality only (consume-onsite / pickup /
- * delivery). Modality is a structural choice the designer makes because it
- * determines which other clauses make sense and whether a courier sub-order
- * is required.
- *
- * Delivery implies a courier sub-order. If the current node has no children,
- * picking Delivery triggers `onAddSubOrder`; coordination (buyer-assigned /
- * seller-assigned / dutch-auction) is then chosen on that sub-order's edge
- * pill in the canvas — never duplicated in the drawer.
+ * Fulfilment article — multi-select across modalities, coordinations, and
+ * handoff points. Every order has a fulfilment clause; there is no
+ * "not-included" option. Picking Delivery implies a courier sub-order — the
+ * page reacts to `onDeliveryAdded` to auto-add one (and to `onDeliveryRemoved`
+ * to remove the auto-added one when Delivery is unchecked).
  */
 function FulfilmentArticle({
-    activeModality,
-    onSelect,
+    modalities,
+    coordinations,
+    handoffPoints,
+    onChange,
     hasChildren,
+    onDeliveryAdded,
+    onDeliveryRemoved,
 }: {
-    activeModality: FulfilmentModality | null;
-    onSelect: (modality: FulfilmentModality | null) => void;
+    modalities: string[];
+    coordinations: string[];
+    handoffPoints: string[];
+    onChange: (next: { modalities: string[]; coordinations: string[]; handoffPoints: string[] }) => void;
     hasChildren: boolean;
+    onDeliveryAdded: () => void;
+    onDeliveryRemoved: () => void;
 }) {
     const info = getSchemaInfo("figaro-fulfilment-v2");
+    const deliveryOffered = modalities.includes("delivery");
+
+    function toggleModality(value: string) {
+        const nextModalities = toggleInList(modalities, value);
+        const isDelivery = value === "delivery";
+        const becomingDelivery = isDelivery && !deliveryOffered;
+        const removingDelivery = isDelivery && deliveryOffered;
+        const stillDelivery = nextModalities.includes("delivery");
+        // Default delivery coordination to seller-assigned when first added;
+        // clear coordinations entirely when delivery is removed.
+        const nextCoordinations = becomingDelivery && coordinations.length === 0
+            ? ["seller-assigned"]
+            : stillDelivery ? coordinations : [];
+        onChange({ modalities: nextModalities, coordinations: nextCoordinations, handoffPoints });
+        if (becomingDelivery) onDeliveryAdded();
+        if (removingDelivery) onDeliveryRemoved();
+    }
+
+    function toggleCoordination(value: string) {
+        onChange({ modalities, coordinations: toggleInList(coordinations, value), handoffPoints });
+    }
+
+    function toggleHandoffPoint(value: string) {
+        onChange({ modalities, coordinations, handoffPoints: toggleInList(handoffPoints, value) });
+    }
 
     return (
         <div>
@@ -589,39 +619,112 @@ function FulfilmentArticle({
                 {info?.description ?? ""}
             </p>
 
-            <div className="space-y-1">
-                {([
-                    { value: null, label: "Not included" },
-                    { value: "consume-onsite", label: "Consume on-site" },
-                    { value: "pickup", label: "Pickup" },
-                    { value: "delivery", label: "Delivery" },
-                ] as ReadonlyArray<{ value: FulfilmentModality | null; label: string }>).map((opt) => (
+            <label className="block text-[11px] text-neutral-500 mb-1">Modalities offered</label>
+            <div className="space-y-1 mb-4">
+                {MODALITY_OPTIONS.map((opt) => (
                     <label
-                        key={opt.label}
+                        key={opt.value}
                         className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
                     >
                         <input
-                            type="radio"
-                            name="fulfilment-modality"
-                            checked={activeModality === opt.value}
-                            onChange={() => onSelect(opt.value)}
-                            data-testid={`drawer-fulfilment-modality-${opt.value ?? "none"}`}
+                            type="checkbox"
+                            checked={modalities.includes(opt.value)}
+                            onChange={() => toggleModality(opt.value)}
+                            data-testid={`drawer-fulfilment-modality-${opt.value}`}
                         />
                         <span>{opt.label}</span>
                     </label>
                 ))}
             </div>
 
-            {activeModality === "delivery" && (
+            {deliveryOffered && (
+                <div data-testid="drawer-fulfilment-coordination" className="mb-4">
+                    <label className="block text-[11px] text-neutral-500 mb-1">Courier coordination offered</label>
+                    <div className="space-y-1">
+                        {COORDINATION_OPTIONS.map((opt) => (
+                            <label
+                                key={opt.value}
+                                className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={coordinations.includes(opt.value)}
+                                    onChange={() => toggleCoordination(opt.value)}
+                                    data-testid={`drawer-fulfilment-coordination-${opt.value}`}
+                                />
+                                <span>{opt.label}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <label className="block text-[11px] text-neutral-500 mb-1">Handoff points offered</label>
+            <div className="space-y-1">
+                {HANDOFF_POINT_OPTIONS.map((opt) => (
+                    <label
+                        key={opt.value}
+                        className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
+                    >
+                        <input
+                            type="checkbox"
+                            checked={handoffPoints.includes(opt.value)}
+                            onChange={() => toggleHandoffPoint(opt.value)}
+                            data-testid={`drawer-fulfilment-handoff-${opt.value}`}
+                        />
+                        <span>{opt.label}</span>
+                    </label>
+                ))}
+            </div>
+
+            {deliveryOffered && (
                 <p
                     className="text-[11px] text-neutral-500 leading-relaxed mt-4"
                     data-testid="drawer-fulfilment-courier-hint"
                 >
-                    Set courier coordination on the sub-order&apos;s edge pill in
-                    the canvas. Switching off Delivery removes the auto-added
-                    sub-order if it has no descendants.
+                    {hasChildren
+                        ? "Delivery requires a courier sub-order — one is already on the canvas."
+                        : "A courier sub-order was added to the canvas for the delivery leg."}
                 </p>
             )}
+        </div>
+    );
+}
+
+/**
+ * Proximity article — multi-select detection bands committed in this
+ * agreement's proximity-policy clause. Empty selection = clause omitted.
+ */
+function ProximityArticle({
+    bands,
+    onChange,
+}: {
+    bands: string[];
+    onChange: (next: string[]) => void;
+}) {
+    const info = getSchemaInfo("figaro-proximity-policy-v1");
+    return (
+        <div>
+            <p className="text-sm text-black mb-1">{info?.title ?? "Proximity"}</p>
+            <p className="text-xs text-neutral-500 leading-relaxed mb-4">
+                {info?.description ?? ""}
+            </p>
+            <div className="space-y-1">
+                {PROXIMITY_BAND_OPTIONS.map((opt) => (
+                    <label
+                        key={opt.value}
+                        className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer"
+                    >
+                        <input
+                            type="checkbox"
+                            checked={bands.includes(opt.value)}
+                            onChange={() => onChange(toggleInList(bands, opt.value))}
+                            data-testid={`drawer-proximity-band-${opt.value}`}
+                        />
+                        <span>{opt.label}</span>
+                    </label>
+                ))}
+            </div>
         </div>
     );
 }

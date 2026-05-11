@@ -30,6 +30,7 @@ import {
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "consume-onsite",
     "pickup",
+    "virtual",
     "deliver:buyer-assigned",
     "deliver:seller-assigned",
     "deliver:dutch-auction",

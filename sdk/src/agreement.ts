@@ -114,7 +114,7 @@ const CATEGORY_2_ENCODERS: Record<string, (data: Record<string, unknown>) => Hex
     "figaro-ghg-en-16258-v1": (data) => encodeGHGScopeContent(data as GHGScopeContent),
     "figaro-ghg-custom-v1": (data) => encodeGHGScopeContent(data as GHGScopeContent),
     "figaro-proximity-policy-v1": (data) => encodeProximityPolicyContent({
-        band: data.band as ProximityBand,
+        bands: (data.bands as readonly ProximityBand[]) ?? [],
     }),
     "figaro-commerce-v1": (data) => encodeCommerceContent({
         currency: data.currency as Hex,

@@ -49,6 +49,7 @@ import type { CatalogueItem, SellerCatalogue } from "@/lib/seller/types";
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "consume-onsite",
     "pickup",
+    "virtual",
     "deliver:buyer-assigned",
     "deliver:seller-assigned",
     "deliver:dutch-auction",

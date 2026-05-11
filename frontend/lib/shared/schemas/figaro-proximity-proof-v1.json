@@ -8,7 +8,7 @@
         {
             "name": "band",
             "type": "enum",
-            "values": ["none", "zone-wifi", "nearby-ble", "contact-nfc"],
+            "values": ["zone-wifi", "nearby-ble", "contact-nfc"],
             "required": true,
             "description": "Detection modality used for this proof. Off-chain consumers should cross-check this matches the committed policy band."
         },
