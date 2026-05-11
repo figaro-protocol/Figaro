@@ -372,7 +372,11 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
             });
         case "figaro-jurisdiction-v1":
             return (data) => encodeJurisdictionContent({
-                applicableLaw: data.applicableLaw as string,
+                klerosCourt: asAny(data.klerosCourt),
+                klerosMinJurors: typeof data.klerosMinJurors === "number"
+                    ? data.klerosMinJurors
+                    : undefined,
+                applicableLaw: data.applicableLaw as string | undefined,
                 forum: data.forum as string | undefined,
                 language: data.language as string | undefined,
             });

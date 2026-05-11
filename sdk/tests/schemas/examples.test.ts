@@ -176,10 +176,28 @@ describe("example schema specs — parse + validate sample content", () => {
         expect(validateContent({ applicableLaw: "EU" }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-jurisdiction-v1 rejects missing applicableLaw (required)", () => {
+    it("figaro-jurisdiction-v1 accepts Kleros layer-2 only", () => {
         const parsed = parseSchemaSpec(jurisdictionSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ forum: "JAMS-arbitration" }, parsed.spec).ok).toBe(false);
+        expect(validateContent({ klerosCourt: "general", klerosMinJurors: 3 }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-jurisdiction-v1 accepts both Kleros and layer-3 traditional", () => {
+        const parsed = parseSchemaSpec(jurisdictionSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            klerosCourt: "blockchain-nontechnical",
+            klerosMinJurors: 5,
+            applicableLaw: "US-CA",
+            forum: "JAMS-arbitration",
+            language: "en",
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-jurisdiction-v1 rejects unknown klerosCourt", () => {
+        const parsed = parseSchemaSpec(jurisdictionSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ klerosCourt: "small-claims", klerosMinJurors: 3 }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-jurisdiction-v1 rejects applicableLaw shorter than 2 chars", () => {

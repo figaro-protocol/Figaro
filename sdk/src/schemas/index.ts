@@ -45,6 +45,7 @@ export type {
     FulfilmentCoordination,
     FulfilmentHandoffPoint,
     FulfilmentV2Content,
+    KlerosCourt,
     JurisdictionContent,
     GHGScopeContent,
     GHGMeasurementContent,

@@ -93,32 +93,57 @@ export function encodeFulfilmentV2Content(content: FulfilmentV2Content): Hex {
 
 // ── figaro-jurisdiction-v1 ──────────────────────────────────────────────────
 //
-// Off-chain dispute-resolution jurisdiction. Captures the legal/forum scope
-// under which the contract is adjudicated. Per Paper E: settlement on-chain by
-// nature, adjudication off-chain by nature — every signed contract sits inside
-// some jurisdiction even if FigaroCore never reads it. Baseline graph
-// alongside capital flow, geo, GHG, topology, handoff, proximity.
-//
-// applicableLaw is required (2-16 chars). Forum and language are optional.
-// Generic across legal traditions: state law (ISO 3166), religious law,
-// customary law, ODR (Kleros, ICANN-UDRP).
+// Three-layer dispute resolution. Layer 1 (kernel mechanisms — asymmetric
+// bonding + buyer dominance) is always active and not encoded here. Layer 2
+// (Kleros — decentralized off-chain arbitration) sits in `klerosCourt` +
+// `klerosMinJurors`. Layer 3 (state / ADR / traditional) sits in
+// `applicableLaw` + `forum` + `language`. At least one of `klerosCourt` or
+// `applicableLaw` must be set; otherwise the section is empty and shouldn't
+// exist.
+
+export type KlerosCourt = "general" | "blockchain-nontechnical" | "blockchain-technical" | "english-language";
+
+const KLEROS_COURT_INDEX: Record<KlerosCourt, number> = {
+    "general": 1,
+    "blockchain-nontechnical": 2,
+    "blockchain-technical": 3,
+    "english-language": 4,
+};
 
 export interface JurisdictionContent {
-    /** Body of law that governs the contract. ISO 3166 code (e.g., "US-CA"),
-     *  "EU"/"INTL", or a free-form non-state legal-order identifier. */
-    applicableLaw: string;
-    /** Named adjudication venue (optional). Empty = courts of competent
-     *  jurisdiction within applicableLaw. */
+    /** Layer 2 — Kleros subcourt. Omit to opt out of Kleros. */
+    klerosCourt?: KlerosCourt;
+    /** Layer 2 — Kleros minimum juror count. Defaults to 3 if klerosCourt
+     *  is set and this is omitted. Ignored when klerosCourt is unset. */
+    klerosMinJurors?: number;
+    /** Layer 3 — body of law that governs the contract. ISO 3166 code
+     *  (e.g., "US-CA"), "EU" / "INTL", or a free-form non-state legal-order
+     *  identifier. Omit to use Kleros (layer 2) alone. */
+    applicableLaw?: string;
+    /** Layer 3 — named adjudication venue (optional). */
     forum?: string;
-    /** ISO 639 language code for adjudication (optional). Empty = official
-     *  language of the forum. */
+    /** Layer 3 — ISO 639 language code for adjudication (optional). */
     language?: string;
 }
 
 export function encodeJurisdictionContent(content: JurisdictionContent): Hex {
+    const klerosCourtIndex = content.klerosCourt ? KLEROS_COURT_INDEX[content.klerosCourt] : 0;
+    const klerosMinJurors = klerosCourtIndex === 0 ? 0 : (content.klerosMinJurors ?? 3);
     return encodeAbiParameters(
-        [{ type: "string" }, { type: "string" }, { type: "string" }],
-        [content.applicableLaw, content.forum ?? "", content.language ?? ""],
+        [
+            { type: "uint8" },
+            { type: "uint8" },
+            { type: "string" },
+            { type: "string" },
+            { type: "string" },
+        ],
+        [
+            klerosCourtIndex,
+            klerosMinJurors,
+            content.applicableLaw ?? "",
+            content.forum ?? "",
+            content.language ?? "",
+        ],
     );
 }
 

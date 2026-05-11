@@ -281,11 +281,21 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         });
     }
 
+    const klerosCourt = readManifestExtra(params.manifestFields, ["klerosCourt"]);
+    const klerosMinJurorsRaw = readManifestExtra(params.manifestFields, ["klerosMinJurors"]);
     const applicableLaw = readManifestExtra(params.manifestFields, ["applicableLaw"]);
     const forum = readManifestExtra(params.manifestFields, ["forum"]);
     const language = readManifestExtra(params.manifestFields, ["language"]);
-    if (applicableLaw) {
-        const data: Record<string, unknown> = { applicableLaw };
+    const ALLOWED_KLEROS_COURTS = ["general", "blockchain-nontechnical", "blockchain-technical", "english-language"];
+    const klerosCourtValue = klerosCourt && ALLOWED_KLEROS_COURTS.includes(klerosCourt) ? klerosCourt : undefined;
+    if (klerosCourtValue || applicableLaw) {
+        const data: Record<string, unknown> = {};
+        if (klerosCourtValue) {
+            data.klerosCourt = klerosCourtValue;
+            const parsed = klerosMinJurorsRaw ? Number(klerosMinJurorsRaw) : 3;
+            data.klerosMinJurors = Number.isFinite(parsed) && parsed >= 1 ? parsed : 3;
+        }
+        if (applicableLaw) data.applicableLaw = applicableLaw;
         if (forum) data.forum = forum;
         if (language) data.language = language;
         sections.push({

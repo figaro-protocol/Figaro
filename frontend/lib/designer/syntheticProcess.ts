@@ -75,7 +75,11 @@ export interface CreatedOrder {
 const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
     origin: "0",
     destination: "0",
-    applicableLaw: "Kleros",
+    // Layer 2 jurisdiction default: Kleros General Court with 3 jurors.
+    // Layer 1 (kernel mechanisms) is always active and not encoded;
+    // layer 3 (state / ADR) is opt-in via the Jurisdiction tab.
+    klerosCourt: "general",
+    klerosMinJurors: "3",
     // Every order has a fulfilment clause. Default to pickup — the simplest
     // single-modality offering that doesn't imply a courier sub-order.
     fulfilmentModalities: ["pickup"],
@@ -460,6 +464,10 @@ export function readAgreementFields(order: Order): ManifestFields {
     }
 
     // ── jurisdiction ───────────────────────────────────────────
+    const klerosCourt = summary?.jurisdiction?.klerosCourt;
+    if (typeof klerosCourt === "string") fields.klerosCourt = klerosCourt;
+    const klerosMinJurors = summary?.jurisdiction?.klerosMinJurors;
+    if (typeof klerosMinJurors === "number") fields.klerosMinJurors = String(klerosMinJurors);
     const applicableLaw = summary?.jurisdiction?.applicableLaw;
     if (typeof applicableLaw === "string") fields.applicableLaw = applicableLaw;
     const forum = summary?.jurisdiction?.forum;

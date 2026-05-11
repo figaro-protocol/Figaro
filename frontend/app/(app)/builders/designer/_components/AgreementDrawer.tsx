@@ -39,7 +39,6 @@ import {
     CONSENT_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
     GHG_DISCLOSURE_SCHEMA_KEYS,
-    JURISDICTION_SCHEMA_KEY,
 } from "@/lib/core/agreementManifest";
 import { getSchemaInfo } from "@/lib/shared/schemaCategories";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
@@ -79,7 +78,6 @@ type SectionKey = ArticleKey;
  */
 const SCHEMA_SENTINELS: Record<string, Record<string, string>> = {
     [GEO_SCHEMA_KEY]: { origin: "0", destination: "0" },
-    [JURISDICTION_SCHEMA_KEY]: { applicableLaw: "Kleros" },
     [CONSENT_SCHEMA_KEY]: {
         documentHash: ZERO_BYTES32,
         documentVersion: "v0",
@@ -94,7 +92,6 @@ const SCHEMA_SENTINELS: Record<string, Record<string, string>> = {
  */
 const SCHEMA_FIELDS: Record<string, readonly string[]> = {
     [GEO_SCHEMA_KEY]: ["origin", "destination", "mass", "volume", "class_"],
-    [JURISDICTION_SCHEMA_KEY]: ["applicableLaw", "forum", "language"],
     [CONSENT_SCHEMA_KEY]: ["documentHash", "documentVersion", "documentTitle"],
 };
 
@@ -113,7 +110,6 @@ function isSchemaIncluded(schemaId: string, fields: ManifestFields): boolean {
     if (schemaId === GEO_SCHEMA_KEY) {
         return isFieldFilled(fields, "origin") && isFieldFilled(fields, "destination");
     }
-    if (schemaId === JURISDICTION_SCHEMA_KEY) return isFieldFilled(fields, "applicableLaw");
     if (schemaId === CONSENT_SCHEMA_KEY) {
         return ["documentHash", "documentVersion", "documentTitle"].every((k) => isFieldFilled(fields, k));
     }
@@ -321,6 +317,50 @@ export function AgreementDrawer({
         else if (!wasEmpty && willBeEmpty && onOffsetUnselected) onOffsetUnselected(order.id);
     }
 
+    /** Jurisdiction article state — three layers; layer 1 always active
+     *  (kernel mechanisms, not encoded), layer 2 = Kleros, layer 3 =
+     *  traditional state/ADR. */
+    const klerosCourtValue = typeof fields.klerosCourt === "string" ? fields.klerosCourt : "";
+    const klerosOptedIn = klerosCourtValue !== "";
+    const klerosMinJurorsValue = typeof fields.klerosMinJurors === "string" ? fields.klerosMinJurors : "3";
+    const applicableLawValue = typeof fields.applicableLaw === "string" ? fields.applicableLaw : "";
+    const forumValue = typeof fields.forum === "string" ? fields.forum : "";
+    const languageValue = typeof fields.language === "string" ? fields.language : "";
+    const traditionalActive = applicableLawValue !== "" || forumValue !== "" || languageValue !== "";
+
+    function setKlerosCourt(value: string) {
+        const out: ManifestFields = { ...fields };
+        if (value === "") {
+            delete (out as Record<string, unknown>).klerosCourt;
+            delete (out as Record<string, unknown>).klerosMinJurors;
+        } else {
+            out.klerosCourt = value;
+            if (!out.klerosMinJurors) out.klerosMinJurors = "3";
+        }
+        commitFields(out);
+    }
+
+    function setKlerosMinJurors(value: string) {
+        const out: ManifestFields = { ...fields };
+        out.klerosMinJurors = value;
+        commitFields(out);
+    }
+
+    function setTraditionalField(key: "applicableLaw" | "forum" | "language", value: string) {
+        const out: ManifestFields = { ...fields };
+        if (value === "") delete (out as Record<string, unknown>)[key];
+        else (out as Record<string, unknown>)[key] = value;
+        commitFields(out);
+    }
+
+    function clearTraditional() {
+        const out: ManifestFields = { ...fields };
+        delete (out as Record<string, unknown>).applicableLaw;
+        delete (out as Record<string, unknown>).forum;
+        delete (out as Record<string, unknown>).language;
+        commitFields(out);
+    }
+
     return (
         <aside
             data-testid="agreement-drawer"
@@ -483,10 +523,18 @@ export function AgreementDrawer({
 
                     {openSection === "jurisdiction" && (
                         <section data-testid="drawer-section-jurisdiction">
-                            <SchemaToggleArticle
-                                schemaId={JURISDICTION_SCHEMA_KEY}
-                                included={isSchemaIncluded(JURISDICTION_SCHEMA_KEY, fields)}
-                                onToggle={(next) => toggleSchema(JURISDICTION_SCHEMA_KEY, next)}
+                            <JurisdictionArticle
+                                klerosCourt={klerosCourtValue}
+                                klerosMinJurors={klerosMinJurorsValue}
+                                applicableLaw={applicableLawValue}
+                                forum={forumValue}
+                                language={languageValue}
+                                klerosOptedIn={klerosOptedIn}
+                                traditionalActive={traditionalActive}
+                                onKlerosCourtChange={setKlerosCourt}
+                                onKlerosMinJurorsChange={setKlerosMinJurors}
+                                onTraditionalFieldChange={setTraditionalField}
+                                onClearTraditional={clearTraditional}
                             />
                         </section>
                     )}
@@ -799,6 +847,160 @@ function EmissionsArticle({
                     Offset sub-order on the canvas.
                 </p>
             )}
+        </div>
+    );
+}
+
+const KLEROS_COURT_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+    { value: "general", label: "General Court" },
+    { value: "blockchain-nontechnical", label: "Blockchain — Non-Technical" },
+    { value: "blockchain-technical", label: "Blockchain — Technical" },
+    { value: "english-language", label: "English Language" },
+];
+
+/**
+ * Jurisdiction article — three layers of dispute resolution.
+ *
+ *   Layer 1: Kernel mechanisms (asymmetric bonding + buyer dominance).
+ *            Always active; not encoded in the agreement. Informational only.
+ *
+ *   Layer 2: Kleros — decentralized off-chain arbitration. On by default.
+ *            Encoded via the `klerosCourt` + `klerosMinJurors` schema fields.
+ *
+ *   Layer 3: State / ADR / traditional jurisdiction. Optional, on top of
+ *            layers 1 + 2. Encoded via `applicableLaw` + `forum` + `language`.
+ */
+function JurisdictionArticle({
+    klerosCourt,
+    klerosMinJurors,
+    applicableLaw,
+    forum,
+    language,
+    klerosOptedIn,
+    traditionalActive,
+    onKlerosCourtChange,
+    onKlerosMinJurorsChange,
+    onTraditionalFieldChange,
+    onClearTraditional,
+}: {
+    klerosCourt: string;
+    klerosMinJurors: string;
+    applicableLaw: string;
+    forum: string;
+    language: string;
+    klerosOptedIn: boolean;
+    traditionalActive: boolean;
+    onKlerosCourtChange: (value: string) => void;
+    onKlerosMinJurorsChange: (value: string) => void;
+    onTraditionalFieldChange: (key: "applicableLaw" | "forum" | "language", value: string) => void;
+    onClearTraditional: () => void;
+}) {
+    return (
+        <div className="space-y-5">
+            <div data-testid="drawer-jurisdiction-layer1">
+                <p className="text-[11px] text-neutral-500 mb-1">Bonded settlement</p>
+                <p className="text-xs text-neutral-700 leading-relaxed">
+                    Always active. Asymmetric bonding and buyer dominance avoid
+                    disputes by mechanism design — the protocol&apos;s primary
+                    jurisdictional layer.
+                </p>
+            </div>
+
+            <div data-testid="drawer-jurisdiction-layer2">
+                <label className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer mb-2">
+                    <input
+                        type="checkbox"
+                        checked={klerosOptedIn}
+                        onChange={(e) => onKlerosCourtChange(e.target.checked ? "general" : "")}
+                        data-testid="drawer-jurisdiction-kleros-toggle"
+                    />
+                    <span className="font-medium">Kleros — off-chain arbitration</span>
+                </label>
+                {klerosOptedIn && (
+                    <div className="ml-6 space-y-2">
+                        <div>
+                            <label className="block text-[11px] text-neutral-500 mb-1">Subcourt</label>
+                            <select
+                                value={klerosCourt}
+                                onChange={(e) => onKlerosCourtChange(e.target.value)}
+                                data-testid="drawer-jurisdiction-kleros-court"
+                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
+                            >
+                                {KLEROS_COURT_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[11px] text-neutral-500 mb-1">Minimum jurors</label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={99}
+                                value={klerosMinJurors}
+                                onChange={(e) => onKlerosMinJurorsChange(e.target.value)}
+                                data-testid="drawer-jurisdiction-kleros-min-jurors"
+                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-20 bg-white"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <div data-testid="drawer-jurisdiction-layer3">
+                <label className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer mb-2">
+                    <input
+                        type="checkbox"
+                        checked={traditionalActive}
+                        onChange={(e) => {
+                            if (!e.target.checked) onClearTraditional();
+                            else onTraditionalFieldChange("applicableLaw", "US");
+                        }}
+                        data-testid="drawer-jurisdiction-traditional-toggle"
+                    />
+                    <span className="font-medium">State / ADR jurisdiction</span>
+                </label>
+                {traditionalActive && (
+                    <div className="ml-6 space-y-2">
+                        <div>
+                            <label className="block text-[11px] text-neutral-500 mb-1">Applicable law</label>
+                            <input
+                                type="text"
+                                placeholder="US-CA · EU · INTL · Sharia"
+                                maxLength={16}
+                                value={applicableLaw}
+                                onChange={(e) => onTraditionalFieldChange("applicableLaw", e.target.value)}
+                                data-testid="drawer-jurisdiction-applicable-law"
+                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] text-neutral-500 mb-1">Forum</label>
+                            <input
+                                type="text"
+                                placeholder="JAMS-arbitration · AAA-arbitration · ICC-arbitration"
+                                maxLength={64}
+                                value={forum}
+                                onChange={(e) => onTraditionalFieldChange("forum", e.target.value)}
+                                data-testid="drawer-jurisdiction-forum"
+                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] text-neutral-500 mb-1">Language</label>
+                            <input
+                                type="text"
+                                placeholder="en · fr · zh · ar"
+                                maxLength={16}
+                                value={language}
+                                onChange={(e) => onTraditionalFieldChange("language", e.target.value)}
+                                data-testid="drawer-jurisdiction-language"
+                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-32 bg-white"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
