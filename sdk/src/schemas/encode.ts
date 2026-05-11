@@ -23,22 +23,6 @@ export const EMPTY_CONTENT: Hex = "0x";
 // needed; the off-chain manifest carries `{topologyMode, parentOrderHashes}`
 // as a JSON section.
 
-// ── figaro-handoff-v1 ───────────────────────────────────────────────────────
-
-export type HandoffMode = "face-to-face" | "dead-drop" | "parking-area" | "locker" | "courier-relay";
-
-const HANDOFF_MODE_INDEX: Record<HandoffMode, number> = {
-    "face-to-face": 0,
-    "dead-drop": 1,
-    "parking-area": 2,
-    "locker": 3,
-    "courier-relay": 4,
-};
-
-export function encodeHandoffContent(mode: HandoffMode): Hex {
-    return encodeAbiParameters([{ type: "uint8" }], [HANDOFF_MODE_INDEX[mode]]);
-}
-
 // ── figaro-geo-v1 ───────────────────────────────────────────────────────────
 
 export interface GeoContent {
@@ -53,38 +37,51 @@ export function encodeGeoContent(content: GeoContent): Hex {
     );
 }
 
-// ── figaro-fulfilment-v1 ────────────────────────────────────────────────────
+// ── figaro-fulfilment-v2 ────────────────────────────────────────────────────
 //
-// Single canonical enum: modality + who-organizes-the-fulfiller collapsed into
-// one method value. The prior schema had a separate `auction` dimension; the
-// consolidated enum folds it in (only `deliver:dutch-auction` is an
-// auction-mediated case among the live mechanisms). Future allocator types
-// (english-auction, sealed-bid) would land as additional method values.
+// Three orthogonal fields replacing fulfilment-v1's single conflated enum AND
+// handoff-v1's separate physical-mode enum. modality is required; coordination
+// is meaningful only when modality = delivery; handoffPoint records where the
+// physical exchange occurs. Proximity verification of the handoff lives in
+// figaro-proximity-policy-v1, not here.
 
-export type FulfilmentMethod =
-    | "consume-onsite"
-    | "pickup"
-    | "deliver:buyer-assigned"
-    | "deliver:seller-assigned"
-    | "deliver:dutch-auction";
+export type FulfilmentModality = "consume-onsite" | "pickup" | "delivery";
+export type FulfilmentCoordination = "buyer-assigned" | "seller-assigned" | "dutch-auction";
+export type FulfilmentHandoffPoint = "face-to-face" | "dead-drop" | "parking-area" | "locker";
 
-const FULFILMENT_METHOD_INDEX: Record<FulfilmentMethod | "unset", number> = {
-    "unset": 0,
+const FULFILMENT_MODALITY_INDEX: Record<FulfilmentModality, number> = {
     "consume-onsite": 1,
     "pickup": 2,
-    "deliver:buyer-assigned": 3,
-    "deliver:seller-assigned": 4,
-    "deliver:dutch-auction": 5,
+    "delivery": 3,
 };
 
-export interface FulfilmentContent {
-    method?: FulfilmentMethod;
+const FULFILMENT_COORDINATION_INDEX: Record<FulfilmentCoordination, number> = {
+    "buyer-assigned": 1,
+    "seller-assigned": 2,
+    "dutch-auction": 3,
+};
+
+const FULFILMENT_HANDOFF_POINT_INDEX: Record<FulfilmentHandoffPoint, number> = {
+    "face-to-face": 1,
+    "dead-drop": 2,
+    "parking-area": 3,
+    "locker": 4,
+};
+
+export interface FulfilmentV2Content {
+    modality: FulfilmentModality;
+    coordination?: FulfilmentCoordination;
+    handoffPoint?: FulfilmentHandoffPoint;
 }
 
-export function encodeFulfilmentContent(content: FulfilmentContent): Hex {
+export function encodeFulfilmentV2Content(content: FulfilmentV2Content): Hex {
     return encodeAbiParameters(
-        [{ type: "uint8" }],
-        [FULFILMENT_METHOD_INDEX[content.method ?? "unset"]],
+        [{ type: "uint8" }, { type: "uint8" }, { type: "uint8" }],
+        [
+            FULFILMENT_MODALITY_INDEX[content.modality],
+            content.coordination ? FULFILMENT_COORDINATION_INDEX[content.coordination] : 0,
+            content.handoffPoint ? FULFILMENT_HANDOFF_POINT_INDEX[content.handoffPoint] : 0,
+        ],
     );
 }
 

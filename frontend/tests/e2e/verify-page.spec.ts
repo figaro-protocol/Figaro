@@ -49,8 +49,8 @@ function makeAgreement(): Agreement {
                 data: { originGeohash: 'u4pruydqqvj', destinationGeohash: 'u4pruydqqvk' },
             },
             {
-                schema: 'figaro-handoff-v1',
-                data: { mode: 'face-to-face' },
+                schema: 'figaro-fulfilment-v2',
+                data: { modality: 'pickup', handoffPoint: 'face-to-face' },
             },
         ].sort((a, b) => a.schema.localeCompare(b.schema)),
     };
@@ -103,7 +103,7 @@ test.describe('/verify — Mode A (Agreement)', () => {
 
     test('redacted agreement with multiple sealed sections lists all of them', async ({ page }) => {
         await page.getByTestId('verify-mode-agreement').click();
-        const redacted = redactSections(makeAgreement(), ['figaro-commerce-v1', 'figaro-handoff-v1']);
+        const redacted = redactSections(makeAgreement(), ['figaro-commerce-v1', 'figaro-fulfilment-v2']);
 
         await page.getByTestId('verify-agreement-input').fill(JSON.stringify(redacted));
 
@@ -111,7 +111,7 @@ test.describe('/verify — Mode A (Agreement)', () => {
         await expect(notice).toBeVisible();
         await expect(notice).toContainText('2 sections sealed');
         await expect(notice).toContainText('figaro-commerce-v1');
-        await expect(notice).toContainText('figaro-handoff-v1');
+        await expect(notice).toContainText('figaro-fulfilment-v2');
     });
 
     test('malformed JSON shows an error', async ({ page }) => {

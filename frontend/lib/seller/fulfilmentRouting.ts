@@ -1,7 +1,7 @@
 /**
  * fulfilmentRouting — helpers that map a CanonicalFulfilmentMethod to:
- *   - The default handoff mode that goes into the agreement manifest
- *     (figaro-handoff-v1 enum).
+ *   - The default handoff point that goes into the agreement manifest
+ *     (figaro-fulfilment-v2 handoffPoint enum).
  *   - The assembly slug whose runtime/UI shape matches the chosen
  *     fulfilment topology (1-node `direct-sale` for consume-onsite/pickup;
  *     2+ node `local-commerce` for delivery variants).

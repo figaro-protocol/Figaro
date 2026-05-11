@@ -29,8 +29,8 @@ const FIELD_CLS =
     "mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black";
 
 // Single canonical fulfilment enum — captures both modality and
-// who-organizes-the-fulfiller. Replaces the prior two-dropdown
-// (method × auction) shape. See `figaro-fulfilment-v1` schema spec.
+// who-organizes-the-fulfiller. Translates to `figaro-fulfilment-v2`'s
+// modality + coordination fields at agreement-build time.
 const FULFILMENT_OPTIONS = [
     { value: "", label: "Select fulfilment" },
     { value: "consume-onsite", label: "Consume On-Site" },

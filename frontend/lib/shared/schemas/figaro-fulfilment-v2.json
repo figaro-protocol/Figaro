@@ -1,0 +1,30 @@
+{
+    "schemaId": "figaro-fulfilment-v2",
+    "version": 1,
+    "title": "Fulfilment composition",
+    "description": "Three orthogonal dimensions of how a Figaro order is fulfilled: modality (consume-onsite / pickup / delivery), courier coordination (meaningful only when modality is delivery), and the physical handoff point. Replaces figaro-fulfilment-v1 + figaro-handoff-v1 which duplicated this conceptual space across two single-enum schemas. Proximity verification of the handoff event lives in a sister schema (figaro-proximity-policy-v1).",
+    "categories": ["fulfilment"],
+    "fields": [
+        {
+            "name": "modality",
+            "type": "enum",
+            "values": ["consume-onsite", "pickup", "delivery"],
+            "required": true,
+            "description": "Top-level fulfilment modality. consume-onsite = no movement (on-premise consumption). pickup = buyer collects from seller's premises. delivery = transported to the buyer."
+        },
+        {
+            "name": "coordination",
+            "type": "enum",
+            "values": ["buyer-assigned", "seller-assigned", "dutch-auction"],
+            "required": false,
+            "description": "Who organizes the courier. Meaningful only when modality = delivery; the on-chain validator rejects coordination set with non-delivery modality. buyer-assigned = buyer chooses courier. seller-assigned = merchant arranges courier directly. dutch-auction = courier selected via the kernel's Dutch-auction mechanism."
+        },
+        {
+            "name": "handoffPoint",
+            "type": "enum",
+            "values": ["face-to-face", "dead-drop", "parking-area", "locker"],
+            "required": false,
+            "description": "Where the physical exchange occurs. Orthogonal to modality and coordination. face-to-face = parties present together. dead-drop = pre-agreed unattended location. parking-area = curbside / lot. locker = secured drop-off box. Cryptographic proof of proximity at the handoff event belongs in figaro-proximity-policy-v1, not here."
+        }
+    ]
+}

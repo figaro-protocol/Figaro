@@ -40,10 +40,11 @@ export { validateContent } from "./validate.js";
 // ── Content encoders for each schema (TS ↔ ABI bridge) ──────────────────────
 
 export type {
-    HandoffMode,
     GeoContent,
-    FulfilmentMethod,
-    FulfilmentContent,
+    FulfilmentModality,
+    FulfilmentCoordination,
+    FulfilmentHandoffPoint,
+    FulfilmentV2Content,
     JurisdictionContent,
     GHGScopeContent,
     GHGMeasurementContent,
@@ -61,9 +62,8 @@ export type {
 
 export {
     EMPTY_CONTENT,
-    encodeHandoffContent,
     encodeGeoContent,
-    encodeFulfilmentContent,
+    encodeFulfilmentV2Content,
     encodeJurisdictionContent,
     encodeGHGScopeContent,
     encodeGHGMeasurementContent,

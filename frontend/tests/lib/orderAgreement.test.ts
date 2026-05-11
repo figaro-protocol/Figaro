@@ -106,7 +106,7 @@ describe("buildOrderAgreement", () => {
                 seller: SELLER,
                 currency: CURRENCY,
                 payment: 10n,
-                manifestFields: { origin: "dr5reg", handoffMode: legacy },
+                manifestFields: { origin: "dr5reg", fulfilmentMethod: "pickup", handoffMode: legacy },
             });
             expect(summarizeAgreement(agreement)?.handoff).toEqual({ mode: canonical });
         }
@@ -131,14 +131,16 @@ describe("buildOrderAgreement", () => {
         }
     });
 
-    it("passes through unknown enum values verbatim (encoder throws as correct failure mode)", () => {
+    it("drops unknown handoffPoint values (v2 enum is closed; encoder would throw downstream)", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            manifestFields: { origin: "dr5reg", handoffMode: "teleport" },
+            manifestFields: { origin: "dr5reg", fulfilmentMethod: "pickup", handoffMode: "teleport" },
         });
-        expect(summarizeAgreement(agreement)?.handoff).toEqual({ mode: "teleport" });
+        // "teleport" is not a v2 handoffPoint value; normalizeHandoffPoint
+        // returns undefined and the section omits handoffPoint entirely.
+        expect(summarizeAgreement(agreement)?.handoff).toBeUndefined();
     });
 });

@@ -1,19 +1,19 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { HandoffDetailsModule } from "@/components/modules/HandoffDetailsModule";
-import { encodeHandoffContent, type HandoffMode } from "@figaro/core/schemas";
+import { encodeFulfilmentV2Content, type FulfilmentHandoffPoint } from "@figaro/core/schemas";
 
 /**
  * End-to-end Layer A → SDK encoder integration test for the
- * `figaro-handoff-v1` schema, wired through HandoffDetailsModule.
+ * `figaro-fulfilment-v2` schema, wired through HandoffDetailsModule.
  *
  * Asserts:
- *   1. Each declared mode option is reachable.
- *   2. Schema validation runs on every selection and accepts all 5 modes.
- *   3. Submit emits a CustomEvent whose `handoffContent` field is the
+ *   1. Each declared handoff-point option is reachable.
+ *   2. Schema validation runs on every selection and accepts all 4 points.
+ *   3. Submit emits a CustomEvent whose `fulfilmentContent` field is the
  *      ABI-encoded bytes the on-chain validator expects (matches encoder).
  *   4. Submit is disabled until the address + budget + verified-checkbox
- *      gates pass; the schema-mode default is always valid.
+ *      gates pass; the handoff-point default is always valid.
  */
 
 function createProps(overrides?: Record<string, unknown>) {
@@ -30,7 +30,7 @@ function createProps(overrides?: Record<string, unknown>) {
     } as any;
 }
 
-describe("HandoffDetailsModule — figaro-handoff-v1 wiring", () => {
+describe("HandoffDetailsModule — figaro-fulfilment-v2 wiring", () => {
     let dispatchedEvents: CustomEvent[];
     let dispatchSpy: ReturnType<typeof vi.spyOn>;
 
@@ -46,34 +46,34 @@ describe("HandoffDetailsModule — figaro-handoff-v1 wiring", () => {
         dispatchSpy.mockRestore();
     });
 
-    it("renders all 5 handoff-mode options", () => {
+    it("renders all 4 handoff-point options", () => {
         render(<HandoffDetailsModule {...createProps()} />);
-        for (const mode of ["face-to-face", "dead-drop", "parking-area", "locker", "courier-relay"] as HandoffMode[]) {
-            expect(screen.getByTestId(`handoff-mode-btn-${mode}`)).toBeInTheDocument();
+        for (const point of ["face-to-face", "dead-drop", "parking-area", "locker"] as FulfilmentHandoffPoint[]) {
+            expect(screen.getByTestId(`handoff-point-btn-${point}`)).toBeInTheDocument();
         }
     });
 
     it("default selection (face-to-face) passes schema validation — no error shown", () => {
         render(<HandoffDetailsModule {...createProps()} />);
-        expect(screen.queryByTestId("handoff-mode-validation-error")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("handoff-point-validation-error")).not.toBeInTheDocument();
     });
 
-    it("selecting any other mode keeps schema validation passing", () => {
+    it("selecting any other point keeps schema validation passing", () => {
         render(<HandoffDetailsModule {...createProps()} />);
-        for (const mode of ["dead-drop", "locker", "courier-relay"] as HandoffMode[]) {
-            fireEvent.click(screen.getByTestId(`handoff-mode-btn-${mode}`));
-            expect(screen.queryByTestId("handoff-mode-validation-error")).not.toBeInTheDocument();
+        for (const point of ["dead-drop", "locker", "parking-area"] as FulfilmentHandoffPoint[]) {
+            fireEvent.click(screen.getByTestId(`handoff-point-btn-${point}`));
+            expect(screen.queryByTestId("handoff-point-validation-error")).not.toBeInTheDocument();
         }
     });
 
-    it("submit emits CustomEvent with ABI-encoded handoffContent matching encodeHandoffContent", () => {
+    it("submit emits CustomEvent with ABI-encoded fulfilmentContent matching encodeFulfilmentV2Content", () => {
         render(<HandoffDetailsModule {...createProps()} />);
 
         // Fill required fields to enable submit
         fireEvent.change(screen.getByTestId("input-destination-address"), {
             target: { value: "123 Main St, Apt 4B" },
         });
-        fireEvent.click(screen.getByTestId("handoff-mode-btn-locker"));
+        fireEvent.click(screen.getByTestId("handoff-point-btn-locker"));
         fireEvent.click(screen.getByTestId("handoff-verified-checkbox"));
 
         fireEvent.click(screen.getByTestId("btn-confirm-handoff"));
@@ -82,10 +82,12 @@ describe("HandoffDetailsModule — figaro-handoff-v1 wiring", () => {
         const event = dispatchedEvents[0];
         expect(event.type).toBe("figaro:handoff-manifest");
 
-        const detail = event.detail as { handoffMode: HandoffMode; handoffContent: string };
-        expect(detail.handoffMode).toBe("locker");
+        const detail = event.detail as { handoffPoint: FulfilmentHandoffPoint; fulfilmentContent: string };
+        expect(detail.handoffPoint).toBe("locker");
         // Encoded bytes must match what the SDK encoder (and on-chain validator) expects.
-        expect(detail.handoffContent).toBe(encodeHandoffContent("locker"));
+        expect(detail.fulfilmentContent).toBe(
+            encodeFulfilmentV2Content({ modality: "delivery", handoffPoint: "locker" }),
+        );
     });
 
     it("submit stays disabled until address + budget + verified gates pass", () => {
@@ -101,7 +103,7 @@ describe("HandoffDetailsModule — figaro-handoff-v1 wiring", () => {
         expect(submit.disabled).toBe(true); // still missing verified
 
         fireEvent.click(screen.getByTestId("handoff-verified-checkbox"));
-        // Now address + budget (default 0.002) + verified all pass + handoff-mode default valid
+        // Now address + budget (default 0.002) + verified all pass + handoff-point default valid
         expect(submit.disabled).toBe(false);
     });
 

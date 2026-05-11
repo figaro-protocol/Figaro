@@ -59,6 +59,25 @@ export interface CreatedOrder {
     agreementHash: Hex;
 }
 
+/**
+ * Manifest field defaults applied to every freshly-spawned synthetic
+ * order. The chosen fields make four sections appear in the agreement
+ * by default — Geo (placeholder geohashes), Jurisdiction (Kleros),
+ * Commerce (always), Topology (always) — matching the designer's
+ * "default articles for any node" intent.
+ *
+ *   - `origin` / `destination` = "0" — single-character base32 geohashes
+ *     that satisfy `figaro-geo-v1`'s pattern + minLength constraints.
+ *   - `applicableLaw` = "Kleros" — the protocol's default off-chain
+ *     dispute-resolution venue. `figaro-jurisdiction-v1` accepts
+ *     free-form non-state legal orders.
+ */
+const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
+    origin: "0",
+    destination: "0",
+    applicableLaw: "Kleros",
+};
+
 export function createSyntheticRootOrder(session: SyntheticProcessSession): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
@@ -74,7 +93,7 @@ export function createSyntheticRootOrder(session: SyntheticProcessSession): Crea
         seller,
         currency,
         payment,
-        manifestFields: { origin: "—", destination: "—" },
+        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS },
     });
     const agreementHash = computeAgreementHash(agreement);
     saveAgreement(agreement);
@@ -118,7 +137,7 @@ export function createSyntheticSubOrder(
         seller,
         currency,
         payment,
-        manifestFields: { origin: "—", destination: "—" },
+        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS },
         parentOrderHashes: [parent.id],
     });
     const agreementHash = computeAgreementHash(agreement);

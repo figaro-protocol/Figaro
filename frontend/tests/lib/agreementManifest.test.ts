@@ -44,13 +44,8 @@ const GEO_SECTION: AgreementSection = {
 };
 
 const FULFILMENT_SECTION: AgreementSection = {
-    schema: "figaro-fulfilment-v1",
-    data: { method: "deliver:dutch-auction" },
-};
-
-const HANDOFF_SECTION: AgreementSection = {
-    schema: "figaro-handoff-v1",
-    data: { mode: "face-to-face" },
+    schema: "figaro-fulfilment-v2",
+    data: { modality: "delivery", coordination: "dutch-auction", handoffPoint: "face-to-face" },
 };
 
 const GHG_SECTION: AgreementSection = {
@@ -135,11 +130,11 @@ describe("computeAgreementHash", () => {
 
 describe("buildAgreement", () => {
     it("sorts sections by schema key", () => {
-        // Pass in reverse order: geo before commerce alphabetically, but fulfilment/ghg/handoff too
+        // Pass in reverse order: geo before commerce alphabetically, but fulfilment/ghg too
         const a = buildAgreement({
             buyer: BUYER,
             seller: SELLER,
-            sections: [HANDOFF_SECTION, GHG_SECTION, COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION],
+            sections: [GHG_SECTION, COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION],
         });
         const keys = a.sections.map((s) => s.schema);
         expect(keys).toEqual([...keys].sort());
@@ -174,12 +169,11 @@ describe("buildAgreement", () => {
         const a = buildAgreement({
             buyer: BUYER,
             seller: SELLER,
-            sections: [COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION, HANDOFF_SECTION, GHG_SECTION],
+            sections: [COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION, GHG_SECTION],
         });
-        expect(a.sections).toHaveLength(5);
+        expect(a.sections).toHaveLength(4);
         expect(hasSection(a, "figaro-commerce-v1")).toBe(true);
-        expect(hasSection(a, "figaro-fulfilment-v1")).toBe(true);
-        expect(hasSection(a, "figaro-handoff-v1")).toBe(true);
+        expect(hasSection(a, "figaro-fulfilment-v2")).toBe(true);
         expect(hasSection(a, "figaro-ghg-iso-14064-v1")).toBe(true);
         expect(hasSection(a, "figaro-geo-v1")).toBe(true);
     });
@@ -206,8 +200,8 @@ describe("computeSectionLeaf", () => {
     });
 
     it("changes when schema key changes, even with identical data", () => {
-        const leafA = computeSectionLeaf({ schema: "figaro-handoff-v1", data: { mode: "face-to-face" } });
-        const leafB = computeSectionLeaf({ schema: "figaro-proximity-proof-v1", data: { mode: "face-to-face" } });
+        const leafA = computeSectionLeaf({ schema: "figaro-fulfilment-v2", data: { modality: "pickup" } });
+        const leafB = computeSectionLeaf({ schema: "figaro-proximity-proof-v1", data: { modality: "pickup" } });
         expect(leafA).not.toBe(leafB);
     });
 });
@@ -237,7 +231,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
 
     it("many-section agreement: each section proves inclusion", () => {
         const a = makeAgreement({
-            sections: [COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION, HANDOFF_SECTION, GHG_SECTION],
+            sections: [COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION, GHG_SECTION],
         });
         const root = computeAgreementHash(a);
         for (const section of a.sections) {
@@ -256,7 +250,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
 
     it("rejects a proof against a different root", () => {
         const a1 = makeAgreement({ sections: [COMMERCE_SECTION, GHG_SECTION] });
-        const a2 = makeAgreement({ sections: [COMMERCE_SECTION, HANDOFF_SECTION] });
+        const a2 = makeAgreement({ sections: [COMMERCE_SECTION, FULFILMENT_SECTION] });
         const { leaf, proof } = buildSectionInclusionProof(a1, "figaro-commerce-v1");
         expect(verifyInclusionProof(computeAgreementHash(a2), leaf, proof)).toBe(false);
     });
@@ -332,7 +326,7 @@ describe("sellerCatalogueMetadata example", () => {
 describe("redactSections / computeRedactableAgreementHash / verifyRevealedSection", () => {
     it("redacted agreement hashes to the same root as the cleartext", () => {
         const cleartext = makeAgreement({
-            sections: [COMMERCE_SECTION, GEO_SECTION, HANDOFF_SECTION],
+            sections: [COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION],
         });
         const original = computeAgreementHash(cleartext);
         const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
@@ -362,9 +356,9 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
 
     it("redacting multiple sections is supported", () => {
         const cleartext = makeAgreement({
-            sections: [COMMERCE_SECTION, GEO_SECTION, HANDOFF_SECTION],
+            sections: [COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION],
         });
-        const redacted = redactSections(cleartext, ["figaro-commerce-v1", "figaro-handoff-v1"]);
+        const redacted = redactSections(cleartext, ["figaro-commerce-v1", "figaro-fulfilment-v2"]);
         const sealed = redacted.sections.filter(isRedactedSection);
         expect(sealed).toHaveLength(2);
         expect(computeRedactableAgreementHash(redacted)).toBe(computeAgreementHash(cleartext));

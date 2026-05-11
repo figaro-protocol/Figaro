@@ -63,7 +63,7 @@ contract AttestationCoordinatorTest is Test {
     bytes32 constant GHG_SCHEMA = keccak256("figaro-ghg-iso-14064-v1");
     bytes32 constant PROXIMITY_SCHEMA = keccak256("figaro-proximity-proof-v1");
     bytes32 constant COMMERCE_SCHEMA = keccak256("figaro-commerce-v1");
-    bytes32 constant HANDOFF_SCHEMA = keccak256("figaro-handoff-v1");
+    bytes32 constant FULFILMENT_SCHEMA = keccak256("figaro-fulfilment-v2");
 
     function setUp() public {
         core = new FigaroCore();
@@ -88,7 +88,7 @@ contract AttestationCoordinatorTest is Test {
         schemas.registerSchema(GHG_SCHEMA, 1, testUri);
         schemas.registerSchema(PROXIMITY_SCHEMA, 1, testUri);
         schemas.registerSchema(COMMERCE_SCHEMA, 1, testUri);
-        schemas.registerSchema(HANDOFF_SCHEMA, 1, testUri);
+        schemas.registerSchema(FULFILMENT_SCHEMA, 1, testUri);
 
         // ── AttestationCoordinator: register a permissive validator for each schema ─
         // Production deployments register the real per-schema validators from
@@ -98,7 +98,7 @@ contract AttestationCoordinatorTest is Test {
         coordinator.setValidator(GHG_SCHEMA,       address(new PermissiveTestValidator(GHG_SCHEMA)));
         coordinator.setValidator(PROXIMITY_SCHEMA, address(new PermissiveTestValidator(PROXIMITY_SCHEMA)));
         coordinator.setValidator(COMMERCE_SCHEMA,  address(new PermissiveTestValidator(COMMERCE_SCHEMA)));
-        coordinator.setValidator(HANDOFF_SCHEMA,   address(new PermissiveTestValidator(HANDOFF_SCHEMA)));
+        coordinator.setValidator(FULFILMENT_SCHEMA, address(new PermissiveTestValidator(FULFILMENT_SCHEMA)));
 
         // AttestationCoordinator declares which schemas it uses.
         // In production this is called from the deploy script (post-audit amendment);
@@ -630,7 +630,7 @@ contract AttestationCoordinatorTest is Test {
         assertTrue(schemas.registered(PROXIMITY_SCHEMA), "proximity schema registered");
         assertTrue(schemas.registered(GHG_SCHEMA), "ghg schema registered");
         assertTrue(schemas.registered(COMMERCE_SCHEMA), "commerce schema registered");
-        assertTrue(schemas.registered(HANDOFF_SCHEMA), "handoff schema registered");
+        assertTrue(schemas.registered(FULFILMENT_SCHEMA), "fulfilment schema registered");
 
         // ── Multi-section agreement ───────────────────────────────
         // Both root and driver commitments use the same two-clause agreement:

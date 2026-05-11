@@ -10,18 +10,17 @@ import {
 } from "@/lib/handoff/manifest";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { useSchemaValidator } from "@/hooks/core/useSchemaValidator";
-import { encodeHandoffContent, type HandoffMode } from "@figaro/core/schemas";
+import { encodeFulfilmentV2Content, type FulfilmentHandoffPoint } from "@figaro/core/schemas";
 
 /**
- * Handoff-mode options — match `figaro-handoff-v1` enum order.
+ * Handoff-point options — match `figaro-fulfilment-v2` handoffPoint enum.
  * The validator is the source of truth; this list is the UX surface.
  */
-const HANDOFF_MODE_OPTIONS: ReadonlyArray<{ value: HandoffMode; label: string; description: string }> = [
+const HANDOFF_POINT_OPTIONS: ReadonlyArray<{ value: FulfilmentHandoffPoint; label: string; description: string }> = [
     { value: "face-to-face", label: "Hand to me", description: "Fulfiller waits for in-person handoff." },
     { value: "dead-drop", label: "Leave at door", description: "Fulfiller drops off without contact." },
     { value: "parking-area", label: "Curbside", description: "Meet at the parking area or curb." },
     { value: "locker", label: "Locker", description: "Drop into a designated locker / pickup box." },
-    { value: "courier-relay", label: "Courier relay", description: "Hand off to another courier mid-route." },
 ];
 
 /**
@@ -46,7 +45,7 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
     const [address, setAddress] = useState("");
     const [notes, setNotes] = useState("");
     const [cos, setCos] = useState<CoS>("S");
-    const [handoffMode, setHandoffMode] = useState<HandoffMode>("face-to-face");
+    const [handoffPoint, setHandoffPoint] = useState<FulfilmentHandoffPoint>("face-to-face");
     const [massKg, setMassKg] = useState("");
     const [volumeL, setVolumeL] = useState("");
     const [dropoffGeohash, setDropoffGeohash] = useState("");
@@ -56,16 +55,18 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
     const [submitted, setSubmitted] = useState(false);
     const [verified, setVerified] = useState(false);
 
-    // Layer A schema validation for the handoff-mode selection.
-    // The validator is the SDK reference; the same rules run on-chain via
-    // FigaroHandoffV1Validator.sol when the attestation eventually fires.
-    const handoffValidator = useSchemaValidator("figaro-handoff-v1");
+    // Layer A schema validation for the handoff-point selection. This module
+    // captures the delivery-modality handoff, so validation runs against a
+    // synthesized `{ modality: "delivery", handoffPoint }` figaro-fulfilment-v2
+    // content shape — the same shape the on-chain FigaroFulfilmentV2Validator
+    // enforces when the agreement section opens.
+    const fulfilmentValidator = useSchemaValidator("figaro-fulfilment-v2");
     const handoffValidation = useMemo(
-        () => handoffValidator.validate({ mode: handoffMode }),
-        [handoffValidator, handoffMode],
+        () => fulfilmentValidator.validate({ modality: "delivery", handoffPoint }),
+        [fulfilmentValidator, handoffPoint],
     );
-    const handoffModeValid = handoffValidation.ok;
-    const handoffModeError = handoffValidation.ok ? null : handoffValidation.errors[0]?.message;
+    const handoffPointValid = handoffValidation.ok;
+    const handoffPointError = handoffValidation.ok ? null : handoffValidation.errors[0]?.message;
 
     // Derive pickup geohash from the selected order's mechanism context if available
     const coordinatorMech = context.mechanisms.find((m) => m.kind === "coordinator");
@@ -94,7 +95,7 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
     }, [address]);
 
     const handleSubmit = () => {
-        if (!address.trim() || Number(fulfillerMaxPrice) <= 0 || !handoffModeValid) return;
+        if (!address.trim() || Number(fulfillerMaxPrice) <= 0 || !handoffPointValid) return;
 
         const manifest: HandoffManifest = {
             version: "v1",
@@ -107,17 +108,21 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
             notes: notes.trim(),
         };
 
-        // ABI-encode the handoff-mode selection per the figaro-handoff-v1 schema.
-        // Downstream code that submits the attestation passes these bytes as
-        // `content` to AttestationCoordinator.attestAs* — the on-chain validator
-        // will re-decode and re-check the same mode value.
-        const handoffContent = encodeHandoffContent(handoffMode);
+        // ABI-encode the figaro-fulfilment-v2 section content. This module
+        // captures the delivery-modality handoff, so modality=delivery is
+        // implicit; coordination is left unset (seller will set it). The
+        // on-chain FigaroFulfilmentV2Validator re-decodes and re-checks the
+        // same fields when the attestation eventually fires.
+        const fulfilmentContent = encodeFulfilmentV2Content({
+            modality: "delivery",
+            handoffPoint,
+        });
 
         // Store manifest in context for downstream modules (checkout, key exchange)
         // via a custom event so the shopping cart / order-creation flow can pick it up.
         window.dispatchEvent(
             new CustomEvent("figaro:handoff-manifest", {
-                detail: { manifest, fulfillerMaxPrice, handoffMode, handoffContent },
+                detail: { manifest, fulfillerMaxPrice, handoffPoint, fulfilmentContent },
             }),
         );
         setSubmitted(true);
@@ -273,23 +278,23 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
                 </div>
             </div>
 
-            {/* Handoff mode — figaro-handoff-v1 (Layer A validated, Layer C enforced) */}
+            {/* Handoff point — figaro-fulfilment-v2 (Layer A validated, Layer C enforced) */}
             <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Handoff mode <span className="text-red-500">*</span>
+                    Handoff point <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {HANDOFF_MODE_OPTIONS.map((opt) => (
+                    {HANDOFF_POINT_OPTIONS.map((opt) => (
                         <button
                             key={opt.value}
                             type="button"
-                            data-testid={`handoff-mode-btn-${opt.value}`}
-                            onClick={() => setHandoffMode(opt.value)}
-                            className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${handoffMode === opt.value
+                            data-testid={`handoff-point-btn-${opt.value}`}
+                            onClick={() => setHandoffPoint(opt.value)}
+                            className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${handoffPoint === opt.value
                                 ? "border-blue-500 bg-blue-50 text-black"
                                 : "border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400"
                                 }`}
-                            style={handoffMode === opt.value && accentTone
+                            style={handoffPoint === opt.value && accentTone
                                 ? { borderColor: accentTone, backgroundColor: `${accentTone}1a` }
                                 : undefined}
                         >
@@ -299,14 +304,14 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
                         </button>
                     ))}
                 </div>
-                {!handoffModeValid && handoffModeError && (
-                    <p data-testid="handoff-mode-validation-error" className="text-xs text-red-500 mt-1">
-                        Schema validation: {handoffModeError}
+                {!handoffPointValid && handoffPointError && (
+                    <p data-testid="handoff-point-validation-error" className="text-xs text-red-500 mt-1">
+                        Schema validation: {handoffPointError}
                     </p>
                 )}
-                {handoffValidator.loadError && (
+                {fulfilmentValidator.loadError && (
                     <p className="text-xs text-amber-600 mt-1">
-                        Schema spec failed to load: {handoffValidator.loadError}
+                        Schema spec failed to load: {fulfilmentValidator.loadError}
                     </p>
                 )}
             </div>
@@ -384,9 +389,9 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
             <button
                 data-testid="btn-confirm-handoff"
                 onClick={handleSubmit}
-                disabled={!address.trim() || Number(fulfillerMaxPrice) <= 0 || !verified || !handoffModeValid}
+                disabled={!address.trim() || Number(fulfillerMaxPrice) <= 0 || !verified || !handoffPointValid}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-200 disabled:text-neutral-400 text-white font-semibold py-3 rounded-lg transition-colors"
-                style={address.trim() && Number(fulfillerMaxPrice) > 0 && verified && handoffModeValid && accentTone
+                style={address.trim() && Number(fulfillerMaxPrice) > 0 && verified && handoffPointValid && accentTone
                     ? { backgroundColor: accentTone, borderColor: accentTone }
                     : undefined}
             >

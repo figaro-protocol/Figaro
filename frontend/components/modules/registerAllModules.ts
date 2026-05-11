@@ -215,7 +215,7 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
         displayName: "Handoff coordination",
         description: "Physical-exchange coordination: mode (face-to-face / dead-drop / …), ECDH key exchange, tracker.",
         category: "handoff",
-        schemaIds: ["figaro-handoff-v1"],
+        schemaIds: ["figaro-fulfilment-v2"],
         modules: [
             { moduleId: "coordinator-actions", component: CoordinatorActionModule },
             { moduleId: "handoff-details", component: HandoffDetailsModule },

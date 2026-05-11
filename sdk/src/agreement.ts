@@ -18,16 +18,14 @@
 
 import { keccak256, toHex, concat, type Hex } from "viem";
 import {
-    encodeHandoffContent,
     encodeGeoContent,
-    encodeFulfilmentContent,
+    encodeFulfilmentV2Content,
     encodeJurisdictionContent,
     encodeGHGScopeContent,
     encodeCommerceContent,
     encodeProximityPolicyContent,
-    type HandoffMode,
     type GeoContent,
-    type FulfilmentContent,
+    type FulfilmentV2Content,
     type JurisdictionContent,
     type GHGScopeContent,
     type CommerceContent,
@@ -100,12 +98,11 @@ function schemaIdOf(schemaKey: string): Hex {
  * figaro-proximity-proof-v1 is Category-1 (runtime witness payload).
  */
 const CATEGORY_2_ENCODERS: Record<string, (data: Record<string, unknown>) => Hex> = {
-    "figaro-handoff-v1": (data) => encodeHandoffContent(data.mode as HandoffMode),
     "figaro-geo-v1": (data) => encodeGeoContent({
         originGeohash: data.originGeohash as string,
         destinationGeohash: data.destinationGeohash as string,
     } as GeoContent),
-    "figaro-fulfilment-v1": (data) => encodeFulfilmentContent(data as FulfilmentContent),
+    "figaro-fulfilment-v2": (data) => encodeFulfilmentV2Content(data as unknown as FulfilmentV2Content),
     "figaro-jurisdiction-v1": (data) => encodeJurisdictionContent({
         applicableLaw: data.applicableLaw as string,
         forum: data.forum as string | undefined,

@@ -13,16 +13,16 @@ afterEach(() => {
 });
 
 describe("schemaSpecSource — built-in specs", () => {
-    it("preloads figaro-topology-v1 and figaro-handoff-v1", () => {
+    it("preloads figaro-topology-v1 and figaro-fulfilment-v2", () => {
         const ids = listKnownSchemaIds();
         expect(ids).toContain("figaro-topology-v1");
-        expect(ids).toContain("figaro-handoff-v1");
+        expect(ids).toContain("figaro-fulfilment-v2");
     });
 
     it("getSchemaSpec resolves a built-in synchronously", () => {
-        const spec = getSchemaSpec("figaro-handoff-v1");
+        const spec = getSchemaSpec("figaro-fulfilment-v2");
         expect(spec).toBeDefined();
-        expect(spec?.schemaId).toBe("figaro-handoff-v1");
+        expect(spec?.schemaId).toBe("figaro-fulfilment-v2");
     });
 
     it("returns undefined for an unknown schemaId without throwing", () => {

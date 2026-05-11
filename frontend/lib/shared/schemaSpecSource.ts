@@ -16,7 +16,7 @@
 import { parseSchemaSpec, type SchemaSpec } from "@figaro/core/schemas";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import topologySpecRaw from "@/lib/shared/schemas/figaro-topology-v1.json";
-import handoffSpecRaw from "@/lib/shared/schemas/figaro-handoff-v1.json";
+import fulfilmentV2SpecRaw from "@/lib/shared/schemas/figaro-fulfilment-v2.json";
 
 const SPEC_CACHE = new Map<string, SchemaSpec>();
 const SPEC_LOAD_ERRORS = new Map<string, string>();
@@ -37,7 +37,7 @@ function preload(raw: unknown, expectedSchemaId: string): void {
 // ── Pre-load built-in specs ─────────────────────────────────────────────────
 
 preload(topologySpecRaw, "figaro-topology-v1");
-preload(handoffSpecRaw, "figaro-handoff-v1");
+preload(fulfilmentV2SpecRaw, "figaro-fulfilment-v2");
 
 // ── API ─────────────────────────────────────────────────────────────────────
 
@@ -103,5 +103,5 @@ export function _resetSchemaSpecCache_TESTING_ONLY(): void {
     SPEC_CACHE.clear();
     SPEC_LOAD_ERRORS.clear();
     preload(topologySpecRaw, "figaro-topology-v1");
-    preload(handoffSpecRaw, "figaro-handoff-v1");
+    preload(fulfilmentV2SpecRaw, "figaro-fulfilment-v2");
 }

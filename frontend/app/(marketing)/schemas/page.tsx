@@ -28,11 +28,6 @@ const SCHEMA_FAMILIES: { name: string; rows: SchemaRow[] }[] = [
         name: "Commerce primitives",
         rows: [
             {
-                id: "figaro-handoff-v1",
-                description:
-                    "Physical-exchange mode: face-to-face / dead-drop / parking-area / locker / courier-relay.",
-            },
-            {
                 id: "figaro-commerce-v1",
                 description: "Currency, payment, line items, quantity, per-item identifiers.",
             },
@@ -41,9 +36,9 @@ const SCHEMA_FAMILIES: { name: string; rows: SchemaRow[] }[] = [
                 description: "Origin and destination geohashes at configurable precision.",
             },
             {
-                id: "figaro-fulfilment-v1",
+                id: "figaro-fulfilment-v2",
                 description:
-                    "Fulfilment method — single canonical enum capturing modality (consume-onsite / pickup / deliver) and who-organizes-the-fulfiller (buyer-assigned / seller-assigned / dutch-auction).",
+                    "Fulfilment in one clause: modality (consume-onsite / pickup / delivery), coordination (buyer-assigned / seller-assigned / dutch-auction — delivery only), and handoff point (face-to-face / dead-drop / parking-area / locker).",
             },
         ],
     },

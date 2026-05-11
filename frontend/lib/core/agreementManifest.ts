@@ -11,9 +11,8 @@
  *
  * - What goods/services? → `figaro-commerce-v1` (basket of line items)
  * - Where from / where to? → `figaro-geo-v1` (origin, destination, physical params)
- * - How fulfilled? → `figaro-fulfilment-v1` (consume-onsite | pickup | deliver:seller-assigned
- *   | deliver:buyer-assigned | deliver:dutch-auction)
- * - How handed off? → `figaro-handoff-v1` (face-to-face | dead-drop | parking-area | ...)
+ * - How fulfilled, coordinated, and handed off? → `figaro-fulfilment-v2`
+ *   (modality + coordination + handoff point in one clause)
  * - What GHG reporting standard? → `figaro-ghg-iso-14064-v1` (scope 1 emissions
  *   of the seller in fulfilling this order — ISO 14064, GHG Protocol, etc.)
  * - Any item-level attestations? → `figaro-allergen-v1`, etc.
@@ -25,10 +24,9 @@
  *   version: "a1",
  *   sections: [
  *     { schema: "figaro-commerce-v1",        data: { lineItems, currency, payment } },
- *     { schema: "figaro-fulfilment-v1",       data: { method: "deliver:dutch-auction" } },
+ *     { schema: "figaro-fulfilment-v2",      data: { modality: "delivery", coordination: "dutch-auction", handoffPoint: "face-to-face" } },
  *     { schema: "figaro-geo-v1",             data: { origin, destination, mass, volume } },
  *     { schema: "figaro-ghg-iso-14064-v1",  data: { standard: "iso-14064-1" } },
- *     { schema: "figaro-handoff-v1",         data: { mode: "face-to-face" } },
  *   ]
  * }
  * ```
@@ -169,8 +167,9 @@ export interface AgreementLineItem {
 export const COMMERCE_SCHEMA_KEY = "figaro-commerce-v1";
 export const GEO_SCHEMA_KEY = "figaro-geo-v1";
 export const TOPOLOGY_SCHEMA_KEY = "figaro-topology-v1";
-export const FULFILMENT_SCHEMA_KEY = "figaro-fulfilment-v1";
-export const HANDOFF_SCHEMA_KEY = "figaro-handoff-v1";
+/** Fulfilment-composition schema. Three orthogonal fields (modality,
+ *  coordination, handoffPoint) in one clause. */
+export const FULFILMENT_V2_SCHEMA_KEY = "figaro-fulfilment-v2";
 export const JURISDICTION_SCHEMA_KEY = "figaro-jurisdiction-v1";
 /** Consent attestation: a wallet binds itself to an off-chain legal document
  *  by its keccak256 hash + version + title. Reusable as a designer-time clause
@@ -342,9 +341,8 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
     // the SDK is resolved via link / pnpm / vitest.
     const schemasMod = require("@figaro/core/schemas") as typeof import("@figaro/core/schemas");
     const {
-        encodeHandoffContent,
         encodeGeoContent,
-        encodeFulfilmentContent,
+        encodeFulfilmentV2Content,
         encodeJurisdictionContent,
         encodeGHGScopeContent,
         encodeProximityPolicyContent,
@@ -358,16 +356,16 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
     // enum strings.
     const asAny = <T>(v: unknown) => v as T;
     switch (schemaKey) {
-        case "figaro-handoff-v1":
-            return (data) => encodeHandoffContent(asAny(data.mode));
         case "figaro-geo-v1":
             return (data) => encodeGeoContent({
                 originGeohash: data.originGeohash as string,
                 destinationGeohash: data.destinationGeohash as string,
             });
-        case "figaro-fulfilment-v1":
-            return (data) => encodeFulfilmentContent({
-                method: asAny(data.method),
+        case "figaro-fulfilment-v2":
+            return (data) => encodeFulfilmentV2Content({
+                modality: asAny(data.modality),
+                coordination: asAny(data.coordination),
+                handoffPoint: asAny(data.handoffPoint),
             });
         case "figaro-jurisdiction-v1":
             return (data) => encodeJurisdictionContent({

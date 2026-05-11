@@ -16,7 +16,7 @@ import {
 import { ZERO_BYTES32 } from "../shared/evm";
 
 /** Well-known schema IDs — shared constants for all archetypes. */
-export const HANDOFF_SCHEMA_KEY = "figaro-handoff-v1";
+export const FULFILMENT_V2_SCHEMA_KEY = "figaro-fulfilment-v2";
 export const COMMERCE_SCHEMA_KEY = "figaro-commerce-v1";
 
 // ── Types ────────────────────────────────────────────────────────────────────

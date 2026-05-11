@@ -81,5 +81,5 @@ export {
 } from "./ecdh";
 
 // Manifest schema registry hook
-export { useManifestSchema, useManifestSchemaCount, HANDOFF_SCHEMA_KEY } from "./useManifestSchema";
+export { useManifestSchema, useManifestSchemaCount, FULFILMENT_V2_SCHEMA_KEY } from "./useManifestSchema";
 export type { ManifestSchema } from "./useManifestSchema";

@@ -161,8 +161,8 @@ export function cosLabel(cos: string): string {
  * treats manifest bytes as opaque — the schema tells the UI how to decode.
  */
 export const MANIFEST_SCHEMAS = {
-    /** Handoff manifest: geohash-6 + CoS + mass/vol + AES-sealed address. */
-    HANDOFF_V1: "figaro-handoff-v1",
+    /** Fulfilment-composition: modality + coordination + handoff point. */
+    FULFILMENT_V2: "figaro-fulfilment-v2",
     /** Commerce manifest: handoff fields + itemized line items. */
     COMMERCE_V1: "figaro-commerce-v1",
 } as const;

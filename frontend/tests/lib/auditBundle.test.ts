@@ -4,10 +4,9 @@ import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from "../anvilAccounts";
 import {
     type Agreement,
     COMMERCE_SCHEMA_KEY,
-    FULFILMENT_SCHEMA_KEY,
+    FULFILMENT_V2_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
     GHG_MEASUREMENT_SCHEMA_KEY,
-    HANDOFF_SCHEMA_KEY,
     JURISDICTION_SCHEMA_KEY,
     PROXIMITY_POLICY_SCHEMA_KEY,
     PROXIMITY_PROOF_SCHEMA_KEY,
@@ -90,8 +89,8 @@ describe("extractContract", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
         {
-            schema: HANDOFF_SCHEMA_KEY,
-            data: { mode: "face-to-face" },
+            schema: FULFILMENT_V2_SCHEMA_KEY,
+            data: { modality: "pickup", handoffPoint: "face-to-face" },
         },
         {
             schema: GEO_SCHEMA_KEY,
@@ -185,9 +184,12 @@ describe("extractContract — lineage (DAG / parentOrderHashes)", () => {
 });
 
 describe("extractContract — fulfilment summary", () => {
-    it("surfaces the canonical fulfilment method from a fulfilment clause", () => {
+    it("surfaces the canonical fulfilment method derived from v2 modality + coordination", () => {
         const ag = makeAgreement([
-            { schema: FULFILMENT_SCHEMA_KEY, data: { method: "deliver:dutch-auction" } },
+            {
+                schema: FULFILMENT_V2_SCHEMA_KEY,
+                data: { modality: "delivery", coordination: "dutch-auction" },
+            },
         ]);
         const c = extractContract(makeOrder(), ag);
         expect(c.fulfilment).toEqual({ method: "deliver:dutch-auction" });
@@ -250,7 +252,7 @@ describe("extractInvoice", () => {
 describe("extractBillOfLading", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { schema: HANDOFF_SCHEMA_KEY, data: { mode: "face-to-face" } },
+        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
         { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk" } },
     ]);
 
@@ -329,7 +331,7 @@ describe("extractBillOfLading", () => {
 describe("buildHashAppendix", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { schema: HANDOFF_SCHEMA_KEY, data: { mode: "face-to-face" } },
+        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
     ]);
     const attestations: AttestationRecord[] = [
         {
@@ -653,7 +655,7 @@ describe("isCarriageOrder", () => {
 
     it("returns false for buyer↔merchant orders (no courier-process clause)", () => {
         const agreement = makeAgreement([
-            { schema: HANDOFF_SCHEMA_KEY, data: { mode: "face-to-face" } },
+            { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
             { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry" } },
         ]);
         expect(isCarriageOrder(agreement)).toBe(false);
@@ -673,7 +675,7 @@ describe("isCarriageOrder", () => {
 describe("buildAuditBundle", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { schema: HANDOFF_SCHEMA_KEY, data: { mode: "face-to-face" } },
+        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
         { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry" } },
         { schema: COURIER_PROCESS_SCHEMA_KEY, data: {} },
     ]);
@@ -706,7 +708,7 @@ describe("buildAuditBundle", () => {
 
     it("omits billOfLading on a non-carriage order (e.g. buyer↔merchant goods sale)", () => {
         const merchantAgreement = makeAgreement([
-            { schema: HANDOFF_SCHEMA_KEY, data: { mode: "face-to-face" } },
+            { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
             { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry" } },
         ]);
         const merchantBundle = buildAuditBundle(order, merchantAgreement, []);
@@ -728,7 +730,7 @@ describe("buildAuditBundle", () => {
 describe("buildAuditBundle with redacted commerce section", () => {
     const order = makeOrder();
     const cleartextAgreement = makeAgreement([
-        { schema: HANDOFF_SCHEMA_KEY, data: { mode: "face-to-face" } },
+        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
         { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry" } },
     ]);
 
@@ -775,9 +777,9 @@ describe("buildAuditBundle with redacted commerce section", () => {
         const { redactSections } = await import("@/lib/core/agreementManifest");
         const redacted = redactSections(cleartextAgreement, ["figaro-commerce-v1"]);
         const bundle = buildAuditBundle(order, redacted, []);
-        const handoffClause = bundle.contract.clauses.find((c) => c.schemaKey === "figaro-handoff-v1")!;
-        expect(handoffClause.sealed).toBeUndefined();
-        expect(handoffClause.body).toEqual({ mode: "face-to-face" });
+        const fulfilmentClause = bundle.contract.clauses.find((c) => c.schemaKey === "figaro-fulfilment-v2")!;
+        expect(fulfilmentClause.sealed).toBeUndefined();
+        expect(fulfilmentClause.body).toEqual({ modality: "pickup", handoffPoint: "face-to-face" });
     });
 
     it("cleartext path is unchanged when no redaction is applied", () => {

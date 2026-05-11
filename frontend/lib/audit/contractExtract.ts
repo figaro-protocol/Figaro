@@ -16,7 +16,7 @@ import {
     type AnyAgreementSection,
     type RedactableAgreement,
     COMMERCE_SCHEMA_KEY,
-    FULFILMENT_SCHEMA_KEY,
+    FULFILMENT_V2_SCHEMA_KEY,
     JURISDICTION_SCHEMA_KEY,
     TOPOLOGY_SCHEMA_KEY,
     computeSectionLeaf,
@@ -51,8 +51,7 @@ function findCleartextSection(
 const SCHEMA_TITLE: Record<string, string> = {
     "figaro-commerce-v1": "Commerce — line items + payment",
     "figaro-geo-v1": "Geography — origin + destination",
-    "figaro-handoff-v1": "Handoff — physical-exchange modality",
-    "figaro-fulfilment-v1": "Fulfilment — modality + who-organizes",
+    "figaro-fulfilment-v2": "Fulfilment — modality + coordination + handoffPoint",
     "figaro-topology-v1": "Topology — DAG lineage",
     "figaro-jurisdiction-v1": "Jurisdiction — applicable law + forum",
     "figaro-ghg-protocol-v1": "GHG — Protocol Corporate Standard",
@@ -176,10 +175,20 @@ function extractLineage(agreement: Agreement | RedactableAgreement) {
 }
 
 function extractFulfilmentSummary(agreement: Agreement | RedactableAgreement) {
-    const fulfilment = findCleartextSection(agreement, FULFILMENT_SCHEMA_KEY);
-    const data = fulfilment?.data as { method?: unknown } | undefined;
-    if (typeof data?.method !== "string" || data.method.length === 0) return undefined;
-    return { method: data.method };
+    const fulfilment = findCleartextSection(agreement, FULFILMENT_V2_SCHEMA_KEY);
+    const data = fulfilment?.data as { modality?: unknown; coordination?: unknown } | undefined;
+    const modality = typeof data?.modality === "string" ? data.modality : undefined;
+    if (!modality) return undefined;
+    const coordination = typeof data?.coordination === "string" ? data.coordination : undefined;
+    // Reconstruct the legacy canonical method string for backward-compat
+    // consumers. v2 stores modality + coordination as independent fields;
+    // the canonical method collapses them.
+    if (modality === "delivery" && coordination) {
+        return { method: `deliver:${coordination}` };
+    }
+    if (modality === "consume-onsite") return { method: "consume-onsite" };
+    if (modality === "pickup") return { method: "pickup" };
+    return undefined;
 }
 
 export function extractContract(

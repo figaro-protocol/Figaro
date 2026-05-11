@@ -86,7 +86,7 @@ export default function Specifications() {
 
             <MarketingSection title="Schema validators in force">
                 <p className="text-sm text-ink-muted mb-6">
-                    Seventeen runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
+                    Sixteen runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
@@ -99,10 +99,9 @@ export default function Specifications() {
                         </thead>
                         <tbody className="[&>tr]:border-b [&>tr]:border-default">
                             <tr><td className="py-2 pr-4"><code>figaro-topology-v1</code></td><td className="py-2 pr-4 text-ink-body">DAG lineage (parent order hashes)</td><td className="py-2 text-ink-muted">Manifest-only</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-handoff-v1</code></td><td className="py-2 pr-4 text-ink-body">Physical-exchange mode</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                             <tr><td className="py-2 pr-4"><code>figaro-commerce-v1</code></td><td className="py-2 pr-4 text-ink-body">Currency, payment, line items</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                             <tr><td className="py-2 pr-4"><code>figaro-geo-v1</code></td><td className="py-2 pr-4 text-ink-body">Origin / destination geohash</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-fulfilment-v1</code></td><td className="py-2 pr-4 text-ink-body">Fulfilment method (single canonical enum: modality + who-organizes)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-fulfilment-v2</code></td><td className="py-2 pr-4 text-ink-body">Fulfilment in one clause: modality, coordination, handoff point</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                             <tr><td className="py-2 pr-4"><code>figaro-ghg-protocol-v1</code></td><td className="py-2 pr-4 text-ink-body">GHG Protocol Corporate Standard + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                             <tr><td className="py-2 pr-4"><code>figaro-ghg-iso-14064-v1</code></td><td className="py-2 pr-4 text-ink-body">ISO 14064 family + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                             <tr><td className="py-2 pr-4"><code>figaro-ghg-pas-2050-v1</code></td><td className="py-2 pr-4 text-ink-body">PAS 2050 product carbon footprint + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>

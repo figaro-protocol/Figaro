@@ -87,7 +87,7 @@ export interface BlockMetadata {
     /** Palette category — drives palette grouping and default visibility. */
     category: BlockCategory;
     /**
-     * Schema IDs (human-readable, e.g. "figaro-handoff-v1") this block
+     * Schema IDs (human-readable, e.g. "figaro-fulfilment-v2") this block
      * contributes to an order's agreement. Empty if the block has no
      * schema content of its own.
      */

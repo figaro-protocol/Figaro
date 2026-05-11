@@ -14,10 +14,9 @@ import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/FigaroBatchVerifier.sol";
 import "../src/SchemaRegistrationHelper.sol";
-import "../src/schemaValidators/FigaroHandoffV1Validator.sol";
 import "../src/schemaValidators/FigaroCommerceV1Validator.sol";
 import "../src/schemaValidators/FigaroGeoV1Validator.sol";
-import "../src/schemaValidators/FigaroFulfilmentV1Validator.sol";
+import "../src/schemaValidators/FigaroFulfilmentV2Validator.sol";
 import "../src/schemaValidators/FigaroGHGProtocolV1Validator.sol";
 import "../src/schemaValidators/FigaroGHGISO14064V1Validator.sol";
 import "../src/schemaValidators/FigaroGHGPAS2050V1Validator.sol";
@@ -82,10 +81,9 @@ contract Deploy is Script {
 
         // Register reference schemas (18 figaro-* schemas: 17 runtime-attestable + figaro-topology-v1 manifest-only)
         schemas.registerSchema(keccak256("figaro-topology-v1"), 1, keccak256("ipfs://figaro-topology/v1"));
-        schemas.registerSchema(keccak256("figaro-handoff-v1"), 1, keccak256("ipfs://figaro-handoff/v1"));
         schemas.registerSchema(keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"));
         schemas.registerSchema(keccak256("figaro-geo-v1"), 1, keccak256("ipfs://figaro-geo/v1"));
-        schemas.registerSchema(keccak256("figaro-fulfilment-v1"), 1, keccak256("ipfs://figaro-fulfilment/v1"));
+        schemas.registerSchema(keccak256("figaro-fulfilment-v2"), 1, keccak256("ipfs://figaro-fulfilment/v2"));
         schemas.registerSchema(keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"));
         schemas.registerSchema(keccak256("figaro-ghg-iso-14064-v1"), 1, keccak256("ipfs://figaro-ghg-iso-14064/v1"));
         schemas.registerSchema(keccak256("figaro-ghg-pas-2050-v1"), 1, keccak256("ipfs://figaro-ghg-pas-2050/v1"));
@@ -109,7 +107,7 @@ contract Deploy is Script {
         );
         schemas.registerSchema(keccak256("figaro-jurisdiction-v1"), 1, keccak256("ipfs://figaro-jurisdiction/v1"));
         schemas.registerSchema(keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"));
-        console.log("Registered 18 reference schemas");
+        console.log("Registered 17 reference schemas");
 
         // ── Schema validators ───────────────────────────────────────
         // Deploy per-schema validator contracts and wire them into the
@@ -225,16 +223,13 @@ contract Deploy is Script {
         // than one validator address is live on the Yul stack at a time.
         // Avoids stack-too-deep under `solc_via_ir`.
         attestation.setValidator(
-            keccak256("figaro-handoff-v1"), address(new FigaroHandoffV1Validator())
-        );
-        attestation.setValidator(
             keccak256("figaro-commerce-v1"), address(new FigaroCommerceV1Validator())
         );
         attestation.setValidator(
             keccak256("figaro-geo-v1"), address(new FigaroGeoV1Validator())
         );
         attestation.setValidator(
-            keccak256("figaro-fulfilment-v1"), address(new FigaroFulfilmentV1Validator())
+            keccak256("figaro-fulfilment-v2"), address(new FigaroFulfilmentV2Validator())
         );
         attestation.setValidator(
             keccak256("figaro-ghg-protocol-v1"), address(new FigaroGHGProtocolV1Validator())

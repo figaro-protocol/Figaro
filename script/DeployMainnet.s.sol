@@ -13,10 +13,9 @@ import "../src/fig/FigToken.sol";
 import "../src/fig/StagedMerkleAirdrop.sol";
 import "../src/FigaroBatchVerifier.sol";
 import "../src/SchemaRegistrationHelper.sol";
-import "../src/schemaValidators/FigaroHandoffV1Validator.sol";
 import "../src/schemaValidators/FigaroCommerceV1Validator.sol";
 import "../src/schemaValidators/FigaroGeoV1Validator.sol";
-import "../src/schemaValidators/FigaroFulfilmentV1Validator.sol";
+import "../src/schemaValidators/FigaroFulfilmentV2Validator.sol";
 import "../src/schemaValidators/FigaroGHGProtocolV1Validator.sol";
 import "../src/schemaValidators/FigaroGHGISO14064V1Validator.sol";
 import "../src/schemaValidators/FigaroGHGPAS2050V1Validator.sol";
@@ -129,10 +128,9 @@ contract DeployMainnet is Script {
         console.log("SchemaRegistry:         ", _schemas);
 
         schemas.registerSchema(keccak256("figaro-topology-v1"), 1, keccak256("ipfs://figaro-topology/v1"));
-        schemas.registerSchema(keccak256("figaro-handoff-v1"), 1, keccak256("ipfs://figaro-handoff/v1"));
         schemas.registerSchema(keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"));
         schemas.registerSchema(keccak256("figaro-geo-v1"), 1, keccak256("ipfs://figaro-geo/v1"));
-        schemas.registerSchema(keccak256("figaro-fulfilment-v1"), 1, keccak256("ipfs://figaro-fulfilment/v1"));
+        schemas.registerSchema(keccak256("figaro-fulfilment-v2"), 1, keccak256("ipfs://figaro-fulfilment/v2"));
         schemas.registerSchema(keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"));
         schemas.registerSchema(keccak256("figaro-ghg-iso-14064-v1"), 1, keccak256("ipfs://figaro-ghg-iso-14064/v1"));
         schemas.registerSchema(keccak256("figaro-ghg-pas-2050-v1"), 1, keccak256("ipfs://figaro-ghg-pas-2050/v1"));
@@ -156,7 +154,7 @@ contract DeployMainnet is Script {
         );
         schemas.registerSchema(keccak256("figaro-jurisdiction-v1"), 1, keccak256("ipfs://figaro-jurisdiction/v1"));
         schemas.registerSchema(keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"));
-        console.log("SchemaRegistry: 18 reference schemas registered");
+        console.log("SchemaRegistry: 17 reference schemas registered");
 
         // ── OperatorRegistry ────────────────────────────────────────
         // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
@@ -193,7 +191,7 @@ contract DeployMainnet is Script {
 
     // ── Schema validators ───────────────────────────────────────────
 
-    /// @dev Deploy 15 per-schema runtime validators and register each with the
+    /// @dev Deploy 14 per-schema runtime validators and register each with the
     ///      AttestationCoordinator via permissionless setValidator. The
     ///      coordinator enforces `validator.schemaId() == schemaId`, so any
     ///      cross-wired validator reverts InvalidValidatorBinding. Without
@@ -209,14 +207,12 @@ contract DeployMainnet is Script {
         // Each validator is deployed + registered + logged in a single scope
         // to avoid holding more than one address on the Yul stack at a time.
         // Prevents stack-too-deep under `solc_via_ir` with many local vars.
-        _wireValidator(attestation, "HandoffV1Validator:          ",
-            keccak256("figaro-handoff-v1"), address(new FigaroHandoffV1Validator()));
         _wireValidator(attestation, "CommerceV1Validator:         ",
             keccak256("figaro-commerce-v1"), address(new FigaroCommerceV1Validator()));
         _wireValidator(attestation, "GeoV1Validator:              ",
             keccak256("figaro-geo-v1"), address(new FigaroGeoV1Validator()));
-        _wireValidator(attestation, "FulfilmentV1Validator:       ",
-            keccak256("figaro-fulfilment-v1"), address(new FigaroFulfilmentV1Validator()));
+        _wireValidator(attestation, "FulfilmentV2Validator:       ",
+            keccak256("figaro-fulfilment-v2"), address(new FigaroFulfilmentV2Validator()));
         _wireValidator(attestation, "GHGProtocolV1Validator:      ",
             keccak256("figaro-ghg-protocol-v1"), address(new FigaroGHGProtocolV1Validator()));
         _wireValidator(attestation, "GHGISO14064V1Validator:      ",

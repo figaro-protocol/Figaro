@@ -7,7 +7,7 @@
  * The BoL combines two layers:
  *
  *   • Committed-at-signing clauses — what the parties bound to:
- *       handoff modality (figaro-handoff-v1)
+ *       fulfilment modality + handoffPoint (figaro-fulfilment-v2)
  *       origin / destination geohashes (figaro-geo-v1)
  *
  *   • Runtime attestations — what actually happened:
@@ -24,8 +24,8 @@ import {
     type AgreementSection,
     type RedactableAgreement,
     DELIVERY_LIFECYCLE_SCHEMA_KEY,
+    FULFILMENT_V2_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
-    HANDOFF_SCHEMA_KEY,
     isRedactedSection,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
@@ -97,9 +97,9 @@ export function extractBillOfLading(
     agreement: Agreement | RedactableAgreement,
     attestations: readonly AttestationRecord[],
 ): BillOfLadingDocument {
-    const handoff = getSectionByKey(agreement, HANDOFF_SCHEMA_KEY);
+    const fulfilment = getSectionByKey(agreement, FULFILMENT_V2_SCHEMA_KEY);
     const geo = getSectionByKey(agreement, GEO_SCHEMA_KEY);
-    const handoffData = handoff?.data as { mode?: string } | undefined;
+    const fulfilmentData = fulfilment?.data as { handoffPoint?: string } | undefined;
     const geoData = geo?.data as { originGeohash?: string; destinationGeohash?: string } | undefined;
 
     // Index lifecycle attestations for THIS order by stage. The BoL only
@@ -141,7 +141,7 @@ export function extractBillOfLading(
         bolNumber: order.id,
         consignor: order.seller,
         consignee: order.buyer,
-        handoffMode: handoffData?.mode,
+        handoffMode: fulfilmentData?.handoffPoint,
         originGeohash: geoData?.originGeohash,
         destinationGeohash: geoData?.destinationGeohash,
         stages,

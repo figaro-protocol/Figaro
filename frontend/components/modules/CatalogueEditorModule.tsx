@@ -222,7 +222,7 @@ const WELL_KNOWN_SCHEMAS: { key: string; label: string; description: string }[] 
     { key: "figaro-proximity-policy-v1", label: "Proximity Policy", description: "Required detection band committed at agreement signing (Category-2)" },
     { key: "figaro-proximity-proof-v1", label: "Proximity Proof", description: "Per-handoff nonce + signed witness payload at runtime (Category-1)" },
     { key: "figaro-commerce-v1", label: "Commerce", description: "Commerce attestation schema for general trade" },
-    { key: "figaro-handoff-v1", label: "Handoff", description: "Manifest encoding for order handoff data" },
+    { key: "figaro-fulfilment-v2", label: "Fulfilment", description: "Modality, coordination, and handoff point committed in one clause" },
 ];
 
 // ── Main module ───────────────────────────────────────────────────────────────

@@ -4,12 +4,11 @@ import {
     buildAgreement,
     buildCommerceSection,
     buildTopologySection,
-    FULFILMENT_SCHEMA_KEY,
+    FULFILMENT_V2_SCHEMA_KEY,
     GHG_SCHEMA_KEY,
     GHG_DISCLOSURE_SCHEMA_KEYS,
     GHG_STANDARD_TO_SCHEMA,
     GHG_SCHEMA_TO_STANDARD,
-    HANDOFF_SCHEMA_KEY,
     JURISDICTION_SCHEMA_KEY,
     CONSENT_SCHEMA_KEY,
     MERCHANT_PROCESS_SCHEMA_KEY,
@@ -36,6 +35,63 @@ const HANDOFF_MODE_ALIASES: Record<string, string> = {
     "meet-at-door": "face-to-face",
     "meet-at-car": "parking-area",
 };
+
+/**
+ * Map a canonical fulfilment method to the two v2 fields it expresses:
+ * `modality` and (when delivery) `coordination`. The old single-enum
+ * fulfilment string collapsed these two dimensions; v2 separates them.
+ */
+function canonicalFulfilmentToV2(
+    method: string,
+): { modality: "consume-onsite" | "pickup" | "delivery"; coordination?: "buyer-assigned" | "seller-assigned" | "dutch-auction" } | null {
+    switch (method) {
+        case "consume-onsite":
+            return { modality: "consume-onsite" };
+        case "pickup":
+            return { modality: "pickup" };
+        case "deliver:buyer-assigned":
+            return { modality: "delivery", coordination: "buyer-assigned" };
+        case "deliver:seller-assigned":
+            return { modality: "delivery", coordination: "seller-assigned" };
+        case "deliver:dutch-auction":
+            return { modality: "delivery", coordination: "dutch-auction" };
+        default:
+            return null;
+    }
+}
+
+/**
+ * Map a legacy `handoffMode` manifest field to a v2 `handoffPoint` value.
+ * `courier-relay` was the old marker for "delivered by courier" — that's
+ * now expressed via `modality = delivery`, so we drop it from
+ * `handoffPoint` to avoid redundant double-encoding.
+ */
+function normalizeHandoffPoint(mode: string | undefined): "face-to-face" | "dead-drop" | "parking-area" | "locker" | undefined {
+    if (!mode) return undefined;
+    const normalized = aliasLookup(HANDOFF_MODE_ALIASES, mode);
+    if (normalized === "courier-relay") return undefined;
+    const allowed: ReadonlyArray<string> = ["face-to-face", "dead-drop", "parking-area", "locker"];
+    if (!allowed.includes(normalized)) return undefined;
+    return normalized as "face-to-face" | "dead-drop" | "parking-area" | "locker";
+}
+
+/**
+ * Reconstruct the legacy `fulfilment.method` shape from a v2 section's
+ * `(modality, coordination)` pair, so that `AgreementSummary.fulfilment`
+ * stays backward-compatible for callers (ProcessGraphCanvas lens display,
+ * etc.) that haven't migrated to the structured form.
+ */
+function deriveLegacyFulfilment(data: Record<string, unknown>): Record<string, unknown> | undefined {
+    const modality = typeof data.modality === "string" ? data.modality : undefined;
+    if (!modality) return undefined;
+    const coordination = typeof data.coordination === "string" ? data.coordination : undefined;
+    if (modality === "delivery" && coordination) {
+        return { method: `deliver:${coordination}` };
+    }
+    if (modality === "consume-onsite") return { method: "consume-onsite" };
+    if (modality === "pickup") return { method: "pickup" };
+    return undefined;
+}
 
 /**
  * Map a legacy UI fulfilmentMethod (+ optional auctionType) to the canonical
@@ -186,10 +242,19 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     const fulfilmentMethod = readManifestExtra(params.manifestFields, ["fulfilmentMethod", "fulfillmentMethod"]);
     const auctionType = readManifestExtra(params.manifestFields, ["auctionType", "auctionMechanism"]);
     const canonicalFulfilmentMethod = combineToCanonicalFulfilmentMethod(fulfilmentMethod, auctionType);
-    if (canonicalFulfilmentMethod) {
+    const handoffMode = readManifestExtra(params.manifestFields, ["handoffMode"]);
+    const v2 = canonicalFulfilmentMethod ? canonicalFulfilmentToV2(canonicalFulfilmentMethod) : null;
+    if (v2) {
+        // Single figaro-fulfilment-v2 section combining modality +
+        // coordination (from canonical fulfilment method) and handoffPoint
+        // (from legacy handoffMode).
+        const handoffPoint = normalizeHandoffPoint(handoffMode);
+        const data: Record<string, unknown> = { modality: v2.modality };
+        if (v2.coordination) data.coordination = v2.coordination;
+        if (handoffPoint) data.handoffPoint = handoffPoint;
         sections.push({
-            schema: FULFILMENT_SCHEMA_KEY,
-            data: { method: canonicalFulfilmentMethod },
+            schema: FULFILMENT_V2_SCHEMA_KEY,
+            data,
         });
         // Authorize the seller's sovereign merchant event log against this
         // order's agreementHash. Category-1: empty sectionData; the runtime
@@ -199,14 +264,6 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         sections.push({
             schema: MERCHANT_PROCESS_SCHEMA_KEY,
             data: {},
-        });
-    }
-
-    const handoffMode = readManifestExtra(params.manifestFields, ["handoffMode"]);
-    if (handoffMode) {
-        sections.push({
-            schema: HANDOFF_SCHEMA_KEY,
-            data: { mode: aliasLookup(HANDOFF_MODE_ALIASES, handoffMode) },
         });
     }
 
@@ -300,8 +357,7 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
 
     const geoSection = getSection(agreement, "figaro-geo-v1");
     const topologySection = getSection(agreement, TOPOLOGY_SCHEMA_KEY);
-    const fulfilmentSection = getSection(agreement, FULFILMENT_SCHEMA_KEY);
-    const handoffSection = getSection(agreement, HANDOFF_SCHEMA_KEY);
+    const fulfilmentSection = getSection(agreement, FULFILMENT_V2_SCHEMA_KEY);
     const proximitySection = getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
     const jurisdictionSection = getSection(agreement, JURISDICTION_SCHEMA_KEY);
     const consentSection = getSection(agreement, CONSENT_SCHEMA_KEY);
@@ -334,8 +390,12 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
                 parentOrderHashes: getTopologyParentOrderHashes(agreement) ?? [],
             }
             : undefined,
-        fulfilment: fulfilmentSection?.data,
-        handoff: handoffSection?.data,
+        fulfilment: fulfilmentSection
+            ? deriveLegacyFulfilment(fulfilmentSection.data)
+            : undefined,
+        handoff: fulfilmentSection?.data.handoffPoint
+            ? { mode: fulfilmentSection.data.handoffPoint }
+            : undefined,
         ghg: ghgSection
             ? { ...(ghgStandard ? { standard: ghgStandard } : {}), ...ghgSection.data }
             : undefined,

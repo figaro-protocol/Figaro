@@ -2,10 +2,9 @@ import { describe, expect, it } from "vitest";
 import { parseSchemaSpec } from "../../src/schemas/spec.js";
 import { validateContent } from "../../src/schemas/validate.js";
 import topologySpecRaw from "../../src/schemas/examples/figaro-topology-v1.json" with { type: "json" };
-import handoffSpecRaw from "../../src/schemas/examples/figaro-handoff-v1.json" with { type: "json" };
 import commerceSpecRaw from "../../src/schemas/examples/figaro-commerce-v1.json" with { type: "json" };
 import geoSpecRaw from "../../src/schemas/examples/figaro-geo-v1.json" with { type: "json" };
-import fulfilmentSpecRaw from "../../src/schemas/examples/figaro-fulfilment-v1.json" with { type: "json" };
+import fulfilmentV2SpecRaw from "../../src/schemas/examples/figaro-fulfilment-v2.json" with { type: "json" };
 import jurisdictionSpecRaw from "../../src/schemas/examples/figaro-jurisdiction-v1.json" with { type: "json" };
 import ghgProtocolSpecRaw from "../../src/schemas/examples/figaro-ghg-protocol-v1.json" with { type: "json" };
 import ghgIso14064SpecRaw from "../../src/schemas/examples/figaro-ghg-iso-14064-v1.json" with { type: "json" };
@@ -56,25 +55,6 @@ describe("example schema specs — parse + validate sample content", () => {
         expect(validateContent(bogus, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-handoff-v1 spec parses cleanly", () => {
-        const result = parseSchemaSpec(handoffSpecRaw);
-        expect(result.ok).toBe(true);
-    });
-
-    it("figaro-handoff-v1 accepts each declared mode", () => {
-        const parsed = parseSchemaSpec(handoffSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const mode of ["face-to-face", "dead-drop", "parking-area", "locker", "courier-relay"]) {
-            expect(validateContent({ mode }, parsed.spec).ok).toBe(true);
-        }
-    });
-
-    it("figaro-handoff-v1 rejects an unrecognized mode", () => {
-        const parsed = parseSchemaSpec(handoffSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ mode: "carrier-pigeon" }, parsed.spec).ok).toBe(false);
-    });
-
     // ── figaro-commerce-v1 ──
 
     it("figaro-commerce-v1 spec parses cleanly", () => {
@@ -118,32 +98,47 @@ describe("example schema specs — parse + validate sample content", () => {
         expect(validateContent({ originGeohash: "abc", destinationGeohash: "abc" }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-fulfilment-v1 ──
+    // ── figaro-fulfilment-v2 ──
 
-    it("figaro-fulfilment-v1 accepts each known method", () => {
-        const parsed = parseSchemaSpec(fulfilmentSpecRaw);
+    it("figaro-fulfilment-v2 spec parses cleanly", () => {
+        const result = parseSchemaSpec(fulfilmentV2SpecRaw);
+        expect(result.ok).toBe(true);
+    });
+
+    it("figaro-fulfilment-v2 accepts minimal content (modality only)", () => {
+        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const method of [
-            "consume-onsite",
-            "pickup",
-            "deliver:buyer-assigned",
-            "deliver:seller-assigned",
-            "deliver:dutch-auction",
-        ]) {
-            expect(validateContent({ method }, parsed.spec).ok).toBe(true);
+        for (const modality of ["consume-onsite", "pickup", "delivery"]) {
+            expect(validateContent({ modality }, parsed.spec).ok).toBe(true);
         }
     });
 
-    it("figaro-fulfilment-v1 rejects an unknown method", () => {
-        const parsed = parseSchemaSpec(fulfilmentSpecRaw);
+    it("figaro-fulfilment-v2 accepts each delivery coordination", () => {
+        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ method: "teleport" }, parsed.spec).ok).toBe(false);
+        for (const coordination of ["buyer-assigned", "seller-assigned", "dutch-auction"]) {
+            expect(validateContent({ modality: "delivery", coordination }, parsed.spec).ok).toBe(true);
+        }
     });
 
-    it("figaro-fulfilment-v1 rejects unknown fields (closed schema — legacy auction field gone)", () => {
-        const parsed = parseSchemaSpec(fulfilmentSpecRaw);
+    it("figaro-fulfilment-v2 accepts each handoff point", () => {
+        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ method: "pickup", auction: "dutch" }, parsed.spec).ok).toBe(false);
+        for (const handoffPoint of ["face-to-face", "dead-drop", "parking-area", "locker"]) {
+            expect(validateContent({ modality: "pickup", handoffPoint }, parsed.spec).ok).toBe(true);
+        }
+    });
+
+    it("figaro-fulfilment-v2 rejects an unknown modality", () => {
+        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ modality: "teleport" }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-fulfilment-v2 rejects missing modality", () => {
+        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ coordination: "buyer-assigned" }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-jurisdiction-v1 ──

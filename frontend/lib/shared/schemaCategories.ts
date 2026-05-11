@@ -27,7 +27,7 @@ import commerceSpec from "@/lib/shared/schemas/figaro-commerce-v1.json";
 import consentSpec from "@/lib/shared/schemas/figaro-consent-v1.json";
 import courierProcessSpec from "@/lib/shared/schemas/figaro-courier-process-v1.json";
 import deliveryLifecycleSpec from "@/lib/shared/schemas/figaro-delivery-lifecycle-v1.json";
-import fulfilmentSpec from "@/lib/shared/schemas/figaro-fulfilment-v1.json";
+import fulfilmentSpec from "@/lib/shared/schemas/figaro-fulfilment-v2.json";
 import geoSpec from "@/lib/shared/schemas/figaro-geo-v1.json";
 import ghgCustomSpec from "@/lib/shared/schemas/figaro-ghg-custom-v1.json";
 import ghgEN16258Spec from "@/lib/shared/schemas/figaro-ghg-en-16258-v1.json";
@@ -35,7 +35,6 @@ import ghgISO14064Spec from "@/lib/shared/schemas/figaro-ghg-iso-14064-v1.json";
 import ghgMeasurementSpec from "@/lib/shared/schemas/figaro-ghg-measurement-v1.json";
 import ghgPAS2050Spec from "@/lib/shared/schemas/figaro-ghg-pas-2050-v1.json";
 import ghgProtocolSpec from "@/lib/shared/schemas/figaro-ghg-protocol-v1.json";
-import handoffSpec from "@/lib/shared/schemas/figaro-handoff-v1.json";
 import jurisdictionSpec from "@/lib/shared/schemas/figaro-jurisdiction-v1.json";
 import merchantProcessSpec from "@/lib/shared/schemas/figaro-merchant-process-v1.json";
 import proximityPolicySpec from "@/lib/shared/schemas/figaro-proximity-policy-v1.json";
@@ -54,7 +53,6 @@ export type SchemaCategory =
     | "fulfilment"
     | "geo"
     | "emissions"
-    | "handoff"
     | "jurisdiction"
     | "proximity"
     | "topology";
@@ -75,7 +73,6 @@ export const CATEGORY_LABELS: Record<SchemaCategory, string> = {
     fulfilment: "Fulfilment",
     geo: "Geo",
     emissions: "Emissions",
-    handoff: "Handoff",
     jurisdiction: "Jurisdiction",
     proximity: "Proximity",
     topology: "Topology",
@@ -88,10 +85,9 @@ export const CATEGORY_DESCRIPTIONS: Record<SchemaCategory, string> = {
     "evidence-law": "Legal evidence anchoring for off-chain forums.",
     lifecycle: "Stage progression and event streams over time.",
     "role-process": "Sovereign event logs for off-chain operator roles.",
-    fulfilment: "Modality and who organizes the fulfilment.",
+    fulfilment: "Modality, coordination, and handoff point in one clause.",
     geo: "Geographic origin and destination.",
     emissions: "GHG accounting (per industry standard or custom).",
-    handoff: "Physical handoff mode between parties.",
     jurisdiction: "Off-chain dispute-resolution jurisdiction.",
     proximity: "Proximity verification policy and proof.",
     topology: "DAG lineage and parent-order relationships.",
@@ -108,14 +104,13 @@ export const CATEGORY_DESCRIPTIONS: Record<SchemaCategory, string> = {
 export const SCHEMA_TIER_MAP: Readonly<Record<string, SchemaTier>> = {
     "figaro-commerce-v1": "designer-time",
     "figaro-consent-v1": "designer-time",
-    "figaro-fulfilment-v1": "designer-time",
+    "figaro-fulfilment-v2": "designer-time",
     "figaro-geo-v1": "designer-time",
     "figaro-ghg-custom-v1": "designer-time",
     "figaro-ghg-en-16258-v1": "designer-time",
     "figaro-ghg-iso-14064-v1": "designer-time",
     "figaro-ghg-pas-2050-v1": "designer-time",
     "figaro-ghg-protocol-v1": "designer-time",
-    "figaro-handoff-v1": "designer-time",
     "figaro-jurisdiction-v1": "designer-time",
     "figaro-proximity-policy-v1": "designer-time",
     "figaro-topology-v1": "designer-time",
@@ -136,7 +131,7 @@ export const SCHEMA_TIER_MAP: Readonly<Record<string, SchemaTier>> = {
  */
 export const LENS_TO_CATEGORIES: Readonly<Record<LensId, readonly SchemaCategory[]>> = {
     value: ["commerce", "payment"],
-    geo: ["geo", "handoff", "fulfilment"],
+    geo: ["geo", "fulfilment"],
     capital: [],
     ghg: ["emissions"],
 };
@@ -158,7 +153,6 @@ const ALL_SPECS: readonly SchemaSpecMeta[] = [
     ghgMeasurementSpec,
     ghgPAS2050Spec,
     ghgProtocolSpec,
-    handoffSpec,
     jurisdictionSpec,
     merchantProcessSpec,
     proximityPolicySpec,
@@ -219,6 +213,23 @@ export function getLensForCategory(category: SchemaCategory): LensId | undefined
         if (LENS_TO_CATEGORIES[lens].includes(category)) return lens;
     }
     return undefined;
+}
+
+/**
+ * `title` and `description` for a schema, read directly from its Layer-A
+ * spec JSON. Used by the AgreementDrawer to render each article's prose
+ * (title + one-line description) without duplicating spec text in UI
+ * code. Returns undefined when the schemaId is unknown.
+ */
+export function getSchemaInfo(schemaId: string): { title: string; description: string } | undefined {
+    const spec = ALL_SPECS.find((s) => s.schemaId === schemaId) as
+        | (SchemaSpecMeta & { title?: string; description?: string })
+        | undefined;
+    if (!spec) return undefined;
+    return {
+        title: spec.title ?? schemaId,
+        description: spec.description ?? "",
+    };
 }
 
 /** Categories that have at least one designer-time schema (drawer-renderable). */
