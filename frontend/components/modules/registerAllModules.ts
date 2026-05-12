@@ -239,7 +239,7 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
     {
         blockId: "dispute-status",
         displayName: "Dispute status",
-        description: "Per-process Kleros dispute panel: ruling state, arbitration cost, evidence-bundle submission. Hidden when no Kleros proxy is configured in env.",
+        description: "Per-process three-layer jurisdiction panel: Layer 1 bonded settlement (always active), Layer 2 Kleros (ruling state, arbitration cost, evidence submission — when proxy configured), Layer 3 State / ADR (applicable law / forum / language — when set in agreement).",
         category: "mechanism",
         schemaIds: ["figaro-jurisdiction-v1"],
         modules: [{ moduleId: "dispute-status", component: DisputeStatusModule }],

@@ -193,7 +193,13 @@ export const SCHEMA_OWNERSHIP: Readonly<Record<string, SchemaOwnership>> = {
         category: "category-2",
     },
 
-    // ── Jurisdiction — view-mountable dispute status + route flows ────
+    // ── Jurisdiction — view-mountable three-layer panel + route flows ─
+    // The dispute-status module composes all three jurisdiction layers:
+    //   Layer 1 bonded settlement (kernel, always-active)
+    //   Layer 2 Kleros decentralized arbitration (env-configured)
+    //   Layer 3 State / ADR (applicableLaw / forum / language —
+    //                        agreement-derived; display-only at runtime,
+    //                        surfaces in the BoL PDF for off-chain forums).
     "figaro-jurisdiction-v1": {
         schemaId: "figaro-jurisdiction-v1",
         drawerArticle: "jurisdiction",

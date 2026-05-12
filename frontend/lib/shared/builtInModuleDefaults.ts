@@ -148,6 +148,10 @@ const BUILT_IN_MODULE_DEFAULTS: Record<string, BuiltInModuleDefaults> = {
         slot: 'main',
         priority: 5,
     },
+    'dispute-status': {
+        componentKind: 'DisputeStatusPanel',
+        semanticInput: 'ProcessModel',
+    },
 };
 
 export const BUILT_IN_MODULE_IDS = Object.freeze(Object.keys(BUILT_IN_MODULE_DEFAULTS));
