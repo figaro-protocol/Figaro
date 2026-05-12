@@ -305,7 +305,10 @@ export function ProseSheet({
             <footer className="px-4 py-2.5 border-t border-default shrink-0 flex justify-end gap-2">
                 <button
                     type="button"
-                    onClick={onExport}
+                    onClick={() => {
+                        onExport();
+                        onClose();
+                    }}
                     disabled={!canSave}
                     className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:bg-subtle disabled:opacity-40 disabled:cursor-not-allowed"
                     data-testid="prose-sheet-export"
@@ -315,7 +318,10 @@ export function ProseSheet({
                 </button>
                 <button
                     type="button"
-                    onClick={onPublish}
+                    onClick={() => {
+                        onPublish();
+                        onClose();
+                    }}
                     disabled={!canSave || publishInFlight}
                     className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
                     data-testid="prose-sheet-publish"
