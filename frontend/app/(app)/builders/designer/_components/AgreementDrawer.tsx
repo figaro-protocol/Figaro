@@ -519,7 +519,16 @@ export function AgreementDrawer({
             )}
             {!minimized && (<>
             <div className="px-5 py-3 border-b border-neutral-200 flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-black">Agreement</p>
+                <div className="min-w-0">
+                    <p className="text-[11px] text-neutral-500">Agreement</p>
+                    <p
+                        className="text-sm font-mono font-semibold text-black mt-0.5 truncate"
+                        data-testid="drawer-selected-order-id"
+                        title={order.id}
+                    >
+                        Order #{order.id.slice(0, 10)}…
+                    </p>
+                </div>
                 <div className="flex items-center gap-2 shrink-0">
                     <button
                         type="button"
