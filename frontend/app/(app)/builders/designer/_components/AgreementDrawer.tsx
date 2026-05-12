@@ -1222,7 +1222,7 @@ function JurisdictionArticle({
                                 value={klerosCourt}
                                 onChange={(e) => onKlerosCourtChange(e.target.value)}
                                 data-testid="drawer-jurisdiction-kleros-court"
-                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
+                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full bg-white"
                             >
                                 {KLEROS_COURT_OPTIONS.map((opt) => (
                                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1238,7 +1238,7 @@ function JurisdictionArticle({
                                 value={klerosMinJurors}
                                 onChange={(e) => onKlerosMinJurorsChange(e.target.value)}
                                 data-testid="drawer-jurisdiction-kleros-min-jurors"
-                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-20 bg-white"
+                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-20 bg-white"
                             />
                         </div>
                     </div>
@@ -1273,7 +1273,7 @@ function JurisdictionArticle({
                                 value={applicableLaw}
                                 onChange={(e) => onTraditionalFieldChange("applicableLaw", e.target.value)}
                                 data-testid="drawer-jurisdiction-applicable-law"
-                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
+                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full bg-white"
                             />
                         </div>
                         <div>
@@ -1285,7 +1285,7 @@ function JurisdictionArticle({
                                 value={forum}
                                 onChange={(e) => onTraditionalFieldChange("forum", e.target.value)}
                                 data-testid="drawer-jurisdiction-forum"
-                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
+                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full bg-white"
                             />
                         </div>
                         <div>
@@ -1297,7 +1297,7 @@ function JurisdictionArticle({
                                 value={language}
                                 onChange={(e) => onTraditionalFieldChange("language", e.target.value)}
                                 data-testid="drawer-jurisdiction-language"
-                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-32 bg-white"
+                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-32 bg-white"
                             />
                         </div>
                     </div>
@@ -1363,7 +1363,7 @@ function ConsentArticle({
                             value={doc.documentTitle ?? ""}
                             onChange={(e) => onUpdate(i, "documentTitle", e.target.value)}
                             data-testid={`drawer-consent-title-${i}`}
-                            className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
+                            className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full bg-white"
                         />
                     </div>
                     <div>
@@ -1375,7 +1375,7 @@ function ConsentArticle({
                             value={doc.documentVersion ?? ""}
                             onChange={(e) => onUpdate(i, "documentVersion", e.target.value)}
                             data-testid={`drawer-consent-version-${i}`}
-                            className="text-xs border border-neutral-300 rounded px-2 py-1.5 w-40 bg-white"
+                            className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-40 bg-white"
                         />
                     </div>
                     <div>
@@ -1389,7 +1389,7 @@ function ConsentArticle({
                             value={doc.documentHash ?? ""}
                             onChange={(e) => onUpdate(i, "documentHash", e.target.value)}
                             data-testid={`drawer-consent-hash-${i}`}
-                            className="text-xs font-mono border border-neutral-300 rounded px-2 py-1.5 w-full bg-white"
+                            className="text-xs font-mono border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full bg-white"
                         />
                     </div>
                 </div>
