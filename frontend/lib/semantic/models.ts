@@ -68,26 +68,52 @@ export interface SubmitDisclosureInventoryCapabilityAction {
     orderHash: string;
 }
 
-export type DeliveryLifecycleSignalActionKind =
-    | "declarePreparationStarted"
-    | "declareReadyForPickup"
-    | "declareEnRoute"
-    | "declarePickedUp"
-    | "declareDelivered";
+/** Merchant-process event types — re-exported from the SDK schema enum to
+ *  keep the capability descriptor and the on-chain validator's enum in
+ *  lockstep. */
+export type MerchantProcessEventKind =
+    | "order-received"
+    | "accepted"
+    | "prep-started"
+    | "ready-for-pickup"
+    | "handed-off"
+    | "cancelled";
 
-export interface SubmitDeliveryLifecycleSignalCapabilityAction {
+/** Courier-process event types — re-exported from the SDK schema enum. */
+export type CourierProcessEventKind =
+    | "available"
+    | "accepted"
+    | "en-route-pickup"
+    | "arrived-pickup"
+    | "in-transit"
+    | "arrived-dropoff"
+    | "completed"
+    | "cancelled";
+
+export interface SubmitMerchantProcessSignalCapabilityAction {
     executionType: "transaction";
-    kind: "submit-delivery-lifecycle-signal";
+    kind: "submit-merchant-process-signal";
     orderHash: string;
-    signal: DeliveryLifecycleSignalActionKind;
+    eventType: MerchantProcessEventKind;
     roleOrderHash?: string;
 }
 
-export interface SubmitDeliveryLifecycleProofCapabilityAction {
+export interface SubmitCourierProcessSignalCapabilityAction {
     executionType: "transaction";
-    kind: "submit-delivery-lifecycle-proof";
+    kind: "submit-courier-process-signal";
     orderHash: string;
-    signal: "declarePickedUp" | "declareDelivered";
+    eventType: CourierProcessEventKind;
+    roleOrderHash?: string;
+}
+
+/** Courier-process attestation paired with a proximity-proof attestation —
+ *  used at the two handoff edges where on-chain proximity evidence
+ *  accompanies the role-event log entry (arrived-pickup, completed). */
+export interface SubmitCourierProcessSignalWithProofCapabilityAction {
+    executionType: "transaction";
+    kind: "submit-courier-process-signal-with-proof";
+    orderHash: string;
+    eventType: "arrived-pickup" | "completed";
     roleOrderHash?: string;
 }
 
@@ -124,8 +150,9 @@ export type CapabilityActionDescriptor =
     | WithdrawOperatorDepositCapabilityAction
     | SubmitDisclosureCommitmentCapabilityAction
     | SubmitDisclosureInventoryCapabilityAction
-    | SubmitDeliveryLifecycleSignalCapabilityAction
-    | SubmitDeliveryLifecycleProofCapabilityAction
+    | SubmitMerchantProcessSignalCapabilityAction
+    | SubmitCourierProcessSignalCapabilityAction
+    | SubmitCourierProcessSignalWithProofCapabilityAction
     | ClaimAuctionCapabilityAction
     | ClaimAirdropCapabilityAction
     | ClaimVestingCapabilityAction
@@ -141,11 +168,18 @@ export function isClaimAuctionCapability(
     return capability.action.executionType === "transaction" && capability.action.kind === "claim-auction";
 }
 
-export function isDeliveryLifecycleSignalCapability(
+export function isMerchantProcessSignalCapability(
     capability: CapabilityModel,
-): capability is CapabilityModelWithAction<SubmitDeliveryLifecycleSignalCapabilityAction> {
+): capability is CapabilityModelWithAction<SubmitMerchantProcessSignalCapabilityAction> {
     return capability.action.executionType === "transaction"
-        && capability.action.kind === "submit-delivery-lifecycle-signal";
+        && capability.action.kind === "submit-merchant-process-signal";
+}
+
+export function isCourierProcessSignalCapability(
+    capability: CapabilityModel,
+): capability is CapabilityModelWithAction<SubmitCourierProcessSignalCapabilityAction> {
+    return capability.action.executionType === "transaction"
+        && capability.action.kind === "submit-courier-process-signal";
 }
 
 export function isDisclosureCommitmentCapability(
@@ -186,8 +220,8 @@ export interface SubmitDisclosureInventoryCapabilityInput {
     grams: bigint;
 }
 
-export interface SubmitDeliveryLifecycleProofCapabilityInput {
-    kind: "submit-delivery-lifecycle-proof";
+export interface SubmitCourierProcessSignalWithProofCapabilityInput {
+    kind: "submit-courier-process-signal-with-proof";
     proof: {
         band: number;
         nonce: `0x${string}`;
@@ -201,7 +235,7 @@ export type CapabilityExecutionInput =
     | WithdrawOperatorDepositCapabilityInput
     | SubmitDisclosureCommitmentCapabilityInput
     | SubmitDisclosureInventoryCapabilityInput
-    | SubmitDeliveryLifecycleProofCapabilityInput;
+    | SubmitCourierProcessSignalWithProofCapabilityInput;
 
 export interface CapabilityModel {
     id: string;

@@ -52,20 +52,20 @@ describe("executeTransactionCapabilityAction", () => {
         expect(claimVesting).toHaveBeenCalledWith("founder");
     });
 
-    it("dispatches delivery proof submissions with proof input", async () => {
-        const submitDeliveryLifecycleProof = vi.fn(async () => undefined);
+    it("dispatches courier-process proof submissions with proof input", async () => {
+        const submitCourierProcessSignalWithProof = vi.fn(async () => undefined);
 
         await executeTransactionCapabilityAction(
             {
                 executionType: "transaction",
-                kind: "submit-delivery-lifecycle-proof",
+                kind: "submit-courier-process-signal-with-proof",
                 orderHash: "delivery-order",
-                signal: "declareDelivered",
+                eventType: "completed",
                 roleOrderHash: "driver-order",
             },
-            { submitDeliveryLifecycleProof },
+            { submitCourierProcessSignalWithProof },
             {
-                kind: "submit-delivery-lifecycle-proof",
+                kind: "submit-courier-process-signal-with-proof",
                 proof: {
                     band: 4,
                     nonce: "0xdeadbeef",
@@ -74,9 +74,9 @@ describe("executeTransactionCapabilityAction", () => {
             },
         );
 
-        expect(submitDeliveryLifecycleProof).toHaveBeenCalledWith(
+        expect(submitCourierProcessSignalWithProof).toHaveBeenCalledWith(
             "delivery-order",
-            "declareDelivered",
+            "completed",
             {
                 band: 4,
                 nonce: "0xdeadbeef",
@@ -86,17 +86,17 @@ describe("executeTransactionCapabilityAction", () => {
         );
     });
 
-    it("rejects delivery proof execution without proof input", async () => {
+    it("rejects courier-process proof execution without proof input", async () => {
         await expect(executeTransactionCapabilityAction(
             {
                 executionType: "transaction",
-                kind: "submit-delivery-lifecycle-proof",
+                kind: "submit-courier-process-signal-with-proof",
                 orderHash: "delivery-order",
-                signal: "declarePickedUp",
+                eventType: "arrived-pickup",
             },
             {
-                submitDeliveryLifecycleProof: vi.fn(async () => undefined),
+                submitCourierProcessSignalWithProof: vi.fn(async () => undefined),
             },
-        )).rejects.toThrow("Delivery proof input is required.");
+        )).rejects.toThrow("Courier-process proof input is required.");
     });
 });

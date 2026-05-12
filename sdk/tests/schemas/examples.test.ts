@@ -12,7 +12,6 @@ import ghgPas2050SpecRaw from "../../src/schemas/examples/figaro-ghg-pas-2050-v1
 import ghgEn16258SpecRaw from "../../src/schemas/examples/figaro-ghg-en-16258-v1.json" with { type: "json" };
 import ghgCustomSpecRaw from "../../src/schemas/examples/figaro-ghg-custom-v1.json" with { type: "json" };
 import ghgMeasurementSpecRaw from "../../src/schemas/examples/figaro-ghg-measurement-v1.json" with { type: "json" };
-import lifecycleSpecRaw from "../../src/schemas/examples/figaro-delivery-lifecycle-v1.json" with { type: "json" };
 import proximityPolicySpecRaw from "../../src/schemas/examples/figaro-proximity-policy-v1.json" with { type: "json" };
 import proximityProofSpecRaw from "../../src/schemas/examples/figaro-proximity-proof-v1.json" with { type: "json" };
 import offsetPolicySpecRaw from "../../src/schemas/examples/figaro-offset-policy-v1.json" with { type: "json" };
@@ -328,21 +327,6 @@ describe("example schema specs — parse + validate sample content", () => {
         const parsed = parseSchemaSpec(ghgMeasurementSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({}, parsed.spec, { stage: 1 }).ok).toBe(false);
-    });
-
-    // ── figaro-delivery-lifecycle-v1 ──
-
-    it("figaro-delivery-lifecycle-v1 spec parses cleanly", () => {
-        expect(parseSchemaSpec(lifecycleSpecRaw).ok).toBe(true);
-    });
-
-    it("figaro-delivery-lifecycle-v1 accepts each stage with optional evidence", () => {
-        const parsed = parseSchemaSpec(lifecycleSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        for (let s = 0; s <= 4; s++) {
-            expect(validateContent({}, parsed.spec, { stage: s }).ok).toBe(true);
-            expect(validateContent({ evidenceUri: "ipfs://cid" }, parsed.spec, { stage: s }).ok).toBe(true);
-        }
     });
 
     // ── figaro-proximity-policy-v1 ──

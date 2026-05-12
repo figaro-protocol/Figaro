@@ -50,7 +50,8 @@ export interface AcceptedTokenMetadata {
  * surface — each entry binds the seller to a registered schema from SchemaRegistry.
  *
  * Examples:
- *   - "figaro-delivery-lifecycle-v1" → seller participates in delivery lifecycle attestation
+ *   - "figaro-merchant-process-v1" → merchant attests their internal order-fulfilment events
+ *   - "figaro-courier-process-v1" → courier attests their internal transport events
  *   - "figaro-ghg-iso-14064-v1" → seller reports GHG emissions per ISO 14064
  *   - "figaro-proximity-policy-v1" → seller commits a required proximity band at agreement time
  *     (paired runtime sister: "figaro-proximity-proof-v1" carrying band+nonce+sig per handoff)

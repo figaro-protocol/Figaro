@@ -1,18 +1,37 @@
 import {
     CapabilityModel,
-    DeliveryLifecycleSignalActionKind,
+    CourierProcessEventKind,
     MechanismModel,
+    MerchantProcessEventKind,
     OrderNodeModel,
 } from "@/lib/semantic/models";
 import { hexEqual } from "@/lib/shared/evm";
 
-const DELIVERY_SIGNAL_LABELS: Record<DeliveryLifecycleSignalActionKind, string> = {
-    declarePreparationStarted: "Declare Preparation Started",
-    declareReadyForPickup: "Declare Ready for Pickup",
-    declareEnRoute: "Declare En Route",
-    declarePickedUp: "Declare Picked Up",
-    declareDelivered: "Declare Delivered",
-};
+/** Merchant signals emitted by the restaurant role at the root-order level.
+ *  Ordered by typical lifecycle progression for UI sort. */
+const MERCHANT_SIGNAL_ORDER: ReadonlyArray<{
+    eventType: MerchantProcessEventKind;
+    label: string;
+}> = [
+    { eventType: "prep-started", label: "Declare Preparation Started" },
+    { eventType: "ready-for-pickup", label: "Declare Ready for Pickup" },
+    { eventType: "handed-off", label: "Declare Handed Off" },
+];
+
+/** Courier signals emitted by the courier role on a delivery sub-order.
+ *  Ordered by typical lifecycle progression for UI sort. The two
+ *  proximity-bearing events (arrived-pickup, completed) are surfaced through
+ *  the proof-bearing capability descriptor in DeliveryAttestationPanel, not
+ *  this list — keep this list to the unproven en-route signal so the
+ *  CoordinatorActionModule shows only the lightweight signals. */
+const COURIER_SIGNAL_ORDER: ReadonlyArray<{
+    eventType: CourierProcessEventKind;
+    label: string;
+}> = [
+    { eventType: "en-route-pickup", label: "Declare En Route" },
+    { eventType: "arrived-pickup", label: "Declare Picked Up" },
+    { eventType: "completed", label: "Declare Delivered" },
+];
 
 function findMechanism(mechanisms: MechanismModel[], kinds: string[]): MechanismModel | null {
     return mechanisms.find((mechanism) => kinds.includes(mechanism.kind)) ?? null;
@@ -33,11 +52,6 @@ function isDeliveryCoordinatorRole(roleKind: string | undefined): boolean {
 function isRestaurantRole(roleKind: string | undefined): boolean {
     return roleKind === "merchant";
 }
-
-const RESTAURANT_SIGNAL_ORDER: DeliveryLifecycleSignalActionKind[] = [
-    "declarePreparationStarted",
-    "declareReadyForPickup",
-];
 
 function isAuctionClaimRole(roleKind: string | undefined): boolean {
     return roleKind === "courier";
@@ -141,47 +155,44 @@ export function deriveSelectedOrderCapabilitiesFromRuntime(
     }
 
     if (isSelectedSeller && coordinatorMechanism && isDeliveryCoordinatorRole(roleKind)) {
-        (Object.entries(DELIVERY_SIGNAL_LABELS) as Array<[DeliveryLifecycleSignalActionKind, string]>)
-            .filter(([signal]) => signal === "declareEnRoute" || signal === "declarePickedUp" || signal === "declareDelivered")
-            .forEach(([signal, label], index) => {
-                capabilities.push({
-                    id: `${order.processId}:${order.orderId}:submit-delivery-lifecycle-signal:${signal}`,
-                    label,
-                    actionKind: "submit-delivery-lifecycle-signal",
-                    action: {
-                        executionType: "transaction",
-                        kind: "submit-delivery-lifecycle-signal",
-                        orderHash: order.orderId,
-                        signal,
-                    },
-                    mechanismId: coordinatorMechanism.id,
-                    scopeType: "order",
-                    scopeId: order.orderId,
-                    preconditions: ["driver-of-selected-order"],
-                    riskLabel: "standard",
-                    writeTarget: "AttestationCoordinator.attestAsSeller",
-                    uiPriority: 68 - index,
-                    source: {
-                        truthClass: "protocol-derived",
-                        sourceLabel: `selected driver may attest ${label.toLowerCase()} for this delivery order`,
-                        referenceId: `${order.processId}:${order.orderId}:submit-delivery-lifecycle-signal:${signal}`,
-                    },
-                });
+        COURIER_SIGNAL_ORDER.forEach(({ eventType, label }, index) => {
+            capabilities.push({
+                id: `${order.processId}:${order.orderId}:submit-courier-process-signal:${eventType}`,
+                label,
+                actionKind: "submit-courier-process-signal",
+                action: {
+                    executionType: "transaction",
+                    kind: "submit-courier-process-signal",
+                    orderHash: order.orderId,
+                    eventType,
+                },
+                mechanismId: coordinatorMechanism.id,
+                scopeType: "order",
+                scopeId: order.orderId,
+                preconditions: ["driver-of-selected-order"],
+                riskLabel: "standard",
+                writeTarget: "AttestationCoordinator.attestAsSeller",
+                uiPriority: 68 - index,
+                source: {
+                    truthClass: "protocol-derived",
+                    sourceLabel: `selected driver may attest ${label.toLowerCase()} for this delivery order`,
+                    referenceId: `${order.processId}:${order.orderId}:submit-courier-process-signal:${eventType}`,
+                },
             });
+        });
     }
 
     if (isSelectedSeller && coordinatorMechanism && isRestaurantRole(roleKind) && order.parentOrderIds.length === 0) {
-        RESTAURANT_SIGNAL_ORDER.forEach((signal, index) => {
-            const label = DELIVERY_SIGNAL_LABELS[signal];
+        MERCHANT_SIGNAL_ORDER.forEach(({ eventType, label }, index) => {
             capabilities.push({
-                id: `${order.processId}:${order.orderId}:submit-delivery-lifecycle-signal:${signal}`,
+                id: `${order.processId}:${order.orderId}:submit-merchant-process-signal:${eventType}`,
                 label,
-                actionKind: "submit-delivery-lifecycle-signal",
+                actionKind: "submit-merchant-process-signal",
                 action: {
                     executionType: "transaction",
-                    kind: "submit-delivery-lifecycle-signal",
+                    kind: "submit-merchant-process-signal",
                     orderHash: order.orderId,
-                    signal,
+                    eventType,
                 },
                 mechanismId: coordinatorMechanism.id,
                 scopeType: "order",
@@ -193,7 +204,7 @@ export function deriveSelectedOrderCapabilitiesFromRuntime(
                 source: {
                     truthClass: "protocol-derived",
                     sourceLabel: `selected restaurant may attest ${label.toLowerCase()} for this order`,
-                    referenceId: `${order.processId}:${order.orderId}:submit-delivery-lifecycle-signal:${signal}`,
+                    referenceId: `${order.processId}:${order.orderId}:submit-merchant-process-signal:${eventType}`,
                 },
             });
         });

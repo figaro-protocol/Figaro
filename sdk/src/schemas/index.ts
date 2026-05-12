@@ -73,7 +73,6 @@ export {
     encodeGHGScopeContent,
     encodeGHGMeasurementContent,
     encodeCommerceContent,
-    encodeLifecycleContent,
     encodeProximityPolicyContent,
     encodeProximityProofContent,
     encodeOffsetPolicyContent,

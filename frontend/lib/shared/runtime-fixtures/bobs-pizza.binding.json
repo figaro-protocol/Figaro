@@ -14,7 +14,7 @@
             "scope": "assembly",
             "mechanismIds": [
                 "core-v3",
-                "delivery-lifecycle",
+                "delivery-coordinator",
                 "dutch-auction-courier-market"
             ],
             "notes": "Primary merchant operator for the Local Commerce archetype."

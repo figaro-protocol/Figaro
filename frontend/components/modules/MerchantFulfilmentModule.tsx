@@ -13,10 +13,11 @@
  * Gating: only renders for the merchant role (matching IncomingOrdersModule)
  * and only when the connected wallet equals the selected order's seller.
  *
- * Co-located with the existing handoff modules but operates on a different
- * primitive — `useDeliveryLifecycle.ts` fires courier/delivery events;
- * `useMerchantProcess.ts` fires merchant events. Each role has its own
- * sovereign log per CLAUDE.md "When to add a per-role process schema".
+ * Co-located with the existing handoff modules. The two role-process hooks
+ * partition by operator: `useMerchantProcess.ts` fires merchant events
+ * (this module), `useCourierProcess.ts` fires courier events. Each role
+ * has its own sovereign log per CLAUDE.md "When to add a per-role process
+ * schema".
  */
 
 import { useCallback, useState } from "react";

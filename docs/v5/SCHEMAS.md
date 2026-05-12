@@ -17,9 +17,9 @@ CLAUDE.md keeps the lockstep principle and the adding-a-schema checklist; this f
   via `spec.stages[stage]`.
 - Per-schema content encoders (`encodeHandoffContent`, `encodeCommerceContent`,
   `encodeGHGScopeContent`, `encodeFulfilmentContent`, `encodeGeoContent`,
-  `encodeLifecycleContent`, `encodeProximityPolicyContent`,
-  `encodeProximityProofContent`, `encodeMerchantContent`,
-  `encodeCourierContent`) — bridge between TS objects and ABI bytes expected by
+  `encodeProximityPolicyContent`, `encodeProximityProofContent`,
+  `encodeMerchantContent`, `encodeCourierContent`) — bridge between TS objects
+  and ABI bytes expected by
   the on-chain validator. Each schema's encoder is the canonical TS-side
   declaration of its field-to-position mapping. Topology has no encoder —
   it's a manifest-only clause with no runtime attestation.
@@ -67,7 +67,6 @@ Built-in specs ship in `sdk/src/schemas/examples/` and
 | `figaro-ghg-en-16258-v1` | EN 16258 transport-emissions methodology + scope (Category-2) | Layer A + C |
 | `figaro-ghg-custom-v1` | Custom / non-standard GHG methodology + scope (Category-2) | Layer A + C |
 | `figaro-ghg-measurement-v1` | Runtime grams CO2e (Category-1) | Layer A + C |
-| `figaro-delivery-lifecycle-v1` | Stage progression (5 stages) + evidence URI | Layer A + C |
 | `figaro-proximity-policy-v1` | Required detection band committed at agreement signing (Category-2) | Layer A + C |
 | `figaro-proximity-proof-v1` | Per-handoff nonce + signed witness payload at runtime (Category-1) | Layer A + C |
 | `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A + C |

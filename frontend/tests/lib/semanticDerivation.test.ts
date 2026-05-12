@@ -318,8 +318,8 @@ describe('assembly artifact registry', () => {
             driverAddress,
         ).filter((capability) => capability.action.kind === 'claim-auction');
 
-        const driverSignalCapabilities = driverLifecycleCapabilities.filter((capability) => capability.action.kind === 'submit-delivery-lifecycle-signal');
-        const restaurantSignalCapabilities = restaurantLifecycleCapabilities.filter((capability) => capability.action.kind === 'submit-delivery-lifecycle-signal');
+        const driverSignalCapabilities = driverLifecycleCapabilities.filter((capability) => capability.action.kind === 'submit-courier-process-signal');
+        const restaurantSignalCapabilities = restaurantLifecycleCapabilities.filter((capability) => capability.action.kind === 'submit-merchant-process-signal');
 
         expect(driverSignalCapabilities).toHaveLength(3);
         expect(driverSignalCapabilities).toEqual(
@@ -327,24 +327,24 @@ describe('assembly artifact registry', () => {
                 expect.objectContaining({
                     action: expect.objectContaining({
                         executionType: 'transaction',
-                        kind: 'submit-delivery-lifecycle-signal',
-                        signal: 'declareEnRoute',
+                        kind: 'submit-courier-process-signal',
+                        eventType: 'en-route-pickup',
                         orderHash: 'delivery-order',
                     }),
                 }),
                 expect.objectContaining({
                     action: expect.objectContaining({
                         executionType: 'transaction',
-                        kind: 'submit-delivery-lifecycle-signal',
-                        signal: 'declarePickedUp',
+                        kind: 'submit-courier-process-signal',
+                        eventType: 'arrived-pickup',
                         orderHash: 'delivery-order',
                     }),
                 }),
                 expect.objectContaining({
                     action: expect.objectContaining({
                         executionType: 'transaction',
-                        kind: 'submit-delivery-lifecycle-signal',
-                        signal: 'declareDelivered',
+                        kind: 'submit-courier-process-signal',
+                        eventType: 'completed',
                         orderHash: 'delivery-order',
                     }),
                 }),

@@ -59,7 +59,7 @@ contract AttestationCoordinatorTest is Test {
 
     uint256 constant INITIAL_BALANCE = 10_000 ether;
 
-    bytes32 constant LIFECYCLE_SCHEMA = keccak256("figaro-delivery-lifecycle-v1");
+    bytes32 constant LIFECYCLE_SCHEMA = keccak256("figaro-courier-process-v1");
     bytes32 constant GHG_SCHEMA = keccak256("figaro-ghg-iso-14064-v1");
     bytes32 constant PROXIMITY_SCHEMA = keccak256("figaro-proximity-proof-v1");
     bytes32 constant COMMERCE_SCHEMA = keccak256("figaro-commerce-v1");

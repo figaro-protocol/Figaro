@@ -30,7 +30,8 @@ vi.mock("@/lib/core/contracts", () => ({
 // Test helpers
 // ---------------------------------------------------------------------------
 
-const DELIVERY_SCHEMA_ID = keccak256(stringToHex("figaro-delivery-lifecycle-v1"));
+const MERCHANT_SCHEMA_ID = keccak256(stringToHex("figaro-merchant-process-v1"));
+const COURIER_SCHEMA_ID = keccak256(stringToHex("figaro-courier-process-v1"));
 const PROXIMITY_SCHEMA_ID = keccak256(stringToHex("figaro-proximity-proof-v1"));
 
 function makeMockLog(
@@ -81,7 +82,7 @@ describe("createDeliveryCoordinatorSource", () => {
         expect(client.getContractEvents).toHaveBeenCalledTimes(1);
     });
 
-    it("maps Attestation events (stage 0 = Preparation Started)", async () => {
+    it("maps merchant-process events (stage 2 = Preparation Started)", async () => {
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient(
             {
@@ -89,9 +90,9 @@ describe("createDeliveryCoordinatorSource", () => {
                     makeMockLog("Attestation", {
                         processId: "0xabc",
                         orderHash: "0xorder1",
-                        schemaId: DELIVERY_SCHEMA_ID,
+                        schemaId: MERCHANT_SCHEMA_ID,
                         attester: "0xRestaurant",
-                        stage: 0,
+                        stage: 2,
                         contentRef: "0xcontent",
                     }),
                 ],
@@ -107,6 +108,7 @@ describe("createDeliveryCoordinatorSource", () => {
         expect(events[0].orderHash).toBe("0xorder1");
         expect(events[0].timestamp).toBe(1700000100);
         expect(events[0].details.attester).toBe("0xRestaurant");
+        expect(events[0].details.schema).toBe("merchant-process");
     });
 
     it("maps proximity schema attestation with band stage", async () => {
@@ -154,16 +156,16 @@ describe("createDeliveryCoordinatorSource", () => {
         expect(events[0].label).toContain("Contact (NFC ~4cm)");
     });
 
-    it("maps plain Attestation for delivery stage 4", async () => {
+    it("maps courier-process Attestation for completed (stage 6)", async () => {
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient({
             Attestation: [
                 makeMockLog("Attestation", {
                     processId: "0xabc",
                     orderHash: "0xorder4",
-                    schemaId: DELIVERY_SCHEMA_ID,
+                    schemaId: COURIER_SCHEMA_ID,
                     attester: "0xDriver",
-                    stage: 4, // Order Delivered
+                    stage: 6, // completed
                     contentRef: "0x",
                 }),
             ],
@@ -172,11 +174,12 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toBe("Order Delivered");
+        expect(events[0].label).toBe("Delivered");
         expect(events[0].eventName).toBe("Attestation");
+        expect(events[0].details.schema).toBe("courier-process");
     });
 
-    it("filters out events with non-delivery and non-proximity schemaId", async () => {
+    it("filters out events with non-process and non-proximity schemaId", async () => {
         const otherSchema = keccak256(stringToHex("figaro-ghg-iso-14064-v1"));
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient({
@@ -196,7 +199,7 @@ describe("createDeliveryCoordinatorSource", () => {
         expect(events).toHaveLength(0);
     });
 
-    it("collects events from both delivery and proximity schemas", async () => {
+    it("collects events from merchant, courier, and proximity schemas", async () => {
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient(
             {
@@ -204,17 +207,17 @@ describe("createDeliveryCoordinatorSource", () => {
                     makeMockLog("Attestation", {
                         processId: "0xabc",
                         orderHash: "0xo1",
-                        schemaId: DELIVERY_SCHEMA_ID,
+                        schemaId: MERCHANT_SCHEMA_ID,
                         attester: "0xR",
-                        stage: 0,
+                        stage: 2,
                         contentRef: "0x",
                     }, 10n, "0xtx1"),
                     makeMockLog("Attestation", {
                         processId: "0xabc",
                         orderHash: "0xo2",
-                        schemaId: DELIVERY_SCHEMA_ID,
+                        schemaId: COURIER_SCHEMA_ID,
                         attester: "0xR",
-                        stage: 1,
+                        stage: 2,
                         contentRef: "0x",
                     }, 20n, "0xtx2"),
                     makeMockLog("Attestation", {
@@ -233,10 +236,9 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(3);
-        // All events come through Attestation — two delivery + one proximity
         expect(events.map((e) => e.label)).toEqual([
             "Preparation Started",
-            "Ready for Pickup",
+            "En Route to Pickup",
             expect.stringContaining("Proximity Proof"),
         ]);
     });
@@ -248,17 +250,17 @@ describe("createDeliveryCoordinatorSource", () => {
                 makeMockLog("Attestation", {
                     processId: "0xabc",
                     orderHash: "0xo1",
-                    schemaId: DELIVERY_SCHEMA_ID,
+                    schemaId: MERCHANT_SCHEMA_ID,
                     attester: "0xR",
-                    stage: 0,
+                    stage: 2,
                     contentRef: "0x",
                 }, 100n, "0xtx1"),
                 makeMockLog("Attestation", {
                     processId: "0xabc",
                     orderHash: "0xo2",
-                    schemaId: DELIVERY_SCHEMA_ID,
+                    schemaId: MERCHANT_SCHEMA_ID,
                     attester: "0xR",
-                    stage: 1,
+                    stage: 3,
                     contentRef: "0x",
                 }, 100n, "0xtx2"),  // same block
             ],

@@ -1,5 +1,10 @@
 import type { Hex } from "viem";
-import type { CapabilityActionDescriptor, CapabilityExecutionInput, DeliveryLifecycleSignalActionKind } from "@/lib/semantic/models";
+import type {
+    CapabilityActionDescriptor,
+    CapabilityExecutionInput,
+    CourierProcessEventKind,
+    MerchantProcessEventKind,
+} from "@/lib/semantic/models";
 
 type TransactionExecutionResult = Promise<Hex | undefined | void>;
 
@@ -15,8 +20,9 @@ export interface TransactionCapabilityExecutors {
     withdrawOperatorDeposit?: () => TransactionExecutionResult;
     submitDisclosureCommitment?: (orderHash: string, disclosureRole: "merchant" | "courier") => TransactionExecutionResult;
     submitDisclosureInventory?: (orderHash: string, grams: bigint) => TransactionExecutionResult;
-    submitDeliveryLifecycleSignal?: (orderHash: string, signal: DeliveryLifecycleSignalActionKind, roleOrderHash?: string) => TransactionExecutionResult;
-    submitDeliveryLifecycleProof?: (orderHash: string, signal: "declarePickedUp" | "declareDelivered", proof: { band: number; nonce: `0x${string}`; deviceSig: `0x${string}` }, roleOrderHash?: string) => TransactionExecutionResult;
+    submitMerchantProcessSignal?: (orderHash: string, eventType: MerchantProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
+    submitCourierProcessSignal?: (orderHash: string, eventType: CourierProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
+    submitCourierProcessSignalWithProof?: (orderHash: string, eventType: "arrived-pickup" | "completed", proof: { band: number; nonce: `0x${string}`; deviceSig: `0x${string}` }, roleOrderHash?: string) => TransactionExecutionResult;
     claimAuction?: (auctionId: string) => TransactionExecutionResult;
     claimAirdrop?: (amount: bigint, proof: `0x${string}`[]) => TransactionExecutionResult;
     claimVesting?: (variant: "founder" | "ecosystem") => TransactionExecutionResult;
@@ -102,23 +108,29 @@ export async function executeTransactionCapabilityAction(
             )(action.orderHash, grams);
             break;
         }
-        case "submit-delivery-lifecycle-signal":
+        case "submit-merchant-process-signal":
             txHash = await ensureExecutor(
-                executors.submitDeliveryLifecycleSignal,
-                "Delivery lifecycle execution is unavailable.",
-            )(action.orderHash, action.signal, action.roleOrderHash);
+                executors.submitMerchantProcessSignal,
+                "Merchant-process execution is unavailable.",
+            )(action.orderHash, action.eventType, action.roleOrderHash);
             break;
-        case "submit-delivery-lifecycle-proof": {
-            const proof = input?.kind === "submit-delivery-lifecycle-proof"
+        case "submit-courier-process-signal":
+            txHash = await ensureExecutor(
+                executors.submitCourierProcessSignal,
+                "Courier-process execution is unavailable.",
+            )(action.orderHash, action.eventType, action.roleOrderHash);
+            break;
+        case "submit-courier-process-signal-with-proof": {
+            const proof = input?.kind === "submit-courier-process-signal-with-proof"
                 ? input.proof
                 : undefined;
             if (!proof) {
-                throw new Error("Delivery proof input is required.");
+                throw new Error("Courier-process proof input is required.");
             }
             txHash = await ensureExecutor(
-                executors.submitDeliveryLifecycleProof,
-                "Delivery proof execution is unavailable.",
-            )(action.orderHash, action.signal, proof, action.roleOrderHash);
+                executors.submitCourierProcessSignalWithProof,
+                "Courier-process proof execution is unavailable.",
+            )(action.orderHash, action.eventType, proof, action.roleOrderHash);
             break;
         }
         case "claim-auction":

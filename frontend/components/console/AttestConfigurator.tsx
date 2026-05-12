@@ -55,7 +55,7 @@ export function AttestConfigurator({ action, onQueue }: Props) {
                     .map((s) => ({ key: s.schema, id: computeSchemaId(s.schema) as Hex }));
                 setSchemas(opts);
                 if (opts.length > 0) {
-                    const preferred = opts.find((o) => o.key === "figaro-delivery-lifecycle-v1") ?? opts[0];
+                    const preferred = opts.find((o) => o.key === "figaro-courier-process-v1") ?? opts[0];
                     setSchemaKey(preferred.key);
                 }
             })

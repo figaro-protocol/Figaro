@@ -27,8 +27,8 @@ type SellerAttestationInput = {
      * committed `sectionData` — correct for Category-2 schemas (handoff, geo,
      * fulfilment, ghg-disclosure, commerce) whose validators enforce
      * `keccak256(content) == keccak256(sectionData)`. Supply an explicit value
-     * for Category-1 schemas (delivery-lifecycle, proximity, measurement,
-     * process-logs) whose content shape differs from the committed clause.
+     * for Category-1 schemas (merchant-process, courier-process, proximity,
+     * measurement) whose content shape differs from the committed clause.
      */
     content?: Hex;
     /** Optional — defaults to `orderHash` for same-order attestation. Supply

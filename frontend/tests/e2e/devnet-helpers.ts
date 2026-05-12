@@ -29,7 +29,7 @@ import {
     getSectionDataBytes,
     type Agreement,
 } from '@figaro/core';
-import { encodeLifecycleContent } from '@figaro/core/schemas';
+import { encodeMerchantContent, encodeCourierContent } from '@figaro/core/schemas';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
 import { ZERO_PROCESS_ID } from '@/lib/shared/evm';
 
@@ -56,24 +56,32 @@ const GHG_SCHEMA_KEY = 'figaro-ghg-iso-14064-v1';
 const GHG_SCHEMA_ID = keccak256(stringToHex(GHG_SCHEMA_KEY));
 const DISCLOSURE_KIND = { commitment: 0, inventory: 1, restatement: 2, verification: 3 } as const;
 
-const DELIVERY_LIFECYCLE_SCHEMA_KEY = 'figaro-delivery-lifecycle-v1';
-const DELIVERY_LIFECYCLE_SCHEMA_ID = keccak256(stringToHex(DELIVERY_LIFECYCLE_SCHEMA_KEY));
+const MERCHANT_PROCESS_SCHEMA_KEY = 'figaro-merchant-process-v1';
+const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
+const COURIER_PROCESS_SCHEMA_KEY = 'figaro-courier-process-v1';
+const COURIER_PROCESS_SCHEMA_ID = keccak256(stringToHex(COURIER_PROCESS_SCHEMA_KEY));
 
-const DELIVERY_STAGE = {
-    preparationStarted: 0,
-    readyForPickup: 1,
-    courierEnRoute: 2,
-    pickedUp: 3,
-    delivered: 4,
+/** Merchant event types — uint8 stage per the validator's enum. */
+const MERCHANT_EVENT = {
+    orderReceived: 0,
+    accepted: 1,
+    prepStarted: 2,
+    readyForPickup: 3,
+    handedOff: 4,
+    cancelled: 5,
 } as const;
 
-const LIFECYCLE_SIGNAL_TO_STAGE: Record<string, number> = {
-    declarePreparationStarted: DELIVERY_STAGE.preparationStarted,
-    declareReadyForPickup: DELIVERY_STAGE.readyForPickup,
-    declareEnRoute: DELIVERY_STAGE.courierEnRoute,
-    declarePickedUp: DELIVERY_STAGE.pickedUp,
-    declareDelivered: DELIVERY_STAGE.delivered,
-};
+/** Courier event types — uint8 stage per the validator's enum. */
+const COURIER_EVENT = {
+    available: 0,
+    accepted: 1,
+    enRoutePickup: 2,
+    arrivedPickup: 3,
+    inTransit: 4,
+    arrivedDropoff: 5,
+    completed: 6,
+    cancelled: 7,
+} as const;
 
 // ── EIP-712 Types (imported from @figaro/core) ──────────────────────────────
 
@@ -110,13 +118,24 @@ function ghgDisclosureAgreement(buyer: `0x${string}`, seller: `0x${string}`): Ag
     };
 }
 
-function deliveryLifecycleAgreement(buyer: `0x${string}`, seller: `0x${string}`): Agreement {
+function merchantProcessAgreement(buyer: `0x${string}`, seller: `0x${string}`): Agreement {
     return {
         version: 'a1',
         buyer,
         seller,
         sections: [
-            { schema: DELIVERY_LIFECYCLE_SCHEMA_KEY, data: { evidenceUri: '' } },
+            { schema: MERCHANT_PROCESS_SCHEMA_KEY, data: { eventType: 'order-received', evidenceUri: '' } },
+        ],
+    };
+}
+
+function courierProcessAgreement(buyer: `0x${string}`, seller: `0x${string}`): Agreement {
+    return {
+        version: 'a1',
+        buyer,
+        seller,
+        sections: [
+            { schema: COURIER_PROCESS_SCHEMA_KEY, data: { eventType: 'available', evidenceUri: '' } },
         ],
     };
 }
@@ -662,16 +681,18 @@ export async function seedDeliveryScenario(): Promise<SeededDeliveryScenario> {
 
     await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_PRIVATE_KEY, RESTAURANT_PRIVATE_KEY, SUPPLIER_PRIVATE_KEY);
 
-    // Both orders Active immediately (dual-signed). Each carries a minimal
-    // delivery-lifecycle agreement so the seller can later fire stage attestations.
+    // Both orders Active immediately (dual-signed). The merchant order carries a
+    // figaro-merchant-process-v1 clause and the courier sub-order carries a
+    // figaro-courier-process-v1 clause, so each role's seller can fire its own
+    // sovereign event log attestations.
     const { processId, orderHash: foodOrderHash } = await createRootOrder({
         buyerKey: BUYER_PRIVATE_KEY, sellerKey: RESTAURANT_PRIVATE_KEY, coreAddress, tokenAddress, payment: 1_000000000000000000n,
-        agreement: deliveryLifecycleAgreement(buyer.address as `0x${string}`, restaurant.address as `0x${string}`),
+        agreement: merchantProcessAgreement(buyer.address as `0x${string}`, restaurant.address as `0x${string}`),
     });
     const { orderHash: deliveryOrderHash } = await createSubOrder({
         processId, buyerKey: BUYER_PRIVATE_KEY, sellerKey: SUPPLIER_PRIVATE_KEY, coreAddress, tokenAddress,
         payment: 500000000000000000n, parentOrderHashes: [foodOrderHash],
-        agreement: deliveryLifecycleAgreement(buyer.address as `0x${string}`, driver.address as `0x${string}`),
+        agreement: courierProcessAgreement(buyer.address as `0x${string}`, driver.address as `0x${string}`),
     });
 
     // Create auction for the delivery job (pure coordination — no token handling)
@@ -708,6 +729,15 @@ export async function driverClaimJob(deliveryOrderHash: `0x${string}`): Promise<
     await publicClient.waitForTransactionReceipt({ hash: await driverClient.writeContract(request) });
 }
 
+/** Courier-side lifecycle signals — fires `figaro-courier-process-v1`
+ *  attestations on the delivery sub-order. Each signal maps to the
+ *  validator's uint8 event index. */
+const COURIER_SIGNAL_TO_EVENT: Record<string, { stage: number; eventType: 'en-route-pickup' | 'arrived-pickup' | 'completed' }> = {
+    declareEnRoute: { stage: COURIER_EVENT.enRoutePickup, eventType: 'en-route-pickup' },
+    declarePickedUp: { stage: COURIER_EVENT.arrivedPickup, eventType: 'arrived-pickup' },
+    declareDelivered: { stage: COURIER_EVENT.completed, eventType: 'completed' },
+};
+
 export async function sendLifecycleSignal(
     signal: 'declareEnRoute' | 'declarePickedUp' | 'declareDelivered',
     deliveryOrderHash: `0x${string}`,
@@ -716,21 +746,21 @@ export async function sendLifecycleSignal(
     const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator)!;
     if (!coordinatorAddress) throw new Error('Missing NEXT_PUBLIC_ATTESTATION_COORDINATOR');
 
-    const stage = LIFECYCLE_SIGNAL_TO_STAGE[signal];
+    const mapping = COURIER_SIGNAL_TO_EVENT[signal];
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const driver = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
     const driverClient = createWalletClient({ account: driver, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const deliveryCommitment = seededCommitments.get(deliveryOrderHash);
     if (!deliveryCommitment) throw new Error(`Missing seeded commitment for ${deliveryOrderHash}`);
 
-    const { sectionData, proof } = agreementReceipt(deliveryCommitment, DELIVERY_LIFECYCLE_SCHEMA_KEY);
-    // Category-1 lifecycle — content must decode as `(string evidenceUri)`;
-    // empty URI is valid. No byte-equality cross-check with sectionData.
-    const content = encodeLifecycleContent('');
+    const { sectionData, proof } = agreementReceipt(deliveryCommitment, COURIER_PROCESS_SCHEMA_KEY);
+    // Category-1 courier-process content: (uint8 eventType, string evidenceUri).
+    // No byte-equality cross-check with sectionData.
+    const content = encodeCourierContent({ eventType: mapping.eventType, evidenceUri: '' });
     const { request } = await publicClient.simulateContract({
         account: driver.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
         functionName: 'attestAsSeller',
-        args: [deliveryCommitment, deliveryCommitment, DELIVERY_LIFECYCLE_SCHEMA_ID, stage, sectionData, proof, content],
+        args: [deliveryCommitment, deliveryCommitment, COURIER_PROCESS_SCHEMA_ID, mapping.stage, sectionData, proof, content],
     });
     await publicClient.waitForTransactionReceipt({ hash: await driverClient.writeContract(request) });
 }
@@ -746,22 +776,23 @@ export async function restaurantPrepSignals(foodOrderHash: `0x${string}`, _deliv
     const foodCommitment = seededCommitments.get(foodOrderHash);
     if (!foodCommitment) throw new Error(`Missing seeded commitment for ${foodOrderHash}`);
 
-    const { sectionData, proof } = agreementReceipt(foodCommitment, DELIVERY_LIFECYCLE_SCHEMA_KEY);
-    const content = encodeLifecycleContent('');
+    const { sectionData, proof } = agreementReceipt(foodCommitment, MERCHANT_PROCESS_SCHEMA_KEY);
 
-    // Preparing: restaurant attests on the food order
+    // Preparing: restaurant attests prep-started on the food order
+    const prepContent = encodeMerchantContent({ eventType: 'prep-started', evidenceUri: '' });
     const { request: prepReq } = await publicClient.simulateContract({
         account: restaurant.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
         functionName: 'attestAsSeller',
-        args: [foodCommitment, foodCommitment, DELIVERY_LIFECYCLE_SCHEMA_ID, DELIVERY_STAGE.preparationStarted, sectionData, proof, content],
+        args: [foodCommitment, foodCommitment, MERCHANT_PROCESS_SCHEMA_ID, MERCHANT_EVENT.prepStarted, sectionData, proof, prepContent],
     });
     await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(prepReq) });
 
-    // PickupReady: restaurant attests on the food order
+    // PickupReady: restaurant attests ready-for-pickup on the food order
+    const readyContent = encodeMerchantContent({ eventType: 'ready-for-pickup', evidenceUri: '' });
     const { request: readyReq } = await publicClient.simulateContract({
         account: restaurant.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
         functionName: 'attestAsSeller',
-        args: [foodCommitment, foodCommitment, DELIVERY_LIFECYCLE_SCHEMA_ID, DELIVERY_STAGE.readyForPickup, sectionData, proof, content],
+        args: [foodCommitment, foodCommitment, MERCHANT_PROCESS_SCHEMA_ID, MERCHANT_EVENT.readyForPickup, sectionData, proof, readyContent],
     });
     await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(readyReq) });
 }

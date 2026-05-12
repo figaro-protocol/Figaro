@@ -1,33 +1,57 @@
 /**
  * Delivery coordinator event source for the evidence timeline.
  *
- * Lifecycle and proximity events come from AttestationCoordinator
- * (Attestation events filtered by schema — delivery lifecycle or proximity).
- * Proximity proofs are standard attestations under figaro-proximity-proof-v1
- * (the runtime sister of figaro-proximity-policy-v1, which commits the band
- * at agreement signing). Proof data (band, nonce, deviceSig) lives in the
- * on-chain `content` bytes payload. The event's `contentRef` is
- * `keccak256(content)` — a verification digest, not an off-chain pointer.
+ * Per-role sovereign event logs (figaro-merchant-process-v1,
+ * figaro-courier-process-v1) plus proximity proofs
+ * (figaro-proximity-proof-v1) come from AttestationCoordinator's unified
+ * Attestation event. Proximity proofs carry their proof bytes
+ * (band, nonce, deviceSig) in the on-chain `content` payload; the event's
+ * `contentRef = keccak256(content)` is a verification digest, not an
+ * off-chain pointer.
  *
  * Used by buildExtendedTimeline() to produce rich dispute evidence that
  * includes:
- *   - En-route / picked-up / delivered attestations
+ *   - Merchant-role events (prep-started, ready-for-pickup, handed-off, …)
+ *   - Courier-role events (en-route-pickup, arrived-pickup, completed, …)
  *   - Proximity proof attestations (separate schema; proof bytes in `content`)
  *
  * This is a read-only module. No contract writes.
  */
 
-import type { PublicClient } from "viem";
+import { keccak256, stringToHex, type PublicClient } from "viem";
 import type { CoordinatorEventSource, TimelineEvent } from "@/lib/dispute/evidenceTimeline";
 import { CONTRACTS, ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import { DELIVERY_SCHEMA_ID, PROXIMITY_SCHEMA_ID } from "@/lib/mechanisms/useDeliveryLifecycle";
+import {
+    COURIER_PROCESS_SCHEMA_KEY,
+    MERCHANT_PROCESS_SCHEMA_KEY,
+} from "@/lib/core/agreementManifest";
 
-const STAGE_LABELS: Record<number, string> = {
-    0: "Preparation Started",
-    1: "Ready for Pickup",
-    2: "Courier En Route",
-    3: "Order Picked Up",
-    4: "Order Delivered",
+const PROXIMITY_SCHEMA_KEY = "figaro-proximity-proof-v1";
+
+const MERCHANT_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
+const COURIER_SCHEMA_ID = keccak256(stringToHex(COURIER_PROCESS_SCHEMA_KEY));
+const PROXIMITY_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_SCHEMA_KEY));
+
+/** Merchant lifecycle event labels keyed by uint8 stage. */
+const MERCHANT_EVENT_LABELS: Record<number, string> = {
+    0: "Order Received",
+    1: "Order Accepted",
+    2: "Preparation Started",
+    3: "Ready for Pickup",
+    4: "Handed Off",
+    5: "Order Cancelled",
+};
+
+/** Courier lifecycle event labels keyed by uint8 stage. */
+const COURIER_EVENT_LABELS: Record<number, string> = {
+    0: "Courier Available",
+    1: "Courier Accepted",
+    2: "En Route to Pickup",
+    3: "Arrived at Pickup",
+    4: "In Transit",
+    5: "Arrived at Dropoff",
+    6: "Delivered",
+    7: "Job Cancelled",
 };
 
 const BAND_LABELS: Record<number, string> = {
@@ -60,12 +84,13 @@ async function getBlockTimestamp(
 // ---------------------------------------------------------------------------
 
 /**
- * Create a CoordinatorEventSource for delivery lifecycle attestations.
+ * Create a CoordinatorEventSource for per-role lifecycle attestations.
  *
  * All attestations (lifecycle, proximity, GHG) come through the unified
- * Attestation event. Proximity proofs are standard attestations under the
- * figaro-proximity-proof-v1 schema; proof bytes live in the on-chain
- * `content` payload. The event's `contentRef = keccak256(content)`.
+ * Attestation event. The per-role schemas surface as merchant and courier
+ * events with role-specific labels. Proximity proofs are standard
+ * attestations under the figaro-proximity-proof-v1 schema; proof bytes
+ * live in the on-chain `content` payload.
  */
 export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
     return {
@@ -99,10 +124,9 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
                 const stage = Number(a.stage ?? 0);
                 const ts = await getBlockTimestamp(client, log.blockNumber!, blockCache);
 
-                if (schemaId === DELIVERY_SCHEMA_ID) {
-                    // ── Delivery lifecycle attestation ──
+                if (schemaId === MERCHANT_SCHEMA_ID) {
                     events.push({
-                        label: STAGE_LABELS[stage] ?? `Delivery Stage ${stage}`,
+                        label: MERCHANT_EVENT_LABELS[stage] ?? `Merchant Event ${stage}`,
                         blockNumber: log.blockNumber!,
                         timestamp: ts,
                         iso: new Date(ts * 1000).toISOString(),
@@ -113,11 +137,27 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
                             attester: a.attester ?? "",
                             stage: String(stage),
                             contentRef: a.contentRef ?? "",
+                            schema: "merchant-process",
+                        },
+                    });
+                } else if (schemaId === COURIER_SCHEMA_ID) {
+                    events.push({
+                        label: COURIER_EVENT_LABELS[stage] ?? `Courier Event ${stage}`,
+                        blockNumber: log.blockNumber!,
+                        timestamp: ts,
+                        iso: new Date(ts * 1000).toISOString(),
+                        txHash: log.transactionHash!,
+                        orderHash: a.orderHash ?? "",
+                        eventName: "Attestation",
+                        details: {
+                            attester: a.attester ?? "",
+                            stage: String(stage),
+                            contentRef: a.contentRef ?? "",
+                            schema: "courier-process",
                         },
                     });
                 } else if (schemaId === PROXIMITY_SCHEMA_ID) {
                     // ── Proximity proof attestation ──
-                    // Proof data (band, nonce, deviceSig) is off-chain in contentRef.
                     // Stage encodes the band type: 1=Zone, 2=Nearby, 3=Contact, 4=Visual
                     events.push({
                         label: `Proximity Proof — ${BAND_LABELS[stage] ?? `Band ${stage}`}`,

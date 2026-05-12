@@ -12,9 +12,9 @@ import { MERCHANT_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
  * events under this schema. The event log is the merchant's SSoT for "what
  * the merchant has done" — Class B (discretionary attestation) per Paper E.
  *
- * Mirrors `useDeliveryLifecycle.ts` for the courier/delivery-lifecycle
- * surface. Both schemas are Category-1 (no committed clause) — content is
- * supplied at runtime as `(uint8 eventType, string evidenceUri)`.
+ * Mirror of `useCourierProcess.ts` for the courier role. Both schemas are
+ * Category-1 (no committed clause) — content is supplied at runtime as
+ * `(uint8 eventType, string evidenceUri)`.
  *
  * The merchant-process section must be present in the signed agreement
  * manifest for the on-chain inclusion proof to open. `buildOrderAgreement`

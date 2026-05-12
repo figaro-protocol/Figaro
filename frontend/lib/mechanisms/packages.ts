@@ -16,10 +16,8 @@ import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useWalletProcessIds } from "@/hooks/core/useWalletProcessIds";
 import { useDeliveryAttestation } from "@/hooks/core/useDeliveryAttestation";
-import {
-    useDeliveryLifecycleActions,
-    useDeliveryLifecycleSignals,
-} from "@/lib/mechanisms/useDeliveryLifecycle";
+import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
+import { useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
 import { useDutchAuction, useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import {
     useGhgDisclosureActions,
@@ -140,7 +138,7 @@ const ATTESTATION_MECHANISM_PACKAGE: MechanismPackage = {
     hooks: {
         useAttestationCoordinatorActions,
         useDeliveryAttestation,
-        useDeliveryLifecycleSignals,
+        useCourierProcessActions,
     },
 };
 
@@ -167,8 +165,8 @@ const COORDINATOR_MECHANISM_PACKAGE: MechanismPackage = {
         },
     ],
     hooks: {
-        useDeliveryLifecycleActions,
-        useDeliveryLifecycleSignals,
+        useMerchantProcessActions,
+        useCourierProcessActions,
     },
 };
 

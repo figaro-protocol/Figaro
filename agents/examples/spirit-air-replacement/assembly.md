@@ -10,7 +10,7 @@ The defining feature of this assembly is the airline as a *fan-out seller-of-rec
                  passenger (root buyer)
                          │
                          │  commerce-v1 + scheduled-departure-v1
-                         │  + delivery-lifecycle-v1 (boarding flow)
+                         │  + courier-process-v1 (boarding flow)
                          ▼
                      airline (seller-of-record)
                 ┌────┬─────┬────┬─────┬─────────┐
@@ -41,7 +41,7 @@ The defining feature of this assembly is the airline as a *fan-out seller-of-rec
 **Passenger ticket (parent process):**
 - commerce-v1 commitment (price, currency, agreementHash)
 - scheduled-departure-v1 (ETD, ETA, flight designator, tolerance window)
-- delivery-lifecycle-v1: required attestations through the boarding-to-deplane flow
+- courier-process-v1: required attestations through the boarding-to-deplane flow
 - Optional jurisdiction-v1 for international flights
 
 **Airline sub-procurements (one per sub-seller):**

@@ -71,7 +71,7 @@ async fn main() {
     let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
 
     // ── Schema registration ──
-    let schema_id = keccak256("figaro-delivery-lifecycle-v1");
+    let schema_id = keccak256("figaro-courier-process-v1");
     let uri_hash = keccak256("ipfs://QmSchema");
     let schema_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash);
     let schema_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &schema_struct));

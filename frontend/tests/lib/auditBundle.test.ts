@@ -267,8 +267,10 @@ describe("extractBillOfLading", () => {
             orderHash: order.id,
             processId: order.processId,
             attester: SELLER,
-            schemaId: "figaro-delivery-lifecycle-v1",
-            stage: 0,
+            // Default to a courier-process attestation at the "completed"
+            // stage (event uint8 6), matching BoL stage 4 (Delivered).
+            schemaId: "figaro-courier-process-v1",
+            stage: 6,
             contentRef: "0xCONTENT0",
             transactionHash: "0xTX0",
             blockNumber: 50,
@@ -285,7 +287,7 @@ describe("extractBillOfLading", () => {
         }
     });
 
-    it("marks all stages as not-attested when no lifecycle attestations are passed", () => {
+    it("marks all stages as not-attested when no process attestations are passed", () => {
         const bol = extractBillOfLading(order, agreement, []);
         for (const stage of bol.stages) {
             expect(stage.attested).toBe(false);
@@ -294,7 +296,13 @@ describe("extractBillOfLading", () => {
     });
 
     it("attaches attester + contentRef + tx hash for stages that have on-chain receipts", () => {
-        const att = makeAttestation({ stage: 3, contentRef: "0xPICKED", transactionHash: "0xTX_PICKED" });
+        // BoL stage 3 (PickedUp) ← courier-process event uint8 3 (arrived-pickup).
+        const att = makeAttestation({
+            schemaId: "figaro-courier-process-v1",
+            stage: 3,
+            contentRef: "0xPICKED",
+            transactionHash: "0xTX_PICKED",
+        });
         const bol = extractBillOfLading(order, agreement, [att]);
         const picked = bol.stages.find((s) => s.stageId === 3)!;
         expect(picked.attested).toBe(true);
@@ -303,8 +311,32 @@ describe("extractBillOfLading", () => {
         expect(picked.transactionHash).toBe("0xTX_PICKED");
     });
 
+    it("derives BoL stage 0 from merchant.prep-started (event uint8 2)", () => {
+        const att = makeAttestation({
+            schemaId: "figaro-merchant-process-v1",
+            stage: 2,
+            contentRef: "0xPREP",
+        });
+        const bol = extractBillOfLading(order, agreement, [att]);
+        const prep = bol.stages.find((s) => s.stageId === 0)!;
+        expect(prep.attested).toBe(true);
+        expect(prep.contentRef).toBe("0xPREP");
+    });
+
+    it("derives BoL stage 4 from courier.completed (event uint8 6)", () => {
+        const att = makeAttestation({
+            schemaId: "figaro-courier-process-v1",
+            stage: 6,
+            contentRef: "0xDELIVERED",
+        });
+        const bol = extractBillOfLading(order, agreement, [att]);
+        const delivered = bol.stages.find((s) => s.stageId === 4)!;
+        expect(delivered.attested).toBe(true);
+        expect(delivered.contentRef).toBe("0xDELIVERED");
+    });
+
     it("ignores attestations for other orders (prevents cross-order leakage)", () => {
-        const att = makeAttestation({ orderHash: "0xOTHER_ORDER", stage: 4 });
+        const att = makeAttestation({ orderHash: "0xOTHER_ORDER" });
         const bol = extractBillOfLading(order, agreement, [att]);
         const delivered = bol.stages.find((s) => s.stageId === 4)!;
         expect(delivered.attested).toBe(false);
@@ -344,8 +376,8 @@ describe("buildHashAppendix", () => {
             orderHash: order.id,
             processId: order.processId,
             attester: SELLER,
-            schemaId: "figaro-delivery-lifecycle-v1",
-            stage: 0,
+            schemaId: "figaro-merchant-process-v1",
+            stage: 2,
             contentRef: "0xCONTENT0",
             transactionHash: "0xTX0",
             blockNumber: 50,
@@ -425,17 +457,17 @@ describe("extractEmissions", () => {
     });
 
     it("ignores non-measurement attestations + cross-order leakage", () => {
-        const lifecycleAtt: AttestationRecord = {
+        const merchantAtt: AttestationRecord = {
             orderHash: order.id, processId: order.processId, attester: SELLER,
-            schemaId: "figaro-delivery-lifecycle-v1", stage: 0, contentRef: "0xLC",
-            transactionHash: "0xTXLC", blockNumber: 1,
+            schemaId: "figaro-merchant-process-v1", stage: 2, contentRef: "0xMP",
+            transactionHash: "0xTXMP", blockNumber: 1,
         };
         const otherOrderAtt: AttestationRecord = {
             orderHash: "0xOTHER", processId: order.processId, attester: SELLER,
             schemaId: GHG_MEASUREMENT_SCHEMA_KEY, stage: 3, contentRef: "0xMEAS",
             transactionHash: "0xTX", blockNumber: 1,
         };
-        const doc = extractEmissions(order, makeAgreement(), [lifecycleAtt, otherOrderAtt]);
+        const doc = extractEmissions(order, makeAgreement(), [merchantAtt, otherOrderAtt]);
         expect(doc.measurements).toHaveLength(0);
     });
 });
@@ -466,8 +498,8 @@ describe("extractProximity", () => {
             schemaId: PROXIMITY_PROOF_SCHEMA_KEY, stage: 3, contentRef: "0xPROOF",
             transactionHash: "0xTX", blockNumber: 50,
         };
-        const lifecycleAtt: AttestationRecord = { ...proofAtt, schemaId: "figaro-delivery-lifecycle-v1", contentRef: "0xLC" };
-        const doc = extractProximity(order, makeAgreement(), [proofAtt, lifecycleAtt]);
+        const courierAtt: AttestationRecord = { ...proofAtt, schemaId: "figaro-courier-process-v1", contentRef: "0xCP" };
+        const doc = extractProximity(order, makeAgreement(), [proofAtt, courierAtt]);
         expect(doc.proofs).toHaveLength(1);
         expect(doc.proofs[0].contentRef).toBe("0xPROOF");
     });

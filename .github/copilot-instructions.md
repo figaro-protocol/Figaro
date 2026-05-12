@@ -328,7 +328,7 @@ coverage: `figaro-handoff-v1`, `figaro-commerce-v1`, `figaro-geo-v2`,
 `figaro-ghg-iso-14064-v1`, `figaro-ghg-pas-2050-v1`, `figaro-ghg-en-16258-v1`,
 `figaro-ghg-custom-v1` (all Category-2 — one per accounting standard),
 `figaro-ghg-measurement-v1` (Category-1 runtime grams),
-`figaro-delivery-lifecycle-v1`, the proximity sister schemas
+`figaro-courier-process-v1`, the proximity sister schemas
 `figaro-proximity-policy-v1` (Category-2 committed band) +
 `figaro-proximity-proof-v1` (Category-1 runtime witness),
 `figaro-merchant-process-v1`, `figaro-courier-process-v1`,
@@ -497,8 +497,8 @@ Rules: don't gate read-only pages behind `useAccount` (wallet-connect is not aut
 
 **`mechanisms/`** — Mechanism-layer contract hooks and package registry:
 `contracts.ts`, `deliveryCoordinatorEvents.ts`, `useAttestationCoordinatorActions.ts`,
-`useDeliveryLifecycle.ts`, `useDidWeb.ts`, `useCourierOffering.ts`, `useDutchAuction.ts`,
-`useFigToken.ts`, `useGHGDisclosure.ts`,
+`useMerchantProcess.ts`, `useCourierProcess.ts`, `useDidWeb.ts`, `useCourierOffering.ts`,
+`useDutchAuction.ts`, `useFigToken.ts`, `useGHGDisclosure.ts`,
 `useMerchantBranding.ts`, `useMerchantCatalogue.ts`, `useOperatorRegistry.ts`,
 `useRegisteredCatalogues.ts`, `packageDefaults.ts`, `packages.ts`
 

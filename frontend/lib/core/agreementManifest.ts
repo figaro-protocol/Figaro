@@ -223,8 +223,6 @@ export const PROXIMITY_POLICY_SCHEMA_KEY = "figaro-proximity-policy-v1";
 export const OFFSET_POLICY_SCHEMA_KEY = "figaro-offset-policy-v1";
 /** Runtime proximity proof (Category-1 — per-handoff nonce + signed witness). */
 export const PROXIMITY_PROOF_SCHEMA_KEY = "figaro-proximity-proof-v1";
-/** Runtime delivery-lifecycle stage progression (Category-1). */
-export const DELIVERY_LIFECYCLE_SCHEMA_KEY = "figaro-delivery-lifecycle-v1";
 /** Sovereign event log for the merchant role (Category-1). */
 export const MERCHANT_PROCESS_SCHEMA_KEY = "figaro-merchant-process-v1";
 /** Sovereign event log for the courier role (Category-1). */
@@ -331,8 +329,8 @@ function schemaIdOf(schemaKey: string): `0x${string}` {
  * `content` must open to these exact bytes — the validator enforces
  * `keccak256(content) == keccak256(sectionData)` to prevent drift.
  *
- * Category-1 schemas (delivery-lifecycle, proximity-proof, merchant-process,
- * courier-process) have no committed clause; their sectionData remains
+ * Category-1 schemas (merchant-process, courier-process, proximity-proof,
+ * ghg-measurement) have no committed clause; their sectionData remains
  * canonical JSON and the validator does not cross-check. The sister schema
  * figaro-proximity-policy-v1 IS Category-2 — band committed at agreement
  * time so off-chain consumers can verify proof.band == policy.band.

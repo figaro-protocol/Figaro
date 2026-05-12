@@ -13,8 +13,8 @@ contract SchemaRegistryTest is Test {
     bytes32 constant GHG_SCHEMA_ID = keccak256("figaro-ghg-iso-14064-v1");
     bytes32 constant GHG_URI_HASH = keccak256("ipfs://figaro-ghg/v1");
 
-    bytes32 constant LIFECYCLE_SCHEMA_ID = keccak256("figaro-delivery-lifecycle-v1");
-    bytes32 constant LIFECYCLE_URI_HASH = keccak256("ipfs://figaro-delivery-lifecycle/v1");
+    bytes32 constant LIFECYCLE_SCHEMA_ID = keccak256("figaro-courier-process-v1");
+    bytes32 constant LIFECYCLE_URI_HASH = keccak256("ipfs://figaro-courier-process/v1");
 
     address alice = address(0xA11CE);
     address bob = address(0xB0B);

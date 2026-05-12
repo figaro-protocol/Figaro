@@ -60,7 +60,7 @@ prose: handoff and BoL are not the same object.
 
 **Handoff is a Figaro primitive.** `figaro-handoff-v1` +
 `figaro-proximity-policy-v1` + `figaro-proximity-proof-v1` +
-`figaro-delivery-lifecycle-v1` together document the fact-of-custody-change
+`figaro-courier-process-v1` together document the fact-of-custody-change
 and its conditions. Any order in any DAG that has a physical exchange opts
 in. Two parties exchanging anything physical → handoff applies. The custody
 change itself is what is being proved; no carrier role is required.
@@ -81,7 +81,7 @@ runs on every order in the bundle and emits a "Bill of Lading" page even
 for buyer↔merchant orders where no carrier exists. That is a bug, not a
 research question, and the fix is a discriminator predicate at the bundle
 level (presence of `figaro-courier-process-v1`, or presence of
-`figaro-delivery-lifecycle-v1` *with* a non-buyer non-merchant seller —
+`figaro-courier-process-v1` *with* a non-buyer non-merchant seller —
 exact predicate to be settled at code-change time).
 
 The rest of this document concerns the BoL document genre, not the handoff
@@ -415,7 +415,7 @@ buyer↔courier order's agreement.
 | Destination | `figaro-geo-v2.destinationGeohash` | As above. |
 | Mode of carriage | `figaro-handoff-v1.mode` | Five modalities today (face-to-face / dead-drop / parking-area / locker / courier-relay); local-commerce focused. |
 | Service class (modality + organizer) | `figaro-fulfilment-v1.method` | Five values: consume-onsite / pickup / deliver:buyer-assigned / deliver:seller-assigned / deliver:dutch-auction. |
-| Stage progression (loaded / in-transit / delivered) | `figaro-delivery-lifecycle-v1` | 5 stages: preparationStarted / readyForPickup / courierEnRoute / pickedUp / delivered; per-stage attestations. |
+| Stage progression (loaded / in-transit / delivered) | `figaro-courier-process-v1` | 5 stages: preparationStarted / readyForPickup / courierEnRoute / pickedUp / delivered; per-stage attestations. |
 | Custody-change verification at handoff | `figaro-proximity-policy-v1` (committed band) + `figaro-proximity-proof-v1` (runtime nonce + sig) | Sister-schema split mirrors GHG. Off-chain consumers verify proof.band == policy.band. |
 | Cargo description (line items) | `figaro-commerce-v1.lineItems` | itemId / name / quantity / unitPrice. Cleartext today; encryption is a separate backlog item ("line-item privacy"). |
 | Freight (carriage payment) | `figaro-commerce-v1.payment` + `currency` (on the buyer↔courier order, not the buyer↔merchant order) | The carriage is its own commerce clause on its own order. |
@@ -449,7 +449,7 @@ of them.
 `buildAuditBundle` in `frontend/lib/audit/auditBundle.ts` runs
 `extractBillOfLading` on every order indiscriminately. The discriminator
 should be: emit a BoL document only when the order is a carriage leg —
-concretely, when the agreement carries `figaro-delivery-lifecycle-v1` (or
+concretely, when the agreement carries `figaro-courier-process-v1` (or
 when the seller's role is courier as expressed on the order). Orders that
 have handoff data but no carrier role get their handoff/proximity data
 surfaced as a different document genre — a "Proof of Handoff" page, name
@@ -536,7 +536,7 @@ backlog item.
 
 - **The exact discriminator predicate for "this order is a carriage
   leg".** Likely: presence of `figaro-courier-process-v1` on the seller
-  side, or presence of `figaro-delivery-lifecycle-v1` with a
+  side, or presence of `figaro-courier-process-v1` with a
   non-buyer-non-merchant seller role. Final form: a small predicate in
   `auditBundle.ts`.
 - **Naming for the "Proof of Handoff" document genre.** Distinct from

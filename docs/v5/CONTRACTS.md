@@ -70,7 +70,7 @@ Validators are pure / view, no admin, no mutable state.
 `FigaroGHGProtocolV1Validator`, `FigaroGHGISO14064V1Validator`,
 `FigaroGHGPAS2050V1Validator`, `FigaroGHGEN16258V1Validator`,
 `FigaroGHGCustomV1Validator` (one per accounting standard),
-`FigaroGHGMeasurementV1Validator`, `FigaroDeliveryLifecycleV1Validator`,
+`FigaroGHGMeasurementV1Validator`, `FigaroCourierProcessV1Validator`,
 `FigaroProximityPolicyV1Validator` (Category-2, committed band) +
 `FigaroProximityProofV1Validator` (Category-1, runtime witness),
 `FigaroMerchantProcessV1Validator`,

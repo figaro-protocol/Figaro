@@ -254,12 +254,6 @@ export function encodeCommerceContent(content: CommerceContent): Hex {
     );
 }
 
-// ── figaro-delivery-lifecycle-v1 ────────────────────────────────────────────
-
-export function encodeLifecycleContent(evidenceUri: string = ""): Hex {
-    return encodeAbiParameters([{ type: "string" }], [evidenceUri]);
-}
-
 // ── figaro-proximity-policy-v1 + figaro-proximity-proof-v1 (sister schemas) ─
 //
 // Policy commits the required band at agreement signing (Category-2,

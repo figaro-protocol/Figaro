@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDeliveryAttestation } from "@/hooks/core/useDeliveryAttestation";
-import { useDeliveryLifecycleSignals, type ProximityProof } from "@/lib/mechanisms/useDeliveryLifecycle";
+import { useCourierProcessActions, type ProximityProof } from "@/lib/mechanisms/useCourierProcess";
 import { AttestationMode, type AttestationEvidence, type HandoffStep } from "@/lib/dispute";
 import { QRChallengeDisplay } from "@/components/modules/QRChallengeDisplay";
 import { QRChallengeScanner } from "@/components/modules/QRChallengeScanner";
@@ -108,17 +108,18 @@ function buildDeliveryProofCapability(
     handoffStep: HandoffStep,
     mechanismId: string,
 ): CapabilityModel {
-    const signal = handoffStep === "pickup" ? "declarePickedUp" : "declareDelivered";
+    const eventType: "arrived-pickup" | "completed" =
+        handoffStep === "pickup" ? "arrived-pickup" : "completed";
 
     return {
-        id: `${processId}:${orderHash}:submit-delivery-lifecycle-proof:${signal}`,
+        id: `${processId}:${orderHash}:submit-courier-process-signal-with-proof:${eventType}`,
         label: handoffStep === "pickup" ? "Submit Pickup Proof" : "Submit Delivery Proof",
-        actionKind: "submit-delivery-lifecycle-proof",
+        actionKind: "submit-courier-process-signal-with-proof",
         action: {
             executionType: "transaction",
-            kind: "submit-delivery-lifecycle-proof",
+            kind: "submit-courier-process-signal-with-proof",
             orderHash,
-            signal,
+            eventType,
         },
         mechanismId,
         scopeType: "order",
@@ -130,7 +131,7 @@ function buildDeliveryProofCapability(
         source: {
             truthClass: "protocol-derived",
             sourceLabel: "delivery attestation module may submit proximity proof for the selected handoff stage",
-            referenceId: `${processId}:${orderHash}:submit-delivery-lifecycle-proof:${signal}`,
+            referenceId: `${processId}:${orderHash}:submit-courier-process-signal-with-proof:${eventType}`,
         },
     };
 }
@@ -161,12 +162,12 @@ export function DeliveryAttestationPanel({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const attestation = useDeliveryAttestation();
-    const lifecycle = useDeliveryLifecycleSignals(deliveryOrderHash);
+    const courier = useCourierProcessActions();
     const usesSharedProofExecution = !!proofCapability && !!onExecuteCapability;
     const proofSubmissionPending = usesSharedProofExecution
         ? executingCapabilityId === proofCapability?.id
-        : lifecycle.isPending;
-    const proofSubmissionError = usesSharedProofExecution ? null : lifecycle.error;
+        : courier.isPending;
+    const proofSubmissionError = usesSharedProofExecution ? null : courier.error;
 
     // Resolve the geohash prop (support legacy dropoffGeohash)
     const resolvedGeohash = targetGeohash ?? dropoffGeohash;
@@ -174,8 +175,10 @@ export function DeliveryAttestationPanel({
     const cardStyle = accentTone ? { borderTopColor: accentTone, borderTopWidth: "2px" } : undefined;
     const labelStyle = accentTone ? { color: accentTone } : undefined;
 
-    // Step-aware signal function name
-    const signalFunctionName = handoffStep === "pickup" ? "declarePickedUp" : "declareDelivered";
+    // Step-aware courier event mapping. arrived-pickup = courier received the
+    // goods at pickup; completed = courier delivered the goods at dropoff.
+    const courierEventType: "arrived-pickup" | "completed" =
+        handoffStep === "pickup" ? "arrived-pickup" : "completed";
     const labels = STEP_LABELS[handoffStep];
 
     // Revoke object URL on cleanup to avoid memory leaks
@@ -239,7 +242,7 @@ export function DeliveryAttestationPanel({
         if (usesSharedProofExecution && proofCapability && onExecuteCapability) {
             try {
                 await onExecuteCapability(proofCapability, {
-                    kind: "submit-delivery-lifecycle-proof",
+                    kind: "submit-courier-process-signal-with-proof",
                     proof,
                 });
             } catch (error) {
@@ -248,14 +251,20 @@ export function DeliveryAttestationPanel({
             return;
         }
 
-        const ok = await lifecycle.signalWithProof(signalFunctionName, proof);
-        if (ok) {
+        try {
+            await courier.signalWithProof({
+                orderHash: deliveryOrderHash,
+                eventType: courierEventType,
+                proof,
+            });
             onQRProofCaptured?.(proof);
-        } else if (lifecycle.error) {
-            onError?.(lifecycle.error);
+        } catch (proofError) {
+            onError?.(extractErrorMessage(proofError, "Delivery proof submission failed"));
         }
     }, [
-        lifecycle,
+        courier,
+        courierEventType,
+        deliveryOrderHash,
         onError,
         onExecuteCapability,
         onQRProofCaptured,
@@ -263,7 +272,6 @@ export function DeliveryAttestationPanel({
         proofCapability,
         proofDeviceSig,
         proofNonce,
-        signalFunctionName,
         usesSharedProofExecution,
     ]);
 
@@ -271,7 +279,7 @@ export function DeliveryAttestationPanel({
         if (usesSharedProofExecution && proofCapability && onExecuteCapability) {
             try {
                 await onExecuteCapability(proofCapability, {
-                    kind: "submit-delivery-lifecycle-proof",
+                    kind: "submit-courier-process-signal-with-proof",
                     proof,
                 });
             } catch (error) {
@@ -280,19 +288,24 @@ export function DeliveryAttestationPanel({
             return;
         }
 
-        const ok = await lifecycle.signalWithProof(signalFunctionName, proof);
-        if (ok) {
+        try {
+            await courier.signalWithProof({
+                orderHash: deliveryOrderHash,
+                eventType: courierEventType,
+                proof,
+            });
             onQRProofCaptured?.(proof);
-        } else if (lifecycle.error) {
-            onError?.(lifecycle.error);
+        } catch (proofError) {
+            onError?.(extractErrorMessage(proofError, "Delivery proof submission failed"));
         }
     }, [
-        lifecycle,
+        courier,
+        courierEventType,
+        deliveryOrderHash,
         onError,
         onExecuteCapability,
         onQRProofCaptured,
         proofCapability,
-        signalFunctionName,
         usesSharedProofExecution,
     ]);
 

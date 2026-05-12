@@ -35,7 +35,7 @@ Reviewed live Solidity surface (20 production contracts + 1 new validator interf
 - `src/schemaValidators/FigaroGHGCustomV1Validator.sol` — Category-2, enforces byte-equality (GHG sister schema)
 - `src/schemaValidators/FigaroCommerceV1Validator.sol` — Category-2, enforces byte-equality
 - `src/schemaValidators/FigaroGHGMeasurementV1Validator.sol` — Category-1, runtime grams CO2e
-- `src/schemaValidators/FigaroDeliveryLifecycleV1Validator.sol` — Category-1, runtime-only
+- `src/schemaValidators/FigaroCourierProcessV1Validator.sol` — Category-1, runtime-only
 - `src/schemaValidators/FigaroProximityPolicyV1Validator.sol` — Category-2, enforces byte-equality (committed band)
 - `src/schemaValidators/FigaroProximityProofV1Validator.sol` — Category-1, runtime witness payload
 - `src/schemaValidators/FigaroMerchantProcessV1Validator.sol` — Category-1, runtime-only

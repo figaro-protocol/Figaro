@@ -364,7 +364,7 @@ export function FigaroProvider({ children }: { children: ReactNode }) {
                         if (!orderHash) throw new Error("No order hash to attest");
 
                         const { computeSchemaId } = await import("@figaro/core/extensions");
-                        const schemaId = a.schemaId ?? computeSchemaId("figaro-delivery-lifecycle-v1");
+                        const schemaId = a.schemaId ?? computeSchemaId("figaro-courier-process-v1");
                         const stage = a.stage ?? 1;
                         const content = a.content ?? ZERO_BYTES32;
                         const hash = await submitSellerAttestation({
@@ -383,7 +383,7 @@ export function FigaroProvider({ children }: { children: ReactNode }) {
                         if (!orderHash) throw new Error("No order hash to attest");
 
                         const { computeSchemaId } = await import("@figaro/core/extensions");
-                        const schemaId = a.schemaId ?? computeSchemaId("figaro-delivery-lifecycle-v1");
+                        const schemaId = a.schemaId ?? computeSchemaId("figaro-courier-process-v1");
                         const stage = a.stage ?? 1;
                         const content = a.content ?? ZERO_BYTES32;
                         const hash = await submitBuyerAttestation({

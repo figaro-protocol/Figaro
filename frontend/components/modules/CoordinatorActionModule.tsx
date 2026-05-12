@@ -1,26 +1,48 @@
 "use client";
 
-import { CapabilityModel, isDeliveryLifecycleSignalCapability } from "@/lib/semantic/models";
+import {
+    CapabilityModel,
+    CourierProcessEventKind,
+    MerchantProcessEventKind,
+    isCourierProcessSignalCapability,
+    isMerchantProcessSignalCapability,
+} from "@/lib/semantic/models";
 import { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 
-const DRIVER_SIGNAL_ORDER = ["declareEnRoute", "declarePickedUp", "declareDelivered"] as const;
-const RESTAURANT_SIGNAL_ORDER = ["declarePreparationStarted", "declareReadyForPickup"] as const;
+const COURIER_SIGNAL_ORDER: ReadonlyArray<CourierProcessEventKind> = [
+    "en-route-pickup",
+    "arrived-pickup",
+    "completed",
+];
+const MERCHANT_SIGNAL_ORDER: ReadonlyArray<MerchantProcessEventKind> = [
+    "prep-started",
+    "ready-for-pickup",
+    "handed-off",
+];
 
 function LifecycleSignalPanel({ context, orderHash }: { context: ModuleProps["context"]; orderHash: string }) {
     const accentTone = context.skinBundle?.branding.branding.accentColor;
     const roleKind = context.selectedRoleKind;
-    const signalOrder = roleKind === "merchant" ? RESTAURANT_SIGNAL_ORDER : DRIVER_SIGNAL_ORDER;
+    const isMerchant = roleKind === "merchant";
 
-    const signalCapabilities = signalOrder.flatMap((signal) => {
-        const capability = context.selectedOrder?.capabilities.find((candidate) =>
-            isDeliveryLifecycleSignalCapability(candidate)
-            && candidate.action.signal === signal
-            && candidate.action.orderHash === orderHash,
-        );
-
-        return capability ? [{ capability, signal }] : [];
-    });
+    const signalCapabilities = isMerchant
+        ? MERCHANT_SIGNAL_ORDER.flatMap((eventType) => {
+            const capability = context.selectedOrder?.capabilities.find((candidate) =>
+                isMerchantProcessSignalCapability(candidate)
+                && candidate.action.eventType === eventType
+                && candidate.action.orderHash === orderHash,
+            );
+            return capability ? [{ capability, eventType }] : [];
+        })
+        : COURIER_SIGNAL_ORDER.flatMap((eventType) => {
+            const capability = context.selectedOrder?.capabilities.find((candidate) =>
+                isCourierProcessSignalCapability(candidate)
+                && candidate.action.eventType === eventType
+                && candidate.action.orderHash === orderHash,
+            );
+            return capability ? [{ capability, eventType }] : [];
+        });
 
     if (signalCapabilities.length === 0) {
         return <p className="text-sm text-neutral-500">No coordinator signal actions are available for the selected order in this role context.</p>;
@@ -28,7 +50,7 @@ function LifecycleSignalPanel({ context, orderHash }: { context: ModuleProps["co
 
     return (
         <div className="space-y-2" data-testid={`lifecycle-signal-panel-${orderHash}`}>
-            {signalCapabilities.map(({ capability, signal }) => {
+            {signalCapabilities.map(({ capability, eventType }) => {
                 const isExecutable = context.executableCapabilityIds.has(capability.id);
                 const isExecuting = context.executingCapabilityId === capability.id;
 
@@ -36,7 +58,7 @@ function LifecycleSignalPanel({ context, orderHash }: { context: ModuleProps["co
                     <button
                         key={capability.id}
                         type="button"
-                        data-testid={`btn-signal-${signal}-${orderHash}`}
+                        data-testid={`btn-signal-${eventType}-${orderHash}`}
                         disabled={!isExecutable || !!context.executingCapabilityId}
                         onClick={() => void context.onExecuteCapability(capability as CapabilityModel)}
                         className="w-full rounded border border-black px-4 py-2 text-sm font-semibold text-black hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed text-left"

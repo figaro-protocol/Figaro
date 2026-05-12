@@ -8,7 +8,8 @@ import useTokenApproval from "@/hooks/core/useTokenApproval";
 import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
 import { OrderState, useOrderStore } from "@/lib/core/store";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
-import { useDeliveryLifecycleActions } from "@/lib/mechanisms/useDeliveryLifecycle";
+import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
+import { useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { useGhgDisclosureActions } from "@/lib/mechanisms/useGHGDisclosure";
 import { useRegisterOperator, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/mechanisms/useOperatorRegistry";
@@ -50,7 +51,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const [selectedParentOrderIds, setSelectedParentOrderIds] = useState<Set<string>>(new Set());
     const [subOrderParent, setSubOrderParent] = useState<{ orderIds: string[]; currency?: `0x${string}` } | null>(null);
     const { resolveProcess, hash, isPending, mockIsSuccess } = useFigaroActions();
-    const deliveryLifecycleActions = useDeliveryLifecycleActions();
+    const merchantProcessActions = useMerchantProcessActions();
+    const courierProcessActions = useCourierProcessActions();
     const dutchAuctionActions = useDutchAuctionActions();
     const registerOperator = useRegisterOperator();
     const updateOperatorProfile = useUpdateProfile();
@@ -70,14 +72,16 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     });
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
     const isActionPending = isPending
-        || deliveryLifecycleActions.isPending
+        || merchantProcessActions.isPending
+        || courierProcessActions.isPending
         || dutchAuctionActions.isPending
         || registerOperator.isPending
         || updateOperatorProfile.isPending
         || withdrawOperatorDeposit.isPending
         || ghgDisclosureActions.isPending;
     const isActionConfirming = isConfirming
-        || deliveryLifecycleActions.isConfirming
+        || merchantProcessActions.isConfirming
+        || courierProcessActions.isConfirming
         || dutchAuctionActions.isConfirming
         || registerOperator.isConfirming
         || updateOperatorProfile.isConfirming
@@ -85,7 +89,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         || ghgDisclosureActions.isConfirming;
     const isActionSuccess = isSuccess
         || mockIsSuccess
-        || deliveryLifecycleActions.isSuccess
+        || merchantProcessActions.isSuccess
+        || courierProcessActions.isSuccess
         || dutchAuctionActions.isSuccess
         || registerOperator.isSuccess
         || updateOperatorProfile.isSuccess
@@ -186,8 +191,12 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                 withdrawOperatorDeposit: () => withdrawOperatorDeposit.withdraw(),
                 submitDisclosureCommitment: ghgDisclosureActions.submitCommitmentForOrder,
                 submitDisclosureInventory: ghgDisclosureActions.submitActualForOrder,
-                submitDeliveryLifecycleSignal: deliveryLifecycleActions.signal,
-                submitDeliveryLifecycleProof: deliveryLifecycleActions.signalWithProof,
+                submitMerchantProcessSignal: (orderHash, eventType, roleOrderHash) =>
+                    merchantProcessActions.signal({ orderHash, eventType, roleOrderHash }),
+                submitCourierProcessSignal: (orderHash, eventType, roleOrderHash) =>
+                    courierProcessActions.signal({ orderHash, eventType, roleOrderHash }),
+                submitCourierProcessSignalWithProof: (orderHash, eventType, proof, roleOrderHash) =>
+                    courierProcessActions.signalWithProof({ orderHash, eventType, proof, roleOrderHash }),
                 claimAuction: dutchAuctionActions.claim,
             }, input);
         } catch (error) {

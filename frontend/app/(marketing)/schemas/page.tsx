@@ -75,10 +75,6 @@ const SCHEMA_FAMILIES: { name: string; rows: SchemaRow[] }[] = [
         name: "Lifecycle and proximity",
         rows: [
             {
-                id: "figaro-delivery-lifecycle-v1",
-                description: "Stage progression: prep → ready → en-route → picked-up → delivered.",
-            },
-            {
                 id: "figaro-proximity-policy-v1",
                 description:
                     "Required detection band committed at agreement signing (Category-2). Sister of figaro-proximity-proof-v1.",

@@ -41,7 +41,7 @@ export const DISCLOSURE_MECHANISM_PACKAGE_METADATA: MechanismPackageMetadata = {
 
 export const ATTESTATION_MECHANISM_PACKAGE_METADATA: MechanismPackageMetadata = {
     kind: "attestation",
-    capabilityBindings: ["submit-delivery-lifecycle-proof"],
+    capabilityBindings: ["submit-courier-process-signal-with-proof"],
     moduleIds: ["delivery-attestation"],
 };
 
@@ -56,7 +56,10 @@ const FIG_MECHANISM_PACKAGE_METADATA: MechanismPackageMetadata = {
 
 export const COORDINATOR_MECHANISM_PACKAGE_METADATA: MechanismPackageMetadata = {
     kind: "coordinator",
-    capabilityBindings: ["submit-delivery-lifecycle-signal"],
+    capabilityBindings: [
+        "submit-merchant-process-signal",
+        "submit-courier-process-signal",
+    ],
     capabilityPrefixes: ["declare-"],
     moduleIds: [
         "coordinator-actions",

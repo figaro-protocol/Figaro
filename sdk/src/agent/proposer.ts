@@ -71,9 +71,10 @@ export interface AttestAction extends BaseAction {
     orderHashes: Hex[];
     /**
      * Optional schemaId for the attestation. When omitted, the executor picks
-     * a default (typically `figaro-delivery-lifecycle-v1`). Must correspond to
-     * a clause committed in the target's signed agreement — otherwise the
-     * coordinator's inclusion-proof gate rejects the call.
+     * a role-appropriate default (e.g. `figaro-courier-process-v1` for a
+     * courier sub-order). Must correspond to a clause committed in the
+     * target's signed agreement — otherwise the coordinator's inclusion-proof
+     * gate rejects the call.
      */
     schemaId?: Hex;
     /** Optional stage; executor default is 1. */

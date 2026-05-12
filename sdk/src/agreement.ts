@@ -93,8 +93,8 @@ function schemaIdOf(schemaKey: string): Hex {
  * `content` must open to these exact bytes — the validator enforces
  * `keccak256(content) == keccak256(sectionData)` to prevent drift.
  *
- * Category-1 schemas (delivery-lifecycle, proximity-proof, merchant-process,
- * courier-process) have no committed clause; their sectionData remains
+ * Category-1 schemas (merchant-process, courier-process, proximity-proof,
+ * ghg-measurement) have no committed clause; their sectionData remains
  * canonical JSON and the validator does not cross-check. Note: the sister
  * schema figaro-proximity-policy-v1 IS Category-2 (committed band), while
  * figaro-proximity-proof-v1 is Category-1 (runtime witness payload).

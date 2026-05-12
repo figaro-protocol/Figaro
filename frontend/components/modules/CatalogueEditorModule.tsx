@@ -213,7 +213,8 @@ function MenuItemRow({
 /** Schemas available for seller self-declaration.
  *  Each maps to a schema registered in SchemaRegistry on deploy. */
 const WELL_KNOWN_SCHEMAS: { key: string; label: string; description: string }[] = [
-    { key: "figaro-delivery-lifecycle-v1", label: "Delivery Lifecycle", description: "Order → pickup → delivery coordination signals" },
+    { key: "figaro-merchant-process-v1", label: "Merchant Process Log", description: "Sovereign event log: order-received, prep-started, ready-for-pickup, handed-off, cancelled" },
+    { key: "figaro-courier-process-v1", label: "Courier Process Log", description: "Sovereign event log: available, accepted, en-route, arrived-pickup, in-transit, arrived-dropoff, completed, cancelled" },
     { key: "figaro-ghg-protocol-v1", label: "GHG Protocol Disclosure", description: "GHG Protocol Corporate Standard emissions reporting per order" },
     { key: "figaro-ghg-iso-14064-v1", label: "ISO 14064 GHG Disclosure", description: "ISO 14064-aligned emissions reporting per order" },
     { key: "figaro-ghg-pas-2050-v1", label: "PAS 2050 GHG Disclosure", description: "PAS 2050 product carbon footprint reporting per order" },

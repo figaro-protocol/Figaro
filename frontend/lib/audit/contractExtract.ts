@@ -60,7 +60,6 @@ const SCHEMA_TITLE: Record<string, string> = {
     "figaro-ghg-en-16258-v1": "GHG — EN 16258",
     "figaro-ghg-custom-v1": "GHG — Custom methodology",
     "figaro-ghg-measurement-v1": "GHG — Runtime measurement",
-    "figaro-delivery-lifecycle-v1": "Delivery lifecycle — stage progression",
     "figaro-proximity-policy-v1": "Proximity policy — committed band",
     "figaro-proximity-proof-v1": "Proximity proof — runtime witness",
     "figaro-merchant-process-v1": "Merchant process — sovereign event log",

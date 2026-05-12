@@ -117,7 +117,7 @@
                     "scope": "assembly",
                     "mechanismIds": [
                         "core-v3",
-                        "delivery-lifecycle",
+                        "delivery-coordinator",
                         "dutch-auction-courier-market"
                     ],
                     "notes": "Primary merchant operator for the Local Commerce archetype."
@@ -229,7 +229,7 @@
                     "mechanismIds": [
                         "core-orders",
                         "deposit-bond",
-                        "delivery-lifecycle"
+                        "delivery-coordinator"
                     ],
                     "notes": "Reference equipment-rental operator for the rental assembly previews."
                 }

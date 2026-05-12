@@ -335,7 +335,7 @@ fn empty_snapshot() -> KernelStateSnapshot {
 fn test_register_schema() {
     let registrar_key = make_signing_key(BUYER_KEY); // any key works
     let domain = domain_separator(CHAIN_ID, CORE);
-    let schema_id = keccak256(b"figaro-delivery-lifecycle-v1");
+    let schema_id = keccak256(b"figaro-courier-process-v1");
     let uri_hash = keccak256(b"ipfs://Qm...");
 
     let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash);
@@ -621,7 +621,7 @@ fn test_attest_as_seller() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let schema_id = keccak256(b"figaro-delivery-lifecycle-v1");
+    let schema_id = keccak256(b"figaro-courier-process-v1");
     let content_ref = keccak256(b"evidence-data");
 
     // Build attestation signature

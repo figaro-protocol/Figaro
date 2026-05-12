@@ -11,7 +11,7 @@ pragma solidity 0.8.26;
 ///         Schemas anchor the off-chain vocabulary used by agreementHash
 ///         pre-images, AttestationCoordinator attestations, and mechanism
 ///         modules. The schemaId is keccak256 of a human-readable name
-///         (e.g. "figaro-delivery-lifecycle-v1", "figaro-ghg-iso-14064-v1").
+///         (e.g. "figaro-courier-process-v1", "figaro-ghg-iso-14064-v1").
 ///
 ///         Registration is permissionless — anyone can register a schema.
 ///         The schemaId is self-authenticating (content-addressed). Once

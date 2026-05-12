@@ -73,11 +73,13 @@ vi.mock("@/components/modules/QRChallengeScanner", () => ({
 
 const mockSignalWithProof = vi.fn().mockResolvedValue(true);
 
-vi.mock("@/lib/mechanisms/useDeliveryLifecycle", () => ({
-    useDeliveryLifecycleSignals: () => ({
+vi.mock("@/lib/mechanisms/useCourierProcess", () => ({
+    useCourierProcessActions: () => ({
         signalWithProof: mockSignalWithProof,
         signal: vi.fn(),
         isPending: false,
+        isConfirming: false,
+        isSuccess: false,
         error: null,
         isAvailable: true,
     }),
@@ -251,14 +253,18 @@ describe("DeliveryAttestationPanel", () => {
             });
             fireEvent.click(screen.getByTestId("btn-submit-qr-proof"));
 
-            expect(mockSignalWithProof).toHaveBeenCalledWith("declareDelivered", {
-                band: 4,
-                nonce: "0xdeadbeef",
-                deviceSig: "0xcafebabe",
+            expect(mockSignalWithProof).toHaveBeenCalledWith({
+                orderHash: defaultProps.deliveryOrderHash,
+                eventType: "completed",
+                proof: {
+                    band: 4,
+                    nonce: "0xdeadbeef",
+                    deviceSig: "0xcafebabe",
+                },
             });
         });
 
-        it("calls signalWithProof with declarePickedUp for pickup step", () => {
+        it("calls signalWithProof with arrived-pickup for pickup step", () => {
             render(<DeliveryAttestationPanel {...defaultProps} handoffStep="pickup" />);
             fireEvent.click(screen.getByTestId("btn-mode-qr-challenge"));
 
@@ -270,16 +276,20 @@ describe("DeliveryAttestationPanel", () => {
             });
             fireEvent.click(screen.getByTestId("btn-submit-qr-proof"));
 
-            expect(mockSignalWithProof).toHaveBeenCalledWith("declarePickedUp", {
-                band: 4,
-                nonce: "0x1111",
-                deviceSig: "0x2222",
+            expect(mockSignalWithProof).toHaveBeenCalledWith({
+                orderHash: defaultProps.deliveryOrderHash,
+                eventType: "arrived-pickup",
+                proof: {
+                    band: 4,
+                    nonce: "0x1111",
+                    deviceSig: "0x2222",
+                },
             });
         });
     });
 
     describe("Device co-sig mode — step awareness", () => {
-        it("calls signalWithProof with declarePickedUp for pickup handoff", () => {
+        it("calls signalWithProof with arrived-pickup for pickup handoff", () => {
             render(<DeliveryAttestationPanel {...defaultProps} handoffStep="pickup" />);
             fireEvent.click(screen.getByTestId("btn-mode-device-proximity"));
 
@@ -291,14 +301,18 @@ describe("DeliveryAttestationPanel", () => {
             });
             fireEvent.click(screen.getByTestId("btn-submit-device-proof"));
 
-            expect(mockSignalWithProof).toHaveBeenCalledWith("declarePickedUp", {
-                band: 1,
-                nonce: "0xaaa",
-                deviceSig: "0xbbb",
+            expect(mockSignalWithProof).toHaveBeenCalledWith({
+                orderHash: defaultProps.deliveryOrderHash,
+                eventType: "arrived-pickup",
+                proof: {
+                    band: 1,
+                    nonce: "0xaaa",
+                    deviceSig: "0xbbb",
+                },
             });
         });
 
-        it("calls signalWithProof with declareDelivered for delivery handoff", () => {
+        it("calls signalWithProof with completed for delivery handoff", () => {
             render(<DeliveryAttestationPanel {...defaultProps} handoffStep="delivery" />);
             fireEvent.click(screen.getByTestId("btn-mode-device-proximity"));
 
@@ -310,10 +324,14 @@ describe("DeliveryAttestationPanel", () => {
             });
             fireEvent.click(screen.getByTestId("btn-submit-device-proof"));
 
-            expect(mockSignalWithProof).toHaveBeenCalledWith("declareDelivered", {
-                band: 1,
-                nonce: "0xaaa",
-                deviceSig: "0xbbb",
+            expect(mockSignalWithProof).toHaveBeenCalledWith({
+                orderHash: defaultProps.deliveryOrderHash,
+                eventType: "completed",
+                proof: {
+                    band: 1,
+                    nonce: "0xaaa",
+                    deviceSig: "0xbbb",
+                },
             });
         });
     });
@@ -346,17 +364,17 @@ describe("DeliveryAttestationPanel", () => {
 
             expect(onExecuteCapability).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    actionKind: "submit-delivery-lifecycle-proof",
+                    actionKind: "submit-courier-process-signal-with-proof",
                     mechanismId: "delivery-attestation",
                     action: expect.objectContaining({
                         executionType: "transaction",
-                        kind: "submit-delivery-lifecycle-proof",
+                        kind: "submit-courier-process-signal-with-proof",
                         orderHash: defaultProps.deliveryOrderHash,
-                        signal: "declarePickedUp",
+                        eventType: "arrived-pickup",
                     }),
                 }),
                 {
-                    kind: "submit-delivery-lifecycle-proof",
+                    kind: "submit-courier-process-signal-with-proof",
                     proof: {
                         band: 4,
                         nonce: "0x1111",
@@ -438,12 +456,12 @@ describe("DeliveryAttestationPanel", () => {
             expect(onExecuteCapability).toHaveBeenCalledWith(
                 expect.objectContaining({
                     action: expect.objectContaining({
-                        kind: "submit-delivery-lifecycle-proof",
-                        signal: "declareDelivered",
+                        kind: "submit-courier-process-signal-with-proof",
+                        eventType: "completed",
                     }),
                 }),
                 {
-                    kind: "submit-delivery-lifecycle-proof",
+                    kind: "submit-courier-process-signal-with-proof",
                     proof: {
                         band: 1,
                         nonce: "0xaaaa",

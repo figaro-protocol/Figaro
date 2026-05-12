@@ -1,8 +1,8 @@
 /**
  * Bill of Lading extractor — pure projection of an order's handoff + geo
- * clauses (signed at commit) plus delivery-lifecycle attestation events
- * (emitted at runtime as the order moves through stages) into a structured
- * BoL document.
+ * clauses (signed at commit) plus per-role sovereign event-log attestations
+ * (emitted at runtime by the merchant and courier operators) into a
+ * structured BoL document.
  *
  * The BoL combines two layers:
  *
@@ -10,27 +10,29 @@
  *       fulfilment modality + handoffPoint (figaro-fulfilment-v2)
  *       origin / destination geohashes + mass + volume + class (figaro-geo-v2)
  *
- *   • Runtime attestations — what actually happened:
- *       delivery-lifecycle stage receipts (figaro-delivery-lifecycle-v1)
- *       attester address + block number + contentRef + transaction hash
+ *   • Runtime per-role attestations — what actually happened:
+ *       merchant-process events (figaro-merchant-process-v1) — stages 2-3
+ *       courier-process events (figaro-courier-process-v1) — stages 2/3/6
  *
- * The full canonical 5-stage progression is rendered with each stage's
- * attestation status (attested or pending) — auditors see at a glance
- * which stages have on-chain receipts and which are missing.
+ * The 5-stage progression (PreparationStarted → ReadyForPickup →
+ * CourierEnRoute → PickedUp → Delivered) is reconstructed off-chain by
+ * mapping per-role events to BoL stages. Each stage is annotated with
+ * attester + block + contentRef + transaction hash if attested, or pending
+ * if not.
  */
 
 import {
     type Agreement,
     type AgreementSection,
     type RedactableAgreement,
-    DELIVERY_LIFECYCLE_SCHEMA_KEY,
+    COURIER_PROCESS_SCHEMA_KEY,
     FULFILMENT_V2_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
+    MERCHANT_PROCESS_SCHEMA_KEY,
     isRedactedSection,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
-import { hexEqual } from "@/lib/shared/evm";
 import { DELIVERY_LIFECYCLE_STAGES, type ExtractedDocument } from "./types";
 
 /** Match a section by schema key, returning its cleartext form only.
@@ -46,11 +48,10 @@ function getSectionByKey(
     return isRedactedSection(s) ? undefined : s;
 }
 
-
 export interface BolStageReceipt {
     stageId: number;
     stageName: string;
-    /** True when an attestation for this (orderHash, schema, stage) has landed. */
+    /** True when an attestation that maps to this BoL stage has landed. */
     attested: boolean;
     attester?: string;
     attestedAtBlock?: number;
@@ -79,18 +80,28 @@ export interface BillOfLadingDocument extends ExtractedDocument {
     stages: BolStageReceipt[];
 }
 
-/** True when the schemaId encoded in an attestation matches the expected
- *  schema. The kernel emits schemaId as a bytes32 keccak hash of the
- *  schema key string, but the indexer in `useGHGDisclosure.ts` and friends
- *  surface it pre-decoded as a string. We accept both shapes. */
-function attestationMatchesLifecycleSchema(att: AttestationRecord): boolean {
-    if (typeof att.schemaId !== "string") return false;
-    if (att.schemaId === DELIVERY_LIFECYCLE_SCHEMA_KEY) return true;
-    // keccak256("figaro-delivery-lifecycle-v1") — defensive match if the
-    // indexer has not pre-decoded.
-    const KECCAK_LIFECYCLE = "0xa9adfb6b1ad3e4c69a7afae4f21a05fd56c80b0ca0fdc63ac8e95dcd9bf73c40";
-    return hexEqual(att.schemaId, KECCAK_LIFECYCLE);
-}
+/**
+ * BoL stage → per-role schema + event uint8 mapping.
+ *
+ *   stage 0 (PreparationStarted)  ← merchant.prep-started        (event 2)
+ *   stage 1 (ReadyForPickup)      ← merchant.ready-for-pickup    (event 3)
+ *   stage 2 (CourierEnRoute)      ← courier.en-route-pickup      (event 2)
+ *   stage 3 (PickedUp)            ← courier.arrived-pickup       (event 3)
+ *   stage 4 (Delivered)           ← courier.completed            (event 6)
+ *
+ * The merchant attests stages 0-1 because those events live in the
+ * merchant's physical workflow (prep, ready). The courier attests stages
+ * 2-4 because those events live in the courier's transport workflow
+ * (en route, picked up, delivered). Each operator is the sovereign
+ * authority over their own events.
+ */
+const STAGE_SOURCE: Record<number, { schemaKey: string; eventStage: number }> = {
+    0: { schemaKey: MERCHANT_PROCESS_SCHEMA_KEY, eventStage: 2 },
+    1: { schemaKey: MERCHANT_PROCESS_SCHEMA_KEY, eventStage: 3 },
+    2: { schemaKey: COURIER_PROCESS_SCHEMA_KEY, eventStage: 2 },
+    3: { schemaKey: COURIER_PROCESS_SCHEMA_KEY, eventStage: 3 },
+    4: { schemaKey: COURIER_PROCESS_SCHEMA_KEY, eventStage: 6 },
+};
 
 export function extractBillOfLading(
     order: Order,
@@ -102,23 +113,25 @@ export function extractBillOfLading(
     const fulfilmentData = fulfilment?.data as { handoffPoint?: string } | undefined;
     const geoData = geo?.data as { originGeohash?: string; destinationGeohash?: string } | undefined;
 
-    // Index lifecycle attestations for THIS order by stage. The BoL only
-    // applies to the current order; cross-order lifecycle attestations
-    // (e.g. delivery sub-order's stages attested against the root
-    // orderHash) need to be passed in scoped to the right orderHash by
-    // the caller.
-    const byStage: Record<number, AttestationRecord> = {};
+    // Index per-role attestations for THIS order by (schemaKey, stage). The
+    // BoL only applies to the current order; cross-order attestations need
+    // to be passed in scoped to the right orderHash by the caller.
+    const byKey = new Map<string, AttestationRecord>();
     for (const att of attestations) {
         if (att.orderHash !== order.id) continue;
-        if (!attestationMatchesLifecycleSchema(att)) continue;
-        // Last-write-wins for the same stage; live kernel typically only
-        // sees one attestation per (order, stage) since validators reject
-        // re-attestation of the same stage.
-        byStage[att.stage] = att;
+        if (
+            att.schemaId !== MERCHANT_PROCESS_SCHEMA_KEY
+            && att.schemaId !== COURIER_PROCESS_SCHEMA_KEY
+        ) continue;
+        // Last-write-wins for the same (schema, stage); live kernel typically
+        // only sees one attestation per (order, schema, stage) since validators
+        // reject re-attestation of the same envelope.
+        byKey.set(`${att.schemaId}:${att.stage}`, att);
     }
 
     const stages: BolStageReceipt[] = DELIVERY_LIFECYCLE_STAGES.map(({ id, name }) => {
-        const att = byStage[id];
+        const source = STAGE_SOURCE[id];
+        const att = source ? byKey.get(`${source.schemaKey}:${source.eventStage}`) : undefined;
         if (!att) return { stageId: id, stageName: name, attested: false };
         return {
             stageId: id,

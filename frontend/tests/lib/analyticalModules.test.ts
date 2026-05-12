@@ -185,17 +185,18 @@ describe('analytical modules in assembly schema', () => {
         });
 
         expect(attestationPackage?.capabilityBindings).toEqual([
-            'submit-delivery-lifecycle-proof',
+            'submit-courier-process-signal-with-proof',
         ]);
         expect(attestationPackage?.modules.map((module) => module.moduleId)).toContain('delivery-attestation');
         expect(attestationPackage?.hooks).toMatchObject({
             useAttestationCoordinatorActions: expect.any(Function),
             useDeliveryAttestation: expect.any(Function),
-            useDeliveryLifecycleSignals: expect.any(Function),
+            useCourierProcessActions: expect.any(Function),
         });
 
         expect(coordinatorPackage?.capabilityBindings).toEqual([
-            'submit-delivery-lifecycle-signal',
+            'submit-merchant-process-signal',
+            'submit-courier-process-signal',
         ]);
         expect(coordinatorPackage?.capabilityPrefixes).toEqual([
             'declare-',
@@ -207,8 +208,8 @@ describe('analytical modules in assembly schema', () => {
             'handoff-key-exchange',
         ]);
         expect(coordinatorPackage?.hooks).toMatchObject({
-            useDeliveryLifecycleActions: expect.any(Function),
-            useDeliveryLifecycleSignals: expect.any(Function),
+            useMerchantProcessActions: expect.any(Function),
+            useCourierProcessActions: expect.any(Function),
         });
 
         // Web2-strip (2026-04-26): updateProfile binding replaced with
@@ -304,10 +305,11 @@ describe('analytical modules in assembly schema', () => {
             },
         ];
 
-        expect(inferMechanismIdFromCapability('submit-delivery-lifecycle-proof', mechanisms)).toBe('delivery-attestation');
+        expect(inferMechanismIdFromCapability('submit-courier-process-signal-with-proof', mechanisms)).toBe('delivery-attestation');
         expect(inferMechanismIdFromCapability('claim-airdrop', mechanisms)).toBe('fig-token-system');
         expect(inferMechanismIdFromCapability('claim-vesting', mechanisms)).toBe('fig-token-system');
-        expect(inferMechanismIdFromCapability('submit-delivery-lifecycle-signal', mechanisms)).toBe('delivery-coordinator');
+        expect(inferMechanismIdFromCapability('submit-courier-process-signal', mechanisms)).toBe('delivery-coordinator');
+        expect(inferMechanismIdFromCapability('submit-merchant-process-signal', mechanisms)).toBe('delivery-coordinator');
         expect(inferMechanismIdFromCapability('declare-ready-for-pickup', mechanisms)).toBe('delivery-coordinator');
         expect(inferMechanismIdFromCapability('declare-picked-up', mechanisms)).toBe('delivery-coordinator');
         expect(inferMechanismIdFromCapability('submit-disclosure-commitment', mechanisms)).toBe('ghg-disclosure');
@@ -372,7 +374,7 @@ describe('analytical modules in assembly schema', () => {
         expect(getEffectiveMechanismModuleBindings(attestationMechanism!)).toContain('delivery-attestation');
         expect(
             inferMechanismIdFromCapability(
-                'submit-delivery-lifecycle-proof',
+                'submit-courier-process-signal-with-proof',
                 artifact?.assembly.mechanisms ?? []
             )
         ).toBe(attestationMechanism?.mechanismId);

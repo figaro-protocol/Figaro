@@ -43,11 +43,11 @@ function createCoordinatorProps(overrides?: Record<string, unknown>) {
                     {
                         id: 'declare-en-route',
                         label: 'Declare En Route',
-                        actionKind: 'submit-delivery-lifecycle-signal',
+                        actionKind: 'submit-courier-process-signal',
                         action: {
                             executionType: 'transaction',
-                            kind: 'submit-delivery-lifecycle-signal',
-                            signal: 'declareEnRoute',
+                            kind: 'submit-courier-process-signal',
+                            eventType: 'en-route-pickup',
                             orderHash: 'order-1',
                         },
                     },

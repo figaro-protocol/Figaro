@@ -8,7 +8,7 @@
     "overview": {
         "description": "figaro-commerce-v1 is an agreement section schema, not a lifecycle attestation schema. It describes the structure of the 'data' field in an AgreementSection with schema key 'figaro-commerce-v1'. This section is included at commitment-time in the bilateral agreement manifest and is co-signed by both parties.",
         "agreementRole": "Specifies what the commitment covers: a basket of line items, the payment amount, and the token currency. The agreementHash that both parties sign is the keccak256 of the canonical JSON of the full Agreement, which includes this section.",
-        "lifecycleRelation": "This schema does not define attestation stages. It is not submitted to AttestationCoordinator. It defines the content of the agreement that drives the bonded commitment. Attestation stages for the fulfilment process are defined in figaro-delivery-lifecycle-v1."
+        "lifecycleRelation": "This schema does not define attestation stages. It is not submitted to AttestationCoordinator. It defines the content of the agreement that drives the bonded commitment. Attestation stages for the fulfilment process are defined in figaro-merchant-process-v1 and figaro-courier-process-v1."
     },
     "sectionDataFormat": {
         "description": "The 'data' field of an AgreementSection with schema key 'figaro-commerce-v1' must conform to this structure.",

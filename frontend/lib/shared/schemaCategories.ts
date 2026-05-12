@@ -26,7 +26,6 @@
 import commerceSpec from "@/lib/shared/schemas/figaro-commerce-v1.json";
 import consentSpec from "@/lib/shared/schemas/figaro-consent-v1.json";
 import courierProcessSpec from "@/lib/shared/schemas/figaro-courier-process-v1.json";
-import deliveryLifecycleSpec from "@/lib/shared/schemas/figaro-delivery-lifecycle-v1.json";
 import fulfilmentSpec from "@/lib/shared/schemas/figaro-fulfilment-v2.json";
 import geoSpec from "@/lib/shared/schemas/figaro-geo-v2.json";
 import ghgCustomSpec from "@/lib/shared/schemas/figaro-ghg-custom-v1.json";
@@ -117,7 +116,6 @@ export const SCHEMA_TIER_MAP: Readonly<Record<string, SchemaTier>> = {
     "figaro-proximity-policy-v1": "designer-time",
     "figaro-topology-v1": "designer-time",
     "figaro-courier-process-v1": "runtime",
-    "figaro-delivery-lifecycle-v1": "runtime",
     "figaro-ghg-measurement-v1": "runtime",
     "figaro-merchant-process-v1": "runtime",
     "figaro-proximity-proof-v1": "runtime",
@@ -146,7 +144,6 @@ const ALL_SPECS: readonly SchemaSpecMeta[] = [
     commerceSpec,
     consentSpec,
     courierProcessSpec,
-    deliveryLifecycleSpec,
     fulfilmentSpec,
     geoSpec,
     ghgCustomSpec,

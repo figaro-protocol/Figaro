@@ -9,7 +9,7 @@
  *   2. Financials   — balance sheet + income statement + cash flow
  *                     (delivered separately by `lib/semantic/financialsProjection.ts`)
  *   3. Invoice      — line items extracted from `figaro-commerce-v1` clause
- *   4. Bill of Lading — handoff + geo + delivery-lifecycle attestations
+ *   4. Bill of Lading — handoff + geo + per-role process attestations
  *   5. Hash appendix — every hash in the bundle, anchored to its on-chain source
  *
  * All four extractors here are PURE functions. Each takes already-loaded
@@ -36,10 +36,12 @@ export interface ExtractedDocument {
 }
 
 /**
- * Canonical lifecycle-stage label table. Stages are encoded as `uint8` on
- * chain (per the `figaro-delivery-lifecycle-v1` validator's `stage`
- * argument). Names are documentation conventions, not on-chain enforced —
- * we name them here so the BoL renderer + auditor see consistent labels.
+ * Canonical 5-stage BoL progression labels. The BoL extractor maps each
+ * stage to a per-role event in figaro-merchant-process-v1 (stages 0-1) or
+ * figaro-courier-process-v1 (stages 2-4) — see STAGE_SOURCE in
+ * billOfLadingExtract.ts. Names are documentation conventions, not
+ * on-chain enforced — declared here so the BoL renderer + auditor see
+ * consistent labels.
  */
 export const DELIVERY_LIFECYCLE_STAGES: readonly { id: number; name: string }[] = [
     { id: 0, name: "PreparationStarted" },

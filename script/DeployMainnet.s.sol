@@ -22,7 +22,6 @@ import "../src/schemaValidators/FigaroGHGPAS2050V1Validator.sol";
 import "../src/schemaValidators/FigaroGHGEN16258V1Validator.sol";
 import "../src/schemaValidators/FigaroGHGCustomV1Validator.sol";
 import "../src/schemaValidators/FigaroGHGMeasurementV1Validator.sol";
-import "../src/schemaValidators/FigaroDeliveryLifecycleV1Validator.sol";
 import "../src/schemaValidators/FigaroProximityPolicyV1Validator.sol";
 import "../src/schemaValidators/FigaroProximityProofV1Validator.sol";
 import "../src/schemaValidators/FigaroOffsetPolicyV1Validator.sol";
@@ -139,9 +138,6 @@ contract DeployMainnet is Script {
         schemas.registerSchema(keccak256("figaro-ghg-custom-v1"), 1, keccak256("ipfs://figaro-ghg-custom/v1"));
         schemas.registerSchema(keccak256("figaro-ghg-measurement-v1"), 1, keccak256("ipfs://figaro-ghg-measurement/v1"));
         schemas.registerSchema(
-            keccak256("figaro-delivery-lifecycle-v1"), 1, keccak256("ipfs://figaro-delivery-lifecycle/v1")
-        );
-        schemas.registerSchema(
             keccak256("figaro-proximity-policy-v1"), 1, keccak256("ipfs://figaro-proximity-policy/v1")
         );
         schemas.registerSchema(
@@ -158,7 +154,7 @@ contract DeployMainnet is Script {
         schemas.registerSchema(
             keccak256("figaro-offset-policy-v1"), 1, keccak256("ipfs://figaro-offset-policy/v1")
         );
-        console.log("SchemaRegistry: 18 reference schemas registered");
+        console.log("SchemaRegistry: 17 reference schemas registered");
 
         // ── OperatorRegistry ────────────────────────────────────────
         // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
@@ -229,8 +225,6 @@ contract DeployMainnet is Script {
             keccak256("figaro-ghg-custom-v1"), address(new FigaroGHGCustomV1Validator()));
         _wireValidator(attestation, "GHGMeasurementV1Validator:   ",
             keccak256("figaro-ghg-measurement-v1"), address(new FigaroGHGMeasurementV1Validator()));
-        _wireValidator(attestation, "DeliveryLifecycleV1Validator:",
-            keccak256("figaro-delivery-lifecycle-v1"), address(new FigaroDeliveryLifecycleV1Validator()));
         _wireValidator(attestation, "ProximityPolicyV1Validator:  ",
             keccak256("figaro-proximity-policy-v1"), address(new FigaroProximityPolicyV1Validator()));
         _wireValidator(attestation, "ProximityProofV1Validator:   ",

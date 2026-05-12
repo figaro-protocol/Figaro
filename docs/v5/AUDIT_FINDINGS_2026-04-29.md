@@ -45,7 +45,7 @@ Findings are checked off in PRs that fix them.
 
 ### Frontend / off-chain TS
 
-- **8 silent-catch sites** swallow errors with no UI signal: `lib/core/orderApproval.ts:35,49`, `lib/mechanisms/useDeliveryLifecycle.ts` (×2), `lib/mechanisms/useGHGDisclosure.ts` (×2), `lib/mechanisms/useOperatorRegistry.ts` (×1), `lib/audit/auditBundlePdf.ts:182-186`. Action: replace with conditional dev-logging + emit to a notification surface where user-visible.
+- **8 silent-catch sites** swallow errors with no UI signal: `lib/core/orderApproval.ts:35,49`, per-role process hooks (`useMerchantProcess`/`useCourierProcess`) (×2), `lib/mechanisms/useGHGDisclosure.ts` (×2), `lib/mechanisms/useOperatorRegistry.ts` (×1), `lib/audit/auditBundlePdf.ts:182-186`. Action: replace with conditional dev-logging + emit to a notification surface where user-visible.
 - `lib/audit/auditBundlePdf.ts:63-79` casts unvalidated RPC log args to typed event records (`as IndexedAttestationLog` / `as IndexedLog`) — silent record loss if event ABI ever drifts. Action: parse via viem `decodeEventLog` or assert required `args` keys.
 - `lib/shared/schemaSpecSource.ts` preloads only 2 of 17 active schemas; the other 15 lazy-fetch from IPFS with no timeout. Action: preload all 17 OR add fetch timeout + retry.
 - `lib/shared/runtimeFetchSource.ts:37-62` `safeJsonFromResponse()` returns `null` on every failure mode — caller can't distinguish 404 from network timeout from parse-error. Action: return tagged error object.
