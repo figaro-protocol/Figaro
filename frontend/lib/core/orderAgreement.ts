@@ -11,6 +11,7 @@ import {
     GHG_SCHEMA_TO_STANDARD,
     JURISDICTION_SCHEMA_KEY,
     CONSENT_SCHEMA_KEY,
+    COURIER_PROCESS_SCHEMA_KEY,
     MERCHANT_PROCESS_SCHEMA_KEY,
     OFFSET_POLICY_SCHEMA_KEY,
     PROXIMITY_POLICY_SCHEMA_KEY,
@@ -231,13 +232,30 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
             schema: FULFILMENT_V2_SCHEMA_KEY,
             data,
         });
-        // Authorize the seller's sovereign merchant event log against this
-        // order's agreementHash. Category-1: empty sectionData; the runtime
-        // attestation supplies the eventType + evidenceUri content. Without
-        // this section the on-chain inclusion proof for figaro-merchant-
-        // process-v1 attestations cannot open.
+    }
+
+    // Per-role sovereign event-log anchoring. Driven by the Attestations-tab
+    // manifest flags (merchantProcessIncluded / courierProcessIncluded). When
+    // delivery is offered in this order's fulfilment, merchant-process is
+    // auto-anchored (the drawer enforces the locked-on rule too); when this
+    // order is a delivery-spawned courier sub-order, courier-process is
+    // auto-anchored at creation. Either flag may also be set explicitly by
+    // the designer via the drawer for non-delivery flows.
+    //
+    // Category-1 schemas: empty sectionData; the runtime attestation supplies
+    // the eventType + evidenceUri content. Without these sections the on-chain
+    // inclusion proof for the matching attestations cannot open.
+    const merchantProcessFlag = params.manifestFields?.merchantProcessIncluded === true;
+    const deliveryOffered = modalities.includes("delivery");
+    if (merchantProcessFlag || deliveryOffered) {
         sections.push({
             schema: MERCHANT_PROCESS_SCHEMA_KEY,
+            data: {},
+        });
+    }
+    if (params.manifestFields?.courierProcessIncluded === true) {
+        sections.push({
+            schema: COURIER_PROCESS_SCHEMA_KEY,
             data: {},
         });
     }

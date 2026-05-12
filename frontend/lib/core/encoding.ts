@@ -100,7 +100,13 @@ export interface ManifestFields {
     mass?: string;         // e.g. "5 kg"
     volume?: string;       // e.g. "10 L"
     class_?: string;       // freight/hazmat class, e.g. "Perishables", "Hazmat A"
-    [extra: string]: string | string[] | Array<Record<string, string>> | undefined; // extensible
+    /** Attestations-tab per-role process-log flags. When true, buildOrderAgreement
+     *  anchors the matching figaro-merchant-process-v1 / figaro-courier-process-v1
+     *  clause in this order's agreement so the per-role attestation flow has an
+     *  inclusion-proof anchor at runtime. */
+    merchantProcessIncluded?: boolean;
+    courierProcessIncluded?: boolean;
+    [extra: string]: string | string[] | boolean | Array<Record<string, string>> | undefined; // extensible
 }
 
 const KV_SEP = ":";

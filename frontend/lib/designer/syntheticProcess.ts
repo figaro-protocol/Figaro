@@ -136,6 +136,11 @@ export function createSyntheticRootOrder(session: SyntheticProcessSession): Crea
 export function createSyntheticSubOrder(
     session: SyntheticProcessSession,
     parent: Order,
+    /** Optional per-sub-order manifest overrides. Merged onto
+     *  DEFAULT_NODE_MANIFEST_FIELDS — use this to mark role-specific
+     *  flags at creation time (e.g., `courierProcessIncluded: true` for
+     *  delivery-spawned courier sub-orders). */
+    manifestOverrides?: Partial<ManifestFields>,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
@@ -151,7 +156,7 @@ export function createSyntheticSubOrder(
         seller,
         currency,
         payment,
-        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS },
+        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...manifestOverrides },
         parentOrderHashes: [parent.id],
     });
     const agreementHash = computeAgreementHash(agreement);

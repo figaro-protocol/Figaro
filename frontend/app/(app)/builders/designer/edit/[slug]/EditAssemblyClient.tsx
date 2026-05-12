@@ -125,7 +125,9 @@ export function EditAssemblyClient({ params }: Props) {
                     return summary?.topology?.parentOrderHashes.includes(parentOrderId) ?? false;
                 });
                 if (hasAnyChild) return prev;
-                const sub = createSyntheticSubOrder(session, parent);
+                const sub = createSyntheticSubOrder(session, parent, {
+                    courierProcessIncluded: true,
+                });
                 autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
                 return [...prev, sub.order];
             });
@@ -389,12 +391,26 @@ export function EditAssemblyClient({ params }: Props) {
                         break;
                     }
                 }
+                let parentDeliveryActive = false;
+                const selectedInfo = topology.get(selectedOrderId);
+                if (selectedInfo && selectedInfo.parentOrderIds.length > 0) {
+                    for (const parentId of selectedInfo.parentOrderIds) {
+                        const parent = orders.find((o) => o.id === parentId);
+                        if (!parent) continue;
+                        const summary = summarizeAgreement(loadAgreement(parent.agreementHash));
+                        if (summary?.fulfilment?.modalities?.includes("delivery")) {
+                            parentDeliveryActive = true;
+                            break;
+                        }
+                    }
+                }
                 return (
                     <AgreementDrawer
                         order={selected}
                         onClose={() => setSelectedOrderId(null)}
                         onChange={(edits) => handleEditAgreement(selectedOrderId, edits)}
                         hasChildren={hasChildren}
+                        parentDeliveryActive={parentDeliveryActive}
                         onDeliverySelected={handleDeliverySelected}
                         onDeliveryUnselected={handleDeliveryUnselected}
                         onOffsetSelected={handleOffsetSelected}

@@ -211,7 +211,9 @@ export function NewAssemblyClient() {
                     return summary?.topology?.parentOrderHashes.includes(parentOrderId) ?? false;
                 });
                 if (hasAnyChild) return prev;
-                const sub = createSyntheticSubOrder(session, parent);
+                const sub = createSyntheticSubOrder(session, parent, {
+                    courierProcessIncluded: true,
+                });
                 autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
                 return [...prev, sub.order];
             });
@@ -504,6 +506,19 @@ export function NewAssemblyClient() {
                         const topology = deriveOrderTopology(orders);
                         for (const info of topology.values()) {
                             if (info.parentOrderIds.includes(selectedOrderId)) return true;
+                        }
+                        return false;
+                    })()}
+                    parentDeliveryActive={(() => {
+                        if (!selectedOrderId) return false;
+                        const topology = deriveOrderTopology(orders);
+                        const info = topology.get(selectedOrderId);
+                        if (!info || info.parentOrderIds.length === 0) return false;
+                        for (const parentId of info.parentOrderIds) {
+                            const parent = orders.find((o) => o.id === parentId);
+                            if (!parent) continue;
+                            const summary = summarizeAgreement(loadAgreement(parent.agreementHash));
+                            if (summary?.fulfilment?.modalities?.includes("delivery")) return true;
                         }
                         return false;
                     })()}
