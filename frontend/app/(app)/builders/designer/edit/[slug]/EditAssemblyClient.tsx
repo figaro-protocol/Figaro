@@ -31,6 +31,7 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "../../_components/AgreementDrawer";
+import { ProseSheet, type ProseSheetValues } from "../../_components/ProseSheet";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
@@ -43,6 +44,38 @@ interface InitialState {
     orders: Order[];
     name: string;
     slug: string | null;
+    prose: ProseSheetValues;
+}
+
+/**
+ * Seed prose from the forked reference assembly so the user keeps the
+ * existing description / narrative / role labels until they explicitly
+ * edit them. Mechanism kinds come from the runtime derivation, not the
+ * reference's `mechanisms` array (which carries fully-resolved entries);
+ * we extract displayNames keyed on kind so the seed lands in the same
+ * shape the Prose sheet expects.
+ */
+function proseFromReference(reference: Assembly): ProseSheetValues {
+    const mechanismLabels: Record<string, string> = {};
+    for (const mech of reference.mechanisms) {
+        if (!mechanismLabels[mech.kind]) {
+            mechanismLabels[mech.kind] = mech.displayName;
+        }
+    }
+    const roleLabels: Record<string, { displayName: string; sampleCapabilities?: string[] }> = {};
+    for (const role of reference.roles) {
+        roleLabels[role.roleKind] = {
+            displayName: role.displayName,
+            sampleCapabilities: role.sampleCapabilities,
+        };
+    }
+    return {
+        description: reference.identity.description,
+        narrativeSummary: reference.narrative?.assemblySummary,
+        builderNotes: reference.narrative?.builderNotes,
+        mechanismLabels,
+        roleLabels,
+    };
 }
 
 function buildInitialStateFromFork(reference: Assembly): InitialState {
@@ -52,6 +85,7 @@ function buildInitialStateFromFork(reference: Assembly): InitialState {
         orders,
         name: `Fork of ${reference.identity.name}`,
         slug: null,
+        prose: proseFromReference(reference),
     };
 }
 
@@ -78,9 +112,15 @@ export function EditAssemblyClient({ params }: Props) {
     const [orders, setOrders] = useState<Order[]>(() => initial.orders);
     const [name, setName] = useState<string>(initial.name);
     const [slug, setSlug] = useState<string | null>(initial.slug);
+    const [prose, setProse] = useState<ProseSheetValues>(() => initial.prose);
 
     const [mergeNotice, setMergeNotice] = useState<string | null>(null);
     const [savedAt, setSavedAt] = useState<number | null>(null);
+    const [proseOpen, setProseOpen] = useState(false);
+
+    const handleProseChange = useCallback((patch: ProseSheetValues) => {
+        setProse((prev) => ({ ...prev, ...patch }));
+    }, []);
 
     // Autosave on every meaningful change.
     useEffect(() => {
@@ -93,10 +133,11 @@ export function EditAssemblyClient({ params }: Props) {
             orders,
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            ...prose,
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [orders, name, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [orders, name, slug, prose, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     const handleAddSubOrder = useCallback(
         (parentOrderId: string) => {
@@ -281,6 +322,7 @@ export function EditAssemblyClient({ params }: Props) {
         setOrders(seeded.orders);
         setName(seeded.name);
         setSlug(seeded.slug);
+        setProse(seeded.prose);
         clearCurrentSession();
     }, [reference]);
 
@@ -301,11 +343,12 @@ export function EditAssemblyClient({ params }: Props) {
             orders,
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            ...prose,
         };
         saveNamedDraft(snap);
         setName(snap.name);
         setSlug(snap.slug);
-    }, [name, slug, orders, session]);
+    }, [name, slug, orders, prose, session]);
 
     const stageLabel = useMemo(() => {
         if (orders.length === 1) return "Stage 0 — the unit";
@@ -342,9 +385,18 @@ export function EditAssemblyClient({ params }: Props) {
                 <span className="text-xs text-ink-muted">{stageLabel}</span>
                 <button
                     type="button"
+                    onClick={() => setProseOpen(true)}
+                    data-testid="designer-prose-toggle"
+                    className="ml-auto text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong"
+                    title="Edit assembly prose"
+                >
+                    Prose
+                </button>
+                <button
+                    type="button"
                     onClick={handleSaveDraft}
                     data-testid="designer-save-draft"
-                    className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold"
+                    className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold"
                 >
                     {slug ? "Update draft" : "Save as draft"}
                 </button>
@@ -438,6 +490,13 @@ export function EditAssemblyClient({ params }: Props) {
                     />
                 );
             })()}
+            <ProseSheet
+                open={proseOpen}
+                onClose={() => setProseOpen(false)}
+                orders={orders}
+                values={prose}
+                onChange={handleProseChange}
+            />
         </div>
     );
 }

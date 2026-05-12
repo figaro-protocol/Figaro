@@ -29,6 +29,7 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "../_components/AgreementDrawer";
+import { ProseSheet, type ProseSheetValues } from "../_components/ProseSheet";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
@@ -38,6 +39,17 @@ interface InitialState {
     orders: Order[];
     name: string;
     slug: string | null;
+    prose: ProseSheetValues;
+}
+
+function proseFromSnapshot(snap: DesignSnapshot): ProseSheetValues {
+    return {
+        description: snap.description,
+        narrativeSummary: snap.narrativeSummary,
+        builderNotes: snap.builderNotes,
+        mechanismLabels: snap.mechanismLabels,
+        roleLabels: snap.roleLabels,
+    };
 }
 
 // Initial render (SSR + first client pass) always uses this fresh seed so the
@@ -46,7 +58,7 @@ interface InitialState {
 function buildFreshInitial(): InitialState {
     const fresh = startSyntheticSession();
     const root = createSyntheticRootOrder(fresh);
-    return { session: fresh, orders: [root.order], name: "Untitled assembly", slug: null };
+    return { session: fresh, orders: [root.order], name: "Untitled assembly", slug: null, prose: {} };
 }
 
 function tryRestoreFromStorage(draftParam: string | null): InitialState | null {
@@ -65,6 +77,7 @@ function tryRestoreFromStorage(draftParam: string | null): InitialState | null {
                 orders: draft.orders,
                 name: draft.name,
                 slug: draft.slug,
+                prose: proseFromSnapshot(draft),
             };
         }
     }
@@ -81,6 +94,7 @@ function tryRestoreFromStorage(draftParam: string | null): InitialState | null {
             orders: restored.orders,
             name: restored.name,
             slug: restored.slug || null,
+            prose: proseFromSnapshot(restored),
         };
     }
 
@@ -105,11 +119,17 @@ export function NewAssemblyClient() {
     const [orders, setOrders] = useState<Order[]>(() => initial.orders);
     const [name, setName] = useState<string>(initial.name);
     const [slug, setSlug] = useState<string | null>(initial.slug);
+    const [prose, setProse] = useState<ProseSheetValues>(() => initial.prose);
 
     const [mergeNotice, setMergeNotice] = useState<string | null>(null);
     const [savedAt, setSavedAt] = useState<number | null>(null);
     const [helpOpen, setHelpOpen] = useState(false);
+    const [proseOpen, setProseOpen] = useState(false);
     const [headerHeight, setHeaderHeight] = useState(108);
+
+    const handleProseChange = useCallback((patch: ProseSheetValues) => {
+        setProse((prev) => ({ ...prev, ...patch }));
+    }, []);
 
     // Lock body scroll while on /new — this is a canvas-app route, not a
     // document route. Restore on unmount so other (app) pages scroll normally.
@@ -156,6 +176,7 @@ export function NewAssemblyClient() {
             setOrders(restored.orders);
             setName(restored.name);
             setSlug(restored.slug);
+            setProse(restored.prose);
         }
         setHydrated(true);
         // Mount-only; subsequent draft-param changes are not honored mid-session.
@@ -175,10 +196,11 @@ export function NewAssemblyClient() {
             orders,
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            ...prose,
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [hydrated, orders, name, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, orders, name, slug, prose, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
@@ -374,6 +396,7 @@ export function NewAssemblyClient() {
         setOrders([root.order]);
         setName("Untitled assembly");
         setSlug(null);
+        setProse({});
         clearCurrentSession();
     }, [session]);
 
@@ -394,11 +417,12 @@ export function NewAssemblyClient() {
             orders,
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            ...prose,
         };
         saveNamedDraft(snap);
         setName(snap.name);
         setSlug(snap.slug);
-    }, [name, slug, orders, session]);
+    }, [name, slug, orders, prose, session]);
 
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
@@ -429,6 +453,15 @@ export function NewAssemblyClient() {
                     title="What is this?"
                 >
                     ?
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setProseOpen(true)}
+                    data-testid="designer-prose-toggle"
+                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong shrink-0"
+                    title="Edit assembly prose"
+                >
+                    Prose
                 </button>
                 {savedHint && (
                     <span className="ml-auto text-[11px] text-ink-muted truncate" data-testid="designer-saved-hint">
@@ -549,6 +582,13 @@ export function NewAssemblyClient() {
                     embedded
                 />
             </div>
+            <ProseSheet
+                open={proseOpen}
+                onClose={() => setProseOpen(false)}
+                orders={orders}
+                values={prose}
+                onChange={handleProseChange}
+            />
         </div>
     );
 }

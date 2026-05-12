@@ -68,6 +68,18 @@ function deserializeOrder(s: SerializedOrder): Order {
 
 // ── Public types ────────────────────────────────────────────────────────────
 
+/**
+ * Per-role override carried through the canvas → assembly derivation
+ * pipeline. `displayName` overrides the default name (e.g., "Buyer" →
+ * "Renter" for the equipment-rental assembly). `sampleCapabilities`
+ * overrides the registry default list of capability kinds surfaced for
+ * this role.
+ */
+export interface DesignRoleLabel {
+    displayName: string;
+    sampleCapabilities?: string[];
+}
+
 export interface DesignSnapshot {
     /** URL-safe identifier; the user picks this when saving a named draft. */
     slug: string;
@@ -85,6 +97,30 @@ export interface DesignSnapshot {
     createdAt: number;
     /** Unix ms. */
     updatedAt: number;
+
+    // ── Prose authored via the canvas Prose sheet ───────────────────
+    // Each is optional; the canvas → assembly derivation falls back to
+    // a registry default when unset. Captured here (not in the agreements)
+    // because they are assembly-level metadata, not per-order commitments.
+
+    /** Long-form assembly description. Lands in `identity.description`. */
+    description?: string;
+    /** Marketing-style summary of what the assembly does. Lands in
+     *  `narrative.assemblySummary`. */
+    narrativeSummary?: string;
+    /** Builder-tier notes (caveats, when-to-use). Lands in
+     *  `narrative.builderNotes`. */
+    builderNotes?: string;
+    /** Per-mechanism-kind displayName override. Each mechanism kind that
+     *  the design's agreements reference (via SCHEMA_OWNERSHIP) appears
+     *  here when the user has set a custom label. Example:
+     *  `{ "core": "Bonded Rental Core" }`. */
+    mechanismLabels?: Record<string, string>;
+    /** Per-role-kind overrides. Each role kind derivable from the design's
+     *  orders appears here when the user has set custom prose for it.
+     *  Example: `{ "buyer": { displayName: "Renter", sampleCapabilities:
+     *  ["create-order", "declare-equipment-received", "withdraw"] } }`. */
+    roleLabels?: Record<string, DesignRoleLabel>;
 }
 
 export interface DraftIndexEntry {
