@@ -631,6 +631,7 @@ export function AgreementDrawer({
                                 onToggle={(next) => toggleSchema(GEO_SCHEMA_KEY, next)}
                                 disabled={deliveryActive}
                                 disabledHint="Required when fulfilment includes delivery."
+                                lockedOn={deliveryActive}
                             />
                         </section>
                     )}
@@ -722,6 +723,7 @@ function SchemaToggleArticle({
     onToggle,
     disabled = false,
     disabledHint,
+    lockedOn = false,
 }: {
     schemaId: string;
     included: boolean;
@@ -732,6 +734,13 @@ function SchemaToggleArticle({
     disabled?: boolean;
     /** One-line hint rendered beneath the locked toggle explaining why. */
     disabledHint?: string;
+    /** Distinguishes "this clause is mandated by another decision and
+     *  forced-included" from plain disabled ("you can't edit this here"
+     *  / "doesn't apply to this role"). When true, surfaces a "Required"
+     *  badge inline with the toggle label so the user reads
+     *  required-and-on vs not-applicable as visually distinct states.
+     *  Implies disabled. */
+    lockedOn?: boolean;
 }) {
     const info = getSchemaInfo(schemaId);
     const hintId = useId();
@@ -751,9 +760,18 @@ function SchemaToggleArticle({
                     aria-describedby={showHint ? hintId : undefined}
                     data-testid={`drawer-include-${schemaId}`}
                 />
-                <span className={`text-xs ${disabled ? "text-neutral-400" : "text-neutral-700"}`}>
+                <span className={`text-xs ${disabled && !lockedOn ? "text-neutral-400" : "text-neutral-700"}`}>
                     Included in this order&apos;s agreement
                 </span>
+                {lockedOn && (
+                    <span
+                        aria-hidden
+                        data-testid={`drawer-include-${schemaId}-required-badge`}
+                        className="ml-auto inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700"
+                    >
+                        Required
+                    </span>
+                )}
             </label>
             {showHint && (
                 <p id={hintId} className="text-[10px] text-neutral-400 italic mt-1 ml-6">
@@ -858,6 +876,7 @@ function AttestationsArticle({
                 onToggle={merchantEditable ? onMerchantToggle : () => undefined}
                 disabled={merchantDisabled}
                 disabledHint={merchantHint}
+                lockedOn={merchantLockedOn}
             />
             <SchemaToggleArticle
                 schemaId={COURIER_PROCESS_SCHEMA_KEY}
@@ -865,6 +884,7 @@ function AttestationsArticle({
                 onToggle={courierEditable ? onCourierToggle : () => undefined}
                 disabled={courierDisabled}
                 disabledHint={courierHint}
+                lockedOn={courierLockedOn}
             />
         </div>
     );
