@@ -53,6 +53,11 @@ interface Props {
     onNameChange: (name: string) => void;
     onSave: () => void;
     saveLabel: string;
+    /** Copies the in-memory DesignSnapshot + inlined per-order agreements
+     *  to clipboard. Local-only; no IPFS pin, no on-chain anchor — just a
+     *  clipboard hand-off so the design can be shared verbatim, drawer
+     *  selections included. */
+    onExport: () => void;
 }
 
 const TEXTAREA_CLASS =
@@ -79,6 +84,7 @@ export function ProseSheet({
     onNameChange,
     onSave,
     saveLabel,
+    onExport,
 }: Props) {
     const nameId = useId();
     const descId = useId();
@@ -288,6 +294,16 @@ export function ProseSheet({
             </div>
 
             <footer className="px-4 py-2.5 border-t border-default shrink-0 flex justify-end gap-2">
+                <button
+                    type="button"
+                    onClick={onExport}
+                    disabled={!canSave}
+                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:bg-subtle disabled:opacity-40 disabled:cursor-not-allowed"
+                    data-testid="prose-sheet-export"
+                    title="Copy DesignSnapshot + per-order agreements to clipboard"
+                >
+                    Export JSON
+                </button>
                 <button
                     type="button"
                     onClick={onClose}

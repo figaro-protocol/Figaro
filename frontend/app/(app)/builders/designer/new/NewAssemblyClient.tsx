@@ -400,15 +400,15 @@ export function NewAssemblyClient() {
         clearCurrentSession();
     }, [session]);
 
-    const handleSaveDraft = useCallback(() => {
+    const buildSnapshot = useCallback((): DesignSnapshot | null => {
         const trimmed = name.trim();
-        if (!trimmed) return;
+        if (!trimmed) return null;
         const proposedSlug = slug ?? slugify(trimmed).slice(0, 64);
         if (!proposedSlug) {
             window.alert("Could not derive a URL slug from that name.");
-            return;
+            return null;
         }
-        const snap: DesignSnapshot = {
+        return {
             slug: proposedSlug,
             name: trimmed,
             processId: session.processId,
@@ -419,10 +419,38 @@ export function NewAssemblyClient() {
             updatedAt: Date.now(),
             ...prose,
         };
+    }, [name, slug, orders, prose, session]);
+
+    const handleSaveDraft = useCallback(() => {
+        const snap = buildSnapshot();
+        if (!snap) return;
         saveNamedDraft(snap);
         setName(snap.name);
         setSlug(snap.slug);
-    }, [name, slug, orders, prose, session]);
+    }, [buildSnapshot]);
+
+    const handleExportDraft = useCallback(() => {
+        const snap = buildSnapshot();
+        if (!snap) return;
+        // Inline per-order agreements (loaded by agreementHash) so the
+        // export carries the drawer selections, not just the topology.
+        const agreements: Record<string, unknown> = {};
+        for (const order of snap.orders) {
+            if (!order.agreementHash) continue;
+            const agreement = loadAgreement(order.agreementHash);
+            if (agreement) agreements[order.agreementHash] = agreement;
+        }
+        const payload = { ...snap, agreements };
+        const json = JSON.stringify(
+            payload,
+            (_key, value) => (typeof value === "bigint" ? value.toString() : value),
+            2,
+        );
+        navigator.clipboard
+            .writeText(json)
+            .then(() => window.alert("Design + agreements copied to clipboard."))
+            .catch(() => window.alert("Clipboard copy failed. Check browser permissions."));
+    }, [buildSnapshot]);
 
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
@@ -584,6 +612,7 @@ export function NewAssemblyClient() {
                 onNameChange={setName}
                 onSave={handleSaveDraft}
                 saveLabel={slug ? "Update draft" : "Save as draft"}
+                onExport={handleExportDraft}
             />
         </div>
     );
