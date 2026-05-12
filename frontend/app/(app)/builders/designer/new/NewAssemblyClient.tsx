@@ -14,6 +14,7 @@ import {
     editSyntheticAgreement,
     isRootOrder,
     mergeSyntheticParent,
+    readAgreementFields,
     startSyntheticSession,
     type AgreementEdits,
     type CanonicalFulfilmentMethod,
@@ -186,7 +187,9 @@ export function NewAssemblyClient() {
             setOrders((prev) => {
                 const parent = prev.find((o) => o.id === parentOrderId);
                 if (!parent) return prev;
-                const sub = createSyntheticSubOrder(session, parent);
+                const sub = createSyntheticSubOrder(session, parent, {
+                    roleHint: "co-seller",
+                });
                 return [...prev, sub.order];
             });
         },
@@ -212,6 +215,7 @@ export function NewAssemblyClient() {
                 });
                 if (hasAnyChild) return prev;
                 const sub = createSyntheticSubOrder(session, parent, {
+                    roleHint: "courier",
                     courierProcessIncluded: true,
                 });
                 autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
@@ -261,7 +265,9 @@ export function NewAssemblyClient() {
             setOrders((prev) => {
                 const parent = prev.find((o) => o.id === parentOrderId);
                 if (!parent) return prev;
-                const sub = createSyntheticSubOrder(session, parent);
+                const sub = createSyntheticSubOrder(session, parent, {
+                    roleHint: "offset",
+                });
                 autoAddedOffsetByParentRef.current.set(parentOrderId, sub.order.id);
                 return [...prev, sub.order];
             });
@@ -519,6 +525,17 @@ export function NewAssemblyClient() {
                             if (!parent) continue;
                             const summary = summarizeAgreement(loadAgreement(parent.agreementHash));
                             if (summary?.fulfilment?.modalities?.includes("delivery")) return true;
+                        }
+                        return false;
+                    })()}
+                    hasCourierChild={(() => {
+                        if (!selectedOrderId) return false;
+                        const topology = deriveOrderTopology(orders);
+                        for (const child of orders) {
+                            const info = topology.get(child.id);
+                            if (!info?.parentOrderIds.includes(selectedOrderId)) continue;
+                            const childFields = readAgreementFields(child);
+                            if (childFields.roleHint === "courier") return true;
                         }
                         return false;
                     })()}

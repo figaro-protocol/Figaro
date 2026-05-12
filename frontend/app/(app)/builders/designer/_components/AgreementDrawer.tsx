@@ -134,6 +134,12 @@ interface Props {
      *  expected to compute and pass this. False / undefined when editing a
      *  root order (or any sub-order whose parent has no delivery). */
     parentDeliveryActive?: boolean;
+    /** True when the currently-selected merchant order has at least one
+     *  child whose roleHint is "courier". Drives the Attestations tab's
+     *  cross-role hint copy so we only direct the designer to "edit on the
+     *  courier sub-order" when one actually exists (rather than directing
+     *  to an offset or co-seller sub-order). */
+    hasCourierChild?: boolean;
     /** Fired when the user picks Delivery in the Fulfilment article. The
      *  page is responsible for adding a courier sub-order if none exists
      *  and tracking it so a subsequent `onDeliveryUnselected` can remove
@@ -162,6 +168,7 @@ export function AgreementDrawer({
     onChange,
     hasChildren = false,
     parentDeliveryActive = false,
+    hasCourierChild = false,
     onDeliverySelected,
     onDeliveryUnselected,
     onOffsetSelected,
@@ -217,12 +224,22 @@ export function AgreementDrawer({
     }
 
     const topology = summarizeAgreement(loadAgreement(order.agreementHash))?.topology;
-    /** Role inference: a root order's seller is the merchant; a sub-order's
-     *  seller is the courier (under the current canvas pattern where the
-     *  only auto-spawned sub-order type is the courier added via delivery
-     *  selection). */
     const isRootOrder = (topology?.parentOrderHashes?.length ?? 0) === 0;
-    const orderRole: "merchant" | "courier" = isRootOrder ? "merchant" : "courier";
+    /** Role marker: read from manifestFields.roleHint when the order was
+     *  spawned through one of the explicit page handlers (delivery →
+     *  "courier", offset → "offset", manual add → "co-seller"); root
+     *  orders default to "merchant". For legacy/imported orders missing
+     *  the hint, fall back to manifest-content inference. */
+    const explicitRole = fields.roleHint;
+    const orderRole: "merchant" | "courier" | "offset" | "co-seller" =
+        explicitRole
+            ?? (isRootOrder
+                ? "merchant"
+                : fields.courierProcessIncluded
+                    ? "courier"
+                    : (Array.isArray(fields.offsetProviders) && fields.offsetProviders.length > 0
+                        ? "offset"
+                        : "co-seller"));
 
     function selectSection(section: SectionKey) {
         setOpenSection((prev) => (prev === section ? null : section));
@@ -628,7 +645,7 @@ export function AgreementDrawer({
                                 onCourierToggle={(next) => setProcessFlag("courierProcessIncluded", next)}
                                 deliveryActive={deliveryActive}
                                 parentDeliveryActive={parentDeliveryActive}
-                                hasChildren={hasChildren}
+                                hasCourierChild={hasCourierChild}
                             />
                         </section>
                     )}
@@ -772,47 +789,55 @@ function AttestationsArticle({
     onCourierToggle,
     deliveryActive,
     parentDeliveryActive,
-    hasChildren,
+    hasCourierChild,
 }: {
-    orderRole: "merchant" | "courier";
+    orderRole: "merchant" | "courier" | "offset" | "co-seller";
     merchantProcessIncluded: boolean;
     courierProcessIncluded: boolean;
     onMerchantToggle: (next: boolean) => void;
     onCourierToggle: (next: boolean) => void;
-    /** Delivery is in this order's fulfilment modalities (root order's case). */
+    /** Delivery is in this order's fulfilment modalities (merchant order case). */
     deliveryActive: boolean;
-    /** Parent order has delivery in its fulfilment (courier sub-order's case). */
+    /** Parent order has delivery in its fulfilment (courier sub-order case). */
     parentDeliveryActive: boolean;
-    /** True when this root order has at least one child sub-order. */
-    hasChildren: boolean;
+    /** True when this merchant order has a courier sub-order on the canvas
+     *  (a child with roleHint = "courier"). Drives the cross-role hint copy
+     *  so we only suggest "Edit on the courier sub-order" when one exists. */
+    hasCourierChild: boolean;
 }) {
     const isMerchantOrder = orderRole === "merchant";
+    const isCourierOrder = orderRole === "courier";
+    const isOffsetOrder = orderRole === "offset";
 
     // Merchant toggle: active iff editing the merchant order. Locked-on
     // when delivery is in this order's fulfilment.
     const merchantEditable = isMerchantOrder && !deliveryActive;
     const merchantLockedOn = isMerchantOrder && deliveryActive;
     const merchantDisabled = !isMerchantOrder || deliveryActive;
-    const merchantHint = !isMerchantOrder
-        ? "Edit on the parent merchant order."
-        : deliveryActive
-            ? "Required when fulfilment includes delivery."
-            : undefined;
+    const merchantHint = isMerchantOrder
+        ? (deliveryActive ? "Required when fulfilment includes delivery." : undefined)
+        : isCourierOrder
+            ? "Edit on the parent merchant order."
+            : isOffsetOrder
+                ? "Not applicable for offset role — edit on the parent merchant order."
+                : "Not applicable for this role — edit on the merchant order.";
 
     // Courier toggle: active iff editing the courier sub-order. Locked-on
     // when the parent has delivery in its fulfilment.
-    const courierEditable = !isMerchantOrder && !parentDeliveryActive;
-    const courierLockedOn = !isMerchantOrder && parentDeliveryActive;
-    const courierDisabled = isMerchantOrder || parentDeliveryActive;
-    const courierHint = isMerchantOrder
-        ? (deliveryActive
-            ? "Auto-included on the courier sub-order (required when delivery is offered)."
-            : hasChildren
-                ? "Edit on the courier sub-order."
-                : "Requires delivery in Fulfilment or a courier sub-order on the canvas.")
-        : parentDeliveryActive
-            ? "Required when fulfilment includes delivery."
-            : undefined;
+    const courierEditable = isCourierOrder && !parentDeliveryActive;
+    const courierLockedOn = isCourierOrder && parentDeliveryActive;
+    const courierDisabled = !isCourierOrder || parentDeliveryActive;
+    const courierHint = isCourierOrder
+        ? (parentDeliveryActive ? "Required when fulfilment includes delivery." : undefined)
+        : isMerchantOrder
+            ? (deliveryActive
+                ? "Auto-included on the courier sub-order (required when delivery is offered)."
+                : hasCourierChild
+                    ? "Edit on the courier sub-order."
+                    : "Requires delivery in Fulfilment or a courier sub-order on the canvas.")
+            : isOffsetOrder
+                ? "Not applicable for offset role."
+                : "Not applicable for this role.";
 
     return (
         <div className="space-y-5">

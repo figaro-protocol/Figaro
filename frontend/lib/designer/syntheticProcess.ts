@@ -107,7 +107,7 @@ export function createSyntheticRootOrder(session: SyntheticProcessSession): Crea
         seller,
         currency,
         payment,
-        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS },
+        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, roleHint: "merchant" },
     });
     const agreementHash = computeAgreementHash(agreement);
     saveAgreement(agreement);

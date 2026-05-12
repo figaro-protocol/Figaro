@@ -20,6 +20,7 @@ import {
     editSyntheticAgreement,
     isRootOrder,
     mergeSyntheticParent,
+    readAgreementFields,
     type AgreementEdits,
     type SyntheticProcessSession,
 } from "@/lib/designer/syntheticProcess";
@@ -102,7 +103,9 @@ export function EditAssemblyClient({ params }: Props) {
             setOrders((prev) => {
                 const parent = prev.find((o) => o.id === parentOrderId);
                 if (!parent) return prev;
-                const sub = createSyntheticSubOrder(session, parent);
+                const sub = createSyntheticSubOrder(session, parent, {
+                    roleHint: "co-seller",
+                });
                 return [...prev, sub.order];
             });
         },
@@ -126,6 +129,7 @@ export function EditAssemblyClient({ params }: Props) {
                 });
                 if (hasAnyChild) return prev;
                 const sub = createSyntheticSubOrder(session, parent, {
+                    roleHint: "courier",
                     courierProcessIncluded: true,
                 });
                 autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
@@ -170,7 +174,9 @@ export function EditAssemblyClient({ params }: Props) {
             setOrders((prev) => {
                 const parent = prev.find((o) => o.id === parentOrderId);
                 if (!parent) return prev;
-                const sub = createSyntheticSubOrder(session, parent);
+                const sub = createSyntheticSubOrder(session, parent, {
+                    roleHint: "offset",
+                });
                 autoAddedOffsetByParentRef.current.set(parentOrderId, sub.order.id);
                 return [...prev, sub.order];
             });
@@ -404,6 +410,16 @@ export function EditAssemblyClient({ params }: Props) {
                         }
                     }
                 }
+                let hasCourierChild = false;
+                for (const child of orders) {
+                    const info = topology.get(child.id);
+                    if (!info?.parentOrderIds.includes(selectedOrderId)) continue;
+                    const childFields = readAgreementFields(child);
+                    if (childFields.roleHint === "courier") {
+                        hasCourierChild = true;
+                        break;
+                    }
+                }
                 return (
                     <AgreementDrawer
                         order={selected}
@@ -411,6 +427,7 @@ export function EditAssemblyClient({ params }: Props) {
                         onChange={(edits) => handleEditAgreement(selectedOrderId, edits)}
                         hasChildren={hasChildren}
                         parentDeliveryActive={parentDeliveryActive}
+                        hasCourierChild={hasCourierChild}
                         onDeliverySelected={handleDeliverySelected}
                         onDeliveryUnselected={handleDeliveryUnselected}
                         onOffsetSelected={handleOffsetSelected}
