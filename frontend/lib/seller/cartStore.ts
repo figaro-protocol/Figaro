@@ -16,7 +16,15 @@ export type FulfillmentMode = CanonicalFulfilmentMethod;
 interface CartStore {
     items: CartItem[];
     deliveryMaxPrice: string;
-    fulfillmentMode: FulfillmentMode;
+    /**
+     * Buyer-selected fulfilment mode. `undefined` is the explicit
+     * unset state — the buyer hasn't picked yet. The picker UIs render
+     * a "Select one" placeholder option until the buyer chooses, and
+     * checkout is disabled while undefined. Replaces the prior
+     * preselect-default-mode behavior so the buyer is required to make
+     * a deliberate choice.
+     */
+    fulfillmentMode: FulfillmentMode | undefined;
     addItem: (item: CartItem) => void;
     /**
      * Decrement an item's quantity by 1, removing the line entirely if the
@@ -33,7 +41,7 @@ interface CartStore {
     getTotalPrice: () => string;
     getItemCount: () => number;
     setDeliveryMaxPrice: (price: string) => void;
-    setFulfillmentMode: (mode: FulfillmentMode) => void;
+    setFulfillmentMode: (mode: FulfillmentMode | undefined) => void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -41,7 +49,7 @@ export const useCartStore = create<CartStore>()(
         (set, get) => ({
             items: [],
             deliveryMaxPrice: "0.002",
-            fulfillmentMode: "deliver:seller-assigned" as FulfillmentMode,
+            fulfillmentMode: undefined,
 
             addItem: (newItem) =>
                 set((state) => {
@@ -89,7 +97,7 @@ export const useCartStore = create<CartStore>()(
                     ),
                 })),
 
-            clearCart: () => set({ items: [], deliveryMaxPrice: "0.002", fulfillmentMode: "deliver:seller-assigned" as FulfillmentMode }),
+            clearCart: () => set({ items: [], deliveryMaxPrice: "0.002", fulfillmentMode: undefined }),
 
             setDeliveryMaxPrice: (price) => set({ deliveryMaxPrice: price }),
 

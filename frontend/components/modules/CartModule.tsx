@@ -98,7 +98,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
     const totalPrice = getTotalPrice();
     const totalPriceAmount = items.length > 0 && totalPrice ? parseToken(totalPrice, tokenDecimals) : 0n;
     const buyerBondAmount = totalPriceAmount > 0n ? calculateBonds(totalPriceAmount, totalPriceAmount).buyerBond : 0n;
-    const isDelivery = isDeliveryFulfilment(fulfillmentMode);
+    const isDelivery = fulfillmentMode ? isDeliveryFulfilment(fulfillmentMode) : false;
     const deliveryDetailsIncomplete = isDelivery && (!deliveryAddress.trim() || Number(deliveryMaxPrice) <= 0);
 
     // Look up the merchant for items[0] so we can filter the picker to the
@@ -121,11 +121,12 @@ export function CartModule({ moduleId, context }: ModuleProps) {
     }, [merchantAddress, catalogues]);
 
     // If the cart's persisted fulfilment mode isn't supported by the
-    // selected merchant, snap to the first supported mode so the manifest
-    // is never built against an unsupported method.
+    // selected merchant, CLEAR it. The buyer must explicitly pick a
+    // supported mode via the dropdown's "Select one" placeholder — no
+    // silent snap-to-first-available.
     useEffect(() => {
-        if (!supportedModes.includes(fulfillmentMode)) {
-            setFulfillmentMode(supportedModes[0]);
+        if (fulfillmentMode && !supportedModes.includes(fulfillmentMode)) {
+            setFulfillmentMode(undefined);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [supportedModes]);
@@ -133,7 +134,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
     // Drives post-commit routing once the cart wires it up; unused for now
     // (the kernel doesn't read it). Surfaced as a `data-` attribute so e2e
     // can assert the cart picked the right slug.
-    const targetAssemblySlug = mapFulfilmentToAssemblySlug(fulfillmentMode);
+    const targetAssemblySlug = fulfillmentMode ? mapFulfilmentToAssemblySlug(fulfillmentMode) : "direct-sale";
 
     const balance = tokenBalance ?? 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
@@ -202,6 +203,10 @@ export function CartModule({ moduleId, context }: ModuleProps) {
 
     const executeCheckout = async () => {
         if (!buyer) return;
+        if (!fulfillmentMode) {
+            setCheckoutError("Select a fulfilment mode before placing the order.");
+            return;
+        }
         const sellerAddress = items[0].sellerAddress as `0x${string}`;
         const paymentWei = totalPriceAmount;
         const prepared = await prepareOrderCommitment({
@@ -460,13 +465,13 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                                 <button
                                     data-testid="btn-confirm-delivery"
                                     onClick={() => setStep("cart")}
-                                    disabled={deliveryDetailsIncomplete}
+                                    disabled={!fulfillmentMode || deliveryDetailsIncomplete}
                                     className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-200 disabled:text-neutral-400 text-white font-semibold py-3 rounded-lg transition-colors"
-                                    style={!deliveryDetailsIncomplete && accentTone
+                                    style={!!fulfillmentMode && !deliveryDetailsIncomplete && accentTone
                                         ? { backgroundColor: accentTone, borderColor: accentTone }
                                         : undefined}
                                 >
-                                    Confirm {isDelivery ? "Delivery Details" : "Fulfilment"}
+                                    {!fulfillmentMode ? "Select a fulfilment mode" : `Confirm ${isDelivery ? "Delivery Details" : "Fulfilment"}`}
                                 </button>
                             </div>
                         ) : (
@@ -533,13 +538,13 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                                             <button
                                                 data-testid="btn-place-order-cart"
                                                 onClick={handlePlaceOrder}
-                                                disabled={commitStep === "signing" || isApproving || hasInsufficientBalance}
+                                                disabled={commitStep === "signing" || isApproving || hasInsufficientBalance || !fulfillmentMode}
                                                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-300 text-white font-semibold py-3 rounded-lg"
-                                                style={commitStep !== "signing" && !isApproving && accentTone
+                                                style={commitStep !== "signing" && !isApproving && !!fulfillmentMode && accentTone
                                                     ? { backgroundColor: accentTone, borderColor: accentTone }
                                                     : undefined}
                                             >
-                                                {isApproving ? "Authorizing payment..." : commitStep === "signing" ? "Signing…" : "Place Order"}
+                                                {!fulfillmentMode ? "Select fulfilment to order" : isApproving ? "Authorizing payment..." : commitStep === "signing" ? "Signing…" : "Place Order"}
                                             </button>
                                         )}
 

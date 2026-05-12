@@ -136,10 +136,12 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         return ALL_FULFILMENT_MODES.filter((m) => restaurant.fulfillmentModes!.includes(m));
     }, [restaurant?.fulfillmentModes, boundModalities, hasOnChainBinding]);
 
-    // Snap fulfilment mode if the cart's persisted choice isn't supported here.
+    // If the cart's persisted choice isn't supported by this merchant's
+    // assembly, CLEAR it. The buyer must explicitly pick a supported mode
+    // — no silent snap-to-first-available.
     useEffect(() => {
-        if (supportedModes.length > 0 && !supportedModes.includes(fulfillmentMode)) {
-            setFulfillmentMode(supportedModes[0]);
+        if (fulfillmentMode && supportedModes.length > 0 && !supportedModes.includes(fulfillmentMode)) {
+            setFulfillmentMode(undefined);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [supportedModes]);
@@ -272,6 +274,10 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             return;
         }
         if (merchantCartItems.length === 0) return;
+        if (!fulfillmentMode) {
+            setCheckoutError("Select a fulfilment mode before placing the order.");
+            return;
+        }
         const sellerAddress = restaurant.address as `0x${string}`;
         try {
             setCheckoutError(null);
@@ -574,11 +580,20 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                     </label>
                                     <select
                                         id="fulfilment-mode-select"
-                                        value={fulfillmentMode}
-                                        onChange={(e) => setFulfillmentMode(e.target.value as FulfillmentMode)}
+                                        value={fulfillmentMode ?? ""}
+                                        onChange={(e) =>
+                                            setFulfillmentMode(
+                                                e.target.value === ""
+                                                    ? undefined
+                                                    : (e.target.value as FulfillmentMode),
+                                            )
+                                        }
                                         className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
                                         data-testid="select-fulfilment-mode"
                                     >
+                                        <option value="" data-testid="option-fulfilment-unset">
+                                            Select one
+                                        </option>
                                         {supportedModes.map((mode) => (
                                             <option key={mode} value={mode} data-testid={`option-fulfilment-${mode}`}>
                                                 {FULFILMENT_MODE_LABELS[mode] ?? mode}
@@ -593,6 +608,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                         isApproving
                                         || placingOrder
                                         || merchantCartItems.length === 0
+                                        || !fulfillmentMode
                                     }
                                     data-testid="btn-place-order"
                                     className="w-full"
@@ -603,7 +619,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                             ? "Approving payment…"
                                             : placingOrder
                                                 ? "Placing order…"
-                                                : "Place order"}
+                                                : !fulfillmentMode
+                                                    ? "Select fulfilment to order"
+                                                    : "Place order"}
                                 </Button>
 
                                 {(checkoutError || commitError) && (
