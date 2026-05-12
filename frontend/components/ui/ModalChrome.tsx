@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 const FOCUSABLE_SELECTOR =
     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -117,9 +118,11 @@ export function ModalChrome({
 
     const alignClass = align === "top" ? "items-start py-6 overflow-y-auto" : "items-center p-4";
 
-    return (
+    if (typeof document === "undefined") return null;
+
+    return createPortal(
         <div
-            className={`fixed inset-0 z-50 flex justify-center bg-black/50 ${alignClass}`}
+            className={`fixed inset-0 z-[60] flex justify-center bg-black/50 ${alignClass}`}
             data-testid={backdropTestId}
             onClick={(e) => {
                 if (dismissOnBackdrop && e.target === e.currentTarget) onClose();
@@ -137,6 +140,7 @@ export function ModalChrome({
             >
                 {children}
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }
