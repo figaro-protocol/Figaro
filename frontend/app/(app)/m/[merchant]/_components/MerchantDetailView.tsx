@@ -44,6 +44,7 @@ import {
     isDeliveryFulfilment,
     mapFulfilmentToHandoff,
 } from "@/lib/seller/fulfilmentRouting";
+import { useMerchantBoundModalities } from "@/lib/mechanisms/useAssemblyRegistry";
 import type { CatalogueItem, SellerCatalogue } from "@/lib/seller/types";
 
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
@@ -118,12 +119,22 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         ? calculateBonds(totalPriceAmount, totalPriceAmount).buyerBond
         : 0n;
 
+    // Bound-assembly modalities take precedence over the catalogue's
+    // legacy fulfillmentModes field — the assembly is the authoritative
+    // source of what this commerce class supports. When the merchant has
+    // no on-chain bindings the catalogue still drives the choice set.
+    const { modalities: boundModalities, hasOnChainBinding } =
+        useMerchantBoundModalities(merchantAddressTyped);
+
     const supportedModes: FulfillmentMode[] = useMemo(() => {
+        if (hasOnChainBinding && boundModalities.length > 0) {
+            return ALL_FULFILMENT_MODES.filter((m) => boundModalities.includes(m));
+        }
         if (!restaurant?.fulfillmentModes || restaurant.fulfillmentModes.length === 0) {
             return ALL_FULFILMENT_MODES;
         }
         return ALL_FULFILMENT_MODES.filter((m) => restaurant.fulfillmentModes!.includes(m));
-    }, [restaurant?.fulfillmentModes]);
+    }, [restaurant?.fulfillmentModes, boundModalities, hasOnChainBinding]);
 
     // Snap fulfilment mode if the cart's persisted choice isn't supported here.
     useEffect(() => {

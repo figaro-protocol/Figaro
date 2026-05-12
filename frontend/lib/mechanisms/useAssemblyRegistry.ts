@@ -23,6 +23,9 @@ import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
+import { useOperatorProfile } from "./useOperatorRegistry";
+import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 
 export const ASSEMBLY_REGISTRY_ABI = parseAbi([
     "function registerAssembly(string slug, bytes32 classId, bytes content, string metadataURI) external",
@@ -288,6 +291,112 @@ export function chainIdToNetworkTarget(chainId: number): string {
         default:
             return `evm-${chainId}`;
     }
+}
+
+export interface MerchantBoundModalities {
+    /** Union of `fulfilmentModalities` across the merchant's on-chain bound assemblies. */
+    modalities: string[];
+    /** True while either the operator-profile or the manifest fetches are in flight. */
+    isLoading: boolean;
+    /** True when at least one of the merchant's bindings matched a published assembly. */
+    hasOnChainBinding: boolean;
+}
+
+/**
+ * Computes the union of fulfilment modalities allowed by a merchant's
+ * on-chain published assembly bindings. Reads the merchant's operator
+ * profile (OperatorRegistry → IPFS), intersects the profile's
+ * `assemblyBindings[].assemblySlug` with the published assembly events,
+ * fetches each matched manifest, and unions the modalities.
+ *
+ * When `hasOnChainBinding` is true, the returned `modalities` is the
+ * authoritative buyer-facing choice set for the cart — overrides the
+ * legacy catalogue `fulfillmentModes` field. When false, the caller
+ * falls back to the catalogue.
+ */
+export function useMerchantBoundModalities(
+    merchantAddress: `0x${string}` | undefined,
+): MerchantBoundModalities {
+    const { data: registryData, isLoading: registryLoading } = useOperatorProfile(merchantAddress);
+    const { data: publishedEvents, isLoading: eventsLoading } = useAllPublishedAssemblies();
+    const [result, setResult] = useState<MerchantBoundModalities>({
+        modalities: [],
+        isLoading: false,
+        hasOnChainBinding: false,
+    });
+
+    useEffect(() => {
+        if (!merchantAddress) {
+            setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+            return;
+        }
+        if (registryLoading || eventsLoading) {
+            setResult((r) => ({ ...r, isLoading: true }));
+            return;
+        }
+        if (!registryData || !publishedEvents) {
+            setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+            return;
+        }
+
+        const [metadataURI] = registryData;
+        const url = resolveContentURI(metadataURI);
+        if (!url) {
+            setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+            return;
+        }
+
+        let cancelled = false;
+        setResult((r) => ({ ...r, isLoading: true }));
+
+        (async () => {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("operator profile fetch failed");
+                const doc = await response.json();
+                const profile = tryParseOperatorProfileDocument(doc);
+                if (cancelled) return;
+                if (!profile?.assemblyBindings || profile.assemblyBindings.length === 0) {
+                    setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+                    return;
+                }
+
+                const merchantSlugs = new Set(profile.assemblyBindings.map((b) => b.assemblySlug));
+                const matchedEvents = publishedEvents.filter((e) => merchantSlugs.has(e.slug));
+                if (matchedEvents.length === 0) {
+                    setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+                    return;
+                }
+
+                const manifests = await Promise.all(
+                    matchedEvents.map((e) => fetchAssemblyManifest(e.metadataURI)),
+                );
+                if (cancelled) return;
+
+                const modalitySet = new Set<string>();
+                for (const m of manifests) {
+                    if (!m?.fulfilmentModalities) continue;
+                    for (const mode of m.fulfilmentModalities) modalitySet.add(mode);
+                }
+
+                setResult({
+                    modalities: Array.from(modalitySet),
+                    isLoading: false,
+                    hasOnChainBinding: true,
+                });
+            } catch {
+                if (!cancelled) {
+                    setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [merchantAddress, registryData, publishedEvents, registryLoading, eventsLoading]);
+
+    return result;
 }
 
 // ── Write hook ────────────────────────────────────────────────────────────────
