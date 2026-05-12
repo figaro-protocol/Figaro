@@ -401,16 +401,16 @@ export function NewAssemblyClient() {
     }, [session]);
 
     const handleSaveDraft = useCallback(() => {
-        const proposedName = typeof window === "undefined" ? null : window.prompt("Name this draft:", name);
-        if (!proposedName || !proposedName.trim()) return;
-        const proposedSlug = slug ?? slugify(proposedName).slice(0, 64);
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const proposedSlug = slug ?? slugify(trimmed).slice(0, 64);
         if (!proposedSlug) {
             window.alert("Could not derive a URL slug from that name.");
             return;
         }
         const snap: DesignSnapshot = {
             slug: proposedSlug,
-            name: proposedName.trim(),
+            name: trimmed,
             processId: session.processId,
             nextOrderIndex: session.nextOrderIndex,
             nextSellerIndex: session.nextSellerIndex,
@@ -454,15 +454,6 @@ export function NewAssemblyClient() {
                 >
                     ?
                 </button>
-                <button
-                    type="button"
-                    onClick={() => setProseOpen(true)}
-                    data-testid="designer-prose-toggle"
-                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong shrink-0"
-                    title="Edit assembly prose"
-                >
-                    Prose
-                </button>
                 {savedHint && (
                     <span className="ml-auto text-[11px] text-ink-muted truncate" data-testid="designer-saved-hint">
                         {savedHint}
@@ -470,11 +461,12 @@ export function NewAssemblyClient() {
                 )}
                 <button
                     type="button"
-                    onClick={handleSaveDraft}
+                    onClick={() => setProseOpen(true)}
                     data-testid="designer-save-draft"
                     className={`text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold shrink-0 ${savedHint ? "" : "ml-auto"}`}
+                    title="Name, prose, and save"
                 >
-                    {slug ? "Update draft" : "Save as draft"}
+                    {slug ? "Update draft…" : "Save as draft…"}
                 </button>
                 <button
                     type="button"
@@ -588,6 +580,10 @@ export function NewAssemblyClient() {
                 orders={orders}
                 values={prose}
                 onChange={handleProseChange}
+                name={name}
+                onNameChange={setName}
+                onSave={handleSaveDraft}
+                saveLabel={slug ? "Update draft" : "Save as draft"}
             />
         </div>
     );

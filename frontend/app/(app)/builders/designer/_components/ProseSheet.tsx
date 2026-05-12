@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * ProseSheet — canvas-side authoring surface for the four prose fields
- * the future canvas → assembly derivation needs but cannot infer from
- * the topology:
+ * ProseSheet — consolidated authoring + save surface for the canvas. Holds
+ * the assembly's display name plus the prose fields the canvas → assembly
+ * derivation cannot infer from topology:
  *
+ *   - identity.displayName           (assembly-level — the draft's name)
  *   - identity.description           (assembly-level)
  *   - narrative.assemblySummary      (assembly-level)
  *   - narrative.builderNotes         (assembly-level)
@@ -17,8 +18,10 @@
  * rename input; unset rows fall back to registry defaults at derivation
  * time.
  *
- * Mounted via the toolbar "Prose" button on both /new and /edit/[slug]
- * canvases. Closed by ESC, backdrop click, or the Done button.
+ * Mounted via the toolbar save button on both /new and /edit/[slug]
+ * canvases. The footer's primary action invokes `onSave` (named-draft
+ * persistence in the parent) and closes; Close / ESC / backdrop close
+ * without saving — autosave still runs in the background regardless.
  */
 
 import { useId, useMemo, useState } from "react";
@@ -46,6 +49,10 @@ interface Props {
     orders: readonly Order[];
     values: ProseSheetValues;
     onChange: (patch: ProseSheetValues) => void;
+    name: string;
+    onNameChange: (name: string) => void;
+    onSave: () => void;
+    saveLabel: string;
 }
 
 const TEXTAREA_CLASS =
@@ -62,11 +69,23 @@ function joinCommaList(list: readonly string[] | undefined): string {
     return list ? list.join(", ") : "";
 }
 
-export function ProseSheet({ open, onClose, orders, values, onChange }: Props) {
+export function ProseSheet({
+    open,
+    onClose,
+    orders,
+    values,
+    onChange,
+    name,
+    onNameChange,
+    onSave,
+    saveLabel,
+}: Props) {
+    const nameId = useId();
     const descId = useId();
     const summaryId = useId();
     const builderNotesId = useId();
     const titleId = useId();
+    const canSave = name.trim().length > 0;
 
     const mechanismKinds = useMemo(
         () => getMechanismKindsForDesign(orders),
@@ -142,15 +161,26 @@ export function ProseSheet({ open, onClose, orders, values, onChange }: Props) {
         >
             <header className="px-4 py-3 border-b border-default shrink-0">
                 <h2 id={titleId} className="text-sm font-semibold text-ink-heading">
-                    Assembly prose
+                    Save draft
                 </h2>
                 <p className="text-[11px] text-ink-muted leading-tight mt-0.5">
-                    Authored fields used when this design is published. Unset
-                    fields fall back to defaults.
+                    Name + prose for this assembly. Unset fields fall back to
+                    defaults.
                 </p>
             </header>
 
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                <FormField label="Name" inputId={nameId}>
+                    <Input
+                        id={nameId}
+                        type="text"
+                        placeholder="e.g. Restaurant delivery (3-party)"
+                        value={name}
+                        onChange={(e) => onNameChange(e.target.value)}
+                        data-testid="prose-sheet-name"
+                    />
+                </FormField>
+
                 <FormField label="Description" inputId={descId}>
                     <textarea
                         id={descId}
@@ -257,14 +287,26 @@ export function ProseSheet({ open, onClose, orders, values, onChange }: Props) {
                 </section>
             </div>
 
-            <footer className="px-4 py-2.5 border-t border-default shrink-0 flex justify-end">
+            <footer className="px-4 py-2.5 border-t border-default shrink-0 flex justify-end gap-2">
                 <button
                     type="button"
                     onClick={onClose}
-                    className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold"
-                    data-testid="prose-sheet-done"
+                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:bg-subtle"
+                    data-testid="prose-sheet-close"
                 >
-                    Done
+                    Close
+                </button>
+                <button
+                    type="button"
+                    onClick={() => {
+                        onSave();
+                        onClose();
+                    }}
+                    disabled={!canSave}
+                    className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                    data-testid="prose-sheet-save"
+                >
+                    {saveLabel}
                 </button>
             </footer>
         </ModalChrome>

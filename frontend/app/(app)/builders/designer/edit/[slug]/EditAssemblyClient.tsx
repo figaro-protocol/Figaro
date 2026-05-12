@@ -327,16 +327,16 @@ export function EditAssemblyClient({ params }: Props) {
     }, [reference]);
 
     const handleSaveDraft = useCallback(() => {
-        const proposedName = typeof window === "undefined" ? null : window.prompt("Name this draft:", name);
-        if (!proposedName || !proposedName.trim()) return;
-        const proposedSlug = slug ?? slugify(proposedName).slice(0, 64);
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const proposedSlug = slug ?? slugify(trimmed).slice(0, 64);
         if (!proposedSlug) {
             window.alert("Could not derive a URL slug from that name.");
             return;
         }
         const snap: DesignSnapshot = {
             slug: proposedSlug,
-            name: proposedName.trim(),
+            name: trimmed,
             processId: session.processId,
             nextOrderIndex: session.nextOrderIndex,
             nextSellerIndex: session.nextSellerIndex,
@@ -386,19 +386,11 @@ export function EditAssemblyClient({ params }: Props) {
                 <button
                     type="button"
                     onClick={() => setProseOpen(true)}
-                    data-testid="designer-prose-toggle"
-                    className="ml-auto text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong"
-                    title="Edit assembly prose"
-                >
-                    Prose
-                </button>
-                <button
-                    type="button"
-                    onClick={handleSaveDraft}
                     data-testid="designer-save-draft"
-                    className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold"
+                    className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold"
+                    title="Name, prose, and save"
                 >
-                    {slug ? "Update draft" : "Save as draft"}
+                    {slug ? "Update draft…" : "Save as draft…"}
                 </button>
                 <button
                     type="button"
@@ -496,6 +488,10 @@ export function EditAssemblyClient({ params }: Props) {
                 orders={orders}
                 values={prose}
                 onChange={handleProseChange}
+                name={name}
+                onNameChange={setName}
+                onSave={handleSaveDraft}
+                saveLabel={slug ? "Update draft" : "Save as draft"}
             />
         </div>
     );
