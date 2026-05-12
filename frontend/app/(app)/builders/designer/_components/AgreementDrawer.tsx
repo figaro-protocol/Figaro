@@ -614,8 +614,8 @@ export function AgreementDrawer({
                                 {getSchemaInfo(COMMERCE_SCHEMA_KEY)?.title ?? "Commerce"}
                             </p>
                             <p className="text-xs text-neutral-500 leading-relaxed">
-                                Order details (currency, payment, line items) are captured from
-                                the buyer&apos;s cart at checkout and validated against{" "}
+                                Order details (currency, payment, line items) are filled in at
+                                commit time and validated against{" "}
                                 <code className="font-mono text-[11px]">{COMMERCE_SCHEMA_KEY}</code>{" "}
                                 — the commerce schema. No composition decision lives here; this
                                 clause is included in every agreement by default.
