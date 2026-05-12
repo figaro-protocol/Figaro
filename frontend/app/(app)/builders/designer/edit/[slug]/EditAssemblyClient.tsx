@@ -365,7 +365,7 @@ export function EditAssemblyClient({ params }: Props) {
             <div className="container mx-auto px-6 pt-8 pb-16 max-w-5xl">
                 <div className="mb-6">
                     <p className="text-sm text-ink-body leading-relaxed max-w-2xl">
-                        <strong>Forked design.</strong> Pre-populated from <strong>{reference.identity.name}</strong> ({reference.roles.length} roles · {reference.mechanisms.filter((m) => m.enabled).length} active mechanisms). The seed produced the canonical tree (root commitment + sub-orders implied by the assembly&apos;s declarations). Modify it: drag the green handle on any node to add a sub-order, click an edge pill to swap fulfilment method on a sub-order, change the root&apos;s fulfilment with the toolbar selector above, click a node to edit its baseline-graph clauses (Geo · GHG · Topology). Save as a draft (local storage); publishing to the on-chain registry is a follow-up.
+                        <strong>Forked design.</strong> Pre-populated from <strong>{reference.identity.name}</strong> ({reference.roles.length} roles · {reference.mechanisms.filter((m) => m.enabled).length} active mechanisms). The seed produced the canonical tree (root commitment + sub-orders implied by the assembly&apos;s declarations). Modify it: drag the green handle on any node to add a sub-order, click an edge pill to swap fulfilment method on a sub-order, change the root&apos;s fulfilment with the toolbar selector above, click a node to open its agreement drawer. Save as a draft (local storage); publishing to the on-chain registry is a follow-up.
                     </p>
                 </div>
                 <ProcessGraphCanvas
@@ -383,7 +383,7 @@ export function EditAssemblyClient({ params }: Props) {
                     </p>
                 )}
                 <p className="mt-6 text-xs text-ink-muted">
-                    Same affordances as <Link href="/builders/designer/new" className="underline">/new</Link>. <strong>Drag</strong> a node&apos;s green handle to empty space to add a sub-order, or onto another node to merge it as an additional parent. <strong>Click</strong> any edge pill to swap the fulfilment method. <strong>Click</strong> any node to modify its baseline-graph clauses or to delete it. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
+                    Same affordances as <Link href="/builders/designer/new" className="underline">/new</Link>. <strong>Drag</strong> a node&apos;s green handle to empty space to add a sub-order, or onto another node to merge it as an additional parent. <strong>Click</strong> any edge pill to swap the fulfilment method. <strong>Click</strong> any node to open the agreement drawer or to delete it. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
                 </p>
             </div>
             {selectedOrderId && (() => {

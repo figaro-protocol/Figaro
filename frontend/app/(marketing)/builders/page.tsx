@@ -80,7 +80,7 @@ export default function BuildersPage() {
                     <ul className="space-y-3 text-sm">
                         <li>
                             <Link href="/builders/designer" className="text-ink-heading font-medium hover:underline">Designer</Link>
-                            <span className="text-ink-body"> &mdash; DAG-of-orders editor: spawn sub-orders from a parent node, merge fan-in by dropping onto an existing node, and swap the per-edge fulfilment method (consume-onsite, pickup, deliver:buyer-assigned, deliver:seller-assigned, deliver:dutch-auction); per-node baseline-graph clauses (Geo, GHG, Handoff, Proximity, Jurisdiction) edit in a side drawer. Drafts persist locally. Buyer surface: <code>/m/&lt;merchant&gt;</code>, <code>/orders/&lt;processId&gt;</code>. Merchant surface: <code>/inbox</code>.</span>
+                            <span className="text-ink-body"> &mdash; DAG-of-orders editor: spawn sub-orders from a parent node, merge fan-in by dropping onto an existing node, and swap the per-edge fulfilment method. Per-node agreement clauses (Identity, Order, Fulfilment, Logistics, Attestations, Emissions, Jurisdiction, Consent) edit in a side drawer. Drafts persist locally. Buyer surface: <code>/m/&lt;merchant&gt;</code>, <code>/orders/&lt;processId&gt;</code>. Merchant surface: <code>/inbox</code>.</span>
                         </li>
                     </ul>
                 </div>

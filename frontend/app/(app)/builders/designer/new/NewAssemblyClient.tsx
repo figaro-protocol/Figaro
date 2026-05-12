@@ -464,13 +464,13 @@ export function NewAssemblyClient() {
                 >
                     <div className="container mx-auto max-w-3xl px-6 py-5 flex flex-col gap-3">
                         <p className="text-sm text-ink-body leading-relaxed">
-                            <strong>The bonded commitment.</strong> One buyer, one seller, one agreement. Four baseline graphs are inherited automatically: <strong>Value</strong>, <strong>Geo</strong>, <strong>Capital</strong>, <strong>GHG</strong>. Toggle the lens buttons to inspect each graph. The agreementHash binds the four sections into one signed contract.
+                            <strong>The bonded commitment.</strong> One buyer, one seller, one agreement. Toggle the canvas lens buttons (<strong>Value</strong>, <strong>Geo</strong>, <strong>Capital</strong>, <strong>GHG</strong>) to switch the overlay. Each node opens an agreement drawer; the drawer&apos;s articles (Identity, Order, Fulfilment, Logistics, Attestations, Emissions, Jurisdiction, Consent) compose the order&apos;s signed agreement. The agreementHash binds those clauses into one contract.
                         </p>
                         <p className="text-sm text-ink-body leading-relaxed">
                             To extend the process: grab the <span className="inline-block align-middle w-3 h-3 rounded-full bg-green-600 border-2 border-white" /> handle at the bottom of any active node and drag it into empty space. A sub-order spawns connected to the parent. Cumulative value rolls up; the new node inherits the currency.
                         </p>
                         <p className="text-sm text-ink-body leading-relaxed">
-                            <strong>Drag</strong> a node&apos;s green handle to empty space to add a sub-order, or onto another node to merge it as an additional parent (enables diamond / fan-in). <strong>Click</strong> any edge pill to swap the fulfilment method (consume on-site · pickup · 3 delivery variants). <strong>Click</strong> any node to modify its baseline-graph clauses (Geo · GHG · Topology) or to delete it. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
+                            <strong>Drag</strong> a node&apos;s green handle to empty space to add a sub-order, or onto another node to merge it as an additional parent (enables diamond / fan-in). <strong>Click</strong> any edge pill to swap the fulfilment method. <strong>Click</strong> any node to open the agreement drawer or to delete it. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
                         </p>
                         <button
                             type="button"
