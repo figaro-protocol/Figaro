@@ -11,8 +11,27 @@ import { Input } from "@/components/ui/Input";
 import { IpfsImageUpload } from "@/components/operators/IpfsImageUpload";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
-import type { CatalogueItemMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import type {
+    CatalogueClassOfService,
+    CatalogueItemMetadata,
+    UnitSystem,
+} from "@/lib/shared/sellerCatalogueMetadata";
+import {
+    gramsToInput,
+    massUnitLabel,
+    mlToInput,
+    parseInputToGrams,
+    parseInputToMl,
+    volumeUnitLabel,
+} from "@/lib/seller/unitConversion";
 import { hexEqual } from "@/lib/shared/evm";
+
+const CLASS_OF_SERVICE_OPTIONS: { value: CatalogueClassOfService; label: string }[] = [
+    { value: "standard", label: "Standard" },
+    { value: "express", label: "Express" },
+    { value: "fragile", label: "Fragile" },
+    { value: "cold-chain", label: "Cold chain" },
+];
 
 /**
  * Step 3 of the onboarding wizard. Collects the catalogue items —
@@ -39,6 +58,12 @@ interface FormItem {
     category: string;
     image: string;
     available: boolean;
+    /** Editor input — in the catalogue's `unitSystem`. Parsed to metric at save. */
+    mass: string;
+    /** Editor input — in the catalogue's `unitSystem`. Parsed to metric at save. */
+    volume: string;
+    /** Empty string = "no class set" (defaults to "standard" at commit). */
+    classOfService: CatalogueClassOfService | "";
 }
 
 function uid(): string {
@@ -46,10 +71,21 @@ function uid(): string {
 }
 
 function emptyItem(): FormItem {
-    return { id: uid(), name: "", description: "", price: "", category: "", image: "", available: true };
+    return {
+        id: uid(),
+        name: "",
+        description: "",
+        price: "",
+        category: "",
+        image: "",
+        available: true,
+        mass: "",
+        volume: "",
+        classOfService: "",
+    };
 }
 
-function fromItem(item: CatalogueItemMetadata): FormItem {
+function fromItem(item: CatalogueItemMetadata, unitSystem: UnitSystem): FormItem {
     return {
         id: item.id,
         name: item.name,
@@ -58,10 +94,13 @@ function fromItem(item: CatalogueItemMetadata): FormItem {
         category: item.category,
         image: item.image ?? "",
         available: item.available,
+        mass: gramsToInput(item.massGrams, unitSystem),
+        volume: mlToInput(item.volumeMl, unitSystem),
+        classOfService: item.classOfService ?? "",
     };
 }
 
-function toItem(form: FormItem): CatalogueItemMetadata {
+function toItem(form: FormItem, unitSystem: UnitSystem): CatalogueItemMetadata {
     return {
         id: form.id,
         name: form.name.trim(),
@@ -70,6 +109,9 @@ function toItem(form: FormItem): CatalogueItemMetadata {
         category: form.category.trim() || "General",
         image: form.image || undefined,
         available: form.available,
+        massGrams: parseInputToGrams(form.mass, unitSystem),
+        volumeMl: parseInputToMl(form.volume, unitSystem),
+        classOfService: form.classOfService || undefined,
     };
 }
 
@@ -80,14 +122,14 @@ function isItemComplete(form: FormItem): boolean {
 export interface OnboardingCatalogueFormProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
-     * `onSave(items)` instead of routing to the next wizard step.
-     * The caller assembles the SellerCatalogueMetadata document,
-     * pins it, and chases with `updateProfile`.
+     * `onSave(items, unitSystem)` instead of routing to the next
+     * wizard step. The caller assembles the SellerCatalogueMetadata
+     * document with both, pins it, and chases with `updateProfile`.
      *
      * Resolves on success (caller redirects); rejects on failure
      * (caller surfaces the error via `externalError`).
      */
-    onSave?: (items: CatalogueItemMetadata[]) => Promise<void>;
+    onSave?: (items: CatalogueItemMetadata[], unitSystem: UnitSystem) => Promise<void>;
     /** Submit-button label override. Defaults to "Next →". */
     submitLabel?: string;
     /** Back-link href override. Defaults to "/operators/onboard/profile". */
@@ -114,6 +156,7 @@ export function OnboardingCatalogueForm({
     const { state, loaded, update } = useOnboardingState(address);
 
     const [items, setItems] = useState<FormItem[]>([emptyItem()]);
+    const [unitSystem, setUnitSystem] = useState<UnitSystem>("metric");
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [hydrated, setHydrated] = useState(false);
 
@@ -125,9 +168,11 @@ export function OnboardingCatalogueForm({
     // items with the local default `[emptyItem()]`.
     useEffect(() => {
         if (hydrated || !loaded) return;
+        const storedUnitSystem = state.catalogue?.unitSystem ?? "metric";
+        setUnitSystem(storedUnitSystem);
         const stored = state.catalogue?.items;
         if (stored && stored.length > 0) {
-            setItems(stored.map(fromItem));
+            setItems(stored.map((item) => fromItem(item, storedUnitSystem)));
         }
         setHydrated(true);
     }, [hydrated, loaded, state.catalogue]);
@@ -135,9 +180,9 @@ export function OnboardingCatalogueForm({
     // Persist on every form change.
     useEffect(() => {
         if (!hydrated || !isConnected) return;
-        const validItems = items.filter(isItemComplete).map(toItem);
-        update({ catalogue: { items: validItems } });
-    }, [items, hydrated, isConnected, update]);
+        const validItems = items.filter(isItemComplete).map((it) => toItem(it, unitSystem));
+        update({ catalogue: { items: validItems, unitSystem } });
+    }, [items, unitSystem, hydrated, isConnected, update]);
 
     // Pricing-token symbol for the per-item price label.
     const defaultTokenSymbol = useMemo(() => {
@@ -172,7 +217,7 @@ export function OnboardingCatalogueForm({
         if (onSave) {
             // Edit mode: caller pins the catalogue + chases with
             // updateProfile. The wizard navigation is suppressed.
-            onSave(completeItems.map(toItem)).catch(() => {
+            onSave(completeItems.map((it) => toItem(it, unitSystem)), unitSystem).catch(() => {
                 // The caller surfaces failures via `externalError`.
             });
             return;
@@ -212,11 +257,41 @@ export function OnboardingCatalogueForm({
 
     return (
         <form onSubmit={validateAndContinue} className="space-y-12">
-            <Card className="p-4 text-sm text-ink-body">
+            <Card className="p-4 text-sm text-ink-body space-y-4">
                 <p>
                     Items are priced in <span className="font-semibold text-ink-heading">{defaultTokenSymbol || "your default token"}</span>.
                     Buyers paying in another accepted token see a converted price at commit time.
                 </p>
+                <div className="flex items-center gap-4">
+                    <span className="text-xs font-semibold text-ink-heading uppercase tracking-wide">
+                        Unit system
+                    </span>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input
+                            type="radio"
+                            name="unit-system"
+                            value="metric"
+                            checked={unitSystem === "metric"}
+                            onChange={() => setUnitSystem("metric")}
+                            data-testid="unit-system-metric"
+                        />
+                        Metric (g, ml)
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input
+                            type="radio"
+                            name="unit-system"
+                            value="imperial"
+                            checked={unitSystem === "imperial"}
+                            onChange={() => setUnitSystem("imperial")}
+                            data-testid="unit-system-imperial"
+                        />
+                        Imperial (oz, fl oz)
+                    </label>
+                    <p className="text-xs text-ink-faint">
+                        Stored as metric; the editor + buyer-facing display use this preference.
+                    </p>
+                </div>
             </Card>
 
             <div className="space-y-6">
@@ -226,6 +301,7 @@ export function OnboardingCatalogueForm({
                         item={item}
                         index={index}
                         priceSymbol={defaultTokenSymbol}
+                        unitSystem={unitSystem}
                         onChange={(key, value) => setItemField(index, key, value)}
                         onRemove={items.length > 1 || isItemComplete(item) ? () => removeItem(index) : undefined}
                     />
@@ -265,11 +341,12 @@ interface ItemRowProps {
     item: FormItem;
     index: number;
     priceSymbol: string;
+    unitSystem: UnitSystem;
     onChange: <K extends keyof FormItem>(key: K, value: FormItem[K]) => void;
     onRemove?: () => void;
 }
 
-function ItemRow({ item, index, priceSymbol, onChange, onRemove }: ItemRowProps) {
+function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: ItemRowProps) {
     const idPrefix = `item-${item.id}`;
     return (
         <Card className="p-5 space-y-4">
@@ -336,6 +413,45 @@ function ItemRow({ item, index, priceSymbol, onChange, onRemove }: ItemRowProps)
                     label="Upload item image"
                 />
             </FormField>
+
+            <div className="grid grid-cols-3 gap-4">
+                <FormField label={`Mass (${massUnitLabel(unitSystem)})`} inputId={`${idPrefix}-mass`}>
+                    <Input
+                        id={`${idPrefix}-mass`}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={item.mass}
+                        onChange={(e) => onChange("mass", e.target.value)}
+                        data-testid={`${idPrefix}-mass`}
+                    />
+                </FormField>
+                <FormField label={`Volume (${volumeUnitLabel(unitSystem)})`} inputId={`${idPrefix}-volume`}>
+                    <Input
+                        id={`${idPrefix}-volume`}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={item.volume}
+                        onChange={(e) => onChange("volume", e.target.value)}
+                        data-testid={`${idPrefix}-volume`}
+                    />
+                </FormField>
+                <FormField label="Class" inputId={`${idPrefix}-class`}>
+                    <select
+                        id={`${idPrefix}-class`}
+                        value={item.classOfService}
+                        onChange={(e) => onChange("classOfService", e.target.value as FormItem["classOfService"])}
+                        className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-black text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                        data-testid={`${idPrefix}-class`}
+                    >
+                        <option value="">Default (standard)</option>
+                        {CLASS_OF_SERVICE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
+                </FormField>
+            </div>
 
             <label className="flex items-center gap-2 text-sm text-ink-body cursor-pointer">
                 <input

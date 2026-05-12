@@ -32,6 +32,7 @@ import type {
     AcceptedTokenMetadata,
     CatalogueItemMetadata,
     SellerBrandingMetadata,
+    UnitSystem,
 } from "@/lib/shared/sellerCatalogueMetadata";
 
 // ── Shape ────────────────────────────────────────────────────────────────────
@@ -53,6 +54,9 @@ export interface OnboardingProfileDraft {
 
 export interface OnboardingCatalogueDraft {
     items?: CatalogueItemMetadata[];
+    /** Operator's preferred unit system for editor + display. Storage of
+     *  per-item mass / volume is always metric; this is a UI preference. */
+    unitSystem?: UnitSystem;
 }
 
 export interface OnboardingState {

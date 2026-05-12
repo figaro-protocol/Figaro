@@ -37,6 +37,7 @@ import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 import type {
     SellerCatalogueMetadata,
+    UnitSystem,
     CatalogueItemMetadata,
 } from "@/lib/shared/sellerCatalogueMetadata";
 import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
@@ -154,7 +155,7 @@ export function OperatorEditCatalogue() {
                 acceptedTokens: existingProfile.acceptedTokens,
                 defaultTokenAddress: existingProfile.defaultTokenAddress,
             },
-            catalogue: { items: existingCatalogue.menu },
+            catalogue: { items: existingCatalogue.menu, unitSystem: existingCatalogue.unitSystem },
         });
         setSeeded(true);
     }, [seeded, loaded, existingProfile, existingCatalogue, update]);
@@ -200,7 +201,7 @@ export function OperatorEditCatalogue() {
         return <Card className="p-8 text-sm text-ink-faint">Setting up editor…</Card>;
     }
 
-    async function handleSave(items: CatalogueItemMetadata[]): Promise<void> {
+    async function handleSave(items: CatalogueItemMetadata[], unitSystem: UnitSystem): Promise<void> {
         setSaveError(null);
         if (!address) {
             const e = new Error("Wallet disconnected mid-save.");
@@ -217,6 +218,7 @@ export function OperatorEditCatalogue() {
                 subjectAddress,
                 menu: items,
                 version: existingCatalogue?.version ?? "1.0.0",
+                unitSystem,
             };
             const result = await publishMerchantCatalogue(newCatalogue);
             newCatalogueURI = result.uri;

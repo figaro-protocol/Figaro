@@ -57,6 +57,7 @@ export function OnboardingLinkForm() {
                 subjectAddress: address,
                 menu: items,
                 version: "1.0.0",
+                unitSystem: state.catalogue?.unitSystem,
             };
             const { uri } = await publishMerchantCatalogue(catalogue);
             update({ publishedCatalogueURI: uri });
