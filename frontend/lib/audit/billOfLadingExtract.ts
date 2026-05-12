@@ -76,6 +76,13 @@ export interface BillOfLadingDocument extends ExtractedDocument {
     originGeohash?: string;
     /** Destination geohash from the geo clause, if signed. */
     destinationGeohash?: string;
+    /** Shipment mass in grams (canonical metric storage). */
+    massGrams?: number;
+    /** Shipment volume in millilitres (canonical metric storage). */
+    volumeMl?: number;
+    /** Shipping/handling class — SDK short code ("S"/"E"/"F"/"C")
+     *  carried in the geo section data. The PDF expands to full names. */
+    classOfService?: string;
     /** Full 5-stage progression, attested or pending. Ordered by stageId. */
     stages: BolStageReceipt[];
 }
@@ -111,7 +118,13 @@ export function extractBillOfLading(
     const fulfilment = getSectionByKey(agreement, FULFILMENT_V2_SCHEMA_KEY);
     const geo = getSectionByKey(agreement, GEO_SCHEMA_KEY);
     const fulfilmentData = fulfilment?.data as { handoffPoint?: string } | undefined;
-    const geoData = geo?.data as { originGeohash?: string; destinationGeohash?: string } | undefined;
+    const geoData = geo?.data as {
+        originGeohash?: string;
+        destinationGeohash?: string;
+        massGrams?: number;
+        volumeMl?: number;
+        classOfService?: string;
+    } | undefined;
 
     // Index per-role attestations for THIS order by (schemaKey, stage). The
     // BoL only applies to the current order; cross-order attestations need
@@ -157,6 +170,9 @@ export function extractBillOfLading(
         handoffMode: fulfilmentData?.handoffPoint,
         originGeohash: geoData?.originGeohash,
         destinationGeohash: geoData?.destinationGeohash,
+        massGrams: geoData?.massGrams,
+        volumeMl: geoData?.volumeMl,
+        classOfService: geoData?.classOfService,
         stages,
     };
 }

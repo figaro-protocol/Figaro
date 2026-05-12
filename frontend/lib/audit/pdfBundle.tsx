@@ -187,6 +187,18 @@ function shortAddr(addr: string | undefined): string {
     return shortHex(addr, 6, 4);
 }
 
+/** Expand the figaro-geo-v2 SDK class short code into its full label.
+ *  Falls back to the raw code for unknown values. */
+function bolClassLabel(code: string): string {
+    switch (code) {
+        case "S": return "Standard (S)";
+        case "E": return "Express (E)";
+        case "F": return "Fragile (F)";
+        case "C": return "Cold chain (C)";
+        default: return code;
+    }
+}
+
 // ── Footer ──────────────────────────────────────────────────────────────────
 
 function PageFooter({ agreementHash, processId }: { agreementHash?: string; processId?: string }) {
@@ -525,6 +537,24 @@ function BillOfLadingPage({ bol }: { bol: BillOfLadingDocument }) {
                     <View style={styles.metadataRow}>
                         <Text style={styles.metadataKey}>destination geohash</Text>
                         <Text style={[styles.metadataValue, styles.mono]}>{bol.destinationGeohash}</Text>
+                    </View>
+                )}
+                {bol.massGrams !== undefined && bol.massGrams > 0 && (
+                    <View style={styles.metadataRow}>
+                        <Text style={styles.metadataKey}>mass</Text>
+                        <Text style={[styles.metadataValue, styles.mono]}>{`${bol.massGrams} g`}</Text>
+                    </View>
+                )}
+                {bol.volumeMl !== undefined && bol.volumeMl > 0 && (
+                    <View style={styles.metadataRow}>
+                        <Text style={styles.metadataKey}>volume</Text>
+                        <Text style={[styles.metadataValue, styles.mono]}>{`${bol.volumeMl} ml`}</Text>
+                    </View>
+                )}
+                {bol.classOfService && (
+                    <View style={styles.metadataRow}>
+                        <Text style={styles.metadataKey}>class of service</Text>
+                        <Text style={[styles.metadataValue, styles.mono]}>{bolClassLabel(bol.classOfService)}</Text>
                     </View>
                 )}
             </View>
