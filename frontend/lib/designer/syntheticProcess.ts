@@ -76,8 +76,9 @@ export interface CreatedOrder {
  *     Court with 3 jurors. Layer 1 (kernel mechanisms) is always active
  *     and not encoded; layer 3 (state / ADR / traditional) is opt-in via
  *     the Jurisdiction tab.
- *   - `fulfilmentModalities` = ["pickup"] — simplest single-modality
- *     offering that doesn't imply a courier sub-order.
+ *   - `fulfilmentModalities` = ["consume-onsite", "pickup"] — the two
+ *     in-person modalities that don't imply a courier sub-order; matches
+ *     the legacy direct-sale reference shape.
  */
 const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
     origin: "0",
@@ -87,9 +88,9 @@ const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
     // layer 3 (state / ADR) is opt-in via the Jurisdiction tab.
     klerosCourt: "general",
     klerosMinJurors: "3",
-    // Every order has a fulfilment clause. Default to pickup — the simplest
-    // single-modality offering that doesn't imply a courier sub-order.
-    fulfilmentModalities: ["pickup"],
+    // Every order has a fulfilment clause. Default to the direct-sale
+    // shape: both in-person modalities, no courier sub-order.
+    fulfilmentModalities: ["consume-onsite", "pickup"],
 };
 
 export function createSyntheticRootOrder(session: SyntheticProcessSession): CreatedOrder {
