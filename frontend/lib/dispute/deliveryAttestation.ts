@@ -32,7 +32,7 @@
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
 
 // ---------------------------------------------------------------------------
-// Handoff step — which edge of the process tree this attestation covers
+// Handoff step — which edge of the process this attestation covers
 // ---------------------------------------------------------------------------
 
 /** Which custody-transfer step this attestation proves. */

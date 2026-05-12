@@ -60,7 +60,7 @@ What makes this more than a clever escrow:
    An institution is a composition of mechanisms, not a monolithic application.
 
 The result: a **public coordination economy** where trust is priced by capital,
-jurisdiction is replaced by code, process trees assemble into
+jurisdiction is replaced by code, processs assemble into
 transaction-scoped institutions, and coordination emerges from economic
 incentives rather than management hierarchies.
 
@@ -89,7 +89,7 @@ implement properties. Mechanisms augment properties. UI renders contracts.
 The core bonding mechanism is augmented by coordination layers that extend its
 reach without weakening its guarantees:
 
-**`parentOrderId` + process trees** — Public value-added process provenance.
+**`parentOrderId` + processs** — Public value-added process provenance.
 Every value chain is visible as a DAG. A buyer's cart can settle as a single
 root process that distributes tokens downstream to every contributor, or each
 item can decompose into direct token flows to every value-adder in the tree.
@@ -124,7 +124,7 @@ disclosure without breaking the bond. Opt-in, but tamper-proof once committed.
 Templates encode reusable value-added process patterns. Settlement cascades
 propagate resolution across linked processes. These are not auxiliary
 infrastructure — they are the primary mechanism by which value distributes
-through process trees. A template defines how a buyer's payment decomposes into
+through processs. A template defines how a buyer's payment decomposes into
 flows reaching every contributor; a cascade ensures that when a root process
 resolves, every sub-process in the tree settles accordingly. These form the
 bones of an inter-institution economy where provenance is verifiable across
@@ -155,7 +155,7 @@ amount is a protocol-enforced fact. Both are useful; only one is trustless.
 
 The delivery archetype (Figaro Local Commerce) demonstrates one instance of this system.
 But the properties generalize to any coordination scenario. In every case,
-the named "entity" is not a firm — it is a process tree of independent
+the named "entity" is not a firm — it is a process of independent
 value-adders:
 
 - **Ride-hail**: buyer + driver (+ vehicle owner, + maintenance provider…),
@@ -264,7 +264,7 @@ return over $0x$ will cooperate. The bond is pre-paid; the "lawsuit" is
 resolved before work begins. No vetting, no credit check, no reputation
 threshold required — only solvency.
 
-**No firms, no employees.** Every participant in a process tree is an
+**No firms, no employees.** Every participant in a process is an
 independent value-adder. The entity formerly known as a "restaurant" does not
 exist — what exists is a cook, a kitchen operator, an ingredient sourcer, each
 bonding independently, each compensated directly for the value they add. A
@@ -278,7 +278,7 @@ Two settlement topologies emerge naturally from this:
   distributes tokens downstream to every contributor via sub-orders and
   cascades. The buyer sees one price; the tree handles decomposition.
 - **Direct**: each item in the buyer's cart decomposes into token flows that
-  reach every value-adder explicitly. The process tree *is* the payment
+  reach every value-adder explicitly. The process *is* the payment
   routing.
 
 Token denomination compounds this. Paying in a local co-op token means every
@@ -432,7 +432,7 @@ Purchase** contract — a minimal escrow where buyer and seller each lock 2×
 payment, creating mutual assured destruction that makes cooperation dominant.
 Figaro generalizes this insight from a 2-party escrow into an N-party
 coordination protocol: progressive collateralization scales the equilibrium
-across process trees, atomic resolution binds the tree into a single game, and
+across processs, atomic resolution binds the tree into a single game, and
 the augmentation layers (auctions, lifecycle coordinators, disclosure modules)
 turn the bare mechanism into composable institutions.
 

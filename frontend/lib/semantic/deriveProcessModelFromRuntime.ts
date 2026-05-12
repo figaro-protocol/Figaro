@@ -284,7 +284,7 @@ function deriveOrderAttachments(order: Order, address?: string): AttachmentModel
             targetType: "order",
             targetId: orderId,
             label: "Sub-order",
-            description: "This order extends the process tree as a downstream node.",
+            description: "This order extends the process as a downstream node.",
             attachmentKind: "topology-child",
             state: "derived",
             visibleByDefault: true,

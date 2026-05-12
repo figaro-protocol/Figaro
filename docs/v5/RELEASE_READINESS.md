@@ -166,7 +166,7 @@ High-value browser checks that must remain covered:
 These are current design realities that are accepted by the protocol surface, not accidental defects introduced by this hardening pass:
 
 1. buyer key loss is terminal for an active process because the kernel has no timeout or admin recovery path
-2. very large process trees are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
+2. very large processs are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
 3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel
 
 ## Accepted Runtime Posture

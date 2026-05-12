@@ -3,7 +3,7 @@
 /**
  * ProcessGraphCanvas — presentational DAG renderer for a Figaro process.
  *
- * Renders the four baseline graphs of a bonded process tree (Value, Geo,
+ * Renders the four baseline graphs of a bonded process (Value, Geo,
  * Capital, GHG) over a react-flow canvas. Pure presentation: takes orders
  * as props, owns no live-state hooks. Consumers:
  *

@@ -31,7 +31,7 @@ export default function Integrate() {
                     Nothing in the kernel distinguishes a human signer from an agent &mdash; an EIP-712 signature is an EIP-712 signature. <code>@figaro/core/agent</code> ships <code>FigaroContext</code>, <code>proposeActions</code>, and <code>ActionQueue</code>: an agent receives kernel state, returns the set of valid actions, and submits via a wallet client. The queue runs in two modes &mdash; human-in-the-loop approval, or fully autonomous submission &mdash; without changes to the underlying call sites.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    What this enables: agents that hold roles in a process tree (a courier-bot bonded against cumulative value, an offset-burning operator settling under the same atomic-resolution rule, an audit agent reading reconstructed state and posting attestations). Bonding makes the agent legible to its counterparty &mdash; cooperation is dominant for the agent on the same arithmetic that makes it dominant for a human (Paper A, Theorem 4.3).
+                    What this enables: agents that hold roles in a process (a courier-bot bonded against cumulative value, an offset-burning operator settling under the same atomic-resolution rule, an audit agent reading reconstructed state and posting attestations). Bonding makes the agent legible to its counterparty &mdash; cooperation is dominant for the agent on the same arithmetic that makes it dominant for a human (Paper A, Theorem 4.3).
                 </p>
                 <p className="text-sm text-ink-muted">
                     Subpath: <code>@figaro/core/agent</code>. Full subpath table below.

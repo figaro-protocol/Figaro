@@ -10,7 +10,7 @@
  *   • Aggregates: balance sheet + income statement, per currency, derived
  *     from the corrected bonding math (2P + 2G custody — see
  *     project_bonding_formula.md in memory)
- *   • Line items: one row per order in the process tree, exposing the
+ *   • Line items: one row per order in the process, exposing the
  *     per-seller breakdown an auditor needs (which seller got how much,
  *     which order is still active, which has resolved). The Figaro
  *     process is structurally an invoice — one buyer paying multiple
@@ -217,7 +217,7 @@ function CurrencySegment({ currency, model }: { currency: string; model: Financi
                     Line items ({lineItems.length})
                 </h4>
                 <p className="text-[11px] text-neutral-500">
-                    One row per order in the process tree. Sum of contributions across
+                    One row per order in the process. Sum of contributions across
                     rows reconciles to the aggregates above.
                 </p>
                 <div className="overflow-x-auto bg-white border border-neutral-200 rounded-lg">

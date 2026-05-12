@@ -31,7 +31,7 @@ export default function BuilderComposability() {
                 </p>
                 <ol className="space-y-3 text-base text-ink-body leading-relaxed list-decimal pl-6 mb-4">
                     <li><strong>Never writes to kernel state.</strong> External contracts cannot mutate <code>processes</code>, <code>orderStatus</code>, or <code>orderProcessId</code>. The kernel is the authoritative ledger of every commitment.</li>
-                    <li><strong>Never reverses a resolution.</strong> Once <code>resolveProcess</code> has discharged a process tree, no external contract can claw back, refund, or retroactively re-open it. Settlement is terminal.</li>
+                    <li><strong>Never reverses a resolution.</strong> Once <code>resolveProcess</code> has discharged a process, no external contract can claw back, refund, or retroactively re-open it. Settlement is terminal.</li>
                     <li><strong>Never controls a bond.</strong> Bonds are owned by <code>FigaroCore</code> until resolution; no external contract can seize, redirect, or substitute them. The collateral that makes defection irrational stays under kernel custody.</li>
                 </ol>
                 <p className="text-sm text-ink-muted">

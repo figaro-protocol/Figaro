@@ -15,7 +15,7 @@ Financial and sustainability reporting regimes increasingly require firms to dis
 1. Data is often approximate rather than attributable.
 2. Responsibility is fragmented across many counterparties.
 3. Reporting systems are separate from the economic systems that generated the activity.
-4. Value-chain reporting is hard to make attributable because process trees are long, multi-hop, and operationally fragmented.
+4. Value-chain reporting is hard to make attributable because processs are long, multi-hop, and operationally fragmented.
 
 Figaro addresses this by attaching GHG disclosure duties to the same process graph that coordinates the underlying trade and value-added chain.
 

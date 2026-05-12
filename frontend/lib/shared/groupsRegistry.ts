@@ -134,7 +134,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         disciplineIndex: 6,
         name: "Operations Research and Management Science",
         discipline: "Resource allocation · accounting · ledger design",
-        charter: "A Figaro process is a self-closing ledger period. Commits are journal entries; resolution is the closing entry; the agreementHash is the contract document. This group reads the substrate as operations researchers and accountants — the kernel as an accounting primitive, the process tree as a coordination problem, the closure as a scheduling invariant.",
+        charter: "A Figaro process is a self-closing ledger period. Commits are journal entries; resolution is the closing entry; the agreementHash is the contract document. This group reads the substrate as operations researchers and accountants — the kernel as an accounting primitive, the process DAG as a coordination problem, the closure as a scheduling invariant.",
         papers: [],
     },
     {

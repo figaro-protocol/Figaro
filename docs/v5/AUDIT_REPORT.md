@@ -416,7 +416,7 @@ These are current design realities, not defects:
    has no timeout or admin recovery path. Use a multi-sig or social-recovery
    wallet for the buyer role in production.
 
-2. **Large process trees are gas-bounded.** The kernel supports ~2,145 orders
+2. **Large processs are gas-bounded.** The kernel supports ~2,145 orders
    within the 30M Ethereum gas limit. Institution design should keep per-process
    order counts well below the theoretical ceiling and use multi-process
    composition for larger trees.

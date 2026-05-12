@@ -92,7 +92,7 @@ primitive.
 Three Figaro invariants frame the entire analysis below; they must be on
 the page so the rest of the doc reads correctly.
 
-**Single-buyer invariant.** A Figaro process tree has one buyer at the
+**Single-buyer invariant.** A Figaro process has one buyer at the
 root. Every order in the tree has that same buyer on its buyer side. There
 is no direct edge between two sellers. In the local-commerce reference
 assembly, both the buyer↔merchant order (goods sale) and the buyer↔courier
@@ -284,7 +284,7 @@ addresses after the document has been issued.
 **Figaro has no such mechanism, by construction.** Three independent
 kernel properties each separately rule it out:
 
-1. **Single-buyer invariant.** A process tree has one buyer at the root,
+1. **Single-buyer invariant.** A process has one buyer at the root,
    and every order in the tree has that same buyer. A "transfer of the
    buyer-side title" mid-tree would either fork the tree (creating a
    second buyer, which the kernel doesn't represent) or substitute the
@@ -349,7 +349,7 @@ carriage contract.
 
 **Multi-leg carriage as a tree of bonded orders.** A supply chain
 shipper → ocean carrier → port → trucker → consignee can be expressed as
-a process tree where each carriage leg is its own bonded
+a process where each carriage leg is its own bonded
 buyer↔seller_i order, all under the same root buyer. Each leg resolves
 atomically when the buyer triggers `resolveProcess` on the whole graph;
 each leg has its own handoff attestations and own non-negotiable BoL
@@ -377,7 +377,7 @@ moving ship sells the cargo to a downstream buyer by endorsing the BoL —
 requires substituting the consignee, which Figaro forbids. A Figaro
 analog would be that the original buyer triggers `resolveProcess` to
 take delivery of the cargo at intermediate point P, then commits a new
-process tree to ship the cargo from P to the new buyer. This is not
+process to ship the cargo from P to the new buyer. This is not
 equivalent: it discloses delivery at P (which the parties may not want),
 and it costs two full bond cycles instead of one transferable record.
 
@@ -409,7 +409,7 @@ buyer↔courier order's agreement.
 | BoL number | `orderHash` | The order's identity is the BoL identity. |
 | Carrier | `order.seller` | The committed courier address. |
 | Shipper / consignor (party of contract) | `order.buyer` | The buyer hires the carrier; the buyer is the consignor on the carriage contract. |
-| Tenderer of goods at pickup | merchant (a co-seller in the same process tree) | Not a party to the carriage contract; a participant in the pickup handoff event. Surfaceable from the topology + the merchant↔buyer order on the same tree. |
+| Tenderer of goods at pickup | merchant (a co-seller in the same process) | Not a party to the carriage contract; a participant in the pickup handoff event. Surfaceable from the topology + the merchant↔buyer order on the same tree. |
 | Consignee | `order.buyer` | Same address as the contractual shipper in local commerce. In supply-chain DAGs the buyer may designate the consignee via a destination address inside `figaro-handoff-v1` (encrypted) and an address inside `figaro-geo-v2.destinationGeohash`. |
 | Origin | `figaro-geo-v2.originGeohash` | Geohash, 1–12 chars precision. |
 | Destination | `figaro-geo-v2.destinationGeohash` | As above. |
@@ -493,7 +493,7 @@ deliverable for that backlog item, when build phase begins, is informed
 by:
 
 **The DAG model is the right primitive for supply chains.** Multi-leg
-carriage as a process tree of buyer-rooted bonded orders is the structural
+carriage as a process of buyer-rooted bonded orders is the structural
 shape Figaro provides; it is exactly what TradeLens tried to model atop
 a permissioned consortium and what the trade-finance literature struggles
 to express in negotiable-instrument frames. Figaro provides this for free

@@ -14,7 +14,7 @@
  * Falls back to manual nonce entry when camera is unavailable (desktop,
  * denied permissions, headless bots).
  *
- * Permissionless primitive — usable at any process-tree edge.
+ * Permissionless primitive — usable at any process edge.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";

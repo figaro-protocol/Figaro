@@ -8,7 +8,7 @@
  *
  * Diverges from `useWalletProcessIds` in two ways:
  *  1. Strict role filter (this wallet is the *root* buyer or seller, not
- *     a participant in a sub-order under someone else's process tree).
+ *     a participant in a sub-order under someone else's process).
  *  2. Carries root-order metadata so the row can render counterparty +
  *     payment without a second indexer call.
  *

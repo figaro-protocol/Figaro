@@ -11,7 +11,7 @@
  * Payload format (JSON stringified):
  *   { "nonce": "0x...", "orderId": "0x...", "step": "pickup" | "delivery" }
  *
- * Permissionless primitive — usable at any process-tree edge, not just
+ * Permissionless primitive — usable at any process edge, not just
  * seller→driver or driver→buyer.
  */
 

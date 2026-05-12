@@ -346,7 +346,7 @@ equivalent mechanism appears to be a missing feature.
 **Why it is correct**: Three independent kernel properties each
 separately rule transferability out:
 
-1. **Single-buyer invariant**. A Figaro process tree has one buyer at
+1. **Single-buyer invariant**. A Figaro process has one buyer at
    the root, and every order in the tree carries that same buyer on its
    buyer side. There is no kernel mechanism to fork the buyer (creating
    two buyer-roots) or substitute the buyer (changing the orderHash). A
@@ -443,6 +443,6 @@ off.
 | 9 | Auction creator can self-claim | Defeats price discovery | No funds held; financial commitment is in FigaroCore |
 | 10 | No redundant on-chain batch guards | Insufficient defense-in-depth | ZK proof is the single authority; duplicating guards creates drift |
 | 11 | Strict token compatibility rejection | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
-| 12 | Single currency per process | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process tree / wallet swap / Level-3 bundler) |
+| 12 | Single currency per process | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
 | 13 | `setValidator` unbundled from `registerSchema` | Front-running window for new schemas | First-write-wins is the no-admin mechanism; atomic deploy+bind is deployment discipline, not a protocol gap |
 | 14 | No `transferTitle` / `endorse` / `nominate` for BoLs | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |

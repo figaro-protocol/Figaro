@@ -56,7 +56,7 @@ The geohash layer enables:
 ### GHG Graph → Compliance Signaling
 
 Automated compliance agents can:
-- Monitor disclosure completeness across a process tree
+- Monitor disclosure completeness across a process
 - Flag orders missing required seller disclosures
 - Aggregate emissions data across reporting boundaries
 - Generate audit-ready reports from on-chain anchors + off-chain content
@@ -73,7 +73,7 @@ Agents optimize capital allocation by monitoring:
 
 For multi-institution workflows:
 - Track provenance across linked processes
-- Identify bottlenecks in multi-step process trees
+- Identify bottlenecks in multi-step processs
 - Verify template compliance across institutions
 
 ---

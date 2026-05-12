@@ -16,7 +16,7 @@ its own truth boundary, purpose, and consumer profile.
 
 ### 1. Process Graph (Protocol-Enforced)
 
-**Source:** `FigaroCore` — orders, bonds, process trees, settlement.
+**Source:** `FigaroCore` — orders, bonds, processs, settlement.
 
 The process graph records who committed to what, under what economic terms,
 and whether the commitment was fulfilled. It is the only graph directly
@@ -88,7 +88,7 @@ verified by contract invariants.
 **Source:** Published assembly metadata, agreement/publication links, and
 protocol-linked attestations that connect one process context to another.
 
-The cross-process graph connects independent process trees via provenance
+The cross-process graph connects independent processs via provenance
 links — enabling process provenance, template reuse, and multi-institution
 coordination.
 

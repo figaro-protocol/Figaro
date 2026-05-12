@@ -20,7 +20,7 @@ const SCHEMA_FAMILIES: { name: string; rows: SchemaRow[] }[] = [
             {
                 id: "figaro-topology-v1",
                 description:
-                    "DAG lineage (parent order hashes) for multi-party process trees. Manifest-only; no on-chain validator.",
+                    "DAG lineage (parent order hashes) for multi-party processes. Manifest-only; no on-chain validator.",
             },
         ],
     },
