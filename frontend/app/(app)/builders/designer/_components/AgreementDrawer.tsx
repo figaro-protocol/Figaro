@@ -48,16 +48,16 @@ import type { FulfilmentModality } from "@figaro/core/schemas";
  */
 type ArticleKey =
     | "identity"
-    | "geolocation"
     | "fulfilment"
+    | "logistics"
     | "emissions"
     | "jurisdiction"
     | "consent";
 
 const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
     { key: "identity", label: "Identity" },
-    { key: "geolocation", label: "Geolocation" },
     { key: "fulfilment", label: "Fulfilment" },
+    { key: "logistics", label: "Logistics" },
     { key: "emissions", label: "Emissions" },
     { key: "jurisdiction", label: "Jurisdiction" },
     { key: "consent", label: "Consent" },
@@ -239,16 +239,30 @@ export function AgreementDrawer({
     const fulfilmentHandoffPoints = readStringArray("fulfilmentHandoffPoints");
     const proximityBands = readStringArray("proximityBands");
 
+    /** Cross-article dependency: when fulfilment offers delivery, the
+     *  Logistics clause is required (delivery is physical handoff and must
+     *  carry origin/destination/mass/volume/class). Drives the Logistics
+     *  tab's locked-on state. */
+    const deliveryActive = fulfilmentModalities.includes("delivery");
+
     /** Fulfilment article: multi-select across modalities, coordinations,
      *  and handoffPoints. The article emits whole-shape updates; the drawer
      *  routes side-effects (auto-add / auto-remove courier sub-order) via
      *  the onDeliveryAdded / onDeliveryRemoved callbacks the article fires
-     *  when delivery is toggled on or off. */
+     *  when delivery is toggled on or off.
+     *
+     *  Delivery → Logistics dependency: when delivery transitions off→on,
+     *  this function also writes the Logistics sentinel into the same
+     *  commitFields call, so the auto-include is atomic with the modality
+     *  update. Transition on→off leaves Logistics where it is — the
+     *  designer may want to keep it for non-delivery flows. */
     function updateFulfilment(next: {
         modalities: string[];
         coordinations: string[];
         handoffPoints: string[];
     }) {
+        const becomingDelivery =
+            next.modalities.includes("delivery") && !fulfilmentModalities.includes("delivery");
         const out: ManifestFields = { ...fields };
         if (next.modalities.length > 0) out.fulfilmentModalities = next.modalities;
         else delete (out as Record<string, unknown>).fulfilmentModalities;
@@ -256,6 +270,12 @@ export function AgreementDrawer({
         else delete (out as Record<string, unknown>).fulfilmentCoordinations;
         if (next.handoffPoints.length > 0) out.fulfilmentHandoffPoints = next.handoffPoints;
         else delete (out as Record<string, unknown>).fulfilmentHandoffPoints;
+        if (becomingDelivery && !isSchemaIncluded(GEO_SCHEMA_KEY, out)) {
+            const sentinel = SCHEMA_SENTINELS[GEO_SCHEMA_KEY];
+            for (const [k, v] of Object.entries(sentinel)) {
+                (out as Record<string, unknown>)[k] = v;
+            }
+        }
         commitFields(out);
     }
 
@@ -529,12 +549,14 @@ export function AgreementDrawer({
                         </section>
                     )}
 
-                    {openSection === "geolocation" && (
-                        <section data-testid="drawer-section-geolocation">
+                    {openSection === "logistics" && (
+                        <section data-testid="drawer-section-logistics">
                             <SchemaToggleArticle
                                 schemaId={GEO_SCHEMA_KEY}
                                 included={isSchemaIncluded(GEO_SCHEMA_KEY, fields)}
                                 onToggle={(next) => toggleSchema(GEO_SCHEMA_KEY, next)}
+                                disabled={deliveryActive}
+                                disabledHint="Required when fulfilment includes delivery."
                             />
                         </section>
                     )}
@@ -609,10 +631,18 @@ function SchemaToggleArticle({
     schemaId,
     included,
     onToggle,
+    disabled = false,
+    disabledHint,
 }: {
     schemaId: string;
     included: boolean;
     onToggle: (next: boolean) => void;
+    /** When true, the toggle is locked at its current value. Used to express
+     *  cross-article dependencies — e.g., Logistics is locked-on while
+     *  Fulfilment offers delivery. */
+    disabled?: boolean;
+    /** One-line hint rendered beneath the locked toggle explaining why. */
+    disabledHint?: string;
 }) {
     const info = getSchemaInfo(schemaId);
     return (
@@ -621,17 +651,21 @@ function SchemaToggleArticle({
             <p className="text-xs text-neutral-500 leading-relaxed mb-4">
                 {info?.description ?? ""}
             </p>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className={`flex items-center gap-2 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                 <input
                     type="checkbox"
                     checked={included}
                     onChange={(e) => onToggle(e.target.checked)}
+                    disabled={disabled}
                     data-testid={`drawer-include-${schemaId}`}
                 />
-                <span className="text-xs text-neutral-700">
+                <span className={`text-xs ${disabled ? "text-neutral-400" : "text-neutral-700"}`}>
                     Included in this order&apos;s agreement
                 </span>
             </label>
+            {disabled && disabledHint && (
+                <p className="text-[10px] text-neutral-400 italic mt-1 ml-6">{disabledHint}</p>
+            )}
         </div>
     );
 }

@@ -1,8 +1,8 @@
 {
     "schemaId": "figaro-geo-v2",
     "version": 2,
-    "title": "Geographic origin, destination, and physical envelope",
-    "description": "Origin and destination geohashes for an order with physical handoff, plus the shipment's physical envelope (mass, volume) and class of service. Extends v1 by promoting mass/volume/class from optional metadata to first-class validated fields. Every field is required when this clause is included.",
+    "title": "Logistics",
+    "description": "Origin and destination geohashes plus shipment mass, volume, and class of service. Required when fulfilment includes delivery.",
     "categories": ["geo"],
     "fields": [
         {
