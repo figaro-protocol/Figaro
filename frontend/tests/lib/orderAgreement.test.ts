@@ -37,7 +37,7 @@ describe("buildOrderAgreement", () => {
         });
 
         expect(getSection(agreement, "figaro-commerce-v1")).toBeDefined();
-        expect(getSection(agreement, "figaro-geo-v1")).toBeDefined();
+        expect(getSection(agreement, "figaro-geo-v2")).toBeDefined();
         expect(getSection(agreement, "figaro-topology-v1")).toBeDefined();
         expect(getSection(agreement, "figaro-commerce-v1")?.data.lineItems).toEqual([
             {

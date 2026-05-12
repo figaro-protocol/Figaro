@@ -48,7 +48,7 @@ import type { FulfilmentModality } from "@figaro/core/schemas";
  */
 type ArticleKey =
     | "identity"
-    | "geo"
+    | "geolocation"
     | "fulfilment"
     | "emissions"
     | "jurisdiction"
@@ -56,7 +56,7 @@ type ArticleKey =
 
 const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
     { key: "identity", label: "Identity" },
-    { key: "geo", label: "Geo" },
+    { key: "geolocation", label: "Geolocation" },
     { key: "fulfilment", label: "Fulfilment" },
     { key: "emissions", label: "Emissions" },
     { key: "jurisdiction", label: "Jurisdiction" },
@@ -74,13 +74,18 @@ type SectionKey = ArticleKey;
  * Real values come from the runtime — designer's job is composition.
  */
 const SCHEMA_SENTINELS: Record<string, Record<string, string>> = {
-    [GEO_SCHEMA_KEY]: { origin: "0", destination: "0" },
+    // figaro-geo-v2 requires all five fields. Origin / destination get
+    // minimum-length geohashes. Mass / volume default to 1 (the smallest
+    // value the v2 validator accepts; 0 reverts). Class defaults to "S"
+    // (Standard). `manifestFieldsToGeoSection` reads these manifest keys
+    // and produces an encoder-valid section. Real values flow in at
+    // commit-time from the buyer's runtime UI.
+    [GEO_SCHEMA_KEY]: { origin: "0", destination: "0", mass: "1g", volume: "1ml", class_: "S" },
 };
 
 /**
- * Per-schema fields the toggle "Not included" clears. Set is broader
- * than the sentinel: clearing geo wipes mass/volume/class too even
- * though the sentinel only writes origin/destination.
+ * Per-schema fields the toggle "Not included" clears. Must match the
+ * sentinel keys above so toggling off wipes every field toggling on set.
  */
 const SCHEMA_FIELDS: Record<string, readonly string[]> = {
     [GEO_SCHEMA_KEY]: ["origin", "destination", "mass", "volume", "class_"],
@@ -462,7 +467,7 @@ export function AgreementDrawer({
             <div className="flex-1 flex flex-row overflow-hidden">
                 <nav
                     data-testid="drawer-articles-nav"
-                    className="w-[96px] shrink-0 border-r border-neutral-200 overflow-y-auto"
+                    className="w-[112px] shrink-0 border-r border-neutral-200 overflow-y-auto"
                 >
                     {ARTICLES.map((article) => {
                         const isOpen = openSection === article.key;
@@ -524,8 +529,8 @@ export function AgreementDrawer({
                         </section>
                     )}
 
-                    {openSection === "geo" && (
-                        <section data-testid="drawer-section-geo">
+                    {openSection === "geolocation" && (
+                        <section data-testid="drawer-section-geolocation">
                             <SchemaToggleArticle
                                 schemaId={GEO_SCHEMA_KEY}
                                 included={isSchemaIncluded(GEO_SCHEMA_KEY, fields)}

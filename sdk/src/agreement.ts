@@ -100,10 +100,13 @@ function schemaIdOf(schemaKey: string): Hex {
  * figaro-proximity-proof-v1 is Category-1 (runtime witness payload).
  */
 const CATEGORY_2_ENCODERS: Record<string, (data: Record<string, unknown>) => Hex> = {
-    "figaro-geo-v1": (data) => encodeGeoContent({
+    "figaro-geo-v2": (data) => encodeGeoContent({
         originGeohash: data.originGeohash as string,
         destinationGeohash: data.destinationGeohash as string,
-    } as GeoContent),
+        massGrams: Number(data.massGrams),
+        volumeMl: Number(data.volumeMl),
+        classOfService: data.classOfService as GeoContent["classOfService"],
+    } satisfies GeoContent),
     "figaro-fulfilment-v2": (data) => encodeFulfilmentV2Content(data as unknown as FulfilmentV2Content),
     "figaro-jurisdiction-v1": (data) => encodeJurisdictionContent({
         applicableLaw: data.applicableLaw as string,

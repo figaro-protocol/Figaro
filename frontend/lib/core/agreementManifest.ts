@@ -10,7 +10,7 @@
  * The buyer composes their order by selecting terms:
  *
  * - What goods/services? → `figaro-commerce-v1` (basket of line items)
- * - Where from / where to? → `figaro-geo-v1` (origin, destination, physical params)
+ * - Where from / where to? → `figaro-geo-v2` (origin, destination, mass, volume, class)
  * - How fulfilled, coordinated, and handed off? → `figaro-fulfilment-v2`
  *   (modality + coordination + handoff point in one clause)
  * - What GHG reporting standard? → `figaro-ghg-iso-14064-v1` (scope 1 emissions
@@ -25,7 +25,7 @@
  *   sections: [
  *     { schema: "figaro-commerce-v1",        data: { lineItems, currency, payment } },
  *     { schema: "figaro-fulfilment-v2",      data: { modality: "delivery", coordination: "dutch-auction", handoffPoint: "face-to-face" } },
- *     { schema: "figaro-geo-v1",             data: { origin, destination, mass, volume } },
+ *     { schema: "figaro-geo-v2",             data: { originGeohash, destinationGeohash, massGrams, volumeMl, classOfService } },
  *     { schema: "figaro-ghg-iso-14064-v1",  data: { standard: "iso-14064-1" } },
  *   ]
  * }
@@ -165,7 +165,7 @@ export interface AgreementLineItem {
 }
 
 export const COMMERCE_SCHEMA_KEY = "figaro-commerce-v1";
-export const GEO_SCHEMA_KEY = "figaro-geo-v1";
+export const GEO_SCHEMA_KEY = "figaro-geo-v2";
 export const TOPOLOGY_SCHEMA_KEY = "figaro-topology-v1";
 /** Fulfilment-composition schema. Three orthogonal fields (modality,
  *  coordination, handoffPoint) in one clause. */
@@ -359,10 +359,13 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
     // enum strings.
     const asAny = <T>(v: unknown) => v as T;
     switch (schemaKey) {
-        case "figaro-geo-v1":
+        case "figaro-geo-v2":
             return (data) => encodeGeoContent({
                 originGeohash: data.originGeohash as string,
                 destinationGeohash: data.destinationGeohash as string,
+                massGrams: Number(data.massGrams),
+                volumeMl: Number(data.volumeMl),
+                classOfService: asAny(data.classOfService),
             });
         case "figaro-fulfilment-v2":
             return (data) => encodeFulfilmentV2Content({
@@ -766,19 +769,31 @@ function parseVolumeToMl(volume: string | undefined): number {
 }
 
 /**
- * Convert V3-style ManifestFields into a figaro-geo-v1 section data object.
+ * Convert V3-style ManifestFields into a figaro-geo-v2 section data object.
+ *
+ * Default values match the v2 validator's minimum-valid 5-tuple so the
+ * agreement-hash mechanism is consistent at designer time even when the
+ * buyer hasn't supplied real values yet:
+ *
+ *   - mass / volume default to 1 (the smallest value v2 accepts; 0 reverts).
+ *   - classOfService defaults to "S" (Standard).
+ *
+ * Real buyer-supplied values overwrite these at commit time.
  */
 export function manifestFieldsToGeoSection(
     fields: { origin?: string; destination?: string; mass?: string; volume?: string; class_?: string },
 ): AgreementSection {
+    const massGrams = parseMassToGrams(fields.mass);
+    const volumeMl = parseVolumeToMl(fields.volume);
+    const classOfService = fields.class_?.trim() || "S";
     return {
         schema: GEO_SCHEMA_KEY,
         data: {
             originGeohash: fields.origin?.trim() ?? "",
             destinationGeohash: fields.destination?.trim() ?? "",
-            massGrams: parseMassToGrams(fields.mass),
-            volumeMl: parseVolumeToMl(fields.volume),
-            classOfService: fields.class_?.trim() || "S",
+            massGrams: massGrams > 0 ? massGrams : 1,
+            volumeMl: volumeMl > 0 ? volumeMl : 1,
+            classOfService,
         },
     };
 }

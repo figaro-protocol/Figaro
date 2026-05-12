@@ -50,7 +50,7 @@ function findCleartextSection(
 /** Human-readable title for each schema clause (best-effort display label). */
 const SCHEMA_TITLE: Record<string, string> = {
     "figaro-commerce-v1": "Commerce — line items + payment",
-    "figaro-geo-v1": "Geography — origin + destination",
+    "figaro-geo-v2": "Geography — origin + destination + mass + volume + class",
     "figaro-fulfilment-v2": "Fulfilment — modality + coordination + handoffPoint",
     "figaro-topology-v1": "Topology — DAG lineage",
     "figaro-jurisdiction-v1": "Jurisdiction — applicable law + forum",

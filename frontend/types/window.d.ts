@@ -55,6 +55,7 @@ declare global {
         __FIGARO_MOCK_API__?: unknown;
         __FIGARO_PENDING_PERMIT__?: PendingPermitState;
         __FIGARO_ALLOWANCES__?: Record<string, string>;
+        __FIGARO_MOCK_APPROVE__?: (token: string, amount: string) => Promise<boolean>;
     }
 }
 

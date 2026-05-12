@@ -17,8 +17,14 @@ const COMMERCE: AgreementSection = {
     data: { currency: CURRENCY, payment: "1000000000000000000", lineItems: [] },
 };
 const GEO: AgreementSection = {
-    schema: "figaro-geo-v1",
-    data: { originGeohash: "dr5reg", destinationGeohash: "dr5reh" },
+    schema: "figaro-geo-v2",
+    data: {
+        originGeohash: "dr5reg",
+        destinationGeohash: "dr5reh",
+        massGrams: 500,
+        volumeMl: 1000,
+        classOfService: "S",
+    },
 };
 const GHG: AgreementSection = {
     schema: "figaro-ghg-iso-14064-v1",

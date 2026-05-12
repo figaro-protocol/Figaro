@@ -26,7 +26,7 @@ Reviewed live Solidity surface (20 production contracts + 1 new validator interf
 
 **Schema Validators** (15 — one per registered runtime-attestable schema, set via first-write-wins `setValidator`)
 - `src/schemaValidators/FigaroHandoffV1Validator.sol` — Category-2, enforces byte-equality
-- `src/schemaValidators/FigaroGeoV1Validator.sol` — Category-2, enforces byte-equality
+- `src/schemaValidators/FigaroGeoV2Validator.sol` — Category-2, enforces byte-equality
 - `src/schemaValidators/FigaroFulfilmentV1Validator.sol` — Category-2, enforces byte-equality
 - `src/schemaValidators/FigaroGHGProtocolV1Validator.sol` — Category-2, enforces byte-equality (GHG sister schema)
 - `src/schemaValidators/FigaroGHGISO14064V1Validator.sol` — Category-2, enforces byte-equality (GHG sister schema)

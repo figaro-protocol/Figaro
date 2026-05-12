@@ -59,7 +59,7 @@ Built-in specs ship in `sdk/src/schemas/examples/` and
 | `figaro-topology-v1` | DAG lineage (parent order hashes) | **Manifest-only** (no runtime validator) |
 | `figaro-handoff-v1` | Physical-exchange mode | Layer A + C |
 | `figaro-commerce-v1` | Currency, payment, line items | Layer A + C |
-| `figaro-geo-v1` | Origin / destination geohash | Layer A + C |
+| `figaro-geo-v2` | Origin / destination geohash + mass + volume + class of service | Layer A + C |
 | `figaro-fulfilment-v1` | Fulfilment method (single canonical enum: modality + who-organizes) | Layer A + C |
 | `figaro-ghg-protocol-v1` | GHG Protocol Corporate Standard + scope (Category-2) | Layer A + C |
 | `figaro-ghg-iso-14064-v1` | ISO 14064 family + scope (Category-2) | Layer A + C |

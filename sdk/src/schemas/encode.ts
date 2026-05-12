@@ -23,17 +23,50 @@ export const EMPTY_CONTENT: Hex = "0x";
 // needed; the off-chain manifest carries `{topologyMode, parentOrderHashes}`
 // as a JSON section.
 
-// ── figaro-geo-v1 ───────────────────────────────────────────────────────────
+// ── figaro-geo-v2 ───────────────────────────────────────────────────────────
+//
+// Origin / destination geohashes plus the shipment's physical envelope (mass,
+// volume) and class of service. v2 promotes mass/volume/class from optional
+// metadata to first-class validated fields; every field is required when this
+// clause is included. Class-of-service is encoded as a uint8 index on-chain
+// (S=1, E=2, F=3, C=4) to mirror figaro-fulfilment-v2's enum-as-uint8 pattern.
+
+/** Class of service. S = Standard. E = Express. F = Fragile. C = Cold Chain. */
+export type ClassOfService = "S" | "E" | "F" | "C";
+
+const CLASS_OF_SERVICE_INDEX: Record<ClassOfService, number> = {
+    "S": 1,
+    "E": 2,
+    "F": 3,
+    "C": 4,
+};
 
 export interface GeoContent {
     originGeohash: string;
     destinationGeohash: string;
+    /** Whole grams. Must be ≥ 1; capped at uint32-max. */
+    massGrams: number;
+    /** Whole millilitres. Must be ≥ 1; capped at uint32-max. */
+    volumeMl: number;
+    classOfService: ClassOfService;
 }
 
 export function encodeGeoContent(content: GeoContent): Hex {
     return encodeAbiParameters(
-        [{ type: "string" }, { type: "string" }],
-        [content.originGeohash, content.destinationGeohash],
+        [
+            { type: "string" },
+            { type: "string" },
+            { type: "uint32" },
+            { type: "uint32" },
+            { type: "uint8" },
+        ],
+        [
+            content.originGeohash,
+            content.destinationGeohash,
+            content.massGrams,
+            content.volumeMl,
+            CLASS_OF_SERVICE_INDEX[content.classOfService],
+        ],
     );
 }
 

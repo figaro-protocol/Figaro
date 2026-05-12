@@ -8,7 +8,7 @@
  *
  *   • Committed-at-signing clauses — what the parties bound to:
  *       fulfilment modality + handoffPoint (figaro-fulfilment-v2)
- *       origin / destination geohashes (figaro-geo-v1)
+ *       origin / destination geohashes + mass + volume + class (figaro-geo-v2)
  *
  *   • Runtime attestations — what actually happened:
  *       delivery-lifecycle stage receipts (figaro-delivery-lifecycle-v1)

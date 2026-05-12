@@ -65,7 +65,7 @@ Validators are pure / view, no admin, no mutable state.
 **`src/schemaValidators/`** — 17 production validator contracts, one per
 *runtime-attestable* schemaId (local-commerce use case + jurisdiction baseline + consent):
 `FigaroHandoffV1Validator`,
-`FigaroCommerceV1Validator`, `FigaroGeoV1Validator`,
+`FigaroCommerceV1Validator`, `FigaroGeoV2Validator`,
 `FigaroFulfilmentV1Validator`, plus the 5 GHG sister schemas
 `FigaroGHGProtocolV1Validator`, `FigaroGHGISO14064V1Validator`,
 `FigaroGHGPAS2050V1Validator`, `FigaroGHGEN16258V1Validator`,

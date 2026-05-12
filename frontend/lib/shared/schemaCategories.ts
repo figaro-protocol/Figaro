@@ -28,7 +28,7 @@ import consentSpec from "@/lib/shared/schemas/figaro-consent-v1.json";
 import courierProcessSpec from "@/lib/shared/schemas/figaro-courier-process-v1.json";
 import deliveryLifecycleSpec from "@/lib/shared/schemas/figaro-delivery-lifecycle-v1.json";
 import fulfilmentSpec from "@/lib/shared/schemas/figaro-fulfilment-v2.json";
-import geoSpec from "@/lib/shared/schemas/figaro-geo-v1.json";
+import geoSpec from "@/lib/shared/schemas/figaro-geo-v2.json";
 import ghgCustomSpec from "@/lib/shared/schemas/figaro-ghg-custom-v1.json";
 import ghgEN16258Spec from "@/lib/shared/schemas/figaro-ghg-en-16258-v1.json";
 import ghgISO14064Spec from "@/lib/shared/schemas/figaro-ghg-iso-14064-v1.json";
@@ -87,7 +87,7 @@ export const CATEGORY_DESCRIPTIONS: Record<SchemaCategory, string> = {
     lifecycle: "Stage progression and event streams over time.",
     "role-process": "Sovereign event logs for off-chain operator roles.",
     fulfilment: "Modality, coordination, and handoff point in one clause.",
-    geo: "Geographic origin and destination.",
+    geo: "Geographic origin and destination, plus shipment mass, volume, and class of service.",
     emissions: "GHG accounting (per industry standard or custom).",
     jurisdiction: "Off-chain dispute-resolution jurisdiction.",
     proximity: "Proximity verification policy and proof.",
@@ -106,7 +106,7 @@ export const SCHEMA_TIER_MAP: Readonly<Record<string, SchemaTier>> = {
     "figaro-commerce-v1": "designer-time",
     "figaro-consent-v1": "designer-time",
     "figaro-fulfilment-v2": "designer-time",
-    "figaro-geo-v1": "designer-time",
+    "figaro-geo-v2": "designer-time",
     "figaro-ghg-custom-v1": "designer-time",
     "figaro-ghg-en-16258-v1": "designer-time",
     "figaro-ghg-iso-14064-v1": "designer-time",

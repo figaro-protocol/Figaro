@@ -45,8 +45,14 @@ function makeAgreement(): Agreement {
                 },
             },
             {
-                schema: 'figaro-geo-v1',
-                data: { originGeohash: 'u4pruydqqvj', destinationGeohash: 'u4pruydqqvk' },
+                schema: 'figaro-geo-v2',
+                data: {
+                    originGeohash: 'u4pruydqqvj',
+                    destinationGeohash: 'u4pruydqqvk',
+                    massGrams: 500,
+                    volumeMl: 1000,
+                    classOfService: 'S',
+                },
             },
             {
                 schema: 'figaro-fulfilment-v2',

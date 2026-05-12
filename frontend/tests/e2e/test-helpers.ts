@@ -218,15 +218,10 @@ export async function gotoHome(page: Page, opts?: { mock?: boolean; devnet?: boo
     if (opts?.mock) {
         // Ensure script runs before any page scripts execute
         await page.addInitScript(() => {
-            // Allow tests to simulate token allowances/approve
-            // @ts-ignore
-            window.__FIGARO_ALLOWANCES__ = window.__FIGARO_ALLOWANCES__ || {};
-            // Mock approve function used by UI when running in E2E mock mode
-            // @ts-ignore
-            window.__FIGARO_MOCK_APPROVE__ = (token, amount) => {
-                // store as lowercase address key
-                // @ts-ignore
-                window.__FIGARO_ALLOWANCES__[token.toLowerCase()] = amount;
+            const allowances: Record<string, string> = window.__FIGARO_ALLOWANCES__ ?? {};
+            window.__FIGARO_ALLOWANCES__ = allowances;
+            window.__FIGARO_MOCK_APPROVE__ = (token: string, amount: string) => {
+                allowances[token.toLowerCase()] = amount;
                 return Promise.resolve(true);
             };
         });
@@ -564,7 +559,7 @@ export async function injectActiveOrder(
                 },
             },
             {
-                schema: 'figaro-geo-v1',
+                schema: 'figaro-geo-v2',
                 data: {
                     originGeohash: manifestFields.origin ?? '',
                     destinationGeohash: manifestFields.destination ?? '',

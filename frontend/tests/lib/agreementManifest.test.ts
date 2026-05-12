@@ -39,8 +39,14 @@ const COMMERCE_SECTION: AgreementSection = {
 };
 
 const GEO_SECTION: AgreementSection = {
-    schema: "figaro-geo-v1",
-    data: { originGeohash: "dr5reg", destinationGeohash: "dr5reh" },
+    schema: "figaro-geo-v2",
+    data: {
+        originGeohash: "dr5reg",
+        destinationGeohash: "dr5reh",
+        massGrams: 1000,
+        volumeMl: 5000,
+        classOfService: "S",
+    },
 };
 
 const FULFILMENT_SECTION: AgreementSection = {
@@ -114,7 +120,7 @@ describe("computeAgreementHash", () => {
     it("different section data produces different hashes", () => {
         const h1 = computeAgreementHash(makeAgreement({ sections: [GEO_SECTION] }));
         const h2 = computeAgreementHash(makeAgreement({
-            sections: [{ schema: "figaro-geo-v1", data: { ...GEO_SECTION.data, originGeohash: "u33dc0" } }],
+            sections: [{ schema: "figaro-geo-v2", data: { ...GEO_SECTION.data, originGeohash: "u33dc0" } }],
         }));
         expect(h1).not.toBe(h2);
     });
@@ -175,7 +181,7 @@ describe("buildAgreement", () => {
         expect(hasSection(a, "figaro-commerce-v1")).toBe(true);
         expect(hasSection(a, "figaro-fulfilment-v2")).toBe(true);
         expect(hasSection(a, "figaro-ghg-iso-14064-v1")).toBe(true);
-        expect(hasSection(a, "figaro-geo-v1")).toBe(true);
+        expect(hasSection(a, "figaro-geo-v2")).toBe(true);
     });
 });
 
@@ -288,19 +294,29 @@ describe("section accessors", () => {
 // ── manifestFieldsToGeoSection ───────────────────────────────────────────────
 
 describe("manifestFieldsToGeoSection", () => {
-    it("returns a figaro-geo-v1 AgreementSection", () => {
+    it("returns a figaro-geo-v2 AgreementSection", () => {
         const section = manifestFieldsToGeoSection({
             origin: "dr5reg",
             destination: "dr5reh",
             mass: "1 kg",
             volume: "5 L",
-            class_: "Express",
+            class_: "E",
         });
-        expect(section.schema).toBe("figaro-geo-v1");
+        expect(section.schema).toBe("figaro-geo-v2");
         expect(section.data.originGeohash).toBe("dr5reg");
         expect(section.data.massGrams).toBe(1000);
         expect(section.data.volumeMl).toBe(5000);
-        expect(section.data.classOfService).toBe("Express");
+        expect(section.data.classOfService).toBe("E");
+    });
+
+    it("defaults missing mass/volume to 1 (v2 validator's minimum-valid value)", () => {
+        const section = manifestFieldsToGeoSection({
+            origin: "dr5reg",
+            destination: "dr5reh",
+        });
+        expect(section.data.massGrams).toBe(1);
+        expect(section.data.volumeMl).toBe(1);
+        expect(section.data.classOfService).toBe("S");
     });
 });
 
@@ -348,7 +364,7 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
     it("non-targeted sections are passed through unchanged", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
-        const geoEntry = redacted.sections.find((s) => s.schema === "figaro-geo-v1")!;
+        const geoEntry = redacted.sections.find((s) => s.schema === "figaro-geo-v2")!;
         expect(isRedactedSection(geoEntry)).toBe(false);
         // Cleartext section: same data field as before redaction.
         expect((geoEntry as AgreementSection).data).toEqual(GEO_SECTION.data);

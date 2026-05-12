@@ -7,7 +7,7 @@ This file walks through which schemas the assembly needs, which already exist, a
 | Schema | Use in this assembly |
 |---|---|
 | `figaro-commerce-v1` | Per-leg payment commitment (shipper→forwarder, forwarder→carrier, etc.) |
-| `figaro-geo-v1` | Pickup / drop-off geohash on every leg; vessel position updates |
+| `figaro-geo-v2` | Pickup / drop-off geohash on every leg + cargo mass + volume + class; vessel position updates |
 | `figaro-handoff-v1` | Container handoff at every transfer point (terminal gate, vessel deck, port) |
 | `figaro-jurisdiction-v1` | Customs clearance attestation by national authority |
 | `figaro-courier-process-v1` | Multi-stop carrier process (the ocean carrier's internal sub-process tree) |

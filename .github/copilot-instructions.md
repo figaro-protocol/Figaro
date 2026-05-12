@@ -323,7 +323,7 @@ same rules. **A new schema is not "done" until all three layers ship in lockstep
 
 The 17 local-commerce schemas: `figaro-topology-v1` (manifest-only — no
 runtime validator), plus 16 runtime-attestable schemas with Layer A + C
-coverage: `figaro-handoff-v1`, `figaro-commerce-v1`, `figaro-geo-v1`,
+coverage: `figaro-handoff-v1`, `figaro-commerce-v1`, `figaro-geo-v2`,
 `figaro-fulfilment-v1`, plus the GHG sister schemas `figaro-ghg-protocol-v1`,
 `figaro-ghg-iso-14064-v1`, `figaro-ghg-pas-2050-v1`, `figaro-ghg-en-16258-v1`,
 `figaro-ghg-custom-v1` (all Category-2 — one per accounting standard),

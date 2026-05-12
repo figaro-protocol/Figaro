@@ -15,7 +15,7 @@ import "../src/mocks/MockSP1Verifier.sol";
 import "../src/FigaroBatchVerifier.sol";
 import "../src/SchemaRegistrationHelper.sol";
 import "../src/schemaValidators/FigaroCommerceV1Validator.sol";
-import "../src/schemaValidators/FigaroGeoV1Validator.sol";
+import "../src/schemaValidators/FigaroGeoV2Validator.sol";
 import "../src/schemaValidators/FigaroFulfilmentV2Validator.sol";
 import "../src/schemaValidators/FigaroGHGProtocolV1Validator.sol";
 import "../src/schemaValidators/FigaroGHGISO14064V1Validator.sol";
@@ -83,7 +83,7 @@ contract Deploy is Script {
         // Register reference schemas (18 figaro-* schemas: 17 runtime-attestable + figaro-topology-v1 manifest-only)
         schemas.registerSchema(keccak256("figaro-topology-v1"), 1, keccak256("ipfs://figaro-topology/v1"));
         schemas.registerSchema(keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"));
-        schemas.registerSchema(keccak256("figaro-geo-v1"), 1, keccak256("ipfs://figaro-geo/v1"));
+        schemas.registerSchema(keccak256("figaro-geo-v2"), 1, keccak256("ipfs://figaro-geo/v2"));
         schemas.registerSchema(keccak256("figaro-fulfilment-v2"), 1, keccak256("ipfs://figaro-fulfilment/v2"));
         schemas.registerSchema(keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"));
         schemas.registerSchema(keccak256("figaro-ghg-iso-14064-v1"), 1, keccak256("ipfs://figaro-ghg-iso-14064/v1"));
@@ -230,7 +230,7 @@ contract Deploy is Script {
             keccak256("figaro-commerce-v1"), address(new FigaroCommerceV1Validator())
         );
         attestation.setValidator(
-            keccak256("figaro-geo-v1"), address(new FigaroGeoV1Validator())
+            keccak256("figaro-geo-v2"), address(new FigaroGeoV2Validator())
         );
         attestation.setValidator(
             keccak256("figaro-fulfilment-v2"), address(new FigaroFulfilmentV2Validator())

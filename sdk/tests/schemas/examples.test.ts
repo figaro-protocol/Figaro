@@ -3,7 +3,7 @@ import { parseSchemaSpec } from "../../src/schemas/spec.js";
 import { validateContent } from "../../src/schemas/validate.js";
 import topologySpecRaw from "../../src/schemas/examples/figaro-topology-v1.json" with { type: "json" };
 import commerceSpecRaw from "../../src/schemas/examples/figaro-commerce-v1.json" with { type: "json" };
-import geoSpecRaw from "../../src/schemas/examples/figaro-geo-v1.json" with { type: "json" };
+import geoSpecRaw from "../../src/schemas/examples/figaro-geo-v2.json" with { type: "json" };
 import fulfilmentV2SpecRaw from "../../src/schemas/examples/figaro-fulfilment-v2.json" with { type: "json" };
 import jurisdictionSpecRaw from "../../src/schemas/examples/figaro-jurisdiction-v1.json" with { type: "json" };
 import ghgProtocolSpecRaw from "../../src/schemas/examples/figaro-ghg-protocol-v1.json" with { type: "json" };
@@ -84,19 +84,91 @@ describe("example schema specs — parse + validate sample content", () => {
         expect(result.ok).toBe(false);
     });
 
-    // ── figaro-geo-v1 ──
+    // ── figaro-geo-v2 ──
 
-    it("figaro-geo-v1 accepts valid geohashes", () => {
+    it("figaro-geo-v2 accepts valid 5-tuple", () => {
         const parsed = parseSchemaSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ originGeohash: "u4pruydqqv", destinationGeohash: "9q8yyk8yvr" }, parsed.spec).ok).toBe(true);
+        expect(validateContent({
+            originGeohash: "u4pruydqqv",
+            destinationGeohash: "9q8yyk8yvr",
+            massGrams: 500,
+            volumeMl: 1000,
+            classOfService: "S",
+        }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-geo-v1 rejects geohash with disallowed characters", () => {
+    it("figaro-geo-v2 accepts every class-of-service value", () => {
+        const parsed = parseSchemaSpec(geoSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        for (const cls of ["S", "E", "F", "C"]) {
+            expect(validateContent({
+                originGeohash: "d",
+                destinationGeohash: "z",
+                massGrams: 1,
+                volumeMl: 1,
+                classOfService: cls,
+            }, parsed.spec).ok).toBe(true);
+        }
+    });
+
+    it("figaro-geo-v2 rejects geohash with disallowed characters", () => {
         const parsed = parseSchemaSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // 'a' is not in the geohash base32 alphabet
-        expect(validateContent({ originGeohash: "abc", destinationGeohash: "abc" }, parsed.spec).ok).toBe(false);
+        expect(validateContent({
+            originGeohash: "abc",
+            destinationGeohash: "abc",
+            massGrams: 1,
+            volumeMl: 1,
+            classOfService: "S",
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-geo-v2 rejects zero mass", () => {
+        const parsed = parseSchemaSpec(geoSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            originGeohash: "u",
+            destinationGeohash: "v",
+            massGrams: 0,
+            volumeMl: 1,
+            classOfService: "S",
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-geo-v2 rejects zero volume", () => {
+        const parsed = parseSchemaSpec(geoSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            originGeohash: "u",
+            destinationGeohash: "v",
+            massGrams: 1,
+            volumeMl: 0,
+            classOfService: "S",
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-geo-v2 rejects unknown class-of-service", () => {
+        const parsed = parseSchemaSpec(geoSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            originGeohash: "u",
+            destinationGeohash: "v",
+            massGrams: 1,
+            volumeMl: 1,
+            classOfService: "X",
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-geo-v2 rejects missing required fields", () => {
+        const parsed = parseSchemaSpec(geoSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        // mass/volume/class are now required
+        expect(validateContent({
+            originGeohash: "u",
+            destinationGeohash: "v",
+        }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-fulfilment-v2 ──

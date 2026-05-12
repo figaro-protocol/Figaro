@@ -41,6 +41,7 @@ export { validateContent } from "./validate.js";
 
 export type {
     GeoContent,
+    ClassOfService,
     FulfilmentModality,
     FulfilmentCoordination,
     FulfilmentHandoffPoint,

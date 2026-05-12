@@ -32,8 +32,8 @@ const SCHEMA_FAMILIES: { name: string; rows: SchemaRow[] }[] = [
                 description: "Currency, payment, line items, quantity, per-item identifiers.",
             },
             {
-                id: "figaro-geo-v1",
-                description: "Origin and destination geohashes at configurable precision.",
+                id: "figaro-geo-v2",
+                description: "Origin and destination geohashes at configurable precision, plus shipment mass (g), volume (ml), and class of service (Standard / Express / Fragile / Cold Chain).",
             },
             {
                 id: "figaro-fulfilment-v2",

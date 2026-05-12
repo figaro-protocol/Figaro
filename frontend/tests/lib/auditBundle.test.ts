@@ -94,7 +94,13 @@ describe("extractContract", () => {
         },
         {
             schema: GEO_SCHEMA_KEY,
-            data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk" },
+            data: {
+                originGeohash: "u4pruydqqvj",
+                destinationGeohash: "u4pruydqqvk",
+                massGrams: 500,
+                volumeMl: 1000,
+                classOfService: "S",
+            },
         },
         {
             schema: JURISDICTION_SCHEMA_KEY,
@@ -253,7 +259,7 @@ describe("extractBillOfLading", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
         { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
-        { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk" } },
+        { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
     ]);
 
     function makeAttestation(overrides: Partial<AttestationRecord> = {}): AttestationRecord {
@@ -656,7 +662,7 @@ describe("isCarriageOrder", () => {
     it("returns false for buyer↔merchant orders (no courier-process clause)", () => {
         const agreement = makeAgreement([
             { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
-            { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry" } },
+            { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         ]);
         expect(isCarriageOrder(agreement)).toBe(false);
     });
@@ -676,7 +682,7 @@ describe("buildAuditBundle", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
         { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
-        { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry" } },
+        { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         { schema: COURIER_PROCESS_SCHEMA_KEY, data: {} },
     ]);
     const bundle = buildAuditBundle(order, agreement, []);
@@ -709,7 +715,7 @@ describe("buildAuditBundle", () => {
     it("omits billOfLading on a non-carriage order (e.g. buyer↔merchant goods sale)", () => {
         const merchantAgreement = makeAgreement([
             { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
-            { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry" } },
+            { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         ]);
         const merchantBundle = buildAuditBundle(order, merchantAgreement, []);
         expect(merchantBundle.billOfLading).toBeUndefined();
@@ -731,7 +737,7 @@ describe("buildAuditBundle with redacted commerce section", () => {
     const order = makeOrder();
     const cleartextAgreement = makeAgreement([
         { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
-        { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry" } },
+        { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
     ]);
 
     it("invoice surfaces lineItemsSealed when commerce is redacted", async () => {

@@ -67,7 +67,11 @@ export interface CreatedOrder {
  * the designer's "default articles for any node" intent.
  *
  *   - `origin` / `destination` = "0" — single-character base32 geohashes
- *     that satisfy `figaro-geo-v1`'s pattern + minLength constraints.
+ *     that satisfy `figaro-geo-v2`'s pattern + minLength constraints. The
+ *     v2 validator also requires non-zero mass/volume and a valid class
+ *     of service; `manifestFieldsToGeoSection` supplies minimally-valid
+ *     defaults (mass=1 g, volume=1 ml, class="S") when this section is
+ *     emitted, which the buyer overwrites at commit time.
  *   - `klerosCourt` = "general" + `klerosMinJurors` = "3" — Kleros General
  *     Court with 3 jurors. Layer 1 (kernel mechanisms) is always active
  *     and not encoded; layer 3 (state / ADR / traditional) is opt-in via
