@@ -3,13 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import { REFERENCE_ASSEMBLIES, type Assembly } from "@/lib/shared/assembly";
 import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
+import {
+    useAllPublishedAssemblies,
+    fetchAssemblyManifest,
+    chainIdToNetworkTarget,
+} from "@/lib/mechanisms/useAssemblyRegistry";
 
 /**
  * Step 5 of the onboarding wizard. Lets the operator pick which
@@ -34,6 +39,8 @@ interface AssemblyChoice {
     name: string;
     description: string;
     networkTargets: readonly string[];
+    /** Where this choice was sourced from. Drives the badge + de-duplication. */
+    source: "reference" | "on-chain";
 }
 
 function describeAssembly(assembly: Assembly): AssemblyChoice {
@@ -42,6 +49,7 @@ function describeAssembly(assembly: Assembly): AssemblyChoice {
         name: assembly.identity.name,
         description: assembly.identity.description ?? "",
         networkTargets: assembly.identity.networkTargets,
+        source: "reference",
     };
 }
 
@@ -90,9 +98,50 @@ export function OnboardingAssembliesForm({
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
+    const chainId = useChainId();
     const { state, loaded, update } = useOnboardingState(address);
 
-    const choices = useMemo(() => REFERENCE_ASSEMBLIES.map(describeAssembly), []);
+    // On-chain published assemblies (all authors). Manifest fetch lands
+    // name/description from IPFS; networkTargets is derived from the
+    // current chain since the registry is per-chain.
+    const { data: publishedEvents } = useAllPublishedAssemblies();
+    const [onChainChoices, setOnChainChoices] = useState<AssemblyChoice[]>([]);
+
+    useEffect(() => {
+        if (!publishedEvents || publishedEvents.length === 0) {
+            setOnChainChoices([]);
+            return;
+        }
+        let cancelled = false;
+        const networkTarget = chainIdToNetworkTarget(chainId);
+        Promise.all(
+            publishedEvents.map(async (event) => {
+                const manifest = await fetchAssemblyManifest(event.metadataURI);
+                return {
+                    slug: event.slug,
+                    name: manifest?.name ?? event.slug,
+                    description: manifest?.description ?? "",
+                    networkTargets: [networkTarget],
+                    source: "on-chain" as const,
+                };
+            }),
+        ).then((items) => {
+            if (cancelled) return;
+            setOnChainChoices(items);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [publishedEvents, chainId]);
+
+    // Merge sources, de-dupe by slug (on-chain wins if both exist).
+    const choices = useMemo<AssemblyChoice[]>(() => {
+        const merged = new Map<string, AssemblyChoice>();
+        for (const ref of REFERENCE_ASSEMBLIES) merged.set(ref.identity.slug, describeAssembly(ref));
+        for (const onChain of onChainChoices) merged.set(onChain.slug, onChain);
+        return Array.from(merged.values());
+    }, [onChainChoices]);
+
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [hydrated, setHydrated] = useState(false);
 
@@ -194,9 +243,21 @@ export function OnboardingAssembliesForm({
                                         <span className="font-semibold text-ink-heading">
                                             {choice.name}
                                         </span>
-                                        <code className="text-xs text-ink-faint font-mono">
-                                            {choice.slug}
-                                        </code>
+                                        <div className="flex items-baseline gap-2 shrink-0">
+                                            <span
+                                                className={`text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 ${
+                                                    choice.source === "on-chain"
+                                                        ? "bg-ink-heading text-paper"
+                                                        : "bg-subtle text-ink-muted"
+                                                }`}
+                                                data-testid={`assembly-source-${choice.slug}`}
+                                            >
+                                                {choice.source}
+                                            </span>
+                                            <code className="text-xs text-ink-faint font-mono">
+                                                {choice.slug}
+                                            </code>
+                                        </div>
                                     </div>
                                     {choice.description && (
                                         <p className="text-sm text-ink-body">

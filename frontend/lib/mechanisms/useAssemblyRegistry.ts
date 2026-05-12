@@ -239,6 +239,57 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
     return { data, isLoading, refetch };
 }
 
+/**
+ * Convenience wrapper for the unfiltered "all published assemblies" case.
+ * Used by surfaces like the onboarding assembly-picker that need every
+ * registered assembly regardless of author.
+ */
+export function useAllPublishedAssemblies() {
+    return usePublishedAssemblies(undefined);
+}
+
+/**
+ * Fetch the IPFS-pinned manifest at `metadataURI`. Returns the parsed
+ * JSON or null on failure (gateway unreachable, malformed JSON, etc.).
+ * Best practice per the manifest split: human-readable fields (name,
+ * description) live on IPFS, not on-chain — this is the reader.
+ */
+export async function fetchAssemblyManifest(
+    metadataURI: string,
+): Promise<DirectSaleManifest | null> {
+    const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(metadataURI);
+    if (!url) return null;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        return (await response.json()) as DirectSaleManifest;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Synthesize a `networkTargets` value for an on-chain-registered assembly
+ * based on the chain its registry lives on. Derived rather than stored —
+ * the AssemblyRegistry is per-chain, so the chain IS the network target.
+ *
+ * The names match the existing convention in the hand-coded reference
+ * JSONs (`local-anvil`, `sepolia`, ...) so downstream consumers like
+ * `listBindingsForAddress` filter correctly across both sources.
+ */
+export function chainIdToNetworkTarget(chainId: number): string {
+    switch (chainId) {
+        case 31337:
+            return "local-anvil";
+        case 11155111:
+            return "sepolia";
+        case 1:
+            return "mainnet";
+        default:
+            return `evm-${chainId}`;
+    }
+}
+
 // ── Write hook ────────────────────────────────────────────────────────────────
 
 export function usePublishDirectSaleAssembly() {
