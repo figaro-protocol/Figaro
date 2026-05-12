@@ -9,16 +9,46 @@
  */
 
 import {
+    CatalogueClassOfService,
     CatalogueItemMetadata,
     SellerCatalogueMetadata,
+    UnitSystem,
 } from "@/lib/shared/sellerCatalogueMetadata";
 import {
     asAddress,
     asBoolean,
+    asEnum,
+    asNumber,
     asOptionalString,
     asRecord,
     asString,
 } from "@/lib/shared/parseHelpers";
+
+const ALLOWED_CLASS_OF_SERVICE = new Set<CatalogueClassOfService>([
+    "standard",
+    "express",
+    "fragile",
+    "cold-chain",
+]);
+const ALLOWED_UNIT_SYSTEMS = new Set<UnitSystem>(["metric", "imperial"]);
+
+function parseOptionalNumber(value: unknown, path: string): number | undefined {
+    if (value === undefined) return undefined;
+    return asNumber(value, path);
+}
+
+function parseOptionalClassOfService(
+    value: unknown,
+    path: string,
+): CatalogueClassOfService | undefined {
+    if (value === undefined) return undefined;
+    return asEnum(value, ALLOWED_CLASS_OF_SERVICE, path);
+}
+
+function parseOptionalUnitSystem(value: unknown, path: string): UnitSystem | undefined {
+    if (value === undefined) return undefined;
+    return asEnum(value, ALLOWED_UNIT_SYSTEMS, path);
+}
 
 function parseSchemaAttestations(value: unknown, path: string): Record<string, Record<string, unknown>> | undefined {
     if (value === undefined) return undefined;
@@ -43,6 +73,9 @@ function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
         category: asString(record.category, `${path}.category`),
         image: asOptionalString(record.image, `${path}.image`),
         available: asBoolean(record.available, `${path}.available`),
+        massGrams: parseOptionalNumber(record.massGrams, `${path}.massGrams`),
+        volumeMl: parseOptionalNumber(record.volumeMl, `${path}.volumeMl`),
+        classOfService: parseOptionalClassOfService(record.classOfService, `${path}.classOfService`),
         schemaAttestations: parseSchemaAttestations(record.schemaAttestations, `${path}.schemaAttestations`),
     };
 }
@@ -61,5 +94,6 @@ export function parseSellerCatalogueDocument(value: unknown, sourceLabel = "sell
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
         menu: parseMenu(record.menu, `${sourceLabel}.menu`),
         version: asString(record.version, `${sourceLabel}.version`),
+        unitSystem: parseOptionalUnitSystem(record.unitSystem, `${sourceLabel}.unitSystem`),
     };
 }

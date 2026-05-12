@@ -1,3 +1,23 @@
+/**
+ * Shipping/handling class — feeds the figaro-geo-v2 `classOfService` field
+ * at commit time. String literals are the canonical storage shape; the
+ * geo validator's uint8 encoding (1=standard, 2=express, 3=fragile,
+ * 4=cold-chain) is a manifest-encoder concern, not a storage concern.
+ */
+export type CatalogueClassOfService =
+    | "standard"
+    | "express"
+    | "fragile"
+    | "cold-chain";
+
+/**
+ * Operator's preferred unit system for the catalogue editor + display.
+ * Storage of `massGrams` / `volumeMl` is ALWAYS metric — `unitSystem`
+ * only governs how the editor accepts input and how the display
+ * formats the stored metric values back to the operator's locale.
+ */
+export type UnitSystem = "metric" | "imperial";
+
 export interface CatalogueItemMetadata {
     id: string;
     name: string;
@@ -6,6 +26,18 @@ export interface CatalogueItemMetadata {
     category: string;
     image?: string;
     available: boolean;
+    /**
+     * Item mass in grams. Storage canonical: always metric. The editor
+     * accepts oz/lbs input when the catalogue's `unitSystem` is
+     * "imperial" and converts to grams before persisting. Optional —
+     * items that aren't physical (virtual services) or aren't yet
+     * annotated can omit it.
+     */
+    massGrams?: number;
+    /** Item volume in millilitres. Same convention as `massGrams`. */
+    volumeMl?: number;
+    /** Shipping/handling class. Default at commit time: "standard". */
+    classOfService?: CatalogueClassOfService;
     /**
      * Schema-specific attestations attached to this item.
      * Keyed by schemaKey (must match a key in the seller's supportedSchemas).
@@ -87,6 +119,12 @@ export interface SellerCatalogueMetadata {
     subjectAddress: `0x${string}`;
     menu: CatalogueItemMetadata[];
     version: string;
+    /**
+     * Operator's preferred unit system for editor + display. Storage of
+     * mass/volume on `CatalogueItemMetadata` is always metric; this
+     * field is a UI preference only. Defaults to "metric" when unset.
+     */
+    unitSystem?: UnitSystem;
 }
 
 export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {

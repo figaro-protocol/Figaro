@@ -1,4 +1,8 @@
-import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import type {
+    AcceptedTokenMetadata,
+    CatalogueClassOfService,
+    UnitSystem,
+} from "@/lib/shared/sellerCatalogueMetadata";
 import type { OperatorAgentServices } from "@/lib/shared/operatorProfileMetadata";
 
 export interface CatalogueItem {
@@ -9,6 +13,15 @@ export interface CatalogueItem {
     image: string;
     category: string;
     available: boolean;
+    /** Item mass in grams (always metric). The display layer formats to
+     *  the catalogue's `unitSystem` at render time. Optional — virtual
+     *  items or pre-annotation items omit it. */
+    massGrams?: number;
+    /** Item volume in millilitres. Same convention as `massGrams`. */
+    volumeMl?: number;
+    /** Shipping/handling class. Defaults to "standard" at commit if
+     *  the item-level value is absent. */
+    classOfService?: CatalogueClassOfService;
 }
 
 /**
@@ -53,6 +66,9 @@ export interface SellerCatalogue {
         | "deliver:seller-assigned"
         | "deliver:dutch-auction"
     >;
+    /** Operator's preferred display unit system for mass / volume. Storage
+     *  is always metric; this field only governs UI formatting. */
+    unitSystem?: UnitSystem;
 }
 
 export interface CartItem {

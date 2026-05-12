@@ -50,11 +50,15 @@ function profileToCatalogue(
             image: item.image ?? '🍽️',
             category: item.category,
             available: item.available,
+            massGrams: item.massGrams,
+            volumeMl: item.volumeMl,
+            classOfService: item.classOfService,
         })),
         acceptedTokens: profile.acceptedTokens,
         defaultTokenAddress: profile.defaultTokenAddress,
         agentServices: profile.services,
         fulfillmentModes: [],
+        unitSystem: catalogue?.unitSystem,
     };
 }
 
