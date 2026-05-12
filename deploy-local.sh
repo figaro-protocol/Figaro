@@ -55,6 +55,7 @@ ATTESTATION_ADDR=$(echo "$FORGE_OUT" | grep 'AttestationCoordinator deployed at:
 SCHEMA_ADDR=$(echo "$FORGE_OUT"      | grep 'SchemaRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
 SCHEMA_HELPER_ADDR=$(echo "$FORGE_OUT" | grep 'SchemaRegistrationHelper deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 OPERATOR_ADDR=$(echo "$FORGE_OUT"    | grep 'OperatorRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
+ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 AUCTION_ADDR=$(echo "$FORGE_OUT"     | grep 'DutchAuction deployed at:'           | grep -oE '0x[0-9a-fA-F]+')
 FIG_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FigToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
 ## FigEmission removed
@@ -88,6 +89,7 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_ATTESTATION_COORDINATOR"   "$ATTESTATION_ADD
 update_env "$CORE_ENV" "NEXT_PUBLIC_SCHEMA_REGISTRY"           "$SCHEMA_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER" "$SCHEMA_HELPER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_OPERATOR_REGISTRY"         "$OPERATOR_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_DUTCH_AUCTION"             "$AUCTION_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FIG_TOKEN_ADDRESS"         "$FIG_TOKEN_ADDR"
 ## FigEmission removed
@@ -106,6 +108,7 @@ cat > "$CORE_MANIFEST" <<EOF
   "schemaRegistry": "$SCHEMA_ADDR",
   "schemaRegistrationHelper": "$SCHEMA_HELPER_ADDR",
   "operatorRegistry": "$OPERATOR_ADDR",
+  "assemblyRegistry": "$ASSEMBLY_ADDR",
   "dutchAuction": "$AUCTION_ADDR",
   "figToken": "$FIG_TOKEN_ADDR",
   "batchVerifier": "$BATCH_VERIFIER_ADDR"
@@ -122,6 +125,7 @@ echo "   NEXT_PUBLIC_ATTESTATION_COORDINATOR=$ATTESTATION_ADDR"
 echo "   NEXT_PUBLIC_SCHEMA_REGISTRY=$SCHEMA_ADDR"
 echo "   NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=$SCHEMA_HELPER_ADDR"
 echo "   NEXT_PUBLIC_OPERATOR_REGISTRY=$OPERATOR_ADDR"
+echo "   NEXT_PUBLIC_ASSEMBLY_REGISTRY=$ASSEMBLY_ADDR"
 echo "   NEXT_PUBLIC_DUTCH_AUCTION=$AUCTION_ADDR"
 echo "   NEXT_PUBLIC_FIG_TOKEN_ADDRESS=$FIG_TOKEN_ADDR"
 echo "   NEXT_PUBLIC_BATCH_VERIFIER=$BATCH_VERIFIER_ADDR"
