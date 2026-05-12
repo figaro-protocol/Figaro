@@ -1198,9 +1198,9 @@ function JurisdictionArticle({
             <div data-testid="drawer-jurisdiction-layer1">
                 <p className="text-[11px] text-neutral-500 mb-1">Bonded settlement</p>
                 <p className="text-xs text-neutral-700 leading-relaxed">
-                    Always active. Asymmetric bonding and buyer dominance avoid
-                    disputes by mechanism design — the protocol&apos;s primary
-                    jurisdictional layer.
+                    Always active. Cooperation is the dominant strategy under
+                    asymmetric bonding and buyer dominance — the protocol&apos;s
+                    primary jurisdictional layer.
                 </p>
             </div>
 
