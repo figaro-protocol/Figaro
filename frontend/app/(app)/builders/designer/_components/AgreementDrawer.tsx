@@ -26,7 +26,7 @@
  *     positioning. Used by /new where the drawer is part of the layout.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { Order } from "@/lib/core/store";
 import type { ManifestFields } from "@/lib/core/encoding";
 import {
@@ -734,6 +734,8 @@ function SchemaToggleArticle({
     disabledHint?: string;
 }) {
     const info = getSchemaInfo(schemaId);
+    const hintId = useId();
+    const showHint = disabled && !!disabledHint;
     return (
         <div>
             <p className="text-sm text-black mb-1">{info?.title ?? schemaId}</p>
@@ -746,14 +748,17 @@ function SchemaToggleArticle({
                     checked={included}
                     onChange={(e) => onToggle(e.target.checked)}
                     disabled={disabled}
+                    aria-describedby={showHint ? hintId : undefined}
                     data-testid={`drawer-include-${schemaId}`}
                 />
                 <span className={`text-xs ${disabled ? "text-neutral-400" : "text-neutral-700"}`}>
                     Included in this order&apos;s agreement
                 </span>
             </label>
-            {disabled && disabledHint && (
-                <p className="text-[10px] text-neutral-400 italic mt-1 ml-6">{disabledHint}</p>
+            {showHint && (
+                <p id={hintId} className="text-[10px] text-neutral-400 italic mt-1 ml-6">
+                    {disabledHint}
+                </p>
             )}
         </div>
     );
@@ -1025,11 +1030,16 @@ function CheckboxGroup({
     disabled?: boolean;
     testIdPrefix: string;
 }) {
+    const hintId = useId();
     return (
         <div data-testid={`${testIdPrefix}-group`}>
             <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-[11px] text-neutral-500">{label}</span>
-                {hint && <span className="text-[10px] text-neutral-400 italic">{hint}</span>}
+                {hint && (
+                    <span id={hintId} className="text-[10px] text-neutral-400 italic">
+                        {hint}
+                    </span>
+                )}
             </div>
             <div className="space-y-1">
                 {options.map((opt) => (
@@ -1042,6 +1052,7 @@ function CheckboxGroup({
                             checked={checked.includes(opt.value)}
                             onChange={() => !disabled && onToggle(opt.value)}
                             disabled={disabled}
+                            aria-describedby={hint ? hintId : undefined}
                             data-testid={`${testIdPrefix}-${opt.value}`}
                         />
                         <span>{opt.label}</span>
