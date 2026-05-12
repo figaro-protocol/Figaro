@@ -385,6 +385,9 @@ export function EditAssemblyClient({ params }: Props) {
                 <p className="mt-6 text-xs text-ink-muted">
                     Same affordances as <Link href="/builders/designer/new" className="underline">/new</Link>. <strong>Drag</strong> a node&apos;s green handle to empty space to add a sub-order, or onto another node to merge it as an additional parent. <strong>Click</strong> any edge pill to swap the fulfilment method. <strong>Click</strong> any node to open the agreement drawer or to delete it. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
                 </p>
+                <p className="mt-3 text-xs text-ink-muted">
+                    <strong>Missing a clause or mechanism?</strong> Authoring a new schema (Tier 2) or new mechanism contract (Tier 3) lives outside the designer. See <Link href="/builders/composability" className="underline">/builders/composability</Link> for the architecture, <Link href="/schemas" className="underline">/schemas</Link> for clause authoring, or <Link href="/spec" className="underline">/spec</Link> for the on-chain contract inventory.
+                </p>
             </div>
             {selectedOrderId && (() => {
                 const selected = orders.find((o) => o.id === selectedOrderId);
