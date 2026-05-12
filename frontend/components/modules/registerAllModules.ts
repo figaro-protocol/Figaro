@@ -40,6 +40,7 @@ import { HandoffDetailsModule } from "@/components/modules/HandoffDetailsModule"
 import { HandoffTrackerModule } from "@/components/modules/HandoffTrackerModule";
 import { HandoffKeyExchangeModule } from "@/components/modules/HandoffKeyExchangeModule";
 import { OperatorRegistrationModule } from "@/components/modules/OperatorRegistrationModule";
+import { DisputeStatusModule } from "@/components/modules/DisputeStatusModule";
 
 let registered = false;
 
@@ -234,6 +235,16 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
         modules: [{ moduleId: "operator-registration-panel", component: OperatorRegistrationModule }],
         compatibility: ANY_ROLE,
         paletteOrder: 150,
+    },
+    {
+        blockId: "dispute-status",
+        displayName: "Dispute status",
+        description: "Per-process Kleros dispute panel: ruling state, arbitration cost, evidence-bundle submission. Hidden when no Kleros proxy is configured in env.",
+        category: "mechanism",
+        schemaIds: ["figaro-jurisdiction-v1"],
+        modules: [{ moduleId: "dispute-status", component: DisputeStatusModule }],
+        compatibility: ANY_ROLE,
+        paletteOrder: 160,
     },
 ];
 

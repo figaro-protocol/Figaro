@@ -80,6 +80,7 @@ import {
     type KlerosConfig,
     type KlerosCourtKey,
 } from "@/lib/dispute";
+import { getKlerosConfigFromEnv } from "@/lib/dispute/klerosEnv";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
@@ -160,20 +161,6 @@ interface SubmissionResult {
     evidenceCid: string;
     localDisputeId: bigint;
     submitEvidenceTxHash: Hex | null;
-}
-
-// ---------------------------------------------------------------------------
-// Env wiring (parallels useArbitrationCost.ts)
-// ---------------------------------------------------------------------------
-
-function getKlerosConfigFromEnv(): KlerosConfig | null {
-    const proxy = process.env.NEXT_PUBLIC_KLEROS_ARBITRABLE_PROXY;
-    const extraData = process.env.NEXT_PUBLIC_KLEROS_ARBITRATOR_EXTRA_DATA;
-    if (!proxy) return null;
-    return {
-        arbitrableProxy: proxy as Address,
-        arbitratorExtraData: (extraData ?? "0x") as `0x${string}`,
-    };
 }
 
 // ---------------------------------------------------------------------------

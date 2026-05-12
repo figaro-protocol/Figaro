@@ -17,22 +17,8 @@
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { getArbitrationCost, type KlerosConfig } from "@/lib/dispute";
-import type { Address } from "viem";
+import { getKlerosConfigFromEnv } from "@/lib/dispute/klerosEnv";
 import { extractErrorMessage } from "@/lib/shared/errors";
-
-// ---------------------------------------------------------------------------
-// Config from environment
-// ---------------------------------------------------------------------------
-
-function getKlerosConfigFromEnv(): KlerosConfig | null {
-    const proxy = process.env.NEXT_PUBLIC_KLEROS_ARBITRABLE_PROXY;
-    const extraData = process.env.NEXT_PUBLIC_KLEROS_ARBITRATOR_EXTRA_DATA;
-    if (!proxy) return null;
-    return {
-        arbitrableProxy: proxy as Address,
-        arbitratorExtraData: (extraData ?? "0x") as `0x${string}`,
-    };
-}
 
 // ---------------------------------------------------------------------------
 // Hook
