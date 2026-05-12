@@ -30,6 +30,8 @@ import "../src/schemaValidators/FigaroMerchantProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroJurisdictionV1Validator.sol";
 import "../src/schemaValidators/FigaroConsentV1Validator.sol";
+import "../src/AssemblyRegistry.sol";
+import "../src/assemblyValidators/DirectSaleV1Validator.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @notice Minimal mock token for local dev.
@@ -126,6 +128,20 @@ contract Deploy is Script {
         );
         console.log("SchemaRegistrationHelper deployed at:", address(schemaHelper));
 
+        // ── AssemblyRegistry ────────────────────────────────────────
+        // Permissionless first-write-wins anchor for designer-built
+        // assemblies. Parallel to SchemaRegistry and OperatorRegistry —
+        // each artifact family has its own registry per the
+        // separation-of-concerns doctrine. Bind the direct-sale-v1
+        // validator inline so the registry rejects malformed manifests
+        // from the first transaction.
+        AssemblyRegistry assemblies = new AssemblyRegistry();
+        console.log("AssemblyRegistry deployed at:", address(assemblies));
+
+        DirectSaleV1Validator directSaleValidator = new DirectSaleV1Validator();
+        assemblies.setValidator(keccak256("direct-sale-v1"), directSaleValidator);
+        console.log("DirectSaleV1Validator deployed and bound at:", address(directSaleValidator));
+
         // ── OperatorRegistry ────────────────────────────────────────
         // Deposit + lock chosen for devnet ergonomics:
         //   - 0.001 ETH so test wallets can register without faucet drama;
@@ -201,6 +217,7 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_SCHEMA_REGISTRY=", address(schemas));
         console.log("  NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=", address(schemaHelper));
         console.log("  NEXT_PUBLIC_OPERATOR_REGISTRY=", address(operators));
+        console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=", address(auction));
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
         // console.log(
