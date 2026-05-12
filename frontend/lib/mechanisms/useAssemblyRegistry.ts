@@ -17,8 +17,9 @@
  * to (msg.sender, contentHash, ipfs URI).
  */
 
+import { useCallback, useEffect, useState } from "react";
 import { encodeAbiParameters, keccak256, toBytes, parseAbi } from "viem";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
@@ -153,6 +154,92 @@ export interface PublishOutcome {
     hash: `0x${string}`;
     ipfsURI: string;
 }
+
+// ── Read hooks (event-derived) ────────────────────────────────────────────────
+
+/**
+ * A single registered assembly, reconstructed from an `AssemblyRegistered`
+ * event. The slug + metadataURI are non-indexed event-data fields; the
+ * three hashes (slugHash, classId, contentHash) come from indexed topics.
+ */
+export interface PublishedAssembly {
+    slug: string;
+    slugHash: `0x${string}`;
+    classId: `0x${string}`;
+    author: `0x${string}`;
+    contentHash: `0x${string}`;
+    metadataURI: string;
+    blockNumber: bigint;
+    transactionHash: `0x${string}`;
+}
+
+/**
+ * Reads `AssemblyRegistered` events from the registry, optionally filtered
+ * to a specific author. Returns the deduped most-recent-first list — slug
+ * binding is first-write-wins on-chain, so duplicates per slug shouldn't
+ * occur, but if they do (e.g., a stale fork chain), the most-recent block
+ * wins.
+ *
+ * No caching, no auto-refresh. To pick up a newly published assembly
+ * after mount, call `refetch`.
+ */
+export function usePublishedAssemblies(author: `0x${string}` | undefined) {
+    const client = usePublicClient();
+    const [data, setData] = useState<PublishedAssembly[] | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [generation, setGeneration] = useState(0);
+
+    useEffect(() => {
+        const registry = getAssemblyRegistry();
+        if (!client || !registry) {
+            setData(null);
+            return;
+        }
+        let cancelled = false;
+        setIsLoading(true);
+
+        client
+            .getContractEvents({
+                address: registry,
+                abi: ASSEMBLY_REGISTRY_ABI,
+                eventName: "AssemblyRegistered",
+                args: author ? { author } : undefined,
+                fromBlock: 0n,
+                toBlock: "latest",
+            })
+            .then((logs) => {
+                if (cancelled) return;
+                const items: PublishedAssembly[] = logs.map((log) => ({
+                    slug: log.args.slug ?? "",
+                    slugHash: log.args.slugHash as `0x${string}`,
+                    classId: log.args.classId as `0x${string}`,
+                    author: log.args.author as `0x${string}`,
+                    contentHash: log.args.contentHash as `0x${string}`,
+                    metadataURI: log.args.metadataURI ?? "",
+                    blockNumber: log.blockNumber ?? 0n,
+                    transactionHash: log.transactionHash as `0x${string}`,
+                }));
+                items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
+                setData(items);
+                setIsLoading(false);
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                console.warn("[usePublishedAssemblies] event read failed:", err);
+                setData([]);
+                setIsLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [client, author, generation]);
+
+    const refetch = useCallback(() => setGeneration((g) => g + 1), []);
+    return { data, isLoading, refetch };
+}
+
+// ── Write hook ────────────────────────────────────────────────────────────────
 
 export function usePublishDirectSaleAssembly() {
     const { writeContractAsync, data: hash, isPending, error: writeError } =
