@@ -58,6 +58,13 @@ interface Props {
      *  clipboard hand-off so the design can be shared verbatim, drawer
      *  selections included. */
     onExport: () => void;
+    /** Publish the design as an on-chain assembly via AssemblyRegistry.
+     *  Pins the manifest to IPFS, then calls registerAssembly under the
+     *  matching class validator. Irreversible — slug binding is permanent. */
+    onPublish: () => void;
+    /** True while a publish operation is in flight (IPFS pin + tx send +
+     *  confirmation). Disables the Publish button to prevent double-submit. */
+    publishInFlight?: boolean;
 }
 
 const TEXTAREA_CLASS =
@@ -85,6 +92,8 @@ export function ProseSheet({
     onSave,
     saveLabel,
     onExport,
+    onPublish,
+    publishInFlight = false,
 }: Props) {
     const nameId = useId();
     const descId = useId();
@@ -303,6 +312,16 @@ export function ProseSheet({
                     title="Copy DesignSnapshot + per-order agreements to clipboard"
                 >
                     Export JSON
+                </button>
+                <button
+                    type="button"
+                    onClick={onPublish}
+                    disabled={!canSave || publishInFlight}
+                    className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                    data-testid="prose-sheet-publish"
+                    title="Pin manifest to IPFS + register on-chain via AssemblyRegistry. Irreversible."
+                >
+                    {publishInFlight ? "Publishing…" : "Publish"}
                 </button>
                 <button
                     type="button"

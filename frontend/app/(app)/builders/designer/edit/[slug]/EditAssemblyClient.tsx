@@ -32,6 +32,7 @@ import {
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "../../_components/AgreementDrawer";
 import { ProseSheet, type ProseSheetValues } from "../../_components/ProseSheet";
+import { usePublishDirectSaleAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
@@ -355,6 +356,24 @@ export function EditAssemblyClient({ params }: Props) {
         setSlug(snap.slug);
     }, [buildSnapshot]);
 
+    const { publish, isPending: publishPending, isConfirming: publishConfirming } =
+        usePublishDirectSaleAssembly();
+    const publishInFlight = publishPending || publishConfirming;
+
+    const handlePublishDraft = useCallback(async () => {
+        const snap = buildSnapshot();
+        if (!snap) return;
+        try {
+            const outcome = await publish(snap);
+            window.alert(
+                `Publish submitted.\nIPFS: ${outcome.ipfsURI}\nTx: ${outcome.hash}`,
+            );
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            window.alert(`Publish failed: ${message}`);
+        }
+    }, [buildSnapshot, publish]);
+
     const handleExportDraft = useCallback(() => {
         const snap = buildSnapshot();
         if (!snap) return;
@@ -521,6 +540,8 @@ export function EditAssemblyClient({ params }: Props) {
                 onSave={handleSaveDraft}
                 saveLabel={slug ? "Update draft" : "Save as draft"}
                 onExport={handleExportDraft}
+                onPublish={handlePublishDraft}
+                publishInFlight={publishInFlight}
             />
         </div>
     );
