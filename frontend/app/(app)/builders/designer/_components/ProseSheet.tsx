@@ -136,28 +136,27 @@ export function ProseSheet({ open, onClose, orders, values, onChange }: Props) {
         <ModalChrome
             onClose={onClose}
             aria-labelledby={titleId}
-            align="top"
-            panelClassName="w-full max-w-2xl rounded-lg bg-paper shadow-xl my-6 max-h-[calc(100vh-3rem)] overflow-y-auto"
+            align="center"
+            panelClassName="w-full max-w-xl rounded-lg bg-paper shadow-xl max-h-[85vh] flex flex-col"
             panelTestId="prose-sheet"
         >
-            <div className="p-6 space-y-6">
-                <header className="space-y-1">
-                    <h2 id={titleId} className="text-base font-semibold text-ink-heading">
-                        Assembly prose
-                    </h2>
-                    <p className="text-xs text-ink-muted leading-relaxed">
-                        Authored fields used when this design is published as an
-                        assembly. Unset fields fall back to defaults — leave them
-                        blank if a default is fine.
-                    </p>
-                </header>
+            <header className="px-4 py-3 border-b border-default shrink-0">
+                <h2 id={titleId} className="text-sm font-semibold text-ink-heading">
+                    Assembly prose
+                </h2>
+                <p className="text-[11px] text-ink-muted leading-tight mt-0.5">
+                    Authored fields used when this design is published. Unset
+                    fields fall back to defaults.
+                </p>
+            </header>
 
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
                 <FormField label="Description" inputId={descId}>
                     <textarea
                         id={descId}
-                        rows={3}
+                        rows={2}
                         className={TEXTAREA_CLASS}
-                        placeholder="One- or two-sentence description of what this assembly does."
+                        placeholder="One- or two-sentence description."
                         value={values.description ?? ""}
                         onChange={(e) => onChange({ description: e.target.value })}
                         data-testid="prose-sheet-description"
@@ -167,9 +166,9 @@ export function ProseSheet({ open, onClose, orders, values, onChange }: Props) {
                 <FormField label="Narrative summary" inputId={summaryId}>
                     <textarea
                         id={summaryId}
-                        rows={4}
+                        rows={3}
                         className={TEXTAREA_CLASS}
-                        placeholder="Longer-form summary of the assembly's purpose and shape. Read by participants exploring the runtime."
+                        placeholder="Longer-form summary read by participants."
                         value={values.narrativeSummary ?? ""}
                         onChange={(e) => onChange({ narrativeSummary: e.target.value })}
                         data-testid="prose-sheet-narrative-summary"
@@ -179,41 +178,40 @@ export function ProseSheet({ open, onClose, orders, values, onChange }: Props) {
                 <FormField label="Builder notes" inputId={builderNotesId}>
                     <textarea
                         id={builderNotesId}
-                        rows={3}
+                        rows={2}
                         className={TEXTAREA_CLASS}
-                        placeholder="When to use this assembly, caveats, variations. Audience: other designers."
+                        placeholder="When to use, caveats. Audience: other designers."
                         value={values.builderNotes ?? ""}
                         onChange={(e) => onChange({ builderNotes: e.target.value })}
                         data-testid="prose-sheet-builder-notes"
                     />
                 </FormField>
 
-                <section className="space-y-2" data-testid="prose-sheet-mechanisms">
-                    <h3 className="text-xs font-semibold text-ink-heading uppercase tracking-wide">
+                <section data-testid="prose-sheet-mechanisms">
+                    <h3 className="text-[11px] font-semibold text-ink-heading uppercase tracking-wide mb-1.5">
                         Mechanisms ({mechanismKinds.length})
                     </h3>
                     {mechanismKinds.length === 0 ? (
-                        <p className="text-xs text-ink-muted leading-relaxed">
-                            No mechanisms are referenced yet. Compose drawer clauses
-                            (figaro-fulfilment-v2, figaro-merchant-process-v1, etc.) to
-                            see them listed here.
+                        <p className="text-[11px] text-ink-muted leading-tight">
+                            None referenced yet. Compose drawer clauses to populate.
                         </p>
                     ) : (
-                        <ul className="space-y-2">
+                        <ul className="space-y-1.5">
                             {mechanismKinds.map((kind) => (
                                 <li
                                     key={kind}
-                                    className="grid grid-cols-[7rem_1fr] items-center gap-3"
+                                    className="grid grid-cols-[6rem_1fr] items-center gap-2"
                                 >
-                                    <span className="text-xs font-mono text-ink-muted">
+                                    <span className="text-[11px] font-mono text-ink-muted">
                                         {kind}
                                     </span>
                                     <Input
                                         type="text"
-                                        placeholder={`(default: registry name for "${kind}")`}
+                                        placeholder={`(default for "${kind}")`}
                                         value={values.mechanismLabels?.[kind] ?? ""}
                                         onChange={(e) => setMechanismLabel(kind, e.target.value)}
                                         data-testid={`prose-sheet-mechanism-${kind}`}
+                                        className="h-8 text-xs"
                                     />
                                 </li>
                             ))}
@@ -221,60 +219,54 @@ export function ProseSheet({ open, onClose, orders, values, onChange }: Props) {
                     )}
                 </section>
 
-                <section className="space-y-2" data-testid="prose-sheet-roles">
-                    <h3 className="text-xs font-semibold text-ink-heading uppercase tracking-wide">
+                <section data-testid="prose-sheet-roles">
+                    <h3 className="text-[11px] font-semibold text-ink-heading uppercase tracking-wide mb-1.5">
                         Roles ({roleKinds.length})
                     </h3>
-                    <ul className="space-y-3">
+                    <ul className="space-y-1.5">
                         {roleKinds.map((roleKind) => (
                             <li
                                 key={roleKind}
-                                className="space-y-2 rounded border border-default p-3"
+                                className="grid grid-cols-[6rem_1fr_1fr] items-center gap-2"
                             >
-                                <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                                    <span className="text-xs font-mono text-ink-muted">
-                                        {roleKind}
-                                    </span>
-                                    <Input
-                                        type="text"
-                                        placeholder={`(default: capitalized "${roleKind}")`}
-                                        value={values.roleLabels?.[roleKind]?.displayName ?? ""}
-                                        onChange={(e) => setRoleDisplayName(roleKind, e.target.value)}
-                                        data-testid={`prose-sheet-role-name-${roleKind}`}
-                                    />
-                                </div>
-                                <FormField
-                                    label="Sample capabilities (comma-separated kind ids)"
-                                    inputId={`${titleId}-caps-${roleKind}`}
-                                >
-                                    <Input
-                                        id={`${titleId}-caps-${roleKind}`}
-                                        type="text"
-                                        placeholder="(default: registry capabilities for this role)"
-                                        value={capsDraft[roleKind] ?? ""}
-                                        onChange={(e) =>
-                                            setCapsDraft((prev) => ({ ...prev, [roleKind]: e.target.value }))
-                                        }
-                                        onBlur={(e) => commitRoleCapabilities(roleKind, e.target.value)}
-                                        data-testid={`prose-sheet-role-caps-${roleKind}`}
-                                    />
-                                </FormField>
+                                <span className="text-[11px] font-mono text-ink-muted">
+                                    {roleKind}
+                                </span>
+                                <Input
+                                    type="text"
+                                    placeholder={`(default: "${roleKind}")`}
+                                    value={values.roleLabels?.[roleKind]?.displayName ?? ""}
+                                    onChange={(e) => setRoleDisplayName(roleKind, e.target.value)}
+                                    data-testid={`prose-sheet-role-name-${roleKind}`}
+                                    className="h-8 text-xs"
+                                />
+                                <Input
+                                    type="text"
+                                    placeholder="caps (comma-separated)"
+                                    value={capsDraft[roleKind] ?? ""}
+                                    onChange={(e) =>
+                                        setCapsDraft((prev) => ({ ...prev, [roleKind]: e.target.value }))
+                                    }
+                                    onBlur={(e) => commitRoleCapabilities(roleKind, e.target.value)}
+                                    data-testid={`prose-sheet-role-caps-${roleKind}`}
+                                    className="h-8 text-xs"
+                                />
                             </li>
                         ))}
                     </ul>
                 </section>
-
-                <footer className="flex justify-end pt-2 border-t border-default">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold"
-                        data-testid="prose-sheet-done"
-                    >
-                        Done
-                    </button>
-                </footer>
             </div>
+
+            <footer className="px-4 py-2.5 border-t border-default shrink-0 flex justify-end">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold"
+                    data-testid="prose-sheet-done"
+                >
+                    Done
+                </button>
+            </footer>
         </ModalChrome>
     );
 }
