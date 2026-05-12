@@ -45,6 +45,7 @@ import {
     mapFulfilmentToHandoff,
 } from "@/lib/seller/fulfilmentRouting";
 import { useMerchantBoundModalities } from "@/lib/mechanisms/useAssemblyRegistry";
+import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
 import type { CatalogueItem, SellerCatalogue } from "@/lib/seller/types";
 
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
@@ -268,6 +269,21 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         ? calculateBonds(merchantTotalAmount, merchantTotalAmount).buyerBond
         : 0n;
 
+    // Sum mass + volume across the cart (in metric — storage shape). Each
+    // line aggregates as `perItem * quantity`. Display formats to the
+    // catalogue's unitSystem at render time.
+    const cartUnitSystem = restaurant.unitSystem ?? "metric";
+    const merchantMassGrams = merchantCartItems.reduce((sum, cartItem) => {
+        const menuItem = restaurant.menu.find((m) => m.id === cartItem.menuItemId);
+        if (!menuItem?.massGrams) return sum;
+        return sum + menuItem.massGrams * cartItem.quantity;
+    }, 0);
+    const merchantVolumeMl = merchantCartItems.reduce((sum, cartItem) => {
+        const menuItem = restaurant.menu.find((m) => m.id === cartItem.menuItemId);
+        if (!menuItem?.volumeMl) return sum;
+        return sum + menuItem.volumeMl * cartItem.quantity;
+    }, 0);
+
     const executeCheckout = async () => {
         if (!buyer) {
             setCheckoutError("Connect your wallet to place an order.");
@@ -436,6 +452,16 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                                         <div className="flex-1">
                                                             <h3 className="font-semibold text-black mb-1">{menuItem.name}</h3>
                                                             <p className="text-sm text-neutral-500 mb-2">{menuItem.description}</p>
+                                                            {(menuItem.massGrams || menuItem.volumeMl || menuItem.classOfService) && (
+                                                                <p
+                                                                    className="text-[11px] text-neutral-500 mb-2 flex flex-wrap gap-x-2"
+                                                                    data-testid={`menu-item-logistics-${menuItem.id}`}
+                                                                >
+                                                                    {menuItem.massGrams ? <span>{formatMass(menuItem.massGrams, cartUnitSystem)}</span> : null}
+                                                                    {menuItem.volumeMl ? <span>· {formatVolume(menuItem.volumeMl, cartUnitSystem)}</span> : null}
+                                                                    {menuItem.classOfService ? <span>· {menuItem.classOfService}</span> : null}
+                                                                </p>
+                                                            )}
                                                             <div className="flex items-center justify-between">
                                                                 <span className="font-semibold text-blue-700" style={accentTone ? { color: accentTone } : undefined}>
                                                                     {menuItem.price}{tokenSymbol ? ` ${tokenSymbol}` : ""}
@@ -569,6 +595,19 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                             {formatToken(merchantBuyerBond, tokenDecimals)}
                                         </span>
                                     </div>
+                                    {(merchantMassGrams > 0 || merchantVolumeMl > 0) && (
+                                        <div
+                                            className="flex justify-between text-[11px] text-neutral-500 pt-1.5 border-t border-neutral-200"
+                                            data-testid="cart-logistics-total"
+                                        >
+                                            <span>Shipment</span>
+                                            <span className="tabular-nums">
+                                                {merchantMassGrams > 0 ? formatMass(merchantMassGrams, cartUnitSystem) : ""}
+                                                {merchantMassGrams > 0 && merchantVolumeMl > 0 ? " · " : ""}
+                                                {merchantVolumeMl > 0 ? formatVolume(merchantVolumeMl, cartUnitSystem) : ""}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>
