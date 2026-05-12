@@ -46,6 +46,26 @@ import {
 } from "@/lib/seller/fulfilmentRouting";
 import { useMerchantBoundModalities } from "@/lib/mechanisms/useAssemblyRegistry";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
+import type { CatalogueClassOfService } from "@/lib/shared/sellerCatalogueMetadata";
+
+/**
+ * Higher number = higher handling priority. When a cart mixes classes,
+ * the highest priority wins for the whole shipment.
+ */
+const CLASS_PRIORITY: Record<CatalogueClassOfService, number> = {
+    "standard": 1,
+    "express": 2,
+    "fragile": 3,
+    "cold-chain": 4,
+};
+
+/** Map catalogue class to the SDK's short code consumed by encodeGeoContent. */
+const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F" | "C"> = {
+    "standard": "S",
+    "express": "E",
+    "fragile": "F",
+    "cold-chain": "C",
+};
 import type { CatalogueItem, SellerCatalogue } from "@/lib/seller/types";
 
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
@@ -271,7 +291,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
 
     // Sum mass + volume across the cart (in metric — storage shape). Each
     // line aggregates as `perItem * quantity`. Display formats to the
-    // catalogue's unitSystem at render time.
+    // catalogue's unitSystem at render time; the commit-time manifest
+    // sends the metric numbers directly.
     const cartUnitSystem = restaurant.unitSystem ?? "metric";
     const merchantMassGrams = merchantCartItems.reduce((sum, cartItem) => {
         const menuItem = restaurant.menu.find((m) => m.id === cartItem.menuItemId);
@@ -283,6 +304,17 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         if (!menuItem?.volumeMl) return sum;
         return sum + menuItem.volumeMl * cartItem.quantity;
     }, 0);
+    // Highest-priority class across the cart. Default "standard" when
+    // no item carries a class annotation.
+    const merchantClassOfService: CatalogueClassOfService = merchantCartItems.reduce<CatalogueClassOfService>(
+        (highest, cartItem) => {
+            const menuItem = restaurant.menu.find((m) => m.id === cartItem.menuItemId);
+            const itemClass = menuItem?.classOfService;
+            if (!itemClass) return highest;
+            return CLASS_PRIORITY[itemClass] > CLASS_PRIORITY[highest] ? itemClass : highest;
+        },
+        "standard",
+    );
 
     const executeCheckout = async () => {
         if (!buyer) {
@@ -313,6 +345,13 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     destination: "",
                     fulfilmentMethod: fulfillmentMode,
                     handoffMode: mapFulfilmentToHandoff(fulfillmentMode),
+                    // Geo fields aggregated from the cart's catalogue annotations.
+                    // mass / volume strings are parsed by `parseMassToGrams` /
+                    // `parseVolumeToMl` in `manifestFieldsToGeoSection`; class_
+                    // is the SDK short code consumed by `encodeGeoContent`.
+                    ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
+                    ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
+                    class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
                 },
             });
             const immediateCommit = isE2EMockSession() || isE2EDevnetSession();

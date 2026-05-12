@@ -26,6 +26,22 @@ import {
     mapFulfilmentToAssemblySlug,
     mapFulfilmentToHandoff,
 } from "@/lib/seller/fulfilmentRouting";
+import type { CatalogueClassOfService } from "@/lib/shared/sellerCatalogueMetadata";
+
+/** Higher number = higher handling priority. Same convention as MerchantDetailView. */
+const CART_CLASS_PRIORITY: Record<CatalogueClassOfService, number> = {
+    "standard": 1,
+    "express": 2,
+    "fragile": 3,
+    "cold-chain": 4,
+};
+
+const CART_CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F" | "C"> = {
+    "standard": "S",
+    "express": "E",
+    "fragile": "F",
+    "cold-chain": "C",
+};
 
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "consume-onsite",
@@ -108,17 +124,36 @@ export function CartModule({ moduleId, context }: ModuleProps) {
     const cataloguesResult = useRegisteredCatalogues({});
     const catalogues = cataloguesResult?.catalogues ?? [];
     const merchantAddress = items[0]?.sellerAddress?.toLowerCase();
+    const merchant = useMemo(
+        () => merchantAddress ? catalogues.find((c) => hexEqual(c.address, merchantAddress)) : undefined,
+        [merchantAddress, catalogues],
+    );
     const supportedModes = useMemo<FulfillmentMode[]>(() => {
         if (!merchantAddress) return ALL_FULFILMENT_MODES;
-        const merchant = catalogues.find(
-            (c) => hexEqual(c.address, merchantAddress),
-        );
         const declared = merchant?.fulfillmentModes ?? [];
         const canonical = declared.filter((m): m is FulfillmentMode =>
             (ALL_FULFILMENT_MODES as readonly string[]).includes(m),
         );
         return canonical.length > 0 ? canonical : ALL_FULFILMENT_MODES;
-    }, [merchantAddress, catalogues]);
+    }, [merchantAddress, merchant]);
+
+    // Aggregate logistics across the cart (metric storage). Mass + volume
+    // sum across line × quantity; class picks the highest-priority entry.
+    const cartLogistics = useMemo(() => {
+        let massGrams = 0;
+        let volumeMl = 0;
+        let cls: CatalogueClassOfService = "standard";
+        for (const cartItem of items) {
+            const menuItem = merchant?.menu.find((m) => m.id === cartItem.menuItemId);
+            if (!menuItem) continue;
+            if (menuItem.massGrams) massGrams += menuItem.massGrams * cartItem.quantity;
+            if (menuItem.volumeMl) volumeMl += menuItem.volumeMl * cartItem.quantity;
+            if (menuItem.classOfService && CART_CLASS_PRIORITY[menuItem.classOfService] > CART_CLASS_PRIORITY[cls]) {
+                cls = menuItem.classOfService;
+            }
+        }
+        return { massGrams, volumeMl, classOfService: cls };
+    }, [items, merchant]);
 
     // If the cart's persisted fulfilment mode isn't supported by the
     // selected merchant, CLEAR it. The buyer must explicitly pick a
@@ -225,6 +260,11 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                 destination: "",
                 fulfilmentMethod: fulfillmentMode,
                 handoffMode: mapFulfilmentToHandoff(fulfillmentMode),
+                // Geo fields aggregated from the cart's catalogue annotations.
+                // Same shape as MerchantDetailView's commit path.
+                ...(cartLogistics.massGrams > 0 ? { mass: `${cartLogistics.massGrams} g` } : {}),
+                ...(cartLogistics.volumeMl > 0 ? { volume: `${cartLogistics.volumeMl} ml` } : {}),
+                class_: CART_CLASS_TO_SHORT_CODE[cartLogistics.classOfService],
             },
         });
 
