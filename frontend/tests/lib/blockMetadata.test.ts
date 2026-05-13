@@ -23,7 +23,6 @@ function blockOf(blockId: string, overrides: Partial<BlockMetadata> = {}): Block
         displayName: blockId,
         description: `Test block ${blockId}.`,
         category: "mechanism",
-        schemaIds: [],
         modules: [{ moduleId: blockId, component: NoopModule }],
         compatibility: { roles: null, requiresMechanisms: [], requiresCapabilities: [] },
         ...overrides,

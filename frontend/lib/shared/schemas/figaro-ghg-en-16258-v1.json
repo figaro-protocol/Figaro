@@ -3,7 +3,9 @@
     "version": 1,
     "title": "EN 16258",
     "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under EN 16258 (European methodology for the calculation and declaration of energy consumption and GHG emissions of transport services).",
-    "categories": ["emissions"],
+    "categories": [
+        "emissions"
+    ],
     "fields": [
         {
             "name": "scope",
@@ -13,5 +15,15 @@
             "required": false,
             "description": "GHG Protocol scope: 1 (direct), 2 (purchased energy), 3 (value chain). Optional individually."
         }
-    ]
+    ],
+    "block": {
+        "tier": "category-2",
+        "drawerArticle": "emissions",
+        "mechanismKinds": [
+            "disclosure"
+        ],
+        "moduleIds": [
+            "disclosure-actions"
+        ]
+    }
 }

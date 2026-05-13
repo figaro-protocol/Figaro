@@ -112,8 +112,8 @@ export interface DesignSnapshot {
      *  `narrative.builderNotes`. */
     builderNotes?: string;
     /** Per-mechanism-kind displayName override. Each mechanism kind that
-     *  the design's agreements reference (via SCHEMA_OWNERSHIP) appears
-     *  here when the user has set a custom label. Example:
+     *  the design's agreements reference (via each schema spec's `block`
+     *  binding) appears here when the user has set a custom label. Example:
      *  `{ "core": "Bonded Rental Core" }`. */
     mechanismLabels?: Record<string, string>;
     /** Per-role-kind overrides. Each role kind derivable from the design's

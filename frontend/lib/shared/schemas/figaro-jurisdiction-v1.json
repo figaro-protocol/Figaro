@@ -2,13 +2,21 @@
     "schemaId": "figaro-jurisdiction-v1",
     "version": 1,
     "title": "Off-chain dispute-resolution jurisdiction",
-    "description": "Three-layer dispute resolution. Layer 1 (kernel mechanisms — asymmetric bonding + buyer dominance) is always active and not encoded here. Layer 2 (Kleros — decentralized off-chain arbitration) is captured by `klerosCourt` + `klerosMinJurors`; Figaro's preferred default. Layer 3 (state / ADR / traditional jurisdictions) is captured by `applicableLaw` + `forum` + `language`. At least one of `klerosCourt` or `applicableLaw` must be set when this clause is included.",
-    "categories": ["jurisdiction", "evidence-law"],
+    "description": "Three-layer dispute resolution. Layer 1 (kernel mechanisms \u2014 asymmetric bonding + buyer dominance) is always active and not encoded here. Layer 2 (Kleros \u2014 decentralized off-chain arbitration) is captured by `klerosCourt` + `klerosMinJurors`; Figaro's preferred default. Layer 3 (state / ADR / traditional jurisdictions) is captured by `applicableLaw` + `forum` + `language`. At least one of `klerosCourt` or `applicableLaw` must be set when this clause is included.",
+    "categories": [
+        "jurisdiction",
+        "evidence-law"
+    ],
     "fields": [
         {
             "name": "klerosCourt",
             "type": "enum",
-            "values": ["general", "blockchain-nontechnical", "blockchain-technical", "english-language"],
+            "values": [
+                "general",
+                "blockchain-nontechnical",
+                "blockchain-technical",
+                "english-language"
+            ],
             "required": false,
             "description": "Kleros subcourt for layer-2 ODR. general = catch-all; blockchain-nontechnical / blockchain-technical = on-chain-agreement disputes; english-language = disputes hinging on English-language interpretation."
         },
@@ -44,5 +52,17 @@
             "maxLength": 16,
             "description": "ISO 639-1 / 639-2 language code for layer-3 adjudication proceedings. E.g., 'en', 'fr', 'zh', 'ar'. Empty means: official language of the forum."
         }
-    ]
+    ],
+    "block": {
+        "tier": "category-2",
+        "drawerArticle": "jurisdiction",
+        "mechanismKinds": [],
+        "moduleIds": [
+            "dispute-status"
+        ],
+        "routes": [
+            "/dispute",
+            "/evidence-display"
+        ]
+    }
 }

@@ -25,5 +25,11 @@
             },
             "description": "Parent order hashes (bytes32 hex). Empty for root orders."
         }
-    ]
+    ],
+    "block": {
+        "tier": "manifest-only",
+        "drawerArticle": "identity",
+        "mechanismKinds": ["core"],
+        "moduleIds": ["process-graph", "order-node"]
+    }
 }

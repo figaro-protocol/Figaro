@@ -3,7 +3,10 @@
     "version": 1,
     "title": "Courier internal process events",
     "description": "Event stream emitted by a courier operator (driver, cyclist, walker, drone, autonomous vehicle, etc.) to coordinate with buyer and merchant. The event log is the SSoT for the courier's role in the order lifecycle. Generic across transport modes; the event vocabulary maps to a transport job's pickup-to-dropoff flow.",
-    "categories": ["lifecycle", "role-process"],
+    "categories": [
+        "lifecycle",
+        "role-process"
+    ],
     "fields": [
         {
             "name": "eventType",
@@ -29,5 +32,16 @@
             "maxLength": 512,
             "description": "Optional reference to off-chain evidence (e.g., GPS log, vehicle photo, signed receipt)."
         }
-    ]
+    ],
+    "block": {
+        "tier": "category-1",
+        "drawerArticle": "attestations",
+        "mechanismKinds": [
+            "coordinator"
+        ],
+        "moduleIds": [
+            "coordinator-actions",
+            "delivery-attestation"
+        ]
+    }
 }

@@ -15,16 +15,16 @@
 
 import type { Order } from "@/lib/core/store";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { SCHEMA_OWNERSHIP } from "@/lib/shared/schemaOwnership";
+import { getSchemaSpec } from "@/lib/shared/schemaSpecSource";
 
 const COURIER_PROCESS_SCHEMA = "figaro-courier-process-v1";
 const OFFSET_POLICY_SCHEMA = "figaro-offset-policy-v1";
 const TOPOLOGY_SCHEMA = "figaro-topology-v1";
 
 /**
- * Mechanism kinds the design references, via SCHEMA_OWNERSHIP lookup
- * for every schema clause anchored in any order's agreement. Deduped
- * and sorted alphabetically for stable display order.
+ * Mechanism kinds the design references, via each schema spec's `block`
+ * binding for every schema clause anchored in any order's agreement.
+ * Deduped and sorted alphabetically for stable display order.
  */
 export function getMechanismKindsForDesign(orders: readonly Order[]): string[] {
     const kinds = new Set<string>();
@@ -33,9 +33,9 @@ export function getMechanismKindsForDesign(orders: readonly Order[]): string[] {
         const agreement = loadAgreement(order.agreementHash);
         if (!agreement) continue;
         for (const section of agreement.sections) {
-            const ownership = SCHEMA_OWNERSHIP[section.schema];
-            if (!ownership) continue;
-            for (const kind of ownership.mechanismKinds) kinds.add(kind);
+            const block = getSchemaSpec(section.schema)?.block;
+            if (!block) continue;
+            for (const kind of block.mechanismKinds) kinds.add(kind);
         }
     }
     return Array.from(kinds).sort();

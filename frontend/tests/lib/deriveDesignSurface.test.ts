@@ -24,8 +24,8 @@ describe("getMechanismKindsForDesign", () => {
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
         // The default root carries figaro-commerce-v1 (cart/order schema) and
-        // figaro-fulfilment-v2 (pickup modality). SCHEMA_OWNERSHIP maps
-        // commerce → core and fulfilment → coordinator.
+        // figaro-fulfilment-v2 (pickup modality). Each spec's `block`
+        // binding declares commerce → core and fulfilment → coordinator.
         const kinds = getMechanismKindsForDesign([root.order]);
         expect(kinds).toContain("core");
         expect(kinds).toContain("coordinator");

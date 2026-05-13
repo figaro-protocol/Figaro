@@ -87,14 +87,13 @@ export interface BlockMetadata {
     /** Palette category — drives palette grouping and default visibility. */
     category: BlockCategory;
     /**
-     * Schema IDs (human-readable, e.g. "figaro-fulfilment-v2") this block
-     * contributes to an order's agreement. Empty if the block has no
-     * schema content of its own.
-     */
-    schemaIds: readonly string[];
-    /**
      * UI modules bundled with the block. Each one will be registered with
      * `moduleRegistry.registerModule` at startup.
+     *
+     * Note: which schemas this block "owns" is no longer declared here —
+     * each schema spec's `block.moduleIds` is the single source of truth.
+     * Use the spec to walk schemas → modules; the inverse (block →
+     * schemas) is derivable from `listKnownSchemaIds()` if needed.
      */
     modules: readonly BlockModuleEntry[];
     /** Compatibility constraints. */

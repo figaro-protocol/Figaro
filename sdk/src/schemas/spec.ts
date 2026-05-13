@@ -85,6 +85,61 @@ export type FieldSpec =
     | ArrayFieldSpec
     | ObjectFieldSpec;
 
+/** Drawer article a schema composes into on the designer canvas. */
+export type SchemaDrawerArticle =
+    | "identity"
+    | "order"
+    | "fulfilment"
+    | "logistics"
+    | "attestations"
+    | "emissions"
+    | "jurisdiction"
+    | "consent";
+
+/** Doctrinal tier per the protocol-extension doctrine. Independent of the
+ *  designer-palette category (`BlockMetadata.category`); the two used to be
+ *  both called "category" and got conflated. Now renamed. */
+export type SchemaTier = "category-1" | "category-2" | "manifest-only";
+
+/**
+ * Block-binding metadata — the single source of truth for how a schema
+ * composes into the UI. Replaces the hand-maintained SCHEMA_OWNERSHIP map
+ * and the schemaIds field on BlockMetadata, both of which were redundant
+ * with each other and had drifted out of sync.
+ *
+ * Each schema declares its own binding here. Consumers:
+ *   - Designer drawer (which article composes this schema)
+ *   - Canvas → assembly derivation (which mechanism kinds + module IDs
+ *     to include when this schema is anchored in an order)
+ *   - Runtime composer (which modules to mount per anchored schema)
+ *   - Route-tier surfaces (which routes surface this schema)
+ *
+ * The on-chain validator + Rust prover ignore this field — it's purely
+ * UI/composition metadata.
+ */
+export interface SchemaBlockBinding {
+    /** Doctrinal tier. */
+    tier: SchemaTier;
+    /** Drawer article that composes this schema in the canvas designer.
+     *  Undefined when the schema is runtime-only (Category-1 sister of a
+     *  Category-2 clause) and not user-toggleable. */
+    drawerArticle?: SchemaDrawerArticle;
+    /** Mechanism kinds an assembly should include when this schema is
+     *  anchored in any of its orders. Empty when the schema has no
+     *  capability-dispatching mechanism (e.g. consent, jurisdiction). */
+    mechanismKinds: readonly string[];
+    /** Runtime view-tier modules that consume / produce this schema's
+     *  data. Empty when the schema is route-tier only. */
+    moduleIds: readonly string[];
+    /** Route-tier blocks that surface this schema (e.g. ["/dispute",
+     *  "/evidence-display"]). Empty when the schema is view-tier only or
+     *  has no UI at all. */
+    routes?: readonly string[];
+    /** Sister schema in a Category-1 ↔ Category-2 pair. Omit for
+     *  unsisters and for one-to-many runtime sisters. */
+    sisterSchemaId?: string;
+}
+
 export interface SchemaSpec {
     /** Human-readable schema name. keccak256(schemaId) is the on-chain bytes32. */
     schemaId: string;
@@ -100,6 +155,10 @@ export interface SchemaSpec {
     fields: readonly FieldSpec[];
     /** Optional per-stage overrides. Keyed by stage number (matches AttestationCoordinator stage uint8). */
     stages?: Readonly<Record<number, readonly FieldSpec[]>>;
+    /** Block-binding metadata for the designer + runtime composer. See
+     *  SchemaBlockBinding. Optional only for forward-compat with external
+     *  schemas; every protocol schema declares it. */
+    block?: SchemaBlockBinding;
 }
 
 export interface SpecParseError {
@@ -118,6 +177,15 @@ const VALID_FIELD_TYPES: ReadonlySet<string> = new Set([
 
 const VALID_STRING_FORMATS: ReadonlySet<string> = new Set([
     "bytes32-hex", "address-hex", "bytes-hex", "iso-datetime",
+]);
+
+const VALID_DRAWER_ARTICLES: ReadonlySet<string> = new Set([
+    "identity", "order", "fulfilment", "logistics",
+    "attestations", "emissions", "jurisdiction", "consent",
+]);
+
+const VALID_SCHEMA_TIERS: ReadonlySet<string> = new Set([
+    "category-1", "category-2", "manifest-only",
 ]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -280,6 +348,70 @@ function parseFieldSpec(raw: unknown, path: string, errors: SpecParseError[]): F
     return null;
 }
 
+function parseStringArray(
+    raw: unknown,
+    path: string,
+    errors: SpecParseError[],
+): readonly string[] | null {
+    if (!Array.isArray(raw)) {
+        errors.push({ path, message: "expected an array of strings" });
+        return null;
+    }
+    for (let i = 0; i < raw.length; i++) {
+        if (typeof raw[i] !== "string" || raw[i].length === 0) {
+            errors.push({ path: `${path}[${i}]`, message: "expected a non-empty string" });
+            return null;
+        }
+    }
+    return raw as string[];
+}
+
+function parseBlockBinding(
+    raw: unknown,
+    path: string,
+    errors: SpecParseError[],
+): SchemaBlockBinding | null {
+    if (!isObject(raw)) {
+        errors.push({ path, message: "block binding must be an object" });
+        return null;
+    }
+    const tier = raw.tier;
+    if (typeof tier !== "string" || !VALID_SCHEMA_TIERS.has(tier)) {
+        errors.push({ path: `${path}.tier`, message: `tier must be one of: ${[...VALID_SCHEMA_TIERS].join(", ")}` });
+        return null;
+    }
+    if (raw.drawerArticle !== undefined) {
+        if (typeof raw.drawerArticle !== "string" || !VALID_DRAWER_ARTICLES.has(raw.drawerArticle)) {
+            errors.push({ path: `${path}.drawerArticle`, message: `drawerArticle must be one of: ${[...VALID_DRAWER_ARTICLES].join(", ")}` });
+            return null;
+        }
+    }
+    const mechanismKinds = parseStringArray(raw.mechanismKinds, `${path}.mechanismKinds`, errors);
+    if (mechanismKinds === null) return null;
+    const moduleIds = parseStringArray(raw.moduleIds, `${path}.moduleIds`, errors);
+    if (moduleIds === null) return null;
+    let routes: readonly string[] | undefined;
+    if (raw.routes !== undefined) {
+        const r = parseStringArray(raw.routes, `${path}.routes`, errors);
+        if (r === null) return null;
+        routes = r;
+    }
+    if (raw.sisterSchemaId !== undefined) {
+        if (typeof raw.sisterSchemaId !== "string" || raw.sisterSchemaId.length === 0) {
+            errors.push({ path: `${path}.sisterSchemaId`, message: "sisterSchemaId must be a non-empty string when present" });
+            return null;
+        }
+    }
+    return {
+        tier: tier as SchemaTier,
+        ...(raw.drawerArticle !== undefined && { drawerArticle: raw.drawerArticle as SchemaDrawerArticle }),
+        mechanismKinds,
+        moduleIds,
+        ...(routes !== undefined && { routes }),
+        ...(raw.sisterSchemaId !== undefined && { sisterSchemaId: raw.sisterSchemaId as string }),
+    };
+}
+
 /**
  * Parse and validate an unknown value as a SchemaSpec. Validates the
  * meta-schema (the structure of the spec itself, not any content).
@@ -289,7 +421,7 @@ export function parseSchemaSpec(raw: unknown): ParseSchemaSpecResult {
     if (!isObject(raw)) {
         return { ok: false, errors: [{ path: "$", message: "schema spec must be an object" }] };
     }
-    const { schemaId, version, title, description, categories, fields, stages } = raw;
+    const { schemaId, version, title, description, categories, fields, stages, block } = raw;
     if (typeof schemaId !== "string" || schemaId.length === 0) {
         errors.push({ path: "$.schemaId", message: "schemaId must be a non-empty string" });
     }
@@ -350,6 +482,11 @@ export function parseSchemaSpec(raw: unknown): ParseSchemaSpecResult {
             }
         }
     }
+    let parsedBlock: SchemaBlockBinding | undefined;
+    if (block !== undefined) {
+        const b = parseBlockBinding(block, "$.block", errors);
+        if (b !== null) parsedBlock = b;
+    }
     if (errors.length > 0) return { ok: false, errors };
     return {
         ok: true,
@@ -361,6 +498,7 @@ export function parseSchemaSpec(raw: unknown): ParseSchemaSpecResult {
             ...(parsedCategories !== undefined && { categories: parsedCategories }),
             fields: parsedFields,
             ...(parsedStages !== undefined && { stages: parsedStages }),
+            ...(parsedBlock !== undefined && { block: parsedBlock }),
         },
     };
 }
