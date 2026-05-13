@@ -1,4 +1,21 @@
-import { MechanismRiskClass, ScopeType, TruthClass } from "@/lib/shared/assembly";
+/** Semantic-model union types. Previously re-imported from `lib/shared/assembly`,
+ *  inlined here as part of the reference-assembly cleanup — the runtime
+ *  semantic layer is the only consumer, and decoupling it from the legacy
+ *  Assembly file unblocks deletion of that file's downstream surface. */
+export type TruthClass =
+    | "protocol-enforced"
+    | "protocol-derived"
+    | "assembly-declared"
+    | "indexer-derived"
+    | "ui-local";
+
+export type MechanismRiskClass =
+    | "read-only-inherited"
+    | "low-risk-coordinator"
+    | "medium-risk-extension"
+    | "high-risk-economic";
+
+export type ScopeType = "assembly" | "process" | "order" | "role" | "mechanism";
 
 export interface SemanticSource {
     truthClass: TruthClass;
