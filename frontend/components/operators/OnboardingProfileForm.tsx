@@ -450,7 +450,7 @@ export function OnboardingProfileForm({
                     <Input
                         id="profile-slug"
                         type="text"
-                        placeholder="bobs-pizza-palace"
+                        placeholder="your-handle"
                         value={form.slug}
                         onChange={(e) => setSlug(e.target.value)}
                         hasError={!!errors.slug}

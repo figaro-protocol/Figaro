@@ -221,7 +221,7 @@ describe('merchantBranding', () => {
             const result = resolveMerchantBrandingFromOperatorProfile(OPERATOR_PROFILE_METADATA_EXAMPLE);
 
             expect(result).not.toBeNull();
-            expect(result!.branding.displayName).toBe("Bob's Pizza Palace");
+            expect(result!.branding.displayName).toBe("Example Merchant");
             expect(result!.logoURL).toBe('http://127.0.0.1:8080/ipfs/example/logo.png');
             expect(result!.heroImageURL).toBe('http://127.0.0.1:8080/ipfs/example/hero.png');
             expect(result!.cssURL).toBe('http://127.0.0.1:8080/ipfs/example/theme.css');
@@ -248,8 +248,8 @@ describe('merchantBranding', () => {
             const wrapper = screen.getByText('Branded child').parentElement as HTMLDivElement;
 
             await waitFor(() => {
-                expect(wrapper.className).toContain('merchant-pizza');
-                expect(wrapper.style.getPropertyValue('--merchant-accent')).toBe('#c2410c');
+                expect(wrapper.className).toContain('merchant-example');
+                expect(wrapper.style.getPropertyValue('--merchant-accent')).toBe('#1f6feb');
             });
 
             expect(wrapper.getAttribute('data-skin')).toBe('binding-bobs-pizza-palace-local-anvil');

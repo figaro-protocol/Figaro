@@ -17,13 +17,13 @@ export interface SkinBundleOverrides {
 }
 
 export function makeSkinBundle(overrides: SkinBundleOverrides = {}): ResolvedAssemblySkinBundle {
-    const slug = overrides.slug ?? 'bobs-pizza-palace';
-    const displayName = overrides.displayName ?? "Bob's Pizza Palace";
-    const themeClass = overrides.themeClass ?? 'runtime-shell-pizza';
+    const slug = overrides.slug ?? 'test-merchant';
+    const displayName = overrides.displayName ?? 'Test Merchant';
+    const themeClass = overrides.themeClass ?? 'runtime-shell-test';
     return {
         sourceKind: 'runtime-bound',
         skinId: `binding-${slug}-local-anvil`,
-        subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+        subjectAddress: '0xeXAMPLeeXAMPLeeXAMPLeeXAMPLeeXAMPLe0001',
         bindingId: `binding:${slug}:local-anvil`,
         branding: {
             branding: {

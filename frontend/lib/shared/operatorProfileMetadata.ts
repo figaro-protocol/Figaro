@@ -252,22 +252,26 @@ export function tryParseOperatorProfileDocument(
 
 // ── Example ────────────────────────────────────────────────────────────────
 
+/** Synthetic example profile — used by docs/tests as a valid
+ *  `OperatorProfileMetadata` instance. The wallet address is
+ *  deliberately not in the standard Anvil account series so it can't
+ *  collide with a developer's test wallet. */
 export const OPERATOR_PROFILE_METADATA_EXAMPLE: OperatorProfileMetadata = {
-    subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    name: "Bob's Pizza Palace",
-    slug: "bobs-pizza-palace",
-    description: "Authentic New York style pizza.",
-    specialty: "Italian café",
+    subjectAddress: "0xeXAMPLeeXAMPLeeXAMPLeeXAMPLeeXAMPLe0001" as `0x${string}`,
+    name: "Example Merchant",
+    slug: "example-merchant",
+    description: "Synthetic operator profile used as a documentation example.",
+    specialty: "Example specialty",
     location: {
         geohash: "dr5reg",
-        addressText: "Lower Manhattan, NY",
+        addressText: "Example City, Example State",
     },
     branding: {
-        displayName: "Bob's Pizza Palace",
+        displayName: "Example Merchant",
         logoURI: "ipfs://example/logo.png",
         heroImageURI: "ipfs://example/hero.png",
-        accentColor: "#c2410c",
-        themeClass: "merchant-pizza",
+        accentColor: "#1f6feb",
+        themeClass: "merchant-example",
     },
     assets: {
         cssURI: "ipfs://example/theme.css",
