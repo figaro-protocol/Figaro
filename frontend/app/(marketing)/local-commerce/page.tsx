@@ -82,11 +82,6 @@ export default function LocalCommercePage() {
                         </Link>
                     </li>
                     <li>
-                        <Link href="/builders/designer/view/local-commerce" className="text-ink-heading hover:underline">
-                            Inspect assembly &rarr;
-                        </Link>
-                    </li>
-                    <li>
                         <Link href="/builders" className="text-ink-heading hover:underline">
                             Composition surface &rarr;
                         </Link>

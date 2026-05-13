@@ -61,10 +61,10 @@ export function DraftsList() {
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">
                         <Link
-                            href={`/builders/designer/new?draft=${encodeURIComponent(d.slug)}`}
+                            href={`/builders/designer/edit/${encodeURIComponent(d.slug)}`}
                             className="text-xs px-3 py-1.5 rounded border border-black bg-white hover:bg-neutral-100 text-black text-center"
                         >
-                            Open
+                            Edit
                         </Link>
                         <button
                             type="button"

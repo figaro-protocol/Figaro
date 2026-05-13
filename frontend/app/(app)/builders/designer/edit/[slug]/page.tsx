@@ -3,11 +3,18 @@ import { REFERENCE_ASSEMBLIES } from "@/lib/shared/assembly";
 import { EditAssemblyClient } from "./EditAssemblyClient";
 
 /**
- * /builders/designer/edit/[slug] — fork-and-edit a reference assembly.
+ * /builders/designer/edit/[slug] — DAG canvas for editing an existing
+ * assembly. The slug resolves to either:
  *
- * Server component — exports `generateMetadata` so the browser tab
- * carries the human-readable assembly name; renders the client
- * EditAssemblyClient for the canvas + drawer UI.
+ *   - a reference assembly (REFERENCE_ASSEMBLIES) → fork mode
+ *     (transitional; this branch goes away when reference assemblies are
+ *     removed in Phase 6 of the migration)
+ *   - a saved localStorage draft → draft mode (client confirms the
+ *     localStorage hit and renders "draft not found" if absent)
+ *
+ * Server component — exports `generateMetadata` and resolves the
+ * optional reference; renders the EditAssemblyClient which selects the
+ * DesignerCanvas seed.
  */
 
 interface Props {
@@ -18,16 +25,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const reference = REFERENCE_ASSEMBLIES.find(
         (a) => a.identity.slug === params.slug,
     );
+    if (reference) {
+        return {
+            title: `Edit · ${reference.identity.name} — Figaro Protocol`,
+            description: `Fork and modify the ${reference.identity.name} reference assembly on the DAG canvas.`,
+        };
+    }
     return {
-        title: reference
-            ? `Edit · ${reference.identity.name} — Figaro Protocol`
-            : "Edit assembly — Figaro Protocol",
-        description: reference
-            ? `Fork and modify the ${reference.identity.name} reference assembly on the DAG canvas.`
-            : "Fork and modify a reference assembly on the DAG canvas.",
+        title: `Edit · ${params.slug} — Figaro Protocol`,
+        description: "Edit a saved assembly draft on the DAG canvas.",
     };
 }
 
 export default function Page({ params }: Props) {
-    return <EditAssemblyClient params={params} />;
+    const reference =
+        REFERENCE_ASSEMBLIES.find((a) => a.identity.slug === params.slug) ?? null;
+    return <EditAssemblyClient slug={params.slug} reference={reference} />;
 }

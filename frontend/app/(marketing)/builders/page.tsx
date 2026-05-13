@@ -161,14 +161,8 @@ export default function BuildersPage() {
                                 </div>
                                 <div className="flex flex-col gap-2 shrink-0">
                                     <Link
-                                        href={`/builders/designer/view/${a.identity.slug}`}
-                                        className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading text-center font-semibold"
-                                    >
-                                        Inspect
-                                    </Link>
-                                    <Link
                                         href={`/builders/designer/edit/${a.identity.slug}`}
-                                        className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-body text-center"
+                                        className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading text-center font-semibold"
                                     >
                                         Fork
                                     </Link>

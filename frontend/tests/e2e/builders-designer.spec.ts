@@ -1,21 +1,22 @@
 /**
- * builders-designer.spec.ts — browser-level coverage for the DAG editor's
- * three routes (mock).
+ * builders-designer.spec.ts — browser-level coverage for the DAG editor.
  *
  *   /builders/designer/new            blank seed (1-node root)
- *   /builders/designer/edit/[slug]    fork seed via assemblyToSyntheticOrders
- *   /builders/designer/view/[slug]    read-only DAG of the same seed
+ *   /builders/designer/edit/[slug]    fork seed (reference) or draft seed
+ *                                     (localStorage); transitional /fork
+ *                                     branch goes away in migration Phase 6.
+ *   /builders/designer                landing page with DraftsList + Reference
  *
  * Golden paths only — drag-handle interactions for spawning sub-orders are
  * deferred (require complex drag-and-drop simulation). What's covered:
  *
- *   - Each route renders its expected toolbar + canvas + node count.
- *   - /edit shows the fork badge and the sub-order edge pill.
+ *   - /new renders the toolbar + a single root node.
+ *   - /edit/<reference-slug> shows the fork badge.
  *   - The fulfilment-method picker on a sub-edge offers exactly the three
  *     `deliver:*` variants (NOT consume-onsite or pickup — sub-order edges
  *     under root-buyer-dominance can only be delivery semantics).
- *   - /view is read-only (no save-draft button), and "Fork to edit" routes
- *     to the editable view.
+ *   - /edit/<unknown-slug> shows the draft-not-found UI.
+ *   - DraftsList's Edit button routes to /edit/<slug>.
  */
 import { test, expect } from '@playwright/test';
 
@@ -45,7 +46,7 @@ test.describe('/builders/designer/edit/[slug] — forked DAG seed (mock)', () =>
 
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 15000 });
         await expect(page.getByTestId('designer-fork-badge')).toContainText('Forked from Figaro Local Commerce');
-        await expect(page.getByTestId('designer-reset-seed')).toBeVisible();
+        await expect(page.getByTestId('designer-reset')).toBeVisible();
 
         // Local commerce → 1 root + 1 sub = 2 nodes.
         const nodes = page.locator('[data-testid^="order-node-"]').filter({
@@ -84,26 +85,49 @@ test.describe('/builders/designer/edit/[slug] — forked DAG seed (mock)', () =>
     });
 });
 
-test.describe('/builders/designer/view/[slug] — read-only DAG (mock)', () => {
-    test('renders read-only canvas + Fork-to-edit affordance', async ({ page }) => {
-        await page.goto('/builders/designer/view/local-commerce?e2e=mock', { waitUntil: 'load' });
+test.describe('/builders/designer/edit/[slug] — saved draft (mock)', () => {
+    // A "seeded draft renders the full canvas" test would need to also seed
+    // the agreementStore (the per-order agreement bodies, keyed by hash) —
+    // otherwise the lens overlays crash on the unresolved agreementHash.
+    // Round-trip rendering is verified end-to-end by manual canvas use
+    // (save → reload → edit). Here we only verify the route plumbing.
 
-        await page.getByTestId('assembly-view-page').waitFor({ timeout: 15000 });
-        await expect(page.getByTestId('view-toolbar')).toBeVisible();
-        await expect(page.getByTestId('order-graph-card')).toBeVisible();
-
-        // Read-only: no save / reset toolbar buttons.
-        await expect(page.getByTestId('designer-save-draft')).toHaveCount(0);
-        await expect(page.getByTestId('designer-reset-seed')).toHaveCount(0);
-
-        // Same seed shape as /edit — 2 nodes for local-commerce.
-        const nodes = page.locator('[data-testid^="order-node-"]').filter({
-            hasNot: page.locator('[data-testid$="-delete"]'),
-        });
-        await expect(nodes).toHaveCount(2);
-
-        // "Fork to edit" routes to the editable canvas.
-        const fork = page.getByRole('link', { name: /Fork to edit/i });
-        await expect(fork).toHaveAttribute('href', '/builders/designer/edit/local-commerce');
+    test('shows draft-not-found UI for an unknown slug', async ({ page }) => {
+        await page.goto('/builders/designer/edit/does-not-exist?e2e=mock', { waitUntil: 'load' });
+        await page.getByTestId('designer-seed-error').waitFor({ timeout: 15000 });
+        await expect(page.getByTestId('designer-seed-error')).toContainText('Draft "does-not-exist" not found');
     });
 });
+
+test.describe('/builders/designer — DraftsList Edit button (mock)', () => {
+    test('Edit link routes to /builders/designer/edit/{slug}', async ({ page }) => {
+        await page.addInitScript(() => {
+            const slug = 'e2e-list-fixture';
+            window.localStorage.setItem(
+                'figaro:designer:drafts',
+                JSON.stringify([
+                    { slug, name: 'List fixture', updatedAt: Date.now(), orderCount: 1 },
+                ]),
+            );
+            window.localStorage.setItem(
+                `figaro:designer:drafts:${slug}`,
+                JSON.stringify({
+                    slug,
+                    name: 'List fixture',
+                    processId: '0x' + '33'.repeat(32),
+                    nextOrderIndex: 1,
+                    nextSellerIndex: 1,
+                    orders: [],
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+        await page.goto('/builders/designer?e2e=mock', { waitUntil: 'load' });
+        await page.getByTestId('drafts-list').waitFor({ timeout: 15000 });
+
+        const editLink = page.getByTestId('draft-row-e2e-list-fixture').getByRole('link', { name: 'Edit' });
+        await expect(editLink).toHaveAttribute('href', '/builders/designer/edit/e2e-list-fixture');
+    });
+});
+

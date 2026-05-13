@@ -219,7 +219,7 @@ export function publishAssemblyToWorkspace(
         assembly,
         outputPath,
         registryPath,
-        prototypePath: `/builders/designer/view/${assembly.identity.slug}`,
+        prototypePath: `/builders/designer/edit/${assembly.identity.slug}`,
     };
 }
 

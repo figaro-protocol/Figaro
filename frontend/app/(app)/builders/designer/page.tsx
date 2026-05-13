@@ -88,12 +88,6 @@ export default function DesignerLanding() {
                                 >
                                     Fork
                                 </Link>
-                                <Link
-                                    href={`/builders/designer/view/${a.identity.slug}`}
-                                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-body text-center"
-                                >
-                                    View
-                                </Link>
                             </div>
                         </li>
                     ))}
