@@ -19,6 +19,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import {
@@ -236,6 +237,13 @@ export function PublishedList() {
                             >
                                 {forking === p.slug ? "Forking…" : "Fork"}
                             </button>
+                            <Link
+                                href={`/builders/designer/view/${encodeURIComponent(p.slug)}`}
+                                className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white hover:border-neutral-500 text-neutral-700 text-center"
+                                data-testid={`published-inspect-${p.slug}`}
+                            >
+                                Inspect
+                            </Link>
                         </div>
                     </li>
                 );

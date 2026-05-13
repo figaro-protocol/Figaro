@@ -66,6 +66,13 @@ export function DraftsList() {
                         >
                             Edit
                         </Link>
+                        <Link
+                            href={`/builders/designer/view/${encodeURIComponent(d.slug)}`}
+                            className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white hover:border-neutral-500 text-neutral-700 text-center"
+                            data-testid={`draft-inspect-${d.slug}`}
+                        >
+                            Inspect
+                        </Link>
                         <button
                             type="button"
                             onClick={() => handleDelete(d.slug, d.name)}
