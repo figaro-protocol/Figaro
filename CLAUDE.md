@@ -181,7 +181,7 @@ transact with mathematical certainty that cooperation is the dominant strategy �
 no arbitrator, no timeout, no admin backdoor.
 
 The kernel runs **two mechanisms** doing distinct work — they compose, they
-don't substitute. Match Paper A §2 line 300–311 directly.
+don't substitute. Match Paper A abstract (lines 67–77) directly.
 
 **Mechanism 1 — Asymmetric bonding** (buyer locks 2× payment, seller locks
 2× cumulative value): produces the bilateral Nash equilibrium (cooperation
@@ -190,7 +190,7 @@ elimination of weakly dominated strategies; Paper A Theorem 4.3) AND scales
 the bilateral primitive from 2-party to N-party process chains via
 **progressive collateralization** (each seller bonds against cumulative
 upstream value, creating a mesh of independently secured edges, each edge
-carrying its own equilibrium at every depth; Theorem 5.3). The kernel only
+carrying its own equilibrium at every depth; Theorem 5.5). The kernel only
 sees linear chains — `commit` calls extending a monotonic cumulative-value
 accumulator — so the equilibrium analysis is per-edge and never traverses a
 DAG. Whatever DAG topology an assembly composes lives in the upper
@@ -202,12 +202,12 @@ and resolution is **atomic** — all orders in the process settle together or
 not at all): operates on the already-scaled mesh to enforce inter-seller
 coordination, cooperation, and communication. The atomic-resolution rule is
 buyer dominance's forcing function: it induces a weakest-link subgame among
-sellers (Proposition 5.11, Endogenous Coordination Pressure) — endogenous
+sellers (Theorem 5.10, Endogenous Coordination Pressure) — endogenous
 peer pressure of magnitude Pᵢ + 2Gᵢ on every co-seller, without explicit
 communication or governance. This reproduces Grameen joint-liability
 microfinance's peer-enforcement outcome under strictly weaker assumptions
 (no repeated interaction, no local information, no exogenous punishment
-technology; Proposition 6.1, Assumption Reduction on Cooperation Pressure).
+technology; Proposition 5.14, Assumption Reduction on Cooperation Pressure).
 
 Under the RWA-as-wallet frame this cohort dynamic is a **social mechanism**
 in the precise sense: it produces social-coordination behavior (peer pressure,

@@ -59,6 +59,19 @@ export async function resolveProcess(
     processId: Hex,
     commitments: Commitment[],
 ): Promise<TxResult> {
+    // Kernel invariant: every commitment.buyer === rootBuyer (FigaroCore.sol:188),
+    // and only rootBuyer can resolve (FigaroCore.sol:260). Fail fast with a
+    // clearer error than the contract's NotProcessBuyer revert.
+    if (commitments.length > 0) {
+        const account = walletClient.account?.address;
+        const buyer = commitments[0].buyer;
+        if (!account || account.toLowerCase() !== buyer.toLowerCase()) {
+            throw new Error(
+                `resolveProcess: wallet account ${account ?? "(none)"} is not the rootBuyer ${buyer}. ` +
+                `Only the buyer can resolve a process.`,
+            );
+        }
+    }
     const hash = await walletClient.writeContract({
         chain: walletClient.chain ?? null,
         account: walletClient.account!,
