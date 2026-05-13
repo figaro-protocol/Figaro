@@ -239,15 +239,18 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///
     ///         GAS CEILING: Each order costs ~14k gas to resolve
     ///         (struct hash, SLOAD, two ERC-20 transfers, SSTORE).
-    ///         Empirical testing shows ~2,145 orders resolvable at
-    ///         the 30M Ethereum gas limit. Other chains may differ.
-    ///         Institution designers SHOULD enforce a practical
-    ///         sub-order limit in their assembly configuration
-    ///         (e.g. 50-100) well below the theoretical ceiling.
-    ///         For larger value-added trees, use multi-process
-    ///         composition — a sub-order in process A can root
-    ///         process B, keeping each process within gas limits
-    ///         while the overall tree spans multiple settlements.
+    ///         At Ethereum's 30M block gas limit, that's a hard cap
+    ///         of 2,145 orders per process. The cap is a property of
+    ///         the kernel resolveProcess path; it cannot be enforced
+    ///         on-chain at assembly registration because manifests
+    ///         live off-chain (AssemblyRegistry only stores their
+    ///         hash + URI). Publish-side clients refuse to anchor an
+    ///         assembly that would exceed the cap; buyer-side clients
+    ///         verify the manifest's order count before committing.
+    ///         For trees larger than the cap, compose multiple
+    ///         processes: a sub-order in process A roots process B,
+    ///         so the overall tree spans multiple settlements while
+    ///         each individual process stays within the ceiling.
     ///
     /// @param processId The process to resolve.
     /// @param commitments The full set of active order commitments.

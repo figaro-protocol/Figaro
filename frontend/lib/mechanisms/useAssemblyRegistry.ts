@@ -1,59 +1,88 @@
 /**
  * useAssemblyRegistry — hooks for publishing designer-built assemblies
  * to the on-chain `AssemblyRegistry`. Parallel to `useOperatorRegistry`
- * (operators) and the schema-validator wiring (schemas) per the
+ * (operators) and the schema-registry wiring (schemas) per the
  * separation-of-concerns doctrine.
  *
  * Publish flow:
- *   1. Build a class-specific manifest from the snapshot (direct-sale-v1
- *      is the only class today). Throws on shape mismatch.
- *   2. Pin a JSON copy of the manifest to IPFS via DEFAULT_IPFS_SERVICE.
- *   3. Call AssemblyRegistry.registerAssembly(slug, classId, content, uri).
- *      The on-chain validator (DirectSaleV1Validator) reverts if the
- *      ABI-encoded `content` doesn't satisfy the class invariants.
+ *   1. Build a full off-chain manifest from the snapshot — topology
+ *      (orders array), per-order agreement bodies (inlined), and prose.
+ *   2. Compute the canonical content hash (keccak256 of stable JSON).
+ *   3. Pin the manifest to IPFS via DEFAULT_IPFS_SERVICE.
+ *   4. Call AssemblyRegistry.registerAssembly(slug, nodeCount,
+ *      contentHash, metadataURI). The registry's only on-chain check
+ *      is that nodeCount fits the per-process gas ceiling
+ *      (MAX_NODES_PER_ASSEMBLY = 2145, set per FigaroCore docs).
+ *      All other content validation lives at the per-schema layer
+ *      and runs when each order's clauses are attested at commit time.
  *
  * No graceful retry, no optimistic UI — the publish is a single atomic
  * step from the user's POV: success means the slug is permanently bound
- * to (msg.sender, contentHash, ipfs URI).
+ * to (msg.sender, nodeCount, contentHash, ipfs URI).
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { encodeAbiParameters, keccak256, toBytes, parseAbi } from "viem";
+import { keccak256, toHex, parseAbi } from "viem";
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
+import type { Agreement } from "@figaro/core";
+import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { useOperatorProfile } from "./useOperatorRegistry";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 
 export const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    "function registerAssembly(string slug, bytes32 classId, bytes content, string metadataURI) external",
-    "function validators(bytes32 classId) view returns (address)",
-    "function bindings(bytes32 slugHash) view returns (address author, bytes32 classId, bytes32 contentHash, string metadataURI, uint64 registeredAt)",
-    "event AssemblyRegistered(bytes32 indexed slugHash, bytes32 indexed classId, address indexed author, string slug, bytes32 contentHash, string metadataURI)",
+    "function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external",
+    "function bindings(bytes32 slugHash) view returns (address author, bytes32 contentHash, string metadataURI, uint64 registeredAt)",
+    "event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)",
 ] as const);
 
-export const DIRECT_SALE_V1_CLASS_ID = keccak256(toBytes("direct-sale-v1"));
+/** Per-process gas ceiling at the kernel resolveProcess path. Documented
+ *  in `src/FigaroCore.sol:240-250`. Enforced publish-side here (and
+ *  again buyer-side at commit time) because the contract can't see
+ *  off-chain manifest content to enforce it on-chain. */
+export const MAX_NODES_PER_ASSEMBLY = 2145;
 
-/** Mirrors the uint8 encoding in FigaroJurisdictionV1Validator. */
-const KLEROS_COURT_MAP: Record<string, number> = {
-    general: 1,
-    "blockchain-nontechnical": 2,
-    "blockchain-technical": 3,
-    "english-language": 4,
-};
-
-export interface DirectSaleManifest {
+/** Off-chain manifest persisted to IPFS. Content-addressed by keccak256
+ *  of its canonical JSON serialization (`canonicalize` below). The
+ *  on-chain binding stores only nodeCount + contentHash + metadataURI;
+ *  this object carries the topology, per-order agreements, and prose. */
+export interface AssemblyManifest {
     slug: string;
     name: string;
-    klerosCourt: number;
-    klerosMinJurors: number;
-    fulfilmentModalities: string[];
-    /** Descriptive prose pinned to IPFS but not part of the on-chain ABI tuple. */
+    /** Synthetic-process metadata so the canvas can faithfully restore
+     *  session state when a forked draft is hydrated. */
+    processId: string;
+    nextOrderIndex: number;
+    nextSellerIndex: number;
+    /** Topology — each order's id, parent connections live in its
+     *  agreement's figaro-topology-v1 section. */
+    orders: Order[];
+    /** Per-agreementHash, the full agreement document with all schema
+     *  sections. Inlined so the manifest is self-contained — consumers
+     *  don't need a separate agreement-store fetch. */
+    agreements: Record<string, Agreement>;
+    /** Prose fields authored on the canvas ProseSheet. */
     description?: string;
     narrativeSummary?: string;
     builderNotes?: string;
+    mechanismLabels?: Record<string, string>;
+    roleLabels?: Record<string, { displayName: string; sampleCapabilities?: string[] }>;
+}
+
+/** Stable JSON serialization — sorted object keys at every depth, bigints
+ *  serialized as decimal strings. The off-chain content hash and the
+ *  IPFS-pinned bytes both derive from this function so they always agree. */
+function canonicalize(value: unknown): string {
+    return JSON.stringify(value, (_key, raw) => {
+        if (typeof raw === "bigint") return raw.toString();
+        if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw;
+        const sorted: Record<string, unknown> = {};
+        for (const k of Object.keys(raw).sort()) sorted[k] = (raw as Record<string, unknown>)[k];
+        return sorted;
+    });
 }
 
 export function getAssemblyRegistry(): `0x${string}` | null {
@@ -62,95 +91,51 @@ export function getAssemblyRegistry(): `0x${string}` | null {
     return addr as `0x${string}`;
 }
 
-/**
- * Build a direct-sale-v1 manifest from a DesignSnapshot. Returns the
- * manifest object (for IPFS) and the ABI-encoded content (for the
- * on-chain validator). Throws on shape mismatch — the user must fix
- * the design before retrying.
- */
-export function buildDirectSaleManifest(snapshot: DesignSnapshot): {
-    manifest: DirectSaleManifest;
-    encodedContent: `0x${string}`;
-} {
-    if (snapshot.orders.length !== 1) {
-        throw new Error(
-            `direct-sale-v1 requires exactly 1 order; this design has ${snapshot.orders.length}.`,
-        );
+/** Build a self-contained manifest from a DesignSnapshot. Inlines every
+ *  order's agreement so the manifest doesn't depend on any external
+ *  agreement-store state. Throws if any order's agreement is missing
+ *  locally. */
+export function buildAssemblyManifest(snapshot: DesignSnapshot): AssemblyManifest {
+    if (snapshot.orders.length === 0) {
+        throw new Error("Assembly has no orders.");
     }
-    const order = snapshot.orders[0];
-    if (!order.agreementHash) {
-        throw new Error("Root order has no agreement.");
+    const agreements: Record<string, Agreement> = {};
+    for (const order of snapshot.orders) {
+        if (!order.agreementHash) {
+            throw new Error(`Order ${order.id} has no agreement.`);
+        }
+        const agreement = loadAgreement(order.agreementHash);
+        if (!agreement) {
+            throw new Error(
+                `Agreement ${order.agreementHash} for order ${order.id} not found in local storage.`,
+            );
+        }
+        agreements[order.agreementHash] = agreement;
     }
-    const agreement = loadAgreement(order.agreementHash);
-    if (!agreement) {
-        throw new Error("Agreement not found in local storage.");
-    }
-
-    const jurisdictionSection = agreement.sections.find(
-        (s) => s.schema === "figaro-jurisdiction-v1",
-    );
-    const fulfilmentSection = agreement.sections.find(
-        (s) => s.schema === "figaro-fulfilment-v2",
-    );
-    if (!jurisdictionSection) {
-        throw new Error("Agreement is missing the jurisdiction clause.");
-    }
-    if (!fulfilmentSection) {
-        throw new Error("Agreement is missing the fulfilment clause.");
-    }
-
-    const jData = jurisdictionSection.data as {
-        klerosCourt?: string;
-        klerosMinJurors?: number | string;
-    };
-    const fData = fulfilmentSection.data as { modalities?: string[] };
-
-    const klerosCourtKey = jData.klerosCourt ?? "";
-    const klerosCourt = KLEROS_COURT_MAP[klerosCourtKey];
-    if (!klerosCourt) {
-        throw new Error(
-            `Kleros court must be one of: ${Object.keys(KLEROS_COURT_MAP).join(", ")}.`,
-        );
-    }
-    const klerosMinJurors = Number(jData.klerosMinJurors ?? 0);
-    if (!klerosMinJurors || klerosMinJurors < 1 || klerosMinJurors > 99) {
-        throw new Error("Kleros min-jurors must be 1–99.");
-    }
-
-    const modalities = Array.isArray(fData.modalities) ? fData.modalities : [];
-    if (modalities.length === 0) {
-        throw new Error("Fulfilment modalities are empty.");
-    }
-
-    const manifest: DirectSaleManifest = {
+    return {
         slug: snapshot.slug,
         name: snapshot.name,
-        klerosCourt,
-        klerosMinJurors,
-        fulfilmentModalities: modalities,
+        processId: snapshot.processId,
+        nextOrderIndex: snapshot.nextOrderIndex,
+        nextSellerIndex: snapshot.nextSellerIndex,
+        orders: snapshot.orders,
+        agreements,
         description: snapshot.description,
         narrativeSummary: snapshot.narrativeSummary,
         builderNotes: snapshot.builderNotes,
+        mechanismLabels: snapshot.mechanismLabels,
+        roleLabels: snapshot.roleLabels,
     };
+}
 
-    const encodedContent = encodeAbiParameters(
-        [
-            { type: "string" },
-            { type: "string" },
-            { type: "uint8" },
-            { type: "uint8" },
-            { type: "string[]" },
-        ],
-        [
-            manifest.slug,
-            manifest.name,
-            manifest.klerosCourt,
-            manifest.klerosMinJurors,
-            manifest.fulfilmentModalities,
-        ],
-    );
-
-    return { manifest, encodedContent };
+/** Canonicalize the manifest and compute (canonical bytes, content hash). */
+export function serializeManifest(manifest: AssemblyManifest): {
+    json: string;
+    contentHash: `0x${string}`;
+} {
+    const json = canonicalize(manifest);
+    const contentHash = keccak256(toHex(json));
+    return { json, contentHash };
 }
 
 export interface PublishOutcome {
@@ -162,13 +147,12 @@ export interface PublishOutcome {
 
 /**
  * A single registered assembly, reconstructed from an `AssemblyRegistered`
- * event. The slug + metadataURI are non-indexed event-data fields; the
- * three hashes (slugHash, classId, contentHash) come from indexed topics.
+ * event. The slug + metadataURI are non-indexed event-data fields;
+ * slugHash and author come from indexed topics.
  */
 export interface PublishedAssembly {
     slug: string;
     slugHash: `0x${string}`;
-    classId: `0x${string}`;
     author: `0x${string}`;
     contentHash: `0x${string}`;
     metadataURI: string;
@@ -180,7 +164,7 @@ export interface PublishedAssembly {
  * Reads `AssemblyRegistered` events from the registry, optionally filtered
  * to a specific author. Returns the deduped most-recent-first list — slug
  * binding is first-write-wins on-chain, so duplicates per slug shouldn't
- * occur, but if they do (e.g., a stale fork chain), the most-recent block
+ * occur, but if they do (e.g. a stale fork chain), the most-recent block
  * wins.
  *
  * No caching, no auto-refresh. To pick up a newly published assembly
@@ -215,7 +199,6 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
                 const items: PublishedAssembly[] = logs.map((log) => ({
                     slug: log.args.slug ?? "",
                     slugHash: log.args.slugHash as `0x${string}`,
-                    classId: log.args.classId as `0x${string}`,
                     author: log.args.author as `0x${string}`,
                     contentHash: log.args.contentHash as `0x${string}`,
                     metadataURI: log.args.metadataURI ?? "",
@@ -254,18 +237,19 @@ export function useAllPublishedAssemblies() {
 /**
  * Fetch the IPFS-pinned manifest at `metadataURI`. Returns the parsed
  * JSON or null on failure (gateway unreachable, malformed JSON, etc.).
- * Best practice per the manifest split: human-readable fields (name,
- * description) live on IPFS, not on-chain — this is the reader.
+ * The on-chain binding's `contentHash` should match
+ * `keccak256(canonicalize(manifest))` — callers that need integrity
+ * can verify after fetch.
  */
 export async function fetchAssemblyManifest(
     metadataURI: string,
-): Promise<DirectSaleManifest | null> {
+): Promise<AssemblyManifest | null> {
     const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(metadataURI);
     if (!url) return null;
     try {
         const response = await fetch(url);
         if (!response.ok) return null;
-        return (await response.json()) as DirectSaleManifest;
+        return (await response.json()) as AssemblyManifest;
     } catch {
         return null;
     }
@@ -275,10 +259,6 @@ export async function fetchAssemblyManifest(
  * Synthesize a `networkTargets` value for an on-chain-registered assembly
  * based on the chain its registry lives on. Derived rather than stored —
  * the AssemblyRegistry is per-chain, so the chain IS the network target.
- *
- * The names match the existing convention in the hand-coded reference
- * JSONs (`local-anvil`, `sepolia`, ...) so downstream consumers like
- * `listBindingsForAddress` filter correctly across both sources.
  */
 export function chainIdToNetworkTarget(chainId: number): string {
     switch (chainId) {
@@ -294,7 +274,9 @@ export function chainIdToNetworkTarget(chainId: number): string {
 }
 
 export interface MerchantBoundModalities {
-    /** Union of `fulfilmentModalities` across the merchant's on-chain bound assemblies. */
+    /** Union of fulfilment modalities across the merchant's on-chain
+     *  bound assemblies. Sourced from each manifest's root order's
+     *  figaro-fulfilment-v2 section. */
     modalities: string[];
     /** True while either the operator-profile or the manifest fetches are in flight. */
     isLoading: boolean;
@@ -302,12 +284,28 @@ export interface MerchantBoundModalities {
     hasOnChainBinding: boolean;
 }
 
+/** Extract the fulfilment modalities from a manifest's root order
+ *  agreement. The root order is the first order in the topology — if a
+ *  consumer needs sub-order modalities, they walk the orders array
+ *  themselves. */
+function extractRootModalities(manifest: AssemblyManifest): string[] {
+    const rootOrder = manifest.orders[0];
+    if (!rootOrder?.agreementHash) return [];
+    const agreement = manifest.agreements[rootOrder.agreementHash];
+    if (!agreement) return [];
+    const fulfilmentSection = agreement.sections.find(
+        (s: { schema: string }) => s.schema === "figaro-fulfilment-v2",
+    );
+    const modalities = (fulfilmentSection?.data as { modalities?: unknown })?.modalities;
+    return Array.isArray(modalities) ? (modalities as string[]) : [];
+}
+
 /**
  * Computes the union of fulfilment modalities allowed by a merchant's
  * on-chain published assembly bindings. Reads the merchant's operator
  * profile (OperatorRegistry → IPFS), intersects the profile's
  * `assemblyBindings[].assemblySlug` with the published assembly events,
- * fetches each matched manifest, and unions the modalities.
+ * fetches each matched manifest, and unions the root-order modalities.
  *
  * When `hasOnChainBinding` is true, the returned `modalities` is the
  * authoritative buyer-facing choice set for the cart — overrides the
@@ -375,8 +373,8 @@ export function useMerchantBoundModalities(
 
                 const modalitySet = new Set<string>();
                 for (const m of manifests) {
-                    if (!m?.fulfilmentModalities) continue;
-                    for (const mode of m.fulfilmentModalities) modalitySet.add(mode);
+                    if (!m) continue;
+                    for (const mode of extractRootModalities(m)) modalitySet.add(mode);
                 }
 
                 setResult({
@@ -401,14 +399,15 @@ export function useMerchantBoundModalities(
 
 // ── Write hook ────────────────────────────────────────────────────────────────
 
-export function usePublishDirectSaleAssembly() {
+export function usePublishAssembly() {
     const { writeContractAsync, data: hash, isPending, error: writeError } =
         useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-    /** Pin manifest to IPFS, then call registerAssembly. Returns the
-     *  transaction hash + the IPFS URI on success. Throws on any
-     *  failure (no wallet, IPFS down, validator rejection, etc.). */
+    /** Build a manifest from the snapshot, pin to IPFS, then call
+     *  registerAssembly. Returns the transaction hash + IPFS URI on
+     *  success. Throws on any failure (no wallet, IPFS down, registry
+     *  rejection for nodeCount > MAX_NODES_PER_ASSEMBLY, etc.). */
     async function publish(snapshot: DesignSnapshot): Promise<PublishOutcome> {
         const registry = getAssemblyRegistry();
         if (!registry) {
@@ -416,13 +415,19 @@ export function usePublishDirectSaleAssembly() {
                 "AssemblyRegistry address not configured (NEXT_PUBLIC_ASSEMBLY_REGISTRY).",
             );
         }
-        const { manifest, encodedContent } = buildDirectSaleManifest(snapshot);
-        const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(manifest);
+        if (snapshot.orders.length > MAX_NODES_PER_ASSEMBLY) {
+            throw new Error(
+                `Assembly has ${snapshot.orders.length} orders; the per-process gas ceiling is ${MAX_NODES_PER_ASSEMBLY}. Compose multiple processes instead.`,
+            );
+        }
+        const manifest = buildAssemblyManifest(snapshot);
+        const { json, contentHash } = serializeManifest(manifest);
+        const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
         const txHash = await writeContractAsync({
             address: registry,
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "registerAssembly",
-            args: [manifest.slug, DIRECT_SALE_V1_CLASS_ID, encodedContent, ipfs.uri],
+            args: [manifest.slug, contentHash, ipfs.uri],
         });
         return { hash: txHash, ipfsURI: ipfs.uri };
     }

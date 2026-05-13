@@ -116,8 +116,7 @@ export function PublishedList() {
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-ink-heading truncate">{p.slug}</p>
                         <p className="font-mono text-[11px] text-ink-muted mt-0.5">
-                            class <span title={p.classId}>{shortHash(p.classId)}</span>
-                            {" · "}content <span title={p.contentHash}>{shortHash(p.contentHash)}</span>
+                            content <span title={p.contentHash}>{shortHash(p.contentHash)}</span>
                             {" · block "}
                             {p.blockNumber.toString()}
                         </p>

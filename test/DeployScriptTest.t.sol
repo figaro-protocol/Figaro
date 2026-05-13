@@ -5,8 +5,6 @@ import "forge-std/Test.sol";
 import {Deploy} from "../script/Deploy.s.sol";
 import {AttestationCoordinator} from "../src/AttestationCoordinator.sol";
 import {ISchemaValidator} from "../src/ISchemaValidator.sol";
-import {AssemblyRegistry} from "../src/AssemblyRegistry.sol";
-import {IAssemblyValidator} from "../src/IAssemblyValidator.sol";
 
 /// @notice Proves the devnet deploy script wires every canonical schemaId to a
 ///         registered validator. Regression guard for backlog item "Deploy script
@@ -69,32 +67,4 @@ contract DeployScriptTest is Test {
         );
     }
 
-    /// @notice Proves the devnet deploy script binds the direct-sale-v1
-    ///         validator to the AssemblyRegistry. Without this binding,
-    ///         registerAssembly("direct-sale-v1") reverts ValidatorNotSet.
-    function test_deployScript_bindsDirectSaleAssemblyValidator() public {
-        vm.setEnv("PRIVATE_KEY", "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
-
-        Deploy deployer = new Deploy();
-        vm.recordLogs();
-        deployer.run();
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-
-        // AssemblyRegistry.ValidatorBound(indexed classId, indexed validator, indexed registrar)
-        bytes32 validatorBoundTopic = keccak256("ValidatorBound(bytes32,address,address)");
-        address registry;
-        for (uint256 i = 0; i < logs.length; i++) {
-            if (logs[i].topics.length == 4 && logs[i].topics[0] == validatorBoundTopic) {
-                registry = logs[i].emitter;
-                break;
-            }
-        }
-        assertTrue(registry != address(0), "no AssemblyRegistry.ValidatorBound event observed");
-
-        AssemblyRegistry ar = AssemblyRegistry(registry);
-        bytes32 directSaleClassId = keccak256("direct-sale-v1");
-        IAssemblyValidator v = ar.validators(directSaleClassId);
-        assertTrue(address(v) != address(0), "direct-sale-v1 validator not bound");
-        assertEq(v.assemblyClassId(), directSaleClassId, "validator bound to wrong class");
-    }
 }

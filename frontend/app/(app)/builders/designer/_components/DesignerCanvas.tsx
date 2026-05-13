@@ -49,7 +49,7 @@ import {
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
 import { ProseSheet, type ProseSheetValues } from "./ProseSheet";
-import { usePublishDirectSaleAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
+import { usePublishAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
@@ -477,7 +477,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
     }, [buildSnapshot]);
 
     const { publish, isPending: publishPending, isConfirming: publishConfirming } =
-        usePublishDirectSaleAssembly();
+        usePublishAssembly();
     const publishInFlight = publishPending || publishConfirming;
 
     const handlePublishDraft = useCallback(async () => {

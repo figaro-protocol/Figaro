@@ -31,7 +31,6 @@ import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroJurisdictionV1Validator.sol";
 import "../src/schemaValidators/FigaroConsentV1Validator.sol";
 import "../src/AssemblyRegistry.sol";
-import "../src/assemblyValidators/DirectSaleV1Validator.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @notice Minimal mock token for local dev.
@@ -132,15 +131,13 @@ contract Deploy is Script {
         // Permissionless first-write-wins anchor for designer-built
         // assemblies. Parallel to SchemaRegistry and OperatorRegistry —
         // each artifact family has its own registry per the
-        // separation-of-concerns doctrine. Bind the direct-sale-v1
-        // validator inline so the registry rejects malformed manifests
-        // from the first transaction.
+        // separation-of-concerns doctrine. Only on-chain check is the
+        // node-count gas ceiling (`MAX_NODES_PER_ASSEMBLY = 2145`,
+        // documented in `FigaroCore.sol:240-250`). All other content
+        // validation lives at the per-schema layer and runs at
+        // attestation time.
         AssemblyRegistry assemblies = new AssemblyRegistry();
         console.log("AssemblyRegistry deployed at:", address(assemblies));
-
-        DirectSaleV1Validator directSaleValidator = new DirectSaleV1Validator();
-        assemblies.setValidator(keccak256("direct-sale-v1"), directSaleValidator);
-        console.log("DirectSaleV1Validator deployed and bound at:", address(directSaleValidator));
 
         // ── OperatorRegistry ────────────────────────────────────────
         // Deposit + lock chosen for devnet ergonomics:

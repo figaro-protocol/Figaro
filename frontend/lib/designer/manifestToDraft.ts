@@ -1,63 +1,61 @@
 /**
  * manifestToDraft — hydrates a `DesignSnapshot` from an IPFS-pinned
- * `DirectSaleManifest`. Powers the "Fork" button on `PublishedList`:
+ * `AssemblyManifest`. Powers the "Fork" button on `PublishedList`:
  * a published assembly's manifest is fetched, this helper turns it
  * into a localStorage draft under a new slug, and the canvas opens
  * at /builders/designer/edit/<new-slug>.
  *
- * Today the only published class is `direct-sale-v1` (one-node
- * structurally), so a forked draft has exactly one root order with
- * the manifest's kleros + fulfilment fields seeded into its
- * agreement. When future multi-node assembly classes ship, this
- * helper grows to walk their topology and emit the full set of
- * orders; the public signature shouldn't need to change.
+ * The new manifest format is self-contained — it carries the full
+ * topology (orders array) and inlines every order's agreement body.
+ * Hydration is therefore mostly a straight copy: assign a new slug,
+ * deserialize bigint fields, re-save the inlined agreements into the
+ * local agreement store so the canvas can load them by hash.
  */
 
-import type { DirectSaleManifest } from "@/lib/mechanisms/useAssemblyRegistry";
-import {
-    createSyntheticRootOrder,
-    startSyntheticSession,
-} from "./syntheticProcess";
+import { saveAgreement } from "@/lib/core/agreementStore";
+import type { AssemblyManifest } from "@/lib/mechanisms/useAssemblyRegistry";
 import type { DesignSnapshot } from "./syntheticDesignStore";
+import type { Order } from "@/lib/core/store";
 
-/**
- * Inverse of `useAssemblyRegistry.KLEROS_COURT_MAP`. The manifest's
- * uint8 court id needs to come back to the string key the drawer +
- * agreement encoder use. Any unrecognized id falls back to "general"
- * so the draft still opens cleanly — the user can re-set the court
- * in the drawer.
- */
-const KLEROS_COURT_LABEL: Record<number, string> = {
-    1: "general",
-    2: "blockchain-nontechnical",
-    3: "blockchain-technical",
-    4: "english-language",
-};
+/** Order's bigint fields are persisted on IPFS as decimal strings (per
+ *  `canonicalize` in useAssemblyRegistry). Convert them back to bigint
+ *  for in-memory use. */
+function rehydrateOrder(raw: Order): Order {
+    return {
+        ...raw,
+        cumulativeValue: BigInt(raw.cumulativeValue as unknown as string),
+        payment: BigInt(raw.payment as unknown as string),
+        sellerBond: BigInt(raw.sellerBond as unknown as string),
+        buyerBond: BigInt(raw.buyerBond as unknown as string),
+        salt: BigInt(raw.salt as unknown as string),
+        deadline: BigInt(raw.deadline as unknown as string),
+    };
+}
 
 export function manifestToDraft(
-    manifest: DirectSaleManifest,
+    manifest: AssemblyManifest,
     options: { slug: string; name?: string },
 ): DesignSnapshot {
-    const session = startSyntheticSession();
-    const klerosCourtKey = KLEROS_COURT_LABEL[manifest.klerosCourt] ?? "general";
-
-    const root = createSyntheticRootOrder(session, {
-        klerosCourt: klerosCourtKey,
-        klerosMinJurors: String(manifest.klerosMinJurors),
-        fulfilmentModalities: manifest.fulfilmentModalities,
-    });
+    // Re-save every inlined agreement into the local agreement store
+    // so the canvas's `loadAgreement(hash)` calls resolve to the same
+    // bodies the manifest carried.
+    for (const agreement of Object.values(manifest.agreements)) {
+        saveAgreement(agreement);
+    }
 
     return {
         slug: options.slug,
         name: options.name ?? `Fork of ${manifest.name}`,
-        processId: session.processId,
-        nextOrderIndex: session.nextOrderIndex,
-        nextSellerIndex: session.nextSellerIndex,
-        orders: [root.order],
+        processId: manifest.processId,
+        nextOrderIndex: manifest.nextOrderIndex,
+        nextSellerIndex: manifest.nextSellerIndex,
+        orders: manifest.orders.map(rehydrateOrder),
         createdAt: Date.now(),
         updatedAt: Date.now(),
         description: manifest.description,
         narrativeSummary: manifest.narrativeSummary,
         builderNotes: manifest.builderNotes,
+        mechanismLabels: manifest.mechanismLabels,
+        roleLabels: manifest.roleLabels,
     };
 }
