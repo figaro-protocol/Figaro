@@ -21,9 +21,9 @@
  * to (msg.sender, nodeCount, contentHash, ipfs URI).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { keccak256, toHex, parseAbi, BaseError, ContractFunctionRevertedError } from "viem";
-import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId } from "wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import type { Agreement } from "@figaro/core";
@@ -295,6 +295,137 @@ export function chainIdToNetworkTarget(chainId: number): string {
         default:
             return `evm-${chainId}`;
     }
+}
+
+/** Walk the manifest's inlined agreements and collect the unique set of
+ *  schemas anchored across all orders. Sorted alphabetically for stable
+ *  display order. */
+export function collectAssemblySchemas(manifest: AssemblyManifest): string[] {
+    const set = new Set<string>();
+    for (const agreement of Object.values(manifest.agreements)) {
+        for (const section of agreement.sections) {
+            if (typeof section.schema === "string") set.add(section.schema);
+        }
+    }
+    return Array.from(set).sort();
+}
+
+/** Compact display formatting for a schema list. Strips the `figaro-`
+ *  prefix and `-vN` version suffix. Shows the first three inline,
+ *  summarizes the rest as `+N more`. Callers typically place the full
+ *  set in the row's `title` tooltip. */
+export function formatAssemblySchemaList(schemas: readonly string[]): string {
+    const trimmed = schemas.map((s) => s.replace(/^figaro-/, "").replace(/-v\d+$/, ""));
+    if (trimmed.length <= 3) return trimmed.join(", ");
+    return `${trimmed.slice(0, 3).join(", ")}, +${trimmed.length - 3} more`;
+}
+
+/**
+ * A published assembly enriched with manifest-derived fields, suitable
+ * for surfacing to a user as a selectable / inspectable choice.
+ *
+ * Manifest fetch is lazy per-row; `state` tracks the lifecycle. While
+ * `state === "loading"`, `name` falls back to `slug` so the UI can
+ * render the row immediately. When `state === "loaded"`, all
+ * manifest-derived fields are populated.
+ */
+export interface AssemblyChoice {
+    slug: string;
+    author: `0x${string}`;
+    contentHash: `0x${string}`;
+    metadataURI: string;
+    blockNumber: bigint;
+    networkTargets: readonly string[];
+    state: "loading" | "loaded" | "error";
+    /** Display name from the manifest; falls back to `slug` until loaded. */
+    name: string;
+    /** Available when state === "loaded". */
+    orderCount: number | null;
+    /** Available when state === "loaded". Sorted, deduped schemaIds. */
+    schemas: readonly string[] | null;
+    /** The full manifest when state === "loaded". Avoids re-fetching from
+     *  consumers that need it (e.g. fork). */
+    manifest: AssemblyManifest | null;
+}
+
+/**
+ * Lists every published assembly (optionally filtered to one author)
+ * enriched with manifest data — name, order count, schema set.
+ *
+ * Composes `usePublishedAssemblies` (event log) with a lazy per-row
+ * manifest fetch. Both `PublishedList` (designer index) and the
+ * operator-profile assembly picker consume this — keeping one fetch
+ * strategy and one enriched shape means they can't drift apart.
+ */
+export function useAssemblyChoices(
+    author?: `0x${string}` | undefined,
+): { data: AssemblyChoice[] | null; isLoading: boolean; refetch: () => void } {
+    const { data: events, isLoading, refetch } = usePublishedAssemblies(author);
+    const chainId = useChainId();
+    const [manifestState, setManifestState] = useState<
+        Map<string, { state: "loading" | "loaded" | "error"; manifest: AssemblyManifest | null }>
+    >(new Map());
+    /** Hashes whose fetch has already been kicked off. A ref (not state)
+     *  because we want to guard against double-fetch without retriggering
+     *  the effect every time we add an entry. */
+    const inFlightRef = useRef<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (!events || events.length === 0) return;
+        for (const event of events) {
+            if (inFlightRef.current.has(event.contentHash)) continue;
+            inFlightRef.current.add(event.contentHash);
+            setManifestState((prev) => {
+                const next = new Map(prev);
+                next.set(event.contentHash, { state: "loading", manifest: null });
+                return next;
+            });
+            fetchAssemblyManifest(event.metadataURI).then(
+                (manifest) => {
+                    setManifestState((prev) => {
+                        const next = new Map(prev);
+                        next.set(
+                            event.contentHash,
+                            manifest
+                                ? { state: "loaded", manifest }
+                                : { state: "error", manifest: null },
+                        );
+                        return next;
+                    });
+                },
+                () => {
+                    setManifestState((prev) => {
+                        const next = new Map(prev);
+                        next.set(event.contentHash, { state: "error", manifest: null });
+                        return next;
+                    });
+                },
+            );
+        }
+    }, [events]);
+
+    if (!events) return { data: null, isLoading, refetch };
+
+    const networkTarget = chainIdToNetworkTarget(chainId);
+    const data: AssemblyChoice[] = events.map((event) => {
+        const entry = manifestState.get(event.contentHash);
+        const state = entry?.state ?? "loading";
+        const manifest = entry?.manifest ?? null;
+        return {
+            slug: event.slug,
+            author: event.author,
+            contentHash: event.contentHash,
+            metadataURI: event.metadataURI,
+            blockNumber: event.blockNumber,
+            networkTargets: [networkTarget],
+            state,
+            name: manifest?.name ?? event.slug,
+            orderCount: manifest ? manifest.orders.length : null,
+            schemas: manifest ? collectAssemblySchemas(manifest) : null,
+            manifest,
+        };
+    });
+    return { data, isLoading, refetch };
 }
 
 export interface MerchantBoundModalities {

@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAccount, useChainId } from "wagmi";
+import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
 import {
-    useAllPublishedAssemblies,
-    fetchAssemblyManifest,
-    chainIdToNetworkTarget,
+    type AssemblyChoice,
+    formatAssemblySchemaList,
+    useAssemblyChoices,
 } from "@/lib/mechanisms/useAssemblyRegistry";
 
 /**
@@ -33,22 +33,15 @@ import {
  * just don't surface to assembly-scoped discovery.
  */
 
-interface AssemblyChoice {
-    slug: string;
-    name: string;
-    description: string;
-    networkTargets: readonly string[];
-}
-
 function buildBinding(
     wallet: `0x${string}`,
-    assembly: AssemblyChoice,
+    choice: AssemblyChoice,
 ): AssemblyBindingRecord {
     return {
-        bindingId: `binding:${wallet.toLowerCase()}:${assembly.slug}`,
+        bindingId: `binding:${wallet.toLowerCase()}:${choice.slug}`,
         subjectAddress: wallet,
-        assemblySlug: assembly.slug,
-        networkTargets: [...assembly.networkTargets],
+        assemblySlug: choice.slug,
+        networkTargets: [...choice.networkTargets],
         roleBindings: [],
         version: "1.0.0",
     };
@@ -85,42 +78,14 @@ export function OnboardingAssembliesForm({
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const chainId = useChainId();
     const { state, loaded, update } = useOnboardingState(address);
 
-    // On-chain published assemblies (all authors). Manifest fetch lands
-    // name/description from IPFS; networkTargets is derived from the
-    // current chain since the registry is per-chain.
-    const { data: publishedEvents } = useAllPublishedAssemblies();
-    const [onChainChoices, setOnChainChoices] = useState<AssemblyChoice[]>([]);
-
-    useEffect(() => {
-        if (!publishedEvents || publishedEvents.length === 0) {
-            setOnChainChoices([]);
-            return;
-        }
-        let cancelled = false;
-        const networkTarget = chainIdToNetworkTarget(chainId);
-        Promise.all(
-            publishedEvents.map(async (event) => {
-                const manifest = await fetchAssemblyManifest(event.metadataURI);
-                return {
-                    slug: event.slug,
-                    name: manifest?.name ?? event.slug,
-                    description: "",
-                    networkTargets: [networkTarget],
-                };
-            }),
-        ).then((items) => {
-            if (cancelled) return;
-            setOnChainChoices(items);
-        });
-        return () => {
-            cancelled = true;
-        };
-    }, [publishedEvents, chainId]);
-
-    const choices: AssemblyChoice[] = onChainChoices;
+    // On-chain published assemblies (all authors). Same hook backs the
+    // designer's PublishedList — keeps "what an operator sees about an
+    // assembly" aligned with "what the assembly's author sees" on a
+    // single source.
+    const { data: choicesData } = useAssemblyChoices();
+    const choices: AssemblyChoice[] = choicesData ?? [];
 
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [hydrated, setHydrated] = useState(false);
@@ -210,33 +175,60 @@ export function OnboardingAssembliesForm({
                         <Card
                             key={choice.slug}
                             className={`p-4 transition-colors ${isSelected ? "border-ink-heading" : ""}`}
+                            data-testid={`operator-assembly-row-${choice.slug}`}
                         >
-                            <label className="flex items-start gap-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => toggle(choice.slug)}
-                                    className="mt-1"
-                                />
-                                <div className="flex-1 space-y-1">
-                                    <div className="flex items-baseline justify-between gap-2">
-                                        <span className="font-semibold text-ink-heading">
-                                            {choice.name}
-                                        </span>
-                                        <code className="text-xs text-ink-faint font-mono shrink-0">
-                                            {choice.slug}
-                                        </code>
-                                    </div>
-                                    {choice.description && (
-                                        <p className="text-sm text-ink-body">
-                                            {choice.description}
+                            <div className="flex items-start gap-3">
+                                <label className="flex items-start gap-3 cursor-pointer flex-1 min-w-0">
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => toggle(choice.slug)}
+                                        className="mt-1 accent-accent"
+                                    />
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                        <div className="flex items-baseline justify-between gap-2">
+                                            <span className="font-semibold text-ink-heading truncate">
+                                                {choice.name}
+                                            </span>
+                                            <code className="text-xs text-ink-faint font-mono shrink-0">
+                                                {choice.slug}
+                                            </code>
+                                        </div>
+                                        {choice.state === "loading" && (
+                                            <p className="text-[11px] text-ink-faint">Loading manifest…</p>
+                                        )}
+                                        {choice.state === "error" && (
+                                            <p className="text-[11px] text-amber-700">
+                                                Manifest unavailable (IPFS gateway?). Identity is on-chain regardless.
+                                            </p>
+                                        )}
+                                        {choice.state === "loaded" && choice.orderCount !== null && choice.schemas !== null && (
+                                            <p
+                                                className="text-xs text-ink-body"
+                                                title={choice.schemas.join(", ")}
+                                                data-testid={`operator-assembly-shape-${choice.slug}`}
+                                            >
+                                                {choice.orderCount} order{choice.orderCount === 1 ? "" : "s"}
+                                                {" · "}
+                                                {choice.schemas.length} schema{choice.schemas.length === 1 ? "" : "s"}
+                                                {choice.schemas.length > 0 && `: ${formatAssemblySchemaList(choice.schemas)}`}
+                                            </p>
+                                        )}
+                                        <p className="text-xs text-ink-faint">
+                                            Networks: {choice.networkTargets.join(", ")}
                                         </p>
-                                    )}
-                                    <p className="text-xs text-ink-faint">
-                                        Networks: {choice.networkTargets.join(", ")}
-                                    </p>
-                                </div>
-                            </label>
+                                    </div>
+                                </label>
+                                <Link
+                                    href={`/builders/designer/view/${encodeURIComponent(choice.slug)}`}
+                                    target="_blank"
+                                    rel="noopener"
+                                    className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white hover:border-neutral-500 text-neutral-700 text-center shrink-0"
+                                    data-testid={`operator-assembly-inspect-${choice.slug}`}
+                                >
+                                    Inspect ↗
+                                </Link>
+                            </div>
                         </Card>
                     );
                 })}
