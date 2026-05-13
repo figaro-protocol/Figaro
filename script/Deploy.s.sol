@@ -131,12 +131,25 @@ contract Deploy is Script {
         // Permissionless first-write-wins anchor for designer-built
         // assemblies. Parallel to SchemaRegistry and OperatorRegistry —
         // each artifact family has its own registry per the
-        // separation-of-concerns doctrine. Only on-chain check is the
-        // node-count gas ceiling (`MAX_NODES_PER_ASSEMBLY = 2145`,
-        // documented in `FigaroCore.sol:240-250`). All other content
-        // validation lives at the per-schema layer and runs at
-        // attestation time.
-        AssemblyRegistry assemblies = new AssemblyRegistry();
+        // separation-of-concerns doctrine. The registry takes no on-chain
+        // claims about manifest content (manifests live off-chain on
+        // IPFS); per-clause validation runs at the per-schema layer
+        // at attestation time.
+        //
+        // Spam protection via reclaimable deposit + lock — same pattern
+        // OperatorRegistry uses but adapted: withdraw returns the ETH
+        // after the lock period, but the slug binding stays permanently
+        // because buyers and operators rely on slug stability.
+        //
+        // Devnet values:
+        //   - 0.001 ETH deposit so test wallets can register without
+        //     faucet drama;
+        //   - 3 years (1,095 days) lock to make recycling deposits
+        //     across spam registrations expensive in time as well as
+        //     capital.
+        // Mainnet picks its own values via DeployMainnet.s.sol — record
+        // the reasoning there.
+        AssemblyRegistry assemblies = new AssemblyRegistry(0.001 ether, 1095 days);
         console.log("AssemblyRegistry deployed at:", address(assemblies));
 
         // ── OperatorRegistry ────────────────────────────────────────

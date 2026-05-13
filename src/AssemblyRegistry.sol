@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-/// @title AssemblyRegistry — Permissionless assembly anchoring
+/// @title AssemblyRegistry — Permissionless assembly anchoring with reclaimable deposit
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice On-chain dedup guard + event emission for assembly registration.
@@ -23,27 +23,59 @@ pragma solidity 0.8.26;
 ///
 ///         The per-process gas ceiling (2,145 orders, documented in
 ///         `FigaroCore.sol:240-250`) is a property of the kernel
-///         resolveProcess path. Honest publishers enforce it client-side
-///         before calling registerAssembly; buyers independently verify
-///         off-chain before committing orders under an assembly. The
-///         contract makes no claim about node count — any cap stated
-///         here would be self-declared by the caller and unenforceable
-///         against off-chain content.
+///         resolveProcess path. Publish-side and buyer-side clients
+///         enforce it; the contract makes no claim about node count
+///         because that claim would be unenforceable against off-chain
+///         content.
 ///
-///         No owner, no admin, no fee. Slug binding is first-write-wins
-///         and permanent — no transferAssembly, no removeAssembly.
-///         Authors who want to publish a revised assembly register a
-///         new slug.
+///         SPAM PROTECTION: registration requires an ETH deposit
+///         (`registrationDeposit`, immutable at deploy). After the
+///         lock period elapses, the author can call `withdrawDeposit`
+///         to reclaim their ETH. The slug binding is permanent — it
+///         is NOT cleared on withdraw, because buyers and operators
+///         that reference the slug rely on its content staying
+///         stable. The deposit is purely an upfront Sybil-resistance
+///         tax with a refund path, not a fee.
+///
+///         No owner, no admin, no fee extraction. Slug binding is
+///         first-write-wins and permanent — no transferAssembly,
+///         no removeAssembly.
 ///
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any
 ///      kind, express or implied. No liability is accepted for loss, damages,
 ///      or bugs. Use at your own risk.
 contract AssemblyRegistry {
+    /// @notice Deposit amount in wei required at registration. Immutable
+    ///         at deploy.
+    /// @dev Sybil-resistance mechanism, not a fee. The protocol does not
+    ///      redistribute it; no party has authority to seize it. After
+    ///      `depositLockPeriod` elapses, the author can withdraw the
+    ///      exact same amount via `withdrawDeposit`.
+    uint256 public immutable registrationDeposit;
+
+    /// @notice Minimum lock duration before deposit can be withdrawn (seconds).
+    /// @dev Together with `registrationDeposit`, this is the Sybil-
+    ///      resistance knob. Without the lock, an attacker could
+    ///      register, withdraw, recycle the same ETH across many
+    ///      identities — "1 ETH = N assemblies over time" — at the
+    ///      cost of N transactions. The lock makes recycling expensive
+    ///      in TIME as well as capital. Permanence of the slug binding
+    ///      means a spam-published slug is permanently burned (cannot
+    ///      be re-registered), so each spam costs both deposit + lock
+    ///      + an irrevocable slug.
+    ///
+    ///      Deploy-time choice. Devnet uses 3 years (1,095 days).
+    ///      Mainnet duration should be set with explicit reasoning
+    ///      recorded in deployment notes.
+    uint256 public immutable depositLockPeriod;
+
     struct AssemblyBinding {
         address author;
+        uint64 registeredAt;
+        // 8-byte register; packs into the first storage slot with author + bool.
+        bool depositWithdrawn;
         bytes32 contentHash;
         string metadataURI;
-        uint64 registeredAt;
     }
 
     /// @notice slugHash (keccak256 of slug bytes) → binding details.
@@ -61,24 +93,48 @@ contract AssemblyRegistry {
         bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI
     );
 
+    /// @notice Emitted when an author withdraws their deposit. The slug
+    ///         binding stays in place; only the deposit moves.
+    /// @param slugHash  keccak256 of the slug.
+    /// @param author    Address that withdrew.
+    /// @param amount    Deposit amount returned (always equals
+    ///                  `registrationDeposit`).
+    event DepositWithdrawn(bytes32 indexed slugHash, address indexed author, uint256 amount);
+
     // ── Errors ──────────────────────────────────────────────────────────
 
     error EmptySlug();
     error EmptyMetadataURI();
     error EmptyContentHash();
     error SlugAlreadyRegistered(string slug);
+    error WrongDeposit(uint256 provided, uint256 required);
+    error NotRegistered();
+    error NotAuthor(address caller, address author);
+    error DepositLocked(uint64 unlocksAt);
+    error AlreadyWithdrawn();
+    error TransferFailed();
+
+    // ── Constructor ─────────────────────────────────────────────────────
+
+    /// @param _registrationDeposit  Required deposit per registration (wei).
+    /// @param _depositLockPeriod    Lock duration in seconds.
+    constructor(uint256 _registrationDeposit, uint256 _depositLockPeriod) {
+        registrationDeposit = _registrationDeposit;
+        depositLockPeriod = _depositLockPeriod;
+    }
 
     // ── Assembly registration (permissionless, first-write-wins) ────────
 
-    /// @notice Register an assembly. The contract anchors identity
-    ///         (slug → contentHash + URI). Content validity is the
-    ///         publisher's responsibility off-chain; per-clause validity
-    ///         is the per-schema validator's responsibility at commit
-    ///         time.
+    /// @notice Register an assembly. Requires `registrationDeposit` ETH.
+    ///         The contract anchors identity (slug → contentHash + URI).
+    ///         Content validity is the publisher's responsibility
+    ///         off-chain; per-clause validity is the per-schema
+    ///         validator's responsibility at commit time.
     /// @param slug         Human-readable slug. Bound permanently.
     /// @param contentHash  keccak256 of the canonical off-chain manifest.
     /// @param metadataURI  Off-chain manifest pointer (typically IPFS).
-    function registerAssembly(string calldata slug, bytes32 contentHash, string calldata metadataURI) external {
+    function registerAssembly(string calldata slug, bytes32 contentHash, string calldata metadataURI) external payable {
+        if (msg.value != registrationDeposit) revert WrongDeposit(msg.value, registrationDeposit);
         if (bytes(slug).length == 0) revert EmptySlug();
         if (bytes(metadataURI).length == 0) revert EmptyMetadataURI();
         if (contentHash == bytes32(0)) revert EmptyContentHash();
@@ -88,11 +144,37 @@ contract AssemblyRegistry {
 
         bindings[slugHash] = AssemblyBinding({
             author: msg.sender,
+            registeredAt: uint64(block.timestamp),
+            depositWithdrawn: false,
             contentHash: contentHash,
-            metadataURI: metadataURI,
-            registeredAt: uint64(block.timestamp)
+            metadataURI: metadataURI
         });
 
         emit AssemblyRegistered(slugHash, msg.sender, slug, contentHash, metadataURI);
+    }
+
+    // ── Deposit withdrawal (author-only, post-lock) ─────────────────────
+
+    /// @notice Reclaim the registration deposit after the lock elapses.
+    ///         The slug binding is NOT cleared — only the deposit
+    ///         moves. Callable only by the original author, and only
+    ///         once per binding.
+    /// @param slug The slug whose deposit to withdraw.
+    function withdrawDeposit(string calldata slug) external {
+        bytes32 slugHash = keccak256(bytes(slug));
+        AssemblyBinding storage binding = bindings[slugHash];
+        if (binding.registeredAt == 0) revert NotRegistered();
+        if (msg.sender != binding.author) revert NotAuthor(msg.sender, binding.author);
+        if (binding.depositWithdrawn) revert AlreadyWithdrawn();
+
+        uint64 unlocksAt = binding.registeredAt + uint64(depositLockPeriod);
+        if (block.timestamp < unlocksAt) revert DepositLocked(unlocksAt);
+
+        // Checks-effects-interactions: flag THEN transfer.
+        binding.depositWithdrawn = true;
+        emit DepositWithdrawn(slugHash, msg.sender, registrationDeposit);
+
+        (bool ok,) = msg.sender.call{value: registrationDeposit}("");
+        if (!ok) revert TransferFailed();
     }
 }
