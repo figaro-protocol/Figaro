@@ -1,32 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
+import { isAddress } from "viem";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
-import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
+import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/shared/runtimeIdentity";
 import {
     type AssemblyChoice,
     formatAssemblySchemaList,
+    requiredCounterpartyRoles,
     useAssemblyChoices,
 } from "@/lib/mechanisms/useAssemblyRegistry";
 
 /**
- * Step 5 of the onboarding wizard. Lets the operator pick which
+ * Step 5 of the onboarding wizard. Operator picks which published
  * assemblies they participate in. Each selected assembly becomes an
- * `AssemblyBindingRecord` on `state.assemblies` with the wallet as
- * `subjectAddress` and the assembly's `networkTargets`.
+ * `AssemblyBindingRecord` on `state.assemblies`.
  *
- * Per-assembly per-seller customization (trusted-counterparty
- * addresses, mechanism configuration) is deferred to a later
- * iteration. This step ships the multi-select; downstream surfaces
- * (the operator-edit page, follow-up commits) handle the granular
- * config. The user can re-enter the wizard or use the operator-edit
- * surface to refine.
+ * Per-binding counterparty editing: assemblies whose manifest contains
+ * a non-root order with a per-role process schema (e.g. a courier
+ * sub-order with `figaro-courier-process-v1`) require the operator to
+ * designate at least one wallet for that role. The picker surfaces an
+ * inline editor when those rows are checked. Without these addresses
+ * the cart has nowhere to read the counterparty's seller field from at
+ * checkout time.
  *
  * It's valid to ship without picking any assemblies — an unbound
  * operator is still on-chain registered and reachable; their bindings
@@ -36,6 +38,7 @@ import {
 function buildBinding(
     wallet: `0x${string}`,
     choice: AssemblyChoice,
+    counterpartyBindings: CounterpartyBinding[],
 ): AssemblyBindingRecord {
     return {
         bindingId: `binding:${wallet.toLowerCase()}:${choice.slug}`,
@@ -43,27 +46,35 @@ function buildBinding(
         assemblySlug: choice.slug,
         networkTargets: [...choice.networkTargets],
         roleBindings: [],
+        counterpartyBindings: counterpartyBindings.length > 0 ? counterpartyBindings : undefined,
         version: "1.0.0",
     };
+}
+
+/** Build the full bindings array from the live selection + counterparty
+ *  state. Used both for the autosave effect and the submit handler so
+ *  they can't drift. */
+function buildBindings(
+    wallet: `0x${string}`,
+    selected: Set<string>,
+    choices: AssemblyChoice[],
+    counterpartiesBySlug: Map<string, CounterpartyBinding[]>,
+): AssemblyBindingRecord[] {
+    return choices
+        .filter((c) => selected.has(c.slug))
+        .map((c) => buildBinding(wallet, c, counterpartiesBySlug.get(c.slug) ?? []));
 }
 
 export interface OnboardingAssembliesFormProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
      * `onSave(bindings)` instead of routing to the next wizard step.
-     * The caller re-pins the operator profile with the updated
-     * `assemblyBindings` array and dispatches `updateProfile`.
      */
     onSave?: (bindings: AssemblyBindingRecord[]) => Promise<void>;
-    /** Submit-button label override. Defaults to "Next →". */
     submitLabel?: string;
-    /** Back-link href override. Defaults to "/operators/onboard/link". */
     backHref?: string;
-    /** Back-link label override. Defaults to "← Back". */
     backLabel?: string;
-    /** Whether the submit is currently in flight. Suppresses double-submission. */
     submitInFlight?: boolean;
-    /** External error from `onSave`. */
     externalError?: string | null;
 }
 
@@ -80,34 +91,33 @@ export function OnboardingAssembliesForm({
     const { address, isConnected } = useAccount();
     const { state, loaded, update } = useOnboardingState(address);
 
-    // On-chain published assemblies (all authors). Same hook backs the
-    // designer's PublishedList — keeps "what an operator sees about an
-    // assembly" aligned with "what the assembly's author sees" on a
-    // single source.
     const { data: choicesData } = useAssemblyChoices();
     const choices: AssemblyChoice[] = choicesData ?? [];
 
     const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [counterpartiesBySlug, setCounterpartiesBySlug] = useState<
+        Map<string, CounterpartyBinding[]>
+    >(new Map());
     const [hydrated, setHydrated] = useState(false);
 
-    // Hydrate once `loaded === true` (the wallet-keyed state has
-    // actually been read from localStorage). See the matching comment
-    // in OnboardingProfileForm for the race this avoids.
     useEffect(() => {
         if (hydrated || !loaded) return;
         const existing = state.assemblies ?? [];
         setSelected(new Set(existing.map((b) => b.assemblySlug)));
+        const cps = new Map<string, CounterpartyBinding[]>();
+        for (const b of existing) {
+            if (b.counterpartyBindings && b.counterpartyBindings.length > 0) {
+                cps.set(b.assemblySlug, b.counterpartyBindings);
+            }
+        }
+        setCounterpartiesBySlug(cps);
         setHydrated(true);
     }, [hydrated, loaded, state.assemblies]);
 
-    // Persist on every change.
     useEffect(() => {
         if (!hydrated || !isConnected || !address) return;
-        const bindings = choices
-            .filter((c) => selected.has(c.slug))
-            .map((c) => buildBinding(address, c));
-        update({ assemblies: bindings });
-    }, [selected, hydrated, isConnected, address, choices, update]);
+        update({ assemblies: buildBindings(address, selected, choices, counterpartiesBySlug) });
+    }, [selected, counterpartiesBySlug, hydrated, isConnected, address, choices, update]);
 
     function toggle(slug: string) {
         setSelected((prev) => {
@@ -118,14 +128,27 @@ export function OnboardingAssembliesForm({
         });
     }
 
+    const updateCounterparties = useCallback(
+        (slug: string, roleKind: string, addresses: `0x${string}`[]) => {
+            setCounterpartiesBySlug((prev) => {
+                const next = new Map(prev);
+                const existing = (next.get(slug) ?? []).filter((cb) => cb.roleKind !== roleKind);
+                if (addresses.length > 0) {
+                    existing.push({ roleKind, addresses });
+                }
+                if (existing.length > 0) next.set(slug, existing);
+                else next.delete(slug);
+                return next;
+            });
+        },
+        [],
+    );
+
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
         if (onSave) {
             if (!address) return;
-            const bindings = choices
-                .filter((c) => selected.has(c.slug))
-                .map((c) => buildBinding(address, c));
-            onSave(bindings).catch(() => {
+            onSave(buildBindings(address, selected, choices, counterpartiesBySlug)).catch(() => {
                 // Caller surfaces the error via `externalError`.
             });
             return;
@@ -154,23 +177,28 @@ export function OnboardingAssembliesForm({
         <form onSubmit={handleNext} className="space-y-8">
             <Card className="p-6 space-y-3 text-sm text-ink-body">
                 <p>
-                    Pick the assemblies you participate in. Each binding
-                    publishes onto your profile as part of the document pinned
-                    in step 7. You can leave this empty and add assemblies
-                    later through the operator-edit surface; an unbound
-                    operator is still on-chain registered.
+                    Pick the assemblies you participate in. Each binding publishes
+                    onto your profile as part of the document pinned in step 7.
+                    You can leave this empty and add assemblies later through the
+                    operator-edit surface; an unbound operator is still on-chain
+                    registered.
                 </p>
                 <p>
-                    Per-assembly customization — trusted counterparty
-                    addresses (e.g. couriers you work with), mechanism
-                    configuration where the assembly asks for it — is added
-                    after first registration.
+                    Assemblies that include sub-orders you organize (e.g. a
+                    delivery courier) prompt for the wallets you trust to fill
+                    those roles. Without those addresses the cart has nowhere to
+                    read your counterparties from at checkout time.
                 </p>
             </Card>
 
             <div className="space-y-3">
                 {choices.map((choice) => {
                     const isSelected = selected.has(choice.slug);
+                    const requiredRoles =
+                        choice.state === "loaded" && choice.manifest
+                            ? requiredCounterpartyRoles(choice.manifest)
+                            : [];
+                    const counterparties = counterpartiesBySlug.get(choice.slug) ?? [];
                     return (
                         <Card
                             key={choice.slug}
@@ -229,6 +257,27 @@ export function OnboardingAssembliesForm({
                                     Inspect ↗
                                 </Link>
                             </div>
+                            {isSelected && requiredRoles.length > 0 && (
+                                <div
+                                    className="mt-4 pt-4 border-t border-default space-y-4"
+                                    data-testid={`operator-assembly-counterparties-${choice.slug}`}
+                                >
+                                    {requiredRoles.map((role) => {
+                                        const entry = counterparties.find((cb) => cb.roleKind === role);
+                                        const addresses = entry?.addresses ?? [];
+                                        return (
+                                            <CounterpartyRoleEditor
+                                                key={role}
+                                                roleKind={role}
+                                                addresses={addresses}
+                                                onChange={(next) =>
+                                                    updateCounterparties(choice.slug, role, next)
+                                                }
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </Card>
                     );
                 })}
@@ -250,5 +299,122 @@ export function OnboardingAssembliesForm({
                 </Button>
             </div>
         </form>
+    );
+}
+
+/** Per-role address editor — list of address inputs with add / remove.
+ *  Maintains local "rows in progress" so the user can type partial
+ *  values; the parent only sees validated addresses. Basic shape
+ *  validation (viem `isAddress`) only; OperatorRegistry-membership
+ *  lookup is deferred. */
+function CounterpartyRoleEditor({
+    roleKind,
+    addresses,
+    onChange,
+}: {
+    roleKind: string;
+    addresses: `0x${string}`[];
+    onChange: (next: `0x${string}`[]) => void;
+}) {
+    // Local rows include in-progress (typed but not yet valid) entries.
+    // Always pad with one trailing empty row so the user has somewhere
+    // to add a new address.
+    const [rows, setRows] = useState<string[]>(() =>
+        addresses.length > 0 ? [...addresses, ""] : [""],
+    );
+
+    function propagate(nextRows: string[]) {
+        setRows(nextRows);
+        const validAddresses = nextRows
+            .map((r) => r.trim())
+            .filter((r) => r && isAddress(r)) as `0x${string}`[];
+        // Dedupe while preserving insertion order.
+        const seen = new Set<string>();
+        const deduped: `0x${string}`[] = [];
+        for (const a of validAddresses) {
+            const key = a.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            deduped.push(a);
+        }
+        // Only fire onChange if the validated set actually changed; otherwise
+        // we'd re-trigger the parent's autosave effect on every keystroke.
+        const same =
+            deduped.length === addresses.length &&
+            deduped.every((a, i) => a.toLowerCase() === addresses[i].toLowerCase());
+        if (!same) onChange(deduped);
+    }
+
+    function updateRow(index: number, raw: string) {
+        const next = [...rows];
+        next[index] = raw;
+        propagate(next);
+    }
+
+    function removeRow(index: number) {
+        const next = rows.filter((_, i) => i !== index);
+        // Keep at least one trailing empty row.
+        if (next.length === 0) next.push("");
+        propagate(next);
+    }
+
+    function addRow() {
+        setRows((prev) => [...prev, ""]);
+    }
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs font-semibold text-ink-heading">
+                    {roleKind === "courier" ? "Trusted couriers" : `Trusted ${roleKind}s`}
+                </span>
+                <span className="text-[11px] text-ink-faint">
+                    {addresses.length} saved
+                </span>
+            </div>
+            <p className="text-[11px] text-ink-faint">
+                Wallets you designate to fill this role&apos;s sub-order at checkout. Order is
+                significant — the cart picks the first reachable wallet.
+            </p>
+            <div className="space-y-2">
+                {rows.map((value, i) => {
+                    const trimmed = value.trim();
+                    const valid = trimmed === "" || isAddress(trimmed);
+                    return (
+                        <div key={i} className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                placeholder="0x…"
+                                value={value}
+                                onChange={(e) => updateRow(i, e.target.value)}
+                                className={`flex-1 text-xs font-mono px-2 py-1.5 rounded border min-h-9 ${
+                                    valid ? "border-default" : "border-red-400"
+                                }`}
+                                data-testid={`counterparty-${roleKind}-input-${i}`}
+                            />
+                            {rows.length > 1 && (
+                                <button
+                                    type="button"
+                                    onClick={() => removeRow(i)}
+                                    className="text-xs text-ink-faint hover:text-red-600 px-2"
+                                    aria-label={`Remove address ${i + 1}`}
+                                    data-testid={`counterparty-${roleKind}-remove-${i}`}
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
+                <button
+                    type="button"
+                    onClick={addRow}
+                    className="text-xs text-ink-faint hover:text-ink-heading"
+                    data-testid={`counterparty-${roleKind}-add`}
+                >
+                    + Add another
+                </button>
+            </div>
+        </div>
     );
 }

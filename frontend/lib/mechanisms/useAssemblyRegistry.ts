@@ -21,7 +21,7 @@
  * to (msg.sender, nodeCount, contentHash, ipfs URI).
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keccak256, toHex, parseAbi, BaseError, ContractFunctionRevertedError } from "viem";
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId } from "wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
@@ -310,6 +310,47 @@ export function collectAssemblySchemas(manifest: AssemblyManifest): string[] {
     return Array.from(set).sort();
 }
 
+/** Roles the operator must populate with counterparty wallets when they
+ *  bind to this assembly. Derived from the manifest's non-root orders:
+ *  any order whose agreement anchors a per-role process schema (e.g.
+ *  figaro-courier-process-v1) implies the operator must designate at
+ *  least one wallet for that role at checkout time. Returns the set of
+ *  distinct roleKinds, sorted for stable display.
+ *
+ *  Root order is excluded — the rootBuyer is the connected wallet at
+ *  checkout, not designated by the operator's profile. */
+export function requiredCounterpartyRoles(manifest: AssemblyManifest): string[] {
+    const PROCESS_SCHEMA_TO_ROLE: Record<string, string> = {
+        "figaro-courier-process-v1": "courier",
+    };
+    const roots = new Set<string>();
+    for (const order of manifest.orders) {
+        if (!order.agreementHash) continue;
+        const agreement = manifest.agreements[order.agreementHash];
+        if (!agreement) continue;
+        // A root order has no parents in its topology section.
+        const topologySection = agreement.sections.find(
+            (s: { schema: string }) => s.schema === "figaro-topology-v1",
+        ) as { data?: { parentOrderHashes?: unknown } } | undefined;
+        const parents = topologySection?.data?.parentOrderHashes;
+        if (!Array.isArray(parents) || parents.length === 0) {
+            roots.add(order.agreementHash);
+        }
+    }
+    const roles = new Set<string>();
+    for (const order of manifest.orders) {
+        if (!order.agreementHash) continue;
+        if (roots.has(order.agreementHash)) continue;
+        const agreement = manifest.agreements[order.agreementHash];
+        if (!agreement) continue;
+        for (const section of agreement.sections as ReadonlyArray<{ schema: string }>) {
+            const role = PROCESS_SCHEMA_TO_ROLE[section.schema];
+            if (role) roles.add(role);
+        }
+    }
+    return Array.from(roles).sort();
+}
+
 /** Compact display formatting for a schema list. Strips the `figaro-`
  *  prefix and `-vN` version suffix. Shows the first three inline,
  *  summarizes the rest as `+N more`. Callers typically place the full
@@ -404,27 +445,35 @@ export function useAssemblyChoices(
         }
     }, [events]);
 
-    if (!events) return { data: null, isLoading, refetch };
-
-    const networkTarget = chainIdToNetworkTarget(chainId);
-    const data: AssemblyChoice[] = events.map((event) => {
-        const entry = manifestState.get(event.contentHash);
-        const state = entry?.state ?? "loading";
-        const manifest = entry?.manifest ?? null;
-        return {
-            slug: event.slug,
-            author: event.author,
-            contentHash: event.contentHash,
-            metadataURI: event.metadataURI,
-            blockNumber: event.blockNumber,
-            networkTargets: [networkTarget],
-            state,
-            name: manifest?.name ?? event.slug,
-            orderCount: manifest ? manifest.orders.length : null,
-            schemas: manifest ? collectAssemblySchemas(manifest) : null,
-            manifest,
-        };
-    });
+    // Memoize the derived array so its reference is stable across renders
+    // when none of its inputs (events, manifestState, chainId) have changed.
+    // Without this, the .map allocates a fresh array on every render, which
+    // breaks every downstream useEffect that depends on `choices` — most
+    // notably the OnboardingAssembliesForm's autosave effect, which would
+    // refire on every render, call update(), trigger another render, and
+    // freeze the UI in an infinite loop.
+    const data = useMemo<AssemblyChoice[] | null>(() => {
+        if (!events) return null;
+        const networkTarget = chainIdToNetworkTarget(chainId);
+        return events.map((event) => {
+            const entry = manifestState.get(event.contentHash);
+            const state = entry?.state ?? "loading";
+            const manifest = entry?.manifest ?? null;
+            return {
+                slug: event.slug,
+                author: event.author,
+                contentHash: event.contentHash,
+                metadataURI: event.metadataURI,
+                blockNumber: event.blockNumber,
+                networkTargets: [networkTarget],
+                state,
+                name: manifest?.name ?? event.slug,
+                orderCount: manifest ? manifest.orders.length : null,
+                schemas: manifest ? collectAssemblySchemas(manifest) : null,
+                manifest,
+            };
+        });
+    }, [events, manifestState, chainId]);
     return { data, isLoading, refetch };
 }
 

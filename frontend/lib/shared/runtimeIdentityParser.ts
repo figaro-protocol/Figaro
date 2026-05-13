@@ -1,5 +1,6 @@
 import {
     AssemblyBindingRecord,
+    CounterpartyBinding,
     RoleBindingRecord,
     SubjectRecord,
     SubjectReference,
@@ -101,6 +102,27 @@ export function parseSubjectRecordDocument(value: unknown, sourceLabel = "subjec
     };
 }
 
+function parseCounterpartyBindingArray(value: unknown, path: string): CounterpartyBinding[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be an array.`);
+    }
+    return value.map((entry, index) => {
+        const record = asRecord(entry, `${path}[${index}]`);
+        const addressesRaw = record.addresses;
+        if (!Array.isArray(addressesRaw)) {
+            throw new Error(`${path}[${index}].addresses must be an array of addresses.`);
+        }
+        const addresses = addressesRaw.map((addr, j) =>
+            asAddress(addr, `${path}[${index}].addresses[${j}]`),
+        );
+        return {
+            roleKind: asString(record.roleKind, `${path}[${index}].roleKind`),
+            addresses,
+        };
+    });
+}
+
 export function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution binding"): AssemblyBindingRecord {
     const record = asRecord(value, sourceLabel);
     return {
@@ -110,6 +132,7 @@ export function parseAssemblyBindingDocument(value: unknown, sourceLabel = "inst
         networkTargets: asStringArray(record.networkTargets, `${sourceLabel}.networkTargets`),
         roleBindings: parseRoleBindingArray(record.roleBindings, `${sourceLabel}.roleBindings`),
         serviceBindings: parseServiceBindingArray(record.serviceBindings, `${sourceLabel}.serviceBindings`),
+        counterpartyBindings: parseCounterpartyBindingArray(record.counterpartyBindings, `${sourceLabel}.counterpartyBindings`),
         metadataURI: asOptionalString(record.metadataURI, `${sourceLabel}.metadataURI`),
         metadataHash: asOptionalString(record.metadataHash, `${sourceLabel}.metadataHash`),
         assetURI: asOptionalString(record.assetURI, `${sourceLabel}.assetURI`),
