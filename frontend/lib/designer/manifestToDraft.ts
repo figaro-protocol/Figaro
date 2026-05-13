@@ -52,10 +52,5 @@ export function manifestToDraft(
         orders: manifest.orders.map(rehydrateOrder),
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        description: manifest.description,
-        narrativeSummary: manifest.narrativeSummary,
-        builderNotes: manifest.builderNotes,
-        mechanismLabels: manifest.mechanismLabels,
-        roleLabels: manifest.roleLabels,
     };
 }

@@ -4,15 +4,22 @@
  * DesignerCanvas — the shared DAG editor used by /builders/designer/new
  * and /builders/designer/edit/[slug]. Both pages render this component
  * with different `seed` props; everything else (state, handlers,
- * autosave, drawer, prose sheet, toolbar, help panel) is identical.
+ * autosave, drawer, toolbar) is identical.
+ *
+ * Toolbar surface (left → right):
+ *   ← Assemblies | name input | [forked badge] | saved hint | Save | Publish | Reset
+ *
+ * Buttons are weighted by the action we want to incentivize:
+ *   - Publish:  filled primary    — irreversible, costs the registration deposit
+ *   - Save:     outline           — frequent, recoverable; the everyday action
+ *   - Reset:    subtle/text-link  — destructive but recoverable (autosave caught it)
  *
  * Seed kinds:
  *   - 'fresh'  — SSR-safe blank; on mount, try to restore current-session.
  *   - 'blank'  — explicit blank; clear current-session, do not restore.
  *   - 'draft'  — load a named draft from localStorage by slug.
- *   - 'fork'   — fork an existing Assembly (used by the transitional
- *                /edit/[slug] reference-assembly path; will be removed
- *                in Phase 6 when REFERENCE_ASSEMBLIES is deleted).
+ *   - 'fork'   — fork an existing Assembly (transitional reference-assembly
+ *                path; will be removed when REFERENCE_ASSEMBLIES is deleted).
  *
  * SSR contract: 'fork' computes its initial state synchronously (the
  * reference is server-resolvable). 'fresh' / 'blank' / 'draft' all
@@ -48,7 +55,6 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
-import { ProseSheet, type ProseSheetValues } from "./ProseSheet";
 import { usePublishAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
@@ -62,45 +68,18 @@ export type DesignerSeed =
     | { kind: "draft"; slug: string }
     | { kind: "fork"; reference: Assembly };
 
+/** Minimum length for an assembly name (and the derived slug). Three
+ *  characters is a deliberate floor — short enough not to be paternalistic,
+ *  long enough that a single keystroke can't slip through and leave the
+ *  AssemblyRegistry full of `a`-, `b`-, `x`-named entries. The on-chain
+ *  registry's only check is non-empty; this is the publish-side guard. */
+const MIN_NAME_LENGTH = 3;
+
 interface InitialState {
     session: SyntheticProcessSession;
     orders: Order[];
     name: string;
     slug: string | null;
-    prose: ProseSheetValues;
-}
-
-function proseFromSnapshot(snap: DesignSnapshot): ProseSheetValues {
-    return {
-        description: snap.description,
-        narrativeSummary: snap.narrativeSummary,
-        builderNotes: snap.builderNotes,
-        mechanismLabels: snap.mechanismLabels,
-        roleLabels: snap.roleLabels,
-    };
-}
-
-function proseFromReference(reference: Assembly): ProseSheetValues {
-    const mechanismLabels: Record<string, string> = {};
-    for (const mech of reference.mechanisms) {
-        if (!mechanismLabels[mech.kind]) {
-            mechanismLabels[mech.kind] = mech.displayName;
-        }
-    }
-    const roleLabels: Record<string, { displayName: string; sampleCapabilities?: string[] }> = {};
-    for (const role of reference.roles) {
-        roleLabels[role.roleKind] = {
-            displayName: role.displayName,
-            sampleCapabilities: role.sampleCapabilities,
-        };
-    }
-    return {
-        description: reference.identity.description,
-        narrativeSummary: reference.narrative?.assemblySummary,
-        builderNotes: reference.narrative?.builderNotes,
-        mechanismLabels,
-        roleLabels,
-    };
 }
 
 function buildBlankInitial(): InitialState {
@@ -109,9 +88,9 @@ function buildBlankInitial(): InitialState {
     return {
         session: fresh,
         orders: [root.order],
-        name: "Untitled assembly",
+        // Empty so the placeholder shows; user must name before save/publish.
+        name: "",
         slug: null,
-        prose: {},
     };
 }
 
@@ -122,7 +101,6 @@ function buildForkInitial(reference: Assembly): InitialState {
         orders,
         name: `Fork of ${reference.identity.name}`,
         slug: null,
-        prose: proseFromReference(reference),
     };
 }
 
@@ -137,7 +115,6 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
         orders: snap.orders,
         name: snap.name,
         slug: snap.slug || null,
-        prose: proseFromSnapshot(snap),
     };
 }
 
@@ -159,18 +136,17 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
     const [orders, setOrders] = useState<Order[]>(() => initial.orders);
     const [name, setName] = useState<string>(initial.name);
     const [slug, setSlug] = useState<string | null>(initial.slug);
-    const [prose, setProse] = useState<ProseSheetValues>(() => initial.prose);
 
     const [mergeNotice, setMergeNotice] = useState<string | null>(null);
     const [savedAt, setSavedAt] = useState<number | null>(null);
-    const [helpOpen, setHelpOpen] = useState(false);
-    const [proseOpen, setProseOpen] = useState(false);
     const [headerHeight, setHeaderHeight] = useState(108);
     const [seedError, setSeedError] = useState<string | null>(null);
-
-    const handleProseChange = useCallback((patch: ProseSheetValues) => {
-        setProse((prev) => ({ ...prev, ...patch }));
-    }, []);
+    /** Belt-and-suspenders against double-publish: flips true the moment a
+     *  publish succeeds and stays true for the rest of this canvas
+     *  session. The redirect that fires on success removes the user from
+     *  the canvas anyway, but if the redirect is interrupted the flag
+     *  keeps the Publish button disabled. */
+    const [hasPublished, setHasPublished] = useState(false);
 
     // Lock body scroll: the canvas is an app-route, not a document route.
     useEffect(() => {
@@ -201,7 +177,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
     const [hydrated, setHydrated] = useState(false);
     useEffect(() => {
         if (seed.kind === "fork") {
-            // Fork was applied synchronously during render. Mount as hydrated.
             setHydrated(true);
             return;
         }
@@ -222,7 +197,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             setOrders(restored.orders);
             setName(restored.name);
             setSlug(restored.slug);
-            setProse(restored.prose);
             setHydrated(true);
             return;
         }
@@ -234,7 +208,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             setOrders(init.orders);
             setName(init.name);
             setSlug(init.slug);
-            setProse(init.prose);
         }
         setHydrated(true);
         // Mount-only; subsequent seed changes are ignored.
@@ -254,11 +227,10 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             orders,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            ...prose,
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [hydrated, seedError, orders, name, slug, prose, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, seedError, orders, name, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
@@ -433,7 +405,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             setOrders(reseed.orders);
             setName(reseed.name);
             setSlug(reseed.slug);
-            setProse(reseed.prose);
             clearCurrentSession();
             return;
         }
@@ -443,85 +414,94 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         setOrders([root.order]);
         setName("Untitled assembly");
         setSlug(null);
-        setProse({});
         clearCurrentSession();
     }, [seed, session]);
 
-    const buildSnapshot = useCallback((): DesignSnapshot | null => {
+    /** Validation result for `buildSnapshot`. Distinguishes the failure
+     *  modes so the caller can surface a specific error before opening
+     *  the wallet. */
+    type SnapshotResult =
+        | { ok: true; snapshot: DesignSnapshot }
+        | { ok: false; reason: "empty" | "too-short" | "no-slug" };
+
+    const buildSnapshot = useCallback((): SnapshotResult => {
         const trimmed = name.trim();
-        if (!trimmed) return null;
+        if (trimmed.length === 0) return { ok: false, reason: "empty" };
+        if (trimmed.length < MIN_NAME_LENGTH) return { ok: false, reason: "too-short" };
         const proposedSlug = slug ?? slugify(trimmed).slice(0, 64);
-        if (!proposedSlug) {
-            window.alert("Could not derive a URL slug from that name.");
-            return null;
+        if (!proposedSlug || proposedSlug.length < MIN_NAME_LENGTH) {
+            return { ok: false, reason: "no-slug" };
         }
         return {
-            slug: proposedSlug,
-            name: trimmed,
-            processId: session.processId,
-            nextOrderIndex: session.nextOrderIndex,
-            nextSellerIndex: session.nextSellerIndex,
-            orders,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            ...prose,
+            ok: true,
+            snapshot: {
+                slug: proposedSlug,
+                name: trimmed,
+                processId: session.processId,
+                nextOrderIndex: session.nextOrderIndex,
+                nextSellerIndex: session.nextSellerIndex,
+                orders,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+            },
         };
-    }, [name, slug, orders, prose, session]);
+    }, [name, slug, orders, session]);
+
+    function explainSnapshotReason(reason: "empty" | "too-short" | "no-slug"): string {
+        if (reason === "empty") {
+            return "Name the assembly before publishing.";
+        }
+        if (reason === "too-short") {
+            return `Assembly name must be at least ${MIN_NAME_LENGTH} characters.`;
+        }
+        return `Couldn't derive a URL-safe slug from that name (at least ${MIN_NAME_LENGTH} alphanumeric characters needed).`;
+    }
 
     const handleSaveDraft = useCallback(() => {
-        const snap = buildSnapshot();
-        if (!snap) return;
-        saveNamedDraft(snap);
-        setName(snap.name);
-        setSlug(snap.slug);
+        const result = buildSnapshot();
+        if (!result.ok) {
+            window.alert(explainSnapshotReason(result.reason));
+            return;
+        }
+        saveNamedDraft(result.snapshot);
+        setName(result.snapshot.name);
+        setSlug(result.snapshot.slug);
     }, [buildSnapshot]);
 
     const { publish, isPending: publishPending, isConfirming: publishConfirming } =
         usePublishAssembly();
     const publishInFlight = publishPending || publishConfirming;
 
-    const handlePublishDraft = useCallback(async () => {
-        const snap = buildSnapshot();
-        if (!snap) return;
+    const handlePublish = useCallback(async () => {
+        // Pre-wallet validation: the wallet write should never fire on an
+        // invalid name. Surface the specific reason before MetaMask opens.
+        const result = buildSnapshot();
+        if (!result.ok) {
+            window.alert(explainSnapshotReason(result.reason));
+            return;
+        }
         try {
-            const outcome = await publish(snap);
+            const outcome = await publish(result.snapshot);
+            setHasPublished(true);
+            clearCurrentSession();
             window.alert(`Publish submitted.\nIPFS: ${outcome.ipfsURI}\nTx: ${outcome.hash}`);
+            router.push("/builders/designer");
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             window.alert(`Publish failed: ${message}`);
         }
-    }, [buildSnapshot, publish]);
+    }, [buildSnapshot, publish, router]);
 
-    const handleExportDraft = useCallback(() => {
-        const snap = buildSnapshot();
-        if (!snap) return;
-        const agreements: Record<string, unknown> = {};
-        for (const order of snap.orders) {
-            if (!order.agreementHash) continue;
-            const agreement = loadAgreement(order.agreementHash);
-            if (agreement) agreements[order.agreementHash] = agreement;
-        }
-        const payload = { ...snap, agreements };
-        const json = JSON.stringify(
-            payload,
-            (_key, value) => (typeof value === "bigint" ? value.toString() : value),
-            2,
-        );
-        navigator.clipboard
-            .writeText(json)
-            .then(() => window.alert("Design + agreements copied to clipboard."))
-            .catch(() => window.alert("Clipboard copy failed. Check browser permissions."));
-    }, [buildSnapshot]);
-
+    const canActOnSnapshot = name.trim().length >= MIN_NAME_LENGTH && orders.length > 0;
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
-        if (slug) return `Saved as draft "${name}" · autosaved ${formatRelative(savedAt)}`;
-        return `Autosaved ${formatRelative(savedAt)} (in-progress, not named)`;
+        if (slug) return `Saved "${name}" · ${formatRelative(savedAt)}`;
+        return `Autosaved ${formatRelative(savedAt)} · not yet named`;
     }, [savedAt, slug, name]);
 
     const isForkSeed = seed.kind === "fork";
-    const resetLabel = isForkSeed ? "Reset to seed" : (orders.length === 0 ? "Start a new unit" : "Reset to unit");
     const forkReferenceName = isForkSeed ? seed.reference.identity.name : null;
+    const resetLabel = isForkSeed ? "Reset to seed" : "Reset";
 
     if (seedError) {
         return (
@@ -564,7 +544,15 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 >
                     ← Assemblies
                 </Link>
-                <span className="text-sm font-semibold text-ink-heading truncate max-w-[200px]" title={name}>{name}</span>
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Name this assembly…"
+                    aria-label="Assembly name"
+                    data-testid="designer-name-input"
+                    className="text-sm font-semibold text-ink-heading bg-paper border border-default rounded px-2 py-1 hover:border-default-strong focus:border-ink-heading focus:outline-none placeholder:font-normal placeholder:text-ink-muted min-w-[200px] max-w-[280px]"
+                />
                 {forkReferenceName && (
                     <span
                         className="text-[10px] uppercase tracking-widest text-ink-muted rounded bg-subtle px-2 py-0.5 shrink-0"
@@ -574,17 +562,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                         Forked from {forkReferenceName}
                     </span>
                 )}
-                <button
-                    type="button"
-                    onClick={() => setHelpOpen((v) => !v)}
-                    aria-expanded={helpOpen}
-                    aria-controls="designer-help-panel"
-                    data-testid="designer-help-toggle"
-                    className="text-xs w-7 h-7 rounded-full border border-default bg-paper hover:bg-subtle shrink-0 flex items-center justify-center font-semibold text-ink-body"
-                    title="What is this?"
-                >
-                    ?
-                </button>
                 {savedHint && (
                     <span className="ml-auto text-[11px] text-ink-muted truncate" data-testid="designer-saved-hint">
                         {savedHint}
@@ -592,56 +569,35 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 )}
                 <button
                     type="button"
-                    onClick={() => setProseOpen(true)}
-                    data-testid="designer-save-draft"
-                    className={`text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle font-semibold shrink-0 ${savedHint ? "" : "ml-auto"}`}
-                    title="Name, prose, and save"
+                    onClick={handleSaveDraft}
+                    disabled={!canActOnSnapshot || publishInFlight || hasPublished}
+                    data-testid="designer-save"
+                    className={`text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${savedHint ? "" : "ml-auto"}`}
+                    title={slug ? "Update the saved draft" : "Save this canvas as a named draft"}
                 >
-                    {slug ? "Update draft…" : "Save as draft…"}
+                    {slug ? "Update" : "Save"}
+                </button>
+                <button
+                    type="button"
+                    onClick={handlePublish}
+                    disabled={!canActOnSnapshot || publishInFlight || hasPublished}
+                    data-testid="designer-publish"
+                    className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Pin manifest to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
+                >
+                    {publishInFlight ? "Publishing…" : hasPublished ? "Published" : "Publish"}
                 </button>
                 <button
                     type="button"
                     onClick={handleReset}
+                    disabled={publishInFlight || hasPublished}
                     data-testid="designer-reset"
-                    disabled={!isForkSeed && orders.length === 1 && !slug}
-                    className={`text-xs px-3 py-1.5 rounded border bg-paper disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${
-                        !isForkSeed && orders.length === 0
-                            ? "border-ink-heading hover:bg-subtle font-semibold"
-                            : "border-default hover:border-default-strong"
-                    }`}
+                    className="text-[11px] px-2 py-1.5 rounded text-ink-muted hover:text-ink-heading hover:bg-subtle shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={isForkSeed ? "Reset to the forked reference's initial state" : "Clear the canvas and start over"}
                 >
                     {resetLabel}
                 </button>
             </div>
-            {helpOpen && (
-                <div
-                    id="designer-help-panel"
-                    data-testid="designer-help-panel"
-                    className="absolute top-[48px] left-0 right-0 z-30 bg-paper border-b border-default shadow-md max-h-[calc(100%-48px)] overflow-y-auto"
-                >
-                    <div className="container mx-auto max-w-3xl px-6 py-5 flex flex-col gap-3">
-                        <p className="text-sm text-ink-body leading-relaxed">
-                            <strong>The bonded commitment.</strong> One buyer, one seller, one agreement. Toggle the canvas lens buttons (<strong>Value</strong>, <strong>Geo</strong>, <strong>Capital</strong>, <strong>GHG</strong>) to switch the overlay. Each node opens an agreement drawer; the drawer&apos;s articles (Identity, Order, Fulfilment, Logistics, Attestations, Emissions, Jurisdiction, Consent) compose the order&apos;s signed agreement. The agreementHash binds those clauses into one contract.
-                        </p>
-                        <p className="text-sm text-ink-body leading-relaxed">
-                            To extend the process: grab the <span className="inline-block align-middle w-3 h-3 rounded-full border border-neutral-400 bg-white text-[8px] leading-[10px] text-center text-neutral-600">+</span> handle at the bottom of any active node and drag it into empty space. A sub-order spawns connected to the parent. Cumulative value rolls up; the new node inherits the currency.
-                        </p>
-                        <p className="text-sm text-ink-body leading-relaxed">
-                            <strong>Drag</strong> a node&apos;s <span className="inline-block align-middle w-3 h-3 rounded-full border border-neutral-400 bg-white text-[8px] leading-[10px] text-center text-neutral-600">+</span> handle to empty space to add a sub-order, or onto another node to merge it as an additional parent (enables diamond / fan-in). <strong>Click</strong> any node to open the agreement drawer or to delete it; fulfilment, logistics, and every other clause are edited in the drawer. The <span className="inline-block align-middle w-3 h-3 rounded-full border border-red-300 bg-white text-red-600 text-[8px] leading-[10px] text-center">×</span> in a node&apos;s top-right deletes that node and any descendants. Payment + currency are committed at runtime, not designed here.
-                        </p>
-                        <p className="text-sm text-ink-body leading-relaxed">
-                            <strong>Missing a clause or mechanism?</strong> Authoring a new schema (Tier 2) or new mechanism contract (Tier 3) lives outside the designer. See <Link href="/builders/composability" className="underline">/builders/composability</Link> for the architecture, <Link href="/schemas" className="underline">/schemas</Link> for clause authoring, or <Link href="/spec" className="underline">/spec</Link> for the on-chain contract inventory.
-                        </p>
-                        <button
-                            type="button"
-                            onClick={() => setHelpOpen(false)}
-                            className="self-end text-xs px-3 py-1.5 rounded border border-default bg-paper hover:bg-subtle"
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
             <div className="flex-1 overflow-hidden flex flex-row">
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">
@@ -706,20 +662,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     embedded
                 />
             </div>
-            <ProseSheet
-                open={proseOpen}
-                onClose={() => setProseOpen(false)}
-                orders={orders}
-                values={prose}
-                onChange={handleProseChange}
-                name={name}
-                onNameChange={setName}
-                onSave={handleSaveDraft}
-                saveLabel={slug ? "Update draft" : "Save as draft"}
-                onExport={handleExportDraft}
-                onPublish={handlePublishDraft}
-                publishInFlight={publishInFlight}
-            />
         </div>
     );
 }

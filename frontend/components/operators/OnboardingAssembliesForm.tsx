@@ -107,7 +107,7 @@ export function OnboardingAssembliesForm({
                 return {
                     slug: event.slug,
                     name: manifest?.name ?? event.slug,
-                    description: manifest?.description ?? "",
+                    description: "",
                     networkTargets: [networkTarget],
                 };
             }),

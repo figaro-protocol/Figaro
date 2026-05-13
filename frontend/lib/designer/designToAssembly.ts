@@ -105,7 +105,7 @@ export function designToAssembly(
         id: options.id ?? `${snapshot.slug}-reference`,
         name: snapshot.name,
         slug: snapshot.slug,
-        description: snapshot.description ?? `${snapshot.name} reference assembly.`,
+        description: `${snapshot.name} reference assembly.`,
         networkTargets: options.networkTargets ?? ["local-anvil", "evm-compatible"],
         version: options.version ?? "0.1.0",
     };
@@ -135,9 +135,7 @@ export function designToAssembly(
         return {
             mechanismId: `${kind}-orders`,
             kind,
-            displayName:
-                snapshot.mechanismLabels?.[kind] ??
-                `Bonded ${titleCase(kind)} Coordination`,
+            displayName: `Bonded ${titleCase(kind)} Coordination`,
             riskClass: defaults.riskClass,
             enabled: true,
             visibility: "primary",
@@ -146,19 +144,13 @@ export function designToAssembly(
         };
     });
 
-    const roles: RoleAssembly[] = roleKinds.map((kind) => {
-        const proseLabel = snapshot.roleLabels?.[kind];
-        return {
-            roleKind: kind,
-            displayName: proseLabel?.displayName ?? titleCase(kind),
-            visibility: "primary",
-            defaultLandingView: "role-dashboard",
-            sampleCapabilities:
-                proseLabel?.sampleCapabilities ??
-                ROLE_KIND_SAMPLE_CAPABILITIES[kind] ??
-                [],
-        };
-    });
+    const roles: RoleAssembly[] = roleKinds.map((kind) => ({
+        roleKind: kind,
+        displayName: titleCase(kind),
+        visibility: "primary",
+        defaultLandingView: "role-dashboard",
+        sampleCapabilities: ROLE_KIND_SAMPLE_CAPABILITIES[kind] ?? [],
+    }));
 
     const moduleIds = collectModuleIdsForDesign(anchoredSchemas);
     const modules: ModuleBinding[] = Array.from(moduleIds).map((moduleId) => ({
@@ -201,17 +193,7 @@ export function designToAssembly(
         showAuditMode: false,
     };
 
-    const narrative: NarrativeLayer | undefined =
-        snapshot.narrativeSummary || snapshot.builderNotes
-            ? {
-                  ...(snapshot.narrativeSummary
-                      ? { assemblySummary: snapshot.narrativeSummary }
-                      : {}),
-                  ...(snapshot.builderNotes
-                      ? { builderNotes: snapshot.builderNotes }
-                      : {}),
-              }
-            : undefined;
+    const narrative: NarrativeLayer | undefined = undefined;
 
     const builderMetadata: BuilderMetadata = {
         assemblyClass: options.assemblyClass ?? `reference-${snapshot.slug}`,

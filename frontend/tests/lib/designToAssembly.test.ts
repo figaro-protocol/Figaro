@@ -37,21 +37,6 @@ function runRoundTrip(label: string, reference: Assembly): void {
                 orders,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
-                description: reference.identity.description,
-                narrativeSummary: reference.narrative?.assemblySummary,
-                builderNotes: reference.narrative?.builderNotes,
-                mechanismLabels: Object.fromEntries(
-                    reference.mechanisms.map((m) => [m.kind, m.displayName]),
-                ),
-                roleLabels: Object.fromEntries(
-                    reference.roles.map((r) => [
-                        r.roleKind,
-                        {
-                            displayName: r.displayName,
-                            sampleCapabilities: r.sampleCapabilities,
-                        },
-                    ]),
-                ),
             };
             derived = designToAssembly(snapshot, {
                 id: reference.identity.id,

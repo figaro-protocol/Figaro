@@ -34,9 +34,13 @@ import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 
 export const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    "function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external",
-    "function bindings(bytes32 slugHash) view returns (address author, bytes32 contentHash, string metadataURI, uint64 registeredAt)",
+    "function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable",
+    "function withdrawDeposit(string slug) external",
+    "function bindings(bytes32 slugHash) view returns (address author, uint64 registeredAt, bool depositWithdrawn, bytes32 contentHash, string metadataURI)",
+    "function registrationDeposit() view returns (uint256)",
+    "function depositLockPeriod() view returns (uint256)",
     "event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)",
+    "event DepositWithdrawn(bytes32 indexed slugHash, address indexed author, uint256 amount)",
 ] as const);
 
 /** Per-process gas ceiling at the kernel resolveProcess path. Documented
@@ -47,8 +51,8 @@ export const MAX_NODES_PER_ASSEMBLY = 2145;
 
 /** Off-chain manifest persisted to IPFS. Content-addressed by keccak256
  *  of its canonical JSON serialization (`canonicalize` below). The
- *  on-chain binding stores only nodeCount + contentHash + metadataURI;
- *  this object carries the topology, per-order agreements, and prose. */
+ *  on-chain binding stores only contentHash + metadataURI; this object
+ *  carries the topology + per-order agreements. */
 export interface AssemblyManifest {
     slug: string;
     name: string;
@@ -64,12 +68,6 @@ export interface AssemblyManifest {
      *  sections. Inlined so the manifest is self-contained — consumers
      *  don't need a separate agreement-store fetch. */
     agreements: Record<string, Agreement>;
-    /** Prose fields authored on the canvas ProseSheet. */
-    description?: string;
-    narrativeSummary?: string;
-    builderNotes?: string;
-    mechanismLabels?: Record<string, string>;
-    roleLabels?: Record<string, { displayName: string; sampleCapabilities?: string[] }>;
 }
 
 /** Stable JSON serialization — sorted object keys at every depth, bigints
@@ -120,11 +118,6 @@ export function buildAssemblyManifest(snapshot: DesignSnapshot): AssemblyManifes
         nextSellerIndex: snapshot.nextSellerIndex,
         orders: snapshot.orders,
         agreements,
-        description: snapshot.description,
-        narrativeSummary: snapshot.narrativeSummary,
-        builderNotes: snapshot.builderNotes,
-        mechanismLabels: snapshot.mechanismLabels,
-        roleLabels: snapshot.roleLabels,
     };
 }
 
@@ -400,14 +393,16 @@ export function useMerchantBoundModalities(
 // ── Write hook ────────────────────────────────────────────────────────────────
 
 export function usePublishAssembly() {
+    const client = usePublicClient();
     const { writeContractAsync, data: hash, isPending, error: writeError } =
         useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-    /** Build a manifest from the snapshot, pin to IPFS, then call
-     *  registerAssembly. Returns the transaction hash + IPFS URI on
-     *  success. Throws on any failure (no wallet, IPFS down, registry
-     *  rejection for nodeCount > MAX_NODES_PER_ASSEMBLY, etc.). */
+    /** Build a manifest from the snapshot, pin to IPFS, fetch the
+     *  registry's deposit amount, then call registerAssembly with the
+     *  deposit attached. Returns the transaction hash + IPFS URI on
+     *  success. Throws on any failure — no wallet, IPFS down,
+     *  insufficient ETH, slug collision, etc. */
     async function publish(snapshot: DesignSnapshot): Promise<PublishOutcome> {
         const registry = getAssemblyRegistry();
         if (!registry) {
@@ -415,11 +410,19 @@ export function usePublishAssembly() {
                 "AssemblyRegistry address not configured (NEXT_PUBLIC_ASSEMBLY_REGISTRY).",
             );
         }
+        if (!client) {
+            throw new Error("No public client available to read the registration deposit.");
+        }
         if (snapshot.orders.length > MAX_NODES_PER_ASSEMBLY) {
             throw new Error(
                 `Assembly has ${snapshot.orders.length} orders; the per-process gas ceiling is ${MAX_NODES_PER_ASSEMBLY}. Compose multiple processes instead.`,
             );
         }
+        const deposit = await client.readContract({
+            address: registry,
+            abi: ASSEMBLY_REGISTRY_ABI,
+            functionName: "registrationDeposit",
+        });
         const manifest = buildAssemblyManifest(snapshot);
         const { json, contentHash } = serializeManifest(manifest);
         const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
@@ -428,6 +431,7 @@ export function usePublishAssembly() {
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "registerAssembly",
             args: [manifest.slug, contentHash, ipfs.uri],
+            value: deposit,
         });
         return { hash: txHash, ipfsURI: ipfs.uri };
     }
