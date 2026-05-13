@@ -20,7 +20,11 @@ import {
     getTopologyParentOrderHashes,
     summarizeAgreement,
 } from "@/lib/core/orderAgreement";
-import { computeAgreementHash } from "@/lib/core/agreementManifest";
+import {
+    computeAgreementHash,
+    COURIER_PROCESS_SCHEMA_KEY,
+    MERCHANT_PROCESS_SCHEMA_KEY,
+} from "@/lib/core/agreementManifest";
 import { loadAgreement, saveAgreement } from "@/lib/core/agreementStore";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 
@@ -445,8 +449,24 @@ export function collectDescendants(rootId: string, orders: Order[]): Set<string>
 
 /** Read the order's agreement back into a ManifestFields shape for the drawer's initial state. */
 export function readAgreementFields(order: Order): ManifestFields {
-    const summary = summarizeAgreement(loadAgreement(order.agreementHash));
+    const agreement = loadAgreement(order.agreementHash);
+    const summary = summarizeAgreement(agreement);
     const fields: ManifestFields = { origin: summary?.geo?.origin ?? "—" };
+
+    // ── process schemas (Category-1, no section data) ──────────
+    // `summarizeAgreement` only surfaces data-carrying sections, so the
+    // merchant-process / courier-process inclusion anchors don't appear
+    // in `summary`. Read them straight from the agreement's sections —
+    // without this the drawer toggle round-trips as "unticked" and the
+    // section is silently destroyed on the next edit when
+    // buildOrderAgreement rebuilds from the missing flag.
+    const sections = agreement?.sections ?? [];
+    if (sections.some((s) => s.schema === MERCHANT_PROCESS_SCHEMA_KEY)) {
+        fields.merchantProcessIncluded = true;
+    }
+    if (sections.some((s) => s.schema === COURIER_PROCESS_SCHEMA_KEY)) {
+        fields.courierProcessIncluded = true;
+    }
 
     // ── geo ────────────────────────────────────────────────────
     if (summary?.geo?.destination) fields.destination = summary.geo.destination;
