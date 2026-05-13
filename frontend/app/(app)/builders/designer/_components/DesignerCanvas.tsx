@@ -412,8 +412,11 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         const root = createSyntheticRootOrder(fresh);
         Object.assign(session, fresh);
         setOrders([root.order]);
-        setName("Untitled assembly");
+        // Empty so the placeholder shows; same as buildBlankInitial — user
+        // must name the assembly before save/publish succeeds.
+        setName("");
         setSlug(null);
+        setHasPublished(false);
         clearCurrentSession();
     }, [seed, session]);
 
@@ -492,7 +495,11 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         }
     }, [buildSnapshot, publish, router]);
 
-    const canActOnSnapshot = name.trim().length >= MIN_NAME_LENGTH && orders.length > 0;
+    // The Save / Publish buttons stay clickable on landing — validation
+    // runs at click time and surfaces a specific error before opening the
+    // wallet. The disabled state reflects only "publish is in flight" or
+    // "this canvas already published" — the two states where a click is
+    // genuinely unsafe.
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
         if (slug) return `Saved "${name}" · ${formatRelative(savedAt)}`;
@@ -570,7 +577,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 <button
                     type="button"
                     onClick={handleSaveDraft}
-                    disabled={!canActOnSnapshot || publishInFlight || hasPublished}
+                    disabled={publishInFlight || hasPublished}
                     data-testid="designer-save"
                     className={`text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${savedHint ? "" : "ml-auto"}`}
                     title={slug ? "Update the saved draft" : "Save this canvas as a named draft"}
@@ -580,7 +587,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 <button
                     type="button"
                     onClick={handlePublish}
-                    disabled={!canActOnSnapshot || publishInFlight || hasPublished}
+                    disabled={publishInFlight || hasPublished}
                     data-testid="designer-publish"
                     className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Pin manifest to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
