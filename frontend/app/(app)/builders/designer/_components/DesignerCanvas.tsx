@@ -469,7 +469,10 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         saveNamedDraft(result.snapshot);
         setName(result.snapshot.name);
         setSlug(result.snapshot.slug);
-    }, [buildSnapshot]);
+        // Same post-action navigation as Publish — land on the assemblies
+        // list where the newly-saved draft appears under "Your drafts".
+        router.push("/builders/designer");
+    }, [buildSnapshot, router]);
 
     const { publish, isPending: publishPending, isConfirming: publishConfirming } =
         usePublishAssembly();
