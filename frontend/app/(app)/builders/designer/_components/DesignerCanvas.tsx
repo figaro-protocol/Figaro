@@ -7,7 +7,7 @@
  * autosave, drawer, toolbar) is identical.
  *
  * Toolbar surface (left → right):
- *   ← Assemblies | name input | [forked badge] | saved hint | Save | Publish | Reset
+ *   ← Assemblies | name input | saved hint | Save | Publish | Reset
  *
  * Buttons are weighted by the action we want to incentivize:
  *   - Publish:  filled primary    — irreversible, costs the registration deposit
@@ -18,13 +18,9 @@
  *   - 'fresh'  — SSR-safe blank; on mount, try to restore current-session.
  *   - 'blank'  — explicit blank; clear current-session, do not restore.
  *   - 'draft'  — load a named draft from localStorage by slug.
- *   - 'fork'   — fork an existing Assembly (transitional reference-assembly
- *                path; will be removed when REFERENCE_ASSEMBLIES is deleted).
  *
- * SSR contract: 'fork' computes its initial state synchronously (the
- * reference is server-resolvable). 'fresh' / 'blank' / 'draft' all
- * render a blank canvas on first pass and apply the seed in a mount
- * effect — this is forced by localStorage being client-only.
+ * SSR contract: every kind renders a blank canvas on first pass and
+ * applies the seed in a mount effect — localStorage is client-only.
  */
 
 import Link from "next/link";
@@ -60,14 +56,11 @@ import { usePublishAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { assemblyToSyntheticOrders } from "@/lib/designer/assemblyToSyntheticOrders";
-import type { Assembly } from "@/lib/shared/assembly";
 
 export type DesignerSeed =
     | { kind: "fresh" }
     | { kind: "blank" }
-    | { kind: "draft"; slug: string }
-    | { kind: "fork"; reference: Assembly };
+    | { kind: "draft"; slug: string };
 
 /** Minimum length for an assembly name (and the derived slug). Three
  *  characters is a deliberate floor — short enough not to be paternalistic,
@@ -95,16 +88,6 @@ function buildBlankInitial(): InitialState {
     };
 }
 
-function buildForkInitial(reference: Assembly): InitialState {
-    const { session, orders } = assemblyToSyntheticOrders(reference);
-    return {
-        session,
-        orders,
-        name: `Fork of ${reference.identity.name}`,
-        slug: null,
-    };
-}
-
 function snapshotToInitial(snap: DesignSnapshot): InitialState {
     return {
         session: {
@@ -122,14 +105,11 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
 export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
     const router = useRouter();
 
-    // Initial render must match SSR. For 'fork' the reference is server-resolvable,
-    // so we can compute the forked initial synchronously. For all others we start
-    // blank and hydrate in a mount effect.
+    // Initial render must match SSR — start blank and hydrate from the
+    // appropriate seed in a mount effect.
     const initialRef = useRef<InitialState | null>(null);
     if (initialRef.current === null) {
-        initialRef.current = seed.kind === "fork"
-            ? buildForkInitial(seed.reference)
-            : buildBlankInitial();
+        initialRef.current = buildBlankInitial();
     }
     const initial = initialRef.current;
 
@@ -177,10 +157,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
     // with a blank seed before restore completes.
     const [hydrated, setHydrated] = useState(false);
     useEffect(() => {
-        if (seed.kind === "fork") {
-            setHydrated(true);
-            return;
-        }
         if (seed.kind === "blank") {
             clearCurrentSession();
             setHydrated(true);
@@ -398,17 +374,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
     }, []);
 
     const handleReset = useCallback(() => {
-        // For 'fork' seed, reset re-applies the reference. For everything else,
-        // reset clears to a fresh blank.
-        if (seed.kind === "fork") {
-            const reseed = buildForkInitial(seed.reference);
-            Object.assign(session, reseed.session);
-            setOrders(reseed.orders);
-            setName(reseed.name);
-            setSlug(reseed.slug);
-            clearCurrentSession();
-            return;
-        }
+        // Reset clears to a fresh blank.
         const fresh = startSyntheticSession();
         const root = createSyntheticRootOrder(fresh);
         Object.assign(session, fresh);
@@ -419,7 +385,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         setSlug(null);
         setHasPublished(false);
         clearCurrentSession();
-    }, [seed, session]);
+    }, [session]);
 
     /** Validation result for `buildSnapshot`. Distinguishes the failure
      *  modes so the caller can surface a specific error before opening
@@ -525,9 +491,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         return `Autosaved ${formatRelative(savedAt)} · not yet named`;
     }, [savedAt, slug, name]);
 
-    const isForkSeed = seed.kind === "fork";
-    const forkReferenceName = isForkSeed ? seed.reference.identity.name : null;
-    const resetLabel = isForkSeed ? "Reset to seed" : "Reset";
+    const resetLabel = "Reset";
 
     if (seedError) {
         return (
@@ -581,15 +545,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     data-testid="designer-name-input"
                     className="text-sm font-semibold text-ink-heading bg-paper border border-default rounded px-2 py-1 hover:border-default-strong focus:border-ink-heading focus:outline-none placeholder:font-normal placeholder:text-ink-muted min-w-[200px] max-w-[280px]"
                 />
-                {forkReferenceName && (
-                    <span
-                        className="text-[10px] uppercase tracking-widest text-ink-muted rounded bg-subtle px-2 py-0.5 shrink-0"
-                        data-testid="designer-fork-badge"
-                        title={`Forked from ${forkReferenceName}`}
-                    >
-                        Forked from {forkReferenceName}
-                    </span>
-                )}
                 {savedHint && (
                     <span className="ml-auto text-[11px] text-ink-muted truncate" data-testid="designer-saved-hint">
                         {savedHint}
@@ -621,7 +576,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     disabled={publishInFlight || hasPublished}
                     data-testid="designer-reset"
                     className="text-[11px] px-2 py-1.5 rounded text-ink-muted hover:text-ink-heading hover:bg-subtle shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title={isForkSeed ? "Reset to the forked reference's initial state" : "Clear the canvas and start over"}
+                    title="Clear the canvas and start over"
                 >
                     {resetLabel}
                 </button>
@@ -631,7 +586,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     <div className="h-full px-6 py-4 flex flex-col">
                         <ProcessGraphCanvas
                             orders={orders}
-                            title={forkReferenceName ? `${forkReferenceName} (forked)` : "Bonded commitment"}
+                            title="Bonded commitment"
                             designerMode
                             onAddSubOrder={handleAddSubOrder}
                             onAddParent={handleAddParent}

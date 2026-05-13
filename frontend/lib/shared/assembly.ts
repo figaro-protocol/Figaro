@@ -1,12 +1,3 @@
-// BEGIN GENERATED ASSEMBLY IMPORTS
-import directSaleReference from "@/lib/shared/assemblies/direct-sale.reference.json";
-import figaroDisclosureReviewReference from "@/lib/shared/assemblies/figaro-disclosure-review.reference.json";
-import localCommerceReference from "@/lib/shared/assemblies/local-commerce.reference.json";
-import figaroEquipmentRentalReference from "@/lib/shared/assemblies/figaro-equipment-rental.reference.json";
-import figaroFreelanceReference from "@/lib/shared/assemblies/figaro-freelance.reference.json";
-import figaroProcurementReference from "@/lib/shared/assemblies/figaro-procurement.reference.json";
-// END GENERATED ASSEMBLY IMPORTS
-import { parseAssemblyDocument } from "@/lib/shared/assemblyParser";
 import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 
 export type TruthClass =
@@ -153,44 +144,21 @@ export interface Assembly {
 }
 
 // BEGIN GENERATED ASSEMBLY EXPORTS
-export const DIRECT_SALE_REFERENCE_ASSEMBLY = parseAssemblyDocument(
-    directSaleReference,
-    "direct-sale.reference.json"
-);
-
-export const LOCAL_COMMERCE_REFERENCE_ASSEMBLY = parseAssemblyDocument(
-    localCommerceReference,
-    "local-commerce.reference.json"
-);
-
-export const FIGARO_PROCUREMENT_REFERENCE_ASSEMBLY = parseAssemblyDocument(
-    figaroProcurementReference,
-    "figaro-procurement.reference.json"
-);
-
-export const FIGARO_DISCLOSURE_REFERENCE_ASSEMBLY = parseAssemblyDocument(
-    figaroDisclosureReviewReference,
-    "figaro-disclosure-review.reference.json"
-);
-
-export const FIGARO_EQUIPMENT_RENTAL_REFERENCE_ASSEMBLY = parseAssemblyDocument(
-    figaroEquipmentRentalReference,
-    "figaro-equipment-rental.reference.json"
-);
-
-export const FIGARO_FREELANCE_REFERENCE_ASSEMBLY = parseAssemblyDocument(
-    figaroFreelanceReference,
-    "figaro-freelance.reference.json"
-);
-// END GENERATED ASSEMBLY EXPORTS
-
-// BEGIN GENERATED ASSEMBLY REGISTRY
-export const REFERENCE_ASSEMBLIES: Assembly[] = [
-    DIRECT_SALE_REFERENCE_ASSEMBLY,
-    LOCAL_COMMERCE_REFERENCE_ASSEMBLY,
-    FIGARO_PROCUREMENT_REFERENCE_ASSEMBLY,
-    FIGARO_DISCLOSURE_REFERENCE_ASSEMBLY,
-    FIGARO_EQUIPMENT_RENTAL_REFERENCE_ASSEMBLY,
-    FIGARO_FREELANCE_REFERENCE_ASSEMBLY,
-];
+/**
+ * Reference assemblies previously hardcoded six example assemblies
+ * (direct-sale, local-commerce, figaro-freelance, figaro-procurement,
+ * figaro-disclosure-review, figaro-equipment-rental) loaded from
+ * bundled JSON. Those have been removed — runtime discovery reads
+ * from the on-chain `AssemblyRegistry` via `useAssemblyChoices`.
+ *
+ * The empty array is left in place because the upstream registry /
+ * index / draft helpers expect an `Assembly[]` to iterate. They now
+ * iterate over nothing, which is the correct empty state.
+ *
+ * The semantic-layer migration (lib/semantic/* etc.) hasn't moved yet —
+ * those files still consume the `Assembly` TYPE, which is why this
+ * file's type exports stay. The constants going to `[]` is the
+ * "reference DATA" half of the cleanup.
+ */
+export const REFERENCE_ASSEMBLIES: Assembly[] = [];
 // END GENERATED ASSEMBLY REGISTRY

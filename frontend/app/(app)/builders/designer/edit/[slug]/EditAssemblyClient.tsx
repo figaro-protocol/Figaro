@@ -1,24 +1,14 @@
 "use client";
 
 /**
- * EditAssemblyClient — thin wrapper that picks the right <DesignerCanvas>
- * seed for /builders/designer/edit/[slug]:
- *   - reference slug → fork seed (transitional; removed when
- *                       REFERENCE_ASSEMBLIES is deleted in Phase 6)
- *   - any other slug → draft seed (client confirms localStorage hit)
+ * EditAssemblyClient — loads a saved draft by slug into the
+ * <DesignerCanvas>. If the slug doesn't match a draft in this
+ * browser's localStorage, the canvas surfaces a "draft not found"
+ * empty state.
  */
 
-import { DesignerCanvas, type DesignerSeed } from "../../_components/DesignerCanvas";
-import type { Assembly } from "@/lib/shared/assembly";
+import { DesignerCanvas } from "../../_components/DesignerCanvas";
 
-interface Props {
-    slug: string;
-    reference: Assembly | null;
-}
-
-export function EditAssemblyClient({ slug, reference }: Props) {
-    const seed: DesignerSeed = reference
-        ? { kind: "fork", reference }
-        : { kind: "draft", slug };
-    return <DesignerCanvas seed={seed} />;
+export function EditAssemblyClient({ slug }: { slug: string }) {
+    return <DesignerCanvas seed={{ kind: "draft", slug }} />;
 }
