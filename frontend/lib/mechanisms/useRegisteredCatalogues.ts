@@ -7,8 +7,9 @@
  * discovery module. Plural-of-wallets — each wallet has at most one
  * catalogue.
  *
- * Falls back to bundled fixture data when no registry is configured
- * or when no operators are registered.
+ * Returns an empty list when the registry isn't configured or no
+ * operators have registered. Empty-state copy is the caller's
+ * responsibility (e.g. `/discover` renders a "no operators yet" CTA).
  */
 "use client";
 
@@ -21,11 +22,12 @@ import {
 } from "@/lib/shared/discoveryService";
 
 export interface UseRegisteredCataloguesResult {
-    /** Merged catalogue list: IPFS-fetched catalogues + bundled fixture fallbacks */
     catalogues: SellerCatalogue[];
-    /** Whether the registry is being queried */
     isLoading: boolean;
-    /** How many catalogues came from IPFS vs bundled fixture data */
+    /** Per-source provenance. `ipfs` = catalogues fetched from
+     *  OperatorRegistry → IPFS. `mock` stays 0 in live mode; the field
+     *  remains on the type for callers that still surface a provenance
+     *  badge, but no longer carries fixture data. */
     source: { ipfs: number; mock: number };
 }
 
@@ -33,25 +35,25 @@ export interface UseRegisteredCataloguesOptions {
     service?: DiscoveryService;
 }
 
+const EMPTY_RESULT: UseRegisteredCataloguesResult = {
+    catalogues: [],
+    isLoading: false,
+    source: { ipfs: 0, mock: 0 },
+};
+
 export function useRegisteredCatalogues(
     options: UseRegisteredCataloguesOptions = {},
 ): UseRegisteredCataloguesResult {
     const service = options.service ?? DEFAULT_DISCOVERY_SERVICE;
-    const [discoveryResult, setDiscoveryResult] = useState<UseRegisteredCataloguesResult>({
-        catalogues: service.listFallbackCatalogues().catalogues,
-        isLoading: false,
-        source: service.listFallbackCatalogues().source,
-    });
+    const [discoveryResult, setDiscoveryResult] =
+        useState<UseRegisteredCataloguesResult>(EMPTY_RESULT);
     const [isLoading, setIsLoading] = useState(false);
     const client = usePublicClient();
     const chainId = useChainId();
 
     useEffect(() => {
         if (!client || !service.isRegistryConfigured()) {
-            setDiscoveryResult({
-                ...service.listFallbackCatalogues(),
-                isLoading: false,
-            });
+            setDiscoveryResult(EMPTY_RESULT);
             return;
         }
 
@@ -61,20 +63,13 @@ export function useRegisteredCatalogues(
         service.listCatalogues(client, chainId)
             .then((result) => {
                 if (cancelled) return;
-                setDiscoveryResult({
-                    ...result,
-                    isLoading: false,
-                });
+                setDiscoveryResult({ ...result, isLoading: false });
                 setIsLoading(false);
             })
             .catch(() => {
-                if (!cancelled) {
-                    setDiscoveryResult({
-                        ...service.listFallbackCatalogues(),
-                        isLoading: false,
-                    });
-                    setIsLoading(false);
-                }
+                if (cancelled) return;
+                setDiscoveryResult(EMPTY_RESULT);
+                setIsLoading(false);
             });
 
         return () => {

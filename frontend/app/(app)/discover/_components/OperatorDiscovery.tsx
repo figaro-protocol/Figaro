@@ -216,10 +216,29 @@ export function OperatorDiscovery() {
                 ))}
             </section>
 
-            {filtered.length === 0 && (
-                <p className="text-sm text-gray-500 italic text-center py-8">
-                    No operators match the current filters.
-                </p>
+            {filtered.length === 0 && !isLoading && (
+                allListings.length === 0 ? (
+                    <div className="text-center py-12 space-y-4">
+                        <p className="text-base text-gray-700">
+                            No operators have registered on this network yet.
+                        </p>
+                        <p className="text-sm text-gray-500 max-w-md mx-auto">
+                            Every operator is a wallet that has self-registered in <code className="text-xs">OperatorRegistry</code> with
+                            an identity, a catalogue, and one or more assembly bindings. Be the first.
+                        </p>
+                        <a
+                            href="/operators/onboard"
+                            className="inline-block text-sm px-4 py-2 rounded border border-black bg-black text-white hover:bg-neutral-800"
+                            data-testid="discover-empty-cta"
+                        >
+                            Become an operator
+                        </a>
+                    </div>
+                ) : (
+                    <p className="text-sm text-gray-500 italic text-center py-8">
+                        No operators match the current filters.
+                    </p>
+                )
             )}
         </div>
     );

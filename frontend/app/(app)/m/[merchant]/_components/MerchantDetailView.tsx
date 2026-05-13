@@ -243,12 +243,17 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 <p className="text-xs font-semibold text-neutral-500 mb-3">Merchant not found</p>
                 <h1 className="text-3xl font-bold text-black">No merchant registered for {merchantAddressLower.slice(0, 10)}…</h1>
                 <p className="text-sm text-neutral-600">
-                    The merchant may not be on the local-anvil network you&apos;re connected to,
-                    or may have withdrawn from the operator registry.
+                    This wallet hasn&apos;t registered itself in <code className="text-xs">OperatorRegistry</code> on the network
+                    you&apos;re connected to, or hasn&apos;t pinned a catalogue. If this is your wallet, you can complete the registration through the onboarding flow.
                 </p>
-                <Link href="/discover" className="inline-block underline text-sm text-black hover:text-neutral-600">
-                    ← Back to discover
-                </Link>
+                <div className="flex items-center gap-3 pt-2">
+                    <Link href="/operators/onboard" className="inline-block text-sm px-3 py-1.5 rounded border border-black bg-black text-white hover:bg-neutral-800">
+                        Become an operator
+                    </Link>
+                    <Link href="/discover" className="inline-block underline text-sm text-black hover:text-neutral-600">
+                        ← Back to discover
+                    </Link>
+                </div>
             </div>
         );
     }

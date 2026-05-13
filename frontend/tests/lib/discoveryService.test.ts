@@ -33,14 +33,14 @@ describe('discoveryService', () => {
         discoveryService = createDiscoveryService({ fetchDocument: fetchDocumentMock });
     });
 
-    it('returns fallback restaurants when the registry has no merchants', async () => {
+    it('returns an empty result when the registry has no operators', async () => {
         getActiveOperatorsMock.mockResolvedValueOnce([]);
 
         const result = await discoveryService.listCatalogues({} as never, 31337);
 
+        expect(result.catalogues).toHaveLength(0);
         expect(result.source.ipfs).toBe(0);
-        expect(result.source.mock).toBeGreaterThan(0);
-        expect(result.catalogues.length).toBe(result.source.mock);
+        expect(result.source.mock).toBe(0);
     });
 
     it('maps a SellerCatalogueMetadata document into a discovery restaurant', async () => {
@@ -75,13 +75,13 @@ describe('discoveryService', () => {
         const result = await discoveryService.listCatalogues({} as never, 31337);
 
         expect(result.source.ipfs).toBe(1);
+        expect(result.source.mock).toBe(0);
+        expect(result.catalogues).toHaveLength(1);
         expect(result.catalogues[0]).toEqual(expect.objectContaining({
             id: 'merchant-a',
             name: 'Merchant A',
             specialty: 'Italian',
         }));
-        expect(result.catalogues.some((r) => r.name === "Bob's Pizza Palace")).toBe(false);
-        expect(result.source.mock).toBeGreaterThan(0);
     });
 
     it('maps an operator profile document into a discovery restaurant and follows catalogueURI', async () => {
@@ -141,16 +141,17 @@ describe('discoveryService', () => {
         expect(fetchDocumentMock).toHaveBeenCalledTimes(1);
     });
 
-    it('falls back to mocks when operator lookup fails', async () => {
+    it('returns an empty result when the operator-event lookup fails', async () => {
         getActiveOperatorsMock.mockRejectedValueOnce(new Error('indexer offline'));
 
         const result = await discoveryService.listCatalogues({} as never, 31337);
 
+        expect(result.catalogues).toHaveLength(0);
         expect(result.source.ipfs).toBe(0);
-        expect(result.source.mock).toBeGreaterThan(0);
+        expect(result.source.mock).toBe(0);
     });
 
-    it('excludes operators whose documents cannot be fetched and uses mock fallback', async () => {
+    it('excludes operators whose documents cannot be fetched', async () => {
         getActiveOperatorsMock.mockResolvedValueOnce([
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
@@ -162,7 +163,8 @@ describe('discoveryService', () => {
 
         const result = await discoveryService.listCatalogues({} as never, 31337);
 
+        expect(result.catalogues).toHaveLength(0);
         expect(result.source.ipfs).toBe(0);
-        expect(result.source.mock).toBeGreaterThan(0);
+        expect(result.source.mock).toBe(0);
     });
 });

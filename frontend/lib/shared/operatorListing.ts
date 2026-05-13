@@ -1,8 +1,3 @@
-import {
-    listRuntimeAssemblyBindings,
-    listRuntimeSubjectRecords,
-    OPERATOR_PROFILE_METADATA_RECORDS,
-} from "@/lib/shared/runtimeIdentityRegistry";
 import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
 
@@ -42,14 +37,13 @@ export interface ListingServiceArea {
 
 export interface Listing {
     /**
-     * Where this listing came from. `fixture` = bundled in the runtime-identity
-     * manifest (protocol-seeded example used to demonstrate an assembly).
-     * `registry` = registered on-chain via `OperatorRegistry`.
-     *
-     * Surfaced visually on the discover card so users can distinguish
-     * protocol-seeded examples from operators they've registered themselves.
+     * Source of this listing. Only `registry` is produced at runtime now —
+     * the fixture path was removed when reference data stopped shadowing
+     * real on-chain registrations. The discriminator stays on the type
+     * for transcript/log compatibility and possible future provenance
+     * tagging (e.g. "did-web" identities).
      */
-    provenance: "fixture" | "registry";
+    provenance: "registry";
     /** Operator wallet address. */
     address: string;
     /** Display name. */
@@ -82,72 +76,10 @@ function safeURI(uri: string | undefined): string | undefined {
     return SAFE_URI_RE.test(uri) ? uri : undefined;
 }
 
-function profileByAddress(): Map<string, OperatorProfileMetadata> {
-    const m = new Map<string, OperatorProfileMetadata>();
-    for (const profile of OPERATOR_PROFILE_METADATA_RECORDS) {
-        if (profile.subjectAddress) {
-            m.set(profile.subjectAddress.toLowerCase(), profile);
-        }
-    }
-    return m;
-}
-
-/**
- * Project the bundled runtime-identity manifest into the generic `Listing`
- * shape. Each subject becomes one listing, regardless of its assembly count.
- *
- * Identity / branding / accepted tokens come from the operator profile;
- * fulfillment-mode and service-area declarations no longer exist on the
- * profile (the assembly defines those). The Listing's `fulfillmentModes`
- * and `serviceAreas` arrays therefore default to empty for fixture-driven
- * discovery; once on-chain assembly bindings drive discovery, this
- * projection will derive them from each binding's assembly definition.
- */
-export function listOperatorsFromRuntimeIdentity(): Listing[] {
-    const subjects = listRuntimeSubjectRecords();
-    const bindings = listRuntimeAssemblyBindings();
-    const profileByAddr = profileByAddress();
-
-    const bindingsByAddr = new Map<string, ListingBinding[]>();
-    for (const b of bindings) {
-        const addr = b.subjectAddress.toLowerCase();
-        if (!bindingsByAddr.has(addr)) bindingsByAddr.set(addr, []);
-        for (const rb of b.roleBindings) {
-            bindingsByAddr.get(addr)!.push({
-                assemblySlug: b.assemblySlug,
-                roleKind: rb.roleKind,
-                assemblyRoleKinds: rb.assemblyRoleKinds ?? [],
-            });
-        }
-    }
-
-    return subjects.map((s): Listing => {
-        const addr = s.subjectAddress.toLowerCase();
-        const profile = profileByAddr.get(addr);
-
-        return {
-            provenance: "fixture",
-            address: s.subjectAddress,
-            name: profile?.name ?? s.displayName ?? s.subjectAddress,
-            description: profile?.description ?? "",
-            specialty: profile?.specialty,
-            logoURI: safeURI(profile?.branding?.logoURI),
-            accentColor: profile?.branding?.accentColor,
-            geohash: profile?.location?.geohash,
-            addressText: profile?.location?.addressText,
-            serviceAreas: [],
-            fulfillmentModes: [],
-            acceptedTokens: profile?.acceptedTokens ?? [],
-            bindings: bindingsByAddr.get(addr) ?? [],
-        };
-    });
-}
-
 /**
  * Project an on-chain-registered operator's profile into a `Listing` with
- * `provenance: "registry"`. The discover surface merges these with the
- * fixture listings so users see both protocol-seeded examples and
- * operators they (or anyone else) have registered via the wizard.
+ * `provenance: "registry"`. The discover surface no longer blends fixture
+ * listings — only registered operators surface.
  *
  * `assemblyBindings` from the profile JSON drives the `bindings` field —
  * the wizard writes these from `OnboardingState.assemblies`, so a
@@ -195,21 +127,6 @@ export function profileToListing(
     };
 }
 
-/**
- * Merge chain-registered listings with fixture listings. Chain takes
- * precedence on address collision (an on-chain registration overrides
- * the fixture seed for the same wallet).
- */
-export function mergeListings(
-    fromRegistry: Listing[],
-    fromFixtures: Listing[],
-): Listing[] {
-    const seen = new Set(fromRegistry.map((l) => l.address.toLowerCase()));
-    const fixturesNotCovered = fromFixtures.filter(
-        (l) => !seen.has(l.address.toLowerCase()),
-    );
-    return [...fromRegistry, ...fixturesNotCovered];
-}
 
 /**
  * Geohash prefix-overlap check for filtering listings against a viewer's

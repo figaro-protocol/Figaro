@@ -5,22 +5,15 @@
  * registered operators from the on-chain `OperatorRegistry` (via
  * event logs), fetches each operator's profile JSON from IPFS, and
  * projects them into the generic `Listing` shape consumed by
- * `OperatorDiscovery`. Falls back to the bundled runtime-identity
- * fixtures when no registry is configured or no operators are
- * registered. On-chain registrations take precedence over fixture
- * seeds for the same wallet.
- *
- * Mirror of `useRegisteredCatalogues` deliberately — discovery has
- * two surfaces (`/discover` listings and `/m/[merchant]` catalogues)
- * and they need to read the same on-chain source of truth.
+ * `OperatorDiscovery`. Returns an empty list when the registry isn't
+ * configured or no operators are registered — the consumer renders
+ * the "no operators yet" CTA.
  */
 "use client";
 
 import { useEffect, useState } from "react";
 import { usePublicClient, useChainId } from "wagmi";
 import {
-    listOperatorsFromRuntimeIdentity,
-    mergeListings,
     profileToListing,
     type Listing,
 } from "@/lib/shared/operatorListing";
@@ -34,8 +27,16 @@ import { MECHANISM_CONTRACTS } from "@/lib/mechanisms/contracts";
 export interface UseOperatorListingsResult {
     listings: Listing[];
     isLoading: boolean;
+    /** Provenance counters retained for transcript / surface compatibility.
+     *  `fixture` stays 0 in live mode; only `registry` is populated. */
     source: { registry: number; fixture: number };
 }
+
+const EMPTY_RESULT: UseOperatorListingsResult = {
+    listings: [],
+    isLoading: false,
+    source: { registry: 0, fixture: 0 },
+};
 
 function isRegistryConfigured(): boolean {
     return !!MECHANISM_CONTRACTS.operatorRegistry
@@ -48,7 +49,6 @@ async function fetchProfileAsListing(
 ): Promise<Listing | null> {
     const url = resolveContentURI(metadataURI);
     if (!url) return null;
-
     try {
         const res = await fetch(url);
         const doc = await safeJsonFromResponse<unknown>(res);
@@ -71,22 +71,13 @@ async function listFromRegistry(client: PublicClient, chainId: number): Promise<
 }
 
 export function useOperatorListings(): UseOperatorListingsResult {
-    const fixtures = listOperatorsFromRuntimeIdentity();
-    const [state, setState] = useState<UseOperatorListingsResult>({
-        listings: fixtures,
-        isLoading: false,
-        source: { registry: 0, fixture: fixtures.length },
-    });
+    const [state, setState] = useState<UseOperatorListingsResult>(EMPTY_RESULT);
     const client = usePublicClient();
     const chainId = useChainId();
 
     useEffect(() => {
         if (!client || !isRegistryConfigured()) {
-            setState({
-                listings: fixtures,
-                isLoading: false,
-                source: { registry: 0, fixture: fixtures.length },
-            });
+            setState(EMPTY_RESULT);
             return;
         }
 
@@ -96,31 +87,20 @@ export function useOperatorListings(): UseOperatorListingsResult {
         listFromRegistry(client, chainId)
             .then((fromRegistry) => {
                 if (cancelled) return;
-                const merged = mergeListings(fromRegistry, fixtures);
                 setState({
-                    listings: merged,
+                    listings: fromRegistry,
                     isLoading: false,
-                    source: {
-                        registry: fromRegistry.length,
-                        fixture: merged.length - fromRegistry.length,
-                    },
+                    source: { registry: fromRegistry.length, fixture: 0 },
                 });
             })
             .catch(() => {
                 if (cancelled) return;
-                setState({
-                    listings: fixtures,
-                    isLoading: false,
-                    source: { registry: 0, fixture: fixtures.length },
-                });
+                setState(EMPTY_RESULT);
             });
 
         return () => {
             cancelled = true;
         };
-        // `fixtures` is recomputed each render but stable per-build, so
-        // it doesn't need to be in deps; including it would loop.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [client, chainId]);
 
     return state;
