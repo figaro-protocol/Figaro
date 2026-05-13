@@ -93,7 +93,14 @@ const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
     fulfilmentModalities: ["consume-onsite", "pickup"],
 };
 
-export function createSyntheticRootOrder(session: SyntheticProcessSession): CreatedOrder {
+export function createSyntheticRootOrder(
+    session: SyntheticProcessSession,
+    /** Per-root manifest overrides. Merged onto DEFAULT_NODE_MANIFEST_FIELDS
+     *  with the root's `roleHint: "merchant"` preserved unless explicitly
+     *  overridden. Used by `manifestToDraft` to seed an IPFS-pinned
+     *  assembly's kleros + fulfilment fields into the new draft's root. */
+    manifestOverrides?: Partial<ManifestFields>,
+): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
 
@@ -108,7 +115,7 @@ export function createSyntheticRootOrder(session: SyntheticProcessSession): Crea
         seller,
         currency,
         payment,
-        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, roleHint: "merchant" },
+        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, roleHint: "merchant", ...manifestOverrides },
     });
     const agreementHash = computeAgreementHash(agreement);
     saveAgreement(agreement);
