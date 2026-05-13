@@ -28,7 +28,8 @@ import { Button } from "@/components/ui/Button";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
 import { getAttestationsByProcessAndSchema } from "@/lib/core/indexer";
 import { getAttestationContent } from "@/lib/mechanisms/useGHGDisclosure";
-import { resolveRuntimeSubjectByAddress } from "@/lib/shared/runtimeIdentityRegistry";
+import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
+import { findListingByAddress } from "@/lib/shared/operatorListing";
 import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import type { MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
@@ -283,6 +284,7 @@ export function OrderTimelineView({ processId }: Props) {
     const chainId = publicClient?.chain?.id ?? 0;
     const workspace = useSemanticProcessWorkspace({ processId });
     const merchantActions = useMerchantProcessActions();
+    const { listings } = useOperatorListings();
 
     const [events, setEvents] = useState<MerchantTimelineEvent[]>([]);
     const [eventsLoading, setEventsLoading] = useState(false);
@@ -339,14 +341,12 @@ export function OrderTimelineView({ processId }: Props) {
         ?? processModel?.orders[0]
         ?? null;
 
-    const sellerIdentity = rootOrder
-        ? resolveRuntimeSubjectByAddress(rootOrder.seller)
-        : null;
-    const sellerDisplayName = sellerIdentity?.subject.displayName
+    const sellerListing = rootOrder ? findListingByAddress(listings, rootOrder.seller) : undefined;
+    const sellerDisplayName = sellerListing?.name
         ?? (rootOrder ? formatAddress(rootOrder.seller) : "the merchant");
 
-    const buyerIdentity = rootOrder ? resolveRuntimeSubjectByAddress(rootOrder.buyer) : null;
-    const buyerDisplayName = buyerIdentity?.subject.displayName
+    const buyerListing = rootOrder ? findListingByAddress(listings, rootOrder.buyer) : undefined;
+    const buyerDisplayName = buyerListing?.name
         ?? (rootOrder ? formatAddress(rootOrder.buyer) : "the buyer");
 
     const isBuyer = !!rootOrder && hexEqual(address, rootOrder.buyer);

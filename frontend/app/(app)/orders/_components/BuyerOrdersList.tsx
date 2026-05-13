@@ -18,22 +18,13 @@ import { useAccount } from "wagmi";
 import { formatToken } from "@/lib/shared/utils";
 import { WalletGate } from "@/components/core/WalletGate";
 import { useWalletProcessRows } from "@/lib/core/walletProcessQueries";
-import { resolveRuntimeSubjectByAddress } from "@/lib/shared/runtimeIdentityRegistry";
-import { truncateHex } from "@/lib/shared/formatHex";
-
-function formatAddress(addr: string): string {
-    return truncateHex(addr);
-}
-
-function counterpartyDisplayName(address: string): string {
-    if (!address.startsWith("0x")) return address;
-    const subject = resolveRuntimeSubjectByAddress(address as `0x${string}`);
-    return subject?.subject?.displayName ?? formatAddress(address);
-}
+import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
+import { displayNameForAddress } from "@/lib/shared/operatorListing";
 
 export function BuyerOrdersList() {
     const { isConnected } = useAccount();
     const { rows, isLoading } = useWalletProcessRows("buyer");
+    const { listings } = useOperatorListings();
 
     return (
         <div data-testid="buyer-orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-6">
@@ -77,7 +68,7 @@ export function BuyerOrdersList() {
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-baseline gap-3">
                                             <h2 className="text-sm font-semibold text-black truncate">
-                                                {counterpartyDisplayName(row.counterparty)}
+                                                {displayNameForAddress(listings, row.counterparty)}
                                             </h2>
                                             <span
                                                 className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${

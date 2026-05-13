@@ -36,20 +36,11 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { resolveRuntimeSubjectByAddress } from "@/lib/shared/runtimeIdentityRegistry";
+import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
+import { displayNameForAddress } from "@/lib/shared/operatorListing";
+import type { Listing } from "@/lib/shared/operatorListing";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
-import { truncateHex } from "@/lib/shared/formatHex";
-
-function formatAddress(addr: string): string {
-    return truncateHex(addr);
-}
-
-function counterpartyDisplayName(address: string): string {
-    if (!address.startsWith("0x")) return address;
-    const subject = resolveRuntimeSubjectByAddress(address as `0x${string}`);
-    return subject?.subject?.displayName ?? formatAddress(address);
-}
 
 // ── Pending order card ──────────────────────────────────────────────
 
@@ -58,9 +49,10 @@ interface PendingOrderCardProps {
     onAccept: () => void;
     onDismiss: () => void;
     isAccepting: boolean;
+    listings: ReadonlyArray<Listing>;
 }
 
-function PendingOrderCard({ payload, onAccept, onDismiss, isAccepting }: PendingOrderCardProps) {
+function PendingOrderCard({ payload, onAccept, onDismiss, isAccepting, listings }: PendingOrderCardProps) {
     const { commitment } = payload;
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
@@ -76,7 +68,7 @@ function PendingOrderCard({ payload, onAccept, onDismiss, isAccepting }: Pending
                         New order request
                     </p>
                     <p className="text-sm font-mono text-neutral-700">
-                        From {counterpartyDisplayName(commitment.buyer)}
+                        From {displayNameForAddress(listings, commitment.buyer)}
                     </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -121,7 +113,7 @@ function PendingOrderCard({ payload, onAccept, onDismiss, isAccepting }: Pending
 
 // ── Active order row ────────────────────────────────────────────────
 
-function ActiveOrderRow({ row }: { row: ProcessRow }) {
+function ActiveOrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<Listing> }) {
     return (
         <Link
             href={`/orders/${row.processId}`}
@@ -131,7 +123,7 @@ function ActiveOrderRow({ row }: { row: ProcessRow }) {
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-semibold text-black truncate">
-                        From {counterpartyDisplayName(row.counterparty)}
+                        From {displayNameForAddress(listings, row.counterparty)}
                     </h3>
                     <p className="mt-1 text-xs text-neutral-500 font-mono">
                         Process {row.processId.slice(0, 10)}…{row.processId.slice(-6)}
@@ -153,6 +145,7 @@ export function MerchantInbox() {
     const { data: walletClient } = useWalletClient();
     const services = useRuntimeServices();
     const { rows, isLoading } = useWalletProcessRows("seller");
+    const { listings } = useOperatorListings();
 
     const { counterSign, broadcast, error: flowError, reset, step: flowStep } = useCommitmentFlow();
 
@@ -278,6 +271,7 @@ export function MerchantInbox() {
                                         onAccept={() => void handleAccept(index)}
                                         onDismiss={() => handleDismiss(index)}
                                         isAccepting={acceptingIndex === index || flowStep === "signing" || flowStep === "broadcasting"}
+                                        listings={listings}
                                     />
                                 ))}
                             </div>
@@ -305,7 +299,7 @@ export function MerchantInbox() {
                             <ul className="space-y-3" data-testid="inbox-active-list">
                                 {activeRows.map((row) => (
                                     <li key={row.processId}>
-                                        <ActiveOrderRow row={row} />
+                                        <ActiveOrderRow row={row} listings={listings} />
                                     </li>
                                 ))}
                             </ul>
@@ -319,7 +313,7 @@ export function MerchantInbox() {
                             <ul className="space-y-3" data-testid="inbox-completed-list">
                                 {completedRows.map((row) => (
                                     <li key={row.processId}>
-                                        <ActiveOrderRow row={row} />
+                                        <ActiveOrderRow row={row} listings={listings} />
                                     </li>
                                 ))}
                             </ul>

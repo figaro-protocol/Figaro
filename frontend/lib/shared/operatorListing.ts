@@ -128,6 +128,31 @@ export function profileToListing(
 }
 
 
+import { truncateHex } from "@/lib/shared/formatHex";
+
+/** Find an operator listing by wallet address. Case-insensitive. */
+export function findListingByAddress(
+    listings: ReadonlyArray<Listing>,
+    address: string,
+): Listing | undefined {
+    if (!address) return undefined;
+    const target = address.toLowerCase();
+    return listings.find((l) => l.address.toLowerCase() === target);
+}
+
+/** Resolve an address to a human-readable display name using the loaded
+ *  registry listings, falling back to the truncated address when the
+ *  wallet isn't registered (or the listings haven't loaded yet). Used by
+ *  every counterparty-name surface (inbox, orders list, order timeline). */
+export function displayNameForAddress(
+    listings: ReadonlyArray<Listing>,
+    address: string,
+): string {
+    if (!address || !address.startsWith("0x")) return address ?? "";
+    const found = findListingByAddress(listings, address);
+    return found?.name ?? truncateHex(address);
+}
+
 /**
  * Geohash prefix-overlap check for filtering listings against a viewer's
  * device geohash. An operator matches if any of its serviceArea prefixes is
