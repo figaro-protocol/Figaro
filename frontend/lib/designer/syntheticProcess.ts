@@ -88,9 +88,12 @@ const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
     // layer 3 (state / ADR) is opt-in via the Jurisdiction tab.
     klerosCourt: "general",
     klerosMinJurors: "3",
-    // Every order has a fulfilment clause. Default to the direct-sale
-    // shape: both in-person modalities, no courier sub-order.
-    fulfilmentModalities: ["consume-onsite", "pickup"],
+    // Every order has a fulfilment clause, but no modality is pre-selected
+    // — the designer makes a deliberate choice, same as the buyer-side
+    // picker (commit 2dcd6b5). An order with empty modalities fails the
+    // schema validator at attest time; the publish-side client surfaces
+    // this before letting the user register the assembly.
+    fulfilmentModalities: [],
 };
 
 export function createSyntheticRootOrder(
