@@ -6,7 +6,7 @@ import {
     loadCommitments,
     deleteCommitment,
     listStoredCommitments,
-} from '@/lib/console/commitmentStore';
+} from '@/lib/core/commitmentStore';
 import type { Commitment, Hex } from '@figaro/core';
 import { ZERO_BYTES32 } from '@/lib/shared/evm';
 

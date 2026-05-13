@@ -122,10 +122,6 @@ export default function BuildersPage() {
                             <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Modules &mdash; UI authoring</Link>
                             <span className="text-ink-body"> &mdash; React components that bind to mechanisms via slot bindings on the assembly. Used at every tier: Tier-2 schemas need forms to enter and display clause content; Tier-3 mechanisms need action surfaces; assembly designers wire modules into views without authoring them. <code>@figaro/core/extensions</code> for module utilities, <code>@figaro/core/agent</code> for agent-driven action submission, <code>@figaro/core/schemas</code> for content encoders. Canonical entry: <Link href="/integrate" className="underline">Integrate</Link>.</span>
                         </li>
-                        <li>
-                            <Link href="/console" className="text-ink-heading font-medium hover:underline">Console</Link>
-                            <span className="text-ink-body"> &mdash; supervision surface for live processes and assembly drafts. Action queue for human-in-the-loop approval or autonomous submission.</span>
-                        </li>
                     </ul>
                 </div>
             </MarketingSection>

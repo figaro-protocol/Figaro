@@ -35,7 +35,7 @@ vi.mock("@/lib/core/useFigaroActions", () => ({
     }),
 }));
 
-vi.mock("@/lib/console/commitmentStore", () => ({
+vi.mock("@/lib/core/commitmentStore", () => ({
     saveCommitment: mocked.saveCommitment,
     computeOrderHash: mocked.computeOrderHash,
 }));

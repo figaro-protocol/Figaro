@@ -13,7 +13,7 @@ Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory list
 
 **`(marketing)/` (no wallet provider):** `/` (root), `/about`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig` (informational, no wallet), `/groups`, `/integrate`, `/local-commerce` (worked example), `/protocol`, `/schemas`, `/spec`.
 
-**`(app)/` (wallet provider mounted):** `/audit/[processId]`, `/builders` (hub), `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/builders/designer/view/[slug]`, `/consent` (beta-only ceremony), `/console`, `/discover` (operator catalogue), `/dispute` (beta-consent dispute), `/evidence-display` (Kleros juror iframe target), `/fig` (transactional surface, with `/fig/claim`), `/inbox` (merchant inbox), `/m/[merchant]` (merchant detail + cart), `/operators` (enrolment), `/orders` (buyer order list), `/orders/[processId]` (per-order live timeline), `/sign`, `/terminal`.
+**`(app)/` (wallet provider mounted):** `/audit/[processId]`, `/builders` (hub), `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/consent` (beta-only ceremony), `/discover` (operator catalogue), `/dispute` (beta-consent dispute), `/evidence-display` (Kleros juror iframe target), `/fig` (transactional surface, with `/fig/claim`), `/inbox` (merchant inbox), `/m/[merchant]` (merchant detail + cart), `/operators` (enrolment), `/orders` (buyer order list), `/orders/[processId]` (per-order live timeline), `/sign`, `/terminal`.
 
 **API:** `/api/semantic/agreements`, `/api/semantic/agreements/[agreementHash]`, `/api/semantic/assemblies`, `/api/semantic/runtime`.
 
@@ -85,7 +85,7 @@ governing wallet-provider load:
 
 - **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current routes: `/`, `/about`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig` (informational), `/groups`, `/integrate`, `/local-commerce`, `/protocol`, `/schemas`, `/spec`.
 - **Reference / read-only (in `(app)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. Current: `/builders` (hub, currently publication-shaped — could move to `(marketing)/`), `/builders/designer*` (drafts in localStorage), `/discover` (operator catalogue), `/audit/[processId]` (audit / forensics), `/m/[merchant]` (read-mode catalogue with WalletGate-protected place-order CTA).
-- **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/terminal`, `/sign`, `/operators`, `/console`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` + `/orders/[processId]` (buyer order list + per-order timeline; resolveProcess fires here), `/inbox` (merchant inbox; counter-sign + merchant-process attestations fire here).
+- **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/terminal`, `/sign`, `/operators`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` + `/orders/[processId]` (buyer order list + per-order timeline; resolveProcess fires here), `/inbox` (merchant inbox; counter-sign + merchant-process attestations fire here).
 
 **Rules:**
 

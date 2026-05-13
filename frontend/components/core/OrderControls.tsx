@@ -33,7 +33,7 @@ import { useOrderApprovalFlow } from "@/lib/core/useOrderApprovalFlow";
 import { showError, showSuccess } from "@/lib/shared/toast";
 import { getE2EModeSession } from "@/lib/shared/e2e";
 import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
-import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
+import { computeCommitmentProcessId } from "@/lib/core/commitmentStore";
 
 export function OrderControls() {
     const { address } = useAccount();

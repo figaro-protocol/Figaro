@@ -418,10 +418,8 @@ Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory list
 - `/builders` — builder hub
 - `/builders/designer` — DAG editor landing (drafts list + reference assemblies)
 - `/builders/designer/new` — blank DAG editor
-- `/builders/designer/edit/[slug]` — fork an existing reference
-- `/builders/designer/view/[slug]` — read-only DAG view
+- `/builders/designer/edit/[slug]` — edit a saved localStorage draft
 - `/consent` — beta-only consent ceremony
-- `/console` — HITL supervision surface
 - `/discover` — operator catalogue (entry point for buyers)
 - `/dispute` — beta-consent dispute submission flow
 - `/evidence-display` — Kleros evidence display interface (iframed by the Kleros court)
@@ -481,7 +479,7 @@ Routes are classified into three tiers:
 
 - **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current: `/`, `/about`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig` (informational), `/groups`, `/integrate`, `/local-commerce`, `/protocol`, `/schemas`, `/spec`.
 - **Reference / read-only (in `(app)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. Current: `/builders` (hub), `/builders/designer*` (drafts in localStorage), `/discover`, `/audit/[processId]`, `/m/[merchant]` (read-mode catalogue with WalletGate-protected place-order CTA).
-- **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/terminal`, `/sign`, `/operators`, `/console`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` + `/orders/[processId]` (resolveProcess fires here), `/inbox` (counter-sign + merchant-process attestations fire here).
+- **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/terminal`, `/sign`, `/operators`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` + `/orders/[processId]` (resolveProcess fires here), `/inbox` (counter-sign + merchant-process attestations fire here).
 
 Rules: don't gate read-only pages behind `useAccount` (wallet-connect is not auth); use `WalletGate` for inline gates on Reference pages. Today the root layout loads `<Providers>` for every route — splitting `app/` into `(marketing)` / `(transactional)` route groups is a known follow-on; the classification above is the canonical reference for that future refactor.
 

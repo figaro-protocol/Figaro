@@ -12,7 +12,7 @@ import { broadcastSharedCommitment } from "@/lib/core/commitmentBroadcast";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { calculateBonds } from "@figaro/core";
-import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
+import { computeCommitmentProcessId } from "@/lib/core/commitmentStore";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";

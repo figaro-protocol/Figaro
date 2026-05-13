@@ -16,7 +16,7 @@ import { useRegisterOperator, useUpdateProfile, useWithdrawDeposit, useRegistrat
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
-import { buildResolutionCommitments } from "@/lib/console/commitmentStore";
+import { buildResolutionCommitments } from "@/lib/core/commitmentStore";
 import { executeTransactionCapabilityAction } from "@/lib/core/executeTransactionCapability";
 import type { Hex } from "viem";
 

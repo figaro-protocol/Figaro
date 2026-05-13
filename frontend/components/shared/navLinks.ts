@@ -47,7 +47,6 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/builders", label: "Builders" },
     { href: "/terminal", label: "Terminal" },
     { href: "/operators", label: "Operators" },
-    { href: "/console", label: "Console" },
     { href: "/fig", label: "FIG token" },
 ];
 
@@ -60,6 +59,5 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
     { href: "/builders", label: "Builders" },
     { href: "/terminal", label: "Terminal" },
     { href: "/operators", label: "Operators" },
-    { href: "/console", label: "Console" },
     { href: "/fig", label: "FIG token" },
 ];

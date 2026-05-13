@@ -30,7 +30,7 @@ import { MerchantBrandingModule, MerchantLogo } from "@/components/modules/Merch
 import { useCommerce, useCheckout } from "@/lib/commerce";
 import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
-import { computeCommitmentProcessId } from "@/lib/console/commitmentStore";
+import { computeCommitmentProcessId } from "@/lib/core/commitmentStore";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useTokenSymbol } from "@/components/operators/TokenAddressInput";

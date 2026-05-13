@@ -22,7 +22,7 @@ import type {
 } from "@/lib/core/useCommitmentFlow";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { computeOrderHash } from "@/lib/console/commitmentStore";
+import { computeOrderHash } from "@/lib/core/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { strippingReviver } from "@/lib/shared/safeJson";

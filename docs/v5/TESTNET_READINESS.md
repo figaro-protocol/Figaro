@@ -17,7 +17,6 @@ Testnet-relevant items only. The full backlog stays canonical.
 - [ ] **Playwright mock-suite cleanup** — 12 failures from prior page deletions. Five files in priority order:
   - [ ] `tests/e2e/financials-and-redact.spec.ts` (5 failures) — rewrite against `/audit/[processId]`; `/financials/[processId]` is deleted (`next.config.mjs:77`).
   - [ ] `tests/e2e/admin.shared.spec.ts` (3 failures) — delete the file outright; `/admin` is gone (`next.config.mjs:66`).
-  - [ ] `tests/e2e/console.spec.ts:19` — single test, mode-toggle/disconnected-status; investigate testid mismatch.
   - [ ] `tests/e2e/operators-catalogue.spec.ts:34` — heading/step-indicator regression.
   - [ ] `tests/e2e/operators-onboarding.spec.ts` — 2 flaky; root-cause or annotate.
 - [ ] **P0-1: handoff certification coverage gaps** — `merchant view binds zero handoff modules` per `local-commerce.reference.json`; merchant is on one side of every handoff. Pickup and consume-onsite handoff shapes need design distinct from delivery-shaped modules.

@@ -23,7 +23,7 @@ import { useFigaroActions, Commitment } from "@/lib/core/useFigaroActions";
 import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { isValidAddress } from "@/components/operators/TokenAddressInput";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { saveCommitment, computeOrderHash } from "@/lib/console/commitmentStore";
+import { saveCommitment, computeOrderHash } from "@/lib/core/commitmentStore";
 import type { Agreement } from "@/lib/core/agreementManifest";
 import { hydrateAgreement, loadAgreement, primeAgreementArtifact, saveAgreementUri } from "@/lib/core/agreementStore";
 import { requestSignConfirmation } from "@/lib/core/commitmentSignPreviewStore";
