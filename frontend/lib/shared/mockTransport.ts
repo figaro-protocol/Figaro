@@ -1,4 +1,12 @@
-import { http, type HttpTransportConfig, type Transport } from "viem";
+import {
+    BaseError,
+    ExecutionRevertedError,
+    HttpRequestError,
+    RpcRequestError,
+    http,
+    type HttpTransportConfig,
+    type Transport,
+} from "viem";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "./evm";
 
 class MockRpcBlockedError extends Error {
@@ -111,12 +119,36 @@ const READ_ONLY_METHODS = new Set([
     "eth_feeHistory",
 ]);
 
+/** Classify an error thrown by viem's HTTP transport. We only want to fall
+ *  back to the mock response when the RPC endpoint is genuinely unreachable
+ *  — fetch failure, non-2xx HTTP, timeout. RPC-level errors (the node
+ *  responded, but the response contained `error` — e.g. a contract revert
+ *  on `eth_call`) must propagate, because callers like `simulateContract`
+ *  use them to detect pre-wallet failure modes (slug collision, wrong
+ *  deposit, etc.). Confusing the two silently broke publish validation. */
+function isTransportUnreachable(err: unknown): boolean {
+    if (!(err instanceof BaseError)) return false;
+    // A revert ANYWHERE in the cause chain means the chain ran the call and
+    // rejected it. That's not "RPC down" — it's the answer we want.
+    if (
+        err.walk(
+            (e) =>
+                e instanceof ExecutionRevertedError || e instanceof RpcRequestError,
+        )
+    ) {
+        return false;
+    }
+    return err.walk((e) => e instanceof HttpRequestError) !== null;
+}
+
 /**
  * HTTP transport that short-circuits to mock responses when `?e2e=mock` is
  * present on the current page, and falls back to the same safe defaults for
- * read-only methods when the live RPC returns an error. Write / signing
- * methods still throw in the live-but-unreachable case so callers detect the
- * failure instead of silently proceeding.
+ * read-only methods when the live RPC is unreachable. RPC-level errors
+ * (contract reverts, invalid params, etc.) are NOT swallowed — they
+ * propagate so callers can react to them. Write / signing methods still
+ * throw in the live-but-unreachable case so callers detect the failure
+ * instead of silently proceeding.
  *
  * Why: `?e2e=mock` is a per-navigation URL flag, not a build-time signal, so
  * the mock-vs-live decision must be made at request time — this is the one
@@ -142,7 +174,15 @@ export function mockAwareHttp(
                 try {
                     return await liveInstance.request(args);
                 } catch (err) {
-                    if (READ_ONLY_METHODS.has(args.method)) {
+                    // Only fall back to mock when the failure is a
+                    // transport-level unreachability (HTTP error / network).
+                    // RPC-level errors (chain reverts, invalid params, etc.)
+                    // MUST propagate — callers like `simulateContract` rely
+                    // on the revert payload to detect things like slug
+                    // collisions and wrong deposit values. Swallowing those
+                    // returns a fake-success `"0x"` and silently breaks the
+                    // pre-wallet validation in publish flows.
+                    if (READ_ONLY_METHODS.has(args.method) && isTransportUnreachable(err)) {
                         return mockResponse(args.method, args.params, chainId) as never;
                     }
                     throw err;

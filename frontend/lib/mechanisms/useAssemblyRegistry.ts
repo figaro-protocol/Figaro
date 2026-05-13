@@ -22,7 +22,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { keccak256, toHex, parseAbi } from "viem";
+import { keccak256, toHex, parseAbi, BaseError, ContractFunctionRevertedError } from "viem";
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
@@ -151,6 +151,37 @@ export interface PublishedAssembly {
     metadataURI: string;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
+}
+
+/** Map an `AssemblyRegistry` revert into a human-readable Error. Used by
+ *  `publish()` to surface a specific cause (slug already taken, wrong
+ *  deposit, empty fields) instead of viem's default "execution reverted"
+ *  message. Falls through to the original error for anything we don't
+ *  recognize. */
+function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
+    if (err instanceof BaseError) {
+        const revert = err.walk(
+            (e) => e instanceof ContractFunctionRevertedError,
+        ) as ContractFunctionRevertedError | undefined;
+        const name = revert?.data?.errorName;
+        if (name === "SlugAlreadyRegistered") {
+            return new Error(
+                `The slug "${attemptedSlug}" is already registered on-chain. Pick a different slug — slug bindings are first-write-wins and permanent.`,
+            );
+        }
+        if (name === "WrongDeposit") {
+            const args = revert?.data?.args as readonly bigint[] | undefined;
+            const provided = args?.[0]?.toString() ?? "?";
+            const required = args?.[1]?.toString() ?? "?";
+            return new Error(
+                `Registration deposit mismatch (provided ${provided} wei, required ${required} wei). The deposit amount changed between the read and the send — retry.`,
+            );
+        }
+        if (name === "EmptySlug") return new Error("Cannot publish with an empty slug.");
+        if (name === "EmptyMetadataURI") return new Error("The IPFS pin returned an empty URI.");
+        if (name === "EmptyContentHash") return new Error("Computed an empty content hash — likely a manifest-builder bug.");
+    }
+    return err instanceof Error ? err : new Error(String(err));
 }
 
 /**
@@ -399,10 +430,12 @@ export function usePublishAssembly() {
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
     /** Build a manifest from the snapshot, pin to IPFS, fetch the
-     *  registry's deposit amount, then call registerAssembly with the
-     *  deposit attached. Returns the transaction hash + IPFS URI on
+     *  registry's deposit amount, simulate to catch reverts (slug
+     *  collision, wrong deposit) BEFORE opening the wallet, send the
+     *  transaction, then wait for the receipt and verify status is
+     *  `success`. Returns the transaction hash + IPFS URI on confirmed
      *  success. Throws on any failure — no wallet, IPFS down,
-     *  insufficient ETH, slug collision, etc. */
+     *  insufficient ETH, slug collision, on-chain revert, etc. */
     async function publish(snapshot: DesignSnapshot): Promise<PublishOutcome> {
         const registry = getAssemblyRegistry();
         if (!registry) {
@@ -426,6 +459,22 @@ export function usePublishAssembly() {
         const manifest = buildAssemblyManifest(snapshot);
         const { json, contentHash } = serializeManifest(manifest);
         const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
+
+        // Simulate before opening the wallet — catches slug collision /
+        // wrong-deposit reverts so the user sees a typed error instead of
+        // a silent on-chain revert post-submission.
+        try {
+            await client.simulateContract({
+                address: registry,
+                abi: ASSEMBLY_REGISTRY_ABI,
+                functionName: "registerAssembly",
+                args: [manifest.slug, contentHash, ipfs.uri],
+                value: deposit,
+            });
+        } catch (err) {
+            throw translatePublishRevert(err, manifest.slug);
+        }
+
         const txHash = await writeContractAsync({
             address: registry,
             abi: ASSEMBLY_REGISTRY_ABI,
@@ -433,6 +482,18 @@ export function usePublishAssembly() {
             args: [manifest.slug, contentHash, ipfs.uri],
             value: deposit,
         });
+
+        // Wait for the transaction to be mined and verify it didn't revert
+        // on-chain. `writeContractAsync` only confirms wallet submission;
+        // without this wait the UI could declare success on a transaction
+        // that the chain ultimately rejected.
+        const receipt = await client.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") {
+            throw new Error(
+                `Publish transaction reverted on-chain (tx ${txHash}). The slug binding was not created.`,
+            );
+        }
+
         return { hash: txHash, ipfsURI: ipfs.uri };
     }
 

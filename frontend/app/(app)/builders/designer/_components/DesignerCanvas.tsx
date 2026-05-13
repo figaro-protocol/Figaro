@@ -48,6 +48,8 @@ import {
 } from "@/lib/designer/syntheticProcess";
 import {
     clearCurrentSession,
+    deleteNamedDraft,
+    listNamedDrafts,
     loadCurrentSession,
     loadNamedDraft,
     saveCurrentSession,
@@ -431,9 +433,28 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         const trimmed = name.trim();
         if (trimmed.length === 0) return { ok: false, reason: "empty" };
         if (trimmed.length < MIN_NAME_LENGTH) return { ok: false, reason: "too-short" };
-        const proposedSlug = slug ?? slugify(trimmed).slice(0, 64);
-        if (!proposedSlug || proposedSlug.length < MIN_NAME_LENGTH) {
+        // Always re-derive the slug from the current name so renaming a draft
+        // updates its slug. The previous "sticky slug" behavior caused
+        // renamed drafts to silently retain their old slug, which led to
+        // unfixable on-chain collisions at publish time.
+        const baseSlug = slugify(trimmed).slice(0, 64);
+        if (!baseSlug || baseSlug.length < MIN_NAME_LENGTH) {
             return { ok: false, reason: "no-slug" };
+        }
+        // Dedupe against other drafts in localStorage. The currently-loaded
+        // draft (if any) is excluded from the conflict set — renaming
+        // "Test Assembly 2" → "Test Assembly 2" must not consider itself a
+        // collision.
+        const otherDrafts = new Set(
+            listNamedDrafts()
+                .map((d) => d.slug)
+                .filter((s) => s !== slug),
+        );
+        let proposedSlug = baseSlug;
+        let n = 2;
+        while (otherDrafts.has(proposedSlug)) {
+            proposedSlug = `${baseSlug}-${n}`;
+            n++;
         }
         return {
             ok: true,
@@ -466,37 +487,45 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             window.alert(explainSnapshotReason(result.reason));
             return;
         }
+        // If the slug changed (rename), drop the old localStorage entry so
+        // we don't leave a stale duplicate behind.
+        if (slug && slug !== result.snapshot.slug) {
+            deleteNamedDraft(slug);
+        }
         saveNamedDraft(result.snapshot);
         setName(result.snapshot.name);
         setSlug(result.snapshot.slug);
         // Same post-action navigation as Publish — land on the assemblies
         // list where the newly-saved draft appears under "Your drafts".
         router.push("/builders/designer");
-    }, [buildSnapshot, router]);
+    }, [buildSnapshot, router, slug]);
 
-    const { publish, isPending: publishPending, isConfirming: publishConfirming } =
+    const { isPending: publishPending, isConfirming: publishConfirming } =
         usePublishAssembly();
     const publishInFlight = publishPending || publishConfirming;
 
-    const handlePublish = useCallback(async () => {
-        // Pre-wallet validation: the wallet write should never fire on an
-        // invalid name. Surface the specific reason before MetaMask opens.
+    const handlePublish = useCallback(() => {
+        // Pre-review validation: the review page resolves by slug, so the
+        // snapshot must be a valid named draft. Surface the specific reason
+        // before navigation if not.
         const result = buildSnapshot();
         if (!result.ok) {
             window.alert(explainSnapshotReason(result.reason));
             return;
         }
-        try {
-            const outcome = await publish(result.snapshot);
-            setHasPublished(true);
-            clearCurrentSession();
-            window.alert(`Publish submitted.\nIPFS: ${outcome.ipfsURI}\nTx: ${outcome.hash}`);
-            router.push("/builders/designer");
-        } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            window.alert(`Publish failed: ${message}`);
+        // If the slug changed (rename), drop the old localStorage entry so
+        // the review page doesn't resolve a stale snapshot.
+        if (slug && slug !== result.snapshot.slug) {
+            deleteNamedDraft(slug);
         }
-    }, [buildSnapshot, publish, router]);
+        // Save the draft so the review page (which loads by slug) sees the
+        // exact bytes that will be published. The wallet does NOT open here
+        // — the review page's "Confirm publish" is the only place it opens.
+        saveNamedDraft(result.snapshot);
+        router.push(
+            `/builders/designer/view/${encodeURIComponent(result.snapshot.slug)}?intent=publish`,
+        );
+    }, [buildSnapshot, router, slug]);
 
     // The Save / Publish buttons stay clickable on landing — validation
     // runs at click time and surfaces a specific error before opening the

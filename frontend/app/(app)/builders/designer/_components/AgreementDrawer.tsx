@@ -160,6 +160,10 @@ interface Props {
     /** When true, render as an inline flex-column block without fixed
         positioning. The page layout becomes responsible for placement. */
     embedded?: boolean;
+    /** When true, the article tabs remain clickable for navigation, but
+     *  every form control inside an article is disabled. Used by /view
+     *  to surface clause/schema detail without permitting edits. */
+    readOnly?: boolean;
 }
 
 export function AgreementDrawer({
@@ -174,6 +178,7 @@ export function AgreementDrawer({
     onOffsetSelected,
     onOffsetUnselected,
     embedded = false,
+    readOnly = false,
 }: Props) {
     const [fields, setFields] = useState<ManifestFields>(() =>
         order ? readAgreementFields(order) : ({} as ManifestFields),
@@ -578,6 +583,12 @@ export function AgreementDrawer({
                     })}
                 </nav>
                 <div className="flex-1 overflow-y-auto px-5 py-4 text-sm">
+                    <fieldset
+                        disabled={readOnly}
+                        data-testid="drawer-article-body"
+                        data-readonly={readOnly || undefined}
+                        className="contents"
+                    >
                     {openSection === "identity" && (
                         <section data-testid="drawer-section-identity">
                             <div className="space-y-5">
@@ -715,6 +726,7 @@ export function AgreementDrawer({
                         </section>
                     )}
 
+                    </fieldset>
                 </div>
             </div>
             </>)}
@@ -768,6 +780,7 @@ function SchemaToggleArticle({
                     disabled={disabled}
                     aria-describedby={showHint ? hintId : undefined}
                     data-testid={`drawer-include-${schemaId}`}
+                    className="accent-accent disabled:opacity-100"
                 />
                 <span className={`text-xs ${disabled && !lockedOn ? "text-neutral-400" : "text-neutral-700"}`}>
                     Included in this order&apos;s agreement
@@ -1083,6 +1096,7 @@ function CheckboxGroup({
                             disabled={disabled}
                             aria-describedby={hint ? hintId : undefined}
                             data-testid={`${testIdPrefix}-${opt.value}`}
+                            className="accent-accent disabled:opacity-100"
                         />
                         <span>{opt.label}</span>
                     </label>
@@ -1220,6 +1234,7 @@ function JurisdictionArticle({
                         checked={klerosOptedIn}
                         onChange={(e) => onKlerosCourtChange(e.target.checked ? "general" : "")}
                         data-testid="drawer-jurisdiction-kleros-toggle"
+                        className="accent-accent disabled:opacity-100"
                     />
                     <span className="font-medium">Kleros — off-chain arbitration</span>
                 </label>
@@ -1268,6 +1283,7 @@ function JurisdictionArticle({
                             }
                         }}
                         data-testid="drawer-jurisdiction-traditional-toggle"
+                        className="accent-accent disabled:opacity-100"
                     />
                     <span className="font-medium">State / ADR jurisdiction</span>
                 </label>

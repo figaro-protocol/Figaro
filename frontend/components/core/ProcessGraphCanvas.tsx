@@ -107,6 +107,10 @@ type OrderNodeData = Order & {
     /** Designer-mode flag. When true the node renders the click-to-edit
      *  affordance (cursor:pointer + tooltip). */
     designerMode: boolean;
+    /** True when the canvas accepts drag-to-add-child / drag-to-add-parent.
+     *  Read-only views (e.g. /view) leave this false so the bottom handle
+     *  renders as a plain dot without the "+" affordance. */
+    canAddNodes: boolean;
 };
 
 // ── Per-order GHG disclosure section ────────────────────────────────────────
@@ -323,7 +327,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                 type="source"
                 position={Position.Bottom}
                 style={
-                    data.state === OrderState.Active
+                    data.state === OrderState.Active && data.canAddNodes
                         ? {
                             background: "white",
                             border: "1px solid #999",
@@ -340,9 +344,9 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                         }
                         : { background: "transparent", border: "1px solid #ccc", width: 8, height: 8 }
                 }
-                title={data.state === OrderState.Active ? "Drag to add a sub-order or another parent" : undefined}
+                title={data.state === OrderState.Active && data.canAddNodes ? "Drag to add a sub-order or another parent" : undefined}
             >
-                {data.state === OrderState.Active && <span style={{ pointerEvents: "none" }}>+</span>}
+                {data.state === OrderState.Active && data.canAddNodes && <span style={{ pointerEvents: "none" }}>+</span>}
             </Handle>
         </div>
     );
@@ -517,7 +521,7 @@ export function ProcessGraphCanvas({
                 id: order.id,
                 type: "order",
                 position: posMap.get(order.id) ?? { x: 0, y: 0 },
-                data: { ...order, decimals, walletRole, activeLens, agreementSummary, onDelete: onDeleteNode, isRoot, designerMode } satisfies OrderNodeData,
+                data: { ...order, decimals, walletRole, activeLens, agreementSummary, onDelete: onDeleteNode, isRoot, designerMode, canAddNodes: onAddSubOrder !== undefined || onAddParent !== undefined } satisfies OrderNodeData,
             };
         });
 

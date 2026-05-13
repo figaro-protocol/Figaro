@@ -16,34 +16,44 @@
  * Renders the same `ProcessGraphCanvas` as /new and /edit/[slug] in
  * designerMode (so per-node clauses/values surface via the lens
  * overlays), but with no edit handlers — drag-add, delete, drawer
- * mutations all absent. The action button at the right of the toolbar
- * is "Edit" for drafts and "Fork" for published assemblies.
+ * mutations all absent. The `AgreementDrawer` mounts in read-only
+ * mode so clicking a node surfaces its clauses/schemas without
+ * permitting edits. The action button at the right of the toolbar is
+ * "Edit" for drafts and "Fork" for published assemblies.
  */
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { keccak256, toBytes } from "viem";
 import { usePublicClient } from "wagmi";
 import { ProcessGraphCanvas } from "@/components/core/ProcessGraphCanvas";
+import { AgreementDrawer } from "../../_components/AgreementDrawer";
 import {
+    deleteNamedDraft,
     listNamedDrafts,
     loadNamedDraft,
     saveNamedDraft,
+    clearCurrentSession,
 } from "@/lib/designer/syntheticDesignStore";
 import {
     ASSEMBLY_REGISTRY_ABI,
     fetchAssemblyManifest,
     getAssemblyRegistry,
+    usePublishAssembly,
     type AssemblyManifest,
 } from "@/lib/mechanisms/useAssemblyRegistry";
-import { saveAgreement } from "@/lib/core/agreementStore";
+import { saveAgreement, loadAgreement } from "@/lib/core/agreementStore";
 import { manifestToDraft } from "@/lib/designer/manifestToDraft";
+import { deriveOrderTopology } from "@/lib/core/orderTopology";
+import { summarizeAgreement } from "@/lib/core/orderAgreement";
+import { readAgreementFields } from "@/lib/designer/syntheticProcess";
 import type { Order } from "@/lib/core/store";
+import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 
 type ResolvedSource =
     | { kind: "loading" }
-    | { kind: "draft"; name: string; orders: Order[] }
+    | { kind: "draft"; name: string; orders: Order[]; snapshot: DesignSnapshot }
     | {
         kind: "published";
         name: string;
@@ -78,14 +88,19 @@ function uniqueDraftSlug(base: string): string {
 export function ViewAssemblyClient({ slug }: { slug: string }) {
     const router = useRouter();
     const client = usePublicClient();
+    const searchParams = useSearchParams();
+    const isPublishReview = searchParams.get("intent") === "publish";
     const [resolved, setResolved] = useState<ResolvedSource>({ kind: "loading" });
     const [forking, setForking] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+    const { publish } = usePublishAssembly();
 
     useEffect(() => {
         // Local draft first — more current than any on-chain snapshot.
         const draft = loadNamedDraft(slug);
         if (draft) {
-            setResolved({ kind: "draft", name: draft.name, orders: draft.orders });
+            setResolved({ kind: "draft", name: draft.name, orders: draft.orders, snapshot: draft });
             return;
         }
         // Fall through to on-chain lookup.
@@ -144,6 +159,27 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             });
     }, [slug, client]);
 
+    const handleConfirmPublish = useCallback(async () => {
+        if (resolved.kind !== "draft") return;
+        setConfirming(true);
+        try {
+            const outcome = await publish(resolved.snapshot);
+            // publish() now waits for receipt-confirmed status:success, so
+            // it's safe to delete the named draft + clear the session here.
+            clearCurrentSession();
+            deleteNamedDraft(resolved.snapshot.slug);
+            window.alert(`Published.\nIPFS: ${outcome.ipfsURI}\nTx: ${outcome.hash}`);
+            router.push("/builders/designer");
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            window.alert(`Publish failed: ${message}`);
+            // Stay on the review page so the user can hit "← Back to editor"
+            // and fix the underlying problem (e.g. rename the slug).
+        } finally {
+            setConfirming(false);
+        }
+    }, [resolved, publish, router]);
+
     const handleFork = useCallback(async () => {
         if (resolved.kind !== "published") return;
         const defaultSlug = uniqueDraftSlug(`${slug}-fork`);
@@ -193,33 +229,65 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         );
     }
 
-    const sourceLabel = resolved.kind === "draft" ? "draft" : "on-chain";
-    const actionButton =
-        resolved.kind === "draft" ? (
+    const orders = resolved.orders;
+    // `intent=publish` is only meaningful for drafts (publishing an
+    // on-chain assembly is a no-op — slug bindings are immutable). For
+    // any other resolved.kind, fall back to plain inspect.
+    const inReviewMode = isPublishReview && resolved.kind === "draft";
+    const sourceLabel = inReviewMode
+        ? "review · pending publish"
+        : resolved.kind === "draft"
+            ? "draft"
+            : "on-chain";
+    const actionButton = inReviewMode ? (
+        <div className="ml-auto flex items-center gap-2">
             <Link
                 href={`/builders/designer/edit/${encodeURIComponent(slug)}`}
-                className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold"
-                data-testid="view-edit-button"
+                className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-heading"
+                data-testid="review-back-to-editor"
             >
-                Edit
+                ← Back to editor
             </Link>
-        ) : (
             <button
                 type="button"
-                onClick={handleFork}
-                disabled={forking}
-                className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-                data-testid="view-fork-button"
+                onClick={handleConfirmPublish}
+                disabled={confirming}
+                className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                data-testid="review-confirm-publish"
+                title="Pin manifest to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
             >
-                {forking ? "Forking…" : "Fork"}
+                {confirming ? "Publishing…" : "Confirm publish"}
             </button>
-        );
+        </div>
+    ) : resolved.kind === "draft" ? (
+        <Link
+            href={`/builders/designer/edit/${encodeURIComponent(slug)}`}
+            className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold"
+            data-testid="view-edit-button"
+        >
+            Edit
+        </Link>
+    ) : (
+        <button
+            type="button"
+            onClick={handleFork}
+            disabled={forking}
+            className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+            data-testid="view-fork-button"
+        >
+            {forking ? "Forking…" : "Fork"}
+        </button>
+    );
+
+    const selectedOrder = selectedOrderId
+        ? (orders.find((o) => o.id === selectedOrderId) ?? null)
+        : null;
 
     return (
-        <div className="min-h-screen bg-canvas" data-testid="assembly-view-page">
+        <div className="h-screen bg-canvas flex flex-col" data-testid="assembly-view-page">
             <div
                 data-testid="view-toolbar"
-                className="px-8 py-4 border-b border-default bg-paper flex items-center gap-3 flex-wrap"
+                className="px-8 py-4 border-b border-default bg-paper flex items-center gap-3 flex-wrap shrink-0"
             >
                 <Link
                     href="/builders/designer"
@@ -237,11 +305,57 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 </span>
                 {actionButton}
             </div>
-            <div className="container mx-auto px-6 pt-8 pb-16 max-w-5xl">
-                <ProcessGraphCanvas
-                    orders={resolved.orders}
-                    title={`${resolved.name} (read-only)`}
-                    designerMode
+            <div className="flex-1 overflow-hidden flex flex-row">
+                <div className="flex-1 overflow-hidden">
+                    <div className="h-full px-6 py-4 flex flex-col">
+                        <ProcessGraphCanvas
+                            orders={orders}
+                            title={`${resolved.name} (read-only)`}
+                            designerMode
+                            onSelectNode={setSelectedOrderId}
+                        />
+                    </div>
+                </div>
+                <AgreementDrawer
+                    order={selectedOrder}
+                    onClose={() => setSelectedOrderId(null)}
+                    onChange={() => {
+                        /* read-only — drawer body is fieldset-disabled so nothing can fire onChange */
+                    }}
+                    hasChildren={(() => {
+                        if (!selectedOrderId) return false;
+                        const topology = deriveOrderTopology(orders);
+                        for (const info of topology.values()) {
+                            if (info.parentOrderIds.includes(selectedOrderId)) return true;
+                        }
+                        return false;
+                    })()}
+                    parentDeliveryActive={(() => {
+                        if (!selectedOrderId) return false;
+                        const topology = deriveOrderTopology(orders);
+                        const info = topology.get(selectedOrderId);
+                        if (!info || info.parentOrderIds.length === 0) return false;
+                        for (const parentId of info.parentOrderIds) {
+                            const parent = orders.find((o) => o.id === parentId);
+                            if (!parent) continue;
+                            const summary = summarizeAgreement(loadAgreement(parent.agreementHash));
+                            if (summary?.fulfilment?.modalities?.includes("delivery")) return true;
+                        }
+                        return false;
+                    })()}
+                    hasCourierChild={(() => {
+                        if (!selectedOrderId) return false;
+                        const topology = deriveOrderTopology(orders);
+                        for (const child of orders) {
+                            const info = topology.get(child.id);
+                            if (!info?.parentOrderIds.includes(selectedOrderId)) continue;
+                            const childFields = readAgreementFields(child);
+                            if (childFields.roleHint === "courier") return true;
+                        }
+                        return false;
+                    })()}
+                    embedded
+                    readOnly
                 />
             </div>
         </div>
