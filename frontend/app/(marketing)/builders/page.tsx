@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
-import { REFERENCE_ASSEMBLIES } from "@/lib/shared/assembly";
 
 export const metadata: Metadata = {
     title: "Builders — Figaro Protocol",
@@ -131,50 +130,6 @@ export default function BuildersPage() {
                 </div>
             </MarketingSection>
 
-            <MarketingSection title="Reference assemblies" bottomPad="wide">
-                <p className="text-sm text-ink-body leading-relaxed mb-6 max-w-2xl">
-                    Six reference assemblies ship with the protocol. Each is a forkable starting point at a different composition tier &mdash; from the Level-1 minimum (kernel only, no extensions) to a Level-3 multi-mechanism vertical. All six are runtime-reachable today; merchants registered against each are listed on <Link href="/discover" className="underline">/discover</Link>.
-                </p>
-                <ul className="space-y-4">
-                    {REFERENCE_ASSEMBLIES.map((a) => {
-                        const enabledMechanisms = a.mechanisms.filter((m) => m.enabled).length;
-                        return (
-                            <li
-                                key={a.identity.slug}
-                                className="rounded-lg border border-default bg-paper px-5 py-4 flex items-start gap-4"
-                            >
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-base font-semibold text-ink-heading">
-                                        {a.identity.name}
-                                    </p>
-                                    <p className="font-mono text-xs text-ink-muted mt-0.5">
-                                        /{a.identity.slug}
-                                    </p>
-                                    {a.identity.description && (
-                                        <p className="text-sm text-ink-body leading-relaxed mt-2">
-                                            {a.identity.description}
-                                        </p>
-                                    )}
-                                    <p className="text-xs text-ink-muted mt-2">
-                                        {a.roles.length} {a.roles.length === 1 ? "role" : "roles"} &middot; {enabledMechanisms} active {enabledMechanisms === 1 ? "mechanism" : "mechanisms"}
-                                    </p>
-                                </div>
-                                <div className="flex flex-col gap-2 shrink-0">
-                                    <Link
-                                        href={`/builders/designer/edit/${a.identity.slug}`}
-                                        className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading text-center font-semibold"
-                                    >
-                                        Fork
-                                    </Link>
-                                </div>
-                            </li>
-                        );
-                    })}
-                </ul>
-                <p className="text-xs text-ink-muted leading-relaxed mt-6">
-                    <strong>Runtime</strong> opens the live assembly instance &mdash; the same surface a consumer arriving from <Link href="/discover" className="underline">/discover</Link> sees. <strong>View</strong> renders the canonical DAG read-only on the designer canvas. <strong>Fork</strong> opens the assembly in the DAG editor as a starting point for your own composition; drafts persist locally.
-                </p>
-            </MarketingSection>
         </>
     );
 }

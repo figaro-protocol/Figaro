@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAccount, useChainId } from "wagmi";
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
-import { REFERENCE_ASSEMBLIES, type Assembly } from "@/lib/shared/assembly";
 import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
 import {
     useAllPublishedAssemblies,
@@ -39,18 +38,6 @@ interface AssemblyChoice {
     name: string;
     description: string;
     networkTargets: readonly string[];
-    /** Where this choice was sourced from. Drives the badge + de-duplication. */
-    source: "reference" | "on-chain";
-}
-
-function describeAssembly(assembly: Assembly): AssemblyChoice {
-    return {
-        slug: assembly.identity.slug,
-        name: assembly.identity.name,
-        description: assembly.identity.description ?? "",
-        networkTargets: assembly.identity.networkTargets,
-        source: "reference",
-    };
 }
 
 function buildBinding(
@@ -122,7 +109,6 @@ export function OnboardingAssembliesForm({
                     name: manifest?.name ?? event.slug,
                     description: manifest?.description ?? "",
                     networkTargets: [networkTarget],
-                    source: "on-chain" as const,
                 };
             }),
         ).then((items) => {
@@ -134,13 +120,7 @@ export function OnboardingAssembliesForm({
         };
     }, [publishedEvents, chainId]);
 
-    // Merge sources, de-dupe by slug (on-chain wins if both exist).
-    const choices = useMemo<AssemblyChoice[]>(() => {
-        const merged = new Map<string, AssemblyChoice>();
-        for (const ref of REFERENCE_ASSEMBLIES) merged.set(ref.identity.slug, describeAssembly(ref));
-        for (const onChain of onChainChoices) merged.set(onChain.slug, onChain);
-        return Array.from(merged.values());
-    }, [onChainChoices]);
+    const choices: AssemblyChoice[] = onChainChoices;
 
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [hydrated, setHydrated] = useState(false);
@@ -243,21 +223,9 @@ export function OnboardingAssembliesForm({
                                         <span className="font-semibold text-ink-heading">
                                             {choice.name}
                                         </span>
-                                        <div className="flex items-baseline gap-2 shrink-0">
-                                            <span
-                                                className={`text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 ${
-                                                    choice.source === "on-chain"
-                                                        ? "bg-ink-heading text-paper"
-                                                        : "bg-subtle text-ink-muted"
-                                                }`}
-                                                data-testid={`assembly-source-${choice.slug}`}
-                                            >
-                                                {choice.source}
-                                            </span>
-                                            <code className="text-xs text-ink-faint font-mono">
-                                                {choice.slug}
-                                            </code>
-                                        </div>
+                                        <code className="text-xs text-ink-faint font-mono shrink-0">
+                                            {choice.slug}
+                                        </code>
                                     </div>
                                     {choice.description && (
                                         <p className="text-sm text-ink-body">
