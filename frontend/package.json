@@ -63,6 +63,7 @@
         "wait-on": "^9.0.4"
     },
     "optionalDependencies": {
+        "@next/swc-darwin-x64": "14.2.33",
         "cross-env": "^7.0.3"
     }
 }
