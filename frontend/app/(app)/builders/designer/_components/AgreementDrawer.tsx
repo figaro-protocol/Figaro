@@ -70,8 +70,6 @@ const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
     { key: "consent", label: "Consent" },
 ];
 
-type SectionKey = ArticleKey;
-
 /**
  * Per-schema sentinel manifest fields. Toggling a schema "Included"
  * applies these values; toggling "Not included" deletes them.
@@ -183,7 +181,7 @@ export function AgreementDrawer({
     const [fields, setFields] = useState<ManifestFields>(() =>
         order ? readAgreementFields(order) : ({} as ManifestFields),
     );
-    const [openSection, setOpenSection] = useState<SectionKey | null>(null);
+    const [openSection, setOpenSection] = useState<ArticleKey | null>(null);
     const [minimized, setMinimized] = useState(false);
     const [headerHeight, setHeaderHeight] = useState(108);
 
@@ -246,7 +244,7 @@ export function AgreementDrawer({
                         ? "offset"
                         : "co-seller"));
 
-    function selectSection(section: SectionKey) {
+    function selectSection(section: ArticleKey) {
         setOpenSection((prev) => (prev === section ? null : section));
     }
 

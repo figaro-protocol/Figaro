@@ -68,6 +68,25 @@ function deserializeOrder(s: SerializedOrder): Order {
 
 // ── Public types ────────────────────────────────────────────────────────────
 
+/**
+ * `DesignSnapshot` is the in-memory shape of the designer canvas state.
+ *
+ * Lifecycle (these three terms refer to the same underlying shape, not
+ * three different types):
+ *  - **autosave session** — the current canvas, written to a single
+ *    localStorage key by `saveCurrentSession`. Last edit wins; not
+ *    addressable by slug.
+ *  - **named draft** — a snapshot the user explicitly "Save"d, stored by
+ *    slug via `saveNamedDraft`. Survives across canvas resets.
+ *  - **AssemblyManifest** (`lib/mechanisms/useAssemblyRegistry`) — the
+ *    IPFS-pinned, published version. Structurally a superset of
+ *    `DesignSnapshot` (carries inlined agreement bodies; bigint fields
+ *    serialized as decimal strings). `manifestToDraft` re-hydrates it
+ *    back into a `DesignSnapshot` for the editor.
+ *
+ * No "snapshot vs draft vs manifest" type duality — same shape, three
+ * persistence states.
+ */
 export interface DesignSnapshot {
     /** URL-safe identifier; the user picks this when saving a named draft. */
     slug: string;
@@ -192,4 +211,29 @@ export function listNamedDrafts(): DraftIndexEntry[] {
 export function deleteNamedDraft(slug: string): void {
     removeKey(`${DRAFT_PREFIX}${slug}`);
     writeIndex(readIndex().filter((e) => e.slug !== slug));
+}
+
+/**
+ * Find a slug that doesn't collide with any existing named draft.
+ *
+ * Returns `base` if it's free, else appends `-2`, `-3`, … until unique.
+ * `excludeSlug` (optional) is treated as "not a collision" — used when
+ * renaming the currently-loaded draft (the rename target may equal the
+ * current slug, and that's a no-op, not a self-collision).
+ *
+ * Callers:
+ *  - PublishedList / ViewAssembly fork — pass `${slug}-fork` as base.
+ *  - DesignerCanvas save/publish — pass `slugify(name)` as base, and
+ *    pass the currently-loaded slug as `excludeSlug`.
+ */
+export function uniqueDraftSlug(base: string, excludeSlug?: string | null): string {
+    const taken = new Set(
+        listNamedDrafts()
+            .map((d) => d.slug)
+            .filter((s) => s !== excludeSlug),
+    );
+    if (!taken.has(base)) return base;
+    let n = 2;
+    while (taken.has(`${base}-${n}`)) n++;
+    return `${base}-${n}`;
 }

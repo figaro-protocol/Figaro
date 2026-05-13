@@ -31,9 +31,7 @@ import { ProcessGraphCanvas } from "@/components/core/ProcessGraphCanvas";
 import { AgreementDrawer } from "../../_components/AgreementDrawer";
 import {
     deleteNamedDraft,
-    listNamedDrafts,
     loadNamedDraft,
-    saveNamedDraft,
     clearCurrentSession,
 } from "@/lib/designer/syntheticDesignStore";
 import {
@@ -43,11 +41,12 @@ import {
     usePublishAssembly,
     type AssemblyManifest,
 } from "@/lib/mechanisms/useAssemblyRegistry";
-import { saveAgreement, loadAgreement } from "@/lib/core/agreementStore";
-import { manifestToDraft } from "@/lib/designer/manifestToDraft";
-import { deriveOrderTopology } from "@/lib/core/orderTopology";
-import { summarizeAgreement } from "@/lib/core/orderAgreement";
-import { readAgreementFields } from "@/lib/designer/syntheticProcess";
+import {
+    rehydrateOrder,
+    seedManifestAgreementsToStore,
+} from "@/lib/designer/manifestToDraft";
+import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
+import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 
@@ -61,29 +60,6 @@ type ResolvedSource =
         manifest: AssemblyManifest;
     }
     | { kind: "error"; message: string };
-
-/** Manifest orders are JSON-serialized — bigint fields come back as
- *  strings. Rehydrate before passing to the canvas, which expects
- *  bigint-typed payment/cumulativeValue/etc. */
-function rehydrateOrder(raw: Order): Order {
-    return {
-        ...raw,
-        cumulativeValue: BigInt(raw.cumulativeValue as unknown as string),
-        payment: BigInt(raw.payment as unknown as string),
-        sellerBond: BigInt(raw.sellerBond as unknown as string),
-        buyerBond: BigInt(raw.buyerBond as unknown as string),
-        salt: BigInt(raw.salt as unknown as string),
-        deadline: BigInt(raw.deadline as unknown as string),
-    };
-}
-
-function uniqueDraftSlug(base: string): string {
-    const existing = new Set(listNamedDrafts().map((d) => d.slug));
-    if (!existing.has(base)) return base;
-    let n = 2;
-    while (existing.has(`${base}-${n}`)) n++;
-    return `${base}-${n}`;
-}
 
 export function ViewAssemblyClient({ slug }: { slug: string }) {
     const router = useRouter();
@@ -142,12 +118,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     });
                     return;
                 }
-                // Seed the manifest's inlined agreements into local storage
-                // so the canvas's loadAgreement(hash) lookups resolve. Same
-                // step manifestToDraft does on fork.
-                for (const agreement of Object.values(manifest.agreements)) {
-                    saveAgreement(agreement);
-                }
+                seedManifestAgreementsToStore(manifest);
                 const orders = manifest.orders.map(rehydrateOrder);
                 setResolved({ kind: "published", name: manifest.name, orders, manifest });
             })
@@ -182,20 +153,11 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
 
     const handleFork = useCallback(async () => {
         if (resolved.kind !== "published") return;
-        const defaultSlug = uniqueDraftSlug(`${slug}-fork`);
-        const proposed =
-            typeof window === "undefined"
-                ? defaultSlug
-                : window.prompt(`Fork "${slug}" as a new local draft. Slug:`, defaultSlug);
-        if (!proposed) return;
-        const trimmed = proposed.trim();
-        if (!trimmed) return;
-        const finalSlug = uniqueDraftSlug(trimmed);
         setForking(true);
         try {
-            const draft = manifestToDraft(resolved.manifest, { slug: finalSlug });
-            saveNamedDraft(draft);
-            router.push(`/builders/designer/edit/${encodeURIComponent(finalSlug)}`);
+            const outcome = forkPublishedAssembly(slug, resolved.manifest);
+            if (!outcome) return;
+            router.push(`/builders/designer/edit/${encodeURIComponent(outcome.finalSlug)}`);
         } catch (err) {
             window.alert(`Fork failed: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
@@ -282,6 +244,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const selectedOrder = selectedOrderId
         ? (orders.find((o) => o.id === selectedOrderId) ?? null)
         : null;
+    const agreementHints = computeAgreementHints(orders, selectedOrderId);
 
     return (
         <div className="h-screen bg-canvas flex flex-col" data-testid="assembly-view-page">
@@ -322,38 +285,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     onChange={() => {
                         /* read-only — drawer body is fieldset-disabled so nothing can fire onChange */
                     }}
-                    hasChildren={(() => {
-                        if (!selectedOrderId) return false;
-                        const topology = deriveOrderTopology(orders);
-                        for (const info of topology.values()) {
-                            if (info.parentOrderIds.includes(selectedOrderId)) return true;
-                        }
-                        return false;
-                    })()}
-                    parentDeliveryActive={(() => {
-                        if (!selectedOrderId) return false;
-                        const topology = deriveOrderTopology(orders);
-                        const info = topology.get(selectedOrderId);
-                        if (!info || info.parentOrderIds.length === 0) return false;
-                        for (const parentId of info.parentOrderIds) {
-                            const parent = orders.find((o) => o.id === parentId);
-                            if (!parent) continue;
-                            const summary = summarizeAgreement(loadAgreement(parent.agreementHash));
-                            if (summary?.fulfilment?.modalities?.includes("delivery")) return true;
-                        }
-                        return false;
-                    })()}
-                    hasCourierChild={(() => {
-                        if (!selectedOrderId) return false;
-                        const topology = deriveOrderTopology(orders);
-                        for (const child of orders) {
-                            const info = topology.get(child.id);
-                            if (!info?.parentOrderIds.includes(selectedOrderId)) continue;
-                            const childFields = readAgreementFields(child);
-                            if (childFields.roleHint === "courier") return true;
-                        }
-                        return false;
-                    })()}
+                    hasChildren={agreementHints.hasChildren}
+                    parentDeliveryActive={agreementHints.parentDeliveryActive}
+                    hasCourierChild={agreementHints.hasCourierChild}
                     embedded
                     readOnly
                 />

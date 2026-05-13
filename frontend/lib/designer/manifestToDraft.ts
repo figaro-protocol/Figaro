@@ -19,8 +19,9 @@ import type { Order } from "@/lib/core/store";
 
 /** Order's bigint fields are persisted on IPFS as decimal strings (per
  *  `canonicalize` in useAssemblyRegistry). Convert them back to bigint
- *  for in-memory use. */
-function rehydrateOrder(raw: Order): Order {
+ *  for in-memory use. Exported so the on-chain resolver in `ViewAssembly`
+ *  uses the same deserialization as the fork path. */
+export function rehydrateOrder(raw: Order): Order {
     return {
         ...raw,
         cumulativeValue: BigInt(raw.cumulativeValue as unknown as string),
@@ -32,17 +33,21 @@ function rehydrateOrder(raw: Order): Order {
     };
 }
 
+/** Re-save every inlined agreement into the local agreement store so
+ *  downstream `loadAgreement(hash)` calls resolve to the bodies the
+ *  manifest carried. Used by `manifestToDraft` (fork path) and by the
+ *  `/view` on-chain resolver (read-only inspect / publish review). */
+export function seedManifestAgreementsToStore(manifest: AssemblyManifest): void {
+    for (const agreement of Object.values(manifest.agreements)) {
+        saveAgreement(agreement);
+    }
+}
+
 export function manifestToDraft(
     manifest: AssemblyManifest,
     options: { slug: string; name?: string },
 ): DesignSnapshot {
-    // Re-save every inlined agreement into the local agreement store
-    // so the canvas's `loadAgreement(hash)` calls resolve to the same
-    // bodies the manifest carried.
-    for (const agreement of Object.values(manifest.agreements)) {
-        saveAgreement(agreement);
-    }
-
+    seedManifestAgreementsToStore(manifest);
     return {
         slug: options.slug,
         name: options.name ?? `Fork of ${manifest.name}`,

@@ -41,7 +41,6 @@ import {
     editSyntheticAgreement,
     isRootOrder,
     mergeSyntheticParent,
-    readAgreementFields,
     startSyntheticSession,
     type AgreementEdits,
     type SyntheticProcessSession,
@@ -49,16 +48,16 @@ import {
 import {
     clearCurrentSession,
     deleteNamedDraft,
-    listNamedDrafts,
     loadCurrentSession,
     loadNamedDraft,
     saveCurrentSession,
     saveNamedDraft,
+    uniqueDraftSlug,
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
 import { usePublishAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
-import { deriveOrderTopology } from "@/lib/core/orderTopology";
+import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { assemblyToSyntheticOrders } from "@/lib/designer/assemblyToSyntheticOrders";
@@ -436,26 +435,14 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         // Always re-derive the slug from the current name so renaming a draft
         // updates its slug. The previous "sticky slug" behavior caused
         // renamed drafts to silently retain their old slug, which led to
-        // unfixable on-chain collisions at publish time.
+        // unfixable on-chain collisions at publish time. Pass the
+        // currently-loaded slug as excludeSlug so renames to the same name
+        // are not treated as self-collisions.
         const baseSlug = slugify(trimmed).slice(0, 64);
         if (!baseSlug || baseSlug.length < MIN_NAME_LENGTH) {
             return { ok: false, reason: "no-slug" };
         }
-        // Dedupe against other drafts in localStorage. The currently-loaded
-        // draft (if any) is excluded from the conflict set — renaming
-        // "Test Assembly 2" → "Test Assembly 2" must not consider itself a
-        // collision.
-        const otherDrafts = new Set(
-            listNamedDrafts()
-                .map((d) => d.slug)
-                .filter((s) => s !== slug),
-        );
-        let proposedSlug = baseSlug;
-        let n = 2;
-        while (otherDrafts.has(proposedSlug)) {
-            proposedSlug = `${baseSlug}-${n}`;
-            n++;
-        }
+        const proposedSlug = uniqueDraftSlug(baseSlug, slug);
         return {
             ok: true,
             snapshot: {
@@ -571,6 +558,8 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         );
     }
 
+    const agreementHints = computeAgreementHints(orders, selectedOrderId);
+
     return (
         <div style={{ top: headerHeight }} className="fixed left-0 right-0 bottom-0 z-20 bg-canvas flex flex-col overflow-hidden">
             <div
@@ -662,38 +651,9 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     onChange={(edits) => {
                         if (selectedOrderId) handleEditAgreement(selectedOrderId, edits);
                     }}
-                    hasChildren={(() => {
-                        if (!selectedOrderId) return false;
-                        const topology = deriveOrderTopology(orders);
-                        for (const info of topology.values()) {
-                            if (info.parentOrderIds.includes(selectedOrderId)) return true;
-                        }
-                        return false;
-                    })()}
-                    parentDeliveryActive={(() => {
-                        if (!selectedOrderId) return false;
-                        const topology = deriveOrderTopology(orders);
-                        const info = topology.get(selectedOrderId);
-                        if (!info || info.parentOrderIds.length === 0) return false;
-                        for (const parentId of info.parentOrderIds) {
-                            const parent = orders.find((o) => o.id === parentId);
-                            if (!parent) continue;
-                            const summary = summarizeAgreement(loadAgreement(parent.agreementHash));
-                            if (summary?.fulfilment?.modalities?.includes("delivery")) return true;
-                        }
-                        return false;
-                    })()}
-                    hasCourierChild={(() => {
-                        if (!selectedOrderId) return false;
-                        const topology = deriveOrderTopology(orders);
-                        for (const child of orders) {
-                            const info = topology.get(child.id);
-                            if (!info?.parentOrderIds.includes(selectedOrderId)) continue;
-                            const childFields = readAgreementFields(child);
-                            if (childFields.roleHint === "courier") return true;
-                        }
-                        return false;
-                    })()}
+                    hasChildren={agreementHints.hasChildren}
+                    parentDeliveryActive={agreementHints.parentDeliveryActive}
+                    hasCourierChild={agreementHints.hasCourierChild}
                     onDeliverySelected={handleDeliverySelected}
                     onDeliveryUnselected={handleDeliveryUnselected}
                     onOffsetSelected={handleOffsetSelected}

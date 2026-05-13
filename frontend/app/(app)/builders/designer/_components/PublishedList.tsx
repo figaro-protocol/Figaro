@@ -28,8 +28,7 @@ import {
     usePublishedAssemblies,
     type PublishedAssembly,
 } from "@/lib/mechanisms/useAssemblyRegistry";
-import { manifestToDraft } from "@/lib/designer/manifestToDraft";
-import { listNamedDrafts, saveNamedDraft } from "@/lib/designer/syntheticDesignStore";
+import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 
 /** Per-row enrichment derived from the IPFS-fetched manifest. */
 interface RowDetail {
@@ -51,14 +50,6 @@ function collectSchemas(manifest: AssemblyManifest): string[] {
         }
     }
     return Array.from(set).sort();
-}
-
-function uniqueDraftSlug(base: string): string {
-    const existing = new Set(listNamedDrafts().map((d) => d.slug));
-    if (!existing.has(base)) return base;
-    let n = 2;
-    while (existing.has(`${base}-${n}`)) n++;
-    return `${base}-${n}`;
 }
 
 export function PublishedList() {
@@ -117,18 +108,6 @@ export function PublishedList() {
 
     const handleFork = useCallback(
         async (published: PublishedAssembly) => {
-            const defaultSlug = uniqueDraftSlug(`${published.slug}-fork`);
-            const proposed = typeof window === "undefined"
-                ? defaultSlug
-                : window.prompt(
-                    `Fork "${published.slug}" as a new local draft. Slug:`,
-                    defaultSlug,
-                );
-            if (!proposed) return;
-            const trimmed = proposed.trim();
-            if (!trimmed) return;
-            const finalSlug = uniqueDraftSlug(trimmed);
-
             setForking(published.slug);
             try {
                 const manifest = await fetchAssemblyManifest(published.metadataURI);
@@ -138,9 +117,9 @@ export function PublishedList() {
                     );
                     return;
                 }
-                const draft = manifestToDraft(manifest, { slug: finalSlug });
-                saveNamedDraft(draft);
-                router.push(`/builders/designer/edit/${encodeURIComponent(finalSlug)}`);
+                const outcome = forkPublishedAssembly(published.slug, manifest);
+                if (!outcome) return;
+                router.push(`/builders/designer/edit/${encodeURIComponent(outcome.finalSlug)}`);
             } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);
                 window.alert(`Fork failed: ${message}`);
