@@ -38,7 +38,7 @@ export function OnboardingWelcome() {
             <Card className="p-6 space-y-4">
                 <h2 className="text-heading-h2 text-ink-heading">What happens in each step</h2>
                 <dl className="space-y-3 text-sm text-ink-body">
-                    <Item n={2} label="Profile">
+                    <Item n={2} label="Identity">
                         Your stable identity. Name, description, location, branding (logo, CSS, images), accepted tokens, default-pricing token. Pinned to IPFS.
                     </Item>
                     <Item n={3} label="Catalogue">

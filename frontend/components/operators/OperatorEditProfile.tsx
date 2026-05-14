@@ -3,7 +3,7 @@
 /**
  * OperatorEditProfile — re-uses the wizard's profile form to edit a
  * registered operator's on-chain profile metadata. Routes from the
- * `/operators` manage-list "Profile" row.
+ * `/operators` manage-list "Identity" row.
  *
  * Lifecycle:
  *   1. Fetch the wallet's current on-chain metadataURI (from the
