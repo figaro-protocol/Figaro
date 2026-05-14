@@ -42,9 +42,14 @@ const EVIDENCE_FRAME_ANCESTORS =
 const isDev = process.env.NODE_ENV !== "production";
 
 function buildCsp(nonce: string, frameAncestors: string): string {
-    // Dev needs 'unsafe-eval' for React Refresh / HMR. Prod does not.
+    // Dev needs 'unsafe-eval' for React Refresh / HMR and 'unsafe-inline'
+    // for the HMR loader's dynamically-injected <script> tags (which
+    // don't carry the per-request nonce). The 'nonce-{value}' +
+    // 'strict-dynamic' pair stays unchanged in prod, which doesn't need
+    // either of those relaxations because RSC streaming injects nonced
+    // <script> tags directly.
     const scriptSrc = isDev
-        ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
+        ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' 'unsafe-inline'`
         : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
 
     return [
