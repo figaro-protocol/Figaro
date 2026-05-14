@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import {
     TokenAddressInput,
     addressIntegrity,
@@ -427,13 +429,12 @@ export function OnboardingProfileForm({
                     />
                 </FormField>
                 <FormField label="Description" inputId="profile-description">
-                    <textarea
+                    <Textarea
                         id="profile-description"
                         rows={2}
                         placeholder="One or two sentences. Optional."
                         value={form.description}
                         onChange={(e) => setField("description", e.target.value)}
-                        className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-black text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                     />
                 </FormField>
                 <FormField label="Specialty" inputId="profile-specialty">
@@ -479,16 +480,15 @@ export function OnboardingProfileForm({
                 </FormField>
 
                 <FormField label="Geohash precision" inputId="profile-geohash-precision">
-                    <select
+                    <Select
                         id="profile-geohash-precision"
                         value={form.geohashPrecision}
                         onChange={(e) => setField("geohashPrecision", Number(e.target.value) as FormState["geohashPrecision"])}
-                        className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-black text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                     >
                         {([4, 5, 6, 7, 8] as const).map((p) => (
                             <option key={p} value={p}>{PRECISION_LABELS[p]}</option>
                         ))}
-                    </select>
+                    </Select>
                     <p className="text-xs text-ink-faint mt-1">
                         Coarser precision (4–5 chars) hides your exact location while still anchoring you to a region. Finer precision (7–8 chars) helps proximity-based discovery.
                     </p>

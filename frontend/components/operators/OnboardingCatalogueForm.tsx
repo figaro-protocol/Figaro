@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/operators/IpfsImageUpload";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
@@ -379,13 +381,12 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
             </FormField>
 
             <FormField label="Description" inputId={`${idPrefix}-description`}>
-                <textarea
+                <Textarea
                     id={`${idPrefix}-description`}
                     rows={2}
                     placeholder="Optional. One short sentence."
                     value={item.description}
                     onChange={(e) => onChange("description", e.target.value)}
-                    className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-black text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                 />
             </FormField>
 
@@ -443,18 +444,17 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
                     />
                 </FormField>
                 <FormField label="Class" inputId={`${idPrefix}-class`}>
-                    <select
+                    <Select
                         id={`${idPrefix}-class`}
                         value={item.classOfService}
                         onChange={(e) => onChange("classOfService", e.target.value as FormItem["classOfService"])}
-                        className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-black text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                         data-testid={`${idPrefix}-class`}
                     >
                         <option value="">Default (standard)</option>
                         {CLASS_OF_SERVICE_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
-                    </select>
+                    </Select>
                 </FormField>
             </div>
 
