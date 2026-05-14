@@ -15,6 +15,23 @@ import {
     DeliveryAttestationPanel,
 } from "@/components/modules/DeliveryAttestationPanel";
 
+const skinBundle = {
+    sourceKind: 'runtime-bound',
+    skinId: 'binding-bobs-pizza-palace-local-anvil',
+    subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+    bindingId: 'binding:bobs-pizza-palace:local-anvil',
+    branding: {
+        branding: {
+            displayName: "Bob's Pizza Palace",
+            accentColor: '#1f6feb',
+            themeClass: 'runtime-shell-pizza',
+        },
+        logoURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-logo.png',
+        heroImageURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-hero.png',
+        cssURL: 'http://127.0.0.1:8080/ipfs/example/runtime-shell-theme.css',
+    },
+} as const;
+
 // ---------------------------------------------------------------------------
 // Mock hooks — prevent real wallet / chain interaction
 // ---------------------------------------------------------------------------
@@ -124,6 +141,7 @@ function createModuleProps(overrides: Record<string, unknown> = {}) {
             onExecuteCapability: vi.fn(),
             onSelectOrder: vi.fn(),
             onComposeSubOrder: vi.fn(),
+            skinBundle,
             ...overrides,
         },
     } as any;
@@ -458,6 +476,19 @@ describe("DeliveryAttestationPanel", () => {
             render(<DeliveryAttestationModule {...createModuleProps({ selectedRoleKind: 'buyer' })} />);
 
             expect(screen.queryByTestId("delivery-attestation-panel")).not.toBeInTheDocument();
+        });
+
+        it("applies skin-aware chrome through the module wrapper", () => {
+            render(<DeliveryAttestationModule {...createModuleProps()} />);
+
+            const panel = screen.getByTestId('delivery-attestation-panel');
+            expect(panel).toHaveAttribute('data-skin', skinBundle.skinId);
+            expect(screen.getByText('Pickup Confirmation')).toHaveStyle({ color: '#1f6feb' });
+
+            fireEvent.click(screen.getByTestId('btn-mode-qr-challenge'));
+
+            expect(screen.getByTestId('btn-mode-qr-challenge')).toHaveStyle({ backgroundColor: '#1f6feb' });
+            expect(screen.getByTestId('btn-submit-qr-proof')).toHaveStyle({ backgroundColor: '#1f6feb' });
         });
     });
 });

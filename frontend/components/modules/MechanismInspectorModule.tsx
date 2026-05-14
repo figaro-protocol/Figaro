@@ -11,6 +11,7 @@ export function MechanismInspectorModule({ context }: ModuleProps) {
         return (
             <ModuleEmptyStateCard
                 testId="mechanism-inspector-empty"
+                skinId={context.skinBundle?.skinId}
                 cardStyle={cardStyle}
                 labelStyle={labelStyle}
                 title="Mechanisms"
@@ -26,6 +27,7 @@ export function MechanismInspectorModule({ context }: ModuleProps) {
                     key={mechanism.id}
                     mechanism={mechanism}
                     riskBoundary={context.riskBoundaries[mechanism.id]}
+                    skin={context.skinBundle}
                 />
             ))}
         </div>

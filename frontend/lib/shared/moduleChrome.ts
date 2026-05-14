@@ -9,10 +9,12 @@ interface ModuleChrome {
 }
 
 export function deriveModuleChrome(context: ModuleRenderContext): ModuleChrome {
+    const accentTone = context.skinBundle?.branding.branding.accentColor;
+
     return {
-        accentTone: undefined,
-        shellLabel: context.shellPresentation?.title ?? "Assembly Runtime",
-        cardStyle: undefined,
-        labelStyle: undefined,
+        accentTone,
+        shellLabel: context.shellPresentation?.title ?? context.skinBundle?.branding.branding.displayName ?? "Assembly Runtime",
+        cardStyle: accentTone ? { borderTopColor: accentTone, borderTopWidth: "2px" } : undefined,
+        labelStyle: accentTone ? { color: accentTone } : undefined,
     };
 }

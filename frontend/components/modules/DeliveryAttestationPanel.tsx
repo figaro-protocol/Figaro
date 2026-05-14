@@ -25,6 +25,7 @@ import { QRChallengeDisplay } from "@/components/modules/QRChallengeDisplay";
 import { QRChallengeScanner } from "@/components/modules/QRChallengeScanner";
 import type { CapabilityExecutionInput, CapabilityModel } from "@/lib/semantic/models";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
+import type { ResolvedAssemblySkinBundle } from "@/lib/shared/runtimeResolution";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 // ---------------------------------------------------------------------------
@@ -55,6 +56,7 @@ interface DeliveryAttestationPanelProps {
     ) => void | Promise<void>;
     /** Active capability id from the shared runtime executor. */
     executingCapabilityId?: string | null;
+    skin?: ResolvedAssemblySkinBundle;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,6 +152,7 @@ export function DeliveryAttestationPanel({
     proofCapability,
     onExecuteCapability,
     executingCapabilityId,
+    skin,
 }: DeliveryAttestationPanelProps) {
     const [selectedMode, setSelectedMode] = useState<AttestationMode | null>(null);
     const [notes, setNotes] = useState("");
@@ -168,7 +171,9 @@ export function DeliveryAttestationPanel({
 
     // Resolve the geohash prop (support legacy dropoffGeohash)
     const resolvedGeohash = targetGeohash ?? dropoffGeohash;
-    const accentTone: string | undefined = undefined;
+    const accentTone = skin?.branding.branding.accentColor;
+    const cardStyle = accentTone ? { borderTopColor: accentTone, borderTopWidth: "2px" } : undefined;
+    const labelStyle = accentTone ? { color: accentTone } : undefined;
 
     // Step-aware courier event mapping. arrived-pickup = courier received the
     // goods at pickup; completed = courier delivered the goods at dropoff.
@@ -318,8 +323,10 @@ export function DeliveryAttestationPanel({
         <div
             className="rounded-lg border border-neutral-200 bg-white p-4 space-y-4"
             data-testid="delivery-attestation-panel"
+            data-skin={skin?.skinId}
+            style={cardStyle}
         >
-            <h3 className="text-sm font-semibold text-neutral-700">
+            <h3 className="text-sm font-semibold text-neutral-700" style={labelStyle}>
                 {labels.title}
             </h3>
             <p className="text-xs text-neutral-500">
@@ -676,6 +683,7 @@ export function DeliveryAttestationModule({ context }: ModuleProps) {
             proofCapability={proofCapability}
             onExecuteCapability={context.onExecuteCapability}
             executingCapabilityId={context.executingCapabilityId}
+            skin={context.skinBundle}
         />
     );
 }

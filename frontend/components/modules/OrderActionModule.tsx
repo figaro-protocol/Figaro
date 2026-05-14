@@ -13,6 +13,7 @@ export function OrderActionModule({ context }: ModuleProps) {
         return (
             <ModuleEmptyStateCard
                 testId="order-action-empty"
+                skinId={context.skinBundle?.skinId}
                 cardStyle={cardStyle}
                 labelStyle={labelStyle}
                 title="Order Actions"
@@ -24,6 +25,7 @@ export function OrderActionModule({ context }: ModuleProps) {
     return (
         <div
             data-testid="order-action-module"
+            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >

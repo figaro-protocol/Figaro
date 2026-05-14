@@ -27,6 +27,7 @@ export function ProcessCapitalSummaryModule({ context }: ModuleProps) {
         return (
             <ModuleEmptyStateCard
                 testId="process-capital-module"
+                skinId={context.skinBundle?.skinId}
                 cardStyle={cardStyle}
                 labelStyle={labelStyle}
                 title="Capital Summary"
@@ -107,6 +108,7 @@ export function ProcessCapitalSummaryModule({ context }: ModuleProps) {
     return (
         <div
             data-testid="process-capital-module"
+            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >

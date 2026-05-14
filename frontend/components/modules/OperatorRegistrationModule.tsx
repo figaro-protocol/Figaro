@@ -223,6 +223,7 @@ export function OperatorRegistrationModule({ context }: ModuleProps) {
     return (
         <div
             className="border border-gray-200 rounded-lg p-4 space-y-3"
+            data-skin={context.skinBundle?.skinId}
             style={cardStyle}
         >
             <p className="text-[11px] font-semibold text-gray-500" style={labelStyle}>Seller Setup</p>

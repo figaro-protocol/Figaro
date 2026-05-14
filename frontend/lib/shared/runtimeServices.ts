@@ -11,6 +11,7 @@ import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { TokenConversionService } from "@/lib/shared/tokenConversion";
 import { DEFAULT_TOKEN_CONVERSION_SERVICE } from "@/lib/shared/tokenConversion";
 import type { Assembly, RuntimeServiceKey, ServiceBinding } from "@/lib/shared/assembly";
+import type { AssemblyBoundSubjectSummary } from "@/lib/shared/runtimeResolution";
 
 export interface RuntimeServices {
     catalogue: CatalogueService;
@@ -41,10 +42,7 @@ export const DEFAULT_RUNTIME_SERVICES: RuntimeServices = {
     tokenConversion: DEFAULT_TOKEN_CONVERSION_SERVICE,
 };
 
-interface RuntimeServiceBindingSource {
-    bindingId: string;
-    serviceBindings?: ServiceBinding[];
-}
+type RuntimeServiceBindingSource = Pick<AssemblyBoundSubjectSummary, "bindingId" | "serviceBindings">;
 
 type RuntimeServiceProviderRegistry = {
     [K in RuntimeServiceKey]: Map<string, RuntimeServices[K]>;

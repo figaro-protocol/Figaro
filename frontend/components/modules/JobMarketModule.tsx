@@ -269,7 +269,7 @@ function AuctionJobCard({ job, accentTone, tokenDecimals = 18 }: { job: AuctionJ
 
 export function JobMarketModule({ moduleId, context }: ModuleProps) {
     const { selectedRoleKind } = context;
-    const accentTone = undefined;
+    const accentTone = context.skinBundle?.branding.branding.accentColor;
     const labelStyle = accentTone ? { color: accentTone } : undefined;
     const cardStyle = accentTone ? { borderTopColor: accentTone, borderTopWidth: "2px" } : undefined;
     const [geohashFilter, setGeohashFilter] = useState("");
@@ -291,6 +291,7 @@ export function JobMarketModule({ moduleId, context }: ModuleProps) {
         <div
             data-testid="job-market-module"
             data-module-id={moduleId}
+            data-skin={context.skinBundle?.skinId}
             className="space-y-6"
         >
             <div className="flex items-center gap-2">

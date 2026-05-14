@@ -10,21 +10,12 @@ import {
     RiskBoundaryModel,
 } from "@/lib/semantic/models";
 import { Assembly, ModuleBinding } from "@/lib/shared/assembly";
+import type {
+    AssemblyBoundSubjectSummary,
+    ResolvedAssemblyShellPresentation,
+    ResolvedAssemblySkinBundle,
+} from "@/lib/shared/runtimeResolution";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
-
-/**
- * Shell presentation slot — the per-binding title/subtitle/branding-refs
- * the workspace surfaces above a module render context. The workspace
- * renderer constructs this from the selected binding (operator profile,
- * catalogue metadata) before invoking each module.
- */
-export interface ResolvedAssemblyShellPresentation {
-    title: string;
-    subtitle: string;
-    subjectAddress?: `0x${string}`;
-    bindingId?: string;
-    metadataURI?: string;
-}
 
 // ── Module prop contracts ────────────────────────────────────────────────────
 // Each module receives a typed prop bag determined by its slot and semanticInput.
@@ -34,7 +25,9 @@ export interface ModuleRenderContext {
     assembly: Assembly;
     services: RuntimeServices;
     selectedRoleKind: string;
+    selectedBoundSubject?: AssemblyBoundSubjectSummary;
     shellPresentation: ResolvedAssemblyShellPresentation;
+    skinBundle?: ResolvedAssemblySkinBundle;
     processModel: ProcessModel | null;
     selectedOrder: OrderNodeModel | null;
     capabilities: CapabilityModel[];

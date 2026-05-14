@@ -14,6 +14,7 @@ export function RoleSwitcherModule({ context }: ModuleProps) {
             selectedRoleKind={context.selectedRoleKind}
             onSelectRole={context.onSelectRole}
             contextLabel={context.shellPresentation.title}
+            skin={context.skinBundle}
         />
     );
 }

@@ -14,6 +14,7 @@ export function OrderNodeModule({ context }: ModuleProps) {
         return (
             <ModuleEmptyStateCard
                 testId="order-node-module"
+                skinId={context.skinBundle?.skinId}
                 cardStyle={cardStyle}
                 message="Select an order from the process graph to view its details."
             />
@@ -31,6 +32,7 @@ export function OrderNodeModule({ context }: ModuleProps) {
     return (
         <div
             data-testid="order-node-module"
+            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >

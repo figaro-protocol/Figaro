@@ -121,6 +121,7 @@ export function HandoffKeyExchangeModule({ moduleId, context }: ModuleProps) {
             <div
                 data-testid="handoff-key-module"
                 data-module-id={moduleId}
+                data-skin={context.skinBundle?.skinId}
                 className="rounded-lg border border-neutral-200 bg-neutral-50 p-4"
                 style={cardStyle}
             >
@@ -146,6 +147,7 @@ export function HandoffKeyExchangeModule({ moduleId, context }: ModuleProps) {
         <div
             data-testid="handoff-key-module"
             data-module-id={moduleId}
+            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-green-200 bg-green-50 p-4"
             style={cardStyle}
         >

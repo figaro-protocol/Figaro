@@ -12,6 +12,7 @@ export function ProcessGraphModule({ context }: ModuleProps) {
         return (
             <ModuleEmptyStateCard
                 testId="process-graph-module"
+                skinId={context.skinBundle?.skinId}
                 cardStyle={cardStyle}
                 labelStyle={labelStyle}
                 title={shellLabel}
@@ -23,6 +24,7 @@ export function ProcessGraphModule({ context }: ModuleProps) {
     return (
         <div
             data-testid="process-graph-module"
+            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >

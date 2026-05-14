@@ -59,6 +59,7 @@ export function EventTimelineModule({ context }: ModuleProps) {
         return (
             <ModuleEmptyStateCard
                 testId="event-timeline-module"
+                skinId={context.skinBundle?.skinId}
                 cardStyle={cardStyle}
                 labelStyle={labelStyle}
                 title={vocab.headings.orderTimeline}
@@ -79,6 +80,7 @@ export function EventTimelineModule({ context }: ModuleProps) {
     return (
         <div
             data-testid="event-timeline-module"
+            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >

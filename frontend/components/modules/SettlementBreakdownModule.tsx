@@ -14,6 +14,7 @@ export function SettlementBreakdownModule({ context }: ModuleProps) {
         return (
             <ModuleEmptyStateCard
                 testId="settlement-breakdown-module-empty"
+                skinId={context.skinBundle?.skinId}
                 cardStyle={cardStyle}
                 labelStyle={labelStyle}
                 title="Settlement Breakdown"
@@ -25,6 +26,7 @@ export function SettlementBreakdownModule({ context }: ModuleProps) {
     return (
         <div
             data-testid="settlement-breakdown-module"
+            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >
