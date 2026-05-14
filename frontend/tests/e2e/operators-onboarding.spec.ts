@@ -14,23 +14,24 @@ import { test, expect } from '@playwright/test';
 test.describe('/operators/onboard — entry + routing', () => {
     test('welcome page renders with all seven step labels', async ({ page }) => {
         await page.goto('/operators/onboard?e2e=mock', { waitUntil: 'load' });
-        await expect(page.getByRole('heading', { name: /What happens in each step/i })).toBeVisible({ timeout: 15000 });
+        await expect(page.getByRole('heading', { name: /Steps in this registration/i })).toBeVisible({ timeout: 15000 });
 
         const indicator = page.getByLabel('Onboarding progress');
         await expect(indicator).toBeVisible();
 
         // Step labels — protects against accidental relabeling. "Identity"
-        // (not "Profile") is the canonical name after the rename.
-        for (const label of ['Welcome', 'Identity', 'Catalogue', 'Link', 'Assemblies', 'Agents', 'Done']) {
+        // (not "Profile") and "Pin" (not "Link") are the canonical names
+        // after the renames.
+        for (const label of ['Welcome', 'Identity', 'Catalogue', 'Pin', 'Assemblies', 'Agents', 'Done']) {
             await expect(indicator.getByText(label, { exact: true }).first()).toBeVisible();
         }
     });
 
-    test('Start link routes to /operators/onboard/profile', async ({ page }) => {
+    test('Begin link routes to /operators/onboard/profile', async ({ page }) => {
         await page.goto('/operators/onboard?e2e=mock', { waitUntil: 'load' });
-        const startLink = page.getByRole('link', { name: /Start/ });
-        await expect(startLink).toBeVisible({ timeout: 15000 });
-        await startLink.click();
+        const beginLink = page.getByRole('link', { name: /Begin/ });
+        await expect(beginLink).toBeVisible({ timeout: 15000 });
+        await beginLink.click();
         await expect(page).toHaveURL(/\/operators\/onboard\/profile/);
     });
 });

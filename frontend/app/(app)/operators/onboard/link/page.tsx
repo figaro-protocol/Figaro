@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { OnboardingShell } from "@/components/operators/OnboardingShell";
 import { OnboardingLinkForm } from "@/components/operators/OnboardingLinkForm";
 
-export const metadata: Metadata = { title: "Link — Operator onboarding" };
+export const metadata: Metadata = { title: "Pin catalogue — Operator onboarding" };
 
 export default function OnboardingLinkPage() {
     return (

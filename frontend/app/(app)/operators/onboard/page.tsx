@@ -11,10 +11,10 @@ export default function OnboardingWelcomePage() {
     return (
         <OnboardingShell
             stepId="welcome"
-            title="Become an operator."
+            title="Register as an operator."
             description={
                 <p>
-                    Register a wallet in <code>OperatorRegistry</code> and pin a profile + catalogue to IPFS. Seven short screens. The deposit is 0.001 ETH on devnet, reclaimable after a one-year lock — Sybil-resistance, not a fee. You can leave any time and resume where you stopped.
+                    Register a wallet in <code>OperatorRegistry</code> and pin a profile + catalogue to IPFS. Seven steps. The deposit is 0.001 ETH on devnet, reclaimable after a one-year lock — Sybil-resistance, not a fee. You can leave any time and resume where you stopped.
                 </p>
             }
         >

@@ -208,7 +208,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "welcome", number: 1, label: "Welcome", path: "", optional: false },
     { id: "profile", number: 2, label: "Identity", path: "profile", optional: false },
     { id: "catalogue", number: 3, label: "Catalogue", path: "catalogue", optional: false },
-    { id: "link", number: 4, label: "Link", path: "link", optional: false },
+    { id: "link", number: 4, label: "Pin", path: "link", optional: false },
     { id: "assemblies", number: 5, label: "Assemblies", path: "assemblies", optional: true },
     { id: "agents", number: 6, label: "Agents", path: "agents", optional: true },
     { id: "done", number: 7, label: "Done", path: "done", optional: false },

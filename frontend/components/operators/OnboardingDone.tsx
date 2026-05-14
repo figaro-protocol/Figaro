@@ -66,7 +66,7 @@ function formatLockPeriod(seconds: bigint): string {
 
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
     if (!state.profile?.name) return { error: "Step 2 (Profile) is incomplete: name is required." };
-    if (!state.publishedCatalogueURI) return { error: "Step 4 (Link) is incomplete: pin your catalogue first." };
+    if (!state.publishedCatalogueURI) return { error: "Step 4 (Pin) is incomplete: pin your catalogue first." };
 
     const profile: OperatorProfileMetadata = {
         subjectAddress: wallet,

@@ -36,7 +36,7 @@ export function OnboardingWelcome() {
     return (
         <div className="space-y-8">
             <Card className="p-6 space-y-4">
-                <h2 className="text-heading-h2 text-ink-heading">What happens in each step</h2>
+                <h2 className="text-heading-h2 text-ink-heading">Steps in this registration</h2>
                 <dl className="space-y-3 text-sm text-ink-body">
                     <Item n={2} label="Identity">
                         Your stable identity. Name, description, location, branding (logo, CSS, images), accepted tokens, default-pricing token. Pinned to IPFS.
@@ -44,7 +44,7 @@ export function OnboardingWelcome() {
                     <Item n={3} label="Catalogue">
                         Your list of items. Each item has a name, price (in your default token), category, optional image. Pinned to IPFS separately so item edits don&apos;t re-pin the whole identity envelope.
                     </Item>
-                    <Item n={4} label="Link">
+                    <Item n={4} label="Pin">
                         We embed the catalogue&apos;s IPFS URI in your profile and pin one final document — that&apos;s what <code>OperatorRegistry.metadataURI</code> points to on-chain.
                     </Item>
                     <Item n={5} label="Assemblies">
@@ -60,7 +60,7 @@ export function OnboardingWelcome() {
             </Card>
 
             <Card className="p-6 space-y-4">
-                <h2 className="text-heading-h2 text-ink-heading">Before you start</h2>
+                <h2 className="text-heading-h2 text-ink-heading">Prerequisites</h2>
                 <ul className="space-y-2 text-sm text-ink-body list-disc pl-5">
                     <li>You need a connected wallet on the active network. Connect it on the next screen.</li>
                     <li>A 0.001 ETH deposit (devnet value), reclaimable after a one-year lock. The lock starts when you register; the contract reverts <code>withdraw</code> until it elapses. The deposit is Sybil-resistance, not a fee — no party can seize it.</li>
@@ -79,7 +79,7 @@ export function OnboardingWelcome() {
                     ← Back to operators
                 </Link>
                 <Link href="/operators/onboard/profile">
-                    <Button>Start →</Button>
+                    <Button>Begin →</Button>
                 </Link>
             </div>
         </div>
