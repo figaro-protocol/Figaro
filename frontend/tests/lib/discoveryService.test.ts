@@ -53,7 +53,6 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-            slug: 'merchant-a',
             name: 'Merchant A',
             description: 'Test merchant',
             specialty: 'Italian',
@@ -78,7 +77,7 @@ describe('discoveryService', () => {
         expect(result.source.mock).toBe(0);
         expect(result.catalogues).toHaveLength(1);
         expect(result.catalogues[0]).toEqual(expect.objectContaining({
-            id: 'merchant-a',
+            id: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
             name: 'Merchant A',
             specialty: 'Italian',
         }));
@@ -95,7 +94,6 @@ describe('discoveryService', () => {
         // First fetch: operator profile
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             name: 'Street Tacos',
-            slug: 'street-tacos',
             description: 'Local taco stand',
             acceptedTokens: [
                 { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' },
@@ -130,7 +128,6 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             name: 'Ghost Kitchen',
-            slug: 'ghost-kitchen',
         }));
 
         const result = await discoveryService.listCatalogues({} as never, 31337);
