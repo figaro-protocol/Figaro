@@ -43,11 +43,11 @@ export function OperatorEditAssemblies() {
     useEffect(() => {
         if (!mounted) return;
         if (!isConnected) {
-            router.replace("/operators/onboard");
+            router.replace("/operators");
             return;
         }
         if (!registryLoading && !registryData) {
-            router.replace("/operators/onboard");
+            router.replace("/operators");
         }
     }, [mounted, isConnected, registryLoading, registryData, router]);
 

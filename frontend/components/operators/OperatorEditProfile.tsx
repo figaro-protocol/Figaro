@@ -17,7 +17,7 @@
  *   4. On success, redirect back to `/operators`.
  *
  * Wallet-not-connected and wallet-not-registered cases redirect
- * to `/operators/onboard` (mirrors the redirect-on-miss pattern at
+ * to `/operators` (mirrors the redirect-on-miss pattern at
  * `/operators` itself).
  */
 
@@ -50,11 +50,11 @@ export function OperatorEditProfile() {
     useEffect(() => {
         if (!mounted) return;
         if (!isConnected) {
-            router.replace("/operators/onboard");
+            router.replace("/operators");
             return;
         }
         if (!registryLoading && !registryData) {
-            router.replace("/operators/onboard");
+            router.replace("/operators");
         }
     }, [mounted, isConnected, registryLoading, registryData, router]);
 

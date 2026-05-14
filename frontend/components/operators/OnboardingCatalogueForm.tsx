@@ -134,7 +134,7 @@ export interface OnboardingCatalogueFormProps {
     onSave?: (items: CatalogueItemMetadata[], unitSystem: UnitSystem) => Promise<void>;
     /** Submit-button label override. Defaults to "Next →". */
     submitLabel?: string;
-    /** Back-link href override. Defaults to "/operators/onboard/profile". */
+    /** Back-link href override. Defaults to "/operators/identity". */
     backHref?: string;
     /** Back-link label override. Defaults to "← Back". */
     backLabel?: string;
@@ -224,7 +224,7 @@ export function OnboardingCatalogueForm({
             });
             return;
         }
-        router.push("/operators/onboard/assemblies");
+        router.push("/operators/assemblies");
     }
 
     if (!mounted) {
@@ -237,7 +237,7 @@ export function OnboardingCatalogueForm({
                 <p className="text-sm text-ink-body">
                     Connect a wallet to load your catalogue draft.
                 </p>
-                <Link href="/operators/onboard/profile">
+                <Link href="/operators/identity">
                     <Button variant="outline">← Back to profile</Button>
                 </Link>
             </Card>
@@ -250,7 +250,7 @@ export function OnboardingCatalogueForm({
                 <p className="text-sm text-ink-body">
                     Your catalogue is priced in your profile&apos;s default token. Go back to step 2 and set it before adding items.
                 </p>
-                <Link href="/operators/onboard/profile">
+                <Link href="/operators/identity">
                     <Button variant="outline">← Set default token</Button>
                 </Link>
             </Card>
@@ -331,7 +331,7 @@ export function OnboardingCatalogueForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? "/operators/onboard/profile"}
+                    href={backHref ?? "/operators/identity"}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}

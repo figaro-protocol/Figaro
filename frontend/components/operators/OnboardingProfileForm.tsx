@@ -158,7 +158,7 @@ export interface OnboardingProfileFormProps {
     onSave?: (draft: OnboardingProfileDraft) => Promise<void>;
     /** Submit-button label override. Defaults to "Next →". */
     submitLabel?: string;
-    /** Back-link href override. Defaults to "/operators/onboard". */
+    /** Back-link href override. Defaults to "/operators". */
     backHref?: string;
     /** Back-link label override. Defaults to "← Back". */
     backLabel?: string;
@@ -356,7 +356,7 @@ export function OnboardingProfileForm({
                     // we swallow here so React's unhandled-rejection logger stays quiet.
                 });
             } else {
-                router.push("/operators/onboard/catalogue");
+                router.push("/operators/catalogue");
             }
             return;
         }
@@ -688,7 +688,7 @@ export function OnboardingProfileForm({
                 )}
                 <div className="flex items-center justify-between">
                     <Link
-                        href={backHref ?? "/operators/onboard"}
+                        href={backHref ?? "/operators"}
                         className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                     >
                         {backLabel ?? "← Back"}

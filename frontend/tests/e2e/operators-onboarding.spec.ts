@@ -11,9 +11,9 @@
  */
 import { test, expect } from '@playwright/test';
 
-test.describe('/operators/onboard — entry + routing', () => {
+test.describe('/operators — entry + routing', () => {
     test('welcome page renders with all seven step labels', async ({ page }) => {
-        await page.goto('/operators/onboard?e2e=mock', { waitUntil: 'load' });
+        await page.goto('/operators?e2e=mock', { waitUntil: 'load' });
         await expect(page.getByRole('heading', { name: /Steps in this registration/i })).toBeVisible({ timeout: 15000 });
 
         const indicator = page.getByLabel('Onboarding progress');
@@ -27,8 +27,8 @@ test.describe('/operators/onboard — entry + routing', () => {
         }
     });
 
-    test('Begin link routes to /operators/onboard/profile', async ({ page }) => {
-        await page.goto('/operators/onboard?e2e=mock', { waitUntil: 'load' });
+    test('Begin link routes to /operators/identity', async ({ page }) => {
+        await page.goto('/operators?e2e=mock', { waitUntil: 'load' });
         const beginLink = page.getByRole('link', { name: /Begin/ });
         await expect(beginLink).toBeVisible({ timeout: 15000 });
         await beginLink.click();
@@ -36,7 +36,7 @@ test.describe('/operators/onboard — entry + routing', () => {
     });
 });
 
-test.describe('/operators/onboard — wallet-required gating (mock, no wallet)', () => {
+test.describe('/operators — wallet-required gating (mock, no wallet)', () => {
     const subRoutes = [
         { path: 'profile', gateText: /Connect a wallet to start your profile draft/i },
         { path: 'catalogue', gateText: /Connect a wallet/i },
@@ -46,15 +46,15 @@ test.describe('/operators/onboard — wallet-required gating (mock, no wallet)',
 
     for (const { path, gateText } of subRoutes) {
         test(`/${path} shows the wallet-required gate`, async ({ page }) => {
-            await page.goto(`/operators/onboard/${path}?e2e=mock`, { waitUntil: 'load' });
+            await page.goto(`/operators/${path}?e2e=mock`, { waitUntil: 'load' });
             await expect(page.getByText(gateText).first()).toBeVisible({ timeout: 15000 });
         });
     }
 });
 
-test.describe('/operators/onboard — step indicator current state', () => {
+test.describe('/operators — step indicator current state', () => {
     test('profile screen marks step 2 (Identity) as current', async ({ page }) => {
-        await page.goto('/operators/onboard/profile?e2e=mock', { waitUntil: 'load' });
+        await page.goto('/operators/identity?e2e=mock', { waitUntil: 'load' });
         const indicator = page.getByLabel('Onboarding progress');
         await expect(indicator).toBeVisible({ timeout: 15000 });
 
@@ -63,7 +63,7 @@ test.describe('/operators/onboard — step indicator current state', () => {
     });
 
     test('agents screen marks step 6 (Agents) as current', async ({ page }) => {
-        await page.goto('/operators/onboard/agents?e2e=mock', { waitUntil: 'load' });
+        await page.goto('/operators/agents?e2e=mock', { waitUntil: 'load' });
         const indicator = page.getByLabel('Onboarding progress');
         await expect(indicator).toBeVisible({ timeout: 15000 });
 

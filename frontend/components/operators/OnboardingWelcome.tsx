@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { useMounted } from "@/lib/shared/useMounted";
-import { useOperatorProfile } from "@/lib/mechanisms/useOperatorRegistry";
 
 /**
  * Welcome screen body. Surfaces the registration prerequisites and
@@ -15,26 +10,11 @@ import { useOperatorProfile } from "@/lib/mechanisms/useOperatorRegistry";
  * every screen already enumerates the steps in this flow — repeating
  * them here would duplicate that information.
  *
- * Does NOT require a connected wallet — the wallet check happens on the
- * identity screen, where the wallet's address is needed to scope state.
- *
- * If the connected wallet is already registered, redirects to /operators
- * (the management surface). Onboarding is for unregistered wallets;
- * registered wallets shouldn't see the "start onboarding" CTA.
+ * Rendered inline by OperatorLanding when the connected wallet is not
+ * registered. OperatorLanding owns the registered/unregistered switch;
+ * this component doesn't redirect.
  */
 export function OnboardingWelcome() {
-    const router = useRouter();
-    const mounted = useMounted();
-    const { address, isConnected } = useAccount();
-    const { data: profileData, isLoading } = useOperatorProfile(address);
-
-    useEffect(() => {
-        if (!mounted) return;
-        if (!isConnected) return;
-        if (isLoading) return;
-        if (profileData) router.replace("/operators");
-    }, [mounted, isConnected, isLoading, profileData, router]);
-
     return (
         <div className="space-y-8">
             <Card className="p-6 space-y-4">
@@ -49,14 +29,8 @@ export function OnboardingWelcome() {
                 </ul>
             </Card>
 
-            <div className="flex items-center justify-between">
-                <Link
-                    href="/operators"
-                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
-                >
-                    ← Back to operators
-                </Link>
-                <Link href="/operators/onboard/profile">
+            <div className="flex items-center justify-end">
+                <Link href="/operators/identity">
                     <Button>Begin →</Button>
                 </Link>
             </div>

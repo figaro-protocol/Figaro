@@ -20,7 +20,7 @@
  * catalogue is a degenerate state.
  *
  * Wallet-not-connected and wallet-not-registered both redirect to
- * `/operators/onboard`, matching the redirect-on-miss pattern at
+ * `/operators`, matching the redirect-on-miss pattern at
  * `/operators` and `/operators/edit/identity`.
  */
 
@@ -63,11 +63,11 @@ export function OperatorEditCatalogue() {
     useEffect(() => {
         if (!mounted) return;
         if (!isConnected) {
-            router.replace("/operators/onboard");
+            router.replace("/operators");
             return;
         }
         if (!registryLoading && !registryData) {
-            router.replace("/operators/onboard");
+            router.replace("/operators");
         }
     }, [mounted, isConnected, registryLoading, registryData, router]);
 

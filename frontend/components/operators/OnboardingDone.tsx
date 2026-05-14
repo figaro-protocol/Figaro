@@ -187,7 +187,7 @@ export function OnboardingDone() {
         return (
             <Card className="p-6 space-y-4">
                 <p className="text-sm text-ink-body">Connect a wallet to publish your registration.</p>
-                <Link href="/operators/onboard/profile">
+                <Link href="/operators/identity">
                     <Button variant="outline">← Back to profile</Button>
                 </Link>
             </Card>
@@ -236,7 +236,7 @@ export function OnboardingDone() {
         return (
             <Card className="p-6 space-y-4">
                 <p className="text-sm text-red-600" role="alert">{error}</p>
-                <Link href="/operators/onboard/profile">
+                <Link href="/operators/identity">
                     <Button variant="outline">← Back to fill missing fields</Button>
                 </Link>
             </Card>
@@ -333,7 +333,7 @@ export function OnboardingDone() {
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href="/operators/onboard/agents"
+                    href="/operators/agents"
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     ← Back

@@ -2,7 +2,7 @@
  * lib/operators/onboardingState.ts
  *
  * Wallet-scoped localStorage state for the multi-screen operator
- * onboarding flow at `/operators/onboard/*`. The state survives page
+ * onboarding flow at `/operators/*`. The state survives page
  * reloads (B7 — "items don't persist" was the user's complaint about the
  * old single-form catalogue builder) and unblocks per-step authoring.
  *
@@ -192,7 +192,7 @@ export interface OnboardingStep {
     number: number;
     /** Human-readable label. */
     label: string;
-    /** Sub-route under `/operators/onboard/`. Empty string for the welcome screen. */
+    /** Sub-route under `/operators/`. Empty string for the welcome screen. */
     path: string;
     /**
      * When true, the operator may ship without filling this step. The
@@ -205,7 +205,7 @@ export interface OnboardingStep {
 
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "welcome", number: 1, label: "Welcome", path: "", optional: false },
-    { id: "profile", number: 2, label: "Identity", path: "profile", optional: false },
+    { id: "profile", number: 2, label: "Identity", path: "identity", optional: false },
     { id: "catalogue", number: 3, label: "Catalogue", path: "catalogue", optional: false },
     { id: "assemblies", number: 4, label: "Assemblies", path: "assemblies", optional: true },
     { id: "agents", number: 5, label: "Agents", path: "agents", optional: true },

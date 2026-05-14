@@ -1,26 +1,24 @@
 "use client";
 
 /**
- * OperatorLanding — registered-only management surface for `/operators`.
+ * OperatorLanding — single entry point for `/operators`. Conditionally
+ * renders one of two views based on registration state:
  *
- * One page, one purpose: show the connected wallet's operator profile
- * and let them manage it. Three users → three URLs at the route
- * level, not three states inside one component:
+ *   - Connected, registered → RegisteredCard (dashboard).
+ *   - Anything else (anonymous OR connected-unregistered) →
+ *     OnboardingWelcome inline, wrapped in OnboardingShell so the
+ *     step indicator runs across the top consistently with the
+ *     downstream wizard sub-routes.
  *
- *   - Anonymous → redirected to /operators/onboard (handled here on
- *     mount via router.replace).
- *   - Connected, not registered → redirected to /operators/onboard.
- *   - Connected, registered → renders the dashboard below.
- *
- * The state-aware variant lived here previously; the redirect-on-miss
- * pattern keeps each page semantically single-purpose so users can
- * bookmark, share, and navigate without the page mutating its
- * meaning under them.
+ * Replaces the prior two-page redirect ping-pong between /operators
+ * (dashboard) and /operators/onboard (welcome). Wizard sub-routes
+ * (/operators/identity, /operators/catalogue, etc.) are still
+ * separate pages — only the welcome / dashboard split is collapsed
+ * here.
  */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -35,37 +33,46 @@ import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMet
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
 import { formatEther } from "viem";
+import { OnboardingWelcome } from "@/components/operators/OnboardingWelcome";
+import { OnboardingShell } from "@/components/operators/OnboardingShell";
+
+function WelcomeView() {
+    return (
+        <OnboardingShell
+            stepId="welcome"
+            title="Register as an operator."
+            description={
+                <p>
+                    Register a wallet in <code>OperatorRegistry</code> and pin a profile + catalogue to IPFS. Six steps. The deposit is 0.001 ETH on devnet, reclaimable after a one-year lock — Sybil-resistance, not a fee.
+                </p>
+            }
+        >
+            <OnboardingWelcome />
+        </OnboardingShell>
+    );
+}
 
 export function OperatorLanding() {
-    const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
     const { data: profileData, isLoading: profileLoading, refetch } = useOperatorProfile(address);
     const { data: deposit } = useRegistrationDeposit();
 
-    // Route-level state-awareness: if the current wallet isn't registered,
-    // this page has nothing to show — bounce to the onboarding entry. The
-    // bounce only fires after the wallet + registry reads have settled,
-    // so we don't redirect prematurely while indexer fetches are inflight.
-    useEffect(() => {
-        if (!mounted) return;
-        if (!isConnected) {
-            router.replace("/operators/onboard");
-            return;
-        }
-        if (!profileLoading && !profileData) {
-            router.replace("/operators/onboard");
-        }
-    }, [mounted, isConnected, profileLoading, profileData, router]);
-
-    if (!mounted || !isConnected || (profileLoading && !profileData)) {
+    if (!mounted) {
         return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
     }
 
+    // Anonymous wallet, or wallet whose registry-read is still in flight
+    // → render the welcome content. The welcome screen has its own
+    // connect-wallet prompt for anonymous users and a connected-wallet
+    // "Begin" CTA otherwise.
+    if (!isConnected || profileLoading) {
+        return <WelcomeView />;
+    }
+
+    // Connected but not registered → show the welcome flow inline.
     if (!profileData) {
-        // Redirect is in flight; render the same loading state to avoid
-        // a flash of empty content.
-        return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
+        return <WelcomeView />;
     }
 
     const [metadataURI] = profileData;
@@ -127,23 +134,23 @@ function RegisteredCard({
 
     return (
         <div className="space-y-8">
-            <div className="space-y-1">
-                <h2 className="text-heading-h3 text-ink-heading">
+            <header className="space-y-2">
+                <h1 className="text-heading-h1 text-ink-heading">
                     {profile?.name ?? "Loading profile…"}
-                </h2>
+                </h1>
                 {profile?.specialty && (
                     <p className="text-sm text-ink-body">{profile.specialty}</p>
                 )}
                 <Link
                     href={`/m/${address}`}
-                    className="inline-block text-sm text-ink-faint hover:text-ink-heading underline mt-1"
+                    className="inline-block text-sm text-ink-faint hover:text-ink-heading underline"
                 >
                     View public profile →
                 </Link>
                 {profileError && (
                     <p className="text-sm text-red-600 mt-2" role="alert">{profileError}</p>
                 )}
-            </div>
+            </header>
 
             <ManageList deposit={deposit} onWithdrawn={onWithdrawn} />
         </div>

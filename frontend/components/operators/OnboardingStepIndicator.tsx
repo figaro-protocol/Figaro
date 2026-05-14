@@ -54,7 +54,7 @@ export function OnboardingStepIndicator({
                     isCurrent ? "font-semibold text-ink-heading" : "text-ink-faint",
                 );
 
-                const href = `/operators/onboard${step.path ? `/${step.path}` : ""}`;
+                const href = `/operators${step.path ? `/${step.path}` : ""}`;
                 const content = (
                     <span className="flex items-center gap-2">
                         <span className={circleClasses}>{step.number}</span>
