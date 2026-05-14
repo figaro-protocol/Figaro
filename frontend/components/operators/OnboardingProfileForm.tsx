@@ -369,7 +369,7 @@ export function OnboardingProfileForm({
             const selector = firstErrorKey === "defaultTokenAddress"
                 ? 'input[name="defaultTokenAddress"]'
                 : firstErrorKey === "acceptedTokens"
-                    ? "#accepted-tokens-section"
+                    ? "#profile-section-accepted-tokens"
                     : `#profile-${firstErrorKey}`;
             const el = document.querySelector<HTMLElement>(selector);
             if (el) {
@@ -401,8 +401,13 @@ export function OnboardingProfileForm({
     return (
         <form onSubmit={validateAndContinue} className="space-y-12" noValidate>
             {/* ── Identity ───────────────────────────────────────────── */}
-            <section className="space-y-6">
-                <h2 className="text-base font-semibold text-ink-heading">Identity</h2>
+            <section
+                id="profile-section-identity"
+                tabIndex={-1}
+                aria-labelledby="profile-heading-identity"
+                className="space-y-6 scroll-mt-20"
+            >
+                <h3 id="profile-heading-identity" className="text-heading-h3 text-ink-heading">Identity</h3>
                 <p className="text-sm text-ink-body">
                     Name, description, and specialty — the fields that resolve
                     when a buyer or another operator looks up your address on
@@ -446,8 +451,13 @@ export function OnboardingProfileForm({
             </section>
 
             {/* ── Location ──────────────────────────────────────────── */}
-            <section className="space-y-6">
-                <h2 className="text-base font-semibold text-ink-heading">Location</h2>
+            <section
+                id="profile-section-location"
+                tabIndex={-1}
+                aria-labelledby="profile-heading-location"
+                className="space-y-6 scroll-mt-20"
+            >
+                <h3 id="profile-heading-location" className="text-heading-h3 text-ink-heading">Location</h3>
                 <p className="text-sm text-ink-body">
                     Optional, public. Buyer surfaces use the geohash to anchor
                     proximity-based discovery; the human-readable address is
@@ -524,8 +534,13 @@ export function OnboardingProfileForm({
             </section>
 
             {/* ── Branding ──────────────────────────────────────────── */}
-            <section className="space-y-6">
-                <h2 className="text-base font-semibold text-ink-heading">Branding</h2>
+            <section
+                id="profile-section-branding"
+                tabIndex={-1}
+                aria-labelledby="profile-heading-branding"
+                className="space-y-6 scroll-mt-20"
+            >
+                <h3 id="profile-heading-branding" className="text-heading-h3 text-ink-heading">Branding</h3>
                 <p className="text-sm text-ink-body">
                     Optional. The logo is shown on the discover card and on
                     your <code>/m/&lt;address&gt;</code> page. It pins
@@ -545,8 +560,13 @@ export function OnboardingProfileForm({
             </section>
 
             {/* ── Tokens ────────────────────────────────────────────── */}
-            <section id="accepted-tokens-section" tabIndex={-1} className="space-y-6 scroll-mt-20">
-                <h2 className="text-base font-semibold text-ink-heading">Accepted tokens</h2>
+            <section
+                id="profile-section-accepted-tokens"
+                tabIndex={-1}
+                aria-labelledby="profile-heading-accepted-tokens"
+                className="space-y-6 scroll-mt-20"
+            >
+                <h3 id="profile-heading-accepted-tokens" className="text-heading-h3 text-ink-heading">Accepted tokens</h3>
                 <p className="text-sm text-ink-body">
                     Accepting a token is an identity declaration, not just a
                     payment choice. Each token you list says which value system
