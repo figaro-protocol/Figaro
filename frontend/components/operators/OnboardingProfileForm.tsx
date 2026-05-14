@@ -46,7 +46,7 @@ interface FormState {
     specialty: string;
     geohash: string;
     addressText: string;
-    geohashPrecision: 4 | 5 | 6 | 7 | 8;
+    geohashPrecision: 9 | 10 | 11 | 12;
     logoURI: string;
     acceptedTokens: Array<{ address: string; symbol: string }>;
     defaultTokenAddress: string;
@@ -58,18 +58,17 @@ const EMPTY_FORM: FormState = {
     specialty: "",
     geohash: "",
     addressText: "",
-    geohashPrecision: 6,
+    geohashPrecision: 10,
     logoURI: "",
     acceptedTokens: [{ address: "", symbol: "" }],
     defaultTokenAddress: "",
 };
 
 const PRECISION_LABELS: Record<FormState["geohashPrecision"], string> = {
-    4: "4 chars (~20 km region)",
-    5: "5 chars (~5 km)",
-    6: "6 chars (~1 km — default)",
-    7: "7 chars (~150 m)",
-    8: "8 chars (~38 m)",
+    9: "9 chars (~4.8 m)",
+    10: "10 chars (~1.2 m — default)",
+    11: "11 chars (~15 cm)",
+    12: "12 chars (~3.7 cm)",
 };
 
 function geocodeErrorMessage(reason: GeocodeFailureReason): string {
@@ -96,9 +95,9 @@ function fromDraft(draft: OnboardingProfileDraft | undefined): FormState {
         specialty: draft.specialty ?? "",
         geohash: storedGeohash,
         addressText: draft.location?.addressText ?? "",
-        geohashPrecision: (storedGeohash.length >= 4 && storedGeohash.length <= 8)
+        geohashPrecision: (storedGeohash.length >= 9 && storedGeohash.length <= 12)
             ? (storedGeohash.length as FormState["geohashPrecision"])
-            : 6,
+            : 10,
         logoURI: draft.branding?.logoURI ?? "",
         acceptedTokens: draft.acceptedTokens && draft.acceptedTokens.length > 0
             ? draft.acceptedTokens.map((t) => ({ address: t.address, symbol: t.symbol }))
@@ -460,11 +459,11 @@ export function OnboardingProfileForm({
             >
                 <h3 id="profile-heading-location" className="text-heading-h3 text-ink-heading">Location</h3>
                 <p className="text-sm text-ink-body">
-                    Optional, public. Buyer surfaces use the geohash to anchor
-                    proximity-based discovery; the human-readable address is
-                    shown verbatim on your <code>/m/&lt;address&gt;</code>{" "}
-                    page. Coarser precision hides your exact coordinates while
-                    still anchoring you to a region.
+                    Optional, public. The geohash anchors your handoff point
+                    for proximity-proof attestations; metres-to-centimetres
+                    precision is what those attestations expect. The
+                    human-readable address is shown verbatim on your{" "}
+                    <code>/m/&lt;address&gt;</code> page.
                 </p>
                 <FormField label="Address" inputId="profile-address">
                     <Input
@@ -485,12 +484,12 @@ export function OnboardingProfileForm({
                         value={form.geohashPrecision}
                         onChange={(e) => setField("geohashPrecision", Number(e.target.value) as FormState["geohashPrecision"])}
                     >
-                        {([4, 5, 6, 7, 8] as const).map((p) => (
+                        {([9, 10, 11, 12] as const).map((p) => (
                             <option key={p} value={p}>{PRECISION_LABELS[p]}</option>
                         ))}
                     </Select>
                     <p className="text-xs text-ink-faint mt-1">
-                        Coarser precision (4–5 chars) hides your exact location while still anchoring you to a region. Finer precision (7–8 chars) helps proximity-based discovery.
+                        Higher precision anchors your location to within metres or centimetres — the resolution proximity-proof attestations need at handoff time. 10 chars (~1.2 m) is the default; 12 chars (~3.7 cm) gets you GPS-grade resolution.
                     </p>
                 </FormField>
 
