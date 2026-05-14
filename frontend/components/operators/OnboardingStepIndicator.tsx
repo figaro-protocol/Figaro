@@ -10,19 +10,21 @@ import {
 interface OnboardingStepIndicatorProps {
     /** id of the currently-rendered step. */
     currentStepId: OnboardingStep["id"];
-    /** Set of step ids the user has completed (renders with a check-style accent). */
-    completedStepIds: Set<OnboardingStep["id"]>;
 }
 
 /**
  * Horizontal step-bar shown at the top of every onboarding screen.
- * Each step is rendered as a number circle + label. Completed steps
- * link back to their screen so the user can revisit; the current step
- * is highlighted; future steps are dimmed and not linked.
+ *
+ * Position-only rendering: a step is filled (bg-ink-heading +
+ * text-paper) if it is the current step OR any step to the left of
+ * the current step. Steps to the right of current render as outline
+ * (border-default + text-ink-faint). No data-completion check, no
+ * `optional` flag effect — the indicator is a pure progress tracker,
+ * not a data-state reflection. The form's "Next" handler still gates
+ * on data presence; the indicator just doesn't mirror that.
  */
 export function OnboardingStepIndicator({
     currentStepId,
-    completedStepIds,
 }: OnboardingStepIndicatorProps) {
     const currentIndex = ONBOARDING_STEPS.findIndex((s) => s.id === currentStepId);
 
@@ -33,18 +35,12 @@ export function OnboardingStepIndicator({
         >
             {ONBOARDING_STEPS.map((step, index) => {
                 const isCurrent = step.id === currentStepId;
-                const isCompleted = completedStepIds.has(step.id);
                 const isPast = index < currentIndex;
-                // Optional steps render as completed once the operator
-                // has navigated past them — opting out IS the operator's
-                // resolution of that step. Required-and-unfilled stays
-                // dim (the indicator should still signal "come back").
-                const isFinishedWith = isCompleted || (isPast && step.optional);
-                const isReachable = isCompleted || isPast || isCurrent;
+                const isVisited = isCurrent || isPast;
 
                 const circleClasses = cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
-                    isCurrent || isFinishedWith
+                    isVisited
                         ? "bg-ink-heading text-paper"
                         : "border border-default text-ink-faint",
                 );
@@ -68,7 +64,7 @@ export function OnboardingStepIndicator({
                         className="flex items-center gap-2"
                         aria-current={isCurrent ? "step" : undefined}
                     >
-                        {isReachable && !isCurrent ? (
+                        {isPast ? (
                             <Link href={href} className="hover:text-ink-heading transition-colors">
                                 {content}
                             </Link>
@@ -80,7 +76,7 @@ export function OnboardingStepIndicator({
                                 aria-hidden="true"
                                 className={cn(
                                     "w-6 h-px",
-                                    isFinishedWith ? "bg-ink-heading" : "bg-default",
+                                    isPast ? "bg-ink-heading" : "bg-default",
                                 )}
                             />
                         )}

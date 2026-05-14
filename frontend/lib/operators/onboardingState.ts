@@ -212,18 +212,3 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "review", number: 6, label: "Review", path: "review", optional: false },
 ];
 
-/**
- * Determine which steps the current state has completed. Used by the
- * step indicator to render check-marks and by the navigation guards to
- * prevent skipping ahead past unfilled steps.
- */
-export function completedSteps(state: OnboardingState): Set<OnboardingStep["id"]> {
-    const out = new Set<OnboardingStep["id"]>();
-    out.add("welcome");
-    if (state.profile?.name) out.add("profile");
-    if (state.catalogue?.items && state.catalogue.items.length > 0) out.add("catalogue");
-    if (state.assemblies && state.assemblies.length > 0) out.add("assemblies");
-    if (state.services && Object.values(state.services).some((v) => Boolean(v))) out.add("agents");
-    if (state.complete) out.add("review");
-    return out;
-}
