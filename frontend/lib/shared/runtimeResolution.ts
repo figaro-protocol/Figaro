@@ -1,9 +1,29 @@
-import {
-    getRegisteredAssemblyBySlug,
-    RegisteredAssembly,
-} from '@/lib/shared/assemblyRegistry';
 import { deriveAssemblyCapabilities } from '@/lib/semantic/deriveAssemblyCapabilities';
-import type { CapabilityModel, MechanismModel, RoleContext } from '@/lib/semantic/models';
+import type {
+    AssemblyModel,
+    CapabilityModel,
+    MechanismModel,
+    RiskBoundaryModel,
+    RoleContext,
+} from '@/lib/semantic/models';
+
+interface AssemblyValidationIssue {
+    severity: "error" | "warning";
+    path: string;
+    message: string;
+}
+
+interface AssemblyValidationResult {
+    ok: boolean;
+    issues: AssemblyValidationIssue[];
+}
+
+interface RegisteredAssembly {
+    assembly: Assembly;
+    validation: AssemblyValidationResult;
+    model: AssemblyModel;
+    riskBoundaries: Record<string, RiskBoundaryModel>;
+}
 import type { ResolvedMerchantBranding } from '@/lib/shared/merchantBranding';
 import { resolveMerchantBrandingDocument, resolveMerchantBrandingFromSellerCatalogue } from '@/lib/shared/merchantBranding';
 import type { Assembly } from '@/lib/shared/assembly';
@@ -386,7 +406,7 @@ export function resolveAssemblyRuntimeContext(
     networkTarget?: string,
     dataSource: RuntimeIdentityDataSource = FIXTURE_RUNTIME_IDENTITY_SOURCE
 ): ResolvedAssemblyRuntimeContext | undefined {
-    const artifact = getRegisteredAssemblyBySlug(slug);
+    const artifact: RegisteredAssembly | undefined = undefined;
     if (!artifact) {
         return undefined;
     }
