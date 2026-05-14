@@ -177,7 +177,7 @@ export function OnboardingAssembliesForm({
             <Card className="p-6 space-y-3 text-sm text-ink-body">
                 <p>
                     Pick the assemblies you participate in. Each binding publishes
-                    onto your profile as part of the document pinned in step 7.
+                    onto your profile as part of the document pinned at publish.
                     You can leave this empty and add assemblies later through the
                     operator-edit surface; an unbound operator is still on-chain
                     registered.
@@ -288,7 +288,7 @@ export function OnboardingAssembliesForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? "/operators/onboard/link"}
+                    href={backHref ?? "/operators/onboard/catalogue"}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}

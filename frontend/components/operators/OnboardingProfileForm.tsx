@@ -413,7 +413,7 @@ export function OnboardingProfileForm({
                     Name, description, and specialty — the fields that resolve
                     when a buyer or another operator looks up your address on
                     the protocol. Everything in this section pins to IPFS in
-                    step 4 as part of your identity envelope.
+                    at publish, as part of your identity envelope.
                 </p>
                 <FormField label="Name" inputId="profile-name" required error={errors.name}>
                     <Input

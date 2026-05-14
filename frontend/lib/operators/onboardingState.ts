@@ -187,7 +187,7 @@ export function useOnboardingState(walletAddress: `0x${string}` | undefined): Us
 
 export interface OnboardingStep {
     /** Stable id used in URLs and step-indicator keys. */
-    id: "welcome" | "profile" | "catalogue" | "link" | "assemblies" | "agents" | "done";
+    id: "welcome" | "profile" | "catalogue" | "assemblies" | "agents" | "done";
     /** 1-based step number for the visible indicator. */
     number: number;
     /** Human-readable label. */
@@ -195,11 +195,10 @@ export interface OnboardingStep {
     /** Sub-route under `/operators/onboard/`. Empty string for the welcome screen. */
     path: string;
     /**
-     * When true, the operator may ship without filling this step.
-     * Step-indicator treats "visited but empty" as resolved-empty (a
-     * distinct visual state from required-and-unfilled), so the
-     * indicator doesn't paint a gap where the operator deliberately
-     * skipped optional fields.
+     * When true, the operator may ship without filling this step. The
+     * step indicator treats optional-and-past as completed (opting out
+     * IS the operator's resolution) so the indicator doesn't paint a
+     * gap where the operator deliberately skipped.
      */
     optional: boolean;
 }
@@ -208,10 +207,9 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "welcome", number: 1, label: "Welcome", path: "", optional: false },
     { id: "profile", number: 2, label: "Identity", path: "profile", optional: false },
     { id: "catalogue", number: 3, label: "Catalogue", path: "catalogue", optional: false },
-    { id: "link", number: 4, label: "Pin", path: "link", optional: false },
-    { id: "assemblies", number: 5, label: "Assemblies", path: "assemblies", optional: true },
-    { id: "agents", number: 6, label: "Agents", path: "agents", optional: true },
-    { id: "done", number: 7, label: "Done", path: "done", optional: false },
+    { id: "assemblies", number: 4, label: "Assemblies", path: "assemblies", optional: true },
+    { id: "agents", number: 5, label: "Agents", path: "agents", optional: true },
+    { id: "done", number: 6, label: "Done", path: "done", optional: false },
 ];
 
 /**
@@ -224,7 +222,6 @@ export function completedSteps(state: OnboardingState): Set<OnboardingStep["id"]
     out.add("welcome");
     if (state.profile?.name) out.add("profile");
     if (state.catalogue?.items && state.catalogue.items.length > 0) out.add("catalogue");
-    if (state.publishedProfileURI && state.publishedCatalogueURI) out.add("link");
     if (state.assemblies && state.assemblies.length > 0) out.add("assemblies");
     if (state.services && Object.values(state.services).some((v) => Boolean(v))) out.add("agents");
     if (state.complete) out.add("done");

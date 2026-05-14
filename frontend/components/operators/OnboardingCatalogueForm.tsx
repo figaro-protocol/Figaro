@@ -224,7 +224,7 @@ export function OnboardingCatalogueForm({
             });
             return;
         }
-        router.push("/operators/onboard/link");
+        router.push("/operators/onboard/assemblies");
     }
 
     if (!mounted) {

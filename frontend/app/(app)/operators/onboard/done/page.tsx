@@ -11,7 +11,7 @@ export default function OnboardingDonePage() {
             title="Review and publish"
             description={
                 <p>
-                    Last step. Review the profile assembled from the previous six steps, then publish: we pin the profile JSON to IPFS and call <code>register</code> (or <code>updateProfile</code> for a returning wallet) on <code>OperatorRegistry</code>. Once the on-chain transaction confirms, your wallet is addressable as an operator.
+                    Last step. Review the profile assembled from the previous steps, then publish: we pin the catalogue to IPFS, pin the profile JSON (with the catalogue URI embedded), and call <code>register</code> (or <code>updateProfile</code> for a returning wallet) on <code>OperatorRegistry</code>. Once the on-chain transaction confirms, your wallet is addressable as an operator.
                 </p>
             }
         >

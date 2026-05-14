@@ -21,18 +21,22 @@ import {
     parseOperatorProfileDocument,
     type OperatorProfileMetadata,
 } from "@/lib/shared/operatorProfileMetadata";
-import { truncateHex } from "@/lib/shared/formatHex";
+import { publishMerchantCatalogue } from "@/lib/shared/cataloguePublisher";
+import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 
 /**
- * Step 7 — final review + publish + confirmation.
+ * Step 6 — final review + publish + confirmation.
  *
  * Three states the screen renders, in order:
  *
- *  1. **Pre-publish.** The user has filled steps 2–6 and pinned the
- *     catalogue in step 4. We assemble the profile document from the
- *     wizard state, render a summary, and offer a Publish button.
+ *  1. **Pre-publish.** The operator has filled identity + catalogue +
+ *     (optionally) assemblies + agents. We assemble a draft view of the
+ *     profile document and offer a Publish button.
  *
- *  2. **Publishing.** Pin the profile JSON to IPFS, then call
+ *  2. **Publishing.** Three serial operations under one user action:
+ *     (a) pin the catalogue document to IPFS (cached on retry via
+ *     `publishedCatalogueURI`), (b) pin the profile JSON (with the
+ *     catalogue URI embedded), (c) dispatch
  *     `OperatorRegistry.register(profileURI)` (first-time) or
  *     `updateProfile(profileURI)` (returning operator). The register
  *     path also pays the on-chain deposit.
@@ -43,8 +47,8 @@ import { truncateHex } from "@/lib/shared/formatHex";
  */
 
 interface DraftSummary {
-    profile: OperatorProfileMetadata;
-    catalogueURI: string;
+    /** Profile shape before the catalogueURI is pinned. Submit fills in `catalogueURI`. */
+    profileTemplate: Omit<OperatorProfileMetadata, "catalogueURI">;
 }
 
 /**
@@ -65,10 +69,11 @@ function formatLockPeriod(seconds: bigint): string {
 }
 
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
-    if (!state.profile?.name) return { error: "Step 2 (Profile) is incomplete: name is required." };
-    if (!state.publishedCatalogueURI) return { error: "Step 4 (Pin) is incomplete: pin your catalogue first." };
+    if (!state.profile?.name) return { error: "Step 2 (Identity) is incomplete: name is required." };
+    const items = state.catalogue?.items ?? [];
+    if (items.length === 0) return { error: "Step 3 (Catalogue) is incomplete: add at least one item before publishing." };
 
-    const profile: OperatorProfileMetadata = {
+    const profileTemplate: Omit<OperatorProfileMetadata, "catalogueURI"> = {
         subjectAddress: wallet,
         name: state.profile.name,
         description: state.profile.description,
@@ -85,11 +90,10 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
         defaultTokenAddress: state.profile.defaultTokenAddress,
         assemblyBindings: state.assemblies,
         services: state.services,
-        catalogueURI: state.publishedCatalogueURI,
         version: "1.0.0",
     };
 
-    return { profile, catalogueURI: state.publishedCatalogueURI };
+    return { profileTemplate };
 }
 
 export function OnboardingDone() {
@@ -135,16 +139,39 @@ export function OnboardingDone() {
         setPinning(true);
         setPinError(null);
         try {
-            parseOperatorProfileDocument(draft.profile, "onboarding-publish");
-            const { uri } = await DEFAULT_IPFS_SERVICE.publishJSON(draft.profile as unknown as Record<string, unknown>);
-            setPublishedProfileURI(uri);
-            update({ publishedProfileURI: uri });
+            // (a) Pin the catalogue first if not already pinned. Cache the URI
+            // in state so a partial failure (pin succeeded, register reverted)
+            // doesn't force a re-pin on retry.
+            let catalogueURI = state.publishedCatalogueURI;
+            if (!catalogueURI) {
+                const items = state.catalogue?.items ?? [];
+                const catalogue: SellerCatalogueMetadata = {
+                    subjectAddress: address,
+                    menu: items,
+                    version: "1.0.0",
+                    unitSystem: state.catalogue?.unitSystem,
+                };
+                const cataloguePin = await publishMerchantCatalogue(catalogue);
+                catalogueURI = cataloguePin.uri;
+                update({ publishedCatalogueURI: catalogueURI });
+            }
+
+            // (b) Pin the profile JSON with the catalogue URI embedded.
+            const profile: OperatorProfileMetadata = {
+                ...draft.profileTemplate,
+                catalogueURI,
+            };
+            parseOperatorProfileDocument(profile, "onboarding-publish");
+            const { uri: profileURI } = await DEFAULT_IPFS_SERVICE.publishJSON(profile as unknown as Record<string, unknown>);
+            setPublishedProfileURI(profileURI);
+            update({ publishedProfileURI: profileURI });
             setPinning(false);
 
+            // (c) Dispatch the on-chain register / updateProfile.
             if (isRegistered) {
-                await updateProfile(uri);
+                await updateProfile(profileURI);
             } else {
-                await register(uri, deposit ?? 0n);
+                await register(profileURI, deposit ?? 0n);
             }
         } catch (err) {
             setPinError(extractErrorMessage(err, String(err)));
@@ -221,30 +248,30 @@ export function OnboardingDone() {
             <Card className="p-6 space-y-3">
                 <h2 className="text-heading-h2 text-ink-heading">Review</h2>
                 <dl className="space-y-2 text-sm text-ink-body">
-                    <Row label="Operator name" value={"profile" in draft ? draft.profile.name : ""} />
+                    <Row label="Operator name" value={"profileTemplate" in draft ? draft.profileTemplate.name : ""} />
                     <Row
-                        label="Catalogue URI"
-                        value={"catalogueURI" in draft ? truncateHex(draft.catalogueURI, { head: 18, tail: 6 }) : ""}
+                        label="Catalogue items"
+                        value={`${state.catalogue?.items?.length ?? 0} item${(state.catalogue?.items?.length ?? 0) === 1 ? "" : "s"}`}
                     />
                     <Row
                         label="Accepted tokens"
                         value={
-                            "profile" in draft && draft.profile.acceptedTokens?.length
-                                ? draft.profile.acceptedTokens.map((t) => t.symbol).join(", ")
+                            "profileTemplate" in draft && draft.profileTemplate.acceptedTokens?.length
+                                ? draft.profileTemplate.acceptedTokens.map((t) => t.symbol).join(", ")
                                 : "—"
                         }
                     />
                     <Row
                         label="Assemblies"
                         value={
-                            "profile" in draft && draft.profile.assemblyBindings?.length
-                                ? draft.profile.assemblyBindings.map((b) => b.assemblySlug).join(", ")
+                            "profileTemplate" in draft && draft.profileTemplate.assemblyBindings?.length
+                                ? draft.profileTemplate.assemblyBindings.map((b) => b.assemblySlug).join(", ")
                                 : "none"
                         }
                     />
                     <Row
                         label="Agent endpoints"
-                        value={"profile" in draft && draft.profile.services && Object.values(draft.profile.services).some(Boolean) ? "configured" : "—"}
+                        value={"profileTemplate" in draft && draft.profileTemplate.services && Object.values(draft.profileTemplate.services).some(Boolean) ? "configured" : "—"}
                     />
                 </dl>
             </Card>
@@ -257,14 +284,17 @@ export function OnboardingDone() {
                     {isRegistered ? (
                         <>
                             Your wallet is already registered. Publishing here re-pins
-                            the profile JSON and calls <code>updateProfile</code> with
-                            the new URI. The deposit and lock period are unaffected.
+                            the catalogue + profile JSON to IPFS and calls{" "}
+                            <code>updateProfile</code> with the new URI. The deposit
+                            and lock period are unaffected.
                         </>
                     ) : (
                         <>
-                            Publishing pins your profile to IPFS and calls{" "}
+                            Publishing pins your catalogue to IPFS, then pins your
+                            profile (with the catalogue URI embedded), then calls{" "}
                             <code>register(profileURI)</code> on the OperatorRegistry,
-                            posting the reclaimable ETH deposit.
+                            posting the reclaimable ETH deposit. One user action; three
+                            serial operations.
                         </>
                     )}
                 </p>

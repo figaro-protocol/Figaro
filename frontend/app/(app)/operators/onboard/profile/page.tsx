@@ -11,7 +11,7 @@ export default function OnboardingProfilePage() {
             title="Your identity"
             description={
                 <p>
-                    Your stable identity: name, description, location, branding, and the set of tokens you accept for settlement. Pinned to IPFS in step 4.
+                    Your stable identity: name, description, location, branding, and the set of tokens you accept for settlement. Pinned to IPFS when you publish.
                 </p>
             }
         >
