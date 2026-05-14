@@ -187,7 +187,7 @@ export function useOnboardingState(walletAddress: `0x${string}` | undefined): Us
 
 export interface OnboardingStep {
     /** Stable id used in URLs and step-indicator keys. */
-    id: "welcome" | "profile" | "catalogue" | "assemblies" | "agents" | "done";
+    id: "welcome" | "profile" | "catalogue" | "assemblies" | "agents" | "review";
     /** 1-based step number for the visible indicator. */
     number: number;
     /** Human-readable label. */
@@ -209,7 +209,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "catalogue", number: 3, label: "Catalogue", path: "catalogue", optional: false },
     { id: "assemblies", number: 4, label: "Assemblies", path: "assemblies", optional: true },
     { id: "agents", number: 5, label: "Agents", path: "agents", optional: true },
-    { id: "done", number: 6, label: "Done", path: "done", optional: false },
+    { id: "review", number: 6, label: "Review", path: "review", optional: false },
 ];
 
 /**
@@ -224,6 +224,6 @@ export function completedSteps(state: OnboardingState): Set<OnboardingStep["id"]
     if (state.catalogue?.items && state.catalogue.items.length > 0) out.add("catalogue");
     if (state.assemblies && state.assemblies.length > 0) out.add("assemblies");
     if (state.services && Object.values(state.services).some((v) => Boolean(v))) out.add("agents");
-    if (state.complete) out.add("done");
+    if (state.complete) out.add("review");
     return out;
 }

@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { formatToken } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ContentImage } from "@/components/shared/ContentImage";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -25,25 +27,22 @@ import { publishMerchantCatalogue } from "@/lib/shared/cataloguePublisher";
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 
 /**
- * Step 6 — final review + publish + confirmation.
+ * Step 6 — review and publish.
  *
- * Three states the screen renders, in order:
+ * Renders the wallet's pre-publish profile in /m/<address>-style
+ * chrome: name, branding, specialty, description, location, catalogue
+ * items, accepted tokens, assemblies. Each section carries an "Edit"
+ * link back to its wizard step. Autosave on each wizard step means
+ * the operator can edit, return via the step indicator, and the review
+ * re-reads from localStorage.
  *
- *  1. **Pre-publish.** The operator has filled identity + catalogue +
- *     (optionally) assemblies + agents. We assemble a draft view of the
- *     profile document and offer a Publish button.
- *
- *  2. **Publishing.** Three serial operations under one user action:
- *     (a) pin the catalogue document to IPFS (cached on retry via
- *     `publishedCatalogueURI`), (b) pin the profile JSON (with the
- *     catalogue URI embedded), (c) dispatch
- *     `OperatorRegistry.register(profileURI)` (first-time) or
- *     `updateProfile(profileURI)` (returning operator). The register
- *     path also pays the on-chain deposit.
- *
- *  3. **Done.** The on-chain transaction has confirmed; we set
- *     `state.complete = true` and show "View my page" + "Back to
- *     operators" links.
+ * Publish is one user action; three serial operations under the hood:
+ * (a) pin catalogue to IPFS (cached on retry), (b) pin profile JSON
+ * with the catalogue URI embedded, (c) dispatch
+ * `OperatorRegistry.register(profileURI)` (first-time) or
+ * `updateProfile(profileURI)` (returning operator). On success the
+ * router redirects to /operators — the registered-dashboard view
+ * lives there.
  */
 
 interface DraftSummary {
@@ -96,7 +95,8 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
     return { profileTemplate };
 }
 
-export function OnboardingDone() {
+export function OnboardingReview() {
+    const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
     const { state, update } = useOnboardingState(address);
@@ -114,7 +114,6 @@ export function OnboardingDone() {
 
     const [pinning, setPinning] = useState(false);
     const [pinError, setPinError] = useState<string | null>(null);
-    const [publishedProfileURI, setPublishedProfileURI] = useState<string | null>(state.publishedProfileURI ?? null);
 
     const draft = useMemo(() => {
         if (!address) return { error: "Connect a wallet first." } as const;
@@ -123,11 +122,14 @@ export function OnboardingDone() {
 
     const error = "error" in draft ? draft.error : null;
 
+    // On publish success → mark complete and redirect to /operators.
+    // The dashboard view is the canonical post-publish surface.
     useEffect(() => {
-        if ((regSuccess || updSuccess) && !state.complete) {
-            update({ complete: true });
+        if (regSuccess || updSuccess) {
+            if (!state.complete) update({ complete: true });
+            router.replace("/operators");
         }
-    }, [regSuccess, updSuccess, state.complete, update]);
+    }, [regSuccess, updSuccess, state.complete, update, router]);
 
     const busy = pinning || regPending || regConfirming || updPending || updConfirming;
     const onChainError = regError ?? updError;
@@ -139,9 +141,7 @@ export function OnboardingDone() {
         setPinning(true);
         setPinError(null);
         try {
-            // (a) Pin the catalogue first if not already pinned. Cache the URI
-            // in state so a partial failure (pin succeeded, register reverted)
-            // doesn't force a re-pin on retry.
+            // (a) Pin the catalogue first if not already pinned.
             let catalogueURI = state.publishedCatalogueURI;
             if (!catalogueURI) {
                 const items = state.catalogue?.items ?? [];
@@ -163,7 +163,6 @@ export function OnboardingDone() {
             };
             parseOperatorProfileDocument(profile, "onboarding-publish");
             const { uri: profileURI } = await DEFAULT_IPFS_SERVICE.publishJSON(profile as unknown as Record<string, unknown>);
-            setPublishedProfileURI(profileURI);
             update({ publishedProfileURI: profileURI });
             setPinning(false);
 
@@ -188,47 +187,9 @@ export function OnboardingDone() {
             <Card className="p-6 space-y-4">
                 <p className="text-sm text-ink-body">Connect a wallet to publish your registration.</p>
                 <Link href="/operators/identity">
-                    <Button variant="outline">← Back to profile</Button>
+                    <Button variant="outline">← Back to identity</Button>
                 </Link>
             </Card>
-        );
-    }
-
-    if (state.complete) {
-        return (
-            <div className="space-y-8">
-                <Card className="p-6 space-y-3">
-                    <h2 className="text-heading-h2 text-ink-heading">You&apos;re registered</h2>
-                    <p className="text-sm text-ink-body">
-                        Your operator profile is pinned and the on-chain transaction has confirmed. The runtime can now route bonded orders to your wallet.
-                    </p>
-                    {publishedProfileURI && (
-                        <p className="text-xs text-ink-faint font-mono break-all">
-                            Profile URI: {publishedProfileURI}
-                        </p>
-                    )}
-                </Card>
-                <Card className="p-6 space-y-3">
-                    <h2 className="text-heading-h2 text-ink-heading">What&apos;s next</h2>
-                    <ul className="space-y-2 text-sm text-ink-body list-disc pl-5">
-                        <li>Visit your public view page to see what your data looks like to buyers.</li>
-                        <li>Return to the operators surface any time to update your profile or catalogue.</li>
-                        <li>
-                            The ETH deposit you posted is reclaimable via <code>withdraw</code> after the lock period elapses. The lock restarts on each fresh registration but is unaffected by <code>updateProfile</code>.
-                        </li>
-                    </ul>
-                </Card>
-                <div className="flex items-center justify-between gap-3">
-                    <Link href="/operators" className="text-sm text-ink-faint hover:text-ink-heading transition-colors">
-                        ← Back to operators
-                    </Link>
-                    {address && (
-                        <Link href={`/m/${address}`}>
-                            <Button>View my page →</Button>
-                        </Link>
-                    )}
-                </div>
-            </div>
         );
     }
 
@@ -243,42 +204,145 @@ export function OnboardingDone() {
         );
     }
 
+    const profile = "profileTemplate" in draft ? draft.profileTemplate : undefined;
+    const items = state.catalogue?.items ?? [];
+    const acceptedTokens = profile?.acceptedTokens ?? [];
+    const bindings = profile?.assemblyBindings ?? [];
+    const hasServices = profile?.services && Object.values(profile.services).some(Boolean);
+
     return (
         <div className="space-y-8">
-            <Card className="p-6 space-y-3">
-                <h2 className="text-heading-h2 text-ink-heading">Review</h2>
-                <dl className="space-y-2 text-sm text-ink-body">
-                    <Row label="Operator name" value={"profileTemplate" in draft ? draft.profileTemplate.name : ""} />
-                    <Row
-                        label="Catalogue items"
-                        value={`${state.catalogue?.items?.length ?? 0} item${(state.catalogue?.items?.length ?? 0) === 1 ? "" : "s"}`}
-                    />
-                    <Row
-                        label="Accepted tokens"
-                        value={
-                            "profileTemplate" in draft && draft.profileTemplate.acceptedTokens?.length
-                                ? draft.profileTemplate.acceptedTokens.map((t) => t.symbol).join(", ")
-                                : "—"
-                        }
-                    />
-                    <Row
-                        label="Assemblies"
-                        value={
-                            "profileTemplate" in draft && draft.profileTemplate.assemblyBindings?.length
-                                ? draft.profileTemplate.assemblyBindings.map((b) => b.assemblySlug).join(", ")
-                                : "none"
-                        }
-                    />
-                    <Row
-                        label="Agent endpoints"
-                        value={"profileTemplate" in draft && draft.profileTemplate.services && Object.values(draft.profileTemplate.services).some(Boolean) ? "configured" : "—"}
-                    />
-                </dl>
+            {/* Hero: the /m/<address> page's header analog */}
+            <Card className="p-6 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                    <h2 className="text-heading-h2 text-ink-heading">Preview · pending publish</h2>
+                    <Link
+                        href="/operators/identity"
+                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                    >
+                        Edit identity →
+                    </Link>
+                </div>
+                <div className="flex items-start gap-4">
+                    {profile?.branding?.logoURI ? (
+                        <ContentImage
+                            src={profile.branding.logoURI}
+                            alt={`${profile?.name ?? ""} logo`}
+                            className="w-16 h-16 rounded object-cover shrink-0"
+                            fallback={
+                                <div className="w-16 h-16 rounded bg-paper-200 shrink-0" aria-hidden="true" />
+                            }
+                        />
+                    ) : (
+                        <div className="w-16 h-16 rounded bg-paper-200 shrink-0" aria-hidden="true" />
+                    )}
+                    <div className="min-w-0 flex-1 space-y-1">
+                        <p className="text-heading-h3 text-ink-heading">{profile?.name}</p>
+                        {profile?.specialty && (
+                            <p className="text-sm text-ink-body">{profile.specialty}</p>
+                        )}
+                        {profile?.description && (
+                            <p className="text-sm text-ink-body">{profile.description}</p>
+                        )}
+                        {(profile?.location?.geohash || profile?.location?.addressText) && (
+                            <p className="text-xs text-ink-faint">
+                                {profile.location?.addressText}
+                                {profile.location?.geohash && (
+                                    <span className="font-mono ml-2">({profile.location.geohash})</span>
+                                )}
+                            </p>
+                        )}
+                    </div>
+                </div>
             </Card>
 
+            {/* Catalogue */}
+            <Card className="p-6 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                    <h2 className="text-heading-h2 text-ink-heading">Catalogue ({items.length} item{items.length === 1 ? "" : "s"})</h2>
+                    <Link
+                        href="/operators/catalogue"
+                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                    >
+                        Edit catalogue →
+                    </Link>
+                </div>
+                {items.length > 0 ? (
+                    <ul className="space-y-2 text-sm text-ink-body">
+                        {items.map((item) => (
+                            <li key={item.id} className="flex items-baseline justify-between gap-4">
+                                <span className="text-ink-heading">{item.name}</span>
+                                <span className="font-mono text-xs">{item.price}</span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-ink-faint">No items.</p>
+                )}
+            </Card>
+
+            {/* Accepted tokens */}
+            <Card className="p-6 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                    <h2 className="text-heading-h2 text-ink-heading">Accepted tokens</h2>
+                    <Link
+                        href="/operators/identity#profile-section-accepted-tokens"
+                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                    >
+                        Edit tokens →
+                    </Link>
+                </div>
+                {acceptedTokens.length > 0 ? (
+                    <p className="text-sm text-ink-body">
+                        {acceptedTokens.map((t) => t.symbol).join(", ")}
+                    </p>
+                ) : (
+                    <p className="text-sm text-ink-faint">No tokens accepted.</p>
+                )}
+            </Card>
+
+            {/* Assemblies */}
+            <Card className="p-6 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                    <h2 className="text-heading-h2 text-ink-heading">Assemblies ({bindings.length})</h2>
+                    <Link
+                        href="/operators/assemblies"
+                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                    >
+                        Edit assemblies →
+                    </Link>
+                </div>
+                {bindings.length > 0 ? (
+                    <ul className="space-y-1 text-sm text-ink-body">
+                        {bindings.map((b) => (
+                            <li key={b.bindingId} className="font-mono text-xs">{b.assemblySlug}</li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-ink-faint">Unbound — operator stays registered but won&apos;t surface to assembly-scoped discovery.</p>
+                )}
+            </Card>
+
+            {/* Agents */}
+            <Card className="p-6 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                    <h2 className="text-heading-h2 text-ink-heading">Agent endpoints</h2>
+                    <Link
+                        href="/operators/agents"
+                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                    >
+                        Edit agents →
+                    </Link>
+                </div>
+                <p className="text-sm text-ink-body">
+                    {hasServices ? "Configured." : "None. The wallet is human-driven."}
+                </p>
+            </Card>
+
+            {/* Publish */}
             <Card className="p-6 space-y-3">
                 <h2 className="text-heading-h2 text-ink-heading">
-                    {isRegistered ? "Update your registered profile" : "Register"}
+                    {isRegistered ? "Update your registered profile" : "Publish"}
                 </h2>
                 <p className="text-sm text-ink-body">
                     {isRegistered ? (
@@ -322,7 +386,7 @@ export function OnboardingDone() {
             {(pinning || regPending || updPending) && (
                 <p className="text-sm text-ink-body">
                     {pinning
-                        ? "Pinning profile to IPFS…"
+                        ? "Pinning to IPFS…"
                         : "Confirm in your wallet…"}
                 </p>
             )}
@@ -336,25 +400,17 @@ export function OnboardingDone() {
                     href="/operators/agents"
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
-                    ← Back
+                    ← Back to wizard
                 </Link>
                 <Button
                     type="button"
                     onClick={handlePublish}
                     disabled={busy || !!error}
+                    data-testid="review-confirm-publish"
                 >
                     {isRegistered ? "Update profile" : "Publish & register"}
                 </Button>
             </div>
-        </div>
-    );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="flex items-baseline justify-between gap-4">
-            <dt className="text-ink-faint">{label}</dt>
-            <dd className="font-mono text-ink-heading text-right truncate min-w-0 flex-shrink">{value}</dd>
         </div>
     );
 }
