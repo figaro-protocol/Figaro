@@ -72,7 +72,6 @@ function createRegistrationProps(overrides?: Record<string, unknown>) {
             executingCapabilityId: null,
             onExecuteCapability: vi.fn(),
             shellPresentation: { title: 'Test' },
-            skinBundle: null,
             ...(overrides ?? {}),
         },
     } as any;

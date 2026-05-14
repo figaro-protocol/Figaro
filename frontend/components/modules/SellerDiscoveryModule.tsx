@@ -95,7 +95,7 @@ function RestaurantCardInline({ restaurant, onSelect }: RestaurantCardInlineProp
 export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
     const { selectedRoleKind } = context;
     const { discovery } = context.services;
-    const accentTone = context.skinBundle?.branding.branding.accentColor;
+    const accentTone = undefined;
     const labelStyle = accentTone ? { color: accentTone } : undefined;
     const { catalogues: allRestaurants, isLoading: cataloguesLoading } = useRegisteredCatalogues({
         service: discovery,
@@ -161,7 +161,6 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
             <div
                 data-testid="seller-discovery-module"
                 data-module-id={moduleId}
-                data-skin={context.skinBundle?.skinId}
             >
                 <MenuBrowsingInline
                     restaurant={selectedRestaurant}
@@ -177,7 +176,6 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
         <div
             data-testid="seller-discovery-module"
             data-module-id={moduleId}
-            data-skin={context.skinBundle?.skinId}
             className="space-y-6"
         >
             <div>

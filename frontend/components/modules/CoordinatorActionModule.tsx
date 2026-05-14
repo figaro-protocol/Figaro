@@ -22,7 +22,7 @@ const MERCHANT_SIGNAL_ORDER: ReadonlyArray<MerchantProcessEventKind> = [
 ];
 
 function LifecycleSignalPanel({ context, orderHash }: { context: ModuleProps["context"]; orderHash: string }) {
-    const accentTone = context.skinBundle?.branding.branding.accentColor;
+    const accentTone = undefined;
     const roleKind = context.selectedRoleKind;
     const isMerchant = roleKind === "merchant";
 
@@ -92,7 +92,6 @@ export function CoordinatorActionModule({ context }: ModuleProps) {
         <div
             className="rounded-lg border border-neutral-200 bg-white p-6"
             data-testid="coordinator-action-module"
-            data-skin={context.skinBundle?.skinId}
             style={cardStyle}
         >
             <div className="flex items-center justify-between mb-4">

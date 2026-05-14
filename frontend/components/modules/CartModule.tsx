@@ -328,7 +328,6 @@ export function CartModule({ moduleId, context }: ModuleProps) {
         <div
             data-testid="cart-module"
             data-module-id={moduleId}
-            data-skin={context.skinBundle?.skinId}
             data-fulfilment-mode={fulfillmentMode}
             data-target-assembly={targetAssemblySlug}
         >
@@ -360,7 +359,6 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                         aria-label="Shopping cart"
                         data-testid="cart-panel"
                         className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col"
-                        data-skin={context.skinBundle?.skinId}
                         style={cardStyle}
                         onClick={(e) => e.stopPropagation()}
                     >

@@ -15,7 +15,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 // ── Order-level disclosure panel ─────────────────────────────────────────────
 
 function OrderDisclosurePanel({ context, orderHash, role }: { context: ModuleProps["context"]; orderHash: string; role: "merchant" | "courier" }) {
-    const accentTone = context.skinBundle?.branding.branding.accentColor;
+    const accentTone = undefined;
     const { tasks, loading, refresh } = useOrderDisclosureTasks(orderHash);
     const [actualInput, setActualInput] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -216,7 +216,6 @@ export function DisclosureModule({ context }: ModuleProps) {
         <div
             className="rounded-lg border border-neutral-200 bg-white p-6"
             data-testid="disclosure-module"
-            data-skin={context.skinBundle?.skinId}
             style={cardStyle}
         >
             <div className="flex items-center justify-between mb-4">

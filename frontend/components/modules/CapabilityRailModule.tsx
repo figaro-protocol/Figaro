@@ -11,7 +11,6 @@ export function CapabilityRailModule({ context }: ModuleProps) {
             executingCapabilityId={context.executingCapabilityId}
             onExecute={context.onExecuteCapability}
             contextLabel={context.shellPresentation.title}
-            skin={context.skinBundle}
         />
     );
 }

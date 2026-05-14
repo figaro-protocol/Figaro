@@ -183,7 +183,7 @@ The first-pass shared runtime implementation seeds now live under `frontend/lib/
 
 The workspace renderer now also consumes bound runtime context to constrain role selection when a connected address matches a bound institution subject, and it scopes the mechanism inspector to the selected role context instead of always showing the full assembly indiscriminately.
 
-Binding-to-assembly role mapping in that pipeline is now explicit, so runtime role selection no longer depends on suffix heuristics in role labels, the resolved runtime context preserves binding-level metadata, asset references, optional service bindings, and manifest-backed asset documents for shell consumers, the live institution shell resolves title/subtitle from the matched binding rather than always rendering assembly identity, the live workspace resolves runtime services against the matched binding before it falls back to assembly defaults, and the shell now executes a first runtime skin bundle from binding asset documents with seller metadata as fallback through logo, hero, accent, theme class, sanitized CSS, and `data-skin` targeting. When only an `assetURI` is present, that shell-bound path can now hydrate the asset document over the selected evidence transport, and the runtime-shell scaffolding, shared wallet-process summaries, seller setup surfaces, core seller mechanism panels, the delivery coordination / disclosure / delivery-attestation surfaces, the buyer-side discovery/cart composition surfaces, the driver-side job-market surface, the handoff panels, plus the FIG and generic runtime wrapper panels now consume that same bundle for presentation-only chrome. The next hardening step is no longer basic panel adoption; it is preserving that seam as the runtime evolves while keeping `MerchantBrandingModule` as the lower-level executor rather than turning it into another special-case panel.
+Binding-to-assembly role mapping in that pipeline is now explicit, so runtime role selection no longer depends on suffix heuristics in role labels, the resolved runtime context preserves binding-level metadata and asset references, the live institution shell resolves title/subtitle from the matched binding rather than always rendering assembly identity, the live workspace resolves runtime services against the matched binding before it falls back to assembly defaults, and per-operator visual identity (logo, accent, themeClass, sanitized CSS) is applied directly from the operator's profile metadata via `MerchantBrandingModule` / `merchantBranding.ts`. The earlier skin-bundle wrapper layer was retired once it became clear it delegated wholesale to that branding path without adding behavior of its own.
 ---
 
 # Part 2 — Frontend Runtime Model
@@ -213,9 +213,8 @@ The runtime mutates by composing seven layers:
 4. mechanism packages
 5. service bindings
 6. view definitions
-7. skin bundles
 
-That is enough to render a buyer storefront, operator cockpit, fulfiller workspace, reviewer surface, or agent-facing control plane without redefining the protocol each time.
+That is enough to render a buyer storefront, operator cockpit, fulfiller workspace, reviewer surface, or agent-facing control plane without redefining the protocol each time. Per-operator branding (logo, displayName, accent, themeClass, optional CSS) lives on the operator profile metadata and is applied by the live `MerchantBrandingModule` / `merchantBranding.ts` path directly — not via a separate skin-bundle layer.
 
 ## What Stays Fixed
 
@@ -237,8 +236,7 @@ These layers are the intended mutation surface:
 2. the mechanism packages the assembly includes
 3. the service providers bound to that institution
 4. the views exposed for each role and context
-5. the metadata and assets loaded for that institution
-6. the skin and narrative layer applied to the shell
+5. the metadata and assets loaded for that institution (logo, displayName, optional accent / themeClass / CSS)
 
 The correct goal is not maximum composability. It is bounded institutional mutation.
 
@@ -246,7 +244,7 @@ The correct goal is not maximum composability. It is bounded institutional mutat
 
 The runtime pipeline should be understood as:
 
-`connected address -> subject record -> institution binding -> assembly -> mechanism packages -> service bindings -> role context -> view surface -> skin bundle`
+`connected address -> subject record -> institution binding -> assembly -> mechanism packages -> service bindings -> role context -> view surface`
 
 Each step answers a distinct question:
 
@@ -255,7 +253,8 @@ Each step answers a distinct question:
 3. which mechanisms and services are active
 4. what can this actor do now
 5. which surface should the runtime render
-6. how should that surface look
+
+Per-operator visual identity (logo, accent, optional CSS) is sourced from the operator's profile metadata and applied by the live branding path; it is not a separate composition step.
 
 ## Composition Units
 
@@ -316,24 +315,6 @@ They decide:
 
 We do not need a separate "view recipe" primitive yet. The current assembly view definitions are enough until the repo hits a real repeated pattern that cannot be expressed through them.
 
-### 5. Skin Bundle
-
-The skin bundle is presentation-only.
-
-It may provide:
-
-1. theme tokens
-2. imagery and logos
-3. type and spacing preferences
-4. non-semantic copy
-
-It must not alter:
-
-1. capability validity
-2. mechanism authority
-3. risk boundaries
-4. settlement semantics
-
 ## Subject Binding and Seller-Address Mutation
 
 Seller-address mutation should happen through subject binding, not through bespoke app forks.
@@ -344,7 +325,7 @@ The binding model is:
 2. subject record resolves to one or more institution bindings
 3. institution binding selects an assembly, metadata bundle, and asset bundle
 4. runtime derives role context and visible mechanisms
-5. skin bundle personalizes the shell without altering protocol truth
+5. the live branding path personalizes the shell from the operator's profile metadata without altering protocol truth
 
 This is how an address should become "my institution surface" without the repo collapsing back into one vertical app per seller.
 
@@ -391,7 +372,7 @@ The repo already has the foundation for this model:
 11. runtime identity seeds in `frontend/lib/shared/runtimeIdentity*.ts`
 12. reusable modules in `frontend/components/modules/`
 13. authoring and prototype surfaces under `/builders`
-14. safe skinning hooks in `frontend/SKINNING_HOOKS.md`
+14. per-operator branding in `frontend/lib/shared/merchantBranding.ts` and the live `MerchantBrandingModule` (logo, accent, themeClass, optional sanitised CSS sourced from the operator profile)
 15. schema-composed agreement and catalogue metadata in `frontend/lib/core/agreementManifest.ts` and `frontend/lib/shared/sellerCatalogueMetadata.ts`
 16. assembly-level service binding and resolution in `frontend/lib/shared/runtimeServices.ts`, with `InstitutionWorkspace` now resolving one typed service bundle from optional assembly `serviceBindings` and threading it through `ModuleRenderContext`
 17. an initial mechanism-package registry in `frontend/lib/mechanisms/packages.ts`, with core orders, Dutch auction, disclosure, attestation, FIG, coordinator, and operator registry now packaged as first-class runtime objects that own their default modules, capability bindings, and hook exports; the coordinator package now also owns the delivery handoff details, tracking, and key-exchange surfaces used by physical-handoff assemblies, while `registerAllModules.ts` registers those packages before the remaining standalone modules, now explicitly split between runtime-shell scaffolding and discovery/catalogue assembly-composition wrappers; built-in assembly defaults in `frontend/lib/shared/builtInModuleDefaults.ts` now also default module metadata (`componentKind`, `semanticInput`), baseline layout for standard runtime-shell/core/coordinator modules (`slot`, `priority` when both are omitted), plus the standard `overview` / base `role-dashboard` view shape for authored assembly documents so references mostly carry richer non-default layout and visibility policy rather than repeated runtime boilerplate
@@ -406,9 +387,9 @@ They are:
 
 1. action execution is still fragmented across modules beyond the current descriptor-backed semantic workspace slice for resolve, sub-order composition, auction claims, delivery coordinator signals, seller disclosure writes, delivery proof submissions, and operator profile writes; the console queue now shares action presentation semantics, resolve/attestation execution plumbing, a shared build executor for queued build mutations, the shared commitment flow for order creation, and the shared transaction-capability dispatcher now also covers the `/fig` route plus the live delivery-attestation mechanism module, while root-order, sub-order, console create-order, the legacy TokenApprovalFlow entry points, and the workbench GHG workflow helper share the current commitment/approval/disclosure execution seams, but broader mechanism execution still sits outside one fully converged descriptor-owned runtime layer
 2. service resolution is still fragmented across archetype-specific hooks, although runtime identity preview loading now has a shared service seam for bundled fallback, remote manifest fetch, and assembly-context resolution used by the builder prototype shells, the catalogue read/write surface now shares a catalogue service wrapper instead of reaching straight into fetcher and publisher helpers, the buyer discovery path now shares a discovery service wrapper for merchant roster lookup, restaurant mapping, and mock fallback behavior, IPFS-backed artifact transport now shares one service for JSON pinning, file upload, and gateway URI resolution across agreement, evidence, attestation, and catalogue-image flows, handoff messaging now shares one coordination-messaging service for wallet-based channel resolution plus typed send/listen operations across `useKeyExchange` and `HandoffKeyExchangeModule`, handoff artifact persistence now shares one service for key storage, pending intents, receipt-backed persistence, and cleanup scheduling instead of splitting that state across multiple handoff-local helpers, and the workspace now resolves one typed runtime service bundle from optional assembly binding keys for module consumers; registered provider keys can now resolve to real runtime service implementations rather than only warning and falling back to defaults, the catalogue and discovery hooks used by the live seller and buyer modules can now take those injected service objects, a shared runtime-services React context now makes the resolved bundle available to non-module consumers like dispute evidence and delivery-attestation flows, the shared catalogue/discovery service layer plus agreement artifact helpers can now be composed against injected dependencies instead of hardwiring default transport or catalogue singletons internally, the handoff key-exchange / cleanup hooks plus the plain handoff helper wrappers can now consume injected messaging or persistence services instead of reaching straight back into the default singletons, and the remaining IPFS compatibility wrappers now also accept injected transport, but broader service adoption still needs to move deeper into the remaining runtime surfaces and future mechanism packages
-3. subject binding is only partially implemented: runtime identity now carries explicit binding-to-assembly role mappings, the resolved assembly runtime context preserves binding-level metadata, asset references, optional binding-level service bindings, and manifest-backed asset documents, live role selection no longer depends on suffix heuristics, the live shell derives title/subtitle plus raw branding and asset refs from the matched binding, the live workspace resolves runtime services against the selected binding before falling back to assembly defaults, and the shell now executes a first skin bundle from binding asset documents when present while hydrating remote asset documents over the selected evidence transport when only an `assetURI` is available, with runtime-shell scaffolding plus the shared wallet-process list, seller setup surfaces, core seller mechanism panels, the delivery coordination / disclosure / delivery-attestation surfaces, the buyer-side discovery/cart composition surfaces, and the driver-side job-market surface now consuming that bundle as presentation-only chrome, but seller-address-to-institution resolution still does not drive the full binding-asset skin pipeline end to end
+3. subject binding is only partially implemented: the binding shape now lives canonically on the operator profile (`AssemblyBindingRecord` in `operatorProfileMetadata.ts`), with explicit binding-to-assembly role mappings, the live shell derives title/subtitle from the matched binding, the live workspace resolves runtime services against the selected binding before falling back to assembly defaults, and per-operator visual identity is applied via the live `MerchantBrandingModule` path from operator-profile metadata, but seller-address-to-institution resolution still does not drive an end-to-end "this address is this institution" surface yet
 4. mechanism packages have only started to become explicit first-class objects: core orders, Dutch auction, disclosure, attestation, FIG, coordinator, and operator registry now have package contracts plus package-aware capability inference, the coordinator package now also absorbs the delivery handoff UI surfaces that were previously registered standalone, and package defaults now provide effective module/capability ownership so assemblies can carry only mechanism-specific deltas. Built-in assembly metadata now also defaults module metadata, baseline layout for the standard runtime-shell/core/coordinator modules, plus the standard `overview` / base `role-dashboard` view scaffold, leaving authored JSON to express richer view composition, non-default layout policy, and true overrides instead of repeating runtime-owned metadata. The remaining standalone modules are no longer a vague remainder bucket: `role-switcher`, `capability-rail`, and `mechanism-inspector` are runtime-shell scaffolding, while `seller-discovery`, `cart`, `job-market`, and `CatalogueEditorModule` are assembly-composition surfaces. `CatalogueEditorModule`, for example, stays a local-commerce / discovery composition surface because it layers catalogue authoring, branding, and IPFS-backed metadata publication on top of operator registration rather than defining a generic registry primitive. Broader AttestationCoordinator ownership across delivery coordination and disclosure, along with the rest of the mechanism layer, still lives across separate metadata, hooks, and module registrations
-5. skin bundles now resolve at the shell boundary from binding asset documents with a seller-metadata fallback, missing asset documents can hydrate over the selected evidence transport, and the runtime-shell scaffolding, shared wallet-process summaries, seller setup surfaces, core seller mechanism panels, the delivery coordination / disclosure / delivery-attestation panels, the buyer-side discovery/cart composition surfaces, the driver-side job-market surface, the handoff panels, plus the FIG and generic runtime wrapper panels now consume that bundle for accent and labeling chrome; `MerchantBrandingModule` remains the lower-level skin executor rather than a missing runtime-panel adoption seam
+5. per-operator visual identity is applied directly from operator-profile metadata via `MerchantBrandingModule` / `merchantBranding.ts`. The earlier skin-bundle wrapper layer was retired once it became clear it delegated wholesale to that branding path without adding behaviour of its own; the operator wizard currently exposes only `logoURI`, so extending it to capture `heroImageURI` / `accentColor` / `themeClass` / `cssURI` is the next step if per-operator theming becomes a priority
 
 ## Decision Rules
 
@@ -417,7 +398,7 @@ Use these rules when deciding whether to add a new abstraction:
 1. if the problem is schema meaning, solve it in agreement or metadata, not view composition
 2. if the problem is repeated action logic, solve it in the action model, not by adding a new module type
 3. if the problem is provider variance, solve it in service bindings, not in page code
-4. if the problem is institution appearance, solve it in skin bundles, not in semantic derivation
+4. if the problem is institution appearance, solve it in operator-profile branding (`merchantBranding.ts` / `MerchantBrandingModule`), not in semantic derivation
 5. if the problem is mechanism structure, solve it as a mechanism package, not a bespoke route
 
 ## Relationship To Other Active Docs
