@@ -45,7 +45,6 @@ function buildBinding(
         subjectAddress: wallet,
         assemblySlug: choice.slug,
         networkTargets: [...choice.networkTargets],
-        roleBindings: [],
         counterpartyBindings: counterpartyBindings.length > 0 ? counterpartyBindings : undefined,
         version: "1.0.0",
     };

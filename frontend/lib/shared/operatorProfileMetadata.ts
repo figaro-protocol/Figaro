@@ -57,14 +57,6 @@ export interface OperatorLocation {
     addressText?: string;
 }
 
-export interface RoleBindingRecord {
-    roleKind: string;
-    assemblyRoleKinds?: string[];
-    scope: "assembly" | "process" | "order" | "mechanism";
-    mechanismIds?: string[];
-    notes?: string;
-}
-
 /**
  * Designates the wallets the operator entrusts to play a counterparty
  * role in this assembly's sub-orders.
@@ -92,7 +84,6 @@ export interface AssemblyBindingRecord {
     subjectAddress: `0x${string}`;
     assemblySlug: string;
     networkTargets: string[];
-    roleBindings: RoleBindingRecord[];
     serviceBindings?: ServiceBinding[];
     counterpartyBindings?: CounterpartyBinding[];
     metadataURI?: string;
@@ -149,10 +140,11 @@ export interface OperatorProfileMetadata {
     defaultTokenAddress?: `0x${string}`;
     /**
      * Assembly bindings — one entry per assembly the wallet
-     * participates in. Mechanism participation, service-provider
-     * choices, role declarations all live inside each binding's
-     * `roleBindings` and `serviceBindings`. See `AssemblyBindingRecord`
-     * above for the shape.
+     * participates in. Service-provider choices and counterparty
+     * wallet designations live inside each binding's `serviceBindings`
+     * and `counterpartyBindings`. The role the operator plays in an
+     * assembly is event-derived (see `feedback_state_from_events`),
+     * not declared here. See `AssemblyBindingRecord` above for the shape.
      */
     assemblyBindings?: AssemblyBindingRecord[];
     /** ERC-8004 agent service endpoints (mcp, a2a, rest, did, ens). */
@@ -165,7 +157,6 @@ export interface OperatorProfileMetadata {
 
 // ── Assembly-binding parser helpers ──────────────────────────────────────────
 
-const ROLE_SCOPES = new Set<RoleBindingRecord["scope"]>(["assembly", "process", "order", "mechanism"]);
 const RUNTIME_SERVICE_KEYS = new Set<RuntimeServiceKey>([
     "catalogue",
     "discovery",
@@ -174,27 +165,6 @@ const RUNTIME_SERVICE_KEYS = new Set<RuntimeServiceKey>([
     "handoffPersistence",
     "tokenConversion",
 ]);
-
-function parseRoleBinding(value: unknown, path: string): RoleBindingRecord {
-    const record = asRecord(value, path);
-    return {
-        roleKind: asString(record.roleKind, `${path}.roleKind`),
-        assemblyRoleKinds: record.assemblyRoleKinds === undefined
-            ? undefined
-            : asStringArray(record.assemblyRoleKinds, `${path}.assemblyRoleKinds`),
-        scope: asEnum(record.scope, ROLE_SCOPES, `${path}.scope`),
-        mechanismIds: record.mechanismIds === undefined ? undefined : asStringArray(record.mechanismIds, `${path}.mechanismIds`),
-        notes: asOptionalString(record.notes, `${path}.notes`),
-    };
-}
-
-function parseRoleBindingArray(value: unknown, path: string): RoleBindingRecord[] {
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-
-    return value.map((entry, index) => parseRoleBinding(entry, `${path}[${index}]`));
-}
 
 function parseServiceBinding(value: unknown, path: string): ServiceBinding {
     const record = asRecord(value, path);
@@ -245,7 +215,6 @@ export function parseAssemblyBindingDocument(value: unknown, sourceLabel = "inst
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
         assemblySlug: asString(record.assemblySlug, `${sourceLabel}.assemblySlug`),
         networkTargets: asStringArray(record.networkTargets, `${sourceLabel}.networkTargets`),
-        roleBindings: parseRoleBindingArray(record.roleBindings, `${sourceLabel}.roleBindings`),
         serviceBindings: parseServiceBindingArray(record.serviceBindings, `${sourceLabel}.serviceBindings`),
         counterpartyBindings: parseCounterpartyBindingArray(record.counterpartyBindings, `${sourceLabel}.counterpartyBindings`),
         metadataURI: asOptionalString(record.metadataURI, `${sourceLabel}.metadataURI`),

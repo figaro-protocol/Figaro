@@ -9,7 +9,6 @@ import type { SellerBrandingMetadata, SellerCatalogueMetadata } from '@/lib/shar
 import type {
     OperatorAssetReferences,
     OperatorProfileMetadata,
-    RoleBindingRecord,
 } from '@/lib/shared/operatorProfileMetadata';
 
 export interface AssemblyBoundSubjectSummary {
@@ -19,13 +18,6 @@ export interface AssemblyBoundSubjectSummary {
     displayName: string;
     roleKinds: string[];
     assemblyRoleKinds: string[];
-    roleBindings: Array<{
-        roleKind: string;
-        assemblyRoleKinds: string[];
-        scope: RoleBindingRecord['scope'];
-        mechanismIds: string[];
-        notes?: string;
-    }>;
     serviceBindings: ServiceBinding[];
     networkTargets: string[];
     metadataURI?: string;
@@ -278,11 +270,7 @@ export function resolveRuntimeRoleSelection<RoleType extends RuntimeRoleLike>(
         };
     }
 
-    const roleHints = [
-        ...new Set(
-            matchedSubject.roleBindings.flatMap((binding) => binding.assemblyRoleKinds)
-        ),
-    ];
+    const roleHints = [...new Set(matchedSubject.assemblyRoleKinds)];
     const matchedRoles = availableRoles.filter((role) => roleHints.includes(role.roleKind));
 
     return {

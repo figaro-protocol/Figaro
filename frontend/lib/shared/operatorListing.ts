@@ -83,32 +83,19 @@ function safeURI(uri: string | undefined): string | undefined {
  *
  * `assemblyBindings` from the profile JSON drives the `bindings` field —
  * the wizard writes these from `OnboardingState.assemblies`, so a
- * freshly-registered seller appears in the assembly-filter chips.
+ * freshly-registered seller appears in the assembly-filter chips. Role
+ * attribution within an assembly is event-derived, not declared on the
+ * profile (see `feedback_state_from_events`).
  */
 export function profileToListing(
     profile: OperatorProfileMetadata,
     address: string,
 ): Listing {
-    const bindings: ListingBinding[] = [];
-    for (const b of profile.assemblyBindings ?? []) {
-        if (b.roleBindings.length === 0) {
-            // No explicit roles authored — surface the assembly itself
-            // so it still flows through the assembly filter chips.
-            bindings.push({
-                assemblySlug: b.assemblySlug,
-                roleKind: "",
-                assemblyRoleKinds: [],
-            });
-        } else {
-            for (const rb of b.roleBindings) {
-                bindings.push({
-                    assemblySlug: b.assemblySlug,
-                    roleKind: rb.roleKind,
-                    assemblyRoleKinds: rb.assemblyRoleKinds ?? [],
-                });
-            }
-        }
-    }
+    const bindings: ListingBinding[] = (profile.assemblyBindings ?? []).map((b) => ({
+        assemblySlug: b.assemblySlug,
+        roleKind: "",
+        assemblyRoleKinds: [],
+    }));
 
     return {
         provenance: "registry",
