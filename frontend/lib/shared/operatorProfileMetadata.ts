@@ -6,9 +6,12 @@
  * `OperatorRegistry.metadataURI`.
  *
  * The profile is the stable identity envelope: name, branding/CSS/images,
- * location, accepted-token list (the wallet's "freaky flag" of
- * value-system memberships), default pricing token, assembly bindings,
- * agent endpoints, and the URI of the volatile catalogue document. Item
+ * location, accepted-token list (an identity declaration — each token
+ * signals which value system the operator coordinates with: legal-system,
+ * community, settlement-layer, or value-anchoring; see
+ * `paper/figaro3b1.tex` §"Token Denomination as Coordination Signal"),
+ * default pricing token, assembly bindings, agent endpoints, and the URI
+ * of the volatile catalogue document. Item
  * lists live in the catalogue (`SellerCatalogueMetadata`) so item edits
  * re-pin one small JSON instead of the whole identity envelope.
  *
@@ -124,10 +127,14 @@ export interface OperatorProfileMetadata {
     /** External asset references (CSS, image base URI). Pinned on the profile. */
     assets?: OperatorAssetReferences;
     /**
-     * The wallet's "freaky flag" — the set of ERC-20s the operator
-     * accepts for settlement. Token acceptance is identity: it signals
-     * value-system membership (DAO tokens, ethnic-support tokens,
-     * stablecoins, etc.), not financial-market position.
+     * The set of ERC-20s the operator accepts for settlement. Token
+     * acceptance is an identity declaration: each token signals which
+     * value system the operator coordinates with — stablecoins for
+     * legal-system alignment, DAO governance tokens for community
+     * membership in that DAO, ETH for settlement-layer alignment,
+     * commodity-backed tokens for value anchoring (see
+     * `paper/figaro3b1.tex` §"Token Denomination as Coordination
+     * Signal"). It is not a financial-market position.
      */
     acceptedTokens?: AcceptedTokenMetadata[];
     /**

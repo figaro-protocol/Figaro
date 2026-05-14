@@ -105,10 +105,10 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     const accentTone: string | undefined = undefined;
 
     const { address: buyer } = useCommerce();
-    // The merchant's value-system flag: pricing-token + accepted-tokens come
-    // from THEIR profile, not from project-level CONTRACTS.* env vars. The
-    // env-var fallback only kicks in for fixture / pre-schema-split
-    // catalogues that don't carry a defaultTokenAddress.
+    // The operator's accepted-token identity declaration: pricing-token +
+    // accepted-tokens come from THEIR profile, not from project-level
+    // CONTRACTS.* env vars. The env-var fallback only kicks in for fixture /
+    // pre-schema-split catalogues that don't carry a defaultTokenAddress.
     const currency = (restaurant?.defaultTokenAddress
         ?? CONTRACTS.mockToken
         ?? CONTRACTS.permitToken) as `0x${string}`;

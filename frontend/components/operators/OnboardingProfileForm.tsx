@@ -529,11 +529,21 @@ export function OnboardingProfileForm({
             <section id="accepted-tokens-section" tabIndex={-1} className="space-y-6 scroll-mt-20">
                 <h2 className="text-base font-semibold text-ink-heading">Accepted tokens</h2>
                 <p className="text-sm text-ink-body">
-                    The set of ERC-20s you accept for settlement. This is the
-                    seller&apos;s &ldquo;value-system flag&rdquo; — buyers pay in any one of these
-                    at commit time. The frontend converts from your default
-                    pricing token at quote time. Add at least one token if you
-                    want to publish a catalogue.
+                    Accepting a token is an identity declaration, not just a
+                    payment choice. Each token you list says which value system
+                    you coordinate with: a stablecoin signals legal-system
+                    alignment, a DAO governance token signals community
+                    membership in that DAO, ETH signals settlement-layer
+                    alignment, a commodity-backed token signals value
+                    anchoring. The accepted-token list is your brand — buyers
+                    searching for aligned counterparties read it before they
+                    read your catalogue.
+                </p>
+                <p className="text-sm text-ink-body">
+                    Operationally: buyers pay in any one of the tokens listed
+                    here at commit time, and the frontend converts from your
+                    default pricing token at quote time. Add at least one
+                    token if you want to publish a catalogue.
                 </p>
 
                 {commonTokens.length > 0 && (
