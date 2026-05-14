@@ -8,7 +8,6 @@
         "start": "next start",
         "lint": "next lint",
         "type-check": "tsc --noEmit",
-        "create:assembly": "node scripts/create-assembly-template.mjs",
         "ipfs:scaffold": "node scripts/pin-operator-fixtures.mjs",
         "test": "vitest",
         "test:ui": "vitest --ui",
