@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/operators/IpfsImageUpload";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
+import { parseCatalogueCsv } from "@/lib/operators/parseCatalogueCsv";
 import type {
     CatalogueClassOfService,
     CatalogueItemMetadata,
@@ -161,6 +162,8 @@ export function OnboardingCatalogueForm({
     const [unitSystem, setUnitSystem] = useState<UnitSystem>("metric");
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [hydrated, setHydrated] = useState(false);
+    const [importErrors, setImportErrors] = useState<string[]>([]);
+    const [importedCount, setImportedCount] = useState<number | null>(null);
 
     // Hydrate once the wallet-keyed state has actually been read from
     // localStorage (`loaded === true`). Gating on `state.catalogue`
@@ -206,6 +209,34 @@ export function OnboardingCatalogueForm({
 
     function removeItem(index: number) {
         setItems((prev) => (prev.length === 1 ? [emptyItem()] : prev.filter((_, i) => i !== index)));
+    }
+
+    async function handleCsvImport(file: File) {
+        setImportErrors([]);
+        setImportedCount(null);
+        try {
+            const text = await file.text();
+            const { items: parsed, errors } = parseCatalogueCsv(text);
+            if (errors.length > 0) {
+                setImportErrors(errors);
+            }
+            if (parsed.length === 0) {
+                if (errors.length === 0) {
+                    setImportErrors(["No items parsed from the file."]);
+                }
+                return;
+            }
+            const newRows = parsed.map((item) => fromItem(item, unitSystem));
+            // If the only existing row is an empty placeholder, replace it;
+            // otherwise append.
+            setItems((prev) => {
+                const hasOnlyEmpty = prev.length === 1 && !isItemComplete(prev[0]);
+                return hasOnlyEmpty ? newRows : [...prev, ...newRows];
+            });
+            setImportedCount(parsed.length);
+        } catch (err) {
+            setImportErrors([err instanceof Error ? err.message : String(err)]);
+        }
     }
 
     function validateAndContinue(e: React.FormEvent) {
@@ -313,13 +344,45 @@ export function OnboardingCatalogueForm({
                         onRemove={items.length > 1 || isItemComplete(item) ? () => removeItem(index) : undefined}
                     />
                 ))}
-                <button
-                    type="button"
-                    onClick={addItem}
-                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
-                >
-                    + Add item
-                </button>
+                <div className="flex items-center justify-between gap-4 pt-2">
+                    <button
+                        type="button"
+                        onClick={addItem}
+                        className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                    >
+                        + Add item
+                    </button>
+                    <label className="text-xs text-ink-faint hover:text-ink-heading transition-colors cursor-pointer">
+                        <input
+                            type="file"
+                            accept=".csv,text/csv"
+                            className="hidden"
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) await handleCsvImport(file);
+                                e.target.value = "";
+                            }}
+                            data-testid="catalogue-csv-import"
+                        />
+                        Import CSV →
+                    </label>
+                </div>
+                {importedCount !== null && importedCount > 0 && (
+                    <p className="text-xs text-ink-body" data-testid="catalogue-csv-imported">
+                        Imported {importedCount} item{importedCount === 1 ? "" : "s"} from CSV.
+                    </p>
+                )}
+                {importErrors.length > 0 && (
+                    <div className="text-xs text-red-600 space-y-1" role="alert">
+                        <p className="font-semibold">CSV import problems:</p>
+                        <ul className="list-disc pl-5">
+                            {importErrors.map((e) => (<li key={e}>{e}</li>))}
+                        </ul>
+                        <p className="text-ink-faint">
+                            Expected header columns: <code>name, price, description, category, image, available, massGrams, volumeMl, classOfService</code> (case-insensitive, any order; <code>name</code> + <code>price</code> required).
+                        </p>
+                    </div>
+                )}
             </div>
 
             {submitError && (
