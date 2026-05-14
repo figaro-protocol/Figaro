@@ -7,9 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function OperatorsPage() {
-    return (
-        <section className="container mx-auto px-6 pt-16 pb-24 max-w-2xl space-y-12">
-            <OperatorLanding />
-        </section>
-    );
+    return <OperatorLanding />;
 }
