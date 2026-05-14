@@ -19,7 +19,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
@@ -28,6 +28,7 @@ import {
     useRegistrationDeposit,
     useWithdrawDeposit,
 } from "@/lib/mechanisms/useOperatorRegistry";
+import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "@/lib/mechanisms/contracts";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -223,23 +224,85 @@ function WithdrawRow({
     deposit: bigint | undefined;
     onWithdrawn: () => void;
 }) {
-    const { withdraw, isPending, isConfirming, isSuccess, error } = useWithdrawDeposit();
+    const { address } = useAccount();
+    const client = usePublicClient();
+    const { withdraw, isPending, isConfirming, isSuccess, hash, error } = useWithdrawDeposit();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [confirming, setConfirming] = useState(false);
+    const [receiptHash, setReceiptHash] = useState<`0x${string}` | null>(null);
     const isProcessing = isPending || isConfirming;
 
+    // Hold the receipt visible after success — let the operator dismiss
+    // it explicitly. Only then does the parent refetch (which causes the
+    // dashboard → welcome transition, removing this row from the DOM).
     useEffect(() => {
-        if (isSuccess) onWithdrawn();
-    }, [isSuccess, onWithdrawn]);
+        if (isSuccess && hash && !receiptHash) {
+            setReceiptHash(hash);
+        }
+    }, [isSuccess, hash, receiptHash]);
 
     async function handleWithdraw() {
         setSubmitError(null);
+        if (!client || !address) {
+            setSubmitError("No public client / wallet — reload and retry.");
+            return;
+        }
+        const registry = getOperatorRegistry();
+        if (!registry) {
+            setSubmitError("OperatorRegistry not configured.");
+            return;
+        }
+        // Pre-flight simulate — catches `DepositLocked` as a typed error
+        // before opening the wallet, so the operator doesn't waste a
+        // signature on a tx that will revert. The contract enforces the
+        // one-year lock unconditionally.
+        try {
+            await client.simulateContract({
+                address: registry,
+                abi: OPERATOR_REGISTRY_ABI,
+                functionName: "withdraw",
+                account: address,
+            });
+        } catch (e: unknown) {
+            const msg = extractErrorMessage(e, String(e));
+            if (/depositlocked|deposit.*locked/i.test(msg)) {
+                setSubmitError("The one-year deposit lock hasn't elapsed yet. Try again later.");
+            } else {
+                setSubmitError(msg);
+            }
+            return;
+        }
         try {
             await withdraw();
             setConfirming(false);
         } catch (e: unknown) {
             setSubmitError(extractErrorMessage(e, String(e)));
         }
+    }
+
+    // ── Receipt state: success, awaiting operator dismissal ──
+    if (receiptHash) {
+        return (
+            <li className="py-3 border-b border-default space-y-2 text-sm text-ink-body">
+                <p>
+                    <span className="font-semibold text-ink-heading">Withdrew {deposit !== undefined ? formatEther(deposit) : "…"} ETH.</span>
+                    {" "}Registration cleared.
+                </p>
+                <p className="text-xs text-ink-faint font-mono break-all">
+                    Tx: {receiptHash}
+                </p>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                        setReceiptHash(null);
+                        onWithdrawn();
+                    }}
+                >
+                    Continue
+                </Button>
+            </li>
+        );
     }
 
     if (!confirming) {
@@ -263,7 +326,7 @@ function WithdrawRow({
     return (
         <li className="py-3 border-b border-default space-y-2 text-sm text-ink-body">
             <p className="text-xs">
-                Returns the {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit and clears the registration. Reverts if the one-year lock hasn&apos;t elapsed. Catalogue and profile pins on IPFS are not affected.
+                Returns the {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit and clears the registration. The one-year lock is checked first; if it hasn&apos;t elapsed the call surfaces a typed error and no transaction is sent. Catalogue and profile pins on IPFS are not affected.
             </p>
             <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" onClick={handleWithdraw} disabled={isProcessing}>
