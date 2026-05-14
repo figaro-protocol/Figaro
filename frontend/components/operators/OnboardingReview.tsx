@@ -99,7 +99,7 @@ export function OnboardingReview() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { state, update } = useOnboardingState(address);
+    const { state, update, clear } = useOnboardingState(address);
 
     const { data: profileData } = useOperatorProfile(address);
     const isRegistered = !!profileData;
@@ -122,14 +122,17 @@ export function OnboardingReview() {
 
     const error = "error" in draft ? draft.error : null;
 
-    // On publish success → mark complete and redirect to /operators.
-    // The dashboard view is the canonical post-publish surface.
+    // On publish success → clear the wizard draft from localStorage
+    // (mirrors deleteNamedDraft in the assembly designer) and redirect
+    // to /operators. The dashboard reads its data from OperatorRegistry
+    // + IPFS, not from the draft — so clearing here prevents stale
+    // draft data from confusing future re-edits.
     useEffect(() => {
         if (regSuccess || updSuccess) {
-            if (!state.complete) update({ complete: true });
+            clear();
             router.replace("/operators");
         }
-    }, [regSuccess, updSuccess, state.complete, update, router]);
+    }, [regSuccess, updSuccess, clear, router]);
 
     const busy = pinning || regPending || regConfirming || updPending || updConfirming;
     const onChainError = regError ?? updError;
