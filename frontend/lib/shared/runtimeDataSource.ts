@@ -1,11 +1,14 @@
 import { SellerBrandingMetadata, SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
-import type { OperatorAssetReferences, OperatorProfileMetadata } from '@/lib/shared/operatorProfileMetadata';
+import type {
+    AssemblyBindingRecord,
+    OperatorAssetReferences,
+    OperatorProfileMetadata,
+    RoleBindingRecord,
+} from '@/lib/shared/operatorProfileMetadata';
 import type { ServiceBinding } from '@/lib/shared/assembly';
 import type { RuntimeIdentityDocumentValidationIssue } from '@/lib/shared/runtimeIdentityDocument';
 import {
     collectSubjectProvenance,
-    AssemblyBindingRecord,
-    RoleBindingRecord,
     resolveIdentityContext,
     SubjectProvenanceRecord,
     SubjectRecord,

@@ -26,8 +26,7 @@ import { useOnboardingState } from "@/lib/operators/onboardingState";
 import { useUpdateOperatorProfile } from "@/lib/operators/useUpdateOperatorProfile";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
-import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
-import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
+import type { AssemblyBindingRecord, OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
 import { OnboardingAssembliesForm } from "@/components/operators/OnboardingAssembliesForm";
 
 export function OperatorEditAssemblies() {

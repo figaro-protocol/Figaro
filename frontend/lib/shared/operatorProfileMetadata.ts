@@ -22,14 +22,15 @@ import type {
     AcceptedTokenMetadata,
     SellerBrandingMetadata,
 } from "@/lib/shared/sellerCatalogueMetadata";
-import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
-import { parseAssemblyBindingDocument } from "@/lib/shared/runtimeIdentityParser";
+import type { RuntimeServiceKey, ServiceBinding } from "@/lib/shared/assembly";
 import {
     asAddress,
+    asEnum,
     asOptionalAddress,
     asOptionalString,
     asRecord,
     asString,
+    asStringArray,
     type UnknownRecord,
 } from "@/lib/shared/parseHelpers";
 
@@ -54,6 +55,52 @@ export interface OperatorAssetReferences {
 export interface OperatorLocation {
     geohash: string;
     addressText?: string;
+}
+
+export interface RoleBindingRecord {
+    roleKind: string;
+    assemblyRoleKinds?: string[];
+    scope: "assembly" | "process" | "order" | "mechanism";
+    mechanismIds?: string[];
+    notes?: string;
+}
+
+/**
+ * Designates the wallets the operator entrusts to play a counterparty
+ * role in this assembly's sub-orders.
+ *
+ * Example: a merchant bound to `local-commerce-merchant-delivery` has
+ * a `counterpartyBindings[{ roleKind: "courier", addresses: [0xA, 0xB] }]`
+ * entry. At checkout, the cart fills the courier sub-order's seller
+ * field from this list. Without this field the cart has nowhere to
+ * read the counterparty's wallet from — the assembly defines the
+ * topology, but the operator's profile binds it to concrete wallets.
+ */
+export interface CounterpartyBinding {
+    /** Designer role marker on the sub-order this binding targets
+     *  (e.g. "courier", "offset"). Matches the `roleHint` field set on
+     *  the order's manifest when the designer spawned it. */
+    roleKind: string;
+    /** Wallets the operator is willing to designate. Order is
+     *  significant — checkout picks the first reachable one (or
+     *  surfaces the list to the buyer). */
+    addresses: `0x${string}`[];
+}
+
+export interface AssemblyBindingRecord {
+    bindingId: string;
+    subjectAddress: `0x${string}`;
+    assemblySlug: string;
+    networkTargets: string[];
+    roleBindings: RoleBindingRecord[];
+    serviceBindings?: ServiceBinding[];
+    counterpartyBindings?: CounterpartyBinding[];
+    metadataURI?: string;
+    metadataHash?: string;
+    assetURI?: string;
+    assetHash?: string;
+    effectiveFrom?: string;
+    version: string;
 }
 
 /**
@@ -104,8 +151,8 @@ export interface OperatorProfileMetadata {
      * Assembly bindings — one entry per assembly the wallet
      * participates in. Mechanism participation, service-provider
      * choices, role declarations all live inside each binding's
-     * `roleBindings` and `serviceBindings`. See
-     * `runtimeIdentity.AssemblyBindingRecord` for the shape.
+     * `roleBindings` and `serviceBindings`. See `AssemblyBindingRecord`
+     * above for the shape.
      */
     assemblyBindings?: AssemblyBindingRecord[];
     /** ERC-8004 agent service endpoints (mcp, a2a, rest, did, ens). */
@@ -114,6 +161,101 @@ export interface OperatorProfileMetadata {
     catalogueURI?: string;
     /** Document-shape version. */
     version?: string;
+}
+
+// ── Assembly-binding parser helpers ──────────────────────────────────────────
+
+const ROLE_SCOPES = new Set<RoleBindingRecord["scope"]>(["assembly", "process", "order", "mechanism"]);
+const RUNTIME_SERVICE_KEYS = new Set<RuntimeServiceKey>([
+    "identity",
+    "catalogue",
+    "discovery",
+    "evidenceTransport",
+    "coordinationMessaging",
+    "handoffPersistence",
+    "tokenConversion",
+]);
+
+function parseRoleBinding(value: unknown, path: string): RoleBindingRecord {
+    const record = asRecord(value, path);
+    return {
+        roleKind: asString(record.roleKind, `${path}.roleKind`),
+        assemblyRoleKinds: record.assemblyRoleKinds === undefined
+            ? undefined
+            : asStringArray(record.assemblyRoleKinds, `${path}.assemblyRoleKinds`),
+        scope: asEnum(record.scope, ROLE_SCOPES, `${path}.scope`),
+        mechanismIds: record.mechanismIds === undefined ? undefined : asStringArray(record.mechanismIds, `${path}.mechanismIds`),
+        notes: asOptionalString(record.notes, `${path}.notes`),
+    };
+}
+
+function parseRoleBindingArray(value: unknown, path: string): RoleBindingRecord[] {
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be an array.`);
+    }
+
+    return value.map((entry, index) => parseRoleBinding(entry, `${path}[${index}]`));
+}
+
+function parseServiceBinding(value: unknown, path: string): ServiceBinding {
+    const record = asRecord(value, path);
+
+    return {
+        serviceKey: asEnum(record.serviceKey, RUNTIME_SERVICE_KEYS, `${path}.serviceKey`),
+        providerKey: asString(record.providerKey, `${path}.providerKey`),
+    };
+}
+
+function parseServiceBindingArray(value: unknown, path: string): ServiceBinding[] | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be an array.`);
+    }
+
+    return value.map((entry, index) => parseServiceBinding(entry, `${path}[${index}]`));
+}
+
+function parseCounterpartyBindingArray(value: unknown, path: string): CounterpartyBinding[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be an array.`);
+    }
+    return value.map((entry, index) => {
+        const record = asRecord(entry, `${path}[${index}]`);
+        const addressesRaw = record.addresses;
+        if (!Array.isArray(addressesRaw)) {
+            throw new Error(`${path}[${index}].addresses must be an array of addresses.`);
+        }
+        const addresses = addressesRaw.map((addr, j) =>
+            asAddress(addr, `${path}[${index}].addresses[${j}]`),
+        );
+        return {
+            roleKind: asString(record.roleKind, `${path}[${index}].roleKind`),
+            addresses,
+        };
+    });
+}
+
+export function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution binding"): AssemblyBindingRecord {
+    const record = asRecord(value, sourceLabel);
+    return {
+        bindingId: asString(record.bindingId, `${sourceLabel}.bindingId`),
+        subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
+        assemblySlug: asString(record.assemblySlug, `${sourceLabel}.assemblySlug`),
+        networkTargets: asStringArray(record.networkTargets, `${sourceLabel}.networkTargets`),
+        roleBindings: parseRoleBindingArray(record.roleBindings, `${sourceLabel}.roleBindings`),
+        serviceBindings: parseServiceBindingArray(record.serviceBindings, `${sourceLabel}.serviceBindings`),
+        counterpartyBindings: parseCounterpartyBindingArray(record.counterpartyBindings, `${sourceLabel}.counterpartyBindings`),
+        metadataURI: asOptionalString(record.metadataURI, `${sourceLabel}.metadataURI`),
+        metadataHash: asOptionalString(record.metadataHash, `${sourceLabel}.metadataHash`),
+        assetURI: asOptionalString(record.assetURI, `${sourceLabel}.assetURI`),
+        assetHash: asOptionalString(record.assetHash, `${sourceLabel}.assetHash`),
+        effectiveFrom: asOptionalString(record.effectiveFrom, `${sourceLabel}.effectiveFrom`),
+        version: asString(record.version, `${sourceLabel}.version`),
+    };
 }
 
 // ── Type-specific parsers ────────────────────────────────────────────────────

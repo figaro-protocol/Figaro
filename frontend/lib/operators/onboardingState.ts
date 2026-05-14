@@ -23,8 +23,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { AssemblyBindingRecord } from "@/lib/shared/runtimeIdentity";
 import type {
+    AssemblyBindingRecord,
     OperatorAgentServices,
     OperatorAssetReferences,
 } from "@/lib/shared/operatorProfileMetadata";

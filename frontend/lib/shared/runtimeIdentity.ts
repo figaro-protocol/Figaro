@@ -1,4 +1,4 @@
-import type { ServiceBinding } from "@/lib/shared/assembly";
+import type { AssemblyBindingRecord } from "@/lib/shared/operatorProfileMetadata";
 
 export type MetadataTruthClass =
     | "protocol-truth"
@@ -20,52 +20,6 @@ export interface SubjectRecord {
     profileURI?: string;
     bindingRefs?: SubjectReference[];
     signatureRefs?: SubjectReference[];
-    version: string;
-}
-
-export interface RoleBindingRecord {
-    roleKind: string;
-    assemblyRoleKinds?: string[];
-    scope: "assembly" | "process" | "order" | "mechanism";
-    mechanismIds?: string[];
-    notes?: string;
-}
-
-/**
- * Designates the wallets the operator entrusts to play a counterparty
- * role in this assembly's sub-orders.
- *
- * Example: a merchant bound to `local-commerce-merchant-delivery` has
- * a `counterpartyBindings[{ roleKind: "courier", addresses: [0xA, 0xB] }]`
- * entry. At checkout, the cart fills the courier sub-order's seller
- * field from this list. Without this field the cart has nowhere to
- * read the counterparty's wallet from — the assembly defines the
- * topology, but the operator's profile binds it to concrete wallets.
- */
-export interface CounterpartyBinding {
-    /** Designer role marker on the sub-order this binding targets
-     *  (e.g. "courier", "offset"). Matches the `roleHint` field set on
-     *  the order's manifest when the designer spawned it. */
-    roleKind: string;
-    /** Wallets the operator is willing to designate. Order is
-     *  significant — checkout picks the first reachable one (or
-     *  surfaces the list to the buyer). */
-    addresses: `0x${string}`[];
-}
-
-export interface AssemblyBindingRecord {
-    bindingId: string;
-    subjectAddress: `0x${string}`;
-    assemblySlug: string;
-    networkTargets: string[];
-    roleBindings: RoleBindingRecord[];
-    serviceBindings?: ServiceBinding[];
-    counterpartyBindings?: CounterpartyBinding[];
-    metadataURI?: string;
-    metadataHash?: string;
-    assetURI?: string;
-    assetHash?: string;
-    effectiveFrom?: string;
     version: string;
 }
 

@@ -1,17 +1,17 @@
 import { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
 import { parseSellerCatalogueDocument } from '@/lib/shared/sellerCatalogueMetadataParser';
 import {
+    AssemblyBindingRecord,
     OperatorProfileMetadata,
+    parseAssemblyBindingDocument,
     parseOperatorProfileDocument,
 } from '@/lib/shared/operatorProfileMetadata';
 import {
-    AssemblyBindingRecord,
     listSubjectProvenanceRecords,
     SubjectProvenanceRecord,
     SubjectRecord,
 } from '@/lib/shared/runtimeIdentity';
 import {
-    parseAssemblyBindingDocument,
     parseSubjectRecordDocument,
 } from '@/lib/shared/runtimeIdentityParser';
 import {
