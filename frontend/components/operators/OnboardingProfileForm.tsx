@@ -222,6 +222,19 @@ export function OnboardingProfileForm({
         [form.acceptedTokens],
     );
 
+    // Auto-select the first valid token as the default pricing token
+    // when (a) nothing is selected yet, or (b) the previously-selected
+    // default got removed and is no longer in the valid set. Without
+    // this, the operator has to remember to click the radio that just
+    // appeared — easy to miss when there's only one option visible.
+    useEffect(() => {
+        if (validTokens.length === 0) return;
+        const stillValid = validTokens.some((t) => hexEqual(t.address, form.defaultTokenAddress));
+        if (!form.defaultTokenAddress || !stillValid) {
+            setForm((prev) => ({ ...prev, defaultTokenAddress: validTokens[0].address }));
+        }
+    }, [validTokens, form.defaultTokenAddress]);
+
     function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
         setForm((prev) => ({ ...prev, [key]: value }));
     }
