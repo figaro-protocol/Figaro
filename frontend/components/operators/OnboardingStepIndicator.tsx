@@ -35,31 +35,23 @@ export function OnboardingStepIndicator({
                 const isCurrent = step.id === currentStepId;
                 const isCompleted = completedStepIds.has(step.id);
                 const isPast = index < currentIndex;
-                // Optional step the operator visited and left empty.
-                // Distinct from required-and-unfilled (which keeps the
-                // dim treatment so the indicator signals unfinished
-                // business) and from future/unvisited (which stays dim
-                // because the operator hasn't reached it yet).
-                const isResolvedEmpty = isPast && !isCompleted && step.optional;
-                const isFinishedWith = isCompleted || isResolvedEmpty;
+                // Optional steps render as completed once the operator
+                // has navigated past them — opting out IS the operator's
+                // resolution of that step. Required-and-unfilled stays
+                // dim (the indicator should still signal "come back").
+                const isFinishedWith = isCompleted || (isPast && step.optional);
                 const isReachable = isCompleted || isPast || isCurrent;
 
                 const circleClasses = cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
-                    isCurrent || isCompleted
+                    isCurrent || isFinishedWith
                         ? "bg-ink-heading text-paper"
-                        : isResolvedEmpty
-                            ? "border border-default-strong text-ink-muted"
-                            : "border border-default text-ink-faint",
+                        : "border border-default text-ink-faint",
                 );
 
                 const labelClasses = cn(
                     "whitespace-nowrap",
-                    isCurrent
-                        ? "font-semibold text-ink-heading"
-                        : isResolvedEmpty
-                            ? "text-ink-muted"
-                            : "text-ink-faint",
+                    isCurrent ? "font-semibold text-ink-heading" : "text-ink-faint",
                 );
 
                 const href = `/operators/onboard${step.path ? `/${step.path}` : ""}`;
