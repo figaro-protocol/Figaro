@@ -146,7 +146,7 @@ export interface OnboardingProfileFormProps {
     /**
      * When provided, the form's submit button calls this callback
      * with the assembled draft instead of routing to the next wizard
-     * step. Used by the edit-profile page (`/operators/edit/profile`)
+     * step. Used by the edit-identity page (`/operators/edit/identity`)
      * to wire submit through `OperatorRegistry.updateProfile` rather
      * than the wizard flow's `register`.
      *

@@ -21,7 +21,7 @@
  *
  * Wallet-not-connected and wallet-not-registered both redirect to
  * `/operators/onboard`, matching the redirect-on-miss pattern at
- * `/operators` and `/operators/edit/profile`.
+ * `/operators` and `/operators/edit/identity`.
  */
 
 import { useEffect, useState } from "react";

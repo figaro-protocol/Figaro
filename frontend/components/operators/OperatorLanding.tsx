@@ -169,7 +169,7 @@ function ManageList({
     onWithdrawn: () => void;
 }) {
     const items: Array<{ label: string; description: string; href: string | null }> = [
-        { label: "Identity", description: "Name, description, tokens, location.", href: "/operators/edit/profile" },
+        { label: "Identity", description: "Name, description, tokens, location.", href: "/operators/edit/identity" },
         { label: "Catalogue", description: "Items.", href: "/operators/edit/catalogue" },
         { label: "Assemblies", description: "Bindings.", href: "/operators/edit/assemblies" },
         { label: "Agents", description: "Service endpoints.", href: "/operators/edit/agents" },
