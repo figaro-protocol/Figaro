@@ -92,6 +92,31 @@ These each break a specific protocol property:
 Verify 3× before suggesting any change to kernel invariants.
 The MAD equilibrium is fragile — any single escape hatch degrades it.
 
+### Frontend = runtime infrastructure, not product code
+
+`frontend/lib/` is runtime infrastructure where the abstraction IS the
+deliverable. Catalogues (`blockMetadata.ts`, mechanism packages,
+service-binding interfaces, skin bundles, the semantic-model layer in
+`lib/semantic/`) exist to be composed by UI surfaces — some shipped
+(`AgreementDrawer`, `/m/[merchant]`, `/orders/[processId]`, `/inbox`,
+`/discover`), some not yet built. See RUNTIME.md Parts 1–3 for the
+composition model these catalogues are staging for.
+
+**YAGNI does NOT apply here.** "This file has no readers today,"
+"this interface has one implementation," and "this abstraction has no
+consumer" are NOT findings — they are the expected state of
+infrastructure code that lands ahead of its UI consumers, by design.
+Applying product-code YAGNI to runtime infrastructure is a category
+error.
+
+When auditing the frontend, the right question is never "delete or
+keep." It is: *which UI surface is the next consumer of this catalogue,
+and what does it need?* Bring UI down to meet the catalogue; do not
+shrink the catalogue to match today's UI. The corollary: a new
+catalogue file that duplicates an existing one (parallel taxonomies of
+the same data) is still a finding — that is the "no new helpers" case
+(see memory), not the "abstraction ahead of UI" case.
+
 ### Documentation Discipline
 
 When a code change makes a doc statement stale, fix the doc in the same session.
