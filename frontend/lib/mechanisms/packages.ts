@@ -38,11 +38,6 @@ import {
     CORE_MECHANISM_PACKAGE_METADATA,
     DISCLOSURE_MECHANISM_PACKAGE_METADATA,
     DUTCH_AUCTION_MECHANISM_PACKAGE_METADATA,
-    getEffectiveMechanismCapabilityBindings as getEffectiveMechanismCapabilityBindingsFromMetadata,
-    getEffectiveMechanismModuleBindings as getEffectiveMechanismModuleBindingsFromMetadata,
-    getPackagedMechanismCapabilityBindings as getPackagedMechanismCapabilityBindingsFromMetadata,
-    getPackagedMechanismModuleBindings as getPackagedMechanismModuleBindingsFromMetadata,
-    mechanismClaimsCapability as mechanismClaimsCapabilityFromMetadata,
     OPERATOR_REGISTRY_MECHANISM_PACKAGE_METADATA,
 } from "@/lib/mechanisms/packageDefaults";
 
@@ -196,46 +191,8 @@ export const BUILT_IN_MECHANISM_PACKAGES = [
     OPERATOR_REGISTRY_MECHANISM_PACKAGE,
 ] as const satisfies readonly MechanismPackage[];
 
-const MECHANISM_PACKAGE_MAP = new Map<string, MechanismPackage>(
-    BUILT_IN_MECHANISM_PACKAGES.map((pkg) => [pkg.kind, pkg] as const),
-);
-
 export function registerMechanismPackage(pkg: MechanismPackage): void {
-    MECHANISM_PACKAGE_MAP.set(pkg.kind, pkg);
     for (const moduleEntry of pkg.modules) {
         registerModule(moduleEntry.moduleId, moduleEntry.component);
     }
-}
-
-export function getMechanismPackage(kind: string): MechanismPackage | undefined {
-    return MECHANISM_PACKAGE_MAP.get(kind);
-}
-
-export function getPackagedMechanismModuleBindings(kind: string): string[] {
-    return getPackagedMechanismModuleBindingsFromMetadata(kind);
-}
-
-export function getEffectiveMechanismModuleBindings(mechanism: {
-    kind: string;
-    moduleBindings?: readonly string[];
-}, knownModuleIds?: Iterable<string>): string[] {
-    return getEffectiveMechanismModuleBindingsFromMetadata(mechanism, knownModuleIds);
-}
-
-export function getPackagedMechanismCapabilityBindings(kind: string): string[] {
-    return getPackagedMechanismCapabilityBindingsFromMetadata(kind);
-}
-
-export function getEffectiveMechanismCapabilityBindings(mechanism: {
-    kind: string;
-    capabilityBindings?: readonly string[];
-}): string[] {
-    return getEffectiveMechanismCapabilityBindingsFromMetadata(mechanism);
-}
-
-export function mechanismClaimsCapability(mechanism: {
-    kind: string;
-    capabilityBindings?: readonly string[];
-}, capabilityKind: string): boolean {
-    return mechanismClaimsCapabilityFromMetadata(mechanism, capabilityKind);
 }
