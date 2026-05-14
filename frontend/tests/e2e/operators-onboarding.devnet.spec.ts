@@ -110,14 +110,22 @@ test.describe("operator wizard — devnet happy path", () => {
         await expect(page.getByText(name)).toBeVisible();
         await expect(page.getByText("MOCK")).toBeVisible();
 
-        // Publish chain: pin catalogue (~1s) → pin profile (~1s) →
-        // simulate → register tx broadcast → wait for receipt → router
-        // redirect to /operators. The simulate step (see
-        // usePublishOperatorProfile) is what makes a wrong-deposit
-        // failure surface as a typed error instead of an indefinite
-        // hang on a silent on-chain revert.
+        // Publish chain: pin catalogue → pin profile → simulate →
+        // register tx → wait for receipt → render the receipt card.
+        // The simulate step (see usePublishOperatorProfile) is what
+        // makes a wrong-deposit failure surface as a typed error
+        // instead of an indefinite hang on a silent on-chain revert.
         await page.getByTestId("review-confirm-publish").click();
-        await page.waitForURL(/\/operators$/, { timeout: 60_000 });
+
+        // Receipt card appears with the tx hash. The receipt persists
+        // until the operator clicks Continue (no auto-redirect — the
+        // operator needs to see the receipt before the page transitions).
+        await expect(page.getByRole("heading", { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60_000 });
+        await expect(page.getByText("Transaction")).toBeVisible();
+
+        // Continue → dashboard
+        await page.getByRole("button", { name: /Continue to dashboard/ }).click();
+        await page.waitForURL(/\/operators$/, { timeout: 15_000 });
 
         // Dashboard shows the registered operator's name + "View public profile" link.
         await expect(page.getByRole("heading", { level: 1, name })).toBeVisible({ timeout: 15000 });

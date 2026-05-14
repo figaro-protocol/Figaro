@@ -112,6 +112,16 @@ export function OnboardingReview() {
 
     const [pinning, setPinning] = useState(false);
     const [pinError, setPinError] = useState<string | null>(null);
+    // Receipt held in local state — persists until the operator
+    // dismisses ("Continue"). Clearing the wizard draft + redirecting
+    // to the dashboard happens at Continue, NOT on publishSuccess —
+    // otherwise the dashboard's mount races the receipt-card render
+    // and the operator never sees the tx hash.
+    const [receipt, setReceipt] = useState<{
+        hash: `0x${string}`;
+        profileURI: string;
+        catalogueURI: string;
+    } | null>(null);
 
     const draft = useMemo(() => {
         if (!address) return { error: "Connect a wallet first." } as const;
@@ -119,18 +129,6 @@ export function OnboardingReview() {
     }, [state, address]);
 
     const error = "error" in draft ? draft.error : null;
-
-    // On publish success → clear the wizard draft from localStorage
-    // (mirrors deleteNamedDraft in the assembly designer) and redirect
-    // to /operators. The dashboard reads its data from OperatorRegistry
-    // + IPFS, not from the draft — so clearing here prevents stale
-    // draft data from confusing future re-edits.
-    useEffect(() => {
-        if (publishSuccess) {
-            clear();
-            router.replace("/operators");
-        }
-    }, [publishSuccess, clear, router]);
 
     const busy = pinning || publishPending || publishConfirming;
     const onChainError = publishWriteError;
@@ -155,11 +153,17 @@ export function OnboardingReview() {
                 publishedCatalogueURI: outcome.catalogueURI,
                 publishedProfileURI: outcome.profileURI,
             });
+            setReceipt(outcome);
             setPinning(false);
         } catch (err) {
             setPinError(extractErrorMessage(err, String(err)));
             setPinning(false);
         }
+    }
+
+    function handleContinue() {
+        clear();
+        router.replace("/operators");
     }
 
     if (!mounted) {
@@ -185,6 +189,54 @@ export function OnboardingReview() {
                     <Button variant="outline">← Back to fill missing fields</Button>
                 </Link>
             </Card>
+        );
+    }
+
+    // Receipt state: publish succeeded, awaiting operator dismissal.
+    // Holds the tx hash + IPFS URIs visibly until "Continue" routes
+    // to the dashboard. The wizard draft is NOT cleared here — clear()
+    // runs at Continue so a subsequent re-edit still has the draft to
+    // hydrate from if needed (and so this render isn't racing the
+    // dashboard mount).
+    if (receipt) {
+        return (
+            <div className="space-y-6">
+                <Card className="p-6 space-y-4">
+                    <h2 className="text-heading-h2 text-ink-heading">
+                        {isRegistered ? "Profile updated" : "Registered."}
+                    </h2>
+                    <p className="text-sm text-ink-body">
+                        {isRegistered
+                            ? "Your operator profile has been re-pinned to IPFS and the new metadataURI is on-chain."
+                            : "Your wallet is now an operator on this network. The deposit is reclaimable via withdraw after the one-year lock."}
+                    </p>
+                    <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default">
+                        <div>
+                            <dt className="text-ink-faint">Transaction</dt>
+                            <dd className="font-mono break-all">{receipt.hash}</dd>
+                        </div>
+                        <div>
+                            <dt className="text-ink-faint">Profile URI</dt>
+                            <dd className="font-mono break-all">{receipt.profileURI}</dd>
+                        </div>
+                        <div>
+                            <dt className="text-ink-faint">Catalogue URI</dt>
+                            <dd className="font-mono break-all">{receipt.catalogueURI}</dd>
+                        </div>
+                    </dl>
+                </Card>
+                <div className="flex items-center justify-end gap-3">
+                    {address && (
+                        <Link
+                            href={`/m/${address}`}
+                            className="text-sm text-ink-faint hover:text-ink-heading underline"
+                        >
+                            View public profile →
+                        </Link>
+                    )}
+                    <Button onClick={handleContinue}>Continue to dashboard</Button>
+                </div>
+            </div>
         );
     }
 
