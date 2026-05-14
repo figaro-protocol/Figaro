@@ -70,6 +70,16 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const [forking, setForking] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+    // Receipt held in local state — persists until the user clicks
+    // Continue. Mirrors the operator wizard's post-publish pattern.
+    // Replaces the prior window.alert(`Published. IPFS: … Tx: …`)
+    // which got dismissed instantly and gave no persistent record.
+    const [receipt, setReceipt] = useState<{
+        hash: `0x${string}`;
+        ipfsURI: string;
+        slug: string;
+    } | null>(null);
+    const [publishError, setPublishError] = useState<string | null>(null);
     const { publish } = usePublishAssembly();
 
     useEffect(() => {
@@ -133,23 +143,32 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const handleConfirmPublish = useCallback(async () => {
         if (resolved.kind !== "draft") return;
         setConfirming(true);
+        setPublishError(null);
         try {
             const outcome = await publish(resolved.snapshot);
-            // publish() now waits for receipt-confirmed status:success, so
+            // publish() waits for receipt-confirmed status:success, so
             // it's safe to delete the named draft + clear the session here.
             clearCurrentSession();
             deleteNamedDraft(resolved.snapshot.slug);
-            window.alert(`Published.\nIPFS: ${outcome.ipfsURI}\nTx: ${outcome.hash}`);
-            router.push("/builders/designer");
+            // Hold the receipt; the operator clicks Continue to leave.
+            setReceipt({
+                hash: outcome.hash,
+                ipfsURI: outcome.ipfsURI,
+                slug: resolved.snapshot.slug,
+            });
         } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            window.alert(`Publish failed: ${message}`);
+            setPublishError(err instanceof Error ? err.message : String(err));
             // Stay on the review page so the user can hit "← Back to editor"
             // and fix the underlying problem (e.g. rename the slug).
         } finally {
             setConfirming(false);
         }
-    }, [resolved, publish, router]);
+    }, [resolved, publish]);
+
+    const handleContinueAfterPublish = useCallback(() => {
+        setReceipt(null);
+        router.push("/builders/designer");
+    }, [router]);
 
     const handleFork = useCallback(async () => {
         if (resolved.kind !== "published") return;
@@ -187,6 +206,52 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 >
                     ← Back to assemblies
                 </Link>
+            </div>
+        );
+    }
+
+    // Receipt state: publish succeeded, awaiting operator dismissal.
+    // Mirrors the operator wizard's post-publish receipt — replaces the
+    // prior window.alert that the user dismissed instantly with no
+    // persistent record of the tx hash + IPFS URI.
+    if (receipt) {
+        return (
+            <div
+                className="min-h-screen bg-canvas p-8 flex flex-col items-start gap-6 max-w-2xl mx-auto"
+                data-testid="assembly-publish-receipt"
+            >
+                <h1 className="text-heading-h2 text-ink-heading">Published.</h1>
+                <p className="text-sm text-ink-body">
+                    The slug <code>{receipt.slug}</code> is now anchored on
+                    the AssemblyRegistry. The manifest is pinned to IPFS;
+                    the slug binding is irreversible.
+                </p>
+                <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default w-full">
+                    <div>
+                        <dt className="text-ink-faint">Transaction</dt>
+                        <dd className="font-mono break-all">{receipt.hash}</dd>
+                    </div>
+                    <div>
+                        <dt className="text-ink-faint">IPFS URI</dt>
+                        <dd className="font-mono break-all">{receipt.ipfsURI}</dd>
+                    </div>
+                </dl>
+                <div className="flex items-center gap-3 pt-2">
+                    <Link
+                        href={`/builders/designer/view/${encodeURIComponent(receipt.slug)}`}
+                        className="text-sm text-ink-faint hover:text-ink-heading underline"
+                    >
+                        Inspect published assembly →
+                    </Link>
+                    <button
+                        type="button"
+                        onClick={handleContinueAfterPublish}
+                        className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold"
+                        data-testid="receipt-continue"
+                    >
+                        Continue
+                    </button>
+                </div>
             </div>
         );
     }
@@ -268,6 +333,13 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 </span>
                 {actionButton}
             </div>
+            {publishError && (
+                <div className="px-6 py-3 border-b border-default bg-subtle">
+                    <p className="text-sm text-red-600" role="alert" data-testid="publish-error">
+                        Publish failed: {publishError}
+                    </p>
+                </div>
+            )}
             <div className="flex-1 overflow-hidden flex flex-row">
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">
