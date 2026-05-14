@@ -14,17 +14,10 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     useDepositLockPeriod,
     useOperatorProfile,
-    useRegisterOperator,
     useRegistrationDeposit,
-    useUpdateProfile,
 } from "@/lib/mechanisms/useOperatorRegistry";
-import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import {
-    parseOperatorProfileDocument,
-    type OperatorProfileMetadata,
-} from "@/lib/shared/operatorProfileMetadata";
-import { publishMerchantCatalogue } from "@/lib/shared/cataloguePublisher";
-import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import { type OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
+import { usePublishOperatorProfile } from "@/lib/operators/usePublishOperatorProfile";
 
 /**
  * Step 6 — review and publish.
@@ -109,8 +102,13 @@ export function OnboardingReview() {
     const deposit = depositRaw as bigint | undefined;
     const lockPeriod = lockPeriodRaw as bigint | undefined;
 
-    const { register, isPending: regPending, isConfirming: regConfirming, isSuccess: regSuccess, error: regError } = useRegisterOperator();
-    const { updateProfile, isPending: updPending, isConfirming: updConfirming, isSuccess: updSuccess, error: updError } = useUpdateProfile();
+    const {
+        publish,
+        isPending: publishPending,
+        isConfirming: publishConfirming,
+        isSuccess: publishSuccess,
+        error: publishWriteError,
+    } = usePublishOperatorProfile();
 
     const [pinning, setPinning] = useState(false);
     const [pinError, setPinError] = useState<string | null>(null);
@@ -128,53 +126,36 @@ export function OnboardingReview() {
     // + IPFS, not from the draft — so clearing here prevents stale
     // draft data from confusing future re-edits.
     useEffect(() => {
-        if (regSuccess || updSuccess) {
+        if (publishSuccess) {
             clear();
             router.replace("/operators");
         }
-    }, [regSuccess, updSuccess, clear, router]);
+    }, [publishSuccess, clear, router]);
 
-    const busy = pinning || regPending || regConfirming || updPending || updConfirming;
-    const onChainError = regError ?? updError;
+    const busy = pinning || publishPending || publishConfirming;
+    const onChainError = publishWriteError;
 
     async function handlePublish() {
         if ("error" in draft) return;
         if (!address) return;
+        const items = state.catalogue?.items ?? [];
 
         setPinning(true);
         setPinError(null);
         try {
-            // (a) Pin the catalogue first if not already pinned.
-            let catalogueURI = state.publishedCatalogueURI;
-            if (!catalogueURI) {
-                const items = state.catalogue?.items ?? [];
-                const catalogue: SellerCatalogueMetadata = {
-                    subjectAddress: address,
-                    menu: items,
-                    version: "1.0.0",
-                    unitSystem: state.catalogue?.unitSystem,
-                };
-                const cataloguePin = await publishMerchantCatalogue(catalogue);
-                catalogueURI = cataloguePin.uri;
-                update({ publishedCatalogueURI: catalogueURI });
-            }
-
-            // (b) Pin the profile JSON with the catalogue URI embedded.
-            const profile: OperatorProfileMetadata = {
-                ...draft.profileTemplate,
-                catalogueURI,
-            };
-            parseOperatorProfileDocument(profile, "onboarding-publish");
-            const { uri: profileURI } = await DEFAULT_IPFS_SERVICE.publishJSON(profile as unknown as Record<string, unknown>);
-            update({ publishedProfileURI: profileURI });
+            const outcome = await publish({
+                profileTemplate: draft.profileTemplate,
+                items,
+                unitSystem: state.catalogue?.unitSystem,
+                wallet: address,
+                isRegistered,
+                cachedCatalogueURI: state.publishedCatalogueURI,
+            });
+            update({
+                publishedCatalogueURI: outcome.catalogueURI,
+                publishedProfileURI: outcome.profileURI,
+            });
             setPinning(false);
-
-            // (c) Dispatch the on-chain register / updateProfile.
-            if (isRegistered) {
-                await updateProfile(profileURI);
-            } else {
-                await register(profileURI, deposit ?? 0n);
-            }
         } catch (err) {
             setPinError(extractErrorMessage(err, String(err)));
             setPinning(false);
@@ -386,7 +367,7 @@ export function OnboardingReview() {
                 </p>
             )}
 
-            {(pinning || regPending || updPending) && (
+            {(pinning || publishPending) && (
                 <p className="text-sm text-ink-body">
                     {pinning
                         ? "Pinning to IPFS…"
@@ -394,7 +375,7 @@ export function OnboardingReview() {
                 </p>
             )}
 
-            {(regConfirming || updConfirming) && (
+            {publishConfirming && (
                 <p className="text-sm text-ink-body">Waiting for confirmation…</p>
             )}
 
