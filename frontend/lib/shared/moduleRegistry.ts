@@ -10,8 +10,8 @@ import {
     RiskBoundaryModel,
 } from "@/lib/semantic/models";
 import { Assembly, ModuleBinding } from "@/lib/shared/assembly";
-import type { AssemblyBoundSubjectSummary } from "@/lib/shared/runtimeDataSource";
 import type {
+    AssemblyBoundSubjectSummary,
     ResolvedAssemblyShellPresentation,
     ResolvedAssemblySkinBundle,
 } from "@/lib/shared/runtimeResolution";

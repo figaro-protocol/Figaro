@@ -11,12 +11,9 @@ import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { TokenConversionService } from "@/lib/shared/tokenConversion";
 import { DEFAULT_TOKEN_CONVERSION_SERVICE } from "@/lib/shared/tokenConversion";
 import type { Assembly, RuntimeServiceKey, ServiceBinding } from "@/lib/shared/assembly";
-import type { AssemblyBoundSubjectSummary } from "@/lib/shared/runtimeDataSource";
-import type { RuntimeIdentityService } from "@/lib/shared/runtimeIdentityService";
-import { DEFAULT_RUNTIME_IDENTITY_SERVICE } from "@/lib/shared/runtimeIdentityService";
+import type { AssemblyBoundSubjectSummary } from "@/lib/shared/runtimeResolution";
 
 export interface RuntimeServices {
-    identity: RuntimeIdentityService;
     catalogue: CatalogueService;
     discovery: DiscoveryService;
     evidenceTransport: IpfsService;
@@ -28,7 +25,6 @@ export interface RuntimeServices {
 export type RuntimeServiceProviderKeys = Record<RuntimeServiceKey, string>;
 
 export const DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS: Record<RuntimeServiceKey, string> = {
-    identity: "default-runtime-identity",
     catalogue: "default-catalogue",
     discovery: "default-discovery",
     evidenceTransport: "default-ipfs",
@@ -38,7 +34,6 @@ export const DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS: Record<RuntimeServiceKey, st
 };
 
 export const DEFAULT_RUNTIME_SERVICES: RuntimeServices = {
-    identity: DEFAULT_RUNTIME_IDENTITY_SERVICE,
     catalogue: DEFAULT_CATALOGUE_SERVICE,
     discovery: DEFAULT_DISCOVERY_SERVICE,
     evidenceTransport: DEFAULT_IPFS_SERVICE,
@@ -55,7 +50,6 @@ type RuntimeServiceProviderRegistry = {
 
 function createRuntimeServiceProviderRegistry(): RuntimeServiceProviderRegistry {
     return {
-        identity: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.identity, DEFAULT_RUNTIME_SERVICES.identity]]),
         catalogue: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.catalogue, DEFAULT_RUNTIME_SERVICES.catalogue]]),
         discovery: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.discovery, DEFAULT_RUNTIME_SERVICES.discovery]]),
         evidenceTransport: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.evidenceTransport, DEFAULT_RUNTIME_SERVICES.evidenceTransport]]),
@@ -120,7 +114,6 @@ export function resolveRuntimeServices(
     bindingSource?: RuntimeServiceBindingSource,
 ): RuntimeServices {
     return {
-        identity: resolveService(assembly, "identity", bindingSource),
         catalogue: resolveService(assembly, "catalogue", bindingSource),
         discovery: resolveService(assembly, "discovery", bindingSource),
         evidenceTransport: resolveService(assembly, "evidenceTransport", bindingSource),
@@ -135,7 +128,6 @@ export function resolveRuntimeServiceProviderKeys(
     bindingSource?: RuntimeServiceBindingSource,
 ): RuntimeServiceProviderKeys {
     return {
-        identity: resolveProviderKey(assembly, "identity", bindingSource),
         catalogue: resolveProviderKey(assembly, "catalogue", bindingSource),
         discovery: resolveProviderKey(assembly, "discovery", bindingSource),
         evidenceTransport: resolveProviderKey(assembly, "evidenceTransport", bindingSource),

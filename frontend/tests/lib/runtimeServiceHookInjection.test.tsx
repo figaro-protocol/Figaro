@@ -18,7 +18,6 @@ import {
 } from "@/lib/handoff/handoffIntent";
 import { useMerchantCatalogue } from "@/lib/mechanisms/useMerchantCatalogue";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
-import { useRuntimeIdentitySource } from "@/hooks/core/useRuntimeIdentitySource";
 import {
     RuntimeServicesProvider,
     useRuntimeServices,
@@ -28,7 +27,6 @@ import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetada
 import type { CatalogueService } from "@/lib/shared/catalogueService";
 import type { DiscoveryService } from "@/lib/shared/discoveryService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
-import type { RuntimeIdentityService } from "@/lib/shared/runtimeIdentityService";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
 
 const usePublicClientMock = vi.fn();
@@ -42,8 +40,6 @@ const defaultFetchMerchantCatalogueMock = vi.fn();
 const defaultListFallbackRestaurantsMock = vi.fn();
 const defaultIsRegistryConfiguredMock = vi.fn();
 const defaultListRestaurantsMock = vi.fn();
-const defaultGetFallbackSourceMock = vi.fn();
-const defaultLoadSourceFromUrlMock = vi.fn();
 const defaultIpfsPinJSONMock = vi.fn();
 const defaultIpfsBuildPathMock = vi.fn();
 const defaultSendHandoffKeyMock = vi.fn();
@@ -86,13 +82,6 @@ vi.mock("@/lib/shared/discoveryService", () => ({
         listFallbackRestaurants: (...args: unknown[]) => defaultListFallbackRestaurantsMock(...args),
         isRegistryConfigured: (...args: unknown[]) => defaultIsRegistryConfiguredMock(...args),
         listRestaurants: (...args: unknown[]) => defaultListRestaurantsMock(...args),
-    },
-}));
-
-vi.mock("@/lib/shared/runtimeIdentityService", () => ({
-    DEFAULT_RUNTIME_IDENTITY_SERVICE: {
-        getFallbackSource: (...args: unknown[]) => defaultGetFallbackSourceMock(...args),
-        loadSourceFromUrl: (...args: unknown[]) => defaultLoadSourceFromUrlMock(...args),
     },
 }));
 
@@ -170,7 +159,6 @@ const injectedRestaurant: SellerCatalogue = {
 
 function createRuntimeServices(overrides: Partial<RuntimeServices> = {}): RuntimeServices {
     return {
-        identity: {} as RuntimeServices["identity"],
         catalogue: {} as RuntimeServices["catalogue"],
         discovery: {} as RuntimeServices["discovery"],
         evidenceTransport: {
@@ -207,8 +195,6 @@ describe("runtime service hook injection", () => {
         defaultListFallbackRestaurantsMock.mockReset();
         defaultIsRegistryConfiguredMock.mockReset();
         defaultListRestaurantsMock.mockReset();
-        defaultGetFallbackSourceMock.mockReset();
-        defaultLoadSourceFromUrlMock.mockReset();
         defaultIpfsPinJSONMock.mockReset();
         defaultIpfsBuildPathMock.mockReset();
         defaultSendHandoffKeyMock.mockReset();
@@ -240,7 +226,6 @@ describe("runtime service hook injection", () => {
             source: { ipfs: 0, mock: 1 },
         });
         defaultIsRegistryConfiguredMock.mockReturnValue(false);
-        defaultGetFallbackSourceMock.mockReturnValue({ sourceLabel: "default" });
     });
 
     it("uses an injected catalogue service instead of the default provider", async () => {
@@ -295,19 +280,6 @@ describe("runtime service hook injection", () => {
         expect(defaultListRestaurantsMock).not.toHaveBeenCalled();
     });
 
-    it("uses an injected runtime identity service for the fallback source", () => {
-        const fallbackSource = { sourceLabel: "injected" };
-        const service = {
-            getFallbackSource: vi.fn().mockReturnValue(fallbackSource),
-            loadSourceFromUrl: vi.fn(),
-        } as unknown as RuntimeIdentityService;
-
-        const { result } = renderHook(() => useRuntimeIdentitySource({ service }));
-
-        expect(result.current.activeRuntimeSource).toBe(fallbackSource);
-        expect(defaultGetFallbackSourceMock).not.toHaveBeenCalled();
-    });
-
     it("provides injected runtime services through context for evidence transport consumers", () => {
         const evidenceTransport = {
             pinJSON: vi.fn(),
@@ -318,7 +290,6 @@ describe("runtime service hook injection", () => {
             buildGatewayUrl: vi.fn(),
         } as unknown as IpfsService;
         const services = {
-            identity: {} as RuntimeServices["identity"],
             catalogue: {} as RuntimeServices["catalogue"],
             discovery: {} as RuntimeServices["discovery"],
             evidenceTransport,

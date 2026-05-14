@@ -18,7 +18,6 @@ export type CompositionLevel = 1 | 2 | 3;
 export type ScopeType = "assembly" | "process" | "order" | "role" | "mechanism";
 
 export type RuntimeServiceKey =
-    | "identity"
     | "catalogue"
     | "discovery"
     | "evidenceTransport"

@@ -1,16 +1,41 @@
 import type { ResolvedMerchantBranding } from '@/lib/shared/merchantBranding';
 import { resolveMerchantBrandingDocument, resolveMerchantBrandingFromSellerCatalogue } from '@/lib/shared/merchantBranding';
-import type { Assembly } from '@/lib/shared/assembly';
-import {
-    AssemblyBoundSubjectSummary,
-    RuntimeAssetDocument,
-} from '@/lib/shared/runtimeDataSource';
+import type { Assembly, ServiceBinding } from '@/lib/shared/assembly';
 import type { IpfsService } from '@/lib/shared/ipfsService';
 import { slugify } from '@/lib/shared/slug';
-import { parseRuntimeAssetDocument } from '@/lib/shared/runtimeIdentityDocument';
+import { parseRuntimeAssetDocument, type RuntimeAssetDocument } from '@/lib/shared/runtimeIdentityDocument';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 import type { SellerBrandingMetadata, SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
-import type { OperatorAssetReferences, OperatorProfileMetadata } from '@/lib/shared/operatorProfileMetadata';
+import type {
+    OperatorAssetReferences,
+    OperatorProfileMetadata,
+    RoleBindingRecord,
+} from '@/lib/shared/operatorProfileMetadata';
+
+export interface AssemblyBoundSubjectSummary {
+    bindingId: string;
+    assemblySlug: string;
+    subjectAddress: `0x${string}`;
+    displayName: string;
+    roleKinds: string[];
+    assemblyRoleKinds: string[];
+    roleBindings: Array<{
+        roleKind: string;
+        assemblyRoleKinds: string[];
+        scope: RoleBindingRecord['scope'];
+        mechanismIds: string[];
+        notes?: string;
+    }>;
+    serviceBindings: ServiceBinding[];
+    networkTargets: string[];
+    metadataURI?: string;
+    metadataHash?: string;
+    assetURI?: string;
+    assetHash?: string;
+    assetDocument?: RuntimeAssetDocument;
+    operatorProfile?: OperatorProfileMetadata;
+    sellerCatalogueMetadata?: SellerCatalogueMetadata;
+}
 
 interface RuntimeRoleLike {
     roleKind: string;

@@ -167,7 +167,6 @@ export interface OperatorProfileMetadata {
 
 const ROLE_SCOPES = new Set<RoleBindingRecord["scope"]>(["assembly", "process", "order", "mechanism"]);
 const RUNTIME_SERVICE_KEYS = new Set<RuntimeServiceKey>([
-    "identity",
     "catalogue",
     "discovery",
     "evidenceTransport",
