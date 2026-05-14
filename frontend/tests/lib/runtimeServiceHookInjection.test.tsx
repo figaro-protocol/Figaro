@@ -44,7 +44,6 @@ const defaultIsRegistryConfiguredMock = vi.fn();
 const defaultListRestaurantsMock = vi.fn();
 const defaultGetFallbackSourceMock = vi.fn();
 const defaultLoadSourceFromUrlMock = vi.fn();
-const defaultResolveAssemblyContextMock = vi.fn();
 const defaultIpfsPinJSONMock = vi.fn();
 const defaultIpfsBuildPathMock = vi.fn();
 const defaultSendHandoffKeyMock = vi.fn();
@@ -94,7 +93,6 @@ vi.mock("@/lib/shared/runtimeIdentityService", () => ({
     DEFAULT_RUNTIME_IDENTITY_SERVICE: {
         getFallbackSource: (...args: unknown[]) => defaultGetFallbackSourceMock(...args),
         loadSourceFromUrl: (...args: unknown[]) => defaultLoadSourceFromUrlMock(...args),
-        resolveAssemblyContext: (...args: unknown[]) => defaultResolveAssemblyContextMock(...args),
     },
 }));
 
@@ -211,7 +209,6 @@ describe("runtime service hook injection", () => {
         defaultListRestaurantsMock.mockReset();
         defaultGetFallbackSourceMock.mockReset();
         defaultLoadSourceFromUrlMock.mockReset();
-        defaultResolveAssemblyContextMock.mockReset();
         defaultIpfsPinJSONMock.mockReset();
         defaultIpfsBuildPathMock.mockReset();
         defaultSendHandoffKeyMock.mockReset();
@@ -298,22 +295,17 @@ describe("runtime service hook injection", () => {
         expect(defaultListRestaurantsMock).not.toHaveBeenCalled();
     });
 
-    it("uses an injected runtime identity service for both fallback source and context resolution", () => {
+    it("uses an injected runtime identity service for the fallback source", () => {
         const fallbackSource = { sourceLabel: "injected" };
-        const resolveAssemblyContext = vi.fn().mockReturnValue({ assemblySlug: "local-commerce" });
         const service = {
             getFallbackSource: vi.fn().mockReturnValue(fallbackSource),
             loadSourceFromUrl: vi.fn(),
-            resolveAssemblyContext,
         } as unknown as RuntimeIdentityService;
 
         const { result } = renderHook(() => useRuntimeIdentitySource({ service }));
 
         expect(result.current.activeRuntimeSource).toBe(fallbackSource);
-        expect(result.current.resolveAssemblyContext("local-commerce", "local-anvil")).toEqual({ assemblySlug: "local-commerce" });
-        expect(resolveAssemblyContext).toHaveBeenCalledWith("local-commerce", "local-anvil", fallbackSource);
         expect(defaultGetFallbackSourceMock).not.toHaveBeenCalled();
-        expect(defaultResolveAssemblyContextMock).not.toHaveBeenCalled();
     });
 
     it("provides injected runtime services through context for evidence transport consumers", () => {

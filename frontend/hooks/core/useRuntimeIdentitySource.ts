@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { RuntimeIdentityDataSource } from '@/lib/shared/runtimeDataSource';
 import {
     DEFAULT_RUNTIME_IDENTITY_SERVICE,
@@ -67,9 +67,6 @@ export function useRuntimeIdentitySource({
     }, [activeRuntimeIdentityUrl, service]);
 
     const activeRuntimeSource = remoteRuntimeSource ?? fallbackRuntimeSource;
-    const resolveAssemblyContext = useCallback((slug: string, networkTarget?: string) => (
-        service.resolveAssemblyContext(slug, networkTarget, activeRuntimeSource)
-    ), [activeRuntimeSource, service]);
 
     const applyIdentityOverride = () => {
         const normalizedValue = identityUrlInputValue.trim();
@@ -86,7 +83,6 @@ export function useRuntimeIdentitySource({
         setIdentityUrlInputValue,
         activeRuntimeIdentityUrl,
         activeRuntimeSource,
-        resolveAssemblyContext,
         runtimeSourceStatus,
         runtimeSourceError,
         applyIdentityOverride,

@@ -12,7 +12,6 @@ import {
 import { Assembly, ModuleBinding } from "@/lib/shared/assembly";
 import type { AssemblyBoundSubjectSummary } from "@/lib/shared/runtimeDataSource";
 import type {
-    ResolvedAssemblyRuntimeContext,
     ResolvedAssemblyShellPresentation,
     ResolvedAssemblySkinBundle,
 } from "@/lib/shared/runtimeResolution";
@@ -25,7 +24,6 @@ import type { RuntimeServices } from "@/lib/shared/runtimeServices";
 export interface ModuleRenderContext {
     assembly: Assembly;
     services: RuntimeServices;
-    runtimeContext?: ResolvedAssemblyRuntimeContext;
     selectedRoleKind: string;
     selectedBoundSubject?: AssemblyBoundSubjectSummary;
     shellPresentation: ResolvedAssemblyShellPresentation;

@@ -1,41 +1,9 @@
-import { deriveAssemblyCapabilities } from '@/lib/semantic/deriveAssemblyCapabilities';
-import type {
-    AssemblyModel,
-    CapabilityModel,
-    MechanismModel,
-    RiskBoundaryModel,
-    RoleContext,
-} from '@/lib/semantic/models';
-
-interface AssemblyValidationIssue {
-    severity: "error" | "warning";
-    path: string;
-    message: string;
-}
-
-interface AssemblyValidationResult {
-    ok: boolean;
-    issues: AssemblyValidationIssue[];
-}
-
-interface RegisteredAssembly {
-    assembly: Assembly;
-    validation: AssemblyValidationResult;
-    model: AssemblyModel;
-    riskBoundaries: Record<string, RiskBoundaryModel>;
-}
 import type { ResolvedMerchantBranding } from '@/lib/shared/merchantBranding';
 import { resolveMerchantBrandingDocument, resolveMerchantBrandingFromSellerCatalogue } from '@/lib/shared/merchantBranding';
 import type { Assembly } from '@/lib/shared/assembly';
 import {
     AssemblyBoundSubjectSummary,
     RuntimeAssetDocument,
-    getRuntimeIdentitySourceMetadataFromSource,
-    listAssemblyBoundSubjectSummariesFromSource,
-    listValidationIssuesFromSource,
-    resolveRuntimeSubjectByAddressFromSource,
-    RuntimeIdentitySourceMetadata,
-    RuntimeIdentityDataSource,
 } from '@/lib/shared/runtimeDataSource';
 import type { IpfsService } from '@/lib/shared/ipfsService';
 import { slugify } from '@/lib/shared/slug';
@@ -43,10 +11,6 @@ import { parseRuntimeAssetDocument } from '@/lib/shared/runtimeIdentityDocument'
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 import type { SellerBrandingMetadata, SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
 import type { OperatorAssetReferences, OperatorProfileMetadata } from '@/lib/shared/operatorProfileMetadata';
-import type { RuntimeIdentityDocumentValidationIssue } from '@/lib/shared/runtimeIdentityDocument';
-import { FIXTURE_RUNTIME_IDENTITY_SOURCE } from '@/lib/shared/runtimeIdentityRegistry';
-import type { RuntimeServiceProviderKeys } from '@/lib/shared/runtimeServices';
-import { resolveRuntimeServiceProviderKeys } from '@/lib/shared/runtimeServices';
 
 interface RuntimeRoleLike {
     roleKind: string;
@@ -60,14 +24,6 @@ interface RuntimeMechanismLike {
     id: string;
     recognizedRoles?: string[];
     moduleBindings?: string[];
-}
-
-export interface ResolvedAssemblyRuntimeContext {
-    artifact: RegisteredAssembly;
-    boundSubjects: AssemblyBoundSubjectSummary[];
-    networkTarget?: string;
-    validationIssues: RuntimeIdentityDocumentValidationIssue[];
-    sourceMetadata: RuntimeIdentitySourceMetadata;
 }
 
 export interface ResolvedAssemblyShellPresentation {
@@ -112,48 +68,6 @@ export interface ResolvedRoleScopedMechanismSelection<
 
 export interface ResolvedRoleScopedModuleSelection {
     visibleModuleIds: string[];
-}
-
-export interface ResolvedRuntimeBoundSubjectSnapshot {
-    subject: AssemblyBoundSubjectSummary;
-    shellPresentation: ResolvedAssemblyShellPresentation;
-    serviceProviderKeys: RuntimeServiceProviderKeys;
-}
-
-export interface ResolveSemanticRuntimeSnapshotOptions {
-    selectedBoundSubject?: AssemblyBoundSubjectSummary;
-    roleKind?: string;
-}
-
-export interface ResolveSemanticRuntimeSnapshotForSubjectOptions {
-    networkTarget?: string;
-    roleKind?: string;
-    dataSource?: RuntimeIdentityDataSource;
-}
-
-export interface ResolvedSemanticRuntimeSnapshot {
-    assembly: RegisteredAssembly['assembly'];
-    validation: RegisteredAssembly['validation'];
-    model: RegisteredAssembly['model'];
-    riskBoundaries: RegisteredAssembly['riskBoundaries'];
-    runtime: {
-        networkTarget?: string;
-        sourceMetadata: RuntimeIdentitySourceMetadata;
-        validationIssues: RuntimeIdentityDocumentValidationIssue[];
-        boundSubjects: ResolvedRuntimeBoundSubjectSnapshot[];
-        assemblyServiceProviderKeys: RuntimeServiceProviderKeys;
-        selectedServiceProviderKeys: RuntimeServiceProviderKeys;
-        selectedBindingId?: string;
-        selectedSubjectAddress?: `0x${string}`;
-        roleHints: string[];
-        preferredRoleKind?: string;
-        availableRoles: RoleContext[];
-        selectedRole?: RoleContext;
-        visibleMechanisms: MechanismModel[];
-        visibleModuleIds: string[];
-        assemblyCapabilities: CapabilityModel[];
-        selectedShellPresentation: ResolvedAssemblyShellPresentation;
-    };
 }
 
 export interface RuntimeAssetDocumentResponseLike {
@@ -399,152 +313,4 @@ export function resolveRoleScopedModuleSelection(
             (moduleId) => alwaysVisibleModuleIdSet.has(moduleId) || mechanismModuleIds.has(moduleId)
         ),
     };
-}
-
-export function resolveAssemblyRuntimeContext(
-    slug: string,
-    networkTarget?: string,
-    dataSource: RuntimeIdentityDataSource = FIXTURE_RUNTIME_IDENTITY_SOURCE
-): ResolvedAssemblyRuntimeContext | undefined {
-    const artifact: RegisteredAssembly | undefined = undefined;
-    if (!artifact) {
-        return undefined;
-    }
-
-    const boundSubjects = listAssemblyBoundSubjectSummariesFromSource(slug, networkTarget, dataSource);
-    const boundSubjectAddresses = new Set(boundSubjects.map((subject) => normalizeAddress(subject.subjectAddress)));
-
-    return {
-        artifact,
-        boundSubjects,
-        networkTarget,
-        validationIssues: listValidationIssuesFromSource(dataSource).filter((issue) =>
-            issue.subjectAddress ? boundSubjectAddresses.has(normalizeAddress(issue.subjectAddress)) : false
-        ),
-        sourceMetadata: getRuntimeIdentitySourceMetadataFromSource(dataSource),
-    };
-}
-
-export function requireAssemblyRuntimeContext(
-    slug: string,
-    networkTarget?: string,
-    dataSource: RuntimeIdentityDataSource = FIXTURE_RUNTIME_IDENTITY_SOURCE
-): ResolvedAssemblyRuntimeContext {
-    const resolved = resolveAssemblyRuntimeContext(slug, networkTarget, dataSource);
-    if (!resolved) {
-        throw new Error(`Unknown assembly: ${slug}`);
-    }
-
-    return resolved;
-}
-
-export function resolveSemanticRuntimeSnapshot(
-    context: ResolvedAssemblyRuntimeContext,
-    options: ResolveSemanticRuntimeSnapshotOptions = {},
-): ResolvedSemanticRuntimeSnapshot {
-    const selectedBoundSubject = options.selectedBoundSubject;
-    const roleSelection = resolveRuntimeRoleSelection(
-        selectedBoundSubject?.subjectAddress,
-        context.boundSubjects,
-        context.artifact.model.roles,
-    );
-    const selectedRole = options.roleKind
-        ? roleSelection.availableRoles.find((role) => role.roleKind === options.roleKind)
-        : roleSelection.preferredRoleKind
-            ? roleSelection.availableRoles.find((role) => role.roleKind === roleSelection.preferredRoleKind)
-            : undefined;
-    const scopedMechanismSelection = resolveRoleScopedMechanismSelection(
-        selectedRole,
-        context.artifact.model.mechanisms,
-    );
-    const selectedViewModuleIds = context.artifact.assembly.views
-        .filter((view) =>
-            view.viewId === 'assembly-overview'
-            || (selectedRole?.defaultLandingView ? view.viewId === selectedRole.defaultLandingView : false)
-        )
-        .flatMap((view) => view.moduleSlots);
-    const scopedModuleSelection = resolveRoleScopedModuleSelection(
-        selectedViewModuleIds,
-        scopedMechanismSelection.visibleMechanisms,
-    );
-
-    return {
-        assembly: context.artifact.assembly,
-        validation: context.artifact.validation,
-        model: context.artifact.model,
-        riskBoundaries: context.artifact.riskBoundaries,
-        runtime: {
-            networkTarget: context.networkTarget,
-            sourceMetadata: context.sourceMetadata,
-            validationIssues: context.validationIssues,
-            boundSubjects: context.boundSubjects.map((subject) => ({
-                subject,
-                shellPresentation: resolveAssemblyShellPresentation(context.artifact.assembly, subject),
-                serviceProviderKeys: resolveRuntimeServiceProviderKeys(context.artifact.assembly, subject),
-            })),
-            assemblyServiceProviderKeys: resolveRuntimeServiceProviderKeys(context.artifact.assembly),
-            selectedServiceProviderKeys: resolveRuntimeServiceProviderKeys(context.artifact.assembly, selectedBoundSubject),
-            selectedBindingId: selectedBoundSubject?.bindingId,
-            selectedSubjectAddress: selectedBoundSubject?.subjectAddress,
-            roleHints: roleSelection.roleHints,
-            preferredRoleKind: roleSelection.preferredRoleKind,
-            availableRoles: roleSelection.availableRoles,
-            selectedRole,
-            visibleMechanisms: scopedMechanismSelection.visibleMechanisms,
-            visibleModuleIds: scopedModuleSelection.visibleModuleIds,
-            assemblyCapabilities: deriveAssemblyCapabilities(
-                context.artifact.assembly.identity.id,
-                selectedRole?.roleKind,
-                scopedMechanismSelection.visibleMechanisms,
-            ),
-            selectedShellPresentation: resolveAssemblyShellPresentation(
-                context.artifact.assembly,
-                selectedBoundSubject,
-            ),
-        },
-    };
-}
-
-export function resolveSemanticRuntimeSnapshotForSubjectAddress(
-    subjectAddress: string | undefined,
-    options: ResolveSemanticRuntimeSnapshotForSubjectOptions = {},
-): ResolvedSemanticRuntimeSnapshot | undefined {
-    if (!subjectAddress) {
-        return undefined;
-    }
-
-    const dataSource = options.dataSource ?? FIXTURE_RUNTIME_IDENTITY_SOURCE;
-    const subjectContext = resolveRuntimeSubjectByAddressFromSource(
-        subjectAddress,
-        options.networkTarget,
-        dataSource,
-    );
-    const selectedBinding = subjectContext?.selectedBinding;
-
-    if (!selectedBinding) {
-        return undefined;
-    }
-
-    const runtimeContext = resolveAssemblyRuntimeContext(
-        selectedBinding.assemblySlug,
-        options.networkTarget ?? selectedBinding.networkTargets[0],
-        dataSource,
-    );
-
-    if (!runtimeContext) {
-        return undefined;
-    }
-
-    const selectedBoundSubject = runtimeContext.boundSubjects.find(
-        (subject) => subject.bindingId === selectedBinding.bindingId,
-    );
-
-    if (!selectedBoundSubject) {
-        return undefined;
-    }
-
-    return resolveSemanticRuntimeSnapshot(runtimeContext, {
-        selectedBoundSubject,
-        roleKind: options.roleKind,
-    });
 }
