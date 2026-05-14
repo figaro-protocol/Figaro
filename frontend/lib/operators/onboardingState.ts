@@ -186,7 +186,7 @@ export function useOnboardingState(walletAddress: `0x${string}` | undefined): Us
 // ── Step progress ────────────────────────────────────────────────────────────
 
 export interface OnboardingStep {
-    /** Stable slug used in URLs and step-indicator keys. */
+    /** Stable id used in URLs and step-indicator keys. */
     id: "welcome" | "profile" | "catalogue" | "link" | "assemblies" | "agents" | "done";
     /** 1-based step number for the visible indicator. */
     number: number;
@@ -194,16 +194,24 @@ export interface OnboardingStep {
     label: string;
     /** Sub-route under `/operators/onboard/`. Empty string for the welcome screen. */
     path: string;
+    /**
+     * When true, the operator may ship without filling this step.
+     * Step-indicator treats "visited but empty" as resolved-empty (a
+     * distinct visual state from required-and-unfilled), so the
+     * indicator doesn't paint a gap where the operator deliberately
+     * skipped optional fields.
+     */
+    optional: boolean;
 }
 
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
-    { id: "welcome", number: 1, label: "Welcome", path: "" },
-    { id: "profile", number: 2, label: "Profile", path: "profile" },
-    { id: "catalogue", number: 3, label: "Catalogue", path: "catalogue" },
-    { id: "link", number: 4, label: "Link", path: "link" },
-    { id: "assemblies", number: 5, label: "Assemblies", path: "assemblies" },
-    { id: "agents", number: 6, label: "Agents", path: "agents" },
-    { id: "done", number: 7, label: "Done", path: "done" },
+    { id: "welcome", number: 1, label: "Welcome", path: "", optional: false },
+    { id: "profile", number: 2, label: "Profile", path: "profile", optional: false },
+    { id: "catalogue", number: 3, label: "Catalogue", path: "catalogue", optional: false },
+    { id: "link", number: 4, label: "Link", path: "link", optional: false },
+    { id: "assemblies", number: 5, label: "Assemblies", path: "assemblies", optional: true },
+    { id: "agents", number: 6, label: "Agents", path: "agents", optional: true },
+    { id: "done", number: 7, label: "Done", path: "done", optional: false },
 ];
 
 /**

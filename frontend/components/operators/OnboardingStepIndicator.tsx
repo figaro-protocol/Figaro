@@ -35,20 +35,31 @@ export function OnboardingStepIndicator({
                 const isCurrent = step.id === currentStepId;
                 const isCompleted = completedStepIds.has(step.id);
                 const isPast = index < currentIndex;
+                // Optional step the operator visited and left empty.
+                // Distinct from required-and-unfilled (which keeps the
+                // dim treatment so the indicator signals unfinished
+                // business) and from future/unvisited (which stays dim
+                // because the operator hasn't reached it yet).
+                const isResolvedEmpty = isPast && !isCompleted && step.optional;
+                const isFinishedWith = isCompleted || isResolvedEmpty;
                 const isReachable = isCompleted || isPast || isCurrent;
 
                 const circleClasses = cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
-                    isCurrent
+                    isCurrent || isCompleted
                         ? "bg-ink-heading text-paper"
-                        : isCompleted
-                            ? "bg-ink-heading text-paper"
+                        : isResolvedEmpty
+                            ? "border border-default-strong text-ink-muted"
                             : "border border-default text-ink-faint",
                 );
 
                 const labelClasses = cn(
                     "whitespace-nowrap",
-                    isCurrent ? "font-semibold text-ink-heading" : "text-ink-faint",
+                    isCurrent
+                        ? "font-semibold text-ink-heading"
+                        : isResolvedEmpty
+                            ? "text-ink-muted"
+                            : "text-ink-faint",
                 );
 
                 const href = `/operators/onboard${step.path ? `/${step.path}` : ""}`;
@@ -60,7 +71,11 @@ export function OnboardingStepIndicator({
                 );
 
                 return (
-                    <li key={step.id} className="flex items-center gap-2">
+                    <li
+                        key={step.id}
+                        className="flex items-center gap-2"
+                        aria-current={isCurrent ? "step" : undefined}
+                    >
                         {isReachable && !isCurrent ? (
                             <Link href={href} className="hover:text-ink-heading transition-colors">
                                 {content}
@@ -73,7 +88,7 @@ export function OnboardingStepIndicator({
                                 aria-hidden="true"
                                 className={cn(
                                     "w-6 h-px",
-                                    isCompleted || isPast ? "bg-ink-heading" : "bg-default",
+                                    isFinishedWith ? "bg-ink-heading" : "bg-default",
                                 )}
                             />
                         )}
