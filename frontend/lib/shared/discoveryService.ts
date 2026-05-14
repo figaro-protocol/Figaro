@@ -26,10 +26,11 @@ function profileToCatalogue(
     catalogue: SellerCatalogueMetadata | undefined,
     index: number,
 ): SellerCatalogue {
+    const address = profile.subjectAddress ?? catalogue?.subjectAddress ?? '0x0';
     return {
-        id: profile.slug || `ipfs-${index}`,
+        id: address !== '0x0' ? address.toLowerCase() : `ipfs-${index}`,
         name: profile.name,
-        address: profile.subjectAddress ?? catalogue?.subjectAddress ?? '0x0',
+        address,
         description: profile.description ?? '',
         specialty: profile.specialty ?? '',
         image: profile.branding?.logoURI && isSafeImageURI(profile.branding.logoURI)

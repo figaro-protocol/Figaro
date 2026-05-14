@@ -146,7 +146,6 @@ export function OperatorEditCatalogue() {
         update({
             profile: {
                 name: existingProfile.name,
-                slug: existingProfile.slug,
                 description: existingProfile.description,
                 specialty: existingProfile.specialty,
                 location: existingProfile.location,

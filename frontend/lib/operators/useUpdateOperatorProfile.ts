@@ -174,7 +174,7 @@ function mergeProfile(
     // (it's the on-chain identity); silently drop attempts to clear it.
     for (const key of clear) {
         if (key === "subjectAddress") continue;
-        if (key === "name" || key === "slug") continue; // required fields, can't be cleared
+        if (key === "name") continue; // required field, can't be cleared
         delete (merged as unknown as Record<string, unknown>)[key];
     }
 

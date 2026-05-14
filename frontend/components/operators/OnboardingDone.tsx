@@ -49,13 +49,11 @@ interface DraftSummary {
 
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
     if (!state.profile?.name) return { error: "Step 2 (Profile) is incomplete: name is required." };
-    if (!state.profile?.slug) return { error: "Step 2 (Profile) is incomplete: URL handle is required." };
     if (!state.publishedCatalogueURI) return { error: "Step 4 (Link) is incomplete: pin your catalogue first." };
 
     const profile: OperatorProfileMetadata = {
         subjectAddress: wallet,
         name: state.profile.name,
-        slug: state.profile.slug,
         description: state.profile.description,
         specialty: state.profile.specialty,
         location: state.profile.location?.geohash || state.profile.location?.addressText
@@ -207,7 +205,6 @@ export function OnboardingDone() {
                 <h2 className="text-heading-h2 text-ink-heading">Review</h2>
                 <dl className="space-y-2 text-sm text-ink-body">
                     <Row label="Operator name" value={"profile" in draft ? draft.profile.name : ""} />
-                    <Row label="URL handle" value={"profile" in draft ? draft.profile.slug : ""} />
                     <Row
                         label="Catalogue URI"
                         value={"catalogueURI" in draft ? truncateHex(draft.catalogueURI, { head: 18, tail: 6 }) : ""}

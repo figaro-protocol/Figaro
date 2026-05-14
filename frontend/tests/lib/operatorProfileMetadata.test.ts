@@ -9,7 +9,6 @@ import {
 describe('operator profile metadata parser', () => {
     const VALID_DOC = {
         name: 'Bob Pizza',
-        slug: 'bob-pizza',
         description: 'Authentic NY-style',
         specialty: 'Italian',
         location: { geohash: 'dr5reg', addressText: 'Manhattan, NY' },
@@ -53,11 +52,10 @@ describe('operator profile metadata parser', () => {
             expect(result.version).toBe('1.0.0');
         });
 
-        it('parses a minimal profile with only name + slug', () => {
-            const result = parseOperatorProfileDocument({ name: 'Minimal Operator', slug: 'minimal' });
+        it('parses a minimal profile with only name', () => {
+            const result = parseOperatorProfileDocument({ name: 'Minimal Operator' });
 
             expect(result.name).toBe('Minimal Operator');
-            expect(result.slug).toBe('minimal');
             expect(result.description).toBeUndefined();
             expect(result.acceptedTokens).toBeUndefined();
             expect(result.services).toBeUndefined();
@@ -76,7 +74,6 @@ describe('operator profile metadata parser', () => {
         it('throws when acceptedTokens carries a malformed address', () => {
             expect(() => parseOperatorProfileDocument({
                 name: 'Bob',
-                slug: 'bob',
                 acceptedTokens: [{ address: 'not-an-address', symbol: 'BAD' }],
             })).toThrow(/acceptedTokens\[0\]\.address must be a 20-byte hex address/);
         });
@@ -84,7 +81,6 @@ describe('operator profile metadata parser', () => {
         it('throws when services is not an object', () => {
             expect(() => parseOperatorProfileDocument({
                 name: 'Bob',
-                slug: 'bob',
                 services: 'not-an-object',
             })).toThrow(/services must be an object/);
         });
@@ -92,7 +88,6 @@ describe('operator profile metadata parser', () => {
         it('parses services with only some fields', () => {
             const result = parseOperatorProfileDocument({
                 name: 'Bob',
-                slug: 'bob',
                 services: { mcp: 'https://example.com/mcp' },
             });
 
@@ -127,7 +122,6 @@ describe('operator profile metadata parser', () => {
         it('returns null when acceptedTokens is malformed (does not throw)', () => {
             expect(tryParseOperatorProfileDocument({
                 name: 'Bob',
-                slug: 'bob',
                 acceptedTokens: [{ address: 'malformed', symbol: 'BAD' }],
             })).toBeNull();
         });

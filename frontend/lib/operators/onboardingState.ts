@@ -39,7 +39,6 @@ import type {
 
 export interface OnboardingProfileDraft {
     name?: string;
-    slug?: string;
     description?: string;
     specialty?: string;
     location?: {
@@ -215,7 +214,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
 export function completedSteps(state: OnboardingState): Set<OnboardingStep["id"]> {
     const out = new Set<OnboardingStep["id"]>();
     out.add("welcome");
-    if (state.profile?.name && state.profile?.slug) out.add("profile");
+    if (state.profile?.name) out.add("profile");
     if (state.catalogue?.items && state.catalogue.items.length > 0) out.add("catalogue");
     if (state.publishedProfileURI && state.publishedCatalogueURI) out.add("link");
     if (state.assemblies && state.assemblies.length > 0) out.add("assemblies");

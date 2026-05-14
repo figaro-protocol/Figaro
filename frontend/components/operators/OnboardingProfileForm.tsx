@@ -26,12 +26,11 @@ import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata
 import { encodeGeohash } from "@/lib/handoff/manifest";
 import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/shared/geocode";
 import { getCommonTokens, type CommonToken } from "@/lib/shared/commonTokens";
-import { slugify } from "@/lib/shared/slug";
 import { hexEqual } from "@/lib/shared/evm";
 
 /**
  * Step 2 of the onboarding wizard. Collects the stable identity fields
- * that live on the operator profile document: name, slug, description,
+ * that live on the operator profile document: name, description,
  * specialty, location, logo, accepted-token list, default-pricing token.
  *
  * State is wallet-scoped and persisted to localStorage on every change
@@ -41,7 +40,6 @@ import { hexEqual } from "@/lib/shared/evm";
 
 interface FormState {
     name: string;
-    slug: string;
     description: string;
     specialty: string;
     geohash: string;
@@ -54,7 +52,6 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
     name: "",
-    slug: "",
     description: "",
     specialty: "",
     geohash: "",
@@ -93,7 +90,6 @@ function fromDraft(draft: OnboardingProfileDraft | undefined): FormState {
     const storedGeohash = draft.location?.geohash ?? "";
     return {
         name: draft.name ?? "",
-        slug: draft.slug ?? "",
         description: draft.description ?? "",
         specialty: draft.specialty ?? "",
         geohash: storedGeohash,
@@ -131,7 +127,6 @@ function toDraft(form: FormState): OnboardingProfileDraft {
 
     return {
         name: form.name.trim() || undefined,
-        slug: form.slug.trim() || undefined,
         description: form.description.trim() || undefined,
         specialty: form.specialty.trim() || undefined,
         location: form.geohash.trim() || form.addressText.trim()
@@ -190,7 +185,6 @@ export function OnboardingProfileForm({
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [hydrated, setHydrated] = useState(false);
-    const [slugTouched, setSlugTouched] = useState(false);
     const [locating, setLocating] = useState<"device" | "address" | null>(null);
     const [locateError, setLocateError] = useState<string | null>(null);
 
@@ -213,12 +207,6 @@ export function OnboardingProfileForm({
         if (hydrated || !loaded) return;
         const next = fromDraft(state.profile);
         setForm(next);
-        // If the loaded slug differs from the slug we'd derive from
-        // the loaded name, treat the slug as user-edited so we don't
-        // overwrite it later.
-        if (next.slug && next.slug !== slugify(next.name).slice(0, 64)) {
-            setSlugTouched(true);
-        }
         setHydrated(true);
     }, [hydrated, loaded, state.profile]);
 
@@ -238,16 +226,7 @@ export function OnboardingProfileForm({
     }
 
     function setName(value: string) {
-        setForm((prev) => ({
-            ...prev,
-            name: value,
-            slug: slugTouched ? prev.slug : slugify(value).slice(0, 64),
-        }));
-    }
-
-    function setSlug(value: string) {
-        setSlugTouched(true);
-        setField("slug", value);
+        setField("name", value);
     }
 
     async function locateFromDevice() {
@@ -335,11 +314,6 @@ export function OnboardingProfileForm({
         e.preventDefault();
         const next: Record<string, string> = {};
         if (!form.name.trim()) next.name = "Name is required.";
-        if (!form.slug.trim()) {
-            next.slug = "URL handle is required.";
-        } else if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]?$/.test(form.slug.trim())) {
-            next.slug = "Use lowercase letters, digits, and hyphens. No spaces.";
-        }
         if (validTokens.length === 0) {
             next.acceptedTokens = "Add at least one accepted token. Catalogue prices are denominated in your default token.";
         } else {
@@ -387,7 +361,7 @@ export function OnboardingProfileForm({
         }
         // Focus the first invalid field so the user sees the error
         // without having to scroll up the page.
-        const firstErrorKey = ["name", "slug", "acceptedTokens", "defaultTokenAddress"].find((k) => next[k]);
+        const firstErrorKey = ["name", "acceptedTokens", "defaultTokenAddress"].find((k) => next[k]);
         if (firstErrorKey) {
             // Radio group has no `id`; the accepted-tokens section
             // isn't a single field. Map the error key to a focus
@@ -440,26 +414,6 @@ export function OnboardingProfileForm({
                         errorId={errors.name ? "profile-name-error" : undefined}
                         aria-required="true"
                     />
-                </FormField>
-                <FormField
-                    label="URL handle (slug)"
-                    inputId="profile-slug"
-                    required
-                    error={errors.slug}
-                >
-                    <Input
-                        id="profile-slug"
-                        type="text"
-                        placeholder="your-handle"
-                        value={form.slug}
-                        onChange={(e) => setSlug(e.target.value)}
-                        hasError={!!errors.slug}
-                        errorId={errors.slug ? "profile-slug-error" : undefined}
-                        aria-required="true"
-                    />
-                    <p className="text-xs text-ink-faint mt-1">
-                        Used in your public URL <code>/m/{form.slug || "your-handle"}</code>. Auto-fills from the name as you type; edit to override.
-                    </p>
                 </FormField>
                 <FormField label="Description" inputId="profile-description">
                     <textarea

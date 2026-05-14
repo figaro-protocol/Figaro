@@ -97,9 +97,10 @@ export interface AssemblyBindingRecord {
 /**
  * The operator profile document.
  *
- * `name` and `slug` are required (slug drives pretty `/m/<slug>` URLs);
- * everything else is optional. The form's submit path writes only the
- * fields the operator filled in.
+ * `name` is required; everything else is optional. The form's submit
+ * path writes only the fields the operator filled in. Discovery URLs
+ * are address-shaped (`/m/<address>`) — the wallet is the operator's
+ * canonical identifier, not a human-readable handle.
  */
 export interface OperatorProfileMetadata {
     /**
@@ -112,8 +113,6 @@ export interface OperatorProfileMetadata {
     subjectAddress?: `0x${string}`;
     /** Human-readable name. */
     name: string;
-    /** URL-safe handle used for `/m/<slug>` discovery routes. */
-    slug: string;
     /** Free-form description. */
     description?: string;
     /** Free-form self-description ("Italian café", "immigration law", "bicycle repair"). Not a closed taxonomy. */
@@ -329,7 +328,6 @@ export function parseOperatorProfileDocument(
             ? undefined
             : asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
         name: asString(record.name, `${sourceLabel}.name`),
-        slug: asString(record.slug, `${sourceLabel}.slug`),
         description: asOptionalString(record.description, `${sourceLabel}.description`),
         specialty: asOptionalString(record.specialty, `${sourceLabel}.specialty`),
         location: parseLocation(record.location, `${sourceLabel}.location`),
@@ -369,7 +367,6 @@ export function tryParseOperatorProfileDocument(
 export const OPERATOR_PROFILE_METADATA_EXAMPLE: OperatorProfileMetadata = {
     subjectAddress: "0xeXAMPLeeXAMPLeeXAMPLeeXAMPLeeXAMPLe0001" as `0x${string}`,
     name: "Example Merchant",
-    slug: "example-merchant",
     description: "Synthetic operator profile used as a documentation example.",
     specialty: "Example specialty",
     location: {

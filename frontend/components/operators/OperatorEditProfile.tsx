@@ -97,7 +97,6 @@ export function OperatorEditProfile() {
         if (!existingProfile) return;
         const draft: OnboardingProfileDraft = {
             name: existingProfile.name,
-            slug: existingProfile.slug,
             description: existingProfile.description,
             specialty: existingProfile.specialty,
             location: existingProfile.location,
