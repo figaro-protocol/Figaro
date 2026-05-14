@@ -259,6 +259,11 @@ export function OnboardingCatalogueForm({
         <form onSubmit={validateAndContinue} className="space-y-12">
             <Card className="p-4 text-sm text-ink-body space-y-4">
                 <p>
+                    Items are content, not commitments. Adding or editing items
+                    here has no on-chain effect; prices are quoted from this
+                    list and bonded only when a buyer commits.
+                </p>
+                <p>
                     Items are priced in <span className="font-semibold text-ink-heading">{defaultTokenSymbol || "your default token"}</span>.
                     Buyers paying in another accepted token see a converted price at commit time.
                 </p>

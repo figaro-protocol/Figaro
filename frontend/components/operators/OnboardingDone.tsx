@@ -47,6 +47,23 @@ interface DraftSummary {
     catalogueURI: string;
 }
 
+/**
+ * Render an on-chain `DEPOSIT_LOCK_PERIOD` (bigint seconds) as a
+ * human-readable duration. The deployed value is one year on-chain
+ * today, but we derive the rendering at runtime so a redeployed
+ * contract with a different value still displays cleanly.
+ */
+function formatLockPeriod(seconds: bigint): string {
+    const total = Number(seconds);
+    const days = Math.floor(total / 86400);
+    if (days >= 365) {
+        const years = Math.floor(days / 365);
+        return years === 1 ? "one-year" : `${years}-year`;
+    }
+    if (days >= 1) return days === 1 ? "one-day" : `${days}-day`;
+    return `${total}-second`;
+}
+
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
     if (!state.profile?.name) return { error: "Step 2 (Profile) is incomplete: name is required." };
     if (!state.publishedCatalogueURI) return { error: "Step 4 (Link) is incomplete: pin your catalogue first." };
@@ -259,7 +276,7 @@ export function OnboardingDone() {
                         </span>
                         {lockPeriod !== undefined && (
                             <>
-                                {" "}— lock period {Number(lockPeriod)}s before reclaim is allowed.
+                                {" "}— reclaimable via <code>withdraw</code> after a {formatLockPeriod(lockPeriod)} lock. The lock starts on register; unaffected by <code>updateProfile</code>.
                             </>
                         )}
                     </p>

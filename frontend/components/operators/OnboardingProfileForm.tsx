@@ -403,6 +403,12 @@ export function OnboardingProfileForm({
             {/* ── Identity ───────────────────────────────────────────── */}
             <section className="space-y-6">
                 <h2 className="text-base font-semibold text-ink-heading">Identity</h2>
+                <p className="text-sm text-ink-body">
+                    Name, description, and specialty — the fields that resolve
+                    when a buyer or another operator looks up your address on
+                    the protocol. Everything in this section pins to IPFS in
+                    step 4 as part of your identity envelope.
+                </p>
                 <FormField label="Name" inputId="profile-name" required error={errors.name}>
                     <Input
                         id="profile-name"
@@ -442,6 +448,13 @@ export function OnboardingProfileForm({
             {/* ── Location ──────────────────────────────────────────── */}
             <section className="space-y-6">
                 <h2 className="text-base font-semibold text-ink-heading">Location</h2>
+                <p className="text-sm text-ink-body">
+                    Optional, public. Buyer surfaces use the geohash to anchor
+                    proximity-based discovery; the human-readable address is
+                    shown verbatim on your <code>/m/&lt;address&gt;</code>{" "}
+                    page. Coarser precision hides your exact coordinates while
+                    still anchoring you to a region.
+                </p>
                 <FormField label="Address" inputId="profile-address">
                     <Input
                         id="profile-address"
@@ -513,6 +526,12 @@ export function OnboardingProfileForm({
             {/* ── Branding ──────────────────────────────────────────── */}
             <section className="space-y-6">
                 <h2 className="text-base font-semibold text-ink-heading">Branding</h2>
+                <p className="text-sm text-ink-body">
+                    Optional. The logo is shown on the discover card and on
+                    your <code>/m/&lt;address&gt;</code> page. It pins
+                    alongside the rest of your identity envelope, so changing
+                    the logo re-pins the profile.
+                </p>
                 <FormField label="Logo">
                     <IpfsImageUpload
                         value={form.logoURI}

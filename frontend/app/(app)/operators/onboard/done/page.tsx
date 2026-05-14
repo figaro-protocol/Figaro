@@ -8,10 +8,10 @@ export default function OnboardingDonePage() {
     return (
         <OnboardingShell
             stepId="done"
-            title="You&apos;re registered"
+            title="Review and publish"
             description={
                 <p>
-                    Your operator profile is pinned and the on-chain registration has confirmed. The runtime can now route bonded orders to your wallet.
+                    Last step. Review the profile assembled from the previous six steps, then publish: we pin the profile JSON to IPFS and call <code>register</code> (or <code>updateProfile</code> for a returning wallet) on <code>OperatorRegistry</code>. Once the on-chain transaction confirms, your wallet is addressable as an operator.
                 </p>
             }
         >
