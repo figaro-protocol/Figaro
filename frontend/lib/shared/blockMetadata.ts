@@ -24,7 +24,7 @@ import type { ModuleComponent } from "@/lib/shared/moduleRegistry";
  *                  domain mechanisms (Cart, JobMarket) that the designer
  *                  composes onto the FigaroCore baseline
  *  - `schema`    — attestation/agreement clause blocks (GHG disclosure,
- *                  manifest variants, role-process schemas)
+ *                  manifest variants, operator-process schemas)
  *  - `handoff`   — physical-exchange coordination (mode + ECDH + tracker)
  *  - `display`   — pure-view widgets (process graph, capital summary,
  *                  event timeline). Hidden from palette by default

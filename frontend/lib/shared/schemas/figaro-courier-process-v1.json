@@ -5,7 +5,7 @@
     "description": "Event stream emitted by a courier operator (driver, cyclist, walker, drone, autonomous vehicle, etc.) to coordinate with buyer and merchant. The event log is the SSoT for the courier's role in the order lifecycle. Generic across transport modes; the event vocabulary maps to a transport job's pickup-to-dropoff flow.",
     "categories": [
         "lifecycle",
-        "role-process"
+        "operator-process"
     ],
     "fields": [
         {

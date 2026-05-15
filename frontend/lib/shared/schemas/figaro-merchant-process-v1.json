@@ -5,7 +5,7 @@
     "description": "Event stream emitted by a merchant operator (restaurant, retail, service merchant, etc.) to coordinate with buyer and courier. The event log is the SSoT for the merchant's role in the order lifecycle. Generic across local-commerce verticals; the event vocabulary maps to the merchant's order-fulfillment flow.",
     "categories": [
         "lifecycle",
-        "role-process"
+        "operator-process"
     ],
     "fields": [
         {
