@@ -69,11 +69,6 @@ const SCHEMA_FAMILIES: { name: string; rows: SchemaRow[] }[] = [
                 id: "figaro-ghg-measurement-v1",
                 description: "Runtime grams CO2e per fulfilment (Category-1) — estimate / measured / restated / verified.",
             },
-            {
-                id: "figaro-offset-retirement-v1",
-                description:
-                    "Runtime receipt for an off-protocol carbon-offset retirement performed by the buyer against a process before resolveProcess (Category-1). Anchors the aggregator address, input token + amount, beneficiary, retirement tx hash, and tonnes retired in 1e18 fixed-point (ERC-20 carbon-token convention). Sister of figaro-offset-policy-v1.",
-            },
         ],
     },
     {

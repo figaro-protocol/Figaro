@@ -36,7 +36,6 @@ import ghgPAS2050Spec from "@/lib/shared/schemas/figaro-ghg-pas-2050-v1.json";
 import ghgProtocolSpec from "@/lib/shared/schemas/figaro-ghg-protocol-v1.json";
 import jurisdictionSpec from "@/lib/shared/schemas/figaro-jurisdiction-v1.json";
 import merchantProcessSpec from "@/lib/shared/schemas/figaro-merchant-process-v1.json";
-import offsetRetirementSpec from "@/lib/shared/schemas/figaro-offset-retirement-v1.json";
 import proximityPolicySpec from "@/lib/shared/schemas/figaro-proximity-policy-v1.json";
 import proximityProofSpec from "@/lib/shared/schemas/figaro-proximity-proof-v1.json";
 import topologySpec from "@/lib/shared/schemas/figaro-topology-v1.json";
@@ -117,7 +116,6 @@ export const SCHEMA_TIER_MAP: Readonly<Record<string, SchemaTier>> = {
     "figaro-courier-process-v1": "runtime",
     "figaro-ghg-measurement-v1": "runtime",
     "figaro-merchant-process-v1": "runtime",
-    "figaro-offset-retirement-v1": "runtime",
     "figaro-proximity-proof-v1": "runtime",
 };
 
@@ -154,7 +152,6 @@ const ALL_SPECS: readonly SchemaSpecMeta[] = [
     ghgProtocolSpec,
     jurisdictionSpec,
     merchantProcessSpec,
-    offsetRetirementSpec,
     proximityPolicySpec,
     proximityProofSpec,
     topologySpec,

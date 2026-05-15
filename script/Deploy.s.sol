@@ -26,7 +26,6 @@ import "../src/schemaValidators/FigaroGHGCustomV1Validator.sol";
 import "../src/schemaValidators/FigaroGHGMeasurementV1Validator.sol";
 import "../src/schemaValidators/FigaroProximityPolicyV1Validator.sol";
 import "../src/schemaValidators/FigaroOffsetPolicyV1Validator.sol";
-import "../src/schemaValidators/FigaroOffsetRetirementV1Validator.sol";
 import "../src/schemaValidators/FigaroProximityProofV1Validator.sol";
 import "../src/schemaValidators/FigaroMerchantProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
@@ -123,10 +122,7 @@ contract Deploy is Script {
         schemas.registerSchema(
             keccak256("figaro-offset-policy-v1"), 1, keccak256("ipfs://figaro-offset-policy/v1")
         );
-        schemas.registerSchema(
-            keccak256("figaro-offset-retirement-v1"), 1, keccak256("ipfs://figaro-offset-retirement/v1")
-        );
-        console.log("Registered 18 reference schemas");
+        console.log("Registered 17 reference schemas");
 
         // ── Schema validators ───────────────────────────────────────
         // Deploy per-schema validator contracts and wire them into the
@@ -329,9 +325,6 @@ contract Deploy is Script {
         attestation.setValidator(
             keccak256("figaro-offset-policy-v1"), address(new FigaroOffsetPolicyV1Validator())
         );
-        attestation.setValidator(
-            keccak256("figaro-offset-retirement-v1"), address(new FigaroOffsetRetirementV1Validator())
-        );
-        console.log("Registered 17 schema validators with AttestationCoordinator");
+        console.log("Registered 16 schema validators with AttestationCoordinator");
     }
 }

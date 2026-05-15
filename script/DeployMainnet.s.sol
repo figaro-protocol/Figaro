@@ -26,7 +26,6 @@ import "../src/schemaValidators/FigaroGHGMeasurementV1Validator.sol";
 import "../src/schemaValidators/FigaroProximityPolicyV1Validator.sol";
 import "../src/schemaValidators/FigaroProximityProofV1Validator.sol";
 import "../src/schemaValidators/FigaroOffsetPolicyV1Validator.sol";
-import "../src/schemaValidators/FigaroOffsetRetirementV1Validator.sol";
 import "../src/schemaValidators/FigaroMerchantProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroJurisdictionV1Validator.sol";
@@ -157,10 +156,7 @@ contract DeployMainnet is Script {
         schemas.registerSchema(
             keccak256("figaro-offset-policy-v1"), 1, keccak256("ipfs://figaro-offset-policy/v1")
         );
-        schemas.registerSchema(
-            keccak256("figaro-offset-retirement-v1"), 1, keccak256("ipfs://figaro-offset-retirement/v1")
-        );
-        console.log("SchemaRegistry: 18 reference schemas registered");
+        console.log("SchemaRegistry: 17 reference schemas registered");
 
         // ── OperatorRegistry ────────────────────────────────────────
         // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
@@ -258,10 +254,8 @@ contract DeployMainnet is Script {
             keccak256("figaro-consent-v1"), address(new FigaroConsentV1Validator()));
         _wireValidator(attestation, "OffsetPolicyV1Validator:       ",
             keccak256("figaro-offset-policy-v1"), address(new FigaroOffsetPolicyV1Validator()));
-        _wireValidator(attestation, "OffsetRetirementV1Validator:   ",
-            keccak256("figaro-offset-retirement-v1"), address(new FigaroOffsetRetirementV1Validator()));
 
-        console.log("AttestationCoordinator: 17 validators wired");
+        console.log("AttestationCoordinator: 16 validators wired");
     }
 
     function _wireValidator(

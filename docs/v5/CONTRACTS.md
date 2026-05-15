@@ -76,8 +76,7 @@ Validators are pure / view, no admin, no mutable state.
 `FigaroMerchantProcessV1Validator`,
 `FigaroCourierProcessV1Validator`, `FigaroJurisdictionV1Validator`,
 `FigaroConsentV1Validator`,
-`FigaroOffsetPolicyV1Validator` (Category-2, committed providers) +
-`FigaroOffsetRetirementV1Validator` (Category-1, runtime retirement receipt).
+`FigaroOffsetPolicyV1Validator` (Category-2, committed providers).
 Each ABI-decodes per-schema content (no on-chain JSON parsing) and reverts with
 typed custom errors. Foundry tests in `test/schemaValidators/`.
 
