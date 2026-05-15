@@ -272,49 +272,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         [selectedOrderId],
     );
 
-    const autoAddedOffsetByParentRef = useRef<Map<string, string>>(new Map());
-
-    const handleOffsetSelected = useCallback(
-        (parentOrderId: string) => {
-            if (autoAddedOffsetByParentRef.current.has(parentOrderId)) return;
-            setOrders((prev) => {
-                const parent = prev.find((o) => o.id === parentOrderId);
-                if (!parent) return prev;
-                const sub = createSyntheticSubOrder(session, parent);
-                autoAddedOffsetByParentRef.current.set(parentOrderId, sub.order.id);
-                return [...prev, sub.order];
-            });
-        },
-        [session],
-    );
-
-    const handleOffsetUnselected = useCallback(
-        (parentOrderId: string) => {
-            const trackedId = autoAddedOffsetByParentRef.current.get(parentOrderId);
-            if (!trackedId) return;
-            setOrders((prev) => {
-                const tracked = prev.find((o) => o.id === trackedId);
-                if (!tracked) {
-                    autoAddedOffsetByParentRef.current.delete(parentOrderId);
-                    return prev;
-                }
-                const hasDescendant = prev.some((o) => {
-                    if (o.id === trackedId) return false;
-                    const summary = summarizeAgreement(loadAgreement(o.agreementHash));
-                    return summary?.topology?.parentOrderHashes.includes(trackedId) ?? false;
-                });
-                if (hasDescendant) {
-                    autoAddedOffsetByParentRef.current.delete(parentOrderId);
-                    return prev;
-                }
-                autoAddedOffsetByParentRef.current.delete(parentOrderId);
-                if (selectedOrderId === trackedId) setSelectedOrderId(null);
-                return prev.filter((o) => o.id !== trackedId);
-            });
-        },
-        [selectedOrderId],
-    );
-
     const handleEditAgreement = useCallback((orderId: string, edits: AgreementEdits) => {
         setOrders((prev) => {
             const target = prev.find((o) => o.id === orderId);
@@ -638,8 +595,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     hasCourierChild={agreementHints.hasCourierChild}
                     onDeliverySelected={handleDeliverySelected}
                     onDeliveryUnselected={handleDeliveryUnselected}
-                    onOffsetSelected={handleOffsetSelected}
-                    onOffsetUnselected={handleOffsetUnselected}
                     embedded
                 />
             </div>

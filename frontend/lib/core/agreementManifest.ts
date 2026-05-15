@@ -219,8 +219,6 @@ export const GHG_SCHEMA_TO_STANDARD: Record<typeof GHG_DISCLOSURE_SCHEMA_KEYS[nu
 export const GHG_MEASUREMENT_SCHEMA_KEY = "figaro-ghg-measurement-v1";
 /** Committed proximity policy (Category-2 — band declared at agreement time). */
 export const PROXIMITY_POLICY_SCHEMA_KEY = "figaro-proximity-policy-v1";
-/** Carbon-offset providers an assembly accepts (Category-2). */
-export const OFFSET_POLICY_SCHEMA_KEY = "figaro-offset-policy-v1";
 /** Runtime proximity proof (Category-1 — per-handoff nonce + signed witness). */
 export const PROXIMITY_PROOF_SCHEMA_KEY = "figaro-proximity-proof-v1";
 /** Sovereign event log for the merchant role (Category-1). */
@@ -346,7 +344,6 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
         encodeJurisdictionContent,
         encodeGHGScopeContent,
         encodeProximityPolicyContent,
-        encodeOffsetPolicyContent,
         encodeCommerceContent,
         encodeConsentContent,
     } = schemasMod;
@@ -392,10 +389,6 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
         case "figaro-proximity-policy-v1":
             return (data) => encodeProximityPolicyContent({
                 bands: asAny(data.bands ?? []),
-            });
-        case "figaro-offset-policy-v1":
-            return (data) => encodeOffsetPolicyContent({
-                providers: asAny(data.providers ?? []),
             });
         case "figaro-consent-v1":
             return (data) => encodeConsentContent({

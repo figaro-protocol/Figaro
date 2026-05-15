@@ -500,11 +500,6 @@ export function readAgreementFields(order: Order): ManifestFields {
         fields.proximityBands = [...summary.proximity.bands];
     }
 
-    // ── offset ─────────────────────────────────────────────────
-    if (summary?.offset && summary.offset.providers.length > 0) {
-        fields.offsetProviders = [...summary.offset.providers];
-    }
-
     // ── jurisdiction ───────────────────────────────────────────
     // Legacy migration: pre-v2-jurisdiction synthetic orders carried
     // applicableLaw: "Kleros" as a sentinel for Kleros opt-in. Kleros is

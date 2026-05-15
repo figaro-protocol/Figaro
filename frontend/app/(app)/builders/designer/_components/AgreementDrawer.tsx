@@ -147,13 +147,6 @@ interface Props {
      *  any sub-order it auto-added in response to the matching
      *  `onDeliverySelected`, leaving manually-added sub-orders alone. */
     onDeliveryUnselected?: (parentOrderId: string) => void;
-    /** Fired when the user adds the first offset provider in the Emissions
-     *  article. The page should spawn an offset sub-order and track it for
-     *  later removal. */
-    onOffsetSelected?: (parentOrderId: string) => void;
-    /** Fired when the user clears the last offset provider. The page should
-     *  remove the auto-added offset sub-order (if it has no descendants). */
-    onOffsetUnselected?: (parentOrderId: string) => void;
     /** When true, render as an inline flex-column block without fixed
         positioning. The page layout becomes responsible for placement. */
     embedded?: boolean;
@@ -172,8 +165,6 @@ export function AgreementDrawer({
     hasCourierChild = false,
     onDeliverySelected,
     onDeliveryUnselected,
-    onOffsetSelected,
-    onOffsetUnselected,
     embedded = false,
     readOnly = false,
 }: Props) {
@@ -233,10 +224,6 @@ export function AgreementDrawer({
     // offset sub-orders.
     const isMerchantOrder = isRootOrder;
     const isCourierOrder = !isRootOrder && fields.courierProcessIncluded === true;
-    const isOffsetOrder =
-        !isRootOrder &&
-        Array.isArray(fields.offsetProviders) &&
-        fields.offsetProviders.length > 0;
 
     function selectSection(section: ArticleKey) {
         setOpenSection((prev) => (prev === section ? null : section));
@@ -342,48 +329,18 @@ export function AgreementDrawer({
         commitFields(out);
     }
 
-    /** Emissions article: multi-select across the 5 GHG accounting standards.
+    /** Emissions article: multi-select across the GHG accounting standards.
      *  Each checked standard produces an independent disclosure clause in
      *  the agreement (one section per standard, scope defaults to 1).
-     *  Clearing the last disclosure also clears any active offset providers
-     *  (there's nothing to offset without a declared report) and removes
-     *  the auto-added offset sub-order via onOffsetUnselected. */
+     *  Carbon-offset retirement is handled at the process level (off-protocol,
+     *  via aggregator contracts) — not here in the per-order drawer. */
     const activeGhgStandards = readStringArray("ghgStandards");
 
     function updateGhgStandards(next: string[]) {
-        const hadDisclosures = activeGhgStandards.length > 0;
-        const willHaveDisclosures = next.length > 0;
-        const offsetActive = (
-            Array.isArray(fields.offsetProviders) && fields.offsetProviders.length > 0
-        );
         const out: ManifestFields = { ...fields };
         if (next.length > 0) out.ghgStandards = next;
         else delete (out as Record<string, unknown>).ghgStandards;
-        if (hadDisclosures && !willHaveDisclosures && offsetActive) {
-            delete (out as Record<string, unknown>).offsetProviders;
-        }
         commitFields(out);
-        if (hadDisclosures && !willHaveDisclosures && offsetActive && order && onOffsetUnselected) {
-            onOffsetUnselected(order.id);
-        }
-    }
-
-    /** Emissions article: multi-select across the 4 carbon-offset providers.
-     *  Picking the first provider triggers `onOffsetSelected` (auto-spawns
-     *  an offset sub-order); clearing the last provider triggers
-     *  `onOffsetUnselected`. */
-    const activeOffsetProviders = readStringArray("offsetProviders");
-
-    function updateOffsetProviders(next: string[]) {
-        const wasEmpty = activeOffsetProviders.length === 0;
-        const willBeEmpty = next.length === 0;
-        const out: ManifestFields = { ...fields };
-        if (next.length > 0) out.offsetProviders = next;
-        else delete (out as Record<string, unknown>).offsetProviders;
-        commitFields(out);
-        if (!order) return;
-        if (wasEmpty && !willBeEmpty && onOffsetSelected) onOffsetSelected(order.id);
-        else if (!wasEmpty && willBeEmpty && onOffsetUnselected) onOffsetUnselected(order.id);
     }
 
     /** Jurisdiction article state — three layers; layer 1 always active
@@ -653,7 +610,6 @@ export function AgreementDrawer({
                             <AttestationsArticle
                                 isMerchantOrder={isMerchantOrder}
                                 isCourierOrder={isCourierOrder}
-                                isOffsetOrder={isOffsetOrder}
                                 merchantProcessIncluded={merchantProcessIncluded}
                                 courierProcessIncluded={courierProcessIncluded}
                                 onMerchantToggle={(next) => setProcessFlag("merchantProcessIncluded", next)}
@@ -686,8 +642,6 @@ export function AgreementDrawer({
                             <EmissionsArticle
                                 checked={activeGhgStandards}
                                 onChange={updateGhgStandards}
-                                offsetProviders={activeOffsetProviders}
-                                onOffsetProvidersChange={updateOffsetProviders}
                             />
                         </section>
                     )}
@@ -823,7 +777,6 @@ function SchemaToggleArticle({
 function AttestationsArticle({
     isMerchantOrder,
     isCourierOrder,
-    isOffsetOrder,
     merchantProcessIncluded,
     courierProcessIncluded,
     onMerchantToggle,
@@ -834,7 +787,6 @@ function AttestationsArticle({
 }: {
     isMerchantOrder: boolean;
     isCourierOrder: boolean;
-    isOffsetOrder: boolean;
     merchantProcessIncluded: boolean;
     courierProcessIncluded: boolean;
     onMerchantToggle: (next: boolean) => void;
@@ -858,9 +810,7 @@ function AttestationsArticle({
         ? (deliveryActive ? "Required when fulfilment includes delivery." : undefined)
         : isCourierOrder
             ? "Edit on the parent merchant order."
-            : isOffsetOrder
-                ? "Not applicable for offset role — edit on the parent merchant order."
-                : "Not applicable for this role — edit on the merchant order.";
+            : "Not applicable for this role — edit on the merchant order.";
 
     // Courier toggle: active iff editing the courier sub-order. Locked-on
     // when the parent has delivery in its fulfilment.
@@ -875,9 +825,7 @@ function AttestationsArticle({
                 : hasCourierChild
                     ? "Edit on the courier sub-order."
                     : "Requires delivery in Fulfilment or a courier sub-order on the canvas.")
-            : isOffsetOrder
-                ? "Not applicable for offset role."
-                : "Not applicable for this role.";
+            : "Not applicable for this role.";
 
     return (
         <div className="space-y-5">
@@ -1196,36 +1144,28 @@ function CheckboxGroup({
     );
 }
 
-const OFFSET_PROVIDER_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-    { value: "klima", label: "Klima DAO" },
-    { value: "toucan", label: "Toucan Protocol (BCT / NCT)" },
-    { value: "moss", label: "Moss.Earth (MCO2)" },
-    { value: "custom", label: "Custom operator" },
-];
-
 /**
- * Emissions article — two multi-select groups:
- *   - Emission disclosures (1 clause per checked standard).
- *   - Carbon offsets — gated on at least one disclosure being checked
- *     (there's nothing to offset without a declared emissions report).
- *     Picking any provider spawns an offset sub-order on the canvas.
+ * Emissions article — multi-select across the GHG accounting standards.
+ * Each checked standard produces an independent disclosure clause in the
+ * agreement (one section per standard, scope defaults to 1).
+ *
+ * Carbon-offset retirement is process-level (off-protocol via aggregator
+ * contracts), not order-level. The buyer retires offsets from the
+ * pre-resolve panel on the process page, sized to the aggregated
+ * `totalActualGrams` across all measurement attestations in the process.
+ * No offset selection lives in this drawer.
  */
 function EmissionsArticle({
     checked,
     onChange,
-    offsetProviders,
-    onOffsetProvidersChange,
 }: {
     checked: string[];
     onChange: (next: string[]) => void;
-    offsetProviders: string[];
-    onOffsetProvidersChange: (next: string[]) => void;
 }) {
     const standardOptions = GHG_DISCLOSURE_SCHEMA_KEYS.map((schemaId) => ({
         value: schemaId,
         label: getSchemaInfo(schemaId)?.title ?? schemaId,
     }));
-    const disclosuresActive = checked.length > 0;
     return (
         <div className="space-y-5">
             <CheckboxGroup
@@ -1235,23 +1175,6 @@ function EmissionsArticle({
                 onToggle={(value) => onChange(toggleInList(checked, value))}
                 testIdPrefix="drawer-emissions-standard"
             />
-            <CheckboxGroup
-                label="Carbon offsets"
-                hint={disclosuresActive ? undefined : "Check a disclosure to enable."}
-                options={OFFSET_PROVIDER_OPTIONS}
-                checked={offsetProviders}
-                onToggle={(value) => onOffsetProvidersChange(toggleInList(offsetProviders, value))}
-                disabled={!disclosuresActive}
-                testIdPrefix="drawer-emissions-offset"
-            />
-            {disclosuresActive && offsetProviders.length > 0 && (
-                <p
-                    className="text-[11px] text-neutral-500"
-                    data-testid="drawer-emissions-offset-hint"
-                >
-                    Offset sub-order on the canvas.
-                </p>
-            )}
         </div>
     );
 }
