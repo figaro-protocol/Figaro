@@ -60,8 +60,6 @@ import type { LensId } from "@/lib/shared/schemaCategories";
  */
 export type GraphLens = LensId | "default";
 
-export type WalletRole = "proposer" | "counterparty" | null;
-
 // ── Visual maps ─────────────────────────────────────────────────────────────
 
 const STATE_COLORS: Record<OrderState, string> = {
@@ -96,7 +94,8 @@ const LENS_HIGHLIGHT: Record<GraphLens, string> = {
 
 type OrderNodeData = Order & {
     decimals: number;
-    walletRole: WalletRole;
+    isBuyer: boolean;
+    isSeller: boolean;
     activeLens: GraphLens;
     agreementSummary: AgreementSummary | null;
     /** Designer mode: when set, the node renders an × delete affordance. */
@@ -168,9 +167,9 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
     const nodeClassName = data.designerMode
         ? `px-3 py-2 rounded min-w-[180px] border border-neutral-300 bg-white cursor-pointer hover:border-neutral-700`
         : `px-3 py-2 rounded-lg border-2 shadow-md transition-shadow ${STATE_COLORS[data.state]} min-w-[180px] ${
-            data.walletRole === "proposer"
+            data.isBuyer
                 ? "ring-2 ring-offset-1 ring-blue-500"
-                : data.walletRole === "counterparty"
+                : data.isSeller
                     ? "ring-2 ring-offset-1 ring-emerald-500"
                     : ""
         }`;
@@ -197,12 +196,12 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                     <span className="text-xs font-semibold text-black">
                         Order #{data.id.toString().slice(0, 8)}
                     </span>
-                    {!data.designerMode && data.walletRole && (
+                    {!data.designerMode && (data.isBuyer || data.isSeller) && (
                         <span
-                            className={`w-2 h-2 rounded-full ${data.walletRole === "proposer" ? "bg-blue-500" : "bg-emerald-500"
+                            className={`w-2 h-2 rounded-full ${data.isBuyer ? "bg-blue-500" : "bg-emerald-500"
                                 }`}
                             role="img"
-                            aria-label={data.walletRole === "proposer" ? "You initiated" : "You are counterparty"}
+                            aria-label={data.isBuyer ? "You are the buyer" : "You are the seller"}
                         />
                     )}
                 </span>
@@ -503,13 +502,8 @@ export function ProcessGraphCanvas({
         const knownOrderIds = new Set(orders.map((o) => o.id));
 
         const newNodes: Node[] = orders.map((order) => {
-            const walletRole: WalletRole = walletAddress
-                ? hexEqual(walletAddress, order.buyer)
-                    ? "proposer"
-                    : hexEqual(walletAddress, order.seller)
-                        ? "counterparty"
-                        : null
-                : null;
+            const isBuyer = walletAddress ? hexEqual(walletAddress, order.buyer) : false;
+            const isSeller = walletAddress ? hexEqual(walletAddress, order.seller) : false;
 
             const agreementSummary = summarizeAgreement(loadAgreement(order.agreementHash as Hex));
             const knownParents = (topology.get(order.id)?.parentOrderIds ?? []).filter(
@@ -521,7 +515,7 @@ export function ProcessGraphCanvas({
                 id: order.id,
                 type: "order",
                 position: posMap.get(order.id) ?? { x: 0, y: 0 },
-                data: { ...order, decimals, walletRole, activeLens, agreementSummary, onDelete: onDeleteNode, isRoot, designerMode, canAddNodes: onAddSubOrder !== undefined || onAddParent !== undefined } satisfies OrderNodeData,
+                data: { ...order, decimals, isBuyer, isSeller, activeLens, agreementSummary, onDelete: onDeleteNode, isRoot, designerMode, canAddNodes: onAddSubOrder !== undefined || onAddParent !== undefined } satisfies OrderNodeData,
             };
         });
 
