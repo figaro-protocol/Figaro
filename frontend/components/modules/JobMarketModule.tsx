@@ -268,7 +268,6 @@ function AuctionJobCard({ job, accentTone, tokenDecimals = 18 }: { job: AuctionJ
 }
 
 export function JobMarketModule({ moduleId, context }: ModuleProps) {
-    const { selectedRoleKind } = context;
     const accentTone = context.skinBundle?.branding.branding.accentColor;
     const labelStyle = accentTone ? { color: accentTone } : undefined;
     const cardStyle = accentTone ? { borderTopColor: accentTone, borderTopWidth: "2px" } : undefined;
@@ -284,8 +283,6 @@ export function JobMarketModule({ moduleId, context }: ModuleProps) {
             j.dropoffGeohash.toLowerCase().startsWith(geohashFilter.trim().toLowerCase())
         );
     }, [auctionJobs, geohashFilter]);
-
-    if (selectedRoleKind !== "courier") return null;
 
     return (
         <div

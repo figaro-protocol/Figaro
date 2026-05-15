@@ -118,7 +118,6 @@ function createDiscoveryProps(overrides?: Record<string, unknown>) {
         moduleId: 'seller-discovery',
         binding: {} as never,
         context: {
-            selectedRoleKind: 'buyer',
             services: {
                 discovery: {},
             },
@@ -136,7 +135,6 @@ function createCartProps(overrides?: Record<string, unknown>) {
         moduleId: 'cart',
         binding: {} as never,
         context: {
-            selectedRoleKind: 'buyer',
             shellPresentation: {
                 title: 'Neighbourhood Eats',
             },

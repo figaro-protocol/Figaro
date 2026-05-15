@@ -63,7 +63,7 @@ const MERCHANT_EVENTS: readonly MerchantEventDefinition[] = [
 ];
 
 export function MerchantFulfilmentModule({ moduleId, context }: ModuleProps) {
-    const { selectedRoleKind, selectedOrder } = context;
+    const { selectedOrder } = context;
     const { accentTone, cardStyle, labelStyle, shellLabel } = deriveModuleChrome(context);
     const { address } = useAccount();
     const { signal, isPending, isConfirming, error, isAvailable } = useMerchantProcessActions();
@@ -87,8 +87,6 @@ export function MerchantFulfilmentModule({ moduleId, context }: ModuleProps) {
             setPendingEventType(null);
         }
     }, [signal, selectedOrder]);
-
-    if (selectedRoleKind !== "merchant") return null;
 
     if (!selectedOrder) {
         return (

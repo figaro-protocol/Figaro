@@ -22,7 +22,6 @@ const skinBundle = makeSkinBundle({
 
 function createBaseContext(overrides?: Record<string, unknown>) {
     return {
-        selectedRoleKind: 'buyer',
         shellPresentation: {
             title: 'Handoff Guild',
         },

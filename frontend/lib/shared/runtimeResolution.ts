@@ -16,8 +16,6 @@ export interface AssemblyBoundSubjectSummary {
     assemblySlug: string;
     subjectAddress: `0x${string}`;
     displayName: string;
-    roleKinds: string[];
-    assemblyRoleKinds: string[];
     serviceBindings: ServiceBinding[];
     networkTargets: string[];
     metadataURI?: string;
@@ -27,20 +25,6 @@ export interface AssemblyBoundSubjectSummary {
     assetDocument?: RuntimeAssetDocument;
     operatorProfile?: OperatorProfileMetadata;
     sellerCatalogueMetadata?: SellerCatalogueMetadata;
-}
-
-interface RuntimeRoleLike {
-    roleKind: string;
-}
-
-interface RuntimeRoleWithMechanismsLike extends RuntimeRoleLike {
-    mechanismIds: string[];
-}
-
-interface RuntimeMechanismLike {
-    id: string;
-    recognizedRoles?: string[];
-    moduleBindings?: string[];
 }
 
 export interface ResolvedAssemblyShellPresentation {
@@ -66,25 +50,6 @@ export interface ResolvedAssemblySkinBundle {
     subjectAddress?: `0x${string}`;
     bindingId?: string;
     branding: ResolvedMerchantBranding;
-}
-
-export interface ResolvedRuntimeRoleSelection<RoleType extends RuntimeRoleLike> {
-    matchedSubject?: AssemblyBoundSubjectSummary;
-    availableRoles: RoleType[];
-    preferredRoleKind?: string;
-    roleHints: string[];
-}
-
-export interface ResolvedRoleScopedMechanismSelection<
-    RoleType extends RuntimeRoleWithMechanismsLike,
-    MechanismType extends RuntimeMechanismLike,
-> {
-    selectedRole?: RoleType;
-    visibleMechanisms: MechanismType[];
-}
-
-export interface ResolvedRoleScopedModuleSelection {
-    visibleModuleIds: string[];
 }
 
 export interface RuntimeAssetDocumentResponseLike {
@@ -247,83 +212,3 @@ export async function resolveAssemblySkinBundleFromTransport(
     }
 }
 
-export function resolveRuntimeRoleSelection<RoleType extends RuntimeRoleLike>(
-    address: string | undefined,
-    boundSubjects: AssemblyBoundSubjectSummary[],
-    availableRoles: RoleType[]
-): ResolvedRuntimeRoleSelection<RoleType> {
-    if (!address) {
-        return {
-            availableRoles,
-            roleHints: [],
-        };
-    }
-
-    const matchedSubject = boundSubjects.find(
-        (subject) => normalizeAddress(subject.subjectAddress) === normalizeAddress(address)
-    );
-
-    if (!matchedSubject) {
-        return {
-            availableRoles,
-            roleHints: [],
-        };
-    }
-
-    const roleHints = [...new Set(matchedSubject.assemblyRoleKinds)];
-    const matchedRoles = availableRoles.filter((role) => roleHints.includes(role.roleKind));
-
-    return {
-        matchedSubject,
-        availableRoles: matchedRoles.length > 0 ? matchedRoles : availableRoles,
-        preferredRoleKind: matchedRoles[0]?.roleKind,
-        roleHints,
-    };
-}
-
-export function resolveRoleScopedMechanismSelection<
-    RoleType extends RuntimeRoleWithMechanismsLike,
-    MechanismType extends RuntimeMechanismLike,
->(
-    selectedRole: RoleType | undefined,
-    mechanisms: MechanismType[]
-): ResolvedRoleScopedMechanismSelection<RoleType, MechanismType> {
-    if (!selectedRole) {
-        return {
-            selectedRole,
-            visibleMechanisms: mechanisms,
-        };
-    }
-
-    const visibleMechanisms = mechanisms.filter((mechanism) => {
-        if (selectedRole.mechanismIds.includes(mechanism.id)) {
-            return true;
-        }
-
-        if (mechanism.recognizedRoles?.includes(selectedRole.roleKind)) {
-            return true;
-        }
-
-        return false;
-    });
-
-    return {
-        selectedRole,
-        visibleMechanisms: visibleMechanisms.length > 0 ? visibleMechanisms : mechanisms,
-    };
-}
-
-export function resolveRoleScopedModuleSelection(
-    selectedViewModuleIds: string[],
-    visibleMechanisms: RuntimeMechanismLike[],
-    alwaysVisibleModuleIds: string[] = ['role-switcher', 'capability-rail']
-): ResolvedRoleScopedModuleSelection {
-    const mechanismModuleIds = new Set(visibleMechanisms.flatMap((mechanism) => mechanism.moduleBindings ?? []));
-    const alwaysVisibleModuleIdSet = new Set(alwaysVisibleModuleIds);
-
-    return {
-        visibleModuleIds: selectedViewModuleIds.filter(
-            (moduleId) => alwaysVisibleModuleIdSet.has(moduleId) || mechanismModuleIds.has(moduleId)
-        ),
-    };
-}

@@ -14,7 +14,6 @@ import {
 
 // ── Shell / standalone modules ──────────────────────────────────────────────
 
-import { RoleSwitcherModule } from "@/components/modules/RoleSwitcherModule";
 import { CapabilityRailModule } from "@/components/modules/CapabilityRailModule";
 import { MechanismInspectorModule } from "@/components/modules/MechanismInspectorModule";
 import { SellerDiscoveryModule } from "@/components/modules/SellerDiscoveryModule";
@@ -46,27 +45,18 @@ let registered = false;
 
 // ── Compatibility helpers ────────────────────────────────────────────────────
 
-const ANY_ROLE = { roles: null, requiresMechanisms: [], requiresCapabilities: [] } as const;
+const NO_REQUIREMENTS = { requiresMechanisms: [], requiresCapabilities: [] } as const;
 
 // ── Shell blocks (runtime chrome, not draggable) ────────────────────────────
 
 const SHELL_BLOCKS: readonly BlockMetadata[] = [
     {
-        blockId: "role-switcher",
-        displayName: "Role switcher",
-        description: "Runtime chrome: role-selector affordance on the assembly surface.",
-        category: "shell",
-        modules: [{ moduleId: "role-switcher", component: RoleSwitcherModule }],
-        compatibility: ANY_ROLE,
-        excludeFromPalette: true,
-    },
-    {
         blockId: "capability-rail",
         displayName: "Capability rail",
-        description: "Runtime chrome: surface of executable capabilities for the current role/order.",
+        description: "Runtime chrome: surface of executable capabilities for the current order.",
         category: "shell",
         modules: [{ moduleId: "capability-rail", component: CapabilityRailModule }],
-        compatibility: ANY_ROLE,
+        compatibility: NO_REQUIREMENTS,
         excludeFromPalette: true,
     },
     {
@@ -75,7 +65,7 @@ const SHELL_BLOCKS: readonly BlockMetadata[] = [
         description: "Runtime chrome: dev surface inspecting visible mechanisms on an assembly.",
         category: "shell",
         modules: [{ moduleId: "mechanism-inspector", component: MechanismInspectorModule }],
-        compatibility: ANY_ROLE,
+        compatibility: NO_REQUIREMENTS,
         excludeFromPalette: true,
     },
 ];
@@ -89,7 +79,7 @@ const STANDALONE_BLOCKS: readonly BlockMetadata[] = [
         description: "Buyer-side marketplace listing — browse operators, filter by service, inspect catalogues.",
         category: "mechanism",
         modules: [{ moduleId: "seller-discovery", component: SellerDiscoveryModule }],
-        compatibility: { roles: ["buyer"], requiresMechanisms: [], requiresCapabilities: ["commerce.discovery"] },
+        compatibility: { requiresMechanisms: [], requiresCapabilities: ["commerce.discovery"] },
         paletteOrder: 10,
     },
     {
@@ -98,7 +88,7 @@ const STANDALONE_BLOCKS: readonly BlockMetadata[] = [
         description: "Buyer-side cart with line-item aggregation and checkout handoff to order commitment.",
         category: "mechanism",
         modules: [{ moduleId: "cart", component: CartModule }],
-        compatibility: { roles: ["buyer"], requiresMechanisms: [], requiresCapabilities: ["commerce.cart"] },
+        compatibility: { requiresMechanisms: [], requiresCapabilities: ["commerce.cart"] },
         paletteOrder: 20,
     },
     {
@@ -107,7 +97,7 @@ const STANDALONE_BLOCKS: readonly BlockMetadata[] = [
         description: "Fulfiller-side discovery panel — open jobs, geohash filter, accept-into-auction.",
         category: "mechanism",
         modules: [{ moduleId: "job-market", component: JobMarketModule }],
-        compatibility: { roles: ["courier", "fulfiller"], requiresMechanisms: ["dutch-auction"], requiresCapabilities: [] },
+        compatibility: { requiresMechanisms: ["dutch-auction"], requiresCapabilities: [] },
         paletteOrder: 30,
     },
     {
@@ -116,7 +106,7 @@ const STANDALONE_BLOCKS: readonly BlockMetadata[] = [
         description: "Seller-side editor for the merchant catalogue (items, prices, branding, accepted tokens).",
         category: "schema",
         modules: [{ moduleId: "catalogue-editor", component: CatalogueEditorModule }],
-        compatibility: { roles: ["seller", "merchant"], requiresMechanisms: [], requiresCapabilities: ["commerce.catalogue"] },
+        compatibility: { requiresMechanisms: [], requiresCapabilities: ["commerce.catalogue"] },
         paletteOrder: 40,
     },
     {
@@ -125,7 +115,7 @@ const STANDALONE_BLOCKS: readonly BlockMetadata[] = [
         description: "Seller-side dashboard of incoming orders with accept / reject affordances.",
         category: "display",
         modules: [{ moduleId: "incoming-orders", component: IncomingOrdersModule }],
-        compatibility: { roles: ["seller", "merchant"], requiresMechanisms: [], requiresCapabilities: [] },
+        compatibility: NO_REQUIREMENTS,
         paletteOrder: 50,
     },
     {
@@ -134,7 +124,7 @@ const STANDALONE_BLOCKS: readonly BlockMetadata[] = [
         description: "Merchant-side post-acceptance event log: accepted, prep-started, ready-for-pickup, handed-off (figaro-merchant-process-v1).",
         category: "handoff",
         modules: [{ moduleId: "merchant-fulfilment", component: MerchantFulfilmentModule }],
-        compatibility: { roles: ["merchant"], requiresMechanisms: [], requiresCapabilities: [] },
+        compatibility: NO_REQUIREMENTS,
         paletteOrder: 60,
     },
 ];
@@ -160,7 +150,7 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
             { moduleId: "event-timeline", component: EventTimelineModule },
             { moduleId: "process-capital-summary", component: ProcessCapitalSummaryModule },
         ],
-        compatibility: ANY_ROLE,
+        compatibility: NO_REQUIREMENTS,
         paletteOrder: 5,
         fixedBaseline: true,
         excludeFromPalette: true,
@@ -171,7 +161,7 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
         description: "Descending-price allocation mechanism. Buyer-gated start; any fulfiller can accept.",
         category: "mechanism",
         modules: [{ moduleId: "auction-actions", component: AuctionActionModule }],
-        compatibility: { roles: null, requiresMechanisms: [], requiresCapabilities: [] },
+        compatibility: NO_REQUIREMENTS,
         paletteOrder: 100,
     },
     {
@@ -180,7 +170,7 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
         description: "Greenhouse-gas reporting clause. Lifecycle-staged environmental disclosures.",
         category: "schema",
         modules: [{ moduleId: "disclosure-actions", component: DisclosureModule }],
-        compatibility: ANY_ROLE,
+        compatibility: NO_REQUIREMENTS,
         paletteOrder: 110,
     },
     {
@@ -189,7 +179,7 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
         description: "Lifecycle attestations for delivery handoff — pickup, in-transit, delivered signals.",
         category: "handoff",
         modules: [{ moduleId: "delivery-attestation", component: DeliveryAttestationModule }],
-        compatibility: { roles: ["courier", "fulfiller", "buyer"], requiresMechanisms: [], requiresCapabilities: [] },
+        compatibility: NO_REQUIREMENTS,
         paletteOrder: 120,
     },
     {
@@ -203,7 +193,7 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
             { moduleId: "handoff-tracker", component: HandoffTrackerModule },
             { moduleId: "handoff-key-exchange", component: HandoffKeyExchangeModule },
         ],
-        compatibility: ANY_ROLE,
+        compatibility: NO_REQUIREMENTS,
         paletteOrder: 140,
     },
     {
@@ -212,7 +202,7 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
         description: "Self-service operator registration (merchant / driver / both) with reclaimable ETH deposit.",
         category: "mechanism",
         modules: [{ moduleId: "operator-registration-panel", component: OperatorRegistrationModule }],
-        compatibility: ANY_ROLE,
+        compatibility: NO_REQUIREMENTS,
         paletteOrder: 150,
     },
     {
@@ -221,7 +211,7 @@ const PACKAGE_BLOCKS: readonly BlockMetadata[] = [
         description: "Per-process three-layer jurisdiction panel: Layer 1 bonded settlement (always active), Layer 2 Kleros (ruling state, arbitration cost, evidence submission — when proxy configured), Layer 3 State / ADR (applicable law / forum / language — when set in agreement).",
         category: "mechanism",
         modules: [{ moduleId: "dispute-status", component: DisputeStatusModule }],
-        compatibility: ANY_ROLE,
+        compatibility: NO_REQUIREMENTS,
         paletteOrder: 160,
     },
 ];

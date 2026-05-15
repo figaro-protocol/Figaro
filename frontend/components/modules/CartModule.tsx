@@ -87,7 +87,6 @@ function XIcon({ className }: { className?: string }) {
 }
 
 export function CartModule({ moduleId, context }: ModuleProps) {
-    const { selectedRoleKind } = context;
     const { accentTone, cardStyle, labelStyle } = deriveModuleChrome(context);
     const { items, addItem, removeItem, clearCart, getTotalPrice, getItemCount, deliveryMaxPrice, setDeliveryMaxPrice, fulfillmentMode, setFulfillmentMode } = useCartStore();
     const [isOpen, setIsOpen] = useState(false);
@@ -226,8 +225,6 @@ export function CartModule({ moduleId, context }: ModuleProps) {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [commitStep, payload, chainId]);
-
-    if (selectedRoleKind !== "buyer") return null;
 
     const handleToggle = () => {
         setStep("cart");

@@ -47,7 +47,6 @@ function createCatalogueProps(overrides?: Record<string, unknown>) {
         moduleId: 'catalogue-editor',
         binding: {} as never,
         context: {
-            selectedRoleKind: 'merchant',
             services: {
                 catalogue: {
                     publishMerchantCatalogue: vi.fn(),

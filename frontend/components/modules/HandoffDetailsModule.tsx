@@ -38,7 +38,6 @@ const HANDOFF_POINT_OPTIONS: ReadonlyArray<{ value: FulfilmentHandoffPoint; labe
  */
 
 export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
-    const { selectedRoleKind } = context;
     const { accentTone, shellLabel, cardStyle, labelStyle } = deriveModuleChrome(context);
 
     // Form state
@@ -128,9 +127,6 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
         );
         setSubmitted(true);
     };
-
-    // Only visible to buyer role
-    if (selectedRoleKind !== "buyer") return null;
 
     if (submitted) {
         return (

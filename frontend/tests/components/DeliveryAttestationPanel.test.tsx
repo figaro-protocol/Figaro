@@ -107,7 +107,6 @@ function createModuleProps(overrides: Record<string, unknown> = {}) {
         context: {
             assembly: {} as any,
             services: {} as any,
-            selectedRoleKind: "courier",
             processModel: {
                 processId: defaultProps.processId,
             } as any,
@@ -127,7 +126,6 @@ function createModuleProps(overrides: Record<string, unknown> = {}) {
                     moduleBindings: [],
                     contracts: [],
                     touchesAssets: false,
-                    recognizedRoles: ["courier"],
                     guarantees: [],
                     attachments: [],
                     pickupGeohash: "9q8yyk",
@@ -136,8 +134,6 @@ function createModuleProps(overrides: Record<string, unknown> = {}) {
                 } as any,
             ],
             riskBoundaries: {},
-            roles: [],
-            onSelectRole: vi.fn(),
             onExecuteCapability: vi.fn(),
             onSelectOrder: vi.fn(),
             onComposeSubOrder: vi.fn(),
@@ -399,7 +395,6 @@ describe("DeliveryAttestationPanel", () => {
                                 moduleBindings: [],
                                 contracts: [],
                                 touchesAssets: false,
-                                recognizedRoles: ["courier"],
                                 guarantees: [],
                                 attachments: [],
                                 pickupGeohash: "9q8yyk",
@@ -432,7 +427,6 @@ describe("DeliveryAttestationPanel", () => {
                                 moduleBindings: [],
                                 contracts: [],
                                 touchesAssets: false,
-                                recognizedRoles: ["courier"],
                                 guarantees: [],
                                 attachments: [],
                                 pickupGeohash: "9q8yyk",
@@ -470,12 +464,6 @@ describe("DeliveryAttestationPanel", () => {
                 },
             );
             expect(mockSignalWithProof).not.toHaveBeenCalled();
-        });
-
-        it("hides the module outside the driver role", () => {
-            render(<DeliveryAttestationModule {...createModuleProps({ selectedRoleKind: 'buyer' })} />);
-
-            expect(screen.queryByTestId("delivery-attestation-panel")).not.toBeInTheDocument();
         });
 
         it("applies skin-aware chrome through the module wrapper", () => {

@@ -229,7 +229,6 @@ const WELL_KNOWN_SCHEMAS: { key: string; label: string; description: string }[] 
 // ── Main module ───────────────────────────────────────────────────────────────
 
 export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
-    const { selectedRoleKind } = context;
     const { address } = useAccount();
     const { catalogue: catalogueService, evidenceTransport } = context.services;
     const accentTone = context.skinBundle?.branding.branding.accentColor;
@@ -398,9 +397,6 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
     ]);
 
     // ── Render ────────────────────────────────────────────────────────────────
-
-    // Only show for restaurant (seller) role
-    if (selectedRoleKind !== "merchant") return null;
 
     if (!address) {
         return (

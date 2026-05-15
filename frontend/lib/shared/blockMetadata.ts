@@ -28,7 +28,7 @@ import type { ModuleComponent } from "@/lib/shared/moduleRegistry";
  *  - `handoff`   — physical-exchange coordination (mode + ECDH + tracker)
  *  - `display`   — pure-view widgets (process graph, capital summary,
  *                  event timeline). Hidden from palette by default
- *  - `shell`     — runtime chrome (role switcher, capability rail). Never
+ *  - `shell`     — runtime chrome (capability rail). Never
  *                  draggable; always mounted by the runtime
  */
 export type BlockCategory =
@@ -39,12 +39,10 @@ export type BlockCategory =
     | "shell";
 
 /**
- * Block compatibility — which assemblies / roles this block makes sense in.
+ * Block compatibility — host-assembly prerequisites.
  * Used by the palette to grey out blocks the current draft can't host.
  */
 export interface BlockCompatibility {
-    /** Role kinds where this block can mount. `null` = any role. */
-    roles: readonly string[] | null;
     /**
      * Required mechanism kinds in the host assembly (e.g. `["dutch-auction"]`).
      * Empty = no dependency. Palette greys out the block if the current

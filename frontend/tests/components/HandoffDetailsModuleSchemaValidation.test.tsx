@@ -21,7 +21,6 @@ function createProps(overrides?: Record<string, unknown>) {
         moduleId: "handoff-details",
         binding: {} as never,
         context: {
-            selectedRoleKind: "buyer",
             mechanisms: [],
             services: {},
             ...(overrides ?? {}),
@@ -111,8 +110,4 @@ describe("HandoffDetailsModule — figaro-fulfilment-v2 wiring", () => {
         expect(submit.disabled).toBe(false);
     });
 
-    it("renders nothing for non-buyer role", () => {
-        const { container } = render(<HandoffDetailsModule {...createProps({ selectedRoleKind: "seller" })} />);
-        expect(container.firstChild).toBeNull();
-    });
 });

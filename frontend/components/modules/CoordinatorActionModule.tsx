@@ -23,29 +23,27 @@ const MERCHANT_SIGNAL_ORDER: ReadonlyArray<MerchantProcessEventKind> = [
 
 function LifecycleSignalPanel({ context, orderHash }: { context: ModuleProps["context"]; orderHash: string }) {
     const accentTone = context.skinBundle?.branding.branding.accentColor;
-    const roleKind = context.selectedRoleKind;
-    const isMerchant = roleKind === "merchant";
 
-    const signalCapabilities = isMerchant
-        ? MERCHANT_SIGNAL_ORDER.flatMap((eventType) => {
-            const capability = context.selectedOrder?.capabilities.find((candidate) =>
-                isMerchantProcessSignalCapability(candidate)
-                && candidate.action.eventType === eventType
-                && candidate.action.orderHash === orderHash,
-            );
-            return capability ? [{ capability, eventType }] : [];
-        })
-        : COURIER_SIGNAL_ORDER.flatMap((eventType) => {
-            const capability = context.selectedOrder?.capabilities.find((candidate) =>
-                isCourierProcessSignalCapability(candidate)
-                && candidate.action.eventType === eventType
-                && candidate.action.orderHash === orderHash,
-            );
-            return capability ? [{ capability, eventType }] : [];
-        });
+    const merchantSignals = MERCHANT_SIGNAL_ORDER.flatMap((eventType) => {
+        const capability = context.selectedOrder?.capabilities.find((candidate) =>
+            isMerchantProcessSignalCapability(candidate)
+            && candidate.action.eventType === eventType
+            && candidate.action.orderHash === orderHash,
+        );
+        return capability ? [{ capability, eventType: eventType as string }] : [];
+    });
+    const courierSignals = COURIER_SIGNAL_ORDER.flatMap((eventType) => {
+        const capability = context.selectedOrder?.capabilities.find((candidate) =>
+            isCourierProcessSignalCapability(candidate)
+            && candidate.action.eventType === eventType
+            && candidate.action.orderHash === orderHash,
+        );
+        return capability ? [{ capability, eventType: eventType as string }] : [];
+    });
+    const signalCapabilities = [...merchantSignals, ...courierSignals];
 
     if (signalCapabilities.length === 0) {
-        return <p className="text-sm text-neutral-500">No coordinator signal actions are available for the selected order in this role context.</p>;
+        return <p className="text-sm text-neutral-500">No coordinator signal actions are available for the selected order.</p>;
     }
 
     return (

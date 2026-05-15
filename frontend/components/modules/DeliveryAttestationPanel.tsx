@@ -653,7 +653,7 @@ export function DeliveryAttestationPanel({
 }
 
 export function DeliveryAttestationModule({ context }: ModuleProps) {
-    if (context.selectedRoleKind !== "courier" || !context.processModel || !context.selectedOrder) {
+    if (!context.processModel || !context.selectedOrder) {
         return null;
     }
 

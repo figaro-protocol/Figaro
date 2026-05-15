@@ -40,7 +40,6 @@ function createProps(overrides?: Record<string, unknown>) {
         moduleId: 'job-market',
         binding: {} as never,
         context: {
-            selectedRoleKind: 'courier',
             shellPresentation: {
                 title: 'Courier Guild',
             },

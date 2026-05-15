@@ -95,7 +95,6 @@ function PendingOrderCard({ payload, onAccept, onDismiss, isAccepting, accentTon
 // ── Main module ──────────────────────────────────────────────────────────────
 
 export function IncomingOrdersModule({ moduleId, context }: ModuleProps) {
-    const { selectedRoleKind } = context;
     const { accentTone, cardStyle, labelStyle } = deriveModuleChrome(context);
 
     const { address } = useAccount();
@@ -180,9 +179,6 @@ export function IncomingOrdersModule({ moduleId, context }: ModuleProps) {
     const handleDismiss = useCallback((index: number) => {
         setPending((prev) => prev.filter((_, i) => i !== index));
     }, []);
-
-    // Only show for restaurant role
-    if (selectedRoleKind !== "merchant") return null;
 
     return (
         <div

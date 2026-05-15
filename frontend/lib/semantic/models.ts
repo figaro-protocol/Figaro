@@ -15,7 +15,7 @@ export type MechanismRiskClass =
     | "medium-risk-extension"
     | "high-risk-economic";
 
-export type ScopeType = "assembly" | "process" | "order" | "role" | "mechanism";
+export type ScopeType = "assembly" | "process" | "order" | "mechanism";
 
 export interface SemanticSource {
     truthClass: TruthClass;
@@ -296,24 +296,6 @@ export interface EconomicBreakdownModel {
     downstreamReferencedAmount?: EconomicBreakdownValue;
 }
 
-export interface RoleContext {
-    id: string;
-    actor?: `0x${string}`;
-    roleKind: string;
-    displayName: string;
-    description?: string;
-    visibility: "primary" | "secondary" | "advanced" | "hidden";
-    defaultLandingView?: string;
-    scopeType: ScopeType;
-    scopeId: string;
-    mechanismId?: string;
-    mechanismIds: string[];
-    prototype: boolean;
-    authoritySource: SemanticSource;
-    activeCapabilities: CapabilityModel[];
-    activeObligations: string[];
-}
-
 export interface MechanismModel {
     id: string;
     kind: string;
@@ -323,7 +305,6 @@ export interface MechanismModel {
     moduleBindings: string[];
     contracts: string[];
     touchesAssets: boolean;
-    recognizedRoles: string[];
     guarantees: GuaranteeModel[];
     attachments: AttachmentModel[];
 }
@@ -376,7 +357,6 @@ export interface AssemblyModel {
     network: string;
     availableNetworks: string[];
     mechanisms: MechanismModel[];
-    roles: RoleContext[];
     processes: ProcessModel[];
     riskProfile: MechanismRiskClass[];
     source: SemanticSource;

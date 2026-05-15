@@ -48,7 +48,6 @@ export function MechanismInspectorCard({ mechanism, riskBoundary, skin }: Props)
                     <p className="text-xs font-semibold text-neutral-500 mb-2">Mechanism Scope</p>
                     <p>Kind: <span className="font-mono">{mechanism.kind}</span></p>
                     <p>Contracts: <span className="font-mono">{mechanism.contracts.join(", ") || "none"}</span></p>
-                    <p>Roles: <span className="font-mono">{mechanism.recognizedRoles.join(", ") || "none"}</span></p>
                 </div>
                 <div className="rounded border border-neutral-200 bg-neutral-50 p-3">
                     <p className="text-xs font-semibold text-neutral-500 mb-2">Module Bindings</p>

@@ -25,7 +25,6 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 type SendStatus = "idle" | "waiting" | "sending" | "sent" | "error";
 
 export function HandoffKeyExchangeModule({ moduleId, context }: ModuleProps) {
-    const { selectedRoleKind } = context;
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
     const { coordinationMessaging, handoffPersistence } = context.services;
@@ -35,9 +34,6 @@ export function HandoffKeyExchangeModule({ moduleId, context }: ModuleProps) {
     const [sentTo, setSentTo] = useState<string | null>(null);
     const [retryCount, setRetryCount] = useState(0);
     const sendAttemptKeyRef = useRef<string | null>(null);
-
-    // Only visible to buyer role
-    if (selectedRoleKind !== "buyer") return null;
 
     // Extract state from mechanism context
     const coordinatorMech = context.mechanisms.find((m) => m.kind === "coordinator");

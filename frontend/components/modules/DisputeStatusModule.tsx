@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useAccount } from "wagmi";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { Card } from "@/components/ui/Card";
 import { DisputeStatusPanel } from "@/components/core/DisputeStatusPanel";
@@ -9,6 +10,7 @@ import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import type { Order } from "@/lib/core/store";
+import { hexEqual } from "@/lib/shared/evm";
 
 interface Layer3Summary {
     applicableLaw: string;
@@ -63,11 +65,15 @@ export function DisputeStatusModule({ context }: ModuleProps) {
     const klerosConfig = useMemo(() => getKlerosConfigFromEnv(), []);
     const orders = useProcessOrders(processId ?? null);
     const layer3 = useMemo(() => pickLayer3Summary(orders), [orders]);
+    const { address } = useAccount();
 
     if (!processId) return null;
 
+    // Kernel-derived: connected wallet is the rootBuyer of this process iff it
+    // matches the root order's buyer field. Otherwise treat as seller-of-record.
+    const rootOrder = orders.find((o) => o.id === processId);
     const role: "buyer" | "seller" =
-        context.selectedRoleKind === "buyer" ? "buyer" : "seller";
+        address && rootOrder && hexEqual(address, rootOrder.buyer) ? "buyer" : "seller";
 
     return (
         <div className="space-y-3">

@@ -28,7 +28,6 @@ function createProps(overrides?: Record<string, unknown>) {
                     getHandoffKey: (...args: unknown[]) => getHandoffKeyMock(...args),
                 },
             },
-            selectedRoleKind: "buyer",
             selectedOrder: {
                 orderId: "order-1",
                 processId: "process-1",

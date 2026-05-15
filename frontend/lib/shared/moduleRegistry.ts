@@ -6,7 +6,6 @@ import {
     CapabilityModel,
     EconomicBreakdownModel,
     MechanismModel,
-    RoleContext,
     RiskBoundaryModel,
 } from "@/lib/semantic/models";
 import { Assembly, ModuleBinding } from "@/lib/shared/assembly";
@@ -24,7 +23,6 @@ import type { RuntimeServices } from "@/lib/shared/runtimeServices";
 export interface ModuleRenderContext {
     assembly: Assembly;
     services: RuntimeServices;
-    selectedRoleKind: string;
     selectedBoundSubject?: AssemblyBoundSubjectSummary;
     shellPresentation: ResolvedAssemblyShellPresentation;
     skinBundle?: ResolvedAssemblySkinBundle;
@@ -35,8 +33,6 @@ export interface ModuleRenderContext {
     executingCapabilityId: string | null;
     mechanisms: MechanismModel[];
     riskBoundaries: Record<string, RiskBoundaryModel>;
-    roles: RoleContext[];
-    onSelectRole: (roleKind: string) => void;
     onExecuteCapability: (capability: CapabilityModel, input?: CapabilityExecutionInput) => void | Promise<void>;
     onSelectOrder: (orderId: string) => void;
     onComposeSubOrder: (orderId: string) => void;

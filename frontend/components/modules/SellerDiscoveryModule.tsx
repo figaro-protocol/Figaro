@@ -93,7 +93,6 @@ function RestaurantCardInline({ restaurant, onSelect }: RestaurantCardInlineProp
 }
 
 export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
-    const { selectedRoleKind } = context;
     const { discovery } = context.services;
     const accentTone = context.skinBundle?.branding.branding.accentColor;
     const labelStyle = accentTone ? { color: accentTone } : undefined;
@@ -152,8 +151,6 @@ export function SellerDiscoveryModule({ moduleId, context }: ModuleProps) {
         }
         return list;
     }, [searchQuery, specialtyFilter, tokenFilter, sortBy, allRestaurants]);
-
-    if (selectedRoleKind !== "buyer") return null;
 
     // If a restaurant is selected, delegate to MenuBrowsingModule via context
     if (selectedRestaurant) {

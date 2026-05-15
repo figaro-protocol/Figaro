@@ -15,7 +15,7 @@ export type MechanismRiskClass =
 
 export type CompositionLevel = 1 | 2 | 3;
 
-export type ScopeType = "assembly" | "process" | "order" | "role" | "mechanism";
+export type ScopeType = "assembly" | "process" | "order" | "mechanism";
 
 export type RuntimeServiceKey =
     | "catalogue"
@@ -49,22 +49,11 @@ export interface MechanismAssembly {
     enabled: boolean;
     visibility: "primary" | "secondary" | "advanced" | "hidden";
     group?: string;
-    recognizedRoles?: string[];
     contractKeys?: string[];
     moduleBindings: string[];
     /** Explicit list of capability kinds this mechanism handles.
      *  When present, takes precedence over the inferMechanismIdFromCapability heuristic. */
     capabilityBindings?: string[];
-}
-
-export interface RoleAssembly {
-    roleKind: string;
-    displayName: string;
-    description?: string;
-    visibility: "primary" | "secondary" | "advanced" | "hidden";
-    defaultLandingView?: string;
-    modulePriorities?: string[];
-    sampleCapabilities?: string[];
 }
 
 export interface ViewAssembly {
@@ -129,7 +118,6 @@ export interface Assembly {
     contracts: ContractRef[];
     serviceBindings?: ServiceBinding[];
     mechanisms: MechanismAssembly[];
-    roles: RoleAssembly[];
     views: ViewAssembly[];
     modules: ModuleBinding[];
     capabilityPresentation: CapabilityPresentationRule[];
