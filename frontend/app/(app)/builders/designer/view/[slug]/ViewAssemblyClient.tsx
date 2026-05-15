@@ -66,6 +66,12 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const client = usePublicClient();
     const searchParams = useSearchParams();
     const isPublishReview = searchParams.get("intent") === "publish";
+    /** Hint set by the publish-receipt's "Open public read-only view" link.
+     *  When true, the on-chain lookup retries with bounded backoff to ride
+     *  out the gap between AssemblyRegistered emission and the provider's
+     *  log-query reflecting it. Without the hint, lookups single-shot so
+     *  non-existent slugs 404 fast. */
+    const justPublished = searchParams.get("just-published") === "1";
     const [resolved, setResolved] = useState<ResolvedSource>({ kind: "loading" });
     const [forking, setForking] = useState(false);
     const [confirming, setConfirming] = useState(false);
@@ -100,45 +106,75 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             return;
         }
         const slugHash = keccak256(toBytes(slug));
-        client
-            .getContractEvents({
-                address: registry,
-                abi: ASSEMBLY_REGISTRY_ABI,
-                eventName: "AssemblyRegistered",
-                args: { slugHash },
-                fromBlock: 0n,
-                toBlock: "latest",
-            })
-            .then(async (logs) => {
-                if (logs.length === 0) {
+        let cancelled = false;
+
+        // Backoff schedule for the post-publish indexer race. Single-shot
+        // for cold loads (justPublished=false) so non-existent slugs 404
+        // fast. Bounded total wait ~3.75s — past that we give up rather
+        // than block the page indefinitely on a misfiring provider.
+        const backoffsMs = justPublished ? [0, 250, 500, 1000, 2000] : [0];
+
+        (async () => {
+            for (let attempt = 0; attempt < backoffsMs.length; attempt += 1) {
+                if (cancelled) return;
+                if (backoffsMs[attempt] > 0) {
+                    await new Promise((r) => setTimeout(r, backoffsMs[attempt]));
+                    if (cancelled) return;
+                }
+                try {
+                    const logs = await client.getContractEvents({
+                        address: registry,
+                        abi: ASSEMBLY_REGISTRY_ABI,
+                        eventName: "AssemblyRegistered",
+                        args: { slugHash },
+                        fromBlock: 0n,
+                        toBlock: "latest",
+                    });
+                    if (cancelled) return;
+                    if (logs.length === 0) {
+                        // Last attempt — surface not-found. Earlier attempts
+                        // fall through to the next backoff window.
+                        if (attempt === backoffsMs.length - 1) {
+                            setResolved({
+                                kind: "error",
+                                message: `Slug "${slug}" not found in localStorage drafts or on-chain.`,
+                            });
+                        }
+                        continue;
+                    }
+                    const log = logs[0];
+                    const metadataURI = (log.args.metadataURI ?? "") as string;
+                    const manifest = await fetchAssemblyManifest(metadataURI);
+                    if (cancelled) return;
+                    if (!manifest) {
+                        setResolved({
+                            kind: "error",
+                            message:
+                                "Manifest could not be fetched from IPFS. The on-chain identity is anchored regardless; the off-chain content is currently unreachable.",
+                        });
+                        return;
+                    }
+                    seedManifestAgreementsToStore(manifest);
+                    const orders = manifest.orders.map(rehydrateOrder);
+                    setResolved({ kind: "published", name: manifest.name, orders, manifest });
+                    return;
+                } catch (err) {
+                    if (cancelled) return;
+                    // Treat a thrown error as terminal — don't retry through
+                    // a 500 from the provider, that's a different failure.
                     setResolved({
                         kind: "error",
-                        message: `Slug "${slug}" not found in localStorage drafts or on-chain.`,
+                        message: err instanceof Error ? err.message : String(err),
                     });
                     return;
                 }
-                const log = logs[0];
-                const metadataURI = (log.args.metadataURI ?? "") as string;
-                const manifest = await fetchAssemblyManifest(metadataURI);
-                if (!manifest) {
-                    setResolved({
-                        kind: "error",
-                        message:
-                            "Manifest could not be fetched from IPFS. The on-chain identity is anchored regardless; the off-chain content is currently unreachable.",
-                    });
-                    return;
-                }
-                seedManifestAgreementsToStore(manifest);
-                const orders = manifest.orders.map(rehydrateOrder);
-                setResolved({ kind: "published", name: manifest.name, orders, manifest });
-            })
-            .catch((err) => {
-                setResolved({
-                    kind: "error",
-                    message: err instanceof Error ? err.message : String(err),
-                });
-            });
-    }, [slug, client]);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [slug, client, justPublished]);
 
     const handleConfirmPublish = useCallback(async () => {
         if (resolved.kind !== "draft") return;
@@ -242,7 +278,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 </dl>
                 <div className="flex items-center gap-3 pt-2">
                     <Link
-                        href={`/builders/designer/view/${encodeURIComponent(receipt.slug)}`}
+                        href={`/builders/designer/view/${encodeURIComponent(receipt.slug)}?just-published=1`}
                         className="text-sm text-ink-faint hover:text-ink-heading underline"
                         title={`Opens the public read-only view at /builders/designer/view/${receipt.slug}`}
                     >

@@ -26,7 +26,7 @@ test.describe('/builders/designer/new — blank DAG seed (mock)', () => {
 
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 15000 });
         await expect(page.getByTestId('order-graph-card')).toBeVisible();
-        await expect(page.getByTestId('designer-save-draft')).toBeVisible();
+        await expect(page.getByTestId('designer-save')).toBeVisible();
 
         // A blank seed produces a single root order node — count via the
         // `order-node-*` testid prefix.
