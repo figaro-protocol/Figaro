@@ -166,7 +166,11 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     }, [resolved, publish]);
 
     const handleContinueAfterPublish = useCallback(() => {
-        setReceipt(null);
+        // Don't clear receipt locally — that triggers a re-render of the
+        // underlying review canvas (banner + Confirm publish button) for
+        // one paint before router.push completes, which reads as
+        // "shoots me through another page". Letting the component unmount
+        // on route change is sufficient cleanup.
         router.push("/builders/designer");
     }, [router]);
 
@@ -240,8 +244,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     <Link
                         href={`/builders/designer/view/${encodeURIComponent(receipt.slug)}`}
                         className="text-sm text-ink-faint hover:text-ink-heading underline"
+                        title={`Opens the public read-only view at /builders/designer/view/${receipt.slug}`}
                     >
-                        Inspect published assembly →
+                        Open public read-only view →
                     </Link>
                     <button
                         type="button"
@@ -249,7 +254,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold"
                         data-testid="receipt-continue"
                     >
-                        Continue
+                        Continue to assemblies
                     </button>
                 </div>
             </div>
