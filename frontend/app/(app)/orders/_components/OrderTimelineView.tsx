@@ -351,14 +351,14 @@ export function OrderTimelineView({ processId }: Props) {
 
     const isBuyer = !!rootOrder && hexEqual(address, rootOrder.buyer);
     const isSeller = !!rootOrder && hexEqual(address, rootOrder.seller);
-    const role: "buyer" | "merchant" | "spectator" = isBuyer ? "buyer" : isSeller ? "merchant" : "spectator";
+    const role: "buyer" | "seller" | "spectator" = isBuyer ? "buyer" : isSeller ? "seller" : "spectator";
 
     const allOrders = processModel?.orders ?? [];
     // OrderNodeModel.state is the OrderState enum reverse-mapped to a string
     // ("Active" | "Resolved") in `deriveProcessModelFromRuntime`.
     const isResolved = allOrders.length > 0 && allOrders.every((order) => order.state !== "Active");
 
-    const status = role === "merchant"
+    const status = role === "seller"
         ? deriveMerchantStatus(events, isResolved)
         : deriveBuyerStatus(sellerDisplayName, events, isResolved);
 
@@ -430,16 +430,16 @@ export function OrderTimelineView({ processId }: Props) {
                 <p className="text-xs text-neutral-500 font-mono">
                     Process <span data-testid="order-process-id">{processId.slice(0, 10)}…{processId.slice(-6)}</span>
                     {" · "}
-                    {role === "buyer" && <>You are the buyer · merchant: <span className="text-neutral-700">{sellerDisplayName}</span></>}
-                    {role === "merchant" && <>You are the merchant · buyer: <span className="text-neutral-700">{buyerDisplayName}</span></>}
-                    {role === "spectator" && <>Read-only — your wallet is neither buyer nor merchant on this order</>}
+                    {role === "buyer" && <>You are the buyer · seller: <span className="text-neutral-700">{sellerDisplayName}</span></>}
+                    {role === "seller" && <>You are the seller · buyer: <span className="text-neutral-700">{buyerDisplayName}</span></>}
+                    {role === "spectator" && <>Read-only — your wallet is neither buyer nor seller on this order</>}
                 </p>
             </header>
 
             {/* Primary action */}
             <section className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">
                 <p className="text-xs font-semibold text-neutral-500">
-                    {role === "buyer" ? "Your action" : role === "merchant" ? "Next step" : "Status"}
+                    {role === "buyer" ? "Your action" : role === "seller" ? "Next step" : "Status"}
                 </p>
 
                 {role === "buyer" && (
@@ -462,13 +462,13 @@ export function OrderTimelineView({ processId }: Props) {
                             </>
                         ) : (
                             <p className="text-sm text-neutral-500">
-                                Confirm-receipt action unavailable. Reload after the merchant has accepted.
+                                Confirm-receipt action unavailable. Reload after the seller has accepted.
                             </p>
                         )}
                     </>
                 )}
 
-                {role === "merchant" && (
+                {role === "seller" && (
                     <>
                         {next ? (
                             <Button
@@ -522,7 +522,7 @@ export function OrderTimelineView({ processId }: Props) {
                         </div>
                     </li>
                     {events.map((event) => {
-                        const labels = role === "merchant" ? EVENT_LABELS_FOR_MERCHANT : EVENT_LABELS_FOR_BUYER;
+                        const labels = role === "seller" ? EVENT_LABELS_FOR_MERCHANT : EVENT_LABELS_FOR_BUYER;
                         return (
                             <li
                                 key={`${event.eventType}-${event.blockNumber}`}

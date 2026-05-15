@@ -14,7 +14,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 
 // ── Order-level disclosure panel ─────────────────────────────────────────────
 
-function OrderDisclosurePanel({ context, orderHash, role }: { context: ModuleProps["context"]; orderHash: string; role: "merchant" | "courier" }) {
+function OrderDisclosurePanel({ context, orderHash }: { context: ModuleProps["context"]; orderHash: string }) {
     const accentTone = context.skinBundle?.branding.branding.accentColor;
     const { tasks, loading, refresh } = useOrderDisclosureTasks(orderHash);
     const [actualInput, setActualInput] = useState("");
@@ -45,7 +45,6 @@ function OrderDisclosurePanel({ context, orderHash, role }: { context: ModulePro
             try {
                 await context.onExecuteCapability(capability, {
                     kind: "submit-disclosure-commitment",
-                    disclosureRole: role,
                 });
                 await refresh();
             } catch {
@@ -56,7 +55,7 @@ function OrderDisclosurePanel({ context, orderHash, role }: { context: ModulePro
         }
 
         void submitMissing();
-    }, [canSubmitCommitment, commitmentCapability, context, hasCommitment, isSubmittingCommitment, loading, refresh, role]);
+    }, [canSubmitCommitment, commitmentCapability, context, hasCommitment, isSubmittingCommitment, loading, refresh]);
 
     const handleSubmitActual = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -100,9 +99,7 @@ function OrderDisclosurePanel({ context, orderHash, role }: { context: ModulePro
                 <p className="mt-1 text-xs text-neutral-600">
                     {hasCommitment
                         ? "Recorded on-chain."
-                        : role === "merchant"
-                            ? "Recorded when the restaurant accepts the food order."
-                            : "Recorded when the driver claims the delivery order."}
+                        : "Recorded when the seller submits the disclosure commitment for this order."}
                 </p>
                 <p className="mt-0.5 text-xs text-neutral-500">
                     {DISCLOSURE_KIND_DESCRIPTIONS[DISCLOSURE_KIND.commitment]}
@@ -208,10 +205,6 @@ export function DisclosureModule({ context }: ModuleProps) {
     const selectedOrderHash = context.selectedOrder?.orderId ?? null;
     const processId = context.processModel?.processId as `0x${string}` | undefined;
 
-    // Map selected role to disclosure role
-    const disclosureRole: "merchant" | "courier" =
-        context.selectedRoleKind === "courier" ? "courier" : "merchant";
-
     return (
         <div
             className="rounded-lg border border-neutral-200 bg-white p-6"
@@ -237,7 +230,7 @@ export function DisclosureModule({ context }: ModuleProps) {
             {/* Order-level disclosure when an order is selected */}
             {selectedOrderHash !== null ? (
                 <div className={processId ? "mt-4 pt-4 border-t border-neutral-200" : ""}>
-                    <OrderDisclosurePanel context={context} orderHash={selectedOrderHash} role={disclosureRole} />
+                    <OrderDisclosurePanel context={context} orderHash={selectedOrderHash} />
                 </div>
             ) : (
                 <p className="text-sm text-neutral-500 mt-2">

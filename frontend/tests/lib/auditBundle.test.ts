@@ -517,15 +517,15 @@ describe("extractProcessLogs", () => {
         };
     }
 
-    it("partitions events by role (merchant vs courier) by schemaId", () => {
+    it("partitions events by schemaId", () => {
         const merchantEv = logAtt("figaro-merchant-process-v1", 1, "0xM1");
         const courierEv1 = logAtt("figaro-courier-process-v1", 2, "0xC1");
         const courierEv2 = logAtt("figaro-courier-process-v1", 4, "0xC2");
         const doc = extractProcessLogs(order, [merchantEv, courierEv1, courierEv2]);
         expect(doc.merchantEvents).toHaveLength(1);
         expect(doc.courierEvents).toHaveLength(2);
-        expect(doc.merchantEvents[0].role).toBe("merchant");
-        expect(doc.courierEvents[0].role).toBe("courier");
+        expect(doc.merchantEvents[0].schemaKey).toBe("figaro-merchant-process-v1");
+        expect(doc.courierEvents[0].schemaKey).toBe("figaro-courier-process-v1");
     });
 
     it("ignores attestations from other schemas + other orders", () => {

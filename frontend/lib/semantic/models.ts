@@ -76,7 +76,6 @@ export interface SubmitDisclosureCommitmentCapabilityAction {
     executionType: "transaction";
     kind: "submit-disclosure-commitment";
     orderHash: string;
-    disclosureRole: "merchant" | "courier";
 }
 
 export interface SubmitDisclosureInventoryCapabilityAction {
@@ -229,7 +228,6 @@ export interface WithdrawOperatorDepositCapabilityInput {
 
 export interface SubmitDisclosureCommitmentCapabilityInput {
     kind: "submit-disclosure-commitment";
-    disclosureRole: "merchant" | "courier";
 }
 
 export interface SubmitDisclosureInventoryCapabilityInput {

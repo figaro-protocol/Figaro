@@ -39,40 +39,28 @@ export function getMechanismKindsForDesign(orders: readonly Order[]): string[] {
 }
 
 /**
- * Role kinds the design surfaces. Always includes `"buyer"` (every
- * process has a root buyer). For each order, applies structural
- * inference from the agreement's anchored sections:
+ * Role kinds the design surfaces. Always includes `"buyer"` and
+ * `"seller"` (the kernel's two roles). Additional labels are emitted
+ * only when an order anchors an on-chain process-schema whose name
+ * is locked in the SchemaRegistry — those are schema identifiers, not
+ * roles in the kernel sense, but the designer surface uses them to
+ * label sub-orders whose attestation surface differs from a generic
+ * seller's.
  *
- *   - Root order (topology section missing or parents empty) → "merchant"
- *   - Sub-order with `figaro-courier-process-v1` anchored    → "courier"
- *   - Sub-order with `figaro-offset-policy-v1` anchored      → "offset"
- *   - Otherwise (sub-order)                                  → "co-seller"
- *
- * The signal is the schema list on the agreement; matches the drawer's
- * per-role booleans.
+ *   - Sub-order anchors `figaro-courier-process-v1` → "courier"
  *
  * Deduped and sorted alphabetically.
  */
 export function getRoleKindsForDesign(orders: readonly Order[]): string[] {
-    const kinds = new Set<string>(["buyer"]);
+    const kinds = new Set<string>(["buyer", "seller"]);
     for (const order of orders) {
         if (!order.agreementHash) continue;
         const agreement = loadAgreement(order.agreementHash);
         if (!agreement) continue;
         const schemaIds = new Set(agreement.sections.map((s) => s.schema));
 
-        const topologySection = agreement.sections.find((s) => s.schema === TOPOLOGY_SCHEMA);
-        const parentHashes = (topologySection?.data as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
-        const isRoot = !Array.isArray(parentHashes) || parentHashes.length === 0;
-
-        if (isRoot) {
-            kinds.add("merchant");
-        } else if (schemaIds.has(COURIER_PROCESS_SCHEMA)) {
+        if (schemaIds.has(COURIER_PROCESS_SCHEMA)) {
             kinds.add("courier");
-        } else if (schemaIds.has(OFFSET_POLICY_SCHEMA)) {
-            kinds.add("offset");
-        } else {
-            kinds.add("co-seller");
         }
     }
     return Array.from(kinds).sort();

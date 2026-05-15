@@ -18,7 +18,7 @@ export interface TransactionCapabilityExecutors {
     /** Withdraws the deposit and clears the dedup guard, freeing the address
      *  to re-register. Subject to the deploy-time lock period. */
     withdrawOperatorDeposit?: () => TransactionExecutionResult;
-    submitDisclosureCommitment?: (orderHash: string, disclosureRole: "merchant" | "courier") => TransactionExecutionResult;
+    submitDisclosureCommitment?: (orderHash: string) => TransactionExecutionResult;
     submitDisclosureInventory?: (orderHash: string, grams: bigint) => TransactionExecutionResult;
     submitMerchantProcessSignal?: (orderHash: string, eventType: MerchantProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
     submitCourierProcessSignal?: (orderHash: string, eventType: CourierProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
@@ -88,13 +88,10 @@ export async function executeTransactionCapabilityAction(
             break;
         }
         case "submit-disclosure-commitment": {
-            const disclosureRole = input?.kind === "submit-disclosure-commitment"
-                ? input.disclosureRole
-                : action.disclosureRole;
             txHash = await ensureExecutor(
                 executors.submitDisclosureCommitment,
                 "Disclosure commitment execution is unavailable.",
-            )(action.orderHash, disclosureRole);
+            )(action.orderHash);
             break;
         }
         case "submit-disclosure-inventory": {

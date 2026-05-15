@@ -27,7 +27,6 @@ import {
 } from "@/lib/core/agreementManifest";
 
 export interface ProcessLogEntry {
-    role: "merchant" | "courier";
     schemaKey: string;
     /** Order whose buyer/seller emitted the event. */
     attester: string;
@@ -60,7 +59,6 @@ export function extractProcessLogs(
         if (att.orderHash !== order.id) continue;
         if (att.schemaId === MERCHANT_PROCESS_SCHEMA_KEY) {
             merchantEvents.push({
-                role: "merchant",
                 schemaKey: MERCHANT_PROCESS_SCHEMA_KEY,
                 attester: att.attester,
                 stage: att.stage,
@@ -70,7 +68,6 @@ export function extractProcessLogs(
             });
         } else if (att.schemaId === COURIER_PROCESS_SCHEMA_KEY) {
             courierEvents.push({
-                role: "courier",
                 schemaKey: COURIER_PROCESS_SCHEMA_KEY,
                 attester: att.attester,
                 stage: att.stage,

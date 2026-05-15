@@ -41,10 +41,6 @@ function isSellerRole(roleKind: string | undefined): boolean {
     return roleKind === "merchant" || roleKind === "courier" || roleKind === "seller";
 }
 
-function resolveDisclosureRole(roleKind: string | undefined): "merchant" | "courier" {
-    return roleKind === "courier" ? "courier" : "merchant";
-}
-
 function isDeliveryCoordinatorRole(roleKind: string | undefined): boolean {
     return roleKind === "courier";
 }
@@ -114,7 +110,6 @@ export function deriveSelectedOrderCapabilitiesFromRuntime(
                     executionType: "transaction",
                     kind: "submit-disclosure-commitment",
                     orderHash: order.orderId,
-                    disclosureRole: resolveDisclosureRole(roleKind),
                 },
                 mechanismId: disclosureMechanism.id,
                 scopeType: "order",
