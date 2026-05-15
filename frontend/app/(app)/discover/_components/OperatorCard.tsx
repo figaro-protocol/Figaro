@@ -15,10 +15,6 @@ function distinctAssemblySlugs(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => b.assemblySlug)));
 }
 
-function distinctRoles(listing: Listing): string[] {
-    return Array.from(new Set(listing.bindings.map((b) => b.roleKind)));
-}
-
 function InitialsAvatar({ listing }: { listing: Listing }) {
     return (
         <div
@@ -51,7 +47,6 @@ export function OperatorCard({
 }: OperatorCardProps) {
     const href = listingClickThroughHref(listing);
     const assemblies = distinctAssemblySlugs(listing);
-    const roles = distinctRoles(listing);
 
     return (
         <article
@@ -80,9 +75,6 @@ export function OperatorCard({
                     <h3 className="text-base font-semibold text-black truncate group-hover:underline">
                         {listing.name}
                     </h3>
-                    <p className="text-xs text-gray-500 truncate">
-                        {roles.length > 0 ? roles.join(" · ") : "Unbound operator"}
-                    </p>
                 </div>
             </Link>
 

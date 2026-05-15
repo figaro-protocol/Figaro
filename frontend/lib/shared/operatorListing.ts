@@ -24,10 +24,6 @@ export type FulfillmentMode =
 export interface ListingBinding {
     /** Slug of the assembly this binding targets (e.g. "local-commerce"). */
     assemblySlug: string;
-    /** Role this operator holds inside the assembly (e.g. "merchant-operator", "supplier", "reviewer"). */
-    roleKind: string;
-    /** Assembly-level role kinds (e.g. ["merchant"]) — what the runtime renders this operator as. */
-    assemblyRoleKinds: string[];
 }
 
 export interface ListingServiceArea {
@@ -93,8 +89,6 @@ export function profileToListing(
 ): Listing {
     const bindings: ListingBinding[] = (profile.assemblyBindings ?? []).map((b) => ({
         assemblySlug: b.assemblySlug,
-        roleKind: "",
-        assemblyRoleKinds: [],
     }));
 
     return {
