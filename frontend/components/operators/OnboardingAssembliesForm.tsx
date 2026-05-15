@@ -13,7 +13,7 @@ import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/shared/op
 import {
     type AssemblyChoice,
     formatAssemblySchemaList,
-    requiredCounterpartyRoles,
+    requiredCounterpartySchemas,
     useAssemblyChoices,
 } from "@/lib/mechanisms/useAssemblyRegistry";
 
@@ -128,12 +128,12 @@ export function OnboardingAssembliesForm({
     }
 
     const updateCounterparties = useCallback(
-        (slug: string, roleKind: string, addresses: `0x${string}`[]) => {
+        (slug: string, schemaId: string, addresses: `0x${string}`[]) => {
             setCounterpartiesBySlug((prev) => {
                 const next = new Map(prev);
-                const existing = (next.get(slug) ?? []).filter((cb) => cb.roleKind !== roleKind);
+                const existing = (next.get(slug) ?? []).filter((cb) => cb.schemaId !== schemaId);
                 if (addresses.length > 0) {
-                    existing.push({ roleKind, addresses });
+                    existing.push({ schemaId, addresses });
                 }
                 if (existing.length > 0) next.set(slug, existing);
                 else next.delete(slug);
@@ -185,17 +185,17 @@ export function OnboardingAssembliesForm({
                 <p>
                     Assemblies that include sub-orders you organize (e.g. a
                     delivery courier) prompt for the wallets you trust to fill
-                    those roles. Without those addresses the cart has nowhere to
-                    read your counterparties from at checkout time.
+                    those sub-orders. Without those addresses the cart has
+                    nowhere to read your counterparties from at checkout time.
                 </p>
             </Card>
 
             <div className="space-y-3">
                 {choices.map((choice) => {
                     const isSelected = selected.has(choice.slug);
-                    const requiredRoles =
+                    const requiredSchemas =
                         choice.state === "loaded" && choice.manifest
-                            ? requiredCounterpartyRoles(choice.manifest)
+                            ? requiredCounterpartySchemas(choice.manifest)
                             : [];
                     const counterparties = counterpartiesBySlug.get(choice.slug) ?? [];
                     return (
@@ -256,21 +256,21 @@ export function OnboardingAssembliesForm({
                                     Inspect ↗
                                 </Link>
                             </div>
-                            {isSelected && requiredRoles.length > 0 && (
+                            {isSelected && requiredSchemas.length > 0 && (
                                 <div
                                     className="mt-4 pt-4 border-t border-default space-y-4"
                                     data-testid={`operator-assembly-counterparties-${choice.slug}`}
                                 >
-                                    {requiredRoles.map((role) => {
-                                        const entry = counterparties.find((cb) => cb.roleKind === role);
+                                    {requiredSchemas.map((schemaId) => {
+                                        const entry = counterparties.find((cb) => cb.schemaId === schemaId);
                                         const addresses = entry?.addresses ?? [];
                                         return (
-                                            <CounterpartyRoleEditor
-                                                key={role}
-                                                roleKind={role}
+                                            <CounterpartySchemaEditor
+                                                key={schemaId}
+                                                schemaId={schemaId}
                                                 addresses={addresses}
                                                 onChange={(next) =>
-                                                    updateCounterparties(choice.slug, role, next)
+                                                    updateCounterparties(choice.slug, schemaId, next)
                                                 }
                                             />
                                         );
@@ -301,20 +301,21 @@ export function OnboardingAssembliesForm({
     );
 }
 
-/** Per-role address editor — list of address inputs with add / remove.
- *  Maintains local "rows in progress" so the user can type partial
- *  values; the parent only sees validated addresses. Basic shape
- *  validation (viem `isAddress`) only; OperatorRegistry-membership
+/** Per-schema address editor — list of address inputs with add /
+ *  remove. Maintains local "rows in progress" so the user can type
+ *  partial values; the parent only sees validated addresses. Basic
+ *  shape validation (viem `isAddress`) only; OperatorRegistry-membership
  *  lookup is deferred. */
-function CounterpartyRoleEditor({
-    roleKind,
+function CounterpartySchemaEditor({
+    schemaId,
     addresses,
     onChange,
 }: {
-    roleKind: string;
+    schemaId: string;
     addresses: `0x${string}`[];
     onChange: (next: `0x${string}`[]) => void;
 }) {
+    const heading = COUNTERPARTY_SCHEMA_HEADINGS[schemaId] ?? schemaId;
     // Local rows include in-progress (typed but not yet valid) entries.
     // Always pad with one trailing empty row so the user has somewhere
     // to add a new address.
@@ -365,14 +366,14 @@ function CounterpartyRoleEditor({
         <div className="space-y-2">
             <div className="flex items-baseline justify-between gap-2">
                 <span className="text-xs font-semibold text-ink-heading">
-                    {roleKind === "courier" ? "Trusted couriers" : `Trusted ${roleKind}s`}
+                    {heading}
                 </span>
                 <span className="text-[11px] text-ink-faint">
                     {addresses.length} saved
                 </span>
             </div>
             <p className="text-[11px] text-ink-faint">
-                Wallets you designate to fill this role&apos;s sub-order at checkout. Order is
+                Wallets you designate to fill this sub-order at checkout. Order is
                 significant — the cart picks the first reachable wallet.
             </p>
             <div className="space-y-2">
@@ -389,7 +390,7 @@ function CounterpartyRoleEditor({
                                 className={`flex-1 text-xs font-mono px-2 py-1.5 rounded border min-h-9 ${
                                     valid ? "border-default" : "border-red-400"
                                 }`}
-                                data-testid={`counterparty-${roleKind}-input-${i}`}
+                                data-testid={`counterparty-${schemaId}-input-${i}`}
                             />
                             {rows.length > 1 && (
                                 <button
@@ -397,7 +398,7 @@ function CounterpartyRoleEditor({
                                     onClick={() => removeRow(i)}
                                     className="text-xs text-ink-faint hover:text-red-600 px-2"
                                     aria-label={`Remove address ${i + 1}`}
-                                    data-testid={`counterparty-${roleKind}-remove-${i}`}
+                                    data-testid={`counterparty-${schemaId}-remove-${i}`}
                                 >
                                     ×
                                 </button>
@@ -409,7 +410,7 @@ function CounterpartyRoleEditor({
                     type="button"
                     onClick={addRow}
                     className="text-xs text-ink-faint hover:text-ink-heading"
-                    data-testid={`counterparty-${roleKind}-add`}
+                    data-testid={`counterparty-${schemaId}-add`}
                 >
                     + Add another
                 </button>
@@ -417,3 +418,10 @@ function CounterpartyRoleEditor({
         </div>
     );
 }
+
+/** Display headings for the per-schema editor. Maps each
+ *  counterparty-process schemaId to a human-readable label. Schemas
+ *  not in the map fall back to rendering the raw schemaId. */
+const COUNTERPARTY_SCHEMA_HEADINGS: Record<string, string> = {
+    "figaro-courier-process-v1": "Trusted couriers",
+};

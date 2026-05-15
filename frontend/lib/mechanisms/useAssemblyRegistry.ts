@@ -310,21 +310,26 @@ export function collectAssemblySchemas(manifest: AssemblyManifest): string[] {
     return Array.from(set).sort();
 }
 
-/** Roles the operator must populate with counterparty wallets when they
- *  bind to this assembly. Emitted only for non-root orders whose parent's
- *  fulfilment coordination includes `seller-assigned` — the case where the
- *  buyer may pick a fulfiller from the operator's roster at checkout. When
- *  the parent's coordination is exclusively `dutch-auction` (the auction
- *  contract assigns the fulfiller at runtime) or `buyer-assigned` (the
- *  buyer picks freely at checkout), no roster is needed and no role is
- *  emitted. Returns the set of distinct roleKinds, sorted.
+/** Process schemas the operator must populate with counterparty wallets
+ *  when they bind to this assembly. Emitted only for non-root orders
+ *  whose parent's fulfilment coordination includes `seller-assigned` —
+ *  the case where the buyer may pick a fulfiller from the operator's
+ *  roster at checkout. When the parent's coordination is exclusively
+ *  `dutch-auction` (the auction contract assigns the fulfiller at
+ *  runtime) or `buyer-assigned` (the buyer picks freely at checkout),
+ *  no roster is needed and no schema is emitted.
+ *
+ *  Identifies the sub-order's process schema (e.g.
+ *  `figaro-courier-process-v1`) directly — schemaId is the structural
+ *  marker for which kind of off-chain operator a sub-order needs.
+ *  Returns the set of distinct schemaIds, sorted.
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the operator's profile. */
-export function requiredCounterpartyRoles(manifest: AssemblyManifest): string[] {
-    const PROCESS_SCHEMA_TO_ROLE: Record<string, string> = {
-        "figaro-courier-process-v1": "courier",
-    };
+export function requiredCounterpartySchemas(manifest: AssemblyManifest): string[] {
+    const COUNTERPARTY_PROCESS_SCHEMAS: ReadonlySet<string> = new Set([
+        "figaro-courier-process-v1",
+    ]);
 
     const agreementByOrderId = new Map<string, Agreement>();
     for (const order of manifest.orders) {
@@ -349,7 +354,7 @@ export function requiredCounterpartyRoles(manifest: AssemblyManifest): string[] 
         return Array.isArray(parents) ? parents.filter((p): p is string => typeof p === "string") : [];
     }
 
-    const roles = new Set<string>();
+    const schemas = new Set<string>();
     for (const order of manifest.orders) {
         if (!order.agreementHash) continue;
         const agreement = manifest.agreements[order.agreementHash];
@@ -366,11 +371,12 @@ export function requiredCounterpartyRoles(manifest: AssemblyManifest): string[] 
         if (!parentAllowsSellerAssigned) continue;
 
         for (const section of agreement.sections as ReadonlyArray<{ schema: string }>) {
-            const role = PROCESS_SCHEMA_TO_ROLE[section.schema];
-            if (role) roles.add(role);
+            if (COUNTERPARTY_PROCESS_SCHEMAS.has(section.schema)) {
+                schemas.add(section.schema);
+            }
         }
     }
-    return Array.from(roles).sort();
+    return Array.from(schemas).sort();
 }
 
 /** Compact display formatting for a schema list. Strips the `figaro-`

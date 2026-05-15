@@ -61,22 +61,23 @@ export interface OperatorLocation {
 }
 
 /**
- * Designates the wallets the operator entrusts to play a counterparty
- * role in this assembly's sub-orders.
+ * Designates the wallets the operator entrusts as counterparties on
+ * this assembly's sub-orders, keyed by the sub-order's process schema.
  *
  * Example: a merchant bound to `local-commerce-merchant-delivery` has
- * a `counterpartyBindings[{ roleKind: "courier", addresses: [0xA, 0xB] }]`
- * entry. At checkout, the cart fills the courier sub-order's seller
- * field from this list. Without this field the cart has nowhere to
- * read the counterparty's wallet from — the assembly defines the
- * topology, but the operator's profile binds it to concrete wallets.
+ * a `counterpartyBindings[{ schemaId: "figaro-courier-process-v1",
+ * addresses: [0xA, 0xB] }]` entry. At checkout, the cart fills the
+ * courier sub-order's seller field from this list. Without this field
+ * the cart has nowhere to read the counterparty's wallet from — the
+ * assembly defines the topology, but the operator's profile binds it
+ * to concrete wallets.
  */
 export interface CounterpartyBinding {
-    /** Structural role marker on the sub-order this binding targets
-     *  (e.g. "courier", "offset"). Derived from the schema list anchored
-     *  on the order's agreement (e.g. anchoring `figaro-courier-process-v1`
-     *  ⇒ "courier"). Matches the drawer's per-role booleans. */
-    roleKind: string;
+    /** Process schema anchored on the sub-order this binding targets
+     *  (e.g. `figaro-courier-process-v1`). The schemaId is the
+     *  structural marker for what kind of off-chain operator the
+     *  sub-order needs. */
+    schemaId: string;
     /** Wallets the operator is willing to designate. Order is
      *  significant — checkout picks the first reachable one (or
      *  surfaces the list to the buyer). */
@@ -209,7 +210,7 @@ function parseCounterpartyBindingArray(value: unknown, path: string): Counterpar
             asAddress(addr, `${path}[${index}].addresses[${j}]`),
         );
         return {
-            roleKind: asString(record.roleKind, `${path}[${index}].roleKind`),
+            schemaId: asString(record.schemaId, `${path}[${index}].schemaId`),
             addresses,
         };
     });
