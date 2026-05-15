@@ -216,7 +216,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             setOrders((prev) => {
                 const parent = prev.find((o) => o.id === parentOrderId);
                 if (!parent) return prev;
-                const sub = createSyntheticSubOrder(session, parent, { roleHint: "co-seller" });
+                const sub = createSyntheticSubOrder(session, parent);
                 return [...prev, sub.order];
             });
         },
@@ -236,7 +236,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 });
                 if (hasAnyChild) return prev;
                 const sub = createSyntheticSubOrder(session, parent, {
-                    roleHint: "courier",
                     courierProcessIncluded: true,
                 });
                 autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
@@ -281,7 +280,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             setOrders((prev) => {
                 const parent = prev.find((o) => o.id === parentOrderId);
                 if (!parent) return prev;
-                const sub = createSyntheticSubOrder(session, parent, { roleHint: "offset" });
+                const sub = createSyntheticSubOrder(session, parent);
                 autoAddedOffsetByParentRef.current.set(parentOrderId, sub.order.id);
                 return [...prev, sub.order];
             });

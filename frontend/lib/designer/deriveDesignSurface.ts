@@ -5,12 +5,9 @@
  * foundation for the future canvas → assembly derivation function.
  *
  * Both helpers run against the same data the runtime would: each order's
- * agreement (loaded via `loadAgreement` by agreementHash). They never
- * read `manifestFields.roleHint` because that field is ephemeral —
- * `buildOrderAgreement` drops it (it's UI-only metadata, not encoded
- * into the agreement) so it cannot be recovered after a save round-trip.
- * The role derivation here uses structural inference instead, matching
- * the drawer's `orderRole` fallback chain.
+ * agreement (loaded via `loadAgreement` by agreementHash). Role derivation
+ * is structural — it reads the schema list anchored on each order's
+ * agreement, not any UI-only marker.
  */
 
 import type { Order } from "@/lib/core/store";
@@ -51,9 +48,8 @@ export function getMechanismKindsForDesign(orders: readonly Order[]): string[] {
  *   - Sub-order with `figaro-offset-policy-v1` anchored      → "offset"
  *   - Otherwise (sub-order)                                  → "co-seller"
  *
- * The structural signal is the schema list on the agreement, not the
- * ephemeral `manifestFields.roleHint` (which `buildOrderAgreement`
- * drops). Matches the drawer's `orderRole` fallback chain.
+ * The signal is the schema list on the agreement; matches the drawer's
+ * per-role booleans.
  *
  * Deduped and sorted alphabetically.
  */

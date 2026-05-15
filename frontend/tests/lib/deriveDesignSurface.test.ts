@@ -72,11 +72,8 @@ describe("getRoleKindsForDesign", () => {
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
         const courier = createSyntheticSubOrder(session, root.order, {
-            roleHint: "courier",
             courierProcessIncluded: true,
         });
-        // Reload the sub-order via the agreement so courierProcessIncluded is
-        // recoverable from the saved agreement (roleHint is not).
         const kinds = getRoleKindsForDesign([root.order, courier.order]);
         expect(kinds).toContain("courier");
     });
@@ -109,7 +106,6 @@ describe("getRoleKindsForDesign", () => {
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
         const sub = createSyntheticSubOrder(session, root.order, {
-            roleHint: "courier",
             courierProcessIncluded: true,
         });
         const kinds = getRoleKindsForDesign([root.order, sub.order]);

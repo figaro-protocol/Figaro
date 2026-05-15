@@ -4,7 +4,7 @@
  *
  *   - hasChildren            : has at least one descendant in the DAG.
  *   - parentDeliveryActive   : any parent's fulfilment includes "delivery".
- *   - hasCourierChild        : at least one child carries roleHint="courier".
+ *   - hasCourierChild        : at least one child anchors the courier-process schema.
  *
  * Used by both the editor (DesignerCanvas) and the read-only review/inspect
  * view (ViewAssemblyClient). Lifting them to a shared helper avoids
@@ -16,7 +16,8 @@ import type { Order } from "@/lib/core/store";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { readAgreementFields } from "@/lib/designer/syntheticProcess";
+
+const COURIER_PROCESS_SCHEMA = "figaro-courier-process-v1";
 
 export interface AgreementHints {
     hasChildren: boolean;
@@ -43,8 +44,8 @@ export function computeAgreementHints(
         const info = topology.get(order.id);
         if (!info?.parentOrderIds.includes(selectedOrderId)) continue;
         hasChildren = true;
-        const childFields = readAgreementFields(order);
-        if (childFields.roleHint === "courier") {
+        const agreement = loadAgreement(order.agreementHash);
+        if (agreement?.sections.some((s) => s.schema === COURIER_PROCESS_SCHEMA)) {
             hasCourierChild = true;
             break;
         }

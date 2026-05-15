@@ -106,13 +106,6 @@ export interface ManifestFields {
      *  inclusion-proof anchor at runtime. */
     merchantProcessIncluded?: boolean;
     courierProcessIncluded?: boolean;
-    /** Designer-time role marker for this order. Set at creation by the page
-     *  handler that spawned the node (delivery → "courier", offset →
-     *  "offset", manual add → "co-seller"); root orders default to
-     *  "merchant". UI-only metadata — not encoded into the on-chain
-     *  agreement. The drawer's Attestations article reads this to decide
-     *  which per-role toggle is editable vs disabled. */
-    roleHint?: "merchant" | "courier" | "offset" | "co-seller";
     [extra: string]: string | string[] | boolean | Array<Record<string, string>> | undefined; // extensible
 }
 

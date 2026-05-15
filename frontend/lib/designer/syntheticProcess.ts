@@ -102,10 +102,9 @@ const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
 
 export function createSyntheticRootOrder(
     session: SyntheticProcessSession,
-    /** Per-root manifest overrides. Merged onto DEFAULT_NODE_MANIFEST_FIELDS
-     *  with the root's `roleHint: "merchant"` preserved unless explicitly
-     *  overridden. Used by `manifestToDraft` to seed an IPFS-pinned
-     *  assembly's kleros + fulfilment fields into the new draft's root. */
+    /** Per-root manifest overrides. Merged onto DEFAULT_NODE_MANIFEST_FIELDS.
+     *  Used by `manifestToDraft` to seed an IPFS-pinned assembly's kleros +
+     *  fulfilment fields into the new draft's root. */
     manifestOverrides?: Partial<ManifestFields>,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
@@ -122,7 +121,7 @@ export function createSyntheticRootOrder(
         seller,
         currency,
         payment,
-        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, roleHint: "merchant", ...manifestOverrides },
+        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...manifestOverrides },
     });
     const agreementHash = computeAgreementHash(agreement);
     saveAgreement(agreement);

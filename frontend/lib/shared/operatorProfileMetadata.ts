@@ -72,9 +72,10 @@ export interface OperatorLocation {
  * topology, but the operator's profile binds it to concrete wallets.
  */
 export interface CounterpartyBinding {
-    /** Designer role marker on the sub-order this binding targets
-     *  (e.g. "courier", "offset"). Matches the `roleHint` field set on
-     *  the order's manifest when the designer spawned it. */
+    /** Structural role marker on the sub-order this binding targets
+     *  (e.g. "courier", "offset"). Derived from the schema list anchored
+     *  on the order's agreement (e.g. anchoring `figaro-courier-process-v1`
+     *  ⇒ "courier"). Matches the drawer's per-role booleans. */
     roleKind: string;
     /** Wallets the operator is willing to designate. Order is
      *  significant — checkout picks the first reachable one (or

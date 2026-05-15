@@ -133,10 +133,9 @@ interface Props {
      *  root order (or any sub-order whose parent has no delivery). */
     parentDeliveryActive?: boolean;
     /** True when the currently-selected merchant order has at least one
-     *  child whose roleHint is "courier". Drives the Attestations tab's
-     *  cross-role hint copy so we only direct the designer to "edit on the
-     *  courier sub-order" when one actually exists (rather than directing
-     *  to an offset or co-seller sub-order). */
+     *  child anchoring the courier-process schema. Drives the Attestations
+     *  tab's cross-role hint copy so we only direct the designer to "edit
+     *  on the courier sub-order" when one actually exists. */
     hasCourierChild?: boolean;
     /** Fired when the user picks Delivery in the Fulfilment article. The
      *  page is responsible for adding a courier sub-order if none exists
@@ -228,21 +227,16 @@ export function AgreementDrawer({
 
     const topology = summarizeAgreement(loadAgreement(order.agreementHash))?.topology;
     const isRootOrder = (topology?.parentOrderHashes?.length ?? 0) === 0;
-    /** Role marker: read from manifestFields.roleHint when the order was
-     *  spawned through one of the explicit page handlers (delivery →
-     *  "courier", offset → "offset", manual add → "co-seller"); root
-     *  orders default to "merchant". For legacy/imported orders missing
-     *  the hint, fall back to manifest-content inference. */
-    const explicitRole = fields.roleHint;
-    const orderRole: "merchant" | "courier" | "offset" | "co-seller" =
-        explicitRole
-            ?? (isRootOrder
-                ? "merchant"
-                : fields.courierProcessIncluded
-                    ? "courier"
-                    : (Array.isArray(fields.offsetProviders) && fields.offsetProviders.length > 0
-                        ? "offset"
-                        : "co-seller"));
+    // Structural role booleans — derived from the order's actual content.
+    // Root + (delivery in fulfilment OR merchant-process anchored) is the
+    // merchant order; the per-role process schemas distinguish courier and
+    // offset sub-orders.
+    const isMerchantOrder = isRootOrder;
+    const isCourierOrder = !isRootOrder && fields.courierProcessIncluded === true;
+    const isOffsetOrder =
+        !isRootOrder &&
+        Array.isArray(fields.offsetProviders) &&
+        fields.offsetProviders.length > 0;
 
     function selectSection(section: ArticleKey) {
         setOpenSection((prev) => (prev === section ? null : section));
@@ -657,7 +651,9 @@ export function AgreementDrawer({
                     {openSection === "attestations" && (
                         <section data-testid="drawer-section-attestations" className="space-y-5">
                             <AttestationsArticle
-                                orderRole={orderRole}
+                                isMerchantOrder={isMerchantOrder}
+                                isCourierOrder={isCourierOrder}
+                                isOffsetOrder={isOffsetOrder}
                                 merchantProcessIncluded={merchantProcessIncluded}
                                 courierProcessIncluded={courierProcessIncluded}
                                 onMerchantToggle={(next) => setProcessFlag("merchantProcessIncluded", next)}
@@ -825,7 +821,9 @@ function SchemaToggleArticle({
  * courier sub-order (typically via Delivery in Fulfilment).
  */
 function AttestationsArticle({
-    orderRole,
+    isMerchantOrder,
+    isCourierOrder,
+    isOffsetOrder,
     merchantProcessIncluded,
     courierProcessIncluded,
     onMerchantToggle,
@@ -834,7 +832,9 @@ function AttestationsArticle({
     parentDeliveryActive,
     hasCourierChild,
 }: {
-    orderRole: "merchant" | "courier" | "offset" | "co-seller";
+    isMerchantOrder: boolean;
+    isCourierOrder: boolean;
+    isOffsetOrder: boolean;
     merchantProcessIncluded: boolean;
     courierProcessIncluded: boolean;
     onMerchantToggle: (next: boolean) => void;
@@ -843,14 +843,11 @@ function AttestationsArticle({
     deliveryActive: boolean;
     /** Parent order has delivery in its fulfilment (courier sub-order case). */
     parentDeliveryActive: boolean;
-    /** True when this merchant order has a courier sub-order on the canvas
-     *  (a child with roleHint = "courier"). Drives the cross-role hint copy
-     *  so we only suggest "Edit on the courier sub-order" when one exists. */
+    /** True when this merchant order has a child anchoring the courier-process
+     *  schema. Drives the cross-role hint copy so we only suggest "Edit on the
+     *  courier sub-order" when one exists. */
     hasCourierChild: boolean;
 }) {
-    const isMerchantOrder = orderRole === "merchant";
-    const isCourierOrder = orderRole === "courier";
-    const isOffsetOrder = orderRole === "offset";
 
     // Merchant toggle: active iff editing the merchant order. Locked-on
     // when delivery is in this order's fulfilment.
