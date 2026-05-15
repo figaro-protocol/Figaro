@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DraftsList } from "./_components/DraftsList";
 import { PublishedList } from "./_components/PublishedList";
+import { SchemasList } from "./_components/SchemasList";
 
 export const metadata: Metadata = {
     title: "Designer — Figaro Protocol",
@@ -49,6 +50,16 @@ export default function DesignerLanding() {
                     Designs you&apos;ve published to the on-chain <code>AssemblyRegistry</code>. Reconstructed from <code>AssemblyRegistered</code> events filtered by your connected wallet.
                 </p>
                 <PublishedList />
+            </section>
+
+            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">
+                    Your schemas
+                </h2>
+                <p className="text-sm text-ink-muted mb-6 max-w-2xl">
+                    Schemas you&apos;ve registered on the on-chain <code>SchemaRegistry</code>. Reconstructed from <code>SchemaRegistered</code> events filtered by your connected wallet. Schemas are first-write-wins and immutable once bound to an <code>ISchemaValidator</code>.
+                </p>
+                <SchemasList />
             </section>
 
         </div>
