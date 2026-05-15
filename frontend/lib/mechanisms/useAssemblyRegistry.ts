@@ -23,7 +23,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keccak256, toHex, parseAbi, BaseError, ContractFunctionRevertedError } from "viem";
-import { useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId } from "wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import type { Agreement } from "@figaro/core";
@@ -605,6 +605,7 @@ export function useMerchantBoundModalities(
 
 export function usePublishAssembly() {
     const client = usePublicClient();
+    const { address } = useAccount();
     const { writeContractAsync, data: hash, isPending, error: writeError } =
         useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -625,6 +626,9 @@ export function usePublishAssembly() {
         }
         if (!client) {
             throw new Error("No public client available to read the registration deposit.");
+        }
+        if (!address) {
+            throw new Error("Connect a wallet before publishing.");
         }
         if (snapshot.orders.length > MAX_NODES_PER_ASSEMBLY) {
             throw new Error(
@@ -650,6 +654,7 @@ export function usePublishAssembly() {
                 functionName: "registerAssembly",
                 args: [manifest.slug, contentHash, ipfs.uri],
                 value: deposit,
+                account: address,
             });
         } catch (err) {
             throw translatePublishRevert(err, manifest.slug);
