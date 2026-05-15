@@ -311,11 +311,13 @@ export function collectAssemblySchemas(manifest: AssemblyManifest): string[] {
 }
 
 /** Roles the operator must populate with counterparty wallets when they
- *  bind to this assembly. Derived from the manifest's non-root orders:
- *  any order whose agreement anchors a per-role process schema (e.g.
- *  figaro-courier-process-v1) implies the operator must designate at
- *  least one wallet for that role at checkout time. Returns the set of
- *  distinct roleKinds, sorted for stable display.
+ *  bind to this assembly. Emitted only for non-root orders whose parent's
+ *  fulfilment coordination includes `seller-assigned` — the case where the
+ *  buyer may pick a fulfiller from the operator's roster at checkout. When
+ *  the parent's coordination is exclusively `dutch-auction` (the auction
+ *  contract assigns the fulfiller at runtime) or `buyer-assigned` (the
+ *  buyer picks freely at checkout), no roster is needed and no role is
+ *  emitted. Returns the set of distinct roleKinds, sorted.
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the operator's profile. */
@@ -323,26 +325,46 @@ export function requiredCounterpartyRoles(manifest: AssemblyManifest): string[] 
     const PROCESS_SCHEMA_TO_ROLE: Record<string, string> = {
         "figaro-courier-process-v1": "courier",
     };
-    const roots = new Set<string>();
+
+    const agreementByOrderId = new Map<string, Agreement>();
     for (const order of manifest.orders) {
         if (!order.agreementHash) continue;
         const agreement = manifest.agreements[order.agreementHash];
-        if (!agreement) continue;
-        // A root order has no parents in its topology section.
-        const topologySection = agreement.sections.find(
+        if (agreement) agreementByOrderId.set(order.id, agreement);
+    }
+
+    function coordinationsOf(agreement: Agreement): string[] {
+        const section = agreement.sections.find(
+            (s: { schema: string }) => s.schema === "figaro-fulfilment-v2",
+        ) as { data?: { coordinations?: unknown } } | undefined;
+        const coords = section?.data?.coordinations;
+        return Array.isArray(coords) ? coords.filter((c): c is string => typeof c === "string") : [];
+    }
+
+    function parentOrderIds(agreement: Agreement): string[] {
+        const section = agreement.sections.find(
             (s: { schema: string }) => s.schema === "figaro-topology-v1",
         ) as { data?: { parentOrderHashes?: unknown } } | undefined;
-        const parents = topologySection?.data?.parentOrderHashes;
-        if (!Array.isArray(parents) || parents.length === 0) {
-            roots.add(order.agreementHash);
-        }
+        const parents = section?.data?.parentOrderHashes;
+        return Array.isArray(parents) ? parents.filter((p): p is string => typeof p === "string") : [];
     }
+
     const roles = new Set<string>();
     for (const order of manifest.orders) {
         if (!order.agreementHash) continue;
-        if (roots.has(order.agreementHash)) continue;
         const agreement = manifest.agreements[order.agreementHash];
         if (!agreement) continue;
+
+        const parents = parentOrderIds(agreement);
+        if (parents.length === 0) continue;
+
+        const parentAllowsSellerAssigned = parents.some((parentId) => {
+            const parentAgreement = agreementByOrderId.get(parentId);
+            if (!parentAgreement) return false;
+            return coordinationsOf(parentAgreement).includes("seller-assigned");
+        });
+        if (!parentAllowsSellerAssigned) continue;
+
         for (const section of agreement.sections as ReadonlyArray<{ schema: string }>) {
             const role = PROCESS_SCHEMA_TO_ROLE[section.schema];
             if (role) roles.add(role);
