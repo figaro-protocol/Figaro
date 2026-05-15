@@ -4,8 +4,9 @@
  * OrderTimelineView — consumer-facing per-order page rendered at
  * `/orders/[processId]`. Renders kernel events as consumer copy ("Carlo
  * received your order" instead of "figaro-merchant-process-v1 stage=0").
- * Role-aware: buyer sees a "Confirm receipt" CTA, merchant sees a "Mark
- * as <next event>" CTA driven by `figaro-merchant-process-v1`.
+ * Wallet-aware: the buyer of the order sees a "Confirm receipt" CTA,
+ * the seller of the order sees a "Mark as <next event>" CTA driven by
+ * `figaro-merchant-process-v1`.
  *
  * Data sources:
  *  - `useSemanticProcessWorkspace` → process state, capabilities,

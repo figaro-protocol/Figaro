@@ -16,11 +16,8 @@
  *
  *  3. **Completed orders** — same as (2) but resolved.
  *
- * Replaces the prior pattern where merchants had to navigate to
- * `/i/<assembly>` and role-switch to "merchant" to see incoming orders.
- * The merchant inbox is now a single dedicated page; assembly choice
- * isn't relevant at inbox time (the assembly is encoded in the buyer's
- * commitment manifest).
+ * Single dedicated page; assembly choice isn't relevant at inbox time
+ * (the assembly is encoded in the buyer's commitment manifest).
  */
 
 import Link from "next/link";
