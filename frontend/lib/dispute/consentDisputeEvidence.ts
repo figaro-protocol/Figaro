@@ -89,7 +89,9 @@ export function buildConsentDisputeMetaEvidence(
 // ---------------------------------------------------------------------------
 
 /**
- * Submitter role in a consent dispute.
+ * The submitting party of a consent dispute. Names the two sides of the
+ * beta-participation consent agreement (the legal ceremony users sign
+ * to participate in beta) — distinct from any kernel-protocol role.
  *
  * - `participant` — a beta participant alleging the Project Operator (or
  *   another Participant) has breached an obligation owed to them.
@@ -99,7 +101,7 @@ export function buildConsentDisputeMetaEvidence(
  * The label travels with the Evidence envelope so the Kleros juror can
  * frame the claim correctly without inferring it from text.
  */
-export type ConsentDisputeRole = "participant" | "operator";
+export type ConsentDisputeParty = "participant" | "operator";
 
 /**
  * The disputed consent attestation, as recovered from the receipt PDF /
@@ -187,8 +189,8 @@ export interface ConsentDisputeEvidenceInput {
     claimText: string;
     /** Section of the consent agreement the submitter alleges was breached. */
     citedSection: string;
-    /** Submitter role. */
-    role: ConsentDisputeRole;
+    /** Which side of the consent agreement is submitting the claim. */
+    submittingParty: ConsentDisputeParty;
     /** Submitter's signed claim digest. */
     claimSignature: SubmitterClaimSignature;
     /** EVM chain ID the submission is being made on (Ethereum mainnet, Gnosis, etc.). */
@@ -297,7 +299,7 @@ export function buildConsentDisputeEvidence(
     }
 
     // ── Envelope ────────────────────────────────────────────────────
-    const submitterRole = input.role === "operator"
+    const submitterLabel = input.submittingParty === "operator"
         ? "Project Operator"
         : "Participant";
 
@@ -305,7 +307,7 @@ export function buildConsentDisputeEvidence(
     // one self-contained narrative, no IPFS dereferencing required by
     // a juror to grasp the dispute.
     const descriptionLines = [
-        `Submitter: ${submitterRole} (${truncateHex(input.claimSignature.submitter)})`,
+        `Submitter: ${submitterLabel} (${truncateHex(input.claimSignature.submitter)})`,
         `Submitted at: ${input.claimSignature.submittedAt}`,
         `Chain ID: ${input.chainId}`,
         ``,
@@ -320,7 +322,7 @@ export function buildConsentDisputeEvidence(
         ``,
         `Cited section of the Figaro Consent Agreement: ${input.citedSection}`,
         ``,
-        `Claim from the ${submitterRole}:`,
+        `Claim from the ${submitterLabel}:`,
         input.claimText,
         ``,
         `The submitter's signature over this claim recovers to ` +

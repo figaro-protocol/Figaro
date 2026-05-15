@@ -76,7 +76,7 @@ import {
     KLEROS_COURTS,
     submitEvidence,
     type DisputedConsentAttestation,
-    type ConsentDisputeRole,
+    type ConsentDisputeParty,
     type KlerosConfig,
     type KlerosCourtKey,
 } from "@/lib/dispute";
@@ -142,7 +142,7 @@ interface SelectionState {
 }
 
 interface ComposeState {
-    role: ConsentDisputeRole;
+    submittingParty: ConsentDisputeParty;
     citedSection: string;
     citedSectionFreeform: string;
     claimText: string;
@@ -211,7 +211,7 @@ export default function DisputePage() {
 
     const [selection, setSelection] = useState<SelectionState | null>(null);
     const [compose, setCompose] = useState<ComposeState>({
-        role: "participant",
+        submittingParty: "participant",
         citedSection: CITED_SECTION_OPTIONS[0].value,
         citedSectionFreeform: "",
         claimText: "",
@@ -283,7 +283,7 @@ export default function DisputePage() {
                 receiptCid: selection.receiptCid,
                 claimText: compose.claimText,
                 citedSection: resolvedCitedSection,
-                role: compose.role,
+                submittingParty: compose.submittingParty,
                 claimSignature: {
                     submittedAt: signedClaim.submittedAt,
                     signature: signedClaim.signature,
@@ -780,19 +780,19 @@ function ComposeStep({ state, onChange, onBack, onNext, error }: ComposeStepProp
 
                 <div className="space-y-1">
                     <label className="block text-xs font-semibold text-neutral-700">
-                        Submitter role
+                        Submitting party
                     </label>
                     <div className="flex gap-3 text-xs">
-                        {(["participant", "operator"] as const).map((r) => (
-                            <label key={r} className="flex items-center gap-1.5 cursor-pointer">
+                        {(["participant", "operator"] as const).map((p) => (
+                            <label key={p} className="flex items-center gap-1.5 cursor-pointer">
                                 <input
                                     type="radio"
-                                    name="dispute-role"
-                                    checked={state.role === r}
-                                    onChange={() => onChange({ ...state, role: r })}
-                                    data-testid={`dispute-role-${r}`}
+                                    name="dispute-party"
+                                    checked={state.submittingParty === p}
+                                    onChange={() => onChange({ ...state, submittingParty: p })}
+                                    data-testid={`dispute-party-${p}`}
                                 />
-                                <span>{r === "participant" ? "Participant" : "Project Operator"}</span>
+                                <span>{p === "participant" ? "Participant" : "Project Operator"}</span>
                             </label>
                         ))}
                     </div>
@@ -950,8 +950,8 @@ function ReviewStep({
                 </Section>
 
                 <Section label="Claim">
-                    <KV k="Submitter role">
-                        {compose.role === "operator" ? "Project Operator" : "Participant"}
+                    <KV k="Submitting party">
+                        {compose.submittingParty === "operator" ? "Project Operator" : "Participant"}
                     </KV>
                     <KV k="Cited section">{compose.citedSection}</KV>
                     <KV k="Claim text">

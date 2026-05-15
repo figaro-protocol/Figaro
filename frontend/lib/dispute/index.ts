@@ -39,7 +39,7 @@ export {
     buildConsentDisputeEvidence,
 } from "./consentDisputeEvidence";
 export type {
-    ConsentDisputeRole,
+    ConsentDisputeParty,
     DisputedConsentAttestation,
     SubmitterClaimSignature,
     ConsentDisputeEvidenceInput,

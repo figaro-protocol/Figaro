@@ -47,7 +47,7 @@ function buildInput(
         receiptCid: VALID_CID_V0,
         claimText: VALID_CLAIM,
         citedSection: "§3.6 (artifact custody)",
-        role: "participant",
+        submittingParty: "participant",
         claimSignature: {
             submittedAt: "2026-04-29T10:00:00Z",
             signature: VALID_SIG_2,
@@ -110,17 +110,17 @@ describe("consentDisputeEvidence", () => {
             expect(ev.name).toContain(VALID_ADDR.slice(0, 6));
         });
 
-        it("frames description by submitter role (participant)", () => {
+        it("frames description by submitting party (participant)", () => {
             const ev = buildConsentDisputeEvidence(
-                buildInput({ role: "participant" }),
+                buildInput({ submittingParty: "participant" }),
             );
             expect(ev.description).toContain("Participant");
             expect(ev.description).not.toContain("Project Operator (");
         });
 
-        it("frames description by submitter role (operator)", () => {
+        it("frames description by submitting party (operator)", () => {
             const ev = buildConsentDisputeEvidence(
-                buildInput({ role: "operator" }),
+                buildInput({ submittingParty: "operator" }),
             );
             expect(ev.description).toContain("Project Operator");
         });

@@ -14,8 +14,8 @@
  *     (the default in mock mode).
  *   - Validation rejects invalid CIDs / hashes / signatures on step 1.
  *   - Well-formed inputs advance to step 2 (compose).
- *   - Compose step renders the role radios + cited-section dropdown +
- *     claim textarea with character counter.
+ *   - Compose step renders the submitting-party radios + cited-section
+ *     dropdown + claim textarea with character counter.
  *   - Compose validation rejects too-short claim text.
  *   - Well-formed compose advances to step 3 (review) which surfaces
  *     the cited section + claim text + the "Sign claim" button.
@@ -139,9 +139,9 @@ test.describe('/dispute — step 2 (compose)', () => {
         await page.getByTestId('dispute-compose-step').waitFor();
     });
 
-    test('renders role radios + cited-section dropdown + claim textarea', async ({ page }) => {
-        await expect(page.getByTestId('dispute-role-participant')).toBeVisible();
-        await expect(page.getByTestId('dispute-role-operator')).toBeVisible();
+    test('renders submitting-party radios + cited-section dropdown + claim textarea', async ({ page }) => {
+        await expect(page.getByTestId('dispute-party-participant')).toBeVisible();
+        await expect(page.getByTestId('dispute-party-operator')).toBeVisible();
         await expect(page.getByTestId('dispute-cited-section')).toBeVisible();
         await expect(page.getByTestId('dispute-claim-text')).toBeVisible();
         await expect(page.getByTestId('dispute-claim-length')).toBeVisible();
