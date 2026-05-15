@@ -283,7 +283,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 data-testid="review-confirm-publish"
                 title="Pin manifest to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
             >
-                {confirming ? "Publishing…" : "Confirm publish"}
+                {confirming ? "Publishing…" : "Confirm publish — irreversible"}
             </button>
         </div>
     ) : resolved.kind === "draft" ? (
@@ -313,6 +313,26 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
 
     return (
         <div className="h-screen bg-canvas flex flex-col" data-testid="assembly-view-page">
+            {inReviewMode && (
+                <div
+                    className="px-8 py-3 border-b border-amber-200 bg-amber-50 shrink-0"
+                    data-testid="review-banner"
+                    role="status"
+                >
+                    <p className="text-sm font-semibold text-amber-900">
+                        Review before publish — this action is irreversible.
+                    </p>
+                    <p className="text-xs text-amber-800 mt-1 max-w-3xl leading-relaxed">
+                        Confirming will pin the assembly manifest to IPFS, lock the
+                        registration deposit, and anchor the slug{" "}
+                        <code className="font-mono">/{slug}</code> on-chain. The slug
+                        binding is permanent — once registered it cannot be reassigned,
+                        renamed, or transferred. The canvas below is read-only;
+                        click <strong>← Back to editor</strong> to make changes
+                        before confirming.
+                    </p>
+                </div>
+            )}
             <div
                 data-testid="view-toolbar"
                 className="px-8 py-4 border-b border-default bg-paper flex items-center gap-3 flex-wrap shrink-0"
@@ -326,7 +346,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 <span className="text-sm font-semibold text-ink-heading">{resolved.name}</span>
                 <span className="font-mono text-xs text-ink-muted">/{slug}</span>
                 <span
-                    className="text-[10px] uppercase tracking-widest text-ink-muted rounded bg-subtle px-2 py-0.5"
+                    className={`text-[10px] uppercase tracking-widest rounded px-2 py-0.5 ${inReviewMode ? "bg-amber-100 text-amber-900 border border-amber-200" : "text-ink-muted bg-subtle"}`}
                     data-testid="view-source-badge"
                 >
                     {sourceLabel}
