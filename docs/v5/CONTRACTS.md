@@ -94,6 +94,20 @@ signed manifest.
 
 **`src/DutchAuction.sol`** — Descending-price coordination primitive. No token handling.
 
+**`src/ProcessOffsetReceipt.sol`** — Permissionless on-chain anchor for Path A
+carbon-offset receipts. The buyer performs the offset retirement off-protocol
+at an external aggregator (Klima KlimaInfinity, Toucan OffsetHelper, etc.),
+then calls `record(processId, retirementTxHash, aggregator, tonsRetired,
+inputToken, inputAmount)` here to anchor the `processId ↔ retirementTxHash`
+binding on-chain. The contract verifies `processes[processId].rootBuyer ==
+msg.sender` via cross-call to `FigaroCore`, then emits `ReceiptRecorded` with
+three indexed fields (processId, buyer, retirementTxHash) so audit-bundle
+consumers can reconstruct receipts by any of the three. No state, no admin,
+no storage beyond the event log. **Receipts are a separate artifact family
+from attestations** per separation-of-concerns doctrine — they do not require
+a committed agreement clause or a merkle inclusion proof, so they can't be
+hosted under `AttestationCoordinator`.
+
 **`src/OperatorRegistry.sol`** — Permissionless operator self-registration with
 reclaimable ETH deposit. Three external functions: `register(metadataURI)` (sets
 the dedup guard, consumes the deposit, emits `OperatorRegistered`),
@@ -151,6 +165,7 @@ AI audit — has been removed).
 ## Test / Mock Contracts
 
 - `src/mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`
+- `src/mocks/MockOffsetAggregator.sol` — devnet stand-in for Klima KlimaInfinity / Toucan OffsetHelper. Fixed `pricePerTon` constructor arg, pulls input token via `transferFrom`, emits `Retired`. Wired into `Deploy.s.sol` only — mainnet uses real aggregators.
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist

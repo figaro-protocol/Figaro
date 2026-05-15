@@ -33,6 +33,7 @@ import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroJurisdictionV1Validator.sol";
 import "../src/schemaValidators/FigaroConsentV1Validator.sol";
 import "../src/AssemblyRegistry.sol";
+import "../src/ProcessOffsetReceipt.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -200,6 +201,19 @@ contract Deploy is Script {
         fig.renounceDeployerMint();
         console.log("Deployer mint renounced");
 
+        // ── ProcessOffsetReceipt ────────────────────────────────────
+        // Permissionless on-chain anchor for Path A carbon-offset receipts.
+        // Buyer calls record(processId, ...) after performing the off-protocol
+        // retirement at an aggregator (Klima / Toucan / mock on devnet); the
+        // contract verifies the caller is processes[processId].rootBuyer and
+        // emits ReceiptRecorded(processId, buyer, retirementTxHash, ...). No
+        // state, no admin. Audit-bundle reader queries the event log by
+        // processId. Separate primitive per separation-of-concerns doctrine —
+        // receipts are not attestations (no agreement clause, no inclusion
+        // proof) and get their own anchor.
+        ProcessOffsetReceipt offsetReceipts = new ProcessOffsetReceipt(core);
+        console.log("ProcessOffsetReceipt deployed at:", address(offsetReceipts));
+
         // ── BatchVerifier (SP1 — mock verifier for devnet) ──────────
         // Genesis root = keccak256 of 7 concatenated sub-hashes:
         // 6 × keccak256("") (empty BTreeMaps) + keccak256(0u64_be || 0u256_be) (emission).
@@ -245,6 +259,7 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=", address(schemaHelper));
         console.log("  NEXT_PUBLIC_OPERATOR_REGISTRY=", address(operators));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
+        console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=", address(offsetReceipts));
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=", address(auction));
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
         // console.log(

@@ -26,6 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { decodeAbiParameters, type Hex, type PublicClient } from "viem";
 import { Button } from "@/components/ui/Button";
+import { PreResolveOffsetPanel } from "@/components/core/PreResolveOffsetPanel";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
 import { getAttestationsByProcessAndSchema } from "@/lib/core/indexer";
 import { getAttestationContent } from "@/lib/mechanisms/useGHGDisclosure";
@@ -449,6 +450,7 @@ export function OrderTimelineView({ processId }: Props) {
                             <p className="text-sm text-neutral-600">Order is complete. No further action.</p>
                         ) : resolveCapability ? (
                             <>
+                                <PreResolveOffsetPanel processId={processId as `0x${string}`} />
                                 <p className="text-sm text-neutral-700">
                                     When you have received the order from {sellerDisplayName}, confirm to release
                                     bonds and finalise.

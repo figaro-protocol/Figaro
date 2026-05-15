@@ -14,6 +14,24 @@ export {
     ERC20_ABI,
 } from "@figaro/core";
 
+/// ProcessOffsetReceipt — permissionless receipts contract for Path A
+/// off-protocol carbon-offset retirements. The frontend bridge calls
+/// `record(...)` after the buyer pays an aggregator; the contract verifies
+/// caller == rootBuyer and emits ReceiptRecorded with the processId↔retirement
+/// link. ABI is locally declared because this contract isn't part of the SDK
+/// re-export surface — it's a frontend-specific runtime anchor.
+export const PROCESS_OFFSET_RECEIPT_ABI = parseAbi([
+    "function core() view returns (address)",
+    "function record(bytes32 processId, bytes32 retirementTxHash, address aggregator, uint256 tonsRetired, address inputToken, uint256 inputAmount) external",
+    "event ReceiptRecorded(bytes32 indexed processId, address indexed buyer, bytes32 indexed retirementTxHash, address aggregator, uint256 tonsRetired, address inputToken, uint256 inputAmount)",
+    "error NotRootBuyer()",
+    "error ZeroRetirementTxHash()",
+    "error ZeroAggregator()",
+    "error ZeroTonsRetired()",
+    "error ZeroInputToken()",
+    "error ZeroInputAmount()",
+] as const);
+
 // agreementHash (bytes32) is the opaque off-chain agreement reference.
 // For the prototype, we use a deterministic non-zero default.
 export const DEFAULT_AGREEMENT_HASH =
@@ -42,6 +60,10 @@ export interface ChainConfig {
     dutchAuction: `0x${string}`;
     /** FigaroBatchVerifier (SP1). Optional — empty string when not deployed. */
     batchVerifier: `0x${string}`;
+    /** ProcessOffsetReceipt — Path A carbon-offset receipts anchor. Optional — empty string when not deployed. */
+    processOffsetReceipt: `0x${string}`;
+    /** MockOffsetAggregator — devnet stand-in for Klima/Toucan aggregators. Empty on testnet/mainnet. */
+    mockOffsetAggregator: `0x${string}`;
 }
 
 export const CONTRACTS: ChainConfig = {
@@ -52,6 +74,8 @@ export const CONTRACTS: ChainConfig = {
     schemaRegistry: (process.env.NEXT_PUBLIC_SCHEMA_REGISTRY || "") as `0x${string}`,
     dutchAuction: (process.env.NEXT_PUBLIC_DUTCH_AUCTION || "") as `0x${string}`,
     batchVerifier: (process.env.NEXT_PUBLIC_BATCH_VERIFIER || "") as `0x${string}`,
+    processOffsetReceipt: (process.env.NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT || "") as `0x${string}`,
+    mockOffsetAggregator: (process.env.NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR || "") as `0x${string}`,
 };
 
 // Runtime validation helpers
