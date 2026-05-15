@@ -972,66 +972,88 @@ function FulfilmentArticle({
     const deliveryOffered = modalities.includes("delivery");
     const hasPhysicalModality = modalities.some((m) => m !== "virtual");
 
-    function toggleModality(value: string) {
-        const nextModalities = toggleInList(modalities, value);
+    /** Single-select per section per the assembly-uniqueness model: one
+     *  assembly = one fulfilment shape. Modalities and coordination are
+     *  mandatory-when-applicable (no deselect); handoff and proximity
+     *  are optional (the radio's Clear affordance maps to "no clause"
+     *  on the agreement). All four sections still write `string[]`
+     *  (length 0 or 1) so the v2 schema serialization is unchanged. */
+    function selectModality(value: string) {
+        if (modalities.length === 1 && modalities[0] === value) return;
+        const nextModalities = [value];
+        const wasDelivery = deliveryOffered;
         const isDelivery = value === "delivery";
-        const becomingDelivery = isDelivery && !deliveryOffered;
-        const removingDelivery = isDelivery && deliveryOffered;
-        const stillDelivery = nextModalities.includes("delivery");
-        const nextCoordinations = becomingDelivery && coordinations.length === 0
-            ? ["seller-assigned"]
-            : stillDelivery ? coordinations : [];
+        const becomingDelivery = isDelivery && !wasDelivery;
+        const removingDelivery = !isDelivery && wasDelivery;
+        const nextCoordinations = isDelivery
+            ? (coordinations.length > 0 ? coordinations : ["seller-assigned"])
+            : [];
         onChange({ modalities: nextModalities, coordinations: nextCoordinations, handoffPoints });
         if (becomingDelivery) onDeliveryAdded();
         if (removingDelivery) onDeliveryRemoved();
     }
 
-    function toggleCoordination(value: string) {
-        onChange({ modalities, coordinations: toggleInList(coordinations, value), handoffPoints });
+    function selectCoordination(value: string) {
+        if (coordinations.length === 1 && coordinations[0] === value) return;
+        onChange({ modalities, coordinations: [value], handoffPoints });
     }
 
-    function toggleHandoffPoint(value: string) {
-        onChange({ modalities, coordinations, handoffPoints: toggleInList(handoffPoints, value) });
+    function selectHandoffPoint(value: string) {
+        if (handoffPoints.length === 1 && handoffPoints[0] === value) return;
+        onChange({ modalities, coordinations, handoffPoints: [value] });
     }
 
-    function toggleProximityBand(value: string) {
-        onProximityChange(toggleInList(proximityBands, value));
+    function clearHandoffPoint() {
+        if (handoffPoints.length === 0) return;
+        onChange({ modalities, coordinations, handoffPoints: [] });
+    }
+
+    function selectProximityBand(value: string) {
+        if (proximityBands.length === 1 && proximityBands[0] === value) return;
+        onProximityChange([value]);
+    }
+
+    function clearProximityBand() {
+        if (proximityBands.length === 0) return;
+        onProximityChange([]);
     }
 
     return (
         <div className="space-y-5">
-            <CheckboxGroup
-                label="Modalities"
+            <RadioGroup
+                label="Modality"
                 options={MODALITY_OPTIONS}
-                checked={modalities}
-                onToggle={toggleModality}
+                selected={modalities[0]}
+                onSelect={selectModality}
                 testIdPrefix="drawer-fulfilment-modality"
             />
 
-            <CheckboxGroup
+            <RadioGroup
                 label="Courier coordination"
-                hint={deliveryOffered ? undefined : "Check Delivery to enable."}
+                hint={deliveryOffered ? undefined : "Pick Delivery to enable."}
                 options={COORDINATION_OPTIONS}
-                checked={coordinations}
-                onToggle={toggleCoordination}
+                selected={coordinations[0]}
+                onSelect={selectCoordination}
                 disabled={!deliveryOffered}
                 testIdPrefix="drawer-fulfilment-coordination"
             />
 
-            <CheckboxGroup
-                label="Handoff points"
+            <RadioGroup
+                label="Handoff point"
                 options={HANDOFF_POINT_OPTIONS}
-                checked={handoffPoints}
-                onToggle={toggleHandoffPoint}
+                selected={handoffPoints[0]}
+                onSelect={selectHandoffPoint}
+                onClear={clearHandoffPoint}
                 testIdPrefix="drawer-fulfilment-handoff"
             />
 
-            <CheckboxGroup
+            <RadioGroup
                 label="Proximity verification"
-                hint={hasPhysicalModality ? undefined : "Check a physical modality to enable."}
+                hint={hasPhysicalModality ? undefined : "Pick a physical modality to enable."}
                 options={PROXIMITY_BAND_OPTIONS}
-                checked={proximityBands}
-                onToggle={toggleProximityBand}
+                selected={proximityBands[0]}
+                onSelect={selectProximityBand}
+                onClear={clearProximityBand}
                 disabled={!hasPhysicalModality}
                 testIdPrefix="drawer-proximity-band"
             />
@@ -1046,6 +1068,79 @@ function FulfilmentArticle({
                         : "Courier sub-order added to the canvas."}
                 </p>
             )}
+        </div>
+    );
+}
+
+/**
+ * Single-select radio group. When `onClear` is supplied, a small "Clear"
+ * affordance appears in the header whenever a value is selected — that's
+ * the only path back to "no selection" since HTML radios don't deselect
+ * on second click. Sections that are mandatory-when-applicable (modality,
+ * coordination) omit `onClear`; optional sections (handoff, proximity)
+ * supply it.
+ */
+function RadioGroup({
+    label,
+    hint,
+    options,
+    selected,
+    onSelect,
+    onClear,
+    disabled = false,
+    testIdPrefix,
+}: {
+    label: string;
+    hint?: string;
+    options: ReadonlyArray<{ value: string; label: string }>;
+    selected: string | undefined;
+    onSelect: (value: string) => void;
+    onClear?: () => void;
+    disabled?: boolean;
+    testIdPrefix: string;
+}) {
+    const hintId = useId();
+    const showClear = !!onClear && !disabled && selected !== undefined;
+    return (
+        <div data-testid={`${testIdPrefix}-group`}>
+            <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-[11px] text-neutral-500">{label}</span>
+                {hint && (
+                    <span id={hintId} className="text-[10px] text-neutral-400 italic">
+                        {hint}
+                    </span>
+                )}
+                {showClear && (
+                    <button
+                        type="button"
+                        onClick={() => onClear!()}
+                        className="ml-auto text-[10px] text-neutral-400 hover:text-neutral-700 underline"
+                        data-testid={`${testIdPrefix}-clear`}
+                    >
+                        Clear
+                    </button>
+                )}
+            </div>
+            <div className="space-y-1">
+                {options.map((opt) => (
+                    <label
+                        key={opt.value}
+                        className={`flex items-center gap-2 text-xs ${disabled ? "text-neutral-400 cursor-not-allowed" : "text-neutral-700 cursor-pointer"}`}
+                    >
+                        <input
+                            type="radio"
+                            name={testIdPrefix}
+                            checked={selected === opt.value}
+                            onChange={() => !disabled && onSelect(opt.value)}
+                            disabled={disabled}
+                            aria-describedby={hint ? hintId : undefined}
+                            data-testid={`${testIdPrefix}-${opt.value}`}
+                            className="accent-accent disabled:opacity-100"
+                        />
+                        <span>{opt.label}</span>
+                    </label>
+                ))}
+            </div>
         </div>
     );
 }
