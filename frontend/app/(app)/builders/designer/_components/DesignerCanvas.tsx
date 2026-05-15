@@ -479,11 +479,24 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         );
     }, [buildSnapshot, router, slug]);
 
-    // The Save / Publish buttons stay clickable on landing — validation
-    // runs at click time and surfaces a specific error before opening the
-    // wallet. The disabled state reflects only "publish is in flight" or
-    // "this canvas already published" — the two states where a click is
-    // genuinely unsafe.
+    // Name validity drives the disabled state on Save / Publish so the user
+    // gets immediate visual feedback that the name is the gate, not a
+    // generic "publish failed" surfaced after the click.
+    const trimmedName = name.trim();
+    const nameEmpty = trimmedName.length === 0;
+    const nameTooShort = !nameEmpty && trimmedName.length < MIN_NAME_LENGTH;
+    const nameValid = trimmedName.length >= MIN_NAME_LENGTH;
+    const nameValidationHint = nameEmpty
+        ? "Required."
+        : nameTooShort
+            ? `At least ${MIN_NAME_LENGTH} characters.`
+            : null;
+    const nameDisabledTitle = nameEmpty
+        ? "Name the assembly first."
+        : nameTooShort
+            ? `Assembly name must be at least ${MIN_NAME_LENGTH} characters.`
+            : null;
+
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
         if (slug) return `Saved "${name}" · ${formatRelative(savedAt)}`;
@@ -535,15 +548,30 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 >
                     ← Assemblies
                 </Link>
-                <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Name this assembly…"
-                    aria-label="Assembly name"
-                    data-testid="designer-name-input"
-                    className="text-sm font-semibold text-ink-heading bg-paper border border-default rounded px-2 py-1 hover:border-default-strong focus:border-ink-heading focus:outline-none placeholder:font-normal placeholder:text-ink-muted min-w-[200px] max-w-[280px]"
-                />
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Name this assembly…"
+                        aria-label="Assembly name"
+                        aria-required="true"
+                        aria-invalid={nameTooShort || undefined}
+                        required
+                        data-testid="designer-name-input"
+                        className={`text-sm font-semibold text-ink-heading bg-paper border rounded px-2 py-1 focus:border-ink-heading focus:outline-none placeholder:font-normal placeholder:text-ink-muted min-w-[200px] max-w-[280px] ${nameTooShort ? "border-red-400 hover:border-red-500" : "border-default hover:border-default-strong"}`}
+                    />
+                    <span className="text-red-600 text-sm font-semibold" aria-hidden="true">*</span>
+                    {nameValidationHint && (
+                        <span
+                            className={`text-[11px] italic shrink-0 ${nameTooShort ? "text-red-600" : "text-ink-muted"}`}
+                            data-testid="designer-name-validation"
+                            role={nameTooShort ? "alert" : undefined}
+                        >
+                            {nameValidationHint}
+                        </span>
+                    )}
+                </div>
                 {savedHint && (
                     <span className="ml-auto text-[11px] text-ink-muted truncate" data-testid="designer-saved-hint">
                         {savedHint}
@@ -552,20 +580,20 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 <button
                     type="button"
                     onClick={handleSaveDraft}
-                    disabled={publishInFlight || hasPublished}
+                    disabled={publishInFlight || hasPublished || !nameValid}
                     data-testid="designer-save"
                     className={`text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${savedHint ? "" : "ml-auto"}`}
-                    title={slug ? "Update the saved draft" : "Save this canvas as a named draft"}
+                    title={nameDisabledTitle ?? (slug ? "Update the saved draft" : "Save this canvas as a named draft")}
                 >
                     {slug ? "Update" : "Save"}
                 </button>
                 <button
                     type="button"
                     onClick={handlePublish}
-                    disabled={publishInFlight || hasPublished}
+                    disabled={publishInFlight || hasPublished || !nameValid}
                     data-testid="designer-publish"
                     className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Pin manifest to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
+                    title={nameDisabledTitle ?? "Pin manifest to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."}
                 >
                     {publishInFlight ? "Publishing…" : hasPublished ? "Published" : "Publish"}
                 </button>
