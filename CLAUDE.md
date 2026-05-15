@@ -404,7 +404,7 @@ All contracts live in `src/`. Solidity 0.8.26, Foundry. V3 in `archive-v3/`. No 
 High-level inventory (full per-contract surfaces, function lists, ABI changes, and "what does NOT exist" → `docs/v5/CONTRACTS.md`):
 
 - **Kernel (frozen):** `FigaroCore.sol`, `CommitmentTypes.sol`.
-- **Attestation & schema:** `AttestationCoordinator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `ISchemaValidator.sol`, `IRoleResolver.sol`, 17 per-schema validators in `src/schemaValidators/`.
+- **Attestation & schema:** `AttestationCoordinator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `ISchemaValidator.sol`, `IRoleResolver.sol`, 18 per-schema validators in `src/schemaValidators/`.
 - **Mechanism modules:** `DutchAuction.sol`, `OperatorRegistry.sol`.
 - **FIG token (`src/fig/`):** `FigToken.sol`, `StagedMerkleAirdrop.sol`, `IFigMinter.sol`. 1B fixed supply: 100M founders + 300M DAO genesis-minted, 600M staged airdrop (yr 2/5/9). FIG is not a governance token; `FigaroBatchVerifier` is not a minter.
 - **Batch verification:** `FigaroBatchVerifier.sol`, `interfaces/ISP1Verifier.sol`, `mocks/MockSP1Verifier.sol`.
@@ -422,7 +422,7 @@ Three layers must ship together for any new schema:
 - **Layer B** (Rust SP1 prover): pending; will mirror Layer A byte-for-byte.
 - **Layer C** (Solidity): per-schema `ISchemaValidator` contracts in `src/schemaValidators/`, bound through `AttestationCoordinator.setValidator(schemaId, validator)`. **Permissionless, first-write-wins, immutable.** No validator → no attestation under that schemaId (`ValidatorNotSet`).
 
-There are 18 protocol schemas total: 17 runtime-attestable (each with a validator contract) + `figaro-topology-v1`, which is a manifest-only clause (no validator, DAG reconstructed off-chain by indexers from the signed manifest). Full table → `docs/v5/SCHEMAS.md`.
+There are 19 protocol schemas total: 18 runtime-attestable (each with a validator contract) + `figaro-topology-v1`, which is a manifest-only clause (no validator, DAG reconstructed off-chain by indexers from the signed manifest). Full table → `docs/v5/SCHEMAS.md`.
 
 ### Adding a new schema — checklist
 

@@ -86,7 +86,7 @@ export default function Specifications() {
 
             <MarketingSection title="Schema validators in force">
                 <p className="text-sm text-ink-muted mb-6">
-                    Sixteen runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
+                    Seventeen runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
@@ -108,6 +108,7 @@ export default function Specifications() {
                             <tr><td className="py-2 pr-4"><code>figaro-ghg-en-16258-v1</code></td><td className="py-2 pr-4 text-ink-body">EN 16258 transport methodology + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                             <tr><td className="py-2 pr-4"><code>figaro-ghg-custom-v1</code></td><td className="py-2 pr-4 text-ink-body">Custom GHG methodology + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                             <tr><td className="py-2 pr-4"><code>figaro-ghg-measurement-v1</code></td><td className="py-2 pr-4 text-ink-body">Runtime grams CO₂e (Category-1)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
+                            <tr><td className="py-2 pr-4"><code>figaro-offset-retirement-v1</code></td><td className="py-2 pr-4 text-ink-body">Runtime carbon-offset retirement receipt: aggregator address, input token + amount, beneficiary, retirement tx hash, tonnes retired in grams (Category-1). Sister of figaro-offset-policy-v1.</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                             <tr><td className="py-2 pr-4"><code>figaro-proximity-policy-v1</code></td><td className="py-2 pr-4 text-ink-body">Required detection band committed at agreement signing (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                             <tr><td className="py-2 pr-4"><code>figaro-proximity-proof-v1</code></td><td className="py-2 pr-4 text-ink-body">Per-handoff nonce + signed witness payload at runtime (Category-1)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
                             <tr><td className="py-2 pr-4"><code>figaro-merchant-process-v1</code></td><td className="py-2 pr-4 text-ink-body">Merchant per-role event log (sovereign log; generic across local-commerce verticals)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>

@@ -327,6 +327,69 @@ export function encodeOffsetPolicyContent(content: OffsetPolicyContent): Hex {
     );
 }
 
+// ── figaro-offset-retirement-v1 ─────────────────────────────────────────────
+//
+// Runtime receipt for an off-protocol carbon-offset retirement performed by
+// the buyer against a process before resolveProcess. Sister to
+// figaro-offset-policy-v1 (Category-2, committed). Category-1: content is
+// fresh per attestation (the actual retirement happens via an aggregator
+// outside the kernel), no byte-equality cross-check against committed
+// sectionData. Off-chain consumers verify provider ∈ policy.providers.
+//
+// Provider enum overlaps figaro-offset-policy-v1 where the aggregator pattern
+// matches (klima=1, toucan=2, custom=3); moss is omitted because Moss.Earth
+// retires via MCO2 burns rather than an on-chain aggregator with this
+// receipt shape.
+
+export type OffsetRetirementProvider = "klima" | "toucan" | "custom";
+
+const OFFSET_RETIREMENT_PROVIDER_INDEX: Record<OffsetRetirementProvider, number> = {
+    "klima": 1,
+    "toucan": 2,
+    "custom": 3,
+};
+
+export interface OffsetRetirementContent {
+    provider: OffsetRetirementProvider;
+    aggregatorAddress: Hex;
+    inputToken: Hex;
+    inputAmount: bigint;
+    beneficiary: Hex;
+    retirementTxHash: Hex;
+    /**
+     * Tonnes CO2e retired in 1e18 fixed-point (1e18 = 1 tonne). Matches the
+     * ERC-20 carbon-token convention (decimals=18) used by every aggregator
+     * the schema integrates with (Klima KlimaInfinity, Toucan OffsetHelper,
+     * BCT/NCT/MCO2/TCO2 fragments). Audit consumers comparing to
+     * figaro-ghg-measurement-v1.grams convert via (tonsRetired / 1e18)
+     * tonnes ↔ (grams / 1_000_000) tonnes. Validator only checks `> 0`.
+     */
+    tonsRetired: bigint;
+}
+
+export function encodeOffsetRetirementContent(content: OffsetRetirementContent): Hex {
+    return encodeAbiParameters(
+        [
+            { type: "uint8" },
+            { type: "address" },
+            { type: "address" },
+            { type: "uint256" },
+            { type: "address" },
+            { type: "bytes32" },
+            { type: "uint256" },
+        ],
+        [
+            OFFSET_RETIREMENT_PROVIDER_INDEX[content.provider],
+            content.aggregatorAddress,
+            content.inputToken,
+            content.inputAmount,
+            content.beneficiary,
+            content.retirementTxHash,
+            content.tonsRetired,
+        ],
+    );
+}
+
 // ── figaro-merchant-process-v1 ──────────────────────────────────────────────
 //
 // Sovereignty primitive: merchant attests their own internal events under this

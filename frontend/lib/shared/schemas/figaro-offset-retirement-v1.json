@@ -1,0 +1,74 @@
+{
+    "schemaId": "figaro-offset-retirement-v1",
+    "version": 1,
+    "title": "Carbon-offset retirement receipt",
+    "description": "Runtime attestation anchoring an off-protocol carbon-offset retirement performed by the buyer against a process before resolveProcess. The retirement itself happens via an aggregator contract (Klima, Toucan, custom) outside the kernel; this attestation records the receipt fields downstream auditors need to verify that the buyer compensated the process's measured emissions. Category-1: content is the retirement receipt as-observed, not cross-checked against the committed sectionData (the committed clause is figaro-offset-policy-v1 which declares the set of providers on offer; the receipt declares which provider was actually used). Pair with figaro-offset-policy-v1 at agreement signing when the buyer commits to a set of acceptable providers; the chosen provider here must be one declared in that policy. Off-chain consumers cross-check provider ∈ policy.providers (the validator does not enforce this).",
+    "categories": [
+        "emissions"
+    ],
+    "fields": [
+        {
+            "name": "provider",
+            "type": "enum",
+            "values": [
+                "klima",
+                "toucan",
+                "custom"
+            ],
+            "required": true,
+            "description": "Offset aggregator that executed the retirement. Indices match the figaro-offset-policy-v1 enum where they overlap (klima=1, toucan=2, custom=3); moss is omitted here because Moss.Earth retires via MCO2 burns rather than an on-chain aggregator pattern compatible with this receipt shape."
+        },
+        {
+            "name": "aggregatorAddress",
+            "type": "string",
+            "format": "address-hex",
+            "required": true,
+            "description": "Address of the aggregator contract that emitted the retirement event. Non-zero. The aggregator-specific event ABI lives off-chain in the provider's integration doc; this field anchors which contract to audit against."
+        },
+        {
+            "name": "inputToken",
+            "type": "string",
+            "format": "address-hex",
+            "required": true,
+            "description": "ERC-20 token the buyer paid the aggregator with (e.g., KLIMA, BCT, NCT, USDC). Non-zero. The aggregator converts inputToken into retired credits per its own rules; downstream auditors verify the conversion against the aggregator's published rate."
+        },
+        {
+            "name": "inputAmount",
+            "type": "bigint",
+            "required": true,
+            "min": "1",
+            "description": "Whole-token-unit amount of inputToken the buyer paid. Decimal string (bigint-parseable). Must be >= 1."
+        },
+        {
+            "name": "beneficiary",
+            "type": "string",
+            "format": "address-hex",
+            "required": true,
+            "description": "Address recorded as the retirement beneficiary on the aggregator. Non-zero. Typically the buyer's wallet (process rootBuyer); merchants may set this to their own wallet when offsetting on the buyer's behalf as part of a fulfilment commitment."
+        },
+        {
+            "name": "retirementTxHash",
+            "type": "string",
+            "format": "bytes32-hex",
+            "required": true,
+            "description": "Transaction hash of the on-chain retirement call to the aggregator. Non-zero. Auditors use this to locate the aggregator's retirement event log directly."
+        },
+        {
+            "name": "tonsRetired",
+            "type": "bigint",
+            "required": true,
+            "min": "1",
+            "description": "Tonnes CO2e retired in 1e18 fixed-point (1e18 = 1 tonne, matching ERC-20 carbon-token decimals=18 convention used by Klima KlimaInfinity, Toucan OffsetHelper, BCT/NCT/MCO2/TCO2). Decimal string (bigint-parseable). Must be >= 1. Audit consumers comparing to figaro-ghg-measurement-v1.grams convert via (tonsRetired / 1e18) tonnes ↔ (grams / 1_000_000) tonnes."
+        }
+    ],
+    "block": {
+        "tier": "category-1",
+        "mechanismKinds": [
+            "disclosure"
+        ],
+        "moduleIds": [
+            "disclosure-actions"
+        ],
+        "sisterSchemaId": "figaro-offset-policy-v1"
+    }
+}

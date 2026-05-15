@@ -52,7 +52,7 @@ Lives off-chain as JSON at the URI hashed into `SchemaRegistry.uriHash`.
 Built-in specs ship in `sdk/src/schemas/examples/` and
 `frontend/lib/shared/schemas/` (the application's working copy).
 
-## The 18 protocol schemas
+## The 19 protocol schemas
 
 | schemaId | What it carries | Attestation surface |
 |---|---|---|
@@ -67,6 +67,7 @@ Built-in specs ship in `sdk/src/schemas/examples/` and
 | `figaro-ghg-en-16258-v1` | EN 16258 transport-emissions methodology + scope (Category-2) | Layer A + C |
 | `figaro-ghg-custom-v1` | Custom / non-standard GHG methodology + scope (Category-2) | Layer A + C |
 | `figaro-ghg-measurement-v1` | Runtime grams CO2e (Category-1) | Layer A + C |
+| `figaro-offset-retirement-v1` | Runtime carbon-offset retirement receipt: aggregator address, input token + amount, beneficiary, retirement tx hash, tonnes retired (1e18 = 1 tonne, ERC-20 carbon-token convention) (Category-1). Sister of `figaro-offset-policy-v1` | Layer A + C |
 | `figaro-proximity-policy-v1` | Required detection band committed at agreement signing (Category-2) | Layer A + C |
 | `figaro-proximity-proof-v1` | Per-handoff nonce + signed witness payload at runtime (Category-1) | Layer A + C |
 | `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A + C |

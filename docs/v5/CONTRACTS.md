@@ -62,7 +62,7 @@ composer. Use for any post-deploy third-party schema registration.
 invalid content; binds to one schemaId via `schemaId() view returns (bytes32)`.
 Validators are pure / view, no admin, no mutable state.
 
-**`src/schemaValidators/`** — 17 production validator contracts, one per
+**`src/schemaValidators/`** — 18 production validator contracts, one per
 *runtime-attestable* schemaId (local-commerce use case + jurisdiction baseline + consent):
 `FigaroHandoffV1Validator`,
 `FigaroCommerceV1Validator`, `FigaroGeoV2Validator`,
@@ -75,7 +75,9 @@ Validators are pure / view, no admin, no mutable state.
 `FigaroProximityProofV1Validator` (Category-1, runtime witness),
 `FigaroMerchantProcessV1Validator`,
 `FigaroCourierProcessV1Validator`, `FigaroJurisdictionV1Validator`,
-`FigaroConsentV1Validator`.
+`FigaroConsentV1Validator`,
+`FigaroOffsetPolicyV1Validator` (Category-2, committed providers) +
+`FigaroOffsetRetirementV1Validator` (Category-1, runtime retirement receipt).
 Each ABI-decodes per-schema content (no on-chain JSON parsing) and reverts with
 typed custom errors. Foundry tests in `test/schemaValidators/`.
 
