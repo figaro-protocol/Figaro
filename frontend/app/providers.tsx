@@ -12,11 +12,7 @@ import { RpcBanner } from "@/components/core/RpcBanner";
 import ClientInit from "@/components/core/ClientInit";
 import { HandoffCleanupProvider } from "@/components/core/HandoffCleanupProvider";
 import { CommitmentSignPreviewProvider } from "@/components/core/CommitmentSignPreviewProvider";
-import { registerAllModules } from "@/components/modules/registerAllModules";
 import { ConfigurationBanner } from "@/components/core/ConfigurationBanner";
-
-// Register all built-in mechanism modules once at app startup.
-registerAllModules();
 
 const queryClient = new QueryClient();
 
