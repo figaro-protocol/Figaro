@@ -29,6 +29,37 @@ export const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F
 };
 
 /**
+ * Normalize a `classOfService` input to the SDK encoder's short-code form.
+ * The figaro-geo-v2 encoder requires single-letter codes ("S"/"E"/"F"/"C")
+ * because the on-chain ABI encodes the field as `uint8`. The catalogue
+ * layer (and a number of upstream surfaces) stores the long form
+ * ("standard"/"express"/"fragile"/"cold-chain"); this helper accepts
+ * either and throws a typed error on anything else. Centralising the
+ * normalisation here keeps callers — `agreementManifest`, test helpers,
+ * future schema bridges — from each re-implementing the catalogue
+ * convention, and replaces the previous failure mode (a cryptic
+ * `numberToHex(undefined)` from viem) with a clear message.
+ */
+export function classOfServiceToShortCode(input: unknown): "S" | "E" | "F" | "C" {
+    if (typeof input !== "string") {
+        throw new TypeError(
+            `classOfService: expected string, got ${typeof input}`,
+        );
+    }
+    const trimmed = input.trim();
+    if (trimmed === "S" || trimmed === "E" || trimmed === "F" || trimmed === "C") {
+        return trimmed;
+    }
+    const lower = trimmed.toLowerCase();
+    if (lower in CLASS_TO_SHORT_CODE) {
+        return CLASS_TO_SHORT_CODE[lower as CatalogueClassOfService];
+    }
+    throw new TypeError(
+        `classOfService: expected one of "S"/"E"/"F"/"C" or "standard"/"express"/"fragile"/"cold-chain", got ${JSON.stringify(input)}`,
+    );
+}
+
+/**
  * Operator's preferred unit system for the catalogue editor + display.
  * Storage of `massGrams` / `volumeMl` is ALWAYS metric — `unitSystem`
  * only governs how the editor accepts input and how the display

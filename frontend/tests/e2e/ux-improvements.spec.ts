@@ -59,11 +59,12 @@ test.describe('Route loading', () => {
     // smoke test, which targeted `/i/local-commerce` (deleted 2026-05). The
     // consumer entry points are `/discover` (operator catalogue) and the
     // per-merchant detail page; loading either is a meaningful "route
-    // hydrates + key surface renders" check.
+    // hydrates + key surface renders" check. In mock mode there are no
+    // registered operators, so /discover surfaces the empty-state CTA.
 
-    test('discover route loads operator catalogue', async ({ page }) => {
+    test('discover route hydrates and surfaces the empty-state CTA', async ({ page }) => {
         await gotoRoute(page, '/discover?e2e=mock');
-        await expect(page.getByTestId('operator-card').first()).toBeVisible({ timeout: 15_000 });
+        await expect(page.getByTestId('discover-empty-cta')).toBeVisible({ timeout: 15_000 });
     });
 
     test('legacy /i/<slug> redirects to /discover', async ({ page }) => {

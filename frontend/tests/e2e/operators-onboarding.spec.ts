@@ -1,7 +1,8 @@
 /**
  * operators-onboarding.spec.ts
  *
- * Mock-mode tests for the seven-screen operator-registration wizard.
+ * Mock-mode tests for the six-screen operator-registration wizard
+ * (Welcome / Identity / Catalogue / Assemblies / Agents / Review).
  *
  * Mock mode does not inject `window.ethereum`, so wallet-connected
  * flows (form fill, autosave, wallet-switch) are covered separately
@@ -12,17 +13,17 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('/operators — entry + routing', () => {
-    test('welcome page renders with all seven step labels', async ({ page }) => {
+    test('welcome page renders with all six step labels', async ({ page }) => {
         await page.goto('/operators?e2e=mock', { waitUntil: 'load' });
-        await expect(page.getByRole('heading', { name: /Steps in this registration/i })).toBeVisible({ timeout: 15000 });
+        await expect(page.getByRole('heading', { name: /Register as an operator/i })).toBeVisible({ timeout: 15000 });
 
         const indicator = page.getByLabel('Onboarding progress');
         await expect(indicator).toBeVisible();
 
-        // Step labels — protects against accidental relabeling. "Identity"
-        // (not "Profile") and "Pin" (not "Link") are the canonical names
-        // after the renames.
-        for (const label of ['Welcome', 'Identity', 'Catalogue', 'Pin', 'Assemblies', 'Agents', 'Done']) {
+        // Step labels — protects against accidental relabeling. Six steps
+        // after the wizard was collapsed (no separate "Pin" or "Done"
+        // steps; Review is the terminal step).
+        for (const label of ['Welcome', 'Identity', 'Catalogue', 'Assemblies', 'Agents', 'Review']) {
             await expect(indicator.getByText(label, { exact: true }).first()).toBeVisible();
         }
     });
@@ -32,13 +33,13 @@ test.describe('/operators — entry + routing', () => {
         const beginLink = page.getByRole('link', { name: /Begin/ });
         await expect(beginLink).toBeVisible({ timeout: 15000 });
         await beginLink.click();
-        await expect(page).toHaveURL(/\/operators\/onboard\/profile/);
+        await expect(page).toHaveURL(/\/operators\/identity/);
     });
 });
 
 test.describe('/operators — wallet-required gating (mock, no wallet)', () => {
     const subRoutes = [
-        { path: 'profile', gateText: /Connect a wallet to start your profile draft/i },
+        { path: 'identity', gateText: /Connect a wallet to start your profile draft/i },
         { path: 'catalogue', gateText: /Connect a wallet/i },
         { path: 'assemblies', gateText: /Connect a wallet/i },
         { path: 'agents', gateText: /Connect a wallet/i },
@@ -53,7 +54,7 @@ test.describe('/operators — wallet-required gating (mock, no wallet)', () => {
 });
 
 test.describe('/operators — step indicator current state', () => {
-    test('profile screen marks step 2 (Identity) as current', async ({ page }) => {
+    test('identity screen marks step 2 (Identity) as current', async ({ page }) => {
         await page.goto('/operators/identity?e2e=mock', { waitUntil: 'load' });
         const indicator = page.getByLabel('Onboarding progress');
         await expect(indicator).toBeVisible({ timeout: 15000 });
@@ -62,7 +63,7 @@ test.describe('/operators — step indicator current state', () => {
         await expect(current).toContainText('Identity');
     });
 
-    test('agents screen marks step 6 (Agents) as current', async ({ page }) => {
+    test('agents screen marks step 5 (Agents) as current', async ({ page }) => {
         await page.goto('/operators/agents?e2e=mock', { waitUntil: 'load' });
         const indicator = page.getByLabel('Onboarding progress');
         await expect(indicator).toBeVisible({ timeout: 15000 });

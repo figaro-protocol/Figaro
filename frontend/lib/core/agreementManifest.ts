@@ -58,6 +58,7 @@
 
 import { keccak256, stringToHex } from "viem";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
+import { classOfServiceToShortCode } from "@/lib/shared/sellerCatalogueMetadata";
 
 // ── Core types ───────────────────────────────────────────────────────────────
 
@@ -364,7 +365,11 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
                 destinationGeohash: data.destinationGeohash as string,
                 massGrams: Number(data.massGrams),
                 volumeMl: Number(data.volumeMl),
-                classOfService: asAny(data.classOfService),
+                // Accept either the SDK short code or the catalogue long form
+                // here — see `classOfServiceToShortCode`. Without this bridge,
+                // a section authored with `"fragile"` would surface as a cryptic
+                // `numberToHex(undefined)` from viem at hash time.
+                classOfService: classOfServiceToShortCode(data.classOfService),
             });
         case "figaro-fulfilment-v2":
             return (data) => encodeFulfilmentV2Content({

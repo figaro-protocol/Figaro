@@ -178,8 +178,11 @@ test.describe('Order card — field coverage (mocked)', () => {
         // re-testing it three more times.
         const TOKEN = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
         // KV-format manifest covers origin (farm-A) + destination (market-B)
-        // + mass (5 kg) + volume (10 L) + class (Perishables).
-        const text = 'o:farm-A|d:market-B|mass:5 kg|vol:10 L|class:Perishables';
+        // + mass (5 kg) + volume (10 L) + class (fragile). The agreement
+        // section stores `classOfService` verbatim (catalogue convention);
+        // the figaro-geo-v2 encoder bridge normalises long form to the
+        // SDK's single-letter code at hash time.
+        const text = 'o:farm-A|d:market-B|mass:5 kg|vol:10 L|class:fragile';
         const manifestHex = '0x' + Buffer.from(text, 'utf8').toString('hex');
 
         const orderId = await injectPendingOrder(page, {
@@ -202,7 +205,7 @@ test.describe('Order card — field coverage (mocked)', () => {
         await expect(node).toContainText('market-B');
         await expect(node).toContainText('5000 g');
         await expect(node).toContainText('10000 mL');
-        await expect(node).toContainText('Perishables');
+        await expect(node).toContainText('fragile');
 
         // Value lens — currency token (truncated).
         await page.getByTestId('lens-btn-value').click();
