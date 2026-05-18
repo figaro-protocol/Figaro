@@ -16,8 +16,7 @@ import type { Order } from "@/lib/core/store";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
-
-const COURIER_PROCESS_SCHEMA = "figaro-courier-process-v1";
+import { COURIER_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 
 export interface AgreementHints {
     hasChildren: boolean;
@@ -45,7 +44,7 @@ export function computeAgreementHints(
         if (!info?.parentOrderIds.includes(selectedOrderId)) continue;
         hasChildren = true;
         const agreement = loadAgreement(order.agreementHash);
-        if (agreement?.sections.some((s) => s.schema === COURIER_PROCESS_SCHEMA)) {
+        if (agreement?.sections.some((s) => s.schema === COURIER_PROCESS_SCHEMA_KEY)) {
             hasCourierChild = true;
             break;
         }
