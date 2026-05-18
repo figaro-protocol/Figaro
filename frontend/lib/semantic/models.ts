@@ -1,7 +1,5 @@
-/** Semantic-model union types. Previously re-imported from `lib/shared/assembly`,
- *  inlined here as part of the reference-assembly cleanup — the runtime
- *  semantic layer is the only consumer, and decoupling it from the legacy
- *  Assembly file unblocks deletion of that file's downstream surface. */
+/** Semantic-model union types — the runtime semantic layer's canonical
+ *  taxonomy for truth class, mechanism risk, scope, and roles. */
 import type { ProximityProof } from "@/lib/mechanisms/useCourierProcess";
 
 export type TruthClass =

@@ -75,8 +75,7 @@ function safeURI(uri: string | undefined): string | undefined {
 
 /**
  * Project an on-chain-registered operator's profile into a `Listing` with
- * `provenance: "registry"`. The discover surface no longer blends fixture
- * listings — only registered operators surface.
+ * `provenance: "registry"`.
  *
  * `assemblyBindings` from the profile JSON drives the `bindings` field —
  * the wizard writes these from `OnboardingState.assemblies`, so a
