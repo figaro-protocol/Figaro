@@ -1,4 +1,5 @@
 import { Order, OrderState } from "@/lib/core/store";
+import { type TopologyMode } from "@/lib/core/agreementManifest";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
@@ -476,7 +477,7 @@ function deriveOrderNodeModelFromOrder(
 function deriveProcessRelations(
     processId: string,
     orders: Order[],
-    topology: Map<string, { parentOrderIds: string[]; topologyMode: "root" | "explicit" | "linear-fallback"; sourceLabel: string }>,
+    topology: Map<string, { parentOrderIds: string[]; topologyMode: TopologyMode; sourceLabel: string }>,
 ): ProcessRelationModel[] {
     const relationModels: ProcessRelationModel[] = [];
     const knownOrderIds = new Set(orders.map((order) => order.id.toString()));

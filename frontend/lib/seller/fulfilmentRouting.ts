@@ -53,6 +53,6 @@ export const FULFILMENT_MODE_LABELS: Record<CanonicalFulfilmentMethod, string> =
     "pickup": "Pickup",
     "virtual": "Virtual",
     "deliver:buyer-assigned": "Delivery (buyer chooses courier)",
-    "deliver:seller-assigned": "Delivery (merchant arranges)",
+    "deliver:seller-assigned": "Delivery (merchant arranges courier)",
     "deliver:dutch-auction": "Delivery (Dutch-auction courier)",
 };

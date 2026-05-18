@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import { ManifestFields, encodeManifestFields } from "@/lib/core/encoding";
+import { LEGACY_MANIFEST } from "@/lib/handoff/manifest";
 import { Input } from "@/components/ui/Input";
 import ChevronDown from "@/components/icons/ChevronDown";
 import ChevronUp from "@/components/icons/ChevronUp";
@@ -90,8 +91,7 @@ export function ManifestForm({ value, onChange, showValidation }: ManifestFormPr
         onChange({ ...value, [key]: e.target.value || undefined });
 
     const encodedPreview = encodeManifestFields(value);
-    // "0x01" is the sentinel for an empty manifest (no text content).
-    const isEffectivelyEmpty = encodedPreview === "0x01";
+    const isEffectivelyEmpty = encodedPreview === LEGACY_MANIFEST;
     const showOriginValidation = (showValidation || touchedRequiredFields.origin) && !value.origin?.trim();
     const showDestinationValidation = (showValidation || touchedRequiredFields.destination) && !value.destination?.trim();
 

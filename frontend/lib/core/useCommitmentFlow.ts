@@ -21,6 +21,7 @@ import { COMMITMENT_TYPES } from "@figaro/core";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useFigaroActions, Commitment } from "@/lib/core/useFigaroActions";
 import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
+import { getE2EModeFromSearchParams } from "@/lib/shared/e2e";
 import { isValidAddress } from "@/components/operators/TokenAddressInput";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { saveCommitment, computeOrderHash } from "@/lib/core/commitmentStore";
@@ -115,15 +116,6 @@ function getInjectedEthereumProvider(): InjectedEthereumProvider | null {
     }
 
     return candidate as InjectedEthereumProvider;
-}
-
-function getE2EMode(): "mock" | "devnet" | null {
-    if (typeof window === "undefined") {
-        return null;
-    }
-
-    const mode = new URLSearchParams(window.location.search).get("e2e");
-    return mode === "mock" || mode === "devnet" ? mode : null;
 }
 
 // ── Serializable payload for sharing ───────────────────────────
@@ -393,7 +385,9 @@ export function useCommitmentFlow() {
         meta?: CommitmentPayloadMeta,
         initiatorRole?: "buyer" | "seller",
     ) => {
-        const e2eMode = getE2EMode();
+        const e2eMode = typeof window === "undefined"
+            ? null
+            : getE2EModeFromSearchParams(window.location.search);
         const isE2EMock = e2eMode === "mock" && process.env.NODE_ENV !== "production";
         const isDevnet = e2eMode === "devnet" && process.env.NODE_ENV !== "production";
         const normalizedAddress = address?.toLowerCase();

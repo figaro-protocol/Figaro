@@ -26,7 +26,7 @@ import { mockAwareHttp } from "@/lib/shared/mockTransport";
 import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "@/lib/dispute";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-import { decodeManifest, cosLabel } from "@/lib/handoff/manifest";
+import { decodeManifest, cosLabel, LEGACY_MANIFEST } from "@/lib/handoff/manifest";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
@@ -154,7 +154,7 @@ function AttestationViewer({ cid }: { cid: string }) {
 
 function ManifestPanel({ manifestHash }: { manifestHash: string }) {
     const decoded = useMemo(() => {
-        if (!manifestHash || manifestHash === "0x01" || manifestHash.length < 6) return null;
+        if (!manifestHash || manifestHash === LEGACY_MANIFEST || manifestHash.length < 6) return null;
         return decodeManifest(manifestHash);
     }, [manifestHash]);
 

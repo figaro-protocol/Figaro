@@ -272,16 +272,8 @@ export function mergeSyntheticParent(
 
 import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 import { canonicalFulfilmentMethodToArrays } from "@/lib/core/orderAgreement";
+import { FULFILMENT_MODE_LABELS } from "@/lib/seller/fulfilmentRouting";
 export type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
-
-export const FULFILMENT_METHOD_LABELS: Record<CanonicalFulfilmentMethod, string> = {
-    "consume-onsite": "Consume on-site",
-    "pickup": "Pickup",
-    "virtual": "Virtual",
-    "deliver:buyer-assigned": "Delivery (buyer chooses courier)",
-    "deliver:seller-assigned": "Delivery (merchant arranges courier)",
-    "deliver:dutch-auction": "Delivery (Dutch-auction courier)",
-};
 
 /**
  * Default fulfilment method when an order's agreement carries no fulfilment
@@ -295,7 +287,7 @@ const DEFAULT_FULFILMENT_METHOD: CanonicalFulfilmentMethod = "deliver:seller-ass
 export function deriveFulfilmentMethod(order: Order): CanonicalFulfilmentMethod {
     const summary = summarizeAgreement(loadAgreement(order.agreementHash));
     const method = summary?.fulfilment?.method;
-    if (typeof method === "string" && (FULFILMENT_METHOD_LABELS as Record<string, string>)[method]) {
+    if (typeof method === "string" && (FULFILMENT_MODE_LABELS as Record<string, string>)[method]) {
         return method as CanonicalFulfilmentMethod;
     }
     return DEFAULT_FULFILMENT_METHOD;

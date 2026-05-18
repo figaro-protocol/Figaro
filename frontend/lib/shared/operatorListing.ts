@@ -1,5 +1,6 @@
 import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
+import { hexEqual } from "@/lib/shared/evm";
 
 /**
  * Generic operator-listing surface for `/discover`.
@@ -117,8 +118,7 @@ export function findListingByAddress(
     address: string,
 ): Listing | undefined {
     if (!address) return undefined;
-    const target = address.toLowerCase();
-    return listings.find((l) => l.address.toLowerCase() === target);
+    return listings.find((l) => hexEqual(l.address, address));
 }
 
 /** Resolve an address to a human-readable display name using the loaded

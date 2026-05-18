@@ -20,7 +20,7 @@ import type {
     CommitmentPayload,
     CommitmentFlowStep,
 } from "@/lib/core/useCommitmentFlow";
-import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { computeOrderHash } from "@/lib/core/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
@@ -73,15 +73,11 @@ function resolveRecipientAddress(
     payload: CommitmentPayload,
     currentAddress?: string,
 ): string | null {
-    const normalizedCurrentAddress = currentAddress?.toLowerCase();
-    const buyer = payload.commitment.buyer.toLowerCase();
-    const seller = payload.commitment.seller.toLowerCase();
-
-    if (normalizedCurrentAddress === buyer) {
+    if (hexEqual(currentAddress, payload.commitment.buyer)) {
         return payload.commitment.seller;
     }
 
-    if (normalizedCurrentAddress === seller) {
+    if (hexEqual(currentAddress, payload.commitment.seller)) {
         return payload.commitment.buyer;
     }
 

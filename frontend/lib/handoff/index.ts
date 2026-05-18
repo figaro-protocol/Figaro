@@ -81,5 +81,6 @@ export {
 } from "./ecdh";
 
 // Manifest schema registry hook
-export { useManifestSchema, useManifestSchemaCount, FULFILMENT_V2_SCHEMA_KEY } from "./useManifestSchema";
+export { useManifestSchema, useManifestSchemaCount } from "./useManifestSchema";
 export type { ManifestSchema } from "./useManifestSchema";
+export { FULFILMENT_V2_SCHEMA_KEY } from "@/lib/core/agreementManifest";

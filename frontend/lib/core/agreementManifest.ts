@@ -56,6 +56,7 @@
  * can reconstruct and verify it.
  */
 
+import { keccak256, stringToHex } from "viem";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 
 // ── Core types ───────────────────────────────────────────────────────────────
@@ -186,6 +187,7 @@ export const GHG_DISCLOSURE_SCHEMA_KEYS = [
     "figaro-ghg-en-16258-v1",
     "figaro-ghg-custom-v1",
 ] as const;
+export type GHGDisclosureSchemaKey = (typeof GHG_DISCLOSURE_SCHEMA_KEYS)[number];
 /** Map a UI standard string to its corresponding GHG sister schemaId. Each
  *  accounting standard is its own schema; standard identity lives in the
  *  schemaId, not in a content field. Unknown values fall through to the
@@ -217,6 +219,7 @@ export const GHG_SCHEMA_TO_STANDARD: Record<typeof GHG_DISCLOSURE_SCHEMA_KEYS[nu
     "figaro-ghg-custom-v1": "Custom",
 };
 export const GHG_MEASUREMENT_SCHEMA_KEY = "figaro-ghg-measurement-v1";
+export const GHG_MEASUREMENT_SCHEMA_ID = keccak256(stringToHex(GHG_MEASUREMENT_SCHEMA_KEY));
 /** Committed proximity policy (Category-2 — band declared at agreement time). */
 export const PROXIMITY_POLICY_SCHEMA_KEY = "figaro-proximity-policy-v1";
 /** Runtime proximity proof (Category-1 — per-handoff nonce + signed witness). */

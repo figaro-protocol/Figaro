@@ -8,6 +8,10 @@
  * mechanisms/ code may freely import from core/.
  */
 import { keccak256, stringToHex } from "viem";
+import {
+    GHG_DISCLOSURE_SCHEMA_KEYS,
+    type GHGDisclosureSchemaKey,
+} from "@/lib/core/agreementManifest";
 export {
     OPERATOR_REGISTRY_ABI,
     FIG_TOKEN_ABI,
@@ -38,23 +42,9 @@ export const DISCLOSURE_KIND_DESCRIPTIONS: Record<number, string> = {
     3: "Third-party verification or validation statement — ISO 14064-3",
 };
 
-/**
- * GHG disclosure sister schemas — one per accounting standard. Each is a
- * separate registered schemaId; the standard identity lives in the schemaId,
- * not in a content field. All five share the same `(uint8 scope)` content
- * shape and encoder.
- */
-export const GHG_DISCLOSURE_SCHEMA_KEYS = [
-    "figaro-ghg-protocol-v1",
-    "figaro-ghg-iso-14064-v1",
-    "figaro-ghg-pas-2050-v1",
-    "figaro-ghg-en-16258-v1",
-    "figaro-ghg-custom-v1",
-] as const;
-export type GHGDisclosureSchemaKey = (typeof GHG_DISCLOSURE_SCHEMA_KEYS)[number];
-
 /** Normative-standard reference for each disclosure schema. 1:1 with
- *  `GHG_DISCLOSURE_SCHEMA_KEYS`; each `id` IS the schemaId. */
+ *  `GHG_DISCLOSURE_SCHEMA_KEYS` (canonical in `lib/core/agreementManifest`);
+ *  each `id` IS the schemaId. */
 export const GHG_NORM_REFERENCES = [
     { id: "figaro-ghg-protocol-v1", label: "GHG Protocol Corporate Standard", scope: "Scope 1/2/3 corporate accounting" },
     { id: "figaro-ghg-iso-14064-v1", label: "ISO 14064", scope: "Quantification, reporting & verification" },
@@ -86,8 +76,6 @@ export const DISCLOSURE_KIND = {
 //   2 = Restatement    — correction to prior measurement
 //   3 = Verification   — third-party validated measurement
 
-export const GHG_MEASUREMENT_SCHEMA_KEY = "figaro-ghg-measurement-v1";
-export const GHG_MEASUREMENT_SCHEMA_ID = keccak256(stringToHex(GHG_MEASUREMENT_SCHEMA_KEY));
 
 export const MEASUREMENT_KIND = {
     estimate: 0,

@@ -1,15 +1,14 @@
 import { loadAgreement } from "@/lib/core/agreementStore";
+import { type TopologyMode } from "@/lib/core/agreementManifest";
 import {
     getTopologyMode,
     getTopologyParentOrderHashes,
 } from "@/lib/core/orderAgreement";
 import type { Order } from "@/lib/core/store";
 
-export type DerivedTopologyMode = "root" | "explicit" | "linear-fallback";
-
 export interface OrderTopologyInfo {
     parentOrderIds: string[];
-    topologyMode: DerivedTopologyMode;
+    topologyMode: TopologyMode;
     sourceLabel: string;
 }
 

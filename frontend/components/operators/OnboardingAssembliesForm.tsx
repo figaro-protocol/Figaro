@@ -7,6 +7,7 @@ import { useAccount } from "wagmi";
 import { isAddress } from "viem";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { hexEqual } from "@/lib/shared/evm";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/shared/operatorProfileMetadata";
@@ -341,7 +342,7 @@ function CounterpartySchemaEditor({
         // we'd re-trigger the parent's autosave effect on every keystroke.
         const same =
             deduped.length === addresses.length &&
-            deduped.every((a, i) => a.toLowerCase() === addresses[i].toLowerCase());
+            deduped.every((a, i) => hexEqual(a, addresses[i]));
         if (!same) onChange(deduped);
     }
 
