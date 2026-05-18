@@ -3,6 +3,7 @@ import type {
     CapabilityActionDescriptor,
     CapabilityExecutionInput,
     CourierProcessEventKind,
+    CourierProximityProofEventKind,
     MerchantProcessEventKind,
 } from "@/lib/semantic/models";
 
@@ -22,7 +23,7 @@ export interface TransactionCapabilityExecutors {
     submitDisclosureInventory?: (orderHash: string, grams: bigint) => TransactionExecutionResult;
     submitMerchantProcessSignal?: (orderHash: string, eventType: MerchantProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
     submitCourierProcessSignal?: (orderHash: string, eventType: CourierProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
-    submitCourierProcessSignalWithProof?: (orderHash: string, eventType: "arrived-pickup" | "completed", proof: { band: number; nonce: `0x${string}`; deviceSig: `0x${string}` }, roleOrderHash?: string) => TransactionExecutionResult;
+    submitCourierProcessSignalWithProof?: (orderHash: string, eventType: CourierProximityProofEventKind, proof: { band: number; nonce: `0x${string}`; deviceSig: `0x${string}` }, roleOrderHash?: string) => TransactionExecutionResult;
     claimAuction?: (auctionId: string) => TransactionExecutionResult;
     claimAirdrop?: (amount: bigint, proof: `0x${string}`[]) => TransactionExecutionResult;
     claimVesting?: (variant: "founder" | "ecosystem") => TransactionExecutionResult;

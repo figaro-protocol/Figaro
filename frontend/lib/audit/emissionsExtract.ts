@@ -30,7 +30,7 @@ import {
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
-import type { ExtractedDocument } from "./types";
+import type { AttestationReceipt, ExtractedDocument } from "./types";
 
 const GHG_DISCLOSURE_SET = new Set<string>(GHG_DISCLOSURE_SCHEMA_KEYS);
 
@@ -42,16 +42,6 @@ function findGhgDisclosureSection(
     return isRedactedSection(s) ? undefined : s;
 }
 
-export interface EmissionsMeasurementReceipt {
-    /** keccak256 of the attestation content bytes. The original
-     *  `(uint256 grams)` value is in the transaction calldata. */
-    contentRef: string;
-    attester: string;
-    /** Lifecycle stage the measurement was attested at (uint8 0-4). */
-    stage: number;
-    blockNumber: number;
-    transactionHash?: string;
-}
 
 export interface EmissionsDocument extends ExtractedDocument {
     /** True when an agreement clause from one of the GHG sister schemas
@@ -68,7 +58,7 @@ export interface EmissionsDocument extends ExtractedDocument {
     scope?: number;
     /** Runtime measurement receipts, in input order (typically commit-block
      *  order). */
-    measurements: EmissionsMeasurementReceipt[];
+    measurements: AttestationReceipt[];
 }
 
 function attestationMatchesMeasurementSchema(att: AttestationRecord): boolean {
@@ -92,7 +82,7 @@ export function extractEmissions(
         ? GHG_SCHEMA_TO_STANDARD[standardSchemaKey]
         : undefined;
 
-    const measurements: EmissionsMeasurementReceipt[] = [];
+    const measurements: AttestationReceipt[] = [];
     for (const att of attestations) {
         if (att.orderHash !== order.id) continue;
         if (!attestationMatchesMeasurementSchema(att)) continue;

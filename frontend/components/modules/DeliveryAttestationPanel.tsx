@@ -23,7 +23,7 @@ import { useCourierProcessActions, type ProximityProof } from "@/lib/mechanisms/
 import { AttestationMode, type AttestationEvidence, type HandoffStep } from "@/lib/dispute";
 import { QRChallengeDisplay } from "@/components/modules/QRChallengeDisplay";
 import { QRChallengeScanner } from "@/components/modules/QRChallengeScanner";
-import type { CapabilityExecutionInput, CapabilityModel } from "@/lib/semantic/models";
+import type { CapabilityExecutionInput, CapabilityModel, CourierProximityProofEventKind } from "@/lib/semantic/models";
 import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import type { ResolvedAssemblySkinBundle } from "@/lib/shared/runtimeResolution";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -108,7 +108,7 @@ function buildDeliveryProofCapability(
     handoffStep: HandoffStep,
     mechanismId: string,
 ): CapabilityModel {
-    const eventType: "arrived-pickup" | "completed" =
+    const eventType: CourierProximityProofEventKind =
         handoffStep === "pickup" ? "arrived-pickup" : "completed";
 
     return {
@@ -177,7 +177,7 @@ export function DeliveryAttestationPanel({
 
     // Step-aware courier event mapping. arrived-pickup = courier received the
     // goods at pickup; completed = courier delivered the goods at dropoff.
-    const courierEventType: "arrived-pickup" | "completed" =
+    const courierEventType: CourierProximityProofEventKind =
         handoffStep === "pickup" ? "arrived-pickup" : "completed";
     const labels = STEP_LABELS[handoffStep];
 

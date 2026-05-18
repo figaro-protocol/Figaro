@@ -1,5 +1,5 @@
 // Encoding helpers for frontend -> bytes32 conversions
-import { ZERO_BYTES32 } from "@/lib/shared/evm";
+import { ZERO_BYTES32, isEmptyHex } from "@/lib/shared/evm";
 import { LEGACY_MANIFEST } from "@/lib/handoff/manifest";
 
 function encodeToBytes32(s: string): `0x${string}` {
@@ -71,7 +71,7 @@ export function encodeManifest(payload: string): `0x${string}` {
  * @internal — prefer decodeManifestFields for structured use.
  */
 export function decodeManifest(hex: string): string {
-    if (!hex || hex === "0x" || hex === LEGACY_MANIFEST) return "";
+    if (isEmptyHex(hex) || hex === LEGACY_MANIFEST) return "";
     try {
         const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
         // Reject excessively large payloads to prevent DoS via memory exhaustion

@@ -18,6 +18,22 @@
  * for fetching `Agreement`, `Order`, and `AttestationRecord[]` from chain.
  */
 
+/**
+ * Per-attestation receipt — what landed on chain for one AttestationRecorded
+ * event. Shape is uniform across attestation families (GHG measurement,
+ * proximity proof, etc.); the original content payload lives in the
+ * transaction calldata and is decoded by the schema-specific extractor.
+ */
+export interface AttestationReceipt {
+    /** keccak256 of the attestation content bytes. */
+    contentRef: string;
+    attester: string;
+    /** Lifecycle stage the attestation was recorded at (uint8 0-4). */
+    stage: number;
+    blockNumber: number;
+    transactionHash?: string;
+}
+
 export interface ExtractedDocument {
     /** Display title at the top of the rendered section. */
     title: string;

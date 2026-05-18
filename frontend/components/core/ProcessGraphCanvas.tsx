@@ -35,7 +35,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import type { Address, Hex } from "viem";
 import { Order, OrderState } from "@/lib/core/store";
-import { hexEqual } from "@/lib/shared/evm";
+import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
 import { formatToken } from "@/lib/shared/utils";
 import { Card } from "@/components/ui/Card";
 import { loadAgreement } from "@/lib/core/agreementStore";
@@ -279,7 +279,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                 )}
 
                 {/* Geo lens — agreement-derived clauses */}
-                {isLens("geo") && data.agreementHash && data.agreementHash !== "0x" && (() => {
+                {isLens("geo") && !isEmptyHex(data.agreementHash) && (() => {
                     const hasStructured = geo?.origin || geo?.destination || massLabel || volumeLabel || geo?.classOfService || fulfilmentMethod || handoffMode;
                     return (
                         <div className={`pt-1 border-t border-neutral-100 ${LENS_HIGHLIGHT.geo} px-1 py-0.5`}>

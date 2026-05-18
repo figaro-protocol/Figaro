@@ -28,6 +28,7 @@ import {
     type Hex,
     type PublicClient,
 } from "viem";
+import { isEmptyHex } from "@/lib/shared/evm";
 import { ZERO_BYTES32, useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
 import { GHG_MEASUREMENT_SCHEMA_ID, GHG_SCHEMA_ID } from "@/lib/core/agreementManifest";
@@ -40,6 +41,7 @@ import {
 import {
     getAttestationsByProcessAndSchema,
     getAttestationsByOrder,
+    type IndexedAttestationLog,
 } from "@/lib/core/indexer";
 import { encodeGHGMeasurementContent } from "@figaro/core/schemas";
 
@@ -73,18 +75,6 @@ export type ProcessDisclosureSummary = {
     attestations: AttestationRecord[];
 };
 
-type IndexedAttestationLog = {
-    args?: Record<string, unknown> & {
-        orderHash?: string;
-        processId?: string;
-        attester?: string;
-        schemaId?: string;
-        stage?: number | bigint;
-        contentRef?: string;
-    };
-    blockNumber?: number | bigint | null;
-    transactionHash?: `0x${string}` | null;
-};
 
 // ── Pure utility functions ───────────────────────────────────────────────────
 
@@ -112,7 +102,7 @@ export async function getAttestationContent(
 ): Promise<Hex | null> {
     try {
         const tx = await client.getTransaction({ hash: txHash });
-        if (!tx?.input || tx.input === "0x") return null;
+        if (isEmptyHex(tx?.input)) return null;
         const decoded = decodeFunctionData({
             abi: ATTESTATION_COORDINATOR_ABI,
             data: tx.input,
@@ -139,7 +129,7 @@ export async function getAttestationContent(
  * to a raw hex integer. Returns `null` for empty / zero / unparseable content.
  */
 export function decodeMeasurementGramsContent(content: Hex | null | undefined): bigint | null {
-    if (!content || content === ZERO_BYTES32 || content === "0x") return null;
+    if (isEmptyHex(content) || content === ZERO_BYTES32) return null;
     try {
         return BigInt(content);
     } catch {

@@ -106,6 +106,13 @@ export type CourierProcessEventKind =
     | "completed"
     | "cancelled";
 
+/** Subset of courier-process events that require on-chain proximity proof —
+ *  the two handoff edges (pickup, dropoff). */
+export type CourierProximityProofEventKind = Extract<
+    CourierProcessEventKind,
+    "arrived-pickup" | "completed"
+>;
+
 export interface SubmitMerchantProcessSignalCapabilityAction {
     executionType: "transaction";
     kind: "submit-merchant-process-signal";
@@ -124,12 +131,12 @@ export interface SubmitCourierProcessSignalCapabilityAction {
 
 /** Courier-process attestation paired with a proximity-proof attestation —
  *  used at the two handoff edges where on-chain proximity evidence
- *  accompanies the role-event log entry (arrived-pickup, completed). */
+ *  accompanies the role-event log entry. */
 export interface SubmitCourierProcessSignalWithProofCapabilityAction {
     executionType: "transaction";
     kind: "submit-courier-process-signal-with-proof";
     orderHash: string;
-    eventType: "arrived-pickup" | "completed";
+    eventType: CourierProximityProofEventKind;
     roleOrderHash?: string;
 }
 

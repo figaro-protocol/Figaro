@@ -30,7 +30,7 @@ import {
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
-import type { ExtractedDocument } from "./types";
+import type { AttestationReceipt, ExtractedDocument } from "./types";
 
 function findPolicySection(
     agreement: Agreement | RedactableAgreement,
@@ -40,16 +40,6 @@ function findPolicySection(
     return isRedactedSection(s) ? undefined : s;
 }
 
-export interface ProximityProofReceipt {
-    /** keccak256 of the attestation content. Original (band, nonce, witness)
-     *  triple in the transaction calldata. */
-    contentRef: string;
-    attester: string;
-    /** Lifecycle stage the proof was attested at (uint8 0-4). */
-    stage: number;
-    blockNumber: number;
-    transactionHash?: string;
-}
 
 export interface ProximityDocument extends ExtractedDocument {
     /** True when an agreement clause from `figaro-proximity-policy-v1` is
@@ -59,7 +49,7 @@ export interface ProximityDocument extends ExtractedDocument {
     committedBand?: number;
     /** Runtime proof receipts, in input order. Each receipt's recovered
      *  band must match `committedBand` for the proof chain to verify. */
-    proofs: ProximityProofReceipt[];
+    proofs: AttestationReceipt[];
 }
 
 function attestationMatchesProofSchema(att: AttestationRecord): boolean {
@@ -77,7 +67,7 @@ export function extractProximity(
         ? data.band
         : undefined;
 
-    const proofs: ProximityProofReceipt[] = [];
+    const proofs: AttestationReceipt[] = [];
     for (const att of attestations) {
         if (att.orderHash !== order.id) continue;
         if (!attestationMatchesProofSchema(att)) continue;

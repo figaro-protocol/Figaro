@@ -14,6 +14,7 @@ import type { PublicClient } from "viem";
 import type { Order } from "@/lib/core/store";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { COMMERCE_SCHEMA_KEY, redactSections } from "@/lib/core/agreementManifest";
+import type { IndexedAttestationLog } from "@/lib/core/indexer";
 import {
     getAttestationsByOrder,
     getAllAuctionCreated,
@@ -39,19 +40,6 @@ import {
     type CoordinatorEventSource,
     type ProcessTimeline,
 } from "@/lib/dispute/evidenceTimeline";
-
-interface IndexedAttestationLog {
-    args?: {
-        orderHash?: string;
-        processId?: string;
-        attester?: string;
-        schemaId?: string;
-        stage?: number | bigint;
-        contentRef?: string;
-    };
-    transactionHash?: string;
-    blockNumber?: bigint | number;
-}
 
 interface IndexedLog {
     args?: Record<string, unknown>;

@@ -21,3 +21,19 @@ export function hexEqual(
     if (a == null || b == null) return false;
     return a.toLowerCase() === b.toLowerCase();
 }
+
+/**
+ * True when a hex string carries no bytes — `null`, `undefined`, `""`, or the
+ * bare `"0x"` prefix. Sentinel values like `ZERO_BYTES32` (zero-valued bytes32)
+ * and `LEGACY_MANIFEST` (`"0x01"` manifest marker) carry distinct semantic
+ * meaning and should be compared against directly rather than folded in here.
+ *
+ * Type predicate so call sites can rely on negative narrowing — after
+ * `if (isEmptyHex(x)) ...` an `else` branch (or post-guard early return)
+ * sees `x` as the non-empty subtype.
+ */
+export function isEmptyHex<T extends string>(
+    hex: T | null | undefined,
+): hex is (T & ("" | "0x")) | null | undefined {
+    return !hex || hex === "0x";
+}

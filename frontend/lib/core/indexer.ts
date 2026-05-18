@@ -58,6 +58,25 @@ const EV_OPERATOR_WITHDRAWN = parseAbiItem(
 type IndexedLog = Awaited<ReturnType<typeof cachedGetLogs>>[number];
 type IndexedLogWithArgs = IndexedLog & { args?: Record<string, unknown> };
 
+/**
+ * Typed view of an `AttestationRecorded` log row as returned by
+ * `getAttestationsByOrder` / `getAttestationsByProcessAndSchema`. The
+ * `blockNumber` and `transactionHash` may be `null` for pending logs;
+ * downstream consumers should guard accordingly.
+ */
+export type IndexedAttestationLog = {
+    args?: Record<string, unknown> & {
+        orderHash?: string;
+        processId?: string;
+        attester?: string;
+        schemaId?: string;
+        stage?: number | bigint;
+        contentRef?: string;
+    };
+    blockNumber?: number | bigint | null;
+    transactionHash?: `0x${string}` | null;
+};
+
 // ── Dual-source merge helper ─────────────────────────────────────────────────
 
 /**
