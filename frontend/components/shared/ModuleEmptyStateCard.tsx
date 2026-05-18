@@ -2,7 +2,6 @@ import type { CSSProperties, ReactNode } from "react";
 
 interface ModuleEmptyStateCardProps {
     testId: string;
-    skinId?: string;
     cardStyle?: CSSProperties;
     labelStyle?: CSSProperties;
     title?: ReactNode;
@@ -11,7 +10,6 @@ interface ModuleEmptyStateCardProps {
 
 export function ModuleEmptyStateCard({
     testId,
-    skinId,
     cardStyle,
     labelStyle,
     title,
@@ -20,7 +18,6 @@ export function ModuleEmptyStateCard({
     return (
         <div
             data-testid={testId}
-            data-skin={skinId}
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >

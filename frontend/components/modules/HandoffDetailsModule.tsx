@@ -133,7 +133,6 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
             <div
                 data-testid="handoff-details-module"
                 data-module-id={moduleId}
-                data-skin={context.skinBundle?.skinId}
                 className="rounded-lg border border-green-200 bg-green-50 p-4"
                 style={cardStyle}
             >
@@ -159,7 +158,6 @@ export function HandoffDetailsModule({ moduleId, context }: ModuleProps) {
         <div
             data-testid="handoff-details-module"
             data-module-id={moduleId}
-            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-neutral-200 bg-white p-6 space-y-5"
             style={cardStyle}
         >

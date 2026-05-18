@@ -2,7 +2,6 @@ import { memo, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Copy, Check } from "lucide-react";
 import { ProcessModel } from "@/lib/semantic/models";
-import type { ResolvedAssemblySkinBundle } from "@/lib/shared/runtimeResolution";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 interface Props {
@@ -10,11 +9,9 @@ interface Props {
     orderCount?: number;
     selected: boolean;
     onSelect: () => void;
-    skin?: ResolvedAssemblySkinBundle;
 }
 
-export const ProcessSummaryCard = memo(function ProcessSummaryCard({ process, orderCount, selected, onSelect, skin }: Props) {
-    const accentColor = skin?.branding.branding.accentColor;
+export const ProcessSummaryCard = memo(function ProcessSummaryCard({ process, orderCount, selected, onSelect }: Props) {
     const [copied, setCopied] = useState(false);
 
     const copyId = (e: React.MouseEvent) => {
@@ -27,11 +24,7 @@ export const ProcessSummaryCard = memo(function ProcessSummaryCard({ process, or
 
     return (
         <button type="button" onClick={onSelect} className="w-full text-left" data-testid={`process-summary-${process.processId}`}>
-            <Card
-                className={`p-4 transition-colors ${selected ? "border-black" : "hover:bg-neutral-50"}`}
-                data-skin={skin?.skinId}
-                style={selected && accentColor ? { borderColor: accentColor } : undefined}
-            >
+            <Card className={`p-4 transition-colors ${selected ? "border-black" : "hover:bg-neutral-50"}`}>
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <p className="text-sm font-semibold text-black">Process</p>
@@ -48,10 +41,7 @@ export const ProcessSummaryCard = memo(function ProcessSummaryCard({ process, or
                             </button>
                         </span>
                     </div>
-                    <span
-                        className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-700"
-                        style={selected && accentColor ? { borderColor: accentColor, color: accentColor } : undefined}
-                    >
+                    <span className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-700">
                         {process.stateSummary}
                     </span>
                 </div>

@@ -231,7 +231,7 @@ const WELL_KNOWN_SCHEMAS: { key: string; label: string; description: string }[] 
 export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
     const { address } = useAccount();
     const { catalogue: catalogueService, evidenceTransport } = context.services;
-    const accentTone = context.skinBundle?.branding.branding.accentColor;
+    const accentTone: string | undefined = undefined;
     const shellLabel = context.shellPresentation.title;
     const sellerAddr = address as `0x${string}` | undefined;
     const accentTextStyle = accentTone ? { color: accentTone } : undefined;
@@ -401,7 +401,6 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
     if (!address) {
         return (
             <div data-testid="catalogue-editor-module" data-module-id={moduleId}
-                data-skin={context.skinBundle?.skinId}
                 className="bg-white border border-neutral-200 rounded-lg p-6 shadow-sm"
                 style={accentCardStyle}>
                 <p className="mb-1 text-xs font-semibold text-neutral-500" style={accentTextStyle}>Seller Setup</p>
@@ -415,7 +414,6 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
     if (catalogueLoading) {
         return (
             <div data-testid="catalogue-editor-module" data-module-id={moduleId}
-                data-skin={context.skinBundle?.skinId}
                 className="bg-white border border-neutral-200 rounded-lg p-6 shadow-sm"
                 style={accentCardStyle}>
                 <p className="mb-1 text-xs font-semibold text-neutral-500" style={accentTextStyle}>Seller Setup</p>
@@ -432,7 +430,6 @@ export function CatalogueEditorModule({ moduleId, context }: ModuleProps) {
 
     return (
         <div data-testid="catalogue-editor-module" data-module-id={moduleId}
-            data-skin={context.skinBundle?.skinId}
             className="bg-white border border-neutral-200 rounded-lg p-6 shadow-sm space-y-6"
             style={accentCardStyle}>
 

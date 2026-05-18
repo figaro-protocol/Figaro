@@ -316,23 +316,18 @@ They decide:
 
 We do not need a separate "view recipe" primitive yet. The current assembly view definitions are enough until the repo hits a real repeated pattern that cannot be expressed through them.
 
-### 5. Skin Bundle
+### 5. Skin Bundle — retired
 
-The skin bundle is presentation-only.
+The skin-bundle wrapper layer was retired in the V4→V5 narrowing. The V4
+ENS/IPFS skinning system (per-binding `assets.cssURI`, hydrated asset
+documents, `data-skin` attributes on 20+ surfaces) shipped in the prior
+frontend (`archive-frontend/SKINNING_HOOKS.md`) but was never re-wired in
+V5 — V5's `OperatorRegistry` metadata surface exposes only `logoURI`, and
+no production code constructed a `ResolvedAssemblySkinBundle`.
 
-It may provide:
-
-1. theme tokens
-2. imagery and logos
-3. type and spacing preferences
-4. non-semantic copy
-
-It must not alter:
-
-1. capability validity
-2. mechanism authority
-3. risk boundaries
-4. settlement semantics
+Per-operator visual identity in V5 flows through `lib/shared/merchantBranding.ts`
++ `MerchantBrandingModule` directly from `useOperatorProfile()`. The
+broader skinning vision is not part of the V5 product surface.
 
 ## Subject Binding and Seller-Address Mutation
 
@@ -344,7 +339,6 @@ The binding model is:
 2. subject record resolves to one or more institution bindings
 3. institution binding selects an assembly, metadata bundle, and asset bundle
 4. runtime derives role context and visible mechanisms
-5. skin bundle personalizes the shell without altering protocol truth
 
 This is how an address should become "my institution surface" without the repo collapsing back into one vertical app per seller.
 

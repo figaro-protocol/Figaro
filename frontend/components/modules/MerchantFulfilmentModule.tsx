@@ -93,7 +93,6 @@ export function MerchantFulfilmentModule({ moduleId, context }: ModuleProps) {
         return (
             <ModuleEmptyStateCard
                 testId="merchant-fulfilment-empty"
-                skinId={context.skinBundle?.skinId}
                 cardStyle={cardStyle}
                 labelStyle={labelStyle}
                 title="Merchant fulfilment"
@@ -107,7 +106,6 @@ export function MerchantFulfilmentModule({ moduleId, context }: ModuleProps) {
         return (
             <ModuleEmptyStateCard
                 testId="merchant-fulfilment-not-seller"
-                skinId={context.skinBundle?.skinId}
                 cardStyle={cardStyle}
                 labelStyle={labelStyle}
                 title="Merchant fulfilment"
@@ -120,7 +118,6 @@ export function MerchantFulfilmentModule({ moduleId, context }: ModuleProps) {
         return (
             <ModuleEmptyStateCard
                 testId="merchant-fulfilment-unavailable"
-                skinId={context.skinBundle?.skinId}
                 cardStyle={cardStyle}
                 labelStyle={labelStyle}
                 title="Merchant fulfilment"
@@ -136,7 +133,6 @@ export function MerchantFulfilmentModule({ moduleId, context }: ModuleProps) {
         <div
             data-testid="merchant-fulfilment-module"
             data-module-id={moduleId}
-            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-neutral-200 bg-white p-6 space-y-4"
             style={cardStyle}
             role="region"

@@ -111,7 +111,6 @@ export function HandoffTrackerModule({ moduleId, context }: ModuleProps) {
         <div
             data-testid="handoff-tracker-module"
             data-module-id={moduleId}
-            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-neutral-200 bg-white p-4"
             style={cardStyle}
             role="region"

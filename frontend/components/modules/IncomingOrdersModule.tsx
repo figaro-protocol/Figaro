@@ -184,7 +184,6 @@ export function IncomingOrdersModule({ moduleId, context }: ModuleProps) {
         <div
             data-testid="incoming-orders-module"
             data-module-id={moduleId}
-            data-skin={context.skinBundle?.skinId}
             className="space-y-4"
             style={cardStyle}
         >

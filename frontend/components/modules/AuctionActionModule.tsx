@@ -112,7 +112,6 @@ export function AuctionActionModule({ context }: ModuleProps) {
     return (
         <div
             data-testid="auction-action-module"
-            data-skin={context.skinBundle?.skinId}
             className="rounded-lg border border-neutral-200 bg-white p-6"
             style={cardStyle}
         >

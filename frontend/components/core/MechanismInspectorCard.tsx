@@ -2,34 +2,24 @@ import { Card } from "@/components/ui/Card";
 import { GuaranteeModel, MechanismModel, RiskBoundaryModel } from "@/lib/semantic/models";
 import { GuaranteeBadge } from "@/components/core/GuaranteeBadge";
 import { RiskBoundaryPanel } from "@/components/core/RiskBoundaryPanel";
-import type { ResolvedAssemblySkinBundle } from "@/lib/shared/runtimeResolution";
 
 interface Props {
     mechanism: MechanismModel;
     riskBoundary?: RiskBoundaryModel;
-    skin?: ResolvedAssemblySkinBundle;
 }
 
-export function MechanismInspectorCard({ mechanism, riskBoundary, skin }: Props) {
+export function MechanismInspectorCard({ mechanism, riskBoundary }: Props) {
     const guarantees: GuaranteeModel[] = mechanism.guarantees;
     const visibleAttachments = mechanism.attachments.filter((attachment) => attachment.visibleByDefault);
-    const accentColor = skin?.branding.branding.accentColor;
 
     return (
-        <Card
-            className="p-6"
-            data-skin={skin?.skinId}
-            style={accentColor ? { borderTopColor: accentColor, borderTopWidth: "2px" } : undefined}
-        >
+        <Card className="p-6">
             <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
                     <h3 className="text-xl font-bold text-black">{mechanism.name}</h3>
                     <p className="text-sm text-neutral-600">{mechanism.description}</p>
                 </div>
-                <span
-                    className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-700"
-                    style={accentColor ? { borderColor: accentColor, color: accentColor } : undefined}
-                >
+                <span className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-700">
                     {mechanism.riskClass}
                 </span>
             </div>
