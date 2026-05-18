@@ -4,6 +4,7 @@ import type { ModuleProps } from "@/lib/shared/moduleRegistry";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { truncateHex } from "@/lib/shared/formatHex";
+import type { SemanticTone } from "@/lib/shared/tones";
 
 /**
  * HandoffTrackerModule — visual progress tracker for any physical-handoff
@@ -14,7 +15,8 @@ import { truncateHex } from "@/lib/shared/formatHex";
  * never imports contract addresses directly.
  */
 
-type TrackerTone = "neutral" | "amber" | "blue" | "green";
+/** Tracker has no error state — exclude "red" from the canonical palette. */
+type TrackerTone = Exclude<SemanticTone, "red">;
 
 function toneClasses(tone: TrackerTone): string {
     switch (tone) {

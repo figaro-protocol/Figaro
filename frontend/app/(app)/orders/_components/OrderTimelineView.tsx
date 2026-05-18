@@ -32,6 +32,7 @@ import { getAttestationsByProcessAndSchema } from "@/lib/core/indexer";
 import { getAttestationContent } from "@/lib/mechanisms/useGHGDisclosure";
 import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
 import { findListingByAddress } from "@/lib/shared/operatorListing";
+import type { SemanticTone } from "@/lib/shared/tones";
 import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import type { MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
@@ -57,7 +58,7 @@ interface MerchantTimelineEvent {
 
 interface ConsumerStatus {
     pillLabel: string;
-    pillTone: "neutral" | "amber" | "blue" | "green" | "red";
+    pillTone: SemanticTone;
     headline: string;
     subhead: string;
 }

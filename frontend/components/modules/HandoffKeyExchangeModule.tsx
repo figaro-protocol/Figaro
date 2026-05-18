@@ -7,6 +7,7 @@ import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { deriveModuleChrome } from "@/lib/shared/moduleChrome";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import type { MessageSendStatus } from "@/lib/shared/messageSendStatus";
 
 /**
  * HandoffKeyExchangeModule — buyer-side panel that auto-sends the per-order
@@ -22,14 +23,13 @@ import { extractErrorMessage } from "@/lib/shared/errors";
  * never imports contract addresses directly.
  */
 
-type SendStatus = "idle" | "waiting" | "sending" | "sent" | "error";
 
 export function HandoffKeyExchangeModule({ moduleId, context }: ModuleProps) {
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
     const { coordinationMessaging, handoffPersistence } = context.services;
     const { shellLabel, cardStyle, labelStyle } = deriveModuleChrome(context);
-    const [sendStatus, setSendStatus] = useState<SendStatus>("idle");
+    const [sendStatus, setSendStatus] = useState<MessageSendStatus>("idle");
     const [error, setError] = useState<string | null>(null);
     const [sentTo, setSentTo] = useState<string | null>(null);
     const [retryCount, setRetryCount] = useState(0);

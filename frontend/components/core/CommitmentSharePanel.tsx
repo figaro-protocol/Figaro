@@ -21,6 +21,7 @@ import type {
     CommitmentFlowStep,
 } from "@/lib/core/useCommitmentFlow";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
+import type { MessageSendStatus } from "@/lib/shared/messageSendStatus";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { computeOrderHash } from "@/lib/core/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
@@ -67,7 +68,8 @@ function buildTransportPayload(payload: CommitmentPayload): CommitmentPayload {
     return payload;
 }
 
-type TransportStatus = "idle" | "sending" | "sent" | "error";
+/** Share-panel has no waiting state — exclude from the canonical send union. */
+type TransportStatus = Exclude<MessageSendStatus, "waiting">;
 
 function resolveRecipientAddress(
     payload: CommitmentPayload,
