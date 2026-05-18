@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { encodeAbiParameters, keccak256, stringToHex, type Hex } from "viem";
 import { encodeCourierContent, type CourierEvent } from "@figaro/core/schemas";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
-import { COURIER_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { COURIER_PROCESS_SCHEMA_KEY, PROXIMITY_PROOF_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 
 /**
  * Sovereign courier event log — `figaro-courier-process-v1`. The courier
@@ -23,12 +23,9 @@ import { COURIER_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
  */
 export const COURIER_PROCESS_SCHEMA_ID = keccak256(stringToHex(COURIER_PROCESS_SCHEMA_KEY));
 
-/** Runtime proximity-proof schema (Category-1, fresh per attestation).
- *  Runtime proximity-proof schema — same on-chain schema the merchant
- *  hook references; declared here so courier callers don't have to import
- *  from the merchant-process module. */
-const PROXIMITY_SCHEMA_KEY = "figaro-proximity-proof-v1";
-export const PROXIMITY_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_SCHEMA_KEY));
+/** keccak256 of the runtime proximity-proof schemaId. Derived here for
+ *  courier callers; the key itself lives canonically in agreementManifest. */
+export const PROXIMITY_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_PROOF_SCHEMA_KEY));
 
 /** uint8 stage values matching the `figaro-courier-process-v1` enum. */
 const COURIER_EVENT_STAGE: Record<CourierEvent, number> = {
