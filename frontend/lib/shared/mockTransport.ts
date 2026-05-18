@@ -8,6 +8,7 @@ import {
     type Transport,
 } from "viem";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "./evm";
+import { isE2EMockSession } from "./e2e";
 
 class MockRpcBlockedError extends Error {
     constructor(method: string) {
@@ -18,11 +19,6 @@ class MockRpcBlockedError extends Error {
         );
         this.name = "MockRpcBlockedError";
     }
-}
-
-function isMockMode(): boolean {
-    if (typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("e2e") === "mock";
 }
 
 function toHexQuantity(value: number | bigint): `0x${string}` {
@@ -168,7 +164,7 @@ export function mockAwareHttp(
         return {
             ...liveInstance,
             request: async (args) => {
-                if (isMockMode()) {
+                if (isE2EMockSession()) {
                     return mockResponse(args.method, args.params, chainId) as never;
                 }
                 try {

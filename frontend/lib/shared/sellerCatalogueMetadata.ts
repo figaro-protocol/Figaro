@@ -10,6 +10,24 @@ export type CatalogueClassOfService =
     | "fragile"
     | "cold-chain";
 
+/** Higher number = higher handling priority when a multi-item shipment
+ *  must collapse to a single class-of-service annotation. */
+export const CLASS_PRIORITY: Record<CatalogueClassOfService, number> = {
+    "standard": 1,
+    "express": 2,
+    "fragile": 3,
+    "cold-chain": 4,
+};
+
+/** Single-character codes consumed by the geo-content encoder
+ *  (figaro-geo-v2 `classOfService` field). */
+export const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F" | "C"> = {
+    "standard": "S",
+    "express": "E",
+    "fragile": "F",
+    "cold-chain": "C",
+};
+
 /**
  * Operator's preferred unit system for the catalogue editor + display.
  * Storage of `massGrams` / `volumeMl` is ALWAYS metric — `unitSystem`

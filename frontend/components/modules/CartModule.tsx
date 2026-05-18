@@ -26,22 +26,8 @@ import {
     mapFulfilmentToAssemblySlug,
     mapFulfilmentToHandoff,
 } from "@/lib/seller/fulfilmentRouting";
-import type { CatalogueClassOfService } from "@/lib/shared/sellerCatalogueMetadata";
+import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE } from "@/lib/shared/sellerCatalogueMetadata";
 
-/** Higher number = higher handling priority. Same convention as MerchantDetailView. */
-const CART_CLASS_PRIORITY: Record<CatalogueClassOfService, number> = {
-    "standard": 1,
-    "express": 2,
-    "fragile": 3,
-    "cold-chain": 4,
-};
-
-const CART_CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F" | "C"> = {
-    "standard": "S",
-    "express": "E",
-    "fragile": "F",
-    "cold-chain": "C",
-};
 
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "consume-onsite",
@@ -147,7 +133,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
             if (!menuItem) continue;
             if (menuItem.massGrams) massGrams += menuItem.massGrams * cartItem.quantity;
             if (menuItem.volumeMl) volumeMl += menuItem.volumeMl * cartItem.quantity;
-            if (menuItem.classOfService && CART_CLASS_PRIORITY[menuItem.classOfService] > CART_CLASS_PRIORITY[cls]) {
+            if (menuItem.classOfService && CLASS_PRIORITY[menuItem.classOfService] > CLASS_PRIORITY[cls]) {
                 cls = menuItem.classOfService;
             }
         }
@@ -261,7 +247,7 @@ export function CartModule({ moduleId, context }: ModuleProps) {
                 // Same shape as MerchantDetailView's commit path.
                 ...(cartLogistics.massGrams > 0 ? { mass: `${cartLogistics.massGrams} g` } : {}),
                 ...(cartLogistics.volumeMl > 0 ? { volume: `${cartLogistics.volumeMl} ml` } : {}),
-                class_: CART_CLASS_TO_SHORT_CODE[cartLogistics.classOfService],
+                class_: CLASS_TO_SHORT_CODE[cartLogistics.classOfService],
             },
         });
 

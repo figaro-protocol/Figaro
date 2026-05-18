@@ -25,6 +25,7 @@ import {
     getAllOrderResolved,
 } from "@/lib/core/indexer";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
+import { isE2EMockSession } from "@/lib/shared/e2e";
 import { calculateBonds } from "@figaro/core";
 
 // ---------------------------------------------------------------------------
@@ -102,9 +103,7 @@ function applyLogToOrders(
 // ---------------------------------------------------------------------------
 
 export function useProcessOrders(processId: string | null): Order[] {
-    const isE2EMock =
-        typeof window !== "undefined" &&
-        new URLSearchParams(window.location.search).get("e2e") === "mock";
+    const isE2EMock = isE2EMockSession();
 
     const [orders, setOrders] = useState<Order[]>([]);
     const [, setAgreementRefresh] = useState(0);

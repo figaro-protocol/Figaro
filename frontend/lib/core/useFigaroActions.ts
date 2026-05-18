@@ -7,6 +7,7 @@ import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/core/testHelpers';
 import { activeChain } from "@/lib/shared/chains";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { useOrderStore, generateProcessId, OrderState, Order } from "@/lib/core/store";
+import { isE2EMockSession } from "@/lib/shared/e2e";
 import {
     mockEmitOrder,
     mockResolveProcess,
@@ -18,11 +19,9 @@ import { calculateBonds } from "@figaro/core";
 export type { Commitment };
 
 export const useFigaroActions = () => {
-    // E2E mock mode: enable by visiting URL with `?e2e=mock` in development
-    // RA-5: Block mock mode in production builds
-    const isE2EMock = typeof window !== 'undefined'
-        && process.env.NODE_ENV !== 'production'
-        && new URLSearchParams(window.location.search).get('e2e') === 'mock';
+    // E2E mock mode: enable by visiting URL with `?e2e=mock` in development.
+    // Canonical `isE2EMockSession` carries the window + production guards.
+    const isE2EMock = isE2EMockSession();
 
     const orderStore = useOrderStore();
 

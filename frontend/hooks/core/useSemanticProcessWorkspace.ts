@@ -8,6 +8,7 @@ import useTokenApproval from "@/hooks/core/useTokenApproval";
 import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
 import { OrderState, useOrderStore } from "@/lib/core/store";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
+import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import { useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
@@ -37,7 +38,7 @@ interface Options {
 export function useSemanticProcessWorkspace({ processId }: Options) {
     const { address } = useAccount();
     const publicClient = usePublicClient();
-    const isE2EMock = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("e2e") === "mock";
+    const isE2EMock = isE2EMockSession();
     const bumpProcessReload = useOrderStore((state) => state.bumpProcessReload);
     const walletProcesses = useWalletProcessIds(address);
     const effectiveProcessId = processId ?? walletProcesses[0]?.processId ?? null;

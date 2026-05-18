@@ -14,6 +14,7 @@ import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
 import { Order, OrderState, useOrderStore } from "@/lib/core/store";
 import { mockSubscribe } from "@/lib/core/mockEventStore";
 import { hexEqual } from "@/lib/shared/evm";
+import { isE2EMockSession } from "@/lib/shared/e2e";
 import {
     getAllOrderCommitted,
     getAllOrderResolved,
@@ -129,9 +130,7 @@ function insertOrderIntoSummaries(prev: ProcessSummary[], order: Order): Process
 }
 
 export function useWalletProcessIds(address: string | undefined): ProcessSummary[] {
-    const isE2EMock =
-        typeof window !== "undefined" &&
-        new URLSearchParams(window.location.search).get("e2e") === "mock";
+    const isE2EMock = isE2EMockSession();
 
     const [summaries, setSummaries] = useState<ProcessSummary[]>([]);
     const publicClient = usePublicClient();

@@ -47,26 +47,8 @@ import {
 } from "@/lib/seller/fulfilmentRouting";
 import { useMerchantBoundModalities } from "@/lib/mechanisms/useAssemblyRegistry";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import type { CatalogueClassOfService } from "@/lib/shared/sellerCatalogueMetadata";
+import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE } from "@/lib/shared/sellerCatalogueMetadata";
 
-/**
- * Higher number = higher handling priority. When a cart mixes classes,
- * the highest priority wins for the whole shipment.
- */
-const CLASS_PRIORITY: Record<CatalogueClassOfService, number> = {
-    "standard": 1,
-    "express": 2,
-    "fragile": 3,
-    "cold-chain": 4,
-};
-
-/** Map catalogue class to the SDK's short code consumed by encodeGeoContent. */
-const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F" | "C"> = {
-    "standard": "S",
-    "express": "E",
-    "fragile": "F",
-    "cold-chain": "C",
-};
 import type { CatalogueItem, SellerCatalogue } from "@/lib/seller/types";
 
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [

@@ -3,6 +3,7 @@
 import { useCallback, useEffect } from "react";
 import { useConnect, useAccount } from "wagmi";
 import { TEST_HELPERS_ENABLED, windowSafe } from "@/lib/core/testHelpers";
+import { getE2EModeFromSearchParams } from "@/lib/shared/e2e";
 import { useOrderStore } from "@/lib/core/store";
 import { calculateBonds } from "@figaro/core";
 
@@ -93,7 +94,7 @@ export default function ClientInit() {
 
     const getE2EMode = useCallback(() => {
         if (typeof window === 'undefined') return null;
-        return new URLSearchParams(window.location.search).get('e2e');
+        return getE2EModeFromSearchParams(window.location.search);
     }, []);
 
     const isDevnetMode = useCallback((mode: string | null) => {
