@@ -10,6 +10,7 @@ import { useMemo } from "react";
 import { CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { formatToken } from "@/lib/shared/utils";
 import { hexEqual } from "@/lib/shared/evm";
+import { truncateHex } from "@/lib/shared/formatHex";
 import { createDeliveryCoordinatorSource } from "@/lib/mechanisms/deliveryCoordinatorEvents";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { calculateBonds } from "@figaro/core";
@@ -83,7 +84,7 @@ export const OrderNodeSemanticCard = memo(function OrderNodeSemanticCard({
                 <div>
                     <p className="text-sm font-semibold text-black">Order #{order.orderId}</p>
                     <span className="inline-flex items-center gap-1 text-xs text-neutral-500 font-mono">
-                        {order.processId.slice(0, 12)}…
+                        {truncateHex(order.processId, { head: 12, tail: 0 })}
                         <button
                             type="button"
                             onClick={copyProcessId}

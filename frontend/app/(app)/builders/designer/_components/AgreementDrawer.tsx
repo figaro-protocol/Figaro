@@ -44,6 +44,7 @@ import {
 } from "@/lib/core/agreementManifest";
 import { getSchemaInfo } from "@/lib/shared/schemaCategories";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
+import { truncateHex } from "@/lib/shared/formatHex";
 import type { FulfilmentModality } from "@figaro/core/schemas";
 
 /**
@@ -480,7 +481,7 @@ export function AgreementDrawer({
                         data-testid="drawer-selected-order-id"
                         title={order.id}
                     >
-                        Order #{order.id.slice(0, 10)}…
+                        Order #{truncateHex(order.id, { head: 10, tail: 0 })}
                     </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

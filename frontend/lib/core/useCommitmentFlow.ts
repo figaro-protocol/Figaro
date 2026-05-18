@@ -391,12 +391,11 @@ export function useCommitmentFlow() {
             : getE2EModeFromSearchParams(window.location.search);
         const isE2EMock = e2eMode === "mock" && process.env.NODE_ENV !== "production";
         const isDevnet = e2eMode === "devnet" && process.env.NODE_ENV !== "production";
-        const normalizedAddress = address?.toLowerCase();
         const sameParty = hexEqual(commitment.buyer, commitment.seller);
         const resolvedInitiatorRole = initiatorRole
-            ?? (normalizedAddress === commitment.buyer.toLowerCase()
+            ?? (hexEqual(address, commitment.buyer)
                 ? "buyer"
-                : normalizedAddress === commitment.seller.toLowerCase()
+                : hexEqual(address, commitment.seller)
                     ? "seller"
                     : undefined);
 

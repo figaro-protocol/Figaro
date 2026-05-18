@@ -37,6 +37,7 @@ import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
+import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
 import {
@@ -241,7 +242,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
                 <p className="text-xs font-semibold text-neutral-500 mb-3">Merchant not found</p>
-                <h1 className="text-3xl font-bold text-black">No merchant registered for {merchantAddressLower.slice(0, 10)}…</h1>
+                <h1 className="text-3xl font-bold text-black">No merchant registered for {truncateHex(merchantAddressLower, { head: 10, tail: 0 })}</h1>
                 <p className="text-sm text-neutral-600">
                     This wallet hasn&apos;t registered itself in <code className="text-xs">OperatorRegistry</code> on the network
                     you&apos;re connected to, or hasn&apos;t pinned a catalogue. If this is your wallet, you can complete the registration through the onboarding flow.

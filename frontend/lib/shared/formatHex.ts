@@ -26,5 +26,6 @@ export function truncateHex(value: string | undefined | null, options: TruncateH
     const head = options.head ?? 6;
     const tail = options.tail ?? 4;
     if (value.length < head + tail + 1) return value;
+    if (tail === 0) return `${value.slice(0, head)}…`;
     return `${value.slice(0, head)}…${value.slice(-tail)}`;
 }

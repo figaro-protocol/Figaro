@@ -15,6 +15,7 @@ import {
     GHG_NORM_REFERENCES,
 } from "@/lib/mechanisms/contracts";
 import { GHG_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { truncateHex } from "@/lib/shared/formatHex";
 import type { Hex } from "viem";
 
 export function GHGAnchorPanel() {
@@ -101,7 +102,7 @@ export function GHGAnchorPanel() {
                                             {DISCLOSURE_KIND_LABELS[a.stage] ?? `Stage ${a.stage}`}
                                         </span>
                                         <span className="text-gray-500 font-mono text-xs">
-                                            {a.orderHash.slice(0, 10)}…
+                                            {truncateHex(a.orderHash, { head: 10, tail: 0 })}
                                         </span>
                                     </div>
                                 ))}

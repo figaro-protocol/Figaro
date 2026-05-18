@@ -251,7 +251,7 @@ export function CommitmentSharePanel({
                     <div className="flex justify-between">
                         <span>Process</span>
                         <span className="font-mono">
-                            {commitment.processId.slice(0, 10)}…
+                            {truncateHex(commitment.processId, { head: 10, tail: 0 })}
                         </span>
                     </div>
                 )}

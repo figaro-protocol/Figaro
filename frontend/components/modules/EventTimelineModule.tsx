@@ -88,7 +88,7 @@ export function EventTimelineModule({ context }: ModuleProps) {
                 {vocab.headings.orderTimeline}
             </p>
             <p className="text-xs text-neutral-500 mb-4">
-                {processModel.processId.slice(0, 10)}… · {processModel.orders.length} order{processModel.orders.length !== 1 ? "s" : ""}
+                {truncateHex(processModel.processId, { head: 10, tail: 0 })} · {processModel.orders.length} order{processModel.orders.length !== 1 ? "s" : ""}
             </p>
 
             {/* Filter pills */}

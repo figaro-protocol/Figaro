@@ -6,6 +6,7 @@ import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useWalletProcessIds } from "@/hooks/core/useWalletProcessIds";
 import { Card } from "@/components/ui/Card";
+import { truncateHex } from "@/lib/shared/formatHex";
 import Activity from "@/components/icons/Coins";
 import CheckCircle from "@/components/icons/CheckCircle";
 import Clock from "@/components/icons/RefreshCw";
@@ -38,7 +39,7 @@ export function ProtocolStats() {
     // the client (with a rehydrated wagmi session) renders "My wallet", causing
     // a React hydration mismatch that breaks the entire page.
     const statsLabel = !mounted ? "—" : usingProcess
-        ? `Process ${viewedProcessId.slice(0, 8)}…`
+        ? `Process ${truncateHex(viewedProcessId, { head: 8, tail: 0 })}`
         : address ? "My wallet" : "—";
 
     return (

@@ -7,6 +7,7 @@ import { useOrderStore, OrderState } from "@/lib/core/store";
 import { useWalletProcessIds, ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 type SortKey = "newest" | "oldest" | "count";
 type FilterKey = "all" | "active" | "done";
@@ -201,7 +202,7 @@ export function ProcessList() {
                                         Process
                                     </span>
                                     <span className="font-mono truncate flex-1">
-                                        {s.processId.slice(0, 10)}…
+                                        {truncateHex(s.processId, { head: 10, tail: 0 })}
                                     </span>
                                     {badge && (
                                         <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${isViewed ? "bg-white/20 text-white" : badgeColor}`}>

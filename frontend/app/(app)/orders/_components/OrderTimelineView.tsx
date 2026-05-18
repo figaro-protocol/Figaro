@@ -406,7 +406,7 @@ export function OrderTimelineView({ processId }: Props) {
                 </p>
                 <h1 className="text-3xl font-bold text-black mb-4">Loading…</h1>
                 <p className="text-sm text-neutral-600">
-                    Reading process <code className="font-mono text-xs">{processId.slice(0, 10)}…</code> from
+                    Reading process <code className="font-mono text-xs">{truncateHex(processId, { head: 10, tail: 0 })}</code> from
                     chain. If this persists, the process ID may be wrong or the
                     indexer may be unreachable.
                 </p>

@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/Card";
 import { Copy, Check } from "lucide-react";
 import { ProcessModel } from "@/lib/semantic/models";
 import type { ResolvedAssemblySkinBundle } from "@/lib/shared/runtimeResolution";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 interface Props {
     process: ProcessModel;
@@ -35,7 +36,7 @@ export const ProcessSummaryCard = memo(function ProcessSummaryCard({ process, or
                     <div>
                         <p className="text-sm font-semibold text-black">Process</p>
                         <span className="inline-flex items-center gap-1 text-xs text-neutral-500 font-mono">
-                            {process.processId.slice(0, 12)}…
+                            {truncateHex(process.processId, { head: 12, tail: 0 })}
                             <button
                                 type="button"
                                 onClick={copyId}

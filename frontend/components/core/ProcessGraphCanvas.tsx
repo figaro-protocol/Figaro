@@ -558,7 +558,7 @@ export function ProcessGraphCanvas({
                             <p className="text-sm text-gray-600">
                                 {orders.length === 0
                                     ? emptySubtitle
-                                    : `${orders.length} order${orders.length === 1 ? "" : "s"}${viewedProcessId ? ` · ${viewedProcessId.slice(0, 10)}…` : ""}`
+                                    : `${orders.length} order${orders.length === 1 ? "" : "s"}${viewedProcessId ? ` · ${truncateHex(viewedProcessId, { head: 10, tail: 0 })}` : ""}`
                                 }
                             </p>
                             {headerExtras?.(activeLens)}

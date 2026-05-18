@@ -20,6 +20,7 @@ import {
 import { CapabilityModel } from "@/lib/semantic/models";
 import { DISCLOSURE_KIND, DISCLOSURE_KIND_LABELS, DISCLOSURE_KIND_DESCRIPTIONS } from "@/lib/mechanisms/contracts";
 import { GHG_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { truncateHex } from "@/lib/shared/formatHex";
 import type { Hex } from "viem";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
@@ -108,7 +109,7 @@ function OrderAttestationDetail({
     return (
         <div className="space-y-3" data-testid={`ghg-order-detail-${orderHash.slice(0, 10)}`}>
             <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-gray-500">{orderHash.slice(0, 14)}…</span>
+                <span className="font-mono text-xs text-gray-500">{truncateHex(orderHash, { head: 14, tail: 0 })}</span>
                 <span className="text-xs text-gray-500">{tasks.length} attestation{tasks.length !== 1 ? "s" : ""}</span>
             </div>
 
@@ -288,7 +289,7 @@ export function GHGWorkflowPanel() {
                                             onClick={() => setExpandedOrder(expandedOrder === oh ? null : oh)}
                                             className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-gray-50"
                                         >
-                                            <span className="font-mono text-gray-700">{oh.slice(0, 14)}…</span>
+                                            <span className="font-mono text-gray-700">{truncateHex(oh, { head: 14, tail: 0 })}</span>
                                             <span className="text-gray-500">
                                                 {orderMap.get(oh)?.length ?? 0} attestation{(orderMap.get(oh)?.length ?? 0) !== 1 ? "s" : ""}
                                             </span>

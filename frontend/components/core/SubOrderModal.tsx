@@ -13,6 +13,7 @@ import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { ManifestForm, ManifestFields, EMPTY_MANIFEST_FIELDS } from "@/components/core/ManifestForm";
 import BondApprovalPanel from "@/components/core/BondApprovalPanel";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
+import { truncateHex } from "@/lib/shared/formatHex";
 import { broadcastSharedCommitment } from "@/lib/core/commitmentBroadcast";
 import { submitPreparedCommitment } from "@/lib/core/commitmentSubmission";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
@@ -270,10 +271,10 @@ export function SubOrderModal({
                 </div>
 
                 <div className="text-xs text-gray-500 mb-1 font-mono truncate">
-                    Process: {processId.slice(0, 16)}…
+                    Process: {truncateHex(processId, { head: 16, tail: 0 })}
                 </div>
                 <div className="text-xs text-gray-500 mb-4 font-mono truncate">
-                    Currency: {currency ? `${currency.slice(0, 10)}…` : "—"} <span className="italic">(fixed by process)</span>
+                    Currency: {currency ? truncateHex(currency, { head: 10, tail: 0 }) : "—"} <span className="italic">(fixed by process)</span>
                 </div>
 
                 {error && (
