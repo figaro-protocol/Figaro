@@ -2,8 +2,9 @@
  * manifest-form.spec.ts — stable browser-level coverage for the terminal
  * ManifestForm and the sub-order modal form.
  *
- * Validation timing now lives in component tests plus order-submit-guidance.spec.ts.
- * This file stays focused on route-integrated behavior that should remain stable
+ * Validation timing lives in component tests plus the
+ * create-order-home.shared.spec.ts disabled-submit assertions. This file
+ * stays focused on route-integrated behavior that should remain stable
  * under the disabled-submit UX model.
  */
 
@@ -13,9 +14,8 @@ import {
     gotoHome,
     fillCreateOrderForm,
     fillWithRetry,
+    MOCK_BUYER as BUYER,
 } from './test-helpers';
-
-const BUYER = '0x000000000000000000000000000000000000dEaD';
 
 test.describe('ManifestForm — terminal route behavior', () => {
     test.beforeEach(async ({ page }) => {

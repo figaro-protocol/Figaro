@@ -1,16 +1,14 @@
 /**
- * eats-marketplace.spec.ts
+ * discover.spec.ts
  *
- * Mock-mode tests for the buyer entry path:
- *
- *   /discover  → operator catalogue (browse + filter)
+ * Mock-mode tests for /discover — the operator catalogue (browse + filter).
  *
  * Prior fixture-dependent coverage (operator cards visible, /m/<addr> menu
  * renders, add-to-cart, place-order wallet gate) targeted the V4
  * runtime-identity fixtures which were retired in Stage C-narrow
  * (2026-05). Without on-chain registered operators, mock mode correctly
  * surfaces the "no operators registered yet" CTA. The wallet-connected
- * end-to-end checkout flow is covered in `eats-marketplace.devnet.spec.ts`.
+ * end-to-end checkout flow is covered in delivery-lifecycle.devnet.spec.ts.
  *
  * This file keeps a single pipe-end test that verifies /discover hydrates
  * and surfaces the canonical empty-state. Component contracts (filter

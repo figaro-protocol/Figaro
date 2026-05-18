@@ -14,6 +14,7 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import { MECHANISM_CONTRACTS } from "@/lib/mechanisms/contracts";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { mockEmitOrder, mockResolveProcess } from "@/lib/core/mockEventStore";
+import { useOrderStore } from "@/lib/core/store";
 
 const OrderGraph = dynamic(
     () => import("@/components/core/OrderGraph").then(m => m.OrderGraph),
@@ -33,10 +34,16 @@ export default function TerminalPage() {
 
     useEffect(() => {
         if (!isE2EMockSession()) return;
-        // E2E test harness on window global.
+        // E2E test harness on window global. setViewedProcessId is exposed
+        // so injection-based tests (which bypass useFigaroActions.commit,
+        // the production path that auto-selects the viewed process for root
+        // orders) can still drive the resolve button — without a viewed
+        // process the capability's processId resolves to null and the
+        // click no-ops.
         window.__FIGARO_MOCK__ = {
             emitOrder: mockEmitOrder,
             resolveProcess: (pid: string, idStrs: string[]) => mockResolveProcess(pid, idStrs),
+            setViewedProcessId: (id: string | null) => useOrderStore.getState().setViewedProcessId(id),
         };
     }, []);
 

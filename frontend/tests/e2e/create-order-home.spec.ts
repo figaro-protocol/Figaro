@@ -1,8 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoHome, fillCreateOrderForm, submitFirstOrder, injectActiveOrder, acceptOrderMock, waitForFirstOrderUiSync, switchToGraphTab, waitForApproved } from './test-helpers';
-
-const BUYER = '0x000000000000000000000000000000000000dEaD';
-const SELLER = '0x000000000000000000000000000000000000b00b';
+import { gotoHome, fillCreateOrderForm, submitFirstOrder, injectActiveOrder, acceptOrderMock, waitForFirstOrderUiSync, switchToGraphTab, waitForApproved, MOCK_BUYER as BUYER, MOCK_SELLER as SELLER } from './test-helpers';
 
 test.describe('Home page — empty state (mocked)', () => {
     test('empty-state no-orders placeholder is visible on fresh load', async ({ page }) => {

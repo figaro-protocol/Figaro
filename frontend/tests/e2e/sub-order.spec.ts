@@ -10,10 +10,10 @@ import {
     switchToGraphTab,
     injectActiveOrder,
     waitForApproved,
+    waitForOrderNodeCount,
+    MOCK_BUYER as BUYER,
+    MOCK_SELLER as SELLER,
 } from './test-helpers';
-
-const BUYER = '0x000000000000000000000000000000000000dEaD';
-const SELLER = '0x000000000000000000000000000000000000b00b';
 
 test.describe('Sub-order flows — Create SubOrder (mocked)', () => {
     test.beforeEach(async ({ page }) => {
@@ -47,13 +47,7 @@ test.describe('Sub-order flows — Create SubOrder (mocked)', () => {
             const btn = modal?.querySelector('[data-testid="approve-button"]') as HTMLElement | null;
             btn?.click();
         });
-        await page.waitForFunction(
-            () => {
-                const modal = document.querySelector('[data-testid="suborder-modal"]');
-                return modal?.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized');
-            },
-            null, { timeout: 10000 }
-        );
+        await waitForApproved(page, 'suborder-modal', 10000);
 
         await submitSubOrder(page);
 
@@ -105,10 +99,7 @@ test.describe('Sub-order flows — Create SubOrder (mocked)', () => {
         });
 
         await switchToGraphTab(page);
-        await page.waitForFunction(
-            () => document.querySelectorAll('[data-testid^="order-node-"]').length >= 2,
-            null, { timeout: 10000 }
-        );
+        await waitForOrderNodeCount(page, 2);
         await expect(page.locator('.react-flow__edge-path').first()).toBeVisible({ timeout: 5000 });
     });
 });

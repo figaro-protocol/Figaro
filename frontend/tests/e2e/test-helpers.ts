@@ -120,6 +120,33 @@ export async function waitForApproved(page: Page, scopeTestId?: string, timeout 
     );
 }
 
+/**
+ * Wait for at least `minCount` order-node-* nodes to render in the
+ * process graph. Used after multi-order commits / injections where the
+ * caller needs to know "all expected nodes have hydrated" before
+ * asserting on their state.
+ */
+export async function waitForOrderNodeCount(
+    page: Page,
+    minCount: number,
+    timeout = 10000,
+): Promise<void> {
+    await page.waitForFunction(
+        (count: number) =>
+            document.querySelectorAll('[data-testid^="order-node-"]').length >= count,
+        minCount,
+        { timeout },
+    );
+}
+
+/** Canonical mock-mode test addresses. The mock kernel doesn't care
+ *  about these (no signature verification); they're just stable
+ *  identifiers for assertions. `figaro-test.ts` re-exports MOCK_BUYER
+ *  as `COUNTERPARTY.mock` so shared tests can use it via the
+ *  figaroMode-aware dispatch. */
+export const MOCK_BUYER = '0x000000000000000000000000000000000000dEaD';
+export const MOCK_SELLER = '0x000000000000000000000000000000000000b00b';
+
 export async function approveIfNeeded(page: Page, scopeTestId?: string): Promise<void> {
     await waitForApprovalState(page, scopeTestId);
     const scope = scopeTestId ? page.getByTestId(scopeTestId) : page;

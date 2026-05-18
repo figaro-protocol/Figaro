@@ -48,8 +48,10 @@ export const test = base.extend<{ figaroMode: FigaroMode }>({
 export { expect };
 export type { Page } from '@playwright/test';
 
+import { MOCK_BUYER } from './test-helpers';
+
 /** Mode-aware counterparty addresses for shared tests. */
 export const COUNTERPARTY = {
-    mock: '0x000000000000000000000000000000000000dEaD',
+    mock: MOCK_BUYER,
     devnet: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8', // Anvil account[1]
 } as const;

@@ -13,6 +13,7 @@ import {
     injectActiveOrder,
     acceptOrderMock,
     ANVIL_ACCOUNTS,
+    MOCK_BUYER,
 } from './test-helpers';
 
 const SELLER1 = ANVIL_ACCOUNTS[1];
@@ -59,7 +60,7 @@ test.describe('BondApprovalPanel dispute cost (mock)', () => {
         // Fill form to trigger BondApprovalPanel render
         const counterpartyInput = page.getByTestId('input-counterparty');
         const paymentInput = page.getByTestId('input-payment');
-        await counterpartyInput.fill('0x000000000000000000000000000000000000dEaD');
+        await counterpartyInput.fill(MOCK_BUYER);
         // Set currency so BondApprovalPanel renders (requires !!currency)
         await page.getByTestId('btn-use-default-token').click();
         await paymentInput.fill('0.01');

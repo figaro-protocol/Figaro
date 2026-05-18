@@ -1,5 +1,5 @@
 /**
- * eats-lifecycle.devnet.spec.ts
+ * delivery-lifecycle.devnet.spec.ts
  *
  * Delivery lifecycle test exercised through the consumer-facing per-order
  * page at `/orders/[processId]`. Pre-2026-05 these tests targeted the
@@ -10,10 +10,15 @@
  * resolve) is unchanged — only the page that drives the resolve is
  * different.
  *
+ * The scenario uses three Anvil accounts in distinct participant
+ * roles ("buyer", "restaurant", "driver"). These are scenario labels —
+ * the kernel sees ordinary wallets and ordinary commits; nothing
+ * about "restaurant" or "driver" is reified into the protocol.
+ *
  * Accounts:
- *   [0] BUYER      0xf39F…2266
- *   [1] RESTAURANT 0x7099…79C8
- *   [2] DRIVER     0x3C44…93BC
+ *   [0] buyer-wallet      0xf39F…2266
+ *   [1] restaurant-wallet 0x7099…79C8
+ *   [2] driver-wallet     0x3C44…93BC
  *
  * Requires: Anvil running + all contracts deployed (core + mechanisms)
  *   NEXT_PUBLIC_DUTCH_AUCTION and NEXT_PUBLIC_ATTESTATION_COORDINATOR
