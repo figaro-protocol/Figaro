@@ -22,14 +22,6 @@ export default function Home() {
                 flows. No platform sits between them. No arbitrator decides for
                 them.
             </p>
-            <p className="text-sm text-ink-muted leading-relaxed">
-                See operators running today:{" "}
-                <Link href="/discover" className="underline font-medium">Discover</Link>.
-                Or start at{" "}
-                <Link href="/protocol" className="underline">Protocol</Link>,
-                then <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>,
-                then <Link href="/composability" className="underline">Composability</Link>.
-            </p>
         </section>
     );
 }
