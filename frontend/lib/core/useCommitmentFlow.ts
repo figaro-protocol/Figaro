@@ -22,6 +22,7 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import { useFigaroActions, Commitment } from "@/lib/core/useFigaroActions";
 import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { getE2EModeFromSearchParams } from "@/lib/shared/e2e";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 import { isValidAddress } from "@/components/operators/TokenAddressInput";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { saveCommitment, computeOrderHash } from "@/lib/core/commitmentStore";
@@ -292,7 +293,7 @@ export function useCommitmentFlow() {
 
     const initiateAsParty = useCallback(async (
         commitment: Commitment,
-        role: "buyer" | "seller",
+        role: PartyRole,
         meta?: CommitmentPayloadMeta,
     ): Promise<CommitmentPayload> => {
         const sig = await signCommitment(commitment);
@@ -383,7 +384,7 @@ export function useCommitmentFlow() {
     const signAndBroadcast = useCallback(async (
         commitment: Commitment,
         meta?: CommitmentPayloadMeta,
-        initiatorRole?: "buyer" | "seller",
+        initiatorRole?: PartyRole,
     ) => {
         const e2eMode = typeof window === "undefined"
             ? null

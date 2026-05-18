@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { truncateHex } from "@/lib/shared/formatHex";
 import { ProcessAuditClient } from "./ProcessAuditClient";
 
 /**
@@ -32,9 +33,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    const id = params.processId;
-    const truncated =
-        id.length > 14 ? `${id.slice(0, 10)}…${id.slice(-4)}` : id;
+    const truncated = truncateHex(params.processId, { head: 10, tail: 4 });
     return {
         title: `Process ${truncated} — Figaro Protocol`,
         description:

@@ -26,7 +26,8 @@ import {
 } from "@/lib/core/indexer";
 import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
 
-export type ProcessRoleFilter = "buyer" | "seller";
+/** The two roles in a Figaro order commitment. */
+export type PartyRole = "buyer" | "seller";
 
 export interface ProcessRow {
     processId: string;
@@ -58,7 +59,7 @@ function bigintArg(log: CommittedLog, key: string): bigint {
  * For `role: "seller"` returns processes where the wallet is the
  * seller-of-record on the root commit.
  */
-export function useWalletProcessRows(role: ProcessRoleFilter): {
+export function useWalletProcessRows(role: PartyRole): {
     rows: ProcessRow[];
     isLoading: boolean;
 } {

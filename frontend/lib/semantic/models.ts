@@ -2,6 +2,8 @@
  *  inlined here as part of the reference-assembly cleanup — the runtime
  *  semantic layer is the only consumer, and decoupling it from the legacy
  *  Assembly file unblocks deletion of that file's downstream surface. */
+import type { ProximityProof } from "@/lib/mechanisms/useCourierProcess";
+
 export type TruthClass =
     | "protocol-enforced"
     | "protocol-derived"
@@ -247,11 +249,7 @@ export interface SubmitDisclosureInventoryCapabilityInput {
 
 export interface SubmitCourierProcessSignalWithProofCapabilityInput {
     kind: "submit-courier-process-signal-with-proof";
-    proof: {
-        band: number;
-        nonce: `0x${string}`;
-        deviceSig: `0x${string}`;
-    };
+    proof: ProximityProof;
 }
 
 export type CapabilityExecutionInput =

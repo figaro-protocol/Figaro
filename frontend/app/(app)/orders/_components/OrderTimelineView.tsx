@@ -430,7 +430,7 @@ export function OrderTimelineView({ processId }: Props) {
                 </div>
                 <p className="text-sm text-neutral-700">{status.subhead}</p>
                 <p className="text-xs text-neutral-500 font-mono">
-                    Process <span data-testid="order-process-id">{processId.slice(0, 10)}…{processId.slice(-6)}</span>
+                    Process <span data-testid="order-process-id">{truncateHex(processId, { head: 10, tail: 6 })}</span>
                     {" · "}
                     {role === "buyer" && <>You are the buyer · seller: <span className="text-neutral-700">{sellerDisplayName}</span></>}
                     {role === "seller" && <>You are the seller · buyer: <span className="text-neutral-700">{buyerDisplayName}</span></>}

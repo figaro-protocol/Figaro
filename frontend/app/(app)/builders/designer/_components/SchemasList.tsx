@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import { useRegisteredSchemasByWallet } from "@/lib/mechanisms/useSchemaRegistry";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 export function SchemasList() {
     const { address } = useAccount();
@@ -68,7 +69,7 @@ export function SchemasList() {
                 >
                     <div className="flex-1 min-w-0">
                         <p className="text-base font-semibold text-ink-heading truncate">
-                            {schema.schemaName ?? <span className="font-mono">{shortHash(schema.schemaIdHash)}</span>}
+                            {schema.schemaName ?? <span className="font-mono">{truncateHex(schema.schemaIdHash, { head: 10, tail: 6 })}</span>}
                         </p>
                         {schema.schemaName && (
                             <p
@@ -76,7 +77,7 @@ export function SchemasList() {
                                 title={schema.schemaIdHash}
                                 data-testid={`schema-hash-${schema.schemaIdHash}`}
                             >
-                                {shortHash(schema.schemaIdHash)}
+                                {truncateHex(schema.schemaIdHash, { head: 10, tail: 6 })}
                             </p>
                         )}
                         <p className="text-[11px] text-ink-muted mt-1">
@@ -84,7 +85,7 @@ export function SchemasList() {
                             {" · "}
                             uri{" "}
                             <span title={schema.uriHash} className="font-mono">
-                                {shortHash(schema.uriHash)}
+                                {truncateHex(schema.uriHash, { head: 10, tail: 6 })}
                             </span>
                             {" · block "}
                             {schema.blockNumber.toString()}
@@ -96,7 +97,3 @@ export function SchemasList() {
     );
 }
 
-function shortHash(hash: string): string {
-    if (hash.length < 18) return hash;
-    return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
-}

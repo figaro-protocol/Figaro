@@ -1,6 +1,7 @@
 "use client";
 
 import { useAccount } from "wagmi";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,7 +43,7 @@ export function SettlementProceedsPanel({
                     : "Bonds returned to your wallet. The agreement completed as guaranteed."}
             </p>
             <p className="text-xs text-neutral-500 font-mono truncate" title={sourceOrderId}>
-                Order: {sourceOrderId.slice(0, 14)}…{sourceOrderId.slice(-8)}
+                Order: {truncateHex(sourceOrderId, { head: 14, tail: 8 })}
             </p>
         </div>
     );

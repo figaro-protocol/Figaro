@@ -25,6 +25,7 @@ import { Card } from "@/components/ui/Card";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { Order } from "@/lib/core/store";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import {
     buildAuditBundleEvidence,
@@ -89,7 +90,7 @@ interface DisputeStatusPanelProps {
     /** If known, the local dispute ID on the ArbitrableProxy. */
     localDisputeId?: bigint;
     /** Role of the current user — determines evidence framing. */
-    role?: "buyer" | "seller";
+    role?: PartyRole;
     /**
      * Optional coordinator event sources for the timeline page in the
      * audit-bundle PDF. When provided, the timeline includes

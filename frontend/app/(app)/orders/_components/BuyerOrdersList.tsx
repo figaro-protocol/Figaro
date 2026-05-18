@@ -16,6 +16,7 @@
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import { formatToken } from "@/lib/shared/utils";
+import { truncateHex } from "@/lib/shared/formatHex";
 import { WalletGate } from "@/components/core/WalletGate";
 import { useWalletProcessRows } from "@/lib/core/walletProcessQueries";
 import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
@@ -82,7 +83,7 @@ export function BuyerOrdersList() {
                                             </span>
                                         </div>
                                         <p className="mt-1 text-xs text-neutral-500 font-mono">
-                                            Process {row.processId.slice(0, 10)}…{row.processId.slice(-6)}
+                                            Process {truncateHex(row.processId, { head: 10, tail: 6 })}
                                         </p>
                                     </div>
                                     <div className="text-right shrink-0">

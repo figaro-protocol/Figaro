@@ -3,6 +3,7 @@ import type { CommitmentPayloadMeta } from "@/lib/core/useCommitmentFlow";
 import type { Commitment } from "@figaro/core";
 import { hexEqual } from "@/lib/shared/evm";
 import { submitPermitTransaction, type SignedPermitPayload } from "@/lib/core/permitExecution";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
 export interface PreparedCommitmentArtifact {
     commitment: Commitment;
@@ -11,7 +12,7 @@ export interface PreparedCommitmentArtifact {
 
 export interface SubmitPreparedCommitmentArgs {
     prepared: PreparedCommitmentArtifact;
-    proposerRole: "buyer" | "seller";
+    proposerRole: PartyRole;
     buyerAddress: `0x${string}`;
     sellerAddress: `0x${string}`;
     immediateCommitEnabled: boolean;
@@ -22,13 +23,13 @@ export interface SubmitPreparedCommitmentArgs {
     waitForCommitReceipt?: boolean;
     initiateAsParty: (
         commitment: Commitment,
-        role: "buyer" | "seller",
+        role: PartyRole,
         meta?: CommitmentPayloadMeta,
     ) => Promise<unknown>;
     signAndBroadcastCommitment: (
         commitment: Commitment,
         meta?: CommitmentPayloadMeta,
-        initiatorRole?: "buyer" | "seller",
+        initiatorRole?: PartyRole,
     ) => Promise<`0x${string}` | undefined>;
 }
 

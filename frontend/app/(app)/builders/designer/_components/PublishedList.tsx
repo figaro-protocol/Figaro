@@ -24,6 +24,7 @@ import {
     useAssemblyChoices,
 } from "@/lib/mechanisms/useAssemblyRegistry";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 export function PublishedList() {
     const router = useRouter();
@@ -118,7 +119,7 @@ export function PublishedList() {
                             </p>
                         )}
                         <p className="font-mono text-[11px] text-ink-muted mt-1">
-                            content <span title={choice.contentHash}>{shortHash(choice.contentHash)}</span>
+                            content <span title={choice.contentHash}>{truncateHex(choice.contentHash, { head: 10, tail: 6 })}</span>
                             {" · block "}
                             {choice.blockNumber.toString()}
                         </p>
@@ -148,7 +149,3 @@ export function PublishedList() {
     );
 }
 
-function shortHash(hash: string): string {
-    if (hash.length < 18) return hash;
-    return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
-}

@@ -18,19 +18,11 @@
  * This is a read-only module. No contract writes.
  */
 
-import { keccak256, stringToHex, type PublicClient } from "viem";
+import { type PublicClient } from "viem";
 import type { CoordinatorEventSource, TimelineEvent } from "@/lib/dispute/evidenceTimeline";
 import { CONTRACTS, ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import {
-    COURIER_PROCESS_SCHEMA_KEY,
-    MERCHANT_PROCESS_SCHEMA_KEY,
-} from "@/lib/core/agreementManifest";
-
-const PROXIMITY_SCHEMA_KEY = "figaro-proximity-proof-v1";
-
-const MERCHANT_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
-const COURIER_SCHEMA_ID = keccak256(stringToHex(COURIER_PROCESS_SCHEMA_KEY));
-const PROXIMITY_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_SCHEMA_KEY));
+import { MERCHANT_PROCESS_SCHEMA_ID } from "@/lib/mechanisms/useMerchantProcess";
+import { COURIER_PROCESS_SCHEMA_ID, PROXIMITY_SCHEMA_ID } from "@/lib/mechanisms/useCourierProcess";
 
 /** Merchant lifecycle event labels keyed by uint8 stage. */
 const MERCHANT_EVENT_LABELS: Record<number, string> = {
@@ -124,7 +116,7 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
                 const stage = Number(a.stage ?? 0);
                 const ts = await getBlockTimestamp(client, log.blockNumber!, blockCache);
 
-                if (schemaId === MERCHANT_SCHEMA_ID) {
+                if (schemaId === MERCHANT_PROCESS_SCHEMA_ID) {
                     events.push({
                         label: MERCHANT_EVENT_LABELS[stage] ?? `Merchant Event ${stage}`,
                         blockNumber: log.blockNumber!,
@@ -140,7 +132,7 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
                             schema: "merchant-process",
                         },
                     });
-                } else if (schemaId === COURIER_SCHEMA_ID) {
+                } else if (schemaId === COURIER_PROCESS_SCHEMA_ID) {
                     events.push({
                         label: COURIER_EVENT_LABELS[stage] ?? `Courier Event ${stage}`,
                         blockNumber: log.blockNumber!,

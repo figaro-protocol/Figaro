@@ -12,6 +12,8 @@
  * Upload to IPFS is the caller's responsibility.
  */
 
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
+
 // ---------------------------------------------------------------------------
 // ERC-1497 MetaEvidence
 // ---------------------------------------------------------------------------
@@ -101,7 +103,7 @@ export interface KlerosEvidence {
 export function buildAuditBundleEvidence(
     processId: string,
     auditBundleCID: string,
-    party: "buyer" | "seller",
+    party: PartyRole,
     options: { redacted: boolean },
 ): KlerosEvidence {
     const sealed = options.redacted ? " (line items sealed)" : "";

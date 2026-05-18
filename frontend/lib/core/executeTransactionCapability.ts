@@ -7,6 +7,7 @@ import type {
     MerchantProcessEventKind,
     VestingVariant,
 } from "@/lib/semantic/models";
+import type { ProximityProof } from "@/lib/mechanisms/useCourierProcess";
 
 type TransactionExecutionResult = Promise<Hex | undefined | void>;
 
@@ -24,7 +25,7 @@ export interface TransactionCapabilityExecutors {
     submitDisclosureInventory?: (orderHash: string, grams: bigint) => TransactionExecutionResult;
     submitMerchantProcessSignal?: (orderHash: string, eventType: MerchantProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
     submitCourierProcessSignal?: (orderHash: string, eventType: CourierProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
-    submitCourierProcessSignalWithProof?: (orderHash: string, eventType: CourierProximityProofEventKind, proof: { band: number; nonce: `0x${string}`; deviceSig: `0x${string}` }, roleOrderHash?: string) => TransactionExecutionResult;
+    submitCourierProcessSignalWithProof?: (orderHash: string, eventType: CourierProximityProofEventKind, proof: ProximityProof, roleOrderHash?: string) => TransactionExecutionResult;
     claimAuction?: (auctionId: string) => TransactionExecutionResult;
     claimAirdrop?: (amount: bigint, proof: `0x${string}`[]) => TransactionExecutionResult;
     claimVesting?: (variant: VestingVariant) => TransactionExecutionResult;

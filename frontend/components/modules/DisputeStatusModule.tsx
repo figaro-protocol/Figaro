@@ -10,6 +10,7 @@ import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import type { Order } from "@/lib/core/store";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 import { hexEqual } from "@/lib/shared/evm";
 
 interface Layer3Summary {
@@ -72,7 +73,7 @@ export function DisputeStatusModule({ context }: ModuleProps) {
     // Kernel-derived: connected wallet is the rootBuyer of this process iff it
     // matches the root order's buyer field. Otherwise treat as seller-of-record.
     const rootOrder = orders.find((o) => o.id === processId);
-    const role: "buyer" | "seller" =
+    const role: PartyRole =
         address && rootOrder && hexEqual(address, rootOrder.buyer) ? "buyer" : "seller";
 
     return (

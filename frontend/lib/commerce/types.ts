@@ -8,6 +8,7 @@
 
 import type { Commitment } from "@figaro/core";
 import type { CommitmentPayload, CommitmentPayloadMeta, CommitmentFlowStep } from "@/lib/core/useCommitmentFlow";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
 // ── Identity ────────────────────────────────────────────────────
 
@@ -55,8 +56,8 @@ export interface CheckoutHandle {
     // Order placement — two modes:
     //   signAndPlace: signs both sides + submits (devnet / same-wallet)
     //   initiateAsParty: signs one side, returns payload for counter-signing
-    signAndPlace: (commitment: Commitment, meta?: CommitmentPayloadMeta, initiatorRole?: "buyer" | "seller") => Promise<`0x${string}` | undefined>;
-    initiateAsParty: (commitment: Commitment, role: "buyer" | "seller", meta?: CommitmentPayloadMeta) => Promise<CommitmentPayload>;
+    signAndPlace: (commitment: Commitment, meta?: CommitmentPayloadMeta, initiatorRole?: PartyRole) => Promise<`0x${string}` | undefined>;
+    initiateAsParty: (commitment: Commitment, role: PartyRole, meta?: CommitmentPayloadMeta) => Promise<CommitmentPayload>;
     broadcast: (payload: CommitmentPayload) => Promise<`0x${string}` | undefined>;
 
     // Order status
