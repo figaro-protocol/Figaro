@@ -25,7 +25,7 @@ import type {
     AcceptedTokenMetadata,
     SellerBrandingMetadata,
 } from "@/lib/shared/sellerCatalogueMetadata";
-import type { RuntimeServiceKey, ServiceBinding } from "@/lib/shared/assembly";
+import type { RuntimeServiceKey } from "@/lib/shared/runtimeServices";
 import {
     asAddress,
     asEnum,
@@ -89,7 +89,6 @@ export interface AssemblyBindingRecord {
     subjectAddress: `0x${string}`;
     assemblySlug: string;
     networkTargets: string[];
-    serviceBindings?: ServiceBinding[];
     counterpartyBindings?: CounterpartyBinding[];
     metadataURI?: string;
     metadataHash?: string;
@@ -165,36 +164,6 @@ export interface OperatorProfileMetadata {
 
 // ── Assembly-binding parser helpers ──────────────────────────────────────────
 
-const RUNTIME_SERVICE_KEYS = new Set<RuntimeServiceKey>([
-    "catalogue",
-    "discovery",
-    "evidenceTransport",
-    "coordinationMessaging",
-    "handoffPersistence",
-    "tokenConversion",
-]);
-
-function parseServiceBinding(value: unknown, path: string): ServiceBinding {
-    const record = asRecord(value, path);
-
-    return {
-        serviceKey: asEnum(record.serviceKey, RUNTIME_SERVICE_KEYS, `${path}.serviceKey`),
-        providerKey: asString(record.providerKey, `${path}.providerKey`),
-    };
-}
-
-function parseServiceBindingArray(value: unknown, path: string): ServiceBinding[] | undefined {
-    if (value === undefined) {
-        return undefined;
-    }
-
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-
-    return value.map((entry, index) => parseServiceBinding(entry, `${path}[${index}]`));
-}
-
 function parseCounterpartyBindingArray(value: unknown, path: string): CounterpartyBinding[] | undefined {
     if (value === undefined) return undefined;
     if (!Array.isArray(value)) {
@@ -223,7 +192,6 @@ export function parseAssemblyBindingDocument(value: unknown, sourceLabel = "inst
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
         assemblySlug: asString(record.assemblySlug, `${sourceLabel}.assemblySlug`),
         networkTargets: asStringArray(record.networkTargets, `${sourceLabel}.networkTargets`),
-        serviceBindings: parseServiceBindingArray(record.serviceBindings, `${sourceLabel}.serviceBindings`),
         counterpartyBindings: parseCounterpartyBindingArray(record.counterpartyBindings, `${sourceLabel}.counterpartyBindings`),
         metadataURI: asOptionalString(record.metadataURI, `${sourceLabel}.metadataURI`),
         metadataHash: asOptionalString(record.metadataHash, `${sourceLabel}.metadataHash`),

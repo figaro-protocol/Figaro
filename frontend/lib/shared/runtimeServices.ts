@@ -10,7 +10,15 @@ import type { IpfsService } from "@/lib/shared/ipfsService";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { TokenConversionService } from "@/lib/shared/tokenConversion";
 import { DEFAULT_TOKEN_CONVERSION_SERVICE } from "@/lib/shared/tokenConversion";
-import type { Assembly, RuntimeServiceKey, ServiceBinding } from "@/lib/shared/assembly";
+
+/** The 6 service slots a runtime carries. */
+export type RuntimeServiceKey =
+    | "catalogue"
+    | "discovery"
+    | "evidenceTransport"
+    | "coordinationMessaging"
+    | "handoffPersistence"
+    | "tokenConversion";
 
 export interface RuntimeServices {
     catalogue: CatalogueService;
@@ -41,11 +49,6 @@ export const DEFAULT_RUNTIME_SERVICES: RuntimeServices = {
     tokenConversion: DEFAULT_TOKEN_CONVERSION_SERVICE,
 };
 
-interface RuntimeServiceBindingSource {
-    bindingId: string;
-    serviceBindings?: ServiceBinding[];
-}
-
 type RuntimeServiceProviderRegistry = {
     [K in RuntimeServiceKey]: Map<string, RuntimeServices[K]>;
 };
@@ -69,72 +72,4 @@ export function registerRuntimeServiceProvider<K extends RuntimeServiceKey>(
     service: RuntimeServices[K],
 ): void {
     runtimeServiceProviderRegistry[serviceKey].set(providerKey, service);
-}
-
-function resolveProviderKey(
-    assembly: Assembly,
-    serviceKey: RuntimeServiceKey,
-    bindingSource?: RuntimeServiceBindingSource,
-): string {
-    return findProviderKey(bindingSource?.serviceBindings, serviceKey)
-        ?? findProviderKey(assembly.serviceBindings, serviceKey)
-        ?? DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS[serviceKey];
-}
-
-function findProviderKey(
-    bindings: ServiceBinding[] | undefined,
-    serviceKey: RuntimeServiceKey,
-): string | undefined {
-    return bindings?.find((binding) => binding.serviceKey === serviceKey)?.providerKey;
-}
-
-function resolveService<K extends RuntimeServiceKey>(
-    assembly: Assembly,
-    serviceKey: K,
-    bindingSource?: RuntimeServiceBindingSource,
-): RuntimeServices[K] {
-    const providerKey = resolveProviderKey(assembly, serviceKey, bindingSource);
-    const registeredService = runtimeServiceProviderRegistry[serviceKey].get(providerKey);
-    if (registeredService) {
-        return registeredService;
-    }
-
-    if (providerKey !== DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS[serviceKey] && process.env.NODE_ENV === "development") {
-        const bindingContext = bindingSource?.bindingId
-            ? ` binding "${bindingSource.bindingId}"`
-            : "";
-        console.warn(
-            `[runtimeServices] Unknown provider key "${providerKey}" for service "${serviceKey}" in assembly "${assembly.identity.slug}"${bindingContext}. Falling back to default provider.`,
-        );
-    }
-
-    return DEFAULT_RUNTIME_SERVICES[serviceKey];
-}
-
-export function resolveRuntimeServices(
-    assembly: Assembly,
-    bindingSource?: RuntimeServiceBindingSource,
-): RuntimeServices {
-    return {
-        catalogue: resolveService(assembly, "catalogue", bindingSource),
-        discovery: resolveService(assembly, "discovery", bindingSource),
-        evidenceTransport: resolveService(assembly, "evidenceTransport", bindingSource),
-        coordinationMessaging: resolveService(assembly, "coordinationMessaging", bindingSource),
-        handoffPersistence: resolveService(assembly, "handoffPersistence", bindingSource),
-        tokenConversion: resolveService(assembly, "tokenConversion", bindingSource),
-    };
-}
-
-export function resolveRuntimeServiceProviderKeys(
-    assembly: Assembly,
-    bindingSource?: RuntimeServiceBindingSource,
-): RuntimeServiceProviderKeys {
-    return {
-        catalogue: resolveProviderKey(assembly, "catalogue", bindingSource),
-        discovery: resolveProviderKey(assembly, "discovery", bindingSource),
-        evidenceTransport: resolveProviderKey(assembly, "evidenceTransport", bindingSource),
-        coordinationMessaging: resolveProviderKey(assembly, "coordinationMessaging", bindingSource),
-        handoffPersistence: resolveProviderKey(assembly, "handoffPersistence", bindingSource),
-        tokenConversion: resolveProviderKey(assembly, "tokenConversion", bindingSource),
-    };
 }
