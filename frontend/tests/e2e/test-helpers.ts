@@ -214,29 +214,6 @@ export async function waitForReactHydration(
 }
 
 /**
- * Navigate to /discover (the buyer entry point) in mock mode and wait for
- * hydration. Use this in place of the old `gotoAssemblyMock(slug)` — the
- * `/i/[slug]` route was deleted 2026-05 in favour of purpose-shaped pages
- * (`/discover`, `/m/[merchant]`, `/orders`, `/inbox`).
- */
-export async function gotoDiscoverMock(page: Page) {
-    await page.goto('/discover?e2e=mock', { waitUntil: 'load' });
-    await page.getByTestId('operator-card').first().waitFor({ timeout: 30000 });
-    await waitForReactHydration(page, '[data-testid="operator-card"]', 5000);
-}
-
-/**
- * Navigate to /m/<merchantAddress> in mock mode. Used by buyer-shaped tests
- * that need the merchant detail surface (hero, menu, inline cart, place
- * order). Hydration wait keys off the merchant-detail-view testid.
- */
-export async function gotoMerchantMock(page: Page, merchantAddress: string) {
-    await page.goto(`/m/${merchantAddress}?e2e=mock`, { waitUntil: 'load' });
-    await page.getByTestId('merchant-detail-view').waitFor({ timeout: 30000 });
-    await waitForReactHydration(page, '[data-testid="merchant-detail-view"]', 5000);
-}
-
-/**
  * Navigate to /inbox in mock mode (merchant entry point).
  */
 export async function gotoInboxMock(page: Page) {
@@ -733,26 +710,6 @@ function parseMockManifestFields(manifest: string | undefined): {
         volumeMl: volumeMl || undefined,
         classOfService,
     };
-}
-
-/**
- * @deprecated Orders are Active at commit time. No accept step needed.
- * Preserved as a no-op for backward compatibility during migration.
- */
-export async function acceptOrderMock(page: Page, orderId: string): Promise<void> {
-    // Orders are Active immediately after commit in mock mode — mockEmitOrder
-    // is synchronous, so the store is already authoritative. If the Graph tab
-    // is visible we verify the rendered node too; otherwise the DOM check is
-    // a no-op and we trust the store.
-    await page.waitForFunction(
-        (id) => {
-            const node = document.querySelector(`[data-testid="order-node-${id}"]`);
-            if (!node) return true;
-            return node.getAttribute('data-order-state') === 'active';
-        },
-        orderId,
-        { timeout: 10000 }
-    );
 }
 
 /**

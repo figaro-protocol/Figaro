@@ -11,7 +11,6 @@ import { test, expect } from './figaro-test';
 import {
     gotoHome,
     injectActiveOrder,
-    acceptOrderMock,
     ANVIL_ACCOUNTS,
     MOCK_BUYER,
 } from './test-helpers';
@@ -28,14 +27,12 @@ test.describe('DisputeStatusPanel in workspace (mock)', () => {
     test('renders dispute resolution section for an active order', async ({ page }) => {
         const processId = '0x' + 'dd11ee22'.repeat(8);
 
-        const orderId = await injectActiveOrder(page, {
+        await injectActiveOrder(page, {
             processId,
             buyer: ANVIL_ACCOUNTS[0],
             seller: SELLER1,
             payment: '10000000000000000',
         });
-
-        await acceptOrderMock(page, orderId);
 
         // Wait for the workspace panel with the semantic cards to load.
         // DisputeStatusPanel renders inside OrderNodeSemanticCard.

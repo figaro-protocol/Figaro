@@ -64,7 +64,9 @@ test.describe('Route loading', () => {
 
     test('discover route hydrates and surfaces the empty-state CTA', async ({ page }) => {
         await gotoRoute(page, '/discover?e2e=mock');
-        await expect(page.getByTestId('discover-empty-cta')).toBeVisible({ timeout: 15_000 });
+        const cta = page.getByTestId('discover-empty-cta');
+        await expect(cta).toBeVisible({ timeout: 15_000 });
+        await expect(cta).toHaveAttribute('href', '/operators');
     });
 
     test('legacy /i/<slug> redirects to /discover', async ({ page }) => {

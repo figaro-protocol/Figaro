@@ -2,10 +2,9 @@
  * lifecycle.spec.ts — full order lifecycle tests (mock suite).
  *
  * Covers:
- *   1. commit order  — orders are Active at commit in the live kernel
- *   2. resolveProcess — buyer resolves all Active orders → Resolved
- *   3. resolve verify — after resolve, all orders are Resolved (no credits/withdraw)
- *   4. diamond      — 4 sellers form a diamond DAG, buyer resolves
+ *   1. commit order        — orders are Active at commit in the live kernel
+ *   2. resolveProcess      — buyer resolves all Active orders → Resolved
+ *   3. multi-order resolve — 4 active orders in one process, buyer resolves all
  *
  * All tests run in ?e2e=mock mode (no wallet / no chain required).
  */
@@ -17,7 +16,6 @@ import {
     ANVIL_ACCOUNTS,
     waitForMockHarness,
     injectActiveOrder,
-    acceptOrderMock,
     resolveProcessMock,
     dismissConfirmationModal,
     switchToGraphTab,
@@ -59,17 +57,7 @@ test.describe('Lifecycle — commitOrder (mock)', () => {
         // Node must be Active (orders are active at commit)
         const node = page.getByTestId(`order-node-${orderId}`);
         await expect(node).toHaveAttribute('data-order-state', 'active');
-
-        // acceptOrderMock is now a verification-only helper
-        await acceptOrderMock(page, orderId);
-
-        // Node remains Active
-        await expect(node).toHaveAttribute('data-order-state', 'active');
     });
-
-    // Note: 'multiple orders — all are Active at commit' trimmed
-    // (2026-04-27 mock audit) — covered by the diamond test below which
-    // exercises 4 simultaneous Active orders.
 });
 
 // ── 2. resolveProcess ─────────────────────────────────────────────────────────
@@ -100,16 +88,9 @@ test.describe('Lifecycle — resolveProcess (mock)', () => {
             await expect(n).toHaveAttribute('data-order-state', 'resolved');
         }
     });
-
-    // Note: 'after resolve, Resolve button disappears' + 'resolving
-    // transitions all Active orders to Resolved' (whole describe block)
-    // trimmed (2026-04-27 mock audit) — both duplicated the resolve flow
-    // the test above already exercises end-to-end. The button-disappears
-    // assertion is a UI cleanup detail covered by the diamond test below
-    // which also asserts no resolve button after resolution.
 });
 
-// ── 4. Multi-order resolve — 4 orders in one process ──────────────────────────
+// ── 3. Multi-order resolve — 4 orders in one process ──────────────────────────
 
 /*
  * Verifies the kernel's resolve-N behaviour at the UI layer: a process
@@ -163,8 +144,10 @@ test.describe('Lifecycle — multi-order resolve (4 orders, mock)', () => {
         // The production commit path (useFigaroActions) calls
         // setViewedProcessId for root orders; injection bypasses that,
         // so the SemanticProcessWorkspacePanel needs the viewed-process
-        // hint to derive the resolve capability with a non-null
-        // processId.
+        // hint. We tried routing through ProcessList's auto-select
+        // useEffect (mount → wait for summaries → wait for the effect)
+        // but that races under suite load; the harness setter is
+        // deterministic.
         await page.evaluate((pid) => {
             const mock = window.__FIGARO_MOCK__ as { setViewedProcessId?: (id: string | null) => void } | undefined;
             mock?.setViewedProcessId?.(pid);
@@ -178,9 +161,9 @@ test.describe('Lifecycle — multi-order resolve (4 orders, mock)', () => {
 
         // Resolve button on the orders tab reflects the active count.
         // (Display assertion only — the button's click handler routes
-        // through the capability/semantic-workspace plumbing that the
-        // injection setup bypasses; trigger the resolve via the mock
-        // harness directly below.)
+        // through the capability/semantic-workspace plumbing that
+        // injection doesn't exercise; trigger the resolve via the
+        // mock harness directly below.)
         await page.getByRole('tab', { name: 'Create Order' }).click();
         const resolveBtn = page.getByTestId('btn-resolve-process');
         await expect(resolveBtn).toBeVisible({ timeout: 10000 });

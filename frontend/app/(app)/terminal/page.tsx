@@ -35,11 +35,18 @@ export default function TerminalPage() {
     useEffect(() => {
         if (!isE2EMockSession()) return;
         // E2E test harness on window global. setViewedProcessId is exposed
-        // so injection-based tests (which bypass useFigaroActions.commit,
-        // the production path that auto-selects the viewed process for root
-        // orders) can still drive the resolve button — without a viewed
-        // process the capability's processId resolves to null and the
-        // click no-ops.
+        // so injection-based tests (which bypass useFigaroActions.commit
+        // — the production path that auto-selects the viewed process for
+        // root orders) can drive the resolve capability. Mirrors the
+        // existing __FIGARO_SET_VIEWED_PROCESS_ID__ that ClientInit.tsx
+        // exposes in devnet mode.
+        //
+        // ProcessList.tsx:81-85 also auto-selects on its own useEffect,
+        // but that path races: the test would have to tab-switch to
+        // mount ProcessList, wait for `summaries` to populate from the
+        // mock store, AND wait for the auto-select useEffect to fire
+        // with the populated summaries — all before tabbing back. The
+        // harness setter sidesteps the race deterministically.
         window.__FIGARO_MOCK__ = {
             emitOrder: mockEmitOrder,
             resolveProcess: (pid: string, idStrs: string[]) => mockResolveProcess(pid, idStrs),

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoHome, fillCreateOrderForm, submitFirstOrder, injectActiveOrder, acceptOrderMock, waitForFirstOrderUiSync, switchToGraphTab, waitForApproved, MOCK_BUYER as BUYER, MOCK_SELLER as SELLER } from './test-helpers';
+import { gotoHome, fillCreateOrderForm, submitFirstOrder, injectActiveOrder, waitForFirstOrderUiSync, switchToGraphTab, waitForApproved, MOCK_BUYER as BUYER, MOCK_SELLER as SELLER } from './test-helpers';
 
 test.describe('Home page — empty state (mocked)', () => {
     test('empty-state no-orders placeholder is visible on fresh load', async ({ page }) => {
@@ -112,10 +112,6 @@ test.describe('Home page — Create Order (mocked)', () => {
         await expect(visibleNode).toContainText('0.01');
         await expect(page.getByTestId(`order-node-${staleOrderId}`)).not.toBeVisible();
     });
-    // Note: 'permit: create first order with mock permit' trimmed
-    // (2026-04-27 mock audit) — covered by permit.devnet.spec.ts which
-    // exercises the same mount-time __FIGARO_PENDING_PERMIT__ path
-    // through to a real on-chain commit.
 });
 
 // ---------------------------------------------------------------------------
@@ -164,11 +160,9 @@ test.describe('Order card — field coverage (mocked)', () => {
 
     test('order card surfaces all field families (geo + value + capital lenses)', async ({ page }) => {
         // Single comprehensive test — exercises all three lens-gated field
-        // families on one injected order. Replaces 4 prior single-field tests
-        // (decoded location / currency token / advanced manifest / bond
-        // display) per the 2026-04-27 mock audit. The lens-switching pattern
-        // itself is identical across families — there's no value in
-        // re-testing it three more times.
+        // families on one injected order. The lens-switching pattern is
+        // identical across families; there's no value in re-testing it
+        // per family.
         const TOKEN = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
         // KV-format manifest covers origin (farm-A) + destination (market-B)
         // + mass (5 kg) + volume (10 L) + class (fragile). The agreement
