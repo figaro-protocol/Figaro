@@ -19,6 +19,7 @@ import type { Hex } from "viem";
 import { Card } from "@/components/ui/Card";
 import { type OffsetProvider } from "@/lib/mechanisms/offsetAggregators";
 import { useOffsetRetirement } from "@/lib/mechanisms/useOffsetRetirement";
+import { formatActualGrams } from "@/lib/mechanisms/useGHGDisclosure";
 
 interface Props {
     processId: Hex | undefined;
@@ -29,12 +30,6 @@ const PROVIDER_LABELS: Record<OffsetProvider, string> = {
     toucan: "Toucan Protocol (OffsetHelper)",
     custom: "Custom aggregator",
 };
-
-function formatGrams(grams: bigint): string {
-    if (grams < 1000n) return `${grams} g CO₂e`;
-    if (grams < 1_000_000n) return `${(Number(grams) / 1000).toFixed(2)} kg CO₂e`;
-    return `${(Number(grams) / 1_000_000).toFixed(3)} t CO₂e`;
-}
 
 function formatTons1e18(tons1e18: bigint): string {
     const ONE_TONNE = 10n ** 18n;
@@ -67,7 +62,7 @@ export function PreResolveOffsetPanel({ processId }: Props) {
                 <h3 className="text-sm font-semibold text-emerald-900">Carbon offset (optional)</h3>
                 <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
                     This process has emitted{" "}
-                    <span className="font-mono font-semibold">{formatGrams(r.totalGrams)}</span>{" "}
+                    <span className="font-mono font-semibold">{formatActualGrams(r.totalGrams)}</span>{" "}
                     across {r.tonsToRetire > 0n ? "all measurement attestations" : "—"}. You can retire{" "}
                     <span className="font-mono font-semibold">{formatTons1e18(r.tonsToRetire)}</span>{" "}
                     of carbon credits at an external aggregator before resolving — the receipt anchors

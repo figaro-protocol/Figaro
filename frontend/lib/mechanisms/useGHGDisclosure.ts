@@ -138,9 +138,9 @@ export function decodeMeasurementGramsContent(content: Hex | null | undefined): 
 }
 
 export function formatActualGrams(grams: bigint): string {
-    if (grams < 1000n) return `${grams} g CO2e`;
-    if (grams < 1_000_000n) return `${(Number(grams) / 1000).toFixed(2)} kg CO2e`;
-    return `${(Number(grams) / 1_000_000).toFixed(3)} t CO2e`;
+    if (grams < 1000n) return `${grams} g CO₂e`;
+    if (grams < 1_000_000n) return `${(Number(grams) / 1000).toFixed(2)} kg CO₂e`;
+    return `${(Number(grams) / 1_000_000).toFixed(3)} t CO₂e`;
 }
 
 function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord {

@@ -25,7 +25,6 @@ import type {
     AcceptedTokenMetadata,
     SellerBrandingMetadata,
 } from "@/lib/shared/sellerCatalogueMetadata";
-import type { RuntimeServiceKey } from "@/lib/shared/runtimeServices";
 import {
     asAddress,
     asEnum,
@@ -147,11 +146,11 @@ export interface OperatorProfileMetadata {
     defaultTokenAddress?: `0x${string}`;
     /**
      * Assembly bindings — one entry per assembly the wallet
-     * participates in. Service-provider choices and counterparty
-     * wallet designations live inside each binding's `serviceBindings`
-     * and `counterpartyBindings`. The role the operator plays in an
-     * assembly is event-derived (see `feedback_state_from_events`),
-     * not declared here. See `AssemblyBindingRecord` above for the shape.
+     * participates in. Counterparty wallet designations live inside
+     * each binding's `counterpartyBindings`. The role the operator
+     * plays in an assembly is event-derived (see
+     * `feedback_state_from_events`), not declared here. See
+     * `AssemblyBindingRecord` above for the shape.
      */
     assemblyBindings?: AssemblyBindingRecord[];
     /** ERC-8004 agent service endpoints (mcp, a2a, rest, did, ens). */

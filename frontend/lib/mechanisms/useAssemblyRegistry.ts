@@ -398,6 +398,9 @@ export function formatAssemblySchemaList(schemas: readonly string[]): string {
  * render the row immediately. When `state === "loaded"`, all
  * manifest-derived fields are populated.
  */
+/** Per-assembly manifest fetch state: requested, succeeded, or failed. */
+export type AssemblyManifestFetchState = "loading" | "loaded" | "error";
+
 export interface AssemblyChoice {
     slug: string;
     author: `0x${string}`;
@@ -405,7 +408,7 @@ export interface AssemblyChoice {
     metadataURI: string;
     blockNumber: bigint;
     networkTargets: readonly string[];
-    state: "loading" | "loaded" | "error";
+    state: AssemblyManifestFetchState;
     /** Display name from the manifest; falls back to `slug` until loaded. */
     name: string;
     /** Available when state === "loaded". */
@@ -432,7 +435,7 @@ export function useAssemblyChoices(
     const { data: events, isLoading, refetch } = usePublishedAssemblies(author);
     const chainId = useChainId();
     const [manifestState, setManifestState] = useState<
-        Map<string, { state: "loading" | "loaded" | "error"; manifest: AssemblyManifest | null }>
+        Map<string, { state: AssemblyManifestFetchState; manifest: AssemblyManifest | null }>
     >(new Map());
     /** Hashes whose fetch has already been kicked off. A ref (not state)
      *  because we want to guard against double-fetch without retriggering
