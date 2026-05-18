@@ -5,6 +5,7 @@ import type {
     CourierProcessEventKind,
     CourierProximityProofEventKind,
     MerchantProcessEventKind,
+    VestingVariant,
 } from "@/lib/semantic/models";
 
 type TransactionExecutionResult = Promise<Hex | undefined | void>;
@@ -26,7 +27,7 @@ export interface TransactionCapabilityExecutors {
     submitCourierProcessSignalWithProof?: (orderHash: string, eventType: CourierProximityProofEventKind, proof: { band: number; nonce: `0x${string}`; deviceSig: `0x${string}` }, roleOrderHash?: string) => TransactionExecutionResult;
     claimAuction?: (auctionId: string) => TransactionExecutionResult;
     claimAirdrop?: (amount: bigint, proof: `0x${string}`[]) => TransactionExecutionResult;
-    claimVesting?: (variant: "founder" | "ecosystem") => TransactionExecutionResult;
+    claimVesting?: (variant: VestingVariant) => TransactionExecutionResult;
 }
 
 function assertNever(_value: never): never {
