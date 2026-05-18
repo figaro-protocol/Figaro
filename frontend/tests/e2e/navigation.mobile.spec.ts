@@ -5,12 +5,37 @@
  * playwright.config.ts mock-mobile project): hamburger is visible, desktop
  * nav is hidden, drawer opens and closes, and navigation closes the drawer.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { NAV_LINKS } from '../../components/shared/navLinks';
+
+/**
+ * Navigate to `/terminal` and wait for the hamburger button to be
+ * hydrated. `MobileNav` is a `"use client"` component — after `goto`
+ * with `waitUntil: 'load'` the button is in the DOM but its React
+ * `onClick` handler may not be attached yet. Clicking before hydration
+ * lands focus on the button but never fires `setIsOpen`, leaving the
+ * drawer unmounted and the test flaky. The hydration signal is the
+ * presence of a `__reactFiber` / `__reactProps` key on the button DOM
+ * node; this matches the pattern used by `gotoDiscoverMock` /
+ * `gotoMerchantMock` in `test-helpers.ts`.
+ */
+async function gotoTerminalHydrated(page: Page): Promise<void> {
+    await page.goto('/terminal?e2e=mock', { waitUntil: 'load' });
+    await page.waitForFunction(
+        () => {
+            const btn = document.querySelector('button[aria-label="Toggle mobile menu"]');
+            if (!btn) return false;
+            return Object.keys(btn).some(
+                (k) => k.startsWith('__reactFiber') || k.startsWith('__reactProps'),
+            );
+        },
+        { timeout: 10000 },
+    );
+}
 
 test.describe('Mobile navigation (Pixel 5)', () => {
     test('hamburger is visible and desktop nav is hidden', async ({ page }) => {
-        await page.goto('/terminal?e2e=mock', { waitUntil: 'load' });
+        await gotoTerminalHydrated(page);
 
         const hamburger = page.getByRole('button', { name: 'Toggle mobile menu' });
         await expect(hamburger).toBeVisible();
@@ -20,7 +45,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     });
 
     test('clicking hamburger opens the drawer, close button closes it', async ({ page }) => {
-        await page.goto('/terminal?e2e=mock', { waitUntil: 'load' });
+        await gotoTerminalHydrated(page);
 
         const hamburger = page.getByRole('button', { name: 'Toggle mobile menu' });
         await hamburger.click();
@@ -38,7 +63,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     });
 
     test('clicking a drawer link navigates and closes the drawer', async ({ page }) => {
-        await page.goto('/terminal?e2e=mock', { waitUntil: 'load' });
+        await gotoTerminalHydrated(page);
 
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
@@ -52,7 +77,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     });
 
     test('backdrop click closes the drawer', async ({ page }) => {
-        await page.goto('/terminal?e2e=mock', { waitUntil: 'load' });
+        await gotoTerminalHydrated(page);
 
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });

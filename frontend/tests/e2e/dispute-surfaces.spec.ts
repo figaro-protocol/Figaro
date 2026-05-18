@@ -112,9 +112,19 @@ test.describe('Evidence Display page (/evidence-display)', () => {
         expect(headers['content-security-policy']).toContain("frame-ancestors 'self'");
         expect(headers['content-security-policy']).toContain('https://resolve.kleros.io');
 
+        // The fake processId never resolves to chain data, so the page
+        // can settle into any of three valid render states: the
+        // "Figaro Process Timeline" heading (real timeline), an
+        // "Error" notice (chain query rejected), or "Loading process
+        // timeline…" (query still in flight). All three prove the
+        // iframe loaded + hydrated; the earlier two-state assertion
+        // raced the loading state and flaked at ~40% in repeated
+        // runs.
         const frame = page.frameLocator('#evidence-frame');
         await expect(
-            frame.getByRole('heading', { name: 'Figaro Process Timeline' }).or(frame.getByText('Error')),
+            frame.getByRole('heading', { name: 'Figaro Process Timeline' })
+                .or(frame.getByText('Error'))
+                .or(frame.getByText(/Loading process timeline/i)),
         ).toBeVisible({ timeout: 15000 });
     });
 
