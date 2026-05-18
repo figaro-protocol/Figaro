@@ -12,9 +12,9 @@ import {
 } from "@/lib/mechanisms/useGHGDisclosure";
 import {
     DISCLOSURE_KIND_LABELS,
-    GHG_SCHEMA_KEY,
     GHG_NORM_REFERENCES,
 } from "@/lib/mechanisms/contracts";
+import { GHG_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 import type { Hex } from "viem";
 
 export function GHGAnchorPanel() {

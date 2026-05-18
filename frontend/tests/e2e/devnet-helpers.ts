@@ -31,6 +31,7 @@ import {
 } from '@figaro/core';
 import { encodeMerchantContent, encodeCourierContent } from '@figaro/core/schemas';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
+import { GHG_SCHEMA_KEY, GHG_SCHEMA_ID } from '@/lib/core/agreementManifest';
 import { ZERO_PROCESS_ID } from '@/lib/shared/evm';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -52,8 +53,6 @@ const ERC20_TEST_ABI = parseAbi([
     'function approve(address spender, uint256 amount) external returns (bool)',
 ]);
 
-const GHG_SCHEMA_KEY = 'figaro-ghg-iso-14064-v1';
-const GHG_SCHEMA_ID = keccak256(stringToHex(GHG_SCHEMA_KEY));
 const DISCLOSURE_KIND = { commitment: 0, inventory: 1, restatement: 2, verification: 3 } as const;
 
 const MERCHANT_PROCESS_SCHEMA_KEY = 'figaro-merchant-process-v1';

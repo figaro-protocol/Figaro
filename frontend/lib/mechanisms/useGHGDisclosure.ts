@@ -30,9 +30,8 @@ import {
 } from "viem";
 import { ZERO_BYTES32, useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import { GHG_MEASUREMENT_SCHEMA_ID } from "@/lib/core/agreementManifest";
+import { GHG_MEASUREMENT_SCHEMA_ID, GHG_SCHEMA_ID } from "@/lib/core/agreementManifest";
 import {
-    GHG_SCHEMA_ID,
     DISCLOSURE_KIND,
     DISCLOSURE_KIND_LABELS,
     MEASUREMENT_KIND,

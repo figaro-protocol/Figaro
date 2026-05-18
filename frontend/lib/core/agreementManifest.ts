@@ -178,7 +178,8 @@ export const JURISDICTION_SCHEMA_KEY = "figaro-jurisdiction-v1";
  *  ToS acceptance, NDA, governance vote receipts, etc.). */
 export const CONSENT_SCHEMA_KEY = "figaro-consent-v1";
 /** Default GHG disclosure schema used by single-standard manifest flows. */
-export const GHG_SCHEMA_KEY = "figaro-ghg-iso-14064-v1";
+export const GHG_SCHEMA_KEY: GHGDisclosureSchemaKey = "figaro-ghg-iso-14064-v1";
+export const GHG_SCHEMA_ID = keccak256(stringToHex(GHG_SCHEMA_KEY));
 /** All five GHG disclosure sister schemas (one per accounting standard). */
 export const GHG_DISCLOSURE_SCHEMA_KEYS = [
     "figaro-ghg-protocol-v1",

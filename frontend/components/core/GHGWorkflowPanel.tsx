@@ -18,7 +18,8 @@ import {
     formatActualGrams,
 } from "@/lib/mechanisms/useGHGDisclosure";
 import { CapabilityModel } from "@/lib/semantic/models";
-import { DISCLOSURE_KIND, DISCLOSURE_KIND_LABELS, DISCLOSURE_KIND_DESCRIPTIONS, GHG_SCHEMA_KEY } from "@/lib/mechanisms/contracts";
+import { DISCLOSURE_KIND, DISCLOSURE_KIND_LABELS, DISCLOSURE_KIND_DESCRIPTIONS } from "@/lib/mechanisms/contracts";
+import { GHG_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 import type { Hex } from "viem";
 import { extractErrorMessage } from "@/lib/shared/errors";
 

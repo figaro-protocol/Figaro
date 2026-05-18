@@ -7,11 +7,7 @@
  * Import rule: core/ code must NEVER import from mechanisms/.
  * mechanisms/ code may freely import from core/.
  */
-import { keccak256, stringToHex } from "viem";
-import {
-    GHG_DISCLOSURE_SCHEMA_KEYS,
-    type GHGDisclosureSchemaKey,
-} from "@/lib/core/agreementManifest";
+import { GHG_DISCLOSURE_SCHEMA_KEYS } from "@/lib/core/agreementManifest";
 export {
     OPERATOR_REGISTRY_ABI,
     FIG_TOKEN_ABI,
@@ -52,10 +48,6 @@ export const GHG_NORM_REFERENCES = [
     { id: "figaro-ghg-en-16258-v1", label: "EN 16258", scope: "Transport energy & GHG" },
     { id: "figaro-ghg-custom-v1", label: "Custom methodology", scope: "Self-declared accounting basis" },
 ] as const;
-
-/** Default GHG disclosure schema used by single-standard UI flows. */
-export const GHG_SCHEMA_KEY: GHGDisclosureSchemaKey = "figaro-ghg-iso-14064-v1";
-export const GHG_SCHEMA_ID = keccak256(stringToHex(GHG_SCHEMA_KEY));
 
 export const DISCLOSURE_KIND = {
     commitment: 0,
