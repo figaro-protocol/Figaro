@@ -7,30 +7,18 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { NAV_LINKS } from '../../components/shared/navLinks';
+import { waitForReactHydration } from './test-helpers';
 
 /**
  * Navigate to `/terminal` and wait for the hamburger button to be
- * hydrated. `MobileNav` is a `"use client"` component — after `goto`
- * with `waitUntil: 'load'` the button is in the DOM but its React
- * `onClick` handler may not be attached yet. Clicking before hydration
- * lands focus on the button but never fires `setIsOpen`, leaving the
- * drawer unmounted and the test flaky. The hydration signal is the
- * presence of a `__reactFiber` / `__reactProps` key on the button DOM
- * node; this matches the pattern used by `gotoDiscoverMock` /
- * `gotoMerchantMock` in `test-helpers.ts`.
+ * hydrated. `MobileNav` is a `"use client"` component — clicking the
+ * hamburger before React attaches its `onClick` handler lands focus
+ * on the button but never fires `setIsOpen`, leaving the drawer
+ * unmounted and the test flaky.
  */
 async function gotoTerminalHydrated(page: Page): Promise<void> {
     await page.goto('/terminal?e2e=mock', { waitUntil: 'load' });
-    await page.waitForFunction(
-        () => {
-            const btn = document.querySelector('button[aria-label="Toggle mobile menu"]');
-            if (!btn) return false;
-            return Object.keys(btn).some(
-                (k) => k.startsWith('__reactFiber') || k.startsWith('__reactProps'),
-            );
-        },
-        { timeout: 10000 },
-    );
+    await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
 }
 
 test.describe('Mobile navigation (Pixel 5)', () => {

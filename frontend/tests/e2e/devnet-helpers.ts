@@ -4,7 +4,6 @@ import { Page } from '@playwright/test';
 export {
     approveIfNeeded,
     waitAndApproveIfNeeded,
-    waitForApprovalState,
     waitForApproved,
     waitForCreateConfirm,
     waitForWalletReady,

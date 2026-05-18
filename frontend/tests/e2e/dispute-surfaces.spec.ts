@@ -10,7 +10,7 @@
 import { test, expect } from './figaro-test';
 import {
     gotoHome,
-    injectPendingOrder,
+    injectActiveOrder,
     acceptOrderMock,
     ANVIL_ACCOUNTS,
 } from './test-helpers';
@@ -27,7 +27,7 @@ test.describe('DisputeStatusPanel in workspace (mock)', () => {
     test('renders dispute resolution section for an active order', async ({ page }) => {
         const processId = '0x' + 'dd11ee22'.repeat(8);
 
-        const orderId = await injectPendingOrder(page, {
+        const orderId = await injectActiveOrder(page, {
             processId,
             buyer: ANVIL_ACCOUNTS[0],
             seller: SELLER1,
@@ -43,28 +43,11 @@ test.describe('DisputeStatusPanel in workspace (mock)', () => {
         await expect(disputePanel).toBeVisible({ timeout: 15000 });
     });
 
-    test('shows not-configured state without Kleros env vars', async ({ page }) => {
-        const processId = '0x' + 'ff33aa55'.repeat(8);
-
-        const orderId = await injectPendingOrder(page, {
-            processId,
-            buyer: ANVIL_ACCOUNTS[0],
-            seller: SELLER1,
-            payment: '10000000000000000',
-        });
-
-        await acceptOrderMock(page, orderId);
-
-        // Without NEXT_PUBLIC_KLEROS_ARBITRABLE_PROXY, the panel shows
-        // "Kleros integration not configured"
-        const notConfigured = page.getByText('Kleros integration not configured');
-        // This may or may not be visible depending on whether the workspace
-        // renders semantic cards on this viewport — use a soft assertion
-        const visible = await notConfigured.isVisible().catch(() => false);
-        if (visible) {
-            await expect(notConfigured).toBeVisible();
-        }
-    });
+    // The "not-configured" state is covered deterministically by
+    // dispute-page.spec.ts:69-75 (`shows "not configured" banner without
+    // Kleros env vars`). The mock-mode workspace-card variant of the
+    // same assertion was a soft test (no-op when the panel didn't
+    // render) and contributed no unique coverage.
 });
 
 // ── BondApprovalPanel dispute cost ───────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoHome, fillCreateOrderForm, submitFirstOrder, injectPendingOrder, acceptOrderMock, waitForFirstOrderUiSync, switchToGraphTab } from './test-helpers';
+import { gotoHome, fillCreateOrderForm, submitFirstOrder, injectActiveOrder, acceptOrderMock, waitForFirstOrderUiSync, switchToGraphTab, waitForApproved } from './test-helpers';
 
 const BUYER = '0x000000000000000000000000000000000000dEaD';
 const SELLER = '0x000000000000000000000000000000000000b00b';
@@ -38,7 +38,7 @@ test.describe('Home page — Create Order (mocked)', () => {
 
         // Click approve (mock) and ensure status updates
         await page.getByTestId('approve-button').click();
-        await page.waitForFunction(() => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'));
+        await waitForApproved(page);
     });
 
     // negative: missing origin/destination → create-order-home.shared.spec.ts
@@ -54,7 +54,7 @@ test.describe('Home page — Create Order (mocked)', () => {
         const approveBtn = page.getByTestId('approve-button');
         if (await approveBtn.count()) {
             await approveBtn.click();
-            await page.waitForFunction(() => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'), null, { timeout: 5000 }).catch(() => { });
+            await waitForApproved(page, undefined, 5000).catch(() => { });
         }
 
         await submitFirstOrder(page);
@@ -73,7 +73,7 @@ test.describe('Home page — Create Order (mocked)', () => {
 
     test('new first order replaces stale graph selection when an older pending process exists', async ({ page }) => {
         const staleProcessId = '0xface000000000000000000000000000000000000000000000000000000000001';
-        const staleOrderId = await injectPendingOrder(page, {
+        const staleOrderId = await injectActiveOrder(page, {
             processId: staleProcessId,
             buyer: BUYER,
             seller: SELLER,
@@ -92,11 +92,7 @@ test.describe('Home page — Create Order (mocked)', () => {
         const approveBtn = page.getByTestId('approve-button');
         if (await approveBtn.count()) {
             await approveBtn.click();
-            await page.waitForFunction(
-                () => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'),
-                null,
-                { timeout: 5000 }
-            ).catch(() => { });
+            await waitForApproved(page, undefined, 5000).catch(() => { });
         }
 
         await submitFirstOrder(page);
@@ -137,7 +133,7 @@ test.describe('Order card — field coverage (mocked)', () => {
     const PROCESS_A = '0xaaaa000000000000000000000000000000000000000000000000000000000001';
 
     test('+ button visible on Active order at commit (mock)', async ({ page }) => {
-        const orderId = await injectPendingOrder(page, {
+        const orderId = await injectActiveOrder(page, {
             processId: PROCESS_A,
             buyer: BUYER,
             seller: SELLER,
@@ -185,7 +181,7 @@ test.describe('Order card — field coverage (mocked)', () => {
         const text = 'o:farm-A|d:market-B|mass:5 kg|vol:10 L|class:fragile';
         const manifestHex = '0x' + Buffer.from(text, 'utf8').toString('hex');
 
-        const orderId = await injectPendingOrder(page, {
+        const orderId = await injectActiveOrder(page, {
             processId: PROCESS_A,
             buyer: BUYER,
             seller: SELLER,

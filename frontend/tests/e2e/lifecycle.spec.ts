@@ -19,12 +19,13 @@ import {
     submitSubOrder,
     ANVIL_ACCOUNTS,
     waitForMockHarness,
-    injectPendingOrder,
+    injectActiveOrder,
     acceptOrderMock,
     resolveProcessMock,
     dismissConfirmationModal,
     switchToGraphTab,
     switchToOrdersTab,
+    waitForApproved,
 } from './test-helpers';
 
 // ── Addresses used across tests ──────────────────────────────────────────────
@@ -58,9 +59,8 @@ test.describe('Lifecycle — commitOrder (mock)', () => {
         // Build a unique processId for this test
         const processId = '0x' + 'a1b2c3d4'.repeat(8);
 
-        // Inject an Active order directly into the mock event store
-        // injectPendingOrder is aliased to injectActiveOrder in the live flow.
-        const orderId = await injectPendingOrder(page, {
+        // Inject an Active order directly into the mock event store.
+        const orderId = await injectActiveOrder(page, {
             processId,
             buyer: ANVIL_ACCOUNTS[0],
             seller: SELLER1,
@@ -98,10 +98,7 @@ test.describe('Lifecycle — resolveProcess (mock)', () => {
         // Create an order via the UI (mock creates it as Active)
         await fillCreateOrderForm(page, SELLER1, '0.01', 'u4pruydqqvj', 'u4pruydqqvj');
         await page.getByTestId('approve-button').click();
-        await page.waitForFunction(
-            () => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'),
-            null, { timeout: 10000 }
-        );
+        await waitForApproved(page, undefined, 10000);
         await submitFirstOrder(page);
         await dismissConfirmationModal(page);
 
@@ -148,10 +145,7 @@ test.describe('Lifecycle — diamond (4 sellers, mock)', () => {
         // ── Order 1 (firstOrder: buyer → seller1) ─────────────────────────
         await fillCreateOrderForm(page, SELLER1, '0.04', 'u4pruydqqvj', 'u4pruydqqvj');
         await page.getByTestId('approve-button').click();
-        await page.waitForFunction(
-            () => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'),
-            null, { timeout: 10000 }
-        );
+        await waitForApproved(page, undefined, 10000);
         await submitFirstOrder(page);
         await dismissConfirmationModal(page);
 

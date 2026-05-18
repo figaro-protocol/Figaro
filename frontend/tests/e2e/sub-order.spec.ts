@@ -9,6 +9,7 @@ import {
     dismissConfirmationModal,
     switchToGraphTab,
     injectActiveOrder,
+    waitForApproved,
 } from './test-helpers';
 
 const BUYER = '0x000000000000000000000000000000000000dEaD';
@@ -23,10 +24,7 @@ test.describe('Sub-order flows — Create SubOrder (mocked)', () => {
         // ── Step 1: first order ────────────────────────────────────────────
         await fillCreateOrderForm(page, BUYER, '0.01', 'u4pruydqqvj', 'u4pruydqqvj');
         await page.getByTestId('approve-button').click();
-        await page.waitForFunction(
-            () => document.querySelector('[data-testid="approval-status"]')?.textContent?.includes('Authorized'),
-            null, { timeout: 10000 }
-        );
+        await waitForApproved(page, undefined, 10000);
         await submitFirstOrder(page);
         await dismissConfirmationModal(page);
 

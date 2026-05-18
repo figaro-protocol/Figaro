@@ -5,7 +5,7 @@ import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from '../anvilAccounts';
 
 export { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN };
 
-export async function clickWithRetry(locator: Locator, attempts = 5): Promise<void> {
+async function clickWithRetry(locator: Locator, attempts = 5): Promise<void> {
     let lastError: unknown;
 
     for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -97,7 +97,7 @@ function selectorWithinScope(scopeTestId?: string, selector = '[data-testid="app
     return `[data-testid="${scopeTestId}"] ${selector}`;
 }
 
-export async function waitForApprovalState(page: Page, scopeTestId?: string, timeout = 10000): Promise<void> {
+async function waitForApprovalState(page: Page, scopeTestId?: string, timeout = 10000): Promise<void> {
     const statusSelector = selectorWithinScope(scopeTestId);
     try {
         await page.waitForFunction((selector: string) => {
@@ -156,6 +156,37 @@ export async function waitForCreateConfirm(page: Page): Promise<void> {
 }
 
 /**
+ * Wait for a React-rendered element to be hydrated. The signal is the
+ * presence of a `__reactFiber` / `__reactProps` key on the DOM node;
+ * React attaches these during hydration, so their presence proves the
+ * element's event handlers are active and the element is ready to
+ * receive synthetic clicks.
+ *
+ * Use this before clicking any `"use client"` button that was reached
+ * via `goto` (which only waits for the `load` event, not hydration).
+ * Pre-hydration clicks land focus on the button but don't fire the
+ * React `onClick` — a common flake pattern documented in
+ * `~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/reference_e2e_flake_patterns.md`.
+ */
+export async function waitForReactHydration(
+    page: Page,
+    selector: string,
+    timeout = 10000,
+): Promise<void> {
+    await page.waitForFunction(
+        (sel: string) => {
+            const el = document.querySelector(sel);
+            if (!el) return false;
+            return Object.keys(el).some(
+                (k) => k.startsWith('__reactFiber') || k.startsWith('__reactProps'),
+            );
+        },
+        selector,
+        { timeout },
+    ).catch(() => {});
+}
+
+/**
  * Navigate to /discover (the buyer entry point) in mock mode and wait for
  * hydration. Use this in place of the old `gotoAssemblyMock(slug)` — the
  * `/i/[slug]` route was deleted 2026-05 in favour of purpose-shaped pages
@@ -164,14 +195,7 @@ export async function waitForCreateConfirm(page: Page): Promise<void> {
 export async function gotoDiscoverMock(page: Page) {
     await page.goto('/discover?e2e=mock', { waitUntil: 'load' });
     await page.getByTestId('operator-card').first().waitFor({ timeout: 30000 });
-    await page.waitForFunction(
-        () => {
-            const el = document.querySelector('[data-testid="operator-card"]');
-            if (!el) return false;
-            return Object.keys(el).some(k => k.startsWith('__reactFiber') || k.startsWith('__reactProps'));
-        },
-        { timeout: 5000 },
-    ).catch(() => {});
+    await waitForReactHydration(page, '[data-testid="operator-card"]', 5000);
 }
 
 /**
@@ -182,14 +206,7 @@ export async function gotoDiscoverMock(page: Page) {
 export async function gotoMerchantMock(page: Page, merchantAddress: string) {
     await page.goto(`/m/${merchantAddress}?e2e=mock`, { waitUntil: 'load' });
     await page.getByTestId('merchant-detail-view').waitFor({ timeout: 30000 });
-    await page.waitForFunction(
-        () => {
-            const el = document.querySelector('[data-testid="merchant-detail-view"]');
-            if (!el) return false;
-            return Object.keys(el).some(k => k.startsWith('__reactFiber') || k.startsWith('__reactProps'));
-        },
-        { timeout: 5000 },
-    ).catch(() => {});
+    await waitForReactHydration(page, '[data-testid="merchant-detail-view"]', 5000);
 }
 
 /**
@@ -690,9 +707,6 @@ function parseMockManifestFields(manifest: string | undefined): {
         classOfService,
     };
 }
-
-/** @deprecated The live kernel has no Pending state. Use injectActiveOrder instead. */
-export const injectPendingOrder = injectActiveOrder;
 
 /**
  * @deprecated Orders are Active at commit time. No accept step needed.
