@@ -95,31 +95,42 @@ test.describe('BondApprovalPanel dispute cost (mock)', () => {
 test.describe('Evidence Display page (/evidence-display)', () => {
     test('loads inside a same-origin iframe', async ({ page }) => {
         const fakeProcessId = '0x' + 'a1b2c3d4'.repeat(8);
-        await page.goto('/terminal?e2e=mock', { waitUntil: 'load' });
-        const iframeResponsePromise = page.waitForResponse((response) => {
-            return response.url().includes(`/evidence-display?processId=${fakeProcessId}`);
-        });
-        await page.setContent(`
-            <iframe
-                id="evidence-frame"
-                src="/evidence-display?processId=${fakeProcessId}&chainID=31337&arbitrableJsonRpcUrl=http://127.0.0.1:8545&e2e=mock"
-                style="width: 1280px; height: 800px; border: 0;"
-            ></iframe>
-        `);
+        const iframeUrl =
+            `/evidence-display?processId=${fakeProcessId}&chainID=31337` +
+            `&arbitrableJsonRpcUrl=http://127.0.0.1:8545&e2e=mock`;
 
-        const iframeResponse = await iframeResponsePromise;
-        const headers = iframeResponse.headers();
+        // 1. CSP headers — fetched directly. An iframe-using consumer
+        //    receives the same headers; pulling them via `page.request`
+        //    instead of inferring from an iframe load decouples this
+        //    assertion from page navigation entirely.
+        const cspResponse = await page.request.get(iframeUrl);
+        const headers = cspResponse.headers();
         expect(headers['content-security-policy']).toContain("frame-ancestors 'self'");
         expect(headers['content-security-policy']).toContain('https://resolve.kleros.io');
+
+        // 2. Iframe-embedded rendering — host on the homepage (lighter
+        //    than /terminal, no mock-event-store boot to race) and
+        //    inject the iframe via `document.createElement` after the
+        //    host finishes hydrating. The previous shape called
+        //    `page.setContent(...)` against /terminal mid-hydration;
+        //    under suite load setContent occasionally lost the race
+        //    against React's reconciler and the iframe never landed in
+        //    the DOM at all.
+        await page.goto('/?e2e=mock', { waitUntil: 'load' });
+        await page.evaluate((src) => {
+            const frame = document.createElement('iframe');
+            frame.id = 'evidence-frame';
+            frame.src = src;
+            frame.style.cssText = 'width: 1280px; height: 800px; border: 0;';
+            document.body.appendChild(frame);
+        }, iframeUrl);
 
         // The fake processId never resolves to chain data, so the page
         // can settle into any of three valid render states: the
         // "Figaro Process Timeline" heading (real timeline), an
         // "Error" notice (chain query rejected), or "Loading process
         // timeline…" (query still in flight). All three prove the
-        // iframe loaded + hydrated; the earlier two-state assertion
-        // raced the loading state and flaked at ~40% in repeated
-        // runs.
+        // iframe loaded + hydrated.
         const frame = page.frameLocator('#evidence-frame');
         await expect(
             frame.getByRole('heading', { name: 'Figaro Process Timeline' })
