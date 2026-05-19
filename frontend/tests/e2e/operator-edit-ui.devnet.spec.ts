@@ -211,6 +211,10 @@ test.describe('Operator edit UI surfaces (devnet)', () => {
     });
 
     test('/operators/edit/agents — set MCP endpoint, submit, OperatorProfileUpdated emits', async ({ page }) => {
+        const consoleErrors: string[] = [];
+        page.on('console', (m) => {
+            if (m.type() === 'error') consoleErrors.push(m.text());
+        });
         const operator = ANVIL_ACCOUNTS[0] as Hex;
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
         const seeded = await seedRegisteredOperator({
@@ -229,6 +233,13 @@ test.describe('Operator edit UI surfaces (devnet)', () => {
         await page.locator('#agent-mcp').fill(mcpUrl);
         await page.getByRole('button', { name: 'Save changes' }).click();
         await waitForOneUpdateEvent(operator, blockBefore, seeded.profileURI);
+
+        // Diagnostic: confirm the render-loop bug is fixed. Pre-fix, the
+        // `OperatorEditAgents` component fired "Maximum update depth
+        // exceeded" repeatedly after click. Post-fix (memoized refetch +
+        // setData dedupe in `useOperatorProfile`), no such warning.
+        const loopErrors = consoleErrors.filter((e) => /Maximum update depth/i.test(e));
+        expect(loopErrors, `Expected no Maximum-update-depth warnings; saw: ${loopErrors.join(' | ')}`).toEqual([]);
     });
 
     test('/operators/edit/assemblies — toggle published assembly on, submit, OperatorProfileUpdated emits', async ({ page }) => {

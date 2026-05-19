@@ -11,7 +11,7 @@
  * field. Lifecycle / availability is signal-by-availability off-chain,
  * not registry state.
  */
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
 import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "./contracts";
 import { getOperatorState, getOperatorMetadataURI } from "@/lib/core/indexer";
@@ -73,7 +73,18 @@ export function useOperatorProfile(address: `0x${string}` | undefined) {
         getOperatorState(client, chainId, address).then((state) => {
             if (cancelled) return;
             if (state) {
-                setData([state.metadataURI, state.registeredBlock] as const);
+                // Only emit a fresh tuple ref when the underlying values
+                // actually changed — otherwise consumers' `useEffect`s
+                // keyed on `data` re-fire on every poll for nothing,
+                // which compounds into update-depth thrash on routes
+                // that chain `refetch() + router.push(...)` in a
+                // success-useEffect (see /operators/edit/* family).
+                setData((prev) => {
+                    const same = prev
+                        && prev[0] === state.metadataURI
+                        && prev[1] === state.registeredBlock;
+                    return same ? prev : [state.metadataURI, state.registeredBlock] as const;
+                });
             } else {
                 setData(undefined);
             }
@@ -85,7 +96,13 @@ export function useOperatorProfile(address: `0x${string}` | undefined) {
         return () => { cancelled = true; };
     }, [client, chainId, address, generation]);
 
-    return { data, isLoading, refetch: () => setGeneration((g) => g + 1) };
+    // Stable refetch — a new arrow function on every render makes any
+    // consumer that puts `refetch` in a `useEffect` dep array re-fire
+    // on every parent render, which is what powered the post-success
+    // refetch-redirect cycle on /operators/edit/<route> pages.
+    const refetch = useCallback(() => setGeneration((g) => g + 1), []);
+
+    return { data, isLoading, refetch };
 }
 
 // ── Write hooks ───────────────────────────────────────────────────────────────
