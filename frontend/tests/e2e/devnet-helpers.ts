@@ -15,6 +15,7 @@ import {
     http,
     keccak256,
     parseAbi,
+    parseEther,
     stringToHex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -986,6 +987,148 @@ export async function attestGhgAsBuyer(
         args: [commitment, GHG_SCHEMA_ID, stage, sectionData, proof, sectionData],
     });
     return buyerClient.writeContract(request);
+}
+
+/** OperatorRegistry ABI fragment for seedRegisteredOperator. Local copy keeps
+ *  the seed helper independent of the frontend's full ABI export. */
+const OPERATOR_REGISTRY_REGISTER_ABI = parseAbi([
+    'function register(string metadataURI) external payable',
+    'event OperatorRegistered(address indexed operator, string metadataURI)',
+]);
+
+const OPERATOR_REGISTRATION_DEPOSIT = parseEther('0.001');
+
+/** Minimal profile shape for `seedRegisteredOperator`. Mirrors the required
+ *  + most-common fields of `OperatorProfileMetadata` so callers can author
+ *  a registration JSON without pulling the full frontend metadata type. */
+export interface SeedOperatorProfile {
+    name: string;
+    description?: string;
+    specialty?: string;
+    catalogueURI?: string;
+    acceptedTokens?: Array<{ address: `0x${string}`; symbol: string; chainId: number }>;
+    defaultTokenAddress?: `0x${string}`;
+}
+
+/** Result of `seedRegisteredOperator`. Includes the on-chain address (derived
+ *  from the wallet key) and the IPFS URI of the pinned profile JSON. */
+export interface SeededOperator {
+    address: `0x${string}`;
+    profileURI: string;
+    profileCid: string;
+}
+
+/**
+ * Pin a fresh operator profile JSON to local Kubo and register the wallet
+ * on `OperatorRegistry`. Pairs with `merchant-page.devnet.spec.ts`'s
+ * inline seeder (which inlines this for the catalogue+merchant case); the
+ * helper here is the generic "any registered operator" seed, used by
+ * Phase 4 C4 to set up the `/operators/edit/*` UI tests (those routes
+ * require a real IPFS-pinned profile so `OperatorEditProfile` can mount
+ * the form).
+ *
+ * Requires Kubo running at NEXT_PUBLIC_IPFS_API_URL (default
+ * http://127.0.0.1:5001) and `./deploy-local.sh` having populated
+ * NEXT_PUBLIC_OPERATOR_REGISTRY.
+ */
+export async function seedRegisteredOperator(opts: {
+    walletKey: `0x${string}`;
+    profile: SeedOperatorProfile;
+}): Promise<SeededOperator> {
+    const localConfig = readLocalDeploymentConfig();
+    const operatorRegistry = (process.env.NEXT_PUBLIC_OPERATOR_REGISTRY
+        ?? localConfig.operatorRegistry) as `0x${string}` | undefined;
+    if (!operatorRegistry) {
+        throw new Error('NEXT_PUBLIC_OPERATOR_REGISTRY not set — run ./deploy-local.sh');
+    }
+
+    const operator = privateKeyToAccount(opts.walletKey);
+
+    // Pin the profile JSON. Frontend's OperatorEditProfile.tsx fetches this
+    // URI via gateway and parses with `tryParseOperatorProfileDocument`, so
+    // the shape must satisfy that parser. Required field: `name`.
+    const profileDoc = {
+        subjectAddress: operator.address,
+        ...opts.profile,
+    };
+    const { cid, uri: profileURI } = await pinJSONToIPFS(profileDoc);
+
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const operatorClient = createWalletClient({ account: operator, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const { request } = await publicClient.simulateContract({
+        account: operator.address,
+        address: operatorRegistry,
+        abi: OPERATOR_REGISTRY_REGISTER_ABI,
+        functionName: 'register',
+        args: [profileURI],
+        value: OPERATOR_REGISTRATION_DEPOSIT,
+    });
+    await publicClient.waitForTransactionReceipt({ hash: await operatorClient.writeContract(request) });
+
+    return {
+        address: operator.address as `0x${string}`,
+        profileURI,
+        profileCid: cid,
+    };
+}
+
+/** Per-stage allocation file shape consumed by `ClaimPanel` (mirrors the
+ *  `AllocationEntry` type in `components/core/ClaimPanel.tsx:18-21`).
+ *  Amounts are decimal-string wei; proofs are bytes32 hex arrays. */
+export interface FigClaimAllocations {
+    [lowercaseAddress: string]: { amount: string; proof: `0x${string}`[] };
+}
+
+/** Paths to the three per-stage allocation files. Mirrors `STAGE_FILES`
+ *  in `ClaimPanel.tsx:24-28`. Public-asset paths — Next.js serves them
+ *  verbatim from `frontend/public/`. */
+const FIG_CLAIMS_FIXTURE_PATHS: readonly [string, string, string] = [
+    'fig-claims-y2.json',
+    'fig-claims-y5.json',
+    'fig-claims-y9.json',
+];
+
+function getFigClaimsFixturePath(stageIndex: 0 | 1 | 2): string {
+    return path.resolve(__dirname, '../../public', FIG_CLAIMS_FIXTURE_PATHS[stageIndex]);
+}
+
+/**
+ * Write a per-stage allocation file under `frontend/public/` so the
+ * /fig/claim UI's `fetchAllocation()` returns a real entry for the
+ * connected wallet. The static file is a mainnet-generation artifact
+ * by design; this helper lets devnet tests inject a transient fixture
+ * for the duration of a single test (paired with
+ * `clearFigClaimsFixture` in afterEach).
+ *
+ * Single-leaf merkle tree note: when the deploy script seeds the
+ * airdrop with `leaf == root`, the inclusion proof for that single
+ * claimant is the empty array. Pass `{[addr.toLowerCase()]: {amount,
+ * proof: []}}` to match the on-chain root.
+ *
+ * Returns the absolute path of the written file so callers can verify
+ * existence if needed.
+ */
+export async function writeFigClaimsFixture(
+    stageIndex: 0 | 1 | 2,
+    allocations: FigClaimAllocations,
+): Promise<string> {
+    const filePath = getFigClaimsFixturePath(stageIndex);
+    await fs.promises.writeFile(filePath, JSON.stringify(allocations, null, 2), 'utf8');
+    return filePath;
+}
+
+/**
+ * Remove a fig-claims fixture file. Idempotent — succeeds whether or
+ * not the file exists, so afterEach can call it unconditionally even
+ * if the test failed before writing the fixture.
+ */
+export async function clearFigClaimsFixture(stageIndex: 0 | 1 | 2): Promise<void> {
+    const filePath = getFigClaimsFixturePath(stageIndex);
+    try {
+        await fs.promises.unlink(filePath);
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    }
 }
 
 /**

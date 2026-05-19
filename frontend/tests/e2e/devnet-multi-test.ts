@@ -61,6 +61,97 @@ export async function openAsAccount(context: BrowserContext, account: string): P
 }
 
 /**
+ * Pre-set the active EIP-1193 account on the default page fixture
+ * BEFORE page scripts run, then navigate. The fixture has already
+ * injected `inject-ethereum-multi.js` which exposes
+ * `__FIGARO_SWITCH_ACCOUNT__`; this helper schedules another init
+ * script that calls it with the target account, so wagmi mounts
+ * already-connected to that account (rather than mounting as anvil[0]
+ * and then receiving an `accountsChanged` event).
+ *
+ * Use this when a test exercises a wallet OTHER than the default
+ * buyer (anvil[0]) — e.g. seller-side `/orders/[processId]`,
+ * spectator views, or the merchant `/inbox`. Mirrors the inline
+ * pattern from `inbox.devnet.spec.ts` lifted into a reusable helper.
+ *
+ * Defaults `waitUntil` to `domcontentloaded`; full `load` collides
+ * with Next.js dev-server cold-compile races (see
+ * `reference_e2e_flake_patterns.md` #7).
+ */
+export async function gotoAsWallet(
+    page: Page,
+    walletAddress: string,
+    path: string,
+    opts: { waitUntil?: 'load' | 'domcontentloaded' } = {},
+): Promise<void> {
+    await page.addInitScript((addr: string) => {
+        if (typeof (window as any).__FIGARO_SWITCH_ACCOUNT__ === 'function') {
+            (window as any).__FIGARO_SWITCH_ACCOUNT__(addr);
+        }
+    }, walletAddress);
+    await page.goto(path, { waitUntil: opts.waitUntil ?? 'domcontentloaded' });
+}
+
+/**
+ * Pre-inject a CommitmentPayload into the mock CoordinationChannel's
+ * localStorage so the seller's `/inbox` `subscribeAnyCommitmentPayload`
+ * picks it up as a pending order when the page mounts. Simulates an
+ * XMTP arrival in devnet mode (`?e2e=devnet` triggers the mock channel
+ * per `lib/handoff/channel.ts:172-178`).
+ *
+ * Storage key + message shape mirror `lib/handoff/mockChannel.ts:23`
+ * (`__FIGARO_COORDINATION_MOCK_MESSAGES__`) — when the inbox's
+ * subscriber registers, `onAnyCommitmentPayload` replays
+ * already-persisted COMMITMENT_PAYLOAD entries via queueMicrotask, so a
+ * test that writes the entry BEFORE navigation sees the pending card
+ * render on mount.
+ *
+ * The MerchantInbox subscriber filters by `payload.commitment.seller
+ * === address` (MerchantInbox.tsx:174) — pass a `commitment` whose
+ * `seller` matches the wallet the page is connected as.
+ *
+ * Phase 2 C1 will exercise this for real; Phase 0 only ships the
+ * helper.
+ */
+export async function simulateXmtpCommitmentArrival(
+    page: Page,
+    opts: {
+        orderId: string;
+        /** JSON-serializable payload — the inbox's deserializer expects a
+         *  CommitmentPayload (`useCommitmentFlow.ts:124-130`). The minimum
+         *  fields the inbox checks are `commitment.buyer` and
+         *  `commitment.seller`. */
+        payload: Record<string, unknown>;
+        /** Sender wallet (buyer in the typical flow). */
+        senderIdentity: string;
+    },
+): Promise<void> {
+    const MOCK_STORAGE_KEY = '__FIGARO_COORDINATION_MOCK_MESSAGES__';
+    const message = {
+        type: 'COMMITMENT_PAYLOAD' as const,
+        orderId: opts.orderId,
+        payloadJson: JSON.stringify(opts.payload),
+        ts: Date.now(),
+        senderIdentity: opts.senderIdentity,
+    };
+
+    await page.addInitScript(
+        ({ storageKey, msg }) => {
+            try {
+                const raw = window.localStorage.getItem(storageKey);
+                const existing = raw ? (JSON.parse(raw) as unknown[]) : [];
+                window.localStorage.setItem(storageKey, JSON.stringify([...existing, msg]));
+            } catch {
+                // localStorage unavailable — silent; the test assertion
+                // will fail downstream with a clearer signal than a
+                // pre-page-load exception here.
+            }
+        },
+        { storageKey: MOCK_STORAGE_KEY, msg: message },
+    );
+}
+
+/**
  * Switch the active account on an already-loaded page.
  * wagmi picks up the change via the EIP-1193 `accountsChanged` event.
  *
