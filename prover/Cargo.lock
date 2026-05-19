@@ -2269,6 +2269,7 @@ name = "figaro-prove-test"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
+ "bincode",
  "figaro-kernel",
  "figaro-schema",
  "k256",

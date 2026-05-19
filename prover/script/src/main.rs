@@ -1,6 +1,6 @@
 use alloy_primitives::{address, Address, B256, U256, keccak256};
 use k256::ecdsa::SigningKey;
-use sp1_sdk::{self, Prover, ProverClient, SP1Stdin};
+use sp1_sdk::{self, Prover, ProverClient, ProvingKey, SP1Stdin};
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::types::*;
@@ -193,20 +193,15 @@ async fn main() {
     // Load the ELF.
     let elf = sp1_sdk::include_elf!("figaro-prover");
 
-    // Create the prover client (mock for execution — no proof infrastructure overhead).
-    let client = ProverClient::builder().mock().build().await;
-
-    // Serialize input into SP1 stdin.
+    // Stage 1 — Mock execution: cheap sanity check that the ELF runs
+    // and the public values match the kernel's expected output.
+    let mock_client = ProverClient::builder().mock().build().await;
     let mut stdin = SP1Stdin::new();
     stdin.write(&input);
-
-    // Execute first (no proof, just verify the program runs).
-    println!("Executing program (no proof)...");
-    let (mut public_values, report) = client
-        .execute(elf, stdin)
-        .await
-        .unwrap();
-    println!("Execution complete. Cycles: {}", report.total_instruction_count());
+    println!("── Stage 1/2 — Mock execution (no proof) ──");
+    let (mut public_values, report) =
+        mock_client.execute(elf.clone(), stdin.clone()).await.unwrap();
+    println!("Cycles: {}", report.total_instruction_count());
 
     let pv: PublicValues = public_values.read();
     println!("Previous state root: {:?}", pv.prev_state_root);
@@ -222,6 +217,48 @@ async fn main() {
     assert_eq!(pv.chain_id, CHAIN_ID);
     assert_eq!(pv.verifying_contract, CORE);
 
-    println!("\n=== Execution verified. Program is correct. ===");
-    println!("To generate a real proof, run with SP1_PROVER=network or SP1_PROVER=local");
+    // Stage 2 — Real CPU proof: generates an actual SP1 proof on the
+    // local machine and verifies it against the verifying key.
+    //
+    // Gate with SP1_REAL_PROOF=1 because real proving is slow on this
+    // batch size (~20M cycles ≈ several minutes on a modern laptop,
+    // significant memory). Mock execution above already validates the
+    // program's correctness; the real proof is a cryptographic
+    // attestation of that execution.
+    if std::env::var("SP1_REAL_PROOF").is_ok() {
+        println!("\n── Stage 2/2 — Local CPU proof ──");
+        let cpu_client = ProverClient::builder().cpu().build().await;
+        println!("Building proving key (setup)...");
+        let setup_start = std::time::Instant::now();
+        let pk = cpu_client.setup(elf).await.expect("setup failed");
+        println!("Setup complete in {:.1}s", setup_start.elapsed().as_secs_f64());
+
+        println!("Generating Core proof (this can take minutes)...");
+        let prove_start = std::time::Instant::now();
+        let proof = cpu_client.prove(&pk, stdin).await.expect("prove failed");
+        let prove_elapsed = prove_start.elapsed();
+        println!("Proof generated in {:.1}s", prove_elapsed.as_secs_f64());
+
+        // Re-read public values from the actual proof, not the mock run.
+        let mut pv_bytes = proof.public_values.clone();
+        let pv: PublicValues = pv_bytes.read();
+        println!(
+            "Proof public values — new_state_root: {:?}, attestation_hash: {:?}",
+            pv.new_state_root, pv.attestation_events_hash,
+        );
+
+        println!("Verifying proof...");
+        let verify_start = std::time::Instant::now();
+        sp1_sdk::Prover::verify(&cpu_client, &proof, pk.verifying_key(), None)
+            .expect("proof verification failed");
+        println!("Verified in {:.1}s", verify_start.elapsed().as_secs_f64());
+
+        let proof_bytes = bincode::serialize(&proof).expect("serialize proof");
+        println!("Proof size: {} bytes ({:.2} MB)", proof_bytes.len(), proof_bytes.len() as f64 / 1_048_576.0);
+
+        println!("\n=== Real proof verified. ===");
+    } else {
+        println!("\n=== Execution verified. Program is correct. ===");
+        println!("To generate a real local proof: SP1_REAL_PROOF=1 cargo run -p figaro-prove-test --release");
+    }
 }
