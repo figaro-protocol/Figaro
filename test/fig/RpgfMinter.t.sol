@@ -348,4 +348,237 @@ contract RpgfMinterTest is Test {
         assertEq(totalAllocated, 1_000_000);
         assertEq(uint256(schemaCount), 17);
     }
+
+    // ── Fuzz tests ──────────────────────────────────────────────────────
+
+    /// @notice Any caller other than `submitter` must revert. Mirrors
+    ///         Halmos `check_submitRootNotSubmitterReverts` over random
+    ///         concrete addresses.
+    function testFuzz_OnlySubmitterCanSubmitRoot(address caller) public {
+        vm.assume(caller != sequencer);
+        vm.prank(caller);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotSubmitter.selector, caller));
+        minter.submitRoot(_publicValues(0, rootY2, AMOUNT * 2, 1), hex"");
+    }
+
+    /// @notice Stage-index bounds on submitRoot — random oversized indices
+    ///         must hit `InvalidStage`. Mirrors Halmos `check_invalidStageReverts`.
+    function testFuzz_SubmitRootInvalidStage(uint8 stageIndex) public {
+        vm.assume(stageIndex >= 3);
+        vm.prank(sequencer);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.InvalidStage.selector, stageIndex));
+        minter.submitRoot(_publicValues(stageIndex, rootY2, AMOUNT * 2, 1), hex"");
+    }
+
+    /// @notice Stage-index bounds on claim — random oversized indices
+    ///         must hit `InvalidStage` before any other check.
+    function testFuzz_ClaimInvalidStage(uint8 stageIndex) public {
+        vm.assume(stageIndex >= 3);
+        bytes32[] memory emptyProof = new bytes32[](0);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.InvalidStage.selector, stageIndex));
+        minter.claim(stageIndex, AMOUNT, emptyProof);
+    }
+
+    /// @notice Claim before unlock — any timestamp strictly less than the
+    ///         per-stage unlock time must revert with `NotUnlocked`.
+    function testFuzz_ClaimBeforeUnlock(uint64 ts) public {
+        vm.assume(ts < unlockY2);
+        _submit(0, rootY2, AMOUNT * 2, 1);
+        vm.warp(ts);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotUnlocked.selector, 0));
+        minter.claim(0, AMOUNT, aliceProofY2);
+    }
+
+    /// @notice Claim with any amount other than the one in the leaf must
+    ///         revert with `InvalidProof`. Mirrors `test_CannotClaimWithAlteredAmount`
+    ///         across the full uint256 space.
+    function testFuzz_ClaimAmountMustMatchTree(uint256 wrongAmount) public {
+        vm.assume(wrongAmount != AMOUNT);
+        _submit(0, rootY2, AMOUNT * 2, 1);
+        vm.warp(unlockY2);
+        vm.prank(alice);
+        vm.expectRevert(RpgfMinter.InvalidProof.selector);
+        minter.claim(0, wrongAmount, aliceProofY2);
+    }
+
+    /// @notice Root one-shot: a second `submitRoot` for any stage that
+    ///         already has a non-zero root must revert, regardless of
+    ///         what the second root value is.
+    function testFuzz_RootOneShot(bytes32 secondRoot) public {
+        vm.assume(secondRoot != bytes32(0));
+        _submit(0, rootY2, AMOUNT * 2, 1);
+        vm.prank(sequencer);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.RootAlreadySet.selector, uint8(0)));
+        minter.submitRoot(_publicValues(0, secondRoot, AMOUNT, 1), hex"");
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Invariant suite — Foundry's stateful fuzzer drives RpgfMinter through
+// arbitrary sequences of submitRoot / claim / time-warp calls and checks
+// the global invariants after every action.
+// ═══════════════════════════════════════════════════════════════════════
+
+/// @notice Stateful actor for the RpgfMinter invariant suite.
+contract RpgfMinterHandler is Test {
+    RpgfMinter public minter;
+    address public submitter;
+    bytes32 public canonicalRoot;
+    uint256 public canonicalAmount;
+    address public canonicalClaimant;
+    bytes32[] public canonicalProof;
+    uint64[3] public unlocks;
+
+    bool[3] public rootSubmittedMirror;
+    bool[3] public canonicalRootInUse;
+
+    constructor(
+        RpgfMinter _minter,
+        address _submitter,
+        bytes32 _canonicalRoot,
+        uint256 _canonicalAmount,
+        address _canonicalClaimant,
+        bytes32[] memory _canonicalProof,
+        uint64[3] memory _unlocks
+    ) {
+        minter = _minter;
+        submitter = _submitter;
+        canonicalRoot = _canonicalRoot;
+        canonicalAmount = _canonicalAmount;
+        canonicalClaimant = _canonicalClaimant;
+        canonicalProof = _canonicalProof;
+        unlocks = _unlocks;
+    }
+
+    function submitRoot(uint8 stageIndex, bytes32 root, uint256 totalAllocated) external {
+        stageIndex = uint8(bound(stageIndex, 0, 2));
+        if (root == bytes32(0)) root = bytes32(uint256(0x1));
+
+        // For stage 0 we route through the canonical root so a downstream
+        // claim() call has a valid proof to land against. Other stages
+        // can submit arbitrary roots — invariants don't care about
+        // claimability across all stages.
+        if (stageIndex == 0 && !rootSubmittedMirror[0]) {
+            root = canonicalRoot;
+            totalAllocated = canonicalAmount * 2;
+            canonicalRootInUse[0] = true;
+        }
+
+        bytes memory pv = abi.encode(stageIndex, root, totalAllocated, uint32(1));
+        vm.prank(submitter);
+        try minter.submitRoot(pv, hex"") {
+            rootSubmittedMirror[stageIndex] = true;
+        } catch {
+            // Expected reverts: RootAlreadySet (the one-shot guard we're testing).
+            // Swallow so the fuzzer keeps exploring.
+        }
+    }
+
+    function tickTime(uint64 dt) external {
+        dt = uint64(bound(dt, 0, 365 days));
+        vm.warp(block.timestamp + dt);
+    }
+
+    function claimCanonical() external {
+        if (!canonicalRootInUse[0]) return; // root not yet set
+        if (block.timestamp < unlocks[0]) return; // gated by unlock
+        vm.prank(canonicalClaimant);
+        try minter.claim(0, canonicalAmount, canonicalProof) {} catch {}
+    }
+}
+
+contract RpgfMinterInvariantTest is Test {
+    FigToken internal token;
+    RpgfMinter internal minter;
+    MockSP1Verifier internal verifier;
+    RpgfMinterHandler internal handler;
+
+    address internal sequencer = address(0xBEEF);
+    address internal alice = address(0xA);
+    address internal bob = address(0xB);
+
+    bytes32 internal constant PROGRAM_VKEY = bytes32(uint256(0xDEAD));
+    uint256 internal constant AMOUNT = 100 ether;
+    uint256 internal constant CAP = 600_000_000 ether;
+
+    uint64 internal unlockY2;
+    uint64 internal unlockY5;
+    uint64 internal unlockY9;
+
+    function setUp() public {
+        token = new FigToken();
+        verifier = new MockSP1Verifier();
+
+        unlockY2 = uint64(block.timestamp + 2 * 365 days);
+        unlockY5 = uint64(block.timestamp + 5 * 365 days);
+        unlockY9 = uint64(block.timestamp + 9 * 365 days);
+
+        uint64[3] memory unlocks = [unlockY2, unlockY5, unlockY9];
+        minter = new RpgfMinter(
+            address(token), address(verifier), PROGRAM_VKEY, sequencer, unlocks
+        );
+        token.registerMinter(address(minter), CAP);
+
+        bytes32 aLeaf = keccak256(abi.encodePacked(alice, AMOUNT));
+        bytes32 bLeaf = keccak256(abi.encodePacked(bob, AMOUNT));
+        (bytes32 lo, bytes32 hi) = aLeaf < bLeaf ? (aLeaf, bLeaf) : (bLeaf, aLeaf);
+        bytes32 root = keccak256(abi.encodePacked(lo, hi));
+
+        bytes32[] memory aliceProof = new bytes32[](1);
+        aliceProof[0] = bLeaf;
+
+        handler = new RpgfMinterHandler(
+            minter, sequencer, root, AMOUNT, alice, aliceProof, unlocks
+        );
+        targetContract(address(handler));
+    }
+
+    /// @notice Stage roots and unlockTimes are immutable post-submit /
+    ///         post-construction: total FIG minted through this minter
+    ///         can never exceed its registered cap.
+    function invariant_TotalMintedWithinCap() public view {
+        (, uint256 minted) = token.minters(address(minter));
+        assertLe(minted, CAP, "minter.minted exceeded cap");
+    }
+
+    /// @notice Submitter address is set in the constructor and never changes.
+    function invariant_SubmitterImmutable() public view {
+        assertEq(minter.submitter(), sequencer, "submitter changed");
+    }
+
+    /// @notice Minter target (FigToken) is set in the constructor and never changes.
+    function invariant_MinterTargetImmutable() public view {
+        assertEq(minter.minter(), address(token), "minter target changed");
+    }
+
+    /// @notice Per-stage unlock times never change after construction.
+    function invariant_UnlockTimesImmutable() public view {
+        (, uint64 u0,) = minter.stages(0);
+        (, uint64 u1,) = minter.stages(1);
+        (, uint64 u2,) = minter.stages(2);
+        assertEq(u0, unlockY2, "stage 0 unlock changed");
+        assertEq(u1, unlockY5, "stage 1 unlock changed");
+        assertEq(u2, unlockY9, "stage 2 unlock changed");
+    }
+
+    /// @notice programVKey is set in the constructor and never changes.
+    function invariant_ProgramVKeyImmutable() public view {
+        assertEq(minter.programVKey(), PROGRAM_VKEY, "programVKey changed");
+    }
+
+    /// @notice Claimed flag for the canonical claim path is monotonic:
+    ///         once true (after a successful canonical claim), the handler
+    ///         cannot un-set it. This is the Foundry analogue of the
+    ///         Echidna `echidna_claim_flag_monotonic` property.
+    function invariant_ClaimedFlagMonotonic_Canonical() public view {
+        // We can't directly test monotonicity within a single invariant
+        // check — Foundry calls these after each action, not between two
+        // states. Instead, assert the structural property: if the
+        // canonical claimant has claimed at stage 0, then their FigToken
+        // balance reflects exactly AMOUNT.
+        if (minter.claimed(0, alice)) {
+            assertEq(token.balanceOf(alice), AMOUNT, "claimed flag set but balance mismatched");
+        }
+    }
 }

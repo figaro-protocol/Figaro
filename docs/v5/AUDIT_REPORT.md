@@ -442,7 +442,7 @@ These are current design realities, not defects:
 
 | Layer | Count | Method |
 |---|---|---|
-| Foundry | 225 | Concrete unit/integration tests (via `forge test --via-ir`) |
+| Foundry | 237 | Concrete unit/integration/fuzz/invariant tests (via `forge test --via-ir`). +12 in 2026-05-19 RpgfMinter pass: 6 fuzz (submitter auth, stage-index bounds on submit + claim, claim-before-unlock, amount-must-match-tree, root one-shot) + 6 invariants (total-minted-within-cap, four immutables, claim-flag-consistency). |
 | Halmos | 15 | Symbolic proofs (ALL inputs, z3) — via `./test-halmos.sh`. FigaroCore (7) + RpgfMinter (8): root one-shot, claim one-shot, time-lock, stage-bound, submitter-gate, zero-root rejection. |
 | Certora | 35/35 sub-rules across 4 specs | SMT formal verification (cloud) — FigaroCore (9), AttestationCoordinator (7), FigToken (7), RpgfMinter (12: submitter/minter/programVKey immutable, unlockTime immutable, root one-shot, totalAllocated locked-with-root, claim flag monotonic, only-submitter sets root, stage-index bounds, claim preconditions). Via `./test-certora.sh`. |
 | TLA+ | 24 invariants across 3 models | FigaroCore 7 invariants / 6,087,113 distinct states; FigToken 8 invariants / 160,844 distinct states; RpgfMinter 9 invariants / 11,821 distinct states. All via `./test-tla.sh`. |
