@@ -1,0 +1,44 @@
+export type TrancheIndex = 0 | 1 | 2;
+
+export const TRANCHE_BUDGETS_FIG: readonly [bigint, bigint, bigint] = [
+  300_000_000n * 10n ** 18n,
+  200_000_000n * 10n ** 18n,
+  100_000_000n * 10n ** 18n,
+];
+
+export type CountVariant = "raw" | "bondedValue" | "chainPosition";
+
+export interface SchemaSnapshot {
+  schemaId: string;
+  resolvedAttestationCount: number;
+  totalBondedValueWei: bigint;
+  totalChainPositionWeight: number;
+  distinctAttestors: number;
+}
+
+export interface Archetype {
+  name: string;
+  description: string;
+  snapshotsAtTranches: readonly [SchemaSnapshot, SchemaSnapshot, SchemaSnapshot];
+}
+
+export interface SchemaPopulationSource {
+  label: string;
+  schemas(): readonly Archetype[];
+}
+
+export interface AuthorAllocation {
+  schemaName: string;
+  schemaId: string;
+  score: number;
+  share: number;
+  allocatedFig: bigint;
+}
+
+export interface TrancheRanking {
+  trancheIndex: TrancheIndex;
+  alpha: number;
+  variant: CountVariant;
+  budgetFig: bigint;
+  allocations: readonly AuthorAllocation[];
+}
