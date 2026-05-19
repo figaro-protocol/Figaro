@@ -188,6 +188,7 @@ type DeploymentConfig = {
     schemaRegistry?: `0x${string}`;
     dutchAuction?: `0x${string}`;
     operatorRegistry?: `0x${string}`;
+    assemblyRegistry?: `0x${string}`;
 };
 
 export function readLocalDeploymentConfig(): DeploymentConfig {
@@ -210,6 +211,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_SCHEMA_REGISTRY') config.schemaRegistry = value;
             if (key === 'NEXT_PUBLIC_DUTCH_AUCTION') config.dutchAuction = value;
             if (key === 'NEXT_PUBLIC_OPERATOR_REGISTRY') config.operatorRegistry = value;
+            if (key === 'NEXT_PUBLIC_ASSEMBLY_REGISTRY') config.assemblyRegistry = value;
         }
     }
 
@@ -221,6 +223,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
         config.schemaRegistry = config.schemaRegistry ?? (contents as any).schemaRegistry;
         config.dutchAuction = config.dutchAuction ?? (contents as any).dutchAuction;
         config.operatorRegistry = config.operatorRegistry ?? contents.operatorRegistry;
+        config.assemblyRegistry = config.assemblyRegistry ?? (contents as any).assemblyRegistry;
     }
 
     return config;
