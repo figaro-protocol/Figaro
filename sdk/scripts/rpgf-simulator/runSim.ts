@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { applyCap, rankTranche } from "./formula.js";
+import { applyCap, rankTranche, tier1Weight } from "./formula.js";
 import { handCodedPopulation } from "./populations/handCoded.js";
 import { combinePopulations, randomFillerPopulation } from "./populations/random.js";
 import type {
@@ -117,6 +117,24 @@ function printSensitivityTable(
   });
 }
 
+function printWeightBreakdown(pop: SchemaPopulationSource, trancheIndex: TrancheIndex) {
+  console.log(
+    `\n--- Tier-1 weight breakdown (${TRANCHE_LABELS[trancheIndex]} snapshot) ---`,
+  );
+  console.log(
+    "Schema                          wCat   wTopo  wVal   total",
+  );
+  for (const a of pop.schemas()) {
+    const s = a.snapshotsAtTranches[trancheIndex];
+    const w = tier1Weight(s);
+    const wc = w.wCategory.toFixed(2).padStart(6);
+    const wt = w.wTopology.toFixed(2).padStart(6);
+    const wv = w.wValue.toFixed(2).padStart(6);
+    const tot = w.total.toFixed(2).padStart(6);
+    console.log(`${a.name.padEnd(30)} ${wc} ${wt} ${wv} ${tot}`);
+  }
+}
+
 function printClusterSummary(r: TrancheRanking) {
   console.log(
     `\n--- Cluster allocation share | ${TRANCHE_LABELS[r.trancheIndex]} | α=${r.alpha} | ${comboLabel(r.countVariant, r.diversityVariant)} ---`,
@@ -145,15 +163,19 @@ function main() {
   const fillers = randomFillerPopulation();
   const combined = combinePopulations(archetypes, fillers);
 
-  console.log(`# RPGF simulator V3 — audit-derived variables`);
+  console.log(`# RPGF simulator V4 — audit-derived variables + tier-1 graph weighting`);
   console.log(`Archetypes: ${archetypes.schemas().length} (17 real + 3 hypothetical)`);
   console.log(`Random fillers: ${fillers.schemas().length}`);
   console.log(`Combined: ${combined.schemas().length}`);
   console.log(`Default α: ${ALPHA_DEFAULT}`);
   console.log(`Per-author cap: ${(CAP_SHARE * 100).toFixed(0)}%`);
   console.log(`Default combo: ${comboLabel(...DEFAULT_COMBO)} (audit's recommendation)`);
+  console.log(`Tier-1 weight applied: category(fulfilment, geo) + topology(chainPosition) + value(bondedValue/process)`);
 
   const [dCount, dDiv] = DEFAULT_COMBO;
+
+  console.log(`\n## Tier-1 weight breakdown — archetypes`);
+  printWeightBreakdown(archetypes, 0);
 
   console.log(`\n## Default combo (${comboLabel(dCount, dDiv)}) — all tranches, capped`);
   const cappedRankings: TrancheRanking[] = [];
@@ -203,7 +225,7 @@ function main() {
     JSON.stringify(
       {
         meta: {
-          version: "V3",
+          version: "V4",
           population: combined.label,
           archetypeCount: archetypes.schemas().length,
           fillerCount: fillers.schemas().length,

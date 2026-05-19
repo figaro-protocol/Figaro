@@ -9,6 +9,70 @@ import type {
 } from "./types.js";
 import { TRANCHE_BUDGETS_FIG } from "./types.js";
 
+// ─── Tier-1 graph weighting ──────────────────────────────────────────
+// Deploy-frozen weights expressing the protocol's prior about which
+// public graphs are load-bearing for the substrate. Three dimensions:
+//   1. Category — schemas in {fulfilment, geo} carry the tier-1
+//      category boost. topology participates via the chain-depth signal,
+//      not as a category (it has no runtime attestations of its own).
+//   2. Topology — every schema's attestations are embedded in orders
+//      with a chain position. Schemas attested in multi-party (deeper)
+//      orders contribute more to the topology graph; the topology
+//      weight scales with mean chain position.
+//   3. Value/bond — schemas whose enclosing orders carry high bonded
+//      value contribute more to the value/bond graph; weight scales
+//      with log10 of mean bonded value per process.
+//
+// Composition is ADDITIVE: w = 1 + (wCat-1) + (wTopo-1) + (wVal-1).
+// Each tier-1 dimension adds independently; no dimension can produce
+// a multiplier alone, but a schema strong on all three reaches ~7x.
+
+const TIER1_CATEGORY_SCHEMAS: ReadonlySet<string> = new Set([
+  "figaro-fulfilment-v2",
+  "figaro-geo-v2",
+]);
+
+const CATEGORY_WEIGHT_TIER1 = 3.0;
+const CATEGORY_WEIGHT_DEFAULT = 1.0;
+
+const TOPOLOGY_WEIGHT_MIN = 1.0;
+const TOPOLOGY_WEIGHT_MAX = 3.0;
+
+const VALUE_REFERENCE_TOKENS = 100;
+const VALUE_WEIGHT_MIN = 1.0;
+const VALUE_WEIGHT_MAX = 3.0;
+
+export interface WeightBreakdown {
+  wCategory: number;
+  wTopology: number;
+  wValue: number;
+  total: number;
+}
+
+export function tier1Weight(s: SchemaSnapshot): WeightBreakdown {
+  const wCategory = TIER1_CATEGORY_SCHEMAS.has(s.schemaId)
+    ? CATEGORY_WEIGHT_TIER1
+    : CATEGORY_WEIGHT_DEFAULT;
+
+  const wTopology = Math.min(
+    TOPOLOGY_WEIGHT_MAX,
+    Math.max(TOPOLOGY_WEIGHT_MIN, s.meanChainPosition),
+  );
+
+  const meanBondedTokens = s.distinctProcesses > 0
+    ? Number(s.totalEnclosingOrderBondedValueWei / BigInt(s.distinctProcesses) / 10n ** 15n) / 1000
+    : 0;
+  const wValue = meanBondedTokens > 0
+    ? Math.min(
+        VALUE_WEIGHT_MAX,
+        Math.max(VALUE_WEIGHT_MIN, 1 + Math.log10(meanBondedTokens / VALUE_REFERENCE_TOKENS)),
+      )
+    : VALUE_WEIGHT_MIN;
+
+  const total = 1 + (wCategory - 1) + (wTopology - 1) + (wValue - 1);
+  return { wCategory, wTopology, wValue, total };
+}
+
 function countValue(s: SchemaSnapshot, variant: CountVariant): number {
   switch (variant) {
     case "raw":
@@ -16,9 +80,6 @@ function countValue(s: SchemaSnapshot, variant: CountVariant): number {
     case "processCount":
       return s.distinctProcesses;
     case "bondedValue":
-      // wei → whole-token units, preserving milli-token precision via the
-      // bigint intermediate so very-high-stakes archetypes don't overflow
-      // Number when summed.
       return Number(s.totalEnclosingOrderBondedValueWei / 10n ** 15n) / 1000;
     case "paymentValue":
       return Number(s.totalEnclosingOrderPaymentWei / 10n ** 15n) / 1000;
@@ -47,7 +108,8 @@ export function score(
   const c = countValue(s, countVariant);
   const d = diversityValue(s, diversityVariant);
   if (c <= 0 || d <= 0) return 0;
-  return Math.pow(c, alpha) * Math.pow(d, 1 - alpha);
+  const w = tier1Weight(s).total;
+  return w * Math.pow(c, alpha) * Math.pow(d, 1 - alpha);
 }
 
 export function rankTranche(
@@ -95,8 +157,7 @@ export function rankTranche(
 
 // Iterative water-filling: any schema whose share exceeds capShare is
 // truncated to capShare; the excess is redistributed pro-rata across
-// under-cap schemas. Iterates to fixpoint. Pure post-processing — does
-// not change ranking order or scores.
+// under-cap schemas. Iterates to fixpoint.
 export function applyCap(ranking: TrancheRanking, capShare: number): TrancheRanking {
   if (capShare <= 0 || capShare >= 1) return ranking;
   if (ranking.allocations.length === 0) return ranking;

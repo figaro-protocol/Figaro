@@ -72,6 +72,7 @@ function zeroSnap(schemaId: string): SchemaSnapshot {
     totalEnclosingOrderBondedValueWei: 0n,
     totalEnclosingOrderPaymentWei: 0n,
     totalChainPositionWeight: 0,
+    meanChainPosition: 0,
   };
 }
 
@@ -134,6 +135,7 @@ function generate(options: RandomFillerOptions): Archetype[] {
         totalEnclosingOrderBondedValueWei: BigInt(orderCount) * meanBondedWei,
         totalEnclosingOrderPaymentWei: BigInt(orderCount) * meanPaymentWei,
         totalChainPositionWeight: orderCount * meanChainPos,
+        meanChainPosition: meanChainPos,
       };
     };
 

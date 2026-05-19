@@ -37,6 +37,7 @@ function snap(inp: SnapInputs): SchemaSnapshot {
     totalEnclosingOrderBondedValueWei: BigInt(inp.orderCount) * inp.meanBondedValueWei,
     totalEnclosingOrderPaymentWei: BigInt(inp.orderCount) * inp.meanPaymentWei,
     totalChainPositionWeight: inp.orderCount * inp.meanChainPosition,
+    meanChainPosition: inp.meanChainPosition,
   };
 }
 
@@ -54,6 +55,7 @@ function zero(schemaId: string, category: SchemaCategory): SchemaSnapshot {
     totalEnclosingOrderBondedValueWei: 0n,
     totalEnclosingOrderPaymentWei: 0n,
     totalChainPositionWeight: 0,
+    meanChainPosition: 0,
   };
 }
 

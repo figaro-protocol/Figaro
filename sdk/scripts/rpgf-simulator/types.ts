@@ -41,6 +41,7 @@ export interface SchemaSnapshot {
   totalEnclosingOrderPaymentWei: bigint;
 
   totalChainPositionWeight: number;
+  meanChainPosition: number;
 }
 
 export interface Archetype {
