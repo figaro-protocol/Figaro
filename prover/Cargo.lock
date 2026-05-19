@@ -2283,6 +2283,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "figaro-rpgf"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "serde",
+ "serde_json",
+ "sha3",
+]
+
+[[package]]
+name = "figaro-rpgf-prover"
+version = "0.1.0"
+dependencies = [
+ "figaro-rpgf",
+ "sp1-zkvm",
+]
+
+[[package]]
 name = "figaro-sequencer"
 version = "0.1.0"
 dependencies = [

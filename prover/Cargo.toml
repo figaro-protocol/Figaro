@@ -1,5 +1,5 @@
 [workspace]
-members = ["lib", "program", "script", "sequencer"]
+members = ["lib", "program", "rpgf", "rpgf-program", "script", "sequencer"]
 resolver = "2"
 
 # SP1 accelerates k256 and sha3 (keccak) via precompiles.
