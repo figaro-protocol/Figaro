@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt } from "wagmi";
-import { useWalletProcessIds } from "@/hooks/core/useWalletProcessIds";
+import { useWalletProcessIds, type ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import useTokenApproval from "@/hooks/core/useTokenApproval";
 import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
@@ -99,9 +99,33 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         || ghgDisclosureActions.isSuccess;
 
     const selectedSummary = walletProcesses.find((summary) => summary.processId === effectiveProcessId) ?? null;
-    const processModel = selectedSummary
+
+    // Spectator path: wallet isn't a participant in this process, but
+    // the process exists on-chain (event log says processOrders is
+    // non-empty). Build a synthetic summary so deriveProcessModelFromRuntime
+    // can still produce a model. Without this, /orders/<processId>
+    // stays in perpetual "Loading…" for any wallet that didn't witness
+    // the order — auditors, journalists, counterparty researchers, etc.
+    // The event log is public; the page should follow.
+    //
+    // deriveProcessModelFromRuntime only reads `summary.processId` from
+    // the summary it receives (lines 532-556 of that file), so a minimal
+    // synthetic ProcessSummary suffices; the participant-specific role
+    // discrimination happens downstream against `address`.
+    const fallbackSummary: ProcessSummary | null = (!selectedSummary && effectiveProcessId && processOrders.length > 0)
+        ? {
+            processId: effectiveProcessId,
+            orderCount: processOrders.length,
+            hasActive: processOrders.some((order) => order.state === OrderState.Active),
+            createdAt: 0,
+            orders: processOrders.map((order) => ({ id: order.id, state: order.state })),
+        }
+        : null;
+    const effectiveSummary = selectedSummary ?? fallbackSummary;
+
+    const processModel = effectiveSummary
         ? deriveProcessModelFromRuntime(
-            selectedSummary,
+            effectiveSummary,
             processOrders,
             address,
             selectedCurrency,
