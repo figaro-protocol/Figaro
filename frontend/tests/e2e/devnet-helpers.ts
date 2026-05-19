@@ -848,6 +848,29 @@ export async function attestGhgAsBuyer(
 }
 
 /**
+ * Pin a JSON document to the local Kubo daemon and return the CID + ipfs URI.
+ *
+ * Mirrors what `ipfsService.publishJSON` does in the browser, but talks to
+ * Kubo from Node directly. Used by devnet tests that need to seed an
+ * operator profile or catalogue document in IPFS without walking the
+ * full onboarding wizard.
+ */
+export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: string }> {
+    const apiUrl = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+    const form = new FormData();
+    form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    const res = await fetch(`${apiUrl}/api/v0/add?pin=true`, { method: 'POST', body: form });
+    if (!res.ok) {
+        throw new Error(`IPFS pin failed: ${res.status} ${res.statusText}`);
+    }
+    const result = await res.json() as { Hash?: string };
+    if (typeof result.Hash !== 'string' || !result.Hash) {
+        throw new Error('IPFS pin returned no CID');
+    }
+    return { cid: result.Hash, uri: `ipfs://${result.Hash}` };
+}
+
+/**
  * Advance Anvil's block timestamp by `seconds` and mine an empty block
  * so reads pick up the new `block.timestamp`. Used by tests that exercise
  * time-locked paths (OperatorRegistry.withdraw's 365-day lock,
