@@ -35,41 +35,54 @@ preloads built-in specs and lazy-fetches remote ones.
 1. **SP1 zkVM prover guest program** — `figaro-kernel`'s `apply_batch`
    gates `AttestAsSeller` / `AttestAsBuyer` operations through
    `validate_attestation_content` when the op carries an
-   `AttestationContentProof { content_bytes, content_json, schema_spec }`.
-   Three gates run inside the proof:
-     1. `keccak256(content_bytes) == content_ref` — binds the proof to
-        the on-chain commitment value.
-     2. `parse_schema_spec(schema_spec).schemaId` keccak-256s to
+   `AttestationContentProof { content_json, schema_spec }`. Four
+   gates run inside the proof:
+     1. `parse_schema_spec(schema_spec).schemaId` keccak-256s to
         `schema_id` — the right spec is being applied.
-     3. `validate_content(content_json, spec, stage)` returns `Ok` —
+     2. `validate_content(content_json, spec, stage)` returns `Ok` —
         the structured form satisfies the schema.
+     3. `encode_content_for_schema(spec.schemaId, content_json)`
+        derives canonical ABI bytes (byte-for-byte equivalent to
+        viem's `encodeAbiParameters` in `sdk/src/schemas/encode.ts`).
+        This is the **cross-form binding** — the bytes Layer C decodes
+        are derived *from* the JSON Layer B validates, so they describe
+        the same content by construction. No separate `content_bytes`
+        field exists; it would have allowed the caller to disagree
+        with `content_json` and is now impossible.
+     4. `keccak256(derived_bytes) == content_ref` — binds the canonical
+        bytes to the on-chain commitment value.
    The `content_proof` field is optional; when `None`, the kernel
-   preserves legacy content-opaque behavior. Cross-form binding
-   (proving `decode_abi(content_bytes) ≡ canonicalize(content_json)`)
-   is a tracked hardening item — without it the proof attests "some
-   bytes hash to `content_ref` AND some JSON validates"; pairing them
-   is currently the off-chain caller's responsibility.
+   preserves legacy content-opaque behavior (Layer C will gate the
+   attestation at settlement time on chain).
 
 2. **Off-chain sequencer** — calls `validate_content` before accepting
    attestation submissions into the batch mempool (signature gate only
    today; mirroring the kernel's content gate in the mempool is a
    tracked pre-flight hardening item).
 
-Conformance is locked in two layers:
+Conformance is locked in three layers:
 
 - `prover/schema/tests/conformance.rs` — 15 tests covering every
   shipped protocol schema parse + the 12 happy/sad content cases
   from `sdk/tests/schemas/validate.test.ts`.
-- `prover/lib/tests/parity.rs` — 4 kernel-integration tests
+- `prover/schema/tests/encode_conformance.rs` — 17 tests asserting
+  per-schema canonical-encoder output is byte-for-byte equal to
+  viem's `encodeAbiParameters` output for the same input (covers
+  all 12 distinct encoder shapes across the 17 runtime-attestable
+  schemas). Test vectors were captured from the TypeScript encoders
+  via `generate_vectors.mjs`.
+- `prover/lib/tests/parity.rs` — 5 kernel-integration tests
   (`attest_as_seller_with_valid_content_proof_passes`,
   `_content_hash_mismatch_fails`, `_invalid_content_fails`,
-  `_schema_id_mismatch_fails`) exercising the gate inside
+  `_schema_id_mismatch_fails`,
+  `_unsupported_schema_encoder_fails`) exercising every gate inside
   `apply_batch`.
 
 The user-supplied `pattern` field uses the `regex` crate; the four
 canonical formats (bytes32-hex, address-hex, bytes-hex, iso-datetime)
 use hand-rolled character matching to avoid regex-engine cost in the
-zkVM hot path.
+zkVM hot path. The per-schema ABI encoders use `alloy-dyn-abi` for
+runtime-typed encoding.
 
 ## Layer C — On-chain (Solidity)
 

@@ -12,3 +12,9 @@ serde_json = "1"
 # but the format must support any closed regex per the spec). SP1's zkVM
 # supports `regex` via standard riscv compilation.
 regex = "1"
+# Per-schema content encoders (encode.rs) produce ABI-encoded bytes from
+# the validated JSON content. Output is byte-for-byte identical to viem's
+# encodeAbiParameters in `sdk/src/schemas/encode.ts` — this is the
+# cross-form binding the kernel uses to bind content_ref to content_json.
+alloy-primitives = "0.8"
+alloy-dyn-abi = "0.8"

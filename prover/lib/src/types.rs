@@ -44,33 +44,29 @@ pub struct Signature {
 /// hashes a content blob that satisfies the schema's spec.
 ///
 /// When `content_proof: Some(_)` on an `AttestAsSeller` / `AttestAsBuyer`
-/// op, the kernel enforces three gates:
+/// op, the kernel enforces four gates:
 ///
-///   1. `keccak256(content_bytes) == content_ref` — binds the proof to
-///      the on-chain commitment value.
-///   2. `parse_schema_spec(schema_spec)` succeeds and the parsed spec's
+///   1. `parse_schema_spec(schema_spec)` succeeds and the parsed spec's
 ///      `schemaId` keccak-256 matches the op's `schema_id`.
-///   3. `validate_content(content_json, spec, stage)` returns Ok — the
+///   2. `validate_content(content_json, spec, stage)` returns Ok — the
 ///      structured form passes the Layer B validator (the Rust mirror of
 ///      Layer A).
-///
-/// `content_bytes` and `content_json` are passed in parallel rather than
-/// derived from each other: `content_bytes` is the ABI-encoded form the
-/// on-chain validator already consumes (and over which `content_ref` is
-/// taken), while `content_json` is the structured form Layer B validates.
-/// Asserting cross-form equivalence (decode_abi(content_bytes) ==
-/// canonicalize(content_json)) is a follow-up hardening item — without it
-/// the proof attests "some bytes hash to content_ref AND some JSON
-/// validates"; pairing them is left to the off-chain caller.
+///   3. `encode_content_for_schema(spec.schemaId, content_json)`
+///      produces ABI bytes byte-for-byte identical to viem's encoders
+///      in `sdk/src/schemas/encode.ts`. The encoder is the cross-form
+///      binding — it derives the canonical byte form *from* the JSON,
+///      so no separate `content_bytes` field can disagree with
+///      `content_json`.
+///   4. `keccak256(derived_bytes) == content_ref` — binds the derived
+///      bytes (which Layer C will decode) to the on-chain commitment.
 ///
 /// When `content_proof: None` the attestation is treated as
 /// content-opaque (legacy behavior; the on-chain validator gate runs at
 /// settlement time on Layer C).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AttestationContentProof {
-    /// The bytes whose keccak256 must match the op's `content_ref`.
-    pub content_bytes: Vec<u8>,
-    /// The structured JSON form Layer B validates against the schema spec.
+    /// The structured JSON form Layer B validates against the schema spec
+    /// and re-encodes to ABI bytes via the per-schema encoder.
     pub content_json: serde_json::Value,
     /// The schema spec JSON (the same shape Layer A parses). The kernel
     /// verifies the parsed `schemaId` keccak-256s to the op's `schema_id`.
@@ -335,6 +331,14 @@ pub enum KernelError {
     SchemaSpecParseFailed(String),
     SchemaIdMismatch,
     SchemaContentInvalid(String),
+    /// The schemaId has no Rust ABI encoder registered, so the kernel
+    /// cannot derive content_bytes from content_json. Either the schema
+    /// is too new or the caller is attempting to attest under a
+    /// non-runtime schemaId (e.g. `figaro-topology-v1`).
+    SchemaEncoderMissing(String),
+    /// `encode_content_for_schema` failed for a reason other than
+    /// missing schema (bad field type, unknown enum value, etc.).
+    ContentEncodingFailed(String),
 }
 
 impl core::fmt::Display for KernelError {

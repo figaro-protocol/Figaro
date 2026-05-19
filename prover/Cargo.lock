@@ -2318,6 +2318,8 @@ dependencies = [
 name = "figaro-schema"
 version = "0.1.0"
 dependencies = [
+ "alloy-dyn-abi",
+ "alloy-primitives",
  "regex",
  "serde",
  "serde_json",

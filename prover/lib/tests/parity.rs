@@ -1142,10 +1142,10 @@ fn test_emission_state_persists_across_batches() {
 // ── Layer B content-proof gate tests ──────────────────────────────
 //
 // These tests cover the AttestationContentProof gate in apply_batch:
-// when a seller attestation carries a `content_proof`, the kernel
-// verifies (a) keccak256(content_bytes) == content_ref, (b) the schema
-// spec parses and matches schema_id, and (c) the JSON content validates
-// against the spec.
+// when a seller attestation carries a content_proof, the kernel runs
+// all four gates (spec-parse, schemaId match, content validates,
+// derived bytes hash to content_ref) and emits the event only if every
+// gate passes.
 
 fn ghg_protocol_spec_json() -> serde_json::Value {
     // Mirrors frontend/lib/shared/schemas/figaro-ghg-protocol-v1.json.
@@ -1168,18 +1168,25 @@ fn ghg_protocol_spec_json() -> serde_json::Value {
     })
 }
 
-fn build_attest_op_with_content_proof(
+/// Build an AttestAsSeller op with a content_proof, deriving content_ref
+/// from the per-schema canonical encoder. The content_ref the op carries
+/// matches `keccak256(encode_content_for_schema(schema_id_str,
+/// content_json))`, so a kernel that re-derives bytes the same way will
+/// see a matching hash.
+fn build_canonical_attest_op(
     domain: &B256,
     seller_key: &k256::ecdsa::SigningKey,
-    schema_id: B256,
-    content_bytes: Vec<u8>,
+    schema_id_str: &str,
     content_json: serde_json::Value,
     schema_spec: serde_json::Value,
     role: Commitment,
-) -> (KernelOp, B256, B256) {
+) -> (KernelOp, B256) {
+    let schema_id = keccak256(schema_id_str.as_bytes());
+    let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
+        .expect("canonical encoder must succeed");
+    let content_ref = keccak256(canonical_bytes.as_slice());
     let root_struct = commitment_struct_hash(&role);
     let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
-    let content_ref = keccak256(content_bytes.as_slice());
     let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
     let attest_digest = typed_data_hash(domain, &attest_struct);
     let seller_sig = sign_digest(seller_key, &attest_digest);
@@ -1191,12 +1198,11 @@ fn build_attest_op_with_content_proof(
         content_ref,
         seller_sig,
         content_proof: Some(figaro_kernel::types::AttestationContentProof {
-            content_bytes,
             content_json,
             schema_spec,
         }),
     };
-    (op, order_hash, content_ref)
+    (op, order_hash)
 }
 
 #[test]
@@ -1209,16 +1215,11 @@ fn attest_as_seller_with_valid_content_proof_passes() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
-    let content_json = serde_json::json!({ "scope": 1 });
-    let content_bytes = serde_json::to_vec(&content_json).unwrap();
-
-    let (attest_op, _order_hash, _content_ref) = build_attest_op_with_content_proof(
+    let (attest_op, _order_hash) = build_canonical_attest_op(
         &domain,
         &seller1_key,
-        schema_id,
-        content_bytes,
-        content_json,
+        "figaro-ghg-protocol-v1",
+        serde_json::json!({ "scope": 1 }),
         ghg_protocol_spec_json(),
         root.clone(),
     );
@@ -1241,7 +1242,7 @@ fn attest_as_seller_with_valid_content_proof_passes() {
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.attestations.len(), 1);
-    assert_eq!(events.attestations[0].schema_id, schema_id);
+    assert_eq!(events.attestations[0].schema_id, keccak256(b"figaro-ghg-protocol-v1"));
     assert_eq!(events.attestations[0].stage, 0);
 }
 
@@ -1256,14 +1257,13 @@ fn attest_as_seller_with_content_hash_mismatch_fails() {
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
     let schema_id = keccak256(b"figaro-ghg-protocol-v1");
-    let real_content_bytes = serde_json::to_vec(&serde_json::json!({ "scope": 1 })).unwrap();
-    let lying_content_json = serde_json::json!({ "scope": 1 });
+    let content_json = serde_json::json!({ "scope": 1 });
 
     let root_struct = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
-    // content_ref is *not* the keccak of real_content_bytes — substitute a
-    // garbage hash. The attestation signature is computed over the garbage
-    // hash to isolate the failure to the Layer B gate.
+    // content_ref is a garbage hash unrelated to the canonical encoding
+    // of any content_json. The attestation signature is computed over
+    // this hash to isolate the failure to Gate 4 (keccak mismatch).
     let wrong_content_ref = keccak256(b"completely different bytes");
     let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &wrong_content_ref);
     let attest_digest = typed_data_hash(&domain, &attest_struct);
@@ -1287,8 +1287,7 @@ fn attest_as_seller_with_content_hash_mismatch_fails() {
                 content_ref: wrong_content_ref,
                 seller_sig: attest_sig,
                 content_proof: Some(figaro_kernel::types::AttestationContentProof {
-                    content_bytes: real_content_bytes,
-                    content_json: lying_content_json,
+                    content_json,
                     schema_spec: ghg_protocol_spec_json(),
                 }),
             },
@@ -1314,17 +1313,12 @@ fn attest_as_seller_with_invalid_content_fails() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
-    // scope=4 is out of range (1..=3) — must fail validate_content.
-    let content_json = serde_json::json!({ "scope": 4 });
-    let content_bytes = serde_json::to_vec(&content_json).unwrap();
-
-    let (attest_op, _, _) = build_attest_op_with_content_proof(
+    // scope=4 is out of range (1..=3) — must fail validate_content (Gate 2).
+    let (attest_op, _) = build_canonical_attest_op(
         &domain,
         &seller1_key,
-        schema_id,
-        content_bytes,
-        content_json,
+        "figaro-ghg-protocol-v1",
+        serde_json::json!({ "scope": 4 }),
         ghg_protocol_spec_json(),
         root.clone(),
     );
@@ -1363,22 +1357,34 @@ fn attest_as_seller_with_schema_id_mismatch_fails() {
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
     // The op's schema_id claims figaro-ghg-protocol-v1, but the spec we
-    // attach is for a *different* schemaId — gate 2 must reject.
+    // attach is for a *different* schemaId — Gate 1 must reject.
     let schema_id = keccak256(b"figaro-ghg-protocol-v1");
     let mut wrong_spec = ghg_protocol_spec_json();
     wrong_spec["schemaId"] = serde_json::json!("figaro-ghg-iso-14064-v1");
     let content_json = serde_json::json!({ "scope": 1 });
-    let content_bytes = serde_json::to_vec(&content_json).unwrap();
 
-    let (attest_op, _, _) = build_attest_op_with_content_proof(
-        &domain,
-        &seller1_key,
+    // Build the op manually since the canonical helper assumes the spec
+    // matches schema_id.
+    let canonical_bytes =
+        figaro_schema::encode_content_for_schema("figaro-ghg-protocol-v1", &content_json).unwrap();
+    let content_ref = keccak256(canonical_bytes.as_slice());
+    let root_struct = commitment_struct_hash(&root);
+    let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let attest_digest = typed_data_hash(&domain, &attest_struct);
+    let attest_sig = sign_digest(&seller1_key, &attest_digest);
+    let attest_op = KernelOp::AttestAsSeller {
+        role_commitment: root.clone(),
+        order_hash,
         schema_id,
-        content_bytes,
-        content_json,
-        wrong_spec,
-        root.clone(),
-    );
+        stage: 0,
+        content_ref,
+        seller_sig: attest_sig,
+        content_proof: Some(figaro_kernel::types::AttestationContentProof {
+            content_json,
+            schema_spec: wrong_spec,
+        }),
+    };
 
     let input = BatchInput {
         chain_id: CHAIN_ID,
@@ -1400,6 +1406,75 @@ fn attest_as_seller_with_schema_id_mismatch_fails() {
     assert!(
         matches!(err, KernelError::SchemaIdMismatch),
         "expected SchemaIdMismatch, got {err:?}",
+    );
+}
+
+#[test]
+fn attest_as_seller_with_unsupported_schema_encoder_fails() {
+    // Construct a content_proof whose schema is syntactically valid but
+    // has no Rust ABI encoder registered. The kernel must reject — it
+    // cannot derive canonical bytes without an encoder.
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+
+    let root = root_commitment();
+    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
+    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
+
+    let unknown_schema_id_str = "figaro-bogus-v99";
+    let schema_id = keccak256(unknown_schema_id_str.as_bytes());
+    let unknown_spec = serde_json::json!({
+        "schemaId": unknown_schema_id_str,
+        "version": 1,
+        "title": "Bogus",
+        "description": "no encoder registered",
+        "fields": [
+            { "name": "x", "type": "string", "required": true },
+        ],
+    });
+    let content_json = serde_json::json!({ "x": "ok" });
+
+    // Use an arbitrary content_ref — the kernel will reject at the encoder
+    // gate before it gets to the keccak check, so the value doesn't matter.
+    let root_struct = commitment_struct_hash(&root);
+    let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
+    let placeholder_ref = keccak256(b"placeholder");
+    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &placeholder_ref);
+    let attest_digest = typed_data_hash(&domain, &attest_struct);
+    let attest_sig = sign_digest(&seller1_key, &attest_digest);
+
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![
+            KernelOp::Commit {
+                commitment: root.clone(),
+                buyer_sig: root_buyer_sig,
+                seller_sig: root_seller_sig,
+            },
+            KernelOp::AttestAsSeller {
+                role_commitment: root,
+                order_hash,
+                schema_id,
+                stage: 0,
+                content_ref: placeholder_ref,
+                seller_sig: attest_sig,
+                content_proof: Some(figaro_kernel::types::AttestationContentProof {
+                    content_json,
+                    schema_spec: unknown_spec,
+                }),
+            },
+        ],
+        prev_state: empty_snapshot(),
+        fig_token: Address::ZERO,
+    };
+
+    let err = apply_batch(&input).unwrap_err();
+    assert!(
+        matches!(err, KernelError::SchemaEncoderMissing(_)),
+        "expected SchemaEncoderMissing, got {err:?}",
     );
 }
 

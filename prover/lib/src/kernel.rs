@@ -362,16 +362,19 @@ fn apply_resolve(
 ///
 /// When `proof` is `None` this is a no-op (legacy behavior). When `Some`,
 /// the kernel asserts:
-///   1. `keccak256(content_bytes) == content_ref` — binds the proof to
-///      the on-chain commitment.
-///   2. The supplied `schema_spec` JSON parses cleanly via Layer A's
-///      semantics, and `keccak256(spec.schemaId)` equals `schema_id`.
-///   3. `validate_content(content_json, spec, stage)` succeeds.
 ///
-/// Any failure halts batch execution. The kernel does NOT attempt to
-/// canonicalize / cross-check the byte form against the JSON form — that
-/// pairing is the off-chain caller's responsibility (and a tracked
-/// follow-up; see `AttestationContentProof` NatSpec).
+///   1. The supplied `schema_spec` JSON parses cleanly via Layer A's
+///      semantics, and `keccak256(spec.schemaId)` equals `schema_id`.
+///   2. `validate_content(content_json, spec, stage)` succeeds.
+///   3. `encode_content_for_schema(spec.schemaId, content_json)`
+///      derives the canonical ABI byte form from the JSON. This is the
+///      cross-form binding: the bytes Layer C decodes are derived from
+///      the JSON Layer B validates, so they describe the same content
+///      by construction.
+///   4. `keccak256(derived_bytes) == content_ref` — binds the derived
+///      bytes to the on-chain commitment value.
+///
+/// Any failure halts batch execution.
 fn validate_attestation_content(
     proof: Option<&crate::types::AttestationContentProof>,
     content_ref: &B256,
@@ -380,13 +383,7 @@ fn validate_attestation_content(
 ) -> Result<(), KernelError> {
     let Some(proof) = proof else { return Ok(()); };
 
-    // ── Gate 1: keccak256(content_bytes) == content_ref ──
-    let computed = keccak256(proof.content_bytes.as_slice());
-    if &computed != content_ref {
-        return Err(KernelError::ContentHashMismatch);
-    }
-
-    // ── Gate 2: spec parses and schemaId hash matches ──
+    // ── Gate 1: spec parses and schemaId hash matches ──
     let parsed = match figaro_schema::parse_schema_spec(&proof.schema_spec) {
         figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
         figaro_schema::ParseSchemaSpecResult::Err(errors) => {
@@ -402,18 +399,36 @@ fn validate_attestation_content(
         return Err(KernelError::SchemaIdMismatch);
     }
 
-    // ── Gate 3: content satisfies the spec at the given stage ──
+    // ── Gate 2: content satisfies the spec at the given stage ──
     let options = figaro_schema::ValidateOptions { stage: Some(stage) };
     match figaro_schema::validate_content(&proof.content_json, &parsed, options) {
-        figaro_schema::ValidationResult::Ok => Ok(()),
+        figaro_schema::ValidationResult::Ok => (),
         figaro_schema::ValidationResult::Err(errors) => {
             let first = errors
                 .first()
                 .map(|e| format!("{}: {}", e.path, e.message))
                 .unwrap_or_else(|| "unknown validation error".to_string());
-            Err(KernelError::SchemaContentInvalid(first))
+            return Err(KernelError::SchemaContentInvalid(first));
         }
     }
+
+    // ── Gate 3: re-derive canonical ABI bytes from the JSON ──
+    let derived_bytes = figaro_schema::encode_content_for_schema(
+        &parsed.schema_id,
+        &proof.content_json,
+    )
+    .map_err(|e| match e {
+        figaro_schema::EncodeError::UnsupportedSchema(id) => KernelError::SchemaEncoderMissing(id),
+        other => KernelError::ContentEncodingFailed(other.to_string()),
+    })?;
+
+    // ── Gate 4: derived bytes hash to the on-chain content_ref ──
+    let computed = keccak256(derived_bytes.as_slice());
+    if &computed != content_ref {
+        return Err(KernelError::ContentHashMismatch);
+    }
+
+    Ok(())
 }
 
 // ── attestAsSeller ────────────────────────────────────────────────
