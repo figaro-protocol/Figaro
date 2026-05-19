@@ -648,6 +648,7 @@ fn test_attest_as_seller() {
                 stage: 1,
                 content_ref,
                 seller_sig: attest_sig,
+                content_proof: None,
             },
         ],
         prev_state: empty_snapshot(),
@@ -702,6 +703,7 @@ fn test_attest_as_buyer() {
                 stage: 0,
                 content_ref,
                 buyer_sig: attest_sig,
+                content_proof: None,
             },
         ],
         prev_state: empty_snapshot(),
@@ -753,6 +755,7 @@ fn test_attest_as_seller_wrong_signer_fails() {
                 stage: 0,
                 content_ref,
                 seller_sig: attest_sig,
+                content_proof: None,
             },
         ],
         prev_state: empty_snapshot(),
@@ -799,6 +802,7 @@ fn test_attest_as_buyer_wrong_signer_fails() {
                 stage: 0,
                 content_ref: B256::ZERO,
                 buyer_sig: attest_sig,
+                content_proof: None,
             },
         ],
         prev_state: empty_snapshot(),
@@ -873,6 +877,7 @@ fn test_mixed_batch_all_operations() {
                 stage: 0,
                 content_ref: B256::ZERO,
                 seller_sig: attest_sig,
+                content_proof: None,
             },
             // 5. Resolve
             KernelOp::Resolve {
@@ -1132,6 +1137,270 @@ fn test_emission_state_persists_across_batches() {
     let min_expected = U256::from(299u64) * ether;
     assert!(post_state2.emission_total_emitted > min_expected,
             "total for 2 orders should be ~300 FIG");
+}
+
+// ── Layer B content-proof gate tests ──────────────────────────────
+//
+// These tests cover the AttestationContentProof gate in apply_batch:
+// when a seller attestation carries a `content_proof`, the kernel
+// verifies (a) keccak256(content_bytes) == content_ref, (b) the schema
+// spec parses and matches schema_id, and (c) the JSON content validates
+// against the spec.
+
+fn ghg_protocol_spec_json() -> serde_json::Value {
+    // Mirrors frontend/lib/shared/schemas/figaro-ghg-protocol-v1.json.
+    serde_json::json!({
+        "schemaId": "figaro-ghg-protocol-v1",
+        "version": 1,
+        "title": "GHG Protocol Corporate Standard",
+        "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under the GHG Protocol Corporate Standard (and related WRI/WBCSD GHG Protocol guidance documents).",
+        "categories": ["emissions"],
+        "fields": [
+            {
+                "name": "scope",
+                "type": "integer",
+                "min": 1,
+                "max": 3,
+                "required": false,
+                "description": "GHG Protocol scope: 1 (direct), 2 (purchased energy), 3 (value chain). Optional individually."
+            }
+        ]
+    })
+}
+
+fn build_attest_op_with_content_proof(
+    domain: &B256,
+    seller_key: &k256::ecdsa::SigningKey,
+    schema_id: B256,
+    content_bytes: Vec<u8>,
+    content_json: serde_json::Value,
+    schema_spec: serde_json::Value,
+    role: Commitment,
+) -> (KernelOp, B256, B256) {
+    let root_struct = commitment_struct_hash(&role);
+    let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
+    let content_ref = keccak256(content_bytes.as_slice());
+    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let attest_digest = typed_data_hash(domain, &attest_struct);
+    let seller_sig = sign_digest(seller_key, &attest_digest);
+    let op = KernelOp::AttestAsSeller {
+        role_commitment: role,
+        order_hash,
+        schema_id,
+        stage: 0,
+        content_ref,
+        seller_sig,
+        content_proof: Some(figaro_kernel::types::AttestationContentProof {
+            content_bytes,
+            content_json,
+            schema_spec,
+        }),
+    };
+    (op, order_hash, content_ref)
+}
+
+#[test]
+fn attest_as_seller_with_valid_content_proof_passes() {
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+
+    let root = root_commitment();
+    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
+    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
+
+    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
+    let content_json = serde_json::json!({ "scope": 1 });
+    let content_bytes = serde_json::to_vec(&content_json).unwrap();
+
+    let (attest_op, _order_hash, _content_ref) = build_attest_op_with_content_proof(
+        &domain,
+        &seller1_key,
+        schema_id,
+        content_bytes,
+        content_json,
+        ghg_protocol_spec_json(),
+        root.clone(),
+    );
+
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![
+            KernelOp::Commit {
+                commitment: root,
+                buyer_sig: root_buyer_sig,
+                seller_sig: root_seller_sig,
+            },
+            attest_op,
+        ],
+        prev_state: empty_snapshot(),
+        fig_token: Address::ZERO,
+    };
+
+    let (_pv, _positions, events) = apply_batch(&input).unwrap();
+    assert_eq!(events.attestations.len(), 1);
+    assert_eq!(events.attestations[0].schema_id, schema_id);
+    assert_eq!(events.attestations[0].stage, 0);
+}
+
+#[test]
+fn attest_as_seller_with_content_hash_mismatch_fails() {
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+
+    let root = root_commitment();
+    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
+    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
+
+    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
+    let real_content_bytes = serde_json::to_vec(&serde_json::json!({ "scope": 1 })).unwrap();
+    let lying_content_json = serde_json::json!({ "scope": 1 });
+
+    let root_struct = commitment_struct_hash(&root);
+    let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
+    // content_ref is *not* the keccak of real_content_bytes — substitute a
+    // garbage hash. The attestation signature is computed over the garbage
+    // hash to isolate the failure to the Layer B gate.
+    let wrong_content_ref = keccak256(b"completely different bytes");
+    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &wrong_content_ref);
+    let attest_digest = typed_data_hash(&domain, &attest_struct);
+    let attest_sig = sign_digest(&seller1_key, &attest_digest);
+
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![
+            KernelOp::Commit {
+                commitment: root.clone(),
+                buyer_sig: root_buyer_sig,
+                seller_sig: root_seller_sig,
+            },
+            KernelOp::AttestAsSeller {
+                role_commitment: root,
+                order_hash,
+                schema_id,
+                stage: 0,
+                content_ref: wrong_content_ref,
+                seller_sig: attest_sig,
+                content_proof: Some(figaro_kernel::types::AttestationContentProof {
+                    content_bytes: real_content_bytes,
+                    content_json: lying_content_json,
+                    schema_spec: ghg_protocol_spec_json(),
+                }),
+            },
+        ],
+        prev_state: empty_snapshot(),
+        fig_token: Address::ZERO,
+    };
+
+    let err = apply_batch(&input).unwrap_err();
+    assert!(
+        matches!(err, KernelError::ContentHashMismatch),
+        "expected ContentHashMismatch, got {err:?}",
+    );
+}
+
+#[test]
+fn attest_as_seller_with_invalid_content_fails() {
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+
+    let root = root_commitment();
+    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
+    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
+
+    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
+    // scope=4 is out of range (1..=3) — must fail validate_content.
+    let content_json = serde_json::json!({ "scope": 4 });
+    let content_bytes = serde_json::to_vec(&content_json).unwrap();
+
+    let (attest_op, _, _) = build_attest_op_with_content_proof(
+        &domain,
+        &seller1_key,
+        schema_id,
+        content_bytes,
+        content_json,
+        ghg_protocol_spec_json(),
+        root.clone(),
+    );
+
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![
+            KernelOp::Commit {
+                commitment: root,
+                buyer_sig: root_buyer_sig,
+                seller_sig: root_seller_sig,
+            },
+            attest_op,
+        ],
+        prev_state: empty_snapshot(),
+        fig_token: Address::ZERO,
+    };
+
+    let err = apply_batch(&input).unwrap_err();
+    assert!(
+        matches!(err, KernelError::SchemaContentInvalid(_)),
+        "expected SchemaContentInvalid, got {err:?}",
+    );
+}
+
+#[test]
+fn attest_as_seller_with_schema_id_mismatch_fails() {
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+
+    let root = root_commitment();
+    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
+    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
+
+    // The op's schema_id claims figaro-ghg-protocol-v1, but the spec we
+    // attach is for a *different* schemaId — gate 2 must reject.
+    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
+    let mut wrong_spec = ghg_protocol_spec_json();
+    wrong_spec["schemaId"] = serde_json::json!("figaro-ghg-iso-14064-v1");
+    let content_json = serde_json::json!({ "scope": 1 });
+    let content_bytes = serde_json::to_vec(&content_json).unwrap();
+
+    let (attest_op, _, _) = build_attest_op_with_content_proof(
+        &domain,
+        &seller1_key,
+        schema_id,
+        content_bytes,
+        content_json,
+        wrong_spec,
+        root.clone(),
+    );
+
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![
+            KernelOp::Commit {
+                commitment: root,
+                buyer_sig: root_buyer_sig,
+                seller_sig: root_seller_sig,
+            },
+            attest_op,
+        ],
+        prev_state: empty_snapshot(),
+        fig_token: Address::ZERO,
+    };
+
+    let err = apply_batch(&input).unwrap_err();
+    assert!(
+        matches!(err, KernelError::SchemaIdMismatch),
+        "expected SchemaIdMismatch, got {err:?}",
+    );
 }
 
 #[test]

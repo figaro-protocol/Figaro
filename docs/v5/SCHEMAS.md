@@ -27,25 +27,49 @@ CLAUDE.md keeps the lockstep principle and the adding-a-schema checklist; this f
 Frontend wiring: `useSchemaValidator(schemaId)` hook + `schemaSpecSource.ts`
 preloads built-in specs and lazy-fetches remote ones.
 
-## Layer B — Rust (SP1 prover-ready)
+## Layer B — Rust (SP1 prover-integrated)
 
 `prover/schema/` — `figaro-schema` crate. Mirrors Layer A byte-for-byte
 (`parse_schema_spec` + `validate_content`). Two consumer surfaces:
 
-1. SP1 zkVM prover guest program — depends on `figaro-schema` to enforce
-   schema validation when attestation operations carry content bytes.
-   Wiring `AttestWithContent` ops through the kernel is a separate task
-   (the validator crate is the prerequisite).
-2. Off-chain sequencer — calls `validate_content` before accepting
-   attestation submissions into the batch mempool.
+1. **SP1 zkVM prover guest program** — `figaro-kernel`'s `apply_batch`
+   gates `AttestAsSeller` / `AttestAsBuyer` operations through
+   `validate_attestation_content` when the op carries an
+   `AttestationContentProof { content_bytes, content_json, schema_spec }`.
+   Three gates run inside the proof:
+     1. `keccak256(content_bytes) == content_ref` — binds the proof to
+        the on-chain commitment value.
+     2. `parse_schema_spec(schema_spec).schemaId` keccak-256s to
+        `schema_id` — the right spec is being applied.
+     3. `validate_content(content_json, spec, stage)` returns `Ok` —
+        the structured form satisfies the schema.
+   The `content_proof` field is optional; when `None`, the kernel
+   preserves legacy content-opaque behavior. Cross-form binding
+   (proving `decode_abi(content_bytes) ≡ canonicalize(content_json)`)
+   is a tracked hardening item — without it the proof attests "some
+   bytes hash to `content_ref` AND some JSON validates"; pairing them
+   is currently the off-chain caller's responsibility.
 
-Conformance is locked in by `prover/schema/tests/conformance.rs`:
-every shipped protocol schema parses cleanly, and the 12 happy/sad
-content-validation cases from `sdk/tests/schemas/validate.test.ts`
-agree with Layer A. The user-supplied `pattern` field uses the `regex`
-crate; the four canonical formats (bytes32-hex, address-hex, bytes-hex,
-iso-datetime) use hand-rolled character matching to avoid regex-engine
-cost in the zkVM hot path.
+2. **Off-chain sequencer** — calls `validate_content` before accepting
+   attestation submissions into the batch mempool (signature gate only
+   today; mirroring the kernel's content gate in the mempool is a
+   tracked pre-flight hardening item).
+
+Conformance is locked in two layers:
+
+- `prover/schema/tests/conformance.rs` — 15 tests covering every
+  shipped protocol schema parse + the 12 happy/sad content cases
+  from `sdk/tests/schemas/validate.test.ts`.
+- `prover/lib/tests/parity.rs` — 4 kernel-integration tests
+  (`attest_as_seller_with_valid_content_proof_passes`,
+  `_content_hash_mismatch_fails`, `_invalid_content_fails`,
+  `_schema_id_mismatch_fails`) exercising the gate inside
+  `apply_batch`.
+
+The user-supplied `pattern` field uses the `regex` crate; the four
+canonical formats (bytes32-hex, address-hex, bytes-hex, iso-datetime)
+use hand-rolled character matching to avoid regex-engine cost in the
+zkVM hot path.
 
 ## Layer C — On-chain (Solidity)
 

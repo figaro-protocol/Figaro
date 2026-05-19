@@ -124,6 +124,7 @@ async fn main() {
                 stage: 1,
                 content_ref,
                 seller_sig: attest_sig,
+                content_proof: None,
             },
             // 5. Buyer attestation
             KernelOp::AttestAsBuyer {
@@ -133,6 +134,7 @@ async fn main() {
                 stage: 0,
                 content_ref: B256::ZERO,
                 buyer_sig: buyer_attest_sig,
+                content_proof: None,
             },
             // 6. Resolve process
             KernelOp::Resolve {

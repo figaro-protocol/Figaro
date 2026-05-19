@@ -355,6 +355,67 @@ fn apply_resolve(
     Ok(())
 }
 
+// ── Layer B content-proof gate (figaro-schema) ────────────────────
+
+/// Verify an optional `AttestationContentProof` against the on-chain
+/// `content_ref` and the schema declared in the op's `schema_id`.
+///
+/// When `proof` is `None` this is a no-op (legacy behavior). When `Some`,
+/// the kernel asserts:
+///   1. `keccak256(content_bytes) == content_ref` — binds the proof to
+///      the on-chain commitment.
+///   2. The supplied `schema_spec` JSON parses cleanly via Layer A's
+///      semantics, and `keccak256(spec.schemaId)` equals `schema_id`.
+///   3. `validate_content(content_json, spec, stage)` succeeds.
+///
+/// Any failure halts batch execution. The kernel does NOT attempt to
+/// canonicalize / cross-check the byte form against the JSON form — that
+/// pairing is the off-chain caller's responsibility (and a tracked
+/// follow-up; see `AttestationContentProof` NatSpec).
+fn validate_attestation_content(
+    proof: Option<&crate::types::AttestationContentProof>,
+    content_ref: &B256,
+    schema_id: &B256,
+    stage: u8,
+) -> Result<(), KernelError> {
+    let Some(proof) = proof else { return Ok(()); };
+
+    // ── Gate 1: keccak256(content_bytes) == content_ref ──
+    let computed = keccak256(proof.content_bytes.as_slice());
+    if &computed != content_ref {
+        return Err(KernelError::ContentHashMismatch);
+    }
+
+    // ── Gate 2: spec parses and schemaId hash matches ──
+    let parsed = match figaro_schema::parse_schema_spec(&proof.schema_spec) {
+        figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
+        figaro_schema::ParseSchemaSpecResult::Err(errors) => {
+            let first = errors
+                .first()
+                .map(|e| format!("{}: {}", e.path, e.message))
+                .unwrap_or_else(|| "unknown parse error".to_string());
+            return Err(KernelError::SchemaSpecParseFailed(first));
+        }
+    };
+    let derived_schema_id = keccak256(parsed.schema_id.as_bytes());
+    if &derived_schema_id != schema_id {
+        return Err(KernelError::SchemaIdMismatch);
+    }
+
+    // ── Gate 3: content satisfies the spec at the given stage ──
+    let options = figaro_schema::ValidateOptions { stage: Some(stage) };
+    match figaro_schema::validate_content(&proof.content_json, &parsed, options) {
+        figaro_schema::ValidationResult::Ok => Ok(()),
+        figaro_schema::ValidationResult::Err(errors) => {
+            let first = errors
+                .first()
+                .map(|e| format!("{}: {}", e.path, e.message))
+                .unwrap_or_else(|| "unknown validation error".to_string());
+            Err(KernelError::SchemaContentInvalid(first))
+        }
+    }
+}
+
 // ── attestAsSeller ────────────────────────────────────────────────
 
 /// Apply a seller attestation. Matches the authorization logic in
@@ -369,8 +430,12 @@ fn apply_attest_as_seller(
     stage: u8,
     content_ref: &B256,
     seller_sig: &Signature,
+    content_proof: Option<&crate::types::AttestationContentProof>,
     events: &mut Vec<AttestationEventData>,
 ) -> Result<(), KernelError> {
+    // ── Layer B gate: validate content against schema (no-op if absent) ──
+    validate_attestation_content(content_proof, content_ref, schema_id, stage)?;
+
     // ── Recover signer (replaces msg.sender) ──
     let struct_hash = attest_seller_struct_hash(order_hash, schema_id, stage, content_ref);
     let digest = typed_data_hash(domain, &struct_hash);
@@ -441,8 +506,12 @@ fn apply_attest_as_buyer(
     stage: u8,
     content_ref: &B256,
     buyer_sig: &Signature,
+    content_proof: Option<&crate::types::AttestationContentProof>,
     events: &mut Vec<AttestationEventData>,
 ) -> Result<(), KernelError> {
+    // ── Layer B gate: validate content against schema (no-op if absent) ──
+    validate_attestation_content(content_proof, content_ref, schema_id, stage)?;
+
     // ── Recover signer ──
     let struct_hash =
         attest_buyer_struct_hash(process_id, order_hash, schema_id, stage, content_ref);
@@ -751,6 +820,7 @@ fn apply_batch_inner(
                 stage,
                 content_ref,
                 seller_sig,
+                content_proof,
             } => {
                 apply_attest_as_seller(
                     &state,
@@ -761,6 +831,7 @@ fn apply_batch_inner(
                     *stage,
                     content_ref,
                     seller_sig,
+                    content_proof.as_ref(),
                     &mut attestation_events,
                 )?;
             }
@@ -771,6 +842,7 @@ fn apply_batch_inner(
                 stage,
                 content_ref,
                 buyer_sig,
+                content_proof,
             } => {
                 apply_attest_as_buyer(
                     &state,
@@ -781,6 +853,7 @@ fn apply_batch_inner(
                     *stage,
                     content_ref,
                     buyer_sig,
+                    content_proof.as_ref(),
                     &mut attestation_events,
                 )?;
             }

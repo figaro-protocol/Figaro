@@ -419,7 +419,7 @@ If `docs/v5/CONTRACTS.md` does not list a contract, treat it as not existing in 
 Three layers must ship together for any new schema:
 
 - **Layer A** (TypeScript, `@figaro/core/schemas`): `parseSchemaSpec`, `validateContent`, per-schema content encoders. Frontend consumes via `useSchemaValidator(schemaId)` + `schemaSpecSource.ts`.
-- **Layer B** (Rust SP1 prover): `prover/schema/` (`figaro-schema` crate). Mirrors Layer A byte-for-byte; 15-test conformance suite locks the equivalence to `sdk/tests/schemas/validate.test.ts`. Reusable from the zkVM guest and the off-chain sequencer.
+- **Layer B** (Rust SP1 prover): `prover/schema/` (`figaro-schema` crate). Mirrors Layer A byte-for-byte; 15-test conformance suite locks the equivalence to `sdk/tests/schemas/validate.test.ts`. Wired into `figaro-kernel`'s `apply_batch` via `AttestationContentProof` on `AttestAsSeller`/`AttestAsBuyer` — when present, three gates run inside the proof (keccak match, schemaId match, content validates). 4 kernel-integration tests in `prover/lib/tests/parity.rs` cover the accept path + each reject case.
 - **Layer C** (Solidity): per-schema `ISchemaValidator` contracts in `src/schemaValidators/`, bound through `AttestationCoordinator.setValidator(schemaId, validator)`. **Permissionless, first-write-wins, immutable.** No validator → no attestation under that schemaId (`ValidatorNotSet`).
 
 There are 18 protocol schemas total: 17 runtime-attestable (each with a validator contract) + `figaro-topology-v1`, which is a manifest-only clause (no validator, DAG reconstructed off-chain by indexers from the signed manifest). Full table → `docs/v5/SCHEMAS.md`.

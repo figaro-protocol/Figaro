@@ -37,6 +37,46 @@ pub struct Signature {
     pub s: B256,
 }
 
+// ── Attestation content (Layer B validator payload) ───────────────
+
+/// Optional content payload attached to an attestation op so the SP1
+/// prover can prove — inside the proof — that the on-chain `content_ref`
+/// hashes a content blob that satisfies the schema's spec.
+///
+/// When `content_proof: Some(_)` on an `AttestAsSeller` / `AttestAsBuyer`
+/// op, the kernel enforces three gates:
+///
+///   1. `keccak256(content_bytes) == content_ref` — binds the proof to
+///      the on-chain commitment value.
+///   2. `parse_schema_spec(schema_spec)` succeeds and the parsed spec's
+///      `schemaId` keccak-256 matches the op's `schema_id`.
+///   3. `validate_content(content_json, spec, stage)` returns Ok — the
+///      structured form passes the Layer B validator (the Rust mirror of
+///      Layer A).
+///
+/// `content_bytes` and `content_json` are passed in parallel rather than
+/// derived from each other: `content_bytes` is the ABI-encoded form the
+/// on-chain validator already consumes (and over which `content_ref` is
+/// taken), while `content_json` is the structured form Layer B validates.
+/// Asserting cross-form equivalence (decode_abi(content_bytes) ==
+/// canonicalize(content_json)) is a follow-up hardening item — without it
+/// the proof attests "some bytes hash to content_ref AND some JSON
+/// validates"; pairing them is left to the off-chain caller.
+///
+/// When `content_proof: None` the attestation is treated as
+/// content-opaque (legacy behavior; the on-chain validator gate runs at
+/// settlement time on Layer C).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AttestationContentProof {
+    /// The bytes whose keccak256 must match the op's `content_ref`.
+    pub content_bytes: Vec<u8>,
+    /// The structured JSON form Layer B validates against the schema spec.
+    pub content_json: serde_json::Value,
+    /// The schema spec JSON (the same shape Layer A parses). The kernel
+    /// verifies the parsed `schemaId` keccak-256s to the op's `schema_id`.
+    pub schema_spec: serde_json::Value,
+}
+
 // ── Batch operations ──────────────────────────────────────────────
 
 /// A single kernel operation within a proof batch.
@@ -69,6 +109,10 @@ pub enum KernelOp {
         content_ref: B256,
         /// Proves the caller is the seller of role_commitment.
         seller_sig: Signature,
+        /// Optional Layer B content payload. When present, the kernel
+        /// runs the schema-validation gate before emitting the event.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        content_proof: Option<AttestationContentProof>,
     },
 
     /// Buyer attestation. Batched equivalent of attestAsBuyer()
@@ -81,6 +125,10 @@ pub enum KernelOp {
         content_ref: B256,
         /// Proves the caller is the root buyer of the process.
         buyer_sig: Signature,
+        /// Optional Layer B content payload. When present, the kernel
+        /// runs the schema-validation gate before emitting the event.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        content_proof: Option<AttestationContentProof>,
     },
 
     // ── SchemaRegistry ────────────────────────────────────────────
@@ -282,6 +330,11 @@ pub enum KernelError {
     // OperatorRegistry errors
     OperatorAlreadyRegistered,
     OperatorNotRegistered,
+    // Layer B (figaro-schema) gates on AttestationContentProof
+    ContentHashMismatch,
+    SchemaSpecParseFailed(String),
+    SchemaIdMismatch,
+    SchemaContentInvalid(String),
 }
 
 impl core::fmt::Display for KernelError {

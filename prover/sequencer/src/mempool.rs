@@ -127,6 +127,11 @@ impl Mempool {
                 stage,
                 content_ref,
                 seller_sig,
+                // Layer B content gate runs in apply_batch — mempool
+                // does signature-only pre-checks. Hardening item:
+                // mirror the gate here so the prover never gets
+                // batches it would reject.
+                content_proof: _,
             } => {
                 let struct_hash = attest_seller_struct_hash(
                     order_hash, schema_id, *stage, content_ref,
@@ -146,6 +151,7 @@ impl Mempool {
                 stage,
                 content_ref,
                 buyer_sig,
+                content_proof: _,
             } => {
                 let struct_hash = attest_buyer_struct_hash(
                     process_id, order_hash, schema_id, *stage, content_ref,

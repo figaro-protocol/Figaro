@@ -2257,8 +2257,10 @@ name = "figaro-kernel"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
+ "figaro-schema",
  "k256",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
