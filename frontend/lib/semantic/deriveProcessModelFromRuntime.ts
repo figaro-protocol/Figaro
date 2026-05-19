@@ -1,5 +1,11 @@
 import { Order, OrderState } from "@/lib/core/store";
-import { type TopologyMode } from "@/lib/core/agreementManifest";
+import {
+    GHG_MEASUREMENT_SCHEMA_KEY,
+    GHG_SCHEMA_KEY,
+    getSection,
+    type TopologyMode,
+} from "@/lib/core/agreementManifest";
+import { loadAgreement } from "@/lib/core/agreementStore";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
@@ -12,6 +18,7 @@ import {
     ProcessModel,
     ProcessRelationModel,
 } from "@/lib/semantic/models";
+import type { Hex } from "viem";
 
 /** Root orders anchor a process at cumulativeValue === payment. */
 function isRootOrder(order: Order): boolean {
@@ -39,14 +46,13 @@ function roleCapabilities(_order: Order, _address?: string, _isE2EMock = false):
     if (order.state !== OrderState.Active || !order.currency) return [];
 
     const normalized = _address?.toLowerCase();
-    const canComposeSubOrder = _isE2EMock
-        ? true
-        : hexEqual(order.buyer, normalized);
+    const isBuyer = _isE2EMock ? true : hexEqual(order.buyer, normalized);
+    const isSeller = _isE2EMock ? true : hexEqual(order.seller, normalized);
 
-    if (!canComposeSubOrder) return [];
+    const out: CapabilityModel[] = [];
 
-    return [
-        {
+    if (isBuyer) {
+        out.push({
             id: `${order.processId}:${order.id.toString()}:compose-sub-order`,
             label: "Add Sub-order",
             actionKind: "open-sub-order-composer",
@@ -63,8 +69,72 @@ function roleCapabilities(_order: Order, _address?: string, _isE2EMock = false):
             riskLabel: "standard",
             uiPriority: 80,
             source: runtimeSource("buyer may compose downstream bonded work from an active order", `${order.processId}:${order.id.toString()}:compose-sub-order`),
-        },
-    ];
+        });
+    }
+
+    // Seller-side GHG disclosure capabilities — emitted when the
+    // committed agreement carries the relevant clause. The agreement
+    // is loaded from localStorage (witnessed by the seller's wallet
+    // at commit time and saved by the commitment-flow). A wallet that
+    // never witnessed the order won't have the agreement in store and
+    // the capability won't surface — that's the correct event-driven
+    // behavior; the seller's own wallet sees their own commitments.
+    //
+    // GHGWorkflowPanel reads these capabilities to surface the
+    // "Submit commitment" / "Submit inventory" affordances at
+    // /terminal. Without this derivation the panel renders but its
+    // submit buttons stay disabled (no executable capability).
+    if (isSeller && order.agreementHash) {
+        const agreement = loadAgreement(order.agreementHash as Hex);
+        if (agreement) {
+            if (getSection(agreement, GHG_SCHEMA_KEY)) {
+                out.push({
+                    id: `${order.processId}:${order.id.toString()}:submit-disclosure-commitment`,
+                    label: "Record Disclosure Commitment",
+                    actionKind: "submit-disclosure-commitment",
+                    action: {
+                        executionType: "transaction",
+                        kind: "submit-disclosure-commitment",
+                        orderHash: order.id.toString(),
+                    },
+                    mechanismId: "attestation-coordinator",
+                    scopeType: "order",
+                    scopeId: order.id.toString(),
+                    preconditions: ["seller-of-active-order", "ghg-protocol-clause-committed"],
+                    riskLabel: "standard",
+                    uiPriority: 70,
+                    source: runtimeSource(
+                        "seller may attest a GHG commitment when the figaro-ghg-iso-14064-v1 clause is committed",
+                        `${order.processId}:${order.id.toString()}:submit-disclosure-commitment`,
+                    ),
+                });
+            }
+            if (getSection(agreement, GHG_MEASUREMENT_SCHEMA_KEY)) {
+                out.push({
+                    id: `${order.processId}:${order.id.toString()}:submit-disclosure-inventory`,
+                    label: "Submit Emissions Inventory",
+                    actionKind: "submit-disclosure-inventory",
+                    action: {
+                        executionType: "transaction",
+                        kind: "submit-disclosure-inventory",
+                        orderHash: order.id.toString(),
+                    },
+                    mechanismId: "attestation-coordinator",
+                    scopeType: "order",
+                    scopeId: order.id.toString(),
+                    preconditions: ["seller-of-active-order", "ghg-measurement-clause-committed"],
+                    riskLabel: "standard",
+                    uiPriority: 70,
+                    source: runtimeSource(
+                        "seller may attest a runtime grams measurement when the figaro-ghg-measurement-v1 clause is committed",
+                        `${order.processId}:${order.id.toString()}:submit-disclosure-inventory`,
+                    ),
+                });
+            }
+        }
+    }
+
+    return out;
 }
 
 function deriveProcessCapabilities(
