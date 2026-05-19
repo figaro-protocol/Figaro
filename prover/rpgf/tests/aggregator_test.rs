@@ -1,5 +1,5 @@
 use alloy_primitives::{address, Address, B256, U256};
-use figaro_rpgf::types::{SchemaSnapshot, TrancheInput};
+use figaro_rpgf::types::{SchemaSnapshot, TrancheInput, TrancheOutput};
 use figaro_rpgf::{aggregate, score, tier1_weight};
 use sha3::{Digest, Keccak256};
 
@@ -150,6 +150,66 @@ fn cap_binds_when_one_schema_dominates() {
     // reconstruct per-leaf amounts to assert exactly — for now check
     // that total ≤ budget which is the invariant)
     let _ = cap_amount;
+}
+
+#[test]
+fn abi_encoding_matches_solidity_layout() {
+    // Canonical test vector — these exact bytes are also decoded in
+    // test/fig/RpgfMinter.t.sol's test_AbiPublicValuesConformance to
+    // verify Rust → Solidity matches byte-for-byte.
+    let output = TrancheOutput {
+        tranche_index: 2,
+        merkle_root: B256::from_slice(&[0x42u8; 32]),
+        total_allocated_wei: U256::from(1_000_000u64),
+        schema_count: 17,
+    };
+    let bytes = output.abi_encode_public_values();
+
+    assert_eq!(bytes.len(), 128, "expected 4 × 32 = 128 bytes");
+
+    // Word 0: uint8 tranche_index, zero-padded with value at byte 31
+    for i in 0..31 {
+        assert_eq!(bytes[i], 0, "byte {} of word 0 should be zero", i);
+    }
+    assert_eq!(bytes[31], 2, "tranche_index in last byte of word 0");
+
+    // Word 1: bytes32 merkle_root, 32 raw bytes
+    assert_eq!(&bytes[32..64], &[0x42u8; 32]);
+
+    // Word 2: uint256 total_allocated, big-endian
+    // 1_000_000 = 0x0F4240 → last 3 bytes are 0F 42 40
+    for i in 64..93 {
+        assert_eq!(bytes[i], 0, "byte {} of word 2 should be zero", i);
+    }
+    assert_eq!(bytes[93], 0x0F);
+    assert_eq!(bytes[94], 0x42);
+    assert_eq!(bytes[95], 0x40);
+
+    // Word 3: uint32 schema_count, zero-padded with value at bytes 124..128
+    for i in 96..127 {
+        assert_eq!(bytes[i], 0, "byte {} of word 3 should be zero", i);
+    }
+    assert_eq!(bytes[127], 17, "schema_count in last byte of word 3");
+}
+
+#[test]
+fn abi_encoding_handles_max_values() {
+    let output = TrancheOutput {
+        tranche_index: 0xFF,
+        merkle_root: B256::from_slice(&[0xFFu8; 32]),
+        total_allocated_wei: U256::MAX,
+        schema_count: u32::MAX,
+    };
+    let bytes = output.abi_encode_public_values();
+    assert_eq!(bytes.len(), 128);
+    assert_eq!(bytes[31], 0xFF);
+    assert_eq!(&bytes[32..64], &[0xFFu8; 32]);
+    assert_eq!(&bytes[64..96], &[0xFFu8; 32]);
+    assert_eq!(&bytes[124..128], &[0xFFu8; 4]);
+    // Zero-pad regions preserved
+    for i in 96..124 {
+        assert_eq!(bytes[i], 0);
+    }
 }
 
 #[test]

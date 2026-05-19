@@ -54,3 +54,25 @@ pub struct TrancheOutput {
     pub total_allocated_wei: U256,
     pub schema_count: u32,
 }
+
+impl TrancheOutput {
+    /// Encode as Solidity ABI `abi.encode(uint8, bytes32, uint256, uint32)` —
+    /// 4 × 32-byte words, total 128 bytes. The SP1 program commits these
+    /// bytes via `sp1_zkvm::io::commit_slice`, which is what
+    /// `RpgfMinter.submitRoot` expects in its `publicValues` argument
+    /// before its `abi.decode((uint8, bytes32, uint256, uint32))`.
+    ///
+    /// Word layout:
+    ///   [0..32]   — uint8  tranche_index    (zero-padded, value at byte 31)
+    ///   [32..64]  — bytes32 merkle_root     (32 raw bytes)
+    ///   [64..96]  — uint256 total_allocated (32 big-endian bytes)
+    ///   [96..128] — uint32 schema_count     (zero-padded, value at bytes 124..128)
+    pub fn abi_encode_public_values(&self) -> Vec<u8> {
+        let mut out = vec![0u8; 128];
+        out[31] = self.tranche_index;
+        out[32..64].copy_from_slice(self.merkle_root.as_slice());
+        out[64..96].copy_from_slice(&self.total_allocated_wei.to_be_bytes::<32>());
+        out[124..128].copy_from_slice(&self.schema_count.to_be_bytes());
+        out
+    }
+}

@@ -320,4 +320,32 @@ contract RpgfMinterTest is Test {
         assertEq(r1, bytes32(0));
         assertEq(t1, 0);
     }
+
+    // ── Rust ↔ Solidity ABI conformance ─────────────────────────────────
+
+    /// @notice Canonical test vector — the same 128-byte payload is
+    ///         produced by `prover/rpgf/tests/aggregator_test.rs::
+    ///         abi_encoding_matches_solidity_layout` via the Rust
+    ///         `TrancheOutput::abi_encode_public_values`. This test
+    ///         confirms `abi.decode` extracts the same field values
+    ///         the Rust side encoded, i.e. the SP1 program's
+    ///         `commit_slice` output is consumable by `submitRoot`.
+    ///
+    ///         Layout (4 × 32-byte words):
+    ///           word 0: uint8 tranche_index = 2 (value at byte 31)
+    ///           word 1: bytes32 merkle_root = 0x42 × 32
+    ///           word 2: uint256 total_allocated = 1_000_000 = 0x0F4240
+    ///           word 3: uint32 schema_count = 17 = 0x11
+    function test_AbiPublicValuesConformance() public pure {
+        bytes memory pv =
+            hex"0000000000000000000000000000000000000000000000000000000000000002424242424242424242424242424242424242424242424242424242424242424200000000000000000000000000000000000000000000000000000000000F42400000000000000000000000000000000000000000000000000000000000000011";
+
+        (uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 schemaCount) =
+            abi.decode(pv, (uint8, bytes32, uint256, uint32));
+
+        assertEq(uint256(stageIndex), 2);
+        assertEq(root, bytes32(uint256(0x4242424242424242424242424242424242424242424242424242424242424242)));
+        assertEq(totalAllocated, 1_000_000);
+        assertEq(uint256(schemaCount), 17);
+    }
 }
