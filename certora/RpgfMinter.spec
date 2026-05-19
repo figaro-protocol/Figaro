@@ -29,7 +29,9 @@ methods {
     function minter() external returns (address) envfree;
     function programVKey() external returns (bytes32) envfree;
     function STAGE_COUNT() external returns (uint8) envfree;
-    function stages(uint8) external returns (bytes32, uint64, uint256) envfree;
+    // Solidity's auto-generated getter for `Stage[3] public stages` takes
+    // `uint256` (the array index), not `uint8`. CVL rejects the mismatch.
+    function stages(uint256) external returns (bytes32, uint64, uint256) envfree;
     function claimed(uint8, address) external returns (bool) envfree;
 
     // Summarize the two external calls so the prover doesn't need linked

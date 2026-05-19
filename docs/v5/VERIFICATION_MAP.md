@@ -364,7 +364,7 @@ agreement-receipt ABI change — 8/8 sub-rules verified.
 | TokenOpsVerification | https://prover.certora.com/output/9512759/4768752379cc434aa53cc7b8894cdd25 (2026-04-23, 8/8 green — FigaroCore token-flow universal proof) |
 | BatchVerifierTokenOps | https://prover.certora.com/output/9512759/a8a8878f373f4b5d940e47b81576b2dd (2026-04-23, 4/4 green — single-position batch token-flow) |
 | FigToken | https://prover.certora.com/output/9512759/e48a5c0c4b94465ba93b44a716b31025 (2026-04-21) |
-| RpgfMinter | https://prover.certora.com/output/9512759/d858c840cce243fd8d48d3d328b21427 (2026-05-19, 12 rules) |
+| RpgfMinter | https://prover.certora.com/output/9512759/936c01b76f9043b3a023c28869d370de?anonymousKey=46f9d5f33551110081e30ce88178f3f7a7aeafe4 (2026-05-19, 12 rules → 76 sub-rule checks, 0 violations, prover time 48.6s) |
 | ~~StagedMerkleAirdrop~~ | RETIRED 2026-05 — contract deleted; historical 2026-04-21 proof at https://prover.certora.com/output/9512759/c48b77f25a734eab894102ee5706da7e — succeeded by `RpgfMinter` spec above |
 
 ```bash
