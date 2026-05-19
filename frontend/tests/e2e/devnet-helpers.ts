@@ -808,6 +808,43 @@ export async function evmRevert(snapshotId: string): Promise<void> {
 }
 
 /**
+ * Submit a buyer-side GHG attestation on an order seeded by one of the
+ * seedGhg*Scenario helpers. Pairs with the existing seller-side
+ * inventory attestation that those seeds fire, exercising the
+ * AttestationCoordinator.attestAsBuyer write path (only Vitest-tested
+ * pre-2026-05-19).
+ *
+ * The order's committed agreement must contain a `figaro-ghg-iso-14064-v1`
+ * section — true for every order seeded via `ghgDisclosureAgreement(...)`.
+ */
+export async function attestGhgAsBuyer(
+    orderHash: `0x${string}`,
+    stage: 0 | 1 | 2 | 3 = DISCLOSURE_KIND.verification,
+): Promise<`0x${string}`> {
+    const localConfig = readLocalDeploymentConfig();
+    const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator);
+    if (!coordinatorAddress) throw new Error('Missing NEXT_PUBLIC_ATTESTATION_COORDINATOR');
+
+    const commitment = seededCommitments.get(orderHash);
+    if (!commitment) throw new Error(`Missing seeded commitment for ${orderHash} — call seedGhg*Scenario first`);
+
+    const { sectionData, proof } = agreementReceipt(commitment, GHG_SCHEMA_KEY);
+
+    const buyer = privateKeyToAccount(BUYER_PRIVATE_KEY);
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    const { request } = await publicClient.simulateContract({
+        account: buyer.address,
+        address: coordinatorAddress,
+        abi: ATTESTATION_COORDINATOR_ABI,
+        functionName: 'attestAsBuyer',
+        args: [commitment, GHG_SCHEMA_ID, stage, sectionData, proof, sectionData],
+    });
+    return buyerClient.writeContract(request);
+}
+
+/**
  * Advance Anvil's block timestamp by `seconds` and mine an empty block
  * so reads pick up the new `block.timestamp`. Used by tests that exercise
  * time-locked paths (OperatorRegistry.withdraw's 365-day lock,
