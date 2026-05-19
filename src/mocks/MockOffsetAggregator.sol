@@ -65,8 +65,12 @@ contract MockOffsetAggregator {
     /// @notice Quote the input-token cost for retiring `tonsToRetire` tonnes.
     ///         Pure function of the constant `pricePerTon`. Caller approves
     ///         this amount before calling `retire`.
+    /// @param tonsToRetire Tonnes to retire, in 1e18 fixed-point
+    ///         (1e18 = 1 tonne). Matches Klima BCT / Toucan pool-token
+    ///         conventions on Polygon — production aggregators consume
+    ///         18-decimal pool-token units.
     function quote(uint256 tonsToRetire) external view returns (uint256 amountIn) {
-        return tonsToRetire * pricePerTon;
+        return (tonsToRetire * pricePerTon) / 1e18;
     }
 
     /// @notice Retire `tonsToRetire` tonnes on behalf of `beneficiary`.
@@ -82,7 +86,10 @@ contract MockOffsetAggregator {
         if (tonsToRetire == 0) revert ZeroTons();
         if (beneficiary == address(0)) revert ZeroBeneficiary();
 
-        uint256 amountIn = tonsToRetire * pricePerTon;
+        // tonsToRetire is 1e18 fixed-point (matches production Klima/Toucan
+        // pool-token decimals); divide out the 1e18 scale so amountIn lands
+        // in `inputToken` smallest units.
+        uint256 amountIn = (tonsToRetire * pricePerTon) / 1e18;
         if (amountIn > maxAmountIn) revert PriceExceedsMax(amountIn, maxAmountIn);
 
         bool ok = inputToken.transferFrom(msg.sender, address(this), amountIn);

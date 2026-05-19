@@ -116,14 +116,12 @@ test.describe('Offset retirement (Path A) — bridge composer (devnet)', () => {
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        // Mock aggregator: amountIn = tons * pricePerTon (0.01 ether on devnet).
-        // Use a small raw tons value so amountIn (1 * 0.01 ETH = 0.01 ETH) fits
-        // within the buyer's MockToken balance — the hook's 1e18 fixed-point
-        // tonnes convention multiplied by the devnet price-per-ton would
-        // produce an astronomical cost (1e34 wei) that no test account holds.
-        // This test exercises the bridge primitives at a calibrated dosage;
-        // the UI's hook layer handles the fixed-point conversion separately.
-        const tons = 1n;
+        // tonsToRetire is 1e18 fixed-point (1e18 = 1 tonne) — matches the
+        // production Klima BCT / Toucan pool-token conventions and the
+        // hook's gramsToTonsCeil1e18 output. The mock now divides by 1e18
+        // internally, so 1 tonne costs 0.01 ETH = 1e16 wei — well within
+        // the buyer's MockToken balance.
+        const tons = 10n ** 18n;
         const amountIn = await publicClient.readContract({
             address: aggregator, abi: MOCK_OFFSET_AGGREGATOR_ABI,
             functionName: 'quote', args: [tons],
