@@ -10,7 +10,6 @@ import {
 
 const STORE_PREFIX = "figaro:agreement:";
 const URI_PREFIX = "figaro:agreement-uri:";
-const PUBLIC_REGISTRY_BASE = "/api/semantic/agreements";
 
 const inflightHydrations = new Map<string, Promise<Agreement | null>>();
 
@@ -24,13 +23,6 @@ export interface AgreementStoreOptions {
     evidenceTransport?: Pick<IpfsService, "pinJSON" | "buildURI" | "resolveFetchUrl">;
 }
 
-interface RegisteredAgreementPublication {
-    agreementHash: Hex;
-    uri: string;
-    cid?: string;
-    updatedAt?: string;
-}
-
 function getAgreementKey(agreementHash: Hex | string): string {
     return STORE_PREFIX + agreementHash;
 }
@@ -41,47 +33,6 @@ function getAgreementUriKey(agreementHash: Hex | string): string {
 
 function canUseStorage(): boolean {
     return typeof window !== "undefined";
-}
-
-async function registerPublishedAgreement(publication: PublishedAgreement): Promise<void> {
-    if (typeof window === "undefined") {
-        return;
-    }
-
-    try {
-        await fetch(PUBLIC_REGISTRY_BASE, {
-            method: "POST",
-            headers: {
-                "content-type": "application/json",
-            },
-            body: JSON.stringify(publication),
-        });
-    } catch {
-        // Ignore registry write failures. The agreement still has a local/IPFS path.
-    }
-}
-
-async function discoverPublishedAgreementUri(
-    agreementHash: Hex | string,
-): Promise<string | null> {
-    if (typeof window === "undefined") {
-        return null;
-    }
-
-    try {
-        const res = await fetch(`${PUBLIC_REGISTRY_BASE}/${agreementHash}`, {
-            method: "GET",
-            cache: "no-store",
-        });
-        const publication = await safeJsonFromResponse<RegisteredAgreementPublication>(res);
-        if (!publication?.uri || typeof publication.uri !== "string") {
-            return null;
-        }
-        saveAgreementUri(agreementHash, publication.uri);
-        return publication.uri;
-    } catch {
-        return null;
-    }
 }
 
 export function saveAgreement(
@@ -159,9 +110,7 @@ export async function publishAgreement(
     const cid = await evidenceTransport.pinJSON(agreement);
     const uri = evidenceTransport.buildURI(cid);
     saveAgreement(agreement, { uri });
-    const publication = { agreementHash, cid, uri };
-    await registerPublishedAgreement(publication);
-    return publication;
+    return { agreementHash, cid, uri };
 }
 
 export async function hydrateAgreement(
@@ -178,9 +127,13 @@ export async function hydrateAgreement(
         return cached;
     }
 
-    const uri = explicitUri
-        ?? loadAgreementUri(agreementHash)
-        ?? await discoverPublishedAgreementUri(agreementHash);
+    // Event-driven lookup: the URI travels in the CommitmentPayload (see
+    // useCommitmentFlow's `agreementUri` field) and is saved to localStorage
+    // on receipt. A wallet that didn't witness the order (e.g., a
+    // non-participant indexer query) won't have the URI and the hydrate
+    // returns null — that's correct event-driven behavior; you can't
+    // hydrate what you didn't witness.
+    const uri = explicitUri ?? loadAgreementUri(agreementHash);
     const evidenceTransport = resolveEvidenceTransport(options);
     const fetchUrl = uri ? evidenceTransport.resolveFetchUrl(uri) : null;
     if (!fetchUrl) {

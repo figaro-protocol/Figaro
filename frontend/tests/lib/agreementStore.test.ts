@@ -84,38 +84,21 @@ describe("agreementStore", () => {
         expect(globalThis.fetch).toHaveBeenCalledOnce();
     });
 
-    it("discovers a published agreement URI from the public registry when no local hint exists", async () => {
+    it("returns null when hydrating a hash with no local URI hint", async () => {
+        // Post-drift-removal: hydrateAgreement no longer falls back to a
+        // server-side registry. A wallet that didn't witness the order
+        // (no localStorage entry, no explicitUri arg) cannot hydrate it.
+        // That's correct event-driven behavior — the URI travels with the
+        // CommitmentPayload via XMTP; non-participants don't have it.
         const agreement = makeAgreement();
         const agreementHash = computeAgreementHash(agreement);
 
-        globalThis.fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
-            const url = String(input);
-
-            if (url.endsWith(`/api/semantic/agreements/${agreementHash}`)) {
-                const body = { agreementHash, uri: "ipfs://bafy-agreement" };
-                return {
-                    ok: true,
-                    json: async () => body,
-                    text: async () => JSON.stringify(body),
-                } as Response;
-            }
-
-            if (url.includes("/ipfs/bafy-agreement")) {
-                return {
-                    ok: true,
-                    json: async () => agreement,
-                    text: async () => JSON.stringify(agreement),
-                } as Response;
-            }
-
-            throw new Error(`Unexpected fetch URL: ${url}`);
-        });
+        globalThis.fetch = vi.fn();
 
         const loaded = await hydrateAgreement(agreementHash);
 
-        expect(loaded).toEqual(agreement);
-        expect(loadAgreementUri(agreementHash)).toBe("ipfs://bafy-agreement");
-        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        expect(loaded).toBeNull();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
     });
 
     it("publishes through an injected evidence transport service", async () => {

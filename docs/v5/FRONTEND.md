@@ -15,7 +15,7 @@ Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory list
 
 **`(app)/` (wallet provider mounted):** `/audit/[processId]`, `/builders` (hub), `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/consent` (beta-only ceremony), `/discover` (operator catalogue), `/dispute` (beta-consent dispute), `/evidence-display` (Kleros juror iframe target), `/fig` (transactional surface, with `/fig/claim`), `/inbox` (merchant inbox), `/m/[merchant]` (merchant detail + cart), `/operators` (enrolment), `/orders` (buyer order list), `/orders/[processId]` (per-order live timeline), `/sign`, `/terminal`.
 
-**API:** `/api/semantic/agreements`, `/api/semantic/agreements/[agreementHash]`, `/api/semantic/assemblies`, `/api/semantic/runtime`.
+**API:** `/api/geocode`.
 
 **Consumer flow** (May 2026 split, replaces the prior `/i/[slug]` operator-runtime shape):
 - Buyers: `/discover` → `/m/[merchant]` (browse + cart) → `/orders/[processId]` (live timeline + Confirm receipt) → `/orders` (history).
