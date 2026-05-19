@@ -190,10 +190,15 @@ echidna src/echidna/EchidnaFuzzer.sol --config echidna.yaml
 ### 6. Static Analysis (Slither)
 
 ```bash
-slither . --config-file slither-fig.json
+slither .
 ```
 
-0 production findings on the live V5 surface.
+The last committed run (slither-fig.json, 2026-04-16) reported 0
+production findings, but it was generated against an older contract
+surface that included the now-retired `MerkleAirdrop.sol` and was
+removed 2026-05 as part of the StagedMerkleAirdrop → RpgfMinter
+cleanup. Slither needs to be re-run against the current V5 surface
+(including `RpgfMinter.sol`) before the next audit checkpoint.
 
 ## Audit History
 

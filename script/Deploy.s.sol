@@ -203,14 +203,13 @@ contract Deploy is Script {
         MockSP1Verifier mockVerifier = new MockSP1Verifier();
         console.log("MockSP1Verifier deployed at:", address(mockVerifier));
 
-        // RpgfMinter replaces StagedMerkleAirdrop's genesis-baked-root
-        // shape: on mainnet the root is submitted at tranche time after
-        // an SP1 proof attests it correctly aggregates the substrate-
-        // broadening formula. On devnet all three stages unlock at
-        // genesis (unlockTime = 1), the deployer doubles as submitter,
-        // and we immediately submit a single-leaf root for the deployer
-        // with claim amount 1 ether so /fig/claim works without
-        // time-travel or external sequencer wiring.
+        // RpgfMinter: on mainnet the root is submitted at tranche time
+        // after an SP1 proof attests it correctly aggregates the
+        // substrate-broadening formula. On devnet all three stages
+        // unlock at genesis (unlockTime = 1), the deployer doubles as
+        // submitter, and we immediately submit a single-leaf root for
+        // the deployer with claim amount 1 ether so /fig/claim works
+        // without time-travel or external sequencer wiring.
         //
         // Register BEFORE renounceDeployerMint — minters can't be added
         // after renounce per FigToken.sol:48. Cap math: 100M deployer +
@@ -223,9 +222,9 @@ contract Deploy is Script {
         console.log("RpgfMinter deployed at:", address(airdrop));
 
         // Submit a stage-0 root for the deployer (single-leaf tree:
-        // leaf == root, empty proof verifies). Mock verifier accepts any
-        // proof bytes. Matches the previous StagedMerkleAirdrop devnet
-        // fixture behavior so existing /fig/claim flows still work.
+        // leaf == root, empty proof verifies). Mock verifier accepts
+        // any proof bytes. Lets /fig/claim work end-to-end on devnet
+        // without spinning up an external sequencer.
         uint256 airdropClaimAmount = 1 ether;
         bytes32 airdropLeaf = keccak256(abi.encodePacked(deployer, airdropClaimAmount));
         bytes memory rpgfPublicValues = abi.encode(uint8(0), airdropLeaf, airdropClaimAmount, uint32(1));

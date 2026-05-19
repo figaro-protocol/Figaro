@@ -1,7 +1,7 @@
 use alloy_primitives::{Address, B256, U256};
 use sha3::{Digest, Keccak256};
 
-/// Leaf hash matching StagedMerkleAirdrop's expectation:
+/// Leaf hash matching RpgfMinter's expectation:
 ///   `keccak256(abi.encodePacked(recipient, amount))`
 /// where recipient is 20 bytes and amount is 32 bytes big-endian.
 pub fn leaf_hash(recipient: &Address, amount: &U256) -> B256 {
@@ -13,7 +13,7 @@ pub fn leaf_hash(recipient: &Address, amount: &U256) -> B256 {
 
 /// Build a Merkle root using the OpenZeppelin sorted-pair convention,
 /// which is what `MerkleProof.verify` in OZ Solidity uses by default
-/// and what StagedMerkleAirdrop relies on.
+/// and what RpgfMinter relies on.
 ///
 /// Sorted-pair: at each level, hash(min(l, r) || max(l, r)) rather
 /// than positional pairing. Drops the need to know leaf ordering at

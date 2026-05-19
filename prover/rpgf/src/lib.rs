@@ -3,7 +3,7 @@
 // Computes per-schema-author allocations of the FIG staged-airdrop
 // budget from per-schema cumulative statistics, using the V5 formula
 // from sdk/scripts/rpgf-simulator. Output is a Merkle root over
-// (schemaAuthor, amount) leaves matching StagedMerkleAirdrop's leaf
+// (schemaAuthor, amount) leaves matching RpgfMinter's leaf
 // format: `keccak256(abi.encodePacked(recipient, amount))`.
 //
 // SP1 entrypoint: see ../rpgf-program/.

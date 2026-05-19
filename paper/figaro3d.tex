@@ -636,12 +636,22 @@ beyond ``plausible under the stated principles.''
 \label{sec:vesting}
 
 The 600M airdrop is realized by a single contract,
-\texttt{StagedMerkleAirdrop.sol}, with three immutable stages
-($\texttt{STAGE\_COUNT} = 3$). Each stage is parameterized by a
-\texttt{Stage} struct holding a merkle \texttt{root} and a
-\texttt{unlockTime}. Both are written once in the constructor and
-never mutated thereafter; there is no admin-controlled stage
-addition, schedule extension, or cohort modification.
+\texttt{RpgfMinter.sol}, with three immutable stages
+($\texttt{STAGE\_COUNT} = 3$). Each stage is parameterized by an
+immutable \texttt{unlockTime}; the per-stage merkle \texttt{root}
+is submitted at tranche time by a sequencer-role address, gated
+by verification of an SP1 zero-knowledge proof attesting that the
+root correctly aggregates the schema-author substrate-broadening
+formula. Per-stage root submission is one-shot --- the root
+cannot be replaced once committed. There is no admin-controlled
+stage addition, schedule extension, or cohort modification.
+
+(An earlier candidate design baked the three merkle roots into
+the constructor alongside the unlock times under a contract named
+\texttt{StagedMerkleAirdrop.sol}; that shape was retired in
+2026-05 when the schema-author retroactive-funding aggregation
+matured to the point where pre-deploy root computation became
+inadequate.)
 
 \paragraph{Single contract, three stages.}
 An earlier candidate design used three separate airdrop
@@ -969,33 +979,44 @@ $\texttt{MAX\_SUPPLY}=5$, 3 minters, 6 recipients):
 \texttt{Inv\_CapBelowMaxSupply},
 \texttt{Inv\_SupplyEqualsSumMinted}.
 
-\paragraph{Halmos (\texttt{test/HalmosStagedMerkleAirdrop.t.sol}).}
-4 symbolic-execution proofs of staged-airdrop properties:
+\paragraph{Halmos (retired).}
+The original verification round included a 4-property
+symbolic-execution harness
+(\texttt{test/HalmosStagedMerkleAirdrop.t.sol}) covering
 claim flag set on success, one-shot enforcement per (stage,
 address), correct balance arithmetic, and merkle leaf format
-$\texttt{keccak256(abi.encodePacked(account, amount))}$.
+$\texttt{keccak256(abi.encodePacked(account, amount))}$. The
+harness was retired in 2026-05 alongside the
+\texttt{StagedMerkleAirdrop} contract; the replacement
+\texttt{RpgfMinter} is covered by Foundry tests and a
+Rust\,$\leftrightarrow$\,Solidity conformance harness but does
+not yet carry a Halmos harness of its own.
 
 \paragraph{Certora.}
-9 CVL rules across two specs:
-\begin{itemize}
-  \item \texttt{certora/FigToken.spec} (6 rules):
-    \texttt{totalSupplyWithinMaxSupply},
-    \texttt{totalRegisteredCapWithinMaxSupply},
-    \texttt{minterMintedWithinCap},
-    \texttt{totalRegisteredCapMonotonic},
-    \texttt{deployerMintRenouncedIsOneWayLatch},
-    \texttt{minterCapImmutable}.
-  \item \texttt{certora/StagedMerkleAirdrop.spec} (3 rules):
-    \texttt{claimedIsMonotonic},
-    \texttt{stageConfigImmutable},
-    \texttt{minterImmutable}.
-\end{itemize}
+6 CVL rules in \texttt{certora/FigToken.spec}:
+\texttt{totalSupplyWithinMaxSupply},
+\texttt{totalRegisteredCapWithinMaxSupply},
+\texttt{minterMintedWithinCap},
+\texttt{totalRegisteredCapMonotonic},
+\texttt{deployerMintRenouncedIsOneWayLatch},
+\texttt{minterCapImmutable}.
+
+A 3-rule spec for the staged airdrop contract
+(\texttt{certora/StagedMerkleAirdrop.spec}: \texttt{claimedIsMonotonic},
+\texttt{stageConfigImmutable}, \texttt{minterImmutable}) was part of
+the original verification round but was retired in 2026-05 when
+the contract was replaced by \texttt{RpgfMinter.sol}; the
+replacement does not yet carry a Certora spec.
 
 \paragraph{Foundry regression.}
-\texttt{test/fig/FigToken.t.sol} and
-\texttt{test/fig/StagedMerkleAirdrop.t.sol} cover the deploy
-flow, every custom-error revert path, and the canonical 10/30/60
-allocation realized by \texttt{script/DeployMainnet.s.sol}.
+\texttt{test/fig/FigToken.t.sol}, \texttt{test/fig/RpgfMinter.t.sol},
+and \texttt{test/fig/RpgfMinterConformance.t.sol} cover the deploy
+flow, every custom-error revert path, the
+Rust\,$\leftrightarrow$\,Solidity conformance assertion on the
+canonical merkle root, and the canonical 10/30/60 allocation realized
+by \texttt{script/DeployMainnet.s.sol}. (The earlier
+\texttt{test/fig/StagedMerkleAirdrop.t.sol} suite was retired
+2026-05 alongside the contract.)
 
 \paragraph{Headline supply guarantee.}
 The verification surface yields a strong guarantee: from the

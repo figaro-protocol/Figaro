@@ -9,13 +9,12 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Three-stage retroactive public-goods funding minter for FIG.
-///         Replaces the genesis-baked-root `StagedMerkleAirdrop` shape:
-///         per-tranche roots are submitted at tranche time after an
-///         SP1 proof attests they correctly aggregate the substrate-
+///         Per-tranche merkle roots are submitted at tranche time after
+///         an SP1 proof attests they correctly aggregate the substrate-
 ///         broadening formula over the population's per-schema state.
-///         Claims work like StagedMerkleAirdrop's — `keccak256(abi.encodePacked(msg.sender, amount))`
+///         Claims use `keccak256(abi.encodePacked(msg.sender, amount))`
 ///         leaves verified via OpenZeppelin's sorted-pair MerkleProof —
-///         so any wallet on the leaf list can mint its allocation.
+///         any wallet on the leaf list can mint its allocation.
 ///
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty
 ///      of any kind, express or implied. No liability is accepted for

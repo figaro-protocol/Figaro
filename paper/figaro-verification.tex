@@ -478,9 +478,14 @@ was exhausted, with no counterexample produced. Reproduced via
 
 Seven kernel properties, each implemented as a \texttt{check\_}
 function and discharged by z3 under symbolic-input quantification.
-A separate harness (\texttt{test/HalmosStagedMerkleAirdrop.t.sol})
-covers four additional properties of the staged airdrop contract;
-those are out of scope for the kernel claim made in this section.
+A separate four-property harness for the staged airdrop contract
+existed at the time of the original verification round but was
+retired in 2026-05 when the airdrop contract itself
+(\texttt{StagedMerkleAirdrop.sol}) was deleted and replaced by
+\texttt{RpgfMinter.sol}; the replacement does not yet carry a
+Halmos harness, and the open work is tracked outside this paper.
+The airdrop harness is out of scope for the kernel claim made in
+this section either way.
 \begin{enumerate}[label=\textbf{H\arabic*}]
   \item \texttt{tokenConservation\_afterCommit}.
   \item \texttt{contractSolvency\_afterCommit}.
@@ -550,10 +555,13 @@ site in \texttt{src/}. New transfer call sites without a matching
 inventory entry fail before any cloud dispatch.
 
 \paragraph{Other specs.}
-\texttt{StagedMerkleAirdrop.spec} (3 rules) covers the airdrop
-contract, and \texttt{FigToken.spec} (6 rules) covers the FIG token
-registry. Both are out of scope for the kernel claim of this paper
-but ship in the same repository and are verified together.
+\texttt{FigToken.spec} (6 rules) covers the FIG token registry;
+out of scope for the kernel claim of this paper but ships in the
+same repository. A 3-rule spec for the staged airdrop contract
+(\texttt{StagedMerkleAirdrop.spec}) existed during the original
+verification round but was retired in 2026-05 when the contract
+was replaced by \texttt{RpgfMinter.sol}; the replacement does not
+yet carry a Certora spec.
 
 \paragraph{Total Certora kernel-relevant rules.}
 $8 + 7 + 7 = 22$ declared rules across three specs. Certora's prover
