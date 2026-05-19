@@ -25,6 +25,10 @@ frontend/build/
 frontend/playwright-report/
 frontend/test-results/
 frontend/tsconfig.tsbuildinfo
+# Local dev-server runtime registry (agreement publications etc.) —
+# written by `lib/core/agreementPublicationRegistry.server.ts` during
+# dev/e2e runs; per-machine state, not source.
+frontend/.figaro/
 frontend2/.next/
 frontend2/out/
 frontend2/build/
