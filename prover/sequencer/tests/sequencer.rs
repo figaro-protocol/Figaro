@@ -250,6 +250,187 @@ async fn mempool_accepts_resolve() {
     assert_eq!(id, 1);
 }
 
+// ──────────────────────────────────────────────────────────────────
+// Layer B content-proof gate — mirrors the kernel's
+// validate_attestation_content. Same accept + reject paths the
+// kernel parity suite covers, exercised here at the mempool boundary
+// so bad batches are dropped before reaching the prover.
+// ──────────────────────────────────────────────────────────────────
+
+fn ghg_protocol_spec_json() -> serde_json::Value {
+    serde_json::json!({
+        "schemaId": "figaro-ghg-protocol-v1",
+        "version": 1,
+        "title": "GHG Protocol Corporate Standard",
+        "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under the GHG Protocol Corporate Standard (and related WRI/WBCSD GHG Protocol guidance documents).",
+        "categories": ["emissions"],
+        "fields": [
+            {
+                "name": "scope",
+                "type": "integer",
+                "min": 1,
+                "max": 3,
+                "required": false,
+                "description": "GHG Protocol scope: 1 (direct), 2 (purchased energy), 3 (value chain). Optional individually.",
+            }
+        ]
+    })
+}
+
+/// Build a seller attestation op whose content_ref is the keccak of the
+/// canonical per-schema encoding of `content_json`. The op's signature
+/// covers the same content_ref so signature-pre-check passes and the
+/// content gate is what determines accept/reject.
+fn build_attest_seller_with_proof(
+    schema_id_str: &str,
+    content_json: serde_json::Value,
+    schema_spec: serde_json::Value,
+    override_content_ref: Option<B256>,
+) -> KernelOp {
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let seller_key = make_signing_key(SELLER1_KEY);
+    let root = root_commitment();
+    let schema_id = keccak256(schema_id_str.as_bytes());
+
+    let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
+        .expect("canonical encoder must succeed for this test fixture");
+    let content_ref = override_content_ref.unwrap_or_else(|| keccak256(canonical_bytes.as_slice()));
+
+    let order_hash = compute_order_hash(&B256::ZERO, &commitment_struct_hash(&root));
+    let struct_hash = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let digest = typed_data_hash(&domain, &struct_hash);
+    let seller_sig = sign_digest(&seller_key, &digest);
+
+    KernelOp::AttestAsSeller {
+        role_commitment: root,
+        order_hash,
+        schema_id,
+        stage: 0,
+        content_ref,
+        seller_sig,
+        content_proof: Some(AttestationContentProof {
+            content_json,
+            schema_spec,
+        }),
+    }
+}
+
+#[tokio::test]
+async fn mempool_accepts_attest_with_valid_content_proof() {
+    let pool = Mempool::new(CHAIN_ID, CORE);
+    let op = build_attest_seller_with_proof(
+        "figaro-ghg-protocol-v1",
+        serde_json::json!({ "scope": 1 }),
+        ghg_protocol_spec_json(),
+        None,
+    );
+    let id = pool.submit(op).await.unwrap();
+    assert_eq!(id, 1);
+    assert_eq!(pool.len().await, 1);
+}
+
+#[tokio::test]
+async fn mempool_rejects_content_hash_mismatch() {
+    let pool = Mempool::new(CHAIN_ID, CORE);
+    // Override content_ref to a hash unrelated to the canonical encoding.
+    let wrong_ref = keccak256(b"completely different bytes");
+    let op = build_attest_seller_with_proof(
+        "figaro-ghg-protocol-v1",
+        serde_json::json!({ "scope": 1 }),
+        ghg_protocol_spec_json(),
+        Some(wrong_ref),
+    );
+    let err = pool.submit(op).await.unwrap_err();
+    assert!(
+        err.contains("canonical-encoding hash does not match"),
+        "expected hash-mismatch rejection, got: {err}",
+    );
+    assert_eq!(pool.len().await, 0);
+}
+
+#[tokio::test]
+async fn mempool_rejects_invalid_content() {
+    let pool = Mempool::new(CHAIN_ID, CORE);
+    // scope=4 is out of the spec's 1..=3 range; the encoder still
+    // produces bytes, so the test exercises the validate_content gate.
+    let op = build_attest_seller_with_proof(
+        "figaro-ghg-protocol-v1",
+        serde_json::json!({ "scope": 4 }),
+        ghg_protocol_spec_json(),
+        None,
+    );
+    let err = pool.submit(op).await.unwrap_err();
+    assert!(
+        err.contains("failed validation"),
+        "expected validation rejection, got: {err}",
+    );
+    assert_eq!(pool.len().await, 0);
+}
+
+#[tokio::test]
+async fn mempool_rejects_schema_id_mismatch() {
+    let pool = Mempool::new(CHAIN_ID, CORE);
+    let mut wrong_spec = ghg_protocol_spec_json();
+    wrong_spec["schemaId"] = serde_json::json!("figaro-ghg-iso-14064-v1");
+    let op = build_attest_seller_with_proof(
+        "figaro-ghg-protocol-v1",
+        serde_json::json!({ "scope": 1 }),
+        wrong_spec,
+        None,
+    );
+    let err = pool.submit(op).await.unwrap_err();
+    assert!(
+        err.contains("does not match op.schema_id"),
+        "expected schemaId-mismatch rejection, got: {err}",
+    );
+    assert_eq!(pool.len().await, 0);
+}
+
+#[tokio::test]
+async fn mempool_rejects_unsupported_schema_encoder() {
+    let pool = Mempool::new(CHAIN_ID, CORE);
+    let unknown_schema_id_str = "figaro-bogus-v99";
+    let schema_id = keccak256(unknown_schema_id_str.as_bytes());
+    let unknown_spec = serde_json::json!({
+        "schemaId": unknown_schema_id_str,
+        "version": 1,
+        "title": "Bogus",
+        "description": "no encoder registered",
+        "fields": [
+            { "name": "x", "type": "string", "required": true },
+        ],
+    });
+
+    // Hand-construct the op since the helper assumes the encoder works.
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let seller_key = make_signing_key(SELLER1_KEY);
+    let root = root_commitment();
+    let placeholder_ref = keccak256(b"placeholder");
+    let order_hash = compute_order_hash(&B256::ZERO, &commitment_struct_hash(&root));
+    let struct_hash = attest_seller_struct_hash(&order_hash, &schema_id, 0, &placeholder_ref);
+    let digest = typed_data_hash(&domain, &struct_hash);
+    let seller_sig = sign_digest(&seller_key, &digest);
+    let op = KernelOp::AttestAsSeller {
+        role_commitment: root,
+        order_hash,
+        schema_id,
+        stage: 0,
+        content_ref: placeholder_ref,
+        seller_sig,
+        content_proof: Some(AttestationContentProof {
+            content_json: serde_json::json!({ "x": "ok" }),
+            schema_spec: unknown_spec,
+        }),
+    };
+
+    let err = pool.submit(op).await.unwrap_err();
+    assert!(
+        err.contains("canonical encoding failed"),
+        "expected encoder-missing rejection, got: {err}",
+    );
+    assert_eq!(pool.len().await, 0);
+}
+
 // ══════════════════════════════════════════════════════════════════
 // State mirror tests
 // ══════════════════════════════════════════════════════════════════

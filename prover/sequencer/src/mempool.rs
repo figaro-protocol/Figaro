@@ -8,6 +8,8 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+use alloy_primitives::{keccak256, B256};
+
 use figaro_kernel::eip712::*;
 use figaro_kernel::types::*;
 
@@ -127,11 +129,7 @@ impl Mempool {
                 stage,
                 content_ref,
                 seller_sig,
-                // Layer B content gate runs in apply_batch — mempool
-                // does signature-only pre-checks. Hardening item:
-                // mirror the gate here so the prover never gets
-                // batches it would reject.
-                content_proof: _,
+                content_proof,
             } => {
                 let struct_hash = attest_seller_struct_hash(
                     order_hash, schema_id, *stage, content_ref,
@@ -142,6 +140,7 @@ impl Mempool {
                 if recovered != role_commitment.seller {
                     return Err("attest-seller sig does not match role_commitment.seller".into());
                 }
+                pre_check_attest_content(content_proof.as_ref(), content_ref, schema_id, *stage)?;
                 Ok(())
             }
             KernelOp::AttestAsBuyer {
@@ -151,7 +150,7 @@ impl Mempool {
                 stage,
                 content_ref,
                 buyer_sig,
-                content_proof: _,
+                content_proof,
             } => {
                 let struct_hash = attest_buyer_struct_hash(
                     process_id, order_hash, schema_id, *stage, content_ref,
@@ -159,6 +158,7 @@ impl Mempool {
                 let digest = typed_data_hash(&domain, &struct_hash);
                 recover_signer(&digest, buyer_sig)
                     .map_err(|e| format!("invalid attest-buyer signature: {e}"))?;
+                pre_check_attest_content(content_proof.as_ref(), content_ref, schema_id, *stage)?;
                 Ok(())
             }
             KernelOp::RegisterSchema {
@@ -205,4 +205,61 @@ impl Mempool {
             }
         }
     }
+}
+
+/// Mempool-side mirror of the kernel's Layer B content gate
+/// (`validate_attestation_content` in `figaro_kernel::kernel`). Returns
+/// `Ok` when no `content_proof` is present (legacy content-opaque path)
+/// or when all four gates pass. Returns a human-readable rejection
+/// string otherwise so the same op never reaches the prover.
+fn pre_check_attest_content(
+    proof: Option<&AttestationContentProof>,
+    content_ref: &B256,
+    schema_id: &B256,
+    stage: u8,
+) -> Result<(), String> {
+    let Some(proof) = proof else { return Ok(()); };
+
+    // ── Gate 1: spec parses and schemaId hash matches ──
+    let parsed = match figaro_schema::parse_schema_spec(&proof.schema_spec) {
+        figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
+        figaro_schema::ParseSchemaSpecResult::Err(errors) => {
+            let first = errors
+                .first()
+                .map(|e| format!("{}: {}", e.path, e.message))
+                .unwrap_or_else(|| "unknown parse error".to_string());
+            return Err(format!("content_proof schema_spec failed to parse: {first}"));
+        }
+    };
+    if &keccak256(parsed.schema_id.as_bytes()) != schema_id {
+        return Err(format!(
+            "content_proof schema_spec.schemaId \"{}\" does not match op.schema_id",
+            parsed.schema_id,
+        ));
+    }
+
+    // ── Gate 2: content satisfies the spec at the given stage ──
+    let options = figaro_schema::ValidateOptions { stage: Some(stage) };
+    if let figaro_schema::ValidationResult::Err(errors) =
+        figaro_schema::validate_content(&proof.content_json, &parsed, options)
+    {
+        let first = errors
+            .first()
+            .map(|e| format!("{}: {}", e.path, e.message))
+            .unwrap_or_else(|| "unknown validation error".to_string());
+        return Err(format!("content_proof content_json failed validation: {first}"));
+    }
+
+    // ── Gate 3: re-derive canonical ABI bytes from the JSON ──
+    let derived =
+        figaro_schema::encode_content_for_schema(&parsed.schema_id, &proof.content_json)
+            .map_err(|e| format!("content_proof canonical encoding failed: {e}"))?;
+
+    // ── Gate 4: derived bytes hash to the on-chain content_ref ──
+    if &keccak256(derived.as_slice()) != content_ref {
+        return Err(
+            "content_proof canonical-encoding hash does not match op.content_ref".into(),
+        );
+    }
+    Ok(())
 }

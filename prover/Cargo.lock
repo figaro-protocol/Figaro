@@ -2334,6 +2334,7 @@ dependencies = [
  "alloy-sol-types",
  "axum",
  "figaro-kernel",
+ "figaro-schema",
  "k256",
  "serde",
  "serde_json",

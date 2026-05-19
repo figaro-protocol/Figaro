@@ -55,12 +55,16 @@ preloads built-in specs and lazy-fetches remote ones.
    preserves legacy content-opaque behavior (Layer C will gate the
    attestation at settlement time on chain).
 
-2. **Off-chain sequencer** — calls `validate_content` before accepting
-   attestation submissions into the batch mempool (signature gate only
-   today; mirroring the kernel's content gate in the mempool is a
-   tracked pre-flight hardening item).
+2. **Off-chain sequencer** — `figaro_sequencer::mempool::Mempool`
+   mirrors the kernel gate at submission time via
+   `pre_check_attest_content`. The same four gates run on every
+   attestation that carries a `content_proof`; any failure surfaces as
+   a `submit()` rejection with a human-readable reason and the op is
+   never enqueued. This means the prover never spends cycles on
+   batches the kernel would reject. Signature-only pre-checks remain
+   for ops that opt out of `content_proof`.
 
-Conformance is locked in three layers:
+Conformance is locked in four layers:
 
 - `prover/schema/tests/conformance.rs` — 15 tests covering every
   shipped protocol schema parse + the 12 happy/sad content cases
@@ -77,6 +81,11 @@ Conformance is locked in three layers:
   `_schema_id_mismatch_fails`,
   `_unsupported_schema_encoder_fails`) exercising every gate inside
   `apply_batch`.
+- `prover/sequencer/tests/sequencer.rs` — 5 mempool-boundary tests
+  (`mempool_accepts_attest_with_valid_content_proof`,
+  `_rejects_content_hash_mismatch`, `_rejects_invalid_content`,
+  `_rejects_schema_id_mismatch`, `_rejects_unsupported_schema_encoder`)
+  verifying the gate trips at submission time.
 
 The user-supplied `pattern` field uses the `regex` crate; the four
 canonical formats (bytes32-hex, address-hex, bytes-hex, iso-datetime)
