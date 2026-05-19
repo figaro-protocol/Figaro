@@ -10,6 +10,7 @@ import "../src/SchemaRegistry.sol";
 import "../src/OperatorRegistry.sol";
 import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
+import "../src/fig/StagedMerkleAirdrop.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/mocks/MockOffsetAggregator.sol";
@@ -194,6 +195,26 @@ contract Deploy is Script {
         address deployer = vm.addr(deployerPrivateKey);
         fig.registerMinter(deployer, 100_000_000 ether);
         fig.mint(deployer, 100_000_000 ether);
+
+        // ── StagedMerkleAirdrop (devnet test fixture) ───────────────
+        // Single-leaf merkle root for the deployer (anvil[0]) at every
+        // stage — `leaf == root` for an N=1 tree, so an empty proof
+        // array verifies. All three stages unlock at genesis
+        // (unlockTime = 1) so the /fig/claim devnet test can claim
+        // without time-travel. Mainnet uses a real multi-leaf root +
+        // canonical year-2/5/9 unlock times via DeployMainnet.s.sol.
+        //
+        // Register BEFORE renounceDeployerMint — minters can't be added
+        // after renounce per FigToken.sol:48. Cap math: 100M deployer +
+        // 600M airdrop = 700M ≤ 1B MAX_SUPPLY.
+        uint256 airdropClaimAmount = 1 ether;
+        bytes32 airdropLeaf = keccak256(abi.encodePacked(deployer, airdropClaimAmount));
+        bytes32[3] memory airdropRoots = [airdropLeaf, airdropLeaf, airdropLeaf];
+        uint64[3] memory airdropUnlocks = [uint64(1), uint64(1), uint64(1)];
+        StagedMerkleAirdrop airdrop = new StagedMerkleAirdrop(address(fig), airdropRoots, airdropUnlocks);
+        fig.registerMinter(address(airdrop), 600_000_000 ether);
+        console.log("StagedMerkleAirdrop deployed at:", address(airdrop));
+
         fig.renounceDeployerMint();
         console.log("Deployer mint renounced");
 
@@ -258,6 +279,7 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=", address(offsetReceipts));
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=", address(auction));
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
+        console.log("  NEXT_PUBLIC_STAGED_AIRDROP=", address(airdrop));
         // console.log(
         //     "  NEXT_PUBLIC_FIG_EMISSION_ADDRESS=",
         // );
