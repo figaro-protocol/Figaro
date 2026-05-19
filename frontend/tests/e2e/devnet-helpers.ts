@@ -28,7 +28,12 @@ import {
     getSectionDataBytes,
     type Agreement,
 } from '@figaro/core';
-import { encodeMerchantContent, encodeCourierContent } from '@figaro/core/schemas';
+import {
+    encodeMerchantContent,
+    encodeCourierContent,
+    encodeProximityProofContent,
+    type ProximityBand,
+} from '@figaro/core/schemas';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
 import { GHG_SCHEMA_KEY, GHG_SCHEMA_ID } from '@/lib/core/agreementManifest';
 import { ZERO_PROCESS_ID } from '@/lib/shared/evm';
@@ -58,6 +63,18 @@ const MERCHANT_PROCESS_SCHEMA_KEY = 'figaro-merchant-process-v1';
 const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
 const COURIER_PROCESS_SCHEMA_KEY = 'figaro-courier-process-v1';
 const COURIER_PROCESS_SCHEMA_ID = keccak256(stringToHex(COURIER_PROCESS_SCHEMA_KEY));
+const PROXIMITY_POLICY_SCHEMA_KEY = 'figaro-proximity-policy-v1';
+const PROXIMITY_PROOF_SCHEMA_KEY = 'figaro-proximity-proof-v1';
+const PROXIMITY_PROOF_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_PROOF_SCHEMA_KEY));
+
+/** uint8 band indices the on-chain validator accepts (matches
+ *  PROXIMITY_BAND_INDEX in sdk/src/schemas/encode.ts and the validator's
+ *  band guard at FigaroProximityProofV1Validator.sol). */
+const PROXIMITY_BAND_INDEX: Record<ProximityBand, number> = {
+    'zone-wifi': 1,
+    'nearby-ble': 2,
+    'contact-nfc': 3,
+};
 
 /** Merchant event types — uint8 stage per the validator's enum. */
 const MERCHANT_EVENT = {
@@ -134,6 +151,49 @@ function courierProcessAgreement(buyer: `0x${string}`, seller: `0x${string}`): A
         seller,
         sections: [
             { schema: COURIER_PROCESS_SCHEMA_KEY, data: { eventType: 'available', evidenceUri: '' } },
+        ],
+    };
+}
+
+/**
+ * Courier handoff agreement carrying both halves of the proximity
+ * sister-schema split:
+ *   - figaro-proximity-policy-v1 (Cat-2, committed): which bands the
+ *     parties agree to verify against at handoff.
+ *   - figaro-proximity-proof-v1 (Cat-1, runtime): placeholder for the
+ *     per-handoff witness payload. Cat-1 schemas don't enforce
+ *     byte-equality against the committed sectionData, but the section
+ *     must EXIST in the agreement for the merkle inclusion proof to
+ *     open at attest time.
+ *
+ * The courier-process section is also included so the same agreement
+ * can support both the role-event log AND the proximity attestation
+ * — mirrors how the production handoff flow composes them.
+ */
+function proximityHandoffAgreement(
+    buyer: `0x${string}`,
+    seller: `0x${string}`,
+    band: ProximityBand = 'zone-wifi',
+): Agreement {
+    return {
+        version: 'a1',
+        buyer,
+        seller,
+        sections: [
+            { schema: COURIER_PROCESS_SCHEMA_KEY, data: { eventType: 'arrived-pickup', evidenceUri: '' } },
+            { schema: PROXIMITY_POLICY_SCHEMA_KEY, data: { bands: [band] } },
+            // Cat-1 placeholder: any valid shape. The runtime attestation
+            // supplies the real (band, nonce, deviceSig) content; the
+            // committed sectionData here is just the placeholder that
+            // anchors the section's leaf in the agreement's merkle root.
+            {
+                schema: PROXIMITY_PROOF_SCHEMA_KEY,
+                data: {
+                    band,
+                    nonce: '0x' + '00'.repeat(32),
+                    deviceSig: '0x' + '00'.repeat(65),
+                },
+            },
         ],
     };
 }
@@ -809,6 +869,87 @@ export async function evmSnapshot(): Promise<string> {
 export async function evmRevert(snapshotId: string): Promise<void> {
     await snapshotClient.request({ method: 'evm_revert' as any, params: [snapshotId] } as any);
 }
+
+/**
+ * AttestationCoordinator ABI extended with the proximity-proof
+ * validator's custom errors. Without these, viem decodes a revert
+ * from FigaroProximityProofV1Validator.sol as a raw 4-byte selector
+ * (e.g. `0x150b14ee` for `ZeroNonce()`) instead of a typed name, and
+ * test assertions matching on the error name fail.
+ */
+const PROXIMITY_VALIDATOR_ERROR_FRAGMENTS = parseAbi([
+    'error InvalidBand(uint8 band)',
+    'error ZeroNonce()',
+    'error DeviceSigTooShort(uint256 length)',
+    'error DeviceSigTooLong(uint256 length)',
+    'error SchemaIdMismatch(bytes32 expected, bytes32 actual)',
+]);
+
+const COORDINATOR_ABI_WITH_PROXIMITY_ERRORS = [
+    ...ATTESTATION_COORDINATOR_ABI,
+    ...PROXIMITY_VALIDATOR_ERROR_FRAGMENTS,
+] as const;
+
+/**
+ * Submit a `figaro-proximity-proof-v1` attestation as the seller of
+ * the given order. The order's committed agreement must carry a
+ * `figaro-proximity-proof-v1` section — use `proximityHandoffAgreement`
+ * when constructing the sub-order.
+ *
+ * On-chain validator (FigaroProximityProofV1Validator.sol) checks
+ * structural validity only: `band ∈ {1, 2, 3}`, nonce non-zero,
+ * deviceSig length ∈ [65, 512]. No ecrecover.
+ *
+ * Returns the AttestationCoordinator tx hash.
+ */
+export async function attestProximityProofAsSeller(opts: {
+    orderHash: `0x${string}`;
+    sellerKey: `0x${string}`;
+    band: ProximityBand;
+    nonce: `0x${string}`;
+    deviceSig: `0x${string}`;
+}): Promise<`0x${string}`> {
+    const localConfig = readLocalDeploymentConfig();
+    const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator);
+    if (!coordinatorAddress) throw new Error('Missing NEXT_PUBLIC_ATTESTATION_COORDINATOR');
+
+    const commitment = seededCommitments.get(opts.orderHash);
+    if (!commitment) throw new Error(`Missing seeded commitment for ${opts.orderHash}`);
+
+    const { sectionData, proof } = agreementReceipt(commitment, PROXIMITY_PROOF_SCHEMA_KEY);
+    const content = encodeProximityProofContent({
+        band: opts.band,
+        nonce: opts.nonce,
+        deviceSig: opts.deviceSig,
+    });
+
+    const seller = privateKeyToAccount(opts.sellerKey);
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const sellerClient = createWalletClient({ account: seller, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    const { request } = await publicClient.simulateContract({
+        account: seller.address,
+        address: coordinatorAddress,
+        abi: COORDINATOR_ABI_WITH_PROXIMITY_ERRORS,
+        functionName: 'attestAsSeller',
+        // role == target (same-order attestation), stage = band index.
+        args: [
+            commitment,
+            commitment,
+            PROXIMITY_PROOF_SCHEMA_ID,
+            PROXIMITY_BAND_INDEX[opts.band],
+            sectionData,
+            proof,
+            content,
+        ],
+    });
+    return sellerClient.writeContract(request);
+}
+
+/** Build the proximity-handoff agreement so callers can seed sub-orders
+ *  carrying both the policy and the proof sections. Re-export so the
+ *  test spec can compose its own scenario without forking the helper. */
+export { proximityHandoffAgreement };
 
 /**
  * Submit a buyer-side GHG attestation on an order seeded by one of the
