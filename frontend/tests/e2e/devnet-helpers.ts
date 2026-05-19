@@ -806,3 +806,17 @@ export async function evmSnapshot(): Promise<string> {
 export async function evmRevert(snapshotId: string): Promise<void> {
     await snapshotClient.request({ method: 'evm_revert' as any, params: [snapshotId] } as any);
 }
+
+/**
+ * Advance Anvil's block timestamp by `seconds` and mine an empty block
+ * so reads pick up the new `block.timestamp`. Used by tests that exercise
+ * time-locked paths (OperatorRegistry.withdraw's 365-day lock,
+ * StagedMerkleAirdrop vesting cliffs, etc.).
+ *
+ * Pair with `evmSnapshot()` / `evmRevert()` so the time jump doesn't leak
+ * into adjacent tests.
+ */
+export async function evmIncreaseTime(seconds: number): Promise<void> {
+    await snapshotClient.request({ method: 'evm_increaseTime' as any, params: [seconds] } as any);
+    await snapshotClient.request({ method: 'evm_mine' as any } as any);
+}
