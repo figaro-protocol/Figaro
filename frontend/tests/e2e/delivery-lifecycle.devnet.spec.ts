@@ -97,16 +97,31 @@ async function gotoOrderDevnet(page: import('@playwright/test').Page, processId:
  * card. The timeline transitions to the green "Completed" state.
  */
 async function confirmReceiptAtOrder(page: import('@playwright/test').Page) {
-    page.once('dialog', (dialog) => { dialog.accept().catch(() => {}); });
+    // /orders/<processId>'s `Confirm receipt` action fires TWO sequential
+    // `window.confirm` dialogs: first from `handleConfirmReceipt` in
+    // `OrderTimelineView.tsx`, then from `executeTransactionCapability`'s
+    // own resolve-process guard (`executeTransactionCapability.ts:59`).
+    // `page.once` only catches the first; a `page.on` handler accepts
+    // both. The `/terminal` resolve path only has the second dialog,
+    // which is why `resolveVisibleProcess` in devnet-helpers.ts can use
+    // `page.once`.
+    const acceptDialog = (dialog: import('@playwright/test').Dialog) => {
+        dialog.accept().catch(() => {});
+    };
+    page.on('dialog', acceptDialog);
 
-    const btn = page.getByTestId('btn-confirm-receipt');
-    await btn.waitFor({ timeout: 30000 });
-    await btn.click();
+    try {
+        const btn = page.getByTestId('btn-confirm-receipt');
+        await btn.waitFor({ timeout: 30000 });
+        await btn.click();
 
-    // Wait for the status pill to flip from "In progress" / "Handed off" /
-    // etc. to "Completed". The pill text is the canonical consumer signal;
-    // OrderState transitions to Resolved drive it.
-    await expect(page.getByTestId('order-status-pill')).toHaveText('Completed', { timeout: 60000 });
+        // Wait for the status pill to flip from "In progress" / "Handed off" /
+        // etc. to "Completed". The pill text is the canonical consumer signal;
+        // OrderState transitions to Resolved drive it.
+        await expect(page.getByTestId('order-status-pill')).toHaveText('Completed', { timeout: 60000 });
+    } finally {
+        page.off('dialog', acceptDialog);
+    }
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
