@@ -326,7 +326,12 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     itemId: item.menuItemId,
                     name: item.name,
                     quantity: item.quantity,
-                    unitPrice: item.price,
+                    // `item.price` is the catalogue's display string ("0.01"
+                    // MOCK) — must be parsed to wei BEFORE the agreement
+                    // encoder, which calls `BigInt(unitPrice)` directly
+                    // (agreementManifest.ts:420). Same parseToken pattern
+                    // the cart-total computation already uses at line 273.
+                    unitPrice: parseToken(item.price, tokenDecimals).toString(),
                 })),
                 manifestFields: {
                     origin: "",
