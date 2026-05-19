@@ -63,4 +63,11 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 
 ## Frontend Vitest
 ## Playwright — mock, mock-mobile, and devnet projects
-## Rust prover — figaro-kernel + figaro-sequencer
+## Rust prover — figaro-kernel + figaro-sequencer + figaro-schema + figaro-rpgf
+
+- `figaro-kernel` (`prover/lib/`): kernel logic mirror — types, EIP-712 hashing, apply_batch state machine.
+- `figaro-sequencer` (`prover/sequencer/`): batch mempool, state mirror, assembler, submitter, API.
+- `figaro-schema` (`prover/schema/`): Layer B schema validator. 15 conformance tests against the
+  TypeScript Layer A reference (`sdk/tests/schemas/validate.test.ts`), including every shipped protocol
+  schema's parse + per-schema content checks for `figaro-ghg-protocol-v1` and `figaro-geo-v2`.
+- `figaro-rpgf` (`prover/rpgf/`): substrate-broadening aggregator + conformance to TypeScript simulator.

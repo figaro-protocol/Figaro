@@ -27,12 +27,25 @@ CLAUDE.md keeps the lockstep principle and the adding-a-schema checklist; this f
 Frontend wiring: `useSchemaValidator(schemaId)` hook + `schemaSpecSource.ts`
 preloads built-in specs and lazy-fetches remote ones.
 
-## Layer B — SP1 prover (Rust mirror) — pending
+## Layer B — Rust (SP1 prover-ready)
 
-The prover guest program will mirror the TS validator byte-for-byte to
-enforce schema validation during batched attestation execution. Not yet
-implemented; the TS test suite + Foundry tests serve as the conformance
-spec for the Rust port.
+`prover/schema/` — `figaro-schema` crate. Mirrors Layer A byte-for-byte
+(`parse_schema_spec` + `validate_content`). Two consumer surfaces:
+
+1. SP1 zkVM prover guest program — depends on `figaro-schema` to enforce
+   schema validation when attestation operations carry content bytes.
+   Wiring `AttestWithContent` ops through the kernel is a separate task
+   (the validator crate is the prerequisite).
+2. Off-chain sequencer — calls `validate_content` before accepting
+   attestation submissions into the batch mempool.
+
+Conformance is locked in by `prover/schema/tests/conformance.rs`:
+every shipped protocol schema parses cleanly, and the 12 happy/sad
+content-validation cases from `sdk/tests/schemas/validate.test.ts`
+agree with Layer A. The user-supplied `pattern` field uses the `regex`
+crate; the four canonical formats (bytes32-hex, address-hex, bytes-hex,
+iso-datetime) use hand-rolled character matching to avoid regex-engine
+cost in the zkVM hot path.
 
 ## Layer C — On-chain (Solidity)
 
@@ -98,7 +111,11 @@ proof carries the per-handoff nonce + signed witness payload at runtime
 
    **When to add an operator-process schema vs not** (kernel-participant vs off-chain-operator principle): an off-chain operator needs its own process schema if and only if its state transitions are off-chain. Off-chain operators (merchants, couriers, locker operators, etc.) need a process schema because their state transitions happen in physical reality and need a sovereign event log to be tamper-proof evidence. Kernel participants — most importantly the **buyer**, who acts via `commit` and `resolveProcess` — do NOT need a process schema; their evidence IS the kernel event log itself. `merchant-process` and `courier-process` are sovereign-log primitives in this sense. Don't add `figaro-buyer-process-v1` — it would duplicate kernel events. Do add a process schema for any new off-chain operator whose internal events need to be on-chain attestable. The schema-category taxonomy carries this as the `operator-process` category (see `frontend/lib/shared/schemaCategories.ts`).
 6. Foundry test in `test/schemaValidators/`.
-7. Rust mirror in the SP1 prover (Layer B; deferred).
+7. Rust mirror at Layer B is generic (`prover/schema/`). A new schema does
+   NOT require a new Rust file — Layer B parses any spec at runtime from
+   its JSON. Adding a per-schema content-encoder helper to Layer B is only
+   needed when a downstream Rust consumer wants strongly-typed content
+   (the SP1 prover guest, for instance, can pass through serde_json::Value).
 8. List the schema + one-line summary on `/builders` "Schema validators in force".
 9. `setValidator(schemaId, validator)` call added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. (Bootstrap-time atomicity: the deploy scripts inline schema registration + validator binding within a single broadcast transaction. Post-deploy third-party schemas should use `SchemaRegistrationHelper.registerSchemaAndValidator(...)` instead — see "Third-party schema deployment" below.)
 

@@ -1,0 +1,14 @@
+[package]
+name = "figaro-schema"
+version = "0.1.0"
+edition = "2021"
+description = "Layer B of the Figaro schema-validation stack — a Rust mirror of @figaro/core/schemas (TS Layer A). Used by the SP1 zkVM prover and the sequencer; byte-for-byte semantically equivalent to Layer A and Layer C (Solidity ISchemaValidator)."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Regex is needed for user-supplied `pattern` constraints on string fields
+# (only one protocol schema uses it today — figaro-geo-v2's geohash pattern —
+# but the format must support any closed regex per the spec). SP1's zkVM
+# supports `regex` via standard riscv compilation.
+regex = "1"

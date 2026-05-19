@@ -419,7 +419,7 @@ If `docs/v5/CONTRACTS.md` does not list a contract, treat it as not existing in 
 Three layers must ship together for any new schema:
 
 - **Layer A** (TypeScript, `@figaro/core/schemas`): `parseSchemaSpec`, `validateContent`, per-schema content encoders. Frontend consumes via `useSchemaValidator(schemaId)` + `schemaSpecSource.ts`.
-- **Layer B** (Rust SP1 prover): pending; will mirror Layer A byte-for-byte.
+- **Layer B** (Rust SP1 prover): `prover/schema/` (`figaro-schema` crate). Mirrors Layer A byte-for-byte; 15-test conformance suite locks the equivalence to `sdk/tests/schemas/validate.test.ts`. Reusable from the zkVM guest and the off-chain sequencer.
 - **Layer C** (Solidity): per-schema `ISchemaValidator` contracts in `src/schemaValidators/`, bound through `AttestationCoordinator.setValidator(schemaId, validator)`. **Permissionless, first-write-wins, immutable.** No validator → no attestation under that schemaId (`ValidatorNotSet`).
 
 There are 18 protocol schemas total: 17 runtime-attestable (each with a validator contract) + `figaro-topology-v1`, which is a manifest-only clause (no validator, DAG reconstructed off-chain by indexers from the signed manifest). Full table → `docs/v5/SCHEMAS.md`.
@@ -434,7 +434,7 @@ There are 18 protocol schemas total: 17 runtime-attestable (each with a validato
 
    **When to add an operator-process schema vs not** (kernel-participant vs off-chain-operator principle): an off-chain operator needs its own process schema if and only if its state transitions are off-chain. Off-chain operators (merchants, couriers, locker operators, etc.) need a process schema because their state transitions happen in physical reality and need a sovereign event log to be tamper-proof evidence. Kernel participants — most importantly the **buyer**, who acts via `commit` and `resolveProcess` — do NOT need a process schema; their evidence IS the kernel event log itself. `merchant-process` and `courier-process` are sovereign-log primitives in this sense. Don't add `figaro-buyer-process-v1` — it would duplicate kernel events. Do add a process schema for any new off-chain operator whose internal events need to be on-chain attestable. The schema-category taxonomy carries this as the `operator-process` category (see `frontend/lib/shared/schemaCategories.ts`).
 6. Foundry test in `test/schemaValidators/`.
-7. Rust mirror in the SP1 prover (Layer B; deferred).
+7. Layer B is generic — it parses any spec at runtime from JSON, so adding a schema does not require a new Rust file. Strongly-typed content encoders for Rust consumers can be added per-schema if useful, but are not required for validation to work.
 8. List the schema + one-line summary on `/builders` "Schema validators in force".
 9. `setValidator(schemaId, validator)` call added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. (Bootstrap-time atomicity: deploy scripts inline both writes within a single broadcast transaction. Post-deploy third-party schemas MUST use `SchemaRegistrationHelper.registerSchemaAndValidator(...)` — atomic register+bind is required, see `docs/v5/SCHEMAS.md` for the front-running rationale.)
 
