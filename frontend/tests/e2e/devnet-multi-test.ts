@@ -17,6 +17,11 @@ import path from 'path';
 import { test as base, expect, Browser, BrowserContext, Page } from '@playwright/test';
 import { ensureWalletHasMockTokens, ANVIL_ACCOUNTS } from './test-helpers';
 import { hexEqual } from '../../lib/shared/evm';
+import {
+    canonicalizeAgreement,
+    computeAgreementHash,
+    type Agreement,
+} from '../../lib/core/agreementManifest';
 
 const multiInjectPath = path.resolve(__dirname, './fixtures/inject-ethereum-multi.js');
 
@@ -58,6 +63,45 @@ export async function openAsAccount(context: BrowserContext, account: string): P
     }, account);
 
     return p;
+}
+
+/**
+ * Pre-populate a page's localStorage with an agreement so the
+ * connected wallet (which didn't witness the on-chain commit because
+ * the test seeded it via viem) can resolve `agreementHash` to the
+ * full clause body when the UI calls `hydrateAgreement`. Mimics what
+ * happens in production when the counterparty receives the
+ * CommitmentPayload over XMTP — `useCommitmentFlow.ts:354-356` writes
+ * the same key on the receiving side.
+ *
+ * Needed by seller-side tests on `/orders/[processId]`: the page's
+ * merchantActions.signal builds an inclusion proof against the
+ * committed agreement, and without local hydration the UI shows
+ * "Agreement manifest unavailable for 0x... — cannot generate
+ * inclusion proof".
+ *
+ * Storage key + canonical-JSON format match `agreementStore.ts`
+ * (STORE_PREFIX = "figaro:agreement:", value = canonicalizeAgreement).
+ */
+export async function seedAgreementForWallet(
+    page: Page,
+    agreement: Agreement,
+    options: { uri?: string } = {},
+): Promise<void> {
+    const agreementHash = computeAgreementHash(agreement);
+    const canonical = canonicalizeAgreement(agreement);
+    await page.addInitScript(
+        ({ hash, body, uri }: { hash: string; body: string; uri: string | null }) => {
+            try {
+                window.localStorage.setItem(`figaro:agreement:${hash}`, body);
+                if (uri) window.localStorage.setItem(`figaro:agreement-uri:${hash}`, uri);
+            } catch {
+                // localStorage unavailable; downstream UI assertion will
+                // fail with a clearer signal.
+            }
+        },
+        { hash: agreementHash, body: canonical, uri: options.uri ?? null },
+    );
 }
 
 /**

@@ -134,7 +134,7 @@ function ghgDisclosureAgreement(buyer: `0x${string}`, seller: `0x${string}`): Ag
     };
 }
 
-function merchantProcessAgreement(buyer: `0x${string}`, seller: `0x${string}`): Agreement {
+export function merchantProcessAgreement(buyer: `0x${string}`, seller: `0x${string}`): Agreement {
     return {
         version: 'a1',
         buyer,
