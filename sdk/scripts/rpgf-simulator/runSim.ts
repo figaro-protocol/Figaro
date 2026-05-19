@@ -28,8 +28,7 @@ const DEFAULT_COMBO: [CountVariant, DiversityVariant] = ["processCount", "pairs"
 // Additional combinations to compare at Y2.
 const COMPARISON_COMBOS: ReadonlyArray<[CountVariant, DiversityVariant, string]> = [
   ["raw", "pairs", "raw events × pairs"],
-  ["bondedValue", "pairs", "bondedValue × pairs"],
-  ["paymentValue", "pairs", "paymentValue × pairs"],
+  ["chainPosition", "pairs", "chainPosition × pairs"],
   ["processCount", "buyers", "processes × buyer-breadth"],
   ["processCount", "sellers", "processes × seller-breadth"],
 ];
@@ -122,16 +121,15 @@ function printWeightBreakdown(pop: SchemaPopulationSource, trancheIndex: Tranche
     `\n--- Tier-1 weight breakdown (${TRANCHE_LABELS[trancheIndex]} snapshot) ---`,
   );
   console.log(
-    "Schema                          wCat   wTopo  wVal   total",
+    "Schema                          wCat   wTopo  total",
   );
   for (const a of pop.schemas()) {
     const s = a.snapshotsAtTranches[trancheIndex];
     const w = tier1Weight(s);
     const wc = w.wCategory.toFixed(2).padStart(6);
     const wt = w.wTopology.toFixed(2).padStart(6);
-    const wv = w.wValue.toFixed(2).padStart(6);
     const tot = w.total.toFixed(2).padStart(6);
-    console.log(`${a.name.padEnd(30)} ${wc} ${wt} ${wv} ${tot}`);
+    console.log(`${a.name.padEnd(30)} ${wc} ${wt} ${tot}`);
   }
 }
 
@@ -170,7 +168,7 @@ function main() {
   console.log(`Default α: ${ALPHA_DEFAULT}`);
   console.log(`Per-author cap: ${(CAP_SHARE * 100).toFixed(0)}%`);
   console.log(`Default combo: ${comboLabel(...DEFAULT_COMBO)} (audit's recommendation)`);
-  console.log(`Tier-1 weight applied: category(fulfilment, geo) + topology(chainPosition) + value(bondedValue/process)`);
+  console.log(`Tier-1 weight applied: category(fulfilment, geo) + topology(chainPosition). Value/bond removed — coordination protocol is value-agnostic.`);
 
   const [dCount, dDiv] = DEFAULT_COMBO;
 

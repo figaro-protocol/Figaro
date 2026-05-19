@@ -11,21 +11,21 @@ import { TRANCHE_BUDGETS_FIG } from "./types.js";
 
 // ─── Tier-1 graph weighting ──────────────────────────────────────────
 // Deploy-frozen weights expressing the protocol's prior about which
-// public graphs are load-bearing for the substrate. Three dimensions:
+// public graphs are load-bearing for the substrate. Two dimensions:
 //   1. Category — schemas in {fulfilment, geo} carry the tier-1
 //      category boost. topology participates via the chain-depth signal,
 //      not as a category (it has no runtime attestations of its own).
 //   2. Topology — every schema's attestations are embedded in orders
 //      with a chain position. Schemas attested in multi-party (deeper)
-//      orders contribute more to the topology graph; the topology
-//      weight scales with mean chain position.
-//   3. Value/bond — schemas whose enclosing orders carry high bonded
-//      value contribute more to the value/bond graph; weight scales
-//      with log10 of mean bonded value per process.
+//      orders contribute more to the topology graph.
 //
-// Composition is ADDITIVE: w = 1 + (wCat-1) + (wTopo-1) + (wVal-1).
-// Each tier-1 dimension adds independently; no dimension can produce
-// a multiplier alone, but a schema strong on all three reaches ~7x.
+// Composition is ADDITIVE: w = 1 + (wCat-1) + (wTopo-1). Range 1–5.
+//
+// Value/bond is deliberately NOT a dimension: the protocol's cost to
+// move 1 unit is the same as to move 1 trillion, and the substrate-
+// broadening signal is the same per counterparty pair regardless of
+// quanta. Value-weighting would import a TradFi-style "TVL matters"
+// metric and create Goodhart pressure to inflate transaction values.
 
 const TIER1_CATEGORY_SCHEMAS: ReadonlySet<string> = new Set([
   "figaro-fulfilment-v2",
@@ -38,14 +38,9 @@ const CATEGORY_WEIGHT_DEFAULT = 1.0;
 const TOPOLOGY_WEIGHT_MIN = 1.0;
 const TOPOLOGY_WEIGHT_MAX = 3.0;
 
-const VALUE_REFERENCE_TOKENS = 100;
-const VALUE_WEIGHT_MIN = 1.0;
-const VALUE_WEIGHT_MAX = 3.0;
-
 export interface WeightBreakdown {
   wCategory: number;
   wTopology: number;
-  wValue: number;
   total: number;
 }
 
@@ -59,18 +54,8 @@ export function tier1Weight(s: SchemaSnapshot): WeightBreakdown {
     Math.max(TOPOLOGY_WEIGHT_MIN, s.meanChainPosition),
   );
 
-  const meanBondedTokens = s.distinctProcesses > 0
-    ? Number(s.totalEnclosingOrderBondedValueWei / BigInt(s.distinctProcesses) / 10n ** 15n) / 1000
-    : 0;
-  const wValue = meanBondedTokens > 0
-    ? Math.min(
-        VALUE_WEIGHT_MAX,
-        Math.max(VALUE_WEIGHT_MIN, 1 + Math.log10(meanBondedTokens / VALUE_REFERENCE_TOKENS)),
-      )
-    : VALUE_WEIGHT_MIN;
-
-  const total = 1 + (wCategory - 1) + (wTopology - 1) + (wValue - 1);
-  return { wCategory, wTopology, wValue, total };
+  const total = 1 + (wCategory - 1) + (wTopology - 1);
+  return { wCategory, wTopology, total };
 }
 
 function countValue(s: SchemaSnapshot, variant: CountVariant): number {
@@ -79,10 +64,6 @@ function countValue(s: SchemaSnapshot, variant: CountVariant): number {
       return s.resolvedAttestationCount;
     case "processCount":
       return s.distinctProcesses;
-    case "bondedValue":
-      return Number(s.totalEnclosingOrderBondedValueWei / 10n ** 15n) / 1000;
-    case "paymentValue":
-      return Number(s.totalEnclosingOrderPaymentWei / 10n ** 15n) / 1000;
     case "chainPosition":
       return s.totalChainPositionWeight;
   }

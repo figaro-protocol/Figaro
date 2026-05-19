@@ -8,9 +8,9 @@ import type {
 export interface RandomFillerOptions {
   count: number;
   seed: number;
-  // Per-category weighting (must sum to 1.0).
-  // Default mirrors the real schema mix: ~70% committed-policy, ~12% sovereign-log,
-  // ~12% runtime-measurement, ~6% zero (manifest-only / didn't launch).
+  // Per-category weighting (must sum to 1.0). Default mirrors the real
+  // schema mix: ~70% committed-policy, ~12% sovereign-log,
+  // ~12% runtime-measurement, ~6% zero (manifest-only / never-launched).
   categoryWeights: {
     "committed-policy": number;
     "sovereign-log": number;
@@ -19,7 +19,6 @@ export interface RandomFillerOptions {
   };
   orderCountRange: [number, number];
   diversityRatioRange: [number, number];
-  bondedValueTokenRange: [number, number];
 }
 
 function mulberry32(seed: number): () => number {
@@ -43,10 +42,6 @@ function uniform(rng: () => number, min: number, max: number): number {
   return min + rng() * (max - min);
 }
 
-function toWei(tokenUnits: number): bigint {
-  return BigInt(Math.round(tokenUnits * 1000)) * 10n ** 15n;
-}
-
 function pickCategory(rng: () => number, w: RandomFillerOptions["categoryWeights"]): SchemaCategory | "zero" {
   const r = rng();
   let acc = w["committed-policy"];
@@ -68,9 +63,6 @@ function zeroSnap(schemaId: string): SchemaSnapshot {
     distinctBuyers: 0,
     distinctSellers: 0,
     distinctBuyerSellerPairs: 0,
-    distinctCurrencies: 0,
-    totalEnclosingOrderBondedValueWei: 0n,
-    totalEnclosingOrderPaymentWei: 0n,
     totalChainPositionWeight: 0,
     meanChainPosition: 0,
   };
@@ -93,17 +85,13 @@ function generate(options: RandomFillerOptions): Archetype[] {
 
     const baseOrderCount = Math.max(1, Math.round(logUniform(rng, options.orderCountRange[0], options.orderCountRange[1])));
     const diversityRatio = uniform(rng, options.diversityRatioRange[0], options.diversityRatioRange[1]);
-    const meanBondedTokens = logUniform(rng, options.bondedValueTokenRange[0], options.bondedValueTokenRange[1]);
-    const meanBondedWei = toWei(meanBondedTokens);
-    const meanPaymentWei = meanBondedWei / 2n; // payment ≈ half of bondedValue
     const meanChainPos = 1 + Math.floor(rng() * 3); // {1, 2, 3}
 
-    // Category-aware attestations-per-order
     const attsPerOrder = cat === "sovereign-log"
-      ? 4 + Math.floor(rng() * 5) // 4-8 lifecycle events
+      ? 4 + Math.floor(rng() * 5) // 4-8
       : cat === "runtime-measurement"
-        ? 1.5 + rng() * 2 // 1.5-3.5 measurements
-        : 1 + rng() * 0.6; // 1-1.6 (Cluster A: buyer+seller attest)
+        ? 1.5 + rng() * 2 // 1.5-3.5
+        : 1 + rng() * 0.6; // 1-1.6
 
     const distinctStages = cat === "sovereign-log"
       ? Math.min(8, Math.max(1, Math.floor(rng() * 8) + 1))
@@ -117,10 +105,8 @@ function generate(options: RandomFillerOptions): Archetype[] {
       const distinctProcesses = Math.max(1, Math.round(orderCount * 0.85));
       const baseDiv = Math.max(1, Math.round(orderCount * diversityRatio));
       const distinctBuyers = Math.min(orderCount, Math.max(1, Math.round(baseDiv * divMul)));
-      // Sellers can differ; assume similar diversity ratio but separate sampling
-      const sellerDiversity = uniform(rng, 0.5, 1.0); // sellers slightly less diverse than buyers in some clusters
+      const sellerDiversity = uniform(rng, 0.5, 1.0);
       const distinctSellers = Math.min(orderCount, Math.max(1, Math.round(baseDiv * divMul * sellerDiversity)));
-      // Pairs ≤ min(buyers × sellers, orderCount)
       const distinctBuyerSellerPairs = Math.min(orderCount, Math.max(1, Math.round(distinctBuyers * sellerDiversity)));
       return {
         schemaId,
@@ -131,9 +117,6 @@ function generate(options: RandomFillerOptions): Archetype[] {
         distinctBuyers,
         distinctSellers,
         distinctBuyerSellerPairs,
-        distinctCurrencies: 1 + Math.floor(rng() * 2),
-        totalEnclosingOrderBondedValueWei: BigInt(orderCount) * meanBondedWei,
-        totalEnclosingOrderPaymentWei: BigInt(orderCount) * meanPaymentWei,
         totalChainPositionWeight: orderCount * meanChainPos,
         meanChainPosition: meanChainPos,
       };
@@ -141,7 +124,7 @@ function generate(options: RandomFillerOptions): Archetype[] {
 
     archetypes.push({
       name: schemaId,
-      description: `random — cat=${cat}, baseOrderCount=${baseOrderCount}, divRatio=${diversityRatio.toFixed(2)}, bondedTokens=${meanBondedTokens.toFixed(1)}, attsPerOrder=${attsPerOrder.toFixed(1)}`,
+      description: `random — cat=${cat}, baseOrderCount=${baseOrderCount}, divRatio=${diversityRatio.toFixed(2)}, attsPerOrder=${attsPerOrder.toFixed(1)}, chainPos=${meanChainPos}`,
       snapshotsAtTranches: [makeSnap(1.0, 1.0), makeSnap(4.0, 3.0), makeSnap(10.0, 5.0)],
     });
   }
@@ -162,7 +145,6 @@ export function randomFillerPopulation(
     },
     orderCountRange: [10, 50_000],
     diversityRatioRange: [0.05, 0.95],
-    bondedValueTokenRange: [1, 100_000],
     ...partial,
   };
   const archetypes = generate(options);

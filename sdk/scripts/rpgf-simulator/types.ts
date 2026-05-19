@@ -15,8 +15,6 @@ export type SchemaCategory = "committed-policy" | "sovereign-log" | "runtime-mea
 export type CountVariant =
   | "raw" //          resolvedAttestationCount — total attest events
   | "processCount" // distinctProcesses — category-equalized
-  | "bondedValue" //  totalEnclosingOrderBondedValueWei
-  | "paymentValue" // totalEnclosingOrderPaymentWei
   | "chainPosition"; // totalChainPositionWeight
 
 export type DiversityVariant =
@@ -35,10 +33,6 @@ export interface SchemaSnapshot {
   distinctBuyers: number;
   distinctSellers: number;
   distinctBuyerSellerPairs: number;
-  distinctCurrencies: number;
-
-  totalEnclosingOrderBondedValueWei: bigint;
-  totalEnclosingOrderPaymentWei: bigint;
 
   totalChainPositionWeight: number;
   meanChainPosition: number;
