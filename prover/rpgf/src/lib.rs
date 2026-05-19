@@ -15,11 +15,15 @@
 // raw attestation content.
 
 pub mod aggregator;
+pub mod events;
 pub mod formula;
 pub mod merkle;
+pub mod snapshots;
 pub mod types;
 
 pub use aggregator::aggregate;
+pub use events::{AttestationEvent, EventStream, OrderCreatedEvent, ProcessResolvedEvent, SchemaRegisteredEvent};
 pub use formula::{score, tier1_weight, WeightBreakdown};
 pub use merkle::{build_merkle_root, leaf_hash};
+pub use snapshots::build_tranche_input;
 pub use types::{SchemaSnapshot, TrancheInput, TrancheOutput};
