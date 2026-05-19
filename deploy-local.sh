@@ -62,6 +62,7 @@ FIG_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FigToken deployed at:'             
 
 BATCH_VERIFIER_ADDR=$(echo "$FORGE_OUT" | grep 'FigaroBatchVerifier deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 PROCESS_OFFSET_RECEIPT_ADDR=$(echo "$FORGE_OUT" | grep 'ProcessOffsetReceipt deployed at:' | grep -oE '0x[0-9a-fA-F]+')
+MOCK_OFFSET_AGGREGATOR_ADDR=$(echo "$FORGE_OUT" | grep 'MockOffsetAggregator deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 
 if [ -z "$CORE_ADDR" ]; then
   echo "❌ Could not parse FigaroCore address from forge output. Aborting env update."
@@ -96,6 +97,7 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_FIG_TOKEN_ADDRESS"         "$FIG_TOKEN_ADDR"
 ## FigEmission removed
 update_env "$CORE_ENV" "NEXT_PUBLIC_BATCH_VERIFIER"            "$BATCH_VERIFIER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT"    "$PROCESS_OFFSET_RECEIPT_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR"    "$MOCK_OFFSET_AGGREGATOR_ADDR"
 
 # ── Write deployment manifest ─────────────────────────────────────────────────
 echo "✍️  Writing $CORE_MANIFEST ..."
@@ -114,7 +116,8 @@ cat > "$CORE_MANIFEST" <<EOF
   "dutchAuction": "$AUCTION_ADDR",
   "figToken": "$FIG_TOKEN_ADDR",
   "batchVerifier": "$BATCH_VERIFIER_ADDR",
-  "processOffsetReceipt": "$PROCESS_OFFSET_RECEIPT_ADDR"
+  "processOffsetReceipt": "$PROCESS_OFFSET_RECEIPT_ADDR",
+  "mockOffsetAggregator": "$MOCK_OFFSET_AGGREGATOR_ADDR"
 }
 EOF
 
@@ -133,4 +136,5 @@ echo "   NEXT_PUBLIC_DUTCH_AUCTION=$AUCTION_ADDR"
 echo "   NEXT_PUBLIC_FIG_TOKEN_ADDRESS=$FIG_TOKEN_ADDR"
 echo "   NEXT_PUBLIC_BATCH_VERIFIER=$BATCH_VERIFIER_ADDR"
 echo "   NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=$PROCESS_OFFSET_RECEIPT_ADDR"
+echo "   NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR=$MOCK_OFFSET_AGGREGATOR_ADDR"
 echo "   Manifest: $CORE_MANIFEST"
