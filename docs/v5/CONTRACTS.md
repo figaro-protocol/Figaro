@@ -12,7 +12,7 @@ This file is the canonical inventory. CLAUDE.md indexes it; agents must not refe
 - 2 external functions: `commit` (unified dual-signed), `resolveProcess`
 - 3 mappings: `processes` (ProcessState), `orderStatus` (uint8), `orderProcessId` (bytes32)
 - EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution
-- Covered by Foundry unit tests, 7 Echidna properties, 11 Halmos symbolic proofs (7 FigaroCore + 4 StagedMerkleAirdrop), and 6 Certora CVL specs (35 declared rules, all green; AC spec re-verified 2026-04-23 after ABI change to carry agreement-receipt proofs)
+- Covered by Foundry unit tests, 7 Echidna properties, 7 Halmos symbolic proofs (FigaroCore), and 5 Certora CVL specs (the StagedMerkleAirdrop Halmos pass + Certora spec were retired alongside the contract — the replacement `RpgfMinter` has Foundry + Rust-Solidity conformance coverage but no symbolic/formal proofs yet; see `docs/v5/AUDIT_REPORT.md`)
 
 **`src/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
 Single `Commitment` struct for both root and sub-orders; `processId` zero for root.
@@ -129,24 +129,33 @@ advisory metadata for off-chain discovery surfaces.
 Reentrancy-guarded. Minter registry with `totalRegisteredCap` (sum of all registered
 caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then renounces.
 
-**`StagedMerkleAirdrop.sol`** — Three-stage merkle-claim airdrop. One contract with
-three immutable merkle roots and three immutable unlock timestamps (yr 2 / yr 5 / yr 9).
-One-shot per (stage, address). Calls `IFigMinter.mint`.
+**`RpgfMinter.sol`** — Three-stage SP1-gated retroactive public-goods funding
+minter. One contract with three immutable unlock timestamps (yr 2 / yr 5 / yr 9)
+and three submitter-set Merkle roots (set once per tranche after an SP1 proof
+verifies the aggregation). One-shot per (stage, address) on the claim side.
+Calls `IFigMinter.mint`. Aggregation logic lives in `prover/rpgf/` (Rust);
+host-side SP1 wrapper in `prover/rpgf-script/`; TypeScript sequencer
+orchestrator in `sdk/scripts/rpgf-sequencer/`.
 
 **`IFigMinter.sol`** — `mint(address, uint256)` interface implemented by FigToken.
 
 **FIG allocation (canonical, 1B total):**
 - **100M (10%) founders** — genesis mint, no vesting, no unlock
 - **300M (30%) DAO**       — genesis mint, no vesting, no unlock
-- **600M (60%) community airdrops** — one `StagedMerkleAirdrop` contract, staged:
-  - stage 0 (year 2): 300M (30% of total)
-  - stage 1 (year 5): 200M (20% of total)
-  - stage 2 (year 9): 100M (10% of total)
+- **600M (60%) schema-author RPGF** — one `RpgfMinter` contract, staged:
+  - stage 0 (year 2): up to 300M (30% of total)
+  - stage 1 (year 5): up to 200M (20% of total)
+  - stage 2 (year 9): up to 100M (10% of total)
+
+  Per-tranche budgets are caps; actual allocation at each tranche is determined
+  by the V5 substrate-broadening aggregation (run off-chain, verified on-chain
+  via SP1 proof). When the per-author cap binds for every contributor at a
+  tranche, the unallocated portion of the budget stays unminted by design.
 
 Deploy flow: deployer registers itself as a one-shot genesis minter with cap 400M,
-mints 100M+300M to founder/DAO wallets, registers the staged airdrop with cap 600M,
+mints 100M+300M to founder/DAO wallets, registers the RPGF minter with cap 600M,
 renounces. `totalRegisteredCap = 1B` exactly at the end of deploy. No further mints
-are possible outside valid merkle claims on the staged airdrop.
+are possible outside valid merkle claims on `RpgfMinter`.
 
 No settlement-anchored emission. No batch-path minting. `FigaroBatchVerifier` is
 NOT a FIG minter and will never be registered as one.
@@ -170,7 +179,8 @@ AI audit — has been removed).
 ## What Does NOT Exist
 
 No `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance/`,
-`FigEmission.sol`, `FigTimeLock.sol`, `MerkleAirdrop.sol` (replaced by `StagedMerkleAirdrop.sol`),
+`FigEmission.sol`, `FigTimeLock.sol`, `MerkleAirdrop.sol`, `StagedMerkleAirdrop.sol`
+(this last replaced by `RpgfMinter.sol` in 2026-05),
 `TrancheVesting.sol` (removed — founder and DAO receive tokens at genesis with no vesting),
 `ProximityTypes.sol` (removed), `IRoleResolverV4.sol` (renamed to `IRoleResolver.sol`),
 generic `JSONSchemaValidator.sol` (per-schema validators instead — see `docs/v5/SCHEMAS.md`),

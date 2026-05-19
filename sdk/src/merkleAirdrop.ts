@@ -1,22 +1,26 @@
 /**
  * @figaro/core — Merkle Airdrop Builder
  *
- * Builds a Merkle tree compatible with StagedMerkleAirdrop.sol and OpenZeppelin's
- * MerkleProof.verify. Leaf encoding matches the contract exactly:
+ * Builds a Merkle tree compatible with `RpgfMinter.claim` (and any other
+ * contract using OpenZeppelin's `MerkleProof.verify` with sorted-pair
+ * hashing). Leaf encoding:
  *
  *   leaf = keccak256(abi.encodePacked(address, uint256))
  *
  * Internal nodes use OZ's _hashPair convention: the smaller hash is placed
  * first before hashing, so proof verification is position-independent.
  *
- * Build one tree per stage (year 2 / year 5 / year 9). The three roots are
- * then passed as constructor arguments to StagedMerkleAirdrop.
+ * For `RpgfMinter`, a sequencer typically computes the per-tranche root
+ * inside the SP1 program rather than via this helper (see
+ * `prover/rpgf/src/merkle.rs`). This TypeScript builder is the reference
+ * implementation for fixture generation, off-chain claim-proof
+ * computation, and tests.
  *
- * Usage (per stage):
+ * Usage (per tranche):
  *   const tree = buildMerkleAirdrop(entries);
- *   const root = tree.root;                    // set as AIRDROP_ROOT_Y{2,5,9}
- *   const proof = tree.getProof(userAddress);  // pass to StagedMerkleAirdrop.claim()
- *   const amount = tree.getAmount(userAddress); // pass to StagedMerkleAirdrop.claim()
+ *   const root = tree.root;                    // matches the SP1-proved root
+ *   const proof = tree.getProof(userAddress);  // pass to RpgfMinter.claim()
+ *   const amount = tree.getAmount(userAddress); // pass to RpgfMinter.claim()
  */
 
 import { keccak256, encodePacked, getAddress } from "viem";

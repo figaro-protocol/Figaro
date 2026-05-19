@@ -6,8 +6,10 @@ Implemented. Three contracts:
 
 - `src/fig/FigToken.sol` — ERC-20 + EIP-2612 permit, 1B hard cap, minter registry
   with `totalRegisteredCap` enforcement.
-- `src/fig/StagedMerkleAirdrop.sol` — three-stage merkle-claim airdrop
-  (year 2 / year 5 / year 9).
+- `src/fig/RpgfMinter.sol` — three-stage SP1-gated minter for the
+  schema-author RPGF (year 2 / year 5 / year 9). Per-tranche Merkle
+  root submitted at tranche time after an SP1 proof verifies the
+  aggregation; aggregation logic in `prover/rpgf/` (Rust).
 - `src/fig/IFigMinter.sol` — minimal `mint(address,uint256)` interface.
 
 Deployment: `script/DeployMainnet.s.sol` performs the full genesis distribution
@@ -64,14 +66,18 @@ the full name is the protocol.
 |---|---|---|---|
 | **Founders** | **10%** | **100,000,000** | Genesis mint to founder wallet — **no vesting, no unlock** |
 | **DAO**      | **30%** | **300,000,000** | Genesis mint to DAO wallet — **no vesting, no unlock** |
-| **Airdrop — Year 2** | 30% | 300,000,000 | Staged merkle claim, unlocks at year 2 |
-| **Airdrop — Year 5** | 20% | 200,000,000 | Staged merkle claim, unlocks at year 5 |
-| **Airdrop — Year 9** | 10% | 100,000,000 | Staged merkle claim, unlocks at year 9 |
+| **RPGF — Year 2** | 30% | 300,000,000 | Schema-author RPGF, unlocks at year 2 |
+| **RPGF — Year 5** | 20% | 200,000,000 | Schema-author RPGF, unlocks at year 5 |
+| **RPGF — Year 9** | 10% | 100,000,000 | Schema-author RPGF, unlocks at year 9 |
 | **Total** | **100%** | **1,000,000,000** | |
 
 Founders and DAO receive tokens directly to their wallets at deploy time.
-The community airdrop is a single `StagedMerkleAirdrop` contract with three
-immutable merkle roots and three immutable unlock timestamps.
+The community airdrop is a single `RpgfMinter` contract with three immutable
+unlock timestamps. Per-tranche Merkle roots are NOT baked at deploy — they
+are submitted at tranche time by a sequencer after an SP1 proof verifies
+the schema-author substrate-broadening aggregation. See `prover/rpgf/`
+(Rust aggregator) and `prover/rpgf-script/` (host-side SP1 wrapper) for
+the off-chain pieces.
 
 ### Rationale
 
@@ -105,18 +111,18 @@ minting at the canonical 1B cap:
 
 ```
 1. Deploy FigToken (deployer becomes the constructor deployer).
-2. Deploy StagedMerkleAirdrop with 3 merkle roots + 3 unlock timestamps (all immutable).
+2. Deploy RpgfMinter with (SP1 verifier, programVKey, submitter, 3 unlock timestamps). Roots are NOT baked at deploy — they are submitted at tranche time.
 3. Register the deployer as a one-shot genesis minter with cap 400M.
 4. fig.mint(founderWallet, 100M)     — founder genesis mint.
 5. fig.mint(daoWallet, 300M)         — DAO genesis mint.
-6. Register StagedMerkleAirdrop as a minter with cap 600M.
+6. Register RpgfMinter as a minter with cap 600M.
 7. fig.renounceDeployerMint()        — permanent. No new minters. Deployer can never mint again.
 ```
 
 After step 7:
 
 - Deployer minter: `cap = 400M, minted = 400M`. Exhausted. Cannot mint more.
-- StagedMerkleAirdrop minter: `cap = 600M, minted = 0`. Drains only through valid merkle claims.
+- RpgfMinter minter: `cap = 600M, minted = 0`. Drains only through valid merkle claims against sequencer-submitted, SP1-proved per-tranche roots.
 - `totalRegisteredCap = 1B` (exact MAX_SUPPLY).
 - Deployer mint renounced. **No further minter registration is possible.**
 
@@ -134,7 +140,7 @@ Each airdrop stage uses the standard OZ MerkleProof pattern:
 leaf = keccak256(abi.encodePacked(recipient, amount));
 ```
 
-A claim transaction on `StagedMerkleAirdrop` specifies:
+A claim transaction on `RpgfMinter` specifies:
 
 - `stageIndex` (0 = year 2, 1 = year 5, 2 = year 9),
 - `amount` (the leaf amount),

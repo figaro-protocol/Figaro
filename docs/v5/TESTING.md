@@ -7,7 +7,7 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 `FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
 `AttestationCoordinatorTest`, `SchemaRegistryTest`, `DutchAuctionTest`,
 `OperatorRegistryTest`, `FigaroBatchVerifierTest`, `ParityVectors`,
-`fig/FigToken.t.sol`, `fig/StagedMerkleAirdrop.t.sol`,
+`fig/FigToken.t.sol`, `fig/RpgfMinter.t.sol`, `fig/RpgfMinterConformance.t.sol`,
 `BatchGasCeilingTest`, `BatchGasBoundaryTest`, `GasCeilingTest`.
 
 `test/schemaValidators/` — one test file per `ISchemaValidator` implementation
@@ -17,14 +17,18 @@ delivery lifecycle, proximity policy, proximity proof, merchant-process,
 courier-process, jurisdiction). Each suite covers happy paths + every
 typed-error revert. (Topology has no validator — manifest-only clause.)
 
-## Halmos (`test/`) — 2 harnesses
+## Halmos (`test/`) — 1 harness
 
 | Harness | Properties | Key invariants |
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
-| `HalmosStagedMerkleAirdrop.t.sol` | 4 | Claim flag set, one-shot per (stage, address), balance math, merkle leaf format |
 
-## Certora (`certora/`) — 6 specs
+(The `HalmosStagedMerkleAirdrop` 4-property pass was retired alongside the
+deletion of `StagedMerkleAirdrop.sol`. Its successor `RpgfMinter.sol` does
+not yet carry symbolic proofs — coverage is via Foundry tests +
+Rust ↔ Solidity conformance harness.)
+
+## Certora (`certora/`) — 5 specs
 
 | Spec | Rules | Covers |
 |---|---|---|
@@ -33,7 +37,10 @@ typed-error revert. (Topology has no validator — manifest-only clause.)
 | `TokenOpsVerification.spec` | 7 → 8 sub-rules | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `BatchVerifierTokenOps.spec` | 4 | Single-position `settleBatch`: user balance delta = payout − deposit, contract delta = deposit − payout, allowance-drain safety, conservation. |
 | `FigToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
-| `StagedMerkleAirdrop.spec` | 3 | Claim monotonicity, stage config immutability, minter immutability |
+
+(The `StagedMerkleAirdrop.spec` 3-rule spec was retired alongside the
+contract; the successor `RpgfMinter.sol` does not yet carry a Certora
+spec — see `docs/v5/AUDIT_REPORT.md` for the verification regression note.)
 
 Companion: `certora/token-ops.inventory` + `lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 

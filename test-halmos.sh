@@ -1,8 +1,8 @@
 #!/bin/bash
 # test-halmos.sh — Reproducible Halmos symbolic proofs for Figaro.
 #
-# Halmos symbolically executes two harnesses against the Z3 SMT solver and
-# proves 11 properties hold for ALL possible inputs:
+# Halmos symbolically executes the HalmosFigaroCore harness against the Z3
+# SMT solver and proves 7 properties hold for ALL possible inputs:
 #
 #   HalmosFigaroCore (7 properties):
 #     check_tokenConservation_afterCommit
@@ -13,17 +13,15 @@
 #     check_buyerDominance_revert
 #     check_cumulativeValueMonotonic
 #
-#   HalmosStagedMerkleAirdrop (4 properties):
-#     check_claimSetsFlag
-#     check_alreadyClaimedReverts
-#     check_notUnlockedReverts
-#     check_invalidStageReverts
-#
-# The run is split into three halmos processes:
+# The run is split into two halmos processes:
 #
 #   Pass 1 (6 FigaroCore properties): run together in a single halmos process.
 #   Pass 2 (1 FigaroCore property, check_resolutionPayouts): run in a fresh process.
-#   Pass 3 (4 StagedMerkleAirdrop properties): run in a fresh process.
+#
+# (The 4-property HalmosStagedMerkleAirdrop pass was retired alongside the
+# StagedMerkleAirdrop contract — the replacement RpgfMinter does not yet
+# carry symbolic proofs. See docs/v5/AUDIT_REPORT.md for the verification
+# regression note.)
 #
 # Why the split: check_resolutionPayouts exercises the full commit + resolve
 # lifecycle (2 ECDSA signature recoveries, multiple keccak256 hashes, 4 ERC-20
@@ -100,14 +98,4 @@ FOUNDRY_PROFILE=halmos halmos \
     "$@"
 
 echo ""
-echo "▶ Pass 3/3 — HalmosStagedMerkleAirdrop (4 properties)"
-echo ""
-
-FOUNDRY_PROFILE=halmos halmos \
-    --contract HalmosStagedMerkleAirdrop \
-    --solver z3 \
-    --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
-    "$@"
-
-echo ""
-echo "✅ All 11 Halmos properties proved (7 FigaroCore + 4 StagedMerkleAirdrop)."
+echo "✅ All 7 Halmos properties proved (FigaroCore)."

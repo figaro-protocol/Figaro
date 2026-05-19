@@ -15,7 +15,10 @@
 #   certora/TokenOpsVerification.spec   — FigaroCore token-flow invariants (7 rules → 8 sub-rules)
 #   certora/BatchVerifierTokenOps.spec  — FigaroBatchVerifier token-flow (single-position, 4 rules)
 #   certora/FigToken.spec               — token ancillary spec
-#   certora/StagedMerkleAirdrop.spec    — staged airdrop claim monotonicity + config immutability (3 rules)
+#
+# (The StagedMerkleAirdrop spec was retired alongside the contract; its
+# replacement RpgfMinter does not yet carry a Certora spec. See
+# docs/v5/AUDIT_REPORT.md for the verification regression note.)
 #
 # Conf flag note:
 #   Any spec whose rules pass symbolic `bytes` (dynamic-length) to a function
@@ -68,7 +71,7 @@ fi
 if [ "$#" -gt 0 ]; then
     SPECS=("$@")
 else
-    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification BatchVerifierTokenOps FigToken StagedMerkleAirdrop)
+    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification BatchVerifierTokenOps FigToken)
 fi
 
 for spec in "${SPECS[@]}"; do

@@ -406,7 +406,7 @@ High-level inventory (full per-contract surfaces, function lists, ABI changes, a
 - **Kernel (frozen):** `FigaroCore.sol`, `CommitmentTypes.sol`.
 - **Attestation & schema:** `AttestationCoordinator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `ISchemaValidator.sol`, `IRoleResolver.sol`, 17 per-schema validators in `src/schemaValidators/`.
 - **Mechanism modules:** `DutchAuction.sol`, `OperatorRegistry.sol`, `ProcessOffsetReceipt.sol` (Path A carbon-offset receipts anchor — separate primitive per separation-of-concerns; receipts are not attestations, no agreement clause required).
-- **FIG token (`src/fig/`):** `FigToken.sol`, `StagedMerkleAirdrop.sol`, `IFigMinter.sol`. 1B fixed supply: 100M founders + 300M DAO genesis-minted, 600M staged airdrop (yr 2/5/9). FIG is not a governance token; `FigaroBatchVerifier` is not a minter.
+- **FIG token (`src/fig/`):** `FigToken.sol`, `RpgfMinter.sol`, `IFigMinter.sol`. 1B fixed supply: 100M founders + 300M DAO genesis-minted, 600M schema-author RPGF (yr 2/5/9). Per-tranche Merkle root is submitted at tranche time after an SP1 proof verifies it; aggregation logic lives in `prover/rpgf/` (Rust). FIG is not a governance token; `FigaroBatchVerifier` is not a minter.
 - **Batch verification:** `FigaroBatchVerifier.sol`, `interfaces/ISP1Verifier.sol`, `mocks/MockSP1Verifier.sol`.
 - **Mocks:** `mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`, `MockOffsetAggregator.sol`; `echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`.
 

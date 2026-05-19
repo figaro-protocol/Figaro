@@ -24,7 +24,7 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 
 - **Kernel**: `src/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
 - **Protocol extensions**: `AttestationCoordinator`, `SchemaRegistry`, `DutchAuction`, `OperatorRegistry`, `FigaroBatchVerifier`
-- **FIG token ecosystem**: `FigToken`, `StagedMerkleAirdrop`
+- **FIG token ecosystem**: `FigToken`, `RpgfMinter` (replaced `StagedMerkleAirdrop` 2026-05; formal-verification status reset — see "Retired properties" below)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
 - **Tests**: 14 Foundry suites (225 tests), 7 Echidna properties (`EchidnaFuzzer.sol`), 12 SDK test files (166 tests)
 - **Frontend**: All pages in `frontend/app/`, components, mechanism modules
@@ -70,9 +70,9 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 - `E-4` **Operator deposit lock**: withdrawal only after deactivation + lock period
 - `E-5` **Batch state root continuity**: each batch must chain from previous state root
 - `E-6` **FIG supply cap**: total minted ≤ 1,000,000,000 FIG (enforced on every mint path)
-- `E-7` **StagedMerkleAirdrop per-stage one-shot claim**: each address can claim at most once per stage (0/1/2)
-- `E-8` **StagedMerkleAirdrop Merkle inclusion**: only addresses included in the stage's immutable merkle root can claim from that stage
-- `E-9` **StagedMerkleAirdrop per-stage unlock timestamp**: a stage can only be claimed after its immutable `unlockTime` (yr 2 / yr 5 / yr 9)
+- `E-7` **Per-stage one-shot claim** (RETIRED 2026-05 — was Halmos+Certora proved on the now-deleted `StagedMerkleAirdrop`; the equivalent property on `RpgfMinter` is covered by Foundry only)
+- `E-8` **Merkle inclusion** (RETIRED 2026-05 — same history; `RpgfMinter.claim` uses identical leaf format and MerkleProof.verify, Foundry-tested)
+- `E-9` **Per-stage unlock timestamp** (RETIRED 2026-05 — same history; immutable unlock timestamps preserved in `RpgfMinter`, Foundry-tested)
 
 ---
 
@@ -116,9 +116,9 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 | E-4 | Operator deposit lock — withdraw only after `registeredAt + lockPeriod` | `withdraw()`: requires `_registered[msg.sender]` + `block.timestamp >= registeredAt + lockPeriod`; clears the dedup guard so the same address can re-register with the lock restarting. `updateProfile()` is a separate caller-only path that emits a new `OperatorProfileUpdated` event without touching the deposit or restarting the lock | `OperatorRegistryTest`: 18 tests covering register, deposit-bound match, dedup, withdraw flow, lock-period gate, re-registration restarts the lock, plus updateProfile (only-self, no deposit movement, no lock reset) | `/local-commerce` → Operator Registry; `/operators`; `/builders` → Operator identity |
 | E-5 | Batch state root continuity | `settleBatch()`: `require(prevStateRoot == currentStateRoot)` + `currentStateRoot = newStateRoot` | `FigaroBatchVerifierTest`: 22 tests covering state root chain, re-emission | `/builders` → Batch verification (state root, SP1, net positions, event re-emission) |
 | E-6 | FIG supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FigToken.t.sol`: ~22 tests covering cap enforcement, multi-minter, renounce | `/fig` → FIG dashboard (supply display); `/fig/design` → Supply integrity (Paper D) |
-| E-7 | StagedMerkleAirdrop: each address can claim at most once per stage | `claim(stageIndex, ...)`: reverts `AlreadyClaimed(stageIndex, msg.sender)` if `claimed[stageIndex][msg.sender]` is set; otherwise sets it before mint | `StagedMerkleAirdrop.t.sol`: `test_CannotClaimSameStageTwice`, `test_AliceCanClaimAllThreeStagesIndependently` | `/fig` → per-stage claim status |
-| E-8 | StagedMerkleAirdrop: only stage-specific Merkle-root-included addresses can claim | `MerkleProof.verify(proof, stages[stageIndex].root, leaf)` enforced per-stage before any mint | `StagedMerkleAirdrop.t.sol`: `test_CannotClaimIfNotInTree`, `test_CannotClaimWithWrongProofForStage`, `test_CannotClaimWithAlteredAmount` | `/fig` → per-stage eligibility |
-| E-9 | StagedMerkleAirdrop: per-stage unlock timestamp (immutable) | `claim(stageIndex, ...)`: reverts `NotUnlocked(stageIndex)` if `block.timestamp < stages[stageIndex].unlockTime` | `StagedMerkleAirdrop.t.sol`: `test_CannotClaimBeforeUnlock`, `test_CanClaimStage0AfterUnlock` | `/fig` → stage unlock dates |
+| E-7 | RpgfMinter: each address can claim at most once per stage | `claim(stageIndex, ...)`: reverts `AlreadyClaimed(stageIndex, msg.sender)` if `claimed[stageIndex][msg.sender]` is set; otherwise sets it before mint | `RpgfMinter.t.sol`: `test_CannotClaimSameStageTwice`; `RpgfMinterConformance.t.sol`: `test_RecaimByAuthorFailsAsOneShot` | `/fig` → per-stage claim status |
+| E-8 | RpgfMinter: only stage-specific Merkle-root-included addresses can claim | `MerkleProof.verify(proof, stages[stageIndex].root, leaf)` enforced per-stage before any mint; root submitted via `submitRoot` after SP1 proof | `RpgfMinter.t.sol`: `test_CannotClaimIfNotInTree`, `test_CannotClaimWithAlteredAmount`; conformance: `test_AllFourAuthorsClaimExpectedAmounts` | `/fig` → per-stage eligibility |
+| E-9 | RpgfMinter: per-stage unlock timestamp (immutable) | `claim(stageIndex, ...)`: reverts `NotUnlocked(stageIndex)` if `block.timestamp < stages[stageIndex].unlockTime` | `RpgfMinter.t.sol`: `test_ClaimRevertsBeforeUnlock` | `/fig` → stage unlock dates |
 
 ---
 
@@ -236,16 +236,13 @@ actual compiled bytecode satisfies the invariants.
 | `check_buyerDominance_revert` | K-2 | z3 | 21 |
 | `check_cumulativeValueMonotonic` | K-5, A-4 | z3 | 31 |
 
-**HalmosStagedMerkleAirdrop (4 properties)**
+**HalmosStagedMerkleAirdrop (4 properties) — RETIRED 2026-05**
 
-| Halmos check | Maps to | Solver | Paths |
-|---|---|---|---|
-| `check_claimSetsFlag` | E-7 | z3 | 1 |
-| `check_alreadyClaimedReverts` | E-7 | z3 | 1 |
-| `check_notUnlockedReverts` | E-9 | z3 | 2 |
-| `check_invalidStageReverts` | E-7 | z3 | 1 |
+Removed alongside `StagedMerkleAirdrop.sol`. The replacement `RpgfMinter`
+does not yet carry a Halmos harness; equivalent claim-path properties
+are covered by Foundry + the Rust ↔ Solidity conformance harness.
 
-**Total: 11/11 proved, 0 failed. Typical wall time ~5 minutes.**
+**Total: 7/7 proved (FigaroCore), 0 failed. Typical wall time ~3 minutes.**
 
 Per-property times vary significantly between runs (Z3's search path is
 non-deterministic). `check_resolutionPayouts` — the only property that
@@ -326,17 +323,18 @@ Foundry-covered companions (scene would need a mock-validator contract for unive
 | `minterCapImmutable` | E-6 | Per-minter immutability |
 | `minterMintedWithinCap` | E-6 | Inductive (unconditional `minted <= cap`, strictly strong enough to exclude symbolic unreachable pre-states) |
 
-**StagedMerkleAirdrop (4 rules)**
+**StagedMerkleAirdrop (4 rules) — RETIRED 2026-05**
 
-| CVL rule | Maps to | Type |
-|---|---|---|
-| `claimedIsMonotonic` | E-7 | Parametric (per-stage flag never resets) |
-| `stageConfigImmutable` | E-8, E-9 | Per-stage root + unlockTime immutability (index typed `uint256` to match Solidity fixed-array ABI) |
-| `minterImmutable` | — | `minter` address never changes |
+Removed alongside the contract. `RpgfMinter` does not yet carry a Certora
+spec; equivalent claim-path coverage is via Foundry + Rust ↔ Solidity
+conformance harness. Adding a Certora spec for `RpgfMinter.submitRoot`
++ `claim` is on the queue for the next formal-verification round.
 
 ### Status
 
-35 declared rules across 6 specs. **All green**. AC re-dispatched 2026-04-23 after the agreement-receipt ABI change — 8/8 sub-rules verified.
+31 declared rules across 5 specs (down from 35 across 6 specs after the
+StagedMerkleAirdrop retirement). **All green**. AC re-dispatched 2026-04-23
+after the agreement-receipt ABI change — 8/8 sub-rules verified.
 
 | Spec | Report URL |
 |---|---|
@@ -345,7 +343,7 @@ Foundry-covered companions (scene would need a mock-validator contract for unive
 | TokenOpsVerification | https://prover.certora.com/output/9512759/4768752379cc434aa53cc7b8894cdd25 (2026-04-23, 8/8 green — FigaroCore token-flow universal proof) |
 | BatchVerifierTokenOps | https://prover.certora.com/output/9512759/a8a8878f373f4b5d940e47b81576b2dd (2026-04-23, 4/4 green — single-position batch token-flow) |
 | FigToken | https://prover.certora.com/output/9512759/e48a5c0c4b94465ba93b44a716b31025 (2026-04-21) |
-| StagedMerkleAirdrop | https://prover.certora.com/output/9512759/c48b77f25a734eab894102ee5706da7e (2026-04-21) |
+| ~~StagedMerkleAirdrop~~ | RETIRED 2026-05 — contract deleted; historical 2026-04-21 proof at https://prover.certora.com/output/9512759/c48b77f25a734eab894102ee5706da7e |
 
 ```bash
 # Install
@@ -382,8 +380,8 @@ export CERTORAKEY=<your-key>
 | Layer | Files | Test count | What it covers |
 |---|---|---|---|
 | **TLA+ model checking** | 2 models | 15 invariants (FigaroCore: 7 across 6,087,113 states / 4m 8s; FigToken: 8 across 160,844 states / 9s — both via `./test-tla.sh`) | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + FIG token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
-| **Halmos symbolic testing** | 2 files | 11 properties | FigaroCore: token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. StagedMerkleAirdrop: claim flag, double-claim rejection, unlock timing, invalid stage rejection. |
-| **Certora formal verification** | 6 specs | 35 declared rules (8 + 7 + 7/8 + 4 + 6/7 + 3/4) — AC re-dispatch pending after 2026-04-23 ABI change for agreement-receipt binding | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability + validator-gate on the new commitment-arg ABI. TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. BatchVerifierTokenOps: single-position settleBatch balance-flow proofs. FigToken: supply cap + minter registry preservation. StagedMerkleAirdrop: claim monotonicity, stage config immutability, minter immutability. |
+| **Halmos symbolic testing** | 1 file | 7 properties | FigaroCore: token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. (StagedMerkleAirdrop's 4 properties retired 2026-05 with the contract.) |
+| **Certora formal verification** | 5 specs | 31 declared rules (8 + 7 + 7/8 + 4 + 6/7) | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability + validator-gate on the new commitment-arg ABI. TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. BatchVerifierTokenOps: single-position settleBatch balance-flow proofs. FigToken: supply cap + minter registry preservation. (StagedMerkleAirdrop's 3 rules retired 2026-05 with the contract.) |
 | **Echidna fuzzing** | 1 harness | 7 properties | Kernel fuzz: solvency, monotonicity, buyer dominance, atomicity |
 | **Foundry unit tests** | 14 suites | 225 tests | Core lifecycle, revert branches, mechanisms, gas, FIG, staged airdrop, parity vectors |
 | **SDK Vitest** | 12 files | 166 tests | Event parsing, state reconstruction, bond math, commitments, extensions |

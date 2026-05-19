@@ -237,17 +237,20 @@ Minter registry with `totalRegisteredCap` (sum of all registered minter caps
 enforced ≤ MAX_SUPPLY). Deployer registers capped minter contracts, then
 renounces (permanent).
 
-**`StagedMerkleAirdrop.sol`** — Three-stage merkle-claim airdrop. One contract
-with three immutable merkle roots and three immutable unlock timestamps
-(year 2 / year 5 / year 9). Each address can claim at most once per stage.
-Calls `IFigMinter.mint`.
+**`RpgfMinter.sol`** — Three-stage SP1-gated retroactive public-goods funding
+minter. Three immutable unlock timestamps (year 2 / year 5 / year 9); per-tranche
+Merkle roots are submitted at tranche time by the sequencer after an SP1 proof
+verifies the aggregation. Aggregation logic lives in `prover/rpgf/` (Rust),
+TS orchestrator in `sdk/scripts/rpgf-sequencer/`. Each address can claim at
+most once per stage. Calls `IFigMinter.mint`. (Replaced `StagedMerkleAirdrop`
+2026-05.)
 
 **`IFigMinter.sol`** — `mint(address, uint256)` interface implemented by FigToken.
 
 **FIG allocation (canonical, 1B total; defined in `script/DeployMainnet.s.sol`):**
 - 100M (10%) founders — genesis mint, no vesting, no unlock
 - 300M (30%) DAO      — genesis mint, no vesting, no unlock
-- 600M (60%) community airdrops — `StagedMerkleAirdrop`, staged:
+- 600M (60%) schema-author RPGF — `RpgfMinter`, staged:
   - stage 0 (year 2): 300M (30% of total)
   - stage 1 (year 5): 200M (20% of total)
   - stage 2 (year 9): 100M (10% of total)
@@ -648,8 +651,9 @@ Three projects:
 ### Foundry (`test/`)
 
 Foundry suite covers FigaroCore, attestation, schema registry, Dutch auction,
-operator registry, batch verifier, parity vectors, FIG token, StagedMerkleAirdrop,
-gas ceiling, and audit regressions. Run with `forge test --via-ir`.
+operator registry, batch verifier, parity vectors, FIG token, RpgfMinter
+(+ Rust ↔ Solidity conformance harness), gas ceiling, and audit regressions.
+Run with `forge test --via-ir`.
 
 ### Rust (`prover/`)
 
@@ -673,9 +677,9 @@ Core fuzzer: `src/echidna/EchidnaFuzzer.sol`.
 `check_orderStatusTransition`, `check_buyerDominance_revert`,
 `check_cumulativeValueMonotonic`
 
-The earlier `HalmosTrancheVesting.t.sol` and `HalmosMerkleAirdrop.t.sol` harnesses
-were removed along with their target contracts. A new Halmos harness for
-`StagedMerkleAirdrop` is a follow-up item.
+The earlier `HalmosTrancheVesting.t.sol`, `HalmosMerkleAirdrop.t.sol`, and
+`HalmosStagedMerkleAirdrop.t.sol` harnesses were removed along with their
+target contracts. A new Halmos harness for `RpgfMinter` is a follow-up item.
 
 ### Certora (formal verification)
 

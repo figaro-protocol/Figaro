@@ -57,7 +57,7 @@ GHG-disclosure / GHG-measurement.
 
 **FIG Token**
 - `src/fig/FigToken.sol` — ERC-20 + EIP-2612 permit, 1B hard cap, minter registry
-- `src/fig/StagedMerkleAirdrop.sol` — three-stage merkle-claim airdrop (year 2 / year 5 / year 9), one-shot per (stage, address)
+- `src/fig/RpgfMinter.sol` — three-stage SP1-gated retroactive public-goods funding minter (year 2 / year 5 / year 9), one-shot per (stage, address). Replaced `StagedMerkleAirdrop.sol` 2026-05.
 
 **Batch Verification**
 - `src/FigaroBatchVerifier.sol` — SP1-proved batch verification
@@ -112,7 +112,7 @@ Live test inventory:
 - `OperatorRegistry` (registration, in-place profile updates, deposit lock + withdrawal — role + lifecycle flags do not exist on-chain; a seller's role is whatever their catalogue archetype declares)
 - `FigaroBatchVerifier` (state root continuity, auxiliary data hash verification)
 - `FigToken` (cap enforcement, permit, minter registry)
-- `StagedMerkleAirdrop` (per-stage claim, per-stage one-shot, per-stage unlock timing, merkle proof validation)
+- `RpgfMinter` (per-stage claim, per-stage one-shot, per-stage unlock timing, merkle proof validation, submitter-gated root submission) + Rust ↔ Solidity conformance harness
 - `GasCeilingTest` (~2,145 orders within 30M gas)
 - Audit regression tests
 
@@ -208,7 +208,7 @@ source archived locally — `git log` reaches the original.
 Key remediations from that pass:
 - Zero-address and contract-code checks added to FigaroBatchVerifier constructor
 - MockSP1Verifier restricted to Anvil (chain guard added)
-- All emission logic removed — FigEmission deleted; the 60% community allocation flows through a single StagedMerkleAirdrop; founder + DAO receive their 10%/30% at genesis with no vesting
+- All emission logic removed — FigEmission deleted; the 60% community allocation flows through a single retroactive public-goods funding minter (`StagedMerkleAirdrop` at first, replaced by `RpgfMinter` in 2026-05 after the schema-author RPGF design landed); founder + DAO receive their 10%/30% at genesis with no vesting
 - Overflow check added to sellerPayout calculation in resolveProcess
 - Batch settlement DoS risk documented in contract comments
 
@@ -429,8 +429,8 @@ These are current design realities, not defects:
 | Layer | Count | Method |
 |---|---|---|
 | Foundry | 225 | Concrete unit/integration tests (via `forge test --via-ir`) |
-| Halmos | 11 | Symbolic proofs (ALL inputs, z3) — via `./test-halmos.sh` (7 FigaroCore + 4 StagedMerkleAirdrop) |
-| Certora | 27/27 sub-rules across 4 specs | SMT formal verification (cloud) — FigaroCore (9), AttestationCoordinator (7), FigToken (7), StagedMerkleAirdrop (4). Via `./test-certora.sh`. |
+| Halmos | 7 | Symbolic proofs (ALL inputs, z3) — via `./test-halmos.sh` (FigaroCore). The StagedMerkleAirdrop 4-property pass was retired 2026-05; `RpgfMinter` does not yet carry a Halmos harness. |
+| Certora | 23/23 sub-rules across 3 specs | SMT formal verification (cloud) — FigaroCore (9), AttestationCoordinator (7), FigToken (7). Via `./test-certora.sh`. The StagedMerkleAirdrop 4-rule spec was retired 2026-05; `RpgfMinter` does not yet carry a Certora spec. |
 | TLA+ | 15 invariants across 2 models | FigaroCore 7 invariants / 6,087,113 distinct states; FigToken 8 invariants / 160,844 distinct states. Both via `./test-tla.sh`. |
 | Echidna | 7 | Property-based fuzzing (committed harness; per-run call count varies by wall time) |
 | Slither | — | Static analysis (0 findings) |

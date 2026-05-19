@@ -63,7 +63,7 @@ wrangler kv:key put --namespace-id=<ALLOWLIST_ID> \
 
 # Repeat for each protocol-tier contract: SchemaRegistry,
 # OperatorRegistry, DutchAuction, FigaroBatchVerifier, each
-# schema validator, the FIG token, the StagedMerkleAirdrop.
+# schema validator, the FIG token, the RpgfMinter.
 
 # To revoke (e.g., after redeploying a contract):
 wrangler kv:key delete --namespace-id=<ALLOWLIST_ID> "0x<old-address>"

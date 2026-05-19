@@ -68,7 +68,7 @@ Observed results (re-run 2026-04-21 after the FIG allocation restructure + figTo
 
 - `forge test --via-ir`: 14 suites, 225 tests, 0 failed, 0 skipped
 - `./test-halmos.sh`: 7/7 symbolic proofs passed (wrapper checks prerequisites and splits `check_resolutionPayouts` into its own invocation — raw 5-minute ceiling is unreliable)
-- `./test-certora.sh`: **27/27 sub-rules verified across 4 specs** (FigaroCore 9, AttestationCoordinator 7, FigToken 7, StagedMerkleAirdrop 4). Fresh run 2026-04-21 against the current frozen Solidity surface (including the `DOMAIN_SEPARATOR()` getter addition, `figToken` removal, and allocation restructure).
+- `./test-certora.sh`: **23/23 sub-rules verified across 3 specs** (FigaroCore 9, AttestationCoordinator 7, FigToken 7). Last full run 2026-04-21 against the then-frozen Solidity surface. The StagedMerkleAirdrop spec (4 rules) was retired 2026-05 alongside the contract; the replacement `RpgfMinter` does not yet carry a Certora spec.
 - `cd frontend && npm run type-check`: passed
 - `cd frontend && npm run build`: passed
 - `cd frontend && npx vitest run`: 84 files, 560+ tests passed
@@ -222,7 +222,7 @@ Ethereum gas limit).
 
 **Date**: 2026-04-20 (initial freeze declaration), amended 2026-04-21
 to land a pre-audit batch of findings (FIG allocation restructured to
-genesis-mint + StagedMerkleAirdrop, `MerkleAirdrop`/`TrancheVesting`
+genesis-mint + staged airdrop contract, `MerkleAirdrop`/`TrancheVesting`
 deleted, `figToken` dead-code field removed from `FigaroBatchVerifier`,
 `DOMAIN_SEPARATOR()` getter added, `totalRegisteredCap` sum-enforcement
 added to `FigToken`); amended 2026-05-06 to revise the
@@ -246,7 +246,7 @@ narrow follow-up review or a repeat audit decision.
 | Directory / file | Contents |
 |---|---|
 | `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `DutchAuction.sol`, `OperatorRegistry.sol`, `FigaroBatchVerifier.sol` |
-| `src/fig/` | `FigToken.sol`, `StagedMerkleAirdrop.sol`, `IFigMinter.sol` |
+| `src/fig/` | `FigToken.sol`, `RpgfMinter.sol`, `IFigMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |
 
