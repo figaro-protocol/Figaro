@@ -9,6 +9,9 @@ path = "src/main.rs"
 
 [dependencies]
 figaro-kernel = { path = "../lib" }
+# Used to build the canonical content_proof on the seller attestation so
+# the end-to-end SP1 run exercises the Layer B gate in the zkVM.
+figaro-schema = { path = "../schema" }
 sp1-sdk = "6.0"
 serde_json = "1"
 alloy-primitives = { version = "0.8", features = ["serde"] }

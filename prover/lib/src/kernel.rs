@@ -383,8 +383,15 @@ fn validate_attestation_content(
 ) -> Result<(), KernelError> {
     let Some(proof) = proof else { return Ok(()); };
 
+    // ── Gate 0: parse the wire-form JSON strings ──
+    // (See AttestationContentProof NatSpec on why these arrive as strings.)
+    let schema_spec_value: serde_json::Value = serde_json::from_str(&proof.schema_spec)
+        .map_err(|e| KernelError::SchemaSpecParseFailed(format!("not valid JSON: {e}")))?;
+    let content_json_value: serde_json::Value = serde_json::from_str(&proof.content_json)
+        .map_err(|e| KernelError::ContentEncodingFailed(format!("content_json not valid JSON: {e}")))?;
+
     // ── Gate 1: spec parses and schemaId hash matches ──
-    let parsed = match figaro_schema::parse_schema_spec(&proof.schema_spec) {
+    let parsed = match figaro_schema::parse_schema_spec(&schema_spec_value) {
         figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
         figaro_schema::ParseSchemaSpecResult::Err(errors) => {
             let first = errors
@@ -401,7 +408,7 @@ fn validate_attestation_content(
 
     // ── Gate 2: content satisfies the spec at the given stage ──
     let options = figaro_schema::ValidateOptions { stage: Some(stage) };
-    match figaro_schema::validate_content(&proof.content_json, &parsed, options) {
+    match figaro_schema::validate_content(&content_json_value, &parsed, options) {
         figaro_schema::ValidationResult::Ok => (),
         figaro_schema::ValidationResult::Err(errors) => {
             let first = errors
@@ -415,7 +422,7 @@ fn validate_attestation_content(
     // ── Gate 3: re-derive canonical ABI bytes from the JSON ──
     let derived_bytes = figaro_schema::encode_content_for_schema(
         &parsed.schema_id,
-        &proof.content_json,
+        &content_json_value,
     )
     .map_err(|e| match e {
         figaro_schema::EncodeError::UnsupportedSchema(id) => KernelError::SchemaEncoderMissing(id),

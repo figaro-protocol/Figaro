@@ -309,8 +309,8 @@ fn build_attest_seller_with_proof(
         content_ref,
         seller_sig,
         content_proof: Some(AttestationContentProof {
-            content_json,
-            schema_spec,
+            content_json: serde_json::to_string(&content_json).unwrap(),
+            schema_spec: serde_json::to_string(&schema_spec).unwrap(),
         }),
     }
 }
@@ -418,8 +418,8 @@ async fn mempool_rejects_unsupported_schema_encoder() {
         content_ref: placeholder_ref,
         seller_sig,
         content_proof: Some(AttestationContentProof {
-            content_json: serde_json::json!({ "x": "ok" }),
-            schema_spec: unknown_spec,
+            content_json: serde_json::to_string(&serde_json::json!({ "x": "ok" })).unwrap(),
+            schema_spec: serde_json::to_string(&unknown_spec).unwrap(),
         }),
     };
 

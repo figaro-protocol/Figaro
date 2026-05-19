@@ -220,8 +220,14 @@ fn pre_check_attest_content(
 ) -> Result<(), String> {
     let Some(proof) = proof else { return Ok(()); };
 
+    // ── Gate 0: parse the wire-form JSON strings ──
+    let schema_spec_value: serde_json::Value = serde_json::from_str(&proof.schema_spec)
+        .map_err(|e| format!("content_proof schema_spec is not valid JSON: {e}"))?;
+    let content_json_value: serde_json::Value = serde_json::from_str(&proof.content_json)
+        .map_err(|e| format!("content_proof content_json is not valid JSON: {e}"))?;
+
     // ── Gate 1: spec parses and schemaId hash matches ──
-    let parsed = match figaro_schema::parse_schema_spec(&proof.schema_spec) {
+    let parsed = match figaro_schema::parse_schema_spec(&schema_spec_value) {
         figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
         figaro_schema::ParseSchemaSpecResult::Err(errors) => {
             let first = errors
@@ -241,7 +247,7 @@ fn pre_check_attest_content(
     // ── Gate 2: content satisfies the spec at the given stage ──
     let options = figaro_schema::ValidateOptions { stage: Some(stage) };
     if let figaro_schema::ValidationResult::Err(errors) =
-        figaro_schema::validate_content(&proof.content_json, &parsed, options)
+        figaro_schema::validate_content(&content_json_value, &parsed, options)
     {
         let first = errors
             .first()
@@ -252,7 +258,7 @@ fn pre_check_attest_content(
 
     // ── Gate 3: re-derive canonical ABI bytes from the JSON ──
     let derived =
-        figaro_schema::encode_content_for_schema(&parsed.schema_id, &proof.content_json)
+        figaro_schema::encode_content_for_schema(&parsed.schema_id, &content_json_value)
             .map_err(|e| format!("content_proof canonical encoding failed: {e}"))?;
 
     // ── Gate 4: derived bytes hash to the on-chain content_ref ──

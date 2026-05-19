@@ -1198,8 +1198,8 @@ fn build_canonical_attest_op(
         content_ref,
         seller_sig,
         content_proof: Some(figaro_kernel::types::AttestationContentProof {
-            content_json,
-            schema_spec,
+            content_json: serde_json::to_string(&content_json).unwrap(),
+            schema_spec: serde_json::to_string(&schema_spec).unwrap(),
         }),
     };
     (op, order_hash)
@@ -1287,8 +1287,8 @@ fn attest_as_seller_with_content_hash_mismatch_fails() {
                 content_ref: wrong_content_ref,
                 seller_sig: attest_sig,
                 content_proof: Some(figaro_kernel::types::AttestationContentProof {
-                    content_json,
-                    schema_spec: ghg_protocol_spec_json(),
+                    content_json: serde_json::to_string(&content_json).unwrap(),
+                    schema_spec: serde_json::to_string(&ghg_protocol_spec_json()).unwrap(),
                 }),
             },
         ],
@@ -1381,8 +1381,8 @@ fn attest_as_seller_with_schema_id_mismatch_fails() {
         content_ref,
         seller_sig: attest_sig,
         content_proof: Some(figaro_kernel::types::AttestationContentProof {
-            content_json,
-            schema_spec: wrong_spec,
+            content_json: serde_json::to_string(&content_json).unwrap(),
+            schema_spec: serde_json::to_string(&wrong_spec).unwrap(),
         }),
     };
 
@@ -1462,8 +1462,8 @@ fn attest_as_seller_with_unsupported_schema_encoder_fails() {
                 content_ref: placeholder_ref,
                 seller_sig: attest_sig,
                 content_proof: Some(figaro_kernel::types::AttestationContentProof {
-                    content_json,
-                    schema_spec: unknown_spec,
+                    content_json: serde_json::to_string(&content_json).unwrap(),
+                    schema_spec: serde_json::to_string(&unknown_spec).unwrap(),
                 }),
             },
         ],

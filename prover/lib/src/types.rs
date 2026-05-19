@@ -63,14 +63,20 @@ pub struct Signature {
 /// When `content_proof: None` the attestation is treated as
 /// content-opaque (legacy behavior; the on-chain validator gate runs at
 /// settlement time on Layer C).
+/// Layer B content payload — JSON is carried as pre-serialized strings
+/// because SP1's input deserializer (bincode v1) does not support the
+/// `deserialize_any` path that `serde_json::Value` requires. The kernel
+/// parses each string with `serde_json::from_str` before running the gate.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AttestationContentProof {
     /// The structured JSON form Layer B validates against the schema spec
-    /// and re-encodes to ABI bytes via the per-schema encoder.
-    pub content_json: serde_json::Value,
-    /// The schema spec JSON (the same shape Layer A parses). The kernel
-    /// verifies the parsed `schemaId` keccak-256s to the op's `schema_id`.
-    pub schema_spec: serde_json::Value,
+    /// and re-encodes to ABI bytes via the per-schema encoder. Carried as
+    /// a JSON-serialized string for zkVM-compatibility.
+    pub content_json: String,
+    /// The schema spec JSON (the same shape Layer A parses), carried as
+    /// a JSON-serialized string. The kernel verifies the parsed
+    /// `schemaId` keccak-256s to the op's `schema_id`.
+    pub schema_spec: String,
 }
 
 // ── Batch operations ──────────────────────────────────────────────
@@ -107,7 +113,9 @@ pub enum KernelOp {
         seller_sig: Signature,
         /// Optional Layer B content payload. When present, the kernel
         /// runs the schema-validation gate before emitting the event.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        /// Note: no `skip_serializing_if` — bincode is non-self-
+        /// describing, so skipping a field desyncs the deserializer.
+        /// `None` always emits one byte (the Option discriminant).
         content_proof: Option<AttestationContentProof>,
     },
 
@@ -123,7 +131,9 @@ pub enum KernelOp {
         buyer_sig: Signature,
         /// Optional Layer B content payload. When present, the kernel
         /// runs the schema-validation gate before emitting the event.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        /// Note: no `skip_serializing_if` — bincode is non-self-
+        /// describing, so skipping a field desyncs the deserializer.
+        /// `None` always emits one byte (the Option discriminant).
         content_proof: Option<AttestationContentProof>,
     },
 

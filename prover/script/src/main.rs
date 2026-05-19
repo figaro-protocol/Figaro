@@ -71,7 +71,12 @@ async fn main() {
     let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
 
     // ── Schema registration ──
-    let schema_id = keccak256("figaro-courier-process-v1");
+    // The seller-attestation op below carries a content_proof under this
+    // schemaId, so we deliberately use a schema the figaro-schema crate
+    // has a canonical encoder for. (figaro-ghg-protocol-v1 was the
+    // simplest sister-schema choice — one optional uint8 field.)
+    let schema_id_str = "figaro-ghg-protocol-v1";
+    let schema_id = keccak256(schema_id_str.as_bytes());
     let uri_hash = keccak256("ipfs://QmSchema");
     let schema_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash);
     let schema_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &schema_struct));
@@ -80,10 +85,34 @@ async fn main() {
     let op_struct = register_operator_struct_hash("ipfs://QmOp");
     let op_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &op_struct));
 
-    // ── Seller attestation ──
+    // ── Seller attestation (with Layer B content_proof) ──
+    //
+    // This is the end-to-end content gate the kernel runs inside the SP1
+    // proof: parse spec → schemaId match → validate content → encode →
+    // keccak match. The script builds a valid proof for figaro-ghg-
+    // protocol-v1 with scope=1 so all four gates pass through the zkVM
+    // emulator.
+    let schema_spec = serde_json::json!({
+        "schemaId": schema_id_str,
+        "version": 1,
+        "title": "GHG Protocol Corporate Standard",
+        "description": "Disclosure that the seller will report scope 1 emissions under the GHG Protocol Corporate Standard.",
+        "categories": ["emissions"],
+        "fields": [{
+            "name": "scope",
+            "type": "integer",
+            "min": 1,
+            "max": 3,
+            "required": false,
+        }],
+    });
+    let content_json = serde_json::json!({ "scope": 1 });
+    let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
+        .expect("script-time encoding must succeed");
+    let content_ref = keccak256(canonical_bytes.as_slice());
+
     let root_struct_for_oh = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&process_id, &root_struct_for_oh);
-    let content_ref = keccak256("evidence-payload");
     let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 1, &content_ref);
     let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
 
@@ -116,7 +145,10 @@ async fn main() {
                 metadata_uri: "ipfs://QmOp".to_string(),
                 operator_sig: op_sig,
             },
-            // 4. Seller attestation
+            // 4. Seller attestation — carries a Layer B content_proof so
+            //    the SP1 run actually exercises the full content gate
+            //    inside the zkVM (parse → schemaId → validate → encode →
+            //    keccak).
             KernelOp::AttestAsSeller {
                 role_commitment: root.clone(),
                 order_hash,
@@ -124,7 +156,10 @@ async fn main() {
                 stage: 1,
                 content_ref,
                 seller_sig: attest_sig,
-                content_proof: None,
+                content_proof: Some(AttestationContentProof {
+                    content_json: serde_json::to_string(&content_json).unwrap(),
+                    schema_spec: serde_json::to_string(&schema_spec).unwrap(),
+                }),
             },
             // 5. Buyer attestation
             KernelOp::AttestAsBuyer {
