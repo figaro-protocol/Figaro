@@ -314,6 +314,11 @@ fn end_to_end_aggregate_consumes_built_input() {
 
     assert_eq!(output.tranche_index, 0);
     assert_eq!(output.schema_count, 1);
-    assert_eq!(output.total_allocated_wei, input.tranche_budget_wei);
+    // Single-schema population → pre-cap share is 100%; the 15% cap
+    // binds and total allocated = 15% of the budget. The remaining
+    // 85% goes unallocated (cap is meant to bound concentration, not
+    // to ensure full budget consumption).
+    let expected = input.tranche_budget_wei * U256::from(15u64) / U256::from(100u64);
+    assert_eq!(output.total_allocated_wei, expected);
     assert_ne!(output.merkle_root, B256::ZERO);
 }

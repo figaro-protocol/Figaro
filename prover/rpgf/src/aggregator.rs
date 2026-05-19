@@ -82,6 +82,16 @@ fn apply_cap(shares: &mut [f64], cap_share: f64) {
             break;
         }
         if under_mass < 1e-12 {
+            // Degenerate: every share is at or above the cap. Truncate
+            // them all to the cap and stop. The excess (sum of
+            // shares - n × cap_share) goes unallocated by design —
+            // the cap is meant to bound concentration, not to ensure
+            // full budget consumption.
+            for s in shares.iter_mut() {
+                if *s > cap_share {
+                    *s = cap_share;
+                }
+            }
             break;
         }
         for s in shares.iter_mut() {

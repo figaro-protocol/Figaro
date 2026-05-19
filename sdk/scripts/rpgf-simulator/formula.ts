@@ -153,7 +153,14 @@ export function applyCap(ranking: TrancheRanking, capShare: number): TrancheRank
       else underMass += sh;
     }
     if (excess < 1e-12) break;
-    if (underMass < 1e-12) break;
+    if (underMass < 1e-12) {
+      // Degenerate: every share is at or above the cap. Truncate them
+      // all to the cap and stop. The excess goes unallocated by
+      // design — the cap is meant to bound concentration, not to
+      // ensure full budget consumption.
+      shares = shares.map((sh) => (sh > capShare ? capShare : sh));
+      break;
+    }
     shares = shares.map((sh) => (sh > capShare ? capShare : sh + excess * (sh / underMass)));
   }
 
