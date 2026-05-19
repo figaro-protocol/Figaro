@@ -86,9 +86,18 @@ export function useWalletProcessRows(role: PartyRole): {
                 const allRoleLogs = await fetcher(publicClient, chainId, address);
                 if (cancelled) return;
 
-                // Root-order filter: processId === orderHash on the root commit.
+                // Root-order filter: cumulativeValue == payment iff this is
+                // the root commit. Per FigaroCore.sol's commit() path, a
+                // root passes `expectedCumulativeValue == payment` (line 177)
+                // while every sub-order has `cumulativeValue = parent +
+                // payment > payment` (line 191). A pre-V5 version of this
+                // filter compared processId === orderHash; that was correct
+                // when orderHash was the EIP-712 digest, but V5 derives
+                // orderHash = keccak256(processId || structHash) so the
+                // two are never equal — that filter returned an empty list
+                // for every wallet.
                 const rootLogs = allRoleLogs.filter(
-                    (log) => arg(log, "processId") && arg(log, "processId") === arg(log, "orderHash"),
+                    (log) => bigintArg(log, "cumulativeValue") === bigintArg(log, "payment"),
                 );
                 if (rootLogs.length === 0) {
                     if (!cancelled) setRows([]);
