@@ -419,7 +419,7 @@ export async function resolveProcessOnChain(opts: {
 
 // ── GHG seed scenarios ──────────────────────────────────────────────────────
 
-async function ensureTokenApprovals(coreAddress: `0x${string}`, tokenAddress: `0x${string}`, ...keys: `0x${string}`[]) {
+export async function ensureTokenApprovals(coreAddress: `0x${string}`, tokenAddress: `0x${string}`, ...keys: `0x${string}`[]) {
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     for (const key of keys) {
         const acct = privateKeyToAccount(key);
