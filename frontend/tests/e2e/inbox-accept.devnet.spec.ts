@@ -1,0 +1,204 @@
+/**
+ * inbox-accept.devnet.spec.ts
+ *
+ * Phase 2 C1 of the e2e remediation plan: the inbox's pending-orders
+ * section + Accept flow had no devnet coverage. The existing
+ * inbox.devnet covers active rows on /inbox; nothing exercised the
+ * PendingOrderCard → click Accept → counter-sign → on-chain commit
+ * → row migrates to active path.
+ *
+ * Seed shape (mimics the production XMTP-arrival path without
+ * actually using XMTP):
+ *   1. Off-chain: buyer signs a CommitmentPayload (just like
+ *      useCommitmentFlow's `initiate` would have produced) carrying
+ *      the agreement and buyerSig.
+ *   2. Inject the payload into the mock CoordinationChannel's
+ *      localStorage via Phase 0's simulateXmtpCommitmentArrival.
+ *   3. Pre-populate the seller's localStorage with the agreement
+ *      (via Phase 0's seedAgreementForWallet) so the broadcast step
+ *      can hydrate inclusion proofs if needed.
+ *
+ * UI flow exercised:
+ *   - Seller navigates to /inbox?e2e=devnet.
+ *   - `subscribeAnyCommitmentPayload` replays the persisted message;
+ *     the subscriber sees the buyer-signed payload, filters on
+ *     `seller === address`, appends to `pending`.
+ *   - PendingOrderCard renders (testid `inbox-pending-card`).
+ *   - Click `btn-accept-order` → `useCommitmentFlow.counterSign`
+ *     produces sellerSig → `broadcast` calls FigaroCore.commit →
+ *     on-chain. The card disappears from pending; the active-section
+ *     row appears for the new processId.
+ *
+ * First real exercise of the Phase 0 simulateXmtpCommitmentArrival
+ * helper. If the mock channel's wiring is incomplete in devnet mode
+ * the spec descopes to the pre-seeded-localStorage variant per the
+ * plan.
+ */
+import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet, seedAgreementForWallet, simulateXmtpCommitmentArrival } from './devnet-multi-test';
+import {
+    createPublicClient,
+    defineChain,
+    http,
+    parseAbi,
+    type Hex,
+} from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import {
+    ensureTokenApprovals,
+    evmRevert,
+    evmSnapshot,
+    merchantProcessAgreement,
+    readLocalDeploymentConfig,
+    signCommitment,
+} from './devnet-helpers';
+import { computeAgreementHash } from '../../lib/core/agreementManifest';
+
+const RPC_URL = 'http://127.0.0.1:8545';
+const LOCAL_ANVIL = defineChain({
+    id: 31337,
+    name: 'Localhost',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: { default: { http: [RPC_URL] } },
+});
+
+const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
+const SELLER_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
+const BUYER_ADDR = ANVIL_ACCOUNTS[0];
+const SELLER_ADDR = ANVIL_ACCOUNTS[1];
+
+const ZERO_PROCESS_ID = `0x${'0'.repeat(64)}` as Hex;
+
+const CORE_VIEW_ABI = parseAbi([
+    'function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
+]);
+
+let outerSnapshot: string;
+test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
+test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
+
+test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
+    let testSnapshot: string;
+    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
+    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
+
+    // counterSign + broadcast + indexer poll for the active row.
+    test.setTimeout(180_000);
+
+    test('seller sees pending card from XMTP-style arrival, clicks Accept, on-chain commit lands', async ({ page }) => {
+        const config = readLocalDeploymentConfig();
+        const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
+        const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
+
+        await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, SELLER_KEY);
+
+        // Build a buyer-signed CommitmentPayload. Mirrors what
+        // useCommitmentFlow.initiate would have produced if the buyer
+        // had walked the /terminal share flow.
+        const buyer = privateKeyToAccount(BUYER_KEY);
+        const seller = privateKeyToAccount(SELLER_KEY);
+        const payment = 1_000000000000000000n; // 1 ETH
+        const agreement = merchantProcessAgreement(buyer.address as Hex, seller.address as Hex);
+        const agreementHash = computeAgreementHash(agreement);
+        const salt = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+
+        const commitment = {
+            processId: ZERO_PROCESS_ID,
+            buyer: buyer.address as Hex,
+            seller: seller.address as Hex,
+            currency: tokenAddress,
+            payment,
+            expectedCumulativeValue: payment,
+            agreementHash,
+            salt,
+            deadline,
+        };
+        const buyerSig = await signCommitment(commitment, BUYER_KEY, coreAddress);
+
+        // CommitmentPayload serialization shape: `serializePayload` in
+        // CommitmentSharePanel.tsx:34-39 encodes bigints as hex strings
+        // (`0x...`); `deserializePayload` only converts back to bigint
+        // when the value starts with `0x`. Decimal strings would
+        // survive the parse as strings and crash downstream code
+        // (PendingOrderCard's calculateBonds call). Match the production
+        // encoding exactly.
+        const toHex = (v: bigint) => `0x${v.toString(16)}`;
+        const payload = {
+            commitment: {
+                ...commitment,
+                payment: toHex(payment),
+                expectedCumulativeValue: toHex(payment),
+                salt: toHex(salt),
+                deadline: toHex(deadline),
+            },
+            buyerSig,
+            agreement,
+        };
+
+        // Phase 0 fixtures: inject into mock channel localStorage so
+        // the subscriber's onAnyCommitmentPayload replay sees it on
+        // page mount. Also seed the agreement so broadcast can write
+        // the URI map without round-tripping IPFS.
+        const orderIdKey = `pending-${salt.toString()}`;
+        await seedAgreementForWallet(page, agreement);
+        await simulateXmtpCommitmentArrival(page, {
+            orderId: orderIdKey,
+            payload,
+            senderIdentity: buyer.address,
+        });
+
+        await gotoAsWallet(page, SELLER_ADDR, '/inbox?e2e=devnet');
+        await page.getByTestId('merchant-inbox').waitFor({ timeout: 30000 });
+
+        // PendingOrderCard renders for the seeded payload.
+        const pendingCard = page.getByTestId('inbox-pending-card');
+        await expect(pendingCard).toBeVisible({ timeout: 30000 });
+
+        // Click Accept → counter-sign → broadcast. Accept any
+        // window.confirm the broadcast flow may surface.
+        page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
+        await page.getByTestId('btn-accept-order').click();
+
+        // Counter-sign triggers the AgreementPreviewModal (Web2 audit
+        // Priority-4 fix). Same pattern as commitment-share.devnet:96-100 —
+        // click Confirm & sign to proceed to the actual signing prompt.
+        const previewModal = page.getByTestId('agreement-preview-modal');
+        try {
+            await previewModal.waitFor({ state: 'visible', timeout: 10000 });
+            await page.getByTestId('preview-confirm').click();
+        } catch { /* modal disabled or already past */ }
+
+        // Post-broadcast: the pending card is removed from `pending`
+        // (handleAccept's filter at MerchantInbox.tsx:210). The empty
+        // state returns OR the active row appears — both are valid
+        // success signals.
+        await expect(pendingCard).toHaveCount(0, { timeout: 60000 });
+
+        // On-chain commit landed: the new process must show on the
+        // seller's wallet — useWalletProcessRows polls events and
+        // surfaces inbox-active-row-<processId>. We don't know the
+        // processId in advance (it's the digest derived during
+        // commit), so wait for ANY active row to appear and then
+        // cross-check against the kernel's processes() view.
+        const activeRow = page.locator('[data-testid^="inbox-active-row-"]');
+        await expect(activeRow).toHaveCount(1, { timeout: 60000 });
+
+        // Extract the processId from the testid and verify the
+        // on-chain ProcessState carries the buyer-as-rootBuyer + the
+        // committed payment.
+        const testIdValue = await activeRow.getAttribute('data-testid');
+        expect(testIdValue).toMatch(/^inbox-active-row-0x[0-9a-fA-F]+$/);
+        const processId = testIdValue!.replace('inbox-active-row-', '') as Hex;
+
+        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        const processState = await publicClient.readContract({
+            address: coreAddress,
+            abi: CORE_VIEW_ABI,
+            functionName: 'processes',
+            args: [processId],
+        });
+        expect(processState[0].toLowerCase()).toBe(BUYER_ADDR.toLowerCase()); // rootBuyer
+        expect(processState[2]).toBe(payment); // cumulativeValue
+        expect(processState[3]).toBe(1); // activeOrderCount
+    });
+});

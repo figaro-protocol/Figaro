@@ -305,7 +305,7 @@ function getEIP712Domain(coreAddress: `0x${string}`) {
     };
 }
 
-async function signCommitment(
+export async function signCommitment(
     commitment: {
         processId: `0x${string}`;
         buyer: `0x${string}`;
