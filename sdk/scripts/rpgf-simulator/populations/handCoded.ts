@@ -1,181 +1,258 @@
-import type { Archetype, SchemaPopulationSource, SchemaSnapshot } from "../types.js";
+import type {
+  Archetype,
+  SchemaCategory,
+  SchemaPopulationSource,
+  SchemaSnapshot,
+} from "../types.js";
 
-function snap(
-  schemaId: string,
-  resolvedAttestationCount: number,
-  distinctAttestors: number,
-  meanBondedValueWei: bigint,
-  meanChainPosition: number,
-): SchemaSnapshot {
+// token units (18 decimals) → wei, milli-token precision
+const T = (n: number) => BigInt(Math.round(n * 1000)) * 10n ** 15n;
+
+interface SnapInputs {
+  schemaId: string;
+  category: SchemaCategory;
+  orderCount: number;
+  attsPerOrder: number;
+  distinctBuyers: number;
+  distinctSellers: number;
+  distinctBuyerSellerPairs: number;
+  distinctCurrencies?: number;
+  distinctAttestationStages?: number;
+  meanBondedValueWei: bigint;
+  meanPaymentWei: bigint;
+  meanChainPosition: number;
+}
+
+function snap(inp: SnapInputs): SchemaSnapshot {
   return {
-    schemaId,
-    resolvedAttestationCount,
-    distinctAttestors,
-    totalBondedValueWei: BigInt(resolvedAttestationCount) * meanBondedValueWei,
-    totalChainPositionWeight: resolvedAttestationCount * meanChainPosition,
+    schemaId: inp.schemaId,
+    category: inp.category,
+    resolvedAttestationCount: Math.round(inp.orderCount * inp.attsPerOrder),
+    distinctProcesses: Math.max(1, Math.round(inp.orderCount * 0.85)),
+    distinctAttestationStages: inp.distinctAttestationStages ?? 1,
+    distinctBuyers: inp.distinctBuyers,
+    distinctSellers: inp.distinctSellers,
+    distinctBuyerSellerPairs: inp.distinctBuyerSellerPairs,
+    distinctCurrencies: inp.distinctCurrencies ?? 1,
+    totalEnclosingOrderBondedValueWei: BigInt(inp.orderCount) * inp.meanBondedValueWei,
+    totalEnclosingOrderPaymentWei: BigInt(inp.orderCount) * inp.meanPaymentWei,
+    totalChainPositionWeight: inp.orderCount * inp.meanChainPosition,
   };
 }
 
-// token units (18 decimals) → wei, with milli-token precision
-const T = (n: number) => BigInt(Math.round(n * 1000)) * 10n ** 15n;
+function zero(schemaId: string, category: SchemaCategory): SchemaSnapshot {
+  return {
+    schemaId,
+    category,
+    resolvedAttestationCount: 0,
+    distinctProcesses: 0,
+    distinctAttestationStages: 0,
+    distinctBuyers: 0,
+    distinctSellers: 0,
+    distinctBuyerSellerPairs: 0,
+    distinctCurrencies: 0,
+    totalEnclosingOrderBondedValueWei: 0n,
+    totalEnclosingOrderPaymentWei: 0n,
+    totalChainPositionWeight: 0,
+  };
+}
 
+// 17 real schemas + 3 hypothetical edge-case archetypes. Real schemas mirror
+// the live src/schemaValidators/ inventory; hypothetical archetypes test
+// edge cases (Sybil, late launch, manifest-only).
 const ARCHETYPES: readonly Archetype[] = [
+  // ─── Cluster A — committed-policy (12 of 17 real schemas) ────────────
   {
     name: "commerce-core",
-    description: "High-volume retail / restaurant attestations. Daily commerce.",
+    description: "High-volume retail. Cluster A. Buyer+seller attest currency/payment/items.",
     snapshotsAtTranches: [
-      snap("figaro-commerce-v1", 50_000, 5_000, T(100), 1),
-      snap("figaro-commerce-v1", 200_000, 20_000, T(100), 1),
-      snap("figaro-commerce-v1", 500_000, 50_000, T(100), 1),
-    ],
-  },
-  {
-    name: "coffee-purchase",
-    description: "Micro-purchases. Very high vol, moderate diversity (regulars), tiny stakes.",
-    snapshotsAtTranches: [
-      snap("hypothetical-coffee-v1", 100_000, 2_000, T(5), 1),
-      snap("hypothetical-coffee-v1", 400_000, 5_000, T(5), 1),
-      snap("hypothetical-coffee-v1", 1_000_000, 10_000, T(5), 1),
-    ],
-  },
-  {
-    name: "M&A-escrow-niche",
-    description: "Rare, very-high-stakes attestations. Narrow audience.",
-    snapshotsAtTranches: [
-      snap("hypothetical-ma-escrow-v1", 10, 8, T(10_000_000), 1),
-      snap("hypothetical-ma-escrow-v1", 30, 20, T(10_000_000), 1),
-      snap("hypothetical-ma-escrow-v1", 60, 40, T(10_000_000), 1),
-    ],
-  },
-  {
-    name: "GHG-disclosure-corporate",
-    description: "Corporate emissions disclosure. Moderate vol, high diversity, mid stakes.",
-    snapshotsAtTranches: [
-      snap("figaro-ghg-protocol-v1", 500, 300, T(50_000), 2),
-      snap("figaro-ghg-protocol-v1", 3_000, 2_000, T(50_000), 2),
-      snap("figaro-ghg-protocol-v1", 10_000, 5_000, T(50_000), 2),
-    ],
-  },
-  {
-    name: "courier-process",
-    description: "Sovereign log for courier operators. High vol, mid diversity.",
-    snapshotsAtTranches: [
-      snap("figaro-courier-process-v1", 30_000, 500, T(50), 3),
-      snap("figaro-courier-process-v1", 150_000, 2_000, T(50), 3),
-      snap("figaro-courier-process-v1", 500_000, 5_000, T(50), 3),
-    ],
-  },
-  {
-    name: "geo-shipping",
-    description: "Geo manifest. Multi-party shipping, high vol, high diversity.",
-    snapshotsAtTranches: [
-      snap("figaro-geo-v2", 30_000, 4_000, T(200), 3),
-      snap("figaro-geo-v2", 150_000, 15_000, T(200), 3),
-      snap("figaro-geo-v2", 400_000, 40_000, T(200), 3),
+      snap({ schemaId: "figaro-commerce-v1", category: "committed-policy", orderCount: 30_000, attsPerOrder: 1.5, distinctBuyers: 4_000, distinctSellers: 2_000, distinctBuyerSellerPairs: 6_000, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-commerce-v1", category: "committed-policy", orderCount: 120_000, attsPerOrder: 1.5, distinctBuyers: 18_000, distinctSellers: 10_000, distinctBuyerSellerPairs: 30_000, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-commerce-v1", category: "committed-policy", orderCount: 350_000, attsPerOrder: 1.5, distinctBuyers: 50_000, distinctSellers: 30_000, distinctBuyerSellerPairs: 100_000, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 1 }),
     ],
   },
   {
     name: "consent-onetime",
-    description: "Beta/ToS acceptances. Huge vol, max diversity, zero stakes.",
+    description: "Broad cryptographic acceptance of off-chain docs. Cluster A, zero stakes.",
     snapshotsAtTranches: [
-      snap("figaro-consent-v1", 5_000, 5_000, 0n, 1),
-      snap("figaro-consent-v1", 30_000, 30_000, 0n, 1),
-      snap("figaro-consent-v1", 100_000, 100_000, 0n, 1),
-    ],
-  },
-  {
-    name: "jurisdiction-baseline",
-    description: "Applicable law / forum / language clause. Mid vol, mid diversity.",
-    snapshotsAtTranches: [
-      snap("figaro-jurisdiction-v1", 5_000, 1_000, T(500), 1),
-      snap("figaro-jurisdiction-v1", 25_000, 5_000, T(500), 1),
-      snap("figaro-jurisdiction-v1", 80_000, 15_000, T(500), 1),
-    ],
-  },
-  {
-    name: "topology-decorative",
-    description: "Manifest-only DAG clause — no runtime attestations. Tests zero-score case.",
-    snapshotsAtTranches: [
-      snap("figaro-topology-v1", 0, 0, 0n, 0),
-      snap("figaro-topology-v1", 0, 0, 0n, 0),
-      snap("figaro-topology-v1", 0, 0, 0n, 0),
-    ],
-  },
-  {
-    name: "wash-pump-attempt",
-    description: "Sybil — one author with two wallets pumping volume. Tests breadth-weighting.",
-    snapshotsAtTranches: [
-      snap("hypothetical-wash-v1", 50_000, 2, T(100), 1),
-      snap("hypothetical-wash-v1", 100_000, 2, T(100), 1),
-      snap("hypothetical-wash-v1", 200_000, 2, T(100), 1),
-    ],
-  },
-  {
-    name: "handoff-physical",
-    description: "Physical-exchange clause. Mid vol, mid diversity.",
-    snapshotsAtTranches: [
-      snap("figaro-handoff-v1", 8_000, 1_500, T(100), 1),
-      snap("figaro-handoff-v1", 40_000, 8_000, T(100), 1),
-      snap("figaro-handoff-v1", 120_000, 25_000, T(100), 1),
+      snap({ schemaId: "figaro-consent-v1", category: "committed-policy", orderCount: 5_000, attsPerOrder: 2.0, distinctBuyers: 4_000, distinctSellers: 3_000, distinctBuyerSellerPairs: 4_500, meanBondedValueWei: 0n, meanPaymentWei: 0n, meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-consent-v1", category: "committed-policy", orderCount: 25_000, attsPerOrder: 2.0, distinctBuyers: 20_000, distinctSellers: 15_000, distinctBuyerSellerPairs: 22_000, meanBondedValueWei: 0n, meanPaymentWei: 0n, meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-consent-v1", category: "committed-policy", orderCount: 80_000, attsPerOrder: 2.0, distinctBuyers: 70_000, distinctSellers: 50_000, distinctBuyerSellerPairs: 75_000, meanBondedValueWei: 0n, meanPaymentWei: 0n, meanChainPosition: 1 }),
     ],
   },
   {
     name: "fulfilment-method",
-    description: "Fulfilment-method enum. High vol, high diversity.",
+    description: "Multi-modal fulfilment offering. Cluster A, mid-value.",
     snapshotsAtTranches: [
-      snap("figaro-fulfilment-v1", 25_000, 4_000, T(100), 1),
-      snap("figaro-fulfilment-v1", 120_000, 18_000, T(100), 1),
-      snap("figaro-fulfilment-v1", 350_000, 45_000, T(100), 1),
+      snap({ schemaId: "figaro-fulfilment-v2", category: "committed-policy", orderCount: 20_000, attsPerOrder: 1.4, distinctBuyers: 4_000, distinctSellers: 3_000, distinctBuyerSellerPairs: 12_000, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-fulfilment-v2", category: "committed-policy", orderCount: 100_000, attsPerOrder: 1.4, distinctBuyers: 18_000, distinctSellers: 15_000, distinctBuyerSellerPairs: 60_000, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-fulfilment-v2", category: "committed-policy", orderCount: 300_000, attsPerOrder: 1.4, distinctBuyers: 45_000, distinctSellers: 40_000, distinctBuyerSellerPairs: 200_000, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 1 }),
+    ],
+  },
+  {
+    name: "geo-shipping",
+    description: "Multi-party transport. Cluster A, mid-value, chain depth 3.",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-geo-v2", category: "committed-policy", orderCount: 20_000, attsPerOrder: 1.3, distinctBuyers: 3_000, distinctSellers: 5_000, distinctBuyerSellerPairs: 12_000, meanBondedValueWei: T(400), meanPaymentWei: T(200), meanChainPosition: 3 }),
+      snap({ schemaId: "figaro-geo-v2", category: "committed-policy", orderCount: 100_000, attsPerOrder: 1.3, distinctBuyers: 12_000, distinctSellers: 18_000, distinctBuyerSellerPairs: 60_000, meanBondedValueWei: T(400), meanPaymentWei: T(200), meanChainPosition: 3 }),
+      snap({ schemaId: "figaro-geo-v2", category: "committed-policy", orderCount: 280_000, attsPerOrder: 1.3, distinctBuyers: 30_000, distinctSellers: 45_000, distinctBuyerSellerPairs: 180_000, meanBondedValueWei: T(400), meanPaymentWei: T(200), meanChainPosition: 3 }),
+    ],
+  },
+  {
+    name: "ghg-protocol-corporate",
+    description: "GHG Protocol Corporate Standard. Cluster A, high stakes.",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-ghg-protocol-v1", category: "committed-policy", orderCount: 400, attsPerOrder: 1.0, distinctBuyers: 250, distinctSellers: 200, distinctBuyerSellerPairs: 350, meanBondedValueWei: T(100_000), meanPaymentWei: T(50_000), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-ghg-protocol-v1", category: "committed-policy", orderCount: 2_500, attsPerOrder: 1.0, distinctBuyers: 1_500, distinctSellers: 1_200, distinctBuyerSellerPairs: 2_200, meanBondedValueWei: T(100_000), meanPaymentWei: T(50_000), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-ghg-protocol-v1", category: "committed-policy", orderCount: 8_000, attsPerOrder: 1.0, distinctBuyers: 4_000, distinctSellers: 3_000, distinctBuyerSellerPairs: 6_500, meanBondedValueWei: T(100_000), meanPaymentWei: T(50_000), meanChainPosition: 2 }),
+    ],
+  },
+  {
+    name: "ghg-iso-14064-corporate",
+    description: "ISO 14064 sister. Cluster A, mid stakes.",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-ghg-iso-14064-v1", category: "committed-policy", orderCount: 150, attsPerOrder: 1.0, distinctBuyers: 80, distinctSellers: 100, distinctBuyerSellerPairs: 130, meanBondedValueWei: T(200_000), meanPaymentWei: T(100_000), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-ghg-iso-14064-v1", category: "committed-policy", orderCount: 1_200, attsPerOrder: 1.0, distinctBuyers: 700, distinctSellers: 800, distinctBuyerSellerPairs: 1_000, meanBondedValueWei: T(200_000), meanPaymentWei: T(100_000), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-ghg-iso-14064-v1", category: "committed-policy", orderCount: 5_000, attsPerOrder: 1.0, distinctBuyers: 2_500, distinctSellers: 2_500, distinctBuyerSellerPairs: 4_000, meanBondedValueWei: T(200_000), meanPaymentWei: T(100_000), meanChainPosition: 2 }),
+    ],
+  },
+  {
+    name: "ghg-pas2050-product",
+    description: "PAS 2050 sister. Cluster A.",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-ghg-pas-2050-v1", category: "committed-policy", orderCount: 80, attsPerOrder: 1.0, distinctBuyers: 50, distinctSellers: 70, distinctBuyerSellerPairs: 75, meanBondedValueWei: T(100_000), meanPaymentWei: T(50_000), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-ghg-pas-2050-v1", category: "committed-policy", orderCount: 600, attsPerOrder: 1.0, distinctBuyers: 400, distinctSellers: 500, distinctBuyerSellerPairs: 550, meanBondedValueWei: T(100_000), meanPaymentWei: T(50_000), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-ghg-pas-2050-v1", category: "committed-policy", orderCount: 2_500, attsPerOrder: 1.0, distinctBuyers: 1_500, distinctSellers: 1_800, distinctBuyerSellerPairs: 2_200, meanBondedValueWei: T(100_000), meanPaymentWei: T(50_000), meanChainPosition: 2 }),
+    ],
+  },
+  {
+    name: "ghg-en-16258-transport",
+    description: "EN 16258 transport-emissions sister. Cluster A.",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-ghg-en-16258-v1", category: "committed-policy", orderCount: 200, attsPerOrder: 1.0, distinctBuyers: 100, distinctSellers: 150, distinctBuyerSellerPairs: 170, meanBondedValueWei: T(50_000), meanPaymentWei: T(25_000), meanChainPosition: 3 }),
+      snap({ schemaId: "figaro-ghg-en-16258-v1", category: "committed-policy", orderCount: 1_500, attsPerOrder: 1.0, distinctBuyers: 800, distinctSellers: 1_000, distinctBuyerSellerPairs: 1_300, meanBondedValueWei: T(50_000), meanPaymentWei: T(25_000), meanChainPosition: 3 }),
+      snap({ schemaId: "figaro-ghg-en-16258-v1", category: "committed-policy", orderCount: 6_000, attsPerOrder: 1.0, distinctBuyers: 3_000, distinctSellers: 3_500, distinctBuyerSellerPairs: 5_000, meanBondedValueWei: T(50_000), meanPaymentWei: T(25_000), meanChainPosition: 3 }),
+    ],
+  },
+  {
+    name: "ghg-custom-rare",
+    description: "Custom/non-standard GHG. Cluster A, rare.",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-ghg-custom-v1", category: "committed-policy", orderCount: 30, attsPerOrder: 1.0, distinctBuyers: 20, distinctSellers: 25, distinctBuyerSellerPairs: 28, meanBondedValueWei: T(80_000), meanPaymentWei: T(40_000), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-ghg-custom-v1", category: "committed-policy", orderCount: 150, attsPerOrder: 1.0, distinctBuyers: 100, distinctSellers: 120, distinctBuyerSellerPairs: 140, meanBondedValueWei: T(80_000), meanPaymentWei: T(40_000), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-ghg-custom-v1", category: "committed-policy", orderCount: 500, attsPerOrder: 1.0, distinctBuyers: 350, distinctSellers: 400, distinctBuyerSellerPairs: 450, meanBondedValueWei: T(80_000), meanPaymentWei: T(40_000), meanChainPosition: 2 }),
+    ],
+  },
+  {
+    name: "jurisdiction-baseline",
+    description: "Off-chain dispute jurisdiction. Cluster A, broad adoption.",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-jurisdiction-v1", category: "committed-policy", orderCount: 4_000, attsPerOrder: 1.4, distinctBuyers: 1_000, distinctSellers: 800, distinctBuyerSellerPairs: 2_000, meanBondedValueWei: T(1_000), meanPaymentWei: T(500), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-jurisdiction-v1", category: "committed-policy", orderCount: 20_000, attsPerOrder: 1.4, distinctBuyers: 5_000, distinctSellers: 4_000, distinctBuyerSellerPairs: 12_000, meanBondedValueWei: T(1_000), meanPaymentWei: T(500), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-jurisdiction-v1", category: "committed-policy", orderCount: 70_000, attsPerOrder: 1.4, distinctBuyers: 15_000, distinctSellers: 12_000, distinctBuyerSellerPairs: 50_000, meanBondedValueWei: T(1_000), meanPaymentWei: T(500), meanChainPosition: 1 }),
     ],
   },
   {
     name: "proximity-policy",
-    description: "Committed proximity band. Mid vol, niche diversity.",
+    description: "Committed proximity-verification policy. Cluster A, niche.",
     snapshotsAtTranches: [
-      snap("figaro-proximity-policy-v1", 2_000, 200, T(1_000), 1),
-      snap("figaro-proximity-policy-v1", 15_000, 1_500, T(1_000), 1),
-      snap("figaro-proximity-policy-v1", 50_000, 5_000, T(1_000), 1),
+      snap({ schemaId: "figaro-proximity-policy-v1", category: "committed-policy", orderCount: 1_500, attsPerOrder: 1.2, distinctBuyers: 200, distinctSellers: 150, distinctBuyerSellerPairs: 600, meanBondedValueWei: T(2_000), meanPaymentWei: T(1_000), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-proximity-policy-v1", category: "committed-policy", orderCount: 12_000, attsPerOrder: 1.2, distinctBuyers: 1_500, distinctSellers: 1_000, distinctBuyerSellerPairs: 5_000, meanBondedValueWei: T(2_000), meanPaymentWei: T(1_000), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-proximity-policy-v1", category: "committed-policy", orderCount: 40_000, attsPerOrder: 1.2, distinctBuyers: 5_000, distinctSellers: 3_000, distinctBuyerSellerPairs: 18_000, meanBondedValueWei: T(2_000), meanPaymentWei: T(1_000), meanChainPosition: 1 }),
+    ],
+  },
+  {
+    name: "offset-policy",
+    description: "Carbon-offset provider policy. Cluster A, growing adoption.",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-offset-policy-v1", category: "committed-policy", orderCount: 800, attsPerOrder: 1.2, distinctBuyers: 200, distinctSellers: 150, distinctBuyerSellerPairs: 500, meanBondedValueWei: T(400), meanPaymentWei: T(200), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-offset-policy-v1", category: "committed-policy", orderCount: 5_000, attsPerOrder: 1.2, distinctBuyers: 1_500, distinctSellers: 1_000, distinctBuyerSellerPairs: 3_500, meanBondedValueWei: T(400), meanPaymentWei: T(200), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-offset-policy-v1", category: "committed-policy", orderCount: 18_000, attsPerOrder: 1.2, distinctBuyers: 5_000, distinctSellers: 3_000, distinctBuyerSellerPairs: 12_000, meanBondedValueWei: T(400), meanPaymentWei: T(200), meanChainPosition: 1 }),
+    ],
+  },
+
+  // ─── Cluster B — sovereign-log (2 of 17 real schemas) ──────────────
+  {
+    name: "merchant-process",
+    description: "Sovereign-log for merchants. Cluster B, many events per process (6 lifecycle).",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-merchant-process-v1", category: "sovereign-log", orderCount: 15_000, attsPerOrder: 5.0, distinctBuyers: 12_000, distinctSellers: 1_000, distinctBuyerSellerPairs: 12_000, distinctAttestationStages: 6, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-merchant-process-v1", category: "sovereign-log", orderCount: 80_000, attsPerOrder: 5.0, distinctBuyers: 60_000, distinctSellers: 4_000, distinctBuyerSellerPairs: 60_000, distinctAttestationStages: 6, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-merchant-process-v1", category: "sovereign-log", orderCount: 250_000, attsPerOrder: 5.0, distinctBuyers: 150_000, distinctSellers: 12_000, distinctBuyerSellerPairs: 150_000, distinctAttestationStages: 6, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 2 }),
+    ],
+  },
+  {
+    name: "courier-process",
+    description: "Sovereign-log for couriers. Cluster B, more events per process (8 lifecycle).",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-courier-process-v1", category: "sovereign-log", orderCount: 25_000, attsPerOrder: 6.0, distinctBuyers: 20_000, distinctSellers: 500, distinctBuyerSellerPairs: 20_000, distinctAttestationStages: 8, meanBondedValueWei: T(100), meanPaymentWei: T(50), meanChainPosition: 3 }),
+      snap({ schemaId: "figaro-courier-process-v1", category: "sovereign-log", orderCount: 120_000, attsPerOrder: 6.0, distinctBuyers: 100_000, distinctSellers: 2_000, distinctBuyerSellerPairs: 100_000, distinctAttestationStages: 8, meanBondedValueWei: T(100), meanPaymentWei: T(50), meanChainPosition: 3 }),
+      snap({ schemaId: "figaro-courier-process-v1", category: "sovereign-log", orderCount: 400_000, attsPerOrder: 6.0, distinctBuyers: 250_000, distinctSellers: 5_000, distinctBuyerSellerPairs: 250_000, distinctAttestationStages: 8, meanBondedValueWei: T(100), meanPaymentWei: T(50), meanChainPosition: 3 }),
+    ],
+  },
+
+  // ─── Cluster C — runtime-measurement (2 of 17 real schemas) ────────
+  {
+    name: "ghg-measurement",
+    description: "Runtime grams CO2e per fulfillment. Cluster C, multi-stage (estimate/measured/restate/verify).",
+    snapshotsAtTranches: [
+      snap({ schemaId: "figaro-ghg-measurement-v1", category: "runtime-measurement", orderCount: 300, attsPerOrder: 2.5, distinctBuyers: 150, distinctSellers: 200, distinctBuyerSellerPairs: 280, distinctAttestationStages: 4, meanBondedValueWei: T(100_000), meanPaymentWei: T(50_000), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-ghg-measurement-v1", category: "runtime-measurement", orderCount: 2_000, attsPerOrder: 2.5, distinctBuyers: 1_000, distinctSellers: 1_500, distinctBuyerSellerPairs: 1_800, distinctAttestationStages: 4, meanBondedValueWei: T(100_000), meanPaymentWei: T(50_000), meanChainPosition: 2 }),
+      snap({ schemaId: "figaro-ghg-measurement-v1", category: "runtime-measurement", orderCount: 7_000, attsPerOrder: 2.5, distinctBuyers: 3_500, distinctSellers: 5_000, distinctBuyerSellerPairs: 6_000, distinctAttestationStages: 4, meanBondedValueWei: T(100_000), meanPaymentWei: T(50_000), meanChainPosition: 2 }),
     ],
   },
   {
     name: "proximity-proof",
-    description: "Runtime proximity attestation. High vol, mid diversity.",
+    description: "Per-handoff runtime proximity proof. Cluster C, multi-handoff per order.",
     snapshotsAtTranches: [
-      snap("figaro-proximity-proof-v1", 4_000, 100, T(1_000), 1),
-      snap("figaro-proximity-proof-v1", 30_000, 800, T(1_000), 1),
-      snap("figaro-proximity-proof-v1", 100_000, 3_000, T(1_000), 1),
+      snap({ schemaId: "figaro-proximity-proof-v1", category: "runtime-measurement", orderCount: 4_000, attsPerOrder: 1.5, distinctBuyers: 100, distinctSellers: 150, distinctBuyerSellerPairs: 200, distinctAttestationStages: 1, meanBondedValueWei: T(2_000), meanPaymentWei: T(1_000), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-proximity-proof-v1", category: "runtime-measurement", orderCount: 30_000, attsPerOrder: 1.5, distinctBuyers: 800, distinctSellers: 1_000, distinctBuyerSellerPairs: 1_500, distinctAttestationStages: 1, meanBondedValueWei: T(2_000), meanPaymentWei: T(1_000), meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-proximity-proof-v1", category: "runtime-measurement", orderCount: 100_000, attsPerOrder: 1.5, distinctBuyers: 3_000, distinctSellers: 4_000, distinctBuyerSellerPairs: 6_000, distinctAttestationStages: 1, meanBondedValueWei: T(2_000), meanPaymentWei: T(1_000), meanChainPosition: 1 }),
+    ],
+  },
+
+  // ─── topology — manifest-only, no attestations ─────────────────────
+  {
+    name: "topology-decorative",
+    description: "DAG lineage clause. Manifest-only — no validator, no runtime attestations.",
+    snapshotsAtTranches: [
+      zero("figaro-topology-v1", "committed-policy"),
+      zero("figaro-topology-v1", "committed-policy"),
+      zero("figaro-topology-v1", "committed-policy"),
+    ],
+  },
+
+  // ─── Hypothetical edge-case archetypes ─────────────────────────────
+  {
+    name: "M&A-escrow-niche",
+    description: "Hypothetical. Rare high-stakes M&A escrow. Cluster A, 8 attestors / 6 pairs.",
+    snapshotsAtTranches: [
+      snap({ schemaId: "hypothetical-ma-escrow-v1", category: "committed-policy", orderCount: 8, attsPerOrder: 1.6, distinctBuyers: 6, distinctSellers: 8, distinctBuyerSellerPairs: 8, meanBondedValueWei: T(20_000_000), meanPaymentWei: T(10_000_000), meanChainPosition: 1 }),
+      snap({ schemaId: "hypothetical-ma-escrow-v1", category: "committed-policy", orderCount: 25, attsPerOrder: 1.6, distinctBuyers: 18, distinctSellers: 22, distinctBuyerSellerPairs: 25, meanBondedValueWei: T(20_000_000), meanPaymentWei: T(10_000_000), meanChainPosition: 1 }),
+      snap({ schemaId: "hypothetical-ma-escrow-v1", category: "committed-policy", orderCount: 55, attsPerOrder: 1.6, distinctBuyers: 38, distinctSellers: 45, distinctBuyerSellerPairs: 55, meanBondedValueWei: T(20_000_000), meanPaymentWei: T(10_000_000), meanChainPosition: 1 }),
+    ],
+  },
+  {
+    name: "wash-pump-attempt",
+    description: "Hypothetical. Sybil-by-wallet: 2 buyer wallets x 2 seller wallets = 4 pairs across thousands of orders.",
+    snapshotsAtTranches: [
+      snap({ schemaId: "hypothetical-wash-v1", category: "committed-policy", orderCount: 50_000, attsPerOrder: 1.5, distinctBuyers: 2, distinctSellers: 2, distinctBuyerSellerPairs: 4, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 1 }),
+      snap({ schemaId: "hypothetical-wash-v1", category: "committed-policy", orderCount: 100_000, attsPerOrder: 1.5, distinctBuyers: 2, distinctSellers: 2, distinctBuyerSellerPairs: 4, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 1 }),
+      snap({ schemaId: "hypothetical-wash-v1", category: "committed-policy", orderCount: 200_000, attsPerOrder: 1.5, distinctBuyers: 2, distinctSellers: 2, distinctBuyerSellerPairs: 4, meanBondedValueWei: T(200), meanPaymentWei: T(100), meanChainPosition: 1 }),
     ],
   },
   {
     name: "niche-specialty-launch",
-    description: "Late-launch schema (registered year 4). Tests time-of-entry effect.",
+    description: "Hypothetical. Late-launch schema (registered year 4). Tests time-of-entry effect.",
     snapshotsAtTranches: [
-      snap("hypothetical-specialty-v1", 0, 0, 0n, 0),
-      snap("hypothetical-specialty-v1", 500, 300, T(10_000), 2),
-      snap("hypothetical-specialty-v1", 5_000, 3_000, T(10_000), 2),
-    ],
-  },
-  {
-    name: "ghg-iso-14064",
-    description: "ISO 14064 standard variant. Mid vol, mid diversity, high stakes.",
-    snapshotsAtTranches: [
-      snap("figaro-ghg-iso-14064-v1", 200, 100, T(100_000), 2),
-      snap("figaro-ghg-iso-14064-v1", 1_500, 800, T(100_000), 2),
-      snap("figaro-ghg-iso-14064-v1", 6_000, 3_000, T(100_000), 2),
-    ],
-  },
-  {
-    name: "merchant-process",
-    description: "Sovereign log for merchants. High vol, mid diversity.",
-    snapshotsAtTranches: [
-      snap("figaro-merchant-process-v1", 20_000, 1_000, T(100), 2),
-      snap("figaro-merchant-process-v1", 100_000, 4_000, T(100), 2),
-      snap("figaro-merchant-process-v1", 350_000, 12_000, T(100), 2),
+      zero("hypothetical-specialty-v1", "committed-policy"),
+      snap({ schemaId: "hypothetical-specialty-v1", category: "committed-policy", orderCount: 400, attsPerOrder: 1.4, distinctBuyers: 250, distinctSellers: 300, distinctBuyerSellerPairs: 380, meanBondedValueWei: T(20_000), meanPaymentWei: T(10_000), meanChainPosition: 2 }),
+      snap({ schemaId: "hypothetical-specialty-v1", category: "committed-policy", orderCount: 4_000, attsPerOrder: 1.4, distinctBuyers: 2_500, distinctSellers: 3_000, distinctBuyerSellerPairs: 3_500, meanBondedValueWei: T(20_000), meanPaymentWei: T(10_000), meanChainPosition: 2 }),
     ],
   },
 ];
 
 export const handCodedPopulation: SchemaPopulationSource = {
-  label: "hand-coded archetypes (17)",
+  label: "hand-coded archetypes (17 real + 3 hypothetical)",
   schemas: () => ARCHETYPES,
 };

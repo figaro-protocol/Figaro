@@ -6,14 +6,41 @@ export const TRANCHE_BUDGETS_FIG: readonly [bigint, bigint, bigint] = [
   100_000_000n * 10n ** 18n,
 ];
 
-export type CountVariant = "raw" | "bondedValue" | "chainPosition";
+// Per the audit (sdk/scripts/rpgf-simulator/audit), the 17 protocol schemas
+// cluster into three populations with different natural attestation cadence.
+// The category is a modeling input; ranking math is category-blind unless
+// the count variant is processCount (which equalizes A vs B vs C).
+export type SchemaCategory = "committed-policy" | "sovereign-log" | "runtime-measurement";
+
+export type CountVariant =
+  | "raw" //          resolvedAttestationCount — total attest events
+  | "processCount" // distinctProcesses — category-equalized
+  | "bondedValue" //  totalEnclosingOrderBondedValueWei
+  | "paymentValue" // totalEnclosingOrderPaymentWei
+  | "chainPosition"; // totalChainPositionWeight
+
+export type DiversityVariant =
+  | "pairs" //  distinctBuyerSellerPairs — bilateral relation breadth (default)
+  | "buyers" // distinctBuyers — buyer-side breadth
+  | "sellers"; // distinctSellers — seller-side breadth
 
 export interface SchemaSnapshot {
   schemaId: string;
+  category: SchemaCategory;
+
   resolvedAttestationCount: number;
-  totalBondedValueWei: bigint;
+  distinctProcesses: number;
+  distinctAttestationStages: number;
+
+  distinctBuyers: number;
+  distinctSellers: number;
+  distinctBuyerSellerPairs: number;
+  distinctCurrencies: number;
+
+  totalEnclosingOrderBondedValueWei: bigint;
+  totalEnclosingOrderPaymentWei: bigint;
+
   totalChainPositionWeight: number;
-  distinctAttestors: number;
 }
 
 export interface Archetype {
@@ -30,6 +57,7 @@ export interface SchemaPopulationSource {
 export interface AuthorAllocation {
   schemaName: string;
   schemaId: string;
+  category: SchemaCategory;
   score: number;
   share: number;
   allocatedFig: bigint;
@@ -38,7 +66,8 @@ export interface AuthorAllocation {
 export interface TrancheRanking {
   trancheIndex: TrancheIndex;
   alpha: number;
-  variant: CountVariant;
+  countVariant: CountVariant;
+  diversityVariant: DiversityVariant;
   budgetFig: bigint;
   allocations: readonly AuthorAllocation[];
 }

@@ -2,6 +2,7 @@ import type {
   Archetype,
   AuthorAllocation,
   CountVariant,
+  DiversityVariant,
   SchemaSnapshot,
   TrancheIndex,
   TrancheRanking,
@@ -12,19 +13,39 @@ function countValue(s: SchemaSnapshot, variant: CountVariant): number {
   switch (variant) {
     case "raw":
       return s.resolvedAttestationCount;
+    case "processCount":
+      return s.distinctProcesses;
     case "bondedValue":
       // wei → whole-token units, preserving milli-token precision via the
       // bigint intermediate so very-high-stakes archetypes don't overflow
       // Number when summed.
-      return Number(s.totalBondedValueWei / 10n ** 15n) / 1000;
+      return Number(s.totalEnclosingOrderBondedValueWei / 10n ** 15n) / 1000;
+    case "paymentValue":
+      return Number(s.totalEnclosingOrderPaymentWei / 10n ** 15n) / 1000;
     case "chainPosition":
       return s.totalChainPositionWeight;
   }
 }
 
-export function score(s: SchemaSnapshot, alpha: number, variant: CountVariant): number {
-  const c = countValue(s, variant);
-  const d = s.distinctAttestors;
+function diversityValue(s: SchemaSnapshot, variant: DiversityVariant): number {
+  switch (variant) {
+    case "pairs":
+      return s.distinctBuyerSellerPairs;
+    case "buyers":
+      return s.distinctBuyers;
+    case "sellers":
+      return s.distinctSellers;
+  }
+}
+
+export function score(
+  s: SchemaSnapshot,
+  alpha: number,
+  countVariant: CountVariant,
+  diversityVariant: DiversityVariant,
+): number {
+  const c = countValue(s, countVariant);
+  const d = diversityValue(s, diversityVariant);
   if (c <= 0 || d <= 0) return 0;
   return Math.pow(c, alpha) * Math.pow(d, 1 - alpha);
 }
@@ -33,26 +54,27 @@ export function rankTranche(
   archetypes: readonly Archetype[],
   trancheIndex: TrancheIndex,
   alpha: number,
-  variant: CountVariant,
+  countVariant: CountVariant,
+  diversityVariant: DiversityVariant,
 ): TrancheRanking {
   const budgetFig = TRANCHE_BUDGETS_FIG[trancheIndex];
 
   const scored = archetypes.map((a) => ({
     archetype: a,
     snapshot: a.snapshotsAtTranches[trancheIndex],
-    score: score(a.snapshotsAtTranches[trancheIndex], alpha, variant),
+    score: score(a.snapshotsAtTranches[trancheIndex], alpha, countVariant, diversityVariant),
   }));
 
   const totalScore = scored.reduce((acc, x) => acc + x.score, 0);
 
   const allocations: AuthorAllocation[] = scored.map(({ archetype, snapshot, score: s }) => {
     const share = totalScore > 0 ? s / totalScore : 0;
-    // bigint scaling via parts-per-million to apply float share to a wei budget
     const shareScaled = BigInt(Math.round(share * 1_000_000));
     const allocatedFig = (budgetFig * shareScaled) / 1_000_000n;
     return {
       schemaName: archetype.name,
       schemaId: snapshot.schemaId,
+      category: snapshot.category,
       score: s,
       share,
       allocatedFig,
@@ -64,7 +86,8 @@ export function rankTranche(
   return {
     trancheIndex,
     alpha,
-    variant,
+    countVariant,
+    diversityVariant,
     budgetFig,
     allocations,
   };
@@ -72,9 +95,8 @@ export function rankTranche(
 
 // Iterative water-filling: any schema whose share exceeds capShare is
 // truncated to capShare; the excess is redistributed pro-rata across
-// under-cap schemas. Iterates to fixpoint (a redistribution can push
-// another schema above the cap). Pure post-processing — does not change
-// ranking order or scores.
+// under-cap schemas. Iterates to fixpoint. Pure post-processing — does
+// not change ranking order or scores.
 export function applyCap(ranking: TrancheRanking, capShare: number): TrancheRanking {
   if (capShare <= 0 || capShare >= 1) return ranking;
   if (ranking.allocations.length === 0) return ranking;
@@ -89,7 +111,7 @@ export function applyCap(ranking: TrancheRanking, capShare: number): TrancheRank
       else underMass += sh;
     }
     if (excess < 1e-12) break;
-    if (underMass < 1e-12) break; // cap unreachable: everyone at or above cap
+    if (underMass < 1e-12) break;
     shares = shares.map((sh) => (sh > capShare ? capShare : sh + excess * (sh / underMass)));
   }
 
