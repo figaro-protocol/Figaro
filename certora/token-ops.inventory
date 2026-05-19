@@ -13,7 +13,7 @@
 # be followed by a spec PR within the same sprint.
 
 src/FigaroCore.sol:131 | _pullExact (commit bond pull) | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
-src/FigaroCore.sol:286 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
-src/FigaroCore.sol:287 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation
-src/FigaroBatchVerifier.sol:396 | settleBatch → _executePositions (net payout to user)    | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
-src/FigaroBatchVerifier.sol:406 | settleBatch → _pullExact (net deposit from user)        | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/FigaroCore.sol:289 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/FigaroCore.sol:290 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/FigaroBatchVerifier.sol:374 | settleBatch → _executePositions (net payout to user)    | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/FigaroBatchVerifier.sol:384 | settleBatch → _pullExact (net deposit from user)        | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation

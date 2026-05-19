@@ -13,15 +13,17 @@
 #     check_buyerDominance_revert
 #     check_cumulativeValueMonotonic
 #
-# The run is split into two halmos processes:
+#   HalmosRpgfMinter (8 properties):
+#     check_claimSetsFlag                 check_alreadyClaimedReverts
+#     check_notUnlockedReverts            check_invalidStageReverts
+#     check_rootNotSetReverts             check_submitRootNotSubmitterReverts
+#     check_submitRootAlreadySetReverts   check_submitRootZeroRootReverts
 #
-#   Pass 1 (6 FigaroCore properties): run together in a single halmos process.
-#   Pass 2 (1 FigaroCore property, check_resolutionPayouts): run in a fresh process.
+# The run is split into three halmos processes:
 #
-# (The 4-property HalmosStagedMerkleAirdrop pass was retired alongside the
-# StagedMerkleAirdrop contract — the replacement RpgfMinter does not yet
-# carry symbolic proofs. See docs/v5/AUDIT_REPORT.md for the verification
-# regression note.)
+#   Pass 1 (6 FigaroCore properties): batched in a single halmos process.
+#   Pass 2 (1 FigaroCore property, check_resolutionPayouts): fresh process.
+#   Pass 3 (8 RpgfMinter properties): batched in a single halmos process.
 #
 # Why the split: check_resolutionPayouts exercises the full commit + resolve
 # lifecycle (2 ECDSA signature recoveries, multiple keccak256 hashes, 4 ERC-20
@@ -70,32 +72,48 @@ echo ""
 # Per-assertion timeout in ms. 600000 = 10 minutes.
 : "${HALMOS_SOLVER_TIMEOUT_MS:=600000}"
 
-COMMON_ARGS=(
+CORE_ARGS=(
     --contract HalmosFigaroCore
+    --solver z3
+    --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS"
+)
+
+RPGF_ARGS=(
+    --contract HalmosRpgfMinter
     --solver z3
     --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS"
 )
 
 # ── Pass 1: six fast properties, batched ───────────────────────────────────
 
-echo "▶ Pass 1/2 — 6 batched properties (fast)"
+echo "▶ Pass 1/3 — 6 batched FigaroCore properties (fast)"
 echo ""
 
 FOUNDRY_PROFILE=halmos halmos \
-    "${COMMON_ARGS[@]}" \
+    "${CORE_ARGS[@]}" \
     --match-test '(tokenConservation|contractSolvency|correctBondAmounts|orderStatusTransition|buyerDominance|cumulativeValue)' \
     "$@"
 
 echo ""
-echo "▶ Pass 2/2 — check_resolutionPayouts (run in isolation)"
+echo "▶ Pass 2/3 — check_resolutionPayouts (run in isolation)"
 echo ""
 
 # ── Pass 2: the one heavy property, in a fresh halmos process ──────────────
 
 FOUNDRY_PROFILE=halmos halmos \
-    "${COMMON_ARGS[@]}" \
+    "${CORE_ARGS[@]}" \
     --function check_resolutionPayouts \
     "$@"
 
 echo ""
-echo "✅ All 7 Halmos properties proved (FigaroCore)."
+echo "▶ Pass 3/3 — 8 batched RpgfMinter properties"
+echo ""
+
+# ── Pass 3: the RpgfMinter symbolic harness ────────────────────────────────
+
+FOUNDRY_PROFILE=halmos halmos \
+    "${RPGF_ARGS[@]}" \
+    "$@"
+
+echo ""
+echo "✅ All 15 Halmos properties proved (FigaroCore + RpgfMinter)."

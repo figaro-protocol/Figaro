@@ -190,15 +190,24 @@ echidna src/echidna/EchidnaFuzzer.sol --config echidna.yaml
 ### 6. Static Analysis (Slither)
 
 ```bash
-slither .
+slither src/fig/RpgfMinter.sol
 ```
 
-The last committed run (slither-fig.json, 2026-04-16) reported 0
-production findings, but it was generated against an older contract
-surface that included the now-retired `MerkleAirdrop.sol` and was
-removed 2026-05 as part of the StagedMerkleAirdrop → RpgfMinter
-cleanup. Slither needs to be re-run against the current V5 surface
-(including `RpgfMinter.sol`) before the next audit checkpoint.
+Slither 0.11.3 re-run 2026-05 against `RpgfMinter.sol`:
+**5 findings, 0 actionable.**
+
+| Detector | Triage |
+|---|---|
+| Reentrancy: `claim()` emits `Claimed` after `IFigMinter.mint` | Informational. `claimed[stageIndex][msg.sender] = true` is set BEFORE the external call (Checks-Effects-Interactions); a reentrant `claim` would revert at `AlreadyClaimed`. The event-after-call ordering matches the predecessor's classification. |
+| Timestamp comparison: `block.timestamp < s.unlockTime` | Intended — this IS the time-locked claim gate. Same finding the predecessor carried. |
+| OZ `Hashes.efficientKeccak256` uses inline assembly | Library code, not protocol code. Not actionable. |
+| Two Solidity versions (`^0.8.20` from OZ, `0.8.26` in `src/`) | Compiled with 0.8.26; OZ's `^0.8.20` floor is permissive and compatible. |
+| Known-issue versions allowed by `^0.8.20` (VerbatimInvalidDeduplication, etc.) | Bugs in older 0.8.x revisions; we compile with 0.8.26 which has them fixed. |
+
+The 2026-04-16 `slither-fig.json` against the older surface (which
+included the long-retired `MerkleAirdrop.sol`) was deleted in the
+2026-05 cleanup; this RpgfMinter-specific run is the current
+attestation.
 
 ## Audit History
 
@@ -434,10 +443,10 @@ These are current design realities, not defects:
 | Layer | Count | Method |
 |---|---|---|
 | Foundry | 225 | Concrete unit/integration tests (via `forge test --via-ir`) |
-| Halmos | 7 | Symbolic proofs (ALL inputs, z3) — via `./test-halmos.sh` (FigaroCore). The StagedMerkleAirdrop 4-property pass was retired 2026-05; `RpgfMinter` does not yet carry a Halmos harness. |
-| Certora | 23/23 sub-rules across 3 specs | SMT formal verification (cloud) — FigaroCore (9), AttestationCoordinator (7), FigToken (7). Via `./test-certora.sh`. The StagedMerkleAirdrop 4-rule spec was retired 2026-05; `RpgfMinter` does not yet carry a Certora spec. |
-| TLA+ | 15 invariants across 2 models | FigaroCore 7 invariants / 6,087,113 distinct states; FigToken 8 invariants / 160,844 distinct states. Both via `./test-tla.sh`. |
-| Echidna | 7 | Property-based fuzzing (committed harness; per-run call count varies by wall time) |
+| Halmos | 15 | Symbolic proofs (ALL inputs, z3) — via `./test-halmos.sh`. FigaroCore (7) + RpgfMinter (8): root one-shot, claim one-shot, time-lock, stage-bound, submitter-gate, zero-root rejection. |
+| Certora | 35/35 sub-rules across 4 specs | SMT formal verification (cloud) — FigaroCore (9), AttestationCoordinator (7), FigToken (7), RpgfMinter (12: submitter/minter/programVKey immutable, unlockTime immutable, root one-shot, totalAllocated locked-with-root, claim flag monotonic, only-submitter sets root, stage-index bounds, claim preconditions). Via `./test-certora.sh`. |
+| TLA+ | 24 invariants across 3 models | FigaroCore 7 invariants / 6,087,113 distinct states; FigToken 8 invariants / 160,844 distinct states; RpgfMinter 9 invariants / 11,821 distinct states. All via `./test-tla.sh`. |
+| Echidna | 15 | Property-based fuzzing — FigaroCore (7) + RpgfMinter (8: claim flag monotonic, total-minted-within-cap, immutables, root one-shot, claim balance consistency). Via `./test-echidna.sh`. |
 | Slither | — | Static analysis (0 findings) |
 | Vitest (SDK) | 166 | TypeScript SDK tests |
 | Vitest (frontend) | 560+ | Frontend unit tests |

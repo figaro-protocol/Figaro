@@ -17,18 +17,14 @@ delivery lifecycle, proximity policy, proximity proof, merchant-process,
 courier-process, jurisdiction). Each suite covers happy paths + every
 typed-error revert. (Topology has no validator — manifest-only clause.)
 
-## Halmos (`test/`) — 1 harness
+## Halmos (`test/`) — 2 harnesses, 15 properties
 
 | Harness | Properties | Key invariants |
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
+| `HalmosRpgfMinter.t.sol` | 8 | Claim flag set, already-claimed revert, not-unlocked revert, invalid-stage revert, root-not-set revert, submitter auth, root one-shot, zero-root rejection |
 
-(The `HalmosStagedMerkleAirdrop` 4-property pass was retired alongside the
-deletion of `StagedMerkleAirdrop.sol`. Its successor `RpgfMinter.sol` does
-not yet carry symbolic proofs — coverage is via Foundry tests +
-Rust ↔ Solidity conformance harness.)
-
-## Certora (`certora/`) — 5 specs
+## Certora (`certora/`) — 6 specs, 43 declared rules
 
 | Spec | Rules | Covers |
 |---|---|---|
@@ -37,25 +33,33 @@ Rust ↔ Solidity conformance harness.)
 | `TokenOpsVerification.spec` | 7 → 8 sub-rules | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `BatchVerifierTokenOps.spec` | 4 | Single-position `settleBatch`: user balance delta = payout − deposit, contract delta = deposit − payout, allowance-drain safety, conservation. |
 | `FigToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
-
-(The `StagedMerkleAirdrop.spec` 3-rule spec was retired alongside the
-contract; the successor `RpgfMinter.sol` does not yet carry a Certora
-spec — see `docs/v5/AUDIT_REPORT.md` for the verification regression note.)
+| `RpgfMinter.spec` | 12 | submitter/minter/programVKey immutable, per-stage unlockTime immutable, root one-shot, totalAllocated locked-with-root, claim-flag monotonic, only-submitter sets root, claim preconditions (stage-bound, root-set, unlocked, not-already-claimed). |
 
 Companion: `certora/token-ops.inventory` + `lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 
-## Echidna — 7 properties
+## Echidna — 2 harnesses, 15 properties
 
-Harness: `src/echidna/EchidnaFuzzer.sol`.
-`echidna_solvency`, `echidna_active_count_consistent`, `echidna_cumulative_accounting`,
-`echidna_state_monotonicity`, `echidna_token_conservation`, `echidna_buyer_dominance`,
-`echidna_atomic_resolution`
+| Harness | Properties | Path |
+|---|---|---|
+| `EchidnaFuzzer` | 7 | `src/echidna/EchidnaFuzzer.sol` — kernel: solvency, active-count consistency, cumulative accounting, state monotonicity, token conservation, buyer dominance, atomic resolution |
+| `EchidnaRpgfMinter` | 8 | `echidna/EchidnaRpgfMinter.sol` — claim-flag monotonic, total-minted within cap, minter / submitter / programVKey / unlockTimes immutable, root one-shot, claim balance consistency |
 
-## TLA+ (`formal/`) — 15 invariants across 2 models (FigaroCore 7 + FigToken 8)
+## TLA+ (`formal/`) — 24 invariants across 3 models (FigaroCore 7 + FigToken 8 + RpgfMinter 9)
 
-`TokenConservation`, `ContractSolvency`, `WalletNonNegative`, `CumulativeIntegrity`,
-`ActiveCountCorrect`, `ResolutionAlwaysPossible`, `TypeOK`.
-Also `formal/FigToken.tla` / `formal/FigToken.cfg` — 8 FigToken invariants.
+FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
+`WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
+`ResolutionAlwaysPossible`, `TypeOK`.
+
+FigToken (`FigToken.tla` + `FigToken.cfg`): `Inv_MaxSupply`,
+`Inv_DeployerCannotMintAfterRenounce`, `Inv_MinterCap`,
+`Inv_CapBelowMaxSupply`, `Inv_SupplyEqualsSumMinted`, `Inv_NonNegative`,
+`Inv_NoMintToZero`, `Inv_BalancesSumToSupply`.
+
+RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
+`TypeOK`, `Inv_SubmitterImmutable`, `Inv_UnlockTimeImmutable`,
+`Inv_RootInRange`, `Inv_ClaimedTyped`, `Inv_ClaimImpliesRootSet`,
+`Inv_ClaimImpliesUnlocked`, `Inv_TotalAllocatedLockedWithRoot`,
+`Inv_StageIndexBounded`.
 
 ## Frontend Vitest
 ## Playwright — mock, mock-mobile, and devnet projects

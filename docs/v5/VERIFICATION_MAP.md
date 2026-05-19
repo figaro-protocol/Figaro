@@ -9,7 +9,7 @@ This document ties every protocol property to its enforcement across five layers
 - **Theory** — the game-theoretic invariant (from THEORY.md / VISION.md)
 - **Code** — what is actually enforced on-chain (Solidity)
 - **Tests** — what is continuously regression-checked (Foundry, Echidna, SDK Vitest)
-- **TLA+** — what is exhaustively model-checked (15 invariants across 2 models: FigaroCore 7 / 6M+ states, FigToken 8 / 160k states)
+- **TLA+** — what is exhaustively model-checked (24 invariants across 3 models: FigaroCore 7 / 6M+ states, FigToken 8 / 160k states, RpgfMinter 9 / 11,821 states)
 - **Halmos** — what is symbolically proved at the bytecode level (7 invariants, z3 solver)
 - **Certora** — what is formally verified via SMT-based proving (state-machine rules)
 - **UI** — where the feature is explained or rendered for users (pages, sections)
@@ -70,9 +70,9 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 - `E-4` **Operator deposit lock**: withdrawal only after deactivation + lock period
 - `E-5` **Batch state root continuity**: each batch must chain from previous state root
 - `E-6` **FIG supply cap**: total minted ≤ 1,000,000,000 FIG (enforced on every mint path)
-- `E-7` **Per-stage one-shot claim** (RETIRED 2026-05 — was Halmos+Certora proved on the now-deleted `StagedMerkleAirdrop`; the equivalent property on `RpgfMinter` is covered by Foundry only)
-- `E-8` **Merkle inclusion** (RETIRED 2026-05 — same history; `RpgfMinter.claim` uses identical leaf format and MerkleProof.verify, Foundry-tested)
-- `E-9` **Per-stage unlock timestamp** (RETIRED 2026-05 — same history; immutable unlock timestamps preserved in `RpgfMinter`, Foundry-tested)
+- `E-7` **Per-stage one-shot claim** (RpgfMinter — Halmos `check_alreadyClaimedReverts`, Echidna `echidna_claim_flag_monotonic`, Certora `claimedFlagMonotonic` + `claimRequiresNotAlreadyClaimed`, TLA+ enforced by `Claim` action guard)
+- `E-8` **Merkle inclusion** (RpgfMinter — `MerkleProof.verify` with `keccak256(abi.encodePacked(account, amount))` leaves; Foundry `test_CannotClaimIfNotInTree`, `test_CannotClaimWithAlteredAmount`; abstracted in TLA+ as `Entitlements[stage][account] = amount`)
+- `E-9` **Per-stage unlock timestamp** (RpgfMinter — Halmos `check_notUnlockedReverts`, Echidna `echidna_unlock_times_immutable`, Certora `unlockTimeImmutable` + `claimRequiresUnlocked`, TLA+ `Inv_UnlockTimeImmutable` + `Inv_ClaimImpliesUnlocked`)
 
 ---
 
@@ -236,13 +236,20 @@ actual compiled bytecode satisfies the invariants.
 | `check_buyerDominance_revert` | K-2 | z3 | 21 |
 | `check_cumulativeValueMonotonic` | K-5, A-4 | z3 | 31 |
 
-**HalmosStagedMerkleAirdrop (4 properties) — RETIRED 2026-05**
+**HalmosRpgfMinter (8 properties) — `test/HalmosRpgfMinter.t.sol`**
 
-Removed alongside `StagedMerkleAirdrop.sol`. The replacement `RpgfMinter`
-does not yet carry a Halmos harness; equivalent claim-path properties
-are covered by Foundry + the Rust ↔ Solidity conformance harness.
+| Property | Kernel claim | Solver | Path count |
+|---|---|---|---|
+| `check_claimSetsFlag` | E-7 (one-shot claim flag set) | z3 | 4 |
+| `check_alreadyClaimedReverts` | E-7 (one-shot enforcement) | z3 | 5 |
+| `check_notUnlockedReverts` | E-9 (time-locked gate) | z3 | 4 |
+| `check_invalidStageReverts` | stage-index bound | z3 | 3 |
+| `check_rootNotSetReverts` | claim requires root | z3 | 2 |
+| `check_submitRootNotSubmitterReverts` | submitter auth gate | z3 | 2 |
+| `check_submitRootAlreadySetReverts` | root one-shot | z3 | 2 |
+| `check_submitRootZeroRootReverts` | zero-root rejection | z3 | 1 |
 
-**Total: 7/7 proved (FigaroCore), 0 failed. Typical wall time ~3 minutes.**
+**Total: 15/15 proved (FigaroCore 7 + RpgfMinter 8), 0 failed. Typical wall time ~4 minutes.**
 
 Per-property times vary significantly between runs (Z3's search path is
 non-deterministic). `check_resolutionPayouts` — the only property that
@@ -323,18 +330,32 @@ Foundry-covered companions (scene would need a mock-validator contract for unive
 | `minterCapImmutable` | E-6 | Per-minter immutability |
 | `minterMintedWithinCap` | E-6 | Inductive (unconditional `minted <= cap`, strictly strong enough to exclude symbolic unreachable pre-states) |
 
-**StagedMerkleAirdrop (4 rules) — RETIRED 2026-05**
+**RpgfMinter (12 rules) — `certora/RpgfMinter.spec`**
 
-Removed alongside the contract. `RpgfMinter` does not yet carry a Certora
-spec; equivalent claim-path coverage is via Foundry + Rust ↔ Solidity
-conformance harness. Adding a Certora spec for `RpgfMinter.submitRoot`
-+ `claim` is on the queue for the next formal-verification round.
+| CVL rule | Maps to | Type |
+|---|---|---|
+| `submitterImmutable` | submitter `immutable` keyword | Parametric (never changes) |
+| `minterTargetImmutable` | minter `immutable` keyword | Parametric (never changes) |
+| `programVKeyImmutable` | programVKey `immutable` keyword | Parametric (never changes) |
+| `unlockTimeImmutable` | E-9 (per-stage unlock immutable) | Parametric (over all stage indices) |
+| `rootOneShot` | root one-shot per stage | Parametric (post-set immutability) |
+| `totalAllocatedLockedWithRoot` | totalAllocated locks with root | Parametric (post-set immutability) |
+| `claimedFlagMonotonic` | E-7 (claim one-shot) | Parametric (monotonic latch) |
+| `onlySubmitterCanSetRoot` | submitter auth | Parametric (root change only via submitRoot) |
+| `submitRootRequiresSubmitter` | submitter auth | Method-specific revert |
+| `claimRevertsOnInvalidStage` | stage-index bound | Method-specific revert |
+| `claimRequiresRootSet` | claim requires root | Method-specific implication |
+| `claimRequiresUnlocked` | E-9 (time-locked) | Method-specific implication |
+| `claimRequiresNotAlreadyClaimed` | E-7 (one-shot) | Method-specific implication |
+
+(External `verifier.verifyProof` and `IFigMinter.mint` calls are summarized
+as `NONDET` — they cannot touch this contract's storage.)
 
 ### Status
 
-31 declared rules across 5 specs (down from 35 across 6 specs after the
-StagedMerkleAirdrop retirement). **All green**. AC re-dispatched 2026-04-23
-after the agreement-receipt ABI change — 8/8 sub-rules verified.
+43 declared rules across 6 specs (up from 35 after the RpgfMinter spec
+was added). **All green**. AC re-dispatched 2026-04-23 after the
+agreement-receipt ABI change — 8/8 sub-rules verified.
 
 | Spec | Report URL |
 |---|---|
@@ -343,7 +364,8 @@ after the agreement-receipt ABI change — 8/8 sub-rules verified.
 | TokenOpsVerification | https://prover.certora.com/output/9512759/4768752379cc434aa53cc7b8894cdd25 (2026-04-23, 8/8 green — FigaroCore token-flow universal proof) |
 | BatchVerifierTokenOps | https://prover.certora.com/output/9512759/a8a8878f373f4b5d940e47b81576b2dd (2026-04-23, 4/4 green — single-position batch token-flow) |
 | FigToken | https://prover.certora.com/output/9512759/e48a5c0c4b94465ba93b44a716b31025 (2026-04-21) |
-| ~~StagedMerkleAirdrop~~ | RETIRED 2026-05 — contract deleted; historical 2026-04-21 proof at https://prover.certora.com/output/9512759/c48b77f25a734eab894102ee5706da7e |
+| RpgfMinter | https://prover.certora.com/output/9512759/d858c840cce243fd8d48d3d328b21427 (2026-05-19, 12 rules) |
+| ~~StagedMerkleAirdrop~~ | RETIRED 2026-05 — contract deleted; historical 2026-04-21 proof at https://prover.certora.com/output/9512759/c48b77f25a734eab894102ee5706da7e — succeeded by `RpgfMinter` spec above |
 
 ```bash
 # Install
@@ -379,10 +401,10 @@ export CERTORAKEY=<your-key>
 
 | Layer | Files | Test count | What it covers |
 |---|---|---|---|
-| **TLA+ model checking** | 2 models | 15 invariants (FigaroCore: 7 across 6,087,113 states / 4m 8s; FigToken: 8 across 160,844 states / 9s — both via `./test-tla.sh`) | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + FIG token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
-| **Halmos symbolic testing** | 1 file | 7 properties | FigaroCore: token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. (StagedMerkleAirdrop's 4 properties retired 2026-05 with the contract.) |
-| **Certora formal verification** | 5 specs | 31 declared rules (8 + 7 + 7/8 + 4 + 6/7) | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability + validator-gate on the new commitment-arg ABI. TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. BatchVerifierTokenOps: single-position settleBatch balance-flow proofs. FigToken: supply cap + minter registry preservation. (StagedMerkleAirdrop's 3 rules retired 2026-05 with the contract.) |
-| **Echidna fuzzing** | 1 harness | 7 properties | Kernel fuzz: solvency, monotonicity, buyer dominance, atomicity |
+| **TLA+ model checking** | 3 models | 24 invariants (FigaroCore: 7 across 6,087,113 states / 4m 8s; FigToken: 8 across 160,844 states / 9s; RpgfMinter: 9 across 11,821 states / 7s — all via `./test-tla.sh`) | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + FIG token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) + RPGF minter state machine (immutables, root one-shot, claim-flag monotonicity, time-lock, stage-bound) |
+| **Halmos symbolic testing** | 2 files | 15 properties | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. RpgfMinter (8): claim sets flag, already-claimed revert, not-unlocked revert, invalid-stage revert, root-not-set revert, submitter auth, root one-shot, zero-root rejection. |
+| **Certora formal verification** | 6 specs | 43 declared rules (8 + 7 + 7/8 + 4 + 6/7 + 12) | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability + validator-gate on the new commitment-arg ABI. TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. BatchVerifierTokenOps: single-position settleBatch balance-flow proofs. FigToken: supply cap + minter registry preservation. RpgfMinter: immutables, root one-shot, totalAllocated-locked-with-root, claim-flag monotonicity, submitter authorization, claim preconditions (stage-bound, root-set, unlocked, not-already-claimed). |
+| **Echidna fuzzing** | 2 harnesses | 15 properties | Kernel (7): solvency, monotonicity, buyer dominance, atomicity. RpgfMinter (8): claim-flag monotonicity, total-minted-within-cap, immutables, root one-shot, claim balance consistency. |
 | **Foundry unit tests** | 14 suites | 225 tests | Core lifecycle, revert branches, mechanisms, gas, FIG, staged airdrop, parity vectors |
 | **SDK Vitest** | 12 files | 166 tests | Event parsing, state reconstruction, bond math, commitments, extensions |
 | **Frontend Vitest** | 84 files | 560 tests | Components, hooks, semantic derivation, assembly, runtime identity |
