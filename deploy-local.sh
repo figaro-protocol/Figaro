@@ -63,7 +63,7 @@ FIG_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FigToken deployed at:'             
 BATCH_VERIFIER_ADDR=$(echo "$FORGE_OUT" | grep 'FigaroBatchVerifier deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 PROCESS_OFFSET_RECEIPT_ADDR=$(echo "$FORGE_OUT" | grep 'ProcessOffsetReceipt deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 MOCK_OFFSET_AGGREGATOR_ADDR=$(echo "$FORGE_OUT" | grep 'MockOffsetAggregator deployed at:' | grep -oE '0x[0-9a-fA-F]+')
-STAGED_AIRDROP_ADDR=$(echo "$FORGE_OUT" | grep 'StagedMerkleAirdrop deployed at:' | grep -oE '0x[0-9a-fA-F]+')
+RPGF_MINTER_ADDR=$(echo "$FORGE_OUT" | grep 'RpgfMinter deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 
 if [ -z "$CORE_ADDR" ]; then
   echo "❌ Could not parse FigaroCore address from forge output. Aborting env update."
@@ -99,7 +99,8 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_FIG_TOKEN_ADDRESS"         "$FIG_TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_BATCH_VERIFIER"            "$BATCH_VERIFIER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT"    "$PROCESS_OFFSET_RECEIPT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR"    "$MOCK_OFFSET_AGGREGATOR_ADDR"
-update_env "$CORE_ENV" "NEXT_PUBLIC_STAGED_AIRDROP"            "$STAGED_AIRDROP_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_STAGED_AIRDROP"            "$RPGF_MINTER_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_MINTER"               "$RPGF_MINTER_ADDR"
 
 # ── Write deployment manifest ─────────────────────────────────────────────────
 echo "✍️  Writing $CORE_MANIFEST ..."
@@ -120,7 +121,8 @@ cat > "$CORE_MANIFEST" <<EOF
   "batchVerifier": "$BATCH_VERIFIER_ADDR",
   "processOffsetReceipt": "$PROCESS_OFFSET_RECEIPT_ADDR",
   "mockOffsetAggregator": "$MOCK_OFFSET_AGGREGATOR_ADDR",
-  "stagedAirdrop": "$STAGED_AIRDROP_ADDR"
+  "rpgfMinter": "$RPGF_MINTER_ADDR",
+  "stagedAirdrop": "$RPGF_MINTER_ADDR"
 }
 EOF
 
@@ -140,5 +142,6 @@ echo "   NEXT_PUBLIC_FIG_TOKEN_ADDRESS=$FIG_TOKEN_ADDR"
 echo "   NEXT_PUBLIC_BATCH_VERIFIER=$BATCH_VERIFIER_ADDR"
 echo "   NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=$PROCESS_OFFSET_RECEIPT_ADDR"
 echo "   NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR=$MOCK_OFFSET_AGGREGATOR_ADDR"
-echo "   NEXT_PUBLIC_STAGED_AIRDROP=$STAGED_AIRDROP_ADDR"
+echo "   NEXT_PUBLIC_STAGED_AIRDROP=$RPGF_MINTER_ADDR"
+echo "   NEXT_PUBLIC_RPGF_MINTER=$RPGF_MINTER_ADDR"
 echo "   Manifest: $CORE_MANIFEST"

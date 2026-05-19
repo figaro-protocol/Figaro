@@ -10,7 +10,7 @@ import "../src/SchemaRegistry.sol";
 import "../src/OperatorRegistry.sol";
 import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
-import "../src/fig/StagedMerkleAirdrop.sol";
+import "../src/fig/RpgfMinter.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/mocks/MockOffsetAggregator.sol";
@@ -196,24 +196,41 @@ contract Deploy is Script {
         fig.registerMinter(deployer, 100_000_000 ether);
         fig.mint(deployer, 100_000_000 ether);
 
-        // ── StagedMerkleAirdrop (devnet test fixture) ───────────────
-        // Single-leaf merkle root for the deployer (anvil[0]) at every
-        // stage — `leaf == root` for an N=1 tree, so an empty proof
-        // array verifies. All three stages unlock at genesis
-        // (unlockTime = 1) so the /fig/claim devnet test can claim
-        // without time-travel. Mainnet uses a real multi-leaf root +
-        // canonical year-2/5/9 unlock times via DeployMainnet.s.sol.
+        // ── RpgfMinter (devnet test fixture) ────────────────────────
+        // Single shared MockSP1Verifier — reused for both the RpgfMinter
+        // and the FigaroBatchVerifier below. The mock accepts any proof
+        // bytes (chainid-gated to Anvil/31337).
+        MockSP1Verifier mockVerifier = new MockSP1Verifier();
+        console.log("MockSP1Verifier deployed at:", address(mockVerifier));
+
+        // RpgfMinter replaces StagedMerkleAirdrop's genesis-baked-root
+        // shape: on mainnet the root is submitted at tranche time after
+        // an SP1 proof attests it correctly aggregates the substrate-
+        // broadening formula. On devnet all three stages unlock at
+        // genesis (unlockTime = 1), the deployer doubles as submitter,
+        // and we immediately submit a single-leaf root for the deployer
+        // with claim amount 1 ether so /fig/claim works without
+        // time-travel or external sequencer wiring.
         //
         // Register BEFORE renounceDeployerMint — minters can't be added
         // after renounce per FigToken.sol:48. Cap math: 100M deployer +
         // 600M airdrop = 700M ≤ 1B MAX_SUPPLY.
+        uint64[3] memory rpgfUnlocks = [uint64(1), uint64(1), uint64(1)];
+        bytes32 devProgramVKey = keccak256("figaro-rpgf-dev");
+        RpgfMinter airdrop =
+            new RpgfMinter(address(fig), address(mockVerifier), devProgramVKey, deployer, rpgfUnlocks);
+        fig.registerMinter(address(airdrop), 600_000_000 ether);
+        console.log("RpgfMinter deployed at:", address(airdrop));
+
+        // Submit a stage-0 root for the deployer (single-leaf tree:
+        // leaf == root, empty proof verifies). Mock verifier accepts any
+        // proof bytes. Matches the previous StagedMerkleAirdrop devnet
+        // fixture behavior so existing /fig/claim flows still work.
         uint256 airdropClaimAmount = 1 ether;
         bytes32 airdropLeaf = keccak256(abi.encodePacked(deployer, airdropClaimAmount));
-        bytes32[3] memory airdropRoots = [airdropLeaf, airdropLeaf, airdropLeaf];
-        uint64[3] memory airdropUnlocks = [uint64(1), uint64(1), uint64(1)];
-        StagedMerkleAirdrop airdrop = new StagedMerkleAirdrop(address(fig), airdropRoots, airdropUnlocks);
-        fig.registerMinter(address(airdrop), 600_000_000 ether);
-        console.log("StagedMerkleAirdrop deployed at:", address(airdrop));
+        bytes memory rpgfPublicValues = abi.encode(uint8(0), airdropLeaf, airdropClaimAmount, uint32(1));
+        airdrop.submitRoot(rpgfPublicValues, hex"");
+        console.log("RpgfMinter: stage-0 root submitted (devnet fixture)");
 
         fig.renounceDeployerMint();
         console.log("Deployer mint renounced");
@@ -240,7 +257,7 @@ contract Deploy is Script {
         // The removed settlement-anchored emission model is deprecated.
         bytes32 genesisRoot = 0x10fc52ca200d9d5568c46b8435274d86183f39c5a9d8648b4006ec68f8058bc9;
         FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
-            address(new MockSP1Verifier()),
+            address(mockVerifier),
             keccak256("figaro-kernel-dev"), // devnet program vKey
             genesisRoot
         );
@@ -280,6 +297,7 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=", address(auction));
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
         console.log("  NEXT_PUBLIC_STAGED_AIRDROP=", address(airdrop));
+        console.log("  NEXT_PUBLIC_RPGF_MINTER=", address(airdrop));
         // console.log(
         //     "  NEXT_PUBLIC_FIG_EMISSION_ADDRESS=",
         // );

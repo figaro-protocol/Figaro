@@ -10,7 +10,7 @@ import "../src/SchemaRegistry.sol";
 import "../src/OperatorRegistry.sol";
 import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
-import "../src/fig/StagedMerkleAirdrop.sol";
+import "../src/fig/RpgfMinter.sol";
 import "../src/FigaroBatchVerifier.sol";
 import "../src/SchemaRegistrationHelper.sol";
 import "../src/ProcessOffsetReceipt.sol";
@@ -40,13 +40,14 @@ import "../src/schemaValidators/FigaroConsentV1Validator.sol";
 /// Required environment variables:
 ///   PRIVATE_KEY                — deployer private key (or use hardware wallet via flags)
 ///   SP1_VERIFIER               — address of the deployed Succinct SP1 verifier
+///                                (shared by FigaroBatchVerifier and RpgfMinter)
 ///   SP1_PROGRAM_VKEY           — bytes32 verification key of the compiled figaro-kernel program
 ///   GENESIS_ROOT               — bytes32 initial state root from genesis KernelState::new()
+///   RPGF_PROGRAM_VKEY          — bytes32 verification key of the compiled figaro-rpgf-prover program
+///   RPGF_SUBMITTER             — address authorized to call RpgfMinter.submitRoot
+///                                (the sequencer wallet)
 ///   FOUNDER_WALLET             — address receiving the 100M founder allocation at genesis
 ///   DAO_WALLET                 — address receiving the 300M DAO allocation at genesis
-///   AIRDROP_ROOT_Y2            — bytes32 merkle root for the year-2 airdrop (300M)
-///   AIRDROP_ROOT_Y5            — bytes32 merkle root for the year-5 airdrop (200M)
-///   AIRDROP_ROOT_Y9            — bytes32 merkle root for the year-9 airdrop (100M)
 ///   AIRDROP_UNLOCK_Y2          — unix timestamp at which year-2 claims open
 ///   AIRDROP_UNLOCK_Y5          — unix timestamp at which year-5 claims open
 ///   AIRDROP_UNLOCK_Y9          — unix timestamp at which year-9 claims open
@@ -54,10 +55,16 @@ import "../src/schemaValidators/FigaroConsentV1Validator.sol";
 /// FIG allocation (1B total, canonical):
 ///   100M  (10%)  founders — genesis mint to FOUNDER_WALLET (no vesting, no unlock)
 ///   300M  (30%)  DAO      — genesis mint to DAO_WALLET     (no vesting, no unlock)
-///   600M  (60%)  airdrops — one StagedMerkleAirdrop with three staged roots:
-///                             stage 0 (year 2): 300M   (30% of total)
-///                             stage 1 (year 5): 200M   (20% of total)
-///                             stage 2 (year 9): 100M   (10% of total)
+///   600M  (60%)  airdrops — one RpgfMinter with three staged unlocks:
+///                             stage 0 (year 2): up to 300M (30% of total)
+///                             stage 1 (year 5): up to 200M (20% of total)
+///                             stage 2 (year 9): up to 100M (10% of total)
+///                           Per-tranche roots are submitted at tranche time by the
+///                           sequencer after an SP1 proof verifies they correctly
+///                           aggregate the schema-author substrate-broadening
+///                           formula over chain-derived per-schema state. The
+///                           on-chain cap is the FigToken 600M minter cap; per-stage
+///                           caps live in the off-chain aggregation budget.
 ///
 /// No settlement-anchored emission. No batch-path minting. FigaroBatchVerifier
 /// is NOT a FIG minter and will never be registered as one.
@@ -104,11 +111,10 @@ contract DeployMainnet is Script {
         require(vm.envAddress("SP1_VERIFIER") != address(0), "SP1_VERIFIER not set");
         require(vm.envBytes32("SP1_PROGRAM_VKEY") != bytes32(0), "SP1_PROGRAM_VKEY not set");
         require(vm.envBytes32("GENESIS_ROOT") != bytes32(0), "GENESIS_ROOT not set");
+        require(vm.envBytes32("RPGF_PROGRAM_VKEY") != bytes32(0), "RPGF_PROGRAM_VKEY not set");
+        require(vm.envAddress("RPGF_SUBMITTER") != address(0), "RPGF_SUBMITTER not set");
         require(vm.envAddress("FOUNDER_WALLET") != address(0), "FOUNDER_WALLET not set");
         require(vm.envAddress("DAO_WALLET") != address(0), "DAO_WALLET not set");
-        require(vm.envBytes32("AIRDROP_ROOT_Y2") != bytes32(0), "AIRDROP_ROOT_Y2 not set");
-        require(vm.envBytes32("AIRDROP_ROOT_Y5") != bytes32(0), "AIRDROP_ROOT_Y5 not set");
-        require(vm.envBytes32("AIRDROP_ROOT_Y9") != bytes32(0), "AIRDROP_ROOT_Y9 not set");
         require(vm.envUint("AIRDROP_UNLOCK_Y2") != 0, "AIRDROP_UNLOCK_Y2 not set");
         require(vm.envUint("AIRDROP_UNLOCK_Y5") != 0, "AIRDROP_UNLOCK_Y5 not set");
         require(vm.envUint("AIRDROP_UNLOCK_Y9") != 0, "AIRDROP_UNLOCK_Y9 not set");
@@ -275,17 +281,25 @@ contract DeployMainnet is Script {
         _fig = address(fig);
         console.log("FigToken:               ", _fig);
 
-        // Build staged airdrop with three immutable roots and three unlock times.
-        bytes32[3] memory roots =
-            [vm.envBytes32("AIRDROP_ROOT_Y2"), vm.envBytes32("AIRDROP_ROOT_Y5"), vm.envBytes32("AIRDROP_ROOT_Y9")];
+        // Build the RpgfMinter with three immutable unlock times. Per-tranche
+        // roots and total allocations are submitted at tranche time by the
+        // sequencer (RPGF_SUBMITTER) after an SP1 proof verifies the
+        // aggregation. The 600M FigToken minter cap is the protocol-level
+        // ceiling; per-stage budgets live in the off-chain aggregation logic.
         uint64[3] memory unlockTimes = [
             uint64(vm.envUint("AIRDROP_UNLOCK_Y2")),
             uint64(vm.envUint("AIRDROP_UNLOCK_Y5")),
             uint64(vm.envUint("AIRDROP_UNLOCK_Y9"))
         ];
-        StagedMerkleAirdrop airdrop = new StagedMerkleAirdrop(_fig, roots, unlockTimes);
+        RpgfMinter airdrop = new RpgfMinter(
+            _fig,
+            vm.envAddress("SP1_VERIFIER"),
+            vm.envBytes32("RPGF_PROGRAM_VKEY"),
+            vm.envAddress("RPGF_SUBMITTER"),
+            unlockTimes
+        );
         _airdrop = address(airdrop);
-        console.log("StagedMerkleAirdrop:    ", _airdrop);
+        console.log("RpgfMinter:             ", _airdrop);
 
         // Genesis distribution: mint 100M + 300M directly to the founder and
         // DAO wallets. Register the deployer as a one-shot genesis minter with
@@ -297,9 +311,9 @@ contract DeployMainnet is Script {
         fig.mint(vm.envAddress("DAO_WALLET"), DAO_ALLOC);
         console.log("FigToken: genesis mint complete (founder + DAO)");
 
-        // Register the staged airdrop as the sole remaining minter.
+        // Register the RPGF minter as the sole remaining minter.
         fig.registerMinter(_airdrop, AIRDROP_ALLOC);
-        console.log("FigToken: StagedMerkleAirdrop registered as minter (600M cap)");
+        console.log("FigToken: RpgfMinter registered as minter (600M cap)");
 
         // After renounce, no new minters can ever be registered and the deployer
         // cannot mint again. The 400M deployer cap is exactly exhausted at this
@@ -331,6 +345,7 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=            ", _auction);
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=        ", _fig);
         console.log("  NEXT_PUBLIC_STAGED_AIRDROP=           ", _airdrop);
+        console.log("  NEXT_PUBLIC_RPGF_MINTER=              ", _airdrop);
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=           ", _batchVerifier);
         console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=   ", _offsetReceipts);
         console.log("---");
