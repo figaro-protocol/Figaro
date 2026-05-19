@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { useAccount, usePublicClient, useWalletClient, useChainId } from "wagmi";
-import { getStagedAirdropClaimStatus } from "@/lib/core/indexer";
+import { getRpgfMinterClaimStatus } from "@/lib/core/indexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import {
-    STAGED_MERKLE_AIRDROP_ABI,
-    getStagedAirdrop,
+    RPGF_MINTER_ABI,
+    getRpgfMinter,
 } from "@/lib/mechanisms/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
@@ -52,13 +52,13 @@ export default function ClaimPanel({ stageIndex = 0 }: { stageIndex?: number }) 
     const publicClient = usePublicClient();
     const { data: walletClient } = useWalletClient();
     const chainId = useChainId();
-    const airdropAddr = getStagedAirdrop();
+    const airdropAddr = getRpgfMinter();
 
     useEffect(() => {
         if (!address || !publicClient || !chainId) return;
         setLoading(true);
         fetchAllocation(stageIndex, address).then(setAllocation);
-        getStagedAirdropClaimStatus(publicClient, chainId, stageIndex, address)
+        getRpgfMinterClaimStatus(publicClient, chainId, stageIndex, address)
             .then(setClaimed)
             .finally(() => setLoading(false));
     }, [address, publicClient, chainId, stageIndex]);
@@ -73,7 +73,7 @@ export default function ClaimPanel({ stageIndex = 0 }: { stageIndex?: number }) 
         try {
             const tx = await walletClient.writeContract({
                 address: airdropAddr,
-                abi: STAGED_MERKLE_AIRDROP_ABI,
+                abi: RPGF_MINTER_ABI,
                 functionName: "claim",
                 args: [stageIndex, BigInt(allocation.amount), allocation.proof],
             });

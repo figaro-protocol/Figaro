@@ -1158,7 +1158,7 @@ export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: 
  * Advance Anvil's block timestamp by `seconds` and mine an empty block
  * so reads pick up the new `block.timestamp`. Used by tests that exercise
  * time-locked paths (OperatorRegistry.withdraw's 365-day lock,
- * StagedMerkleAirdrop vesting cliffs, etc.).
+ * RpgfMinter unlock cliffs, etc.).
  *
  * Pair with `evmSnapshot()` / `evmRevert()` so the time jump doesn't leak
  * into adjacent tests.

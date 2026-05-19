@@ -34,8 +34,9 @@ import {
 
 // ── OperatorRegistry events ──────────────────────────────────────────────────
 
-/** Event signature for StagedMerkleAirdrop.Claimed. */
-const EV_STAGED_AIRDROP_CLAIMED = parseAbiItem(
+/** Event signature for RpgfMinter.Claimed (same shape as the legacy
+ *  StagedMerkleAirdrop.Claimed it replaced). */
+const EV_RPGF_MINTER_CLAIMED = parseAbiItem(
     "event Claimed(uint8 indexed stageIndex, address indexed account, uint256 amount)",
 );
 
@@ -415,25 +416,25 @@ export async function getOperatorState(
 }
 
 // ---------------------------------------------------------------------------
-// StagedMerkleAirdrop queries
+// RpgfMinter queries
 // ---------------------------------------------------------------------------
 
 /**
- * Check whether `account` has claimed the StagedMerkleAirdrop allocation for
+ * Check whether `account` has claimed the RpgfMinter allocation for
  * `stageIndex` (0 = yr 2, 1 = yr 5, 2 = yr 9). Returns true if a Claimed event
  * exists for that (stage, account), false otherwise.
  */
-export async function getStagedAirdropClaimStatus(
+export async function getRpgfMinterClaimStatus(
     client: PublicClient,
     chainId: number,
     stageIndex: number,
     account: string,
 ): Promise<boolean> {
-    const addr = MECHANISM_CONTRACTS.stagedAirdrop;
+    const addr = MECHANISM_CONTRACTS.rpgfMinter;
     if (!addr) return false;
     const logs = await cachedGetLogs(client, chainId, {
         address: addr,
-        event: EV_STAGED_AIRDROP_CLAIMED,
+        event: EV_RPGF_MINTER_CLAIMED,
         eventName: "Claimed",
     });
     const lc = account.toLowerCase();

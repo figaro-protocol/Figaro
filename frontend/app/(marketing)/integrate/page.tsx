@@ -193,7 +193,7 @@ const state = reconstruct(events);
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro-Prototype2</a>. SDK lives at <code>sdk/</code>.</li>
                     <li><strong>SDK README:</strong> <code>sdk/README.md</code> in the repo. Covers every subpath export and the test-harness conventions.</li>
-                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>DUTCH_AUCTION_ABI</code>, <code>SCHEMA_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>OPERATOR_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>, <code>STAGED_MERKLE_AIRDROP_ABI</code>. All exported from <code>@figaro/core</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
+                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>DUTCH_AUCTION_ABI</code>, <code>SCHEMA_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>OPERATOR_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>, <code>RPGF_MINTER_ABI</code>. All exported from <code>@figaro/core</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Tests as documentation:</strong> <code>sdk/tests/</code> includes round-trip tests of every exported primitive. If the README is ambiguous, read the tests.</li>
                 </ul>
                 <p className="mt-8 text-sm text-ink-muted leading-relaxed">

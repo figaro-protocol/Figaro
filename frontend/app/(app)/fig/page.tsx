@@ -5,13 +5,13 @@ import { useAccount } from "wagmi";
 import {
     useFigTokenMetrics,
     useFigBalance,
-    useStagedAirdropStage,
-    useStagedAirdropClaimed,
+    useRpgfMinterStage,
+    useRpgfMinterClaimed,
     formatFig,
 } from "@/lib/mechanisms/useFigToken";
 import {
     getFigToken,
-    getStagedAirdrop,
+    getRpgfMinter,
 } from "@/lib/mechanisms/contracts";
 
 function ProgressBar({ pct, label }: { pct: number; label: string }) {
@@ -58,8 +58,8 @@ function StageRow({
     pct: string;
 }) {
     const { address } = useAccount();
-    const { unlockTime, isUnlocked, available } = useStagedAirdropStage(index);
-    const claimed = useStagedAirdropClaimed(index, address);
+    const { unlockTime, isUnlocked, available } = useRpgfMinterStage(index);
+    const claimed = useRpgfMinterClaimed(index, address);
 
     const status = !available
         ? "not configured"
@@ -97,7 +97,7 @@ export default function FigPage() {
     const tokenMetrics = useFigTokenMetrics();
     const { balance } = useFigBalance();
     const figAddr = getFigToken();
-    const airdropAddr = getStagedAirdrop();
+    const airdropAddr = getRpgfMinter();
 
     const maxSupply = 1_000_000_000n * 10n ** 18n;
     const totalSupply = tokenMetrics.totalSupply;
@@ -171,7 +171,7 @@ export default function FigPage() {
                     </div>
                     <div className="flex justify-between border-b border-gray-100 pb-2">
                         <dt className="text-black">Community airdrop</dt>
-                        <dd className="text-gray-600">600M · 60% · staged merkle claim (yr 2 / 5 / 9)</dd>
+                        <dd className="text-gray-600">600M · 60% · schema-author RPGF (yr 2 / 5 / 9)</dd>
                     </div>
                 </dl>
             </section>
@@ -184,7 +184,11 @@ export default function FigPage() {
                     ))}
                 </div>
                 <p className="text-sm text-gray-600 mt-4">
-                    Single <code>StagedMerkleAirdrop</code> contract with three immutable merkle roots and three immutable unlock timestamps. One-shot per (stage, address).
+                    Single <code>RpgfMinter</code> contract with three immutable unlock
+                    timestamps. Per-tranche Merkle roots are submitted at tranche time
+                    by a sequencer after an SP1 proof verifies the schema-author
+                    substrate-broadening aggregation. One-shot per (stage, address) on
+                    the claim side.
                 </p>
                 <Link
                     href="/fig/claim"
@@ -218,14 +222,14 @@ export default function FigPage() {
                         </dd>
                     </div>
                     <div className="flex justify-between gap-4 border-b border-gray-100 pb-2 flex-wrap">
-                        <dt className="text-gray-600 shrink-0">Staged Airdrop</dt>
+                        <dt className="text-gray-600 shrink-0">RPGF Minter</dt>
                         <dd className="text-black font-mono text-xs break-all">
                             {airdropAddr ?? <span className="font-sans text-neutral-500">not configured</span>}
                         </dd>
                     </div>
                 </dl>
                 <p className="text-sm text-gray-600 mt-4">
-                    Source: <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/src/fig/FigToken.sol" target="_blank" rel="noopener noreferrer" className="underline"><code>FigToken.sol</code></a> · <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/src/fig/StagedMerkleAirdrop.sol" target="_blank" rel="noopener noreferrer" className="underline"><code>StagedMerkleAirdrop.sol</code></a>.
+                    Source: <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/src/fig/FigToken.sol" target="_blank" rel="noopener noreferrer" className="underline"><code>FigToken.sol</code></a> · <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/src/fig/RpgfMinter.sol" target="_blank" rel="noopener noreferrer" className="underline"><code>RpgfMinter.sol</code></a>.
                 </p>
             </section>
         </div>

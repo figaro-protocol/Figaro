@@ -133,11 +133,11 @@ export default function Specifications() {
                         desc="ERC-20 + EIP-2612 permit. 1,000,000,000 MAX_SUPPLY hard cap on every mint. Minter registry with totalRegisteredCap. Deployer registers capped minters, then renounces."
                     />
                     <ContractEntry
-                        id="StagedMerkleAirdrop"
-                        title="StagedMerkleAirdrop.sol"
-                        href={`${GH}/fig/StagedMerkleAirdrop.sol`}
-                        meta="3 stages · one-shot per claim"
-                        desc="Three-stage merkle-claim airdrop (year 2 / 5 / 9). Three immutable merkle roots, three immutable unlock timestamps. Calls IFigMinter.mint on claim."
+                        id="RpgfMinter"
+                        title="RpgfMinter.sol"
+                        href={`${GH}/fig/RpgfMinter.sol`}
+                        meta="3 stages · SP1-gated · one-shot per claim"
+                        desc="Three-stage SP1-gated retroactive public-goods funding minter (year 2 / 5 / 9). Three immutable unlock timestamps; per-tranche Merkle roots submitted by the sequencer after an SP1 proof verifies the substrate-broadening aggregation. Calls IFigMinter.mint on claim."
                     />
                     <ContractEntry
                         id="IFigMinter"

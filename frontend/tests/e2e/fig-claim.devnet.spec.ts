@@ -1,11 +1,15 @@
 /**
  * fig-claim.devnet.spec.ts
  *
- * StagedMerkleAirdrop is the contract behind /fig/claim — three
- * immutable per-stage merkle roots + unlock times, IFigMinter-backed
- * minting on each claim. Pre-2026-05-19 the airdrop was not deployed
- * by Deploy.s.sol at all on devnet; this session added a single-leaf
- * test fixture to the deploy so this spec can exercise the path.
+ * RpgfMinter is the contract behind /fig/claim — three immutable
+ * per-stage unlock times + sequencer-submitted Merkle roots,
+ * IFigMinter-backed minting on each claim. (Replaced the deleted
+ * StagedMerkleAirdrop 2026-05; same claim-side ABI shape, so this
+ * spec's claim assertions carry over unchanged — only the contract
+ * name + the stages-getter return tuple differ.) Pre-2026-05-19 the
+ * airdrop was not deployed by Deploy.s.sol at all on devnet; this
+ * session added a single-leaf test fixture to the deploy so this
+ * spec can exercise the path.
  *
  * Devnet fixture (per Deploy.s.sol):
  *   - claimant = vm.addr(deployerPrivateKey) (== anvil[0]).
@@ -20,7 +24,7 @@
  * UI coverage of /fig/claim is gated on a static
  * `frontend/public/fig-claims-y{2,5,9}.json` allocation file that's a
  * mainnet-generation artifact rather than a per-test fixture, so that
- * surface is deferred. What this spec covers: the StagedMerkleAirdrop
+ * surface is deferred. What this spec covers: the RpgfMinter
  * contract path the UI button funnels into, plus the FigToken
  * IFigMinter wiring (cap accounting, mint emits, balance lands).
  *
@@ -57,7 +61,7 @@ const CLAIM_AMOUNT = parseEther('1');
 const AIRDROP_ABI = parseAbi([
     'function claim(uint8 stageIndex, uint256 amount, bytes32[] proof) external',
     'function claimed(uint8, address) view returns (bool)',
-    'function stages(uint256) view returns (bytes32 root, uint64 unlockTime)',
+    'function stages(uint256) view returns (bytes32 root, uint64 unlockTime, uint256 totalAllocated)',
     'event Claimed(uint8 indexed stageIndex, address indexed account, uint256 amount)',
     'error InvalidStage(uint8 stageIndex)',
     'error NotUnlocked(uint8 stageIndex)',
@@ -71,11 +75,11 @@ const FIG_TOKEN_ABI = parseAbi([
 
 function getAddresses() {
     const config = readLocalDeploymentConfig();
-    const airdrop = (process.env.NEXT_PUBLIC_STAGED_AIRDROP ?? '') as Hex;
+    const airdrop = (process.env.NEXT_PUBLIC_RPGF_MINTER ?? '') as Hex;
     const fig = (process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS
         ?? config.figaroCore /* fallback never hits in devnet */) as Hex;
     if (!airdrop || airdrop.length !== 42) {
-        throw new Error('NEXT_PUBLIC_STAGED_AIRDROP not set — re-run ./deploy-local.sh after the airdrop-deploy patch');
+        throw new Error('NEXT_PUBLIC_RPGF_MINTER not set — re-run ./deploy-local.sh after the airdrop-deploy patch');
     }
     return {
         airdrop,
@@ -87,7 +91,7 @@ let outerSnapshot: string;
 test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
 test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
-test.describe('StagedMerkleAirdrop.claim (devnet)', () => {
+test.describe('RpgfMinter.claim (devnet)', () => {
     let testSnapshot: string;
     test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });

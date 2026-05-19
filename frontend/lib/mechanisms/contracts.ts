@@ -11,7 +11,7 @@ import { GHG_DISCLOSURE_SCHEMA_KEYS } from "@/lib/core/agreementManifest";
 export {
     OPERATOR_REGISTRY_ABI,
     FIG_TOKEN_ABI,
-    STAGED_MERKLE_AIRDROP_ABI,
+    RPGF_MINTER_ABI,
 } from "@figaro/core";
 
 // ── GHG Disclosure — aligned to real reporting standards ──────────────────────
@@ -93,7 +93,7 @@ export const MECHANISM_CONTRACTS = {
     ) as `0x${string}`,
     operatorRegistry: (process.env.NEXT_PUBLIC_OPERATOR_REGISTRY || "") as `0x${string}`,
     figToken: (process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS || "") as `0x${string}`,
-    stagedAirdrop: (process.env.NEXT_PUBLIC_STAGED_AIRDROP || "") as `0x${string}`,
+    rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
 };
 
 function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
@@ -112,8 +112,8 @@ export function getFigToken(): `0x${string}` | null {
     return resolveAddress(MECHANISM_CONTRACTS.figToken);
 }
 
-export function getStagedAirdrop(): `0x${string}` | null {
-    return resolveAddress(MECHANISM_CONTRACTS.stagedAirdrop);
+export function getRpgfMinter(): `0x${string}` | null {
+    return resolveAddress(MECHANISM_CONTRACTS.rpgfMinter);
 }
 
 // ABIs are now imported from @figaro/core (see top of file)

@@ -296,7 +296,6 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=", address(offsetReceipts));
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=", address(auction));
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
-        console.log("  NEXT_PUBLIC_STAGED_AIRDROP=", address(airdrop));
         console.log("  NEXT_PUBLIC_RPGF_MINTER=", address(airdrop));
         // console.log(
         //     "  NEXT_PUBLIC_FIG_EMISSION_ADDRESS=",

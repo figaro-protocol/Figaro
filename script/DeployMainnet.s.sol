@@ -344,7 +344,6 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_OPERATOR_REGISTRY=        ", _operators);
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=            ", _auction);
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=        ", _fig);
-        console.log("  NEXT_PUBLIC_STAGED_AIRDROP=           ", _airdrop);
         console.log("  NEXT_PUBLIC_RPGF_MINTER=              ", _airdrop);
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=           ", _batchVerifier);
         console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=   ", _offsetReceipts);

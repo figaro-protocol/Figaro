@@ -196,11 +196,14 @@ export const FIG_TOKEN_ABI = parseAbi([
     "function deployer() view returns (address)",
 ]);
 
-export const STAGED_MERKLE_AIRDROP_ABI = parseAbi([
+export const RPGF_MINTER_ABI = parseAbi([
     "function claim(uint8 stageIndex, uint256 amount, bytes32[] proof) external",
     "function claimed(uint8 stageIndex, address account) view returns (bool)",
     "function minter() view returns (address)",
-    "function stages(uint8 stageIndex) view returns (bytes32 root, uint64 unlockTime)",
+    "function stages(uint8 stageIndex) view returns (bytes32 root, uint64 unlockTime, uint256 totalAllocated)",
+    "function submitter() view returns (address)",
+    "function programVKey() view returns (bytes32)",
     "function STAGE_COUNT() view returns (uint8)",
     "event Claimed(uint8 indexed stageIndex, address indexed account, uint256 amount)",
+    "event RootSubmitted(uint8 indexed stageIndex, bytes32 indexed root, uint256 totalAllocated, uint32 schemaCount)",
 ]);

@@ -6,9 +6,9 @@ import { formatToken } from "@/lib/shared/utils";
 import { useState } from "react";
 import {
     FIG_TOKEN_ABI,
-    STAGED_MERKLE_AIRDROP_ABI,
+    RPGF_MINTER_ABI,
     getFigToken,
-    getStagedAirdrop,
+    getRpgfMinter,
 } from "@/lib/mechanisms/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
@@ -38,18 +38,18 @@ export function useFigTokenMetrics() {
     };
 }
 
-// ── Staged airdrop: per-stage claim status ─────────────────────────────────
+// ── RPGF minter: per-stage claim status ────────────────────────────────────
 
 /** Returns true if `account` has already claimed stage `stageIndex`. */
-export function useStagedAirdropClaimed(
+export function useRpgfMinterClaimed(
     stageIndex: number,
     account: `0x${string}` | undefined,
 ) {
-    const airdrop = getStagedAirdrop();
+    const airdrop = getRpgfMinter();
 
     const { data: claimed } = useReadContract({
         address: airdrop ?? undefined,
-        abi: STAGED_MERKLE_AIRDROP_ABI,
+        abi: RPGF_MINTER_ABI,
         functionName: "claimed",
         args: account ? [stageIndex, account] : undefined,
         query: { enabled: !!airdrop && !!account },
@@ -58,22 +58,23 @@ export function useStagedAirdropClaimed(
     return (claimed as boolean | undefined) ?? false;
 }
 
-// ── Staged airdrop: per-stage root and unlock time ─────────────────────────
+// ── RPGF minter: per-stage root and unlock time ────────────────────────────
 
-/** Read the root and unlockTime for a given stage. */
-export function useStagedAirdropStage(stageIndex: number) {
-    const airdrop = getStagedAirdrop();
+/** Read the root, unlockTime, and totalAllocated for a given stage. */
+export function useRpgfMinterStage(stageIndex: number) {
+    const airdrop = getRpgfMinter();
 
     const { data } = useReadContract({
         address: airdrop ?? undefined,
-        abi: STAGED_MERKLE_AIRDROP_ABI,
+        abi: RPGF_MINTER_ABI,
         functionName: "stages",
         args: [stageIndex],
         query: { enabled: !!airdrop },
     });
 
-    // wagmi returns a tuple for struct/multi-return views
-    const tuple = data as [`0x${string}`, bigint] | undefined;
+    // wagmi returns a tuple for struct/multi-return views.
+    // RpgfMinter.stages returns (bytes32 root, uint64 unlockTime, uint256 totalAllocated).
+    const tuple = data as [`0x${string}`, bigint, bigint] | undefined;
     const root = tuple?.[0];
     const unlockTime = tuple?.[1];
 

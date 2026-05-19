@@ -84,7 +84,7 @@ export default function TerminalPage() {
                     {CONTRACTS.batchVerifier && <p className="text-black">BatchVerifier: <span>{CONTRACTS.batchVerifier}</span></p>}
                     {MECHANISM_CONTRACTS.operatorRegistry && <p className="text-black">OperatorRegistry: <span>{MECHANISM_CONTRACTS.operatorRegistry}</span></p>}
                     {MECHANISM_CONTRACTS.figToken && <p className="text-black">FigToken: <span>{MECHANISM_CONTRACTS.figToken}</span></p>}
-                    {MECHANISM_CONTRACTS.stagedAirdrop && <p className="text-black">StagedMerkleAirdrop: <span>{MECHANISM_CONTRACTS.stagedAirdrop}</span></p>}
+                    {MECHANISM_CONTRACTS.rpgfMinter && <p className="text-black">RpgfMinter: <span>{MECHANISM_CONTRACTS.rpgfMinter}</span></p>}
                 </div>
             </details>
 
