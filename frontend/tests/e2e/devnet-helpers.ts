@@ -1190,6 +1190,79 @@ export function captureOrGuardAssemblyManifest(
     return fixture.agreements;
 }
 
+/** OperatorRegistry registration event — carries the profile metadataURI. */
+const OPERATOR_REGISTERED_EVENT_ABI = parseAbi([
+    'event OperatorRegistered(address indexed operator, string metadataURI)',
+]);
+
+/** Resolve an `ipfs://` URI to a Kubo-gateway URL. */
+function resolveIpfsURI(uri: string): string {
+    const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
+    return uri.startsWith('ipfs://')
+        ? `${gateway}/ipfs/${uri.slice('ipfs://'.length)}`
+        : uri;
+}
+
+/**
+ * Capture-or-guard a wizard-published operator catalogue as a seed fixture.
+ *
+ * Reads `operatorAddress`'s on-chain profile (OperatorRegistered event ->
+ * metadataURI), follows the profile's `catalogueURI` to the pinned
+ * SellerCatalogueMetadata. With `FIGARO_CAPTURE_FIXTURES` set, writes it to
+ * `scripts/fixtures/operator-catalogue.json` — the data `seed-devnet.mjs`
+ * replays. Without it, drift-guards the live catalogue's `menu` against the
+ * committed fixture and throws on mismatch.
+ *
+ * Same capture-or-guard pattern as `captureOrGuardAssemblyManifest`: the
+ * canonical authoring UI (here the operator-registration wizard) produces
+ * the artifact; the seed replays it; the spec guards the two stay in sync.
+ */
+export async function captureOrGuardOperatorCatalogue(operatorAddress: string): Promise<void> {
+    const config = readLocalDeploymentConfig();
+    const operatorRegistry = (process.env.NEXT_PUBLIC_OPERATOR_REGISTRY
+        ?? config.operatorRegistry) as `0x${string}` | undefined;
+    if (!operatorRegistry) {
+        throw new Error('NEXT_PUBLIC_OPERATOR_REGISTRY not set — run ./deploy-local.sh');
+    }
+
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const events = await publicClient.getContractEvents({
+        address: operatorRegistry,
+        abi: OPERATOR_REGISTERED_EVENT_ABI,
+        eventName: 'OperatorRegistered',
+        args: { operator: operatorAddress as `0x${string}` },
+        fromBlock: 0n,
+    });
+    if (events.length === 0) {
+        throw new Error(`No OperatorRegistered event for ${operatorAddress}`);
+    }
+    const profileURI = events[events.length - 1].args.metadataURI as string;
+    const profile = await (await fetch(resolveIpfsURI(profileURI))).json() as {
+        catalogueURI?: string;
+    };
+    if (!profile.catalogueURI) {
+        throw new Error(`Operator ${operatorAddress} profile carries no catalogueURI`);
+    }
+    const catalogue = await (await fetch(resolveIpfsURI(profile.catalogueURI))).json() as {
+        menu: unknown[];
+    };
+
+    const fixturePath = path.resolve(__dirname, '../../scripts/fixtures/operator-catalogue.json');
+    if (process.env.FIGARO_CAPTURE_FIXTURES) {
+        fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
+        fs.writeFileSync(fixturePath, `${JSON.stringify(catalogue, null, 2)}\n`, 'utf8');
+        return;
+    }
+    const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as { menu: unknown[] };
+    if (JSON.stringify(catalogue.menu) !== JSON.stringify(fixture.menu)) {
+        throw new Error(
+            'scripts/fixtures/operator-catalogue.json drift — the wizard-published ' +
+            'catalogue no longer matches the committed fixture; re-capture with ' +
+            'FIGARO_CAPTURE_FIXTURES=1.',
+        );
+    }
+}
+
 /**
  * Advance Anvil's block timestamp by `seconds` and mine an empty block
  * so reads pick up the new `block.timestamp`. Used by tests that exercise

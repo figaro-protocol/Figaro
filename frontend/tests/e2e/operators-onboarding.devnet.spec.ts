@@ -14,7 +14,7 @@
  */
 import { expect } from "@playwright/test";
 import { test, ANVIL_ACCOUNTS } from "./devnet-multi-test";
-import { evmRevert, evmSnapshot } from "./devnet-helpers";
+import { captureOrGuardOperatorCatalogue, evmRevert, evmSnapshot } from "./devnet-helpers";
 
 const OPERATOR = ANVIL_ACCOUNTS[0];
 
@@ -134,5 +134,11 @@ test.describe("operator wizard — devnet happy path", () => {
             "href",
             `/m/${OPERATOR}`,
         );
+
+        // Capture the wizard-published catalogue as the seed fixture
+        // (FIGARO_CAPTURE_FIXTURES), or drift-guard it against the committed
+        // one. The seed script replays this fixture so the seeded operators
+        // have a catalogue and /m/[merchant] is transactable.
+        await captureOrGuardOperatorCatalogue(OPERATOR);
     });
 });
