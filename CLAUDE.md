@@ -189,6 +189,17 @@ Every paper in `paper/` must stand on its own. The corpus was derived from a sin
 
 When asked to revise a paper, audit against all eight rules and surface drift. The `paper/figaro-mechanism.tex` revision on 2026-05-05 is the canonical example of this audit applied end-to-end.
 
+### Test Layers — Separation of Concerns
+
+One test layer per concern. These boundaries are hard; respect them when writing or auditing any test.
+
+- **Foundry** (`forge test --via-ir`) — contract behavior. The only home for contract tests.
+- **Vitest** (`frontend/tests/components/` RTL, `frontend/tests/lib/` unit) — UI logic, component behavior, validation, pure-client computation. Anything that needs neither a chain nor a real browser.
+- **Playwright `devnet`** (`*.devnet.spec.ts`) — the e2e suite, and the only one. Every spec drives the real UI against Anvil + deployed contracts.
+- **Playwright `mobile`** (`*.mobile.spec.ts`) — the one legitimate non-e2e browser project: responsive / CSS chrome that jsdom cannot test.
+
+**e2e means end-to-end: action → reaction, both in the UI.** A genuine e2e test performs an action *through the UI*; the action travels the full real stack (UI → contract → chain → indexer); the reaction returns and is asserted *in the UI*. Driving a participant via a viem helper breaks the action end; asserting only on-chain events breaks the reaction end — either break and it is not e2e. A Playwright spec that drives contracts via viem and never touches the UI is a contract test misfiled; it belongs in Foundry. A mock-backed test cannot be e2e — the reaction is fabricated. The `mock` Playwright project was retired 2026-05-20; do not recreate it.
+
 ### Test Commands
 
 ```bash
