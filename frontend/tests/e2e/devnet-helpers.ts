@@ -1254,7 +1254,16 @@ export async function captureOrGuardOperatorCatalogue(operatorAddress: string): 
         return;
     }
     const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as { menu: unknown[] };
-    if (JSON.stringify(catalogue.menu) !== JSON.stringify(fixture.menu)) {
+    // Each menu item's `id` is generated fresh per wizard run, so comparing
+    // it would drift the guard every run. Strip it — the guarded surface is
+    // the structural shape (name, price, category, available, item count).
+    const withoutIds = (menu: unknown[]) =>
+        menu.map((item) => {
+            const rest = { ...(item as Record<string, unknown>) };
+            delete rest.id;
+            return rest;
+        });
+    if (JSON.stringify(withoutIds(catalogue.menu)) !== JSON.stringify(withoutIds(fixture.menu))) {
         throw new Error(
             'scripts/fixtures/operator-catalogue.json drift — the wizard-published ' +
             'catalogue no longer matches the committed fixture; re-capture with ' +
