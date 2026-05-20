@@ -47,6 +47,13 @@ async fn main() {
     let seller1_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
 
+    // SP1_MINIMAL_BATCH=1 drops the Layer B content_proof from the seller
+    // attestation below. The content gate is ~800x of this batch's cycle
+    // count (~20M with the gate, ~24K without), so the minimal batch is what
+    // makes a real proof fit a memory-constrained machine. The canonical full
+    // batch — content gate exercised inside the zkVM — stays the default.
+    let minimal_batch = std::env::var("SP1_MINIMAL_BATCH").is_ok();
+
     let root = Commitment {
         process_id: B256::ZERO,
         buyer: BUYER,
@@ -145,10 +152,13 @@ async fn main() {
                 metadata_uri: "ipfs://QmOp".to_string(),
                 operator_sig: op_sig,
             },
-            // 4. Seller attestation — carries a Layer B content_proof so
-            //    the SP1 run actually exercises the full content gate
-            //    inside the zkVM (parse → schemaId → validate → encode →
-            //    keccak).
+            // 4. Seller attestation — in the default (full) batch it carries
+            //    a Layer B content_proof so the SP1 run exercises the whole
+            //    content gate inside the zkVM (parse → schemaId → validate →
+            //    encode → keccak). Under SP1_MINIMAL_BATCH the content_proof
+            //    is dropped; the kernel's validate_attestation_content then
+            //    short-circuits on None and the attestation still records the
+            //    same signed content_ref.
             KernelOp::AttestAsSeller {
                 role_commitment: root.clone(),
                 order_hash,
@@ -156,10 +166,14 @@ async fn main() {
                 stage: 1,
                 content_ref,
                 seller_sig: attest_sig,
-                content_proof: Some(AttestationContentProof {
-                    content_json: serde_json::to_string(&content_json).unwrap(),
-                    schema_spec: serde_json::to_string(&schema_spec).unwrap(),
-                }),
+                content_proof: if minimal_batch {
+                    None
+                } else {
+                    Some(AttestationContentProof {
+                        content_json: serde_json::to_string(&content_json).unwrap(),
+                        schema_spec: serde_json::to_string(&schema_spec).unwrap(),
+                    })
+                },
             },
             // 5. Buyer attestation
             KernelOp::AttestAsBuyer {
@@ -199,6 +213,11 @@ async fn main() {
     let mut stdin = SP1Stdin::new();
     stdin.write(&input);
     println!("── Stage 1/2 — Mock execution (no proof) ──");
+    println!(
+        "Batch mode: {}",
+        if minimal_batch { "minimal — Layer B content gate OFF" }
+        else { "full — Layer B content gate ON" },
+    );
     let (mut public_values, report) =
         mock_client.execute(elf.clone(), stdin.clone()).await.unwrap();
     println!("Cycles: {}", report.total_instruction_count());
@@ -260,5 +279,6 @@ async fn main() {
     } else {
         println!("\n=== Execution verified. Program is correct. ===");
         println!("To generate a real local proof: SP1_REAL_PROOF=1 cargo run -p figaro-prove-test --release");
+        println!("On a memory-constrained machine, add SP1_MINIMAL_BATCH=1 to drop the content gate.");
     }
 }

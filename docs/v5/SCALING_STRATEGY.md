@@ -83,9 +83,11 @@ byte-exact parity to the Solidity kernel.
 
 **SP1 guest program** (`prover/program/`): Executes `apply_batch()` in
 the SP1 zkVM and commits `PublicValues` (8 fields: prev/new state roots,
-chain binding, 4 event hashes). Verified execution: 19.8M cycles for a
+chain binding, 4 event hashes). Verified execution: ~1.0M cycles for a
 6-operation mixed batch (commit + schema + operator + attest-seller +
-attest-buyer + resolve).
+attest-buyer + resolve) with the k256 SP1 precompile patched in
+(`prover/Cargo.toml`); a real Core proof of that batch generates and
+verifies locally.
 
 **On-chain verifier** (`src/FigaroBatchVerifier.sol`): Accepts SP1 proofs,
 verifies state root continuity and chain binding, hash-verifies auxiliary

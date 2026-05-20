@@ -39,7 +39,7 @@ The proof-based kernel scaling track (SP1/Rust) is the active scaling
 architecture. It is implemented and tested:
 
 - Rust kernel (`prover/lib/`): 30 tests
-- SP1 guest program (`prover/program/`): 19.8M cycle execution verified
+- SP1 guest program (`prover/program/`): ~1.0M cycle execution verified (k256 precompile patched); real Core proof generated and verified locally
 - On-chain verifier (`src/FigaroBatchVerifier.sol`): 22 Foundry tests
 - Devnet batch sequencer (`prover/sequencer/`): 22 tests
 
