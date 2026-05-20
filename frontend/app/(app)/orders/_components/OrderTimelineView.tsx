@@ -24,7 +24,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
-import { decodeAbiParameters, type Hex, type PublicClient } from "viem";
+import { decodeAbiParameters, toHex, type Hex, type PublicClient } from "viem";
 import { Button } from "@/components/ui/Button";
 import { PreResolveOffsetPanel } from "@/components/core/PreResolveOffsetPanel";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
@@ -34,6 +34,7 @@ import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
 import { findListingByAddress } from "@/lib/shared/operatorListing";
 import type { SemanticTone } from "@/lib/shared/tones";
 import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
+import { useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
 import type { MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -48,6 +49,16 @@ const MERCHANT_EVENT_BY_STAGE: Record<number, MerchantEvent> = {
     4: "handed-off",
     5: "cancelled",
 };
+
+/**
+ * Structural placeholder for the courier's proximity-proof deviceSig.
+ * `figaro-proximity-proof-v1` is Category-1: the on-chain validator
+ * checks deviceSig length ∈ [65, 512] only — no ecrecover, the bytes
+ * are not verified. The real per-handoff witness comes from a device
+ * sensor (BLE / NFC / Wi-Fi); that capture SDK is not built yet, so
+ * the button submits a structurally-valid 65-byte placeholder.
+ */
+const COURIER_DEVICE_SIG_PLACEHOLDER: Hex = `0x${"01".repeat(65)}`;
 
 interface MerchantTimelineEvent {
     eventType: MerchantEvent;
@@ -287,12 +298,15 @@ export function OrderTimelineView({ processId }: Props) {
     const chainId = publicClient?.chain?.id ?? 0;
     const workspace = useSemanticProcessWorkspace({ processId });
     const merchantActions = useMerchantProcessActions();
+    const courierActions = useCourierProcessActions();
     const { listings } = useOperatorListings();
 
     const [events, setEvents] = useState<MerchantTimelineEvent[]>([]);
     const [eventsLoading, setEventsLoading] = useState(false);
     const [merchantPending, setMerchantPending] = useState(false);
     const [merchantError, setMerchantError] = useState<string | null>(null);
+    const [courierPending, setCourierPending] = useState(false);
+    const [courierError, setCourierError] = useState<string | null>(null);
     const [tick, setTick] = useState(0);
 
     useEffect(() => {
@@ -354,7 +368,17 @@ export function OrderTimelineView({ processId }: Props) {
 
     const isBuyer = !!rootOrder && hexEqual(address, rootOrder.buyer);
     const isSeller = !!rootOrder && hexEqual(address, rootOrder.seller);
-    const role: "buyer" | "seller" | "spectator" = isBuyer ? "buyer" : isSeller ? "seller" : "spectator";
+    // A courier is the seller of a non-root sub-order — distinct from the
+    // root seller (the merchant). Without this branch the courier falls
+    // through to "spectator" and the handoff action is unreachable.
+    const courierOrder = useMemo(() => {
+        if (!processModel || !address || isBuyer || isSeller) return null;
+        return processModel.orders.find(
+            (order) => order.orderId !== processModel.rootOrderId && hexEqual(address, order.seller),
+        ) ?? null;
+    }, [processModel, address, isBuyer, isSeller]);
+    const role: "buyer" | "seller" | "courier" | "spectator" =
+        isBuyer ? "buyer" : isSeller ? "seller" : courierOrder ? "courier" : "spectator";
 
     const allOrders = processModel?.orders ?? [];
     // OrderNodeModel.state is the OrderState enum reverse-mapped to a string
@@ -398,6 +422,27 @@ export function OrderTimelineView({ processId }: Props) {
         }
     };
 
+    const handleCourierProximityProof = async () => {
+        if (!courierOrder) return;
+        setCourierPending(true);
+        setCourierError(null);
+        try {
+            // Fresh 32-byte nonce per handoff — the validator rejects a
+            // zero nonce, and a unique nonce keeps each proof distinct.
+            const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
+            await courierActions.signalWithProof({
+                orderHash: courierOrder.orderId,
+                eventType: "arrived-pickup",
+                proof: { band: 1, nonce, deviceSig: COURIER_DEVICE_SIG_PLACEHOLDER },
+            });
+            setTick((t) => t + 1);
+        } catch (cause: unknown) {
+            setCourierError(extractErrorMessage(cause, "Proximity proof submission failed"));
+        } finally {
+            setCourierPending(false);
+        }
+    };
+
     if (!processModel) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
@@ -435,6 +480,7 @@ export function OrderTimelineView({ processId }: Props) {
                     {" · "}
                     {role === "buyer" && <>You are the buyer · seller: <span className="text-neutral-700">{sellerDisplayName}</span></>}
                     {role === "seller" && <>You are the seller · buyer: <span className="text-neutral-700">{buyerDisplayName}</span></>}
+                    {role === "courier" && <>You are the courier on a delivery sub-order of this process</>}
                     {role === "spectator" && <>Read-only — your wallet is neither buyer nor seller on this order</>}
                 </p>
             </header>
@@ -442,7 +488,7 @@ export function OrderTimelineView({ processId }: Props) {
             {/* Primary action */}
             <section className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">
                 <p className="text-xs font-semibold text-neutral-500">
-                    {role === "buyer" ? "Your action" : role === "seller" ? "Next step" : "Status"}
+                    {role === "buyer" ? "Your action" : role === "seller" ? "Next step" : role === "courier" ? "Handoff" : "Status"}
                 </p>
 
                 {role === "buyer" && (
@@ -492,6 +538,29 @@ export function OrderTimelineView({ processId }: Props) {
                         {merchantError && (
                             <p className="text-sm text-red-600" data-testid="merchant-action-error">
                                 {merchantError}
+                            </p>
+                        )}
+                    </>
+                )}
+
+                {role === "courier" && (
+                    <>
+                        <p className="text-sm text-neutral-700">
+                            Submit an on-chain proximity proof to certify the pickup
+                            handoff. This fires the{" "}
+                            <code className="font-mono text-xs">figaro-proximity-proof-v1</code>{" "}
+                            attestation and logs the courier-process handoff event.
+                        </p>
+                        <Button
+                            onClick={handleCourierProximityProof}
+                            disabled={courierPending || courierActions.isPending || courierActions.isConfirming}
+                            data-testid="btn-courier-proximity-proof"
+                        >
+                            {courierPending ? "Submitting…" : "Submit proximity proof"}
+                        </Button>
+                        {courierError && (
+                            <p className="text-sm text-red-600" data-testid="courier-action-error">
+                                {courierError}
                             </p>
                         )}
                     </>
