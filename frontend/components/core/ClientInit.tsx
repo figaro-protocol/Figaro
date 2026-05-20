@@ -3,7 +3,6 @@
 import { useCallback, useEffect } from "react";
 import { useConnect, useAccount, useChainId } from "wagmi";
 import { TEST_HELPERS_ENABLED, windowSafe } from "@/lib/core/testHelpers";
-import { getE2EModeFromSearchParams } from "@/lib/shared/e2e";
 import { useOrderStore } from "@/lib/core/store";
 import { calculateBonds } from "@figaro/core";
 
@@ -93,9 +92,14 @@ export default function ClientInit() {
             );
         }), [connectors]);
 
+    // Raw `?e2e=` param — deliberately NOT getE2EModeFromSearchParams, which
+    // collapses any non-exact value (e.g. `devnet-share`) to null.
+    // `isDevnetMode` below recognises the whole `devnet-` family, so it needs
+    // the raw value; otherwise `?e2e=devnet-share` (commitment-share) never
+    // auto-connects and `window.__FIGARO_WALLET__` is never published.
     const getE2EMode = useCallback(() => {
         if (typeof window === 'undefined') return null;
-        return getE2EModeFromSearchParams(window.location.search);
+        return new URLSearchParams(window.location.search).get('e2e');
     }, []);
 
     const isDevnetMode = useCallback((mode: string | null) => {
