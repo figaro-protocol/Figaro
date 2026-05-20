@@ -1,6 +1,6 @@
 use alloy_primitives::{address, Address, B256, U256, keccak256};
 use k256::ecdsa::SigningKey;
-use sp1_sdk::{self, Prover, ProverClient, ProvingKey, SP1Stdin};
+use sp1_sdk::{self, HashableKey, Prover, ProverClient, ProvingKey, SP1Stdin};
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::types::*;
@@ -235,6 +235,18 @@ async fn main() {
     assert_ne!(pv.prev_state_root, pv.new_state_root, "state should change");
     assert_eq!(pv.chain_id, CHAIN_ID);
     assert_eq!(pv.verifying_contract, CORE);
+
+    // SP1_VKEY_ONLY — derive and print the program verification key
+    // (SP1_PROGRAM_VKEY for the on-chain FigaroBatchVerifier / RpgfMinter
+    // deploy), then stop. setup() is the cheap part of proving (~12s, no
+    // OOM); this path never reaches the memory-heavy prove step.
+    if std::env::var("SP1_VKEY_ONLY").is_ok() {
+        println!("\n── Program verification key ──");
+        let cpu_client = ProverClient::builder().cpu().build().await;
+        let pk = cpu_client.setup(elf).await.expect("setup failed");
+        println!("SP1_PROGRAM_VKEY={}", pk.verifying_key().bytes32());
+        return;
+    }
 
     // Stage 2 — Real CPU proof: generates an actual SP1 proof on the
     // local machine and verifies it against the verifying key.

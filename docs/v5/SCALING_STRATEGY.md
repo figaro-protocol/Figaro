@@ -419,7 +419,11 @@ the Figaro kernel program in the zkVM and produces:
 - `BatchEvents` (attestation, schema, operator events)
 
 For devnet, the MockProver is used (no real proof generation).
-For production, the SP1 network prover generates STARK/SNARK proofs.
+For testnet and mainnet, the sequencer runs the open-source SP1 prover
+locally (`SP1_PROVER=cpu` or `cuda`) and generates Groth16 proofs — the
+form `FigaroBatchVerifier` verifies on-chain. There is no dependency on an
+external proving service; a sequencer self-proves like a validator runs
+node software.
 
 ### 5. Settlement Transaction
 
@@ -542,7 +546,7 @@ Rust crate in `prover/sequencer/`. 6 modules, 22 tests.
 
 ### Phase 2: Production Sequencer
 
-- SP1 network prover for real proof generation
+- Real Groth16 proof generation via the local SP1 prover (cpu / cuda)
 - Redundant sequencer instances for availability
 - Rate limiting and operation prioritization
 - Monitoring and alerting
