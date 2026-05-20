@@ -162,6 +162,9 @@ test.describe('Operator edit UI surfaces (devnet)', () => {
 
         const { metadataURI } = await waitForOneUpdateEvent(operator, blockBefore, seeded.profileURI);
         expect(metadataURI).toMatch(/^ipfs:\/\/[A-Za-z0-9]+/);
+
+        // On a confirmed update the success effect redirects to /operators.
+        await expect(page).toHaveURL(/\/operators$/, { timeout: 30_000 });
     });
 
     test('/operators/edit/catalogue — Delete-catalogue affordance dispatches updateProfile', async ({ page }) => {
@@ -203,11 +206,11 @@ test.describe('Operator edit UI surfaces (devnet)', () => {
         // Confirm-delete reveals; click it to fire `updater.save({}, {clear:['catalogueURI']})`.
         await page.getByRole('button', { name: 'Confirm delete' }).click();
 
-        // Poll the chain for the OperatorProfileUpdated event rather than
-        // wait for the UI redirect — the post-success refetch+router.push
-        // race leaves the catalogue route stuck on "Reading registry…" at
-        // times. The on-chain event is the system-of-record.
+        // The on-chain event is the system-of-record that the edit shipped.
         await waitForOneUpdateEvent(operator, blockBefore, seeded.profileURI);
+
+        // On a confirmed update the success effect redirects to /operators.
+        await expect(page).toHaveURL(/\/operators$/, { timeout: 30_000 });
     });
 
     test('/operators/edit/agents — set MCP endpoint, submit, OperatorProfileUpdated emits', async ({ page }) => {
@@ -233,6 +236,9 @@ test.describe('Operator edit UI surfaces (devnet)', () => {
         await page.locator('#agent-mcp').fill(mcpUrl);
         await page.getByRole('button', { name: 'Save changes' }).click();
         await waitForOneUpdateEvent(operator, blockBefore, seeded.profileURI);
+
+        // On a confirmed update the success effect redirects to /operators.
+        await expect(page).toHaveURL(/\/operators$/, { timeout: 30_000 });
 
         // Diagnostic: confirm the render-loop bug is fixed. Pre-fix, the
         // `OperatorEditAgents` component fired "Maximum update depth
@@ -297,5 +303,8 @@ test.describe('Operator edit UI surfaces (devnet)', () => {
 
         await page.getByRole('button', { name: 'Save changes' }).click();
         await waitForOneUpdateEvent(operator, blockBefore, seeded.profileURI);
+
+        // On a confirmed update the success effect redirects to /operators.
+        await expect(page).toHaveURL(/\/operators$/, { timeout: 30_000 });
     });
 });

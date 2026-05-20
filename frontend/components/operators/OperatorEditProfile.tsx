@@ -39,7 +39,7 @@ export function OperatorEditProfile() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { data: registryData, isLoading: registryLoading, refetch } = useOperatorProfile(address);
+    const { data: registryData, isLoading: registryLoading } = useOperatorProfile(address);
     const { update, loaded } = useOnboardingState(address);
 
     const [existingProfile, setExistingProfile] = useState<OperatorProfileMetadata | null>(null);
@@ -111,16 +111,16 @@ export function OperatorEditProfile() {
 
     const updater = useUpdateOperatorProfile(existingProfile);
 
-    // Redirect back to /operators on a confirmed update.
+    // Redirect back to /operators on a confirmed update. No refetch here:
+    // `useOperatorProfile` is per-call-site local state, so refetching this
+    // component's instance can't refresh /operators (which has its own) —
+    // and the synchronous re-render + re-fetch it kicked raced the
+    // router.push navigation. /operators reads fresh on mount regardless.
     useEffect(() => {
         if (updater.isSuccess) {
-            // Small UX nicety: refetch the registry-side data so the
-            // landing page shows the new metadataURI without a full
-            // reload.
-            refetch();
             router.push("/operators");
         }
-    }, [updater.isSuccess, refetch, router]);
+    }, [updater.isSuccess, router]);
 
     if (!mounted) {
         return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;

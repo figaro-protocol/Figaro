@@ -33,7 +33,7 @@ export function OperatorEditAssemblies() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { data: registryData, isLoading: registryLoading, refetch } = useOperatorProfile(address);
+    const { data: registryData, isLoading: registryLoading } = useOperatorProfile(address);
     const { update, loaded } = useOnboardingState(address);
 
     const [existingProfile, setExistingProfile] = useState<OperatorProfileMetadata | null>(null);
@@ -88,10 +88,9 @@ export function OperatorEditAssemblies() {
 
     useEffect(() => {
         if (updater.isSuccess) {
-            refetch();
             router.push("/operators");
         }
-    }, [updater.isSuccess, refetch, router]);
+    }, [updater.isSuccess, router]);
 
     if (!mounted) {
         return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
