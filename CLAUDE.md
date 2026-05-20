@@ -53,6 +53,34 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 ## Working With This Codebase
 
+### General Coding Discipline
+
+Adapted from the community `andrej-karpathy-skills` CLAUDE.md (rules distilled
+from Karpathy's notes on LLM coding pitfalls). That file's "Simplicity First"
+rule is deliberately not imported: its YAGNI bullets contradict the
+runtime-infrastructure doctrine in `docs/v5/RUNTIME.md` and the
+`frontend/lib/` notes below, and its non-conflicting part is already covered
+by "Stick to the protocol — no 2 cents".
+
+**Clarify before coding.** State assumptions explicitly; if uncertain, ask.
+When a request has multiple interpretations, present them — never pick one
+silently. If a simpler approach exists, say so; push back when warranted. If
+something is unclear, stop, name what's confusing, and ask.
+
+**Surgical changes.** Touch only what the request requires. Don't "improve"
+adjacent code, comments, or formatting; don't refactor what isn't broken;
+match existing style even where you'd do it differently. If you spot unrelated
+dead code, mention it — don't delete it. Remove only the
+imports/variables/functions that your own change orphaned. Every changed line
+should trace to the request. The one deliberate exception is the
+documentation-discipline rule below: a code change that makes a whitelisted
+doc stale must fix that doc in the same session.
+
+**Goal-driven execution.** Convert vague tasks into verifiable success criteria
+before starting — "fix the bug" becomes "write a failing test that reproduces
+it, then make it pass". For multi-step work, state a brief plan with a verify
+step per item; the harnesses in `docs/v5/TESTING.md` are the verification layer.
+
 ### Before Raising Any Finding
 
 Read `docs/v5/DESIGN_DECISIONS.md` before flagging anything as a vulnerability.
