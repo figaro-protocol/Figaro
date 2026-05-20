@@ -28,9 +28,13 @@ use std::io::Read;
 use alloy_primitives::U256;
 use figaro_rpgf::{build_tranche_input, events::EventStream};
 use serde::{Deserialize, Serialize};
-use sp1_sdk::{include_elf, Prover, ProverClient, SP1Stdin};
+// ProveRequest / ProvingKey are imported anonymously (`as _`): their methods
+// (`.groth16()`, `.run()`, `.verifying_key()`) must be in scope, but binding
+// the `ProveRequest` name would collide with the local request struct below.
+use sp1_sdk::blocking::{ProveRequest as _, Prover, ProverClient};
+use sp1_sdk::{include_elf, Elf, HashableKey, ProvingKey as _, SP1Stdin};
 
-const RPGF_ELF: &[u8] = include_elf!("figaro-rpgf-prover");
+const RPGF_ELF: Elf = include_elf!("figaro-rpgf-prover");
 
 #[derive(Deserialize)]
 struct ProveRequest {
@@ -78,15 +82,18 @@ fn main() {
     stdin.write(&input);
 
     eprintln!("rpgf-prove: compiling key (this can take a while on first run)");
-    let (pk, vk) = client.setup(RPGF_ELF);
+    let pk = client.setup(RPGF_ELF).expect("setup failed");
 
     eprintln!("rpgf-prove: generating proof");
-    let proof = client.prove(&pk, &stdin).run().expect("prove failed");
+    // Groth16: the `proof` and `vkey` emitted below are submitted on-chain to
+    // RpgfMinter, and only Groth16/Plonk proofs carry on-chain-verifiable
+    // `.bytes()` — a default Core proof would panic in `.bytes()` at runtime.
+    let proof = client.prove(&pk, stdin).groth16().run().expect("prove failed");
 
     let response = ProveResponse {
         public_values: format!("0x{}", hex(proof.public_values.as_slice())),
         proof: format!("0x{}", hex(&proof.bytes())),
-        vkey: format!("0x{}", hex(&vk.bytes32().0)),
+        vkey: pk.verifying_key().bytes32(),
     };
     let out = serde_json::to_string(&response).expect("serialize response");
     println!("{}", out);
