@@ -81,6 +81,16 @@ update_env() {
   fi
 }
 
+# ── Helper: set key=value only if the key is ABSENT ────────────────────────────
+# For stable service endpoints (IPFS) — unlike contract addresses, which
+# rotate every deploy and must be overwritten, a hand-set custom endpoint
+# (Pinata, remote gateway, self-hosted Kubo) must survive a redeploy.
+default_env() {
+  local file="$1" key="$2" value="$3"
+  if grep -q "^${key}=" "$file" 2>/dev/null; then return; fi
+  echo "${key}=${value}" >> "$file"
+}
+
 # ── Write frontend/.env.local ─────────────────────────────────────────────────
 echo ""
 echo "✍️  Updating $CORE_ENV ..."
@@ -100,6 +110,11 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_BATCH_VERIFIER"            "$BATCH_VERIFIER_
 update_env "$CORE_ENV" "NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT"    "$PROCESS_OFFSET_RECEIPT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR"    "$MOCK_OFFSET_AGGREGATOR_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_MINTER"               "$RPGF_MINTER_ADDR"
+
+# IPFS service endpoints — default to the local Kubo daemon. Set only if
+# absent, so a custom endpoint configured by hand survives a redeploy.
+default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_API_URL"     "http://127.0.0.1:5001"
+default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_GATEWAY_URL" "http://127.0.0.1:8080"
 
 # ── Write deployment manifest ─────────────────────────────────────────────────
 echo "✍️  Writing $CORE_MANIFEST ..."
@@ -141,4 +156,5 @@ echo "   NEXT_PUBLIC_BATCH_VERIFIER=$BATCH_VERIFIER_ADDR"
 echo "   NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=$PROCESS_OFFSET_RECEIPT_ADDR"
 echo "   NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR=$MOCK_OFFSET_AGGREGATOR_ADDR"
 echo "   NEXT_PUBLIC_RPGF_MINTER=$RPGF_MINTER_ADDR"
+echo "   NEXT_PUBLIC_IPFS_API_URL / NEXT_PUBLIC_IPFS_GATEWAY_URL — local Kubo defaults (set only if absent)"
 echo "   Manifest: $CORE_MANIFEST"
