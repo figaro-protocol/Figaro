@@ -17,6 +17,7 @@ import type {
 } from "@/lib/shared/sellerCatalogueMetadata";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
+import { IPFS_GATEWAY_URL } from "@/lib/shared/ipfsService";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -41,9 +42,6 @@ export interface ResolvedMerchantBranding {
 }
 
 // ── URI resolution ────────────────────────────────────────────────────────────
-
-const IPFS_GATEWAY_URL =
-    process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
 
 /**
  * Resolve a content URI to an HTTP URL.
