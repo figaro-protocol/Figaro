@@ -10,11 +10,13 @@
  *     never registered operators), bound to the seeded assemblies in
  *     seller-side roles.
  *
- * This script IS the authoring path for the reference assemblies: their
- * manifests live here as data (the `ASSEMBLIES` array) — not in a designer
- * draft, not pulled from any git revision. To add or change a reference
- * assembly, edit this file. Manifests start minimal (identity + role
- * labels, no clauses); clauses are added iteratively.
+ * The assembly manifests are NOT authored here — a V5 AssemblyManifest is
+ * a designer-canvas snapshot. They are captured fixtures in
+ * `scripts/fixtures/<slug>.manifest.json`, produced by the
+ * scenario-*.devnet.spec.ts authoring walks (run with
+ * FIGARO_CAPTURE_FIXTURES=1). This script replays them verbatim; the
+ * on-chain contentHash re-derives from the canonical serialization,
+ * matching the app's `serializeManifest`.
  *
  * Idempotent — both registries are permissionless first-write-wins, so a
  * re-run skips anything already registered.
@@ -77,53 +79,25 @@ const ASSEMBLY_REGISTRY_ABI = parseAbi([
     'error WrongDeposit(uint256 provided, uint256 required)',
 ]);
 
-// ── Reference assemblies — manifests as data ────────────────────────────────
-// Minimal by design: identity + role labels, no clauses. The on-chain
-// `contentHash` re-derives from the manifest each run (keccak256 of the
-// pinned JSON), so editing a manifest here re-binds it on the next fresh
-// devnet.
-const ASSEMBLIES = [
-    {
-        slug: 'direct-sale',
-        manifest: {
-            identity: {
-                id: 'direct-sale-reference',
-                name: 'Direct Sale',
-                slug: 'direct-sale',
-                description:
-                    'One-node bonded sale — the buyer commits to a merchant and ' +
-                    'consumes on-site or picks up. No courier, no sub-orders.',
-                networkTargets: ['local-anvil'],
-                version: '0.1.0',
-            },
-            roles: [
-                { roleKind: 'buyer', displayName: 'Buyer' },
-                { roleKind: 'merchant', displayName: 'Merchant' },
-            ],
-        },
-    },
-    {
-        slug: 'local-commerce',
-        manifest: {
-            identity: {
-                id: 'local-commerce-reference',
-                name: 'Local Commerce',
-                slug: 'local-commerce',
-                description:
-                    'Multi-node bonded local commerce — buyer to merchant to ' +
-                    'courier. One root order plus a courier sub-order, settled ' +
-                    'atomically.',
-                networkTargets: ['local-anvil'],
-                version: '0.1.0',
-            },
-            roles: [
-                { roleKind: 'buyer', displayName: 'Buyer' },
-                { roleKind: 'merchant', displayName: 'Merchant' },
-                { roleKind: 'courier', displayName: 'Courier' },
-            ],
-        },
-    },
-];
+// ── Reference-assembly fixtures ─────────────────────────────────────────────
+// Designer-authored AssemblyManifests, captured by the scenario specs into
+// scripts/fixtures/. Replayed verbatim — do not hand-edit; re-capture with
+// `FIGARO_CAPTURE_FIXTURES=1 npx playwright test scenario-*.devnet`.
+const FIXTURE_DIR = path.resolve(SCRIPT_DIR, 'fixtures');
+const ASSEMBLY_FIXTURES = ['direct-sale', 'local-commerce'];
+
+/** Sorted-key, bigint-as-string JSON — mirrors `canonicalize` in
+ *  frontend/lib/mechanisms/useAssemblyRegistry.ts, so the contentHash this
+ *  script registers matches the app's `serializeManifest`. */
+function canonicalize(value) {
+    return JSON.stringify(value, (_key, raw) => {
+        if (typeof raw === 'bigint') return raw.toString();
+        if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+        const sorted = {};
+        for (const k of Object.keys(raw).sort()) sorted[k] = raw[k];
+        return sorted;
+    });
+}
 
 // ── Operators — all sellers; anvil[0] stays the unregistered buyer ──────────
 // The binding spread covers every shape: three single-assembly operators
@@ -201,8 +175,19 @@ async function main() {
     const authorClient = createWalletClient({ account: author, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
     console.log('Assemblies:');
-    for (const { slug, manifest } of ASSEMBLIES) {
-        const json = JSON.stringify(manifest);
+    for (const name of ASSEMBLY_FIXTURES) {
+        const fixturePath = path.resolve(FIXTURE_DIR, `${name}.manifest.json`);
+        if (!fs.existsSync(fixturePath)) {
+            throw new Error(
+                `Missing fixture ${fixturePath} — capture it with ` +
+                `FIGARO_CAPTURE_FIXTURES=1 npx playwright test scenario-${name}.devnet`,
+            );
+        }
+        const manifest = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+        const slug = manifest.slug;
+        // The pinned bytes and the contentHash both derive from the canonical
+        // serialization, so a consumer re-verifying the manifest matches.
+        const json = canonicalize(manifest);
         const contentHash = keccak256(toHex(json));
         const metadataURI = await pinJSON(ipfsApiUrl, json);
         try {

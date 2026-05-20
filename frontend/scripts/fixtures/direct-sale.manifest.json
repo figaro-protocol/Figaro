@@ -1,0 +1,73 @@
+{
+  "agreements": {
+    "0x8eeea713bab77437d5f6c6251af187ed26092051f7480afe112228120ea0c807": {
+      "buyer": "0xde51000000000000000000000000000000000000",
+      "sections": [
+        {
+          "data": {
+            "currency": "0x0000000000000000000000000000000000000000",
+            "lineItems": [],
+            "payment": "1000000000000000000"
+          },
+          "schema": "figaro-commerce-v1"
+        },
+        {
+          "data": {
+            "modalities": [
+              "consume-onsite"
+            ]
+          },
+          "schema": "figaro-fulfilment-v2"
+        },
+        {
+          "data": {
+            "classOfService": "S",
+            "destinationGeohash": "0",
+            "massGrams": 1,
+            "originGeohash": "0",
+            "volumeMl": 1
+          },
+          "schema": "figaro-geo-v2"
+        },
+        {
+          "data": {
+            "klerosCourt": "general",
+            "klerosMinJurors": 3
+          },
+          "schema": "figaro-jurisdiction-v1"
+        },
+        {
+          "data": {
+            "parentOrderHashes": [],
+            "topologyMode": "root"
+          },
+          "schema": "figaro-topology-v1"
+        }
+      ],
+      "seller": "0xde51000000000000000000000000000000000001",
+      "version": "a1"
+    }
+  },
+  "name": "Direct Sale",
+  "nextOrderIndex": 1,
+  "nextSellerIndex": 2,
+  "orders": [
+    {
+      "agreementHash": "0x8eeea713bab77437d5f6c6251af187ed26092051f7480afe112228120ea0c807",
+      "buyer": "0xde51000000000000000000000000000000000000",
+      "buyerBond": "2000000000000000000",
+      "cumulativeValue": "1000000000000000000",
+      "currency": "0x0000000000000000000000000000000000000000",
+      "deadline": "1779306633",
+      "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
+      "payment": "1000000000000000000",
+      "processId": "0xprocess19e46b9a93e0000000000000000000000000000000000000000000000",
+      "salt": "1",
+      "seller": "0xde51000000000000000000000000000000000001",
+      "sellerBond": "2000000000000000000",
+      "state": 0
+    }
+  ],
+  "processId": "0xprocess19e46b9a93e0000000000000000000000000000000000000000000000",
+  "slug": "direct-sale"
+}

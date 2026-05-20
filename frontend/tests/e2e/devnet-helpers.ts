@@ -1156,6 +1156,41 @@ export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: 
 }
 
 /**
+ * Capture-or-guard a designer-published assembly manifest as a seed fixture.
+ *
+ * With `FIGARO_CAPTURE_FIXTURES` set, writes the manifest — `slug` and
+ * `name` normalised to the canonical reference values — to
+ * `scripts/fixtures/<slug>.manifest.json`, the data `seed-devnet.mjs`
+ * replays. Without it, loads that committed fixture and returns its
+ * `agreements` map so the spec can drift-guard the live designer output
+ * (`expect(manifest.agreements).toEqual(...)`).
+ *
+ * `agreements` is the deterministic part of the manifest — per-run
+ * `processId` / `deadline` live only on `orders` — so it is a stable
+ * drift signal: if the designer's clause generation changes, the
+ * committed fixture stops matching and must be re-captured.
+ */
+export function captureOrGuardAssemblyManifest(
+    manifest: Record<string, unknown> & { agreements: Record<string, unknown> },
+    opts: { slug: string; name: string },
+): Record<string, unknown> {
+    const fixturePath = path.resolve(
+        __dirname,
+        `../../scripts/fixtures/${opts.slug}.manifest.json`,
+    );
+    if (process.env.FIGARO_CAPTURE_FIXTURES) {
+        const normalized = { ...manifest, slug: opts.slug, name: opts.name };
+        fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
+        fs.writeFileSync(fixturePath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
+        return manifest.agreements;
+    }
+    const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as {
+        agreements: Record<string, unknown>;
+    };
+    return fixture.agreements;
+}
+
+/**
  * Advance Anvil's block timestamp by `seconds` and mine an empty block
  * so reads pick up the new `block.timestamp`. Used by tests that exercise
  * time-locked paths (OperatorRegistry.withdraw's 365-day lock,

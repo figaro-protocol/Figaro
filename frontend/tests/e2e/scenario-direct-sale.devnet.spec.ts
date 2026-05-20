@@ -29,7 +29,12 @@ import {
     toHex,
     type Hex,
 } from 'viem';
-import { evmRevert, evmSnapshot, readLocalDeploymentConfig } from './devnet-helpers';
+import {
+    captureOrGuardAssemblyManifest,
+    evmRevert,
+    evmSnapshot,
+    readLocalDeploymentConfig,
+} from './devnet-helpers';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -159,5 +164,13 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         expect(fulfilment?.data.modalities).toEqual(['consume-onsite']);
         const topology = agreement.sections.find((s) => s.schema === 'figaro-topology-v1');
         expect(topology?.data.topologyMode).toBe('root');
+
+        // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
+        // or drift-guard the live designer output against the committed one.
+        const fixtureAgreements = captureOrGuardAssemblyManifest(manifest, {
+            slug: 'direct-sale',
+            name: 'Direct Sale',
+        });
+        expect(manifest.agreements).toEqual(fixtureAgreements);
     });
 });

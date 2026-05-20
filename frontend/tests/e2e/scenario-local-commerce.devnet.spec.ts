@@ -39,7 +39,12 @@ import {
     toHex,
     type Hex,
 } from 'viem';
-import { evmRevert, evmSnapshot, readLocalDeploymentConfig } from './devnet-helpers';
+import {
+    captureOrGuardAssemblyManifest,
+    evmRevert,
+    evmSnapshot,
+    readLocalDeploymentConfig,
+} from './devnet-helpers';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -192,5 +197,13 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
         const courierTopology = courierAgreement.sections.find((s) => s.schema === 'figaro-topology-v1');
         expect(courierTopology?.data.topologyMode).toBe('explicit');
         expect(courierTopology?.data.parentOrderHashes).toEqual([rootOrder.id]);
+
+        // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
+        // or drift-guard the live designer output against the committed one.
+        const fixtureAgreements = captureOrGuardAssemblyManifest(manifest, {
+            slug: 'local-commerce',
+            name: 'Local Commerce',
+        });
+        expect(manifest.agreements).toEqual(fixtureAgreements);
     });
 });
