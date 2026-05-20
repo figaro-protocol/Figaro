@@ -46,6 +46,7 @@ import { getSchemaInfo } from "@/lib/shared/schemaCategories";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import type { FulfilmentModality } from "@figaro/core/schemas";
+import { KLEROS_COURTS } from "@/lib/dispute";
 
 /**
  * Articles of the agreement, in canonical contract-paper order.
@@ -1180,12 +1181,10 @@ function EmissionsArticle({
     );
 }
 
-const KLEROS_COURT_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-    { value: "general", label: "General Court" },
-    { value: "blockchain-nontechnical", label: "Blockchain — Non-Technical" },
-    { value: "blockchain-technical", label: "Blockchain — Technical" },
-    { value: "english-language", label: "English Language" },
-];
+// Derived from the canonical KLEROS_COURTS catalogue (lib/dispute) so the
+// designer's subcourt picker cannot drift from the /dispute court list.
+const KLEROS_COURT_OPTIONS: ReadonlyArray<{ value: string; label: string }> =
+    KLEROS_COURTS.map((court) => ({ value: court.key, label: court.name }));
 
 /**
  * Jurisdiction article — three layers of dispute resolution.

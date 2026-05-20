@@ -114,7 +114,8 @@ export function encodeArbitratorExtraData(
 }
 
 /**
- * The minimum juror count Kleros itself enforces.
- * Submissions below this revert at the arbitrator level.
+ * UI sanity floor for the minimum juror count — `encodeArbitratorExtraData`
+ * requires a positive count for a well-formed encoding. This is not a
+ * Kleros-enforced limit; each Kleros subcourt sets its own (higher) minimum.
  */
 export const KLEROS_MIN_JURORS_FLOOR = 1;

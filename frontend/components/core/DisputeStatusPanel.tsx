@@ -25,6 +25,7 @@ import { Card } from "@/components/ui/Card";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { Order } from "@/lib/core/store";
+import { CONTRACTS } from "@/lib/core/contracts";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import {
@@ -73,9 +74,13 @@ function saveDisputeId(processId: string, id: bigint): void {
 // Evidence display URI builder
 // ---------------------------------------------------------------------------
 
-function buildEvidenceDisplayURI(processId: string, chainId: number): string {
+function buildEvidenceDisplayURI(processId: string, chainId: number, coreAddress: string): string {
     const base = typeof window !== "undefined" ? window.location.origin : "";
     const params = new URLSearchParams({ processId, chainID: String(chainId) });
+    // The juror-facing /evidence-display route rebuilds the process timeline
+    // against `coreAddress`; without it the timeline binds to the env-default
+    // FigaroCore, which may not be the core the disputed process settled on.
+    if (coreAddress) params.set("coreAddress", coreAddress);
     return `${base}/evidence-display?${params.toString()}`;
 }
 
@@ -174,7 +179,7 @@ export function DisputeStatusPanel({
 
         try {
             const chainId = await publicClient.getChainId();
-            const evidenceDisplayURI = buildEvidenceDisplayURI(processId, chainId);
+            const evidenceDisplayURI = buildEvidenceDisplayURI(processId, chainId, CONTRACTS.core);
 
             const metaEvidence = buildFigaroMetaEvidence(undefined, evidenceDisplayURI);
             const metaEvidenceCID = await evidenceTransport.pinJSON(metaEvidence);
