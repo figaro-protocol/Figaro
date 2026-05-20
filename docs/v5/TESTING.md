@@ -62,7 +62,7 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 `Inv_StageIndexBounded`.
 
 ## Frontend Vitest
-## Playwright — mock, mock-mobile, and devnet projects
+## Playwright — devnet (e2e) + mobile (viewport) projects
 ## Rust prover — figaro-kernel + figaro-sequencer + figaro-schema + figaro-rpgf
 
 - `figaro-kernel` (`prover/lib/`): kernel logic mirror — types, EIP-712 hashing, apply_batch state machine.

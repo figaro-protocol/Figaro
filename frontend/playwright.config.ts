@@ -50,25 +50,28 @@ export default defineConfig({
         timeout: 120_000,
     },
 
+    // Two projects, two concerns. `devnet` is the e2e suite: every spec
+    // drives the real UI against Anvil + deployed contracts (action in the
+    // UI, reaction in the UI). `mobile` is the lone non-e2e browser project
+    // — responsive/viewport chrome that needs a real browser and jsdom
+    // can't render. UI logic that needs neither lives in Vitest
+    // (`tests/components/`, `tests/lib/`); contracts live in Foundry.
+    // The former `mock` project (UI tests against a fake backend) was
+    // retired 2026-05-20 — a mock-backed test is not end-to-end.
     projects: [
         {
-            name: 'mock',
-            testMatch: /(?<!\.devnet|\.mobile)\.spec\.ts$/,
+            name: 'devnet',
+            testMatch: /\.devnet\.spec\.ts$/,
+            fullyParallel: false,
+            workers: 1,
             use: { ...devices['Desktop Chrome'] },
         },
         {
-            name: 'mock-mobile',
+            name: 'mobile',
             testMatch: /\.mobile\.spec\.ts$/,
             // Pixel 5 uses Chromium — WebKit (iPhone 13) is unsupported on macOS 13.
             // Tests verify responsive layout, not browser engine — Chromium is correct.
             use: { ...devices['Pixel 5'] },
-        },
-        {
-            name: 'devnet',
-            testMatch: /\.(devnet|shared)\.spec\.ts$/,
-            fullyParallel: false,
-            workers: 1,
-            use: { ...devices['Desktop Chrome'] },
         },
     ],
 });

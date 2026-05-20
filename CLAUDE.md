@@ -216,8 +216,9 @@ forge test --via-ir
 
 # Frontend
 cd frontend && npm run type-check
-cd frontend && npx vitest run
-cd frontend && npm run test:e2e:mock
+cd frontend && npx vitest run                 # UI logic — component + unit tier
+cd frontend && npm run test:e2e:mobile        # responsive/viewport chrome
+cd frontend && npm run test:e2e:devnet        # e2e — real UI against Anvil + contracts
 ```
 
 Full harness inventory (file lists, property names, rule counts) → `docs/v5/TESTING.md`.
@@ -545,7 +546,7 @@ FOUNDRY_PROFILE=halmos halmos \
   --solver-timeout-assertion 5m --solver z3
 
 cd frontend && npx vitest run
-cd frontend && npx playwright test --project=mock
+cd frontend && npx playwright test --project=mobile
 cd frontend && npx playwright test --project=devnet
 
 cd sdk && npm test
