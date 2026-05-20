@@ -25,7 +25,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ProcessGraphCanvas } from "@/components/core/ProcessGraphCanvas";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -104,6 +104,7 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
 
 export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     // Initial render must match SSR — start blank and hydrate from the
     // appropriate seed in a mount effect.
@@ -406,8 +407,10 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         setSlug(result.snapshot.slug);
         // Same post-action navigation as Publish — land on the assemblies
         // list where the newly-saved draft appears under "Your drafts".
-        router.push("/builders/designer");
-    }, [buildSnapshot, router, slug]);
+        // Preserve a ?e2e= mode flag so a test run stays in devnet/mock mode.
+        const e2e = searchParams.get("e2e");
+        router.push(e2e ? `/builders/designer?e2e=${encodeURIComponent(e2e)}` : "/builders/designer");
+    }, [buildSnapshot, router, searchParams, slug]);
 
     const { isPending: publishPending, isConfirming: publishConfirming } =
         usePublishAssembly();
@@ -431,10 +434,12 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         // exact bytes that will be published. The wallet does NOT open here
         // — the review page's "Confirm publish" is the only place it opens.
         saveNamedDraft(result.snapshot);
-        router.push(
-            `/builders/designer/view/${encodeURIComponent(result.snapshot.slug)}?intent=publish`,
-        );
-    }, [buildSnapshot, router, slug]);
+        // Preserve a ?e2e= mode flag — the review page must stay in
+        // devnet/mock mode across this canvas redirect.
+        const e2e = searchParams.get("e2e");
+        const reviewPath = `/builders/designer/view/${encodeURIComponent(result.snapshot.slug)}?intent=publish`;
+        router.push(e2e ? `${reviewPath}&e2e=${encodeURIComponent(e2e)}` : reviewPath);
+    }, [buildSnapshot, router, searchParams, slug]);
 
     // Name validity drives the disabled state on Save / Publish so the user
     // gets immediate visual feedback that the name is the gate, not a
