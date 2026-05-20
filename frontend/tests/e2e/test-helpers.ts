@@ -69,27 +69,43 @@ export async function ensureWalletHasMockTokens(page: Page, minimumBalance = 1) 
     );
 }
 
-export async function waitForDevnetWalletReady(page: Page) {
+/**
+ * Canonical wallet-readiness wait — DOM-free and page-agnostic.
+ *
+ * Reads `window.__FIGARO_WALLET__`, which `ClientInit` publishes live from
+ * wagmi's own `useAccount()` / `useChainId()` in `?e2e=devnet` mode. This
+ * is the single primitive for "the injected wallet is connected": it does
+ * NOT scrape the header for a `wallet-balance` element, so it works on
+ * every route regardless of what chrome the page renders.
+ *
+ * Pass `expectedAddress` to also assert wagmi connected as that specific
+ * account — use it after `gotoAsWallet` / `switchAccount`.
+ */
+export async function waitForWalletConnected(
+    page: Page,
+    expectedAddress?: string,
+    opts: { timeout?: number } = {},
+): Promise<void> {
     await page.waitForFunction(
-        () => {
-            const bodyText = document.body.textContent || '';
-            if (bodyText.includes('Connect wallet to view balances')) return false;
-
-            const connectWalletButton = Array.from(document.querySelectorAll('button')).find(
-                (button) => button.textContent?.trim() === 'Connect Wallet'
-            );
-            if (connectWalletButton) return false;
-
-            const walletBalance = document.querySelector('[data-testid="wallet-balance"]');
-            return walletBalance !== null;
+        (expected: string | null) => {
+            const state = window.__FIGARO_WALLET__;
+            if (!state || !state.isConnected || !state.address) return false;
+            if (!expected) return true;
+            return state.address.toLowerCase() === expected.toLowerCase();
         },
-        null,
-        { timeout: 30000 }
+        expectedAddress ?? null,
+        { timeout: opts.timeout ?? 30000 },
     );
 }
 
+/** @deprecated Thin alias for {@link waitForWalletConnected} — new specs should call that directly. */
+export async function waitForDevnetWalletReady(page: Page): Promise<void> {
+    await waitForWalletConnected(page);
+}
+
+/** @deprecated Thin alias for {@link waitForWalletConnected}. */
 export async function waitForWalletReady(page: Page): Promise<void> {
-    await waitForDevnetWalletReady(page);
+    await waitForWalletConnected(page);
 }
 
 function selectorWithinScope(scopeTestId?: string, selector = '[data-testid="approval-status"]'): string {

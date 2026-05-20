@@ -15,8 +15,7 @@
  */
 import path from 'path';
 import { test as base, expect, Browser, BrowserContext, Page } from '@playwright/test';
-import { ensureWalletHasMockTokens, ANVIL_ACCOUNTS } from './test-helpers';
-import { hexEqual } from '../../lib/shared/evm';
+import { ensureWalletHasMockTokens, waitForWalletConnected, ANVIL_ACCOUNTS } from './test-helpers';
 import {
     canonicalizeAgreement,
     computeAgreementHash,
@@ -207,21 +206,9 @@ export async function switchAccount(page: Page, account: string): Promise<void> 
         (window as any).__FIGARO_SWITCH_ACCOUNT__(addr);
     }, account);
 
-    await page.waitForFunction(
-        (addr: string) => {
-            const normalized = addr.toLowerCase();
-            const providerAccount = (window as any).__FIGARO_GET_ACCOUNT__?.();
-            if (typeof providerAccount !== 'string' || !hexEqual(providerAccount, addr)) {
-                return false;
-            }
-
-            const balanceEl = document.querySelector('[data-testid="wallet-balance"]');
-            const addressEl = balanceEl?.parentElement?.querySelector('.font-mono.truncate');
-            return !!addressEl?.textContent?.toLowerCase().includes(normalized);
-        },
-        account,
-        { timeout: 15000 }
-    );
+    // wagmi processes the EIP-1193 `accountsChanged` event; wait until
+    // ClientInit's published state reflects the new account.
+    await waitForWalletConnected(page, account);
 
     await ensureWalletHasMockTokens(page);
 }

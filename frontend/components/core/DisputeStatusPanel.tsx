@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
+import { useMounted } from "@/lib/shared/useMounted";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { Order } from "@/lib/core/store";
@@ -126,6 +127,7 @@ export function DisputeStatusPanel({
     orders,
     onDisputeCreated,
 }: DisputeStatusPanelProps) {
+    const mounted = useMounted();
     const { address } = useAccount();
     const publicClient = usePublicClient();
     const chainId = useChainId();
@@ -249,6 +251,15 @@ export function DisputeStatusPanel({
     }, [walletClient, publicClient, chainId, klerosConfig, disputeId, orders, processId, role, bundleRedact, coordinatorSources, evidenceTransport]);
 
     // ── Render ──────────────────────────────────────────────────────
+
+    // SSR-safe: this panel's output is wallet- and async-dependent
+    // (`useAccount`, arbitration-cost + ruling fetches). Server-rendering
+    // it produces a DOM the near-instant client wallet connection
+    // immediately contradicts — a hydration mismatch that leaves the
+    // subtree dead (the Raise Dispute button stuck at its server-disabled
+    // value). Deferring all output to the client makes server and first
+    // client render agree (both render nothing).
+    if (!mounted) return null;
 
     if (!klerosConfig) {
         return (

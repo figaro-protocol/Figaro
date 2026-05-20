@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { useConnect, useAccount } from "wagmi";
+import { useConnect, useAccount, useChainId } from "wagmi";
 import { TEST_HELPERS_ENABLED, windowSafe } from "@/lib/core/testHelpers";
 import { getE2EModeFromSearchParams } from "@/lib/shared/e2e";
 import { useOrderStore } from "@/lib/core/store";
@@ -79,7 +79,8 @@ function isMockStoreState(value: unknown): value is MockStoreState {
 export default function ClientInit() {
     // Used for devnet auto-connect (injected provider from Playwright addInitScript)
     const { connect, connectors } = useConnect();
-    const { isConnected } = useAccount();
+    const { isConnected, address } = useAccount();
+    const chainId = useChainId();
 
     const findInjectedConnector = useCallback(() =>
         connectors.find((connector) => {
@@ -338,6 +339,20 @@ export default function ClientInit() {
             delete devnetWindow.__FIGARO_SET_VIEWED_PROCESS_ID__;
         };
     }, [connect, findInjectedConnector, getE2EMode, isDevnetMode]);
+
+    // Devnet: mirror wagmi's connection state onto `window.__FIGARO_WALLET__`
+    // so Playwright waits on the wallet via a DOM-free, page-agnostic signal
+    // — no header `wallet-balance` scrape. The single source of truth for
+    // "wallet ready" in devnet specs (see test-helpers `waitForWalletConnected`).
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if (!isDevnetMode(getE2EMode())) return;
+        window.__FIGARO_WALLET__ = {
+            isConnected,
+            address: address ?? null,
+            chainId,
+        };
+    }, [isConnected, address, chainId, getE2EMode, isDevnetMode]);
 
     return null;
 }

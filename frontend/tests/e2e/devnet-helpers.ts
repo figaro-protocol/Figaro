@@ -6,6 +6,7 @@ export {
     waitAndApproveIfNeeded,
     waitForApproved,
     waitForCreateConfirm,
+    waitForWalletConnected,
     waitForWalletReady,
 } from './test-helpers';
 import {

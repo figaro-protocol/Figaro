@@ -56,6 +56,14 @@ declare global {
         __FIGARO_PENDING_PERMIT__?: PendingPermitState;
         __FIGARO_ALLOWANCES__?: Record<string, string>;
         __FIGARO_MOCK_APPROVE__?: (token: string, amount: string) => Promise<boolean>;
+
+        // E2E devnet: ClientInit publishes wagmi's live connection state
+        // here so Playwright can wait on it (DOM-free, page-agnostic).
+        __FIGARO_WALLET__?: {
+            isConnected: boolean;
+            address: string | null;
+            chainId: number;
+        };
     }
 }
 
