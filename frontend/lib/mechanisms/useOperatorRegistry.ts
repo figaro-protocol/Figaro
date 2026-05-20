@@ -16,6 +16,7 @@ import { useWriteContract, useWaitForTransactionReceipt, usePublicClient, useCha
 import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "./contracts";
 import { getOperatorState, getOperatorMetadataURI } from "@/lib/core/indexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
+import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import {
     AgentServiceInfo,
     OperatorAgentServices,
@@ -198,14 +199,19 @@ export function useAgentServices(address: `0x${string}` | undefined) {
 
         getOperatorMetadataURI(client, chainId, address)
             .then((uri) => {
-                if (cancelled || !uri) {
+                // The on-chain metadataURI is an `ipfs://` URI; the browser
+                // cannot fetch that scheme directly — resolve it to the
+                // gateway URL first. `resolveContentURI` returns "" for an
+                // unrecognised scheme, handled here like a missing URI.
+                const url = uri ? resolveContentURI(uri) : "";
+                if (cancelled || !url) {
                     if (!cancelled) {
                         setData({ services: {}, capabilities: [], isAgent: false });
                         setIsLoading(false);
                     }
                     return;
                 }
-                return fetch(uri).then((r) => safeJsonFromResponse(r));
+                return fetch(url).then((r) => safeJsonFromResponse(r));
             })
             .then((json) => {
                 if (cancelled) return;
