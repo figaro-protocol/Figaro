@@ -2,51 +2,20 @@
  * dispute-surfaces.spec.ts — Mock-mode tests for dispute resolution UI.
  *
  * Verifies:
- *   1. DisputeStatusPanel renders on OrderNodeSemanticCard (in workspace)
- *   2. Dispute panel shows "not configured" when Kleros env is absent
- *   3. BondApprovalPanel dispute cost line renders when configured
- *   4. Evidence display page handles missing/present params correctly
+ *   1. BondApprovalPanel dispute cost line renders when configured
+ *   2. Evidence display page handles missing/present params correctly
  */
 import { test, expect } from './figaro-test';
 import {
     gotoHome,
-    injectActiveOrder,
-    ANVIL_ACCOUNTS,
     MOCK_BUYER,
 } from './test-helpers';
 
-const SELLER1 = ANVIL_ACCOUNTS[1];
-
-// ── DisputeStatusPanel on order cards ────────────────────────────────────────
-
-test.describe('DisputeStatusPanel in workspace (mock)', () => {
-    test.beforeEach(async ({ page }) => {
-        await gotoHome(page, { mock: true });
-    });
-
-    test('renders dispute resolution section for an active order', async ({ page }) => {
-        const processId = '0x' + 'dd11ee22'.repeat(8);
-
-        await injectActiveOrder(page, {
-            processId,
-            buyer: ANVIL_ACCOUNTS[0],
-            seller: SELLER1,
-            payment: '10000000000000000',
-        });
-
-        // Wait for the workspace panel with the semantic cards to load.
-        // DisputeStatusPanel renders inside OrderNodeSemanticCard.
-        const disputePanel = page.getByTestId('dispute-status-panel');
-        // The panel should be visible (either "not configured" or active state)
-        await expect(disputePanel).toBeVisible({ timeout: 15000 });
-    });
-
-    // The "not-configured" state is covered deterministically by
-    // dispute-page.spec.ts:69-75 (`shows "not configured" banner without
-    // Kleros env vars`). The mock-mode workspace-card variant of the
-    // same assertion was a soft test (no-op when the panel didn't
-    // render) and contributed no unique coverage.
-});
+// DisputeStatusPanel moved off the per-order workspace card onto
+// /audit/[processId] (audit finding F8, 2026-05-20) — it is process-scoped
+// and belongs at the end-of-process escalation surface. The re-homed panel
+// is covered by the resumed C7 devnet spec; the prior mock-mode workspace
+// assertion was a soft test with no unique coverage.
 
 // ── BondApprovalPanel dispute cost ───────────────────────────────────────────
 

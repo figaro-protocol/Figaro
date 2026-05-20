@@ -3,16 +3,10 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Copy, Check } from "lucide-react";
 import { EconomicBreakdownPanel } from "@/components/core/EconomicBreakdownPanel";
-import { DisputeStatusPanel } from "@/components/core/DisputeStatusPanel";
 import { useArbitrationCost } from "@/hooks/core/useArbitrationCost";
-import { useAccount } from "wagmi";
-import { useMemo } from "react";
 import { CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { formatToken } from "@/lib/shared/utils";
-import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { createDeliveryCoordinatorSource } from "@/lib/mechanisms/deliveryCoordinatorEvents";
-import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { calculateBonds } from "@figaro/core";
 
 function capabilityTestId(capability: CapabilityModel): string | undefined {
@@ -49,17 +43,7 @@ export const OrderNodeSemanticCard = memo(function OrderNodeSemanticCard({
     executingCapabilityId,
     onExecuteCapability,
 }: Props) {
-    const { costEth, cost: arbCostWei, klerosConfig } = useArbitrationCost();
-    const { address } = useAccount();
-
-    // Stable coordinator event sources for extended dispute timelines
-    const coordinatorSources = useMemo(() => [createDeliveryCoordinatorSource()], []);
-
-    // Process orders for audit-bundle Kleros evidence. Sourced here (not
-    // upstream) because this card is the only mount point for
-    // DisputeStatusPanel today; lifting it would require threading orders
-    // through every assembly shell.
-    const processOrders = useProcessOrders(order.processId);
+    const { costEth, cost: arbCostWei } = useArbitrationCost();
 
     // Buyer bond = 2× payment. Show dispute cost as % of buyer bond exposure
     // when both values are available. Note: bond is in ERC-20, arb cost is in
@@ -203,15 +187,6 @@ export const OrderNodeSemanticCard = memo(function OrderNodeSemanticCard({
                 </div>
             )}
 
-            <div className="mt-4" data-testid="dispute-status-panel">
-                <DisputeStatusPanel
-                    processId={order.processId as `0x${string}`}
-                    klerosConfig={klerosConfig ?? undefined}
-                    role={hexEqual(address, order.seller) ? "seller" : "buyer"}
-                    coordinatorSources={coordinatorSources}
-                    orders={processOrders}
-                />
-            </div>
         </Card>
     );
 });

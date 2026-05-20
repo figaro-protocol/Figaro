@@ -13,8 +13,9 @@ import { ProcessAuditClient } from "./ProcessAuditClient";
  *   - Hash verification (three modes — agreement / section / search;
  *     search runs against the wallet's visible orders, including this
  *     process)
- *   - Kleros entry: surfaced from per-order cards via `<DisputeStatusPanel>`
- *     (mounted by `OrderNodeSemanticCard`) — not duplicated here
+ *   - Dispute escalation: a process-scoped `<DisputeStatusPanel>` mounted
+ *     here — the end-of-process step where the audit bundle becomes the
+ *     evidence exported to an off-chain forum
  *
  * The legacy routes redirect:
  *   - `/financials/[processId]` → `/audit/[processId]`
