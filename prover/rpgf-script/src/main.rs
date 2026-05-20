@@ -55,6 +55,17 @@ struct ProveResponse {
 }
 
 fn main() {
+    // SP1_VKEY_ONLY — derive and print the RPGF program verification key
+    // (the vkey RpgfMinter is constructed with), then stop. setup() is the
+    // cheap part of proving; this path never runs the prover.
+    if std::env::var("SP1_VKEY_ONLY").is_ok() {
+        eprintln!("rpgf-prove: SP1_VKEY_ONLY — deriving program verification key");
+        let client = ProverClient::from_env();
+        let pk = client.setup(RPGF_ELF).expect("setup failed");
+        println!("RPGF_PROGRAM_VKEY={}", pk.verifying_key().bytes32());
+        return;
+    }
+
     eprintln!("rpgf-prove: reading request from stdin");
     let mut buf = String::new();
     std::io::stdin().read_to_string(&mut buf).expect("read stdin");
