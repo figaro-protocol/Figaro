@@ -44,8 +44,11 @@ import { mnemonicToAccount } from 'viem/accounts';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
-// Anvil's deterministic default mnemonic — derives the same accounts the
-// e2e suite uses: anvil[0] = buyer / assembly author; anvil[1..4] = sellers.
+// Anvil's deterministic default mnemonic. anvil[0] authors the assemblies.
+// Operators are seeded on anvil[5..8] — disjoint from anvil[0..4], the
+// account range the devnet test suite registers and asserts on. Sharing
+// accounts collides (a spec's register() reverts AlreadyRegistered, an
+// "unregistered wallet" assertion fails). All of anvil[0..9] are funded.
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const RPC_URL = process.env.FIGARO_RPC_URL ?? 'http://127.0.0.1:8545';
 
@@ -99,14 +102,16 @@ function canonicalize(value) {
     });
 }
 
-// ── Operators — all sellers; anvil[0] stays the unregistered buyer ──────────
-// The binding spread covers every shape: three single-assembly operators
-// and one bound to both (the multi-binding case).
+// ── Operators — all sellers, seeded on anvil[5..8] ──────────────────────────
+// anvil[5..8] are disjoint from anvil[0..4] (the test suite's account range),
+// so the seed never collides with a spec that registers an operator or
+// asserts an account is unregistered. The binding spread covers every shape:
+// three single-assembly operators and one bound to both.
 const OPERATORS = [
-    { addressIndex: 1, name: 'Counter & Co.', specialty: 'in-person counter sales', bind: ['direct-sale'] },
-    { addressIndex: 2, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'] },
-    { addressIndex: 3, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'] },
-    { addressIndex: 4, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce'] },
+    { addressIndex: 5, name: 'Counter & Co.', specialty: 'in-person counter sales', bind: ['direct-sale'] },
+    { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'] },
+    { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'] },
+    { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce'] },
 ];
 
 /** Parse frontend/.env.local into a flat key→value map. */
