@@ -3,7 +3,7 @@
 use figaro_kernel::kernel::apply_batch_with_state;
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
-use sp1_sdk::{self, Prover, ProverClient, SP1Stdin};
+use sp1_sdk::{self, Elf, Prover, ProveRequest, ProverClient, SP1Stdin};
 use tracing::info;
 
 /// Result of proving a batch.
@@ -22,10 +22,14 @@ pub struct ProveResult {
     pub post_state: KernelState,
 }
 
-/// Prove a batch using the SP1 mock prover (devnet).
+/// Prove a batch.
 ///
-/// In production, this would use `ProverClient::builder().network()` for
-/// real STARK/SNARK proof generation via the SP1 network.
+/// The prover backend is selected by the `SP1_PROVER` environment variable:
+/// unset or `mock` runs the mock prover (devnet — emits no proof, accepted by
+/// the on-chain `MockSP1Verifier`); any other value (`cpu`, `cuda`) runs the
+/// real local SP1 prover and emits a Groth16 proof for on-chain verification
+/// by `FigaroBatchVerifier`. The protocol depends on no external proving
+/// service — a sequencer self-proves with the open-source SP1 prover.
 pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
     // First: execute the kernel locally to get positions and events.
     // The SP1 guest program only commits PublicValues; positions and events
@@ -41,41 +45,82 @@ pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
         "Kernel execution succeeded"
     );
 
-    // Run SP1 mock prover to validate the guest program.
     let elf = sp1_sdk::include_elf!("figaro-prover");
-    let client = ProverClient::builder().mock().build().await;
-
     let mut stdin = SP1Stdin::new();
     stdin.write(batch);
 
-    let (mut sp1_pv, report) = client
-        .execute(elf, stdin)
-        .await
-        .map_err(|e| format!("SP1 execution failed: {e}"))?;
+    let proof_bytes = if real_prover_selected() {
+        prove_groth16(elf, stdin, &pv).await?
+    } else {
+        prove_mock(elf, stdin, &pv).await?
+    };
 
-    info!(cycles = report.total_instruction_count(), "SP1 execution complete");
-
-    let verified_pv: PublicValues = sp1_pv.read();
-
-    // Sanity: local execution and SP1 execution must agree.
-    if verified_pv.prev_state_root != pv.prev_state_root
-        || verified_pv.new_state_root != pv.new_state_root
-    {
-        return Err("SP1 and local execution produced different state roots".into());
-    }
-
-    // For mock prover, proof bytes are empty. The on-chain MockSP1Verifier
-    // accepts any proof.
     let public_values_bytes = encode_public_values(&pv);
 
     Ok(ProveResult {
         public_values: pv,
         positions,
         events,
-        proof_bytes: vec![],
+        proof_bytes,
         public_values_bytes,
         post_state,
     })
+}
+
+/// Whether to generate a real proof, per the `SP1_PROVER` env var. Unset or
+/// `mock` → mock prover (devnet); any other value → real Groth16 prover.
+fn real_prover_selected() -> bool {
+    match std::env::var("SP1_PROVER") {
+        Ok(v) => !v.is_empty() && !v.eq_ignore_ascii_case("mock"),
+        Err(_) => false,
+    }
+}
+
+/// Mock prover (devnet). Executes the guest program to validate it and to
+/// cross-check state roots, but emits no proof — the on-chain
+/// `MockSP1Verifier` accepts the resulting empty proof.
+async fn prove_mock(elf: Elf, stdin: SP1Stdin, pv: &PublicValues) -> Result<Vec<u8>, String> {
+    let client = ProverClient::builder().mock().build().await;
+    let (mut sp1_pv, report) = client
+        .execute(elf, stdin)
+        .await
+        .map_err(|e| format!("SP1 execution failed: {e}"))?;
+    info!(cycles = report.total_instruction_count(), "SP1 execution complete");
+    let verified_pv: PublicValues = sp1_pv.read();
+    check_state_roots(&verified_pv, pv)?;
+    Ok(Vec::new())
+}
+
+/// Real prover (testnet / mainnet). Generates a Groth16 proof — the only
+/// proof form `FigaroBatchVerifier` can verify on-chain — using the local SP1
+/// prover backend named by `SP1_PROVER` (`cpu`, `cuda`). No external service.
+async fn prove_groth16(elf: Elf, stdin: SP1Stdin, pv: &PublicValues) -> Result<Vec<u8>, String> {
+    let client = ProverClient::from_env().await;
+    let pk = client
+        .setup(elf)
+        .await
+        .map_err(|e| format!("SP1 setup failed: {e}"))?;
+    info!("Generating Groth16 proof (this can take minutes)");
+    let mut proof = client
+        .prove(&pk, stdin)
+        .groth16()
+        .await
+        .map_err(|e| format!("SP1 Groth16 proving failed: {e}"))?;
+    let verified_pv: PublicValues = proof.public_values.read();
+    check_state_roots(&verified_pv, pv)?;
+    Ok(proof.bytes())
+}
+
+/// The SP1 proof and the local kernel execution must commit the same state
+/// root transition; a mismatch means the guest program and the host kernel
+/// have diverged.
+fn check_state_roots(sp1: &PublicValues, local: &PublicValues) -> Result<(), String> {
+    if sp1.prev_state_root != local.prev_state_root
+        || sp1.new_state_root != local.new_state_root
+    {
+        return Err("SP1 and local execution produced different state roots".into());
+    }
+    Ok(())
 }
 
 /// ABI-encode PublicValues as 8 × 32-byte words for on-chain submission.
