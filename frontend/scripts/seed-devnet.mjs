@@ -7,8 +7,9 @@
  *   - 2 assemblies on AssemblyRegistry — `direct-sale` (one-node,
  *     in-person) and `local-commerce` (buyer -> merchant -> courier).
  *   - 4 operator profiles on OperatorRegistry — all SELLERS (buyers are
- *     never registered operators), bound to the seeded assemblies in
- *     seller-side roles.
+ *     never registered operators). Each carries a catalogue (replayed from
+ *     the captured `scripts/fixtures/operator-catalogue.json`) and is bound
+ *     to the seeded assemblies in seller-side roles.
  *
  * The assembly manifests are NOT authored here — a V5 AssemblyManifest is
  * a designer-canvas snapshot. They are captured fixtures in
@@ -217,16 +218,34 @@ async function main() {
         }
     }
 
-    // ── Operators — sellers, anvil[1..4] ───────────────────────────────────
+    // ── Operators — sellers on anvil[5..8] ───────────────────────────────────
+    // Each operator's catalogue replays the captured wizard fixture, with
+    // the menu re-pointed at the operator's own address (the fixture's
+    // subjectAddress is anvil[0], the wizard wallet that authored it).
+    const catalogueFixturePath = path.resolve(FIXTURE_DIR, 'operator-catalogue.json');
+    if (!fs.existsSync(catalogueFixturePath)) {
+        throw new Error(
+            `Missing fixture ${catalogueFixturePath} — capture it with ` +
+            'FIGARO_CAPTURE_FIXTURES=1 npx playwright test operators-onboarding.devnet',
+        );
+    }
+    const catalogueFixture = JSON.parse(fs.readFileSync(catalogueFixturePath, 'utf8'));
+
     console.log('\nOperators:');
     for (const op of OPERATORS) {
         const account = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: op.addressIndex });
         const opClient = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
+        // Pin this operator's catalogue first — its URI is referenced from
+        // the profile document, so it must exist before the profile is pinned.
+        const catalogue = { ...catalogueFixture, subjectAddress: account.address };
+        const catalogueURI = await pinJSON(ipfsApiUrl, JSON.stringify(catalogue));
+
         const profile = {
             subjectAddress: account.address,
             name: op.name,
             specialty: op.specialty,
+            catalogueURI,
             version: '0.1.0',
             assemblyBindings: op.bind.map((assemblySlug) => ({
                 bindingId: `${assemblySlug}:${account.address.toLowerCase()}`,
@@ -251,6 +270,7 @@ async function main() {
             await publicClient.waitForTransactionReceipt({ hash });
             console.log(`  ✓ ${op.name} (${account.address})`);
             console.log(`      bound to [${op.bind.join(', ')}] — profile ${metadataURI}`);
+            console.log(`      catalogue ${catalogueURI}`);
         } catch (err) {
             if (isAlreadyRegistered(err)) {
                 console.log(`  · ${op.name} (${account.address}) — already registered, skipped`);
