@@ -147,6 +147,19 @@ proof carries the per-handoff nonce + signed witness payload at runtime
 (Category-1, fresh per attestation). Off-chain consumers verify
 `proof.band == policy.band` when the policy section is present.
 
+`figaro-topology-v1` is the one **manifest-only** schema — no Layer C
+validator and no SP1 encoder. That is by design: an order's parent edges are
+fixed at agreement-signing time and are never re-asserted as a runtime
+attestation, so there is no per-event content for a validator to gate. It is
+*not* off-chain-only, though. Like every agreement section, the topology
+section is a merkle leaf under the on-chain `agreementHash`, inclusion-provable
+via OpenZeppelin `MerkleProof` (`computeSectionLeaf` / `buildSectionInclusionProof`
+in `frontend/lib/core/agreementManifest.ts`). "No runtime validator" is not "no
+on-chain verification" — topology is verified by inclusion proof against the
+signed agreement, not by an attestation validator. The DAG itself is
+reconstructed off-chain by indexers reading topology sections from the signed
+manifest.
+
 ## Adding a new schema — checklist
 
 1. JSON spec in `sdk/src/schemas/examples/<schema>.json`.

@@ -82,10 +82,14 @@ typed custom errors. Foundry tests in `test/schemaValidators/`.
 
 Note: `figaro-topology-v1` is a **manifest-only clause** — parties commit to
 it at contract-signing time inside the off-chain agreement manifest, and it's
-never fired as a runtime attestation. It has no on-chain validator and is
-registered in `SchemaRegistry` purely as off-chain-vocabulary anchoring. The
-DAG is reconstructed by indexers/frontend reading topology sections from the
-signed manifest.
+never fired as a runtime attestation. It has no on-chain validator and no SP1
+encoder. It is *not* off-chain-only, though: the topology section is a merkle
+leaf under the on-chain `agreementHash`, inclusion-provable via OpenZeppelin
+`MerkleProof` (`buildSectionInclusionProof` in `agreementManifest.ts`) — "no
+runtime validator" is not "no on-chain verification". Its `SchemaRegistry`
+entry anchors the schemaId as off-chain vocabulary; the DAG itself is
+reconstructed by indexers/frontend reading topology sections from the signed
+manifest.
 
 **`src/IRoleResolver.sol`** — Role-authorization interface for mechanism-delegated attestation.
 
