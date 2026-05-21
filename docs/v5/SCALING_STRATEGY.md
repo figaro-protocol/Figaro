@@ -399,7 +399,7 @@ encoder always uses `spec.fields`.
 |--------------------------|---------------------------------------------|
 | `boolean`                | `bool`                                      |
 | `bigint`                 | `uint256`                                   |
-| `integer`                | `uint<N>` — see *width*                     |
+| `integer`                | `uint256` (width is encode-irrelevant)      |
 | `enum`                   | `uint8` — the value's index                 |
 | `string`, no format      | `string`                                    |
 | `string`, `bytes32-hex`  | `bytes32`                                   |
@@ -408,21 +408,22 @@ encoder always uses `spec.fields`.
 | `array<T>`               | `T[]` — element type mapped recursively     |
 | `object`                 | `tuple(...)` of its fields, declared order  |
 
-**Three conventions to fix.**
+**Two conventions to fix.** (An earlier draft listed a third — integer
+width — but the generic-encoder implementation showed it is moot:
+`abi_encode_params` pads every value to a 32-byte word, so `uint8`,
+`uint32` and `uint256` of the same value are byte-identical. The generic
+encoder encodes every `integer` and `bigint` as `uint256`; width is a
+*validation*-range concern only, for which `IntegerFieldSpec` already
+carries `max`.)
 
-1. *Integer width.* `IntegerFieldSpec` already carries `max`. Width = the
-   smallest byte-aligned `uintN` holding `max`; `uint256` when `max` is
-   absent. The only sub-256 integer fields today are `figaro-geo-v2`'s
-   `massGrams` / `volumeMl` (encoded `uint32`) — they must declare
-   `max: 4294967295`; add it if absent (also a missing validation bound).
-2. *Enum index.* `EnumFieldSpec` carries only `values`; today's
+1. *Enum index.* `EnumFieldSpec` carries only `values`; today's
    per-schema index tables are inconsistent (merchant/courier 0-based,
    geo/fulfilment/proximity/offset/kleros 1-based). Canonical rule: index
    = 0-based position in `values`. The one optional *scalar* enum,
    `figaro-jurisdiction-v1`'s `klerosCourt`, gets an explicit leading
    `"none"` value so index 0 is a declared state, not a sentinel. Enum
    *arrays* need no sentinel — an absent optional array is the empty array.
-3. *Defaults.* No `default` field is needed: "absent optional → ABI
+2. *Defaults.* No `default` field is needed: "absent optional → ABI
    zero-value" covers every current case (`scope`→0, `evidenceUri`→`""`,
    `coordinations`/`handoffPoints`→`[]`, `klerosCourt`→0).
 
@@ -452,10 +453,9 @@ migration). The clean canonical design is free only while the window is
 open — which is now.
 
 **Spec-format delta.** Pre-mainnet canonical path: none for enums
-(0-based position is derived); ensure `geo`'s `massGrams`/`volumeMl`
-declare `max`, and `klerosCourt`'s `values` lists `"none"` at position 0.
-Post-mainnet explicit path: `EnumFieldSpec` gains a per-value index and
-`IntegerFieldSpec` an explicit width, each mirrored Rust ↔ TS ↔ JSON.
+(0-based position is derived); `klerosCourt`'s `values` lists `"none"`
+at position 0. Post-mainnet explicit path: `EnumFieldSpec` gains a
+per-value index, mirrored Rust ↔ TS ↔ JSON.
 
 **Scope boundary.** This task is the encoder only — the generic Layer C
 validator, content-binding, and witness-supplied specs are later steps.
