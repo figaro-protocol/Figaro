@@ -372,38 +372,106 @@ step committed, none demand-gated:
 4. **Witness-supplied specs.** The 16 protocol specs stop being
    special-cased; they become input like any other.
 
-### Keystone — the canonical ABI mapping
+### Keystone Design — Canonical ABI Mapping
 
-Step 1 is a written rule before it is code: the canonical ABI encoding
-of a schema's content must be a total function of its `SchemaSpec`. The
-mapping:
+The keystone makes the canonical ABI encoding of a schema's content a
+total function of its `SchemaSpec` — no per-schema code. This is the
+design to implement against; an audit of all 16 current encoders grounds
+every decision below — 15 are pure structural transforms, one is not.
 
-- `string` → `string`; by declared `format`, `bytes32-hex` → `bytes32`,
-  `address-hex` → `address`, `bytes-hex` → `bytes`.
-- `enum` → `uint8` (the index); `boolean` → `bool`; `bigint` → `uint256`.
-- `integer` → `uintN`. Open decision: the spec declares a width (the GHG
-  encoders chose `uint8`), or the rule is "always `uint256`" — no spec
-  change, larger content bytes. Recommended: declared width, `uint256`
-  default.
-- `array<T>` → `T[]`; `object` → `tuple`; `array<object>` → `tuple[]`.
+**Objective.** One generic `encode_content(&SchemaSpec, content)` — Rust
+(`prover/schema/src/encode.rs`) and TS (`sdk/src/schemas/encode.ts`),
+byte-identical — replaces the per-schema dispatch (12 encoder functions
+over 16 schemaIds). Done-criterion: the dispatch is gone and the
+encode-conformance suite passes.
 
-The last entry is the one behavioural change, and it is narrow: of the
-runtime schemas only `figaro-consent-v1` transposes — its `documents`
-object-array is encoded as struct-of-arrays (`bytes32[], string[],
-string[]`), an encoder convenience the spec never declared.
-`figaro-commerce-v1` already encodes its line items as the spec-natural
-`tuple[]`. Whether any canonical bytes change at all is a design choice:
-declaring the conventions explicitly in the spec (per-value enum
-indices, integer widths) lets the generic encoder reproduce today's
-bytes exactly — zero migration — while picking clean canonical
-conventions migrates consent's transpose and any off-convention enum
-schema to `-v2` schemaIds (the v1 pair stays deployed and immutable).
-One encoder resists a pure declarative rule: `figaro-jurisdiction-v1`
-has cross-field conditional logic (`klerosMinJurors` zeroed when
-`klerosCourt` is unset) — encoding must become a pure structural
-transform and that conditional relocate to validation/normalisation.
-Once the rule holds, both the generic encoder and a
-generic-or-mechanically-generated Layer C validator follow from it.
+**Encoding algorithm.** Content encodes as `abi_encode_params` of the
+top-level `spec.fields`, in declaration order. Each field encodes
+recursively by type; an absent optional field encodes as the ABI
+zero-value of its type (`0`, `""`, `false`, empty array, zero-bytes). A
+required field that is absent is a validation error, not an encoding
+case. `stages` does not affect encoding — it scopes validation only; the
+encoder always uses `spec.fields`.
+
+**The type mapping.**
+
+| `FieldSpec`              | ABI type                                    |
+|--------------------------|---------------------------------------------|
+| `boolean`                | `bool`                                      |
+| `bigint`                 | `uint256`                                   |
+| `integer`                | `uint<N>` — see *width*                     |
+| `enum`                   | `uint8` — the value's index                 |
+| `string`, no format      | `string`                                    |
+| `string`, `bytes32-hex`  | `bytes32`                                   |
+| `string`, `address-hex`  | `address`                                   |
+| `string`, `bytes-hex`    | `bytes`                                     |
+| `array<T>`               | `T[]` — element type mapped recursively     |
+| `object`                 | `tuple(...)` of its fields, declared order  |
+
+**Three conventions to fix.**
+
+1. *Integer width.* `IntegerFieldSpec` already carries `max`. Width = the
+   smallest byte-aligned `uintN` holding `max`; `uint256` when `max` is
+   absent. The only sub-256 integer fields today are `figaro-geo-v2`'s
+   `massGrams` / `volumeMl` (encoded `uint32`) — they must declare
+   `max: 4294967295`; add it if absent (also a missing validation bound).
+2. *Enum index.* `EnumFieldSpec` carries only `values`; today's
+   per-schema index tables are inconsistent (merchant/courier 0-based,
+   geo/fulfilment/proximity/offset/kleros 1-based). Canonical rule: index
+   = 0-based position in `values`. The one optional *scalar* enum,
+   `figaro-jurisdiction-v1`'s `klerosCourt`, gets an explicit leading
+   `"none"` value so index 0 is a declared state, not a sentinel. Enum
+   *arrays* need no sentinel — an absent optional array is the empty array.
+3. *Defaults.* No `default` field is needed: "absent optional → ABI
+   zero-value" covers every current case (`scope`→0, `evidenceUri`→`""`,
+   `coordinations`/`handoffPoints`→`[]`, `klerosCourt`→0).
+
+**`figaro-jurisdiction-v1` — the one non-structural encoder.** It forces
+`klerosMinJurors` to 0 when `klerosCourt` is unset, and defaults it to 3
+otherwise. Encoding becomes literal: `klerosMinJurors` encodes as
+declared (absent → 0). The "court-set ⇒ jurors coherent" rule becomes a
+`validate_content` cross-field constraint; the "suggest 3" default moves
+to the authoring UI. For already-consistent content the encoded bytes
+are unchanged — jurisdiction does not migrate.
+
+**`figaro-consent-v1` — the one layout change.** Its `documents`
+object-array is encoded struct-of-arrays (`bytes32[], string[],
+string[]`); the canonical rule is `tuple[]`. Consent's encoder and Layer
+C validator are rewritten to `tuple[]`.
+
+**Migration verdict — timing decides it.** Under the canonical rule the
+1-based enum schemas and consent's transpose change their bytes. Done
+**before any persistent public registration** — today the 16 are
+devnet-only — that is a free rewrite: no `-v2` schemaIds, just
+regenerated Layer C validators and conformance vectors. Done **after**
+mainnet/testnet registration, the off-convention schemas plus consent
+need `-v2` schemaIds. The post-mainnet fallback is the explicit path:
+declare per-value enum indices and integer widths in the spec, so the
+generic encoder reproduces today's bytes exactly (verbose spec, zero
+migration). The clean canonical design is free only while the window is
+open — which is now.
+
+**Spec-format delta.** Pre-mainnet canonical path: none for enums
+(0-based position is derived); ensure `geo`'s `massGrams`/`volumeMl`
+declare `max`, and `klerosCourt`'s `values` lists `"none"` at position 0.
+Post-mainnet explicit path: `EnumFieldSpec` gains a per-value index and
+`IntegerFieldSpec` an explicit width, each mirrored Rust ↔ TS ↔ JSON.
+
+**Scope boundary.** This task is the encoder only — the generic Layer C
+validator, content-binding, and witness-supplied specs are later steps.
+It rewrites `encode.rs` / `encode.ts`, the affected spec JSONs, and the
+rewritten schemas' Layer C validators; it does not touch the kernel or
+its invariants. Changing the schema family — even a free pre-mainnet
+rewrite — is a protocol-extension-doctrine event and runs past that
+review.
+
+**Implementation order.** (1) ratify this design; (2) `spec.rs` + TS
+spec-parser changes, only if the explicit path is chosen; (3) the
+generic encoder in Rust and TS, in lockstep, behind the
+encode-conformance suite; (4) rewrite consent's and the off-convention
+schemas' Layer C validators, regenerate conformance vectors; (5) delete
+the per-schema dispatch. Once the rule holds, a generic — or
+mechanically generated — Layer C validator follows from the same spec.
 
 **Costs — one-time bootstrap costs, not recurring.** Generic JSON
 parsing in-circuit is heavier than the specialized path (mitigable: a
