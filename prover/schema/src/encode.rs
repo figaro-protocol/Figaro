@@ -14,6 +14,8 @@ use alloy_dyn_abi::DynSolValue;
 use alloy_primitives::{Address, B256, U256};
 use serde_json::Value;
 
+use crate::spec::{FieldSpec, SchemaSpec, StringFieldSpec, StringFormat};
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum EncodeError {
     /// No encoder registered for this schemaId.
@@ -40,6 +42,14 @@ pub enum EncodeError {
         field: &'static str,
         reason: String,
     },
+    /// Generic spec-driven encoder (`encode_content_from_spec`): a field
+    /// could not be encoded. Carries the runtime field name — the
+    /// per-schema encoders use the typed variants above, but the generic
+    /// encoder only has names parsed from the spec at runtime.
+    FieldError {
+        field: String,
+        reason: String,
+    },
 }
 
 impl core::fmt::Display for EncodeError {
@@ -53,6 +63,7 @@ impl core::fmt::Display for EncodeError {
             }
             Self::OutOfRange { field, value } => write!(f, "field {field}: value {value} out of range"),
             Self::BadHex { field, reason } => write!(f, "field {field}: bad hex ({reason})"),
+            Self::FieldError { field, reason } => write!(f, "field {field}: {reason}"),
         }
     }
 }
@@ -481,4 +492,159 @@ fn encode_consent(content: &Value) -> Result<Vec<u8>, EncodeError> {
         DynSolValue::Array(versions),
         DynSolValue::Array(titles),
     ]))
+}
+
+// ── Generic spec-driven encoder ──────────────────────────────────────
+//
+// `encode_content_from_spec` derives the ABI encoding from the parsed
+// `SchemaSpec` alone — no per-schema code. It is the keystone of the
+// generic schema engine (see docs/v5/SCALING_STRATEGY.md "Keystone
+// Design — Canonical ABI Mapping"). This is additive: the per-schema
+// dispatch above remains the wired-in path until the cutover.
+//
+// Canonical rule: top-level fields encode as `abi_encode_params` in
+// declaration order; an enum encodes as the 0-based position of its
+// value in `EnumFieldSpec::values`; an absent optional field encodes as
+// the ABI zero-value of its type; an object-array encodes as `tuple[]`.
+// Integer width does not affect `abi_encode_params` output — every value
+// pads to a 32-byte word — so integers and bigints alike encode as
+// `uint256`.
+
+fn field_err(field: &str, reason: impl Into<String>) -> EncodeError {
+    EncodeError::FieldError {
+        field: field.to_string(),
+        reason: reason.into(),
+    }
+}
+
+/// Parse a numeric field value to `U256`, accepting either a JSON number
+/// or a decimal string (the form used for values outside JSON's safe
+/// integer range).
+fn parse_numeric(name: &str, v: &Value) -> Result<U256, EncodeError> {
+    if let Some(n) = v.as_u64() {
+        return Ok(U256::from(n));
+    }
+    if let Some(s) = v.as_str() {
+        return U256::from_str_radix(s, 10)
+            .map_err(|e| field_err(name, format!("invalid integer: {e}")));
+    }
+    Err(field_err(
+        name,
+        "expected an integer (JSON number or decimal string)",
+    ))
+}
+
+/// Encode a JSON content payload to canonical ABI bytes using only the
+/// parsed `SchemaSpec`. Mirrors the per-schema encoders for the
+/// canonically-shaped schemas; see the keystone design for the schemas
+/// whose committed bytes the canonical rule changes.
+pub fn encode_content_from_spec(
+    spec: &SchemaSpec,
+    content: &Value,
+) -> Result<Vec<u8>, EncodeError> {
+    let mut values = Vec::with_capacity(spec.fields.len());
+    for field in &spec.fields {
+        values.push(encode_field(field, content.get(field.base().name.as_str()))?);
+    }
+    Ok(DynSolValue::Tuple(values).abi_encode_params())
+}
+
+/// Encode one field given its raw JSON value (or absence). A required
+/// absent field is an error; an optional absent field is the ABI
+/// zero-value of its type.
+fn encode_field(field: &FieldSpec, raw: Option<&Value>) -> Result<DynSolValue, EncodeError> {
+    match raw.filter(|v| !v.is_null()) {
+        None => {
+            if field.base().required {
+                return Err(field_err(&field.base().name, "required field is absent"));
+            }
+            Ok(zero_value(field))
+        }
+        Some(v) => encode_present(field, v),
+    }
+}
+
+fn encode_present(field: &FieldSpec, v: &Value) -> Result<DynSolValue, EncodeError> {
+    let name = field.base().name.as_str();
+    match field {
+        FieldSpec::Boolean(_) => Ok(DynSolValue::Bool(
+            v.as_bool().ok_or_else(|| field_err(name, "expected boolean"))?,
+        )),
+        // Encoding does not distinguish `integer` from `bigint` — both
+        // are a 32-byte ABI word; only validation enforces the range
+        // difference. Content may arrive as a JSON number or, for values
+        // outside JSON's safe integer range, a decimal string.
+        FieldSpec::Integer(_) | FieldSpec::Bigint(_) => {
+            Ok(DynSolValue::Uint(parse_numeric(name, v)?, 256))
+        }
+        FieldSpec::Enum(e) => {
+            let s = v
+                .as_str()
+                .ok_or_else(|| field_err(name, "expected an enum string"))?;
+            let idx = e
+                .values
+                .iter()
+                .position(|val| val == s)
+                .ok_or_else(|| field_err(name, format!("\"{s}\" is not a declared enum value")))?;
+            Ok(DynSolValue::Uint(U256::from(idx), 8))
+        }
+        FieldSpec::String(s) => encode_string_field(name, s, v),
+        FieldSpec::Array(a) => {
+            let arr = v
+                .as_array()
+                .ok_or_else(|| field_err(name, "expected an array"))?;
+            let mut out = Vec::with_capacity(arr.len());
+            for item in arr {
+                out.push(encode_present(&a.items, item)?);
+            }
+            Ok(DynSolValue::Array(out))
+        }
+        FieldSpec::Object(o) => {
+            let mut out = Vec::with_capacity(o.fields.len());
+            for sub in &o.fields {
+                out.push(encode_field(sub, v.get(sub.base().name.as_str()))?);
+            }
+            Ok(DynSolValue::Tuple(out))
+        }
+    }
+}
+
+fn encode_string_field(
+    name: &str,
+    spec: &StringFieldSpec,
+    v: &Value,
+) -> Result<DynSolValue, EncodeError> {
+    let text = v
+        .as_str()
+        .ok_or_else(|| field_err(name, "expected a string"))?;
+    match spec.format {
+        None | Some(StringFormat::IsoDatetime) => Ok(DynSolValue::String(text.to_string())),
+        Some(StringFormat::Bytes32Hex) => Ok(DynSolValue::FixedBytes(
+            parse_bytes32(text, "").map_err(|_| field_err(name, "malformed bytes32 hex"))?,
+            32,
+        )),
+        Some(StringFormat::AddressHex) => Ok(DynSolValue::Address(
+            parse_address(text, "").map_err(|_| field_err(name, "malformed address hex"))?,
+        )),
+        Some(StringFormat::BytesHex) => Ok(DynSolValue::Bytes(
+            parse_bytes(text, "").map_err(|_| field_err(name, "malformed bytes hex"))?,
+        )),
+    }
+}
+
+/// The ABI zero-value for an absent optional field, by type.
+fn zero_value(field: &FieldSpec) -> DynSolValue {
+    match field {
+        FieldSpec::Boolean(_) => DynSolValue::Bool(false),
+        FieldSpec::Integer(_) | FieldSpec::Bigint(_) => DynSolValue::Uint(U256::ZERO, 256),
+        FieldSpec::Enum(_) => DynSolValue::Uint(U256::ZERO, 8),
+        FieldSpec::String(s) => match s.format {
+            None | Some(StringFormat::IsoDatetime) => DynSolValue::String(String::new()),
+            Some(StringFormat::Bytes32Hex) => DynSolValue::FixedBytes(B256::ZERO, 32),
+            Some(StringFormat::AddressHex) => DynSolValue::Address(Address::ZERO),
+            Some(StringFormat::BytesHex) => DynSolValue::Bytes(Vec::new()),
+        },
+        FieldSpec::Array(_) => DynSolValue::Array(Vec::new()),
+        FieldSpec::Object(o) => DynSolValue::Tuple(o.fields.iter().map(zero_value).collect()),
+    }
 }
