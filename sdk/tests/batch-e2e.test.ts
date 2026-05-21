@@ -96,15 +96,17 @@ function loadBytecode(contractPath: string): Hex {
 
 // ── Genesis state root computation ──────────────────────────────────────────
 // The Rust kernel computes:
-//   root = keccak256(keccak256("") × 6)
-// because an empty BTreeMap hashes to keccak256("").
+//   root = keccak256(keccak256("") × 5)
+// — one empty-hash per state sub-map (processes, order_status,
+// order_process_id, schemas_registered, operators_registered); an empty
+// BTreeMap hashes to keccak256(""). See prover/lib/src/state.rs `compute_root`.
 
 function computeGenesisRoot(): Hex {
     const emptyHash = keccak256("0x"); // keccak256("") = 0xc5d2460186...
-    // Concatenate 6 copies of the empty hash (each 32 bytes)
+    // Concatenate 5 copies of the empty hash (each 32 bytes).
     const packed = encodePacked(
-        ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
-        [emptyHash, emptyHash, emptyHash, emptyHash, emptyHash, emptyHash],
+        ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
+        [emptyHash, emptyHash, emptyHash, emptyHash, emptyHash],
     );
     return keccak256(packed);
 }
