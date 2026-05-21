@@ -266,7 +266,6 @@ Expected output: empty.
 | Document | Purpose |
 |---|---|
 | `docs/v5/DESIGN_DECISIONS.md` | 14 intentional patterns that look like vulnerabilities (read first) |
-| `docs/v5/AUDIT_FINDINGS_2026-04-26.md` (+ later `AUDIT_FINDINGS_<date>.md` files) | Dated, frozen per-pass AI-audit findings — the 2026-04-16→04-26 history, web2 + adversarial subsidiary audits |
 | `docs/v5/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
 | `docs/v5/RELEASE_READINESS.md` (this file) | Gate criteria, frozen scope, hardening completion record |
 | `docs/v5/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for (consolidated from former `BATCH_SEQUENCER.md` + `SEQUENCER_TRUST_MODEL.md`) |
@@ -280,7 +279,7 @@ Any Solidity edit after the freeze commit must be:
 
 1. Explicitly scoped to a specific finding or accepted-risk item
 2. Reviewed by the original auditor or a qualified substitute
-3. Recorded in a dated `docs/v5/AUDIT_FINDINGS_<date>.md` with finding reference and outcome
+3. Recorded in the backlog with finding reference and outcome
 
 Changes to `test/`, `frontend/`, `sdk/`, or `prover/` do not require
 re-audit unless they expose a new on-chain attack surface.
@@ -292,6 +291,4 @@ The canonical live release-readiness set is now:
 1. `docs/v5/CURRENT_STATE.md`
 2. `docs/v5/RELEASE_READINESS.md` (this file — also carries the freeze
    notice + hardening completion record)
-3. `docs/v5/AUDIT_FINDINGS_<date>.md` (dated, frozen per-pass audit
-   findings)
-4. `docs/v5/VERIFICATION_MAP.md`
+3. `docs/v5/VERIFICATION_MAP.md`

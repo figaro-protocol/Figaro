@@ -3,7 +3,7 @@
  *
  * Phase 5 C7: UI coverage of dispute creation + evidence submission
  * through DisputeStatusPanel — and the runtime verification of audit
- * finding F8 (`docs/v5/AUDIT_FINDINGS_2026-05-20.md`), which re-homed
+ * finding F8 (2026-05-20 dispute-resolution audit), which re-homed
  * the panel onto `/audit/[processId]`.
  *
  * The panel is process-scoped and mounts once on the audit page beside

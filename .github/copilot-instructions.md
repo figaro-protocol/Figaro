@@ -716,7 +716,6 @@ Core theory:
 - `docs/v5/CURRENT_STATE.md` — Current reading path, active docs, archive boundaries
 Security & verification:
 - `docs/v5/DESIGN_DECISIONS.md` — 14 intentional patterns that look like vulnerabilities
-- `docs/v5/AUDIT_FINDINGS_<DATE>.md` — dated, frozen per-pass audit findings (write-once; a new pass is a new file)
 - `docs/v5/VERIFICATION_MAP.md` — Theory → Code → Tests → TLA+ → UI triangulation map
 - `docs/v5/RELEASE_READINESS.md` — Gate criteria, hardening completion record, frozen Solidity surface declaration for external audit
 - `docs/v5/SCALING_STRATEGY.md` — Proof-based scaling, batch sequencer architecture, sequencer trust model (consolidated)
