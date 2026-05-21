@@ -61,8 +61,49 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 `Inv_ClaimImpliesUnlocked`, `Inv_TotalAllocatedLockedWithRoot`,
 `Inv_StageIndexBounded`.
 
-## Frontend Vitest
+## Frontend Vitest (`frontend/tests/`) — 2 tiers, 66 files
+
+`npx vitest run`. UI logic that needs neither a chain nor a real browser.
+
+- **Component tier** (`tests/components/`, 9 files) — React Testing Library:
+  `Header`, `MobileNav`, `NotificationBell`, `ProcessList`, `ManifestForm`,
+  `GHGWorkflowPanel`, `TokenAddressInput`, `TokenApprovalFlow`,
+  `TokenDecimalDisplayFlows`.
+- **Lib tier** (`tests/lib/`, 57 files) — pure-client unit tests: commitment
+  preparation + stores, agreement manifest, schema-spec source, discovery +
+  catalogue pipeline, GHG disclosure, delivery/handoff attestation, dispute
+  evidence, IPFS service, token conversion, geocode, and per-hook tests
+  (`useCommitmentFlow`, `useOffsetRetirement`, `useTokenApproval`, …).
+
 ## Playwright — devnet (e2e) + mobile (viewport) projects
+
+`npm run test:e2e:devnet` (preflight → seed → run) and `npm run test:e2e:mobile`.
+Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
+is e2e-only.
+
+**devnet (`*.devnet.spec.ts`, 42 specs)** — every spec drives the real UI
+against Anvil + deployed contracts (action in the UI, reaction in the UI). By area:
+
+- Commerce / checkout / order lifecycle: `merchant-page`, `merchant-place-order`,
+  `onsite-purchase`, `commitment-share`, `inbox`, `inbox-accept`, `lifecycle`,
+  `multi-round-composition`, `ui-feedback`.
+- Designer + assembly registry: `designer-publish`, `designer-save-draft`,
+  `designer-view`, `designer-agreement-drawer`, `designer-delivery-modality`,
+  `designer-drafts-delete`, `scenario-direct-sale`, `scenario-local-commerce`,
+  `seeded-assembly-fork`, `published-list-ui`, `assembly-registry`.
+- Operators: `operators-onboarding`, `operator-edit-ui`,
+  `operator-update-profile`, `operator-withdraw`.
+- Order / role surfaces: `seller-timeline`, `spectator-view`, `audit-page`,
+  `audit-page-seller`.
+- Attestation + delivery: `buyer-attestation`, `proximity-proof`,
+  `proximity-proof-ui`, `delivery-lifecycle`, `dutch-auction-lifecycle`.
+- GHG / offsets: `ghg-workflow`, `ghg-lens`, `ghg-submit-ui`,
+  `offset-retirement`, `offset-retirement-ui`.
+- Dispute: `dispute-ui`. FIG token: `fig-claim`, `fig-claim-ui`. Permit: `permit`.
+
+**mobile (`*.mobile.spec.ts`, 1 spec)** — responsive/viewport chrome jsdom
+can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
+
 ## Rust prover — figaro-kernel + figaro-sequencer + figaro-schema + figaro-rpgf
 
 - `figaro-kernel` (`prover/lib/`): kernel logic mirror — types, EIP-712 hashing, apply_batch state machine.
