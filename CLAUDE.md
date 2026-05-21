@@ -62,6 +62,12 @@ runtime-infrastructure doctrine in `docs/v5/RUNTIME.md` and the
 `frontend/lib/` notes below, and its non-conflicting part is already covered
 by "Stick to the protocol — no 2 cents".
 
+**Open every task by reformulating, then asking.** Before the first
+substantive action on any non-trivial task — code or not — restate the
+request in your own words to confirm comprehension, and ask any clarifying
+questions. Wait for confirmation before starting. Reformulation in your own
+words is the comprehension check; a verbatim echo is not.
+
 **Clarify before coding.** State assumptions explicitly; if uncertain, ask.
 When a request has multiple interpretations, present them — never pick one
 silently. If a simpler approach exists, say so; push back when warranted. If
