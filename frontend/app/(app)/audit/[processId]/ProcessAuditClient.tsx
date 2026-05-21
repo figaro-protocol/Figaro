@@ -9,6 +9,7 @@ import { DisputeStatusPanel } from "@/components/core/DisputeStatusPanel";
 import { useArbitrationCost } from "@/hooks/core/useArbitrationCost";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { createDeliveryCoordinatorSource } from "@/lib/mechanisms/deliveryCoordinatorEvents";
+import { resolveProcessRecourse, klerosConfigForRecourse, type KlerosRecourse } from "@/lib/dispute";
 import { hexEqual } from "@/lib/shared/evm";
 
 /**
@@ -21,16 +22,28 @@ import { hexEqual } from "@/lib/shared/evm";
  */
 function ProcessDisputeSection({ processId }: { processId: string }) {
     const { address } = useAccount();
-    const { klerosConfig } = useArbitrationCost();
+    const { klerosConfig: envKlerosConfig } = useArbitrationCost();
     const orders = useProcessOrders(processId);
     const coordinatorSources = useMemo(() => [createDeliveryCoordinatorSource()], []);
     const role = hexEqual(address, orders[0]?.buyer ?? "") ? "buyer" : "seller";
+
+    // Layer-3 recourse is whatever the assembly's figaro-jurisdiction-v1
+    // clause(s) named — read off the committed orders, not a global default.
+    const recourses = useMemo(() => resolveProcessRecourse(orders), [orders]);
+    // The Kleros raise-dispute flow uses the court the clause authored; the
+    // arbitrableProxy address is deployment config, so it stays from env.
+    const klerosConfig = useMemo(() => {
+        const kleros = recourses.find((r): r is KlerosRecourse => r.kind === "kleros");
+        const proxy = envKlerosConfig?.arbitrableProxy;
+        return kleros && proxy ? klerosConfigForRecourse(kleros, proxy) : undefined;
+    }, [recourses, envKlerosConfig]);
 
     return (
         <div data-testid="audit-dispute-section">
             <DisputeStatusPanel
                 processId={processId as `0x${string}`}
-                klerosConfig={klerosConfig ?? undefined}
+                klerosConfig={klerosConfig}
+                recourses={recourses}
                 role={role}
                 coordinatorSources={coordinatorSources}
                 orders={orders}

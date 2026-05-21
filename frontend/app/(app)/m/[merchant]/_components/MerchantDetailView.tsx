@@ -62,6 +62,31 @@ const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "deliver:dutch-auction",
 ];
 
+/**
+ * Extract the figaro-jurisdiction-v1 clause an assembly authored, as the
+ * manifest fields `buildOrderAgreement` re-emits into the committed order's
+ * agreement. Layer-3 dispute recourse is read off this clause — without it
+ * the committed order names no off-chain forum and the dispute surface has
+ * nothing to drive. Returns `{}` for an assembly with no jurisdiction clause.
+ */
+function assemblyJurisdictionFields(
+    manifest: { agreements?: Record<string, { sections?: Array<{ schema: string; data?: Record<string, unknown> }> }> },
+): Record<string, string> {
+    for (const agreement of Object.values(manifest.agreements ?? {})) {
+        const section = (agreement.sections ?? []).find((s) => s.schema === "figaro-jurisdiction-v1");
+        if (!section) continue;
+        const data = section.data ?? {};
+        const out: Record<string, string> = {};
+        for (const key of ["klerosCourt", "klerosMinJurors", "applicableLaw", "forum", "language"]) {
+            const v = data[key];
+            if (typeof v === "string" && v) out[key] = v;
+            else if (typeof v === "number") out[key] = String(v);
+        }
+        if (Object.keys(out).length > 0) return out;
+    }
+    return {};
+}
+
 interface Props {
     merchantAddress: string;
 }
@@ -387,6 +412,10 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     // so the food order anchors figaro-merchant-process-v1 —
                     // without the clause the merchant cannot attest it.
                     ...(fulfillmentMode.startsWith("deliver:") ? { merchantProcessIncluded: true } : {}),
+                    // The off-chain dispute forum the assembly authored — the
+                    // committed order carries the jurisdiction clause so the
+                    // dispute surface can read its Layer-3 recourse.
+                    ...(pickedAssembly ? assemblyJurisdictionFields(pickedAssembly.manifest) : {}),
                     // Geo fields aggregated from the cart's catalogue annotations.
                     // mass / volume strings are parsed by `parseMassToGrams` /
                     // `parseVolumeToMl` in `manifestFieldsToGeoSection`; class_
@@ -476,6 +505,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     origin: restaurant?.geohash ?? "",
                     destination: deliveryLocation.geohash ?? "",
                     courierProcessIncluded: true,
+                    ...assemblyJurisdictionFields(assemblyManifest),
                     ...(courierProximityBands.length > 0 ? { proximityBands: courierProximityBands } : {}),
                     ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
                     ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),

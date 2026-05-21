@@ -39,6 +39,7 @@ import {
     type KlerosConfig,
     type DisputeStatus,
     type CoordinatorEventSource,
+    type JurisdictionRecourse,
 } from "@/lib/dispute";
 
 // ---------------------------------------------------------------------------
@@ -91,8 +92,14 @@ function buildEvidenceDisplayURI(processId: string, chainId: number, coreAddress
 
 interface DisputeStatusPanelProps {
     processId: `0x${string}`;
-    /** Kleros configuration. If omitted, the panel shows as "not configured". */
+    /** Kleros configuration. If omitted, the panel shows as "not configured".
+     *  The caller derives it from the assembly's jurisdiction clause — the
+     *  court is the clause's; the arbitrableProxy address is deployment config. */
     klerosConfig?: KlerosConfig;
+    /** Recourse forum(s) the assembly's figaro-jurisdiction-v1 clause(s)
+     *  authored — surfaced so the disputing party sees the forum the designer
+     *  named. Display-only; the Kleros flow runs on klerosConfig. */
+    recourses?: readonly JurisdictionRecourse[];
     /** If known, the local dispute ID on the ArbitrableProxy. */
     localDisputeId?: bigint;
     /** Role of the current user — determines evidence framing. */
@@ -121,6 +128,7 @@ interface DisputeStatusPanelProps {
 export function DisputeStatusPanel({
     processId,
     klerosConfig,
+    recourses,
     localDisputeId: externalDisputeId,
     role = "buyer",
     coordinatorSources,
@@ -279,6 +287,38 @@ export function DisputeStatusPanel({
             <h3 className="text-sm font-semibold text-gray-700 mb-2">
                 Dispute Resolution
             </h3>
+
+            {/* ── Recourse forum(s) the assembly authored ─────── */}
+            {recourses && recourses.length > 0 && (
+                <div
+                    className="mb-3 rounded border border-neutral-200 bg-neutral-50 p-2 space-y-1"
+                    data-testid="dispute-recourse-list"
+                >
+                    <p className="text-[11px] font-semibold text-neutral-500">
+                        Recourse forum — from the assembly&apos;s jurisdiction clause
+                    </p>
+                    {recourses.map((r) =>
+                        r.kind === "kleros" ? (
+                            <p
+                                key={`k-${r.court.key}`}
+                                className="text-xs text-neutral-700"
+                                data-testid="dispute-recourse-kleros"
+                            >
+                                Kleros — {r.court.name} · minimum {r.minJurors} jurors
+                            </p>
+                        ) : (
+                            <p
+                                key={`t-${r.applicableLaw}-${r.forum ?? ""}`}
+                                className="text-xs text-neutral-700"
+                                data-testid="dispute-recourse-traditional"
+                            >
+                                {r.forum ?? "Courts of competent jurisdiction"} · {r.applicableLaw}
+                                {r.language ? ` · ${r.language}` : ""}
+                            </p>
+                        ),
+                    )}
+                </div>
+            )}
 
             {/* ── No dispute yet ──────────────────────────────── */}
             {!hasDispute && (

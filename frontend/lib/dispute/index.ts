@@ -69,6 +69,18 @@ export type {
     KlerosConfig,
 } from "./klerosProxy";
 
+// Process-jurisdiction recourse — reads the figaro-jurisdiction-v1 clause
+// the assembly authored and resolves the Layer-3 recourse forum(s).
+export {
+    resolveProcessRecourse,
+    klerosConfigForRecourse,
+} from "./processJurisdiction";
+export type {
+    JurisdictionRecourse,
+    KlerosRecourse,
+    TraditionalRecourse,
+} from "./processJurisdiction";
+
 // Delivery attestations
 export {
     AttestationMode,
