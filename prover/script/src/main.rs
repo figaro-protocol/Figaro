@@ -48,10 +48,11 @@ async fn main() {
     let domain = domain_separator(CHAIN_ID, CORE);
 
     // SP1_MINIMAL_BATCH=1 drops the Layer B content_proof from the seller
-    // attestation below. The content gate is ~800x of this batch's cycle
-    // count (~20M with the gate, ~24K without), so the minimal batch is what
-    // makes a real proof fit a memory-constrained machine. The canonical full
-    // batch — content gate exercised inside the zkVM — stays the default.
+    // attestation below — trimming the batch from ~1.03M cycles to ~922K.
+    // The five-gate content gate adds only ~109K cycles (~11%); it is not
+    // the bottleneck (ECDSA recovery dominates). The canonical full batch —
+    // content gate exercised inside the zkVM — stays the default; minimal
+    // mode is just a margin for very memory-tight machines.
     let minimal_batch = std::env::var("SP1_MINIMAL_BATCH").is_ok();
 
     // ── Seller-attestation schema + content (computed up front) ──
@@ -255,11 +256,11 @@ async fn main() {
     // Stage 2 — Real CPU proof: generates an actual SP1 proof on the
     // local machine and verifies it against the verifying key.
     //
-    // Gate with SP1_REAL_PROOF=1 because real proving is slow on this
-    // batch size (~20M cycles ≈ several minutes on a modern laptop,
-    // significant memory). Mock execution above already validates the
-    // program's correctness; the real proof is a cryptographic
-    // attestation of that execution.
+    // Gate with SP1_REAL_PROOF=1 because real proving is slow: the full
+    // batch is ~1.03M cycles and a local Core proof takes ~8 minutes on a
+    // modern laptop. Mock execution above already validates the program's
+    // correctness; the real proof is a cryptographic attestation of that
+    // execution.
     if std::env::var("SP1_REAL_PROOF").is_ok() {
         println!("\n── Stage 2/2 — Local CPU proof ──");
         let cpu_client = ProverClient::builder().cpu().build().await;
