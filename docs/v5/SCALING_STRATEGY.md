@@ -306,71 +306,89 @@ If a Cairo/StarkNet path becomes strategically justified:
 
 Do not resume StarkNet implementation until V5 parity gates are cleared.
 
-## Prover Schema Coupling — Compiled-In vs Witness-Supplied Specs
+## Prover Schema Architecture — Generic Engine, Not Compiled-In Specs
 
-The SP1 guest compiles in the 16 canonical schema specs
+Permissionless schema extension is an axiom of the protocol, not a
+forecast. `SchemaRegistrationHelper` makes registration permissionless
+on-chain; the schema-author RPGF funds authors across years 2/5/9; the
+extension doctrine assumes third-party schema families forever. An
+architecture is correct only if it serves an unbounded, ever-growing
+schema population. "Is there enough demand to justify it" is a product
+question and has no place here.
+
+The SP1 guest currently compiles in the 16 canonical specs
 (`prover/schema/src/embedded.rs` — `include_str!` of the Layer A JSONs)
-and the per-schema ABI encoders (`encode.rs` — a `match schemaId`
-dispatch). Adding a schema changes the guest ELF, hence the program
-verification key; at mainnet that is a `FigaroBatchVerifier` /
-`RpgfMinter` redeploy. This section records why that coupling exists and
-when, if ever, to break it.
+and per-schema ABI encoders (`encode.rs` — a `match schemaId` dispatch).
+Adding a schema changes the guest ELF → the program verification key → a
+`FigaroBatchVerifier` redeploy. **Measured against the axiom, that is
+broken**: it makes registering a schema a protocol-side migration event,
+and it makes the prover a gatekeeper of the schema namespace — a
+component with opinions about which schemas exist. The kernel owns
+nothing; a prover that knows the schema list owns something.
 
-**Compiled-in specs are a security property, not debt.** The on-chain
-verifier checks a proof against a fixed `programVKey`; the vkey
-identifies the exact program that ran. Because the specs are baked into
-that program, "validated against the canonical spec" is part of what the
-vkey attests. A prover that loaded specs as untrusted runtime input would
-still verify against the same vkey while validating against an
-attacker-chosen permissive spec — unsound. Phase-1 hardening removed
-exactly that hole (the caller-supplied `schema_spec` field). Note the
-validator *engine* (`parse_schema_spec` + `validate_content`) is already
-generic — it interprets any spec at runtime; only the spec *set* and the
-encoders are per-schema.
+**The asymmetry that names the bug.** Layer C already scales
+permissionlessly — a schema author deploys their own `ISchemaValidator`
+and binds it via `SchemaRegistrationHelper`, no protocol redeploy. Layer
+B (the prover) does not. Layer C got the infrastructure design; Layer B
+got the shortcut — "bake in the schemas we have." Today a third-party
+schema in the proven path can only be attested content-opaque (no
+in-proof validation) or is rejected outright (`SchemaEncoderMissing`).
+The scaling path structurally cannot validate the population the
+protocol exists to serve.
 
-**The sound modular alternative.** Specs can be witness-supplied without
-losing soundness if the guest *binds* them: take `spec_json` as input,
-recompute its content hash, check it against an on-chain anchor for the
-op's `schemaId`, and expose `schemaId` as a public value the settlement
-transaction cross-checks. Trust moves from "the ELF" to "the on-chain
-anchor"; the generic validator engine stays in the ELF, so the vkey stops
-churning when a schema is added.
+**Required end-state.** The guest holds a generic schema *engine* —
+parse + validate + encode — and no schemas. The spec is a witness input,
+bound to its `schemaId` by content hash; `SchemaRegistry` is the trust
+anchor. Adding a schema is a `SchemaRegistry` transaction and nothing
+else: no guest rebuild, no vkey change, no verifier redeploy. The vkey
+then covers *the engine* — "content validated against whatever spec the
+registry says is canonical for this id" — which is the soundness
+property of the current compiled-in design, generalized rather than
+enumerated. (Compiling specs in was a real hardening — Phase 1 removed a
+caller-supplied `schema_spec` field for exactly this reason — but
+enumeration is a bootstrap, not the architecture.)
 
-**Two blockers, both real:**
+The validator engine (`parse_schema_spec` + `validate_content`) is
+already generic. The sequence to the rest is a dependency order — every
+step committed, none demand-gated:
 
-1. **The encoder is not generic.** `encode.rs` dispatches per `schemaId`
-   to per-schema functions. They would have to become one spec-field-
-   driven encoder (`alloy-dyn-abi` is already used *inside* them, so the
-   primitive exists). Until then the encoder stays a compiled-in
-   per-schema touch-point and the vkey churns regardless of what the spec
-   layer does.
-2. **No on-chain spec-content anchor.** The schema-registration record
-   commits to a `uriHash` (the hash of an IPFS URI string), not to the
-   spec content. The CID inside that URI is a content address, but the
-   guest cannot dereference IPFS. A witness-binding design needs a direct
-   `keccak256(spec_json)` anchor, or a content-derived `schemaId`. The
-   deployed `SchemaRegistry` is immutable (first-write-wins) — so this is
-   a v2 registry or a parallel anchor, an on-chain migration, not a Rust
-   refactor.
+1. **Keystone — the spec format must totally determine the ABI layout.**
+   The per-schema encoders embed shape decisions (e.g. consent transposes
+   its document array into three parallel arrays to suit a hand-written
+   validator). For encoding to be generic the spec must declare the
+   canonical layout completely. This is the load-bearing change: it also
+   makes the Layer C validator mechanically derivable from the spec
+   rather than hand-written.
+2. **Generic encoder.** Once the spec is the total source, `encode.rs`
+   collapses to one spec-driven encoder (`alloy-dyn-abi` already does
+   runtime-typed encoding inside the per-schema functions).
+3. **Content-binding.** The guest must verify a witness spec against an
+   on-chain anchor. `SchemaRegistry` commits to a `uriHash`, not a
+   spec-content hash; the schema family's identity scheme should be
+   content-binding — a content-derived `schemaId`, or a registry that
+   exposes `keccak256(spec)`. The deployed registry is immutable, so this
+   is a registry v2 / parallel anchor — a protocol-extension-doctrine
+   decision.
+4. **Witness-supplied specs.** The 16 protocol specs stop being
+   special-cased; they become input like any other.
 
-**Cost even once unblocked.** Witness-binding adds in-circuit work per
-attestation — a keccak over the spec JSON plus the anchor check — and
-generic encoding is slower than specialized. Modest against the current
-~1.03M-cycle batch, not free.
+**Costs — one-time bootstrap costs, not recurring.** Generic JSON
+parsing in-circuit is heavier than the specialized path (mitigable: a
+compact binary spec form, per-batch spec amortization since a batch's
+attestations share schemas). Making the spec the total ABI source is a
+shape change, so the existing 16 migrate to `-v2` schemaIds with
+regenerated Layer C validators — a coordinated one-time migration. The
+point of paying these once is to delete the *recurring* cost the current
+design imposes: a verifier redeploy per schema, forever.
 
-**Decision criterion.** Build this only if schemas keep landing *after*
-mainnet. The kernel is frozen; if the schema set freezes with it, vkey
-churn is a pre-mainnet development cost, not an operational one, and the
-witness-binding machinery solves a problem that no longer exists. The
-trigger to act is the conjunction: a credible stream of post-mainnet
-third-party schemas **and** the encoder already made generic. Absent that
-conjunction, defer.
-
-**Unconditional wins (no vkey-architecture change).** Auto-discover the
-embedded set (`include_dir!` over the schema directory) instead of a
-hand-written `EMBEDDED_SPECS` list; derive per-schema metadata from the
-parsed spec rather than parallel tables — done: `SchemaSpec::cross_checks()`
-reads the block tier, replacing a hand-maintained flag array.
+**Status.** Compiling in the 16 frozen protocol schemas is an acceptable
+*bootstrap* for initial mainnet — they freeze with the kernel, and launch
+does not block on the engine. But the generic schema engine is a
+committed prover-roadmap milestone with a definite expiry: the first
+third-party schema that needs the proven path. It is not conditional on
+demand — the demand is the design. None of this touches the kernel or
+its invariants; it is `prover/` and `FigaroBatchVerifier`'s deployment
+story.
 
 ## Decision Rule
 
