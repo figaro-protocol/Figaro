@@ -349,6 +349,7 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
         encodeJurisdictionContent,
         encodeGHGScopeContent,
         encodeProximityPolicyContent,
+        encodeOffsetPolicyContent,
         encodeCommerceContent,
         encodeConsentContent,
     } = schemasMod;
@@ -398,6 +399,10 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
         case "figaro-proximity-policy-v1":
             return (data) => encodeProximityPolicyContent({
                 bands: asAny(data.bands ?? []),
+            });
+        case "figaro-offset-policy-v1":
+            return (data) => encodeOffsetPolicyContent({
+                providers: asAny(data.providers ?? []),
             });
         case "figaro-consent-v1":
             return (data) => encodeConsentContent({
