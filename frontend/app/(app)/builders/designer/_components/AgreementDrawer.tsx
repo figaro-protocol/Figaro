@@ -156,6 +156,14 @@ interface Props {
      *  every form control inside an article is disabled. Used by /view
      *  to surface clause/schema detail without permitting edits. */
     readOnly?: boolean;
+    /** Every order in the design. Drives the per-node tab row so each
+     *  graph node has its own authoring surface in the drawer — without
+     *  this, a spawned sub-order is reachable only by clicking its canvas
+     *  node. Omitted, or single-order, → no tab row. */
+    orders?: Order[];
+    /** Switch the drawer to another node's agreement. Paired with
+     *  `orders`; the canvas owns the selected-order state. */
+    onSelectOrder?: (orderId: string) => void;
 }
 
 export function AgreementDrawer({
@@ -169,6 +177,8 @@ export function AgreementDrawer({
     onDeliveryUnselected,
     embedded = false,
     readOnly = false,
+    orders,
+    onSelectOrder,
 }: Props) {
     const [fields, setFields] = useState<ManifestFields>(() =>
         order ? readAgreementFields(order) : ({} as ManifestFields),
@@ -507,6 +517,34 @@ export function AgreementDrawer({
                     </button>
                 </div>
             </div>
+
+            {orders && orders.length > 1 && onSelectOrder && (
+                <div
+                    data-testid="drawer-node-tabs"
+                    className="flex flex-row gap-1 px-3 py-2 border-b border-neutral-200 overflow-x-auto"
+                >
+                    {orders.map((node, index) => {
+                        const isActive = node.id === order.id;
+                        return (
+                            <button
+                                key={node.id}
+                                type="button"
+                                onClick={() => onSelectOrder(node.id)}
+                                data-testid={`drawer-node-tab-${node.id}`}
+                                aria-pressed={isActive}
+                                title={node.id}
+                                className={`shrink-0 rounded border px-3 py-1 text-xs ${
+                                    isActive
+                                        ? "border-black bg-black text-white"
+                                        : "border-neutral-300 bg-white text-neutral-600 hover:border-neutral-500"
+                                }`}
+                            >
+                                Order {index + 1}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
             <div className="flex-1 flex flex-row overflow-hidden">
                 <nav

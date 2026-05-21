@@ -591,6 +591,8 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 </div>
                 <AgreementDrawer
                     order={selectedOrderId ? (orders.find((o) => o.id === selectedOrderId) ?? null) : null}
+                    orders={orders}
+                    onSelectOrder={setSelectedOrderId}
                     onClose={() => setSelectedOrderId(null)}
                     onChange={(edits) => {
                         if (selectedOrderId) handleEditAgreement(selectedOrderId, edits);

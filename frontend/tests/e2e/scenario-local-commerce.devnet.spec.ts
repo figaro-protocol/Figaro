@@ -106,11 +106,15 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
         await page.getByTestId('drawer-fulfilment-coordination-seller-assigned').click();
 
         // ── Courier sub-order ─────────────────────────────────────────────
-        // The drawer does not auto-switch to the spawned order — click the
-        // second order node to bring its drawer up. (Iteration 1 leaves the
-        // courier sub-order on its default clauses.)
-        await orderNodes.nth(1).click();
-        await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+        // Each graph node has its own tab in the agreement drawer — the
+        // node-tab row surfaces the spawned courier sub-order without a
+        // canvas click. (This walk leaves the courier sub-order on its
+        // default clauses.)
+        const nodeTabs = page.getByTestId('drawer-node-tabs');
+        await nodeTabs.waitFor({ state: 'visible', timeout: 10000 });
+        await expect(nodeTabs.locator('button')).toHaveCount(2);
+        await nodeTabs.locator('button').nth(1).click();
+        await expect(page.getByTestId('agreement-drawer')).toBeVisible();
 
         // ── Name + publish ────────────────────────────────────────────────
         await page.getByTestId('designer-name-input').fill(draftName);
