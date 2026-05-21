@@ -169,15 +169,17 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 - `README.md`, `CURRENT_STATE.md` — entry points
 - `CONTRACTS.md`, `SCHEMAS.md`, `FRONTEND.md`, `TESTING.md` — split-out inventories
 - `VISION.md`, `THEORY.md` — core narrative
-- `DESIGN_DECISIONS.md`, `AUDIT_REPORT.md`, `VERIFICATION_MAP.md`, `RELEASE_READINESS.md`, `SCALING_STRATEGY.md` — security & verification
+- `DESIGN_DECISIONS.md`, `VERIFICATION_MAP.md`, `RELEASE_READINESS.md`, `SCALING_STRATEGY.md` — security & verification
 - `RUNTIME.md`, `PROTOCOL_EXTENSION_DOCTRINE.md`, `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md` — architecture
 - `FIG_TOKEN.md`, `GHG_PROTOCOL_SPEC.md` — protocol-specific
 - `BOL_RESEARCH.md` — bill-of-lading research, load-bearing reference for `DESIGN_DECISIONS.md` and `AUDIT_FINDINGS_*.md`
 - `TESTNET_READINESS.md` — single-source-of-truth punch list compiled 2026-05-06
 - `DESIGN_TOKENS.md` — MUJI theme spec; canonical token reference for Tailwind config and component primitives
-- `AUDIT_FINDINGS_<DATE>.md` — dated audit findings (glob; the only auto-allowed new-file pattern)
+- `AUDIT_FINDINGS_<DATE>.md` — dated, frozen per-pass audit findings (glob; the only auto-allowed new-file pattern)
 
 **Delete on completion.** When a strategy/plan/audit/punch-list doc's work is closed, **delete the file**. Do not move it to `docs/archive/` (that path is for legacy v4 docs only, not v5 cleanups). Do not mark items done in place. Use git history to retrieve. The same rule that governs the backlog (`feedback_delete_done_backlog_items.md`) applies to docs.
+
+**Audit documents are frozen and dated.** An audit pass's findings live in exactly one `AUDIT_FINDINGS_<DATE>.md`, written once and never edited afterward — a finding may be checked off in the PR that fixes it, but the finding *text* is immutable. A later audit pass is a new dated file, never an edit to an old one. There is no rolling "audit report". Verification *coverage* (live test counts, harness inventory) is not audit content — it lives in `VERIFICATION_MAP.md` / `TESTING.md`. Accepted risks live in `DESIGN_DECISIONS.md` / `RELEASE_READINESS.md`; release-gate criteria in `RELEASE_READINESS.md`.
 
 **No new top-level docs without destination.** Agents creating new files in `docs/v5/` must either edit a whitelisted doc or get explicit user approval to extend the whitelist. The only auto-allowed new-file pattern is `AUDIT_FINDINGS_<DATE>.md` for dated audit findings, per existing convention. New strategy/plan/notes files require approval before creation — write them as new sections in the relevant whitelisted doc instead.
 
@@ -591,7 +593,7 @@ Core theory:
 
 Security & verification:
 - `DESIGN_DECISIONS.md` — 14 intentional patterns that look like vulnerabilities **(read before auditing)**
-- `AUDIT_REPORT.md` — Combined audit history (4 AI audit passes) + web2/UI subsidiary audits + accepted risks
+- `AUDIT_FINDINGS_<DATE>.md` — dated, frozen per-pass audit findings; write-once, a new pass is a new file
 - `VERIFICATION_MAP.md` — Every invariant → code → test → formal layer
 - `RELEASE_READINESS.md` — Gate criteria, hardening completion record, frozen Solidity surface declaration for external audit
 - `SCALING_STRATEGY.md` — Proof-based scaling, batch sequencer architecture, sequencer trust model (consolidated)

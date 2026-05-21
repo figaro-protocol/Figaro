@@ -1,9 +1,16 @@
-# V5 Security Audit Report
+# Audit Findings — V5 Security Audit (2026-04-16 → 2026-04-26)
 
-Status: comprehensive internal security audit for the live V5 kernel, mechanism
-modules, FIG token contracts, and batch verification layer.
+**FROZEN.** The immutable record of the V5 internal security audit passes run
+between 2026-04-16 and 2026-04-26. Not edited after the fact — a later audit
+pass is a new `AUDIT_FINDINGS_<DATE>.md` file, never a change to this one.
+Verification *coverage* (live test counts, harness inventory) is not audit
+content and is not tracked here; see `VERIFICATION_MAP.md` and `TESTING.md`.
+Accepted risks: `DESIGN_DECISIONS.md` / `RELEASE_READINESS.md`. Release-gate
+criteria: `RELEASE_READINESS.md`.
 
-Last updated: 2026-04-26 (Web3 normal-pass + adversarial-pass AI audits on the Phase-4a/4b + StagedMerkleAirdrop + small-surface deltas; 1 new Medium from normal pass, 0 new actionable from adversarial pass; case strengthened for two queued items).
+Consolidated 2026-05-21 from the former `AUDIT_REPORT.md`, which conflated
+this frozen audit history with live coverage tables and a release checklist;
+the non-findings content moved to the docs named above.
 
 ## Scope
 
@@ -421,79 +428,3 @@ The verification suite explicitly covers the following enforcement edges:
 - contract solvency invariant (proved symbolically)
 - state root continuity in batch verification
 - FIG 1B hard cap enforcement on every mint path
-
-## Accepted Operational Risks
-
-These are current design realities, not defects:
-
-1. **Buyer key loss is terminal** for an active process. The kernel intentionally
-   has no timeout or admin recovery path. Use a multi-sig or social-recovery
-   wallet for the buyer role in production.
-
-2. **Large processs are gas-bounded.** The kernel supports ~2,145 orders
-   within the 30M Ethereum gas limit. Institution design should keep per-process
-   order counts well below the theoretical ceiling and use multi-process
-   composition for larger trees.
-
-3. **Fee-on-transfer tokens are unsupported** by design. The kernel rejects them
-   explicitly via exact transfer delta checks in `_pullExact`.
-
-## Total Verification Coverage
-
-| Layer | Count | Method |
-|---|---|---|
-| Foundry | 237 | Concrete unit/integration/fuzz/invariant tests (via `forge test --via-ir`). +12 in 2026-05-19 RpgfMinter pass: 6 fuzz (submitter auth, stage-index bounds on submit + claim, claim-before-unlock, amount-must-match-tree, root one-shot) + 6 invariants (total-minted-within-cap, four immutables, claim-flag-consistency). |
-| Halmos | 15 | Symbolic proofs (ALL inputs, z3) — via `./test-halmos.sh`. FigaroCore (7) + RpgfMinter (8): root one-shot, claim one-shot, time-lock, stage-bound, submitter-gate, zero-root rejection. |
-| Certora | 35/35 sub-rules across 4 specs | SMT formal verification (cloud) — FigaroCore (9), AttestationCoordinator (7), FigToken (7), RpgfMinter (12: submitter/minter/programVKey immutable, unlockTime immutable, root one-shot, totalAllocated locked-with-root, claim flag monotonic, only-submitter sets root, stage-index bounds, claim preconditions). Via `./test-certora.sh`. |
-| TLA+ | 24 invariants across 3 models | FigaroCore 7 invariants / 6,087,113 distinct states; FigToken 8 invariants / 160,844 distinct states; RpgfMinter 9 invariants / 11,821 distinct states. All via `./test-tla.sh`. |
-| Echidna | 15 | Property-based fuzzing — FigaroCore (7) + RpgfMinter (8: claim flag monotonic, total-minted-within-cap, immutables, root one-shot, claim balance consistency). Via `./test-echidna.sh`. |
-| Slither | — | Static analysis (0 findings) |
-| Vitest (SDK) | 166 | TypeScript SDK tests |
-| Vitest (frontend) | 560+ | Frontend unit tests |
-| Rust | 55 | Kernel + sequencer tests |
-| Playwright | 169 | E2E browser tests |
-| **Total** | **1,230+** | |
-
-## Pre-Mainnet Deployment Checklist
-
-### Solidity Surface
-
-- [ ] Freeze `src/`, `src/fig/`, and deployment scripts before external audit
-- [ ] Confirm `FigaroBatchVerifier.verifier` is the real SP1 verifier gateway (not MockSP1Verifier)
-- [ ] Confirm `MockSP1Verifier` is not deployed on target chain
-- [ ] Confirm all settlement tokens are non-rebasing, non-fee-on-transfer
-
-### FigToken Deployment
-
-- [ ] `FigToken.deployer` == expected deployer EOA
-- [ ] All registered minters are intended emission/vesting contracts
-- [ ] `FigToken.deployerMintRenounced` == `true` after minter setup
-- [ ] `FigToken.totalSupply()` == expected genesis allocation
-
-### AttestationCoordinator
-
-- [ ] `AttestationCoordinator.core` == deployed FigaroCore address
-
-### FigaroBatchVerifier
-
-- [ ] `FigaroBatchVerifier.verifier` == **real** SP1 verifier gateway
-- [ ] `FigaroBatchVerifier.stateRoot` == expected genesis root
-- [ ] `FigaroBatchVerifier.programVKey` == correct program verification key
-
-### External Audit
-
-- [ ] Engage external firm (Trail of Bits, OpenZeppelin, Spearbit, or equivalent)
-- [ ] Hand over frozen Solidity surface and this doc set
-- [ ] Resolve all findings or explicitly accept non-critical findings in writing
-- [ ] Record final audit outcome in this file
-
-## Release Recommendation
-
-The V5 Solidity surface has been verified through six independent methods
-covering concrete testing, symbolic execution, SMT formal verification, model
-checking, fuzzing, and static analysis. Two AI audit passes (2026-04-16 and
-2026-04-20) found all prior findings resolved and no new actionable findings.
-
-Before mainnet deployment: freeze the Solidity surface and complete a final
-external audit pass. For testnet (Sepolia) deployment, the current internal
-verification posture is sufficient.

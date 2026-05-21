@@ -12,7 +12,7 @@ This file is the canonical inventory. CLAUDE.md indexes it; agents must not refe
 - 2 external functions: `commit` (unified dual-signed), `resolveProcess`
 - 3 mappings: `processes` (ProcessState), `orderStatus` (uint8), `orderProcessId` (bytes32)
 - EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution
-- Covered by Foundry unit tests, 7 Echidna properties, 7 Halmos symbolic proofs (FigaroCore), and 5 Certora CVL specs (the StagedMerkleAirdrop Halmos pass + Certora spec were retired alongside the contract — the replacement `RpgfMinter` has Foundry + Rust-Solidity conformance coverage but no symbolic/formal proofs yet; see `docs/v5/AUDIT_REPORT.md`)
+- Covered by Foundry unit tests, 7 Echidna properties, 7 Halmos symbolic proofs (FigaroCore), and 5 Certora CVL specs (the StagedMerkleAirdrop Halmos pass + Certora spec were retired alongside the contract — see `docs/v5/VERIFICATION_MAP.md` for the current per-contract verification coverage)
 
 **`src/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
 Single `Commitment` struct for both root and sub-orders; `processId` zero for root.

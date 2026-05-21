@@ -175,6 +175,17 @@ Required posture for that audit:
 2. avoid feature churn during the audit window
 3. treat any post-audit Solidity edits as requiring either a narrow follow-up review or a repeat audit decision
 
+## Pre-Mainnet Deployment Verification
+
+Deploy-time configuration checks to run against the mainnet deployment before
+it is treated as live. These are separate from the surface-freeze and
+external-audit gates above:
+
+- `FigToken.deployer` == the expected deployer EOA; `FigToken.deployerMintRenounced` == `true` after minter setup; `FigToken.totalSupply()` == the expected genesis allocation; every registered minter is an intended allocation contract.
+- `AttestationCoordinator.core` == the deployed `FigaroCore` address.
+- `FigaroBatchVerifier.verifier` == the real SP1 verifier gateway (never `MockSP1Verifier`); `FigaroBatchVerifier.stateRoot` == the expected genesis root; `FigaroBatchVerifier.programVKey` == the correct program verification key.
+- All settlement tokens are non-rebasing and non-fee-on-transfer.
+
 ## Pre-Release Hardening Pass — Completed 2026-04-26
 
 A six-section hardening checklist was worked through to completion before
@@ -192,9 +203,9 @@ covered:
    missing-hook-dependency cleanup in stateful flows, `any`-usage
    reduction in event/indexing/console plumbing, removal of disabled
    account-abstraction code.
-4. **Documentation and release posture** — refresh AUDIT_REPORT to live
-   contract names + test counts, record exact validation commands,
-   document accepted risks explicitly.
+4. **Documentation and release posture** — refresh the audit and inventory
+   docs to live contract names + test counts, record exact validation
+   commands, document accepted risks explicitly.
 5. **Cairo rewrite prerequisites** — freeze the V5 kernel invariants as
    the only source of truth for any future Cairo port, archive the old
    pre-V5 Cairo lifecycle.
@@ -202,9 +213,8 @@ covered:
    build + warning-debt resolution + verified header policy.
 
 Earlier (V3-era) gas-consumption empirical numbers have been
-superseded by the gas-ceiling figures recorded in the "Verification
-Coverage" section of `AUDIT_REPORT.md` (≈2,145 orders within the 30M
-Ethereum gas limit).
+superseded by the gas-ceiling figure (≈2,145 orders within the 30M
+Ethereum gas limit; see `SCALING_STRATEGY.md` and `FigaroCore.sol`).
 
 ## Freeze Notice — Solidity Surface Frozen for External Audit
 
@@ -259,7 +269,7 @@ Expected output: empty.
 | Document | Purpose |
 |---|---|
 | `docs/v5/DESIGN_DECISIONS.md` | 14 intentional patterns that look like vulnerabilities (read first) |
-| `docs/v5/AUDIT_REPORT.md` | Prior AI-audit history (4 passes), web2 + adversarial subsidiary audits, accepted risks |
+| `docs/v5/AUDIT_FINDINGS_2026-04-26.md` (+ later `AUDIT_FINDINGS_<date>.md` files) | Dated, frozen per-pass AI-audit findings — the 2026-04-16→04-26 history, web2 + adversarial subsidiary audits |
 | `docs/v5/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
 | `docs/v5/RELEASE_READINESS.md` (this file) | Gate criteria, frozen scope, hardening completion record |
 | `docs/v5/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for (consolidated from former `BATCH_SEQUENCER.md` + `SEQUENCER_TRUST_MODEL.md`) |
@@ -273,7 +283,7 @@ Any Solidity edit after the freeze commit must be:
 
 1. Explicitly scoped to a specific finding or accepted-risk item
 2. Reviewed by the original auditor or a qualified substitute
-3. Recorded in `docs/v5/AUDIT_REPORT.md` with finding reference and outcome
+3. Recorded in a dated `docs/v5/AUDIT_FINDINGS_<date>.md` with finding reference and outcome
 
 Changes to `test/`, `frontend/`, `sdk/`, or `prover/` do not require
 re-audit unless they expose a new on-chain attack surface.
@@ -285,6 +295,6 @@ The canonical live release-readiness set is now:
 1. `docs/v5/CURRENT_STATE.md`
 2. `docs/v5/RELEASE_READINESS.md` (this file — also carries the freeze
    notice + hardening completion record)
-3. `docs/v5/AUDIT_REPORT.md` (carries the AI-audit history + web2/UI
-   subsidiary audits)
+3. `docs/v5/AUDIT_FINDINGS_<date>.md` (dated, frozen per-pass audit
+   findings)
 4. `docs/v5/VERIFICATION_MAP.md`

@@ -871,8 +871,9 @@ This is a sequencer operational responsibility, not a protocol invariant.
 
 The base INFO-3 case is **accidental**: a user revokes approval before the
 batch lands and the batch reverts. The 2026-04-26 Web3 adversarial audit
-(C-2 / D-2; summary in `AUDIT_REPORT.md` "Web2 / UI / Specific-Feature
-Audits") identifies a **deliberate** extension that is materially worse:
+(C-2 / D-2; summary in `AUDIT_FINDINGS_2026-04-26.md` "Web2 / UI /
+Specific-Feature Audits") identifies a **deliberate** extension that is
+materially worse:
 
 **Attack flow**:
 1. Attacker observes `settleBatch` proof submission in the mempool (or learns
