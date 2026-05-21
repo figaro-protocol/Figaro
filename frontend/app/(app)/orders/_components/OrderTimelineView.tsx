@@ -77,6 +77,18 @@ const PROXIMITY_BAND_INDEX: Record<string, number> = {
  *  courier→buyer dropoff rather than the merchant→courier pickup. */
 const COURIER_ARRIVED_PICKUP_STAGE = 3;
 
+/** figaro-courier-process-v1 stage → a buyer-facing transit label, so the
+ *  buyer can watch the one-hop delivery between commit and resolve. */
+const COURIER_STAGE_LABEL: Record<number, string> = {
+    1: "courier assigned",
+    2: "heading to the pickup",
+    3: "at the pickup point",
+    4: "picked up — in transit",
+    5: "arriving at your location",
+    6: "delivered",
+    7: "delivery cancelled",
+};
+
 interface MerchantTimelineEvent {
     eventType: MerchantEvent;
     stage: number;
@@ -370,6 +382,33 @@ export function OrderTimelineView({ processId }: Props) {
         return () => { cancelled = true; };
     }, [publicClient, chainId, processId, tick]);
 
+    // Courier-process transit — fetched so the buyer (and any non-courier
+    // viewer) can watch the one-hop delivery between commit and resolve.
+    const [courierTransitStages, setCourierTransitStages] = useState<number[]>([]);
+    useEffect(() => {
+        if (!publicClient || !chainId || !processId) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const logs = await getAttestationsByProcessAndSchema(
+                    publicClient, chainId, processId, COURIER_PROCESS_SCHEMA_ID,
+                );
+                if (cancelled) return;
+                const stages = logs
+                    .map((log) => ({
+                        stage: Number(((log.args ?? {}) as { stage?: unknown }).stage ?? 0),
+                        blockNumber: Number(log.blockNumber ?? 0),
+                    }))
+                    .sort((a, b) => a.blockNumber - b.blockNumber)
+                    .map((e) => e.stage);
+                setCourierTransitStages(stages);
+            } catch {
+                if (!cancelled) setCourierTransitStages([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [publicClient, chainId, processId, tick]);
+
     const processModel = workspace.processModel;
     const rootOrder = processModel?.orders.find((order) => order.orderId === processModel.rootOrderId)
         ?? processModel?.orders[0]
@@ -548,6 +587,15 @@ export function OrderTimelineView({ processId }: Props) {
 
                 {role === "buyer" && (
                     <>
+                        {courierTransitStages.length > 0 && (
+                            <p
+                                className="text-sm rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-neutral-700"
+                                data-testid="courier-transit-status"
+                            >
+                                <span className="font-semibold text-neutral-500">Courier · </span>
+                                {COURIER_STAGE_LABEL[courierTransitStages[courierTransitStages.length - 1]] ?? "en route"}
+                            </p>
+                        )}
                         {isResolved ? (
                             <p className="text-sm text-neutral-600">Order is complete. No further action.</p>
                         ) : resolveCapability ? (

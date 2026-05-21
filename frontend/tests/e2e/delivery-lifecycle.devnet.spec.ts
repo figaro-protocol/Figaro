@@ -173,6 +173,11 @@ test.describe('Delivery lifecycle via assembly (devnet)', () => {
         await gotoOrderDevnet(page, scenario.processId);
         await expect(page.getByTestId('order-status-pill')).not.toHaveText('Completed', { timeout: 15000 });
 
+        // The buyer sees the courier's transit — the lifecycle signals above
+        // are figaro-courier-process-v1 attestations, surfaced on the buyer's
+        // order view (buyer-side transit visibility).
+        await expect(page.getByTestId('courier-transit-status')).toBeVisible({ timeout: 15000 });
+
         // Buyer confirms receipt → resolveProcess fires → status pill flips
         // to "Completed" once the receipt confirms.
         await confirmReceiptAtOrder(page);
