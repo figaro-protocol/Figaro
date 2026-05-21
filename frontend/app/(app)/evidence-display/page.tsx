@@ -26,7 +26,6 @@ import { mockAwareHttp } from "@/lib/shared/mockTransport";
 import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "@/lib/dispute";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-import { decodeManifest, cosLabel, LEGACY_MANIFEST } from "@/lib/handoff/manifest";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
@@ -149,49 +148,6 @@ function AttestationViewer({ cid }: { cid: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Manifest Decoder — renders decoded handoff manifest for jurors
-// ---------------------------------------------------------------------------
-
-function ManifestPanel({ manifestHash }: { manifestHash: string }) {
-    const decoded = useMemo(() => {
-        if (!manifestHash || manifestHash === LEGACY_MANIFEST || manifestHash.length < 6) return null;
-        return decodeManifest(manifestHash);
-    }, [manifestHash]);
-
-    if (!decoded) return null;
-
-    return (
-        <div className="mt-2 bg-blue-50 border border-blue-200 rounded p-2 text-xs space-y-1" data-testid="manifest-panel">
-            <div className="font-semibold text-blue-600">📦 Handoff Manifest</div>
-            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-                <span className="text-blue-400">pickup</span>
-                <span className="font-mono text-blue-700">{decoded.pickupGeohash}</span>
-                <span className="text-blue-400">dropoff</span>
-                <span className="font-mono text-blue-700">{decoded.dropoffGeohash}</span>
-                <span className="text-blue-400">class</span>
-                <span className="text-blue-700">{cosLabel(decoded.cos)}</span>
-                {decoded.massGrams > 0 && <>
-                    <span className="text-blue-400">mass</span>
-                    <span className="text-blue-700">{decoded.massGrams}g</span>
-                </>}
-                {decoded.volumeMl > 0 && <>
-                    <span className="text-blue-400">volume</span>
-                    <span className="text-blue-700">{decoded.volumeMl}ml</span>
-                </>}
-                {decoded.destinationAddress && !decoded.destinationAddress.startsWith("🔒") && <>
-                    <span className="text-blue-400">address</span>
-                    <span className="text-blue-700">{decoded.destinationAddress}</span>
-                </>}
-                {decoded.destinationAddress?.startsWith("🔒") && <>
-                    <span className="text-blue-400">address</span>
-                    <span className="text-blue-400 italic">{decoded.destinationAddress}</span>
-                </>}
-            </div>
-        </div>
-    );
-}
-
-// ---------------------------------------------------------------------------
 // Timeline Event Card
 // ---------------------------------------------------------------------------
 
@@ -236,11 +192,6 @@ function TimelineEventCard({ event, index }: { event: TimelineEvent; index: numb
                             </div>
                         ))}
                     </div>
-                )}
-
-                {/* Manifest decode (OrderCreated events carry manifestHash) */}
-                {event.details.manifestHash && (
-                    <ManifestPanel manifestHash={event.details.manifestHash} />
                 )}
 
                 {/* Attestation artifacts (evidence submissions carry attestationCID) */}

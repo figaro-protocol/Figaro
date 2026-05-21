@@ -1,6 +1,9 @@
 // Encoding helpers for frontend -> bytes32 conversions
 import { ZERO_BYTES32, isEmptyHex } from "@/lib/shared/evm";
-import { LEGACY_MANIFEST } from "@/lib/handoff/manifest";
+
+/** Sentinel "empty manifest" — a 1-byte payload, so a `manifest.length > 0`
+ *  check is satisfied when there is no manifest payload to encode. */
+export const LEGACY_MANIFEST = "0x01" as const;
 
 function encodeToBytes32(s: string): `0x${string}` {
     const str = (s || "").toString();

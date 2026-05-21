@@ -9,8 +9,7 @@
  */
 
 import { useState } from "react";
-import { ManifestFields, encodeManifestFields } from "@/lib/core/encoding";
-import { LEGACY_MANIFEST } from "@/lib/handoff/manifest";
+import { ManifestFields, encodeManifestFields, LEGACY_MANIFEST } from "@/lib/core/encoding";
 import { Input } from "@/components/ui/Input";
 import ChevronDown from "@/components/icons/ChevronDown";
 import ChevronUp from "@/components/icons/ChevronUp";
