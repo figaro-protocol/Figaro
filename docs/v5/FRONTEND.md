@@ -11,9 +11,9 @@ CLAUDE.md keeps the active-frontend declaration and indexes this file; the per-r
 
 Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory listing, not this paragraph.
 
-**`(marketing)/` (no wallet provider):** `/` (root), `/about`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig` (informational, no wallet), `/groups`, `/integrate`, `/local-commerce` (worked example), `/protocol`, `/schemas`, `/spec`.
+**`(marketing)/` (no wallet provider):** `/` (root), `/about`, `/builders` (hub), `/builders/composability`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig/design` (informational, no wallet), `/groups`, `/integrate`, `/local-commerce` (worked example), `/protocol`, `/schemas`, `/spec`.
 
-**`(app)/` (wallet provider mounted):** `/audit/[processId]`, `/builders` (hub), `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/consent` (beta-only ceremony), `/discover` (operator catalogue), `/dispute` (beta-consent dispute), `/evidence-display` (Kleros juror iframe target), `/fig` (transactional surface, with `/fig/claim`), `/inbox` (merchant inbox), `/m/[merchant]` (merchant detail + cart), `/operators` (enrolment), `/orders` (buyer order list), `/orders/[processId]` (per-order live timeline), `/sign`, `/terminal`.
+**`(app)/` (wallet provider mounted):** `/audit` + `/audit/[processId]`, `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/builders/designer/view/[slug]`, `/consent` (beta-only ceremony), `/discover` (operator catalogue), `/dispute` (beta-consent dispute), `/evidence-display` (Kleros juror iframe target), `/fig` (transactional surface, with `/fig/claim`), `/inbox` (merchant inbox), `/m/[merchant]` (merchant detail + cart), `/operators` (enrolment) + its sub-routes `/operators/{agents,assemblies,catalogue,identity,review}` and `/operators/edit/{agents,assemblies,catalogue,identity}`, `/orders` (buyer order list), `/orders/[processId]` (per-order live timeline), `/sign`, `/terminal`. (`/builders` and `/builders/composability` are `(marketing)/` pages, not `(app)/`.)
 
 **API:** `/api/geocode`.
 
@@ -72,8 +72,8 @@ No publish-to-registry path exists today; saved drafts stay in localStorage. `De
 Every route in `frontend/app/` is classified into one of three tiers
 governing wallet-provider load:
 
-- **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current routes: `/`, `/about`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig` (informational), `/groups`, `/integrate`, `/local-commerce`, `/protocol`, `/schemas`, `/spec`.
-- **Reference / read-only (in `(app)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. Current: `/builders` (hub, currently publication-shaped — could move to `(marketing)/`), `/builders/designer*` (drafts in localStorage), `/discover` (operator catalogue), `/audit/[processId]` (audit / forensics), `/m/[merchant]` (read-mode catalogue with WalletGate-protected place-order CTA).
+- **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current routes: `/`, `/about`, `/builders`, `/builders/composability`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig/design` (informational), `/groups`, `/integrate`, `/local-commerce`, `/protocol`, `/schemas`, `/spec`.
+- **Reference / read-only (in `(app)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. Current: `/builders/designer*` (drafts in localStorage), `/discover` (operator catalogue), `/audit` + `/audit/[processId]` (audit / forensics), `/m/[merchant]` (read-mode catalogue with WalletGate-protected place-order CTA). The `/builders` hub and `/builders/composability` are publication pages and live in `(marketing)/`.
 - **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/terminal`, `/sign`, `/operators`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` + `/orders/[processId]` (buyer order list + per-order timeline; resolveProcess fires here), `/inbox` (merchant inbox; counter-sign + merchant-process attestations fire here).
 
 **Rules:**
