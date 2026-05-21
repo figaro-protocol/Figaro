@@ -381,8 +381,9 @@ fn validate_attestation_content(
         // For a cross-checking (Category-2) schema the committed sectionData
         // is the ABI content form, so sectionDataHash == content_ref. A
         // non-cross-checking schema carries its canonical-JSON section_data.
-        let cross_checks = figaro_schema::schema_cross_checks(schema_id)
-            .ok_or_else(|| KernelError::SchemaEncoderMissing(format!("{schema_id}")))?;
+        // `cross_checks` is read off the already-parsed embedded spec (its
+        // block tier) — no parallel table to drift from the JSON.
+        let cross_checks = parsed.cross_checks();
         let section_data_hash = if cross_checks {
             *content_ref
         } else {

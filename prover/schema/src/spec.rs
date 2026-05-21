@@ -179,6 +179,27 @@ pub struct SchemaSpec {
     pub block: Option<SchemaBlockBinding>,
 }
 
+impl SchemaSpec {
+    /// Whether this schema's agreement-manifest `sectionData` is the
+    /// cross-checking ABI content form — true exactly when the block tier
+    /// is `category-2`. For a Category-2 declarative clause the committed
+    /// `sectionData` and the runtime attestation content are byte-identical,
+    /// so the agreement Merkle leaf collapses to `keccak256(schemaId ++
+    /// content_ref)`. Category-1 (runtime-only) schemas — and any spec with
+    /// no block binding — are not cross-checking: their leaf is derived
+    /// from the canonical-JSON `sectionData` carried in the content proof.
+    ///
+    /// This is the single source of truth for the kernel's Gate 5
+    /// (agreement inclusion); the tier travels in the embedded spec JSON,
+    /// so no parallel table can drift from it.
+    pub fn cross_checks(&self) -> bool {
+        matches!(
+            self.block.as_ref().map(|b| b.tier),
+            Some(SchemaTier::Category2)
+        )
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpecParseError {
     pub path: String,

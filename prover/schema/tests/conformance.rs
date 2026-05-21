@@ -343,3 +343,33 @@ fn embedded_spec_json_is_none_for_non_protocol_schemas() {
     assert!(figaro_schema::embedded_spec_json(&keccak256(b"figaro-topology-v1")).is_none());
     assert!(figaro_schema::embedded_spec_json(&keccak256(b"figaro-bogus-v99")).is_none());
 }
+
+#[test]
+fn embedded_spec_tiers_partition_cross_checking_12_and_4() {
+    // The kernel's Gate 5 derives `cross_checks` from each spec's block
+    // tier (`SchemaSpec::cross_checks`). Every runtime-attestable schema
+    // must declare a category-1 or category-2 tier — never manifest-only —
+    // and the split must stay 12 cross-checking (Category-2 declarative
+    // clauses) / 4 not (Category-1 runtime-only schemas).
+    let mut cross = 0;
+    let mut plain = 0;
+    for (key, json) in figaro_schema::all_embedded_specs() {
+        let value: Value = serde_json::from_str(json).unwrap();
+        let spec = parse_or_panic(&value);
+        let block = spec
+            .block
+            .as_ref()
+            .unwrap_or_else(|| panic!("embedded spec {key} has no block binding"));
+        assert!(
+            !matches!(block.tier, figaro_schema::SchemaTier::ManifestOnly),
+            "embedded spec {key} is manifest-only — not runtime-attestable",
+        );
+        if spec.cross_checks() {
+            cross += 1;
+        } else {
+            plain += 1;
+        }
+    }
+    assert_eq!(cross, 12, "12 Category-2 cross-checking schemas");
+    assert_eq!(plain, 4, "4 Category-1 runtime-only schemas");
+}

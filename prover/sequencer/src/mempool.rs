@@ -297,9 +297,9 @@ fn pre_check_attest_content(
     // Mirrors the kernel: seller attestations bind to the role commitment's
     // agreement_hash; buyer attestations pass None and skip this gate.
     if let Some(agreement_hash) = agreement_hash {
-        let cross_checks = figaro_schema::schema_cross_checks(schema_id).ok_or_else(|| {
-            format!("schema_id {schema_id} is not a runtime-attestable protocol schema")
-        })?;
+        // `cross_checks` is read off the already-parsed embedded spec (its
+        // block tier), mirroring the kernel — no parallel table to drift.
+        let cross_checks = parsed.cross_checks();
         let section_data_hash = if cross_checks {
             *content_ref
         } else {
