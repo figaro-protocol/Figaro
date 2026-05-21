@@ -34,10 +34,10 @@ import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
 import { findListingByAddress } from "@/lib/shared/operatorListing";
 import type { SemanticTone } from "@/lib/shared/tones";
 import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
-import { useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
+import { COURIER_PROCESS_SCHEMA_ID, useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
 import { getSection, PROXIMITY_POLICY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import type { MerchantEvent } from "@figaro/core/schemas";
+import type { CourierEvent, MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -70,6 +70,11 @@ const PROXIMITY_BAND_INDEX: Record<string, number> = {
     "nearby-ble": 2,
     "contact-nfc": 3,
 };
+
+/** figaro-courier-process-v1 stage for `arrived-pickup`. Once the courier
+ *  has attested this (or later), the next handoff proof certifies the
+ *  courier→buyer dropoff rather than the merchant→courier pickup. */
+const COURIER_ARRIVED_PICKUP_STAGE = 3;
 
 interface MerchantTimelineEvent {
     eventType: MerchantEvent;
@@ -434,7 +439,7 @@ export function OrderTimelineView({ processId }: Props) {
     };
 
     const handleCourierProximityProof = async () => {
-        if (!courierOrder) return;
+        if (!courierOrder || !publicClient) return;
         setCourierPending(true);
         setCourierError(null);
         try {
@@ -450,9 +455,20 @@ export function OrderTimelineView({ processId }: Props) {
                     ?.data as { bands?: string[] } | undefined)?.bands ?? [])[0]
                 : undefined;
             const band = PROXIMITY_BAND_INDEX[committedBand ?? ""] ?? 1;
+            // Which handoff edge: the courier-process event log decides. Once
+            // arrived-pickup is attested, this proof certifies the
+            // courier→buyer dropoff; before it, the merchant→courier pickup.
+            const courierLogs = await getAttestationsByProcessAndSchema(
+                publicClient, chainId, processId, COURIER_PROCESS_SCHEMA_ID,
+            );
+            const pickupDone = courierLogs.some(
+                (log) => Number(((log.args ?? {}) as { stage?: unknown }).stage ?? 0)
+                    >= COURIER_ARRIVED_PICKUP_STAGE,
+            );
+            const eventType: CourierEvent = pickupDone ? "arrived-dropoff" : "arrived-pickup";
             await courierActions.signalWithProof({
                 orderHash: courierOrder.orderId,
-                eventType: "arrived-pickup",
+                eventType,
                 proof: { band, nonce, deviceSig: COURIER_DEVICE_SIG_PLACEHOLDER },
             });
             setTick((t) => t + 1);
@@ -566,8 +582,8 @@ export function OrderTimelineView({ processId }: Props) {
                 {role === "courier" && (
                     <>
                         <p className="text-sm text-neutral-700">
-                            Submit an on-chain proximity proof to certify the pickup
-                            handoff. This fires the{" "}
+                            Submit an on-chain proximity proof to certify the next
+                            delivery handoff. This fires the{" "}
                             <code className="font-mono text-xs">figaro-proximity-proof-v1</code>{" "}
                             attestation and logs the courier-process handoff event.
                         </p>

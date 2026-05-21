@@ -16,8 +16,11 @@
  *   2. Seed that agreement into the courier's localStorage so the
  *      seller-attestation path can open the inclusion proof.
  *   3. Open /orders/<processId> as the courier wallet.
- *   4. Click the proximity-proof button.
- *   5. Assert the on-chain figaro-proximity-proof-v1 Attestation event.
+ *   4. Click the proximity-proof button — handoff 1 (arrived-pickup).
+ *   5. Click it again — the button reads the courier-process event log
+ *      and certifies handoff 2 (arrived-dropoff) instead.
+ *   6. Assert the proximity-proof + courier-process Attestation events
+ *      across both handoff edges.
  *
  * Additive UI-tier coverage — the contract path is covered by
  * proximity-proof.devnet.spec.ts (viem-tier).
@@ -59,6 +62,7 @@ const COURIER_KEY = '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804c
 const COURIER_ADDR = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC' as const;
 
 const PROXIMITY_PROOF_SCHEMA_ID = keccak256(stringToHex('figaro-proximity-proof-v1'));
+const COURIER_PROCESS_SCHEMA_ID = keccak256(stringToHex('figaro-courier-process-v1'));
 
 const ATTESTATION_COORDINATOR_EVENT_ABI = parseAbi([
     'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)',
@@ -79,10 +83,10 @@ test.describe('Courier proximity proof via UI (devnet)', () => {
     });
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
-    // Two on-chain seed commits + multi-route nav + two attestation txs.
-    test.setTimeout(180_000);
+    // Two seed commits + nav + two handoffs, each two attestation txs.
+    test.setTimeout(240_000);
 
-    test('courier submits a proximity proof from the order timeline — Attestation event emits', async ({ page }) => {
+    test('courier submits proximity proofs for both handoff edges — pickup then dropoff', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
@@ -161,6 +165,34 @@ test.describe('Courier proximity proof via UI (devnet)', () => {
         expect(events[0].args.stage).toBe(1);
 
         // The UI surfaced no submission error.
+        await expect(page.getByTestId('courier-action-error')).toHaveCount(0);
+
+        // ── Second handoff: courier→buyer dropoff ──────────────────────
+        // The button reads the courier-process event log — arrived-pickup is
+        // now attested, so the next click certifies the dropoff edge.
+        await expect(proofButton).toBeEnabled({ timeout: 30_000 });
+        await proofButton.click();
+
+        // The courier-process events now span both handoff edges:
+        // arrived-pickup (stage 3, handoff 1) then arrived-dropoff (stage 5).
+        const courierDeadline = Date.now() + 90_000;
+        let courierStages: number[] = [];
+        while (Date.now() < courierDeadline) {
+            const all = await publicClient.getContractEvents({
+                address: coordinator,
+                abi: ATTESTATION_COORDINATOR_EVENT_ABI,
+                eventName: 'Attestation',
+                args: { orderHash: deliveryOrderHash, attester: COURIER_ADDR as Hex },
+                fromBlock: blockBefore,
+            });
+            courierStages = (all as Array<{ args: { stage: number; schemaId: Hex } }>)
+                .filter((e) => e.args.schemaId === COURIER_PROCESS_SCHEMA_ID)
+                .map((e) => Number(e.args.stage));
+            if (courierStages.includes(5)) break;
+            await new Promise((r) => setTimeout(r, 1000));
+        }
+        expect(courierStages).toContain(3); // arrived-pickup (handoff 1)
+        expect(courierStages).toContain(5); // arrived-dropoff (handoff 2)
         await expect(page.getByTestId('courier-action-error')).toHaveCount(0);
     });
 });
