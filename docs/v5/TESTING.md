@@ -108,7 +108,8 @@ can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
 
 - `figaro-kernel` (`prover/lib/`): kernel logic mirror — types, EIP-712 hashing, apply_batch state machine.
 - `figaro-sequencer` (`prover/sequencer/`): batch mempool, state mirror, assembler, submitter, API.
-- `figaro-schema` (`prover/schema/`): Layer B schema validator. 15 conformance tests against the
-  TypeScript Layer A reference (`sdk/tests/schemas/validate.test.ts`), including every shipped protocol
-  schema's parse + per-schema content checks for `figaro-ghg-protocol-v1` and `figaro-geo-v2`.
+- `figaro-schema` (`prover/schema/`): Layer B schema validator. Conformance tests against the
+  TypeScript Layer A reference (`sdk/tests/schemas/validate.test.ts`) — every shipped protocol
+  schema's parse, per-schema content checks for `figaro-ghg-protocol-v1` and `figaro-geo-v2`, and
+  a check that all 16 embedded canonical specs the content gate uses parse and resolve by schemaId.
 - `figaro-rpgf` (`prover/rpgf/`): substrate-broadening aggregator + conformance to TypeScript simulator.

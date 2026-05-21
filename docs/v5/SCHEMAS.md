@@ -35,56 +35,61 @@ preloads built-in specs and lazy-fetches remote ones.
 1. **SP1 zkVM prover guest program** — `figaro-kernel`'s `apply_batch`
    gates `AttestAsSeller` / `AttestAsBuyer` operations through
    `validate_attestation_content` when the op carries an
-   `AttestationContentProof { content_json, schema_spec }`. Four
-   gates run inside the proof:
-     1. `parse_schema_spec(schema_spec).schemaId` keccak-256s to
-        `schema_id` — the right spec is being applied.
-     2. `validate_content(content_json, spec, stage)` returns `Ok` —
-        the structured form satisfies the schema.
-     3. `encode_content_for_schema(spec.schemaId, content_json)`
-        derives canonical ABI bytes (byte-for-byte equivalent to
-        viem's `encodeAbiParameters` in `sdk/src/schemas/encode.ts`).
-        This is the **cross-form binding** — the bytes Layer C decodes
-        are derived *from* the JSON Layer B validates, so they describe
-        the same content by construction. No separate `content_bytes`
-        field exists; it would have allowed the caller to disagree
-        with `content_json` and is now impossible.
+   `AttestationContentProof { content_json }`. The gates run inside
+   the proof:
+     1. The op's `schema_id` resolves to a canonical spec compiled into
+        the prover (`figaro_schema::embedded_spec_json`). The spec is
+        looked up by `schema_id`, never supplied by the caller, so the
+        constraint set is covered by the program verification key.
+     2. `validate_content(content_json, embedded_spec, stage)` returns
+        `Ok` — the structured form satisfies the schema.
+     3. `encode_content_for_schema(schemaId, content_json)` derives
+        canonical ABI bytes (byte-for-byte equivalent to viem's
+        `encodeAbiParameters` in `sdk/src/schemas/encode.ts`). This is
+        the **cross-form binding** — the bytes Layer C decodes are
+        derived *from* the JSON Layer B validates, so they describe the
+        same content by construction. No separate `content_bytes` field
+        exists; it would have allowed the caller to disagree with
+        `content_json` and is impossible.
      4. `keccak256(derived_bytes) == content_ref` — binds the canonical
         bytes to the on-chain commitment value.
-   The `content_proof` field is optional; when `None`, the kernel
-   preserves legacy content-opaque behavior (Layer C will gate the
-   attestation at settlement time on chain).
+   `content_proof` is `Option`-typed. `None` is permitted only for
+   content-opaque attestations (`content_ref == 0`) and for schemas the
+   kernel has no embedded spec for; an attestation with a non-zero
+   `content_ref` under a runtime-attestable protocol schema MUST carry a
+   proof, else the gate returns `ContentProofRequired`.
 
 2. **Off-chain sequencer** — `figaro_sequencer::mempool::Mempool`
    mirrors the kernel gate at submission time via
-   `pre_check_attest_content`. The same four gates run on every
+   `pre_check_attest_content`. The same gates run on every
    attestation that carries a `content_proof`; any failure surfaces as
    a `submit()` rejection with a human-readable reason and the op is
    never enqueued. This means the prover never spends cycles on
    batches the kernel would reject. Signature-only pre-checks remain
    for ops that opt out of `content_proof`.
 
-Conformance is locked in four layers:
+Conformance is locked across the prover test crates:
 
-- `prover/schema/tests/conformance.rs` — 15 tests covering every
-  shipped protocol schema parse + the 12 happy/sad content cases
-  from `sdk/tests/schemas/validate.test.ts`.
-- `prover/schema/tests/encode_conformance.rs` — 17 tests asserting
-  per-schema canonical-encoder output is byte-for-byte equal to
-  viem's `encodeAbiParameters` output for the same input (covers
-  all 12 distinct encoder shapes across the 17 runtime-attestable
-  schemas). Test vectors were captured from the TypeScript encoders
-  via `generate_vectors.mjs`.
-- `prover/lib/tests/parity.rs` — 5 kernel-integration tests
+- `prover/schema/tests/conformance.rs` — spec-parse + content-validation
+  conformance against `sdk/tests/schemas/validate.test.ts`, every shipped
+  protocol schema's parse, and a check that all 16 embedded canonical
+  specs parse and resolve by schemaId.
+- `prover/schema/tests/encode_conformance.rs` — per-schema
+  canonical-encoder output is byte-for-byte equal to viem's
+  `encodeAbiParameters` output for the same input (covers all 12 distinct
+  encoder shapes across the 16 runtime-attestable schemas). Test vectors
+  were captured from the TypeScript encoders.
+- `prover/lib/tests/parity.rs` — kernel-integration tests
   (`attest_as_seller_with_valid_content_proof_passes`,
   `_content_hash_mismatch_fails`, `_invalid_content_fails`,
-  `_schema_id_mismatch_fails`,
-  `_unsupported_schema_encoder_fails`) exercising every gate inside
-  `apply_batch`.
-- `prover/sequencer/tests/sequencer.rs` — 5 mempool-boundary tests
+  `_unsupported_schema_encoder_fails`,
+  `attest_as_seller_under_protocol_schema_requires_content_proof`)
+  exercising every gate inside `apply_batch`.
+- `prover/sequencer/tests/sequencer.rs` — mempool-boundary tests
   (`mempool_accepts_attest_with_valid_content_proof`,
   `_rejects_content_hash_mismatch`, `_rejects_invalid_content`,
-  `_rejects_schema_id_mismatch`, `_rejects_unsupported_schema_encoder`)
+  `_rejects_unsupported_schema_encoder`,
+  `mempool_rejects_missing_content_proof_for_protocol_schema`)
   verifying the gate trips at submission time.
 
 The user-supplied `pattern` field uses the `regex` crate; the four
@@ -111,15 +116,17 @@ Lives off-chain as JSON at the URI hashed into `SchemaRegistry.uriHash`.
 Built-in specs ship in `sdk/src/schemas/examples/` and
 `frontend/lib/shared/schemas/` (the application's working copy).
 
-## The 18 protocol schemas
+## The 17 protocol schemas
+
+16 runtime-attestable schemas (each with a Layer C validator) plus the
+manifest-only `figaro-topology-v1`.
 
 | schemaId | What it carries | Attestation surface |
 |---|---|---|
 | `figaro-topology-v1` | DAG lineage (parent order hashes) | **Manifest-only** (no runtime validator) |
-| `figaro-handoff-v1` | Physical-exchange mode | Layer A + C |
 | `figaro-commerce-v1` | Currency, payment, line items | Layer A + C |
 | `figaro-geo-v2` | Origin / destination geohash + mass + volume + class of service | Layer A + C |
-| `figaro-fulfilment-v1` | Fulfilment method (single canonical enum: modality + who-organizes) | Layer A + C |
+| `figaro-fulfilment-v2` | Fulfilment method — modality + coordination + handoff point | Layer A + C |
 | `figaro-ghg-protocol-v1` | GHG Protocol Corporate Standard + scope (Category-2) | Layer A + C |
 | `figaro-ghg-iso-14064-v1` | ISO 14064 family + scope (Category-2) | Layer A + C |
 | `figaro-ghg-pas-2050-v1` | PAS 2050 product carbon footprint + scope (Category-2) | Layer A + C |
@@ -128,6 +135,7 @@ Built-in specs ship in `sdk/src/schemas/examples/` and
 | `figaro-ghg-measurement-v1` | Runtime grams CO2e (Category-1) | Layer A + C |
 | `figaro-proximity-policy-v1` | Required detection band committed at agreement signing (Category-2) | Layer A + C |
 | `figaro-proximity-proof-v1` | Per-handoff nonce + signed witness payload at runtime (Category-1) | Layer A + C |
+| `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing (Category-2) | Layer A + C |
 | `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A + C |
 | `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A + C |
 | `figaro-jurisdiction-v1` | Off-chain dispute-resolution jurisdiction (applicable law + forum + language) — baseline graph per Paper E | Layer A + C |
@@ -185,7 +193,7 @@ gap). Maintain lockstep.
 ## Third-party schema deployment — atomic register+bind required
 
 `SchemaRegistry.registerSchema` and `AttestationCoordinator.setValidator` are
-independent permissionless writes. The 14 reference figaro-* schemas are bound
+independent permissionless writes. The 16 reference figaro-* schemas are bound
 inside a single transaction by `script/Deploy.s.sol:_deployAndRegisterValidators`,
 so no front-running window exists at genesis.
 

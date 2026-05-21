@@ -450,7 +450,7 @@ All contracts live in `src/`. Solidity 0.8.26, Foundry. V3 in `archive-v3/`. No 
 High-level inventory (full per-contract surfaces, function lists, ABI changes, and "what does NOT exist" → `docs/v5/CONTRACTS.md`):
 
 - **Kernel (frozen):** `FigaroCore.sol`, `CommitmentTypes.sol`.
-- **Attestation & schema:** `AttestationCoordinator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `ISchemaValidator.sol`, `IRoleResolver.sol`, 17 per-schema validators in `src/schemaValidators/`.
+- **Attestation & schema:** `AttestationCoordinator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `ISchemaValidator.sol`, `IRoleResolver.sol`, 16 per-schema validators in `src/schemaValidators/`.
 - **Mechanism modules:** `DutchAuction.sol`, `OperatorRegistry.sol`, `ProcessOffsetReceipt.sol` (Path A carbon-offset receipts anchor — separate primitive per separation-of-concerns; receipts are not attestations, no agreement clause required).
 - **FIG token (`src/fig/`):** `FigToken.sol`, `RpgfMinter.sol`, `IFigMinter.sol`. 1B fixed supply: 100M founders + 300M DAO genesis-minted, 600M schema-author RPGF (yr 2/5/9). Per-tranche Merkle root is submitted at tranche time after an SP1 proof verifies it; aggregation logic lives in `prover/rpgf/` (Rust). FIG is not a governance token; `FigaroBatchVerifier` is not a minter.
 - **Batch verification:** `FigaroBatchVerifier.sol`, `interfaces/ISP1Verifier.sol`, `mocks/MockSP1Verifier.sol`.
@@ -468,7 +468,7 @@ Three layers must ship together for any new schema:
 - **Layer B** (Rust SP1 prover): `prover/schema/` (`figaro-schema` crate). Mirrors Layer A byte-for-byte (15-test conformance suite locked against `sdk/tests/schemas/validate.test.ts`) PLUS per-schema canonical ABI encoders that mirror viem's `encodeAbiParameters` from `sdk/src/schemas/encode.ts` (17-test encode-conformance suite). Wired into `figaro-kernel`'s `apply_batch` via `AttestationContentProof { content_json, schema_spec }` on `AttestAsSeller`/`AttestAsBuyer` — when present, four gates run inside the proof: (1) schemaId match, (2) content validates, (3) `encode_content_for_schema` derives canonical bytes from JSON, (4) `keccak256(derived_bytes) == content_ref`. The derive-from-JSON step is the cross-form binding — the bytes Layer C decodes come from the same JSON Layer B validates. `figaro_sequencer::mempool::Mempool` runs the same four gates at submission time (`pre_check_attest_content`) so the prover never receives batches the kernel would reject. 5 kernel-integration tests in `prover/lib/tests/parity.rs` + 5 mempool-boundary tests in `prover/sequencer/tests/sequencer.rs` cover accept + each reject path at both layers.
 - **Layer C** (Solidity): per-schema `ISchemaValidator` contracts in `src/schemaValidators/`, bound through `AttestationCoordinator.setValidator(schemaId, validator)`. **Permissionless, first-write-wins, immutable.** No validator → no attestation under that schemaId (`ValidatorNotSet`).
 
-There are 18 protocol schemas total: 17 runtime-attestable (each with a validator contract) + `figaro-topology-v1`, which is a manifest-only clause (no validator, DAG reconstructed off-chain by indexers from the signed manifest). Full table → `docs/v5/SCHEMAS.md`.
+There are 17 protocol schemas total: 16 runtime-attestable (each with a validator contract) + `figaro-topology-v1`, which is a manifest-only clause (no validator, DAG reconstructed off-chain by indexers from the signed manifest). Full table → `docs/v5/SCHEMAS.md`.
 
 ### Adding a new schema — checklist
 

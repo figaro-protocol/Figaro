@@ -174,6 +174,12 @@ AI audit — has been removed).
 **`src/interfaces/ISP1Verifier.sol`** — Succinct SP1 verifier gateway interface.
 **`src/mocks/MockSP1Verifier.sol`** — Accepts any proof for devnet testing.
 
+Deployment note: devnet wires `FigaroBatchVerifier` to `MockSP1Verifier` (the
+`Deploy.s.sol` program vKey is a placeholder the mock ignores). Testnet and
+mainnet MUST wire a real SP1 verifier and run the sequencer with `SP1_PROVER`
+≠ `mock` so it self-proves Groth16 — a real verifier paired with the mock
+prover would reject every batch.
+
 ## Test / Mock Contracts
 
 - `src/mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`
