@@ -115,7 +115,7 @@ invariants.
 Each law maps to a contract invariant:
 
 - **Skin in the Game** → `sellerBond = 2 × cumulativeValue`, `buyerBond = 2 × payment` (enforced in `commit`)
-- **One-Way Progress** → `cumulativeValue` is a monotonic accumulator per process; lifecycle state is `Pending → Active → Resolved` with no backward transitions
+- **One-Way Progress** → `cumulativeValue` is a monotonic accumulator per process; `orderStatus` advances `0 → 1 → 2` (unknown → committed → resolved) with no backward transitions
 - **Sovereign Settlement** → `resolveProcess` requires `msg.sender == rootBuyer`; no owner, no fee, no admin function, no timeout
 
 The emotional experience these laws produce: **the end of anxiety.** The
@@ -223,109 +223,71 @@ But we need strict dominance:
 
 ## Implementation Details
 
-### State Machine
+### Order Status
+
+The kernel does not run a lifecycle state machine. Each order is a single
+`uint8` nullifier — `orderStatus` — that advances in one direction only:
 
 ```
-         firstOrder() / subOrder()
-                ↓
-            Pending ──────────────────→ Cancelled
-                │         cancelOffer()   (bond - fee refunded)
-                │
-                │ acceptOffer()
-                │ (counterparty locks bond)
-                ↓
-            Active
-                │
-                │ resolveProcess()
-                │ (only by buyer)
-                ↓
-            Resolved
+       commit()                      resolveProcess()
+  0 (unknown) ───────→ 1 (committed) ───────→ 2 (resolved)
 ```
 
 **Key Transitions**:
-- **Pending → Active**: Counterparty accepts and locks bond via `acceptOffer()`
-- **Pending → Cancelled**: Maker cancels before acceptance via `cancelOffer()` (pays protocol fee on the refunded bond outflow)
-- **Active → Resolved**: Buyer resolves all orders atomically via `resolveProcess()`
+- **0 → 1**: `commit()` bonds the order. Both parties' EIP-712 signatures are supplied in the same call — there is no separate "offer" then "accept" step. A commitment is bonded atomically, or not at all.
+- **1 → 2**: `resolveProcess()` settles every order in the process at once.
 
-**No escape hatches**: No timeouts from Active state, no refunds after acceptance.
+**No escape hatches**: there is no `Pending` state, no `Cancelled` state, and no cancellation path. Once an order is committed (`orderStatus == 1`) the only way out is resolution — a committed order cannot be unwound unilaterally; only the buyer can resolve it.
 
 ### Core Functions
 
-The protocol exposes six public functions:
+The kernel exposes exactly two external functions:
 
-- **firstOrder()** — Creates root order. Either buyer or seller may propose; proposer locks bond first, counterparty accepts via `acceptOffer()`.
-- **subOrder()** — Chains additional sellers to an existing process. Buyer-only (enforced on-chain), preventing seller harassment and third-party expansion attacks.
-- **acceptOffer()** — Counterparty locks bond, transitions Pending → Active.
-- **cancelOffer()** — Proposer cancels before acceptance. Refund = bond minus cancellation penalty (2× fee snapshot).
-- **resolveProcess()** — Buyer atomically resolves ALL active orders in the process. This all-or-nothing semantics is what creates the seller coordination pressure described in Layer 2: sellers cannot be paid individually, so they must collectively satisfy the buyer.
+- **`commit(Commitment c, bytes buyerSig, bytes sellerSig)`** — Bonds one order. A root order (`c.processId == 0`) creates a new process; a sub-order (`c.processId` set) extends an existing one. Both signatures are verified against the EIP-712 digest of `c`, then the buyer is charged `2 × payment` and the seller `2 × expectedCumulativeValue`. A sub-order additionally requires `c.buyer == process.rootBuyer` and that `expectedCumulativeValue` equals the live accumulator plus `payment` — so it cannot be added without the root buyer's signature, and cannot misreport cumulative value.
+- **`resolveProcess(bytes32 processId, Commitment[] commitments)`** — Buyer atomically resolves ALL active orders in the process. The caller must be the process's `rootBuyer`, and the commitment array must list every active order or the call reverts (`IncompleteOrderList`). This all-or-nothing semantics is what creates the seller coordination pressure described in Layer 2: sellers cannot be paid individually, so they must collectively satisfy the buyer.
 
-Full function signatures and access control details are in the contract source (`FigaroCore.sol`).
+There is no `firstOrder`, `subOrder`, `acceptOffer`, or `cancelOffer` — those belonged to an earlier two-step offer/accept design. The unified `commit` replaced them: the agreement is negotiated and dual-signed off-chain, then one transaction bonds it. Full function signatures and access control are in the contract source (`src/FigaroCore.sol`).
 
-### Collateral Calculation
+### Bonding
+
+The kernel computes bonds inline in `commit` — there is no separate helper
+function:
 
 ```solidity
-function calculateCollateral(
-    uint256 cumulativeValue,  // Total value through chain
-    uint256 payment           // Value added this step
-) public pure returns (uint256 sellerBond_, uint256 buyerBond_) {
-    sellerBond_ = cumulativeValue * 2;
-    buyerBond_ = payment * 2;
-}
+buyerBond  = c.payment * 2;                 // local value P, doubled
+sellerBond = c.expectedCumulativeValue * 2; // cumulative value G, doubled
 ```
 
 **Properties**:
-- `sellerBond` grows with chain position (progressive)
-- `buyerBond` stays local (only pays for this step)
-- Ratio `sellerBond/buyerBond` increases downstream → deeper coordination pressure
+- `sellerBond` grows with chain position (it tracks cumulative value G)
+- `buyerBond` stays local (it tracks only this step's payment P)
+- the ratio `sellerBond / buyerBond` increases downstream → deeper coordination pressure
 
-### Fee Structure
+### Settlement on Resolution
 
-**Fee on tokens transferred out**:
-
-Figaro uses a single `feeRate` in basis points (`FEE_DENOMINATOR = 10,000`; range 5–50 bps i.e. 0.05%–0.50%) applied to the **payment** during resolution. The total fee is split evenly between buyer and seller.
-
-```solidity
-feeRate = 25  // example: 0.25% protocol fee (basis points)
-
-totalFee  = (payment × feeSnapshot) / FEE_DENOMINATOR
-buyerFee  = totalFee / 2
-sellerFee = totalFee - buyerFee
-
-sellerPayout = (2 × cumulativeValue) + payment - sellerFee
-buyerPayout  = payment - buyerFee
-```
-
-**Rationale**: Fees are assessed on `payment` only (invariant V3-7), keeping the fee basis proportional to the value exchanged at each step. The fee snapshot is locked at order creation, so fee-rate changes do not affect in-flight orders.
-
-**Cancellation Fee**: Cancellation charges `2 × feeSnapshot` on the **locked bond amount** and refunds `bond - cancellationFee` to the proposer. The 2× multiplier deters cancel-and-recreate spam.
-
-### Bond Distribution on Resolution
+The kernel takes no fee. There is no `feeRate`, no `feeSnapshot`, no treasury,
+and no cancellation path. At resolution every order pays out directly:
 
 ```solidity
-// Fee assessed on payment only (V3-7), split 50/50
-totalFee  = (payment × feeSnapshot) / FEE_DENOMINATOR
-buyerFee  = totalFee / 2
-sellerFee = totalFee - buyerFee   // rounds up if odd
-
-// Seller receives: Bond back + payment earned - seller fee
-sellerPayout = (2 × cumulativeValue) + payment - sellerFee
-
-// Buyer receives: Payment outflow minus buyer fee
-buyerPayout = payment - buyerFee
-
-// Fees to treasury
-treasuryPayout = totalFee
-
-// Invariant: sellerPayout + buyerPayout + treasuryPayout
-//          = (2 × cumulativeValue) + (2 × payment)
-//          = sellerBond + buyerBond
+sellerPayout = c.expectedCumulativeValue * 2 + c.payment;  // bond back + payment earned
+buyerPayout  = c.payment;                                  // bond back, minus the payment
 ```
 
-**Net Effects**:
-- Seller: `-2×cumulativeValue + (2×cumulativeValue + payment - sellerFee) = +payment - sellerFee` ✓
-- Buyer: `-2×payment + (payment - buyerFee) = -payment - buyerFee` ✓
-- Treasury: `+totalFee` ✓
-- Contract: All funds distributed, balance = 0 ✓
+**Net Effects** (per order, G = cumulative value, P = payment):
+- Seller: `−2G + (2G + P) = +P` — earns the payment, recovers the bond ✓
+- Buyer: `−2P + P = −P` — pays the payment, recovers the rest of the bond ✓
+- Contract: every bonded token is transferred straight back out; balance = 0 ✓
+
+**Conservation invariant**:
+
+```
+sellerPayout + buyerPayout = (2G + P) + P = 2G + 2P = sellerBond + buyerBond
+```
+
+Every token that entered as a bond leaves to one of the two parties — nothing
+is retained, and there is no third recipient. This is the "direct transfer
+settlement, no internal ledger" property: the kernel never holds a
+withdrawable balance.
 
 ---
 
@@ -609,9 +571,9 @@ Traditional system:
 With Figaro:
   - Blockchain shows: Buyer bonded $20
   - Blockchain shows: All sellers bonded correctly
-  - Blockchain shows: Order became Active at time T (`activatedAt[orderId]`)
-  - Blockchain shows: Order is still unresolved (`resolvedAt[orderId] == 0`)
-  - Therefore: Buyer has not resolved for 90 days (computed from timestamps)
+  - Blockchain shows: Order committed at time T (the `OrderCommitted` event, block timestamp)
+  - Blockchain shows: Order is still unresolved (no `OrderResolved` event for it)
+  - Therefore: Buyer has not resolved for 90 days (computed from event timestamps)
   - Evidence is IMMUTABLE (can't be altered)
   
 Court decision: Clear abuse, order buyer to resolve or forfeit bond
@@ -670,7 +632,7 @@ Rational decision: Don't abuse the system
 - Buyers who value spite > money (psychologically abnormal)
 - Systemic attacks by bad-faith actors
 
-For these cases, the legal system provides **deterrent enforcement**. On-chain timestamps (`activatedAt`, `resolvedAt`) supply the irrefutable audit trail courts need. No on-chain governance assists them — the protocol is inert and immutable; the off-chain legal system does the rest.
+For these cases, the legal system provides **deterrent enforcement**. The kernel's event log — `OrderCommitted`, `OrderResolved`, `ProcessResolved`, each carrying its block timestamp — supplies the irrefutable audit trail courts need. No on-chain governance assists them — the protocol is inert and immutable; the off-chain legal system does the rest.
 
 ---
 
@@ -684,7 +646,7 @@ The three enforcement layers work together. The goal is not redundancy for its o
 | **2. Seller Coordination** | Atomic resolution — sellers police each other (micro-lending circle effect) | Multi-seller failures |
 | **3. Legal + Transparency** | Immutable on-chain evidence — courts handle the 0.x% that economics cannot | Irrational or adversarial actors |
 
-**Note on what Figaro does NOT include**: No governance layer. No timeout. No dispute arbitration. No insurance tranche. No oracle. The locked capital is the enforcement mechanism; the immutable record is the evidence trail. Any feature that introduces an escape hatch from the Active state destroys Layer 1. Any feature that introduces partial resolution destroys Layer 2. These are hard constraints.
+**Note on what Figaro does NOT include**: No governance layer. No timeout. No dispute arbitration. No insurance tranche. No oracle. The locked capital is the enforcement mechanism; the immutable record is the evidence trail. Any feature that introduces a unilateral escape hatch from a committed order destroys Layer 1. Any feature that introduces partial resolution destroys Layer 2. These are hard constraints.
 
 **Why This Is Superior to Traditional Approaches**:
 
@@ -736,9 +698,9 @@ Result: Irrational attack → Extremely rare
 
 **Attack**: Observe pending transaction, create conflicting order.
 
-**Defense**: Orders are self-contained, processId is deterministically generated with high entropy → No exploitable MEV.
+**Defense**: Orders are self-contained and content-addressed. A root order's `processId` is the EIP-712 digest of its own dual-signed commitment, and every `orderHash` is `keccak256(processId, structHash)`. An attacker cannot forge a commitment without both parties' signatures, and a duplicate commitment is rejected outright (`DuplicateCommitment`).
 
-**Note**: Orders include unique nonces and processId generated with block.prevrandao → Replay protection and collision resistance.
+**Note**: The `salt` field in the `Commitment` struct is the bilateral nonce — replay protection and collision resistance. `block.prevrandao` is deliberately NOT used: under proof-of-stake the block proposer knows `prevrandao` up to an epoch ahead, which would make it a weaker source than a party-chosen salt bound into the signed struct.
 
 #### 4. Capital Efficiency Attack
 
@@ -802,63 +764,51 @@ Therefore: Rational buyers always resolve eventually
 
 ## Advanced Topics
 
-### DAG Support: Prototype2's Hidden Superpower
+### DAG Support
 
-**Question**: Does removing off-chain validation limit us to linear chains?
+**Question**: The kernel only ever sees a linear process — a single monotonic
+`cumulativeValue` accumulator. Does that limit Figaro to linear chains?
 
-**Answer**: No! Prototype2 supports arbitrary DAGs MORE easily than Prototype1.
+**Answer**: No. DAG topology — fan-out, fan-in, diamond dependencies — is
+fully expressible. It simply does not live in the kernel.
 
-**Key Insight**: Since we don't validate parent relationships on-chain, sellers can claim ANY `cumulativeValue`. If they lie, they lose their bond → Self-enforcing honesty.
+**Two layers**:
 
-**Example**: Diamond Dependency (two parents merge into one child)
+1. **The kernel** sees a flat process: a `processId`, a monotonic
+   `cumulativeValue`, and an `activeOrderCount`. Every sub-order's
+   `expectedCumulativeValue` is checked for exact equality against the live
+   accumulator plus its own `payment`; a mismatched commitment reverts
+   (`CumulativeValueMismatch`). The kernel stores no parent-child links —
+   there is no on-chain order tree.
 
-```
-Alice ← Bob ($10)    Alice ← Charlie ($5)
-         \                /
-          \              /
-           Alice ← Dave (cumulativeValue = $15)
-```
+2. **The topology layer** carries the DAG. It lives off-chain in the signed
+   agreement manifest (the `figaro-topology-v1` clause) and is reconstructed
+   by indexers and UI. Parents, children, and merges are expressed there, not
+   in kernel state.
 
-**Implementation**:
-1. Bob creates order: cumulativeValue=$10, bonds $20
-2. Charlie creates order: cumulativeValue=$5, bonds $10
-3. Dave creates order: cumulativeValue=$15, bonds $30
+**Structures larger than one linear process** — wider trees, or trees beyond
+the ~2,145-order gas ceiling — compose by nesting: a sub-order in process A is
+also the root commitment of a child process B. The overall tree then spans
+multiple processes and multiple settlements, while each individual process
+stays linear and within the ceiling.
 
-**What if Dave lies?**
-```
-Scenario: Dave claims cumulativeValue=$50 (but only received $15)
-- Dave bonds: 2×$50 = $100 
-- Dave delivers: Can't deliver $50 worth (only has $15)
-- Alice rejects → Dave's $100 locked forever
-- Loss: $100 > $15 (honest value)
-
-Result: Lying is strictly dominated → Dave reports honestly
-```
-
-**Comparison with Prototype1**:
-- **Prototype1**: Validator checks parent resolution states off-chain
-- **Prototype2**: Economic penalty >> validation cost
-
-**Advantage**: No validator infrastructure needed. DAG structure enforced by incentives alone.
-
-**Implementation Note**: On-chain, the process chain is linear (`processTail`
-advances sequentially). DAG relationships are expressed via `parentOrderIds` —
-emitted in `OrderCreated` events as informational metadata for indexers and UI.
-The economic enforcement (cumulative bonding) works on the linear chain; the
-DAG semantics are a coordination overlay that the UI and off-chain agents
-interpret. This separation keeps the kernel simple while preserving the
-self-enforcing honesty property described above.
+**Why this is safe**: honesty is enforced *before* the fact. Because the
+kernel pins each sub-order's `expectedCumulativeValue` to the accumulator, a
+wrong value never commits in the first place — there is no "claim a false
+value, lose your bond later" path. The off-chain topology is advisory
+metadata; the economic enforcement rides entirely on the on-chain linear
+accumulator and the bonds it sizes.
 
 ### Multi-Step Chains
 
 **Generalization**: Figaro supports arbitrary-length service chains.
 
-**Invariant**: Buyer remains constant, sellers form DAG structure.
+**Invariant**: The buyer remains constant (the `rootBuyer`); sellers extend the process one sub-order at a time.
 
 **Bond Formula**:
 ```
-For seller at position i with parents P:
-  G(i) = ∑(payment at position j) for all j ∈ ancestors(i)
+For the seller of the order at position i in a process:
+  G(i) = ∑ payment of every order committed so far (the live accumulator)
   Bond(i) = 2 × G(i)
 ```
 
@@ -909,7 +859,7 @@ Low reputation   → higher multiplier → more capital locked
 
 **Problem**: What happens when neither party is at fault but the deal cannot
 complete? A delivery truck is in an accident. A natural disaster destroys
-inventory. The current design has no exit from Active state — both bonds
+inventory. The current design has no exit from a committed order — both bonds
 remain locked permanently.
 
 **The "no escape hatches" property** means no *unilateral* escape. But mutual
@@ -983,16 +933,16 @@ Figaro represents a paradigm shift in multi-party coordination:
 
 ### Core Contract (`FigaroCore.sol`)
 
-- [x] Order struct: `{id, processId, cumulativeValue, payment, currency, buyer, seller, feeSnapshot, state, buyerProposed}`
-- [x] State enum: `{Pending, Active, Resolved, Cancelled}`
-- [x] Asymmetric collateral: `(2×cumulativeValue, 2×payment)`
-- [x] Fee on payment: single `feeRate` (basis points, range 5–50 bps) applied to `payment`, split 50/50 between buyer and seller
-- [x] Cancellation fee: `2 × feeSnapshot` applied to locked bond (spam deterrent)
-- [x] Entry points: `firstOrder()`, `subOrder()`, `acceptOffer()`, `cancelOffer()`, `resolveProcess()`
-- [x] Buyer-only resolution: `require(msg.sender == order.buyer)` in `resolveProcess()`
-- [x] No timeouts: No escape from Active state
-- [x] No validators: Economic incentives replace validation
-- [x] Perfect accounting: All bonds distributed to parties + treasury fees
+- [x] `Commitment` struct (`CommitmentTypes.sol`): 9 fields — `{processId, buyer, seller, currency, payment, expectedCumulativeValue, agreementHash, salt, deadline}`, dual-signed via EIP-712. No on-chain `Order` struct.
+- [x] Process state: `ProcessState{rootBuyer, currency, cumulativeValue, activeOrderCount}`; order status is a `uint8` nullifier `0 → 1 → 2` (unknown → committed → resolved) — no lifecycle enum
+- [x] Asymmetric collateral, charged in `commit`: buyer `2×payment`, seller `2×expectedCumulativeValue`
+- [x] No fee: no `feeRate`, no `feeSnapshot`, no treasury — resolution pays `sellerPayout = 2×expectedCumulativeValue + payment`, `buyerPayout = payment`
+- [x] No cancellation path: a committed order can only be resolved
+- [x] Entry points: `commit()` and `resolveProcess()` — the only two external functions
+- [x] Buyer-only resolution: `require(msg.sender == process.rootBuyer)` in `resolveProcess()`
+- [x] No timeouts: no escape from a committed order
+- [x] No validators: economic incentives replace validation
+- [x] Perfect accounting: every bonded token transferred back to the two parties; contract balance returns to 0
 
 ### Test Coverage
 
@@ -1012,5 +962,5 @@ Figaro represents a paradigm shift in multi-party coordination:
 
 ---
 
-**Version**: 1.2  
-**Last Updated**: April 2026
+**Version**: 1.3  
+**Last Updated**: May 2026
