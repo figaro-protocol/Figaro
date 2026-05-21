@@ -8,7 +8,7 @@ use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 
 use figaro_sequencer::assembler;
-use figaro_sequencer::mempool::Mempool;
+use figaro_sequencer::mempool::{Mempool, PendingOp};
 use figaro_sequencer::state::StateMirror;
 
 // ── Constants (match kernel parity tests) ─────────────────────────
@@ -717,4 +717,66 @@ async fn e2e_two_sequential_batches() {
 
     mirror.advance(post_state2).await;
     assert_eq!(mirror.state_root().await, pv2.new_state_root);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Stateful op filter — poison-op quarantine
+// ══════════════════════════════════════════════════════════════════
+
+#[test]
+fn filter_keeps_all_valid_ops() {
+    let pending = vec![PendingOp { id: 1, op: signed_commit_op() }];
+    let (valid, poison) = assembler::filter_applicable_ops(
+        CHAIN_ID, CORE, 1000, &empty_snapshot(), pending,
+    );
+    assert_eq!(valid.len(), 1);
+    assert!(poison.is_empty());
+}
+
+#[test]
+fn filter_quarantines_a_poison_op() {
+    // The same root commitment twice: the second creates a process that
+    // already exists, so it is genuine poison and must be dropped.
+    let pending = vec![
+        PendingOp { id: 1, op: signed_commit_op() },
+        PendingOp { id: 2, op: signed_commit_op() },
+    ];
+    let (valid, poison) = assembler::filter_applicable_ops(
+        CHAIN_ID, CORE, 1000, &empty_snapshot(), pending,
+    );
+    assert_eq!(valid.len(), 1);
+    assert_eq!(valid[0].id, 1);
+    assert_eq!(poison.len(), 1);
+    assert_eq!(poison[0].0.id, 2);
+}
+
+#[test]
+fn filter_reorders_to_satisfy_dependencies() {
+    // A resolve submitted before the commit that creates its process.
+    // The filter holds the resolve, applies the commit, then retries it.
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let root = root_commitment();
+    let process_id = typed_data_hash(&domain, &commitment_struct_hash(&root));
+    let resolve_struct = resolve_struct_hash(&process_id);
+    let resolve_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_struct));
+    let resolve = KernelOp::Resolve {
+        process_id,
+        commitments: vec![root],
+        buyer_sig: resolve_sig,
+    };
+
+    let pending = vec![
+        PendingOp { id: 1, op: resolve },
+        PendingOp { id: 2, op: signed_commit_op() },
+    ];
+    let (valid, poison) = assembler::filter_applicable_ops(
+        CHAIN_ID, CORE, 1000, &empty_snapshot(), pending,
+    );
+
+    assert!(poison.is_empty(), "no genuine poison: {poison:?}");
+    assert_eq!(valid.len(), 2);
+    // Reordered so the commit (id 2) runs before the resolve (id 1).
+    assert_eq!(valid[0].id, 2);
+    assert_eq!(valid[1].id, 1);
 }

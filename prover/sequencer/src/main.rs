@@ -159,19 +159,35 @@ async fn batch_loop(
             continue;
         }
 
-        let ops: Vec<_> = pending.iter().map(|p| p.op.clone()).collect();
-        let op_count = ops.len();
-        info!(ops = op_count, "Assembling batch");
-
         // Get current state snapshot
         let prev_state = state_mirror.snapshot().await;
 
-        // Assemble batch
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
 
+        // Stateful filter: trial-apply each op against the state mirror
+        // and drop any that would abort the proof. apply_batch is
+        // all-or-nothing, so one poison op must never reach the prover.
+        let (valid, poison) = assembler::filter_applicable_ops(
+            chain_id,
+            verifying_contract,
+            timestamp,
+            &prev_state,
+            pending,
+        );
+        for (p, reason) in &poison {
+            warn!(id = p.id, %reason, "Dropped poison op — would abort the batch");
+        }
+        if valid.is_empty() {
+            continue;
+        }
+
+        let op_count = valid.len();
+        info!(ops = op_count, dropped = poison.len(), "Assembling batch");
+
+        let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
         let batch = assembler::assemble_batch(
             chain_id,
             verifying_contract,
@@ -184,8 +200,11 @@ async fn batch_loop(
         let result = match prover::prove_batch(&batch).await {
             Ok(r) => r,
             Err(e) => {
-                error!(%e, "Batch proving failed — re-queuing operations");
-                mempool.requeue(pending).await;
+                // The batch passed the op-by-op filter but still failed
+                // to prove as a whole — a filter/kernel divergence, not a
+                // normal poison op. Re-queuing would loop forever, so
+                // dead-letter the batch instead.
+                error!(%e, ops = op_count, "Batch failed to prove after filtering — dead-lettered");
                 continue;
             }
         };
@@ -205,8 +224,10 @@ async fn batch_loop(
                     *count += 1;
                 }
                 Err(e) => {
+                    // Submission failure is transient (RPC) — the ops are
+                    // valid, so re-queue them for the next tick.
                     error!(%e, "On-chain submission failed — re-queuing operations");
-                    mempool.requeue(pending).await;
+                    mempool.requeue(valid).await;
                 }
             }
         } else {
