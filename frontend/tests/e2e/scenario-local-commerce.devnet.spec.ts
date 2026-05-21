@@ -200,14 +200,15 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
         expect(rootTopology?.data.topologyMode).toBe('root');
 
         // Courier sub-order — the courier operator-process clause, the
-        // authored proximity-policy handoff clause, and a topology section
-        // explicitly linking back to the root order.
+        // authored proximity-policy handoff clause + its proximity-proof
+        // placeholder leaf, and a topology section linking back to the root.
         expect(courierAgreement.sections.map((s) => s.schema).sort()).toEqual([
             'figaro-commerce-v1',
             'figaro-courier-process-v1',
             'figaro-geo-v2',
             'figaro-jurisdiction-v1',
             'figaro-proximity-policy-v1',
+            'figaro-proximity-proof-v1',
             'figaro-topology-v1',
         ]);
         const courierProximity = courierAgreement.sections.find((s) => s.schema === 'figaro-proximity-policy-v1');

@@ -14,6 +14,7 @@ import {
     COURIER_PROCESS_SCHEMA_KEY,
     MERCHANT_PROCESS_SCHEMA_KEY,
     PROXIMITY_POLICY_SCHEMA_KEY,
+    PROXIMITY_PROOF_SCHEMA_KEY,
     getSection,
     manifestFieldsToGeoSection,
     TOPOLOGY_SCHEMA_KEY,
@@ -282,6 +283,19 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         sections.push({
             schema: PROXIMITY_POLICY_SCHEMA_KEY,
             data: { bands: proximityBands },
+        });
+        // Category-1 placeholder leaf for figaro-proximity-proof-v1. The
+        // runtime handoff attestation supplies the real (band, nonce,
+        // deviceSig) content, but its merkle inclusion proof must open
+        // against a section committed in the agreement — without this leaf
+        // the courier cannot attest the proximity handoff at all.
+        sections.push({
+            schema: PROXIMITY_PROOF_SCHEMA_KEY,
+            data: {
+                band: proximityBands[0],
+                nonce: `0x${"00".repeat(32)}`,
+                deviceSig: `0x${"00".repeat(65)}`,
+            },
         });
     }
 
