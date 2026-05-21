@@ -2,10 +2,9 @@
  * lib/mechanisms/useAsyncMerchantResource.ts
  *
  * Generic shape for "operator address → resolved metadataURI → fetched
- * resource" hooks. Three callers consolidate onto this:
+ * resource" hooks. Two callers consolidate onto this:
  *   - useMerchantBranding   → resolved branding
  *   - useMerchantCatalogue  → seller catalogue
- *   - useCourierOffering    → courier offering
  *
  * Each caller wraps this with a typed result alias and a fixed fetcher.
  */

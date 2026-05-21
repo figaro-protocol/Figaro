@@ -4,13 +4,9 @@ import {
     invalidateCatalogueCache,
     clearCatalogueCache,
 } from "@/lib/shared/catalogueFetcher";
-import {
-    publishMerchantCatalogue,
-    publishCourierOffering,
-} from "@/lib/shared/cataloguePublisher";
+import { publishMerchantCatalogue } from "@/lib/shared/cataloguePublisher";
 import { createCatalogueService } from "@/lib/shared/catalogueService";
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import type { CourierOfferingMetadata } from "@/lib/shared/courierOfferingMetadata";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -26,16 +22,6 @@ const VALID_MERCHANT_DOC: SellerCatalogueMetadata = {
             available: true,
         },
     ],
-    version: "1",
-};
-
-const VALID_COURIER_DOC: CourierOfferingMetadata = {
-    subjectAddress: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-    courierId: "test-courier-01",
-    displayName: "Test Courier",
-    description: "Fast bicycle delivery",
-    serviceAreas: [{ geohashPrefix: "dr5re", label: "Downtown" }],
-    vehicleType: "bicycle",
     version: "1",
 };
 
@@ -212,48 +198,6 @@ describe("cataloguePublisher", () => {
             await fetchMerchantCatalogue("ipfs://QmPublished123");
         });
     });
-
-    describe("publishCourierOffering", () => {
-        it("lets catalogue services publish courier offerings through an injected evidence transport", async () => {
-            const evidenceTransport = {
-                pinJSON: vi.fn().mockResolvedValue("QmInjectedCourier123"),
-                buildURI: vi.fn().mockReturnValue("ipfs://QmInjectedCourier123"),
-            };
-            const service = createCatalogueService({ evidenceTransport: evidenceTransport as never });
-
-            const result = await service.publishCourierOffering(VALID_COURIER_DOC);
-
-            expect(evidenceTransport.pinJSON).toHaveBeenCalledWith(VALID_COURIER_DOC);
-            expect(evidenceTransport.buildURI).toHaveBeenCalledWith("QmInjectedCourier123");
-            expect(result).toEqual({
-                cid: "QmInjectedCourier123",
-                uri: "ipfs://QmInjectedCourier123",
-            });
-        });
-
-        it("pins a valid courier offering", async () => {
-            const result = await publishCourierOffering(VALID_COURIER_DOC);
-
-            expect(result.cid).toBe("QmPublished123");
-            expect(result.uri).toBe("ipfs://QmPublished123");
-        });
-
-        it("rejects a courier offering without subjectAddress", async () => {
-            const bad = { ...VALID_COURIER_DOC, subjectAddress: "" } as unknown as CourierOfferingMetadata;
-
-            await expect(publishCourierOffering(bad)).rejects.toThrow(
-                /subjectAddress/
-            );
-        });
-
-        it("rejects a courier offering without service areas", async () => {
-            const bad = { ...VALID_COURIER_DOC, serviceAreas: [] };
-
-            await expect(publishCourierOffering(bad)).rejects.toThrow(
-                /service area/
-            );
-        });
-    });
 });
 
 // ── catalogue shape sanity ────────────────────────────────────────────────────
@@ -275,30 +219,5 @@ describe("SellerCatalogueMetadata shape", () => {
         expect(item.price).toBeDefined();
         expect(item.category).toBeDefined();
         expect(typeof item.available).toBe("boolean");
-    });
-});
-
-// ── courierOfferingMetadata ───────────────────────────────────────────────────
-
-import { COURIER_OFFERING_METADATA_EXAMPLE } from "@/lib/shared/courierOfferingMetadata";
-
-describe("courierOfferingMetadata", () => {
-    it("example document has required fields", () => {
-        const doc = COURIER_OFFERING_METADATA_EXAMPLE;
-
-        expect(doc.subjectAddress).toMatch(/^0x/);
-        expect(doc.courierId).toBeDefined();
-        expect(doc.displayName).toBeDefined();
-        expect(doc.serviceAreas.length).toBeGreaterThan(0);
-        expect(doc.version).toBeDefined();
-    });
-
-    it("vehicle types are valid union members", () => {
-        const validTypes = ["bicycle", "motorcycle", "car", "van", "on-foot"];
-        const doc = COURIER_OFFERING_METADATA_EXAMPLE;
-
-        if (doc.vehicleType) {
-            expect(validTypes).toContain(doc.vehicleType);
-        }
     });
 });

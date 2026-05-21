@@ -1,7 +1,7 @@
 /**
  * lib/shared/cataloguePublisher.ts
  *
- * Write path for seller / courier catalogues.
+ * Write path for operator catalogues.
  * Serializes a SellerCatalogueMetadata document → pins to IPFS → returns
  * the IPFS URI. The URI is then referenced from the operator's profile
  * document (as `catalogueURI`) which itself is pinned and registered
@@ -13,7 +13,6 @@
  */
 
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import type { CourierOfferingMetadata } from "@/lib/shared/courierOfferingMetadata";
 import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
 import { invalidateCatalogueCache } from "@/lib/shared/catalogueFetcher";
@@ -47,26 +46,6 @@ export async function publishMerchantCatalogue(
     // Invalidate caches so the next read picks up the new version
     invalidateCatalogueCache(uri);
     clearBrandingCache();
-
-    return { cid, uri };
-}
-
-/**
- * Validate, pin to IPFS, and return the URI for a courier offering.
- *
- * @throws If IPFS pinning fails.
- */
-export async function publishCourierOffering(
-    offering: CourierOfferingMetadata,
-    evidenceTransport: Pick<IpfsService, "pinJSON" | "buildURI"> = DEFAULT_IPFS_SERVICE,
-): Promise<PublishResult> {
-    // Basic shape validation
-    if (!offering.subjectAddress || !offering.serviceAreas?.length) {
-        throw new Error("Courier offering must include subjectAddress and at least one service area");
-    }
-
-    const cid = await evidenceTransport.pinJSON(offering);
-    const uri = evidenceTransport.buildURI(cid);
 
     return { cid, uri };
 }

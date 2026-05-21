@@ -1,11 +1,9 @@
-import type { CourierOfferingMetadata } from '@/lib/shared/courierOfferingMetadata';
 import {
     fetchMerchantCatalogue,
     invalidateCatalogueCache,
 } from '@/lib/shared/catalogueFetcher';
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from '@/lib/shared/ipfsService';
 import {
-    publishCourierOffering,
     publishMerchantCatalogue,
     type PublishResult,
 } from '@/lib/shared/cataloguePublisher';
@@ -15,7 +13,6 @@ export interface CatalogueService {
     fetchMerchantCatalogue(metadataURI: string): Promise<SellerCatalogueMetadata | null>;
     invalidateMerchantCatalogue(metadataURI: string): void;
     publishMerchantCatalogue(catalogue: SellerCatalogueMetadata): Promise<PublishResult>;
-    publishCourierOffering(offering: CourierOfferingMetadata): Promise<PublishResult>;
 }
 
 export interface CatalogueServiceOptions {
@@ -34,9 +31,6 @@ export function createCatalogueService(
         },
         publishMerchantCatalogue(catalogue: SellerCatalogueMetadata) {
             return publishMerchantCatalogue(catalogue, evidenceTransport);
-        },
-        publishCourierOffering(offering: CourierOfferingMetadata) {
-            return publishCourierOffering(offering, evidenceTransport);
         },
     };
 }
