@@ -28,6 +28,7 @@ import {
     defineChain,
     http,
     parseAbi,
+    parseEther,
     type Hex,
 } from 'viem';
 import {
@@ -62,7 +63,7 @@ const catalogueFixture = JSON.parse(
         path.resolve(__dirname, '../../scripts/fixtures/operator-catalogue.json'),
         'utf8',
     ),
-) as { menu: Array<{ id: string; name: string }> };
+) as { menu: Array<{ id: string; name: string; price: string }> };
 const ITEM = catalogueFixture.menu[0];
 
 const PROCESSES_ABI = parseAbi([
@@ -163,6 +164,11 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         });
         expect(state[0].toLowerCase()).toBe(BUYER_ADDR.toLowerCase()); // rootBuyer
         expect(state[3]).toBe(2); // activeOrderCount — food + courier
+
+        // The courier payment is the Mercato-negotiated rate (0.3), resolved
+        // off Swift Courier's own catalogue — not the courier's public 0.5.
+        // cumulativeValue = the food order + the courier order.
+        expect(state[2]).toBe(parseEther(ITEM.price) + parseEther('0.3'));
 
         // The committed courier order carries the assembly's proximity-policy
         // handoff clause — executeCheckout read it off the picked assembly's

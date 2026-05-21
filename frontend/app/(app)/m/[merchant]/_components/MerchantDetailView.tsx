@@ -47,7 +47,7 @@ import {
 } from "@/lib/seller/fulfilmentRouting";
 import { useMerchantBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE } from "@/lib/shared/sellerCatalogueMetadata";
+import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE, resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata";
 
 import type { CatalogueItem, SellerCatalogue } from "@/lib/seller/types";
 
@@ -59,11 +59,6 @@ const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "deliver:seller-assigned",
     "deliver:dutch-auction",
 ];
-
-// Placeholder courier fee for a multi-order (delivery) assembly's courier
-// commit. Seller-priced per the coordination model — hardcoded here until
-// the merchant catalogue carries a delivery-fee field. Display-token units.
-const HARDCODED_COURIER_PRICE = "0.5";
 
 interface Props {
     merchantAddress: string;
@@ -423,8 +418,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             }
 
             // The courier order — buyer↔courier, parented to the root order,
-            // carrying the figaro-courier-process-v1 clause. Seller-priced
-            // courier fee, hardcoded placeholder for now.
+            // carrying the figaro-courier-process-v1 clause.
+            //
             // Read the courier order's handoff clause off the picked
             // assembly — the assembly is the template, so the committed
             // courier order carries the same proximity-policy band the
@@ -440,7 +435,21 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     ?.data as { bands?: string[] } | undefined)?.bands ?? [])
                 : [];
 
-            const courierPayment = parseToken(HARDCODED_COURIER_PRICE, tokenDecimals);
+            // The courier delivery price comes from the courier's OWN
+            // catalogue — the courier is a peer operator, not priced by the
+            // merchant. resolveCatalogueItemPrice keys the courier's rate
+            // card on the merchant it serves (the negotiated price list).
+            const courierCatalogue = restaurants.find((r) => hexEqual(r.address, courier));
+            const courierDeliveryItem = courierCatalogue?.menu.find((i) => i.category === "delivery");
+            if (!courierDeliveryItem) {
+                multiOrderCheckout.current = false;
+                setCheckoutError("The designated courier has not published a delivery price.");
+                return;
+            }
+            const courierPayment = parseToken(
+                resolveCatalogueItemPrice(courierDeliveryItem, merchantAddressLower).price,
+                tokenDecimals,
+            );
             const courierPrepared = await prepareOrderCommitment({
                 buyer,
                 seller: courier,

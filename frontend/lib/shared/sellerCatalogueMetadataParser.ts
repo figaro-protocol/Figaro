@@ -11,6 +11,8 @@
 import {
     CatalogueClassOfService,
     CatalogueItemMetadata,
+    CataloguePricingPolicy,
+    NegotiatedPriceEntry,
     SellerCatalogueMetadata,
     UnitSystem,
 } from "@/lib/shared/sellerCatalogueMetadata";
@@ -63,6 +65,35 @@ function parseSchemaAttestations(value: unknown, path: string): Record<string, R
     return out;
 }
 
+const ALLOWED_PRICING_POLICY = new Set<CataloguePricingPolicy>([
+    "fixed",
+    "buyer-set",
+    "dutch-auction",
+]);
+
+function parseOptionalPricingPolicy(
+    value: unknown,
+    path: string,
+): CataloguePricingPolicy | undefined {
+    if (value === undefined) return undefined;
+    return asEnum(value, ALLOWED_PRICING_POLICY, path);
+}
+
+function parseOptionalNegotiatedPrices(
+    value: unknown,
+    path: string,
+): NegotiatedPriceEntry[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value)) throw new Error(`${path} must be an array.`);
+    return value.map((entry, index) => {
+        const rec = asRecord(entry, `${path}[${index}]`);
+        return {
+            counterparty: asAddress(rec.counterparty, `${path}[${index}].counterparty`),
+            price: asString(rec.price, `${path}[${index}].price`),
+        };
+    });
+}
+
 function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
     const record = asRecord(value, path);
     return {
@@ -76,6 +107,8 @@ function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
         massGrams: parseOptionalNumber(record.massGrams, `${path}.massGrams`),
         volumeMl: parseOptionalNumber(record.volumeMl, `${path}.volumeMl`),
         classOfService: parseOptionalClassOfService(record.classOfService, `${path}.classOfService`),
+        pricingPolicy: parseOptionalPricingPolicy(record.pricingPolicy, `${path}.pricingPolicy`),
+        negotiatedPrices: parseOptionalNegotiatedPrices(record.negotiatedPrices, `${path}.negotiatedPrices`),
         schemaAttestations: parseSchemaAttestations(record.schemaAttestations, `${path}.schemaAttestations`),
     };
 }

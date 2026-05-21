@@ -6,6 +6,8 @@
  * in `operatorProfileMetadata.ts`.
  */
 
+import type { CataloguePricingPolicy, NegotiatedPriceEntry } from "@/lib/shared/sellerCatalogueMetadata";
+
 export interface OperatorCatalogueItem {
     id: string;
     name: string;
@@ -13,6 +15,8 @@ export interface OperatorCatalogueItem {
     price?: string;
     category?: string;
     available?: boolean;
+    pricingPolicy?: CataloguePricingPolicy;
+    negotiatedPrices?: NegotiatedPriceEntry[];
 }
 
 /**
@@ -35,6 +39,12 @@ export function tryParseCatalogueItems(doc: unknown): OperatorCatalogueItem[] | 
             price: typeof item.price === 'string' ? item.price : undefined,
             category: typeof item.category === 'string' ? item.category : undefined,
             available: typeof item.available === 'boolean' ? item.available : true,
+            pricingPolicy: typeof item.pricingPolicy === 'string'
+                ? (item.pricingPolicy as CataloguePricingPolicy)
+                : undefined,
+            negotiatedPrices: Array.isArray(item.negotiatedPrices)
+                ? (item.negotiatedPrices as NegotiatedPriceEntry[])
+                : undefined,
         }))
         .filter((item) => item.name.trim().length > 0);
 }

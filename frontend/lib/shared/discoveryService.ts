@@ -49,6 +49,8 @@ function profileToCatalogue(
             massGrams: item.massGrams,
             volumeMl: item.volumeMl,
             classOfService: item.classOfService,
+            pricingPolicy: item.pricingPolicy,
+            negotiatedPrices: item.negotiatedPrices,
         })),
         acceptedTokens: profile.acceptedTokens,
         defaultTokenAddress: profile.defaultTokenAddress,
@@ -118,6 +120,8 @@ async function fetchOperatorAsCatalogue(
                 price: i.price ?? '0',
                 category: i.category ?? 'General',
                 available: i.available ?? true,
+                pricingPolicy: i.pricingPolicy,
+                negotiatedPrices: i.negotiatedPrices,
             })),
             version: '1.0.0',
         }

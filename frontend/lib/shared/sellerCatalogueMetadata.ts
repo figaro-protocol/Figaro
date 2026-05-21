@@ -67,11 +67,40 @@ export function classOfServiceToShortCode(input: unknown): "S" | "E" | "F" | "C"
  */
 export type UnitSystem = "metric" | "imperial";
 
+/**
+ * Pricing policy for a catalogue item's public (un-negotiated) price.
+ *  - "fixed"         — `price` is the price.
+ *  - "buyer-set"     — the buyer names the price at checkout.
+ *  - "dutch-auction" — price discovered via a descending auction.
+ * Absent on an item → treated as "fixed".
+ */
+export type CataloguePricingPolicy = "fixed" | "buyer-set" | "dutch-auction";
+
+/**
+ * A negotiated price for a specific counterparty — one row of a
+ * per-client rate card. `counterparty` is the address the price was
+ * agreed with (e.g. a courier's rate per merchant served).
+ */
+export interface NegotiatedPriceEntry {
+    counterparty: `0x${string}`;
+    price: string;
+}
+
 export interface CatalogueItemMetadata {
     id: string;
     name: string;
     description?: string;
     price: string;
+    /** Pricing policy for the public `price`. Absent → "fixed". */
+    pricingPolicy?: CataloguePricingPolicy;
+    /**
+     * Per-counterparty negotiated prices — a rate card keyed by the
+     * address each price was agreed with. A matching entry overrides
+     * `price` + `pricingPolicy` with the settled figure. These live in
+     * the public catalogue, so the entries are publicly visible —
+     * consistent with the public-graph model.
+     */
+    negotiatedPrices?: NegotiatedPriceEntry[];
     category: string;
     image?: string;
     available: boolean;
@@ -100,6 +129,39 @@ export interface CatalogueItemMetadata {
      *   { "figaro-certification-v1": { "certifier": "USDA", "type": "organic" } }
      */
     schemaAttestations?: Record<string, Record<string, unknown>>;
+}
+
+/** The effective price + policy resolved for a catalogue item. */
+export interface ResolvedCataloguePrice {
+    price: string;
+    /** A negotiated entry resolves as "fixed" — a negotiated price is an
+     *  already-settled figure. */
+    policy: CataloguePricingPolicy;
+}
+
+/**
+ * Resolve a catalogue item's effective price + policy, optionally for a
+ * specific counterparty. A `negotiatedPrices` entry matching
+ * `counterparty` wins; otherwise the item's public `price` +
+ * `pricingPolicy` apply.
+ *
+ * General over every operator's catalogue — a merchant's goods row and a
+ * courier's delivery row resolve through this one function. There is no
+ * courier-specific pricing path. The parameter is structural so both the
+ * on-disk `CatalogueItemMetadata` and the buyer-side `CatalogueItem`
+ * projection satisfy it.
+ */
+export function resolveCatalogueItemPrice(
+    item: Pick<CatalogueItemMetadata, "price" | "pricingPolicy" | "negotiatedPrices">,
+    counterparty?: string,
+): ResolvedCataloguePrice {
+    if (counterparty) {
+        const negotiated = item.negotiatedPrices?.find(
+            (entry) => entry.counterparty.toLowerCase() === counterparty.toLowerCase(),
+        );
+        if (negotiated) return { price: negotiated.price, policy: "fixed" };
+    }
+    return { price: item.price, policy: item.pricingPolicy ?? "fixed" };
 }
 
 export interface SellerBrandingMetadata {

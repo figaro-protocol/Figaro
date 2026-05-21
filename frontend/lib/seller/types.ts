@@ -1,6 +1,8 @@
 import type {
     AcceptedTokenMetadata,
     CatalogueClassOfService,
+    CataloguePricingPolicy,
+    NegotiatedPriceEntry,
     UnitSystem,
 } from "@/lib/shared/sellerCatalogueMetadata";
 import type { OperatorAgentServices } from "@/lib/shared/operatorProfileMetadata";
@@ -22,6 +24,10 @@ export interface CatalogueItem {
     /** Shipping/handling class. Defaults to "standard" at commit if
      *  the item-level value is absent. */
     classOfService?: CatalogueClassOfService;
+    /** Pricing policy for the public price. Absent → "fixed". */
+    pricingPolicy?: CataloguePricingPolicy;
+    /** Per-counterparty negotiated prices — see `CatalogueItemMetadata`. */
+    negotiatedPrices?: NegotiatedPriceEntry[];
 }
 
 /**

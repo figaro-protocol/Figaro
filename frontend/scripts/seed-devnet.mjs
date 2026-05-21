@@ -121,10 +121,13 @@ function canonicalize(value) {
 // the seed writes them into the local-commerce binding's
 // `counterpartyBindings` (the seller-assigned courier roster the checkout
 // reads when a buyer picks a delivery assembly).
+// `deliveryCatalogue` — this operator is a courier; its catalogue is the
+// universal catalogue too, its menu a delivery offering rather than the
+// generic goods fixture.
 const OPERATORS = [
     { addressIndex: 5, name: 'Counter & Co.', specialty: 'in-person counter sales', bind: ['direct-sale'] },
     { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'], couriers: [7] },
-    { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'] },
+    { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'], deliveryCatalogue: true },
     { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce'], couriers: [7] },
 ];
 
@@ -254,6 +257,12 @@ async function main() {
     }
     const catalogueFixture = JSON.parse(fs.readFileSync(catalogueFixturePath, 'utf8'));
 
+    // Mercato General's address — referenced by Swift Courier's negotiated
+    // price list (a per-merchant rate card on the courier's delivery item).
+    const mercatoAddress = mnemonicToAccount(ANVIL_MNEMONIC, {
+        addressIndex: OPERATORS.find((o) => o.name === 'Mercato General').addressIndex,
+    }).address;
+
     console.log('\nOperators:');
     for (const op of OPERATORS) {
         const account = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: op.addressIndex });
@@ -261,7 +270,25 @@ async function main() {
 
         // Pin this operator's catalogue first — its URI is referenced from
         // the profile document, so it must exist before the profile is pinned.
-        const catalogue = { ...catalogueFixture, subjectAddress: account.address };
+        // A courier's catalogue is the universal catalogue too — its menu is
+        // a delivery offering (one delivery-category item) with a fixed
+        // public price and a negotiated rate for Mercato General.
+        const catalogue = op.deliveryCatalogue
+            ? {
+                ...catalogueFixture,
+                subjectAddress: account.address,
+                menu: [{
+                    id: 'delivery-standard',
+                    name: 'Standard delivery',
+                    description: 'Last-mile courier delivery.',
+                    price: '0.5',
+                    pricingPolicy: 'fixed',
+                    negotiatedPrices: [{ counterparty: mercatoAddress, price: '0.3' }],
+                    category: 'delivery',
+                    available: true,
+                }],
+            }
+            : { ...catalogueFixture, subjectAddress: account.address };
         const catalogueURI = await pinJSON(ipfsApiUrl, JSON.stringify(catalogue));
 
         const profile = {
