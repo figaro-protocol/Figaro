@@ -382,6 +382,11 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     destination: "",
                     fulfilmentMethod: fulfillmentMode,
                     handoffMode: mapFulfilmentToHandoff(fulfillmentMode),
+                    // A delivery order has the merchant run a prep-and-handoff
+                    // process (order-received → … → handed-off to the courier),
+                    // so the food order anchors figaro-merchant-process-v1 —
+                    // without the clause the merchant cannot attest it.
+                    ...(fulfillmentMode.startsWith("deliver:") ? { merchantProcessIncluded: true } : {}),
                     // Geo fields aggregated from the cart's catalogue annotations.
                     // mass / volume strings are parsed by `parseMassToGrams` /
                     // `parseVolumeToMl` in `manifestFieldsToGeoSection`; class_
