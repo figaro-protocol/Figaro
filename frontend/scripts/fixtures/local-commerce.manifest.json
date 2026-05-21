@@ -1,6 +1,6 @@
 {
   "agreements": {
-    "0xb3275b1806f30a6792e1762bf15797a30130270137b5a93d834e120f76dede7f": {
+    "0x16b50df616ae0adb288af6a42b48fb68d2fd911a4282dcf7075c90cea36b853f": {
       "buyer": "0xde51000000000000000000000000000000000000",
       "sections": [
         {
@@ -34,6 +34,14 @@
         },
         {
           "data": {
+            "bands": [
+              "zone-wifi"
+            ]
+          },
+          "schema": "figaro-proximity-policy-v1"
+        },
+        {
+          "data": {
             "parentOrderHashes": [
               "0xorder0proces0000000000000000000000000000000000000000000000000000"
             ],
@@ -45,7 +53,7 @@
       "seller": "0xde51000000000000000000000000000000000003",
       "version": "a1"
     },
-    "0xc4e393ad4fce9fe689caf42c8bc084471555227983a750feb416c2c11fb803a3": {
+    "0xfe317fe94ec36061c43c5c7506073a7c2b64bcd8ef94b502a212448d2c2e69c7": {
       "buyer": "0xde51000000000000000000000000000000000000",
       "sections": [
         {
@@ -60,6 +68,9 @@
           "data": {
             "coordinations": [
               "seller-assigned"
+            ],
+            "handoffPoints": [
+              "face-to-face"
             ],
             "modalities": [
               "delivery"
@@ -105,36 +116,36 @@
   "nextSellerIndex": 4,
   "orders": [
     {
-      "agreementHash": "0xc4e393ad4fce9fe689caf42c8bc084471555227983a750feb416c2c11fb803a3",
+      "agreementHash": "0xfe317fe94ec36061c43c5c7506073a7c2b64bcd8ef94b502a212448d2c2e69c7",
       "buyer": "0xde51000000000000000000000000000000000000",
       "buyerBond": "2000000000000000000",
       "cumulativeValue": "1000000000000000000",
       "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779306648",
+      "deadline": "1779384455",
       "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
       "payment": "1000000000000000000",
-      "processId": "0xprocess19e46b9e42e0000000000000000000000000000000000000000000000",
+      "processId": "0xprocess19e4b5d21a80000000000000000000000000000000000000000000000",
       "salt": "1",
       "seller": "0xde51000000000000000000000000000000000001",
       "sellerBond": "2000000000000000000",
       "state": 0
     },
     {
-      "agreementHash": "0xb3275b1806f30a6792e1762bf15797a30130270137b5a93d834e120f76dede7f",
+      "agreementHash": "0x16b50df616ae0adb288af6a42b48fb68d2fd911a4282dcf7075c90cea36b853f",
       "buyer": "0xde51000000000000000000000000000000000000",
       "buyerBond": "1000000000000000000",
       "cumulativeValue": "1500000000000000000",
       "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779306649",
+      "deadline": "1779384456",
       "id": "0xorder2proces0000000000000000000000000000000000000000000000000000",
       "payment": "500000000000000000",
-      "processId": "0xprocess19e46b9e42e0000000000000000000000000000000000000000000000",
+      "processId": "0xprocess19e4b5d21a80000000000000000000000000000000000000000000000",
       "salt": "3",
       "seller": "0xde51000000000000000000000000000000000003",
       "sellerBond": "3000000000000000000",
       "state": 0
     }
   ],
-  "processId": "0xprocess19e46b9e42e0000000000000000000000000000000000000000000000",
+  "processId": "0xprocess19e4b5d21a80000000000000000000000000000000000000000000000",
   "slug": "local-commerce"
 }

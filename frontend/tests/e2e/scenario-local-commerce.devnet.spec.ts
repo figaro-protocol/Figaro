@@ -16,9 +16,9 @@
  * `delivery` is a modality. The `dutch-auction` and `buyer-assigned`
  * coordinations are separate scenario cells.
  *
- * Known designer UI quirk: the agreement drawer does not auto-surface the
- * spawned courier sub-order — the walk clicks the courier order node on
- * the canvas to bring the drawer onto it.
+ * The agreement drawer carries a tab per graph node — the walk uses the
+ * courier node's tab to author its handoff clause (a proximity band).
+ * The handoff point is set on the root order's fulfilment clause.
  *
  * Drives the 2-node shape, publishes, then fetches the pinned
  * AssemblyManifest back and asserts both orders' clause sets — including
@@ -105,23 +105,26 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
         // = the merchant organizes the courier directly (no auction).
         await page.getByTestId('drawer-fulfilment-coordination-seller-assigned').click();
 
+        // Handoff point — where the physical exchange occurs; a field on the
+        // root order's figaro-fulfilment-v2 clause.
+        await page.getByTestId('drawer-fulfilment-handoff-face-to-face').click();
+
         // ── Courier sub-order ─────────────────────────────────────────────
         // Each graph node has its own tab in the agreement drawer — the
         // node-tab row surfaces the spawned courier sub-order without a
-        // canvas click. (This walk leaves the courier sub-order on its
-        // default clauses.)
+        // canvas click.
         const nodeTabs = page.getByTestId('drawer-node-tabs');
         await nodeTabs.waitFor({ state: 'visible', timeout: 10000 });
         await expect(nodeTabs.locator('button')).toHaveCount(2);
         await nodeTabs.locator('button').nth(1).click();
         await expect(page.getByTestId('agreement-drawer')).toBeVisible();
 
-        // On the courier node, proximity verification is authorable — a
-        // courier sub-order involves a physical handoff inherently, so the
-        // proximity selector is enabled even though it carries no fulfilment
-        // modality. (Navigating the tab does not alter the courier clauses.)
+        // Author the courier handoff — a proximity band on the courier
+        // order. The selector is enabled on a courier sub-order (inherent
+        // physical handoff); figaro-proximity-policy-v1 is the clause the
+        // courier's runtime proximity proof checks against.
         await page.getByTestId('drawer-tab-fulfilment').click();
-        await expect(page.getByTestId('drawer-proximity-band-zone-wifi')).toBeEnabled();
+        await page.getByTestId('drawer-proximity-band-zone-wifi').click();
 
         // ── Name + publish ────────────────────────────────────────────────
         await page.getByTestId('designer-name-input').fill(draftName);
@@ -192,19 +195,23 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
         const fulfilment = rootAgreement.sections.find((s) => s.schema === 'figaro-fulfilment-v2');
         expect(fulfilment?.data.modalities).toEqual(['delivery']);
         expect(fulfilment?.data.coordinations).toEqual(['seller-assigned']);
+        expect(fulfilment?.data.handoffPoints).toEqual(['face-to-face']);
         const rootTopology = rootAgreement.sections.find((s) => s.schema === 'figaro-topology-v1');
         expect(rootTopology?.data.topologyMode).toBe('root');
 
-        // Courier sub-order — selecting delivery auto-generated it, with the
-        // courier operator-process clause and a topology section explicitly
-        // linking back to the root order.
+        // Courier sub-order — the courier operator-process clause, the
+        // authored proximity-policy handoff clause, and a topology section
+        // explicitly linking back to the root order.
         expect(courierAgreement.sections.map((s) => s.schema).sort()).toEqual([
             'figaro-commerce-v1',
             'figaro-courier-process-v1',
             'figaro-geo-v2',
             'figaro-jurisdiction-v1',
+            'figaro-proximity-policy-v1',
             'figaro-topology-v1',
         ]);
+        const courierProximity = courierAgreement.sections.find((s) => s.schema === 'figaro-proximity-policy-v1');
+        expect(courierProximity?.data.bands).toEqual(['zone-wifi']);
         const courierTopology = courierAgreement.sections.find((s) => s.schema === 'figaro-topology-v1');
         expect(courierTopology?.data.topologyMode).toBe('explicit');
         expect(courierTopology?.data.parentOrderHashes).toEqual([rootOrder.id]);
