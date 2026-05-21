@@ -46,6 +46,7 @@ import {
     mapFulfilmentToHandoff,
 } from "@/lib/seller/fulfilmentRouting";
 import { useMerchantBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
+import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
 import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE, resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata";
 
@@ -197,6 +198,10 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     const isApproving = isApprovePending || isApproveConfirming;
     const pendingCheckout = useRef(false);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
+    // Buyer's delivery location for delivery-fulfilment checkout. The geohash
+    // is the merkle-committed location term on the courier order's
+    // figaro-geo-v2 section; precision 9 ≈ a few metres.
+    const deliveryLocation = useDeviceLocation(9);
 
     // Auto-chain: when approval confirms, proceed to commit signing.
     useEffect(() => {
@@ -459,8 +464,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 parentOrderHashes: [rootOrderHash],
                 expectedCumulativeValue: merchantTotalAmount + courierPayment,
                 manifestFields: {
-                    origin: "",
-                    destination: "",
+                    origin: restaurant?.geohash ?? "",
+                    destination: deliveryLocation.geohash ?? "",
                     courierProcessIncluded: true,
                     ...(courierProximityBands.length > 0 ? { proximityBands: courierProximityBands } : {}),
                     ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
@@ -787,6 +792,39 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                     </select>
                                 </div>
 
+                                {fulfillmentMode?.startsWith("deliver:") && (
+                                    <div className="space-y-1.5" data-testid="delivery-location-block">
+                                        <label
+                                            htmlFor="delivery-geohash-input"
+                                            className="text-xs font-semibold text-neutral-500 block"
+                                        >
+                                            Delivery location
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                id="delivery-geohash-input"
+                                                type="text"
+                                                value={deliveryLocation.geohash ?? ""}
+                                                onChange={(e) => deliveryLocation.setManualGeohash(e.target.value)}
+                                                placeholder="geohash, e.g. dr5regw3p"
+                                                data-testid="input-delivery-geohash"
+                                                className="flex-1 rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => deliveryLocation.request()}
+                                                data-testid="btn-use-my-location"
+                                                className="shrink-0 rounded border border-neutral-300 px-3 py-2 text-xs text-neutral-600 hover:border-neutral-500"
+                                            >
+                                                Use my location
+                                            </button>
+                                        </div>
+                                        <p className="text-[11px] text-neutral-500">
+                                            Where the courier delivers — committed to the order as a geohash.
+                                        </p>
+                                    </div>
+                                )}
+
                                 <Button
                                     onClick={handlePlaceOrder}
                                     disabled={
@@ -794,6 +832,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                         || placingOrder
                                         || merchantCartItems.length === 0
                                         || !fulfillmentMode
+                                        || (fulfillmentMode.startsWith("deliver:") && !deliveryLocation.geohash)
                                     }
                                     data-testid="btn-place-order"
                                     className="w-full"

@@ -135,6 +135,10 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         // Pick the local-commerce assembly (seller-assigned delivery).
         await page.getByTestId('select-fulfilment-mode').selectOption('deliver:seller-assigned');
 
+        // Delivery fulfilment requires a delivery location — the geohash is
+        // committed to the courier order's figaro-geo-v2 section.
+        await page.getByTestId('input-delivery-geohash').fill('dr5regw3pg');
+
         // ── Place the order — two sequential commits ─────────────────
         await page.getByTestId('btn-place-order').click();
 
@@ -171,28 +175,37 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         expect(state[2]).toBe(parseEther(ITEM.price) + parseEther('0.3'));
 
         // The committed courier order carries the assembly's proximity-policy
-        // handoff clause — executeCheckout read it off the picked assembly's
-        // courier order. Both agreements the buyer witnessed are saved to
-        // localStorage; the courier one must carry figaro-proximity-policy-v1.
-        const courierCarriesProximityClause = await page.evaluate(() => {
+        // handoff clause AND the buyer's delivery geohash on its figaro-geo-v2
+        // section. Both agreements the buyer witnessed are saved to
+        // localStorage; the courier one is identified by its proximity clause.
+        const courierClauses = await page.evaluate(() => {
             for (let i = 0; i < window.localStorage.length; i++) {
                 const key = window.localStorage.key(i);
                 if (!key?.startsWith('figaro:agreement:')) continue;
                 try {
                     const ag = JSON.parse(window.localStorage.getItem(key) ?? '') as {
-                        sections?: Array<{ schema?: string }>;
+                        sections?: Array<{ schema?: string; data?: Record<string, unknown> }>;
                     };
-                    if (ag.sections?.some((s) => s.schema === 'figaro-proximity-policy-v1')) {
-                        return true;
-                    }
+                    const sections = ag.sections ?? [];
+                    if (!sections.some((s) => s.schema === 'figaro-proximity-policy-v1')) continue;
+                    const geo = sections.find((s) => s.schema === 'figaro-geo-v2');
+                    return {
+                        found: true,
+                        destinationGeohash:
+                            (geo?.data as { destinationGeohash?: string } | undefined)?.destinationGeohash ?? null,
+                    };
                 } catch { /* not an agreement document — skip */ }
             }
-            return false;
+            return { found: false, destinationGeohash: null };
         });
         expect(
-            courierCarriesProximityClause,
+            courierClauses.found,
             'the committed courier order should carry figaro-proximity-policy-v1',
         ).toBe(true);
+        expect(
+            courierClauses.destinationGeohash,
+            'the courier order geo section carries the buyer delivery geohash',
+        ).toBe('dr5regw3pg');
 
         // ── Buyer confirms receipt → resolveProcess settles both orders ──
         const confirmBtn = page.getByTestId('btn-confirm-receipt');
