@@ -37,6 +37,9 @@ interface CartStore {
      * rather than tapping the decrement button N times.
      */
     removeLine: (menuItemId: string, sellerId: string) => void;
+    /** Set a cart line's unit price — buyer-set pricing, where the buyer
+     *  names the price at checkout rather than the catalogue fixing it. */
+    updateItemPrice: (menuItemId: string, sellerId: string, price: string) => void;
     clearCart: () => void;
     getTotalPrice: () => string;
     getItemCount: () => number;
@@ -94,6 +97,15 @@ export const useCartStore = create<CartStore>()(
                     items: state.items.filter(
                         (item) =>
                             !(item.menuItemId === menuItemId && item.sellerId === sellerId),
+                    ),
+                })),
+
+            updateItemPrice: (menuItemId, sellerId, price) =>
+                set((state) => ({
+                    items: state.items.map((item) =>
+                        item.menuItemId === menuItemId && item.sellerId === sellerId
+                            ? { ...item, price }
+                            : item,
                     ),
                 })),
 

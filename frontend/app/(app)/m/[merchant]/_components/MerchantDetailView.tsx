@@ -140,7 +140,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         resetOrder: resetCommitment,
     } = useCheckout(currency);
 
-    const { items, addItem, removeItem, removeLine, clearCart, getTotalPrice, getItemCount, fulfillmentMode, setFulfillmentMode } = useCartStore();
+    const { items, addItem, removeItem, removeLine, updateItemPrice, clearCart, getTotalPrice, getItemCount, fulfillmentMode, setFulfillmentMode } = useCartStore();
     const { openConnectModal } = useConnectModal();
 
     const itemCount = getItemCount();
@@ -331,8 +331,14 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // page is merchant-scoped. Items from other merchants live in the global
     // cart but aren't shown here.
     const merchantCartItems = items.filter((it) => it.sellerId === restaurant.id);
+    // The pricing policy of a cart line's catalogue item — drives the
+    // buyer-set price input in the cart aside below.
+    const menuPolicyOf = (menuItemId: string) =>
+        restaurant.menu.find((m) => m.id === menuItemId)?.pricingPolicy ?? "fixed";
     const merchantTotalAmount = merchantCartItems.reduce(
-        (sum, item) => sum + parseToken(item.price, tokenDecimals) * BigInt(item.quantity),
+        // `item.price` may be empty mid-edit on a buyer-set line — treat as 0;
+        // the executeCheckout guard blocks an unpriced buyer-set commit.
+        (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
         0n,
     );
     const merchantBuyerBond = merchantTotalAmount > 0n
@@ -374,6 +380,14 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         if (merchantCartItems.length === 0) return;
         if (!fulfillmentMode) {
             setCheckoutError("Select a fulfilment mode before placing the order.");
+            return;
+        }
+        // A buyer-set item must carry a buyer-entered price before commit.
+        const unpricedBuyerSet = merchantCartItems.find(
+            (it) => menuPolicyOf(it.menuItemId) === "buyer-set" && !(parseFloat(it.price) > 0),
+        );
+        if (unpricedBuyerSet) {
+            setCheckoutError(`Enter your price for "${unpricedBuyerSet.name}" before placing the order.`);
             return;
         }
         const sellerAddress = restaurant.address as `0x${string}`;
@@ -774,9 +788,27 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                                         +
                                                     </button>
                                                 </div>
-                                                <span className="text-neutral-900 font-semibold tabular-nums">
-                                                    {(parseFloat(item.price) * item.quantity).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
-                                                </span>
+                                                {menuPolicyOf(item.menuItemId) === "buyer-set" ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <input
+                                                            type="text"
+                                                            inputMode="decimal"
+                                                            value={item.price}
+                                                            onChange={(e) => updateItemPrice(item.menuItemId, restaurant.id, e.target.value)}
+                                                            placeholder="Your price"
+                                                            aria-label={`Your price for ${item.name}`}
+                                                            data-testid={`cart-line-buyer-price-${item.menuItemId}`}
+                                                            className="w-24 rounded border border-neutral-300 px-2 py-1 text-right text-sm tabular-nums"
+                                                        />
+                                                        <span className="text-xs text-neutral-500 shrink-0">
+                                                            {tokenSymbol ? `${tokenSymbol} ` : ""}× {item.quantity}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-neutral-900 font-semibold tabular-nums">
+                                                        {(parseFloat(item.price) * item.quantity).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
+                                                    </span>
+                                                )}
                                             </div>
                                         </li>
                                     ))}
