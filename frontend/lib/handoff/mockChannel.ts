@@ -6,18 +6,20 @@
  * XMTP network.
  */
 
-import type { CoordinationChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage } from "./channel";
+import type { CoordinationChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, HandoffAddressMessage } from "./channel";
 
 type StoredHandoffKeyMessage = HandoffKeyMessage & { senderIdentity: string };
 type StoredEcdhPubkeyMessage = EcdhPubkeyMessage & { senderIdentity: string };
 type StoredEcdhWrappedKeyMessage = EcdhWrappedKeyMessage & { senderIdentity: string };
 type StoredCommitmentSignatureMessage = CommitmentSignatureMessage & { senderIdentity: string };
+type StoredHandoffAddressMessage = HandoffAddressMessage & { senderIdentity: string };
 
 type StoredMockMessage = (
     StoredHandoffKeyMessage
     | StoredEcdhPubkeyMessage
     | StoredEcdhWrappedKeyMessage
     | StoredCommitmentSignatureMessage
+    | StoredHandoffAddressMessage
 );
 
 const MOCK_STORAGE_KEY = "__FIGARO_COORDINATION_MOCK_MESSAGES__";
@@ -65,6 +67,10 @@ function isStoredEcdhWrappedKeyMessage(message: StoredMockMessage): message is S
 
 function isStoredCommitmentSignatureMessage(message: StoredMockMessage): message is StoredCommitmentSignatureMessage {
     return message.type === "COMMITMENT_PAYLOAD";
+}
+
+function isStoredHandoffAddressMessage(message: StoredMockMessage): message is StoredHandoffAddressMessage {
+    return message.type === "HANDOFF_ADDRESS";
 }
 
 function readPersistedMessages(): StoredMockMessage[] {
@@ -122,6 +128,9 @@ function notifyMessage(
             return;
         case "COMMITMENT_PAYLOAD":
             notify("COMMITMENT_PAYLOAD", message.orderId, message.payloadJson, message.senderIdentity, message.orderId);
+            return;
+        case "HANDOFF_ADDRESS":
+            notify("HANDOFF_ADDRESS", message.orderId, message.deliveryAddress, message.senderIdentity);
             return;
     }
 }
@@ -287,6 +296,27 @@ export function createMockChannel(ownerAddress: string): CoordinationChannel {
                 "COMMITMENT_PAYLOAD",
                 (payloadJson, _senderIdentity, orderId) => callback(payloadJson as string, orderId as string),
             );
+        },
+
+        async sendHandoffAddress({ recipientAddress: _, orderId, deliveryAddress }) {
+            const msg: StoredMockMessage = {
+                type: "HANDOFF_ADDRESS",
+                orderId,
+                deliveryAddress,
+                ts: Date.now(),
+                senderIdentity: ownerAddress,
+            };
+            deliver(msg);
+        },
+
+        onHandoffAddress(orderId, callback) {
+            const existing = readPersistedMessages().find(
+                (message): message is StoredHandoffAddressMessage => isStoredHandoffAddressMessage(message) && message.orderId === orderId,
+            );
+            if (existing) {
+                queueMicrotask(() => callback(existing.deliveryAddress, existing.senderIdentity));
+            }
+            return subscribe("HANDOFF_ADDRESS", (a, s) => callback(a as string, s as string), orderId);
         },
 
         destroy() {

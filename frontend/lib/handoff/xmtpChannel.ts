@@ -6,7 +6,7 @@
  * `import('./xmtpChannel')` inside the channel factory.
  */
 
-import type { CoordinationChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, ChannelMessage } from "./channel";
+import type { CoordinationChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, HandoffAddressMessage, ChannelMessage } from "./channel";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 
 function parseChannelMessage(content: unknown): ChannelMessage | null {
@@ -269,6 +269,28 @@ export async function createXmtpChannel(
             };
             streamCleanups.push(cleanup);
             return cleanup;
+        },
+
+        async sendHandoffAddress({ recipientAddress, orderId, deliveryAddress }) {
+            const dm = await client.conversations.createDmWithIdentifier({
+                identifier: recipientAddress.toLowerCase(),
+                identifierKind: IdentifierKind.Ethereum,
+            });
+            const payload: HandoffAddressMessage = {
+                type: "HANDOFF_ADDRESS",
+                orderId,
+                deliveryAddress,
+                ts: Date.now(),
+            };
+            await dm.sendText(JSON.stringify(payload));
+        },
+
+        onHandoffAddress(orderId, callback) {
+            return listenForMessage<HandoffAddressMessage>(
+                "HANDOFF_ADDRESS",
+                orderId,
+                (msg, senderInboxId) => callback(msg.deliveryAddress, senderInboxId),
+            );
         },
 
         destroy() {
