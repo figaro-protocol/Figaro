@@ -79,4 +79,5 @@ export {
     encodeMerchantContent,
     encodeCourierContent,
     encodeConsentContent,
+    encodeContentFromSpec,
 } from "./encode.js";

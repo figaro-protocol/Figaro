@@ -11,7 +11,8 @@
  * declaration of those positions.
  */
 
-import { encodeAbiParameters, type Hex } from "viem";
+import { encodeAbiParameters, type AbiParameter, type Hex } from "viem";
+import type { FieldSpec, SchemaSpec } from "./spec.js";
 
 // ── Empty content (some schemas accept empty bytes) ─────────────────────────
 
@@ -417,4 +418,117 @@ export function encodeCourierContent(content: CourierContent): Hex {
         [{ type: "uint8" }, { type: "string" }],
         [COURIER_EVENT_INDEX[content.eventType], content.evidenceUri ?? ""],
     );
+}
+
+// ── Generic spec-driven encoder ─────────────────────────────────────────────
+//
+// `encodeContentFromSpec` derives the ABI encoding from the parsed SchemaSpec
+// alone — no per-schema code. It mirrors the Rust `encode_content_from_spec`
+// (prover/schema/src/encode.rs); the two MUST stay byte-identical. Additive:
+// the per-schema encoders above remain the wired-in path until the keystone
+// cutover. See docs/v5/SCALING_STRATEGY.md "Keystone Design — Canonical ABI
+// Mapping".
+//
+// Canonical rule: top-level fields encode in declaration order; an enum
+// encodes as the 0-based position of its value in `values`; an absent
+// optional field encodes as the ABI zero-value of its type; an object-array
+// encodes as `tuple[]`; integer and bigint alike encode as `uint256`.
+
+/** The viem ABI-parameter descriptor for a spec field. */
+function abiParamOf(field: FieldSpec): AbiParameter {
+    switch (field.type) {
+        case "boolean":
+            return { type: "bool" };
+        case "integer":
+        case "bigint":
+            return { type: "uint256" };
+        case "enum":
+            return { type: "uint8" };
+        case "string":
+            switch (field.format) {
+                case "bytes32-hex": return { type: "bytes32" };
+                case "address-hex": return { type: "address" };
+                case "bytes-hex": return { type: "bytes" };
+                default: return { type: "string" };
+            }
+        case "array": {
+            const inner = abiParamOf(field.items);
+            return { ...inner, type: `${inner.type}[]` };
+        }
+        case "object":
+            return { type: "tuple", components: field.fields.map(abiParamOf) };
+    }
+}
+
+/** The ABI zero-value for an absent optional field, by type. */
+function zeroValueOf(field: FieldSpec): unknown {
+    switch (field.type) {
+        case "boolean":
+            return false;
+        case "integer":
+        case "bigint":
+        case "enum":
+            return 0n;
+        case "string":
+            switch (field.format) {
+                case "bytes32-hex": return `0x${"0".repeat(64)}`;
+                case "address-hex": return `0x${"0".repeat(40)}`;
+                case "bytes-hex": return "0x";
+                default: return "";
+            }
+        case "array":
+            return [];
+        case "object":
+            return field.fields.map(zeroValueOf);
+    }
+}
+
+/** The viem value for a spec field given its raw JSON value (or absence). */
+function abiValueOf(field: FieldSpec, raw: unknown): unknown {
+    if (raw === undefined || raw === null) {
+        if (field.required) {
+            throw new Error(`field ${field.name}: required field is absent`);
+        }
+        return zeroValueOf(field);
+    }
+    switch (field.type) {
+        case "boolean":
+            return Boolean(raw);
+        // Encoding does not distinguish `integer` from `bigint` — both are a
+        // 32-byte word. Content may arrive as a JSON number or, for values
+        // outside JSON's safe integer range, a decimal string.
+        case "integer":
+        case "bigint":
+            return BigInt(raw as string | number | bigint);
+        case "enum": {
+            const idx = field.values.indexOf(raw as string);
+            if (idx < 0) {
+                throw new Error(
+                    `field ${field.name}: "${String(raw)}" is not a declared enum value`,
+                );
+            }
+            return BigInt(idx);
+        }
+        case "string":
+            return raw;
+        case "array":
+            return (raw as unknown[]).map((item) => abiValueOf(field.items, item));
+        case "object": {
+            const obj = raw as Record<string, unknown>;
+            return field.fields.map((sub) => abiValueOf(sub, obj[sub.name]));
+        }
+    }
+}
+
+/**
+ * Encode JSON content to canonical ABI bytes from the parsed `SchemaSpec`
+ * alone. Byte-identical to the Rust `encode_content_from_spec`.
+ */
+export function encodeContentFromSpec(
+    spec: SchemaSpec,
+    content: Record<string, unknown>,
+): Hex {
+    const params = spec.fields.map(abiParamOf);
+    const values = spec.fields.map((field) => abiValueOf(field, content[field.name]));
+    return encodeAbiParameters(params, values as never);
 }
