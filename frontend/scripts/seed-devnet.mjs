@@ -124,11 +124,15 @@ function canonicalize(value) {
 // `deliveryCatalogue` — this operator is a courier; its catalogue is the
 // universal catalogue too, its menu a delivery offering rather than the
 // generic goods fixture.
+// `geohash` — the operator's location. Local commerce is one-hop / last
+// mile: the operators and the buyer all sit in one neighbourhood (the
+// `dr5regw*` cells are ~38 m apart). Drives geo-aware discovery and the
+// courier order's figaro-geo-v2 originGeohash (the pickup point).
 const OPERATORS = [
-    { addressIndex: 5, name: 'Counter & Co.', specialty: 'in-person counter sales', bind: ['direct-sale'] },
-    { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'], couriers: [7] },
-    { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'], deliveryCatalogue: true },
-    { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce'], couriers: [7] },
+    { addressIndex: 5, name: 'Counter & Co.', specialty: 'in-person counter sales', bind: ['direct-sale'], geohash: 'dr5regw2' },
+    { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'], couriers: [7], geohash: 'dr5regw5' },
+    { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'], deliveryCatalogue: true, geohash: 'dr5regw3' },
+    { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce'], couriers: [7], geohash: 'dr5regw7' },
 ];
 
 /** Parse frontend/.env.local into a flat key→value map. */
@@ -296,6 +300,9 @@ async function main() {
             name: op.name,
             specialty: op.specialty,
             catalogueURI,
+            // Geographic anchor — geo-aware discovery + the courier order's
+            // pickup origin (figaro-geo-v2 originGeohash) both read it.
+            location: { geohash: op.geohash },
             // Accepted + default settlement token — mirrors onboarding-wizard
             // output (OnboardingReview.buildDraft). discoveryService reads both
             // off the profile; without them /m/<merchant> checkout falls back

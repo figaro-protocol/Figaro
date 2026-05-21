@@ -191,14 +191,16 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
                     const sections = ag.sections ?? [];
                     if (!sections.some((s) => s.schema === 'figaro-proximity-policy-v1')) continue;
                     const geo = sections.find((s) => s.schema === 'figaro-geo-v2');
+                    const geoData = geo?.data as
+                        { originGeohash?: string; destinationGeohash?: string } | undefined;
                     return {
                         found: true,
-                        destinationGeohash:
-                            (geo?.data as { destinationGeohash?: string } | undefined)?.destinationGeohash ?? null,
+                        originGeohash: geoData?.originGeohash ?? null,
+                        destinationGeohash: geoData?.destinationGeohash ?? null,
                     };
                 } catch { /* not an agreement document — skip */ }
             }
-            return { found: false, destinationGeohash: null };
+            return { found: false, originGeohash: null, destinationGeohash: null };
         });
         expect(
             courierClauses.found,
@@ -208,6 +210,10 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
             courierClauses.destinationGeohash,
             'the courier order geo section carries the buyer delivery geohash',
         ).toBe('dr5regw3pg');
+        expect(
+            courierClauses.originGeohash,
+            "the courier order geo section carries Mercato's pickup geohash",
+        ).toBe('dr5regw7');
 
         // The buyer sent the human-readable street address to the courier
         // over the coordination channel — a HANDOFF_ADDRESS message persists.
