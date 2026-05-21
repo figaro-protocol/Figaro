@@ -425,6 +425,21 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             // The courier order — buyer↔courier, parented to the root order,
             // carrying the figaro-courier-process-v1 clause. Seller-priced
             // courier fee, hardcoded placeholder for now.
+            // Read the courier order's handoff clause off the picked
+            // assembly — the assembly is the template, so the committed
+            // courier order carries the same proximity-policy band the
+            // assembly declares (rather than a runtime guess).
+            const assemblyManifest = pickedAssembly!.manifest;
+            const courierAgreementHash = assemblyManifest.orders
+                .map((o) => o.agreementHash)
+                .find((hash) => hash && (assemblyManifest.agreements[hash]?.sections ?? [])
+                    .some((s: { schema: string }) => s.schema === "figaro-courier-process-v1"));
+            const courierProximityBands: string[] = courierAgreementHash
+                ? (((assemblyManifest.agreements[courierAgreementHash]?.sections ?? [])
+                    .find((s: { schema: string }) => s.schema === "figaro-proximity-policy-v1")
+                    ?.data as { bands?: string[] } | undefined)?.bands ?? [])
+                : [];
+
             const courierPayment = parseToken(HARDCODED_COURIER_PRICE, tokenDecimals);
             const courierPrepared = await prepareOrderCommitment({
                 buyer,
@@ -438,6 +453,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     origin: "",
                     destination: "",
                     courierProcessIncluded: true,
+                    ...(courierProximityBands.length > 0 ? { proximityBands: courierProximityBands } : {}),
                     ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
                     ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
                     class_: CLASS_TO_SHORT_CODE[merchantClassOfService],

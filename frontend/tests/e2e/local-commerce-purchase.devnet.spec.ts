@@ -164,6 +164,30 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         expect(state[0].toLowerCase()).toBe(BUYER_ADDR.toLowerCase()); // rootBuyer
         expect(state[3]).toBe(2); // activeOrderCount — food + courier
 
+        // The committed courier order carries the assembly's proximity-policy
+        // handoff clause — executeCheckout read it off the picked assembly's
+        // courier order. Both agreements the buyer witnessed are saved to
+        // localStorage; the courier one must carry figaro-proximity-policy-v1.
+        const courierCarriesProximityClause = await page.evaluate(() => {
+            for (let i = 0; i < window.localStorage.length; i++) {
+                const key = window.localStorage.key(i);
+                if (!key?.startsWith('figaro:agreement:')) continue;
+                try {
+                    const ag = JSON.parse(window.localStorage.getItem(key) ?? '') as {
+                        sections?: Array<{ schema?: string }>;
+                    };
+                    if (ag.sections?.some((s) => s.schema === 'figaro-proximity-policy-v1')) {
+                        return true;
+                    }
+                } catch { /* not an agreement document — skip */ }
+            }
+            return false;
+        });
+        expect(
+            courierCarriesProximityClause,
+            'the committed courier order should carry figaro-proximity-policy-v1',
+        ).toBe(true);
+
         // ── Buyer confirms receipt → resolveProcess settles both orders ──
         const confirmBtn = page.getByTestId('btn-confirm-receipt');
         await confirmBtn.waitFor({ timeout: 30000 });
