@@ -56,7 +56,7 @@
  * can reconstruct and verify it.
  */
 
-import { keccak256, stringToHex } from "viem";
+import { concat, keccak256, stringToHex, toHex } from "viem";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import { classOfServiceToShortCode } from "@/lib/shared/sellerCatalogueMetadata";
 
@@ -318,10 +318,6 @@ function canonicalizeSectionData(data: Record<string, unknown>): string {
  * SchemaRegistry.
  */
 function schemaIdOf(schemaKey: string): `0x${string}` {
-    const { keccak256, toHex } = require("viem") as {
-        keccak256: (data: `0x${string}`) => `0x${string}`;
-        toHex: (value: string | Uint8Array) => `0x${string}`;
-    };
     return keccak256(toHex(new TextEncoder().encode(schemaKey)));
 }
 
@@ -441,9 +437,6 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
 export function getSectionDataBytes(section: AgreementSection): `0x${string}` {
     const encoder = getCategory2Encoder(section.schema);
     if (encoder) return encoder(section.data);
-    const { toHex } = require("viem") as {
-        toHex: (value: string | Uint8Array) => `0x${string}`;
-    };
     return toHex(new TextEncoder().encode(canonicalizeSectionData(section.data)));
 }
 
@@ -453,10 +446,6 @@ export function getSectionDataBytes(section: AgreementSection): `0x${string}` {
  * reconstruction during inclusion-proof verification.
  */
 export function computeSectionLeaf(section: AgreementSection): `0x${string}` {
-    const { keccak256, concat } = require("viem") as {
-        keccak256: (data: `0x${string}`) => `0x${string}`;
-        concat: (values: readonly `0x${string}`[]) => `0x${string}`;
-    };
     return keccak256(concat([schemaIdOf(section.schema), keccak256(getSectionDataBytes(section))]));
 }
 
@@ -476,10 +465,6 @@ function leafOfAnySection(section: AnyAgreementSection): `0x${string}` {
  * Allows inclusion proofs to verify without carrying left/right direction bits.
  */
 function hashPair(a: `0x${string}`, b: `0x${string}`): `0x${string}` {
-    const { keccak256, concat } = require("viem") as {
-        keccak256: (data: `0x${string}`) => `0x${string}`;
-        concat: (values: readonly `0x${string}`[]) => `0x${string}`;
-    };
     return a.toLowerCase() < b.toLowerCase()
         ? keccak256(concat([a, b]))
         : keccak256(concat([b, a]));
