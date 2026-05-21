@@ -8,8 +8,11 @@ Implemented. Three contracts:
   with `totalRegisteredCap` enforcement.
 - `src/fig/RpgfMinter.sol` — three-stage SP1-gated minter for the
   schema-author RPGF (year 2 / year 5 / year 9). Per-tranche Merkle
-  root submitted at tranche time after an SP1 proof verifies the
-  aggregation; aggregation logic in `prover/rpgf/` (Rust).
+  root submitted at tranche time; the SP1 proof attests that the
+  aggregation formula was applied correctly to the event stream the
+  submitter supplied — it does not attest that that stream mirrors
+  chain history, which is a trusted-submitter assumption. Aggregation
+  logic in `prover/rpgf/` (Rust).
 - `src/fig/IFigMinter.sol` — minimal `mint(address,uint256)` interface.
 
 Deployment: `script/DeployMainnet.s.sol` performs the full genesis distribution
@@ -74,10 +77,13 @@ the full name is the protocol.
 Founders and DAO receive tokens directly to their wallets at deploy time.
 The community airdrop is a single `RpgfMinter` contract with three immutable
 unlock timestamps. Per-tranche Merkle roots are NOT baked at deploy — they
-are submitted at tranche time by a sequencer after an SP1 proof verifies
-the schema-author substrate-broadening aggregation. See `prover/rpgf/`
-(Rust aggregator) and `prover/rpgf-script/` (host-side SP1 wrapper) for
-the off-chain pieces.
+are submitted at tranche time by a sequencer. The accompanying SP1 proof
+attests that the schema-author substrate-broadening aggregation formula
+was applied correctly to the event stream the sequencer supplied; it does
+not attest that that stream faithfully mirrors chain history — the
+sequencer is trusted for input provenance. See `prover/rpgf/` (Rust
+aggregator) and `prover/rpgf-script/` (host-side SP1 wrapper) for the
+off-chain pieces.
 
 ### Rationale
 
