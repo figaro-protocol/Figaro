@@ -100,15 +100,6 @@ Cross-corpus drift to resolve before mixed submission: process-chain terminology
 
 ## 5. Doc & Memory Rationalization
 
-### 5A. `docs/v5/` — non-whitelisted files
-
-CLAUDE.md whitelist is the source of truth. Files in `docs/v5/` not on the whitelist:
-
-- [ ] **`FRAMING.md` (87 lines)** — referenced by no other doc; PRUNE.
-- [ ] **`AUDIT_FINDINGS_2026-04-29.md` (175 lines)** — explicitly canonical per backlog convention. Add `AUDIT_FINDINGS_*.md` glob to CLAUDE.md whitelist.
-- [ ] **`BOL_RESEARCH.md` (588 lines)** — referenced by README/DESIGN_DECISIONS/AUDIT_FINDINGS; load-bearing. Add to CLAUDE.md whitelist OR fold into `PUBLIC_GRAPH_MODEL.md`.
-- [ ] **Backlog stale path reference** — `project_backlog.md:80` cites `docs/archive/v5/BOL_RESEARCH.md`; the file is at `docs/v5/BOL_RESEARCH.md`. Fix.
-
 ### 5B. Memory hygiene
 
 - [ ] **User-level `MEMORY.md:65`** — orphan index entry for `project_marketing_backlog.md` (file does not exist). Remove the line.
