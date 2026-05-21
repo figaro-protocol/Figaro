@@ -35,8 +35,8 @@ preloads built-in specs and lazy-fetches remote ones.
 1. **SP1 zkVM prover guest program** — `figaro-kernel`'s `apply_batch`
    gates `AttestAsSeller` / `AttestAsBuyer` operations through
    `validate_attestation_content` when the op carries an
-   `AttestationContentProof { content_json }`. The gates run inside
-   the proof:
+   `AttestationContentProof { content_json, inclusion_proof,
+   section_data }`. Five gates run inside the proof:
      1. The op's `schema_id` resolves to a canonical spec compiled into
         the prover (`figaro_schema::embedded_spec_json`). The spec is
         looked up by `schema_id`, never supplied by the caller, so the
@@ -53,6 +53,17 @@ preloads built-in specs and lazy-fetches remote ones.
         `content_json` and is impossible.
      4. `keccak256(derived_bytes) == content_ref` — binds the canonical
         bytes to the on-chain commitment value.
+     5. **Agreement inclusion.** For a seller attestation, the schema's
+        section is a clause of the order's signed agreement: a
+        sorted-pair Merkle `inclusion_proof` verifies the section leaf —
+        `keccak256(schemaId ++ keccak256(sectionData))` — against the
+        role commitment's `agreement_hash`. A cross-checking (Category-2)
+        schema's committed `sectionData` is the ABI content form, so
+        `keccak256(sectionData) == content_ref` and the leaf needs no
+        extra input; a non-cross-checking (Category-1) schema carries its
+        canonical-JSON `section_data` in the proof. Buyer attestations
+        skip this gate — a buyer's evidence is the kernel event log, not
+        an agreement clause.
    `content_proof` is `Option`-typed. `None` is permitted only for
    content-opaque attestations (`content_ref == 0`) and for schemas the
    kernel has no embedded spec for; an attestation with a non-zero
@@ -83,13 +94,17 @@ Conformance is locked across the prover test crates:
   (`attest_as_seller_with_valid_content_proof_passes`,
   `_content_hash_mismatch_fails`, `_invalid_content_fails`,
   `_unsupported_schema_encoder_fails`,
-  `attest_as_seller_under_protocol_schema_requires_content_proof`)
-  exercising every gate inside `apply_batch`.
+  `attest_as_seller_under_protocol_schema_requires_content_proof`,
+  `_with_wrong_inclusion_proof_fails`,
+  `attest_as_seller_non_cross_checking_schema_requires_section_data`)
+  exercising every gate inside `apply_batch`, Gate 5 included.
 - `prover/sequencer/tests/sequencer.rs` — mempool-boundary tests
   (`mempool_accepts_attest_with_valid_content_proof`,
   `_rejects_content_hash_mismatch`, `_rejects_invalid_content`,
   `_rejects_unsupported_schema_encoder`,
-  `mempool_rejects_missing_content_proof_for_protocol_schema`)
+  `mempool_rejects_missing_content_proof_for_protocol_schema`,
+  `mempool_rejects_wrong_inclusion_proof`,
+  `mempool_rejects_missing_section_data`)
   verifying the gate trips at submission time.
 
 The user-supplied `pattern` field uses the `regex` crate; the four
