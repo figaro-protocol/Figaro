@@ -159,14 +159,11 @@ test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
         await page.getByTestId('btn-accept-order').click();
 
-        // Counter-sign triggers the AgreementPreviewModal (Web2 audit
-        // Priority-4 fix). Same pattern as commitment-share.devnet:96-100 —
-        // click Confirm & sign to proceed to the actual signing prompt.
-        const previewModal = page.getByTestId('agreement-preview-modal');
-        try {
-            await previewModal.waitFor({ state: 'visible', timeout: 10000 });
-            await page.getByTestId('preview-confirm').click();
-        } catch { /* modal disabled or already past */ }
+        // Counter-sign gates on the AgreementPreviewModal (Web2 audit
+        // Priority-4 fix) — signCommitment always posts the preview; confirm
+        // it to proceed to the actual signing prompt.
+        await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 15000 });
+        await page.getByTestId('preview-confirm').click();
 
         // Post-broadcast: the pending card is removed from `pending`
         // (handleAccept's filter at MerchantInbox.tsx:210). The empty

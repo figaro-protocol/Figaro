@@ -146,13 +146,10 @@ test.describe('On-site purchase from seeded Counter & Co. (devnet)', () => {
         // ── Place the order ──────────────────────────────────────────
         await page.getByTestId('btn-place-order').click();
 
-        // The devnet immediate-commit path may skip the AgreementPreviewModal;
-        // confirm it only if it renders.
-        const previewModal = page.getByTestId('agreement-preview-modal');
-        try {
-            await previewModal.waitFor({ state: 'visible', timeout: 10000 });
-            await page.getByTestId('preview-confirm').click();
-        } catch { /* immediate-commit path — no modal */ }
+        // AgreementPreviewModal gates the signature — signCommitment always
+        // posts the preview; confirm it to proceed to the wallet prompt.
+        await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 15000 });
+        await page.getByTestId('preview-confirm').click();
 
         // ── Commit landed → redirect to /orders/<processId> ──────────
         await page.waitForURL(/\/orders\/0x[0-9a-fA-F]+/, { timeout: 90000 });

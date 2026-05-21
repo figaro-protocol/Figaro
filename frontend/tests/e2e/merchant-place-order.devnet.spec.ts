@@ -192,13 +192,10 @@ test.describe('/m/[merchant] full place-order flow (devnet)', () => {
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
         await page.getByTestId('btn-place-order').click();
 
-        // AgreementPreviewModal blocks before the wallet signing prompt.
-        // Same pattern as inbox-accept.devnet C1 and commitment-share.devnet.
-        const previewModal = page.getByTestId('agreement-preview-modal');
-        try {
-            await previewModal.waitFor({ state: 'visible', timeout: 10000 });
-            await page.getByTestId('preview-confirm').click();
-        } catch { /* modal disabled or already past */ }
+        // AgreementPreviewModal gates the signature — signCommitment always
+        // posts the preview; confirm it to proceed to the wallet prompt.
+        await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 15000 });
+        await page.getByTestId('preview-confirm').click();
 
         // After commit, the page redirects to /orders/<processId>. Wait
         // for the URL to change and the timeline view to mount.

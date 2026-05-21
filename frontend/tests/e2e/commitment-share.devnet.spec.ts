@@ -91,13 +91,11 @@ test.describe('Commitment sharing flow (devnet)', () => {
         await counterSignButton.waitFor({ state: 'visible', timeout: 60000 });
         await counterSignButton.click();
 
-        // Counter-sign triggers the seller-side AgreementPreviewModal (Web2
-        // audit Priority-4 fix); click Confirm & sign to proceed.
-        const previewModal = sellerPage.getByTestId('agreement-preview-modal');
-        try {
-            await previewModal.waitFor({ state: 'visible', timeout: 5000 });
-            await sellerPage.getByTestId('preview-confirm').click();
-        } catch { /* mock or modal disabled */ }
+        // Counter-sign gates on the seller-side AgreementPreviewModal (Web2
+        // audit Priority-4 fix) — signCommitment always posts the preview;
+        // confirm it to release the signature.
+        await sellerPage.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 15000 });
+        await sellerPage.getByTestId('preview-confirm').click();
 
         await expect(sellerPage.getByText('Commitment submitted on-chain.')).toBeVisible({ timeout: 60000 });
 
@@ -148,13 +146,11 @@ test.describe('Commitment sharing flow (devnet)', () => {
         await counterSignButton.waitFor({ state: 'visible', timeout: 60000 });
         await counterSignButton.click();
 
-        // Counter-sign triggers the seller-side AgreementPreviewModal (Web2
-        // audit Priority-4 fix); click Confirm & sign to proceed.
-        const previewModal = sellerPage.getByTestId('agreement-preview-modal');
-        try {
-            await previewModal.waitFor({ state: 'visible', timeout: 5000 });
-            await sellerPage.getByTestId('preview-confirm').click();
-        } catch { /* mock or modal disabled */ }
+        // Counter-sign gates on the seller-side AgreementPreviewModal (Web2
+        // audit Priority-4 fix) — signCommitment always posts the preview;
+        // confirm it to release the signature.
+        await sellerPage.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 15000 });
+        await sellerPage.getByTestId('preview-confirm').click();
 
         await expect(sellerPage.getByText('Commitment submitted on-chain.')).toBeVisible({ timeout: 60000 });
 
