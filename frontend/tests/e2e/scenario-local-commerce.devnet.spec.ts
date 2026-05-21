@@ -116,6 +116,13 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
         await nodeTabs.locator('button').nth(1).click();
         await expect(page.getByTestId('agreement-drawer')).toBeVisible();
 
+        // On the courier node, proximity verification is authorable — a
+        // courier sub-order involves a physical handoff inherently, so the
+        // proximity selector is enabled even though it carries no fulfilment
+        // modality. (Navigating the tab does not alter the courier clauses.)
+        await page.getByTestId('drawer-tab-fulfilment').click();
+        await expect(page.getByTestId('drawer-proximity-band-zone-wifi')).toBeEnabled();
+
         // ── Name + publish ────────────────────────────────────────────────
         await page.getByTestId('designer-name-input').fill(draftName);
         await expect(page.getByTestId('designer-publish')).toBeEnabled({ timeout: 5000 });

@@ -664,6 +664,7 @@ export function AgreementDrawer({
                     {openSection === "fulfilment" && (
                         <section data-testid="drawer-section-fulfilment">
                             <FulfilmentArticle
+                                isCourierOrder={isCourierOrder}
                                 modalities={fulfilmentModalities}
                                 coordinations={fulfilmentCoordinations}
                                 handoffPoints={fulfilmentHandoffPoints}
@@ -946,6 +947,7 @@ function FulfilmentArticle({
     hasChildren,
     onDeliveryAdded,
     onDeliveryRemoved,
+    isCourierOrder,
 }: {
     modalities: string[];
     coordinations: string[];
@@ -956,9 +958,17 @@ function FulfilmentArticle({
     hasChildren: boolean;
     onDeliveryAdded: () => void;
     onDeliveryRemoved: () => void;
+    /** True when this order is a courier sub-order — a courier order
+     *  involves a physical handoff inherently, so proximity verification
+     *  is authorable on it even though it carries no fulfilment modality. */
+    isCourierOrder: boolean;
 }) {
     const deliveryOffered = modalities.includes("delivery");
     const hasPhysicalModality = modalities.some((m) => m !== "virtual");
+    // Proximity verification gates on a physical handoff. A delivery-offering
+    // order signals that via its modality; a courier sub-order signals it
+    // structurally (it IS the delivery leg) — enable proximity for both.
+    const proximityApplicable = hasPhysicalModality || isCourierOrder;
 
     /** Single-select per section per the assembly-uniqueness model: one
      *  assembly = one fulfilment shape. Modalities and coordination are
@@ -1037,12 +1047,12 @@ function FulfilmentArticle({
 
             <RadioGroup
                 label="Proximity verification"
-                hint={hasPhysicalModality ? undefined : "Pick a physical modality to enable."}
+                hint={proximityApplicable ? undefined : "Pick a physical modality to enable."}
                 options={PROXIMITY_BAND_OPTIONS}
                 selected={proximityBands[0]}
                 onSelect={selectProximityBand}
                 onClear={clearProximityBand}
-                disabled={!hasPhysicalModality}
+                disabled={!proximityApplicable}
                 testIdPrefix="drawer-proximity-band"
             />
 
