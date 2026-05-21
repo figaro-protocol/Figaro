@@ -306,6 +306,72 @@ If a Cairo/StarkNet path becomes strategically justified:
 
 Do not resume StarkNet implementation until V5 parity gates are cleared.
 
+## Prover Schema Coupling — Compiled-In vs Witness-Supplied Specs
+
+The SP1 guest compiles in the 16 canonical schema specs
+(`prover/schema/src/embedded.rs` — `include_str!` of the Layer A JSONs)
+and the per-schema ABI encoders (`encode.rs` — a `match schemaId`
+dispatch). Adding a schema changes the guest ELF, hence the program
+verification key; at mainnet that is a `FigaroBatchVerifier` /
+`RpgfMinter` redeploy. This section records why that coupling exists and
+when, if ever, to break it.
+
+**Compiled-in specs are a security property, not debt.** The on-chain
+verifier checks a proof against a fixed `programVKey`; the vkey
+identifies the exact program that ran. Because the specs are baked into
+that program, "validated against the canonical spec" is part of what the
+vkey attests. A prover that loaded specs as untrusted runtime input would
+still verify against the same vkey while validating against an
+attacker-chosen permissive spec — unsound. Phase-1 hardening removed
+exactly that hole (the caller-supplied `schema_spec` field). Note the
+validator *engine* (`parse_schema_spec` + `validate_content`) is already
+generic — it interprets any spec at runtime; only the spec *set* and the
+encoders are per-schema.
+
+**The sound modular alternative.** Specs can be witness-supplied without
+losing soundness if the guest *binds* them: take `spec_json` as input,
+recompute its content hash, check it against an on-chain anchor for the
+op's `schemaId`, and expose `schemaId` as a public value the settlement
+transaction cross-checks. Trust moves from "the ELF" to "the on-chain
+anchor"; the generic validator engine stays in the ELF, so the vkey stops
+churning when a schema is added.
+
+**Two blockers, both real:**
+
+1. **The encoder is not generic.** `encode.rs` dispatches per `schemaId`
+   to per-schema functions. They would have to become one spec-field-
+   driven encoder (`alloy-dyn-abi` is already used *inside* them, so the
+   primitive exists). Until then the encoder stays a compiled-in
+   per-schema touch-point and the vkey churns regardless of what the spec
+   layer does.
+2. **No on-chain spec-content anchor.** The schema-registration record
+   commits to a `uriHash` (the hash of an IPFS URI string), not to the
+   spec content. The CID inside that URI is a content address, but the
+   guest cannot dereference IPFS. A witness-binding design needs a direct
+   `keccak256(spec_json)` anchor, or a content-derived `schemaId`. The
+   deployed `SchemaRegistry` is immutable (first-write-wins) — so this is
+   a v2 registry or a parallel anchor, an on-chain migration, not a Rust
+   refactor.
+
+**Cost even once unblocked.** Witness-binding adds in-circuit work per
+attestation — a keccak over the spec JSON plus the anchor check — and
+generic encoding is slower than specialized. Modest against the current
+~1.03M-cycle batch, not free.
+
+**Decision criterion.** Build this only if schemas keep landing *after*
+mainnet. The kernel is frozen; if the schema set freezes with it, vkey
+churn is a pre-mainnet development cost, not an operational one, and the
+witness-binding machinery solves a problem that no longer exists. The
+trigger to act is the conjunction: a credible stream of post-mainnet
+third-party schemas **and** the encoder already made generic. Absent that
+conjunction, defer.
+
+**Unconditional wins (no vkey-architecture change).** Auto-discover the
+embedded set (`include_dir!` over the schema directory) instead of a
+hand-written `EMBEDDED_SPECS` list; derive per-schema metadata from the
+parsed spec rather than parallel tables — done: `SchemaSpec::cross_checks()`
+reads the block tier, replacing a hand-maintained flag array.
+
 ## Decision Rule
 
 1. ship the unchanged kernel on Ethereum mainnet (Track 1)
