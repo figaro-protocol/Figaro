@@ -36,7 +36,6 @@ Testnet-relevant items only. The full backlog stays canonical.
 
 - [ ] **`activeBondSum` reconstruction** — `frontend/components/core/TokenBalances.tsx:62`. Decide live-with vs off-chain index.
 - [ ] **Multi-binding disambiguation** — `frontend/lib/shared/operatorListing.ts:154-155`.
-- [ ] **Layer B (Rust SP1 prover) schema validator mirror** — deferred. Gates SP1-proven batched attestation, not testnet-launch.
 - [ ] **Designer publish-to-registry** — `app/(app)/builders/designer/edit/[slug]/page.tsx:321`. Local-storage drafts only; on-chain registration is a follow-up.
 - [ ] **Subtree cumulative-value recompute on agreement edit** — `frontend/lib/designer/syntheticProcess.ts:354-356`. Stage-6 work.
 
@@ -68,7 +67,7 @@ Cross-corpus drift to resolve before mixed submission: process-chain terminology
 
 ## 3. Frontend
 
-35 routes audited (14 marketing + 21 app). All Layer A schema specs present (18/18). No orphaned components. Designer at `/builders/designer/new` confirmed canonical and functional.
+35 routes audited (14 marketing + 21 app). All Layer A schema specs present (17/17 — 16 runtime-attestable + figaro-topology-v1). No orphaned components. Designer at `/builders/designer/new` confirmed canonical and functional.
 
 - [ ] **STUB: `/builders/designer/view/[slug]`** — wired but read-only-view completeness unverified. Verify before testnet, or document as deferred.
 - [ ] **Doc-code drift: `FRONTEND.md` omits `/audit`** (generic, no processId — exists in code).
