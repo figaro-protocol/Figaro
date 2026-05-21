@@ -37,6 +37,7 @@ import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mec
 import { COURIER_PROCESS_SCHEMA_ID, useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
 import { getSection, PROXIMITY_POLICY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 import { loadAgreement } from "@/lib/core/agreementStore";
+import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import type { CourierEvent, MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -396,6 +397,24 @@ export function OrderTimelineView({ processId }: Props) {
     const role: "buyer" | "seller" | "courier" | "spectator" =
         isBuyer ? "buyer" : isSeller ? "seller" : courierOrder ? "courier" : "spectator";
 
+    // The courier receives the buyer's human-readable delivery address over
+    // the coordination channel (the geohash is the on-agreement term).
+    const [handoffAddress, setHandoffAddress] = useState<string | null>(null);
+    useEffect(() => {
+        if (role !== "courier" || !courierOrder || !address) return;
+        let unsubscribe: (() => void) | undefined;
+        let cancelled = false;
+        DEFAULT_COORDINATION_MESSAGING_SERVICE.subscribeHandoffAddress({
+            address,
+            orderId: courierOrder.orderId,
+            callback: (deliveryAddress) => setHandoffAddress(deliveryAddress),
+        }).then((u) => {
+            if (cancelled) u();
+            else unsubscribe = u;
+        }).catch(() => { /* coordination channel unavailable */ });
+        return () => { cancelled = true; unsubscribe?.(); };
+    }, [role, courierOrder, address]);
+
     const allOrders = processModel?.orders ?? [];
     // OrderNodeModel.state is the OrderState enum reverse-mapped to a string
     // ("Active" | "Resolved") in `deriveProcessModelFromRuntime`.
@@ -581,6 +600,15 @@ export function OrderTimelineView({ processId }: Props) {
 
                 {role === "courier" && (
                     <>
+                        {handoffAddress && (
+                            <div
+                                className="rounded border border-neutral-200 bg-neutral-50 px-3 py-2"
+                                data-testid="courier-handoff-address"
+                            >
+                                <p className="text-[11px] font-semibold text-neutral-500">Delivery address</p>
+                                <p className="text-sm text-neutral-800 whitespace-pre-wrap">{handoffAddress}</p>
+                            </div>
+                        )}
                         <p className="text-sm text-neutral-700">
                             Submit an on-chain proximity proof to certify the next
                             delivery handoff. This fires the{" "}

@@ -138,6 +138,8 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         // Delivery fulfilment requires a delivery location — the geohash is
         // committed to the courier order's figaro-geo-v2 section.
         await page.getByTestId('input-delivery-geohash').fill('dr5regw3pg');
+        // The human-readable street address rides the coordination channel.
+        await page.getByTestId('input-delivery-address').fill('12 Market St, Apt 4B — ring bell');
 
         // ── Place the order — two sequential commits ─────────────────
         await page.getByTestId('btn-place-order').click();
@@ -206,6 +208,21 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
             courierClauses.destinationGeohash,
             'the courier order geo section carries the buyer delivery geohash',
         ).toBe('dr5regw3pg');
+
+        // The buyer sent the human-readable street address to the courier
+        // over the coordination channel — a HANDOFF_ADDRESS message persists.
+        const sentAddress = await page.evaluate(() => {
+            const raw = window.localStorage.getItem('__FIGARO_COORDINATION_MOCK_MESSAGES__');
+            if (!raw) return null;
+            try {
+                const msgs = JSON.parse(raw) as Array<{ type?: string; deliveryAddress?: string }>;
+                return msgs.find((m) => m.type === 'HANDOFF_ADDRESS')?.deliveryAddress ?? null;
+            } catch { return null; }
+        });
+        expect(
+            sentAddress,
+            'the buyer sent the delivery address over the coordination channel',
+        ).toBe('12 Market St, Apt 4B — ring bell');
 
         // ── Buyer confirms receipt → resolveProcess settles both orders ──
         const confirmBtn = page.getByTestId('btn-confirm-receipt');

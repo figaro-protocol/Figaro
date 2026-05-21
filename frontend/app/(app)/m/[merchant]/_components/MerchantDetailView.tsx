@@ -47,6 +47,7 @@ import {
 } from "@/lib/seller/fulfilmentRouting";
 import { useMerchantBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
 import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
+import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
 import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE, resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata";
 
@@ -202,6 +203,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // is the merkle-committed location term on the courier order's
     // figaro-geo-v2 section; precision 9 ≈ a few metres.
     const deliveryLocation = useDeviceLocation(9);
+    // The human-readable street address — sent to the courier over the
+    // coordination channel (off-agreement; the operational delivery detail).
+    const [deliveryAddress, setDeliveryAddress] = useState("");
 
     // Auto-chain: when approval confirms, proceed to commit signing.
     useEffect(() => {
@@ -474,6 +478,22 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 },
             });
             await signAndPlace(courierPrepared.commitment, courierPrepared.commitmentMeta, "buyer");
+
+            // Send the human-readable delivery address to the courier over
+            // the coordination channel — best-effort: both commits already
+            // landed, so a channel failure must not fail the checkout.
+            if (deliveryAddress.trim()) {
+                try {
+                    await DEFAULT_COORDINATION_MESSAGING_SERVICE.sendHandoffAddress({
+                        address: buyer,
+                        recipientAddress: courier,
+                        orderId: computeOrderHash(courierPrepared.commitment, chainId, CONTRACTS.core),
+                        deliveryAddress: deliveryAddress.trim(),
+                    });
+                } catch (cause) {
+                    console.warn("Handoff address send to courier failed", cause);
+                }
+            }
 
             // Both orders committed — navigate to the process page.
             multiOrderCheckout.current = false;
@@ -822,6 +842,14 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                         <p className="text-[11px] text-neutral-500">
                                             Where the courier delivers — committed to the order as a geohash.
                                         </p>
+                                        <textarea
+                                            value={deliveryAddress}
+                                            onChange={(e) => setDeliveryAddress(e.target.value)}
+                                            placeholder="Street address, apt, entry notes — sent to the courier"
+                                            data-testid="input-delivery-address"
+                                            rows={2}
+                                            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                                        />
                                     </div>
                                 )}
 
