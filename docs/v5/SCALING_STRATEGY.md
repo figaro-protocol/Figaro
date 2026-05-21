@@ -387,14 +387,22 @@ mapping:
   default.
 - `array<T>` → `T[]`; `object` → `tuple`; `array<object>` → `tuple[]`.
 
-The last entry is the one behavioural change. Today's encoders transpose
-object arrays into struct-of-arrays (consent → `bytes32[], string[],
-string[]`; commerce line items; etc.) — an encoder convenience the spec
-never declared. The canonical rule is the spec-natural `tuple[]`, so the
-object-array schemas' canonical bytes change: they migrate to `-v2`
-schemaIds with regenerated Layer C validators (the v1 pair stays
-deployed and immutable). Scalar-only schemas — the five GHG — are
-unaffected. Once the rule holds, both the generic encoder and a
+The last entry is the one behavioural change, and it is narrow: of the
+runtime schemas only `figaro-consent-v1` transposes — its `documents`
+object-array is encoded as struct-of-arrays (`bytes32[], string[],
+string[]`), an encoder convenience the spec never declared.
+`figaro-commerce-v1` already encodes its line items as the spec-natural
+`tuple[]`. Whether any canonical bytes change at all is a design choice:
+declaring the conventions explicitly in the spec (per-value enum
+indices, integer widths) lets the generic encoder reproduce today's
+bytes exactly — zero migration — while picking clean canonical
+conventions migrates consent's transpose and any off-convention enum
+schema to `-v2` schemaIds (the v1 pair stays deployed and immutable).
+One encoder resists a pure declarative rule: `figaro-jurisdiction-v1`
+has cross-field conditional logic (`klerosMinJurors` zeroed when
+`klerosCourt` is unset) — encoding must become a pure structural
+transform and that conditional relocate to validation/normalisation.
+Once the rule holds, both the generic encoder and a
 generic-or-mechanically-generated Layer C validator follow from it.
 
 **Costs — one-time bootstrap costs, not recurring.** Generic JSON
