@@ -288,6 +288,16 @@ fn apply_resolve(
 ///      validates, so they describe the same content by construction.
 ///   4. `keccak256(derived_bytes) == content_ref` — binds the derived
 ///      bytes to the on-chain commitment value.
+///   5. When `agreement_hash` is `Some` (seller attestations), the
+///      schema's section is a clause of the order's signed agreement: the
+///      sorted-pair Merkle `inclusion_proof` verifies the section leaf
+///      against `agreement_hash`. The leaf is `keccak256(schemaId ++
+///      keccak256(sectionData))`; a cross-checking schema's `sectionData`
+///      is the ABI content form, so `keccak256(sectionData) == content_ref`
+///      and the leaf needs no extra input. A non-cross-checking schema
+///      carries its canonical-JSON `section_data` in the proof.
+///      Buyer attestations pass `agreement_hash: None` and skip this gate —
+///      a buyer's evidence is the kernel event log, not an agreement clause.
 ///
 /// Any failure halts batch execution.
 fn validate_attestation_content(
@@ -295,6 +305,7 @@ fn validate_attestation_content(
     content_ref: &B256,
     schema_id: &B256,
     stage: u8,
+    agreement_hash: Option<&B256>,
 ) -> Result<(), KernelError> {
     let Some(proof) = proof else {
         // A content-opaque attestation (content_ref == 0) needs no proof.
@@ -362,6 +373,34 @@ fn validate_attestation_content(
         return Err(KernelError::ContentHashMismatch);
     }
 
+    // ── Gate 5: the schema clause is in the order's signed agreement ──
+    // Seller attestations bind to the role commitment's agreement_hash;
+    // buyer attestations pass None and skip this gate.
+    if let Some(agreement_hash) = agreement_hash {
+        // The agreement Merkle leaf is keccak256(schemaId ++ sectionDataHash).
+        // For a cross-checking (Category-2) schema the committed sectionData
+        // is the ABI content form, so sectionDataHash == content_ref. A
+        // non-cross-checking schema carries its canonical-JSON section_data.
+        let cross_checks = figaro_schema::schema_cross_checks(schema_id)
+            .ok_or_else(|| KernelError::SchemaEncoderMissing(format!("{schema_id}")))?;
+        let section_data_hash = if cross_checks {
+            *content_ref
+        } else {
+            let section_data = proof
+                .section_data
+                .as_ref()
+                .ok_or(KernelError::MissingSectionData)?;
+            keccak256(section_data.as_bytes())
+        };
+        let mut leaf_preimage = [0u8; 64];
+        leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+        leaf_preimage[32..].copy_from_slice(section_data_hash.as_slice());
+        let leaf = keccak256(leaf_preimage);
+        if !crate::merkle::verify_inclusion(&proof.inclusion_proof, *agreement_hash, leaf) {
+            return Err(KernelError::InvalidInclusionProof);
+        }
+    }
+
     Ok(())
 }
 
@@ -383,7 +422,14 @@ fn apply_attest_as_seller(
     events: &mut Vec<AttestationEventData>,
 ) -> Result<(), KernelError> {
     // ── Layer B gate: validate content against schema (no-op if absent) ──
-    validate_attestation_content(content_proof, content_ref, schema_id, stage)?;
+    // Gate 5 binds the schema clause to the role commitment's agreement.
+    validate_attestation_content(
+        content_proof,
+        content_ref,
+        schema_id,
+        stage,
+        Some(&role_commitment.agreement_hash),
+    )?;
 
     // ── Recover signer (replaces msg.sender) ──
     let struct_hash = attest_seller_struct_hash(order_hash, schema_id, stage, content_ref);
@@ -459,7 +505,9 @@ fn apply_attest_as_buyer(
     events: &mut Vec<AttestationEventData>,
 ) -> Result<(), KernelError> {
     // ── Layer B gate: validate content against schema (no-op if absent) ──
-    validate_attestation_content(content_proof, content_ref, schema_id, stage)?;
+    // A buyer's evidence is the kernel event log, not an agreement clause —
+    // pass agreement_hash: None so Gate 5 (agreement inclusion) is skipped.
+    validate_attestation_content(content_proof, content_ref, schema_id, stage, None)?;
 
     // ── Recover signer ──
     let struct_hash =

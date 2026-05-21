@@ -95,6 +95,8 @@ fn bincode_roundtrip_just_attestation_content_proof_none() {
 fn bincode_roundtrip_just_attestation_content_proof_some() {
     let v: Option<AttestationContentProof> = Some(AttestationContentProof {
         content_json: r#"{"scope":1}"#.to_string(),
+        inclusion_proof: vec![B256::repeat_byte(0xcc)],
+        section_data: Some(r#"{"k":"v"}"#.to_string()),
     });
     let bytes = bincode::serialize(&v).expect("serialize");
     eprintln!("Some bytes: {} bytes", bytes.len());
@@ -161,6 +163,8 @@ fn bincode_roundtrip_batchinput_with_content_proof_some() {
                 seller_sig: dummy_sig(),
                 content_proof: Some(AttestationContentProof {
                     content_json: r#"{"scope":1}"#.to_string(),
+                    inclusion_proof: vec![B256::repeat_byte(0xcc)],
+                    section_data: Some(r#"{"k":"v"}"#.to_string()),
                 }),
             },
         ],

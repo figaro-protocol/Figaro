@@ -266,20 +266,28 @@ fn build_attest_seller_with_proof(
 ) -> KernelOp {
     let domain = domain_separator(CHAIN_ID, CORE);
     let seller_key = make_signing_key(SELLER1_KEY);
-    let root = root_commitment();
     let schema_id = keccak256(schema_id_str.as_bytes());
 
     let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
         .expect("canonical encoder must succeed for this test fixture");
     let content_ref = override_content_ref.unwrap_or_else(|| keccak256(canonical_bytes.as_slice()));
 
-    let order_hash = compute_order_hash(&B256::ZERO, &commitment_struct_hash(&root));
+    // Single-section agreement: agreement_hash IS the lone section leaf, so
+    // Gate 5 verifies with an empty inclusion proof. For a cross-checking
+    // schema the leaf is keccak256(schemaId ++ content_ref).
+    let mut role = root_commitment();
+    let mut leaf_preimage = [0u8; 64];
+    leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+    leaf_preimage[32..].copy_from_slice(content_ref.as_slice());
+    role.agreement_hash = keccak256(leaf_preimage);
+
+    let order_hash = compute_order_hash(&B256::ZERO, &commitment_struct_hash(&role));
     let struct_hash = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
     let digest = typed_data_hash(&domain, &struct_hash);
     let seller_sig = sign_digest(&seller_key, &digest);
 
     KernelOp::AttestAsSeller {
-        role_commitment: root,
+        role_commitment: role,
         order_hash,
         schema_id,
         stage: 0,
@@ -287,6 +295,8 @@ fn build_attest_seller_with_proof(
         seller_sig,
         content_proof: Some(AttestationContentProof {
             content_json: serde_json::to_string(&content_json).unwrap(),
+            inclusion_proof: vec![],
+            section_data: None,
         }),
     }
 }
@@ -361,6 +371,8 @@ async fn mempool_rejects_unsupported_schema_encoder() {
         seller_sig,
         content_proof: Some(AttestationContentProof {
             content_json: serde_json::to_string(&serde_json::json!({ "x": "ok" })).unwrap(),
+            inclusion_proof: vec![],
+            section_data: None,
         }),
     };
 
@@ -401,6 +413,75 @@ async fn mempool_rejects_missing_content_proof_for_protocol_schema() {
     assert!(
         err.contains("requires a content_proof"),
         "expected missing-proof rejection, got: {err}",
+    );
+    assert_eq!(pool.len().await, 0);
+}
+
+#[tokio::test]
+async fn mempool_rejects_wrong_inclusion_proof() {
+    let pool = Mempool::new(CHAIN_ID, CORE);
+
+    // Valid content under a cross-checking schema, but a non-empty inclusion
+    // proof against a single-leaf agreement — Gate 5 (agreement inclusion)
+    // rejects it before it reaches the prover.
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let seller_key = make_signing_key(SELLER1_KEY);
+    let schema_id_str = "figaro-ghg-protocol-v1";
+    let schema_id = keccak256(schema_id_str.as_bytes());
+    let content_json = serde_json::json!({ "scope": 1 });
+    let canonical_bytes =
+        figaro_schema::encode_content_for_schema(schema_id_str, &content_json).unwrap();
+    let content_ref = keccak256(canonical_bytes.as_slice());
+
+    let mut role = root_commitment();
+    let mut leaf_preimage = [0u8; 64];
+    leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+    leaf_preimage[32..].copy_from_slice(content_ref.as_slice());
+    role.agreement_hash = keccak256(leaf_preimage);
+
+    let order_hash = compute_order_hash(&B256::ZERO, &commitment_struct_hash(&role));
+    let struct_hash = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let seller_sig = sign_digest(&seller_key, &typed_data_hash(&domain, &struct_hash));
+
+    let op = KernelOp::AttestAsSeller {
+        role_commitment: role,
+        order_hash,
+        schema_id,
+        stage: 0,
+        content_ref,
+        seller_sig,
+        content_proof: Some(AttestationContentProof {
+            content_json: serde_json::to_string(&content_json).unwrap(),
+            inclusion_proof: vec![keccak256(b"bogus sibling")],
+            section_data: None,
+        }),
+    };
+
+    let err = pool.submit(op).await.unwrap_err();
+    assert!(
+        err.contains("inclusion proof does not verify"),
+        "expected inclusion-proof rejection, got: {err}",
+    );
+    assert_eq!(pool.len().await, 0);
+}
+
+#[tokio::test]
+async fn mempool_rejects_missing_section_data() {
+    let pool = Mempool::new(CHAIN_ID, CORE);
+
+    // figaro-ghg-measurement-v1 is a non-cross-checking (Category-1) schema:
+    // its content_proof must carry section_data for Gate 5. The fixture
+    // builder leaves section_data None, so the gate rejects it.
+    let op = build_attest_seller_with_proof(
+        "figaro-ghg-measurement-v1",
+        serde_json::json!({ "grams": "1000" }),
+        None,
+    );
+
+    let err = pool.submit(op).await.unwrap_err();
+    assert!(
+        err.contains("omits section_data"),
+        "expected missing-section-data rejection, got: {err}",
     );
     assert_eq!(pool.len().await, 0);
 }

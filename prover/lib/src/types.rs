@@ -59,6 +59,14 @@ pub struct Signature {
 ///      no separate `content_bytes` field can disagree with `content_json`.
 ///   4. `keccak256(derived_bytes) == content_ref` — binds the derived
 ///      bytes (which Layer C will decode) to the on-chain commitment.
+///   5. For seller attestations, the schema's section is a clause of the
+///      order's signed `agreement_hash`: a sorted-pair Merkle inclusion
+///      proof (`inclusion_proof`) verifies the section leaf against the
+///      `agreement_hash` carried in the role commitment. The leaf is
+///      `keccak256(schemaId ++ keccak256(sectionData))`; for a
+///      cross-checking schema `keccak256(sectionData) == content_ref`, so
+///      the leaf needs no extra input, while a non-cross-checking schema
+///      carries its canonical-JSON `section_data` explicitly.
 ///
 /// Because the spec is looked up by `schema_id` rather than carried on
 /// the wire, the constraint set every attestation is checked against is
@@ -78,6 +86,16 @@ pub struct AttestationContentProof {
     /// schema spec and re-encodes to ABI bytes via the per-schema
     /// encoder. Carried as a JSON-serialized string for zkVM compatibility.
     pub content_json: String,
+    /// Sorted-pair Merkle proof binding the schema's section leaf to the
+    /// order's signed `agreement_hash` (Gate 5). Empty for a single-section
+    /// agreement, where `agreement_hash` is itself the leaf. Verified only
+    /// for seller attestations; ignored for buyer attestations.
+    pub inclusion_proof: Vec<B256>,
+    /// Canonical-JSON `sectionData` bytes (as a UTF-8 string) for a
+    /// non-cross-checking (Category-1) schema, whose committed `sectionData`
+    /// is not the ABI content form. `None` for cross-checking (Category-2)
+    /// schemas, where the leaf is derived from `content_ref` directly.
+    pub section_data: Option<String>,
 }
 
 // ── Batch operations ──────────────────────────────────────────────
@@ -348,6 +366,15 @@ pub enum KernelError {
     /// `encode_content_for_schema` failed for a reason other than
     /// missing schema (bad field type, unknown enum value, etc.).
     ContentEncodingFailed(String),
+    /// Gate 5: the content proof's sorted-pair Merkle `inclusion_proof`
+    /// does not verify the schema's section leaf against the order's
+    /// signed `agreement_hash` — the attested clause was not part of the
+    /// agreement both parties signed.
+    InvalidInclusionProof,
+    /// Gate 5: a non-cross-checking (Category-1) schema's content proof
+    /// omitted `section_data`, so the agreement Merkle leaf cannot be
+    /// derived (its `sectionData` is not the ABI content form).
+    MissingSectionData,
 }
 
 impl core::fmt::Display for KernelError {

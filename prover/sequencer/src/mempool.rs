@@ -140,7 +140,13 @@ impl Mempool {
                 if recovered != role_commitment.seller {
                     return Err("attest-seller sig does not match role_commitment.seller".into());
                 }
-                pre_check_attest_content(content_proof.as_ref(), content_ref, schema_id, *stage)?;
+                pre_check_attest_content(
+                    content_proof.as_ref(),
+                    content_ref,
+                    schema_id,
+                    *stage,
+                    Some(&role_commitment.agreement_hash),
+                )?;
                 Ok(())
             }
             KernelOp::AttestAsBuyer {
@@ -158,7 +164,13 @@ impl Mempool {
                 let digest = typed_data_hash(&domain, &struct_hash);
                 recover_signer(&digest, buyer_sig)
                     .map_err(|e| format!("invalid attest-buyer signature: {e}"))?;
-                pre_check_attest_content(content_proof.as_ref(), content_ref, schema_id, *stage)?;
+                pre_check_attest_content(
+                    content_proof.as_ref(),
+                    content_ref,
+                    schema_id,
+                    *stage,
+                    None,
+                )?;
                 Ok(())
             }
             KernelOp::RegisterSchema {
@@ -212,11 +224,15 @@ impl Mempool {
 /// `Ok` when no `content_proof` is present (content-opaque path) or when
 /// every gate passes. Returns a human-readable rejection string
 /// otherwise so the same op never reaches the prover.
+///
+/// `agreement_hash` is `Some` for seller attestations (Gate 5 — agreement
+/// inclusion) and `None` for buyer attestations, which skip Gate 5.
 fn pre_check_attest_content(
     proof: Option<&AttestationContentProof>,
     content_ref: &B256,
     schema_id: &B256,
     stage: u8,
+    agreement_hash: Option<&B256>,
 ) -> Result<(), String> {
     let Some(proof) = proof else {
         // Mirror the kernel: a content-bearing attestation (non-zero
@@ -275,6 +291,35 @@ fn pre_check_attest_content(
         return Err(
             "content_proof canonical-encoding hash does not match op.content_ref".into(),
         );
+    }
+
+    // ── Gate 5: the schema clause is in the order's signed agreement ──
+    // Mirrors the kernel: seller attestations bind to the role commitment's
+    // agreement_hash; buyer attestations pass None and skip this gate.
+    if let Some(agreement_hash) = agreement_hash {
+        let cross_checks = figaro_schema::schema_cross_checks(schema_id).ok_or_else(|| {
+            format!("schema_id {schema_id} is not a runtime-attestable protocol schema")
+        })?;
+        let section_data_hash = if cross_checks {
+            *content_ref
+        } else {
+            let section_data = proof.section_data.as_ref().ok_or_else(|| {
+                format!(
+                    "content_proof for non-cross-checking schema {schema_id} omits section_data"
+                )
+            })?;
+            keccak256(section_data.as_bytes())
+        };
+        let mut leaf_preimage = [0u8; 64];
+        leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+        leaf_preimage[32..].copy_from_slice(section_data_hash.as_slice());
+        let leaf = keccak256(leaf_preimage);
+        if !figaro_kernel::merkle::verify_inclusion(&proof.inclusion_proof, *agreement_hash, leaf) {
+            return Err(
+                "content_proof inclusion proof does not verify against the order's agreement_hash"
+                    .into(),
+            );
+        }
     }
     Ok(())
 }

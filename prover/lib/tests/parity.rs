@@ -894,39 +894,68 @@ fn test_mixed_batch_all_operations() {
 // gates (content validates, canonical bytes derived, derived bytes hash
 // to content_ref) — emitting the event only if every gate passes.
 
-/// Build an AttestAsSeller op with a content_proof, deriving content_ref
-/// from the per-schema canonical encoder. The content_ref the op carries
-/// matches `keccak256(encode_content_for_schema(schema_id_str,
-/// content_json))`, so a kernel that re-derives bytes the same way will
-/// see a matching hash.
-fn build_canonical_attest_op(
+/// Build `[Commit, AttestAsSeller]` for a seller attestation carrying a
+/// Layer B content_proof under a cross-checking schema.
+///
+/// The committed role commitment's `agreement_hash` is the single-section
+/// agreement tree whose lone clause is this schema, so Gate 5 (agreement
+/// inclusion) verifies with an empty proof — `agreement_hash` IS the leaf.
+/// `content_ref` is `keccak256(encode_content_for_schema(...))`, so Gates
+/// 3–4 also pass for valid content. The caller must commit the returned
+/// pair together: `agreement_hash` is part of the commitment struct hash,
+/// so the Commit and the AttestAsSeller must reference the same commitment.
+fn build_commit_and_canonical_attest(
     domain: &B256,
-    seller_key: &k256::ecdsa::SigningKey,
+    buyer_key: &SigningKey,
+    seller_key: &SigningKey,
     schema_id_str: &str,
     content_json: serde_json::Value,
-    role: Commitment,
-) -> (KernelOp, B256) {
+) -> Vec<KernelOp> {
     let schema_id = keccak256(schema_id_str.as_bytes());
     let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
         .expect("canonical encoder must succeed");
     let content_ref = keccak256(canonical_bytes.as_slice());
-    let root_struct = commitment_struct_hash(&role);
-    let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
+
+    // Single-section agreement: the lone section leaf IS the agreement_hash.
+    // Cross-checking schema → leaf = keccak256(schemaId ++ content_ref).
+    let mut leaf_preimage = [0u8; 64];
+    leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+    leaf_preimage[32..].copy_from_slice(content_ref.as_slice());
+    let agreement_hash = keccak256(leaf_preimage);
+
+    let mut role = root_commitment();
+    role.agreement_hash = agreement_hash;
+
+    let buyer_sig = sign_commitment(&role, domain, buyer_key);
+    let seller_sig = sign_commitment(&role, domain, seller_key);
+
+    // Root order: processId is the EIP-712 digest of the commitment.
+    let role_struct = commitment_struct_hash(&role);
+    let process_id = typed_data_hash(domain, &role_struct);
+    let order_hash = compute_order_hash(&process_id, &role_struct);
     let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
-    let attest_digest = typed_data_hash(domain, &attest_struct);
-    let seller_sig = sign_digest(seller_key, &attest_digest);
-    let op = KernelOp::AttestAsSeller {
-        role_commitment: role,
-        order_hash,
-        schema_id,
-        stage: 0,
-        content_ref,
-        seller_sig,
-        content_proof: Some(figaro_kernel::types::AttestationContentProof {
-            content_json: serde_json::to_string(&content_json).unwrap(),
-        }),
-    };
-    (op, order_hash)
+    let attest_sig = sign_digest(seller_key, &typed_data_hash(domain, &attest_struct));
+
+    vec![
+        KernelOp::Commit {
+            commitment: role.clone(),
+            buyer_sig,
+            seller_sig,
+        },
+        KernelOp::AttestAsSeller {
+            role_commitment: role,
+            order_hash,
+            schema_id,
+            stage: 0,
+            content_ref,
+            seller_sig: attest_sig,
+            content_proof: Some(AttestationContentProof {
+                content_json: serde_json::to_string(&content_json).unwrap(),
+                inclusion_proof: vec![],
+                section_data: None,
+            }),
+        },
+    ]
 }
 
 #[test]
@@ -935,29 +964,17 @@ fn attest_as_seller_with_valid_content_proof_passes() {
     let seller1_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
 
-    let root = root_commitment();
-    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
-    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
-
-    let (attest_op, _order_hash) = build_canonical_attest_op(
-        &domain,
-        &seller1_key,
-        "figaro-ghg-protocol-v1",
-        serde_json::json!({ "scope": 1 }),        root.clone(),
-    );
-
     let input = BatchInput {
         chain_id: CHAIN_ID,
         verifying_contract: CORE,
         block_timestamp: 1000,
-        operations: vec![
-            KernelOp::Commit {
-                commitment: root,
-                buyer_sig: root_buyer_sig,
-                seller_sig: root_seller_sig,
-            },
-            attest_op,
-        ],
+        operations: build_commit_and_canonical_attest(
+            &domain,
+            &buyer_key,
+            &seller1_key,
+            "figaro-ghg-protocol-v1",
+            serde_json::json!({ "scope": 1 }),
+        ),
         prev_state: empty_snapshot(),
     };
 
@@ -1009,6 +1026,9 @@ fn attest_as_seller_with_content_hash_mismatch_fails() {
                 seller_sig: attest_sig,
                 content_proof: Some(figaro_kernel::types::AttestationContentProof {
                     content_json: serde_json::to_string(&content_json).unwrap(),
+                    // Gate 1 / Gate 4 reject before Gate 5 — these are unused.
+                    inclusion_proof: vec![],
+                    section_data: None,
                 }),
             },
         ],
@@ -1028,30 +1048,19 @@ fn attest_as_seller_with_invalid_content_fails() {
     let seller1_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
 
-    let root = root_commitment();
-    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
-    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
-
-    // scope=4 is out of range (1..=3) — must fail validate_content (Gate 2).
-    let (attest_op, _) = build_canonical_attest_op(
-        &domain,
-        &seller1_key,
-        "figaro-ghg-protocol-v1",
-        serde_json::json!({ "scope": 4 }),        root.clone(),
-    );
-
+    // scope=4 is out of range (1..=3) — must fail validate_content (Gate 2),
+    // before Gate 5 ever runs.
     let input = BatchInput {
         chain_id: CHAIN_ID,
         verifying_contract: CORE,
         block_timestamp: 1000,
-        operations: vec![
-            KernelOp::Commit {
-                commitment: root,
-                buyer_sig: root_buyer_sig,
-                seller_sig: root_seller_sig,
-            },
-            attest_op,
-        ],
+        operations: build_commit_and_canonical_attest(
+            &domain,
+            &buyer_key,
+            &seller1_key,
+            "figaro-ghg-protocol-v1",
+            serde_json::json!({ "scope": 4 }),
+        ),
         prev_state: empty_snapshot(),
     };
 
@@ -1107,6 +1116,9 @@ fn attest_as_seller_with_unsupported_schema_encoder_fails() {
                 seller_sig: attest_sig,
                 content_proof: Some(figaro_kernel::types::AttestationContentProof {
                     content_json: serde_json::to_string(&content_json).unwrap(),
+                    // Gate 1 / Gate 4 reject before Gate 5 — these are unused.
+                    inclusion_proof: vec![],
+                    section_data: None,
                 }),
             },
         ],
@@ -1167,6 +1179,137 @@ fn attest_as_seller_under_protocol_schema_requires_content_proof() {
     assert!(
         matches!(err, KernelError::ContentProofRequired),
         "expected ContentProofRequired, got {err:?}",
+    );
+}
+
+#[test]
+fn attest_as_seller_with_wrong_inclusion_proof_fails() {
+    // The content validates and hashes correctly (Gates 0–4 pass), but the
+    // Merkle inclusion_proof does not verify against the order's
+    // agreement_hash — Gate 5 must reject. Here the agreement is a single
+    // section (agreement_hash IS the leaf), so any non-empty proof fails:
+    // hash_pair(leaf, sibling) != leaf.
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+
+    let schema_id_str = "figaro-ghg-protocol-v1";
+    let schema_id = keccak256(schema_id_str.as_bytes());
+    let content_json = serde_json::json!({ "scope": 1 });
+    let canonical_bytes =
+        figaro_schema::encode_content_for_schema(schema_id_str, &content_json).unwrap();
+    let content_ref = keccak256(canonical_bytes.as_slice());
+
+    // Single-section agreement: agreement_hash IS the lone section leaf.
+    let mut leaf_preimage = [0u8; 64];
+    leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+    leaf_preimage[32..].copy_from_slice(content_ref.as_slice());
+    let agreement_hash = keccak256(leaf_preimage);
+
+    let mut role = root_commitment();
+    role.agreement_hash = agreement_hash;
+    let buyer_sig = sign_commitment(&role, &domain, &buyer_key);
+    let seller_sig = sign_commitment(&role, &domain, &seller1_key);
+
+    let role_struct = commitment_struct_hash(&role);
+    let process_id = typed_data_hash(&domain, &role_struct);
+    let order_hash = compute_order_hash(&process_id, &role_struct);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
+
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![
+            KernelOp::Commit {
+                commitment: role.clone(),
+                buyer_sig,
+                seller_sig,
+            },
+            KernelOp::AttestAsSeller {
+                role_commitment: role,
+                order_hash,
+                schema_id,
+                stage: 0,
+                content_ref,
+                seller_sig: attest_sig,
+                content_proof: Some(AttestationContentProof {
+                    content_json: serde_json::to_string(&content_json).unwrap(),
+                    // Bogus sibling against a single-leaf agreement.
+                    inclusion_proof: vec![keccak256(b"bogus sibling")],
+                    section_data: None,
+                }),
+            },
+        ],
+        prev_state: empty_snapshot(),
+    };
+
+    let err = apply_batch(&input).unwrap_err();
+    assert!(
+        matches!(err, KernelError::InvalidInclusionProof),
+        "expected InvalidInclusionProof, got {err:?}",
+    );
+}
+
+#[test]
+fn attest_as_seller_non_cross_checking_schema_requires_section_data() {
+    // figaro-ghg-measurement-v1 is Category-1 (non-cross-checking): its
+    // committed sectionData is canonical JSON, not the ABI content form, so
+    // the agreement Merkle leaf cannot be derived from content_ref alone. A
+    // content_proof that omits section_data must fail Gate 5.
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+
+    let root = root_commitment();
+    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
+    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
+
+    let schema_id_str = "figaro-ghg-measurement-v1";
+    let schema_id = keccak256(schema_id_str.as_bytes());
+    let content_json = serde_json::json!({ "grams": "1000" });
+    let canonical_bytes =
+        figaro_schema::encode_content_for_schema(schema_id_str, &content_json).unwrap();
+    let content_ref = keccak256(canonical_bytes.as_slice());
+
+    let root_struct = commitment_struct_hash(&root);
+    let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 1, &content_ref);
+    let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
+
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![
+            KernelOp::Commit {
+                commitment: root.clone(),
+                buyer_sig: root_buyer_sig,
+                seller_sig: root_seller_sig,
+            },
+            KernelOp::AttestAsSeller {
+                role_commitment: root,
+                order_hash,
+                schema_id,
+                stage: 1,
+                content_ref,
+                seller_sig: attest_sig,
+                content_proof: Some(AttestationContentProof {
+                    content_json: serde_json::to_string(&content_json).unwrap(),
+                    inclusion_proof: vec![],
+                    // Omitted — Gate 5 cannot derive the leaf without it.
+                    section_data: None,
+                }),
+            },
+        ],
+        prev_state: empty_snapshot(),
+    };
+
+    let err = apply_batch(&input).unwrap_err();
+    assert!(
+        matches!(err, KernelError::MissingSectionData),
+        "expected MissingSectionData, got {err:?}",
     );
 }
 

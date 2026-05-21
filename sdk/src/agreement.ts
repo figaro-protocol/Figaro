@@ -25,6 +25,7 @@ import {
     encodeCommerceContent,
     encodeProximityPolicyContent,
     encodeOffsetPolicyContent,
+    encodeConsentContent,
     type GeoContent,
     type FulfilmentV2Content,
     type JurisdictionContent,
@@ -32,6 +33,7 @@ import {
     type CommerceContent,
     type ProximityBand,
     type OffsetProvider,
+    type ConsentDocument,
 } from "./schemas/encode.js";
 
 // ── Core types ──────────────────────────────────────────────────────────────
@@ -123,6 +125,9 @@ const CATEGORY_2_ENCODERS: Record<string, (data: Record<string, unknown>) => Hex
     }),
     "figaro-offset-policy-v1": (data) => encodeOffsetPolicyContent({
         providers: (data.providers as readonly OffsetProvider[]) ?? [],
+    }),
+    "figaro-consent-v1": (data) => encodeConsentContent({
+        documents: (data.documents as readonly ConsentDocument[]) ?? [],
     }),
     "figaro-commerce-v1": (data) => encodeCommerceContent({
         currency: data.currency as Hex,

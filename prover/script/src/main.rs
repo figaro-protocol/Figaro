@@ -54,6 +54,25 @@ async fn main() {
     // batch — content gate exercised inside the zkVM — stays the default.
     let minimal_batch = std::env::var("SP1_MINIMAL_BATCH").is_ok();
 
+    // ── Seller-attestation schema + content (computed up front) ──
+    // The seller attestation below carries a Layer B content_proof under a
+    // schema the figaro-schema crate has a canonical encoder for.
+    // figaro-ghg-protocol-v1 is the simplest such schema (one optional
+    // uint8 field) and is cross-checking, so its agreement Merkle leaf is
+    // keccak256(schemaId ++ content_ref).
+    let schema_id_str = "figaro-ghg-protocol-v1";
+    let schema_id = keccak256(schema_id_str.as_bytes());
+    let content_json = serde_json::json!({ "scope": 1 });
+    let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
+        .expect("script-time encoding must succeed");
+    let full_content_ref = keccak256(canonical_bytes.as_slice());
+    // Single-section agreement: agreement_hash IS the lone section leaf, so
+    // the kernel's Gate 5 (agreement inclusion) verifies with an empty proof.
+    let mut leaf_preimage = [0u8; 64];
+    leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+    leaf_preimage[32..].copy_from_slice(full_content_ref.as_slice());
+    let agreement_leaf = keccak256(leaf_preimage);
+
     let root = Commitment {
         process_id: B256::ZERO,
         buyer: BUYER,
@@ -61,7 +80,7 @@ async fn main() {
         currency: TOKEN,
         payment: U256::from(100_000_000_000_000_000_000u128),
         expected_cumulative_value: U256::from(100_000_000_000_000_000_000u128),
-        agreement_hash: keccak256("test-agreement"),
+        agreement_hash: agreement_leaf,
         salt: U256::from(42u64),
         deadline: U256::from(2000u64),
     };
@@ -78,12 +97,7 @@ async fn main() {
     let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
 
     // ── Schema registration ──
-    // The seller-attestation op below carries a content_proof under this
-    // schemaId, so we deliberately use a schema the figaro-schema crate
-    // has a canonical encoder for. (figaro-ghg-protocol-v1 was the
-    // simplest sister-schema choice — one optional uint8 field.)
-    let schema_id_str = "figaro-ghg-protocol-v1";
-    let schema_id = keccak256(schema_id_str.as_bytes());
+    // Registered under the same schemaId the seller attestation attests to.
     let uri_hash = keccak256("ipfs://QmSchema");
     let schema_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash);
     let schema_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &schema_struct));
@@ -96,19 +110,17 @@ async fn main() {
     //
     // This is the end-to-end content gate the kernel runs inside the SP1
     // proof: look up the embedded canonical spec for schema_id → validate
-    // content → encode → keccak match. The script builds a valid proof
-    // for figaro-ghg-protocol-v1 with scope=1 so every gate passes
-    // through the zkVM emulator.
-    let content_json = serde_json::json!({ "scope": 1 });
-    let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
-        .expect("script-time encoding must succeed");
+    // content → encode → keccak match → agreement inclusion. The script
+    // builds a valid proof for figaro-ghg-protocol-v1 with scope=1 so every
+    // gate passes through the zkVM emulator.
+    //
     // Minimal-batch mode drops the content_proof to shrink the batch; an
     // attestation with no proof must also carry no content (content_ref
     // zeroed), or the kernel's content gate rejects it.
     let content_ref = if minimal_batch {
         B256::ZERO
     } else {
-        keccak256(canonical_bytes.as_slice())
+        full_content_ref
     };
 
     let root_struct_for_oh = commitment_struct_hash(&root);
@@ -163,6 +175,10 @@ async fn main() {
                 } else {
                     Some(AttestationContentProof {
                         content_json: serde_json::to_string(&content_json).unwrap(),
+                        // Single-section agreement: agreement_hash IS the
+                        // section leaf, so Gate 5 verifies with an empty proof.
+                        inclusion_proof: vec![],
+                        section_data: None,
                     })
                 },
             },
