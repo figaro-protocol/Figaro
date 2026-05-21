@@ -26,6 +26,10 @@ import { keccak256, toHex, parseAbi, BaseError, ContractFunctionRevertedError } 
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId } from "wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
+import {
+    deriveCanonicalFulfilmentMethod,
+    type CanonicalFulfilmentMethod,
+} from "@/lib/core/orderAgreement";
 import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
@@ -508,10 +512,26 @@ export function useAssemblyChoices(
     return { data, isLoading, refetch };
 }
 
-export interface MerchantBoundModalities {
-    /** Union of fulfilment modalities across the merchant's on-chain
-     *  bound assemblies. Sourced from each manifest's root order's
-     *  figaro-fulfilment-v2 section. */
+/** A merchant's on-chain bound assembly, manifest resolved. */
+export interface BoundAssembly {
+    slug: string;
+    /** Display name from the manifest; falls back to the slug. */
+    name: string;
+    manifest: AssemblyManifest;
+    /** Canonical fulfilment method of the root order — the buyer's
+     *  selection when this assembly is picked. `null` when the root
+     *  fulfilment clause is absent or malformed. */
+    fulfilmentMethod: CanonicalFulfilmentMethod | null;
+}
+
+export interface MerchantBoundAssemblies {
+    /** The merchant's on-chain bound assemblies, manifests resolved —
+     *  the buyer-facing choice set at checkout. Each bound assembly is
+     *  one option the operator offers; the buyer picks one. */
+    assemblies: BoundAssembly[];
+    /** Union of root-order fulfilment modalities across the bound
+     *  assemblies. Derived from `assemblies` — kept for callers that
+     *  only need the flat modality set. */
     modalities: string[];
     /** True while either the operator-profile or the manifest fetches are in flight. */
     isLoading: boolean;
@@ -519,40 +539,48 @@ export interface MerchantBoundModalities {
     hasOnChainBinding: boolean;
 }
 
-/** Extract the fulfilment modalities from a manifest's root order
- *  agreement. The root order is the first order in the topology — if a
- *  consumer needs sub-order modalities, they walk the orders array
- *  themselves. */
-function extractRootModalities(manifest: AssemblyManifest): string[] {
+/** Extract the fulfilment shape (modalities + coordinations) from a
+ *  manifest's root order agreement. The root order is the first order in
+ *  the topology — if a consumer needs sub-order fulfilment, they walk the
+ *  orders array themselves. */
+function extractRootFulfilment(
+    manifest: AssemblyManifest,
+): { modalities: string[]; coordinations: string[] } {
+    const empty = { modalities: [], coordinations: [] };
     const rootOrder = manifest.orders[0];
-    if (!rootOrder?.agreementHash) return [];
+    if (!rootOrder?.agreementHash) return empty;
     const agreement = manifest.agreements[rootOrder.agreementHash];
-    if (!agreement) return [];
+    if (!agreement) return empty;
     const fulfilmentSection = agreement.sections.find(
         (s: { schema: string }) => s.schema === "figaro-fulfilment-v2",
     );
-    const modalities = (fulfilmentSection?.data as { modalities?: unknown })?.modalities;
-    return Array.isArray(modalities) ? (modalities as string[]) : [];
+    const data = fulfilmentSection?.data as
+        | { modalities?: unknown; coordinations?: unknown }
+        | undefined;
+    return {
+        modalities: Array.isArray(data?.modalities) ? (data!.modalities as string[]) : [],
+        coordinations: Array.isArray(data?.coordinations) ? (data!.coordinations as string[]) : [],
+    };
 }
 
 /**
- * Computes the union of fulfilment modalities allowed by a merchant's
- * on-chain published assembly bindings. Reads the merchant's operator
- * profile (OperatorRegistry → IPFS), intersects the profile's
- * `assemblyBindings[].assemblySlug` with the published assembly events,
- * fetches each matched manifest, and unions the root-order modalities.
+ * Resolves a merchant's on-chain bound assemblies into the buyer-facing
+ * choice set. Reads the merchant's operator profile (OperatorRegistry →
+ * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with
+ * the published assembly events, and fetches each matched manifest.
  *
- * When `hasOnChainBinding` is true, the returned `modalities` is the
- * authoritative buyer-facing choice set for the cart — overrides the
- * legacy catalogue `fulfillmentModes` field. When false, the caller
- * falls back to the catalogue.
+ * When `hasOnChainBinding` is true, `assemblies` is the authoritative
+ * buyer-facing choice set — the buyer picks one assembly at checkout —
+ * and `modalities` is the flat union of their root-order fulfilment
+ * modalities. When false, the caller falls back to the catalogue.
  */
-export function useMerchantBoundModalities(
+export function useMerchantBoundAssemblies(
     merchantAddress: `0x${string}` | undefined,
-): MerchantBoundModalities {
+): MerchantBoundAssemblies {
     const { data: registryData, isLoading: registryLoading } = useOperatorProfile(merchantAddress);
     const { data: publishedEvents, isLoading: eventsLoading } = useAllPublishedAssemblies();
-    const [result, setResult] = useState<MerchantBoundModalities>({
+    const [result, setResult] = useState<MerchantBoundAssemblies>({
+        assemblies: [],
         modalities: [],
         isLoading: false,
         hasOnChainBinding: false,
@@ -560,7 +588,7 @@ export function useMerchantBoundModalities(
 
     useEffect(() => {
         if (!merchantAddress) {
-            setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+            setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
             return;
         }
         if (registryLoading || eventsLoading) {
@@ -568,14 +596,14 @@ export function useMerchantBoundModalities(
             return;
         }
         if (!registryData || !publishedEvents) {
-            setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+            setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
             return;
         }
 
         const [metadataURI] = registryData;
         const url = resolveContentURI(metadataURI);
         if (!url) {
-            setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+            setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
             return;
         }
 
@@ -590,14 +618,14 @@ export function useMerchantBoundModalities(
                 const profile = tryParseOperatorProfileDocument(doc);
                 if (cancelled) return;
                 if (!profile?.assemblyBindings || profile.assemblyBindings.length === 0) {
-                    setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+                    setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
                     return;
                 }
 
                 const merchantSlugs = new Set(profile.assemblyBindings.map((b) => b.assemblySlug));
                 const matchedEvents = publishedEvents.filter((e) => merchantSlugs.has(e.slug));
                 if (matchedEvents.length === 0) {
-                    setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+                    setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
                     return;
                 }
 
@@ -606,20 +634,32 @@ export function useMerchantBoundModalities(
                 );
                 if (cancelled) return;
 
+                // matchedEvents and manifests are index-aligned (Promise.all
+                // over a .map preserves order). Pair them into BoundAssembly,
+                // dropping any manifest that failed to fetch.
+                const assemblies: BoundAssembly[] = [];
                 const modalitySet = new Set<string>();
-                for (const m of manifests) {
-                    if (!m) continue;
-                    for (const mode of extractRootModalities(m)) modalitySet.add(mode);
-                }
+                manifests.forEach((m, i) => {
+                    if (!m) return;
+                    const { modalities, coordinations } = extractRootFulfilment(m);
+                    assemblies.push({
+                        slug: matchedEvents[i].slug,
+                        name: m.name || matchedEvents[i].slug,
+                        manifest: m,
+                        fulfilmentMethod: deriveCanonicalFulfilmentMethod(modalities, coordinations),
+                    });
+                    for (const mode of modalities) modalitySet.add(mode);
+                });
 
                 setResult({
+                    assemblies,
                     modalities: Array.from(modalitySet),
                     isLoading: false,
                     hasOnChainBinding: true,
                 });
             } catch {
                 if (!cancelled) {
-                    setResult({ modalities: [], isLoading: false, hasOnChainBinding: false });
+                    setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
                 }
             }
         })();

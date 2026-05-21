@@ -45,7 +45,7 @@ import {
     isDeliveryFulfilment,
     mapFulfilmentToHandoff,
 } from "@/lib/seller/fulfilmentRouting";
-import { useMerchantBoundModalities } from "@/lib/mechanisms/useAssemblyRegistry";
+import { useMerchantBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
 import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE } from "@/lib/shared/sellerCatalogueMetadata";
 
@@ -127,8 +127,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // legacy fulfillmentModes field — the assembly is the authoritative
     // source of what this commerce class supports. When the merchant has
     // no on-chain bindings the catalogue still drives the choice set.
-    const { modalities: boundModalities, hasOnChainBinding } =
-        useMerchantBoundModalities(merchantAddressTyped);
+    const { assemblies: boundAssemblies, modalities: boundModalities, hasOnChainBinding } =
+        useMerchantBoundAssemblies(merchantAddressTyped);
 
     const supportedModes: FulfillmentMode[] = useMemo(() => {
         if (hasOnChainBinding && boundModalities.length > 0) {
@@ -140,15 +140,38 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         return ALL_FULFILMENT_MODES.filter((m) => restaurant.fulfillmentModes!.includes(m));
     }, [restaurant?.fulfillmentModes, boundModalities, hasOnChainBinding]);
 
+    // Buyer-facing delivery options = the operator's array of bound
+    // assemblies. Each bound assembly is one option; its root fulfilment
+    // method is the cart selection. A merchant with no on-chain bindings
+    // falls back to the catalogue-derived `supportedModes`.
+    const assemblyOptions = useMemo(
+        () => boundAssemblies.flatMap((a) =>
+            a.fulfilmentMethod
+                ? [{ method: a.fulfilmentMethod as FulfillmentMode, name: a.name }]
+                : [],
+        ),
+        [boundAssemblies],
+    );
+    const fulfilmentOptions: { method: FulfillmentMode; name: string }[] = useMemo(
+        () => (assemblyOptions.length > 0
+            ? assemblyOptions
+            : supportedModes.map((m) => ({ method: m, name: FULFILMENT_MODE_LABELS[m] ?? m }))),
+        [assemblyOptions, supportedModes],
+    );
+
     // If the cart's persisted choice isn't supported by this merchant's
     // assembly, CLEAR it. The buyer must explicitly pick a supported mode
     // — no silent snap-to-first-available.
     useEffect(() => {
-        if (fulfillmentMode && supportedModes.length > 0 && !supportedModes.includes(fulfillmentMode)) {
+        if (
+            fulfillmentMode
+            && fulfilmentOptions.length > 0
+            && !fulfilmentOptions.some((o) => o.method === fulfillmentMode)
+        ) {
             setFulfillmentMode(undefined);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [supportedModes]);
+    }, [fulfilmentOptions]);
 
     // Cart hygiene — two cases, both clear the persisted cart on mount:
     //   1. Cross-merchant leak: cart items belong to a different merchant
@@ -665,9 +688,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                         <option value="" data-testid="option-fulfilment-unset">
                                             Select one
                                         </option>
-                                        {supportedModes.map((mode) => (
-                                            <option key={mode} value={mode} data-testid={`option-fulfilment-${mode}`}>
-                                                {FULFILMENT_MODE_LABELS[mode] ?? mode}
+                                        {fulfilmentOptions.map((opt) => (
+                                            <option key={opt.method} value={opt.method} data-testid={`option-fulfilment-${opt.method}`}>
+                                                {opt.name}
                                             </option>
                                         ))}
                                     </select>
