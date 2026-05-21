@@ -14,11 +14,11 @@ that fixes it; the finding text is not edited afterward.
 
 ## CRITICAL
 
-- [ ] **No `SECURITY.md`.** A settlement-kernel + formal-proofs repository with no responsible-disclosure path. Add `SECURITY.md` with a disclosure contact, scope (`src/*.sol` + the formal specs), an explicit bounty / no-bounty statement, and a link to `DESIGN_DECISIONS.md` so the intentional patterns are not filed as bugs.
+- [x] **No `SECURITY.md`.** A settlement-kernel + formal-proofs repository with no responsible-disclosure path. Add `SECURITY.md` with a disclosure contact, scope (`src/*.sol` + the formal specs), an explicit bounty / no-bounty statement, and a link to `DESIGN_DECISIONS.md` so the intentional patterns are not filed as bugs.
 
 ## HIGH
 
-- [ ] **Missing community-health files.** No `CODE_OF_CONDUCT.md`, `SUPPORT.md`, `.github/ISSUE_TEMPLATE/`, or `.github/PULL_REQUEST_TEMPLATE.md`. Standard public-repo hygiene — add all four with brief, project-specific content.
+- [x] **Missing community-health files.** No `CODE_OF_CONDUCT.md`, `SUPPORT.md`, `.github/ISSUE_TEMPLATE/`, or `.github/PULL_REQUEST_TEMPLATE.md`. Standard public-repo hygiene — add all four with brief, project-specific content.
 - [ ] **`.gitignore` carries stale `frontend2/` paths.** Pre-rename `frontend2/...` entries (seven occurrences) no longer match anything, so current build outputs at `frontend/.next/`, `frontend/playwright-report/`, etc. are not being ignored. Replace `frontend2/` with `frontend/`.
 - [ ] **`frontend/package.json` name is `"figaro-dapp"`.** Contradicts the protocol-not-product framing. Rename to `"figaro-runtime"` (matching the `@figaro/core` SDK style).
 - [ ] **Dynamic `require("viem")` in `frontend/lib/core/agreementManifest.ts`.** The hot-path encoder helpers (`schemaIdOf`, `getSectionDataBytes`, `computeSectionLeaf`, `hashPair`) resolve viem via dynamic `require` (four call sites). Bundler resolution differences could yield divergent module instances and, worst case, divergent crypto output — a direct parity risk. Convert to a static top-of-module `import`, or document why the dynamic require is deliberate.
