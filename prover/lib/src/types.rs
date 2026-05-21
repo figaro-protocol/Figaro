@@ -332,6 +332,11 @@ pub enum KernelError {
     OperatorAlreadyRegistered,
     OperatorNotRegistered,
     // Layer B (figaro-schema) gates on AttestationContentProof
+    /// An attestation under a content-bearing protocol schema (one with an
+    /// embedded spec) carried a non-zero `content_ref` but no
+    /// `content_proof`. The batched path will not record content it cannot
+    /// validate, so the proof is mandatory for these schemas.
+    ContentProofRequired,
     ContentHashMismatch,
     SchemaSpecParseFailed(String),
     SchemaContentInvalid(String),

@@ -296,7 +296,19 @@ fn validate_attestation_content(
     schema_id: &B256,
     stage: u8,
 ) -> Result<(), KernelError> {
-    let Some(proof) = proof else { return Ok(()); };
+    let Some(proof) = proof else {
+        // A content-opaque attestation (content_ref == 0) needs no proof.
+        // A content-bearing attestation (content_ref != 0) under a
+        // protocol schema the kernel can validate MUST carry one — else
+        // the batched path would record unvalidated content that the
+        // direct path's validator gate would have rejected.
+        if *content_ref != B256::ZERO
+            && figaro_schema::embedded_spec_json(schema_id).is_some()
+        {
+            return Err(KernelError::ContentProofRequired);
+        }
+        return Ok(());
+    };
 
     // ── Gate 0: parse the wire-form content JSON ──
     let content_json_value: serde_json::Value = serde_json::from_str(&proof.content_json)

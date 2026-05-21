@@ -372,6 +372,39 @@ async fn mempool_rejects_unsupported_schema_encoder() {
     assert_eq!(pool.len().await, 0);
 }
 
+#[tokio::test]
+async fn mempool_rejects_missing_content_proof_for_protocol_schema() {
+    let pool = Mempool::new(CHAIN_ID, CORE);
+
+    // Seller attestation under figaro-ghg-protocol-v1 with a non-zero
+    // content_ref but no content_proof — the content gate requires one.
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let seller_key = make_signing_key(SELLER1_KEY);
+    let root = root_commitment();
+    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
+    let content_ref = keccak256(b"some-content");
+    let order_hash = compute_order_hash(&B256::ZERO, &commitment_struct_hash(&root));
+    let struct_hash = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let digest = typed_data_hash(&domain, &struct_hash);
+    let seller_sig = sign_digest(&seller_key, &digest);
+    let op = KernelOp::AttestAsSeller {
+        role_commitment: root,
+        order_hash,
+        schema_id,
+        stage: 0,
+        content_ref,
+        seller_sig,
+        content_proof: None,
+    };
+
+    let err = pool.submit(op).await.unwrap_err();
+    assert!(
+        err.contains("requires a content_proof"),
+        "expected missing-proof rejection, got: {err}",
+    );
+    assert_eq!(pool.len().await, 0);
+}
+
 // ══════════════════════════════════════════════════════════════════
 // State mirror tests
 // ══════════════════════════════════════════════════════════════════

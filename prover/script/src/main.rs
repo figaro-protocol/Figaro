@@ -102,7 +102,14 @@ async fn main() {
     let content_json = serde_json::json!({ "scope": 1 });
     let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
         .expect("script-time encoding must succeed");
-    let content_ref = keccak256(canonical_bytes.as_slice());
+    // Minimal-batch mode drops the content_proof to shrink the batch; an
+    // attestation with no proof must also carry no content (content_ref
+    // zeroed), or the kernel's content gate rejects it.
+    let content_ref = if minimal_batch {
+        B256::ZERO
+    } else {
+        keccak256(canonical_bytes.as_slice())
+    };
 
     let root_struct_for_oh = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&process_id, &root_struct_for_oh);
@@ -141,10 +148,9 @@ async fn main() {
             // 4. Seller attestation — in the default (full) batch it carries
             //    a Layer B content_proof so the SP1 run exercises the whole
             //    content gate inside the zkVM (embedded-spec lookup →
-            //    validate → encode → keccak). Under SP1_MINIMAL_BATCH the content_proof
-            //    is dropped; the kernel's validate_attestation_content then
-            //    short-circuits on None and the attestation still records the
-            //    same signed content_ref.
+            //    validate → encode → keccak). Under SP1_MINIMAL_BATCH the
+            //    content_proof is dropped and content_ref is zeroed — a
+            //    content-opaque attestation the gate skips.
             KernelOp::AttestAsSeller {
                 role_commitment: root.clone(),
                 order_hash,

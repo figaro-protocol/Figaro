@@ -218,7 +218,19 @@ fn pre_check_attest_content(
     schema_id: &B256,
     stage: u8,
 ) -> Result<(), String> {
-    let Some(proof) = proof else { return Ok(()); };
+    let Some(proof) = proof else {
+        // Mirror the kernel: a content-bearing attestation (non-zero
+        // content_ref) under a protocol schema the kernel can validate
+        // must carry a content_proof.
+        if *content_ref != B256::ZERO
+            && figaro_schema::embedded_spec_json(schema_id).is_some()
+        {
+            return Err(format!(
+                "attestation under content-bearing schema {schema_id} requires a content_proof"
+            ));
+        }
+        return Ok(());
+    };
 
     // ── Gate 0: parse the wire-form content JSON ──
     let content_json_value: serde_json::Value = serde_json::from_str(&proof.content_json)

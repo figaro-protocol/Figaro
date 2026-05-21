@@ -184,7 +184,9 @@ fn test_full_batch_commit_and_state() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operators_registered: vec![],        },    };
+            operators_registered: vec![],
+        },
+    };
 
     let (pv, positions, _events) = apply_batch(&input).unwrap();
 
@@ -253,7 +255,9 @@ fn test_full_batch_commit_resolve_payouts() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operators_registered: vec![],        },    };
+            operators_registered: vec![],
+        },
+    };
 
     let (_pv, positions, _events) = apply_batch(&input).unwrap();
 
@@ -339,7 +343,8 @@ fn test_register_schema() {
             uri_hash,
             registrar_sig: sig,
         }],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let (pv, _positions, events) = apply_batch(&input).unwrap();
     assert_ne!(pv.prev_state_root, pv.new_state_root);
@@ -378,7 +383,8 @@ fn test_register_schema_duplicate_fails() {
                 registrar_sig: sig,
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::SchemaAlreadyRegistered(_)));
@@ -418,7 +424,8 @@ fn test_set_mechanism_schema() {
                 mechanism_sig: mech_sig,
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.mechanism_schemas.len(), 1);
@@ -444,7 +451,8 @@ fn test_set_mechanism_schema_unregistered_fails() {
             schema_id,
             mechanism_sig: mech_sig,
         }],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::SchemaNotRegistered(_)));
@@ -470,7 +478,8 @@ fn test_register_operator() {
             metadata_uri: metadata.to_string(),
             operator_sig: sig,
         }],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let (pv, _positions, events) = apply_batch(&input).unwrap();
     assert_ne!(pv.prev_state_root, pv.new_state_root);
@@ -508,7 +517,8 @@ fn test_register_operator_duplicate_fails() {
                 operator_sig: make_sig("ipfs://second"),
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::OperatorAlreadyRegistered));
@@ -541,7 +551,8 @@ fn test_update_profile_emits_profile_updated_event() {
                 operator_sig: upd_sig,
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.operators.len(), 2);
@@ -574,7 +585,8 @@ fn test_update_profile_unregistered_fails() {
             metadata_uri: "ipfs://orphan".to_string(),
             operator_sig: upd_sig,
         }],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::OperatorNotRegistered));
@@ -592,7 +604,9 @@ fn test_attest_as_seller() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let schema_id = keccak256(b"figaro-courier-process-v1");
+    // A non-protocol schemaId — the attestation is content-opaque, so no
+    // content_proof is required even with a non-zero content_ref.
+    let schema_id = keccak256(b"figaro-test-v1");
     let content_ref = keccak256(b"evidence-data");
 
     // Build attestation signature
@@ -622,7 +636,8 @@ fn test_attest_as_seller() {
                 content_proof: None,
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.attestations.len(), 1);
@@ -675,7 +690,8 @@ fn test_attest_as_buyer() {
                 content_proof: None,
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.attestations.len(), 1);
@@ -725,7 +741,8 @@ fn test_attest_as_seller_wrong_signer_fails() {
                 content_proof: None,
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::NotAuthorized));
@@ -770,7 +787,8 @@ fn test_attest_as_buyer_wrong_signer_fails() {
                 content_proof: None,
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::NotAuthorized));
@@ -849,7 +867,8 @@ fn test_mixed_batch_all_operations() {
                 buyer_sig: resolve_sig,
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let (pv, positions, events) = apply_batch(&input).unwrap();
 
@@ -939,7 +958,8 @@ fn attest_as_seller_with_valid_content_proof_passes() {
             },
             attest_op,
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.attestations.len(), 1);
@@ -992,7 +1012,8 @@ fn attest_as_seller_with_content_hash_mismatch_fails() {
                 }),
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(
@@ -1031,7 +1052,8 @@ fn attest_as_seller_with_invalid_content_fails() {
             },
             attest_op,
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(
@@ -1095,6 +1117,56 @@ fn attest_as_seller_with_unsupported_schema_encoder_fails() {
     assert!(
         matches!(err, KernelError::SchemaEncoderMissing(_)),
         "expected SchemaEncoderMissing, got {err:?}",
+    );
+}
+
+#[test]
+fn attest_as_seller_under_protocol_schema_requires_content_proof() {
+    // A seller attestation under a content-bearing protocol schema with a
+    // non-zero content_ref but no content_proof must be rejected — the
+    // batched path will not record content it cannot validate.
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+
+    let root = root_commitment();
+    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
+    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
+
+    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
+    let content_ref = keccak256(b"some-content");
+    let root_struct = commitment_struct_hash(&root);
+    let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
+
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![
+            KernelOp::Commit {
+                commitment: root.clone(),
+                buyer_sig: root_buyer_sig,
+                seller_sig: root_seller_sig,
+            },
+            KernelOp::AttestAsSeller {
+                role_commitment: root,
+                order_hash,
+                schema_id,
+                stage: 0,
+                content_ref,
+                seller_sig: attest_sig,
+                content_proof: None,
+            },
+        ],
+        prev_state: empty_snapshot(),
+    };
+
+    let err = apply_batch(&input).unwrap_err();
+    assert!(
+        matches!(err, KernelError::ContentProofRequired),
+        "expected ContentProofRequired, got {err:?}",
     );
 }
 
