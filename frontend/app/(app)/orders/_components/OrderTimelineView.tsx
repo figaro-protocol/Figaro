@@ -35,6 +35,8 @@ import { findListingByAddress } from "@/lib/shared/operatorListing";
 import type { SemanticTone } from "@/lib/shared/tones";
 import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import { useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
+import { getSection, PROXIMITY_POLICY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { loadAgreement } from "@/lib/core/agreementStore";
 import type { MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -59,6 +61,15 @@ const MERCHANT_EVENT_BY_STAGE: Record<number, MerchantEvent> = {
  * the button submits a structurally-valid 65-byte placeholder.
  */
 const COURIER_DEVICE_SIG_PLACEHOLDER: Hex = `0x${"01".repeat(65)}`;
+
+/** figaro-proximity-policy-v1 band name → on-chain ProximityProof band
+ *  index (0=None, 1=Zone/WiFi, 2=Nearby/BLE, 3=Contact/NFC). The courier's
+ *  proximity proof must carry the band the assembly committed. */
+const PROXIMITY_BAND_INDEX: Record<string, number> = {
+    "zone-wifi": 1,
+    "nearby-ble": 2,
+    "contact-nfc": 3,
+};
 
 interface MerchantTimelineEvent {
     eventType: MerchantEvent;
@@ -430,10 +441,19 @@ export function OrderTimelineView({ processId }: Props) {
             // Fresh 32-byte nonce per handoff — the validator rejects a
             // zero nonce, and a unique nonce keeps each proof distinct.
             const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
+            // Read the band off the courier order's committed
+            // figaro-proximity-policy-v1 clause — the proof carries the band
+            // the assembly authored, not a hardcoded default.
+            const courierAgreement = loadAgreement(courierOrder.agreementHash);
+            const committedBand = courierAgreement
+                ? ((getSection(courierAgreement, PROXIMITY_POLICY_SCHEMA_KEY)
+                    ?.data as { bands?: string[] } | undefined)?.bands ?? [])[0]
+                : undefined;
+            const band = PROXIMITY_BAND_INDEX[committedBand ?? ""] ?? 1;
             await courierActions.signalWithProof({
                 orderHash: courierOrder.orderId,
                 eventType: "arrived-pickup",
-                proof: { band: 1, nonce, deviceSig: COURIER_DEVICE_SIG_PLACEHOLDER },
+                proof: { band, nonce, deviceSig: COURIER_DEVICE_SIG_PLACEHOLDER },
             });
             setTick((t) => t + 1);
         } catch (cause: unknown) {

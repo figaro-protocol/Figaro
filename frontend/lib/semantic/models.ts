@@ -324,6 +324,10 @@ export interface OrderNodeModel {
     payment: bigint;
     state: string;
     parentOrderIds: string[]; // bytes32 order hashes
+    /** The order's committed agreement hash — lets consumers load the
+     *  agreement and read its clauses (e.g. a courier handoff's
+     *  proximity-policy band). */
+    agreementHash: `0x${string}`;
     attachments: AttachmentModel[];
     capabilities: CapabilityModel[];
     settlementBreakdown?: EconomicBreakdownModel;

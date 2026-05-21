@@ -538,6 +538,7 @@ function deriveOrderNodeModelFromOrder(
         payment: order.payment,
         state: OrderState[order.state],
         parentOrderIds,
+        agreementHash: (order.agreementHash ?? ZERO_BYTES32) as `0x${string}`,
         attachments,
         capabilities: roleCapabilities(order, address, isE2EMock),
         settlementBreakdown: deriveSettlementBreakdown(order, address),
