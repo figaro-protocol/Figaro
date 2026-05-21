@@ -20,6 +20,7 @@ const requiredContracts = [
 const optionalContracts = [
     { key: 'NEXT_PUBLIC_SCHEMA_REGISTRY', label: 'SchemaRegistry' },
     { key: 'NEXT_PUBLIC_OPERATOR_REGISTRY', label: 'OperatorRegistry' },
+    { key: 'NEXT_PUBLIC_ASSEMBLY_REGISTRY', label: 'AssemblyRegistry' },
     { key: 'NEXT_PUBLIC_DUTCH_AUCTION', label: 'DutchAuction' },
 ];
 
