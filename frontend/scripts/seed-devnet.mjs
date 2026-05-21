@@ -83,6 +83,15 @@ const ASSEMBLY_REGISTRY_ABI = parseAbi([
     'error WrongDeposit(uint256 provided, uint256 required)',
 ]);
 
+// Minimal ERC-20 view fragment — the seed reads the deployed MockToken's
+// symbol/name so seeded operator profiles can declare it as a real
+// accepted-token entry (mirroring onboarding-wizard output) rather than
+// leaving checkout to MerchantDetailView's env-var fallback.
+const ERC20_VIEW_ABI = parseAbi([
+    'function symbol() view returns (string)',
+    'function name() view returns (string)',
+]);
+
 // ── Reference-assembly fixtures ─────────────────────────────────────────────
 // Designer-authored AssemblyManifests, captured by the scenario specs into
 // scripts/fixtures/. Replayed verbatim — do not hand-edit; re-capture with
@@ -155,12 +164,13 @@ async function main() {
     const env = readEnvLocal();
     const operatorRegistry = env.NEXT_PUBLIC_OPERATOR_REGISTRY;
     const assemblyRegistry = env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
+    const mockToken = env.NEXT_PUBLIC_TOKEN_ADDRESS;
     const ipfsApiUrl = env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
 
-    if (!operatorRegistry || !assemblyRegistry) {
+    if (!operatorRegistry || !assemblyRegistry || !mockToken) {
         throw new Error(
-            'NEXT_PUBLIC_OPERATOR_REGISTRY / NEXT_PUBLIC_ASSEMBLY_REGISTRY missing from ' +
-            'frontend/.env.local — run ./deploy-local.sh first.',
+            'NEXT_PUBLIC_OPERATOR_REGISTRY / NEXT_PUBLIC_ASSEMBLY_REGISTRY / ' +
+            'NEXT_PUBLIC_TOKEN_ADDRESS missing from frontend/.env.local — run ./deploy-local.sh first.',
         );
     }
 
@@ -171,9 +181,18 @@ async function main() {
         throw new Error(`Cannot reach Anvil at ${RPC_URL} — is it running?`);
     }
 
+    // The deployed MockToken's identity — seeded operator profiles declare it
+    // as their accepted + default settlement token, so /m/<merchant> checkout
+    // reads a real token declaration off the profile.
+    const [tokenSymbol, tokenName] = await Promise.all([
+        publicClient.readContract({ address: mockToken, abi: ERC20_VIEW_ABI, functionName: 'symbol' }),
+        publicClient.readContract({ address: mockToken, abi: ERC20_VIEW_ABI, functionName: 'name' }),
+    ]);
+
     console.log(`Seeding devnet (${RPC_URL})`);
     console.log(`  OperatorRegistry  ${operatorRegistry}`);
     console.log(`  AssemblyRegistry  ${assemblyRegistry}`);
+    console.log(`  SettlementToken   ${mockToken} (${tokenSymbol})`);
     console.log(`  IPFS              ${ipfsApiUrl}\n`);
 
     // ── Assemblies — authored by anvil[0] (the Builder-journey wallet) ──────
@@ -246,6 +265,12 @@ async function main() {
             name: op.name,
             specialty: op.specialty,
             catalogueURI,
+            // Accepted + default settlement token — mirrors onboarding-wizard
+            // output (OnboardingReview.buildDraft). discoveryService reads both
+            // off the profile; without them /m/<merchant> checkout falls back
+            // to MerchantDetailView's CONTRACTS.mockToken env var.
+            acceptedTokens: [{ address: mockToken, symbol: tokenSymbol, name: tokenName }],
+            defaultTokenAddress: mockToken,
             version: '0.1.0',
             assemblyBindings: op.bind.map((assemblySlug) => ({
                 bindingId: `${assemblySlug}:${account.address.toLowerCase()}`,
