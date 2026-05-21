@@ -51,7 +51,6 @@ Today, the live implementation does not yet encode:
 
 1. the fuller boundary / requirement / submission model described later in this document as first-class storage objects
 2. on-chain schema update or deletion
-3. a dedicated offset-purchase or offset-retirement primitive
 
 Read the sections below as the target disclosure vocabulary and workflow semantics, not as a claim that every object already exists on-chain in the live V5 runtime.
 
@@ -250,24 +249,28 @@ The protocol source of truth is the set of active submissions, not an off-chain 
 
 ## Offset Extension
 
-Carbon offset purchase is not implemented in the current generic GHG module or the current Local Commerce specialization.
+Carbon offset retirement is implemented as a process extension, separate from
+the disclosure graph itself: `ProcessOffsetReceipt.sol` anchors it on-chain, and
+the `figaro-offset-policy-v1` schema carries the committed offset-provider set.
 
-That feature should be modeled as a process extension, not as a mutation of the disclosure graph itself.
-
-The intended pattern is:
+The shipped mechanism (Path A) is:
 
 1. the process accumulates attributable actual emissions across its required order-level disclosures
-2. before final buyer resolution, the buyer may create a final compensating order to purchase offsets or removals
-3. that order settles through the same process graph or a linked downstream process
-4. the offset purchase transaction becomes part of the protocol-visible economic history
+2. the buyer performs the offset retirement off-protocol at an external aggregator (Klima, Toucan, etc.)
+3. the buyer calls `ProcessOffsetReceipt.record(processId, retirementTxHash, ...)` to anchor the `processId ↔ retirementTxHash` binding on-chain; the contract verifies the caller is the process's root buyer
+4. the receipt becomes part of the protocol-visible economic history (the `ReceiptRecorded` event)
 5. the GHG layer may then attach a disclosure or assurance artifact referencing the offset evidence
+
+Receipts are a separate artifact family from attestations — they carry no
+agreement clause and no merkle inclusion proof, so they are anchored by
+`ProcessOffsetReceipt`, not `AttestationCoordinator`.
 
 This keeps two different things separate:
 
 1. emissions disclosure, which states what happened
 2. offset procurement, which states what the buyer chose to do in response
 
-The first belongs in the disclosure graph. The second belongs in the process graph, with optional disclosure artifacts attached to it.
+The first belongs in the disclosure graph. The second belongs in the process graph, anchored by its own receipt primitive, with optional disclosure artifacts attached.
 
 ## Invariants
 

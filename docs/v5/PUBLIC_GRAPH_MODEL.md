@@ -47,8 +47,8 @@ bonds.
 
 **Privacy model:** Geohashes are intentionally public. They are coordination
 signals, not secrets. Private delivery details (exact address, apartment
-number, recipient notes) are encrypted per-order and exchanged via XMTP
-(see XMTP_KEY_EXCHANGE.md). The public geohash reveals a zone (~1.2km × 0.6km
+number, recipient notes) are encrypted per-order and exchanged out-of-band.
+The public geohash reveals a zone (~1.2km × 0.6km
 at 6 chars), not a doorstep.
 
 ### 3. GHG / Disclosure Graph (Protocol-Derived)
@@ -133,10 +133,8 @@ phone, special instructions) are never stored on-chain. They are:
 
 1. Encrypted with a per-order AES key at checkout
 2. Stored in the manifest's encrypted fields
-3. Exchanged via XMTP between buyer and assigned driver only
+3. Exchanged out-of-band between buyer and assigned driver only
 4. Decryptable only by the buyer and the assigned driver for that specific order
-
-See XMTP_KEY_EXCHANGE.md for the full key exchange architecture.
 
 ---
 

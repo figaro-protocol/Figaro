@@ -29,21 +29,10 @@ The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `Agreement
 - **`core/`** — FigaroCore hooks, commitment/agreement utilities
 - **`dispute/`** — Kleros evidence, delivery attestation 4 modes
 - **`handoff/`** — ECDH key exchange, per-order encryption
-- **`mechanisms/`** — Mechanism hooks, package registry
-- **`semantic/`** — Assembly derivation and capability models. Key entries: `deriveAssemblyModel.ts`, `deriveAssemblyCapabilities.ts`, `models.ts`
-- **`shared/`** — Wagmi config, runtime identity, assembly schema/parser/registry/validation, IPFS. Key entries: `assembly.ts` (schema types), `assemblyParser.ts`, `assemblyRegistry.ts`, `assemblyValidation.ts`, `assemblyPublication.ts`, `runtimeResolution.ts`, `moduleRegistry.ts`, `blockMetadata.ts` (designer block registry — see below), `schemaSpecSource.ts` (preloaded + lazy-fetched schema specs), `schemas/` (built-in schema spec JSONs)
+- **`mechanisms/`** — Mechanism hooks (Dutch auction, courier process, DID:web, attestation coordinator, FIG token, …)
+- **`semantic/`** — Runtime-process model derivation. Entries: `deriveProcessModelFromRuntime.ts`, `financialsProjection.ts`, `models.ts`
+- **`shared/`** — Wagmi config (`chains.ts`, `connectors.ts`, `rpc.ts`), IPFS (`ipfsService.ts`), schema specs (`schemaSpecSource.ts` + `schemas/`), operator + catalogue metadata (`operatorProfileMetadata.ts`, `sellerCatalogueMetadata.ts`, `discoveryService.ts`), slug↔label tables (`assemblyLabels.ts`)
 - **`commerce/`**, **`console/`**
-
-## Block model (designer-tool foundation)
-
-`lib/shared/blockMetadata.ts` defines `BlockMetadata` — the composable unit
-the designer palette renders. A block bundles **schema(s) + backend + UI module(s)**.
-Categories: `mechanism` / `schema` / `handoff` / `display` / `shell`. Registry
-is in-memory, populated by `registerAllModules()`, with a dev-only invariant
-(`assertBlockMetadataIntegrity`) that asserts every registered moduleId has
-a metadata entry. Block arrays exported by `registerAllModules.ts`:
-`PACKAGE_BLOCKS`, `STANDALONE_BLOCKS`, `SHELL_BLOCKS`. Designer code consumes
-via `listBlockMetadata()` / `listBlocksByCategory(category)` / `getBlockForModule(moduleId)`.
 
 ## Designer tool surface (`frontend/`)
 
@@ -60,7 +49,7 @@ The Designer is a DAG editor — assembly designers fork a reference assembly or
 - `app/(app)/builders/designer/_components/AgreementDrawer.tsx` — per-node clause editor (Geo / GHG / Topology baseline-graph clauses).
 - `app/(app)/builders/designer/_components/DraftsList.tsx` — saved-drafts list on the landing.
 
-**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `swapSyntheticFulfilmentMethod`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/assemblyToSyntheticOrders.ts` (forks an `Assembly` into an `Order[]`).
+**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `swapSyntheticFulfilmentMethod`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/manifestToDraft.ts` (fork a published assembly's manifest into an editable draft).
 
 No publish-to-registry path exists today; saved drafts stay in localStorage. `DesignerPublishDrawer.tsx` was specified in this doc historically but never built.
 
@@ -75,7 +64,7 @@ No publish-to-registry path exists today; saved drafts stay in localStorage. `De
 ## Components (`components/`)
 
 - **`core/`** — order flows, bond/token, builder/assembly, semantic. Assembly rendering shell: `AssemblyProcessWorkspace` (all `Institution*` names have been renamed)
-- **`modules/`** — composable mechanism components registered via `registerAllModules.ts`. Module registry remains for assembly-tier composition (designer view, future tooling); the prior consumer-facing `/i/[slug]` runtime that rendered them was deleted in favour of purpose-shaped pages (`/m/[merchant]`, `/orders/[processId]`, `/inbox`).
+- **`modules/`** — feature modules (e.g. `MerchantBrandingModule`). The prior module registry and the `/i/[slug]` runtime that rendered registered modules were retired in the V4→V5 narrowing; consumer surfaces are now purpose-shaped pages (`/m/[merchant]`, `/orders/[processId]`, `/inbox`).
 - **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs; **`console/`** and **`operators/`** — route-specific panels
 
 ## Wallet-provider scope per route

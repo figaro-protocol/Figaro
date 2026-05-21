@@ -58,7 +58,7 @@ schema) can be made on solid ground.
 The first thing this document fixes is a vocabulary collapse in our prior
 prose: handoff and BoL are not the same object.
 
-**Handoff is a Figaro primitive.** `figaro-handoff-v1` +
+**Handoff is a Figaro primitive.** `figaro-fulfilment-v2` +
 `figaro-proximity-policy-v1` + `figaro-proximity-proof-v1` +
 `figaro-courier-process-v1` together document the fact-of-custody-change
 and its conditions. Any order in any DAG that has a physical exchange opts
@@ -410,11 +410,11 @@ buyer↔courier order's agreement.
 | Carrier | `order.seller` | The committed courier address. |
 | Shipper / consignor (party of contract) | `order.buyer` | The buyer hires the carrier; the buyer is the consignor on the carriage contract. |
 | Tenderer of goods at pickup | merchant (a co-seller in the same process) | Not a party to the carriage contract; a participant in the pickup handoff event. Surfaceable from the topology + the merchant↔buyer order on the same tree. |
-| Consignee | `order.buyer` | Same address as the contractual shipper in local commerce. In supply-chain DAGs the buyer may designate the consignee via a destination address inside `figaro-handoff-v1` (encrypted) and an address inside `figaro-geo-v2.destinationGeohash`. |
+| Consignee | `order.buyer` | Same address as the contractual shipper in local commerce. In supply-chain DAGs the buyer may designate the consignee via an encrypted destination address in the order manifest and an address inside `figaro-geo-v2.destinationGeohash`. |
 | Origin | `figaro-geo-v2.originGeohash` | Geohash, 1–12 chars precision. |
 | Destination | `figaro-geo-v2.destinationGeohash` | As above. |
-| Mode of carriage | `figaro-handoff-v1.mode` | Five modalities today (face-to-face / dead-drop / parking-area / locker / courier-relay); local-commerce focused. |
-| Service class (modality + organizer) | `figaro-fulfilment-v1.method` | Five values: consume-onsite / pickup / deliver:buyer-assigned / deliver:seller-assigned / deliver:dutch-auction. |
+| Mode of carriage | `figaro-fulfilment-v2.handoffPoints` | Four handoff points: face-to-face / dead-drop / parking-area / locker; local-commerce focused. |
+| Service class (modality + organizer) | `figaro-fulfilment-v2.modalities` + `.coordinations` | Modalities: consume-onsite / pickup / delivery / virtual. Coordinations (set when delivery is offered): buyer-assigned / seller-assigned / dutch-auction. |
 | Stage progression (loaded / in-transit / delivered) | `figaro-courier-process-v1` | 5 stages: preparationStarted / readyForPickup / courierEnRoute / pickedUp / delivered; per-stage attestations. |
 | Custody-change verification at handoff | `figaro-proximity-policy-v1` (committed band) + `figaro-proximity-proof-v1` (runtime nonce + sig) | Sister-schema split mirrors GHG. Off-chain consumers verify proof.band == policy.band. |
 | Cargo description (line items) | `figaro-commerce-v1.lineItems` | itemId / name / quantity / unitPrice. Cleartext today; encryption is a separate backlog item ("line-item privacy"). |
@@ -429,13 +429,13 @@ buyer↔courier order's agreement.
 These appear on traditional BoLs and in the supply-chain BoL conventions
 TradeTrust documents but have no current schema in Figaro:
 
-- **Cargo-type / class-of-service for hazardous goods.** Hazmat / dangerous-goods declarations (UN numbers, packing groups, transport categories) are not expressible. `figaro-fulfilment-v1.method` carries a service-class enum but it is about *who organizes* the carriage, not about *what kind of cargo* is being carried.
+- **Cargo-type / class-of-service for hazardous goods.** Hazmat / dangerous-goods declarations (UN numbers, packing groups, transport categories) are not expressible. `figaro-fulfilment-v2.coordinations` carries a courier-coordination enum but it is about *who organizes* the carriage, not about *what kind of cargo* is being carried.
 - **Special-handling instructions.** Temperature-controlled / fragile / orientation-sensitive / live-animal — none of these have a schema slot.
 - **Notify party.** A third party who is to be notified at arrival, distinct from the consignee. Figaro's data model does not currently carry a notify address separate from the consignee address.
 - **Cargo-detail beyond SKU.** Weight, volume, marks, numbers, packaging type per shipment. `figaro-commerce-v1.lineItems` carries `quantity` and `name` but not packed-shipment dimensions.
 - **Liability terms / freight-paid status / freight-collect.** Whether the freight is prepaid by the shipper or collect-from-consignee. In Figaro this is implicit (the buyer pays the seller in the bonded payment); making it explicit is a labelling concern, not a schema concern.
 
-The decision on each of these — extend `figaro-handoff-v1`, fork
+The decision on each of these — extend `figaro-fulfilment-v2`, fork
 `figaro-cargo-description-v1`, defer to a future supply-chain assembly,
 or accept the gap as out-of-scope for local commerce — is a per-field
 call. None of them are blocking for the non-negotiable buyer↔courier
@@ -542,7 +542,7 @@ backlog item.
 - **Naming for the "Proof of Handoff" document genre.** Distinct from
   "Bill of Lading"; needs to be precise about scope (any custody-change
   event, regardless of whether a carrier was involved).
-- **Whether `figaro-handoff-v1` needs to grow a `handoffParticipant`
+- **Whether `figaro-fulfilment-v2` needs to grow a `handoffParticipant`
   field.** In supply-chain assemblies the merchant-as-tenderer is
   conceptually distinct from the carrier-as-tenderee; surfacing both on
   the handoff record may matter for evidentiary completeness.
@@ -585,4 +585,4 @@ backlog item.
 - `docs/v5/SCHEMAS.md` — the schema validation architecture and anchoring doctrine governing any future schema additions
 - `frontend/lib/audit/billOfLadingExtract.ts` — the extractor that needs the discriminator
 - `frontend/lib/audit/auditBundle.ts` — where the discriminator gates the BoL emission
-- `frontend/lib/shared/schemas/figaro-handoff-v1.json` and the other schemas referenced in §7
+- `frontend/lib/shared/schemas/figaro-fulfilment-v2.json` and the other schemas referenced in §7

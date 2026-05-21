@@ -143,7 +143,7 @@ operator. The URI resolves to a JSON file for the relevant participant
 surface. Agents simply include a `services` key in that JSON.
 
 No new contracts are needed:
-- **Identity** → `OperatorRegistry` already handles this (role + metadataURI)
+- **Identity** → `OperatorRegistry` already handles this (metadataURI)
 - **Reputation** → Bond-weighted settlement history is strictly superior to
   ERC-8004's permissionless feedback (which has Sybil vulnerability)
 - **Validation** → Buyer dominance + 2× bond asymmetry already enforces
@@ -158,7 +158,6 @@ The schema can be anchored in `SchemaRegistry` as
 ```json
 {
   "subjectAddress": "0xAgent...",
-  "archetypeId": "autonomous-driver",
   "name": "Driver Agent #42",
   "description": "Multi-stop delivery optimization agent",
 

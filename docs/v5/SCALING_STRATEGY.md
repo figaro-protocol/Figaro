@@ -74,12 +74,11 @@ prior state root under V5 rules.
 The proof-based kernel is implemented and tested:
 
 **Rust kernel** (`prover/lib/`): Full protocol surface translated to Rust.
-11 `KernelOp` variants covering commit, resolve, attestation (seller/buyer),
-schema registration, mechanism-schema binding, and operator lifecycle
-(register, update, deactivate, reactivate). 6-mapping Merkle state
-(processes, orderStatus, orderProcessId, schemasRegistered, operatorRoles,
-operatorActive). 30 unit tests. EIP-712 signature verification with
-byte-exact parity to the Solidity kernel.
+8 `KernelOp` variants covering commit, resolve, attestation (seller/buyer),
+schema registration, mechanism-schema binding, and operator register +
+update-profile. 5-mapping Merkle state (processes, orderStatus,
+orderProcessId, schemasRegistered, operatorsRegistered). 30 unit tests.
+EIP-712 signature verification with byte-exact parity to the Solidity kernel.
 
 **SP1 guest program** (`prover/program/`): Executes `apply_batch()` in
 the SP1 zkVM and commits `PublicValues` (8 fields: prev/new state roots,
@@ -204,7 +203,7 @@ batch path's gas advantage entirely.
 The off-chain service that collects signed operations, assembles batches,
 runs the SP1 prover, and submits proofs to the verifier contract.
 Implemented as a Rust crate (`prover/sequencer/`) with 6 modules and
-22 tests. See `docs/v5/BATCH_SEQUENCER.md` for the full architecture.
+22 tests.
 
 Key trust property: the sequencer is a **coordination convenience**,
 not a trust assumption. It cannot fabricate operations (all operations
