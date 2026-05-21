@@ -39,12 +39,13 @@ typed-error revert. (Topology has no validator — manifest-only clause.)
 
 Companion: `certora/token-ops.inventory` + `lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 
-## Echidna — 2 harnesses, 15 properties
+## Echidna — 3 harnesses, 23 properties
 
 | Harness | Properties | Path |
 |---|---|---|
 | `EchidnaFuzzer` | 7 | `src/echidna/EchidnaFuzzer.sol` — kernel: solvency, active-count consistency, cumulative accounting, state monotonicity, token conservation, buyer dominance, atomic resolution |
 | `EchidnaRpgfMinter` | 8 | `echidna/EchidnaRpgfMinter.sol` — claim-flag monotonic, total-minted within cap, minter / submitter / programVKey / unlockTimes immutable, root one-shot, claim balance consistency |
+| `EchidnaFigToken` | 8 | `echidna/EchidnaFigToken.sol` — FigToken: MAX_SUPPLY never exceeded, deployer can renounce, no deployer mint after renounce, minter cap enforced, no zero-address minter, no mint to zero address, total supply = sum of balances, transfer preserves supply |
 
 ## TLA+ (`formal/`) — 24 invariants across 3 models (FigaroCore 7 + FigToken 8 + RpgfMinter 9)
 
