@@ -75,15 +75,14 @@ Implementation-facing docs:
 
 ### Reference Assemblies
 
-The live reference assembly registry contains five assemblies:
+The reference assemblies are `local-commerce`, `direct-sale`,
+`figaro-procurement`, `figaro-disclosure-review`, `figaro-equipment-rental`,
+and `figaro-freelance`.
 
-1. eats
-2. procurement
-3. disclosure-review
-4. equipment-rental
-5. freelance
-
-The source of truth is `frontend/lib/shared/institutionAssembly.ts`.
+Assembly authoring and parsing live in `frontend/lib/designer/`; published
+assemblies are anchored on-chain via `src/AssemblyRegistry.sol` with their
+manifests pinned off-chain. The slug → human-label table is
+`frontend/lib/shared/assemblyLabels.ts`.
 
 ## What Is Historical
 

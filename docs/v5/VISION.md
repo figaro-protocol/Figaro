@@ -326,21 +326,23 @@ coordination signal, and the bonding equilibrium holds regardless of which
 token is used. FIG makes this concrete. It is the token participants converge
 on by name — a Schelling point, not a governance mechanism.
 
-FIG is minted exclusively through settlement. When an order resolves in
-FigaroCore, the seller — the party that bore the asymmetric capital commitment —
-may claim a FIG reward. 100 FIG per settlement in epoch 0 (direct path),
-halving every ten million settlements, hard-capped at 600 million. The batch
-path uses Euler oscillation — a decaying cosine on the same envelope — peaking
-at 150 FIG per settlement, creating temporal coordination value. The emission
-contract is immutable: no owner, no upgrade path, no parameter changes. If it
-is wrong, deploy a new one.
+FIG has a fixed supply of one billion tokens, set at genesis and never
+inflated. There is no settlement-anchored emission: FIG is not minted on
+`resolveProcess`, and there is no per-settlement reward path. The allocation
+is 100M (10%) to founders and 300M (30%) to the DAO — both minted at genesis,
+no vesting — and 600M (60%) reserved for schema-author retroactive
+public-goods funding, released in three staged tranches at years 2, 5, and 9
+through a single `RpgfMinter` contract whose per-tranche Merkle roots are
+proven correct by an SP1 proof before each release. Every contract in the FIG
+stack is immutable: no owner, no upgrade path, no parameter changes. If one is
+wrong, a new one is deployed and the community migrates.
 
 This design is deliberate. FIG is not required for participation. It is not
 staked, slashed, or voted with. The 98% cooperation rate comes from the
 bonding equilibrium, not from token incentives. FIG exists because people
 will ask for a token — and when they do, they should receive one whose
-issuance is anchored to the only thing that matters: completed economic
-coordination. See `FIG_TOKEN.md` for the full design.
+issuance is fixed, transparent, and free of discretionary control. See
+`FIG_TOKEN.md` for the full design.
 
 ### Per-Order Sovereignty
 

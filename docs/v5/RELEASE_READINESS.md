@@ -72,7 +72,6 @@ Observed results (re-run 2026-04-21 after the FIG allocation restructure + figTo
 - `cd frontend && npm run type-check`: passed
 - `cd frontend && npm run build`: passed
 - `cd frontend && npx vitest run`: 84 files, 560+ tests passed
-- `cd frontend && npm run test:e2e:mock`: 110 passed
 - `cd frontend && npm run test:e2e:devnet`: 40 passed
 
 ### Contracts
@@ -131,17 +130,6 @@ Expected output:
 - observed pass: 84 files, 560+ tests passed
 
 ### Frontend Browser Validation
-
-Mock posture:
-
-```bash
-cd frontend && npm run test:e2e:mock
-```
-
-Expected output:
-
-- Playwright mock projects exit cleanly with no failing specs
-- observed pass: 110 passed
 
 Devnet posture:
 

@@ -284,7 +284,7 @@ discipline layer, not the protocol layer.
 **The discipline**: A schema author deploys their validator and binds it to
 their schemaId **in a single transaction**. The pattern is established by
 `script/Deploy.s.sol:_deployAndRegisterValidators`, which deploys each of the
-14 reference figaro-* validators inline with its `setValidator` call so no
+16 reference figaro-* validators inline with its `setValidator` call so no
 front-running window exists between deploy and bind. Third-party schema
 authors must follow the same pattern via one of:
 
@@ -313,7 +313,7 @@ registrar-identity. The atomic-bind property protects against malicious-
 validator front-running; the registrar-identity property is informational.
 
 The risk surface is bounded: `script/Deploy.s.sol` and
-`script/DeployMainnet.s.sol` have zero front-running window for the 10
+`script/DeployMainnet.s.sol` have zero front-running window for the 16
 reference schemas; only post-deploy third-party schemas need to apply the
 discipline.
 

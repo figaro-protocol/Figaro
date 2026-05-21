@@ -135,7 +135,7 @@ This section tracks features that are not protocol invariants but are significan
 | **Kleros dispute / evidence** | `frontend/lib/dispute/` (6 files) | `@figaro/core/extensions`: Kleros evidence envelope | `/builders` → Kleros integration | `/evidence-display` (full rendering for jurors) | — |
 | **Agent SDK** | `sdk/` (3 subpath exports) | Self-referential (166 tests) | `/builders` → Agent SDK section | — | — |
 | **Semantic derivation** | `frontend/lib/semantic/` (7 files) | — | `/builders` → How the runtime renders institutions | `/workbench` → SemanticProcessWorkspacePanel | — |
-| **Institution assembly** | `frontend/lib/shared/institutionAssembly*.ts` (6 files) | — | `/builders` → Level 1 assembly config; `/local-commerce` → "Fork Local Commerce" | `/builders/assemblies`, `/builders/authoring`, `/builders/prototype` | — |
+| **Institution assembly** | `frontend/lib/designer/`; `src/AssemblyRegistry.sol` | — | `/builders` → Level 1 assembly config; `/local-commerce` → "Fork Local Commerce" | `/builders/assemblies`, `/builders/authoring`, `/builders/prototype` | — |
 | **Agreement publication** | `frontend/lib/core/agreementStore.ts`, `agreementManifest.ts` | — | `/builders` → Agreement publication | — | — |
 | **Commerce checkout** | `frontend/lib/commerce/` (4 files) | — | — | `CartModule` (interactive) | — |
 | **Batch sequencer** | `prover/` (Rust), `frontend` sequencer surface | SDK: `sequencer.test.ts`, `batch-e2e.test.ts` | `/builders` → Batch verification | `/console` → sequencer surface | — |
@@ -470,7 +470,6 @@ cd frontend && npx vitest run
 ### Frontend Playwright
 
 ```bash
-cd frontend && npx playwright test --project=mock    # no chain
 cd frontend && npx playwright test --project=devnet  # Anvil required
 ```
 

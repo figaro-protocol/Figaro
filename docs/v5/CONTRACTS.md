@@ -62,15 +62,14 @@ composer. Use for any post-deploy third-party schema registration.
 invalid content; binds to one schemaId via `schemaId() view returns (bytes32)`.
 Validators are pure / view, no admin, no mutable state.
 
-**`src/schemaValidators/`** — 18 production validator contracts, one per
+**`src/schemaValidators/`** — 16 production validator contracts, one per
 *runtime-attestable* schemaId (local-commerce use case + jurisdiction baseline + consent):
-`FigaroHandoffV1Validator`,
 `FigaroCommerceV1Validator`, `FigaroGeoV2Validator`,
-`FigaroFulfilmentV1Validator`, plus the 5 GHG sister schemas
+`FigaroFulfilmentV2Validator`, plus the 5 GHG sister schemas
 `FigaroGHGProtocolV1Validator`, `FigaroGHGISO14064V1Validator`,
 `FigaroGHGPAS2050V1Validator`, `FigaroGHGEN16258V1Validator`,
 `FigaroGHGCustomV1Validator` (one per accounting standard),
-`FigaroGHGMeasurementV1Validator`, `FigaroCourierProcessV1Validator`,
+`FigaroGHGMeasurementV1Validator`,
 `FigaroProximityPolicyV1Validator` (Category-2, committed band) +
 `FigaroProximityProofV1Validator` (Category-1, runtime witness),
 `FigaroMerchantProcessV1Validator`,
@@ -126,6 +125,24 @@ registry state, and a seller's role is whatever their catalogue (referenced by
 spam-protection knobs only; profile updates do not require withdrawing. The
 kernel does not gate any operation on operator state — this registry is
 advisory metadata for off-chain discovery surfaces.
+
+**`src/AssemblyRegistry.sol`** — Permissionless assembly anchoring with a
+reclaimable ETH deposit. An assembly is a composition template that USES
+schemas; this registry is the assembly artifact family's anchor, parallel to
+`SchemaRegistry` (schemas) and `OperatorRegistry` (operators) per the
+separation-of-concerns doctrine. Two external functions: `registerAssembly(slug,
+contentHash, metadataURI)` (first-write-wins, requires the immutable
+`registrationDeposit`, emits `AssemblyRegistered`) and `withdrawDeposit(slug)`
+(author-only, callable once after `depositLockPeriod` elapses, emits
+`DepositWithdrawn`). State is one mapping `bindings: slugHash → AssemblyBinding`
+{author, registeredAt, depositWithdrawn, contentHash, metadataURI}. The slug
+binding is permanent — `withdrawDeposit` returns only the ETH and never clears
+the binding, because buyers and operators that reference the slug rely on its
+content staying stable; the deposit is an upfront Sybil-resistance tax with a
+refund path, not a fee. No owner, no admin, no fee, no `transferAssembly`, no
+`removeAssembly`. The contract does not validate manifest content — per-clause
+validity is the per-schema validator's job at commit time. Foundry tests in
+`test/AssemblyRegistryTest.t.sol`.
 
 ## FIG Token (`src/fig/`)
 

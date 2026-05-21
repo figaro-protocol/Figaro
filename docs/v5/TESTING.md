@@ -5,16 +5,18 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 ## Foundry (`test/`)
 
 `FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
-`AttestationCoordinatorTest`, `SchemaRegistryTest`, `DutchAuctionTest`,
-`OperatorRegistryTest`, `FigaroBatchVerifierTest`, `ParityVectors`,
-`fig/FigToken.t.sol`, `fig/RpgfMinter.t.sol`, `fig/RpgfMinterConformance.t.sol`,
-`BatchGasCeilingTest`, `BatchGasBoundaryTest`, `GasCeilingTest`.
+`AttestationCoordinatorTest`, `SchemaRegistryTest`, `SchemaRegistrationHelperTest`,
+`AssemblyRegistryTest`, `DutchAuctionTest`, `OperatorRegistryTest`,
+`ProcessOffsetReceiptTest`, `FigaroBatchVerifierTest`, `DeployScriptTest`,
+`ParityVectors`, `fig/FigToken.t.sol`, `fig/RpgfMinter.t.sol`,
+`fig/RpgfMinterConformance.t.sol`, `BatchGasCeilingTest`, `BatchGasBoundaryTest`,
+`GasCeilingTest`.
 
 `test/schemaValidators/` — one test file per `ISchemaValidator` implementation
-(currently 16: handoff, commerce, geo, fulfilment, the 5 GHG sister schemas
+(currently 16: commerce, consent, geo, fulfilment, the 5 GHG sister schemas
 (protocol / iso-14064 / pas-2050 / en-16258 / custom), GHG measurement,
-delivery lifecycle, proximity policy, proximity proof, merchant-process,
-courier-process, jurisdiction). Each suite covers happy paths + every
+jurisdiction, merchant-process, courier-process, offset-policy,
+proximity policy, proximity proof). Each suite covers happy paths + every
 typed-error revert. (Topology has no validator — manifest-only clause.)
 
 ## Halmos (`test/`) — 2 harnesses, 15 properties

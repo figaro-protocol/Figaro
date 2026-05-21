@@ -270,7 +270,7 @@ It decides:
 4. module placement
 5. narrative defaults
 
-It is implemented today through `frontend/lib/shared/institutionAssembly*.ts` and the reference assembly JSON files.
+It is implemented today through the designer/assembly subsystem in `frontend/lib/designer/`, with published assemblies anchored on-chain via `src/AssemblyRegistry.sol`.
 
 ### 2. Mechanism Package
 
@@ -371,7 +371,7 @@ The runtime is not human-only UI with an agent add-on. It is one institution mod
 
 The repo already has the foundation for this model:
 
-1. assembly registry and parsing in `frontend/lib/shared/institutionAssembly*.ts`
+1. assembly authoring and parsing in `frontend/lib/designer/`, with on-chain anchoring via `src/AssemblyRegistry.sol`
 2. semantic derivation in `frontend/lib/semantic/`
 3. descriptor-backed institution, process, and order actions in the live semantic workspace for operator profile writes, seller disclosure writes, auction claims, delivery coordinator signals, resolve, and downstream composition entry points, with the legacy workbench GHG workflow panel now routing disclosure writes through that same capability executor instead of a direct disclosure hook
 4. console-side action presentation normalized across operating and build actions, with interactive sub-order proposals forwarded into the create-order surface instead of failing at queue execution time
