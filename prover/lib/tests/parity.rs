@@ -870,31 +870,10 @@ fn test_mixed_batch_all_operations() {
 // ── Layer B content-proof gate tests ──────────────────────────────
 //
 // These tests cover the AttestationContentProof gate in apply_batch:
-// when a seller attestation carries a content_proof, the kernel runs
-// all four gates (spec-parse, schemaId match, content validates,
-// derived bytes hash to content_ref) and emits the event only if every
-// gate passes.
-
-fn ghg_protocol_spec_json() -> serde_json::Value {
-    // Mirrors frontend/lib/shared/schemas/figaro-ghg-protocol-v1.json.
-    serde_json::json!({
-        "schemaId": "figaro-ghg-protocol-v1",
-        "version": 1,
-        "title": "GHG Protocol Corporate Standard",
-        "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under the GHG Protocol Corporate Standard (and related WRI/WBCSD GHG Protocol guidance documents).",
-        "categories": ["emissions"],
-        "fields": [
-            {
-                "name": "scope",
-                "type": "integer",
-                "min": 1,
-                "max": 3,
-                "required": false,
-                "description": "GHG Protocol scope: 1 (direct), 2 (purchased energy), 3 (value chain). Optional individually."
-            }
-        ]
-    })
-}
+// when a seller attestation carries a content_proof, the kernel looks
+// up the canonical embedded spec for the op's schemaId and runs the
+// gates (content validates, canonical bytes derived, derived bytes hash
+// to content_ref) — emitting the event only if every gate passes.
 
 /// Build an AttestAsSeller op with a content_proof, deriving content_ref
 /// from the per-schema canonical encoder. The content_ref the op carries
@@ -906,7 +885,6 @@ fn build_canonical_attest_op(
     seller_key: &k256::ecdsa::SigningKey,
     schema_id_str: &str,
     content_json: serde_json::Value,
-    schema_spec: serde_json::Value,
     role: Commitment,
 ) -> (KernelOp, B256) {
     let schema_id = keccak256(schema_id_str.as_bytes());
@@ -927,7 +905,6 @@ fn build_canonical_attest_op(
         seller_sig,
         content_proof: Some(figaro_kernel::types::AttestationContentProof {
             content_json: serde_json::to_string(&content_json).unwrap(),
-            schema_spec: serde_json::to_string(&schema_spec).unwrap(),
         }),
     };
     (op, order_hash)
@@ -947,9 +924,7 @@ fn attest_as_seller_with_valid_content_proof_passes() {
         &domain,
         &seller1_key,
         "figaro-ghg-protocol-v1",
-        serde_json::json!({ "scope": 1 }),
-        ghg_protocol_spec_json(),
-        root.clone(),
+        serde_json::json!({ "scope": 1 }),        root.clone(),
     );
 
     let input = BatchInput {
@@ -1014,7 +989,6 @@ fn attest_as_seller_with_content_hash_mismatch_fails() {
                 seller_sig: attest_sig,
                 content_proof: Some(figaro_kernel::types::AttestationContentProof {
                     content_json: serde_json::to_string(&content_json).unwrap(),
-                    schema_spec: serde_json::to_string(&ghg_protocol_spec_json()).unwrap(),
                 }),
             },
         ],
@@ -1042,9 +1016,7 @@ fn attest_as_seller_with_invalid_content_fails() {
         &domain,
         &seller1_key,
         "figaro-ghg-protocol-v1",
-        serde_json::json!({ "scope": 4 }),
-        ghg_protocol_spec_json(),
-        root.clone(),
+        serde_json::json!({ "scope": 4 }),        root.clone(),
     );
 
     let input = BatchInput {
@@ -1069,71 +1041,10 @@ fn attest_as_seller_with_invalid_content_fails() {
 }
 
 #[test]
-fn attest_as_seller_with_schema_id_mismatch_fails() {
-    let buyer_key = make_signing_key(BUYER_KEY);
-    let seller1_key = make_signing_key(SELLER1_KEY);
-    let domain = domain_separator(CHAIN_ID, CORE);
-
-    let root = root_commitment();
-    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
-    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
-
-    // The op's schema_id claims figaro-ghg-protocol-v1, but the spec we
-    // attach is for a *different* schemaId — Gate 1 must reject.
-    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
-    let mut wrong_spec = ghg_protocol_spec_json();
-    wrong_spec["schemaId"] = serde_json::json!("figaro-ghg-iso-14064-v1");
-    let content_json = serde_json::json!({ "scope": 1 });
-
-    // Build the op manually since the canonical helper assumes the spec
-    // matches schema_id.
-    let canonical_bytes =
-        figaro_schema::encode_content_for_schema("figaro-ghg-protocol-v1", &content_json).unwrap();
-    let content_ref = keccak256(canonical_bytes.as_slice());
-    let root_struct = commitment_struct_hash(&root);
-    let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
-    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
-    let attest_digest = typed_data_hash(&domain, &attest_struct);
-    let attest_sig = sign_digest(&seller1_key, &attest_digest);
-    let attest_op = KernelOp::AttestAsSeller {
-        role_commitment: root.clone(),
-        order_hash,
-        schema_id,
-        stage: 0,
-        content_ref,
-        seller_sig: attest_sig,
-        content_proof: Some(figaro_kernel::types::AttestationContentProof {
-            content_json: serde_json::to_string(&content_json).unwrap(),
-            schema_spec: serde_json::to_string(&wrong_spec).unwrap(),
-        }),
-    };
-
-    let input = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![
-            KernelOp::Commit {
-                commitment: root,
-                buyer_sig: root_buyer_sig,
-                seller_sig: root_seller_sig,
-            },
-            attest_op,
-        ],
-        prev_state: empty_snapshot(),    };
-
-    let err = apply_batch(&input).unwrap_err();
-    assert!(
-        matches!(err, KernelError::SchemaIdMismatch),
-        "expected SchemaIdMismatch, got {err:?}",
-    );
-}
-
-#[test]
 fn attest_as_seller_with_unsupported_schema_encoder_fails() {
-    // Construct a content_proof whose schema is syntactically valid but
-    // has no Rust ABI encoder registered. The kernel must reject — it
-    // cannot derive canonical bytes without an encoder.
+    // Attest under a schemaId that is not one of the runtime-attestable
+    // protocol schemas — the kernel has no embedded spec for it, so the
+    // content gate rejects at the spec-lookup step.
     let buyer_key = make_signing_key(BUYER_KEY);
     let seller1_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
@@ -1144,19 +1055,10 @@ fn attest_as_seller_with_unsupported_schema_encoder_fails() {
 
     let unknown_schema_id_str = "figaro-bogus-v99";
     let schema_id = keccak256(unknown_schema_id_str.as_bytes());
-    let unknown_spec = serde_json::json!({
-        "schemaId": unknown_schema_id_str,
-        "version": 1,
-        "title": "Bogus",
-        "description": "no encoder registered",
-        "fields": [
-            { "name": "x", "type": "string", "required": true },
-        ],
-    });
     let content_json = serde_json::json!({ "x": "ok" });
 
-    // Use an arbitrary content_ref — the kernel will reject at the encoder
-    // gate before it gets to the keccak check, so the value doesn't matter.
+    // content_ref is arbitrary — the kernel rejects at the embedded-spec
+    // lookup before it reaches the keccak check, so the value is moot.
     let root_struct = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
     let placeholder_ref = keccak256(b"placeholder");
@@ -1183,11 +1085,11 @@ fn attest_as_seller_with_unsupported_schema_encoder_fails() {
                 seller_sig: attest_sig,
                 content_proof: Some(figaro_kernel::types::AttestationContentProof {
                     content_json: serde_json::to_string(&content_json).unwrap(),
-                    schema_spec: serde_json::to_string(&unknown_spec).unwrap(),
                 }),
             },
         ],
-        prev_state: empty_snapshot(),    };
+        prev_state: empty_snapshot(),
+    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(

@@ -44,39 +44,40 @@ pub struct Signature {
 /// hashes a content blob that satisfies the schema's spec.
 ///
 /// When `content_proof: Some(_)` on an `AttestAsSeller` / `AttestAsBuyer`
-/// op, the kernel enforces four gates:
+/// op, the kernel enforces:
 ///
-///   1. `parse_schema_spec(schema_spec)` succeeds and the parsed spec's
-///      `schemaId` keccak-256 matches the op's `schema_id`.
-///   2. `validate_content(content_json, spec, stage)` returns Ok — the
-///      structured form passes the Layer B validator (the Rust mirror of
-///      Layer A).
-///   3. `encode_content_for_schema(spec.schemaId, content_json)`
-///      produces ABI bytes byte-for-byte identical to viem's encoders
-///      in `sdk/src/schemas/encode.ts`. The encoder is the cross-form
-///      binding — it derives the canonical byte form *from* the JSON,
-///      so no separate `content_bytes` field can disagree with
-///      `content_json`.
+///   1. The op's `schema_id` is one of the runtime-attestable protocol
+///      schemas — its canonical spec is compiled into the prover binary
+///      (`figaro_schema::embedded_spec_json`), looked up by `schema_id`,
+///      never supplied by the caller.
+///   2. `validate_content(content_json, embedded_spec, stage)` returns
+///      Ok — the structured form passes the Layer B validator.
+///   3. `encode_content_for_schema(schemaId, content_json)` produces ABI
+///      bytes byte-for-byte identical to viem's encoders in
+///      `sdk/src/schemas/encode.ts`. The encoder is the cross-form
+///      binding — it derives the canonical byte form *from* the JSON, so
+///      no separate `content_bytes` field can disagree with `content_json`.
 ///   4. `keccak256(derived_bytes) == content_ref` — binds the derived
 ///      bytes (which Layer C will decode) to the on-chain commitment.
 ///
+/// Because the spec is looked up by `schema_id` rather than carried on
+/// the wire, the constraint set every attestation is checked against is
+/// covered by the program verification key — a caller cannot weaken
+/// validation by supplying a permissive spec.
+///
 /// When `content_proof: None` the attestation is treated as
-/// content-opaque (legacy behavior; the on-chain validator gate runs at
-/// settlement time on Layer C).
-/// Layer B content payload — JSON is carried as pre-serialized strings
-/// because SP1's input deserializer (bincode v1) does not support the
-/// `deserialize_any` path that `serde_json::Value` requires. The kernel
-/// parses each string with `serde_json::from_str` before running the gate.
+/// content-opaque (the on-chain validator gate runs at settlement time
+/// on Layer C).
+///
+/// `content_json` is carried as a pre-serialized JSON string because
+/// SP1's input deserializer (bincode v1) does not support the
+/// `deserialize_any` path that `serde_json::Value` requires.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AttestationContentProof {
-    /// The structured JSON form Layer B validates against the schema spec
-    /// and re-encodes to ABI bytes via the per-schema encoder. Carried as
-    /// a JSON-serialized string for zkVM-compatibility.
+    /// The structured JSON form Layer B validates against the embedded
+    /// schema spec and re-encodes to ABI bytes via the per-schema
+    /// encoder. Carried as a JSON-serialized string for zkVM compatibility.
     pub content_json: String,
-    /// The schema spec JSON (the same shape Layer A parses), carried as
-    /// a JSON-serialized string. The kernel verifies the parsed
-    /// `schemaId` keccak-256s to the op's `schema_id`.
-    pub schema_spec: String,
 }
 
 // ── Batch operations ──────────────────────────────────────────────
@@ -333,7 +334,6 @@ pub enum KernelError {
     // Layer B (figaro-schema) gates on AttestationContentProof
     ContentHashMismatch,
     SchemaSpecParseFailed(String),
-    SchemaIdMismatch,
     SchemaContentInvalid(String),
     /// The schemaId has no Rust ABI encoder registered, so the kernel
     /// cannot derive content_bytes from content_json. Either the schema

@@ -95,24 +95,10 @@ async fn main() {
     // ── Seller attestation (with Layer B content_proof) ──
     //
     // This is the end-to-end content gate the kernel runs inside the SP1
-    // proof: parse spec → schemaId match → validate content → encode →
-    // keccak match. The script builds a valid proof for figaro-ghg-
-    // protocol-v1 with scope=1 so all four gates pass through the zkVM
-    // emulator.
-    let schema_spec = serde_json::json!({
-        "schemaId": schema_id_str,
-        "version": 1,
-        "title": "GHG Protocol Corporate Standard",
-        "description": "Disclosure that the seller will report scope 1 emissions under the GHG Protocol Corporate Standard.",
-        "categories": ["emissions"],
-        "fields": [{
-            "name": "scope",
-            "type": "integer",
-            "min": 1,
-            "max": 3,
-            "required": false,
-        }],
-    });
+    // proof: look up the embedded canonical spec for schema_id → validate
+    // content → encode → keccak match. The script builds a valid proof
+    // for figaro-ghg-protocol-v1 with scope=1 so every gate passes
+    // through the zkVM emulator.
     let content_json = serde_json::json!({ "scope": 1 });
     let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
         .expect("script-time encoding must succeed");
@@ -154,8 +140,8 @@ async fn main() {
             },
             // 4. Seller attestation — in the default (full) batch it carries
             //    a Layer B content_proof so the SP1 run exercises the whole
-            //    content gate inside the zkVM (parse → schemaId → validate →
-            //    encode → keccak). Under SP1_MINIMAL_BATCH the content_proof
+            //    content gate inside the zkVM (embedded-spec lookup →
+            //    validate → encode → keccak). Under SP1_MINIMAL_BATCH the content_proof
             //    is dropped; the kernel's validate_attestation_content then
             //    short-circuits on None and the attestation still records the
             //    same signed content_ref.
@@ -171,7 +157,6 @@ async fn main() {
                 } else {
                     Some(AttestationContentProof {
                         content_json: serde_json::to_string(&content_json).unwrap(),
-                        schema_spec: serde_json::to_string(&schema_spec).unwrap(),
                     })
                 },
             },

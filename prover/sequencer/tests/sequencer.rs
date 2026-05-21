@@ -255,26 +255,6 @@ async fn mempool_accepts_resolve() {
 // so bad batches are dropped before reaching the prover.
 // ──────────────────────────────────────────────────────────────────
 
-fn ghg_protocol_spec_json() -> serde_json::Value {
-    serde_json::json!({
-        "schemaId": "figaro-ghg-protocol-v1",
-        "version": 1,
-        "title": "GHG Protocol Corporate Standard",
-        "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under the GHG Protocol Corporate Standard (and related WRI/WBCSD GHG Protocol guidance documents).",
-        "categories": ["emissions"],
-        "fields": [
-            {
-                "name": "scope",
-                "type": "integer",
-                "min": 1,
-                "max": 3,
-                "required": false,
-                "description": "GHG Protocol scope: 1 (direct), 2 (purchased energy), 3 (value chain). Optional individually.",
-            }
-        ]
-    })
-}
-
 /// Build a seller attestation op whose content_ref is the keccak of the
 /// canonical per-schema encoding of `content_json`. The op's signature
 /// covers the same content_ref so signature-pre-check passes and the
@@ -282,7 +262,6 @@ fn ghg_protocol_spec_json() -> serde_json::Value {
 fn build_attest_seller_with_proof(
     schema_id_str: &str,
     content_json: serde_json::Value,
-    schema_spec: serde_json::Value,
     override_content_ref: Option<B256>,
 ) -> KernelOp {
     let domain = domain_separator(CHAIN_ID, CORE);
@@ -308,7 +287,6 @@ fn build_attest_seller_with_proof(
         seller_sig,
         content_proof: Some(AttestationContentProof {
             content_json: serde_json::to_string(&content_json).unwrap(),
-            schema_spec: serde_json::to_string(&schema_spec).unwrap(),
         }),
     }
 }
@@ -318,9 +296,7 @@ async fn mempool_accepts_attest_with_valid_content_proof() {
     let pool = Mempool::new(CHAIN_ID, CORE);
     let op = build_attest_seller_with_proof(
         "figaro-ghg-protocol-v1",
-        serde_json::json!({ "scope": 1 }),
-        ghg_protocol_spec_json(),
-        None,
+        serde_json::json!({ "scope": 1 }),        None,
     );
     let id = pool.submit(op).await.unwrap();
     assert_eq!(id, 1);
@@ -334,9 +310,7 @@ async fn mempool_rejects_content_hash_mismatch() {
     let wrong_ref = keccak256(b"completely different bytes");
     let op = build_attest_seller_with_proof(
         "figaro-ghg-protocol-v1",
-        serde_json::json!({ "scope": 1 }),
-        ghg_protocol_spec_json(),
-        Some(wrong_ref),
+        serde_json::json!({ "scope": 1 }),        Some(wrong_ref),
     );
     let err = pool.submit(op).await.unwrap_err();
     assert!(
@@ -353,9 +327,7 @@ async fn mempool_rejects_invalid_content() {
     // produces bytes, so the test exercises the validate_content gate.
     let op = build_attest_seller_with_proof(
         "figaro-ghg-protocol-v1",
-        serde_json::json!({ "scope": 4 }),
-        ghg_protocol_spec_json(),
-        None,
+        serde_json::json!({ "scope": 4 }),        None,
     );
     let err = pool.submit(op).await.unwrap_err();
     assert!(
@@ -366,40 +338,12 @@ async fn mempool_rejects_invalid_content() {
 }
 
 #[tokio::test]
-async fn mempool_rejects_schema_id_mismatch() {
-    let pool = Mempool::new(CHAIN_ID, CORE);
-    let mut wrong_spec = ghg_protocol_spec_json();
-    wrong_spec["schemaId"] = serde_json::json!("figaro-ghg-iso-14064-v1");
-    let op = build_attest_seller_with_proof(
-        "figaro-ghg-protocol-v1",
-        serde_json::json!({ "scope": 1 }),
-        wrong_spec,
-        None,
-    );
-    let err = pool.submit(op).await.unwrap_err();
-    assert!(
-        err.contains("does not match op.schema_id"),
-        "expected schemaId-mismatch rejection, got: {err}",
-    );
-    assert_eq!(pool.len().await, 0);
-}
-
-#[tokio::test]
 async fn mempool_rejects_unsupported_schema_encoder() {
     let pool = Mempool::new(CHAIN_ID, CORE);
-    let unknown_schema_id_str = "figaro-bogus-v99";
-    let schema_id = keccak256(unknown_schema_id_str.as_bytes());
-    let unknown_spec = serde_json::json!({
-        "schemaId": unknown_schema_id_str,
-        "version": 1,
-        "title": "Bogus",
-        "description": "no encoder registered",
-        "fields": [
-            { "name": "x", "type": "string", "required": true },
-        ],
-    });
+    let schema_id = keccak256(b"figaro-bogus-v99");
 
-    // Hand-construct the op since the helper assumes the encoder works.
+    // Hand-construct the op: schema_id is not a runtime-attestable
+    // protocol schema, so the content gate has no embedded spec for it.
     let domain = domain_separator(CHAIN_ID, CORE);
     let seller_key = make_signing_key(SELLER1_KEY);
     let root = root_commitment();
@@ -417,14 +361,13 @@ async fn mempool_rejects_unsupported_schema_encoder() {
         seller_sig,
         content_proof: Some(AttestationContentProof {
             content_json: serde_json::to_string(&serde_json::json!({ "x": "ok" })).unwrap(),
-            schema_spec: serde_json::to_string(&unknown_spec).unwrap(),
         }),
     };
 
     let err = pool.submit(op).await.unwrap_err();
     assert!(
-        err.contains("canonical encoding failed"),
-        "expected encoder-missing rejection, got: {err}",
+        err.contains("not a runtime-attestable protocol schema"),
+        "expected unknown-schema rejection, got: {err}",
     );
     assert_eq!(pool.len().await, 0);
 }

@@ -310,3 +310,36 @@ fn geo_v2_accepts_valid_geohash_and_rejects_garbage() {
     let bad = with("ilo", "dr5x1");
     assert!(validate_content(&bad, &spec, ValidateOptions::default()).is_err());
 }
+
+// ── Embedded canonical specs (Layer B content gate) ──────────────────
+
+#[test]
+fn every_embedded_spec_parses_and_matches_its_schema_id() {
+    use alloy_primitives::keccak256;
+    let mut count = 0;
+    for (key, json) in figaro_schema::all_embedded_specs() {
+        let value: Value = serde_json::from_str(json)
+            .unwrap_or_else(|e| panic!("embedded spec {key} is not valid JSON: {e}"));
+        let spec = parse_or_panic(&value);
+        assert_eq!(
+            spec.schema_id, key,
+            "embedded spec for {key} declares a different schemaId",
+        );
+        // Lookup by keccak hash returns the same JSON back.
+        assert_eq!(
+            figaro_schema::embedded_spec_json(&keccak256(key.as_bytes())),
+            Some(json),
+            "embedded_spec_json lookup mismatch for {key}",
+        );
+        count += 1;
+    }
+    assert_eq!(count, 16, "expected 16 embedded protocol schemas");
+}
+
+#[test]
+fn embedded_spec_json_is_none_for_non_protocol_schemas() {
+    use alloy_primitives::keccak256;
+    // figaro-topology-v1 is manifest-only; figaro-bogus-v99 is unknown.
+    assert!(figaro_schema::embedded_spec_json(&keccak256(b"figaro-topology-v1")).is_none());
+    assert!(figaro_schema::embedded_spec_json(&keccak256(b"figaro-bogus-v99")).is_none());
+}

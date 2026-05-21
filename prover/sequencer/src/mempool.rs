@@ -209,9 +209,9 @@ impl Mempool {
 
 /// Mempool-side mirror of the kernel's Layer B content gate
 /// (`validate_attestation_content` in `figaro_kernel::kernel`). Returns
-/// `Ok` when no `content_proof` is present (legacy content-opaque path)
-/// or when all four gates pass. Returns a human-readable rejection
-/// string otherwise so the same op never reaches the prover.
+/// `Ok` when no `content_proof` is present (content-opaque path) or when
+/// every gate passes. Returns a human-readable rejection string
+/// otherwise so the same op never reaches the prover.
 fn pre_check_attest_content(
     proof: Option<&AttestationContentProof>,
     content_ref: &B256,
@@ -220,29 +220,26 @@ fn pre_check_attest_content(
 ) -> Result<(), String> {
     let Some(proof) = proof else { return Ok(()); };
 
-    // ── Gate 0: parse the wire-form JSON strings ──
-    let schema_spec_value: serde_json::Value = serde_json::from_str(&proof.schema_spec)
-        .map_err(|e| format!("content_proof schema_spec is not valid JSON: {e}"))?;
+    // ── Gate 0: parse the wire-form content JSON ──
     let content_json_value: serde_json::Value = serde_json::from_str(&proof.content_json)
         .map_err(|e| format!("content_proof content_json is not valid JSON: {e}"))?;
 
-    // ── Gate 1: spec parses and schemaId hash matches ──
-    let parsed = match figaro_schema::parse_schema_spec(&schema_spec_value) {
+    // ── Gate 1: look up the canonical embedded spec for this schemaId ──
+    let spec_json = figaro_schema::embedded_spec_json(schema_id).ok_or_else(|| {
+        format!("schema_id {schema_id} is not a runtime-attestable protocol schema")
+    })?;
+    let spec_value: serde_json::Value = serde_json::from_str(spec_json)
+        .map_err(|e| format!("embedded schema spec is not valid JSON: {e}"))?;
+    let parsed = match figaro_schema::parse_schema_spec(&spec_value) {
         figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
         figaro_schema::ParseSchemaSpecResult::Err(errors) => {
             let first = errors
                 .first()
                 .map(|e| format!("{}: {}", e.path, e.message))
                 .unwrap_or_else(|| "unknown parse error".to_string());
-            return Err(format!("content_proof schema_spec failed to parse: {first}"));
+            return Err(format!("embedded schema spec failed to parse: {first}"));
         }
     };
-    if &keccak256(parsed.schema_id.as_bytes()) != schema_id {
-        return Err(format!(
-            "content_proof schema_spec.schemaId \"{}\" does not match op.schema_id",
-            parsed.schema_id,
-        ));
-    }
 
     // ── Gate 2: content satisfies the spec at the given stage ──
     let options = figaro_schema::ValidateOptions { stage: Some(stage) };

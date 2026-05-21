@@ -273,17 +273,19 @@ fn apply_resolve(
 /// Verify an optional `AttestationContentProof` against the on-chain
 /// `content_ref` and the schema declared in the op's `schema_id`.
 ///
-/// When `proof` is `None` this is a no-op (legacy behavior). When `Some`,
-/// the kernel asserts:
+/// When `proof` is `None` this is a no-op (content-opaque attestation).
+/// When `Some`, the kernel asserts:
 ///
-///   1. The supplied `schema_spec` JSON parses cleanly via Layer A's
-///      semantics, and `keccak256(spec.schemaId)` equals `schema_id`.
-///   2. `validate_content(content_json, spec, stage)` succeeds.
-///   3. `encode_content_for_schema(spec.schemaId, content_json)`
-///      derives the canonical ABI byte form from the JSON. This is the
-///      cross-form binding: the bytes Layer C decodes are derived from
-///      the JSON Layer B validates, so they describe the same content
-///      by construction.
+///   1. `schema_id` is one of the runtime-attestable protocol schemas —
+///      its canonical spec is compiled into the prover binary
+///      (`figaro_schema::embedded_spec_json`). The spec is looked up by
+///      `schema_id`, never supplied by the caller, so the constraint set
+///      is covered by the program verification key.
+///   2. `validate_content(content_json, embedded_spec, stage)` succeeds.
+///   3. `encode_content_for_schema(schemaId, content_json)` derives the
+///      canonical ABI byte form from the JSON — the cross-form binding:
+///      the bytes Layer C decodes are derived from the JSON Layer B
+///      validates, so they describe the same content by construction.
 ///   4. `keccak256(derived_bytes) == content_ref` — binds the derived
 ///      bytes to the on-chain commitment value.
 ///
@@ -296,15 +298,19 @@ fn validate_attestation_content(
 ) -> Result<(), KernelError> {
     let Some(proof) = proof else { return Ok(()); };
 
-    // ── Gate 0: parse the wire-form JSON strings ──
-    // (See AttestationContentProof NatSpec on why these arrive as strings.)
-    let schema_spec_value: serde_json::Value = serde_json::from_str(&proof.schema_spec)
-        .map_err(|e| KernelError::SchemaSpecParseFailed(format!("not valid JSON: {e}")))?;
+    // ── Gate 0: parse the wire-form content JSON ──
     let content_json_value: serde_json::Value = serde_json::from_str(&proof.content_json)
         .map_err(|e| KernelError::ContentEncodingFailed(format!("content_json not valid JSON: {e}")))?;
 
-    // ── Gate 1: spec parses and schemaId hash matches ──
-    let parsed = match figaro_schema::parse_schema_spec(&schema_spec_value) {
+    // ── Gate 1: look up the canonical embedded spec for this schemaId ──
+    // The spec is compiled into the binary, not carried on the wire, so a
+    // caller cannot weaken validation with a permissive spec. A schemaId
+    // with no embedded spec is not a runtime-attestable protocol schema.
+    let spec_json = figaro_schema::embedded_spec_json(schema_id)
+        .ok_or_else(|| KernelError::SchemaEncoderMissing(format!("{schema_id}")))?;
+    let spec_value: serde_json::Value = serde_json::from_str(spec_json)
+        .map_err(|e| KernelError::SchemaSpecParseFailed(format!("embedded spec not valid JSON: {e}")))?;
+    let parsed = match figaro_schema::parse_schema_spec(&spec_value) {
         figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
         figaro_schema::ParseSchemaSpecResult::Err(errors) => {
             let first = errors
@@ -314,10 +320,6 @@ fn validate_attestation_content(
             return Err(KernelError::SchemaSpecParseFailed(first));
         }
     };
-    let derived_schema_id = keccak256(parsed.schema_id.as_bytes());
-    if &derived_schema_id != schema_id {
-        return Err(KernelError::SchemaIdMismatch);
-    }
 
     // ── Gate 2: content satisfies the spec at the given stage ──
     let options = figaro_schema::ValidateOptions { stage: Some(stage) };
