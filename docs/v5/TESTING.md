@@ -63,7 +63,7 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 `Inv_ClaimImpliesUnlocked`, `Inv_TotalAllocatedLockedWithRoot`,
 `Inv_StageIndexBounded`.
 
-## Frontend Vitest (`frontend/tests/`) — 2 tiers, 66 files
+## Frontend Vitest (`frontend/tests/`) — 2 tiers, 65 files
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.
 
@@ -71,7 +71,7 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
   `Header`, `MobileNav`, `NotificationBell`, `ProcessList`, `ManifestForm`,
   `GHGWorkflowPanel`, `TokenAddressInput`, `TokenApprovalFlow`,
   `TokenDecimalDisplayFlows`.
-- **Lib tier** (`tests/lib/`, 57 files) — pure-client unit tests: commitment
+- **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
   preparation + stores, agreement manifest, schema-spec source, discovery +
   catalogue pipeline, GHG disclosure, delivery/handoff attestation, dispute
   evidence, IPFS service, token conversion, geocode, and per-hook tests
@@ -83,7 +83,7 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
 
-**devnet (`*.devnet.spec.ts`, 42 specs)** — every spec drives the real UI
+**devnet (`*.devnet.spec.ts`, 43 specs)** — every spec drives the real UI
 against Anvil + deployed contracts (action in the UI, reaction in the UI). By area:
 
 - Commerce / checkout / order lifecycle: `merchant-page`, `merchant-place-order`,

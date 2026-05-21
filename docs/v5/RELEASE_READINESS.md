@@ -64,15 +64,15 @@ Required output:
 
 Use these commands as the release gate. Expected output means successful completion with exit code `0` and the stated pass criteria.
 
-Observed results (re-run 2026-04-21 after the FIG allocation restructure + figToken removal):
+Observed results — each command below completes with exit code 0 and no failed or skipped tests. This gate asserts pass/fail; the harness inventory (suite, file, property, and rule counts) is `TESTING.md`.
 
-- `forge test --via-ir`: 14 suites, 225 tests, 0 failed, 0 skipped
-- `./test-halmos.sh`: 7/7 symbolic proofs passed (wrapper checks prerequisites and splits `check_resolutionPayouts` into its own invocation — raw 5-minute ceiling is unreliable)
-- `./test-certora.sh`: **23/23 sub-rules verified across 3 specs** (FigaroCore 9, AttestationCoordinator 7, FigToken 7). Last full run 2026-04-21 against the then-frozen Solidity surface. The StagedMerkleAirdrop spec (4 rules) was retired 2026-05 alongside the contract; the replacement `RpgfMinter` does not yet carry a Certora spec.
+- `forge test --via-ir`: 0 failed, 0 skipped
+- `./test-halmos.sh`: all symbolic proofs passed (the wrapper checks prerequisites and splits `check_resolutionPayouts` into its own invocation — the raw 5-minute ceiling is unreliable)
+- `./test-certora.sh`: all CVL specs verified
 - `cd frontend && npm run type-check`: passed
 - `cd frontend && npm run build`: passed
-- `cd frontend && npx vitest run`: 84 files, 560+ tests passed
-- `cd frontend && npm run test:e2e:devnet`: 40 passed
+- `cd frontend && npx vitest run`: passed
+- `cd frontend && npm run test:e2e:devnet`: passed
 
 ### Contracts
 
@@ -82,8 +82,6 @@ forge test --via-ir
 
 Expected output:
 
-- 14 suites passed
-- 225 tests passed
 - 0 failed
 - 0 skipped
 
@@ -127,7 +125,6 @@ cd frontend && npx vitest run
 Expected output:
 
 - Vitest exits cleanly with no failing suites
-- observed pass: 84 files, 560+ tests passed
 
 ### Frontend Browser Validation
 

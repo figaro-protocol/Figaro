@@ -81,8 +81,8 @@ Cross-corpus drift to resolve before mixed submission: process-chain terminology
 
 ### 4A. Complete
 
-- [x] **Foundry** — 27 contracts + interfaces + 17 schema validators, all tested.
-- [x] **TLA+** — 15 invariants across 2 models (`MC.tla` + `FigToken.tla`); `./test-tla.sh` runs exhaustively.
+- [x] **Foundry** — kernel, extensions, FIG, and the 16 schema validators, all tested.
+- [x] **TLA+** — 24 invariants across 3 models (`MC.tla` + `FigToken.tla` + `MC_RpgfMinter.tla`); `./test-tla.sh` runs exhaustively.
 - [x] **Playwright devnet** — connect → designer → commit → resolve path covered (`lifecycle.devnet.spec.ts`, `eats-lifecycle.devnet.spec.ts`, `permit.devnet.spec.ts`, `commitment-share.devnet.spec.ts`, `console.devnet.spec.ts`, `ghg-workflow.devnet.spec.ts`, `ui-feedback.devnet.spec.ts`).
 
 ### 4B. Coverage gaps (non-blocking)

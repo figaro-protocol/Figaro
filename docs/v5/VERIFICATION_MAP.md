@@ -26,15 +26,15 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 - **Protocol extensions**: `AttestationCoordinator`, `SchemaRegistry`, `DutchAuction`, `OperatorRegistry`, `FigaroBatchVerifier`
 - **FIG token ecosystem**: `FigToken`, `RpgfMinter` (replaced `StagedMerkleAirdrop` 2026-05; formal-verification status reset — see "Retired properties" below)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
-- **Tests**: 14 Foundry suites (225 tests), 7 Echidna properties (`EchidnaFuzzer.sol`), 12 SDK test files (166 tests)
+- **Tests**: the Foundry, Halmos, Certora, Echidna, and TLA+ harnesses, plus the SDK suite — suite, file, property, and rule counts are in `TESTING.md` (the single source)
 - **Frontend**: All pages in `frontend/app/`, components, mechanism modules
 
 ### Explicitly out-of-scope
 
 - Archived V3/V4 contracts (`archive-v3/`, `archive-v4/`)
-- Frontend Vitest unit tests (84 files, 560 tests) — these test UI components, not protocol invariants
-- Playwright E2E tests (38 specs) — these test UI rendering, not protocol properties
-- Rust prover workspace (`prover/`) — 55 tests covering SP1 kernel parity and sequencer
+- Frontend Vitest unit tests — these test UI components, not protocol invariants (inventory in `TESTING.md`)
+- Playwright E2E tests — these test UI rendering, not protocol properties
+- Rust prover workspace (`prover/`) — SP1 kernel-parity and sequencer tests
 
 ---
 
@@ -286,7 +286,9 @@ Certora uses cloud-based SMT proving to verify CVL (Certora Verification Languag
 specifications against Solidity bytecode. The spec covers state-machine invariants
 that complement the Halmos token-conservation proofs.
 
-### Rules verified (27/27 across four specs — 2026-04-21)
+### Rules verified
+
+(Current spec and rule totals: `TESTING.md`. The per-rule maps below cover the FigaroCore, AttestationCoordinator, and token-ops specs.)
 
 **FigaroCore (9 sub-rules from 8 declared; Certora splits one parametric rule)**
 
