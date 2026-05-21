@@ -945,7 +945,13 @@ export async function attestProximityProofAsSeller(opts: {
             content,
         ],
     });
-    return sellerClient.writeContract(request);
+    // Wait for the receipt before returning — callers query the
+    // Attestation event right after, and an unmined tx makes that
+    // getContractEvents race come back empty. Matches every sibling
+    // write helper in this file.
+    const hash = await sellerClient.writeContract(request);
+    await publicClient.waitForTransactionReceipt({ hash });
+    return hash;
 }
 
 /** Build the proximity-handoff agreement so callers can seed sub-orders
