@@ -13,9 +13,10 @@
  * `assemblyBindings[]` is the array; the frontend reads it, surfaces each
  * as an option, and the chosen assembly drives the process.
  *
- * What it does NOT yet cover: the coordination/handoff stages and resolve
- * — those follow once the courier-process interface is assembly-clause
- * driven. This spec ends at "both orders committed".
+ * It carries through to resolve — the buyer confirms receipt and the
+ * kernel atomically settles both orders. What it does NOT yet cover: the
+ * coordination + handoff stages between commit and resolve — those follow
+ * once the courier-process interface is assembly-clause driven.
  *
  * Requires Anvil + ./deploy-local.sh + Kubo + a seeded devnet.
  */
@@ -162,5 +163,17 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         });
         expect(state[0].toLowerCase()).toBe(BUYER_ADDR.toLowerCase()); // rootBuyer
         expect(state[3]).toBe(2); // activeOrderCount — food + courier
+
+        // ── Buyer confirms receipt → resolveProcess settles both orders ──
+        const confirmBtn = page.getByTestId('btn-confirm-receipt');
+        await confirmBtn.waitFor({ timeout: 30000 });
+        await confirmBtn.click();
+        await expect(page.getByTestId('order-status-pill')).toHaveText('Completed', { timeout: 90000 });
+
+        // Atomic resolution — the whole process settled, both orders at once.
+        const resolved = await publicClient.readContract({
+            address: core, abi: PROCESSES_ABI, functionName: 'processes', args: [processId],
+        });
+        expect(resolved[3]).toBe(0); // activeOrderCount → 0
     });
 });
