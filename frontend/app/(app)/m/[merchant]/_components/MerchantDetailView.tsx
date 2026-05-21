@@ -30,7 +30,7 @@ import { MerchantBrandingModule, MerchantLogo } from "@/components/modules/Merch
 import { useCommerce, useCheckout } from "@/lib/commerce";
 import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
-import { computeCommitmentProcessId } from "@/lib/core/commitmentStore";
+import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitmentStore";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
@@ -59,6 +59,11 @@ const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "deliver:seller-assigned",
     "deliver:dutch-auction",
 ];
+
+// Placeholder courier fee for a multi-order (delivery) assembly's courier
+// commit. Seller-priced per the coordination model — hardcoded here until
+// the merchant catalogue carries a delivery-fee field. Display-token units.
+const HARDCODED_COURIER_PRICE = "0.5";
 
 interface Props {
     merchantAddress: string;
@@ -211,8 +216,13 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // redirect from Increment 2 — both surfaces converge on the per-order
     // page after a successful commit.
     const redirectedForCommitment = useRef<string | null>(null);
+    // Set while executeCheckout is mid-flight on a multi-order assembly —
+    // suppresses this single-commit redirect so the courier commit runs
+    // before navigation; executeCheckout owns the redirect in that path.
+    const multiOrderCheckout = useRef(false);
     useEffect(() => {
         if (commitStep !== "done") return;
+        if (multiOrderCheckout.current) return;
         if (!payload?.commitment) return;
         const fingerprint = `${payload.commitment.agreementHash}:${payload.commitment.salt}`;
         if (redirectedForCommitment.current === fingerprint) return;
@@ -338,6 +348,13 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             return;
         }
         const sellerAddress = restaurant.address as `0x${string}`;
+        // The picked assembly drives the order. A multi-order assembly
+        // (e.g. local-commerce) is a process of more than one order — the
+        // root merchant order plus a courier order parented to it.
+        const pickedAssembly = boundAssemblies.find(
+            (a) => a.fulfilmentMethod === fulfillmentMode,
+        );
+        const isMultiOrder = !!pickedAssembly && pickedAssembly.manifest.orders.length > 1;
         try {
             setCheckoutError(null);
             const prepared = await prepareOrderCommitment({
@@ -370,22 +387,71 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
                 },
             });
+
             const immediateCommit = isE2EMockSession() || isE2EDevnetSession();
-            if (immediateCommit) {
-                await signAndPlace(
-                    prepared.commitment,
-                    prepared.commitmentMeta,
-                    "buyer",
-                );
-            } else {
-                await initiateAsParty(
-                    prepared.commitment,
-                    "buyer",
-                    prepared.commitmentMeta,
-                );
+            if (!immediateCommit) {
+                // Production two-party relay — root order only. Multi-order
+                // (courier) checkout via the relay is follow-on work.
+                await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta);
+                return;
             }
-            // Redirect is owned by the commitStep === "done" useEffect above.
+            if (!isMultiOrder) {
+                // Single-order assembly — commit; the redirect effect routes
+                // to /orders/<processId>.
+                await signAndPlace(prepared.commitment, prepared.commitmentMeta, "buyer");
+                return;
+            }
+
+            // ── Multi-order assembly: root order, then the courier order ──
+            // Suppress the single-commit redirect until both orders land.
+            multiOrderCheckout.current = true;
+            await signAndPlace(prepared.commitment, prepared.commitmentMeta, "buyer");
+
+            const processId = computeCommitmentProcessId(prepared.commitment, chainId, CONTRACTS.core);
+            const rootOrderHash = computeOrderHash(prepared.commitment, chainId, CONTRACTS.core);
+
+            // The courier wallet is the operator's designated courier for
+            // this assembly (seller-assigned coordination; dutch-auction /
+            // buyer-assigned courier selection is follow-on work).
+            const courier = pickedAssembly!.counterpartyBindings
+                .find((cb) => cb.schemaId === "figaro-courier-process-v1")
+                ?.addresses[0];
+            if (!courier) {
+                multiOrderCheckout.current = false;
+                setCheckoutError("This assembly needs a courier, but the merchant has designated none.");
+                return;
+            }
+
+            // The courier order — buyer↔courier, parented to the root order,
+            // carrying the figaro-courier-process-v1 clause. Seller-priced
+            // courier fee, hardcoded placeholder for now.
+            const courierPayment = parseToken(HARDCODED_COURIER_PRICE, tokenDecimals);
+            const courierPrepared = await prepareOrderCommitment({
+                buyer,
+                seller: courier,
+                currency,
+                payment: courierPayment,
+                processId,
+                parentOrderHashes: [rootOrderHash],
+                expectedCumulativeValue: merchantTotalAmount + courierPayment,
+                manifestFields: {
+                    origin: "",
+                    destination: "",
+                    courierProcessIncluded: true,
+                    ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
+                    ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
+                    class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
+                },
+            });
+            await signAndPlace(courierPrepared.commitment, courierPrepared.commitmentMeta, "buyer");
+
+            // Both orders committed — navigate to the process page.
+            multiOrderCheckout.current = false;
+            clearCart();
+            resetCommitment();
+            router.push(`/orders/${processId}`);
         } catch (cause: unknown) {
+            multiOrderCheckout.current = false;
             const msg = extractErrorMessage(cause, "Signing failed");
             setCheckoutError(msg);
         }

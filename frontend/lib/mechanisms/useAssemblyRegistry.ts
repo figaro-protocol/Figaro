@@ -35,7 +35,10 @@ import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { useOperatorProfile } from "./useOperatorRegistry";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
-import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
+import {
+    tryParseOperatorProfileDocument,
+    type CounterpartyBinding,
+} from "@/lib/shared/operatorProfileMetadata";
 
 export const ASSEMBLY_REGISTRY_ABI = parseAbi([
     "function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable",
@@ -522,6 +525,11 @@ export interface BoundAssembly {
      *  selection when this assembly is picked. `null` when the root
      *  fulfilment clause is absent or malformed. */
     fulfilmentMethod: CanonicalFulfilmentMethod | null;
+    /** The operator's designated counterparty wallets for this assembly,
+     *  keyed by sub-order process schema (e.g. figaro-courier-process-v1).
+     *  Sourced from the operator profile's AssemblyBindingRecord —
+     *  checkout reads it to fill a delegated order's seller. */
+    counterpartyBindings: CounterpartyBinding[];
 }
 
 export interface MerchantBoundAssemblies {
@@ -641,12 +649,17 @@ export function useMerchantBoundAssemblies(
                 const modalitySet = new Set<string>();
                 manifests.forEach((m, i) => {
                     if (!m) return;
+                    const slug = matchedEvents[i].slug;
                     const { modalities, coordinations } = extractRootFulfilment(m);
+                    const binding = (profile.assemblyBindings ?? []).find(
+                        (b) => b.assemblySlug === slug,
+                    );
                     assemblies.push({
-                        slug: matchedEvents[i].slug,
-                        name: m.name || matchedEvents[i].slug,
+                        slug,
+                        name: m.name || slug,
                         manifest: m,
                         fulfilmentMethod: deriveCanonicalFulfilmentMethod(modalities, coordinations),
+                        counterpartyBindings: binding?.counterpartyBindings ?? [],
                     });
                     for (const mode of modalities) modalitySet.add(mode);
                 });

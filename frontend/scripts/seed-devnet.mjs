@@ -117,11 +117,15 @@ function canonicalize(value) {
 // so the seed never collides with a spec that registers an operator or
 // asserts an account is unregistered. The binding spread covers every shape:
 // three single-assembly operators and one bound to both.
+// `couriers` — anvil indices this operator designates as trusted couriers;
+// the seed writes them into the local-commerce binding's
+// `counterpartyBindings` (the seller-assigned courier roster the checkout
+// reads when a buyer picks a delivery assembly).
 const OPERATORS = [
     { addressIndex: 5, name: 'Counter & Co.', specialty: 'in-person counter sales', bind: ['direct-sale'] },
-    { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'] },
+    { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'], couriers: [7] },
     { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'] },
-    { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce'] },
+    { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce'], couriers: [7] },
 ];
 
 /** Parse frontend/.env.local into a flat key→value map. */
@@ -277,6 +281,19 @@ async function main() {
                 subjectAddress: account.address,
                 assemblySlug,
                 networkTargets: ['local-anvil'],
+                // A delivery assembly needs the operator's designated
+                // courier roster — the seller-assigned counterparty wallets
+                // the checkout fills the courier order's seller from.
+                ...(assemblySlug === 'local-commerce' && op.couriers
+                    ? {
+                        counterpartyBindings: [{
+                            schemaId: 'figaro-courier-process-v1',
+                            addresses: op.couriers.map(
+                                (i) => mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: i }).address,
+                            ),
+                        }],
+                    }
+                    : {}),
                 version: '0.1.0',
             })),
         };
