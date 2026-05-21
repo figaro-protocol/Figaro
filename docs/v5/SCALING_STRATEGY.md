@@ -372,6 +372,31 @@ step committed, none demand-gated:
 4. **Witness-supplied specs.** The 16 protocol specs stop being
    special-cased; they become input like any other.
 
+### Keystone — the canonical ABI mapping
+
+Step 1 is a written rule before it is code: the canonical ABI encoding
+of a schema's content must be a total function of its `SchemaSpec`. The
+mapping:
+
+- `string` → `string`; by declared `format`, `bytes32-hex` → `bytes32`,
+  `address-hex` → `address`, `bytes-hex` → `bytes`.
+- `enum` → `uint8` (the index); `boolean` → `bool`; `bigint` → `uint256`.
+- `integer` → `uintN`. Open decision: the spec declares a width (the GHG
+  encoders chose `uint8`), or the rule is "always `uint256`" — no spec
+  change, larger content bytes. Recommended: declared width, `uint256`
+  default.
+- `array<T>` → `T[]`; `object` → `tuple`; `array<object>` → `tuple[]`.
+
+The last entry is the one behavioural change. Today's encoders transpose
+object arrays into struct-of-arrays (consent → `bytes32[], string[],
+string[]`; commerce line items; etc.) — an encoder convenience the spec
+never declared. The canonical rule is the spec-natural `tuple[]`, so the
+object-array schemas' canonical bytes change: they migrate to `-v2`
+schemaIds with regenerated Layer C validators (the v1 pair stays
+deployed and immutable). Scalar-only schemas — the five GHG — are
+unaffected. Once the rule holds, both the generic encoder and a
+generic-or-mechanically-generated Layer C validator follow from it.
+
 **Costs — one-time bootstrap costs, not recurring.** Generic JSON
 parsing in-circuit is heavier than the specialized path (mitigable: a
 compact binary spec form, per-batch spec amortization since a batch's
@@ -389,6 +414,43 @@ third-party schema that needs the proven path. It is not conditional on
 demand — the demand is the design. None of this touches the kernel or
 its invariants; it is `prover/` and `FigaroBatchVerifier`'s deployment
 story.
+
+## Proving Infrastructure — Succinct (SP1)
+
+Figaro already uses Succinct's SP1 zkVM (`prover/`). Two further Succinct
+surfaces matter for mainnet; they are proving infrastructure, separate
+from the schema-engine work above and sequenced independently of it.
+
+**On-chain verification — `SP1VerifierGateway`.** `FigaroBatchVerifier`
+verifies a batch proof through `ISP1Verifier.verifyProof`;
+`DeployMainnet.s.sol` wires a real verifier (devnet uses
+`MockSP1Verifier`). SP1 verification is EVM-pure — a Solidity
+Groth16/PLONK verifier — so it runs on any EVM chain. Succinct maintains
+canonical gateway deployments on Ethereum and the major L2s (Base,
+Arbitrum One, Optimism, BNB Chain among them — the current list is in
+Succinct's `verification/contract-addresses` docs); a chain with no
+canonical deployment can still host the verifier contract directly.
+Figaro is therefore not chain-constrained — the deployment target is a
+Figaro decision, not an SP1 limit.
+
+**Proof generation — the Succinct Prover Network.** The sequencer's
+`prove_groth16` (`prover/sequencer/src/prover.rs`) proves locally today;
+Groth16 wrapping is RAM-heavy. The Succinct Prover Network is a
+decentralised proof marketplace — submit program + inputs, receive a
+proof. Adding a network prover mode alongside the existing mock and
+local-Groth16 modes is a contained change to the sequencer's prover
+module. It is a liveness dependency only: the proof still verifies
+against the program vkey, so a faulty or adversarial prover cannot forge
+a settling proof — the same liveness-not-safety boundary the sequencer
+trust model already draws.
+
+**Connection to the schema engine.** The generic schema engine raises
+in-circuit cost (generic spec parsing is heavier than the specialised
+path). That makes offloading proof generation to the Prover Network the
+natural answer rather than scaling a self-hosted prover. The two land
+independently — the schema engine is the architectural blocker, the
+Prover Network lands whenever production proving is stood up — but the
+engine's cost increase is what makes the network worth adopting.
 
 ## Decision Rule
 
