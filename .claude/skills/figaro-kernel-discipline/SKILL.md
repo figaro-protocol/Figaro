@@ -1,6 +1,6 @@
 ---
 name: figaro-kernel-discipline
-description: Use when proposing, reviewing, or critiquing any change to FigaroCore.sol, CommitmentTypes.sol, bonding math, kernel storage mappings, or the six protocol invariants (asymmetric bonding, progressive collateralization, buyer dominance, atomic resolution, immutable evidence, no escape hatches). TRIGGER when the user asks to add a feature to the kernel, when review surfaces a potential vulnerability in kernel patterns, when the model is about to propose timeout / admin / recovery / yield / governance / lifecycle-flag additions, or when the conversation mentions 'web2 pattern', 'stuck funds', 'escape hatch', 'MAD equilibrium', or any of the 11 false-positive patterns in DESIGN_DECISIONS.md. Invoke BEFORE proposing, not after.
+description: Use when proposing, reviewing, or critiquing any change to FigaroCore.sol, CommitmentTypes.sol, bonding math, kernel storage mappings, or the six protocol invariants (asymmetric bonding, progressive collateralization, buyer dominance, atomic resolution, immutable evidence, no escape hatches). TRIGGER when the user asks to add a feature to the kernel, when review surfaces a potential vulnerability in kernel patterns, when the model is about to propose timeout / admin / recovery / yield / governance / lifecycle-flag additions, or when the conversation mentions 'web2 pattern', 'stuck funds', 'escape hatch', 'MAD equilibrium', or any of the 14 false-positive patterns in DESIGN_DECISIONS.md. Invoke BEFORE proposing, not after.
 ---
 
 # Figaro Kernel Discipline
@@ -28,7 +28,7 @@ fee**, **no escape hatches**. These are not simplifications. Every feature
 *absent* from the kernel is absent because adding it would weaken the Nash
 equilibrium.
 
-Authoritative reference: `docs/v5/DESIGN_DECISIONS.md` — 11 patterns that look
+Authoritative reference: `docs/v5/DESIGN_DECISIONS.md` — 14 patterns that look
 like vulnerabilities but are correct by design.
 
 ## Anti-Patterns — Reject on Sight
@@ -116,7 +116,7 @@ belongs there, or discarding it entirely if it does not.
 
 ## Reference Files (Read Before Acting)
 
-- `docs/v5/DESIGN_DECISIONS.md` — 11 false-positive patterns, authoritative
+- `docs/v5/DESIGN_DECISIONS.md` — 14 false-positive patterns, authoritative
 - `paper/figaro-mechanism.tex` — game-theoretic proofs (mechanism paper)
 - `docs/v5/VERIFICATION_MAP.md` — invariant → code → test → formal layer
 - `docs/v5/THEORY.md` — derivation of the six properties
