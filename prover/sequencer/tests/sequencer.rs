@@ -70,8 +70,6 @@ fn empty_snapshot() -> KernelStateSnapshot {
         order_process_id: vec![],
         schemas_registered: vec![],
         operators_registered: vec![],
-        emission_settlement_count: 0,
-        emission_total_emitted: U256::ZERO,
     }
 }
 
@@ -497,7 +495,7 @@ async fn state_mirror_advance_snapshot_consistent() {
 fn assembler_batch_preserves_fields() {
     let ops = vec![signed_commit_op(), signed_commit_op()];
     let snap = empty_snapshot();
-    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1234, ops, snap, Address::ZERO);
+    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1234, ops, snap);
 
     assert_eq!(batch.chain_id, CHAIN_ID);
     assert_eq!(batch.verifying_contract, CORE);
@@ -665,7 +663,7 @@ async fn e2e_mempool_to_kernel() {
     let prev_state = mirror.snapshot().await;
 
     let batch = assembler::assemble_batch(
-        CHAIN_ID, CORE, 1000, ops, prev_state, Address::ZERO,
+        CHAIN_ID, CORE, 1000, ops, prev_state,
     );
 
     // Execute through kernel
@@ -705,7 +703,7 @@ async fn e2e_two_sequential_batches() {
     pool.submit(signed_commit_op()).await.unwrap();
     let ops1: Vec<_> = pool.drain().await.into_iter().map(|p| p.op).collect();
     let batch1 = assembler::assemble_batch(
-        CHAIN_ID, CORE, 1000, ops1, mirror.snapshot().await, Address::ZERO,
+        CHAIN_ID, CORE, 1000, ops1, mirror.snapshot().await,
     );
     let (pv1, _, _, post_state1) =
         figaro_kernel::kernel::apply_batch_with_state(&batch1).unwrap();
@@ -732,7 +730,7 @@ async fn e2e_two_sequential_batches() {
     pool.submit(schema_op).await.unwrap();
     let ops2: Vec<_> = pool.drain().await.into_iter().map(|p| p.op).collect();
     let batch2 = assembler::assemble_batch(
-        CHAIN_ID, CORE, 2000, ops2, mirror.snapshot().await, Address::ZERO,
+        CHAIN_ID, CORE, 2000, ops2, mirror.snapshot().await,
     );
 
     // Batch 2 prev_state_root must equal batch 1 new_state_root

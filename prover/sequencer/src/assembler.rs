@@ -28,7 +28,6 @@ pub fn assemble_batch(
     block_timestamp: u64,
     operations: Vec<KernelOp>,
     prev_state: KernelStateSnapshot,
-    fig_token: Address,
 ) -> BatchInput {
     BatchInput {
         chain_id,
@@ -36,6 +35,5 @@ pub fn assemble_batch(
         block_timestamp,
         operations,
         prev_state,
-        fig_token,
     }
 }

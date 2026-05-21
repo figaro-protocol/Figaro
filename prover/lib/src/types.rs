@@ -196,10 +196,6 @@ pub struct KernelStateSnapshot {
     /// signal-by-availability, not registry state. Role + metadata travel
     /// in the OperatorRegistered event only.
     pub operators_registered: Vec<(Address, bool)>,
-    /// FIG emission: global settlement counter.
-    pub emission_settlement_count: u64,
-    /// FIG emission: total FIG emitted (wei).
-    pub emission_total_emitted: U256,
 }
 
 // ── SP1 I/O types ─────────────────────────────────────────────────
@@ -212,8 +208,6 @@ pub struct BatchInput {
     pub block_timestamp: u64,
     pub operations: Vec<KernelOp>,
     pub prev_state: KernelStateSnapshot,
-    /// FIG token address. If Address::ZERO, emission is disabled.
-    pub fig_token: Address,
 }
 
 /// Public values committed by the SP1 program.

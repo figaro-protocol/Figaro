@@ -248,13 +248,14 @@ contract Deploy is Script {
         console.log("ProcessOffsetReceipt deployed at:", address(offsetReceipts));
 
         // ── BatchVerifier (SP1 — mock verifier for devnet) ──────────
-        // Genesis root = keccak256 of 7 concatenated sub-hashes:
-        // 6 × keccak256("") (empty BTreeMaps) + keccak256(0u64_be || 0u256_be) (emission).
-        // Matches the Rust kernel's KernelState::new().compute_root().
+        // Genesis root = keccak256 of 5 concatenated keccak256("")
+        // sub-hashes — empty processes, order_status, order_process_id,
+        // schemas, operators maps. Matches the Rust kernel's
+        // KernelState::new().compute_root().
         //
         // Note: FigaroBatchVerifier is NOT a FIG minter and never will be.
-        // The removed settlement-anchored emission model is deprecated.
-        bytes32 genesisRoot = 0x10fc52ca200d9d5568c46b8435274d86183f39c5a9d8648b4006ec68f8058bc9;
+        // Settlement-anchored FIG emission was removed from the kernel.
+        bytes32 genesisRoot = 0x826c6f22e4362b1b34f080cc37deab3358df5d98592fd19534c28c1fb713fd8c;
         FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
             address(mockVerifier),
             keccak256("figaro-kernel-dev"), // devnet program vKey

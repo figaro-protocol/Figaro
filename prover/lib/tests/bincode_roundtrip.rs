@@ -75,12 +75,7 @@ fn bincode_roundtrip_batchinput_with_content_proof_none() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operators_registered: vec![],
-            emission_settlement_count: 0,
-            emission_total_emitted: U256::ZERO,
-        },
-        fig_token: Address::ZERO,
-    };
+            operators_registered: vec![],        },    };
 
     let bytes = bincode::serialize(&input).expect("serialize");
     eprintln!("serialized {} bytes", bytes.len());
@@ -126,11 +121,7 @@ fn bincode_roundtrip_single_attest_seller_with_none() {
         }],
         prev_state: KernelStateSnapshot {
             processes: vec![], order_status: vec![], order_process_id: vec![],
-            schemas_registered: vec![], operators_registered: vec![],
-            emission_settlement_count: 0, emission_total_emitted: U256::ZERO,
-        },
-        fig_token: Address::ZERO,
-    };
+            schemas_registered: vec![], operators_registered: vec![],        },    };
     let bytes = bincode::serialize(&input).expect("serialize");
     eprintln!("serialized {} bytes", bytes.len());
     let _decoded: BatchInput = bincode::deserialize(&bytes).expect("deserialize");
@@ -149,11 +140,7 @@ fn bincode_roundtrip_single_commit() {
         }],
         prev_state: KernelStateSnapshot {
             processes: vec![], order_status: vec![], order_process_id: vec![],
-            schemas_registered: vec![], operators_registered: vec![],
-            emission_settlement_count: 0, emission_total_emitted: U256::ZERO,
-        },
-        fig_token: Address::ZERO,
-    };
+            schemas_registered: vec![], operators_registered: vec![],        },    };
     let bytes = bincode::serialize(&input).expect("serialize");
     eprintln!("serialized {} bytes", bytes.len());
     let _decoded: BatchInput = bincode::deserialize(&bytes).expect("deserialize");
@@ -184,12 +171,7 @@ fn bincode_roundtrip_batchinput_with_content_proof_some() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operators_registered: vec![],
-            emission_settlement_count: 0,
-            emission_total_emitted: U256::ZERO,
-        },
-        fig_token: Address::ZERO,
-    };
+            operators_registered: vec![],        },    };
 
     let bytes = bincode::serialize(&input).expect("serialize");
     eprintln!("serialized {} bytes", bytes.len());

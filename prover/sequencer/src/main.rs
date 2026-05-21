@@ -62,14 +62,7 @@ async fn main() {
     let max_ops: usize = env_or("MAX_BATCH_OPS", "100")
         .parse()
         .expect("invalid MAX_BATCH_OPS");
-    let fig_token: Address = env_or(
-        "FIG_TOKEN_ADDRESS",
-        "0x0000000000000000000000000000000000000000",
-    )
-    .parse()
-    .expect("invalid FIG_TOKEN_ADDRESS");
-
-    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, ?fig_token, %listen_addr, %batch_interval, %max_ops, "Starting Figaro sequencer");
+    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, "Starting Figaro sequencer");
 
     // ── Initialize components ─────────────────────────────────────
     let mempool = Mempool::new(chain_id, verifying_contract);
@@ -122,7 +115,6 @@ async fn main() {
             submitter_config,
             chain_id,
             verifying_contract,
-            fig_token,
         )
         .await;
     });
@@ -154,7 +146,6 @@ async fn batch_loop(
     submitter_config: SubmitterConfig,
     chain_id: u64,
     verifying_contract: Address,
-    fig_token: Address,
 ) {
     let interval = Duration::from_secs(config.interval_secs);
     let mut ticker = time::interval(interval);
@@ -187,7 +178,6 @@ async fn batch_loop(
             timestamp,
             ops,
             prev_state,
-            fig_token,
         );
 
         // Prove

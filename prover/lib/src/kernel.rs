@@ -196,77 +196,11 @@ fn apply_commit(
     Ok((process_id, order_hash))
 }
 
-// ── FIG emission constants (batch path: Euler oscillation) ────────
-//
-// Batch path uses a decaying oscillation derived from Euler's identity:
-//   r(n) = r₀ · 2^(-n / halflife) · (1 + A · cos(2πn / season))
-//
-// The cosine term redistributes emission within cycles (peaks and
-// troughs) without changing the total — the integral of cos over a
-// full cycle is zero. This creates temporal coordination value for
-// FIG denomination while preserving emission neutrality.
-//
-// The direct-path contract (FigEmission.sol) uses plain discrete
-// halving with the same base rate and a 10M-settlement epoch as a
-// step-function approximation of the decay envelope. The Euler
-// oscillation is a batch-path-only feature, incentivizing batched
-// settlement.
-
-/// Base emission rate: 100 FIG per settlement at genesis.
-const EMISSION_BASE_RATE: f64 = 100.0;
-
-/// Halflife in settlements: rate halves every 10M settlements.
-const EMISSION_HALFLIFE: f64 = 10_000_000.0;
-
-/// Season length in settlements: one full oscillation cycle.
-const EMISSION_SEASON: f64 = 2_000_000.0;
-
-/// Oscillation amplitude (0 < A < 1). At peaks rate is (1+A)×envelope,
-/// at troughs (1-A)×envelope. A=0.5 keeps trough at 50% of envelope.
-const EMISSION_AMPLITUDE: f64 = 0.5;
-
-/// Compute 10^18 as U256.
-fn ether_unit() -> U256 {
-    U256::from(10u64).pow(U256::from(18u64))
-}
-
-/// Maximum total emission (600M FIG in wei).
-fn emission_reward_cap() -> U256 {
-    U256::from(600_000_000u64) * ether_unit()
-}
-
-/// Compute per-settlement Euler emission rate at the given cumulative
-/// settlement count. Returns the amount in wei (18 decimals).
-///
-/// r(n) = r₀ · 2^(-n/halflife) · (1 + A·cos(2πn/season))
-///
-/// Uses f64 arithmetic (deterministic in SP1's software float) and
-/// converts to U256 wei. The result is always non-negative since A < 1.
-fn euler_emission_rate(settlement_count: u64) -> U256 {
-    let n = settlement_count as f64;
-    let decay = (-n / EMISSION_HALFLIFE * std::f64::consts::LN_2).exp();
-    let omega = 2.0 * std::f64::consts::PI * n / EMISSION_SEASON;
-    let oscillation = 1.0 + EMISSION_AMPLITUDE * omega.cos();
-    let rate_fig = EMISSION_BASE_RATE * decay * oscillation;
-
-    // Convert to wei: rate_fig * 10^18, clamped to non-negative
-    if rate_fig <= 0.0 {
-        return U256::ZERO;
-    }
-    // Split into integer and fractional parts to avoid f64 precision loss
-    // at large values. rate_fig is at most 150 (100 * 1.5), so this is safe.
-    let rate_wei = rate_fig * 1e18;
-    U256::from(rate_wei as u128)
-}
-
 // ── resolveProcess ────────────────────────────────────────────────
 
 /// Apply a single resolve operation. Matches `FigaroCore.resolveProcess()`
 /// except buyer authorization is via EIP-712 signature (batched equivalent
 /// of `msg.sender == rootBuyer`).
-///
-/// When `fig_token` is non-zero, computes FIG emission per resolved order
-/// and adds the payout to the token tracker (matching FigEmission.sol).
 fn apply_resolve(
     state: &mut KernelState,
     domain: &B256,
@@ -274,7 +208,6 @@ fn apply_resolve(
     commitments: &[Commitment],
     buyer_sig: &Signature,
     tracker: &mut TokenTracker,
-    fig_token: Address,
 ) -> Result<(), KernelError> {
     let ps = state
         .processes
@@ -324,26 +257,6 @@ fn apply_resolve(
 
         tracker.payout(currency, c.seller, seller_payout);
         tracker.payout(currency, buyer, buyer_payout);
-
-        // ── FIG emission (seller-only, per resolved order) ──
-        if fig_token != Address::ZERO {
-            let mut amount = euler_emission_rate(state.emission_settlement_count);
-
-            // Enforce reward cap
-            let cap = emission_reward_cap();
-            if state.emission_total_emitted.checked_add(amount).ok_or(KernelError::Overflow)? > cap {
-                amount = cap.saturating_sub(state.emission_total_emitted);
-            }
-
-            if !amount.is_zero() {
-                tracker.payout(fig_token, c.seller, amount);
-                state.emission_settlement_count += 1;
-                state.emission_total_emitted = state
-                    .emission_total_emitted
-                    .checked_add(amount)
-                    .ok_or(KernelError::Overflow)?;
-            }
-        }
 
         state.order_status.insert(order_hash, 2);
     }
@@ -793,7 +706,6 @@ fn apply_batch_inner(
     let domain = domain_separator(input.chain_id, input.verifying_contract);
     let mut state = KernelState::from_snapshot(&input.prev_state);
     let prev_root = state.compute_root();
-    let fig_token = input.fig_token;
 
     let mut tracker = TokenTracker::new();
     let mut attestation_events = Vec::new();
@@ -830,7 +742,6 @@ fn apply_batch_inner(
                     commitments,
                     buyer_sig,
                     &mut tracker,
-                    fig_token,
                 )?;
             }
 

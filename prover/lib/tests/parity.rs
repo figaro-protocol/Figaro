@@ -184,12 +184,7 @@ fn test_full_batch_commit_and_state() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operators_registered: vec![],
-            emission_settlement_count: 0,
-            emission_total_emitted: U256::ZERO,
-        },
-        fig_token: Address::ZERO,
-    };
+            operators_registered: vec![],        },    };
 
     let (pv, positions, _events) = apply_batch(&input).unwrap();
 
@@ -258,12 +253,7 @@ fn test_full_batch_commit_resolve_payouts() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operators_registered: vec![],
-            emission_settlement_count: 0,
-            emission_total_emitted: U256::ZERO,
-        },
-        fig_token: Address::ZERO,
-    };
+            operators_registered: vec![],        },    };
 
     let (_pv, positions, _events) = apply_batch(&input).unwrap();
 
@@ -323,10 +313,7 @@ fn empty_snapshot() -> KernelStateSnapshot {
         order_status: vec![],
         order_process_id: vec![],
         schemas_registered: vec![],
-        operators_registered: vec![],
-        emission_settlement_count: 0,
-        emission_total_emitted: U256::ZERO,
-    }
+        operators_registered: vec![],    }
 }
 
 // ── Schema Registry tests ─────────────────────────────────────────
@@ -352,9 +339,7 @@ fn test_register_schema() {
             uri_hash,
             registrar_sig: sig,
         }],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let (pv, _positions, events) = apply_batch(&input).unwrap();
     assert_ne!(pv.prev_state_root, pv.new_state_root);
@@ -393,9 +378,7 @@ fn test_register_schema_duplicate_fails() {
                 registrar_sig: sig,
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::SchemaAlreadyRegistered(_)));
@@ -435,9 +418,7 @@ fn test_set_mechanism_schema() {
                 mechanism_sig: mech_sig,
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.mechanism_schemas.len(), 1);
@@ -463,9 +444,7 @@ fn test_set_mechanism_schema_unregistered_fails() {
             schema_id,
             mechanism_sig: mech_sig,
         }],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::SchemaNotRegistered(_)));
@@ -491,9 +470,7 @@ fn test_register_operator() {
             metadata_uri: metadata.to_string(),
             operator_sig: sig,
         }],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let (pv, _positions, events) = apply_batch(&input).unwrap();
     assert_ne!(pv.prev_state_root, pv.new_state_root);
@@ -531,9 +508,7 @@ fn test_register_operator_duplicate_fails() {
                 operator_sig: make_sig("ipfs://second"),
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::OperatorAlreadyRegistered));
@@ -566,9 +541,7 @@ fn test_update_profile_emits_profile_updated_event() {
                 operator_sig: upd_sig,
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.operators.len(), 2);
@@ -601,9 +574,7 @@ fn test_update_profile_unregistered_fails() {
             metadata_uri: "ipfs://orphan".to_string(),
             operator_sig: upd_sig,
         }],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::OperatorNotRegistered));
@@ -651,9 +622,7 @@ fn test_attest_as_seller() {
                 content_proof: None,
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.attestations.len(), 1);
@@ -706,9 +675,7 @@ fn test_attest_as_buyer() {
                 content_proof: None,
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.attestations.len(), 1);
@@ -758,9 +725,7 @@ fn test_attest_as_seller_wrong_signer_fails() {
                 content_proof: None,
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::NotAuthorized));
@@ -805,9 +770,7 @@ fn test_attest_as_buyer_wrong_signer_fails() {
                 content_proof: None,
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(matches!(err, KernelError::NotAuthorized));
@@ -886,9 +849,7 @@ fn test_mixed_batch_all_operations() {
                 buyer_sig: resolve_sig,
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let (pv, positions, events) = apply_batch(&input).unwrap();
 
@@ -904,239 +865,6 @@ fn test_mixed_batch_all_operations() {
     assert_eq!(events.operators.len(), 1);
     // Token flows exist (from commit + resolve)
     assert!(!positions.is_empty());
-}
-
-// ── FIG emission tests ────────────────────────────────────────────
-
-const FIG_TOKEN: Address = address!("1111111111111111111111111111111111111111");
-
-#[test]
-fn test_emission_on_resolve_mints_fig() {
-    let domain = domain_separator(CHAIN_ID, CORE);
-    let buyer_key = make_signing_key(BUYER_KEY);
-    let seller1_key = make_signing_key(SELLER1_KEY);
-    let seller2_key = make_signing_key(SELLER2_KEY);
-
-    let root = root_commitment();
-    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
-    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
-
-    let sub = sub_commitment();
-    let sub_buyer_sig = sign_commitment(&sub, &domain, &buyer_key);
-    let sub_seller_sig = sign_commitment(&sub, &domain, &seller2_key);
-
-    let resolve_hash = resolve_struct_hash(&PROCESS_ID);
-    let resolve_digest = typed_data_hash(&domain, &resolve_hash);
-    let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
-
-    let input = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![
-            KernelOp::Commit {
-                commitment: root.clone(),
-                buyer_sig: root_buyer_sig,
-                seller_sig: root_seller_sig,
-            },
-            KernelOp::Commit {
-                commitment: sub.clone(),
-                buyer_sig: sub_buyer_sig,
-                seller_sig: sub_seller_sig,
-            },
-            KernelOp::Resolve {
-                process_id: PROCESS_ID,
-                commitments: vec![root, sub],
-                buyer_sig: resolve_sig,
-            },
-        ],
-        prev_state: empty_snapshot(),
-        fig_token: FIG_TOKEN,
-    };
-
-    let (pv, positions, _events) = apply_batch(&input).unwrap();
-    assert_ne!(pv.prev_state_root, pv.new_state_root);
-
-    let ether = U256::from(1_000_000_000_000_000_000u64);
-
-    // Euler emission at genesis peak: r(0) = 100 * 1.0 * (1 + 0.5*cos(0)) = 150 FIG
-    let emission_first_order = U256::from(150u64) * ether;
-
-    // Find FIG positions — sellers should have FIG payouts, no deposits
-    let seller1_fig = positions
-        .iter()
-        .find(|p| p.token == FIG_TOKEN && p.user == SELLER1);
-    let seller2_fig = positions
-        .iter()
-        .find(|p| p.token == FIG_TOKEN && p.user == SELLER2);
-
-    assert!(seller1_fig.is_some(), "seller1 should receive FIG emission");
-    assert!(seller2_fig.is_some(), "seller2 should receive FIG emission");
-
-    let s1 = seller1_fig.unwrap();
-    assert_eq!(s1.deposit, U256::ZERO, "FIG has no deposit (minted)");
-    assert_eq!(s1.payout, emission_first_order, "seller1 gets ~150 FIG (Euler peak)");
-
-    let s2 = seller2_fig.unwrap();
-    assert_eq!(s2.deposit, U256::ZERO);
-    // Second order at count=1: rate is ~150 FIG minus negligible decay+phase shift
-    assert!(s2.payout > U256::from(149u64) * ether, "seller2 gets ~150 FIG");
-    assert!(s2.payout < emission_first_order, "second order rate is slightly lower");
-
-    // Buyer should NOT receive FIG (seller-only emission)
-    let buyer_fig = positions
-        .iter()
-        .find(|p| p.token == FIG_TOKEN && p.user == BUYER);
-    assert!(buyer_fig.is_none(), "buyer should not receive FIG");
-}
-
-#[test]
-fn test_emission_disabled_when_fig_token_zero() {
-    let domain = domain_separator(CHAIN_ID, CORE);
-    let buyer_key = make_signing_key(BUYER_KEY);
-    let seller1_key = make_signing_key(SELLER1_KEY);
-
-    let root = root_commitment();
-    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
-    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
-
-    let resolve_hash = resolve_struct_hash(&PROCESS_ID);
-    let resolve_digest = typed_data_hash(&domain, &resolve_hash);
-    let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
-
-    let input = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![
-            KernelOp::Commit {
-                commitment: root.clone(),
-                buyer_sig: root_buyer_sig,
-                seller_sig: root_seller_sig,
-            },
-            KernelOp::Resolve {
-                process_id: PROCESS_ID,
-                commitments: vec![root],
-                buyer_sig: resolve_sig,
-            },
-        ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
-
-    let (_pv, positions, _events) = apply_batch(&input).unwrap();
-
-    // Only the settlement token should appear — no FIG positions
-    for p in &positions {
-        assert_eq!(p.token, TOKEN, "only settlement token should appear");
-    }
-}
-
-#[test]
-fn test_emission_state_persists_across_batches() {
-    let domain = domain_separator(CHAIN_ID, CORE);
-    let buyer_key = make_signing_key(BUYER_KEY);
-    let seller1_key = make_signing_key(SELLER1_KEY);
-
-    let ether = U256::from(1_000_000_000_000_000_000u64);
-    // Euler emission at n=0: 100 * (1 + 0.5*cos(0)) = 150 FIG
-    let emission_first_order = U256::from(150u64) * ether;
-
-    // Batch 1: commit + resolve
-    let root = root_commitment();
-    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
-    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
-
-    let resolve_hash = resolve_struct_hash(&PROCESS_ID);
-    let resolve_digest = typed_data_hash(&domain, &resolve_hash);
-    let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
-
-    let input1 = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![
-            KernelOp::Commit {
-                commitment: root.clone(),
-                buyer_sig: root_buyer_sig,
-                seller_sig: root_seller_sig,
-            },
-            KernelOp::Resolve {
-                process_id: PROCESS_ID,
-                commitments: vec![root],
-                buyer_sig: resolve_sig,
-            },
-        ],
-        prev_state: empty_snapshot(),
-        fig_token: FIG_TOKEN,
-    };
-
-    let (_pv1, _positions1, _events1, post_state) =
-        figaro_kernel::kernel::apply_batch_with_state(&input1).unwrap();
-
-    // Verify emission state was persisted
-    assert_eq!(post_state.emission_settlement_count, 1);
-    assert_eq!(post_state.emission_total_emitted, emission_first_order);
-
-    // Batch 2: new commit + resolve on fresh process
-    let root2 = Commitment {
-        process_id: B256::ZERO,
-        buyer: BUYER,
-        seller: SELLER1,
-        currency: TOKEN,
-        payment: U256::from(200u64) * ether,
-        expected_cumulative_value: U256::from(200u64) * ether,
-        agreement_hash: keccak256(b"agreement-2"),
-        salt: U256::from(999u64),
-        deadline: U256::from(9999u64),
-    };
-    let root2_buyer_sig = sign_commitment(&root2, &domain, &buyer_key);
-    let root2_seller_sig = sign_commitment(&root2, &domain, &seller1_key);
-
-    let root2_struct = commitment_struct_hash(&root2);
-    let root2_digest = typed_data_hash(&domain, &root2_struct);
-    let process_id_2 = root2_digest;
-
-    let resolve_hash2 = resolve_struct_hash(&process_id_2);
-    let resolve_digest2 = typed_data_hash(&domain, &resolve_hash2);
-    let resolve_sig2 = sign_digest(&buyer_key, &resolve_digest2);
-
-    let input2 = BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 2000,
-        operations: vec![
-            KernelOp::Commit {
-                commitment: root2.clone(),
-                buyer_sig: root2_buyer_sig,
-                seller_sig: root2_seller_sig,
-            },
-            KernelOp::Resolve {
-                process_id: process_id_2,
-                commitments: vec![root2],
-                buyer_sig: resolve_sig2,
-            },
-        ],
-        prev_state: post_state.to_snapshot(),
-        fig_token: FIG_TOKEN,
-    };
-
-    let (_pv2, _positions2, _events2, post_state2) =
-        figaro_kernel::kernel::apply_batch_with_state(&input2).unwrap();
-
-    // Counter incremented to 2; second settlement at count=1 has
-    // a slightly different Euler rate than count=0, so use range check.
-    assert_eq!(post_state2.emission_settlement_count, 2);
-    assert!(post_state2.emission_total_emitted > emission_first_order,
-            "total should exceed first order emission");
-    // Second order rate at n=1 is ~150 FIG (tiny decay+phase shift)
-    let two_orders_approx = emission_first_order * U256::from(2u64);
-    assert!(post_state2.emission_total_emitted <= two_orders_approx,
-            "total should not exceed 2x first order rate");
-    // More precisely: should be ~300 FIG (150 + ~150)
-    let min_expected = U256::from(299u64) * ether;
-    assert!(post_state2.emission_total_emitted > min_expected,
-            "total for 2 orders should be ~300 FIG");
 }
 
 // ── Layer B content-proof gate tests ──────────────────────────────
@@ -1236,9 +964,7 @@ fn attest_as_seller_with_valid_content_proof_passes() {
             },
             attest_op,
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.attestations.len(), 1);
@@ -1292,9 +1018,7 @@ fn attest_as_seller_with_content_hash_mismatch_fails() {
                 }),
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(
@@ -1335,9 +1059,7 @@ fn attest_as_seller_with_invalid_content_fails() {
             },
             attest_op,
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(
@@ -1398,9 +1120,7 @@ fn attest_as_seller_with_schema_id_mismatch_fails() {
             },
             attest_op,
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(
@@ -1467,9 +1187,7 @@ fn attest_as_seller_with_unsupported_schema_encoder_fails() {
                 }),
             },
         ],
-        prev_state: empty_snapshot(),
-        fig_token: Address::ZERO,
-    };
+        prev_state: empty_snapshot(),    };
 
     let err = apply_batch(&input).unwrap_err();
     assert!(
@@ -1484,12 +1202,13 @@ fn test_genesis_root_print() {
     let root = state.compute_root();
     let root_hex = format!("0x{}", alloy_primitives::hex::encode(root.as_slice()));
     eprintln!("GENESIS ROOT: {}", root_hex);
-    // Web2-strip (2026-04-26): genesis root changed when operator_roles +
-    // operator_active state fields were collapsed into operators_registered.
-    // This breaks any pre-existing batch proofs — devnet only, no mainnet
-    // impact. The new constant is the source of truth going forward.
+    // Genesis root = keccak256 of 5 concatenated keccak256("") sub-hashes
+    // (empty processes, order_status, order_process_id, schemas, operators
+    // maps). Changed when settlement-anchored FIG emission was removed from
+    // the kernel — devnet only, no mainnet impact. Source of truth going
+    // forward; deploy scripts must use this value.
     assert_eq!(
         root_hex,
-        "0xb34b2328216876a2c527c2ebb375154610b36152deea0efb43bf73d4689e662e"
+        "0x826c6f22e4362b1b34f080cc37deab3358df5d98592fd19534c28c1fb713fd8c"
     );
 }

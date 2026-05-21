@@ -16,9 +16,6 @@ pub struct KernelState {
     // Lifecycle flags + role storage removed; role + metadata travel only
     // in the OperatorRegistered event.
     pub operators_registered: BTreeMap<Address, bool>,
-    // FIG emission
-    pub emission_settlement_count: u64,
-    pub emission_total_emitted: U256,
 }
 
 impl KernelState {
@@ -29,8 +26,6 @@ impl KernelState {
             order_process_id: BTreeMap::new(),
             schemas_registered: BTreeMap::new(),
             operators_registered: BTreeMap::new(),
-            emission_settlement_count: 0,
-            emission_total_emitted: U256::ZERO,
         }
     }
 
@@ -46,8 +41,6 @@ impl KernelState {
                 .iter()
                 .map(|(k, v)| (*k, *v))
                 .collect(),
-            emission_settlement_count: self.emission_settlement_count,
-            emission_total_emitted: self.emission_total_emitted,
         }
     }
 
@@ -59,30 +52,26 @@ impl KernelState {
             order_process_id: snap.order_process_id.iter().cloned().collect(),
             schemas_registered: snap.schemas_registered.iter().cloned().collect(),
             operators_registered: snap.operators_registered.iter().cloned().collect(),
-            emission_settlement_count: snap.emission_settlement_count,
-            emission_total_emitted: snap.emission_total_emitted,
         }
     }
 
     /// Compute deterministic state root.
     ///
     /// `root = keccak256(processes_hash || status_hash || process_id_hash
-    ///                    || schemas_hash || operators_hash || emission_hash)`
+    ///                    || schemas_hash || operators_hash)`
     pub fn compute_root(&self) -> B256 {
         let ph = self.hash_processes();
         let sh = self.hash_order_status();
         let oh = self.hash_order_process_id();
         let sch = self.hash_schemas();
         let oph = self.hash_operators_registered();
-        let emh = self.hash_emission();
 
-        let mut data = Vec::with_capacity(192);
+        let mut data = Vec::with_capacity(160);
         data.extend_from_slice(ph.as_slice());
         data.extend_from_slice(sh.as_slice());
         data.extend_from_slice(oh.as_slice());
         data.extend_from_slice(sch.as_slice());
         data.extend_from_slice(oph.as_slice());
-        data.extend_from_slice(emh.as_slice());
         keccak256(&data)
     }
 
@@ -140,13 +129,6 @@ impl KernelState {
             data.extend_from_slice(&addr_word);
             data.push(if *v { 1 } else { 0 });
         }
-        keccak256(&data)
-    }
-
-    fn hash_emission(&self) -> B256 {
-        let mut data = Vec::with_capacity(40);
-        data.extend_from_slice(&self.emission_settlement_count.to_be_bytes());
-        data.extend_from_slice(&self.emission_total_emitted.to_be_bytes::<32>());
         keccak256(&data)
     }
 }
