@@ -95,7 +95,7 @@ describe("loadAgent (canonical .md files)", () => {
     expect(a.tools).toContain("Edit");
     expect(a.tools).toContain("Write");
     expect(a.model).toBe("opus");
-    expect(a.systemPrompt).toMatch(/PROTOCOL_EXTENSION_DOCTRINE|validator-contract/);
+    expect(a.systemPrompt).toMatch(/SCHEMAS\.md|validator-contract/);
   });
 
   it("loads figaro-runtime-ui-author as a writer agent for the runtime tier", () => {
@@ -114,7 +114,7 @@ describe("loadAgent (canonical .md files)", () => {
     expect(a.tools).toContain("Write");
     expect(a.model).toBe("opus");
     expect(a.systemPrompt).toMatch(/DesignDraft|assembly|DAG/i);
-    expect(a.systemPrompt).toMatch(/PROTOCOL_EXTENSION_DOCTRINE/);
+    expect(a.systemPrompt).toMatch(/SCHEMAS\.md/);
   });
 
   it("loads figaro-paper-reviewer as a read-only verifier", () => {

@@ -582,7 +582,7 @@ backlog item.
 - `CLAUDE.md` § "What Figaro Is", § "What Figaro Is Not", § "Common Misframings — Do Not Propose"
 - `docs/v5/THEORY.md` — game-theoretic derivation of the kernel invariants
 - `docs/v5/DESIGN_DECISIONS.md` — 14 intentional patterns that look like vulnerabilities but are correct by design (entry #14 captures the MLETR-non-implementability finding from this research)
-- `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` — for the extension doctrine governing any future schema additions
+- `docs/v5/SCHEMAS.md` — the schema validation architecture and anchoring doctrine governing any future schema additions
 - `frontend/lib/audit/billOfLadingExtract.ts` — the extractor that needs the discriminator
 - `frontend/lib/audit/auditBundle.ts` — where the discriminator gates the BoL emission
 - `frontend/lib/shared/schemas/figaro-handoff-v1.json` and the other schemas referenced in §7

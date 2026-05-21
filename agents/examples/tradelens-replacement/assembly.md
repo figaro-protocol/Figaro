@@ -105,6 +105,6 @@ A future agent would need to:
 2. Emit a DAG with typed edges and clauses.
 3. Produce sample bond budgets given a parameterized shipment value.
 4. Refuse to compose anything that requires a kernel change (no multi-currency cross-leg, no centralized resolution).
-5. Cite `PROTOCOL_EXTENSION_DOCTRINE.md` for any new schemas it identifies as needed; defer their authorship to `figaro-schema-author`.
+5. Cite `SCHEMAS.md` for any new schemas it identifies as needed; defer their authorship to `figaro-schema-author`.
 
 Treat this `assembly.md` file as the spec for that agent.

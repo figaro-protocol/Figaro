@@ -723,7 +723,6 @@ Security & verification:
 
 Architecture:
 - `docs/v5/RUNTIME.md` — Three-part runtime reference: thesis (why this is a runtime, not just contracts), the frontend composition model, and the semantic-derivation layer
-- `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` — How extensions layer on top of settlement (also carries the anchored-artifact pattern)
 - `docs/v5/FIG_TOKEN.md` — FIG token design: allocation, emission mechanism
 - `docs/v5/PUBLIC_GRAPH_MODEL.md` — The five semantic graphs
 - `docs/v5/AI_AGENT_COORDINATION.md` — How autonomous agents coordinate via public graph data

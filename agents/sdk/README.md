@@ -149,7 +149,7 @@ The agent expects the *Claude Code* tool semantics (Read returns file contents w
 - `figaro-schema-lockstep` has no `Edit`/`Write` (read-only verifier).
 - `figaro-schema-author` has both `Edit` and `Write` (writer agent).
 - All three carry their expected model alias.
-- System prompts are non-empty and contain canonical phrases ("kernel", "lockstep", "PROTOCOL_EXTENSION_DOCTRINE").
+- System prompts are non-empty and contain canonical phrases ("kernel", "lockstep", "SCHEMAS.md").
 
 If anyone edits the `.md` files in a way that breaks the contract — e.g., handing `Write` access to the kernel-reviewer — these tests fail. They are the lockstep verifier *for the agent definitions themselves*.
 

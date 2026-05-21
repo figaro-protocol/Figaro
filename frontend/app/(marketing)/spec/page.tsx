@@ -213,8 +213,8 @@ export default function Specifications() {
             <MarketingSection title="Extension" bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed">
                     Mechanisms, schemas, and role models extend the protocol without altering the kernel. The kernel invariants the Extension doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>. See{" "}
-                    <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md" target="_blank" rel="noopener noreferrer" className="underline">PROTOCOL_EXTENSION_DOCTRINE.md</a>{" "}
-                    for the three tiers, and the{" "}
+                    <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/SCHEMAS.md" target="_blank" rel="noopener noreferrer" className="underline">SCHEMAS.md</a>{" "}
+                    for the schema validation architecture and the anchoring doctrine, and the{" "}
                     <Link href="/builders" className="underline">Builders</Link> surface for composition tools.
                 </p>
             </MarketingSection>

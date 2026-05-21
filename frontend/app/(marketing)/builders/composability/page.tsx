@@ -37,12 +37,12 @@ export default function BuilderComposability() {
                 <p className="text-sm text-ink-muted">
                     Full doctrine:{" "}
                     <a
-                        href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md"
+                        href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/SCHEMAS.md"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="underline"
                     >
-                        PROTOCOL_EXTENSION_DOCTRINE.md
+                        SCHEMAS.md
                     </a>.
                 </p>
             </MarketingSection>

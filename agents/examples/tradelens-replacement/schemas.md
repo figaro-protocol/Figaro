@@ -19,7 +19,7 @@ The assembly composes these. No agent work needed for the schemas above — they
 
 ## New schemas to author
 
-Two candidates. The schema-author would refuse to author either if it didn't satisfy the decision rule in `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` ("does the protocol need this fact to preserve shared reference integrity across counterparties and over time?").
+Two candidates. The schema-author would refuse to author either if it didn't satisfy the decision rule in `docs/v5/SCHEMAS.md` ("does the protocol need this fact to preserve shared reference integrity across counterparties and over time?").
 
 ### 1. `figaro-container-seal-v1`
 
@@ -61,7 +61,7 @@ Verify before declaring done:
 ```
 
 What you'd see the schema-author do:
-1. Read `PROTOCOL_EXTENSION_DOCTRINE.md` and the kernel-discipline skill in full.
+1. Read `SCHEMAS.md` and the kernel-discipline skill in full.
 2. Argue out loud whether the schema satisfies the decision rule (yes, in this case).
 3. Write `frontend/lib/shared/schemas/figaro-container-seal-v1.json`, `sdk/src/schemas/encode.ts` additions, `src/schemaValidators/FigaroContainerSealV1Validator.sol`, Foundry tests, registration script entry, and listing-page references.
 4. Run forge / halmos / vitest / type-check.

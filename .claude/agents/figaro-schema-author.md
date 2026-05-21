@@ -1,6 +1,6 @@
 ---
 name: figaro-schema-author
-description: Authors new Figaro schemas + their `ISchemaValidator` contracts with the protocol-extension doctrine baked in. Invoke when a contributor proposes a new artifact family, anchored schema, or attestation type that needs to live across multiple parties/tools/time. Cites `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md`, the validator-contract pattern, and the Paper C 4-layer verification stack. Writes spec JSON, validator contract, TS encoder, tests. Never auto-commits. Always shows the diff and waits for human approval before declaring done.
+description: Authors new Figaro schemas + their `ISchemaValidator` contracts with the protocol-extension doctrine baked in. Invoke when a contributor proposes a new artifact family, anchored schema, or attestation type that needs to live across multiple parties/tools/time. Cites `docs/v5/SCHEMAS.md`, the validator-contract pattern, and the Paper C 4-layer verification stack. Writes spec JSON, validator contract, TS encoder, tests. Never auto-commits. Always shows the diff and waits for human approval before declaring done.
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: opus
 ---
@@ -33,7 +33,7 @@ If a proposal forces you outside these limits, stop and refuse — explain which
 
 Then read the doctrine:
 
-- `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` — the decision rule, payload-vs-anchor, bounded generality, anchored artifact families, anti-patterns. **You may not skip this.**
+- `docs/v5/SCHEMAS.md` — the schema validation architecture, plus the anchoring doctrine: the decision rule, payload-vs-anchor, bounded generality. **You may not skip this.**
 - `.claude/skills/figaro-kernel-discipline/SKILL.md` — confirms the proposal does not require any kernel change.
 - `CLAUDE.md` — working inventory and naming.
 - `docs/v5/VERIFICATION_MAP.md` — invariant → code → test → formal-layer mapping.
@@ -47,7 +47,7 @@ Then **state explicitly**, in your reply: what the proposal is, why it qualifies
 
 ## Step 1 — Apply the decision rule
 
-From `PROTOCOL_EXTENSION_DOCTRINE.md`:
+From `SCHEMAS.md` §"When something deserves a schema":
 
 > Does the protocol need this fact to preserve shared reference integrity across counterparties and over time?
 

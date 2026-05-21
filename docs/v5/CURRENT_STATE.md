@@ -106,8 +106,8 @@ If a root-level file clearly says it is archived or historical, do not treat it 
 2. `RUNTIME.md` carries the runtime/frontend layer — Part 1 thesis,
    Part 2 the bounded-mutation frontend model, Part 3 the semantic
    derivation reference.
-3. `PROTOCOL_EXTENSION_DOCTRINE.md` is the current extension doctrine
-   (also carries the anchored-artifact pattern).
+3. `SCHEMAS.md` carries the schema validation architecture and the
+   anchoring doctrine (payload vs anchor, the decision rule).
 
 If two docs appear to overlap, prefer the one above that matches the layer you are reasoning about.
 

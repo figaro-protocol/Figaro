@@ -59,7 +59,7 @@ The canonical folder for repo scripts is `script/` (singular). If you add helper
 
 ## Contributor agents
 
-The project ships agent-shaped tooling — usable by humans, AI assistants, or autonomous protocol participants — to make the security-first posture transferable. Every agent traces back to canonical sources (the six invariants, `docs/v5/DESIGN_DECISIONS.md`, `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md`); they are the executable form of what the publications already prove.
+The project ships agent-shaped tooling — usable by humans, AI assistants, or autonomous protocol participants — to make the security-first posture transferable. Every agent traces back to canonical sources (the six invariants, `docs/v5/DESIGN_DECISIONS.md`, `docs/v5/SCHEMAS.md`); they are the executable form of what the publications already prove.
 
 ### Claude Code subagents — `.claude/agents/`
 

@@ -61,7 +61,7 @@ Verify before declaring done:
 
 What you'd see the schema-author do:
 
-1. Read `PROTOCOL_EXTENSION_DOCTRINE.md` and the kernel-discipline skill.
+1. Read `SCHEMAS.md` and the kernel-discipline skill.
 2. Argue out loud whether this is genuinely a "shared reference" need vs per-instance payload (yes — the schedule needs to be canonical across passenger, airline, downstream connections).
 3. Push back on the `aircraftType` field: it might be too operational for protocol scope — let it stay as optional metadata on the commerce-v1 commit instead. The agent should flag and ask. (Author it anyway if you confirm; the agent is rule-bound but not paternalistic about scope you've decided.)
 4. Produce the seven artifacts (Layer A spec, TS encoder, validator contract, Foundry tests, registration entry, listing-page row, optionally Layer B integrator doc).

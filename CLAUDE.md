@@ -170,7 +170,7 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 - `CONTRACTS.md`, `SCHEMAS.md`, `FRONTEND.md`, `TESTING.md` — split-out inventories
 - `VISION.md`, `THEORY.md` — core narrative
 - `DESIGN_DECISIONS.md`, `VERIFICATION_MAP.md`, `RELEASE_READINESS.md`, `SCALING_STRATEGY.md` — security & verification
-- `RUNTIME.md`, `PROTOCOL_EXTENSION_DOCTRINE.md`, `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md` — architecture
+- `RUNTIME.md`, `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md` — architecture
 - `FIG_TOKEN.md`, `GHG_PROTOCOL_SPEC.md` — protocol-specific
 - `BOL_RESEARCH.md` — bill-of-lading research, load-bearing reference for `DESIGN_DECISIONS.md` and `AUDIT_FINDINGS_*.md`
 - `TESTNET_READINESS.md` — single-source-of-truth punch list compiled 2026-05-06
@@ -600,5 +600,5 @@ Security & verification:
 
 Architecture:
 - `RUNTIME.md` — runtime thesis, frontend composition model, semantic-derivation layer
-- `PROTOCOL_EXTENSION_DOCTRINE.md`, `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`
+- `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`
 - `FIG_TOKEN.md`, `GHG_PROTOCOL_SPEC.md`

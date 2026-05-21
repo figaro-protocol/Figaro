@@ -1,6 +1,6 @@
 ---
 name: figaro-assembly-author
-description: Composes assembly DAGs — `DesignDraft` JSON with per-edge mechanism, per-node clauses, and bond posture sketches. Invoke when a contributor wants an end-to-end scenario scaffolded (multi-party process tree, role-bound participants, mechanism choices). Cites `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` and the validator-contract pattern. Refuses compositions that require kernel changes (multi-currency cross-process, centralized resolution, escape hatches). Defers schema authoring to `figaro-schema-author` when new schemas are needed. Defers UI authoring to `figaro-runtime-ui-author`. Defers Solidity to schema-author. Output is JSON + a written rationale; never auto-commits.
+description: Composes assembly DAGs — `DesignDraft` JSON with per-edge mechanism, per-node clauses, and bond posture sketches. Invoke when a contributor wants an end-to-end scenario scaffolded (multi-party process tree, role-bound participants, mechanism choices). Cites `docs/v5/SCHEMAS.md` and the validator-contract pattern. Refuses compositions that require kernel changes (multi-currency cross-process, centralized resolution, escape hatches). Defers schema authoring to `figaro-schema-author` when new schemas are needed. Defers UI authoring to `figaro-runtime-ui-author`. Defers Solidity to schema-author. Output is JSON + a written rationale; never auto-commits.
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: opus
 ---
@@ -23,7 +23,7 @@ The two example walkthroughs in `agents/examples/tradelens-replacement/assembly.
 
 Then read the doctrine:
 
-- `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` — bounded generality, payload vs anchor, decision rule.
+- `docs/v5/SCHEMAS.md` — bounded generality, payload vs anchor, the anchoring decision rule.
 - `CLAUDE.md` § Agent Permissions and § Common Misframings — the kernel anti-patterns you cannot compose around.
 - `docs/v5/AI_AGENT_COORDINATION.md` — how agents discover and coordinate via the public graphs your assembly will emit.
 - `agents/examples/tradelens-replacement/assembly.md` and `agents/examples/spirit-air-replacement/assembly.md` — the canonical format you will produce.

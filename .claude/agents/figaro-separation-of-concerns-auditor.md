@@ -34,7 +34,7 @@ Before auditing, read these:
 - `~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/feedback_separation_of_concerns.md`
 - `CLAUDE.md` § "Separation of Concerns — Artifact Families"
 - `CLAUDE.md` § "Three-Tier Naming"
-- `docs/v5/PROTOCOL_EXTENSION_DOCTRINE.md` (Anchored Artifact Pattern section)
+- `docs/v5/SCHEMAS.md` (§"When something deserves a schema — payload vs anchor")
 
 The existing parallel families:
 1. **Schemas** — `src/SchemaRegistry.sol`, per-schema `ISchemaValidator` contracts in `src/schemaValidators/`.

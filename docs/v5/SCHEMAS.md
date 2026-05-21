@@ -183,6 +183,43 @@ signed agreement, not by an attestation validator. The DAG itself is
 reconstructed off-chain by indexers reading topology sections from the signed
 manifest.
 
+## When something deserves a schema — payload vs anchor
+
+A schema is an *anchored artifact family*: an off-chain definition whose
+meaning must stay stable across parties, tools, and time, anchored on-chain by
+a minimal reference point — `schemaId` + `uriHash` in `SchemaRegistry`, plus
+the Layer C validator. Not every value that flows through an order deserves
+one.
+
+Separate two kinds of data:
+
+- **Per-instance payloads** — operational values attached to one order: a
+  specific delivery manifest, a sealed address, notes for a single fulfilment
+  event. Often private, instance-specific, decoded by one app's client. These
+  stay as order payload bytes; they do NOT get a schema.
+- **Shared reference semantics** — definitions whose meaning must hold across
+  counterparties and over time: a disclosure standard, a methodology
+  reference, a manifest *format*. These are what a schema anchors.
+
+**The decision rule.** Before proposing a schema, ask: *does the protocol need
+this fact to preserve shared reference integrity across counterparties and over
+time?* If yes, it is an anchored artifact family — give it a schema. If no, it
+is a per-instance payload — keep it off-chain, referenced immutably, and do not
+register it.
+
+**Bounded generality.** A schema should be generic enough to be reused across
+the parties and tools that need it, and no more. Avoid both failure modes: an
+app-specific one-off that can never become a shared protocol concept, and a
+fake universal ontology that registers every document as a first-class object.
+The schema layer stays grounded in concrete coordination problems — process
+obligations, disclosures, verifiable reference integrity — not in possibility.
+
+Schemas are one artifact family among several (operators, assemblies); each
+family carries its own anchor and never nests inside another — see CLAUDE.md
+"Separation of Concerns — Artifact Families". Schema identity is append-only
+(Layer C above): new meaning is a new `schemaId`, never a mutation of an old
+one.
+
 ## Adding a new schema — checklist
 
 1. JSON spec in `sdk/src/schemas/examples/<schema>.json`.

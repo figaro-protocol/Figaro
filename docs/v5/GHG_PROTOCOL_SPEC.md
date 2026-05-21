@@ -6,7 +6,7 @@ This document defines what the generic GHG feature is for, what objects exist in
 
 Related design notes:
 
-1. [PROTOCOL_EXTENSION_DOCTRINE.md](PROTOCOL_EXTENSION_DOCTRINE.md) — also carries the anchored-artifact pattern that originally lived in a separate `ANCHORED_ARTIFACT_DESIGN.md`
+1. [SCHEMAS.md](SCHEMAS.md) — the schema validation architecture and the anchoring doctrine (payload vs anchor, the decision rule)
 
 ## Purpose
 

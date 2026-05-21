@@ -67,7 +67,7 @@ requirements, seller disclosure submissions.
 **Truth boundary:** Protocol-derived. The anchoring is on-chain (immutable
 schema references, timestamped submissions), but the disclosure content
 itself lives off-chain. The protocol ensures *referential integrity*, not
-*substantive accuracy*. See `PROTOCOL_EXTENSION_DOCTRINE.md` §"Anchored Artifact Pattern".
+*substantive accuracy*. See `SCHEMAS.md` §"When something deserves a schema — payload vs anchor".
 
 ### 4. Capital Graph (Protocol-Enforced)
 
