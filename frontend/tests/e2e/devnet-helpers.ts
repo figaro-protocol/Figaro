@@ -73,6 +73,7 @@ const MERCHANT_PROCESS_SCHEMA_KEY = 'figaro-merchant-process-v1';
 const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
 const COURIER_PROCESS_SCHEMA_KEY = 'figaro-courier-process-v1';
 const COURIER_PROCESS_SCHEMA_ID = keccak256(stringToHex(COURIER_PROCESS_SCHEMA_KEY));
+const GHG_MEASUREMENT_SCHEMA_ID = keccak256(stringToHex('figaro-ghg-measurement-v1'));
 const PROXIMITY_POLICY_SCHEMA_KEY = 'figaro-proximity-policy-v1';
 const PROXIMITY_PROOF_SCHEMA_KEY = 'figaro-proximity-proof-v1';
 const PROXIMITY_PROOF_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_PROOF_SCHEMA_KEY));
@@ -1423,7 +1424,15 @@ export async function placeLocalCommerceOrderUI(
  */
 export async function runDeliveryCoordination(
     page: Page,
-    opts: { processId: Hex; merchant: string; courier: string },
+    opts: {
+        processId: Hex;
+        merchant: string;
+        courier: string;
+        emissions?: {
+            merchant?: { orderHash: Hex; grams: string };
+            courier?: { orderHash: Hex; grams: string };
+        };
+    },
 ): Promise<void> {
     const config = readLocalDeploymentConfig();
     const coordinator = (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR
@@ -1440,6 +1449,38 @@ export async function runDeliveryCoordination(
             .map((e) => Number(e.args.stage));
     };
 
+    // Inline emissions submit — file a figaro-ghg-measurement-v1 grams
+    // measurement for the currently-active seller wallet on the order page.
+    // Folded into the seller's continuous session (rather than a separate
+    // gotoAsWallet) so every agreement-dependent piece of state is hot.
+    const submitEmissionsAsCurrentSeller = async (
+        seller: Hex,
+        orderHash: Hex,
+        grams: string,
+    ): Promise<void> => {
+        await page.getByTestId('ghg-workflow-panel').waitFor({ state: 'visible', timeout: 30_000 });
+        const orderToggle = page.locator('button', { hasText: orderHash.slice(0, 14) }).first();
+        await orderToggle.waitFor({ state: 'visible', timeout: 30_000 });
+        await orderToggle.click();
+        await page.getByTestId('ghg-actual-input').fill(grams);
+        const submit = page.getByTestId('ghg-submit-actual');
+        await expect(submit).toBeEnabled({ timeout: 10_000 });
+        await submit.click();
+        const deadline = Date.now() + 90_000;
+        for (;;) {
+            const events = await publicClient.getContractEvents({
+                address: coordinator,
+                abi: ATTESTATION_EVENT_ABI,
+                eventName: 'Attestation',
+                args: { orderHash, attester: seller },
+                fromBlock: 0n,
+            });
+            if (events.some((e) => (e.args as { schemaId?: Hex }).schemaId === GHG_MEASUREMENT_SCHEMA_ID)) break;
+            if (Date.now() > deadline) throw new Error(`emissions measurement for ${orderHash} timed out`);
+            await new Promise((r) => setTimeout(r, 1000));
+        }
+    };
+
     // ── Merchant walks the figaro-merchant-process-v1 coordination ──
     await gotoAsWallet(page, opts.merchant, `/orders/${opts.processId}?e2e=devnet`);
     await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
@@ -1449,6 +1490,13 @@ export async function runDeliveryCoordination(
         await btn.click();
     }
     await expect(page.locator('[data-testid^="btn-merchant-next-"]')).toHaveCount(0, { timeout: 60000 });
+    if (opts.emissions?.merchant) {
+        await submitEmissionsAsCurrentSeller(
+            opts.merchant as Hex,
+            opts.emissions.merchant.orderHash,
+            opts.emissions.merchant.grams,
+        );
+    }
 
     // ── Courier submits both handoff proximity proofs ──
     await gotoAsWallet(page, opts.courier, `/orders/${opts.processId}?e2e=devnet`);
@@ -1470,4 +1518,11 @@ export async function runDeliveryCoordination(
     const finalStages = await courierStages();
     expect(finalStages).toContain(3); // arrived-pickup (merchant→courier)
     expect(finalStages).toContain(5); // arrived-dropoff (courier→buyer)
+    if (opts.emissions?.courier) {
+        await submitEmissionsAsCurrentSeller(
+            opts.courier as Hex,
+            opts.emissions.courier.orderHash,
+            opts.emissions.courier.grams,
+        );
+    }
 }

@@ -695,6 +695,26 @@ export function readAssemblyClause(
 }
 
 /**
+ * Read the GHG disclosure standards declared by a specific order's agreement
+ * in an assembly manifest. The checkout pipeline reads these and propagates
+ * them into the per-order commitment via `manifestFields.ghgStandards`, so
+ * the committed agreement carries the same disclosure clauses (and their
+ * paired measurement clause) the assembly author declared.
+ */
+export function readAssemblyOrderGhgStandards(
+    manifest: { agreements: Record<string, Agreement> },
+    agreementHash: string | undefined,
+): GHGDisclosureSchemaKey[] {
+    if (!agreementHash) return [];
+    const agreement = manifest.agreements[agreementHash];
+    if (!agreement) return [];
+    const allowed = GHG_DISCLOSURE_SCHEMA_KEYS as readonly string[];
+    return agreement.sections
+        .map((s) => s.schema)
+        .filter((s): s is GHGDisclosureSchemaKey => allowed.includes(s));
+}
+
+/**
  * Look up a section by its on-chain schemaId bytes32 (matches Solidity
  * `keccak256(schemaKey)`). Convenience for hook code that receives a schemaId
  * from a UI / selector rather than the human-readable schema key.

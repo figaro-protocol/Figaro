@@ -38,7 +38,7 @@ import { findListingByAddress } from "@/lib/shared/operatorListing";
 import type { SemanticTone } from "@/lib/shared/tones";
 import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import { COURIER_PROCESS_SCHEMA_ID, useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
-import { getSection, GHG_MEASUREMENT_SCHEMA_KEY, PROXIMITY_POLICY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { getSection, PROXIMITY_POLICY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import type { CourierEvent, MerchantEvent } from "@figaro/core/schemas";
@@ -459,16 +459,6 @@ export function OrderTimelineView({ processId }: Props) {
     }, [role, courierOrder, address]);
 
     const allOrders = processModel?.orders ?? [];
-    // The process carries a GHG clause when any order's agreement has the
-    // figaro-ghg-measurement-v1 section (orderAgreement pairs it with any
-    // disclosure standard). Gates the re-homed emissions panels.
-    const hasGhgDisclosure = useMemo(
-        () => (processModel?.orders ?? []).some((order) => {
-            const agreement = loadAgreement(order.agreementHash);
-            return agreement ? !!getSection(agreement, GHG_MEASUREMENT_SCHEMA_KEY) : false;
-        }),
-        [processModel],
-    );
     // OrderNodeModel.state is the OrderState enum reverse-mapped to a string
     // ("Active" | "Resolved") in `deriveProcessModelFromRuntime`.
     const isResolved = allOrders.length > 0 && allOrders.every((order) => order.state !== "Active");
@@ -598,14 +588,10 @@ export function OrderTimelineView({ processId }: Props) {
             <CourierAuctionPanel processId={processId} />
 
             {/* Emissions disclosure — sellers file figaro-ghg-measurement-v1
-                measurements here; shown only when the process carries a
-                GHG clause. */}
-            {hasGhgDisclosure && (
-                <>
-                    <GHGAnchorPanel processId={processId} />
-                    <GHGWorkflowPanel processId={processId} />
-                </>
-            )}
+                measurements here. The panels self-render their empty states
+                on non-GHG processes (no attestations, no disclosure capability). */}
+            <GHGAnchorPanel processId={processId} />
+            <GHGWorkflowPanel processId={processId} />
 
             {/* Primary action */}
             <section className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">

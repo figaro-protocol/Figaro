@@ -35,6 +35,7 @@ import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { CONTRACTS } from "@/lib/core/contracts";
 import {
     readAssemblyClause,
+    readAssemblyOrderGhgStandards,
     JURISDICTION_SCHEMA_KEY,
     PROXIMITY_POLICY_SCHEMA_KEY,
     type Agreement,
@@ -455,6 +456,20 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     // committed order carries the jurisdiction clause so the
                     // dispute surface can read its Layer-3 recourse.
                     ...(pickedAssembly ? assemblyJurisdictionFields(pickedAssembly.manifest) : {}),
+                    // Propagate any GHG disclosure clauses the assembly's root
+                    // order declared — the committed agreement must carry them
+                    // (with their paired figaro-ghg-measurement-v1 clause) so
+                    // the seller can file grams measurements and the buyer can
+                    // size carbon offsets at runtime.
+                    ...(pickedAssembly && pickedAssembly.manifest.orders[0]
+                        ? (() => {
+                            const ghgStandards = readAssemblyOrderGhgStandards(
+                                pickedAssembly.manifest,
+                                pickedAssembly.manifest.orders[0].agreementHash,
+                            );
+                            return ghgStandards.length > 0 ? { ghgStandards } : {};
+                        })()
+                        : {}),
                     // Geo fields aggregated from the cart's catalogue annotations.
                     // mass / volume strings are parsed by `parseMassToGrams` /
                     // `parseVolumeToMl` in `manifestFieldsToGeoSection`; class_
@@ -566,6 +581,15 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     courierProcessIncluded: true,
                     ...assemblyJurisdictionFields(assemblyManifest),
                     ...(courierProximityBands.length > 0 ? { proximityBands: courierProximityBands } : {}),
+                    // Propagate the courier order's GHG clauses from the
+                    // assembly — same pattern as the root order above.
+                    ...((() => {
+                        const ghgStandards = readAssemblyOrderGhgStandards(
+                            assemblyManifest,
+                            assemblyManifest.orders[1]?.agreementHash,
+                        );
+                        return ghgStandards.length > 0 ? { ghgStandards } : {};
+                    })()),
                     ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
                     ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
                     class_: CLASS_TO_SHORT_CODE[merchantClassOfService],

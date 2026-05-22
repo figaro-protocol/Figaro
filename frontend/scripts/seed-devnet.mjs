@@ -100,7 +100,7 @@ const ERC20_VIEW_ABI = parseAbi([
 // `local-commerce` seller-assigned, `local-commerce-dutch` dutch-auction,
 // `local-commerce-buyer-assigned` buyer-assigned.
 const FIXTURE_DIR = path.resolve(SCRIPT_DIR, 'fixtures');
-const ASSEMBLY_FIXTURES = ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned'];
+const ASSEMBLY_FIXTURES = ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned', 'local-commerce-offset'];
 
 /** Sorted-key, bigint-as-string JSON — mirrors `canonicalize` in
  *  frontend/lib/mechanisms/useAssemblyRegistry.ts, so the contentHash this
@@ -136,6 +136,11 @@ const OPERATORS = [
     { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'], couriers: [7], geohash: 'dr5regw5' },
     { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'], deliveryCatalogue: true, geohash: 'dr5regw3' },
     { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned'], couriers: [7], geohash: 'dr5regw7' },
+    // local-commerce-offset is seller-assigned — the same fulfilment mode as
+    // local-commerce — and checkout selects an assembly by fulfilment mode,
+    // so two seller-assigned assemblies on one merchant collide. It gets its
+    // own merchant: Harbor Provisions binds only local-commerce-offset.
+    { addressIndex: 9, name: 'Harbor Provisions', specialty: 'grocery and delivery', bind: ['local-commerce-offset'], couriers: [7], geohash: 'dr5regw8' },
 ];
 
 /** Parse frontend/.env.local into a flat key→value map. */
@@ -340,10 +345,12 @@ async function main() {
                 subjectAddress: account.address,
                 assemblySlug,
                 networkTargets: ['local-anvil'],
-                // A delivery assembly needs the operator's designated
-                // courier roster — the seller-assigned counterparty wallets
-                // the checkout fills the courier order's seller from.
-                ...(assemblySlug === 'local-commerce' && op.couriers
+                // A seller-assigned delivery assembly needs the operator's
+                // designated courier roster — the counterparty wallets the
+                // checkout's courier picker offers. Both local-commerce and
+                // local-commerce-offset are seller-assigned; the dutch and
+                // buyer-assigned variants source the courier another way.
+                ...((assemblySlug === 'local-commerce' || assemblySlug === 'local-commerce-offset') && op.couriers
                     ? {
                         counterpartyBindings: [{
                             schemaId: 'figaro-courier-process-v1',

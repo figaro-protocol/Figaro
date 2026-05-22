@@ -3,9 +3,9 @@ import {
     GHG_MEASUREMENT_SCHEMA_KEY,
     GHG_SCHEMA_KEY,
     getSection,
+    type Agreement,
     type TopologyMode,
 } from "@/lib/core/agreementManifest";
-import { loadAgreement } from "@/lib/core/agreementStore";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
@@ -41,7 +41,12 @@ function ledgerSource(sourceLabel: string, referenceId?: string) {
     };
 }
 
-function roleCapabilities(_order: Order, _address?: string, _isE2EMock = false): CapabilityModel[] {
+function roleCapabilities(
+    _order: Order,
+    agreements: Map<string, Agreement>,
+    _address?: string,
+    _isE2EMock = false,
+): CapabilityModel[] {
     const order = _order;
     if (order.state !== OrderState.Active || !order.currency) return [];
 
@@ -85,7 +90,7 @@ function roleCapabilities(_order: Order, _address?: string, _isE2EMock = false):
     // order page. Without this derivation the panel renders but its
     // submit buttons stay disabled (no executable capability).
     if (isSeller && order.agreementHash) {
-        const agreement = loadAgreement(order.agreementHash as Hex);
+        const agreement = agreements.get(order.agreementHash);
         if (agreement) {
             if (getSection(agreement, GHG_SCHEMA_KEY)) {
                 out.push({
@@ -523,6 +528,7 @@ function deriveProcessAttachments(
 function deriveOrderNodeModelFromOrder(
     order: Order,
     topology: Map<string, { parentOrderIds: string[] }>,
+    agreements: Map<string, Agreement>,
     address?: string,
     isE2EMock = false,
 ): OrderNodeModel {
@@ -540,7 +546,7 @@ function deriveOrderNodeModelFromOrder(
         parentOrderIds,
         agreementHash: (order.agreementHash ?? ZERO_BYTES32) as `0x${string}`,
         attachments,
-        capabilities: roleCapabilities(order, address, isE2EMock),
+        capabilities: roleCapabilities(order, agreements, address, isE2EMock),
         settlementBreakdown: deriveSettlementBreakdown(order, address),
     };
 }
@@ -595,6 +601,7 @@ function deriveProcessRelations(
 export function deriveProcessModelFromRuntime(
     summary: ProcessSummary,
     orders: Order[],
+    agreements: Map<string, Agreement>,
     address?: string,
     currencyAddress?: string,
     isE2EMock = false,
@@ -603,7 +610,7 @@ export function deriveProcessModelFromRuntime(
         .filter((order) => order.processId === summary.processId)
         .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
     const topology = deriveOrderTopology(processOrders);
-    const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, address, isE2EMock));
+    const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, address, isE2EMock));
     const relations = deriveProcessRelations(summary.processId, processOrders, topology);
     const rootOrderId = semanticOrders.find((order) => order.parentOrderIds.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
     const stateCounts = {

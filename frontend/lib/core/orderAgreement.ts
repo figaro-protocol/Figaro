@@ -8,6 +8,7 @@ import {
     GEO_SCHEMA_KEY,
     GHG_SCHEMA_KEY,
     GHG_DISCLOSURE_SCHEMA_KEYS,
+    GHG_MEASUREMENT_SCHEMA_KEY,
     GHG_STANDARD_TO_SCHEMA,
     GHG_SCHEMA_TO_STANDARD,
     JURISDICTION_SCHEMA_KEY,
@@ -277,6 +278,14 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         const parsedScope = ghgScope ? Number(ghgScope) : 1;
         data.scope = Number.isFinite(parsedScope) ? parsedScope : 1;
         sections.push({ schema: schemaKey, data });
+    }
+    // A GHG disclosure commitment needs its runtime measurement clause to
+    // disclose against: pair figaro-ghg-measurement-v1 with any disclosure
+    // standard so the seller can file grams measurements at runtime and the
+    // buyer can size carbon offsets. The committed agreement must carry this
+    // section for the measurement attestation's inclusion proof to open.
+    if (resolvedSchemaKeys.length > 0) {
+        sections.push({ schema: GHG_MEASUREMENT_SCHEMA_KEY, data: {} });
     }
 
     const proximityBands = readManifestArray(params.manifestFields, "proximityBands", ALLOWED_PROXIMITY_BANDS);

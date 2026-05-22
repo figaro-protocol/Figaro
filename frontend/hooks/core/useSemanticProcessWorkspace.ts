@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt } from "wagmi";
 import { useWalletProcessIds, type ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
+import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import useTokenApproval from "@/hooks/core/useTokenApproval";
 import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
 import { OrderState, useOrderStore } from "@/lib/core/store";
@@ -43,6 +44,11 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const walletProcesses = useWalletProcessIds(address);
     const effectiveProcessId = processId ?? walletProcesses[0]?.processId ?? null;
     const processOrders = useProcessOrders(effectiveProcessId);
+    const agreementHashes = useMemo(
+        () => processOrders.map((order) => order.agreementHash).filter((hash): hash is string => Boolean(hash)),
+        [processOrders],
+    );
+    const processAgreements = useProcessAgreements(agreementHashes);
     const selectedCurrency = processOrders[0]?.currency as `0x${string}` | undefined;
     const approvalTokenAddress = (selectedCurrency ?? CONTRACTS.mockToken) as `0x${string}`;
     const [executingCapabilityId, setExecutingCapabilityId] = useState<string | null>(null);
@@ -127,6 +133,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         ? deriveProcessModelFromRuntime(
             effectiveSummary,
             processOrders,
+            processAgreements,
             address,
             selectedCurrency,
             isE2EMock
