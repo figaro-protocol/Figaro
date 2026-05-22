@@ -445,3 +445,159 @@ export async function getRpgfMinterClaimStatus(
         return stageMatches && accountVal === lc;
     });
 }
+
+// ---------------------------------------------------------------------------
+// Operator track record — public-graph-derived activity
+// ---------------------------------------------------------------------------
+
+/** Value an operator transacted as a seller, summed per currency. */
+export interface TrackRecordValue {
+    currency: string;
+    total: bigint;
+}
+
+/** Attestations an operator emitted, grouped by schemaId. */
+export interface TrackRecordAttestations {
+    schemaId: string;
+    count: number;
+}
+
+/**
+ * An operator's public-graph track record — every indicator reconstructed
+ * from on-chain events, recomputable by anyone. This is NOT a stored or
+ * soulbound score; it is the raw settlement/coordination history the public
+ * graph exposes (PUBLIC_GRAPH_MODEL.md §"Reputation derivation").
+ */
+export interface OperatorTrackRecord {
+    /** Block of the operator's first OperatorRegistered; null if never registered. */
+    operatingSinceBlock: bigint | null;
+    /** Unix-seconds timestamp of that block; null if unavailable. */
+    operatingSinceTimestamp: bigint | null;
+    /** Processes the operator participated in that have resolved. */
+    completedProcesses: number;
+    /** Processes the operator participated in still open. */
+    activeProcesses: number;
+    /** Orders committed with the operator as seller (merchant or courier). */
+    ordersSold: number;
+    /** Orders committed with the operator as buyer. */
+    ordersBought: number;
+    /** Value transacted as seller — summed payment, per currency. */
+    valueTransacted: TrackRecordValue[];
+    /** Distinct buyers the operator has sold to. */
+    buyersServed: number;
+    /** Distinct sellers the operator has bought from. */
+    sellersUsed: number;
+    /** Dutch-auction jobs the operator claimed (a courier signal). */
+    auctionJobsWon: number;
+    /** Total attestations the operator has emitted. */
+    attestationsEmitted: number;
+    /** Attestations emitted, grouped by schemaId, most-frequent first. */
+    attestationsBySchema: TrackRecordAttestations[];
+}
+
+function getBigIntArg(log: IndexedLog, key: string): bigint {
+    const value = getLogArgs(log)[key];
+    return typeof value === "bigint" ? value : 0n;
+}
+
+/**
+ * Reconstruct an operator's full public-graph track record. Combines the
+ * OrderCommitted / OrderResolved process graph, the DutchAuction capital
+ * graph, and the AttestationCoordinator disclosure graph — all keyed to one
+ * address. Every figure is recomputed from events; nothing is stored, so the
+ * result is verifiable by anyone with chain access.
+ */
+export async function getOperatorTrackRecord(
+    client: PublicClient,
+    chainId: number,
+    operator: string,
+): Promise<OperatorTrackRecord> {
+    const [sellerOrders, buyerOrders, resolved, registrations, auctions, attestations] =
+        await Promise.all([
+            getOrderCommittedBySeller(client, chainId, operator),
+            getOrderCommittedByBuyer(client, chainId, operator),
+            getAllOrderResolved(client, chainId),
+            getAllOperatorRegistered(client, chainId),
+            getAllAuctionClaimed(client, chainId),
+            getAllAttestations(client, chainId),
+        ]);
+
+    // Resolved processes — a process whose orders carry an OrderResolved.
+    const resolvedProcessIds = new Set(
+        resolved.map((log) => getStringArg(log, "processId")).filter((p): p is string => !!p),
+    );
+
+    // The operator's processes — distinct processIds across all its orders.
+    const operatorProcessIds = new Set<string>();
+    for (const log of [...sellerOrders, ...buyerOrders]) {
+        const pid = getStringArg(log, "processId");
+        if (pid) operatorProcessIds.add(pid);
+    }
+    let completedProcesses = 0;
+    for (const pid of operatorProcessIds) {
+        if (resolvedProcessIds.has(pid)) completedProcesses++;
+    }
+
+    // Value transacted as seller — summed payment per currency.
+    const valueByCurrency = new Map<string, bigint>();
+    for (const log of sellerOrders) {
+        const currency = getStringArg(log, "currency")?.toLowerCase();
+        if (!currency) continue;
+        valueByCurrency.set(currency, (valueByCurrency.get(currency) ?? 0n) + getBigIntArg(log, "payment"));
+    }
+
+    // Distinct counterparties.
+    const buyersServed = new Set(
+        sellerOrders.map((log) => getStringArg(log, "buyer")?.toLowerCase()).filter((b): b is string => !!b),
+    );
+    const sellersUsed = new Set(
+        buyerOrders.map((log) => getStringArg(log, "seller")?.toLowerCase()).filter((s): s is string => !!s),
+    );
+
+    // Operating since — earliest OperatorRegistered for this address.
+    const ownRegistrations = registrations
+        .filter((log) => hexEqual(getStringArg(log, "operator"), operator))
+        .sort((a, b) => Number(a.blockNumber ?? 0n) - Number(b.blockNumber ?? 0n));
+    const firstBlock = ownRegistrations[0]?.blockNumber;
+    const operatingSinceBlock: bigint | null = firstBlock != null ? BigInt(firstBlock) : null;
+    let operatingSinceTimestamp: bigint | null = null;
+    if (operatingSinceBlock != null) {
+        try {
+            operatingSinceTimestamp = (await client.getBlock({ blockNumber: operatingSinceBlock })).timestamp;
+        } catch {
+            operatingSinceTimestamp = null;
+        }
+    }
+
+    // Auction jobs won — AuctionClaimed where the operator is the provider.
+    const auctionJobsWon = auctions.filter(
+        (log) => hexEqual(getStringArg(log, "provider"), operator),
+    ).length;
+
+    // Attestations emitted — grouped by schemaId.
+    const attestationsBySchemaMap = new Map<string, number>();
+    for (const log of attestations) {
+        if (!hexEqual(getStringArg(log, "attester"), operator)) continue;
+        const schemaId = getStringArg(log, "schemaId") ?? "unknown";
+        attestationsBySchemaMap.set(schemaId, (attestationsBySchemaMap.get(schemaId) ?? 0) + 1);
+    }
+    let attestationsEmitted = 0;
+    for (const count of attestationsBySchemaMap.values()) attestationsEmitted += count;
+
+    return {
+        operatingSinceBlock,
+        operatingSinceTimestamp,
+        completedProcesses,
+        activeProcesses: operatorProcessIds.size - completedProcesses,
+        ordersSold: sellerOrders.length,
+        ordersBought: buyerOrders.length,
+        valueTransacted: [...valueByCurrency.entries()].map(([currency, total]) => ({ currency, total })),
+        buyersServed: buyersServed.size,
+        sellersUsed: sellersUsed.size,
+        auctionJobsWon,
+        attestationsEmitted,
+        attestationsBySchema: [...attestationsBySchemaMap.entries()]
+            .map(([schemaId, count]) => ({ schemaId, count }))
+            .sort((a, b) => b.count - a.count),
+    };
+}

@@ -1,0 +1,93 @@
+"use client";
+
+/**
+ * OperatorTrackRecord — renders an operator's public-graph track record:
+ * the settlement + coordination history reconstructed from on-chain events
+ * (PUBLIC_GRAPH_MODEL.md §"Reputation derivation"). Pure render — the
+ * caller supplies the record via useOperatorTrackRecord.
+ *
+ * Every figure is recomputed from events, never a stored score. An operator
+ * with no history renders as "no on-chain history" rather than a fabricated
+ * rating — the honest absence of a track record is itself the signal.
+ */
+
+import { formatUnits } from "viem";
+import type { OperatorTrackRecord as TrackRecord } from "@/lib/core/indexer";
+import { truncateHex } from "@/lib/shared/formatHex";
+
+interface Props {
+    record: TrackRecord | null;
+    isLoading: boolean;
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded border border-neutral-200 px-3 py-2">
+            <div className="text-lg font-semibold text-black tabular-nums">{value}</div>
+            <div className="text-xs text-neutral-500">{label}</div>
+        </div>
+    );
+}
+
+export function OperatorTrackRecord({ record, isLoading }: Props) {
+    if (isLoading) {
+        return (
+            <p className="text-xs text-neutral-500" data-testid="track-record-loading">
+                Reconstructing track record from the public graph…
+            </p>
+        );
+    }
+    if (!record) return null;
+
+    const sinceLabel = record.operatingSinceTimestamp != null
+        ? new Date(Number(record.operatingSinceTimestamp) * 1000)
+            .toLocaleDateString(undefined, { year: "numeric", month: "short" })
+        : "—";
+    const hasHistory = record.ordersSold > 0 || record.ordersBought > 0;
+
+    return (
+        <section className="space-y-3" data-testid="operator-track-record">
+            <div className="flex items-baseline justify-between gap-3">
+                <h3 className="text-sm font-semibold text-black">Track record</h3>
+                <span className="text-xs text-neutral-500">operating since {sinceLabel}</span>
+            </div>
+
+            {!hasHistory ? (
+                <p className="text-xs text-neutral-500" data-testid="track-record-empty">
+                    No committed orders yet — this operator has no on-chain history to show.
+                </p>
+            ) : (
+                <>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <Stat label="processes completed" value={String(record.completedProcesses)} />
+                        <Stat label="processes active" value={String(record.activeProcesses)} />
+                        <Stat label="orders sold" value={String(record.ordersSold)} />
+                        <Stat label="orders bought" value={String(record.ordersBought)} />
+                        <Stat label="buyers served" value={String(record.buyersServed)} />
+                        <Stat label="sellers used" value={String(record.sellersUsed)} />
+                        <Stat label="auction jobs won" value={String(record.auctionJobsWon)} />
+                        <Stat label="attestations emitted" value={String(record.attestationsEmitted)} />
+                    </div>
+
+                    {record.valueTransacted.length > 0 && (
+                        <div className="text-xs text-neutral-600" data-testid="track-record-value">
+                            <span className="font-semibold">Value transacted as seller: </span>
+                            {record.valueTransacted.map((v, i) => (
+                                <span key={v.currency}>
+                                    {i > 0 ? ", " : ""}
+                                    <span className="tabular-nums">{formatUnits(v.total, 18)}</span>{" "}
+                                    <span className="font-mono text-neutral-400">{truncateHex(v.currency)}</span>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    <p className="text-[11px] text-neutral-400 leading-snug">
+                        Every figure is recomputed from public on-chain events — settlement and
+                        coordination history, not a platform score. Token amounts shown at 18 decimals.
+                    </p>
+                </>
+            )}
+        </section>
+    );
+}

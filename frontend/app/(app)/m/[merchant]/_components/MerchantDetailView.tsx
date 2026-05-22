@@ -42,6 +42,8 @@ import {
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { courierAuctionId, stashCourierDraft } from "@/lib/mechanisms/courierAuction";
 import { CourierCataloguePicker, type CourierSelection } from "@/components/core/CourierCataloguePicker";
+import { OperatorTrackRecord } from "@/components/core/OperatorTrackRecord";
+import { useOperatorTrackRecord } from "@/lib/mechanisms/useOperatorTrackRecord";
 import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -249,6 +251,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         return picked?.counterpartyBindings
             .find((cb) => cb.schemaId === "figaro-courier-process-v1")?.addresses ?? [];
     }, [boundAssemblies, fulfillmentMode]);
+    // The merchant's public-graph track record — settlement + coordination
+    // history reconstructed from on-chain events.
+    const { trackRecord, isLoading: trackRecordLoading } = useOperatorTrackRecord(merchantAddressLower);
 
     // Auto-chain: when approval confirms, proceed to commit signing.
     useEffect(() => {
@@ -679,6 +684,10 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                         </div>
                     </div>
                 </header>
+
+                {/* Operator track record — public-graph-derived settlement
+                    + coordination history, recomputed from on-chain events. */}
+                <OperatorTrackRecord record={trackRecord} isLoading={trackRecordLoading} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-8 items-start">
                     {/* Menu */}
