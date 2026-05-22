@@ -26,7 +26,7 @@
  *     positioning. Used by /new where the drawer is part of the layout.
  */
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { Order } from "@/lib/core/store";
 import type { ManifestFields } from "@/lib/core/encoding";
 import {
@@ -43,6 +43,7 @@ import {
     MERCHANT_PROCESS_SCHEMA_KEY,
 } from "@/lib/core/agreementManifest";
 import { getSchemaInfo } from "@/lib/shared/schemaCategories";
+import { useAllRegisteredSchemas } from "@/lib/mechanisms/useSchemaRegistry";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import type { FulfilmentModality } from "@figaro/core/schemas";
@@ -197,6 +198,38 @@ export function AgreementDrawer({
         ro.observe(header);
         return () => ro.disconnect();
     }, [embedded]);
+
+    // Which schemas are actually registered on this network — the SET is
+    // network state, read live from `SchemaRegistry.SchemaRegistered`. The
+    // bundled `schemaCategories.ts` supplies each schema's title/description;
+    // the drawer offers a clause only when the chain confirms it exists.
+    // While the read is in flight (`data === null`) the gate is permissive,
+    // so the UI does not flash "unavailable" during initial paint.
+    const { data: registeredSchemas } = useAllRegisteredSchemas();
+    const onChainSchemas = useMemo<ReadonlySet<string> | null>(
+        () =>
+            registeredSchemas === null
+                ? null
+                : new Set(
+                    registeredSchemas
+                        .map((e) => e.schemaName)
+                        .filter((n): n is string => n !== null),
+                ),
+        [registeredSchemas],
+    );
+    const isOnChain = (schemaId: string): boolean =>
+        onChainSchemas === null || onChainSchemas.has(schemaId);
+    const commerceAvailable = isOnChain(COMMERCE_SCHEMA_KEY);
+    const geoAvailable = isOnChain(GEO_SCHEMA_KEY);
+    const merchantProcessAvailable = isOnChain(MERCHANT_PROCESS_SCHEMA_KEY);
+    const courierProcessAvailable = isOnChain(COURIER_PROCESS_SCHEMA_KEY);
+    const availableGhgKeys = useMemo<readonly string[]>(
+        () =>
+            onChainSchemas === null
+                ? GHG_DISCLOSURE_SCHEMA_KEYS
+                : GHG_DISCLOSURE_SCHEMA_KEYS.filter((k) => onChainSchemas.has(k)),
+        [onChainSchemas],
+    );
 
     useEffect(() => {
         if (order) setFields(readAgreementFields(order));
@@ -629,6 +662,15 @@ export function AgreementDrawer({
                                 — the commerce schema. No composition decision lives here; this
                                 clause is included in every agreement by default.
                             </p>
+                            {!commerceAvailable && (
+                                <p
+                                    className="text-xs text-amber-700 mt-2"
+                                    data-testid="drawer-order-unavailable"
+                                >
+                                    Not registered on the network this site is reading; agreements
+                                    composed here cannot be attested.
+                                </p>
+                            )}
                         </section>
                     )}
 
@@ -638,9 +680,13 @@ export function AgreementDrawer({
                                 schemaId={GEO_SCHEMA_KEY}
                                 included={isSchemaIncluded(GEO_SCHEMA_KEY, fields)}
                                 onToggle={(next) => toggleSchema(GEO_SCHEMA_KEY, next)}
-                                disabled={deliveryActive}
-                                disabledHint="Required when fulfilment includes delivery."
-                                lockedOn={deliveryActive}
+                                disabled={deliveryActive || !geoAvailable}
+                                disabledHint={
+                                    !geoAvailable
+                                        ? "Not registered on the network this site is reading."
+                                        : "Required when fulfilment includes delivery."
+                                }
+                                lockedOn={deliveryActive && geoAvailable}
                             />
                         </section>
                     )}
@@ -657,6 +703,8 @@ export function AgreementDrawer({
                                 deliveryActive={deliveryActive}
                                 parentDeliveryActive={parentDeliveryActive}
                                 hasCourierChild={hasCourierChild}
+                                merchantProcessAvailable={merchantProcessAvailable}
+                                courierProcessAvailable={courierProcessAvailable}
                             />
                         </section>
                     )}
@@ -683,6 +731,7 @@ export function AgreementDrawer({
                             <EmissionsArticle
                                 checked={activeGhgStandards}
                                 onChange={updateGhgStandards}
+                                availableSchemas={availableGhgKeys}
                             />
                         </section>
                     )}
@@ -825,6 +874,8 @@ function AttestationsArticle({
     deliveryActive,
     parentDeliveryActive,
     hasCourierChild,
+    merchantProcessAvailable,
+    courierProcessAvailable,
 }: {
     isMerchantOrder: boolean;
     isCourierOrder: boolean;
@@ -840,33 +891,43 @@ function AttestationsArticle({
      *  schema. Drives the cross-role hint copy so we only suggest "Edit on the
      *  courier sub-order" when one exists. */
     hasCourierChild: boolean;
+    /** True when `figaro-merchant-process-v1` is registered on the network
+     *  this site is reading. False forces the toggle disabled with an
+     *  unavailability hint that overrides every other reason. */
+    merchantProcessAvailable: boolean;
+    /** True when `figaro-courier-process-v1` is registered on the network. */
+    courierProcessAvailable: boolean;
 }) {
 
-    // Merchant toggle: active iff editing the merchant order. Locked-on
-    // when delivery is in this order's fulfilment.
-    const merchantEditable = isMerchantOrder && !deliveryActive;
-    const merchantLockedOn = isMerchantOrder && deliveryActive;
-    const merchantDisabled = !isMerchantOrder || deliveryActive;
-    const merchantHint = isMerchantOrder
-        ? (deliveryActive ? "Required when fulfilment includes delivery." : undefined)
-        : isCourierOrder
-            ? "Edit on the parent merchant order."
-            : "Not applicable for this role — edit on the merchant order.";
-
-    // Courier toggle: active iff editing the courier sub-order. Locked-on
-    // when the parent has delivery in its fulfilment.
-    const courierEditable = isCourierOrder && !parentDeliveryActive;
-    const courierLockedOn = isCourierOrder && parentDeliveryActive;
-    const courierDisabled = !isCourierOrder || parentDeliveryActive;
-    const courierHint = isCourierOrder
-        ? (parentDeliveryActive ? "Required when fulfilment includes delivery." : undefined)
+    // Merchant toggle: active iff editing the merchant order AND the schema
+    // is on-chain. Locked-on when delivery is in this order's fulfilment AND
+    // the schema is available (otherwise the lock has nothing to lock onto).
+    const merchantLockedOn = isMerchantOrder && deliveryActive && merchantProcessAvailable;
+    const merchantDisabled = !isMerchantOrder || deliveryActive || !merchantProcessAvailable;
+    const merchantEditable = isMerchantOrder && !deliveryActive && merchantProcessAvailable;
+    const merchantHint = !merchantProcessAvailable
+        ? "Not registered on the network this site is reading."
         : isMerchantOrder
-            ? (deliveryActive
-                ? "Auto-included on the courier sub-order (required when delivery is offered)."
-                : hasCourierChild
-                    ? "Edit on the courier sub-order."
-                    : "Requires delivery in Fulfilment or a courier sub-order on the canvas.")
-            : "Not applicable for this role.";
+            ? (deliveryActive ? "Required when fulfilment includes delivery." : undefined)
+            : isCourierOrder
+                ? "Edit on the parent merchant order."
+                : "Not applicable for this role — edit on the merchant order.";
+
+    // Courier toggle: same shape, gated by courier-process availability.
+    const courierLockedOn = isCourierOrder && parentDeliveryActive && courierProcessAvailable;
+    const courierDisabled = !isCourierOrder || parentDeliveryActive || !courierProcessAvailable;
+    const courierEditable = isCourierOrder && !parentDeliveryActive && courierProcessAvailable;
+    const courierHint = !courierProcessAvailable
+        ? "Not registered on the network this site is reading."
+        : isCourierOrder
+            ? (parentDeliveryActive ? "Required when fulfilment includes delivery." : undefined)
+            : isMerchantOrder
+                ? (deliveryActive
+                    ? "Auto-included on the courier sub-order (required when delivery is offered)."
+                    : hasCourierChild
+                        ? "Edit on the courier sub-order."
+                        : "Requires delivery in Fulfilment or a courier sub-order on the canvas.")
+                : "Not applicable for this role.";
 
     return (
         <div className="space-y-5">
@@ -1208,23 +1269,39 @@ function CheckboxGroup({
 function EmissionsArticle({
     checked,
     onChange,
+    availableSchemas,
 }: {
     checked: string[];
     onChange: (next: string[]) => void;
+    /** GHG-disclosure schemaIds actually registered on the network this site
+     *  is reading. The set defines the offered options; standards whose
+     *  schema is unregistered are not selectable. While the read is in
+     *  flight, the parent passes the full bundled list (permissive). */
+    availableSchemas: readonly string[];
 }) {
-    const standardOptions = GHG_DISCLOSURE_SCHEMA_KEYS.map((schemaId) => ({
+    const standardOptions = availableSchemas.map((schemaId) => ({
         value: schemaId,
         label: getSchemaInfo(schemaId)?.title ?? schemaId,
     }));
     return (
         <div className="space-y-5">
-            <CheckboxGroup
-                label="Emission disclosures"
-                options={standardOptions}
-                checked={checked}
-                onToggle={(value) => onChange(toggleInList(checked, value))}
-                testIdPrefix="drawer-emissions-standard"
-            />
+            {standardOptions.length === 0 ? (
+                <p
+                    className="text-xs text-amber-700"
+                    data-testid="drawer-emissions-unavailable"
+                >
+                    No emission-disclosure schemas are registered on the network this
+                    site is reading.
+                </p>
+            ) : (
+                <CheckboxGroup
+                    label="Emission disclosures"
+                    options={standardOptions}
+                    checked={checked}
+                    onToggle={(value) => onChange(toggleInList(checked, value))}
+                    testIdPrefix="drawer-emissions-standard"
+                />
+            )}
         </div>
     );
 }
