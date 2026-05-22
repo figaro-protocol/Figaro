@@ -110,6 +110,70 @@ off-chain pieces.
 
 ---
 
+## The Substrate-Broadening Formula
+
+The three RPGF tranches reserve FIG for schema authors — but the allocation
+table does not say *which* authors, or *how much* each receives. That is decided
+by the **substrate-broadening formula**, implemented canonically in
+`prover/rpgf/` (Rust, compiled into the SP1 program) and mirrored by
+`sdk/scripts/rpgf-simulator/` (TypeScript conformance spec). The SP1 proof that
+gates `RpgfMinter.submitRoot` attests this formula was applied correctly to the
+event window the sequencer supplied — not that the window mirrors chain history
+(see the trusted-submitter note above).
+
+**Recipient.** A schema's allocation goes to its `schemaAuthor` — the
+first-write-wins wallet that registered the schema on `SchemaRegistry`. One
+schema, one recipient. There is no per-attestation, per-operator, or
+per-settlement reward path anywhere in the system.
+
+**What is measured.** Per tranche, the aggregator builds one snapshot per schema
+from a window of on-chain events, under a **resolved-only filter**: an
+attestation counts only if its order belongs to a process that has resolved.
+Work that never settles earns nothing; a schema with no resolved attestations in
+the window receives zero by absence.
+
+**The score.** Each schema is scored:
+
+```
+score = w_tier1 × processCount^α × pairs^(1 − α)        α = 33/100
+```
+
+- `processCount` — distinct resolved processes the schema appeared in.
+- `pairs` — distinct buyer↔seller pairs that used it.
+- The exponent split (α = 0.33) weights **counterparty diversity** (`pairs`)
+  above raw `processCount`: a schema adopted across many distinct relationships
+  broadens the protocol's substrate more than one used heavily between the same
+  two parties. A schema with zero processes or zero pairs scores zero.
+
+**The tier-1 weight** (`w_tier1`, range 1.0–5.0) adds two dimensions —
+`w = 1 + (w_category − 1) + (w_topology − 1)`:
+
+- `w_category` — `3.0` for tier-1 category schemas (`figaro-fulfilment-v2` and
+  `figaro-geo-v2`, hard-coded at deploy), `1.0` otherwise.
+- `w_topology` — the schema's mean chain position over the window, clamped to
+  `[1.0, 3.0]`; schemas used deeper in process chains weigh more.
+
+**Value is deliberately excluded.** Payment and bond size do not enter the
+formula. The protocol's cost to move one unit equals its cost to move a
+trillion; weighting by value would import a TradFi "TVL matters" metric the
+coordination layer rejects.
+
+**Scores to FIG.** Scores become pro-rata shares of the tranche budget. A
+**15% per-author cap** is then enforced by iterative water-filling — any share
+above the cap is truncated and its excess redistributed pro-rata across
+under-cap shares, iterated to a fixpoint — so no author can take more than 15%
+of a single tranche. Capped shares scale to FIG amounts; the
+`(schemaAuthor, amount)` pairs form the Merkle tree whose root `submitRoot`
+records.
+
+**The formula is frozen.** `α = 33/100`, the `15/100` cap, and the tier-1
+category set are deploy-time constants. The SP1 program commits to this one
+formula and applies it unchanged across all three tranches (years 2 / 5 / 9).
+Changing it would require deploying a new FIG system — the minter is sealed by
+`renounceDeployerMint`.
+
+---
+
 ## Deployment Flow (`DeployMainnet.s.sol`)
 
 The deploy script is a single transaction bundle that permanently seals
