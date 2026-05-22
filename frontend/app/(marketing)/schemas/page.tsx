@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
-import { SCHEMAS_BY_FAMILY, SCHEMA_COUNT } from "@/lib/shared/schemaCategories";
+import { SchemaInventory } from "./_components/SchemaInventory";
 
 export const metadata: Metadata = {
     title: "Schemas — Figaro Protocol",
     description:
-        "The schema architecture: client TypeScript and on-chain Solidity validators (with an SP1 Rust mirror pending) parsing one canonical JSON spec per schema. The reference inventory renders from the spec registry.",
+        "The schema architecture: client TypeScript and on-chain Solidity validators (with an SP1 Rust mirror pending) parsing one canonical JSON spec per schema. The inventory reads on-chain SchemaRegistry events directly.",
 };
 
 export default function Schemas() {
@@ -17,7 +17,7 @@ export default function Schemas() {
                 title="Three layers of validation."
                 lead={
                     <>
-                        A schema in Figaro is the on-chain content type of an attestation &mdash; a structured piece of evidence emitted during the lifecycle of a bonded process. Every attestation under a registered <code>schemaId</code> is validated identically by client TypeScript and on-chain Solidity (with an SP1 Rust mirror pending). {SCHEMA_COUNT} reference schemas ship today; new schemas register permissionlessly.
+                        A schema in Figaro is the on-chain content type of an attestation &mdash; a structured piece of evidence emitted during the lifecycle of a bonded process. Every attestation under a registered <code>schemaId</code> is validated identically by client TypeScript and on-chain Solidity (with an SP1 Rust mirror pending). The reference schemas register on-chain when the protocol deploys; anyone can register more, without permission.
                     </>
                 }
             />
@@ -45,33 +45,11 @@ export default function Schemas() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title={`${SCHEMA_COUNT} schemas, ${SCHEMAS_BY_FAMILY.length} families.`}>
+            <MarketingSection title="Registered schemas, by family.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    The reference set spans manifest topology, commerce primitives, emissions accounting and offsets, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology-v1</code> &mdash; is manifest-only: committed at agreement signing, with no on-chain validator. This inventory renders straight from the spec registry, so it cannot drift from what ships.
+                    The reference set spans manifest topology, commerce primitives, emissions accounting and offsets, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology-v1</code> &mdash; is manifest-only: committed at agreement signing, with no on-chain validator.
                 </p>
-                <div className="space-y-8">
-                    {SCHEMAS_BY_FAMILY.map((group) => (
-                        <div key={group.family}>
-                            <h3 className="text-base font-semibold text-ink-heading mb-3">
-                                {group.label}
-                            </h3>
-                            <ul className="space-y-3">
-                                {group.schemas.map((schema) => (
-                                    <li
-                                        key={schema.schemaId}
-                                        id={`schema-${schema.schemaId}`}
-                                        className="flex flex-col sm:flex-row gap-1 sm:gap-3 scroll-mt-24"
-                                    >
-                                        <span className="font-mono text-xs text-ink-muted sm:w-56 sm:shrink-0">
-                                            {schema.schemaId}
-                                        </span>
-                                        <span className="text-sm text-ink-body">{schema.description}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
-                </div>
+                <SchemaInventory />
             </MarketingSection>
 
             <MarketingSection title="The nine-step checklist.">
