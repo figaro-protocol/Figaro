@@ -31,6 +31,8 @@ export function useDutchAuctionActions() {
     const { isLoading: isClaimConfirming, isSuccess: isClaimSuccess } = useWaitForTransactionReceipt({ hash: claimHash });
     const { writeContractAsync: writeCancel, data: cancelHash, isPending: isCancelPending } = useWriteContract();
     const { isLoading: isCancelConfirming, isSuccess: isCancelSuccess } = useWaitForTransactionReceipt({ hash: cancelHash });
+    const { writeContractAsync: writeCreate, data: createHash, isPending: isCreatePending } = useWriteContract();
+    const { isLoading: isCreateConfirming, isSuccess: isCreateSuccess } = useWaitForTransactionReceipt({ hash: createHash });
     const [error, setError] = useState("");
 
     const claim = async (auctionId: string) => {
@@ -79,12 +81,50 @@ export function useDutchAuctionActions() {
         }
     };
 
+    // createAuction() — the buyer opens a descending-price auction for a
+    // deferred edge (e.g. the courier job). No token handling, no approval:
+    // DutchAuction is a pure coordination primitive. The order that results
+    // from a claim bonds normally in FigaroCore.
+    const createAuction = async (
+        auctionId: string,
+        maxPrice: bigint,
+        processId: string,
+        currency: string,
+    ) => {
+        if (!address || !auction) {
+            const message = "Dutch auction unavailable for this wallet or network.";
+            setError(message);
+            throw new Error(message);
+        }
+        setError("");
+        try {
+            return await writeCreate({
+                address: auction,
+                abi: DUTCH_AUCTION_ABI,
+                functionName: "createAuction",
+                args: [
+                    auctionId as `0x${string}`,
+                    maxPrice,
+                    processId as `0x${string}`,
+                    currency as `0x${string}`,
+                ],
+                account: address,
+                chain,
+            });
+        } catch (cause: unknown) {
+            const message = extractErrorMessage(cause, "Create auction failed");
+            setError(message);
+            throw new Error(message);
+        }
+    };
+
     return {
         claim,
         cancel,
-        isPending: isClaimPending || isCancelPending,
-        isConfirming: isClaimConfirming || isCancelConfirming,
-        isSuccess: isClaimSuccess || isCancelSuccess,
+        createAuction,
+        isPending: isClaimPending || isCancelPending || isCreatePending,
+        isConfirming: isClaimConfirming || isCancelConfirming || isCreateConfirming,
+        isSuccess: isClaimSuccess || isCancelSuccess || isCreateSuccess,
         error,
         available: !!auction && !!address,
     };

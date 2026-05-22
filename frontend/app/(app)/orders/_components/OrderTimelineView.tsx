@@ -27,6 +27,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { decodeAbiParameters, toHex, type Hex, type PublicClient } from "viem";
 import { Button } from "@/components/ui/Button";
 import { PreResolveOffsetPanel } from "@/components/core/PreResolveOffsetPanel";
+import { CourierAuctionPanel } from "@/components/core/CourierAuctionPanel";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
 import { getAttestationsByProcessAndSchema } from "@/lib/core/indexer";
 import { getAttestationContent } from "@/lib/mechanisms/useGHGDisclosure";
@@ -579,6 +580,10 @@ export function OrderTimelineView({ processId }: Props) {
                     {role === "spectator" && <>Read-only — your wallet is neither buyer nor seller on this order</>}
                 </p>
             </header>
+
+            {/* Deferred courier edge — a Dutch auction, if this process has one.
+                Renders null for every non-auction process. */}
+            <CourierAuctionPanel processId={processId} />
 
             {/* Primary action */}
             <section className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">

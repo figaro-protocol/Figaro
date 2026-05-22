@@ -96,8 +96,12 @@ const ERC20_VIEW_ABI = parseAbi([
 // Designer-authored AssemblyManifests, captured by the scenario specs into
 // scripts/fixtures/. Replayed verbatim — do not hand-edit; re-capture with
 // `FIGARO_CAPTURE_FIXTURES=1 npx playwright test scenario-*.devnet`.
+// `local-commerce-dutch` is the exception: a hand-derived variant of
+// `local-commerce` (the figaro-fulfilment-v2 coordination switched to
+// `dutch-auction`) so the seeded devnet offers a deferred-courier delivery
+// assembly. No scenario spec captures it.
 const FIXTURE_DIR = path.resolve(SCRIPT_DIR, 'fixtures');
-const ASSEMBLY_FIXTURES = ['direct-sale', 'local-commerce'];
+const ASSEMBLY_FIXTURES = ['direct-sale', 'local-commerce', 'local-commerce-dutch'];
 
 /** Sorted-key, bigint-as-string JSON — mirrors `canonicalize` in
  *  frontend/lib/mechanisms/useAssemblyRegistry.ts, so the contentHash this
@@ -132,7 +136,7 @@ const OPERATORS = [
     { addressIndex: 5, name: 'Counter & Co.', specialty: 'in-person counter sales', bind: ['direct-sale'], geohash: 'dr5regw2' },
     { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'], couriers: [7], geohash: 'dr5regw5' },
     { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'], deliveryCatalogue: true, geohash: 'dr5regw3' },
-    { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce'], couriers: [7], geohash: 'dr5regw7' },
+    { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce', 'local-commerce-dutch'], couriers: [7], geohash: 'dr5regw7' },
 ];
 
 /** Parse frontend/.env.local into a flat key→value map. */

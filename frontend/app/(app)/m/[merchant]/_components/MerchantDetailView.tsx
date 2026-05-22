@@ -22,7 +22,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useChainId } from "wagmi";
+import { useChainId, usePublicClient } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { ContentImage } from "@/components/shared/ContentImage";
@@ -39,6 +39,8 @@ import {
     PROXIMITY_POLICY_SCHEMA_KEY,
     type Agreement,
 } from "@/lib/core/agreementManifest";
+import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
+import { courierAuctionId, stashCourierDraft } from "@/lib/mechanisms/courierAuction";
 import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -101,6 +103,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
 
     const router = useRouter();
     const chainId = useChainId();
+    const publicClient = usePublicClient();
     const { catalogues: restaurants, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
     const restaurant = useMemo(
@@ -142,7 +145,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         resetOrder: resetCommitment,
     } = useCheckout(currency);
 
-    const { items, addItem, removeItem, removeLine, updateItemPrice, clearCart, getTotalPrice, getItemCount, fulfillmentMode, setFulfillmentMode } = useCartStore();
+    const { items, addItem, removeItem, removeLine, updateItemPrice, clearCart, getTotalPrice, getItemCount, fulfillmentMode, setFulfillmentMode, deliveryMaxPrice } = useCartStore();
+    const { createAuction } = useDutchAuctionActions();
     const { openConnectModal } = useConnectModal();
 
     const itemCount = getItemCount();
@@ -465,6 +469,53 @@ export function MerchantDetailView({ merchantAddress }: Props) {
 
             const processId = computeCommitmentProcessId(prepared.commitment, chainId, CONTRACTS.core);
             const rootOrderHash = computeOrderHash(prepared.commitment, chainId, CONTRACTS.core);
+
+            // ── Dutch-auction delivery: the courier edge is DEFERRED ──
+            // Rather than commit a seller-assigned courier now, open a
+            // descending-price auction for the courier job. The courier
+            // order joins the process when a courier claims it — incremental
+            // process assembly. Stash the courier order's build parameters
+            // (everything known now except the courier address + cleared
+            // price) for the post-claim commit on the order page.
+            if (fulfillmentMode === "deliver:dutch-auction") {
+                const daManifest = pickedAssembly!.manifest;
+                const daBands = (readAssemblyClause(daManifest, PROXIMITY_POLICY_SCHEMA_KEY)
+                    ?.data as { bands?: string[] } | undefined)?.bands ?? [];
+                stashCourierDraft(processId, {
+                    buyer,
+                    currency,
+                    processId,
+                    parentOrderHashes: [rootOrderHash],
+                    manifestFields: {
+                        origin: restaurant?.geohash ?? "",
+                        destination: deliveryLocation.geohash ?? "",
+                        courierProcessIncluded: true,
+                        ...assemblyJurisdictionFields(daManifest),
+                        ...(daBands.length > 0 ? { proximityBands: daBands } : {}),
+                        ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
+                        ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
+                        class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
+                    },
+                    deliveryAddress: deliveryAddress.trim() || undefined,
+                });
+                const auctionTxHash = await createAuction(
+                    courierAuctionId(processId),
+                    parseToken(deliveryMaxPrice, tokenDecimals),
+                    processId,
+                    currency,
+                );
+                // Wait for the auction to mine before navigating — the order
+                // page reads the auction on mount, and a stale read would
+                // show no auction with no automatic recovery.
+                if (publicClient && auctionTxHash) {
+                    await publicClient.waitForTransactionReceipt({ hash: auctionTxHash });
+                }
+                multiOrderCheckout.current = false;
+                clearCart();
+                resetCommitment();
+                router.push(`/orders/${processId}`);
+                return;
+            }
 
             // The courier wallet is the operator's designated courier for
             // this assembly (seller-assigned coordination; dutch-auction /
