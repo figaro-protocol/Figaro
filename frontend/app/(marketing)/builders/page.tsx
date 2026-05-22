@@ -55,7 +55,7 @@ export default function BuildersPage() {
                     </div>
                     <div>
                         <dt className="text-base font-semibold text-ink-heading">Handoff conditions</dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">The protocol-level conditions under which a process advances &mdash; which attestations unblock which steps, how sub-orders are composed into the tree.</dd>
+                        <dd className="text-ink-body leading-relaxed mt-1">The protocol-level conditions under which a process advances &mdash; which attestations unblock which steps, how sub-orders are composed into the process.</dd>
                     </div>
                     <div>
                         <dt className="text-base font-semibold text-ink-heading">Discovery</dt>
@@ -90,7 +90,7 @@ export default function BuildersPage() {
                     <ul className="space-y-3 text-sm">
                         <li>
                             <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
-                            <span className="text-ink-body"> &mdash; the three-layer validation architecture and the eighteen reference schemas. Includes the nine-step authoring checklist and the <code>SchemaRegistrationHelper</code> path for atomic register+bind.</span>
+                            <span className="text-ink-body"> &mdash; the three-layer validation architecture and the seventeen reference schemas. Includes the nine-step authoring checklist and the <code>SchemaRegistrationHelper</code> path for atomic register+bind.</span>
                         </li>
                         <li>
                             <Link href="/integrate" className="text-ink-heading font-medium hover:underline">SDK schema encoders</Link>

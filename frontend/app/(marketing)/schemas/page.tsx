@@ -5,7 +5,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = {
     title: "Schemas — Figaro Protocol",
-    description: "The schema architecture: client TypeScript + on-chain Solidity validators (with an SP1 Rust mirror pending) parsing one canonical JSON spec. Eighteen reference schemas in force.",
+    description: "The schema architecture: client TypeScript + on-chain Solidity validators (with an SP1 Rust mirror pending) parsing one canonical JSON spec. Seventeen reference schemas in force.",
 };
 
 interface SchemaRow {
@@ -43,7 +43,7 @@ const SCHEMA_FAMILIES: { name: string; rows: SchemaRow[] }[] = [
         ],
     },
     {
-        name: "GHG family",
+        name: "Emissions",
         rows: [
             {
                 id: "figaro-ghg-protocol-v1",
@@ -68,6 +68,11 @@ const SCHEMA_FAMILIES: { name: string; rows: SchemaRow[] }[] = [
             {
                 id: "figaro-ghg-measurement-v1",
                 description: "Runtime grams CO2e per fulfilment (Category-1) — estimate / measured / restated / verified.",
+            },
+            {
+                id: "figaro-offset-policy-v1",
+                description:
+                    "Carbon-offset providers an assembly accepts for emissions compensation — Klima, Toucan, Moss, or a self-declared operator (Category-2). The offset purchase itself is a sub-order against the chosen provider.",
             },
         ],
     },
@@ -139,7 +144,7 @@ export default function Schemas() {
                 title="Three layers of validation."
                 lead={
                     <>
-                        A schema in Figaro is the on-chain content type of an attestation &mdash; a structured piece of evidence emitted during the lifecycle of a bonded process. Every attestation under a registered <code>schemaId</code> is validated identically by client TypeScript and on-chain Solidity (with an SP1 Rust mirror pending). Eighteen reference schemas ship today; new schemas register permissionlessly.
+                        A schema in Figaro is the on-chain content type of an attestation &mdash; a structured piece of evidence emitted during the lifecycle of a bonded process. Every attestation under a registered <code>schemaId</code> is validated identically by client TypeScript and on-chain Solidity (with an SP1 Rust mirror pending). Seventeen reference schemas ship today; new schemas register permissionlessly.
                     </>
                 }
             />
@@ -167,9 +172,9 @@ export default function Schemas() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Eighteen schemas, six families.">
+            <MarketingSection title="Seventeen schemas, six families.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    The reference set covers manifest topology, commerce primitives, GHG disclosure and measurement, lifecycle and proximity, sovereign process logs, and legal anchoring. The full layer-status detail (which validators are deployed under each schemaId) lives on{" "}
+                    The reference set covers manifest topology, commerce primitives, emissions accounting and offsets, lifecycle and proximity, sovereign process logs, and legal anchoring. The full layer-status detail (which validators are deployed under each schemaId) lives on{" "}
                     <Link href="/spec" className="underline">/spec</Link>.
                 </p>
                 <div className="space-y-8">

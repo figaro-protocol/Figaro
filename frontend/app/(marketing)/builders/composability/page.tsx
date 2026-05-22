@@ -73,7 +73,7 @@ export default function BuilderComposability() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="What the kernel guarantees stays guaranteed.">
+            <MarketingSection title="What the kernel enforces stays enforced.">
                 <p className="text-base text-ink-body leading-relaxed mb-6">
                     Across every assembly that composes against the kernel, the same invariants hold. Across every extension authored above the kernel, the boundary of responsibility is the same.
                 </p>

@@ -18,7 +18,7 @@ export default function Protocol() {
                     <>
                         The kernel runs two mechanisms doing distinct work. Asymmetric
                         bonding produces the bilateral Nash equilibrium and scales the
-                        primitive from two parties to N-party trees through progressive
+                        primitive from two parties to N-party process chains through progressive
                         collateralization. Buyer dominance with atomic resolution
                         operates on the scaled mesh and induces a weakest-link subgame
                         among sellers. They compose; neither substitutes for the other.
