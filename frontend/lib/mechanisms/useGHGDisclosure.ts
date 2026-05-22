@@ -28,8 +28,8 @@ import {
     type Hex,
     type PublicClient,
 } from "viem";
-import { isEmptyHex } from "@/lib/shared/evm";
-import { ZERO_BYTES32, useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
+import { isEmptyHex, ZERO_BYTES32 } from "@/lib/shared/evm";
+import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
 import { GHG_MEASUREMENT_SCHEMA_ID, GHG_SCHEMA_ID } from "@/lib/core/agreementManifest";
 import {

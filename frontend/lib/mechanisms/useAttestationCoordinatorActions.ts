@@ -6,7 +6,6 @@ import { activeChain } from "@/lib/shared/chains";
 import type { Hex } from "viem";
 import { CONTRACTS, ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
 import { loadOrFetchCommitment } from "@/lib/core/commitmentStore";
-import { ZERO_BYTES32 as SHARED_ZERO_BYTES32 } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hydrateAgreement } from "@/lib/core/agreementStore";
 import {
@@ -14,8 +13,6 @@ import {
     getSectionById,
     getSectionDataBytes,
 } from "@/lib/core/agreementManifest";
-
-export const ZERO_BYTES32 = SHARED_ZERO_BYTES32;
 
 type SellerAttestationInput = {
     /** The order being attested — its `agreementHash` anchors the inclusion proof. */
