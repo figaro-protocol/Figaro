@@ -41,6 +41,7 @@ import {
 } from "@/lib/core/agreementManifest";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { courierAuctionId, stashCourierDraft } from "@/lib/mechanisms/courierAuction";
+import { CourierCataloguePicker, type CourierSelection } from "@/components/core/CourierCataloguePicker";
 import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -57,7 +58,7 @@ import { useMerchantBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry
 import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE, resolveCatalogueItemPrice } from "@/lib/shared/operatorCatalogueMetadata";
+import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE } from "@/lib/shared/operatorCatalogueMetadata";
 
 import type { CatalogueItem, OperatorCatalogue } from "@/lib/seller/types";
 
@@ -237,18 +238,17 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // The human-readable street address — sent to the courier over the
     // coordination channel (off-agreement; the operational delivery detail).
     const [deliveryAddress, setDeliveryAddress] = useState("");
-    // buyer-assigned coordination: the buyer picks the courier at checkout.
-    const [selectedCourier, setSelectedCourier] = useState("");
-    // Delivery-offering operators the buyer may pick as the courier — any
-    // registered operator with a `delivery`-category catalogue item; the
-    // merchant itself is excluded.
-    const availableCouriers = useMemo(
-        () => operatorCatalogues.filter(
-            (r) => !hexEqual(r.address, merchantAddressLower)
-                && r.menu.some((i) => i.category === "delivery"),
-        ),
-        [operatorCatalogues, merchantAddressLower],
-    );
+    // The buyer's courier selection — chosen through CourierCataloguePicker
+    // (the merchant's partner list for seller-assigned, any address for
+    // buyer-assigned). null until a courier + delivery item are chosen.
+    const [courierSelection, setCourierSelection] = useState<CourierSelection | null>(null);
+    // Courier addresses the merchant designated for the picked delivery
+    // assembly — the seller-assigned partner list.
+    const courierPartnerAddresses = useMemo(() => {
+        const picked = boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
+        return picked?.counterpartyBindings
+            .find((cb) => cb.schemaId === "figaro-courier-process-v1")?.addresses ?? [];
+    }, [boundAssemblies, fulfillmentMode]);
 
     // Auto-chain: when approval confirms, proceed to commit signing.
     useEffect(() => {
@@ -529,52 +529,24 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 return;
             }
 
-            // The courier: buyer-assigned coordination → the buyer picked one
-            // at checkout; seller-assigned → the merchant designated one in
-            // the assembly's counterpartyBindings. (dutch-auction returned
-            // above.) The courier-order commit below is identical either way.
-            const courier = fulfillmentMode === "deliver:buyer-assigned"
-                ? (selectedCourier ? (selectedCourier as `0x${string}`) : undefined)
-                : pickedAssembly!.counterpartyBindings
-                    .find((cb) => cb.schemaId === "figaro-courier-process-v1")
-                    ?.addresses[0];
-            if (!courier) {
+            // The courier + delivery price came from CourierCataloguePicker —
+            // the merchant's partner list (seller-assigned) or any address the
+            // buyer entered (buyer-assigned); the buyer picked a delivery item
+            // from the courier's catalogue. dutch-auction returned above.
+            if (!courierSelection) {
                 multiOrderCheckout.current = false;
-                setCheckoutError(
-                    fulfillmentMode === "deliver:buyer-assigned"
-                        ? "Choose a courier before placing the order."
-                        : "This assembly needs a courier, but the merchant has designated none.",
-                );
+                setCheckoutError("Choose a courier and a delivery service before placing the order.");
                 return;
             }
+            const courier = courierSelection.courier;
+            const courierPayment = parseToken(courierSelection.price, tokenDecimals);
 
-            // The courier order — buyer↔courier, parented to the root order,
-            // carrying the figaro-courier-process-v1 clause.
-            //
-            // Read the courier order's handoff clause off the picked
-            // assembly — the assembly is the template, so the committed
-            // courier order carries the same proximity-policy band the
-            // assembly declares (rather than a runtime guess).
+            // The committed courier order carries the proximity-policy band the
+            // picked assembly declares (the assembly is the template).
             const assemblyManifest = pickedAssembly!.manifest;
             const courierProximityBands: string[] =
                 (readAssemblyClause(assemblyManifest, PROXIMITY_POLICY_SCHEMA_KEY)
                     ?.data as { bands?: string[] } | undefined)?.bands ?? [];
-
-            // The courier delivery price comes from the courier's OWN
-            // catalogue — the courier is a peer operator, not priced by the
-            // merchant. resolveCatalogueItemPrice keys the courier's rate
-            // card on the merchant it serves (the negotiated price list).
-            const courierCatalogue = operatorCatalogues.find((r) => hexEqual(r.address, courier));
-            const courierDeliveryItem = courierCatalogue?.menu.find((i) => i.category === "delivery");
-            if (!courierDeliveryItem) {
-                multiOrderCheckout.current = false;
-                setCheckoutError("The designated courier has not published a delivery price.");
-                return;
-            }
-            const courierPayment = parseToken(
-                resolveCatalogueItemPrice(courierDeliveryItem, merchantAddressLower).price,
-                tokenDecimals,
-            );
             const courierPrepared = await prepareOrderCommitment({
                 buyer,
                 seller: courier,
@@ -986,33 +958,17 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                             className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
                                         />
 
-                                        {fulfillmentMode === "deliver:buyer-assigned" && (
-                                            <div className="space-y-1.5 pt-1">
-                                                <label
-                                                    htmlFor="buyer-courier-select"
-                                                    className="text-xs font-semibold text-neutral-500 block"
-                                                >
-                                                    Choose your courier
-                                                </label>
-                                                <select
-                                                    id="buyer-courier-select"
-                                                    value={selectedCourier}
-                                                    onChange={(e) => setSelectedCourier(e.target.value)}
-                                                    data-testid="select-buyer-courier"
-                                                    className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                                                >
-                                                    <option value="" data-testid="option-buyer-courier-unset">
-                                                        Select a courier…
-                                                    </option>
-                                                    {availableCouriers.map((c) => (
-                                                        <option key={c.address} value={c.address}>
-                                                            {c.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <p className="text-[11px] text-neutral-500">
-                                                    buyer-assigned delivery — you pick the courier; their published rate applies.
-                                                </p>
+                                        {(fulfillmentMode === "deliver:seller-assigned"
+                                            || fulfillmentMode === "deliver:buyer-assigned") && (
+                                            <div className="pt-1">
+                                                <CourierCataloguePicker
+                                                    key={fulfillmentMode}
+                                                    mode={fulfillmentMode}
+                                                    partnerAddresses={courierPartnerAddresses}
+                                                    merchantAddress={merchantAddressLower}
+                                                    tokenSymbol={tokenSymbol}
+                                                    onSelect={setCourierSelection}
+                                                />
                                             </div>
                                         )}
                                     </div>
@@ -1026,7 +982,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                         || merchantCartItems.length === 0
                                         || !fulfillmentMode
                                         || (fulfillmentMode.startsWith("deliver:") && !deliveryLocation.geohash)
-                                        || (fulfillmentMode === "deliver:buyer-assigned" && !selectedCourier)
+                                        || ((fulfillmentMode === "deliver:seller-assigned" || fulfillmentMode === "deliver:buyer-assigned") && !courierSelection)
                                     }
                                     data-testid="btn-place-order"
                                     className="w-full"

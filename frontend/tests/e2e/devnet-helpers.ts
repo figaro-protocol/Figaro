@@ -1324,9 +1324,19 @@ export async function placeLocalCommerceOrderUI(
         fulfilmentMode?: string;
         geohash?: string;
         deliveryAddress?: string;
-        /** buyer-assigned coordination — the courier the buyer picks, by
-         *  catalogue name. Selected after the fulfilment mode, before placing. */
-        courierName?: string;
+        /** Courier selection for a delivery mode, driven through
+         *  CourierCataloguePicker after the fulfilment mode is set. */
+        courier?: {
+            /** seller-assigned: the courier to pick from the merchant's
+             *  partner dropdown, by name. */
+            partnerName?: string;
+            /** buyer-assigned: the courier's address to enter. */
+            address?: string;
+            /** The delivery item to select — `courier-item-<deliveryItemId>`. */
+            deliveryItemId: string;
+            /** If the delivery item is buyer-set, the token amount to enter. */
+            buyerSetPrice?: string;
+        };
     },
 ): Promise<Hex> {
     const fulfilmentMode = opts.fulfilmentMode ?? 'deliver:seller-assigned';
@@ -1356,9 +1366,23 @@ export async function placeLocalCommerceOrderUI(
     await page.getByTestId('select-fulfilment-mode').selectOption(fulfilmentMode);
     await page.getByTestId('input-delivery-geohash').fill(geohash);
     await page.getByTestId('input-delivery-address').fill(deliveryAddress);
-    if (opts.courierName) {
-        // buyer-assigned coordination — the buyer picks the courier by name.
-        await page.getByTestId('select-buyer-courier').selectOption({ label: opts.courierName });
+    if (opts.courier) {
+        // Drive CourierCataloguePicker — seller-assigned picks the courier
+        // from the merchant's partner dropdown, buyer-assigned enters an
+        // address; both then choose a delivery item from the courier's
+        // catalogue (and name the price for a buyer-set item).
+        if (fulfilmentMode === 'deliver:seller-assigned') {
+            await page.getByTestId('select-courier-partner')
+                .selectOption({ label: opts.courier.partnerName! });
+        } else {
+            await page.getByTestId('input-courier-address').fill(opts.courier.address!);
+        }
+        const deliveryItem = page.getByTestId(`courier-item-${opts.courier.deliveryItemId}`);
+        await deliveryItem.waitFor({ state: 'visible', timeout: 30000 });
+        await deliveryItem.click();
+        if (opts.courier.buyerSetPrice) {
+            await page.getByTestId('input-courier-buyer-price').fill(opts.courier.buyerSetPrice);
+        }
     }
     await page.getByTestId('btn-place-order').click();
 

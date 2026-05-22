@@ -278,22 +278,44 @@ async function main() {
         // Pin this operator's catalogue first — its URI is referenced from
         // the profile document, so it must exist before the profile is pinned.
         // A courier's catalogue is the universal catalogue too — its menu is
-        // a delivery offering (one delivery-category item) with a fixed
-        // public price and a negotiated rate for Mercato General.
+        // a delivery price list: two fixed service levels (standard + express,
+        // each with a negotiated rate for Mercato General) and one buyer-set
+        // item where the buyer names the delivery fee at checkout.
         const catalogue = op.deliveryCatalogue
             ? {
                 ...catalogueFixture,
                 subjectAddress: account.address,
-                menu: [{
-                    id: 'delivery-standard',
-                    name: 'Standard delivery',
-                    description: 'Last-mile courier delivery.',
-                    price: '0.5',
-                    pricingPolicy: 'fixed',
-                    negotiatedPrices: [{ counterparty: mercatoAddress, price: '0.3' }],
-                    category: 'delivery',
-                    available: true,
-                }],
+                menu: [
+                    {
+                        id: 'delivery-standard',
+                        name: 'Standard delivery',
+                        description: 'Last-mile courier delivery.',
+                        price: '0.5',
+                        pricingPolicy: 'fixed',
+                        negotiatedPrices: [{ counterparty: mercatoAddress, price: '0.3' }],
+                        category: 'delivery',
+                        available: true,
+                    },
+                    {
+                        id: 'delivery-express',
+                        name: 'Express delivery',
+                        description: 'Priority last-mile courier delivery.',
+                        price: '0.9',
+                        pricingPolicy: 'fixed',
+                        negotiatedPrices: [{ counterparty: mercatoAddress, price: '0.6' }],
+                        category: 'delivery',
+                        available: true,
+                    },
+                    {
+                        id: 'delivery-quote',
+                        name: 'Name-your-price delivery',
+                        description: 'Buyer-set — name the delivery fee at checkout.',
+                        price: '0',
+                        pricingPolicy: 'buyer-set',
+                        category: 'delivery',
+                        available: true,
+                    },
+                ],
             }
             : { ...catalogueFixture, subjectAddress: account.address };
         const catalogueURI = await pinJSON(ipfsApiUrl, JSON.stringify(catalogue));

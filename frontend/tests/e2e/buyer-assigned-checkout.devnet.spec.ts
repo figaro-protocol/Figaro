@@ -91,7 +91,7 @@ test.describe('Buyer-assigned delivery — buyer chooses the courier (devnet)', 
             merchant: MERCATO_ADDR,
             itemId: ITEM.id,
             fulfilmentMode: 'deliver:buyer-assigned',
-            courierName: 'Swift Courier',
+            courier: { address: SWIFT_COURIER_ADDR, deliveryItemId: 'delivery-standard' },
         });
 
         // ── 2. Both orders committed — food + courier ─────────────────

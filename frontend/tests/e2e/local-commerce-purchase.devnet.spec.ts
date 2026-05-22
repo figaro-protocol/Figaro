@@ -125,10 +125,10 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         await expect(page.getByTestId(`cart-line-${ITEM.id}`)).toBeVisible({ timeout: 10000 });
 
         // ── The array of assemblies ──────────────────────────────────
-        // Mercato General binds two assemblies; once useMerchantBoundAssemblies
-        // resolves, the checkout surfaces BOTH as buyer options — direct-sale
-        // → consume-onsite, local-commerce → deliver:seller-assigned. The
-        // presence of both is the "frontend read the operator's array" check.
+        // Mercato General binds four assemblies; once useMerchantBoundAssemblies
+        // resolves, the checkout surfaces each as a buyer option — including
+        // direct-sale → consume-onsite and local-commerce → deliver:seller-assigned.
+        // Their presence is the "frontend read the operator's array" check.
         await expect(page.getByTestId('option-fulfilment-deliver:seller-assigned')).toHaveCount(1, { timeout: 20000 });
         await expect(page.getByTestId('option-fulfilment-consume-onsite')).toHaveCount(1);
 
@@ -140,6 +140,15 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         await page.getByTestId('input-delivery-geohash').fill('dr5regw3pg');
         // The human-readable street address rides the coordination channel.
         await page.getByTestId('input-delivery-address').fill('12 Market St, Apt 4B — ring bell');
+
+        // ── Pick the courier from the merchant's partner list ────────
+        // seller-assigned: CourierCataloguePicker surfaces the merchant's
+        // designated couriers — pick Swift Courier, then Standard delivery
+        // from the courier's catalogue price list.
+        await page.getByTestId('select-courier-partner').selectOption({ label: 'Swift Courier' });
+        const deliveryItem = page.getByTestId('courier-item-delivery-standard');
+        await deliveryItem.waitFor({ state: 'visible', timeout: 30000 });
+        await deliveryItem.click();
 
         // ── Place the order — two sequential commits ─────────────────
         await page.getByTestId('btn-place-order').click();

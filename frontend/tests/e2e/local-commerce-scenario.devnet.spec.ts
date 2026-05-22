@@ -127,6 +127,7 @@ test.describe('Full local-commerce scenario (devnet)', () => {
         const processId = await placeLocalCommerceOrderUI(page, {
             merchant: MERCATO_ADDR,
             itemId: ITEM.id,
+            courier: { partnerName: 'Swift Courier', deliveryItemId: 'delivery-standard' },
         });
 
         const committed = await publicClient.readContract({
