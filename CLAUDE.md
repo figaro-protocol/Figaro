@@ -162,7 +162,7 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 - `.github/copilot-instructions.md` — same inventory, Copilot framing
 - `sdk/README.md` — SDK entry points
 - `docs/v5/VERIFICATION_MAP.md` — invariant → test → formal layer map
-- User-facing schema surfaces in `frontend/app/`. Use `grep -rl "<schemaId>" frontend/app/` to find every page that needs updating; canonical surfaces include `app/(marketing)/schemas/page.tsx`, `app/(marketing)/integrate/page.tsx`, `app/(marketing)/spec/page.tsx`, `app/(marketing)/local-commerce/page.tsx`. Update when a new schema lands.
+- User-facing schema surfaces in `frontend/app/`. The `/schemas` inventory renders from the `schemaCategories.ts` registry, so a newly registered schema appears there automatically (see the schema checklist below). Pages that name schemas in prose still need a manual pass when a new schema lands — `grep -rl "<schemaId>" frontend/app/` finds them.
 
 **`docs/v5/` whitelist (exhaustive).** Files not on this list are deletion candidates at every audit. Do not treat absence-from-whitelist as "ambiguous" — treat it as "delete unless restored by explicit user approval."
 
@@ -481,7 +481,7 @@ There are 17 protocol schemas total: 16 runtime-attestable (each with a validato
    **When to add an operator-process schema vs not** (kernel-participant vs off-chain-operator principle): an off-chain operator needs its own process schema if and only if its state transitions are off-chain. Off-chain operators (merchants, couriers, locker operators, etc.) need a process schema because their state transitions happen in physical reality and need a sovereign event log to be tamper-proof evidence. Kernel participants — most importantly the **buyer**, who acts via `commit` and `resolveProcess` — do NOT need a process schema; their evidence IS the kernel event log itself. `merchant-process` and `courier-process` are sovereign-log primitives in this sense. Don't add `figaro-buyer-process-v1` — it would duplicate kernel events. Do add a process schema for any new off-chain operator whose internal events need to be on-chain attestable. The schema-category taxonomy carries this as the `operator-process` category (see `frontend/lib/shared/schemaCategories.ts`).
 6. Foundry test in `test/schemaValidators/`.
 7. Layer B is generic — it parses any spec at runtime from JSON, so adding a schema does not require a new Rust file. Strongly-typed content encoders for Rust consumers can be added per-schema if useful, but are not required for validation to work.
-8. List the schema + one-line summary on `/builders` "Schema validators in force".
+8. Register the schema in `frontend/lib/shared/schemaCategories.ts` — add its spec JSON to `ALL_SPECS` and assign its `SCHEMA_TIER_MAP` and `SCHEMA_FAMILY_MAP` entries. `/schemas` renders the inventory from that registry; `assertTaxonomyComplete()` fails the build if the tier or family assignment is missing.
 9. `setValidator(schemaId, validator)` call added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. (Bootstrap-time atomicity: deploy scripts inline both writes within a single broadcast transaction. Post-deploy third-party schemas MUST use `SchemaRegistrationHelper.registerSchemaAndValidator(...)` — atomic register+bind is required, see `docs/v5/SCHEMAS.md` for the front-running rationale.)
 
 If any step is skipped the validator gate either rejects all attestations under that schemaId

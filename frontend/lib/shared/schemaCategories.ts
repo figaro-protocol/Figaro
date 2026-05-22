@@ -1,8 +1,8 @@
 /**
- * Schema taxonomy — canonical categories, tiers, and lens map.
+ * Schema taxonomy — canonical categories, tiers, families, and lens map.
  *
- * Three parallel taxonomies organize Figaro schemas. This module is the single
- * source of truth for all three:
+ * Four parallel taxonomies organize Figaro schemas. This module is the single
+ * source of truth for all four:
  *
  *   CATEGORY — drawer organization. ~13 narrow slices. Read from the
  *   `categories` array in each schema's Layer-A spec JSON. Used by the
@@ -14,6 +14,10 @@
  *       the agreement hash; surfaced in the designer drawer.
  *     - "runtime": attestation emitted during/after order processing;
  *       NOT surfaced in the designer drawer; lives on attestation feeds.
+ *
+ *   FAMILY — the coarse editorial grouping the `/schemas` inventory
+ *   renders. Six families, hand-maintained (the spec JSON shape carries
+ *   no `family` field); `SCHEMA_FAMILY_MAP` is the assignment.
  *
  *   LENS — canvas overlay. 4 stable broad slices that highlight visual
  *   aspects of an order in `ProcessGraphCanvas`. Lenses are NOT
