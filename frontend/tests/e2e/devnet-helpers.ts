@@ -40,6 +40,7 @@ import {
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
 import { GHG_SCHEMA_KEY, GHG_SCHEMA_ID } from '@/lib/core/agreementManifest';
 import { ZERO_PROCESS_ID } from '@/lib/shared/evm';
+import { gotoAsWallet } from './devnet-multi-test';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const MAX_UINT256 = (2n ** 256n) - 1n;
@@ -51,6 +52,13 @@ const LOCAL_ANVIL = defineChain({
         default: { http: [RPC_URL] },
     },
 });
+
+// figaro-merchant-process-v1 happy-path stages — order-received through
+// handed-off — the merchant walks these in the coordination step.
+const MERCHANT_STEPS = ['order-received', 'accepted', 'prep-started', 'ready-for-pickup', 'handed-off'] as const;
+const ATTESTATION_EVENT_ABI = parseAbi([
+    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)',
+]);
 
 const BUYER_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const RESTAURANT_PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
@@ -1396,4 +1404,71 @@ export async function placeLocalCommerceOrderUI(
     await page.waitForURL(/\/orders\/0x[0-9a-fA-F]+/, { timeout: 90000 });
     await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
     return page.url().match(/\/orders\/(0x[0-9a-fA-F]+)/)![1] as Hex;
+}
+
+/**
+ * Drive the merchant coordination walk + the courier's two handoff
+ * proximity proofs for a committed local-commerce process — the shared
+ * runtime steps between the buyer's commit and the buyer's resolve. The
+ * coordination is identical across every courier-coordination mode
+ * (seller-assigned, buyer-assigned, dutch-auction); only how the courier
+ * order is created differs.
+ *
+ *   - Merchant walks figaro-merchant-process-v1: order-received → accepted
+ *     → prep-started → ready-for-pickup → handed-off.
+ *   - Courier submits both handoff proximity proofs — arrived-pickup
+ *     (stage 3) then arrived-dropoff (stage 5); each must land on-chain
+ *     before the next click, so the button targets the right edge.
+ *
+ * Asserts both handoff stages attested. The caller resolves.
+ */
+export async function runDeliveryCoordination(
+    page: Page,
+    opts: { processId: Hex; merchant: string; courier: string },
+): Promise<void> {
+    const config = readLocalDeploymentConfig();
+    const coordinator = (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR
+        ?? config.attestationCoordinator) as Hex;
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    const courierStages = async (): Promise<number[]> => {
+        const all = await publicClient.getContractEvents({
+            address: coordinator, abi: ATTESTATION_EVENT_ABI, eventName: 'Attestation',
+            args: { processId: opts.processId }, fromBlock: 0n,
+        });
+        return (all as Array<{ args: { schemaId?: Hex; stage?: number } }>)
+            .filter((e) => e.args.schemaId === COURIER_PROCESS_SCHEMA_ID)
+            .map((e) => Number(e.args.stage));
+    };
+
+    // ── Merchant walks the figaro-merchant-process-v1 coordination ──
+    await gotoAsWallet(page, opts.merchant, `/orders/${opts.processId}?e2e=devnet`);
+    await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+    for (const step of MERCHANT_STEPS) {
+        const btn = page.getByTestId(`btn-merchant-next-${step}`);
+        await btn.waitFor({ state: 'visible', timeout: 60000 });
+        await btn.click();
+    }
+    await expect(page.locator('[data-testid^="btn-merchant-next-"]')).toHaveCount(0, { timeout: 60000 });
+
+    // ── Courier submits both handoff proximity proofs ──
+    await gotoAsWallet(page, opts.courier, `/orders/${opts.processId}?e2e=devnet`);
+    await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+    await expect(page.getByTestId('courier-handoff-address')).toBeVisible({ timeout: 30000 });
+    const proofBtn = page.getByTestId('btn-courier-proximity-proof');
+    for (let handoff = 0; handoff < 2; handoff++) {
+        await expect(proofBtn).toBeEnabled({ timeout: 45000 });
+        await proofBtn.click();
+        const want = handoff === 0 ? [3] : [3, 5];
+        const deadline = Date.now() + 90_000;
+        for (;;) {
+            const stages = await courierStages();
+            if (want.every((s) => stages.includes(s))) break;
+            if (Date.now() > deadline) throw new Error(`courier handoff ${handoff + 1} timed out — stages ${stages}`);
+            await new Promise((r) => setTimeout(r, 1000));
+        }
+    }
+    const finalStages = await courierStages();
+    expect(finalStages).toContain(3); // arrived-pickup (merchant→courier)
+    expect(finalStages).toContain(5); // arrived-dropoff (courier→buyer)
 }

@@ -21,13 +21,15 @@
 
 import { useState } from "react";
 import { formatUnits, parseAbi, type Hex } from "viem";
-import { useAccount, usePublicClient, useReadContract } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useReadContract } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useDutchAuction } from "@/lib/mechanisms/useDutchAuction";
 import { useCommitmentFlow } from "@/lib/core/useCommitmentFlow";
 import { courierAuctionId, loadCourierDraft } from "@/lib/mechanisms/courierAuction";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { CONTRACTS } from "@/lib/core/contracts";
+import { computeOrderHash } from "@/lib/core/commitmentStore";
+import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import { hexEqual, ZERO_ADDRESS } from "@/lib/shared/evm";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -47,6 +49,7 @@ export function CourierAuctionPanel({ processId }: Props) {
     const pid = processId as Hex;
     const { address } = useAccount();
     const publicClient = usePublicClient();
+    const chainId = useChainId();
 
     const { data: processData, refetch: refetchProcess } = useReadContract({
         address: CONTRACTS.core,
@@ -125,6 +128,25 @@ export function CourierAuctionPanel({ processId }: Props) {
                 await publicClient.waitForTransactionReceipt({ hash: txHash });
             }
             await refetchProcess();
+
+            // Send the buyer's physical delivery address to the courier over
+            // the coordination channel — best-effort: the courier order has
+            // already committed, so a channel failure must not surface as a
+            // commit error. Mirrors executeCheckout's seller-/buyer-assigned
+            // handoff-address send; in the dutch-auction flow the buyer
+            // stashed the address in the courier draft at checkout.
+            if (draft.deliveryAddress) {
+                try {
+                    await DEFAULT_COORDINATION_MESSAGING_SERVICE.sendHandoffAddress({
+                        address,
+                        recipientAddress: address,
+                        orderId: computeOrderHash(prepared.commitment, chainId, CONTRACTS.core),
+                        deliveryAddress: draft.deliveryAddress,
+                    });
+                } catch (cause) {
+                    console.warn("Handoff address send to courier failed", cause);
+                }
+            }
         } catch (cause) {
             setError(extractErrorMessage(cause, "Delivery-order commit failed"));
         } finally {

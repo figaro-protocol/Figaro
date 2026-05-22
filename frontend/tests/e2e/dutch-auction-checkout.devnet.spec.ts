@@ -14,8 +14,9 @@
  *   2. The process carries ONE order; the auction panel is open, unclaimed.
  *   3. Swift Courier opens the order page, claims the auction at the decayed
  *      price, then commits the courier order at the cleared price.
- *   4. The process carries TWO orders — the courier edge joined — and the
- *      buyer resolves, settling both atomically.
+ *   4. The process carries TWO orders — the courier edge joined.
+ *   5. Merchant coordinates and the courier delivers; the buyer resolves,
+ *      settling both atomically.
  *
  * Mercato General is bound to `local-commerce-dutch` (seed-devnet.mjs) — the
  * dutch-auction variant of the local-commerce assembly.
@@ -31,6 +32,7 @@ import {
     evmRevert,
     evmSnapshot,
     readLocalDeploymentConfig,
+    runDeliveryCoordination,
 } from './devnet-helpers';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -79,8 +81,8 @@ test.describe('Dutch-auction delivery — deferred courier edge (devnet)', () =>
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // Buyer commit + auction open + courier claim + courier-order commit +
-    // resolve — every step through its own UI.
-    test.setTimeout(300_000);
+    // merchant walk + courier handoffs + resolve — every step through its UI.
+    test.setTimeout(420_000);
 
     test('buyer opens the courier auction; a courier claims and commits; buyer resolves', async ({ page }) => {
         const { core, token } = deployment();
@@ -160,7 +162,12 @@ test.describe('Dutch-auction delivery — deferred courier edge (devnet)', () =>
         expect(assembled[3]).toBe(2); // food + courier
         expect(assembled[2]).toBeGreaterThan(opened[2]); // cumulativeValue grew
 
-        // ── 5. Buyer resolves — both orders settle atomically ─────────
+        // ── 5. Merchant coordinates, courier delivers ─────────────────
+        await runDeliveryCoordination(page, {
+            processId, merchant: MERCATO_ADDR, courier: SWIFT_COURIER_ADDR,
+        });
+
+        // ── 6. Buyer resolves — both orders settle atomically ─────────
         await gotoAsWallet(page, BUYER_ADDR, `/orders/${processId}?e2e=devnet`);
         const confirmButton = page.getByTestId('btn-confirm-receipt');
         await confirmButton.waitFor({ timeout: 30000 });
