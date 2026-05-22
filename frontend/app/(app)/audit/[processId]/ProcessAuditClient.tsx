@@ -8,6 +8,7 @@ import { HashVerifier } from "../_components/HashVerifier";
 import { DisputeStatusPanel } from "@/components/core/DisputeStatusPanel";
 import { useArbitrationCost } from "@/hooks/core/useArbitrationCost";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
+import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { createDeliveryCoordinatorSource } from "@/lib/mechanisms/deliveryCoordinatorEvents";
 import { resolveProcessRecourse, klerosConfigForRecourse, type KlerosRecourse } from "@/lib/dispute";
 import { hexEqual } from "@/lib/shared/evm";
@@ -24,12 +25,17 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
     const { address } = useAccount();
     const { klerosConfig: envKlerosConfig } = useArbitrationCost();
     const orders = useProcessOrders(processId);
+    const agreementHashes = useMemo(
+        () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+        [orders],
+    );
+    const agreements = useProcessAgreements(agreementHashes);
     const coordinatorSources = useMemo(() => [createDeliveryCoordinatorSource()], []);
     const role = hexEqual(address, orders[0]?.buyer ?? "") ? "buyer" : "seller";
 
     // Layer-3 recourse is whatever the assembly's figaro-jurisdiction-v1
     // clause(s) named — read off the committed orders, not a global default.
-    const recourses = useMemo(() => resolveProcessRecourse(orders), [orders]);
+    const recourses = useMemo(() => resolveProcessRecourse(orders, agreements), [orders, agreements]);
     // The Kleros raise-dispute flow uses the court the clause authored; the
     // arbitrableProxy address is deployment config, so it stays from env.
     const klerosConfig = useMemo(() => {

@@ -16,8 +16,7 @@
  */
 import type { Address } from "viem";
 import type { Order } from "@/lib/core/store";
-import { loadAgreement } from "@/lib/core/agreementStore";
-import { getSection, JURISDICTION_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { getSection, JURISDICTION_SCHEMA_KEY, type Agreement } from "@/lib/core/agreementManifest";
 import { getKlerosCourt, encodeArbitratorExtraData, type KlerosCourt } from "./klerosCourts";
 import type { KlerosConfig } from "./klerosProxy";
 
@@ -80,11 +79,16 @@ function recoursesFromClause(data: Record<string, unknown>): JurisdictionRecours
  * Reads every order's figaro-jurisdiction-v1 clause, dedupes, and returns
  * the distinct recourse paths in first-seen order.
  */
-export function resolveProcessRecourse(orders: readonly Order[]): JurisdictionRecourse[] {
+export function resolveProcessRecourse(
+    orders: readonly Order[],
+    agreements: Map<string, Agreement>,
+): JurisdictionRecourse[] {
     const seen = new Set<string>();
     const out: JurisdictionRecourse[] = [];
     for (const order of orders) {
-        const agreement = loadAgreement(order.agreementHash);
+        const agreement = order.agreementHash
+            ? (agreements.get(order.agreementHash) ?? null)
+            : null;
         if (!agreement) continue;
         const section = getSection(agreement, JURISDICTION_SCHEMA_KEY);
         if (!section) continue;

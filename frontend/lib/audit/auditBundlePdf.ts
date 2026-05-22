@@ -12,8 +12,7 @@
 
 import type { PublicClient } from "viem";
 import type { Order } from "@/lib/core/store";
-import { loadAgreement } from "@/lib/core/agreementStore";
-import { COMMERCE_SCHEMA_KEY, redactSections } from "@/lib/core/agreementManifest";
+import { COMMERCE_SCHEMA_KEY, redactSections, type Agreement } from "@/lib/core/agreementManifest";
 import type { IndexedAttestationLog } from "@/lib/core/indexer";
 import {
     getAttestationsByOrder,
@@ -139,6 +138,7 @@ export async function buildAuditBundlePdfBlob(
     orders: readonly Order[],
     publicClient: PublicClient | undefined,
     chainId: number,
+    agreements: Map<string, Agreement>,
     options: BuildAuditBundlePdfOptions = {},
 ): Promise<Blob> {
     const redactLineItems = options.redactLineItems ?? false;
@@ -170,7 +170,9 @@ export async function buildAuditBundlePdfBlob(
     }
 
     for (const order of orders) {
-        const cleartextAgreement = loadAgreement(order.agreementHash);
+        const cleartextAgreement = order.agreementHash
+            ? (agreements.get(order.agreementHash) ?? null)
+            : null;
         if (!cleartextAgreement) {
             continue;
         }

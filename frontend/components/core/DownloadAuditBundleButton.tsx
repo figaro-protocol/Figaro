@@ -8,10 +8,11 @@
  * never leaves the browser. The redact toggle seals commerce line items
  * via `redactSections` while preserving the agreement merkle root.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
+import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 interface DownloadAuditBundleButtonProps {
@@ -33,6 +34,11 @@ function triggerDownload(blob: Blob, filename: string): void {
 export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBundleButtonProps) {
     const publicClient = usePublicClient();
     const chainId = useChainId();
+    const agreementHashes = useMemo(
+        () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+        [orders],
+    );
+    const agreements = useProcessAgreements(agreementHashes);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [redactLineItems, setRedactLineItems] = useState(false);
@@ -79,7 +85,7 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
                     setBusy(true);
                     setError(null);
                     try {
-                        const blob = await buildAuditBundlePdfBlob(processId, orders, publicClient, chainId, {
+                        const blob = await buildAuditBundlePdfBlob(processId, orders, publicClient, chainId, agreements, {
                             redactLineItems,
                         });
                         triggerDownload(blob, `audit-bundle-${processId.slice(0, 10)}${filenameSuffix}.pdf`);

@@ -37,9 +37,9 @@ import {
     type RedactableAgreement,
 } from "@/lib/core/agreementManifest";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
+import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
-import { loadAgreement } from "@/lib/core/agreementStore";
 
 type Mode = "agreement" | "section" | "search";
 
@@ -305,6 +305,11 @@ interface HashHit {
 function SearchMode() {
     const [hash, setHash] = useState("");
     const orders = useProcessOrders(null); // all orders the wallet can see
+    const agreementHashes = useMemo(
+        () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+        [orders],
+    );
+    const agreements = useProcessAgreements(agreementHashes);
 
     const hits = useMemo<HashHit[]>(() => {
         const target = hash.trim().toLowerCase();
@@ -333,8 +338,10 @@ function SearchMode() {
                     location: `OrderCommitted.agreementHash event field`,
                 });
             }
-            // Walk each order's locally-cached agreement and see if any section leaf matches.
-            const agreement = loadAgreement(order.agreementHash);
+            // Walk each order's hydrated agreement and see if any section leaf matches.
+            const agreement = order.agreementHash
+                ? (agreements.get(order.agreementHash) ?? null)
+                : null;
             if (agreement) {
                 for (const section of agreement.sections) {
                     if (hexEqual(computeSectionLeaf(section), target)) {
@@ -348,7 +355,7 @@ function SearchMode() {
             }
         }
         return found;
-    }, [hash, orders]);
+    }, [hash, orders, agreements]);
 
     return (
         <div className="space-y-4" data-testid="verify-search-mode">

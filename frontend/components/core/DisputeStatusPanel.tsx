@@ -19,7 +19,7 @@
  * This component is process-scoped. Mount it in any process detail view.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
@@ -29,6 +29,7 @@ import type { Order } from "@/lib/core/store";
 import { CONTRACTS } from "@/lib/core/contracts";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
+import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import {
     buildAuditBundleEvidence,
     buildFigaroMetaEvidence,
@@ -137,6 +138,11 @@ export function DisputeStatusPanel({
 }: DisputeStatusPanelProps) {
     const mounted = useMounted();
     const { address } = useAccount();
+    const agreementHashes = useMemo(
+        () => (orders ?? []).map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+        [orders],
+    );
+    const agreements = useProcessAgreements(agreementHashes);
     const publicClient = usePublicClient();
     const chainId = useChainId();
     const { data: walletClient } = useWalletClient();
@@ -233,6 +239,7 @@ export function DisputeStatusPanel({
                 orders,
                 publicClient ?? undefined,
                 chainId,
+                agreements,
                 {
                     redactLineItems: bundleRedact,
                     coordinatorSources,
