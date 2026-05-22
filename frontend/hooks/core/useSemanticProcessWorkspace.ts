@@ -297,6 +297,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     return {
         effectiveProcessId,
         processModel,
+        processAgreements,
         runtimeCapabilities,
         executableCapabilityIds,
         executingCapabilityId,

@@ -39,7 +39,6 @@ import type { SemanticTone } from "@/lib/shared/tones";
 import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import { COURIER_PROCESS_SCHEMA_ID, useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
 import { getSection, PROXIMITY_POLICY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
-import { loadAgreement } from "@/lib/core/agreementStore";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import type { CourierEvent, MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
@@ -511,7 +510,7 @@ export function OrderTimelineView({ processId }: Props) {
             // Read the band off the courier order's committed
             // figaro-proximity-policy-v1 clause — the proof carries the band
             // the assembly authored, not a hardcoded default.
-            const courierAgreement = loadAgreement(courierOrder.agreementHash);
+            const courierAgreement = workspace.processAgreements.get(courierOrder.agreementHash) ?? null;
             const committedBand = courierAgreement
                 ? ((getSection(courierAgreement, PROXIMITY_POLICY_SCHEMA_KEY)
                     ?.data as { bands?: string[] } | undefined)?.bands ?? [])[0]
