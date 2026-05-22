@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { computeAgreementHash } from "@/lib/core/agreementManifest";
 import { saveAgreement } from "@/lib/core/agreementStore";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
-import { deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
+import { buildAgreementsFromCache, deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
 import { OrderState, type Order } from "@/lib/core/store";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
@@ -49,7 +49,7 @@ describe("deriveOrderTopology", () => {
             makeOrder({ id: "0x03", payment: 7n, cumulativeValue: 22n, blockNumber: 3 }),
         ];
 
-        const topology = deriveOrderTopology(orders);
+        const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
         expect(topology.get("0x01")?.parentOrderIds).toEqual([]);
         expect(topology.get("0x02")?.parentOrderIds).toEqual(["0x01"]);
         expect(topology.get("0x03")?.parentOrderIds).toEqual(["0x02"]);
@@ -80,7 +80,7 @@ describe("deriveOrderTopology", () => {
             makeOrder({ id: "0x03", payment: 7n, cumulativeValue: 22n, agreementHash: computeAgreementHash(childAgreement), blockNumber: 3 }),
         ];
 
-        const topology = deriveOrderTopology(orders);
+        const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
         expect(topology.get("0x03")?.parentOrderIds).toEqual(["0x01", "0x02"]);
         expect(topology.get("0x03")?.topologyMode).toBe("explicit");
     });
@@ -117,7 +117,7 @@ describe("deriveOrderTopology", () => {
             makeOrder({ id: "0x03", payment: 3n, cumulativeValue: 18n, agreementHash: computeAgreementHash(grandchildAgreement), blockNumber: 3 }),
         ];
 
-        const topology = deriveOrderTopology(orders);
+        const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
         const depths = deriveOrderDepths(orders, topology);
         expect(depths.get("0x01")).toBe(0);
         expect(depths.get("0x02")).toBe(1);

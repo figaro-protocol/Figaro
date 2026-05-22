@@ -39,7 +39,7 @@ import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
 import { formatToken } from "@/lib/shared/utils";
 import { Card } from "@/components/ui/Card";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
+import { buildAgreementsFromCache, deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement, type AgreementSummary } from "@/lib/core/orderAgreement";
 import {
     useOrderDisclosureTasks,
@@ -478,7 +478,7 @@ export function ProcessGraphCanvas({
     const connectStartIdRef = useRef<string | null>(null);
 
     useEffect(() => {
-        const topology = deriveOrderTopology(orders);
+        const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
         const depthMap = deriveOrderDepths(orders, topology);
         const depthBuckets = new Map<number, string[]>();
         orders.forEach(o => {

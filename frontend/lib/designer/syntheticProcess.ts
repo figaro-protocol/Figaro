@@ -26,7 +26,7 @@ import {
     MERCHANT_PROCESS_SCHEMA_KEY,
 } from "@/lib/core/agreementManifest";
 import { loadAgreement, saveAgreement } from "@/lib/core/agreementStore";
-import { deriveOrderTopology } from "@/lib/core/orderTopology";
+import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
 
 /** Address space for synthetic actors. Distinct prefix avoids visual confusion with live wallets. */
 function syntheticAddress(slot: number): `0x${string}` {
@@ -232,7 +232,7 @@ export function mergeSyntheticParent(
 
     // Cycle check: if walking down from `child` reaches `newParentId`, then
     // making newParentId a parent of child would create a cycle.
-    const topology = deriveOrderTopology(allOrders);
+    const topology = deriveOrderTopology(allOrders, buildAgreementsFromCache(allOrders));
     const visited = new Set<string>();
     const stack = [child.id];
     while (stack.length > 0) {
@@ -408,7 +408,7 @@ export function editSyntheticAgreement(
  * i.e. it sits at the root of the DAG. Used by delete-protection logic.
  */
 export function isRootOrder(orderId: string, orders: Order[]): boolean {
-    const topology = deriveOrderTopology(orders);
+    const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
     const parents = topology.get(orderId)?.parentOrderIds ?? [];
     return parents.length === 0;
 }
@@ -419,7 +419,7 @@ export function isRootOrder(orderId: string, orders: Order[]): boolean {
  * cascade-delete flow.
  */
 export function collectDescendants(rootId: string, orders: Order[]): Set<string> {
-    const topology = deriveOrderTopology(orders);
+    const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
     const collected = new Set<string>([rootId]);
     let frontier: string[] = [rootId];
     while (frontier.length > 0) {

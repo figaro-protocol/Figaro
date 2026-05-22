@@ -1,5 +1,5 @@
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { type TopologyMode } from "@/lib/core/agreementManifest";
+import { type Agreement, type TopologyMode } from "@/lib/core/agreementManifest";
 import {
     getTopologyMode,
     getTopologyParentOrderHashes,
@@ -32,7 +32,28 @@ function sortOrdersForTopology(orders: Order[]): Order[] {
     return [...orders].sort(compareOrders);
 }
 
-export function deriveOrderTopology(orders: Order[]): Map<string, OrderTopologyInfo> {
+/**
+ * Build an agreements Map from the localStorage cache for callers that
+ * are guaranteed hot-cache by construction (designer sessions where the
+ * author just wrote the agreement; unit tests that seed localStorage in
+ * the same tick). Render-path consumers cross-wallet should obtain the
+ * Map from `useProcessAgreements` instead — see
+ * `feedback_ipfs_hydrated_agreements`.
+ */
+export function buildAgreementsFromCache(orders: Order[]): Map<string, Agreement> {
+    const map = new Map<string, Agreement>();
+    for (const order of orders) {
+        if (!order.agreementHash) continue;
+        const agreement = loadAgreement(order.agreementHash);
+        if (agreement) map.set(order.agreementHash, agreement);
+    }
+    return map;
+}
+
+export function deriveOrderTopology(
+    orders: Order[],
+    agreements: Map<string, Agreement>,
+): Map<string, OrderTopologyInfo> {
     const sortedOrders = sortOrdersForTopology(orders);
     const fallbackTopology = new Map<string, OrderTopologyInfo>();
 
@@ -54,7 +75,9 @@ export function deriveOrderTopology(orders: Order[]): Map<string, OrderTopologyI
             sourceLabel: "default root fallback",
         };
 
-        const agreement = loadAgreement(order.agreementHash);
+        const agreement = order.agreementHash
+            ? (agreements.get(order.agreementHash) ?? null)
+            : null;
         const explicitParents = getTopologyParentOrderHashes(agreement);
         const explicitMode = getTopologyMode(agreement);
 

@@ -609,7 +609,7 @@ export function deriveProcessModelFromRuntime(
     const processOrders = orders
         .filter((order) => order.processId === summary.processId)
         .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
-    const topology = deriveOrderTopology(processOrders);
+    const topology = deriveOrderTopology(processOrders, agreements);
     const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, address, isE2EMock));
     const relations = deriveProcessRelations(summary.processId, processOrders, topology);
     const rootOrderId = semanticOrders.find((order) => order.parentOrderIds.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";

@@ -13,7 +13,7 @@
  */
 
 import type { Order } from "@/lib/core/store";
-import { deriveOrderTopology } from "@/lib/core/orderTopology";
+import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { COURIER_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
@@ -35,7 +35,7 @@ export function computeAgreementHints(
     selectedOrderId: string | null,
 ): AgreementHints {
     if (!selectedOrderId) return EMPTY;
-    const topology = deriveOrderTopology(orders);
+    const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
 
     let hasChildren = false;
     let hasCourierChild = false;
