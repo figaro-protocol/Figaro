@@ -9,11 +9,12 @@ export function Footer() {
     return (
         <footer className="border-t border-default bg-canvas">
             <div className="container mx-auto px-6 py-16">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
                     <div>
-                        <h4 className={COL_HEADER_CLS}>Cryptoeconomics</h4>
+                        <h4 className={COL_HEADER_CLS}>Protocol</h4>
                         <div className="space-y-2">
                             <Link href="/protocol" className={COL_LINK_CLS}>Protocol mechanisms</Link>
+                            <Link href="/research" className={COL_LINK_CLS}>Research</Link>
                             <Link href="/spec" className={COL_LINK_CLS}>Specifications</Link>
                             <Link href="/schemas" className={COL_LINK_CLS}>Schemas</Link>
                         </div>
@@ -24,32 +25,17 @@ export function Footer() {
                             <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
                             <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
                             <Link href="/builders/composability" className={COL_LINK_CLS}>Composability</Link>
-                            <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
                             <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
-                            <Link href="/operators" className={COL_LINK_CLS}>Operators</Link>
-                            <Link href="/audit" className={COL_LINK_CLS}>Audit</Link>
+                            <Link href="/rpgf" className={COL_LINK_CLS}>RPGF</Link>
+                            <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
                         </div>
                     </div>
                     <div>
                         <h4 className={COL_HEADER_CLS}>Ecosystem</h4>
                         <div className="space-y-2">
-                            <Link href="/research" className={COL_LINK_CLS}>Research</Link>
                             <Link href="/discover" className={COL_LINK_CLS}>Discover operators</Link>
+                            <Link href="/operators" className={COL_LINK_CLS}>Operators</Link>
                             <Link href="/fig" className={COL_LINK_CLS}>FIG Token</Link>
-                            <Link href="/rpgf" className={COL_LINK_CLS}>RPGF</Link>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 className={COL_HEADER_CLS}>About</h4>
-                        <div className="space-y-2">
-                            <a
-                                href="https://github.com/figaro-protocol"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={COL_LINK_CLS}
-                            >
-                                GitHub
-                            </a>
                         </div>
                     </div>
                 </div>
