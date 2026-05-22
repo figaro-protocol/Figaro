@@ -1,0 +1,58 @@
+\documentclass[10pt]{article}
+
+\usepackage[letterpaper,top=0.6in,bottom=0.5in,left=0.9in,right=0.9in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{parskip}
+
+\definecolor{ink}{HTML}{1A1A1A}
+\definecolor{accent}{HTML}{8A1F1B}
+
+\pagestyle{empty}
+\color{ink}
+\setlength{\parindent}{0pt}
+
+\newcommand{\hd}[1]{%
+  \vspace{5pt}%
+  {\sffamily\bfseries\footnotesize\color{accent}\MakeUppercase{#1}}\par
+  \vspace{1pt}}
+
+\newcommand{\ac}[1]{\textcolor{accent}{#1}}
+
+\begin{document}
+
+\begin{center}
+  {\sffamily\bfseries\LARGE FIGARO PROTOCOL}\\[3pt]
+  {\sffamily\small The TCP/IP of Trade --- self-enforcing agreements between strangers}
+\end{center}
+
+\vspace{2pt}
+{\color{ink}\rule{\linewidth}{0.9pt}}
+\vspace{4pt}
+
+Across history, societies have ordered themselves two ways: by coercion --- \emph{might makes right} --- and by written law. We treat the passage from the first to the second as civilization itself. Both arrangements, though, rest on one foundation: those who are ruled must trust those who rule. That trust is not a fact about the rulers --- it is a cognitive disposition held by the ruled, and shaped by the society they live in.
+
+\hd{When trust is sound, and when it is not}
+Where the disposition genuinely expresses the ruled, trust is well founded: authority and the governed are in agreement. Where it is \ac{engineered} --- manufactured to produce consent for the rulers rather than to record it --- the arrangement holds only until the dissonance between the engineered belief and lived experience surfaces. The same instruments that can record a society's trust can also fabricate it.
+
+\hd{Mechanism design runs it the other way}
+Mechanism design --- the discipline underneath every working blockchain --- is manufactured consent run in reverse. Both work the same instruments: incentives, common knowledge, equilibrium. What separates them is \emph{disclosure}. Manufactured consent depends on concealment: it holds only while the ruled cannot see the mechanism working on them. Cryptoeconomic mechanism design depends on the opposite --- the rules are published, deterministically enforced, common knowledge. A party who models the whole mechanism is not its threat but its source of confidence. Trust is not extracted and concentrated in a center but constructed at the edges, where anyone can check it. That is the invention underneath Bitcoin, and because the base network is deterministic, everything built on it inherits that determinism.
+
+\hd{Three kinds of builder}
+The same toolkit sits in three sets of hands. \textbf{Grifters} aim it at cognitive bias itself --- engineering belief where no value sits underneath. The \textbf{traditional-finance cohort} uses it to reproduce the institutions we already have, porting finance and governance onto crypto rails with the intermediary, the discretionary vote, and the regulator carried across intact. And some use it to \ac{engineer trust directly}: to build mechanisms in which cooperation is the equilibrium, so no center has to supply it. Figaro is built by --- and for --- the third.
+
+\hd{What Figaro is}
+Figaro is a stateless, ownerless kernel that defines a single primitive: the \ac{bonded commitment}. Two parties dual-sign an agreement and each posts collateral against it --- the buyer locks twice the payment, each seller twice the cumulative value of the commitment. Two mechanisms do the work. \textbf{Asymmetric bonding} makes cooperation the weakly dominant strategy for both sides, and carries that equilibrium --- edge by edge --- across a chain of many contributors. \textbf{Buyer dominance with atomic resolution} settles the entire chain on a single signature and propagates the same cooperation pressure through every participant. There is no arbitrator, no timeout, no administrator: each would be a center, and a center is the thing the protocol exists to do without. What a participant trusts is not a counterparty's goodwill or a platform's policy --- only the deterministic equilibrium, and the bond they posted themselves.
+
+\hd{What it makes possible}
+Because the kernel enforces an equilibrium and takes no position on anything else --- currency, jurisdiction, identity, role, price, or contribution metric --- it can carry value-added processes of any economic form. A market economy, a cooperative, a mutual-aid network, an Islamic-finance arrangement: each composes on the same kernel and the same two mechanisms. The kernel is the grammar; the arrangement is the sentence. Figaro supplies the grammar and leaves the sentence entirely to the people transacting.
+
+\vspace{5pt}
+{\color{ink}\rule{\linewidth}{0.4pt}}
+\vspace{3pt}
+
+{\small\itshape Figaro --- the factotum of the network: coordinator of everything, owner of nothing.}
+
+\end{document}

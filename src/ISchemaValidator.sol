@@ -29,7 +29,7 @@ pragma solidity 0.8.26;
 ///      `external pure override` — the EVM then enforces purity at the
 ///      runtime dispatch site (any state read reverts via STATICCALL).
 ///
-///      All 14 production validators in `src/schemaValidators/` declare
+///      All 16 production validators in `src/schemaValidators/` declare
 ///      `external pure override`. Any new third-party validator that uses
 ///      the looser `view` shape forfeits the EVM-enforced determinism
 ///      guarantee — review carefully before binding via `setValidator`.
