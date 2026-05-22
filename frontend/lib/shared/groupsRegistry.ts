@@ -68,7 +68,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         disciplineIndex: 1,
         name: "Economics and Game Theory",
         discipline: "Mechanism design · institutional economics · monetary theory",
-        charter: "The kernel rests on a game-theoretic argument: asymmetric bonding with a 2× minimum ratio produces a Nash equilibrium, scales itself from two to N parties through progressive collateralization, and makes the subordination axis of the Coasean firm structurally optional. This group reads the substrate as economists and game theorists read it — equilibrium analysis, institutional form, monetary design.",
+        charter: "The kernel rests on a game-theoretic argument: asymmetric bonding with a 2× minimum ratio produces a Nash equilibrium, scales itself from two to N parties through progressive collateralization, and makes the subordination axis of the Coasean firm structurally optional — shifting the Coasean transaction-cost threshold inward, so the standing firm is no longer the uniquely efficient unit of production within the domain the primitive covers. This group reads the substrate as economists and game theorists read it — equilibrium analysis, institutional form, monetary design.",
         papers: [
             { title: "Asymmetric Bonding: A Self-Enforcing Settlement Primitive", href: "/papers/figaro-mechanism.pdf" },
         ],
@@ -116,7 +116,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         disciplineIndex: 4,
         name: "Philosophy, Law and Ethics",
         discipline: "Contract theory · evidence law · labor law · stateless subjecthood · political philosophy",
-        charter: "A Figaro commitment is a signed contract: payment = consideration, schemas = terms and conditions, agreementHash = the contract document. Settlement happens on-chain by nature; adjudication happens off-chain by nature. The wallet collapses the Roman res/persona distinction, and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
+        charter: "A Figaro commitment is a signed contract: payment = consideration, schemas = terms and conditions, agreementHash = the contract document. Settlement happens on-chain by nature; adjudication happens off-chain by nature. The wallet collapses the Roman res/persona distinction, and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. The platform is not a fact of nature; it is a contingent answer to a coordination problem the bonded primitive answers differently. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
         papers: [],
     },
     {
@@ -124,7 +124,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         disciplineIndex: 5,
         name: "Political Science and Governance",
         discipline: "Political economy · hegemony · sovereign coordination",
-        charter: "The kernel is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same kernel. This group reads the substrate as political theorists — Gramsci, Arendt, post-hegemony; the question of what governance is when the primitive refuses to take positions.",
+        charter: "The kernel is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same kernel. This group reads the substrate as political theorists — Gramsci, Arendt, post-hegemony; the question of what governance is when the primitive refuses to take positions, and the Arendtian question of whether what the bonded primitive grants is a 'right to have rights' or, more narrowly, a capacity to have commerce.",
         papers: [],
     },
     {
