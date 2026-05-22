@@ -226,7 +226,7 @@ export interface SupportedSchemaDeclaration {
  * `defaultTokenAddress`. Frontends convert to whatever accepted token
  * the buyer commits in via Uniswap quote at commit time.
  */
-export interface SellerCatalogueMetadata {
+export interface OperatorCatalogueMetadata {
     subjectAddress: `0x${string}`;
     menu: CatalogueItemMetadata[];
     version: string;
@@ -238,7 +238,7 @@ export interface SellerCatalogueMetadata {
     unitSystem?: UnitSystem;
 }
 
-export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {
+export const SELLER_CATALOGUE_METADATA_EXAMPLE: OperatorCatalogueMetadata = {
     subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
     menu: [
         {

@@ -16,14 +16,14 @@ import {
     removePendingHandoffIntent,
     savePendingHandoffIntent,
 } from "@/lib/handoff/handoffIntent";
-import { useMerchantCatalogue } from "@/lib/mechanisms/useMerchantCatalogue";
+import { useOperatorCatalogue } from "@/lib/mechanisms/useOperatorCatalogue";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
 import {
     RuntimeServicesProvider,
     useRuntimeServices,
 } from "@/lib/shared/runtimeServicesContext";
-import type { SellerCatalogue } from "@/lib/seller/types";
-import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import type { OperatorCatalogue } from "@/lib/seller/types";
+import type { OperatorCatalogueMetadata } from "@/lib/shared/operatorCatalogueMetadata";
 import type { CatalogueService } from "@/lib/shared/catalogueService";
 import type { DiscoveryService } from "@/lib/shared/discoveryService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
@@ -36,7 +36,7 @@ const useWalletClientMock = vi.fn();
 const getOperatorMetadataURIMock = vi.fn();
 const getBlockNumberMock = vi.fn();
 const watchContractEventMock = vi.fn();
-const defaultFetchMerchantCatalogueMock = vi.fn();
+const defaultFetchOperatorCatalogueMock = vi.fn();
 const defaultListFallbackRestaurantsMock = vi.fn();
 const defaultIsRegistryConfiguredMock = vi.fn();
 const defaultListRestaurantsMock = vi.fn();
@@ -73,7 +73,7 @@ vi.mock("@/lib/core/indexer", () => ({
 
 vi.mock("@/lib/shared/catalogueService", () => ({
     DEFAULT_CATALOGUE_SERVICE: {
-        fetchMerchantCatalogue: (...args: unknown[]) => defaultFetchMerchantCatalogueMock(...args),
+        fetchOperatorCatalogue: (...args: unknown[]) => defaultFetchOperatorCatalogueMock(...args),
     },
 }));
 
@@ -133,7 +133,7 @@ const publicClient = {
     getBlockNumber: (...args: unknown[]) => getBlockNumberMock(...args),
     watchContractEvent: (...args: unknown[]) => watchContractEventMock(...args),
 };
-const fallbackRestaurant: SellerCatalogue = {
+const fallbackRestaurant: OperatorCatalogue = {
     id: "fallback-1",
     name: "Fallback Merchant",
     description: "Fallback catalogue",
@@ -145,7 +145,7 @@ const fallbackRestaurant: SellerCatalogue = {
     fulfillmentModes: ["deliver:seller-assigned"],
 };
 
-const injectedRestaurant: SellerCatalogue = {
+const injectedRestaurant: OperatorCatalogue = {
     id: "merchant-1",
     name: "Injected Merchant",
     description: "Injected discovery result",
@@ -191,7 +191,7 @@ describe("runtime service hook injection", () => {
         getOperatorMetadataURIMock.mockReset();
         getBlockNumberMock.mockReset();
         watchContractEventMock.mockReset();
-        defaultFetchMerchantCatalogueMock.mockReset();
+        defaultFetchOperatorCatalogueMock.mockReset();
         defaultListFallbackRestaurantsMock.mockReset();
         defaultIsRegistryConfiguredMock.mockReset();
         defaultListRestaurantsMock.mockReset();
@@ -231,17 +231,17 @@ describe("runtime service hook injection", () => {
     it("uses an injected catalogue service instead of the default provider", async () => {
         getOperatorMetadataURIMock.mockResolvedValueOnce("ipfs://merchant-a");
 
-        const catalogue: SellerCatalogueMetadata = {
+        const catalogue: OperatorCatalogueMetadata = {
             subjectAddress: "0x0000000000000000000000000000000000000011",
             menu: [],
             version: "1.0.0",
         };
-        const fetchMerchantCatalogue = vi.fn().mockResolvedValue(catalogue);
+        const fetchOperatorCatalogue = vi.fn().mockResolvedValue(catalogue);
         const service = {
-            fetchMerchantCatalogue,
+            fetchOperatorCatalogue,
         } as unknown as CatalogueService;
 
-        const { result } = renderHook(() => useMerchantCatalogue(
+        const { result } = renderHook(() => useOperatorCatalogue(
             "0x0000000000000000000000000000000000000011",
             { service },
         ));
@@ -250,8 +250,8 @@ describe("runtime service hook injection", () => {
             expect(result.current.catalogue).toEqual(catalogue);
         });
 
-        expect(fetchMerchantCatalogue).toHaveBeenCalledWith("ipfs://merchant-a");
-        expect(defaultFetchMerchantCatalogueMock).not.toHaveBeenCalled();
+        expect(fetchOperatorCatalogue).toHaveBeenCalledWith("ipfs://merchant-a");
+        expect(defaultFetchOperatorCatalogueMock).not.toHaveBeenCalled();
     });
 
     it("uses an injected discovery service instead of the default provider", async () => {

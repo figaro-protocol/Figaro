@@ -57,9 +57,9 @@ import { useMerchantBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry
 import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE, resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata";
+import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE, resolveCatalogueItemPrice } from "@/lib/shared/operatorCatalogueMetadata";
 
-import type { CatalogueItem, SellerCatalogue } from "@/lib/seller/types";
+import type { CatalogueItem, OperatorCatalogue } from "@/lib/seller/types";
 
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "consume-onsite",
@@ -104,11 +104,11 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     const router = useRouter();
     const chainId = useChainId();
     const publicClient = usePublicClient();
-    const { catalogues: restaurants, isLoading: cataloguesLoading } = useRegisteredCatalogues();
+    const { catalogues: operatorCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
-    const restaurant = useMemo(
-        () => restaurants.find((r) => hexEqual(r.address, merchantAddressLower)) ?? null,
-        [restaurants, merchantAddressLower],
+    const operatorCatalogue = useMemo(
+        () => operatorCatalogues.find((r) => hexEqual(r.address, merchantAddressLower)) ?? null,
+        [operatorCatalogues, merchantAddressLower],
     );
 
     // Identity lookup is reserved for follow-on enrichment (operator
@@ -124,12 +124,12 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // accepted-tokens come from THEIR profile, not from project-level
     // CONTRACTS.* env vars. The env-var fallback only kicks in for fixture /
     // pre-schema-split catalogues that don't carry a defaultTokenAddress.
-    const currency = (restaurant?.defaultTokenAddress
+    const currency = (operatorCatalogue?.defaultTokenAddress
         ?? CONTRACTS.mockToken
         ?? CONTRACTS.permitToken) as `0x${string}`;
     const { data: resolvedSymbol } = useTokenSymbol(currency);
     const tokenSymbol = resolvedSymbol
-        ?? restaurant?.acceptedTokens?.find(
+        ?? operatorCatalogue?.acceptedTokens?.find(
             (t) => hexEqual(t.address, currency),
         )?.symbol
         ?? "";
@@ -167,11 +167,11 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         if (hasOnChainBinding && boundModalities.length > 0) {
             return ALL_FULFILMENT_MODES.filter((m) => boundModalities.includes(m));
         }
-        if (!restaurant?.fulfillmentModes || restaurant.fulfillmentModes.length === 0) {
+        if (!operatorCatalogue?.fulfillmentModes || operatorCatalogue.fulfillmentModes.length === 0) {
             return ALL_FULFILMENT_MODES;
         }
-        return ALL_FULFILMENT_MODES.filter((m) => restaurant.fulfillmentModes!.includes(m));
-    }, [restaurant?.fulfillmentModes, boundModalities, hasOnChainBinding]);
+        return ALL_FULFILMENT_MODES.filter((m) => operatorCatalogue.fulfillmentModes!.includes(m));
+    }, [operatorCatalogue?.fulfillmentModes, boundModalities, hasOnChainBinding]);
 
     // Buyer-facing delivery options = the operator's array of bound
     // assemblies. Each bound assembly is one option; its root fulfilment
@@ -243,11 +243,11 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // registered operator with a `delivery`-category catalogue item; the
     // merchant itself is excluded.
     const availableCouriers = useMemo(
-        () => restaurants.filter(
+        () => operatorCatalogues.filter(
             (r) => !hexEqual(r.address, merchantAddressLower)
                 && r.menu.some((i) => i.category === "delivery"),
         ),
-        [restaurants, merchantAddressLower],
+        [operatorCatalogues, merchantAddressLower],
     );
 
     // Auto-chain: when approval confirms, proceed to commit signing.
@@ -300,7 +300,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         );
     }
 
-    if (!restaurant) {
+    if (!operatorCatalogue) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
                 <p className="text-xs font-semibold text-neutral-500 mb-3">Merchant not found</p>
@@ -324,9 +324,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     const handleAddItem = (menuItem: CatalogueItem) => {
         addItem({
             menuItemId: menuItem.id,
-            sellerId: restaurant.id,
-            sellerAddress: restaurant.address,
-            sellerName: restaurant.name,
+            sellerId: operatorCatalogue.id,
+            sellerAddress: operatorCatalogue.address,
+            sellerName: operatorCatalogue.name,
             name: menuItem.name,
             price: menuItem.price,
             quantity: 1,
@@ -335,12 +335,12 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     };
 
     const handleRemoveItem = (menuItemId: string) => {
-        removeItem(menuItemId, restaurant.id);
+        removeItem(menuItemId, operatorCatalogue.id);
     };
 
     const getItemQuantity = (menuItemId: string) => {
         const cartItem = items.find(
-            (item) => item.menuItemId === menuItemId && item.sellerId === restaurant.id,
+            (item) => item.menuItemId === menuItemId && item.sellerId === operatorCatalogue.id,
         );
         return cartItem?.quantity || 0;
     };
@@ -348,11 +348,11 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // Filter cart to items from THIS merchant only — the inline cart on this
     // page is merchant-scoped. Items from other merchants live in the global
     // cart but aren't shown here.
-    const merchantCartItems = items.filter((it) => it.sellerId === restaurant.id);
+    const merchantCartItems = items.filter((it) => it.sellerId === operatorCatalogue.id);
     // The pricing policy of a cart line's catalogue item — drives the
     // buyer-set price input in the cart aside below.
     const menuPolicyOf = (menuItemId: string) =>
-        restaurant.menu.find((m) => m.id === menuItemId)?.pricingPolicy ?? "fixed";
+        operatorCatalogue.menu.find((m) => m.id === menuItemId)?.pricingPolicy ?? "fixed";
     const merchantTotalAmount = merchantCartItems.reduce(
         // `item.price` may be empty mid-edit on a buyer-set line — treat as 0;
         // the executeCheckout guard blocks an unpriced buyer-set commit.
@@ -367,14 +367,14 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // line aggregates as `perItem * quantity`. Display formats to the
     // catalogue's unitSystem at render time; the commit-time manifest
     // sends the metric numbers directly.
-    const cartUnitSystem = restaurant.unitSystem ?? "metric";
+    const cartUnitSystem = operatorCatalogue.unitSystem ?? "metric";
     const merchantMassGrams = merchantCartItems.reduce((sum, cartItem) => {
-        const menuItem = restaurant.menu.find((m) => m.id === cartItem.menuItemId);
+        const menuItem = operatorCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem?.massGrams) return sum;
         return sum + menuItem.massGrams * cartItem.quantity;
     }, 0);
     const merchantVolumeMl = merchantCartItems.reduce((sum, cartItem) => {
-        const menuItem = restaurant.menu.find((m) => m.id === cartItem.menuItemId);
+        const menuItem = operatorCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem?.volumeMl) return sum;
         return sum + menuItem.volumeMl * cartItem.quantity;
     }, 0);
@@ -382,7 +382,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // no item carries a class annotation.
     const merchantClassOfService: CatalogueClassOfService = merchantCartItems.reduce<CatalogueClassOfService>(
         (highest, cartItem) => {
-            const menuItem = restaurant.menu.find((m) => m.id === cartItem.menuItemId);
+            const menuItem = operatorCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
             const itemClass = menuItem?.classOfService;
             if (!itemClass) return highest;
             return CLASS_PRIORITY[itemClass] > CLASS_PRIORITY[highest] ? itemClass : highest;
@@ -408,7 +408,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             setCheckoutError(`Enter your price for "${unpricedBuyerSet.name}" before placing the order.`);
             return;
         }
-        const sellerAddress = restaurant.address as `0x${string}`;
+        const sellerAddress = operatorCatalogue.address as `0x${string}`;
         // The picked assembly drives the order. A multi-order assembly
         // (e.g. local-commerce) is a process of more than one order — the
         // root merchant order plus a courier order whose manifest topology
@@ -499,7 +499,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     processId,
                     parentOrderHashes: [rootOrderHash],
                     manifestFields: {
-                        origin: restaurant?.geohash ?? "",
+                        origin: operatorCatalogue?.geohash ?? "",
                         destination: deliveryLocation.geohash ?? "",
                         courierProcessIncluded: true,
                         ...assemblyJurisdictionFields(daManifest),
@@ -564,7 +564,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             // catalogue — the courier is a peer operator, not priced by the
             // merchant. resolveCatalogueItemPrice keys the courier's rate
             // card on the merchant it serves (the negotiated price list).
-            const courierCatalogue = restaurants.find((r) => hexEqual(r.address, courier));
+            const courierCatalogue = operatorCatalogues.find((r) => hexEqual(r.address, courier));
             const courierDeliveryItem = courierCatalogue?.menu.find((i) => i.category === "delivery");
             if (!courierDeliveryItem) {
                 multiOrderCheckout.current = false;
@@ -584,7 +584,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 parentOrderHashes: [rootOrderHash],
                 expectedCumulativeValue: merchantTotalAmount + courierPayment,
                 manifestFields: {
-                    origin: restaurant?.geohash ?? "",
+                    origin: operatorCatalogue?.geohash ?? "",
                     destination: deliveryLocation.geohash ?? "",
                     courierProcessIncluded: true,
                     ...assemblyJurisdictionFields(assemblyManifest),
@@ -654,7 +654,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         }
     };
 
-    const categories = Array.from(new Set(restaurant.menu.map((item) => item.category)));
+    const categories = Array.from(new Set(operatorCatalogue.menu.map((item) => item.category)));
     const placingOrder = commitStep === "signing" || commitStep === "broadcasting" || commitStep === "ready";
 
     return (
@@ -674,28 +674,28 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     <div className="flex flex-wrap items-start gap-5">
                         <MerchantLogo
                             sellerAddress={merchantAddressTyped}
-                            fallbackEmoji={restaurant.image}
-                            fallbackName={restaurant.name}
+                            fallbackEmoji={operatorCatalogue.image}
+                            fallbackName={operatorCatalogue.name}
                             size={88}
                         />
                         <div className="flex-1 min-w-0">
-                            {restaurant.specialty && (
+                            {operatorCatalogue.specialty && (
                                 <p
                                     className="text-xs font-semibold text-neutral-500"
                                     style={accentTone ? { color: accentTone } : undefined}
                                 >
-                                    {restaurant.specialty}
+                                    {operatorCatalogue.specialty}
                                 </p>
                             )}
-                            <h1 className="mt-1 text-4xl font-bold text-black">{restaurant.name}</h1>
-                            <p className="mt-3 max-w-2xl text-base text-neutral-700">{restaurant.description}</p>
-                            {restaurant.addressText && (
-                                <p className="mt-2 text-sm text-neutral-500">{restaurant.addressText}</p>
+                            <h1 className="mt-1 text-4xl font-bold text-black">{operatorCatalogue.name}</h1>
+                            <p className="mt-3 max-w-2xl text-base text-neutral-700">{operatorCatalogue.description}</p>
+                            {operatorCatalogue.addressText && (
+                                <p className="mt-2 text-sm text-neutral-500">{operatorCatalogue.addressText}</p>
                             )}
                             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-                                {restaurant.acceptedTokens && restaurant.acceptedTokens.length > 0 && (
+                                {operatorCatalogue.acceptedTokens && operatorCatalogue.acceptedTokens.length > 0 && (
                                     <span data-testid="merchant-accepted-tokens">
-                                        Accepts: {restaurant.acceptedTokens.map((t) => t.symbol).join(", ")}
+                                        Accepts: {operatorCatalogue.acceptedTokens.map((t) => t.symbol).join(", ")}
                                     </span>
                                 )}
                                 {tokenSymbol && (
@@ -716,7 +716,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                             <div key={category}>
                                 <h2 className="text-lg font-semibold text-black mb-3">{category}</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {restaurant.menu
+                                    {operatorCatalogue.menu
                                         .filter((item) => item.category === category)
                                         .map((menuItem) => {
                                             const quantity = getItemQuantity(menuItem.id);
@@ -807,7 +807,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                         {merchantCartItems.length === 0 ? (
                             <p className="text-sm text-neutral-500">
                                 Your cart is empty. Add items from the menu to start an order with{" "}
-                                <span className="font-semibold text-black">{restaurant.name}</span>.
+                                <span className="font-semibold text-black">{operatorCatalogue.name}</span>.
                             </p>
                         ) : (
                             <>
@@ -824,7 +824,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeLine(item.menuItemId, restaurant.id)}
+                                                    onClick={() => removeLine(item.menuItemId, operatorCatalogue.id)}
                                                     className="text-neutral-400 hover:text-red-600 text-lg leading-none px-1 shrink-0"
                                                     aria-label={`Remove ${item.name} from cart`}
                                                     data-testid={`cart-line-delete-${item.menuItemId}`}
@@ -836,7 +836,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                                 <div className="flex items-center gap-2">
                                                     <button
                                                         type="button"
-                                                        onClick={() => removeItem(item.menuItemId, restaurant.id)}
+                                                        onClick={() => removeItem(item.menuItemId, operatorCatalogue.id)}
                                                         className="w-7 h-7 rounded border border-neutral-300 bg-white text-black text-base hover:bg-neutral-100"
                                                         aria-label={`Remove one ${item.name}`}
                                                         data-testid={`cart-line-decrement-${item.menuItemId}`}
@@ -862,7 +862,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                                             type="text"
                                                             inputMode="decimal"
                                                             value={item.price}
-                                                            onChange={(e) => updateItemPrice(item.menuItemId, restaurant.id, e.target.value)}
+                                                            onChange={(e) => updateItemPrice(item.menuItemId, operatorCatalogue.id, e.target.value)}
                                                             placeholder="Your price"
                                                             aria-label={`Your price for ${item.name}`}
                                                             data-testid={`cart-line-buyer-price-${item.menuItemId}`}

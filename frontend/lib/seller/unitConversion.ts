@@ -13,7 +13,7 @@
  * Conversion is purely a UX edge.
  */
 
-import type { UnitSystem } from "@/lib/shared/sellerCatalogueMetadata";
+import type { UnitSystem } from "@/lib/shared/operatorCatalogueMetadata";
 
 // ── Conversion constants ─────────────────────────────────────────────────────
 

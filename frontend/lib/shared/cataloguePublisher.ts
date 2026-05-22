@@ -2,7 +2,7 @@
  * lib/shared/cataloguePublisher.ts
  *
  * Write path for operator catalogues.
- * Serializes a SellerCatalogueMetadata document → pins to IPFS → returns
+ * Serializes a OperatorCatalogueMetadata document → pins to IPFS → returns
  * the IPFS URI. The URI is then referenced from the operator's profile
  * document (as `catalogueURI`) which itself is pinned and registered
  * on-chain via `OperatorRegistry.register(profileURI)` for first-time
@@ -12,8 +12,8 @@
  * the caller orchestrates the on-chain call.
  */
 
-import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
+import type { OperatorCatalogueMetadata } from "@/lib/shared/operatorCatalogueMetadata";
+import { parseOperatorCatalogueDocument } from "@/lib/shared/operatorCatalogueMetadataParser";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
 import { invalidateCatalogueCache } from "@/lib/shared/catalogueFetcher";
 import { clearBrandingCache } from "@/lib/shared/merchantBranding";
@@ -33,12 +33,12 @@ export interface PublishResult {
  *
  * @throws If the document fails validation or IPFS pinning fails.
  */
-export async function publishMerchantCatalogue(
-    catalogue: SellerCatalogueMetadata,
+export async function publishOperatorCatalogue(
+    catalogue: OperatorCatalogueMetadata,
     evidenceTransport: Pick<IpfsService, "pinJSON" | "buildURI"> = DEFAULT_IPFS_SERVICE,
 ): Promise<PublishResult> {
     // Round-trip validation — rejects invalid documents before pinning
-    parseSellerCatalogueDocument(catalogue, "catalogue-publish");
+    parseOperatorCatalogueDocument(catalogue, "catalogue-publish");
 
     const cid = await evidenceTransport.pinJSON(catalogue);
     const uri = evidenceTransport.buildURI(cid);

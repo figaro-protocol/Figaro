@@ -1,5 +1,5 @@
 /**
- * lib/shared/sellerCatalogueMetadataParser.ts
+ * lib/shared/operatorCatalogueMetadataParser.ts
  *
  * Strict parser for the catalogue document. The catalogue carries only
  * the volatile sales-context payload (items + version + subjectAddress);
@@ -13,9 +13,9 @@ import {
     CatalogueItemMetadata,
     CataloguePricingPolicy,
     NegotiatedPriceEntry,
-    SellerCatalogueMetadata,
+    OperatorCatalogueMetadata,
     UnitSystem,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/shared/operatorCatalogueMetadata";
 import {
     asAddress,
     asBoolean,
@@ -120,7 +120,7 @@ function parseMenu(value: unknown, path: string): CatalogueItemMetadata[] {
     return value.map((entry, index) => parseMenuItem(entry, `${path}[${index}]`));
 }
 
-export function parseSellerCatalogueDocument(value: unknown, sourceLabel = "seller catalogue metadata"): SellerCatalogueMetadata {
+export function parseOperatorCatalogueDocument(value: unknown, sourceLabel = "seller catalogue metadata"): OperatorCatalogueMetadata {
     const record = asRecord(value, sourceLabel);
 
     return {

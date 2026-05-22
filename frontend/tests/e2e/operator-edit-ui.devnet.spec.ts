@@ -172,7 +172,7 @@ test.describe('Operator edit UI surfaces (devnet)', () => {
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
 
         // Pin a catalogue document so `existingProfile.catalogueURI` is set.
-        // SellerCatalogueMetadata shape per `parseSellerCatalogueDocument`:
+        // OperatorCatalogueMetadata shape per `parseOperatorCatalogueDocument`:
         // every menu item requires `id`, `name`, `price`, `category`, `available`.
         const { uri: catalogueURI } = await pinJSONToIPFS({
             subjectAddress: operator,

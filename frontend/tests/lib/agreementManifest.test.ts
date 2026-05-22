@@ -320,16 +320,16 @@ describe("manifestFieldsToGeoSection", () => {
     });
 });
 
-// ── sellerCatalogueMetadata utilities (cross-module) ─────────────────────────
+// ── operatorCatalogueMetadata utilities (cross-module) ─────────────────────────
 // Schema-support / schema-config helpers were removed when supportedSchemas
 // moved off the catalogue (capability declarations live in per-assembly
 // bindings now). The only catalogue-level assertion that still applies is
 // that example items round-trip schemaAttestations.
 
-describe("sellerCatalogueMetadata example", () => {
+describe("operatorCatalogueMetadata example", () => {
     it("example item carries schemaAttestations", async () => {
         const { SELLER_CATALOGUE_METADATA_EXAMPLE } = await import(
-            "@/lib/shared/sellerCatalogueMetadata"
+            "@/lib/shared/operatorCatalogueMetadata"
         );
         const pizza = SELLER_CATALOGUE_METADATA_EXAMPLE.menu.find((i) => i.id === "pizza1");
         expect(pizza?.schemaAttestations).toBeDefined();

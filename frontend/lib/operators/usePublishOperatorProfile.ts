@@ -31,12 +31,12 @@ import {
     parseOperatorProfileDocument,
     type OperatorProfileMetadata,
 } from "@/lib/shared/operatorProfileMetadata";
-import { publishMerchantCatalogue } from "@/lib/shared/cataloguePublisher";
+import { publishOperatorCatalogue } from "@/lib/shared/cataloguePublisher";
 import type {
     CatalogueItemMetadata,
-    SellerCatalogueMetadata,
+    OperatorCatalogueMetadata,
     UnitSystem,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/shared/operatorCatalogueMetadata";
 import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "@/lib/mechanisms/contracts";
 
 export interface PublishOperatorInput {
@@ -108,13 +108,13 @@ export function usePublishOperatorProfile() {
         // (a) Pin the catalogue document, unless a cached URI was passed.
         let catalogueURI = input.cachedCatalogueURI;
         if (!catalogueURI) {
-            const catalogue: SellerCatalogueMetadata = {
+            const catalogue: OperatorCatalogueMetadata = {
                 subjectAddress: input.wallet,
                 menu: input.items,
                 version: "1.0.0",
                 unitSystem: input.unitSystem,
             };
-            const cataloguePin = await publishMerchantCatalogue(catalogue);
+            const cataloguePin = await publishOperatorCatalogue(catalogue);
             catalogueURI = cataloguePin.uri;
         }
 

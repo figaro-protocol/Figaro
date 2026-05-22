@@ -24,7 +24,7 @@ import { useOnboardingState } from "@/lib/operators/onboardingState";
 import type {
     OnboardingProfileDraft,
 } from "@/lib/operators/onboardingState";
-import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/shared/operatorCatalogueMetadata";
 import { encodeGeohash } from "@/lib/handoff/manifest";
 import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/shared/geocode";
 import { getCommonTokens, type CommonToken } from "@/lib/shared/commonTokens";

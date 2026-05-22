@@ -1,9 +1,9 @@
 import type { PublicClient } from 'viem';
 import { getActiveOperators } from '@/lib/core/indexer';
-import type { SellerCatalogue } from '@/lib/seller/types';
+import type { OperatorCatalogue } from '@/lib/seller/types';
 import { MECHANISM_CONTRACTS } from '@/lib/mechanisms/contracts';
 import { resolveContentURI } from '@/lib/shared/merchantBranding';
-import type { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
+import type { OperatorCatalogueMetadata } from '@/lib/shared/operatorCatalogueMetadata';
 import {
     OperatorProfileMetadata,
     tryParseOperatorProfileDocument,
@@ -17,15 +17,15 @@ function isSafeImageURI(uri: string): boolean {
 }
 
 export interface DiscoveryResult {
-    catalogues: SellerCatalogue[];
+    catalogues: OperatorCatalogue[];
     source: { ipfs: number; mock: number };
 }
 
 function profileToCatalogue(
     profile: OperatorProfileMetadata,
-    catalogue: SellerCatalogueMetadata | undefined,
+    catalogue: OperatorCatalogueMetadata | undefined,
     index: number,
-): SellerCatalogue {
+): OperatorCatalogue {
     const address = profile.subjectAddress ?? catalogue?.subjectAddress ?? '0x0';
     return {
         id: address !== '0x0' ? address.toLowerCase() : `ipfs-${index}`,
@@ -65,7 +65,7 @@ async function fetchOperatorAsCatalogue(
     metadataURI: string,
     index: number,
     fetchFn: (url: string) => Promise<Response>,
-): Promise<SellerCatalogue | null> {
+): Promise<OperatorCatalogue | null> {
     const url = resolveContentURI(metadataURI);
     if (!url) return null;
 
@@ -110,7 +110,7 @@ async function fetchOperatorAsCatalogue(
         items = tryParseCatalogueItems(doc);
     }
 
-    const catalogue: SellerCatalogueMetadata | undefined = items && items.length > 0
+    const catalogue: OperatorCatalogueMetadata | undefined = items && items.length > 0
         ? {
             subjectAddress: stamped.subjectAddress!,
             menu: items.map((i) => ({
@@ -179,7 +179,7 @@ export function createDiscoveryService(
                     }),
                 );
 
-                const catalogues = results.filter((r): r is SellerCatalogue => r !== null);
+                const catalogues = results.filter((r): r is OperatorCatalogue => r !== null);
                 return {
                     catalogues,
                     source: { ipfs: catalogues.length, mock: 0 },

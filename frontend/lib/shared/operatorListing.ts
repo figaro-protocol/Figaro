@@ -1,11 +1,11 @@
-import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/shared/operatorCatalogueMetadata";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 
 /**
  * Generic operator-listing surface for `/discover`.
  *
- * Independent of the local-commerce-shaped `SellerCatalogue` type:
+ * Independent of the local-commerce-shaped `OperatorCatalogue` type:
  * a `Listing` is the projection of (subject + bindings + optional metadata)
  * into a shape the `OperatorCard` can render across any assembly. An
  * operator with zero bindings still produces a `Listing`; clicking such a

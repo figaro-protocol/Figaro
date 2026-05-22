@@ -12,7 +12,7 @@
  * `paper/figaro3b1.tex` §"Token Denomination as Coordination Signal"),
  * default pricing token, assembly bindings, agent endpoints, and the URI
  * of the volatile catalogue document. Item
- * lists live in the catalogue (`SellerCatalogueMetadata`) so item edits
+ * lists live in the catalogue (`OperatorCatalogueMetadata`) so item edits
  * re-pin one small JSON instead of the whole identity envelope.
  *
  * Carries no role / archetype / category / cuisine / specialty taxonomy
@@ -24,7 +24,7 @@
 import type {
     AcceptedTokenMetadata,
     SellerBrandingMetadata,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/shared/operatorCatalogueMetadata";
 import {
     asAddress,
     asEnum,
@@ -321,7 +321,7 @@ export function parseOperatorProfileDocument(
 /**
  * Lenient parse — returns null instead of throwing. Use in discovery
  * paths where a malformed operator should be silently dropped from the
- * surface (e.g. `discoveryService` building a restaurant list).
+ * surface (e.g. `discoveryService` building an operator-catalogue list).
  */
 export function tryParseOperatorProfileDocument(
     value: unknown,

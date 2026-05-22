@@ -33,7 +33,7 @@ import type {
     CatalogueItemMetadata,
     SellerBrandingMetadata,
     UnitSystem,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/shared/operatorCatalogueMetadata";
 
 // ── Shape ────────────────────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ import type {
     CataloguePricingPolicy,
     NegotiatedPriceEntry,
     UnitSystem,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/shared/operatorCatalogueMetadata";
 import type { OperatorAgentServices } from "@/lib/shared/operatorProfileMetadata";
 
 export interface CatalogueItem {
@@ -37,7 +37,7 @@ export interface CatalogueItem {
  *  - profile (`OperatorProfileMetadata`): name, slug, description,
  *    specialty, location (geohash + addressText), branding, accepted
  *    tokens, default token, agent services.
- *  - catalogue (`SellerCatalogueMetadata`): items.
+ *  - catalogue (`OperatorCatalogueMetadata`): items.
  *
  * Carries no closed-taxonomy fields. Earlier revisions had
  * `cuisine`/`rating`/`deliveryTime`/`minimumOrder` — none of those
@@ -46,7 +46,7 @@ export interface CatalogueItem {
  * free-form open-string self-description the operator authors
  * themselves.
  */
-export interface SellerCatalogue {
+export interface OperatorCatalogue {
     id: string;
     name: string;
     address: string;

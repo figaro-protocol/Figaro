@@ -8,7 +8,7 @@
  * pre-2026-05-19.
  *
  * Seed flow (no UI wizard):
- *   1. Pin a SellerCatalogueMetadata JSON to local Kubo.
+ *   1. Pin a OperatorCatalogueMetadata JSON to local Kubo.
  *   2. Pin an OperatorProfileMetadata JSON that points to the
  *      catalogue CID.
  *   3. Register the operator on-chain with the profile URI.

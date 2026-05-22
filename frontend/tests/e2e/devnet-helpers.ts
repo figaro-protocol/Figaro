@@ -1221,7 +1221,7 @@ function resolveIpfsURI(uri: string): string {
  *
  * Reads `operatorAddress`'s on-chain profile (OperatorRegistered event ->
  * metadataURI), follows the profile's `catalogueURI` to the pinned
- * SellerCatalogueMetadata. With `FIGARO_CAPTURE_FIXTURES` set, writes it to
+ * OperatorCatalogueMetadata. With `FIGARO_CAPTURE_FIXTURES` set, writes it to
  * `scripts/fixtures/operator-catalogue.json` — the data `seed-devnet.mjs`
  * replays. Without it, drift-guards the live catalogue's `menu` against the
  * committed fixture and throws on mismatch.

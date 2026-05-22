@@ -43,7 +43,7 @@ describe('discoveryService', () => {
         expect(result.source.mock).toBe(0);
     });
 
-    it('maps a SellerCatalogueMetadata document into a discovery restaurant', async () => {
+    it('maps a OperatorCatalogueMetadata document into a discovery restaurant', async () => {
         getActiveOperatorsMock.mockResolvedValueOnce([
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',

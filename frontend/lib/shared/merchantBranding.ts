@@ -14,7 +14,7 @@
 
 import type {
     SellerBrandingMetadata,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/shared/operatorCatalogueMetadata";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { IPFS_GATEWAY_URL } from "@/lib/shared/ipfsService";
@@ -127,7 +127,7 @@ export function resolveMerchantBrandingFromOperatorProfile(
 }
 
 /** @deprecated Renamed to `resolveMerchantBrandingFromOperatorProfile`. Branding lives on the profile, not the catalogue. */
-export const resolveMerchantBrandingFromSellerCatalogue = resolveMerchantBrandingFromOperatorProfile;
+export const resolveMerchantBrandingFromOperatorCatalogue = resolveMerchantBrandingFromOperatorProfile;
 
 /**
  * Fetch merchant metadata from a content URI and extract branding fields.

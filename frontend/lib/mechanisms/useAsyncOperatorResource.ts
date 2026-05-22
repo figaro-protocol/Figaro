@@ -1,10 +1,10 @@
 /**
- * lib/mechanisms/useAsyncMerchantResource.ts
+ * lib/mechanisms/useAsyncOperatorResource.ts
  *
  * Generic shape for "operator address → resolved metadataURI → fetched
  * resource" hooks. Two callers consolidate onto this:
  *   - useMerchantBranding   → resolved branding
- *   - useMerchantCatalogue  → seller catalogue
+ *   - useOperatorCatalogue  → seller catalogue
  *
  * Each caller wraps this with a typed result alias and a fixed fetcher.
  */
@@ -15,7 +15,7 @@ import { usePublicClient, useChainId } from "wagmi";
 import { getOperatorMetadataURI } from "@/lib/core/indexer";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
-export interface UseAsyncMerchantResourceResult<T> {
+export interface UseAsyncOperatorResourceResult<T> {
     data: T | null;
     isLoading: boolean;
     error: string | null;
@@ -23,7 +23,7 @@ export interface UseAsyncMerchantResourceResult<T> {
     refetch: () => void;
 }
 
-export interface UseAsyncMerchantResourceOptions<T> {
+export interface UseAsyncOperatorResourceOptions<T> {
     /** Fetch a `T` from the resolved operator-metadata URI. */
     fetcher: (metadataURI: string) => Promise<T>;
     /** Fallback toast/error string when the fetcher throws. */
@@ -32,10 +32,10 @@ export interface UseAsyncMerchantResourceOptions<T> {
     extraDeps?: ReadonlyArray<unknown>;
 }
 
-export function useAsyncMerchantResource<T>(
+export function useAsyncOperatorResource<T>(
     address: `0x${string}` | undefined,
-    options: UseAsyncMerchantResourceOptions<T>,
-): UseAsyncMerchantResourceResult<T> {
+    options: UseAsyncOperatorResourceOptions<T>,
+): UseAsyncOperatorResourceResult<T> {
     const { fetcher, failureMessage, extraDeps } = options;
     const client = usePublicClient();
     const chainId = useChainId();

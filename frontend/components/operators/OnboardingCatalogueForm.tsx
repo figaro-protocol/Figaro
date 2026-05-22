@@ -20,7 +20,7 @@ import type {
     CataloguePricingPolicy,
     NegotiatedPriceEntry,
     UnitSystem,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/shared/operatorCatalogueMetadata";
 import {
     gramsToInput,
     massUnitLabel,
@@ -47,7 +47,7 @@ const PRICING_POLICY_OPTIONS: { value: CataloguePricingPolicy; label: string }[]
 /**
  * Step 3 of the onboarding wizard. Collects the catalogue items —
  * the volatile sales-context payload that gets pinned to IPFS as
- * `SellerCatalogueMetadata { subjectAddress, items, version }`.
+ * `OperatorCatalogueMetadata { subjectAddress, items, version }`.
  *
  * Each item: id (auto), name (required), price (required), category
  * (required), description (optional), image (optional, via IPFS
@@ -158,7 +158,7 @@ export interface OnboardingCatalogueFormProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
      * `onSave(items, unitSystem)` instead of routing to the next
-     * wizard step. The caller assembles the SellerCatalogueMetadata
+     * wizard step. The caller assembles the OperatorCatalogueMetadata
      * document with both, pins it, and chases with `updateProfile`.
      *
      * Resolves on success (caller redirects); rejects on failure

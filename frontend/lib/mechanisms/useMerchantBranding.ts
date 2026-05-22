@@ -11,7 +11,7 @@ import {
     fetchMerchantBranding,
     type ResolvedMerchantBranding,
 } from "@/lib/shared/merchantBranding";
-import { useAsyncMerchantResource } from "@/lib/mechanisms/useAsyncMerchantResource";
+import { useAsyncOperatorResource } from "@/lib/mechanisms/useAsyncOperatorResource";
 
 export interface UseMerchantBrandingResult {
     branding: ResolvedMerchantBranding | null;
@@ -22,7 +22,7 @@ export interface UseMerchantBrandingResult {
 export function useMerchantBranding(
     sellerAddress: `0x${string}` | undefined
 ): UseMerchantBrandingResult {
-    const { data, isLoading, error } = useAsyncMerchantResource(sellerAddress, {
+    const { data, isLoading, error } = useAsyncOperatorResource(sellerAddress, {
         fetcher: fetchMerchantBranding,
         failureMessage: "Failed to fetch branding",
     });

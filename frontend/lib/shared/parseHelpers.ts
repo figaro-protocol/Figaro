@@ -3,7 +3,7 @@
  *
  * Shared validation primitives used across every strict JSON parser in
  * `lib/shared/`. Five parsers (`runtimeIdentityParser`,
- * `sellerCatalogueMetadataParser`, `operatorProfileMetadata`,
+ * `operatorCatalogueMetadataParser`, `operatorProfileMetadata`,
  * `assemblyParser`, `runtimeIdentityDocument`) previously each carried
  * their own line-for-line copies of these helpers; this module is the
  * single source.

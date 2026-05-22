@@ -6,7 +6,7 @@
  * `/operators` manage-list "Catalogue" row.
  *
  * Two-pin save sequence:
- *   1. Pin the new catalogue JSON via `publishMerchantCatalogue`,
+ *   1. Pin the new catalogue JSON via `publishOperatorCatalogue`,
  *      yielding a fresh `ipfs://<catalogueCID>` URI.
  *   2. Re-pin the profile JSON with the updated `catalogueURI`
  *      field via `useUpdateOperatorProfile.save({ catalogueURI })`,
@@ -36,13 +36,13 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { resolveContentURI } from "@/lib/shared/merchantBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 import type {
-    SellerCatalogueMetadata,
+    OperatorCatalogueMetadata,
     UnitSystem,
     CatalogueItemMetadata,
-} from "@/lib/shared/sellerCatalogueMetadata";
-import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
+} from "@/lib/shared/operatorCatalogueMetadata";
+import { parseOperatorCatalogueDocument } from "@/lib/shared/operatorCatalogueMetadataParser";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
-import { publishMerchantCatalogue } from "@/lib/shared/cataloguePublisher";
+import { publishOperatorCatalogue } from "@/lib/shared/cataloguePublisher";
 import { OnboardingCatalogueForm } from "@/components/operators/OnboardingCatalogueForm";
 
 export function OperatorEditCatalogue() {
@@ -53,7 +53,7 @@ export function OperatorEditCatalogue() {
     const { update, loaded } = useOnboardingState(address);
 
     const [existingProfile, setExistingProfile] = useState<OperatorProfileMetadata | null>(null);
-    const [existingCatalogue, setExistingCatalogue] = useState<SellerCatalogueMetadata | null>(null);
+    const [existingCatalogue, setExistingCatalogue] = useState<OperatorCatalogueMetadata | null>(null);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [seeded, setSeeded] = useState(false);
     const [pinningCatalogue, setPinningCatalogue] = useState(false);
@@ -115,7 +115,7 @@ export function OperatorEditCatalogue() {
                 const catDoc = await fetch(catUrl).then((r) => r.json());
                 if (cancelled) return;
                 try {
-                    const catalogue = parseSellerCatalogueDocument(catDoc, "edit-catalogue");
+                    const catalogue = parseOperatorCatalogueDocument(catDoc, "edit-catalogue");
                     setExistingCatalogue(catalogue);
                 } catch (err) {
                     const detail = extractErrorMessage(err, "");
@@ -212,13 +212,13 @@ export function OperatorEditCatalogue() {
         let newCatalogueURI: string;
         try {
             const subjectAddress = (existingProfile?.subjectAddress ?? address) as `0x${string}`;
-            const newCatalogue: SellerCatalogueMetadata = {
+            const newCatalogue: OperatorCatalogueMetadata = {
                 subjectAddress,
                 menu: items,
                 version: existingCatalogue?.version ?? "1.0.0",
                 unitSystem,
             };
-            const result = await publishMerchantCatalogue(newCatalogue);
+            const result = await publishOperatorCatalogue(newCatalogue);
             newCatalogueURI = result.uri;
         } catch (err) {
             const e = err instanceof Error ? err : new Error(String(err));

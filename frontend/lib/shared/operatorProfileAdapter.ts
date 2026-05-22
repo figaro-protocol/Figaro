@@ -6,7 +6,7 @@
  * in `operatorProfileMetadata.ts`.
  */
 
-import type { CataloguePricingPolicy, NegotiatedPriceEntry } from "@/lib/shared/sellerCatalogueMetadata";
+import type { CataloguePricingPolicy, NegotiatedPriceEntry } from "@/lib/shared/operatorCatalogueMetadata";
 
 export interface OperatorCatalogueItem {
     id: string;
