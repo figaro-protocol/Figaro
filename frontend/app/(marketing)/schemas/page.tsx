@@ -61,7 +61,7 @@ export default function Schemas() {
                     <li>Write the Solidity validator at <code>src/schemaValidators/Foo&lt;Schema&gt;V1Validator.sol</code> &mdash; ABI-decode content, revert with typed custom errors.</li>
                     <li>Write Foundry tests at <code>test/schemaValidators/</code> covering happy paths and every typed revert.</li>
                     <li>Mirror the validator in the Rust prover when Layer B is live (deferred).</li>
-                    <li>Register the schema in <code>schemaCategories.ts</code> &mdash; add it to <code>ALL_SPECS</code>, <code>SCHEMA_TIER_MAP</code>, and <code>SCHEMA_FAMILY_MAP</code>. The inventory above and the designer drawer render from that registry; the build fails if any assignment is missing.</li>
+                    <li>Register the schema in <code>schemaCategories.ts</code> &mdash; add it to <code>ALL_SPECS</code>, <code>SCHEMA_TIER_MAP</code>, and <code>SCHEMA_FAMILY_MAP</code>; the build fails if any assignment is missing. The designer drawer renders from that registry; the inventory above reads its set live from on-chain <code>SchemaRegistered</code> events and draws each title and family from it.</li>
                     <li>
                         Wire <code>setValidator(schemaId, validator)</code> into <code>script/Deploy.s.sol</code> and <code>script/DeployMainnet.s.sol</code>; add a regression test in <code>test/DeployScriptTest.t.sol</code>. <strong>For third-party schemas registered post-deploy, use{" "}
                         <code>SchemaRegistrationHelper.registerSchemaAndValidator(...)</code></strong>{" "}
