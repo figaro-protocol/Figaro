@@ -23,7 +23,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keccak256, toHex, parseAbi, BaseError, ContractFunctionRevertedError } from "viem";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { publicClient, activeChain } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { FULFILMENT_V2_SCHEMA_KEY, TOPOLOGY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
@@ -203,21 +204,25 @@ function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
  * after mount, call `refetch`.
  */
 export function usePublishedAssemblies(author: `0x${string}` | undefined) {
-    const client = usePublicClient();
     const [data, setData] = useState<PublishedAssembly[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [generation, setGeneration] = useState(0);
 
     useEffect(() => {
         const registry = getAssemblyRegistry();
-        if (!client || !registry) {
-            setData(null);
+        if (!registry) {
+            setData([]);
             return;
         }
         let cancelled = false;
         setIsLoading(true);
 
-        client
+        // Reads through the standalone `publicClient` (not wagmi's
+        // `usePublicClient`) so the hook works on the marketing tier too,
+        // which mounts no wallet provider. App-tier callers see no
+        // behavioural change: the standalone client uses the same chain
+        // config wagmi's provider is built from.
+        publicClient
             .getContractEvents({
                 address: registry,
                 abi: ASSEMBLY_REGISTRY_ABI,
@@ -251,7 +256,7 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
         return () => {
             cancelled = true;
         };
-    }, [client, author, generation]);
+    }, [author, generation]);
 
     const refetch = useCallback(() => setGeneration((g) => g + 1), []);
     return { data, isLoading, refetch };
@@ -441,7 +446,11 @@ export function useAssemblyChoices(
     author?: `0x${string}` | undefined,
 ): { data: AssemblyChoice[] | null; isLoading: boolean; refetch: () => void } {
     const { data: events, isLoading, refetch } = usePublishedAssemblies(author);
-    const chainId = useChainId();
+    // `activeChain` is env-determined; the read uses the standalone public
+    // client bound to it. Wagmi's `useChainId` would reflect the connected
+    // wallet's chain, which is irrelevant for a read against a fixed chain
+    // — and undefined on the marketing tier where no provider is mounted.
+    const chainId = activeChain.id;
     const [manifestState, setManifestState] = useState<
         Map<string, { state: AssemblyManifestFetchState; manifest: AssemblyManifest | null }>
     >(new Map());

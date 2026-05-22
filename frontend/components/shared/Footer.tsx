@@ -17,6 +17,7 @@ export function Footer() {
                             <Link href="/research" className={COL_LINK_CLS}>Research</Link>
                             <Link href="/spec" className={COL_LINK_CLS}>Specifications</Link>
                             <Link href="/schemas" className={COL_LINK_CLS}>Schemas</Link>
+                            <Link href="/assemblies" className={COL_LINK_CLS}>Assemblies</Link>
                         </div>
                     </div>
                     <div>
