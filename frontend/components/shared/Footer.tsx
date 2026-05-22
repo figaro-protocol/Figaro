@@ -14,7 +14,6 @@ export function Footer() {
                         <h4 className={COL_HEADER_CLS}>Cryptoeconomics</h4>
                         <div className="space-y-2">
                             <Link href="/protocol" className={COL_LINK_CLS}>Protocol mechanisms</Link>
-                            <Link href="/cryptoeconomics" className={COL_LINK_CLS}>Cryptoeconomics</Link>
                             <Link href="/spec" className={COL_LINK_CLS}>Specifications</Link>
                             <Link href="/schemas" className={COL_LINK_CLS}>Schemas</Link>
                         </div>
@@ -34,7 +33,7 @@ export function Footer() {
                     <div>
                         <h4 className={COL_HEADER_CLS}>Ecosystem</h4>
                         <div className="space-y-2">
-                            <Link href="/groups" className={COL_LINK_CLS}>Working Groups</Link>
+                            <Link href="/research" className={COL_LINK_CLS}>Research</Link>
                             <Link href="/discover" className={COL_LINK_CLS}>Discover operators</Link>
                             <Link href="/fig" className={COL_LINK_CLS}>FIG Token</Link>
                             <Link href="/fig/design" className={COL_LINK_CLS}>FIG Design</Link>

@@ -220,7 +220,7 @@ export default function Schemas() {
                     <li><strong>On-chain interface:</strong> <code>src/ISchemaValidator.sol</code> &mdash; the two-method interface every on-chain validator implements. Contract catalogue at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Registration path:</strong> <code>AttestationCoordinator.setValidator(schemaId, validator)</code> &mdash; permissionless, first-write-wins, immutable once set. Atomic register+bind via <code>SchemaRegistrationHelper.registerSchemaAndValidator(...)</code>.</li>
                     <li><strong>Kernel side:</strong> attestation receipts are bound to the signed <code>agreementHash</code> via merkle inclusion proof; the rationale is on <Link href="/protocol" className="underline">Protocol</Link>.</li>
-                    <li><strong>Academic frame:</strong> Paper E (jurisdiction baseline) and the Philosophy / Law / Ethics discipline on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>.</li>
+                    <li><strong>Academic frame:</strong> Paper E (jurisdiction baseline) and the Philosophy / Law / Ethics discipline on <Link href="/research" className="underline">Research</Link>.</li>
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro-Prototype2</a>. The <code>CLAUDE.md</code> at the root is the authoritative inventory; the &ldquo;Adding a new schema&rdquo; checklist above mirrors the one there.</li>
                 </ul>
                 <p className="mt-6 text-sm text-ink-muted">

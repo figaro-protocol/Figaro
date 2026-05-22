@@ -3,9 +3,8 @@
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
-//   Three disciplinary entries — protocol / cryptoeconomics / groups.
-//   Papers are reading paths into groups; they are not
-//   a standalone shelf. The logo links home; no "Home" item here.
+//   Protocol (how it works) and Research (the disciplines, the papers,
+//   the working groups). The logo links home; no "Home" item here.
 //
 // - `NAV_LINKS_APP_PRIMARY` is the (app) second row, desktop only. Each
 //   entry MUST be a protocol surface (a role-bound tool, schema family,
@@ -25,8 +24,7 @@ export interface NavLink {
 
 export const NAV_LINKS: NavLink[] = [
     { href: "/protocol", label: "Protocol" },
-    { href: "/cryptoeconomics", label: "Cryptoeconomics" },
-    { href: "/groups", label: "Groups" },
+    { href: "/research", label: "Research" },
 ];
 
 // Every entry below MUST be a route that lives in `app/(app)/`. The

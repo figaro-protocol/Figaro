@@ -6,9 +6,9 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { GROUPS_REGISTRY } from "@/lib/shared/groupsRegistry";
 
 export const metadata: Metadata = {
-    title: "Working Groups — Figaro Protocol",
+    title: "Research — Figaro Protocol",
     description:
-        "Working groups along two axes: the eight Voshmgir & Zargham cryptoeconomic disciplines (intellectual lenses on the substrate) and composability working groups (assembly composition and schema authoring). Grants and capital sources. Local and international.",
+        "The eight cryptoeconomic disciplines that read the Figaro substrate, the papers organized along them, the composability working groups, and how the work is funded.",
 };
 
 interface CompositionGroup {
@@ -25,7 +25,7 @@ const COMPOSITION_GROUPS: CompositionGroup[] = [
         charter:
             "Designs assemblies that compose against existing primitives — roles, mechanisms, clauses, and handoff conditions wired into a configuration artifact. No new on-chain code; the assembly is the only authored artifact. Produces reference assemblies for new verticals; iterates on existing ones.",
         references: [
-            { label: "Composability — Tier 1", href: "/composability" },
+            { label: "Composability — Tier 1", href: "/builders/composability" },
             { label: "Builders — Tier 1 tools", href: "/builders" },
             { label: "Local Commerce reference", href: "/local-commerce" },
         ],
@@ -36,34 +36,30 @@ const COMPOSITION_GROUPS: CompositionGroup[] = [
         charter:
             "Authors new schemas — content-type design plus the validator-implementation work that ships in lockstep across TypeScript and on-chain Solidity (with an SP1 Rust mirror pending). Cross-cuts disciplines: validator implementation pulls from Computer Science and Cryptography; content definition pulls from whichever discipline the schema's domain belongs to.",
         references: [
-            { label: "Composability — Tier 2", href: "/composability" },
+            { label: "Composability — Tier 2", href: "/builders/composability" },
             { label: "Schemas — architecture and inventory", href: "/schemas" },
             { label: "Builders — Tier 2 tools", href: "/builders" },
         ],
     },
 ];
 
-export default function Groups() {
+export default function Research() {
     return (
         <>
             <MarketingHero
-                title="Two axes. One substrate."
+                title="Eight disciplines, one substrate."
                 lead={
                     <>
-                        Working groups assemble where contributors do. Two organizing axes: the eight cryptoeconomic disciplines (intellectual lenses on the substrate, per Voshmgir &amp; Zargham 2024) and composability working groups (output-oriented &mdash; assembly composition, schema authoring). Tier-3 work (mechanism contract authoring) is absorbed into the existing Computer Science and Cryptography and Economics and Game Theory groups.
+                        Voshmgir &amp; Zargham frame cryptoeconomics as eight disciplines, each reading the same substrate in its own vocabulary. This page gathers all of it: the disciplines and the papers organized along them, the composability working groups that build above the kernel, and how the work is funded.
                     </>
                 }
             />
 
             <MarketingSection title="Eight disciplines, eight lenses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    The disciplinary list anchors to Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024). Detailed paper portfolios per discipline live on{" "}
-                    <Link href="/cryptoeconomics" className="underline">
-                        /cryptoeconomics
-                    </Link>
-                    .
+                    The disciplinary list anchors to Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024) &mdash; eight disciplines, fixed. Each frames the substrate, carries its own papers, and runs its own working group. Implementation work &mdash; schema authoring, contract development, assembly composition &mdash; organizes at <Link href="/builders" className="underline">/builders</Link>.
                 </p>
-                <div className="space-y-8">
+                <div className="space-y-10">
                     {GROUPS_REGISTRY.map((g) => (
                         <article
                             key={g.slug}
@@ -85,6 +81,20 @@ export default function Groups() {
                                 <p className="text-sm text-ink-body leading-relaxed">
                                     {g.charter}
                                 </p>
+                                {g.papers.length > 0 && (
+                                    <ul className="mt-3 space-y-1 text-sm">
+                                        {g.papers.map((p) => (
+                                            <li key={p.href}>
+                                                <a
+                                                    href={p.href}
+                                                    className="text-ink-body hover:text-ink-heading"
+                                                >
+                                                    {p.title}
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                                 {g.currentWork && g.currentWork.length > 0 && (
                                     <ul className="mt-3 space-y-1 text-xs text-ink-muted list-disc pl-5">
                                         {g.currentWork.map((w, i) => (
@@ -113,11 +123,7 @@ export default function Groups() {
 
             <MarketingSection title="Output-oriented; cross-cut the disciplines.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    Where the cryptoeconomic disciplines are reading lenses, the composability working groups are oriented around concrete builder outputs &mdash; assemblies and schemas. They cross-cut the disciplinary axis: a schema for GHG measurement pulls validator-implementation expertise from Computer Science and Cryptography while the content-definition expertise comes from Operations Research or Industrial Engineering. The tier framing comes from{" "}
-                    <Link href="/composability" className="underline">
-                        /composability
-                    </Link>
-                    .
+                    Where the cryptoeconomic disciplines are reading lenses, the composability working groups are oriented around concrete builder outputs &mdash; assemblies and schemas. They cross-cut the disciplinary axis: a schema for GHG measurement pulls validator-implementation expertise from Computer Science and Cryptography while the content-definition expertise comes from Operations Research or Industrial Engineering. The tier framing comes from <Link href="/builders/composability" className="underline">composability</Link>.
                 </p>
                 <div className="space-y-8">
                     {COMPOSITION_GROUPS.map((g) => (
@@ -134,10 +140,7 @@ export default function Groups() {
                             <ul className="space-y-1 text-xs text-ink-muted">
                                 {g.references.map((r) => (
                                     <li key={r.href}>
-                                        <Link
-                                            href={r.href}
-                                            className="underline"
-                                        >
+                                        <Link href={r.href} className="underline">
                                             {r.label}
                                         </Link>
                                     </li>
@@ -179,24 +182,16 @@ export default function Groups() {
 
             <MarketingSection title="Local &amp; international">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Working groups self-organize across jurisdictions: local meetups, international correspondences, async pull requests against{" "}
-                    <code>frontend/lib/shared/groupsRegistry.ts</code>
-                    . Cadence and geography are whatever contributors decide. The taxonomy stays fixed; the activity inside it does not.
+                    Working groups self-organize across jurisdictions: local meetups, international correspondences, async pull requests against <code>frontend/lib/shared/groupsRegistry.ts</code>. Cadence and geography are whatever contributors decide. The taxonomy stays fixed; the activity inside it does not.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Contributing" bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    To declare current work, surface a received grant, publish a contributor handle, or amend a group&apos;s charter, open a pull request against{" "}
-                    <code>frontend/lib/shared/groupsRegistry.ts</code>
-                    . PRs are reviewed at merge time; conversation about scope happens on Telegram before codification.
+                    To declare current work, surface a received grant, publish a contributor handle, or amend a group&apos;s charter, open a pull request against <code>frontend/lib/shared/groupsRegistry.ts</code>. PRs are reviewed at merge time; conversation about scope happens on Telegram before codification.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed">
-                    The disciplinary list itself tracks Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em>. The composability tiers track the extension doctrine on{" "}
-                    <Link href="/composability" className="underline">
-                        /composability
-                    </Link>
-                    . If either upstream taxonomy converges on a different shape, this page will follow.
+                    The disciplinary list tracks Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em>. The composability tiers track the extension doctrine on <Link href="/builders/composability" className="underline">composability</Link>. If either upstream taxonomy converges on a different shape, this page will follow.
                 </p>
             </MarketingSection>
         </>

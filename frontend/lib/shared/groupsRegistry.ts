@@ -6,12 +6,10 @@ import type { DisciplineIndex } from "@/components/shared/DisciplineGlyph";
  * stable lens for reading the substrate; the list cannot grow or shrink
  * without departing from the taxonomy.
  *
- * Convened vs open-call disciplines: a discipline is "convened" when
- * something concrete exists under it — published papers, declared
- * `currentWork`, or recorded `grants`. A discipline that has none of
- * those is rendered on `/cryptoeconomics` as an "Open call — no group
- * convened yet" rather than as a fully-furnished group block. The
- * asymmetry surfaces where the project actually is.
+ * Papers, `currentWork`, `grants`, and `venue` are all optional. Every
+ * discipline always has a charter; `/research` renders whatever
+ * concrete work exists under each one, or just the charter when none
+ * does yet. The asymmetry surfaces where the project actually is.
  *
  * Per-group `venue` overrides surface a dedicated channel when a
  * discipline has one. There is no project-wide coordination channel

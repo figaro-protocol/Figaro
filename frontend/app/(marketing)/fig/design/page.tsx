@@ -287,8 +287,8 @@ export default function FigDesign() {
                         <Link href="/fig" className="underline transition-colors">
                             the FIG page
                         </Link>. Full paper portfolio:&nbsp;
-                        <Link href="/cryptoeconomics" className="underline transition-colors">
-                            cryptoeconomics index
+                        <Link href="/research" className="underline transition-colors">
+                            the research page
                         </Link>.
                     </p>
                 </div>
