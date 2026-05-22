@@ -235,7 +235,7 @@ one.
    its JSON. Adding a per-schema content-encoder helper to Layer B is only
    needed when a downstream Rust consumer wants strongly-typed content
    (the SP1 prover guest, for instance, can pass through serde_json::Value).
-8. List the schema + one-line summary on `/builders` "Schema validators in force".
+8. Register the schema in `frontend/lib/shared/schemaCategories.ts` — add its spec JSON to `ALL_SPECS` and assign its `SCHEMA_TIER_MAP` and `SCHEMA_FAMILY_MAP` entries; `assertTaxonomyComplete()` fails the build if the tier or family assignment is missing. This supplies the schema's title and family for the designer drawer and the `/schemas` inventory — the inventory reads its *set* live from on-chain `SchemaRegistry` events, so the schema also needs the step-9 on-chain registration to appear there.
 9. `setValidator(schemaId, validator)` call added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. (Bootstrap-time atomicity: the deploy scripts inline schema registration + validator binding within a single broadcast transaction. Post-deploy third-party schemas should use `SchemaRegistrationHelper.registerSchemaAndValidator(...)` instead — see "Third-party schema deployment" below.)
 
 If any step is skipped the validator gate either rejects all attestations under that schemaId

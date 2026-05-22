@@ -11,7 +11,7 @@ CLAUDE.md keeps the active-frontend declaration and indexes this file; the per-r
 
 Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory listing, not this paragraph.
 
-**`(marketing)/` (no wallet provider):** `/` (root), `/about`, `/builders` (hub), `/builders/composability`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig/design` (informational, no wallet), `/groups`, `/integrate`, `/local-commerce` (worked example), `/protocol`, `/schemas`, `/spec`.
+**`(marketing)/` (no wallet provider):** `/` (root), `/assemblies`, `/builders` (hub), `/builders/composability`, `/integrate`, `/local-commerce` (worked example), `/protocol`, `/research`, `/rpgf`, `/schemas`, `/spec`. The `/schemas` and `/assemblies` inventories read on-chain state event-driven through the standalone `publicClient` — marketing-tier reads do not require the wallet provider.
 
 **`(app)/` (wallet provider mounted):** `/audit` + `/audit/[processId]`, `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/builders/designer/view/[slug]`, `/consent` (beta-only ceremony), `/discover` (operator catalogue), `/dispute` (beta-consent dispute), `/evidence-display` (Kleros juror iframe target), `/fig` (transactional surface, with `/fig/claim`), `/inbox` (merchant inbox), `/m/[merchant]` (merchant detail + cart), `/operators` (enrolment) + its sub-routes `/operators/{agents,assemblies,catalogue,identity,review}` and `/operators/edit/{agents,assemblies,catalogue,identity}`, `/orders` (buyer order list), `/orders/[processId]` (per-order live timeline), `/sign`, `/terminal`. (`/builders` and `/builders/composability` are `(marketing)/` pages, not `(app)/`.)
 
@@ -72,7 +72,7 @@ No publish-to-registry path exists today; saved drafts stay in localStorage. `De
 Every route in `frontend/app/` is classified into one of three tiers
 governing wallet-provider load:
 
-- **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current routes: `/`, `/about`, `/builders`, `/builders/composability`, `/compliance`, `/composability`, `/cryptoeconomics`, `/fig/design` (informational), `/groups`, `/integrate`, `/local-commerce`, `/protocol`, `/schemas`, `/spec`.
+- **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current routes: `/`, `/assemblies`, `/builders`, `/builders/composability`, `/integrate`, `/local-commerce`, `/protocol`, `/research`, `/rpgf`, `/schemas`, `/spec`.
 - **Reference / read-only (in `(app)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. Current: `/builders/designer*` (drafts in localStorage), `/discover` (operator catalogue), `/audit` + `/audit/[processId]` (audit / forensics), `/m/[merchant]` (read-mode catalogue with WalletGate-protected place-order CTA). The `/builders` hub and `/builders/composability` are publication pages and live in `(marketing)/`.
 - **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/terminal`, `/sign`, `/operators`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` + `/orders/[processId]` (buyer order list + per-order timeline; resolveProcess fires here), `/inbox` (merchant inbox; counter-sign + merchant-process attestations fire here).
 
@@ -80,4 +80,4 @@ governing wallet-provider load:
 
 1. Do NOT gate read-only pages behind `useAccount` / `isConnected`. Wallet-connect is a signing prerequisite, not a login (see `feedback_wallet_connect_not_auth.md`). A user who has never connected must be able to read every Reference / read-only and Marketing route.
 2. For inline write affordances on Reference pages, use `WalletGate` (the canonical inline-gate wrapper).
-3. The current root layout loads `<Providers>` (WagmiProvider + RainbowKit) for every route, so Marketing pages technically load the wallet provider today. Splitting `app/` into `(marketing)` / `(transactional)` route groups with separate layouts is a known follow-on (see backlog) — the classification above is the canonical reference for that future refactor.
+3. The `(marketing)` / `(app)` route-group split is in place: `app/(marketing)/layout.tsx` does NOT mount `<Providers>`; only `app/(app)/layout.tsx` does. Marketing pages still read on-chain state via the standalone `publicClient` exported from `lib/shared/wagmi.ts` — `/schemas` and `/assemblies` are the canonical event-driven marketing inventory pages.
