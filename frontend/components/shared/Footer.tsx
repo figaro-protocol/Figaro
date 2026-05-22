@@ -39,56 +39,36 @@ export function Footer() {
                         </div>
                     </div>
                 </div>
-                <div className="mt-8 pt-8 border-t border-default text-center text-ink-heading text-sm">
-                    <p>Figaro Protocol &mdash; The TCP/IP of Trade.</p>
-                    <div className="flex flex-wrap gap-2 justify-center items-center mt-3">
+                <div className="mt-12 pt-8 border-t border-default flex flex-col gap-4 text-xs text-ink-muted sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-wrap gap-x-5 gap-y-1">
                         <a
                             href="https://github.com/figaro-protocol/Figaro-Prototype2"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
-                            aria-label="GitHub repository star count"
+                            className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
                         >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                                src="https://img.shields.io/github/stars/figaro-protocol/Figaro-Prototype2?style=flat&label=stars&color=black&logo=github"
-                                alt="GitHub stars"
-                                className="h-5"
-                            />
+                            GitHub
                         </a>
                         <a
                             href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/LICENSE"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
-                            aria-label="MIT license"
+                            className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
                         >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                                src="https://img.shields.io/badge/license-MIT-black?style=flat"
-                                alt="License: MIT"
-                                className="h-5"
-                            />
+                            MIT license
                         </a>
                         <a
                             href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/AUDIT_REPORT.md"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
-                            aria-label="Audit report"
+                            className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
                         >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                                src="https://img.shields.io/badge/audit-report-black?style=flat"
-                                alt="Audit report"
-                                className="h-5"
-                            />
+                            Audit report
                         </a>
                     </div>
-                    <div className="mt-3 text-xs text-ink-muted">
-                        <span>
-                            Figaro is a registered trademark. &copy; {new Date().getFullYear()} Figaro Protocol. All rights reserved. Provided as-is, without warranty of any kind. No liability is accepted for loss, damages, or bugs. Use at your own risk.
-                        </span>
+                    <div className="space-y-1 sm:text-right">
+                        <p>Figaro is a registered trademark. &copy; {new Date().getFullYear()} Figaro Protocol. All rights reserved.</p>
+                        <p>Provided as-is, without warranty of any kind. No liability is accepted for loss, damages, or bugs. Use at your own risk.</p>
                     </div>
                 </div>
             </div>

@@ -29,22 +29,22 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-    title: "Figaro Protocol — TCP/IP of Trade",
-    description: "Bonded trade between strangers. A coordination protocol for parties who have never met — cooperation pays better than cheating. The deal resolves itself.",
+    title: "Figaro Protocol — Your deal stays yours.",
+    description: "Nobody holds your money, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
     robots: {
         index: false,
         follow: false,
     },
     openGraph: {
-        title: "Figaro Protocol — TCP/IP of Trade",
-        description: "Bonded trade between strangers. A coordination protocol for parties who have never met — cooperation pays better than cheating. The deal resolves itself.",
+        title: "Figaro Protocol — Your deal stays yours.",
+        description: "Nobody holds your money, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
         siteName: "Figaro Protocol",
         type: "website",
     },
     twitter: {
         card: "summary_large_image",
-        title: "Figaro Protocol — TCP/IP of Trade",
-        description: "Bonded trade between strangers. A coordination protocol for parties who have never met — cooperation pays better than cheating. The deal resolves itself.",
+        title: "Figaro Protocol — Your deal stays yours.",
+        description: "Nobody holds your money, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
     },
 };
 
