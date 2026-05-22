@@ -15,7 +15,6 @@ export function Footer() {
                         <div className="space-y-2">
                             <Link href="/protocol" className={COL_LINK_CLS}>Protocol mechanisms</Link>
                             <Link href="/cryptoeconomics" className={COL_LINK_CLS}>Cryptoeconomics</Link>
-                            <Link href="/composability" className={COL_LINK_CLS}>Composability</Link>
                             <Link href="/spec" className={COL_LINK_CLS}>Specifications</Link>
                             <Link href="/schemas" className={COL_LINK_CLS}>Schemas</Link>
                         </div>
@@ -25,7 +24,7 @@ export function Footer() {
                         <div className="space-y-2">
                             <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
                             <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
-                            <Link href="/builders/composability" className={COL_LINK_CLS}>Composability — architecture</Link>
+                            <Link href="/builders/composability" className={COL_LINK_CLS}>Composability</Link>
                             <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
                             <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
                             <Link href="/operators" className={COL_LINK_CLS}>Operators</Link>

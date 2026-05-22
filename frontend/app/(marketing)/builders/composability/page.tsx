@@ -4,26 +4,28 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = {
-    title: "Composability (builder architecture) — Figaro Protocol",
+    title: "Composability — Figaro Protocol",
     description:
-        "Builder-tier composability: the coordinator pattern's three sufficient conditions, the three tiers of extension, and the security boundary that holds across them. Property-side framing on /composability.",
+        "What the kernel's narrowness produces, and the architecture that preserves it: the coordinator pattern's three sufficient conditions, the three tiers of extension, and the security boundary that holds across them.",
 };
 
-export default function BuilderComposability() {
+export default function Composability() {
     return (
         <>
             <MarketingHero
-                title="The pattern that preserves the equilibrium."
+                title="What the kernel's narrowness produces."
                 lead={
                     <>
-                        The property statement &mdash; what composability is and why the kernel&apos;s narrowness produces it &mdash; lives on{" "}
-                        <Link href="/composability" className="underline">
-                            /composability
-                        </Link>
-                        . This page is the architecture: the coordinator pattern&apos;s three sufficient conditions, the three tiers of extension, and the security boundary that holds across them.
+                        <code>FigaroCore</code> takes no position on currency, jurisdiction, identity, arbitration, role structure, price-discovery, or contribution metric. Every other question lives above it &mdash; permissionless to add, permissionless to fork, equally bound by the same Nash equilibrium. What follows is both halves of composability: the property that narrowness produces, and the architecture that preserves it.
                     </>
                 }
             />
+
+            <MarketingSection title="Anyone can express anything; the equilibrium does not care.">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Because the kernel only enforces bonded-commitment settlement, the graph above it is unconstrained. A market-liberal graph where every role is priced at auction, a cooperative graph where surplus routes back to contributors via programmatic shares, a mutual-aid graph where bonds are reciprocal rather than monetary &mdash; all use the same kernel. The ideological commitments live in the assembly, not in <code>FigaroCore</code>.
+                </p>
+            </MarketingSection>
 
             <MarketingSection title="Three sufficient conditions preserve the equilibrium.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
@@ -100,18 +102,19 @@ export default function BuilderComposability() {
                         </ul>
                     </div>
                 </div>
-                <p className="text-sm text-ink-muted mt-6">
-                    Full layered enforcement model &mdash; economic / social / legal &mdash; on{" "}
-                    <Link href="/protocol#enforcement" className="underline">Protocol &mdash; Enforcement</Link>.
-                </p>
             </MarketingSection>
 
             <MarketingSection title="Read next" bottomPad="wide">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li>
+                        <Link href="/protocol" className="text-ink-heading font-medium hover:underline">Protocol</Link>
+                        {" — "}
+                        how the lockbox works, in plain language.
+                    </li>
+                    <li>
                         <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>
                         {" — "}
-                        the canonical on-chain surface: kernel, attestation coordinator, schema registry, validators in force, token, batch verifier, optional protocol contracts.
+                        the canonical on-chain surface: kernel, attestation coordinator, schema registry, validators in force, token, batch verifier.
                     </li>
                     <li>
                         <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
@@ -121,12 +124,7 @@ export default function BuilderComposability() {
                     <li>
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
                         {" — "}
-                        the SDK surface: ABIs, event parsers, deterministic state reconstruction, agent context, schema encoders.
-                    </li>
-                    <li>
-                        <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">Local Commerce</Link>
-                        {" — "}
-                        a worked reference assembly. Three roles, one root commitment, two sub-orders, atomic settlement.
+                        the SDK surface: ABIs, event parsers, deterministic state reconstruction, schema encoders.
                     </li>
                 </ul>
             </MarketingSection>

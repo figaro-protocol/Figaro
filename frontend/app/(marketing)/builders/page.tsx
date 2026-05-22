@@ -71,6 +71,12 @@ export default function BuildersPage() {
                     </Link>
                     <span className="text-ink-body"> &mdash; every contract above the kernel, with its source link and verification status.</span>
                 </li>
+                <li>
+                    <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">
+                        Composability
+                    </Link>
+                    <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
+                </li>
             </ul>
         </section>
     );

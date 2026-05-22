@@ -3,8 +3,8 @@
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
-//   Four disciplinary entries — protocol / cryptoeconomics / composability
-//   / groups. Papers are reading paths into groups; they are not
+//   Three disciplinary entries — protocol / cryptoeconomics / groups.
+//   Papers are reading paths into groups; they are not
 //   a standalone shelf. The logo links home; no "Home" item here.
 //
 // - `NAV_LINKS_APP_PRIMARY` is the (app) second row, desktop only. Each
@@ -26,7 +26,6 @@ export interface NavLink {
 export const NAV_LINKS: NavLink[] = [
     { href: "/protocol", label: "Protocol" },
     { href: "/cryptoeconomics", label: "Cryptoeconomics" },
-    { href: "/composability", label: "Composability" },
     { href: "/groups", label: "Groups" },
 ];
 
