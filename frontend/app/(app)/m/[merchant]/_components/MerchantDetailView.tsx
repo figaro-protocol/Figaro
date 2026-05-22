@@ -33,6 +33,12 @@ import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogue
 import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitmentStore";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { CONTRACTS } from "@/lib/core/contracts";
+import {
+    readAssemblyClause,
+    JURISDICTION_SCHEMA_KEY,
+    PROXIMITY_POLICY_SCHEMA_KEY,
+    type Agreement,
+} from "@/lib/core/agreementManifest";
 import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -70,21 +76,17 @@ const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
  * nothing to drive. Returns `{}` for an assembly with no jurisdiction clause.
  */
 function assemblyJurisdictionFields(
-    manifest: { agreements?: Record<string, { sections?: Array<{ schema: string; data?: Record<string, unknown> }> }> },
+    manifest: { agreements: Record<string, Agreement> },
 ): Record<string, string> {
-    for (const agreement of Object.values(manifest.agreements ?? {})) {
-        const section = (agreement.sections ?? []).find((s) => s.schema === "figaro-jurisdiction-v1");
-        if (!section) continue;
-        const data = section.data ?? {};
-        const out: Record<string, string> = {};
-        for (const key of ["klerosCourt", "klerosMinJurors", "applicableLaw", "forum", "language"]) {
-            const v = data[key];
-            if (typeof v === "string" && v) out[key] = v;
-            else if (typeof v === "number") out[key] = String(v);
-        }
-        if (Object.keys(out).length > 0) return out;
+    const section = readAssemblyClause(manifest, JURISDICTION_SCHEMA_KEY);
+    if (!section) return {};
+    const out: Record<string, string> = {};
+    for (const key of ["klerosCourt", "klerosMinJurors", "applicableLaw", "forum", "language"]) {
+        const v = section.data[key];
+        if (typeof v === "string" && v) out[key] = v;
+        else if (typeof v === "number") out[key] = String(v);
     }
-    return {};
+    return out;
 }
 
 interface Props {
@@ -393,7 +395,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
         const sellerAddress = restaurant.address as `0x${string}`;
         // The picked assembly drives the order. A multi-order assembly
         // (e.g. local-commerce) is a process of more than one order — the
-        // root merchant order plus a courier order parented to it.
+        // root merchant order plus a courier order whose manifest topology
+        // section names the root as parent. The kernel sees a linear commit
+        // chain; the parent edge is an off-chain topology fact, not kernel state.
         const pickedAssembly = boundAssemblies.find(
             (a) => a.fulfilmentMethod === fulfillmentMode,
         );
@@ -482,15 +486,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             // courier order carries the same proximity-policy band the
             // assembly declares (rather than a runtime guess).
             const assemblyManifest = pickedAssembly!.manifest;
-            const courierAgreementHash = assemblyManifest.orders
-                .map((o) => o.agreementHash)
-                .find((hash) => hash && (assemblyManifest.agreements[hash]?.sections ?? [])
-                    .some((s: { schema: string }) => s.schema === "figaro-courier-process-v1"));
-            const courierProximityBands: string[] = courierAgreementHash
-                ? (((assemblyManifest.agreements[courierAgreementHash]?.sections ?? [])
-                    .find((s: { schema: string }) => s.schema === "figaro-proximity-policy-v1")
-                    ?.data as { bands?: string[] } | undefined)?.bands ?? [])
-                : [];
+            const courierProximityBands: string[] =
+                (readAssemblyClause(assemblyManifest, PROXIMITY_POLICY_SCHEMA_KEY)
+                    ?.data as { bands?: string[] } | undefined)?.bands ?? [];
 
             // The courier delivery price comes from the courier's OWN
             // catalogue — the courier is a peer operator, not priced by the

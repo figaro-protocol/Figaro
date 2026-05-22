@@ -39,6 +39,7 @@ import {
     ensureTokenApprovals,
     evmRevert,
     evmSnapshot,
+    placeLocalCommerceOrderUI,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 
@@ -123,41 +124,10 @@ test.describe('Full local-commerce scenario (devnet)', () => {
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
         // ── 1. Buyer commits the food + courier orders ───────────────
-        await page.goto(`/m/${MERCATO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const detailView = page.getByTestId('merchant-detail-view');
-        try {
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-        } catch {
-            await page.reload({ waitUntil: 'domcontentloaded' });
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-        }
-        const menuItem = page.getByTestId(`menu-item-${ITEM.id}`);
-        try {
-            await menuItem.waitFor({ state: 'visible', timeout: 15000 });
-        } catch {
-            await page.reload({ waitUntil: 'domcontentloaded' });
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-            await menuItem.waitFor({ state: 'visible', timeout: 30000 });
-        }
-        await page.getByTestId(`btn-add-${ITEM.id}`).click();
-        await expect(page.getByTestId(`cart-line-${ITEM.id}`)).toBeVisible({ timeout: 10000 });
-
-        await expect(page.getByTestId('option-fulfilment-deliver:seller-assigned')).toHaveCount(1, { timeout: 20000 });
-        await page.getByTestId('select-fulfilment-mode').selectOption('deliver:seller-assigned');
-        await page.getByTestId('input-delivery-geohash').fill('dr5regw3pg');
-        await page.getByTestId('input-delivery-address').fill('12 Market St, Apt 4B — ring bell');
-        await page.getByTestId('btn-place-order').click();
-
-        for (let i = 0; i < 2; i++) {
-            const modal = page.getByTestId('agreement-preview-modal');
-            await modal.waitFor({ state: 'visible', timeout: 45000 });
-            await page.getByTestId('preview-confirm').click();
-            await modal.waitFor({ state: 'hidden', timeout: 45000 });
-        }
-
-        await page.waitForURL(/\/orders\/0x[0-9a-fA-F]+/, { timeout: 90000 });
-        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-        const processId = page.url().match(/\/orders\/(0x[0-9a-fA-F]+)/)![1] as Hex;
+        const processId = await placeLocalCommerceOrderUI(page, {
+            merchant: MERCATO_ADDR,
+            itemId: ITEM.id,
+        });
 
         const committed = await publicClient.readContract({
             address: core, abi: PROCESSES_ABI, functionName: 'processes', args: [processId],

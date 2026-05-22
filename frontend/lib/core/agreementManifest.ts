@@ -676,6 +676,25 @@ export function getSection(agreement: Agreement, schema: string): AgreementSecti
 }
 
 /**
+ * Find the first section across an assembly manifest's inlined agreements
+ * that matches `schema`. The manifest-shaped sibling of `getSection`, which
+ * scopes to a single agreement: a manifest inlines one `Agreement` per
+ * order, and a clause an assembly authored — jurisdiction, proximity-policy
+ * — may live on any of them. Returns `undefined` when no agreement carries
+ * the clause.
+ */
+export function readAssemblyClause(
+    manifest: { agreements: Record<string, Agreement> },
+    schema: string,
+): AgreementSection | undefined {
+    for (const agreement of Object.values(manifest.agreements)) {
+        const section = getSection(agreement, schema);
+        if (section) return section;
+    }
+    return undefined;
+}
+
+/**
  * Look up a section by its on-chain schemaId bytes32 (matches Solidity
  * `keccak256(schemaKey)`). Convenience for hook code that receives a schemaId
  * from a UI / selector rather than the human-readable schema key.

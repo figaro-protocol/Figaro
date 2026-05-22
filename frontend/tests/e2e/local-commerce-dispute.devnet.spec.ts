@@ -41,6 +41,7 @@ import {
     ensureTokenApprovals,
     evmRevert,
     evmSnapshot,
+    placeLocalCommerceOrderUI,
     readLocalDeploymentConfig,
     waitForWalletConnected,
 } from './devnet-helpers';
@@ -116,47 +117,28 @@ test.describe('Local-commerce dispute — Layer-3 recourse (devnet)', () => {
         if (!klerosProxy) {
             throw new Error('NEXT_PUBLIC_KLEROS_ARBITRABLE_PROXY not set — run ./deploy-mock-kleros.sh');
         }
+        // A stale env var survives a `./deploy-local.sh` redeploy — that
+        // script doesn't touch the Kleros keys — so presence alone is not
+        // enough: verify the proxy has code on the current chain. Without
+        // this, raising a dispute calls a code-less address and the test
+        // fails 90s later at an opaque "Pending ruling" timeout.
+        const klerosCode = await publicClient.getCode({ address: klerosProxy });
+        if (!klerosCode || klerosCode === '0x') {
+            throw new Error(
+                `Mock Kleros proxy ${klerosProxy} has no code on the devnet chain — ` +
+                're-run ./deploy-mock-kleros.sh after ./deploy-local.sh',
+            );
+        }
         const { core, token } = deployment();
 
         await ensureTokenApprovals(core, token, BUYER_KEY);
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
         // ── 1. Buyer commits the local-commerce process ──────────────
-        await page.goto(`/m/${MERCATO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const detailView = page.getByTestId('merchant-detail-view');
-        try {
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-        } catch {
-            await page.reload({ waitUntil: 'domcontentloaded' });
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-        }
-        const menuItem = page.getByTestId(`menu-item-${ITEM.id}`);
-        try {
-            await menuItem.waitFor({ state: 'visible', timeout: 15000 });
-        } catch {
-            await page.reload({ waitUntil: 'domcontentloaded' });
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-            await menuItem.waitFor({ state: 'visible', timeout: 30000 });
-        }
-        await page.getByTestId(`btn-add-${ITEM.id}`).click();
-        await expect(page.getByTestId(`cart-line-${ITEM.id}`)).toBeVisible({ timeout: 10000 });
-
-        await expect(page.getByTestId('option-fulfilment-deliver:seller-assigned')).toHaveCount(1, { timeout: 20000 });
-        await page.getByTestId('select-fulfilment-mode').selectOption('deliver:seller-assigned');
-        await page.getByTestId('input-delivery-geohash').fill('dr5regw3pg');
-        await page.getByTestId('input-delivery-address').fill('12 Market St, Apt 4B — ring bell');
-        await page.getByTestId('btn-place-order').click();
-
-        for (let i = 0; i < 2; i++) {
-            const modal = page.getByTestId('agreement-preview-modal');
-            await modal.waitFor({ state: 'visible', timeout: 45000 });
-            await page.getByTestId('preview-confirm').click();
-            await modal.waitFor({ state: 'hidden', timeout: 45000 });
-        }
-
-        await page.waitForURL(/\/orders\/0x[0-9a-fA-F]+/, { timeout: 90000 });
-        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-        const processId = page.url().match(/\/orders\/(0x[0-9a-fA-F]+)/)![1] as Hex;
+        const processId = await placeLocalCommerceOrderUI(page, {
+            merchant: MERCATO_ADDR,
+            itemId: ITEM.id,
+        });
 
         const committed = await publicClient.readContract({
             address: core, abi: PROCESSES_ABI, functionName: 'processes', args: [processId],

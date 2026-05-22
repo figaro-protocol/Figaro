@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { Page } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 export {
     approveIfNeeded,
     waitAndApproveIfNeeded,
@@ -18,6 +18,7 @@ import {
     parseAbi,
     parseEther,
     stringToHex,
+    type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
@@ -1296,4 +1297,72 @@ export async function captureOrGuardOperatorCatalogue(operatorAddress: string): 
 export async function evmIncreaseTime(seconds: number): Promise<void> {
     await snapshotClient.request({ method: 'evm_increaseTime' as any, params: [seconds] } as any);
     await snapshotClient.request({ method: 'evm_mine' as any } as any);
+}
+
+/**
+ * Drive the buyer's local-commerce checkout through the UI — browse the
+ * seeded merchant, add the catalogue item, pick a delivery fulfilment
+ * mode, place the order, confirm both agreement-preview modals (the food
+ * order, then the courier order) — and return the committed processId.
+ *
+ * Extracted from the local-commerce devnet specs where the buyer commit is
+ * pure SETUP for what the spec actually exercises (the dispute path, the
+ * full multi-role scenario). `local-commerce-purchase` keeps its own inline
+ * copy on purpose: there the placement UI — the assembly-array surface, the
+ * negotiated-price and courier-clause assertions — IS the spec's subject.
+ *
+ * The two-iteration modal loop is correct, not a flake: each commit (food,
+ * then courier) gates on its own AgreementPreviewModal, and the hidden-wait
+ * sequences modal-1 → modal-2 — without it iteration 2 races the stale
+ * first modal, whose confirm is already resolved (the click is a no-op).
+ */
+export async function placeLocalCommerceOrderUI(
+    page: Page,
+    opts: {
+        merchant: string;
+        itemId: string;
+        fulfilmentMode?: string;
+        geohash?: string;
+        deliveryAddress?: string;
+    },
+): Promise<Hex> {
+    const fulfilmentMode = opts.fulfilmentMode ?? 'deliver:seller-assigned';
+    const geohash = opts.geohash ?? 'dr5regw3pg';
+    const deliveryAddress = opts.deliveryAddress ?? '12 Market St, Apt 4B — ring bell';
+
+    await page.goto(`/m/${opts.merchant}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+    const detailView = page.getByTestId('merchant-detail-view');
+    try {
+        await detailView.waitFor({ state: 'visible', timeout: 30000 });
+    } catch {
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await detailView.waitFor({ state: 'visible', timeout: 30000 });
+    }
+    const menuItem = page.getByTestId(`menu-item-${opts.itemId}`);
+    try {
+        await menuItem.waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await detailView.waitFor({ state: 'visible', timeout: 30000 });
+        await menuItem.waitFor({ state: 'visible', timeout: 30000 });
+    }
+    await page.getByTestId(`btn-add-${opts.itemId}`).click();
+    await expect(page.getByTestId(`cart-line-${opts.itemId}`)).toBeVisible({ timeout: 10000 });
+
+    await expect(page.getByTestId(`option-fulfilment-${fulfilmentMode}`)).toHaveCount(1, { timeout: 20000 });
+    await page.getByTestId('select-fulfilment-mode').selectOption(fulfilmentMode);
+    await page.getByTestId('input-delivery-geohash').fill(geohash);
+    await page.getByTestId('input-delivery-address').fill(deliveryAddress);
+    await page.getByTestId('btn-place-order').click();
+
+    for (let i = 0; i < 2; i++) {
+        const modal = page.getByTestId('agreement-preview-modal');
+        await modal.waitFor({ state: 'visible', timeout: 45000 });
+        await page.getByTestId('preview-confirm').click();
+        await modal.waitFor({ state: 'hidden', timeout: 45000 });
+    }
+
+    await page.waitForURL(/\/orders\/0x[0-9a-fA-F]+/, { timeout: 90000 });
+    await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+    return page.url().match(/\/orders\/(0x[0-9a-fA-F]+)/)![1] as Hex;
 }

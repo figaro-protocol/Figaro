@@ -64,8 +64,9 @@ const MERCHANT_EVENT_BY_STAGE: Record<number, MerchantEvent> = {
 const COURIER_DEVICE_SIG_PLACEHOLDER: Hex = `0x${"01".repeat(65)}`;
 
 /** figaro-proximity-policy-v1 band name → on-chain ProximityProof band
- *  index (0=None, 1=Zone/WiFi, 2=Nearby/BLE, 3=Contact/NFC). The courier's
- *  proximity proof must carry the band the assembly committed. */
+ *  index. FigaroProximityProofV1Validator rejects band 0; the valid bands
+ *  are 1=Zone/WiFi, 2=Nearby/BLE, 3=Contact/NFC. The courier's proximity
+ *  proof must carry the band the assembly committed. */
 const PROXIMITY_BAND_INDEX: Record<string, number> = {
     "zone-wifi": 1,
     "nearby-ble": 2,
