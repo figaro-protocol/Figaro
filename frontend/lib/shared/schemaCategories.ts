@@ -121,6 +121,61 @@ export const SCHEMA_TIER_MAP: Readonly<Record<string, SchemaTier>> = {
     "figaro-proximity-proof-v1": "runtime",
 };
 
+// ── Per-schema family assignment ────────────────────────────────────────────
+
+/**
+ * FAMILY — the coarse editorial grouping the /schemas inventory renders. Six
+ * families, hand-maintained (the spec JSON shape carries no `family` field).
+ * `assertTaxonomyComplete` below throws at module load if a registry schema is
+ * missing a family, so the inventory cannot silently drop a schema.
+ */
+export type SchemaFamily =
+    | "manifest"
+    | "commerce"
+    | "emissions"
+    | "lifecycle-proximity"
+    | "process-logs"
+    | "legal";
+
+export const SCHEMA_FAMILY_LABELS: Record<SchemaFamily, string> = {
+    manifest: "Manifest",
+    commerce: "Commerce primitives",
+    emissions: "Emissions",
+    "lifecycle-proximity": "Lifecycle and proximity",
+    "process-logs": "Sovereign process logs",
+    legal: "Legal anchoring",
+};
+
+/** Render order for the /schemas inventory. */
+export const SCHEMA_FAMILY_ORDER: readonly SchemaFamily[] = [
+    "manifest",
+    "commerce",
+    "emissions",
+    "lifecycle-proximity",
+    "process-logs",
+    "legal",
+];
+
+export const SCHEMA_FAMILY_MAP: Readonly<Record<string, SchemaFamily>> = {
+    "figaro-topology-v1": "manifest",
+    "figaro-commerce-v1": "commerce",
+    "figaro-geo-v2": "commerce",
+    "figaro-fulfilment-v2": "commerce",
+    "figaro-ghg-protocol-v1": "emissions",
+    "figaro-ghg-iso-14064-v1": "emissions",
+    "figaro-ghg-pas-2050-v1": "emissions",
+    "figaro-ghg-en-16258-v1": "emissions",
+    "figaro-ghg-custom-v1": "emissions",
+    "figaro-ghg-measurement-v1": "emissions",
+    "figaro-offset-policy-v1": "emissions",
+    "figaro-proximity-policy-v1": "lifecycle-proximity",
+    "figaro-proximity-proof-v1": "lifecycle-proximity",
+    "figaro-merchant-process-v1": "process-logs",
+    "figaro-courier-process-v1": "process-logs",
+    "figaro-jurisdiction-v1": "legal",
+    "figaro-consent-v1": "legal",
+};
+
 // ── Lens map ────────────────────────────────────────────────────────────────
 
 /**
@@ -237,6 +292,43 @@ export function getDesignerCategories(): readonly SchemaCategory[] {
     return ALL_CATEGORIES.filter((c) => DESIGNER_SCHEMAS_BY_CATEGORY[c].length > 0);
 }
 
+// ── Inventory derivation (by family) ────────────────────────────────────────
+
+export interface SchemaInventoryEntry {
+    schemaId: string;
+    title: string;
+    description: string;
+}
+
+export interface SchemaFamilyGroup {
+    family: SchemaFamily;
+    label: string;
+    schemas: readonly SchemaInventoryEntry[];
+}
+
+/**
+ * Every schema grouped into its editorial family, in render order. Drives the
+ * /schemas inventory — list, titles, and descriptions all derive from the
+ * Layer-A spec JSONs, so a new schema JSON appears automatically.
+ */
+export const SCHEMAS_BY_FAMILY: readonly SchemaFamilyGroup[] = SCHEMA_FAMILY_ORDER.map(
+    (family) => ({
+        family,
+        label: SCHEMA_FAMILY_LABELS[family],
+        schemas: ALL_SPECS.filter((s) => SCHEMA_FAMILY_MAP[s.schemaId] === family).map((s) => {
+            const info = getSchemaInfo(s.schemaId);
+            return {
+                schemaId: s.schemaId,
+                title: info?.title ?? s.schemaId,
+                description: info?.description ?? "",
+            };
+        }),
+    }),
+);
+
+/** Total schema count, derived from the registry. */
+export const SCHEMA_COUNT: number = ALL_SPECS.length;
+
 // ── Drift detection ─────────────────────────────────────────────────────────
 
 /**
@@ -247,10 +339,14 @@ export function getDesignerCategories(): readonly SchemaCategory[] {
  */
 function assertTaxonomyComplete(): void {
     const missingTier: string[] = [];
+    const missingFamily: string[] = [];
     const unknownCategories: Array<{ schemaId: string; category: string }> = [];
     for (const spec of ALL_SPECS) {
         if (!(spec.schemaId in SCHEMA_TIER_MAP)) {
             missingTier.push(spec.schemaId);
+        }
+        if (!(spec.schemaId in SCHEMA_FAMILY_MAP)) {
+            missingFamily.push(spec.schemaId);
         }
         for (const cat of spec.categories) {
             if (!(cat in CATEGORY_LABELS)) {
@@ -261,6 +357,11 @@ function assertTaxonomyComplete(): void {
     if (missingTier.length > 0) {
         throw new Error(
             `schemaCategories.ts: missing tier assignment for ${missingTier.join(", ")}. Add to SCHEMA_TIER_MAP.`,
+        );
+    }
+    if (missingFamily.length > 0) {
+        throw new Error(
+            `schemaCategories.ts: missing family assignment for ${missingFamily.join(", ")}. Add to SCHEMA_FAMILY_MAP.`,
         );
     }
     if (unknownCategories.length > 0) {

@@ -2,140 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { SCHEMAS_BY_FAMILY, SCHEMA_COUNT } from "@/lib/shared/schemaCategories";
 
 export const metadata: Metadata = {
     title: "Schemas — Figaro Protocol",
-    description: "The schema architecture: client TypeScript + on-chain Solidity validators (with an SP1 Rust mirror pending) parsing one canonical JSON spec. Seventeen reference schemas in force.",
+    description:
+        "The schema architecture: client TypeScript and on-chain Solidity validators (with an SP1 Rust mirror pending) parsing one canonical JSON spec per schema. The reference inventory renders from the spec registry.",
 };
-
-interface SchemaRow {
-    id: string;
-    description: string;
-}
-
-const SCHEMA_FAMILIES: { name: string; rows: SchemaRow[] }[] = [
-    {
-        name: "Manifest",
-        rows: [
-            {
-                id: "figaro-topology-v1",
-                description:
-                    "DAG lineage (parent order hashes) for multi-party processes. Manifest-only; no on-chain validator.",
-            },
-        ],
-    },
-    {
-        name: "Commerce primitives",
-        rows: [
-            {
-                id: "figaro-commerce-v1",
-                description: "Currency, payment, line items, quantity, per-item identifiers.",
-            },
-            {
-                id: "figaro-geo-v2",
-                description: "Origin and destination geohashes at configurable precision, plus shipment mass (g), volume (ml), and class of service (Standard / Express / Fragile / Cold Chain).",
-            },
-            {
-                id: "figaro-fulfilment-v2",
-                description:
-                    "Fulfilment in one clause: modality (consume-onsite / pickup / delivery), coordination (buyer-assigned / seller-assigned / dutch-auction — delivery only), and handoff point (face-to-face / dead-drop / parking-area / locker).",
-            },
-        ],
-    },
-    {
-        name: "Emissions",
-        rows: [
-            {
-                id: "figaro-ghg-protocol-v1",
-                description: "GHG Protocol Corporate Standard + scope (Category-2) — committed at contract time.",
-            },
-            {
-                id: "figaro-ghg-iso-14064-v1",
-                description: "ISO 14064 family + scope (Category-2) — committed at contract time.",
-            },
-            {
-                id: "figaro-ghg-pas-2050-v1",
-                description: "PAS 2050 product carbon footprint + scope (Category-2) — committed at contract time.",
-            },
-            {
-                id: "figaro-ghg-en-16258-v1",
-                description: "EN 16258 transport-emissions methodology + scope (Category-2) — committed at contract time.",
-            },
-            {
-                id: "figaro-ghg-custom-v1",
-                description: "Custom or non-standard GHG methodology + scope (Category-2) — committed at contract time.",
-            },
-            {
-                id: "figaro-ghg-measurement-v1",
-                description: "Runtime grams CO2e per fulfilment (Category-1) — estimate / measured / restated / verified.",
-            },
-            {
-                id: "figaro-offset-policy-v1",
-                description:
-                    "Carbon-offset providers an assembly accepts for emissions compensation — Klima, Toucan, Moss, or a self-declared operator (Category-2). The offset purchase itself is a sub-order against the chosen provider.",
-            },
-        ],
-    },
-    {
-        name: "Lifecycle and proximity",
-        rows: [
-            {
-                id: "figaro-proximity-policy-v1",
-                description:
-                    "Required detection band committed at agreement signing (Category-2). Sister of figaro-proximity-proof-v1.",
-            },
-            {
-                id: "figaro-proximity-proof-v1",
-                description:
-                    "Per-handoff nonce + signed witness payload at runtime (Category-1). Off-chain consumers verify proof.band == policy.band.",
-            },
-        ],
-    },
-    {
-        name: "Sovereign process logs",
-        rows: [
-            {
-                id: "figaro-merchant-process-v1",
-                description:
-                    "Merchant-side lifecycle (sovereign log; generic across local-commerce verticals): received → accepted → prep → ready → handed-off.",
-            },
-            {
-                id: "figaro-courier-process-v1",
-                description:
-                    "Courier-side lifecycle (sovereign log; generic across transport modes): available → accepted → en-route → arrived → in-transit → completed.",
-            },
-        ],
-    },
-    {
-        name: "Legal anchoring",
-        rows: [
-            {
-                id: "figaro-jurisdiction-v1",
-                description:
-                    "Off-chain dispute-resolution jurisdiction (applicable law + forum + language) — baseline graph per Paper E.",
-            },
-            {
-                id: "figaro-consent-v1",
-                description:
-                    "Cryptographic consent attestation: a wallet binds itself to an off-chain legal document via its keccak256 hash, version, and title. Append-only.",
-            },
-        ],
-    },
-];
-
-function SchemaListItem({ row }: { row: SchemaRow }) {
-    return (
-        <li
-            id={`schema-${row.id}`}
-            className="flex flex-col sm:flex-row gap-1 sm:gap-3 scroll-mt-24"
-        >
-            <span className="font-mono text-xs text-ink-muted sm:w-56 sm:shrink-0">
-                {row.id}
-            </span>
-            <span className="text-sm text-ink-body">{row.description}</span>
-        </li>
-    );
-}
 
 export default function Schemas() {
     return (
@@ -144,7 +17,7 @@ export default function Schemas() {
                 title="Three layers of validation."
                 lead={
                     <>
-                        A schema in Figaro is the on-chain content type of an attestation &mdash; a structured piece of evidence emitted during the lifecycle of a bonded process. Every attestation under a registered <code>schemaId</code> is validated identically by client TypeScript and on-chain Solidity (with an SP1 Rust mirror pending). Seventeen reference schemas ship today; new schemas register permissionlessly.
+                        A schema in Figaro is the on-chain content type of an attestation &mdash; a structured piece of evidence emitted during the lifecycle of a bonded process. Every attestation under a registered <code>schemaId</code> is validated identically by client TypeScript and on-chain Solidity (with an SP1 Rust mirror pending). {SCHEMA_COUNT} reference schemas ship today; new schemas register permissionlessly.
                     </>
                 }
             />
@@ -172,20 +45,28 @@ export default function Schemas() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Seventeen schemas, six families.">
+            <MarketingSection title={`${SCHEMA_COUNT} schemas, ${SCHEMAS_BY_FAMILY.length} families.`}>
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    The reference set covers manifest topology, commerce primitives, emissions accounting and offsets, lifecycle and proximity, sovereign process logs, and legal anchoring. The full layer-status detail (which validators are deployed under each schemaId) lives on{" "}
-                    <Link href="/spec" className="underline">/spec</Link>.
+                    The reference set spans manifest topology, commerce primitives, emissions accounting and offsets, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology-v1</code> &mdash; is manifest-only: committed at agreement signing, with no on-chain validator. This inventory renders straight from the spec registry, so it cannot drift from what ships.
                 </p>
                 <div className="space-y-8">
-                    {SCHEMA_FAMILIES.map((family) => (
-                        <div key={family.name}>
+                    {SCHEMAS_BY_FAMILY.map((group) => (
+                        <div key={group.family}>
                             <h3 className="text-base font-semibold text-ink-heading mb-3">
-                                {family.name}
+                                {group.label}
                             </h3>
                             <ul className="space-y-3">
-                                {family.rows.map((row) => (
-                                    <SchemaListItem key={row.id} row={row} />
+                                {group.schemas.map((schema) => (
+                                    <li
+                                        key={schema.schemaId}
+                                        id={`schema-${schema.schemaId}`}
+                                        className="flex flex-col sm:flex-row gap-1 sm:gap-3 scroll-mt-24"
+                                    >
+                                        <span className="font-mono text-xs text-ink-muted sm:w-56 sm:shrink-0">
+                                            {schema.schemaId}
+                                        </span>
+                                        <span className="text-sm text-ink-body">{schema.description}</span>
+                                    </li>
                                 ))}
                             </ul>
                         </div>
@@ -202,7 +83,7 @@ export default function Schemas() {
                     <li>Write the Solidity validator at <code>src/schemaValidators/Foo&lt;Schema&gt;V1Validator.sol</code> &mdash; ABI-decode content, revert with typed custom errors.</li>
                     <li>Write Foundry tests at <code>test/schemaValidators/</code> covering happy paths and every typed revert.</li>
                     <li>Mirror the validator in the Rust prover when Layer B is live (deferred).</li>
-                    <li>List the schema on the <Link href="/spec" className="underline">/spec</Link> &ldquo;Schema validators in force&rdquo; section.</li>
+                    <li>Register the schema in <code>schemaCategories.ts</code> &mdash; add it to <code>ALL_SPECS</code>, <code>SCHEMA_TIER_MAP</code>, and <code>SCHEMA_FAMILY_MAP</code>. The inventory above and the designer drawer render from that registry; the build fails if any assignment is missing.</li>
                     <li>
                         Wire <code>setValidator(schemaId, validator)</code> into <code>script/Deploy.s.sol</code> and <code>script/DeployMainnet.s.sol</code>; add a regression test in <code>test/DeployScriptTest.t.sol</code>. <strong>For third-party schemas registered post-deploy, use{" "}
                         <code>SchemaRegistrationHelper.registerSchemaAndValidator(...)</code></strong>{" "}
@@ -221,7 +102,7 @@ export default function Schemas() {
                     <li><strong>Registration path:</strong> <code>AttestationCoordinator.setValidator(schemaId, validator)</code> &mdash; permissionless, first-write-wins, immutable once set. Atomic register+bind via <code>SchemaRegistrationHelper.registerSchemaAndValidator(...)</code>.</li>
                     <li><strong>Kernel side:</strong> attestation receipts are bound to the signed <code>agreementHash</code> via merkle inclusion proof; the rationale is on <Link href="/protocol" className="underline">Protocol</Link>.</li>
                     <li><strong>Academic frame:</strong> Paper E (jurisdiction baseline) and the Philosophy / Law / Ethics discipline on <Link href="/research" className="underline">Research</Link>.</li>
-                    <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro-Prototype2</a>. The <code>CLAUDE.md</code> at the root is the authoritative inventory; the &ldquo;Adding a new schema&rdquo; checklist above mirrors the one there.</li>
+                    <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro-Prototype2</a>. The <code>CLAUDE.md</code> at the root is the authoritative inventory and carries the canonical schema-authoring checklist.</li>
                 </ul>
                 <p className="mt-6 text-sm text-ink-muted">
                     Composition tools and the assembly designer: <Link href="/builders" className="underline">/builders</Link>.

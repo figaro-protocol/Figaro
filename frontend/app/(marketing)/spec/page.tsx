@@ -85,41 +85,8 @@ export default function Specifications() {
             </MarketingSection>
 
             <MarketingSection title="Schema validators in force">
-                <p className="text-sm text-ink-muted mb-6">
-                    Sixteen runtime-attestable schemas have deployed <code>ISchemaValidator</code> contracts. <code>figaro-topology-v1</code> is a manifest-only clause &mdash; parties commit to it at contract-signing time; it has no on-chain validator.
-                </p>
-                <div className="overflow-x-auto -mx-6 px-6">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
-                                <th scope="col" className="py-2 pr-4">schemaId</th>
-                                <th scope="col" className="py-2 pr-4">What it carries</th>
-                                <th scope="col" className="py-2">Attestation</th>
-                            </tr>
-                        </thead>
-                        <tbody className="[&>tr]:border-b [&>tr]:border-default">
-                            <tr><td className="py-2 pr-4"><code>figaro-topology-v1</code></td><td className="py-2 pr-4 text-ink-body">DAG lineage (parent order hashes)</td><td className="py-2 text-ink-muted">Manifest-only</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-commerce-v1</code></td><td className="py-2 pr-4 text-ink-body">Currency, payment, line items</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-geo-v2</code></td><td className="py-2 pr-4 text-ink-body">Origin / destination geohash, mass, volume, class of service</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-fulfilment-v2</code></td><td className="py-2 pr-4 text-ink-body">Fulfilment in one clause: modality, coordination, handoff point</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-protocol-v1</code></td><td className="py-2 pr-4 text-ink-body">GHG Protocol Corporate Standard + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-iso-14064-v1</code></td><td className="py-2 pr-4 text-ink-body">ISO 14064 family + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-pas-2050-v1</code></td><td className="py-2 pr-4 text-ink-body">PAS 2050 product carbon footprint + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-en-16258-v1</code></td><td className="py-2 pr-4 text-ink-body">EN 16258 transport methodology + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-custom-v1</code></td><td className="py-2 pr-4 text-ink-body">Custom GHG methodology + scope (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-ghg-measurement-v1</code></td><td className="py-2 pr-4 text-ink-body">Runtime grams CO₂e (Category-1)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-proximity-policy-v1</code></td><td className="py-2 pr-4 text-ink-body">Required detection band committed at agreement signing (Category-2)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-proximity-proof-v1</code></td><td className="py-2 pr-4 text-ink-body">Per-handoff nonce + signed witness payload at runtime (Category-1)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-merchant-process-v1</code></td><td className="py-2 pr-4 text-ink-body">Merchant per-role event log (sovereign log; generic across local-commerce verticals)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-courier-process-v1</code></td><td className="py-2 pr-4 text-ink-body">Courier per-role event log (sovereign log; generic across transport modes)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-jurisdiction-v1</code></td><td className="py-2 pr-4 text-ink-body">Off-chain dispute-resolution jurisdiction (applicable law + forum + language) &mdash; baseline graph per Paper E</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                            <tr><td className="py-2 pr-4"><code>figaro-consent-v1</code></td><td className="py-2 pr-4 text-ink-body">Cryptographic consent to an off-chain legal document (documentHash + version + title)</td><td className="py-2 text-ink-muted">Layer A + C</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <p className="text-xs text-ink-muted mt-4">
-                    Layer A = client-side TypeScript validator. Layer C = on-chain Solidity validator. Both parse the same canonical JSON spec. See{" "}
-                    <Link href="/schemas" className="underline">Schemas</Link> for the three-layer validation architecture.
+                <p className="text-base text-ink-body leading-relaxed">
+                    Every runtime-attestable schema binds to a deployed <code>ISchemaValidator</code> contract; <code>figaro-topology-v1</code> is manifest-only &mdash; committed at agreement signing, with no on-chain validator. The full inventory &mdash; every schemaId, what it carries, and the three-layer validation architecture &mdash; is on <Link href="/schemas" className="underline">Schemas</Link>.
                 </p>
             </MarketingSection>
 
