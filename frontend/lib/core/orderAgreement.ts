@@ -5,6 +5,7 @@ import {
     buildCommerceSection,
     buildTopologySection,
     FULFILMENT_V2_SCHEMA_KEY,
+    GEO_SCHEMA_KEY,
     GHG_SCHEMA_KEY,
     GHG_DISCLOSURE_SCHEMA_KEYS,
     GHG_STANDARD_TO_SCHEMA,
@@ -390,7 +391,7 @@ export function getTopologyMode(agreement: Agreement | null | undefined): Topolo
 export function summarizeAgreement(agreement: Agreement | null | undefined): AgreementSummary | null {
     if (!agreement) return null;
 
-    const geoSection = getSection(agreement, "figaro-geo-v2");
+    const geoSection = getSection(agreement, GEO_SCHEMA_KEY);
     const topologySection = getSection(agreement, TOPOLOGY_SCHEMA_KEY);
     const fulfilmentSection = getSection(agreement, FULFILMENT_V2_SCHEMA_KEY);
     const proximitySection = getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);

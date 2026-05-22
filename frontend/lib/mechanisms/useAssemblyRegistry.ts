@@ -26,6 +26,7 @@ import { keccak256, toHex, parseAbi, BaseError, ContractFunctionRevertedError } 
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId } from "wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
+import { FULFILMENT_V2_SCHEMA_KEY, TOPOLOGY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 import {
     deriveCanonicalFulfilmentMethod,
     type CanonicalFulfilmentMethod,
@@ -347,7 +348,7 @@ export function requiredCounterpartySchemas(manifest: AssemblyManifest): string[
 
     function coordinationsOf(agreement: Agreement): string[] {
         const section = agreement.sections.find(
-            (s: { schema: string }) => s.schema === "figaro-fulfilment-v2",
+            (s: { schema: string }) => s.schema === FULFILMENT_V2_SCHEMA_KEY,
         ) as { data?: { coordinations?: unknown } } | undefined;
         const coords = section?.data?.coordinations;
         return Array.isArray(coords) ? coords.filter((c): c is string => typeof c === "string") : [];
@@ -355,7 +356,7 @@ export function requiredCounterpartySchemas(manifest: AssemblyManifest): string[
 
     function parentOrderIds(agreement: Agreement): string[] {
         const section = agreement.sections.find(
-            (s: { schema: string }) => s.schema === "figaro-topology-v1",
+            (s: { schema: string }) => s.schema === TOPOLOGY_SCHEMA_KEY,
         ) as { data?: { parentOrderHashes?: unknown } } | undefined;
         const parents = section?.data?.parentOrderHashes;
         return Array.isArray(parents) ? parents.filter((p): p is string => typeof p === "string") : [];
@@ -560,7 +561,7 @@ function extractRootFulfilment(
     const agreement = manifest.agreements[rootOrder.agreementHash];
     if (!agreement) return empty;
     const fulfilmentSection = agreement.sections.find(
-        (s: { schema: string }) => s.schema === "figaro-fulfilment-v2",
+        (s: { schema: string }) => s.schema === FULFILMENT_V2_SCHEMA_KEY,
     );
     const data = fulfilmentSection?.data as
         | { modalities?: unknown; coordinations?: unknown }
