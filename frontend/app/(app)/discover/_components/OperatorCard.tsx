@@ -10,6 +10,7 @@ import {
     type Listing,
     listingClickThroughHref,
 } from "@/lib/shared/operatorListing";
+import { useOperatorTrackRecord } from "@/lib/mechanisms/useOperatorTrackRecord";
 
 function distinctAssemblySlugs(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => b.assemblySlug)));
@@ -47,6 +48,7 @@ export function OperatorCard({
 }: OperatorCardProps) {
     const href = listingClickThroughHref(listing);
     const assemblies = distinctAssemblySlugs(listing);
+    const { trackRecord } = useOperatorTrackRecord(listing.address);
 
     return (
         <article
@@ -97,6 +99,19 @@ export function OperatorCard({
                     {listing.addressText && listing.geohash ? (
                         <span className="font-mono text-gray-400 ml-2">({listing.geohash})</span>
                     ) : null}
+                </p>
+            )}
+
+            {/* Track record — public-graph-derived. Rendered only once the
+                operator has completed a process; the absence of the line is
+                itself the signal, matching the detail page's honest empty
+                state. The full breakdown lives on /m/[operator]. */}
+            {trackRecord && trackRecord.completedProcesses > 0 && (
+                <p className="text-xs text-gray-600 mb-3" data-testid="card-track-record">
+                    <span className="font-semibold text-black tabular-nums">
+                        {trackRecord.completedProcesses}
+                    </span>
+                    {" processes completed on the public graph"}
                 </p>
             )}
 

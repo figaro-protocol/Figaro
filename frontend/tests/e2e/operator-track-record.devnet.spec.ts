@@ -3,10 +3,9 @@
  *
  * The operator track record reflects real on-chain history. Runs a full
  * local-commerce scenario (buyer commits → merchant + courier coordinate →
- * buyer resolves), then loads each operator's /m/[operator] page and
- * asserts OperatorTrackRecord shows the settlement + coordination history
- * the public graph now carries — recomputed live from events, not a stored
- * score.
+ * buyer resolves), then asserts the track record reflects it — on each
+ * operator's /m/[operator] page and on the /discover card-level summary.
+ * Every figure is recomputed live from events, not a stored score.
  *
  * Requires Anvil + ./deploy-local.sh + Kubo + a seeded devnet.
  */
@@ -106,5 +105,13 @@ test.describe('Operator track record reflects on-chain history (devnet)', () => 
             .toBeGreaterThanOrEqual(1);
         expect(Number(await page.getByTestId('track-stat-attestations').textContent()))
             .toBeGreaterThanOrEqual(1);
+
+        // ── The /discover card-level summary reflects it too ──────────
+        await page.goto('/discover?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        const mercatoCard = page
+            .locator('[data-testid="operator-card"]')
+            .filter({ hasText: 'Mercato General' });
+        await expect(mercatoCard.getByTestId('card-track-record'))
+            .toContainText('completed', { timeout: 30000 });
     });
 });
