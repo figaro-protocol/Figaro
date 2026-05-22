@@ -74,7 +74,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         ],
         references: [
             { label: "Protocol — two mechanisms", href: "/protocol", note: "two-mechanism + contract-law overview" },
-            { label: "FIG design", href: "/fig/design", note: "token as Schelling-point coordination signal" },
+            { label: "RPGF", href: "/rpgf", note: "the schema-author reward formula" },
         ],
     },
     {

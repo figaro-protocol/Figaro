@@ -18,7 +18,7 @@ const PUBLIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[numb
     { path: "/builders/composability", changeFrequency: "monthly", priority: 0.7 },
     { path: "/local-commerce", changeFrequency: "weekly", priority: 0.8 },
     { path: "/fig", changeFrequency: "weekly", priority: 0.8 },
-    { path: "/fig/design", changeFrequency: "monthly", priority: 0.7 },
+    { path: "/rpgf", changeFrequency: "monthly", priority: 0.7 },
     { path: "/schemas", changeFrequency: "weekly", priority: 0.7 },
     { path: "/integrate", changeFrequency: "weekly", priority: 0.7 },
     { path: "/operators", changeFrequency: "weekly", priority: 0.7 },

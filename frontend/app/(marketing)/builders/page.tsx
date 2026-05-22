@@ -77,6 +77,12 @@ export default function BuildersPage() {
                     </Link>
                     <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
                 </li>
+                <li>
+                    <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">
+                        The reward
+                    </Link>
+                    <span className="text-ink-body"> &mdash; how schema authors get paid: 60% of the FIG supply, by a fixed formula, for schemas that get used.</span>
+                </li>
             </ul>
         </section>
     );

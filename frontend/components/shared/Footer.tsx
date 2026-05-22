@@ -36,7 +36,7 @@ export function Footer() {
                             <Link href="/research" className={COL_LINK_CLS}>Research</Link>
                             <Link href="/discover" className={COL_LINK_CLS}>Discover operators</Link>
                             <Link href="/fig" className={COL_LINK_CLS}>FIG Token</Link>
-                            <Link href="/fig/design" className={COL_LINK_CLS}>FIG Design</Link>
+                            <Link href="/rpgf" className={COL_LINK_CLS}>RPGF</Link>
                         </div>
                     </div>
                     <div>
