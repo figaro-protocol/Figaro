@@ -16,7 +16,7 @@ export default function Composability() {
                 title="What the kernel's narrowness produces."
                 lead={
                     <>
-                        <code>FigaroCore</code> takes no position on currency, jurisdiction, identity, arbitration, role structure, price-discovery, or contribution metric. Every other question lives above &mdash; permissionless to add, permissionless to fork, equally bound by the same Nash equilibrium. The mechanism derivation is on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>; identity / lineage / posture on <Link href="/about" className="underline">About</Link>.
+                        <code>FigaroCore</code> takes no position on currency, jurisdiction, identity, arbitration, role structure, price-discovery, or contribution metric. Every other question lives above &mdash; permissionless to add, permissionless to fork, equally bound by the same Nash equilibrium. The mechanism derivation is on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>.
                     </>
                 }
             />
@@ -24,10 +24,6 @@ export default function Composability() {
             <MarketingSection title="Anyone can express anything; the equilibrium does not care.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Because the kernel only enforces bonded-commitment settlement, the graph above it is unconstrained. A market-liberal graph where every role is priced at auction, a cooperative graph where surplus routes back to contributors via programmatic shares, a mutual-aid graph where bonds are reciprocal rather than monetary &mdash; all use the same kernel. The ideological commitments live in the assembly, not in <code>FigaroCore</code>.
-                </p>
-                <p className="text-sm text-ink-muted">
-                    Full multi-graph treatment, including the political-posture frame, on{" "}
-                    <Link href="/about" className="underline">About &mdash; Ideological agnosticism</Link>.
                 </p>
             </MarketingSection>
 

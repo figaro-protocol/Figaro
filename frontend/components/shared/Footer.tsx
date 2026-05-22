@@ -44,7 +44,6 @@ export function Footer() {
                     <div>
                         <h4 className={COL_HEADER_CLS}>About</h4>
                         <div className="space-y-2">
-                            <Link href="/about" className={COL_LINK_CLS}>About Figaro</Link>
                             <a
                                 href="https://github.com/figaro-protocol"
                                 target="_blank"

@@ -203,7 +203,6 @@ const state = reconstruct(events);
                     <Link href="/builders" className="underline">Builders</Link>{" "}(composition tools);&nbsp;
                     <Link href="/local-commerce" className="underline">Local Commerce</Link>{" "}(reference assembly);&nbsp;
                     <Link href="/discover" className="underline">Discover</Link>{" "}(operator catalogue);&nbsp;
-                    <Link href="/compliance" className="underline">Compliance</Link>{" "}(audit framework consuming reconstructed state);&nbsp;
                     <Link href="/schemas" className="underline">Schemas</Link>{" "}(attestation content for indexers).
                 </p>
             </MarketingSection>
