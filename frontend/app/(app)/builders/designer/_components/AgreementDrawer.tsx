@@ -37,9 +37,12 @@ import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import {
     COMMERCE_SCHEMA_KEY,
+    CONSENT_SCHEMA_KEY,
     COURIER_PROCESS_SCHEMA_KEY,
+    FULFILMENT_V2_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
     GHG_DISCLOSURE_SCHEMA_KEYS,
+    JURISDICTION_SCHEMA_KEY,
     MERCHANT_PROCESS_SCHEMA_KEY,
 } from "@/lib/core/agreementManifest";
 import { getSchemaInfo } from "@/lib/shared/schemaCategories";
@@ -223,6 +226,9 @@ export function AgreementDrawer({
     const geoAvailable = isOnChain(GEO_SCHEMA_KEY);
     const merchantProcessAvailable = isOnChain(MERCHANT_PROCESS_SCHEMA_KEY);
     const courierProcessAvailable = isOnChain(COURIER_PROCESS_SCHEMA_KEY);
+    const fulfilmentAvailable = isOnChain(FULFILMENT_V2_SCHEMA_KEY);
+    const jurisdictionAvailable = isOnChain(JURISDICTION_SCHEMA_KEY);
+    const consentAvailable = isOnChain(CONSENT_SCHEMA_KEY);
     const availableGhgKeys = useMemo<readonly string[]>(
         () =>
             onChainSchemas === null
@@ -711,18 +717,28 @@ export function AgreementDrawer({
 
                     {openSection === "fulfilment" && (
                         <section data-testid="drawer-section-fulfilment">
-                            <FulfilmentArticle
-                                isCourierOrder={isCourierOrder}
-                                modalities={fulfilmentModalities}
-                                coordinations={fulfilmentCoordinations}
-                                handoffPoints={fulfilmentHandoffPoints}
-                                proximityBands={proximityBands}
-                                onChange={updateFulfilment}
-                                onProximityChange={updateProximityBands}
-                                hasChildren={hasChildren}
-                                onDeliveryAdded={() => order && onDeliverySelected?.(order.id)}
-                                onDeliveryRemoved={() => order && onDeliveryUnselected?.(order.id)}
-                            />
+                            {fulfilmentAvailable ? (
+                                <FulfilmentArticle
+                                    isCourierOrder={isCourierOrder}
+                                    modalities={fulfilmentModalities}
+                                    coordinations={fulfilmentCoordinations}
+                                    handoffPoints={fulfilmentHandoffPoints}
+                                    proximityBands={proximityBands}
+                                    onChange={updateFulfilment}
+                                    onProximityChange={updateProximityBands}
+                                    hasChildren={hasChildren}
+                                    onDeliveryAdded={() => order && onDeliverySelected?.(order.id)}
+                                    onDeliveryRemoved={() => order && onDeliveryUnselected?.(order.id)}
+                                />
+                            ) : (
+                                <p
+                                    className="text-xs text-amber-700"
+                                    data-testid="drawer-fulfilment-unavailable"
+                                >
+                                    <code className="font-mono text-[11px]">{FULFILMENT_V2_SCHEMA_KEY}</code>{" "}
+                                    is not registered on the network this site is reading; this article is unavailable.
+                                </p>
+                            )}
                         </section>
                     )}
 
@@ -738,29 +754,49 @@ export function AgreementDrawer({
 
                     {openSection === "jurisdiction" && (
                         <section data-testid="drawer-section-jurisdiction">
-                            <JurisdictionArticle
-                                klerosCourt={klerosCourtValue}
-                                klerosMinJurors={klerosMinJurorsValue}
-                                applicableLaw={applicableLawValue}
-                                forum={forumValue}
-                                language={languageValue}
-                                klerosOptedIn={klerosOptedIn}
-                                onKlerosCourtChange={setKlerosCourt}
-                                onKlerosMinJurorsChange={setKlerosMinJurors}
-                                onTraditionalFieldChange={setTraditionalField}
-                                onClearTraditional={clearTraditional}
-                            />
+                            {jurisdictionAvailable ? (
+                                <JurisdictionArticle
+                                    klerosCourt={klerosCourtValue}
+                                    klerosMinJurors={klerosMinJurorsValue}
+                                    applicableLaw={applicableLawValue}
+                                    forum={forumValue}
+                                    language={languageValue}
+                                    klerosOptedIn={klerosOptedIn}
+                                    onKlerosCourtChange={setKlerosCourt}
+                                    onKlerosMinJurorsChange={setKlerosMinJurors}
+                                    onTraditionalFieldChange={setTraditionalField}
+                                    onClearTraditional={clearTraditional}
+                                />
+                            ) : (
+                                <p
+                                    className="text-xs text-amber-700"
+                                    data-testid="drawer-jurisdiction-unavailable"
+                                >
+                                    <code className="font-mono text-[11px]">{JURISDICTION_SCHEMA_KEY}</code>{" "}
+                                    is not registered on the network this site is reading; this article is unavailable.
+                                </p>
+                            )}
                         </section>
                     )}
 
                     {openSection === "consent" && (
                         <section data-testid="drawer-section-consent">
-                            <ConsentArticle
-                                documents={consentDocuments}
-                                onAdd={addConsentDocument}
-                                onUpdate={updateConsentDocument}
-                                onRemove={removeConsentDocument}
-                            />
+                            {consentAvailable ? (
+                                <ConsentArticle
+                                    documents={consentDocuments}
+                                    onAdd={addConsentDocument}
+                                    onUpdate={updateConsentDocument}
+                                    onRemove={removeConsentDocument}
+                                />
+                            ) : (
+                                <p
+                                    className="text-xs text-amber-700"
+                                    data-testid="drawer-consent-unavailable"
+                                >
+                                    <code className="font-mono text-[11px]">{CONSENT_SCHEMA_KEY}</code>{" "}
+                                    is not registered on the network this site is reading; this article is unavailable.
+                                </p>
+                            )}
                         </section>
                     )}
 
