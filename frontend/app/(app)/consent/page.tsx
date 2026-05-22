@@ -10,7 +10,7 @@
  *      transaction.
  *   3. post-sign   — confirmation: PDF download + IPFS CIDs (document +
  *      receipt) + "Continue to app" button. Sets `figaro-consent-complete`
- *      flag and redirects to `/terminal`.
+ *      flag and redirects to `/discover`.
  *
  * The signature is the artifact. The Figaro consent schema (`figaro-consent-v1`)
  * defines the typed-data shape the protocol uses for any future flow that
@@ -250,7 +250,7 @@ export default function ConsentPage() {
         } catch {
             // localStorage unavailable — continue anyway.
         }
-        router.push("/terminal");
+        router.push("/discover");
     };
 
     return (

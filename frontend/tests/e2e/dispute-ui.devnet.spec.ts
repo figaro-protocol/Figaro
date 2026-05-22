@@ -96,7 +96,7 @@ test.describe('Dispute create + evidence via the audit page (devnet)', () => {
         });
 
         // F8: DisputeStatusPanel is process-scoped on the audit page — the
-        // route param drives it directly (no /terminal viewed-process shim).
+        // route param drives it directly.
         await gotoAsWallet(page, ANVIL_ACCOUNTS[0], `/audit/${processId}?e2e=devnet`);
 
         // The Raise Dispute button is disabled until the wallet connects.

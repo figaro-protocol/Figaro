@@ -6,9 +6,9 @@
  * `submit-disclosure-inventory` — when an order's committed agreement
  * carries the corresponding clause.
  *
- * Pre-fix, the GHGWorkflowPanel at `/terminal` read for these
- * capabilities but the runtime never emitted them; the submit
- * affordances were unreachable in production. The fix landed in
+ * Pre-fix, the GHGWorkflowPanel read for these capabilities but the
+ * runtime never emitted them; the submit affordances were unreachable
+ * in production. The fix landed in
  * `lib/semantic/deriveProcessModelFromRuntime.ts:roleCapabilities`.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

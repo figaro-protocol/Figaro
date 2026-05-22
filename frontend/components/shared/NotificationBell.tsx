@@ -61,20 +61,19 @@ export function NotificationBell({ theme = "dark" }: NotificationBellProps) {
     };
 
     const handleNotificationClick = (notification: typeof notifications[number]) => {
-        const shouldNavigate = !!(notification.processId || notification.orderId) && pathname !== "/terminal";
-
         markAsRead(notification.id);
         if (notification.processId) {
             setViewedProcessId(notification.processId);
         }
-
-        if (shouldNavigate) {
-            setIsOpen(false);
-            router.push("/terminal");
-            return;
-        }
-
+        // The process viewer is /orders/[processId]; an order-only
+        // notification falls back to the orders list.
+        const target = notification.processId
+            ? `/orders/${notification.processId}`
+            : notification.orderId ? "/orders" : null;
         setIsOpen(false);
+        if (target && pathname !== target) {
+            router.push(target);
+        }
     };
 
     const formatTime = (timestamp: number) => {

@@ -6,7 +6,7 @@ const SITE_URL =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
     "https://figaro.example";
 
-// Public surface. Per-instance / interactive surfaces (/sign, /terminal,
+// Public surface. Per-instance / interactive surfaces (/sign,
 // /i/[slug], /console, /evidence-display, /fig/claim, /builders/{designer,
 // authoring,assemblies,prototype}) are excluded.
 const PUBLIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }[] = [

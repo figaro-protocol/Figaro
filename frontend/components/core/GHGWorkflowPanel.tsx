@@ -11,7 +11,6 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
-import { useOrderStore } from "@/lib/core/store";
 import {
     useProcessDisclosureSummary,
     useOrderDisclosureTasks,
@@ -197,17 +196,16 @@ function OrderAttestationDetail({
 
 // ── Main panel ───────────────────────────────────────────────────────────────
 
-export function GHGWorkflowPanel() {
-    const viewedProcessId = useOrderStore((state) => state.viewedProcessId);
-    const { summary, loading } = useProcessDisclosureSummary(viewedProcessId as Hex | undefined);
+export function GHGWorkflowPanel({ processId }: { processId: string }) {
+    const { summary, loading } = useProcessDisclosureSummary(processId as Hex | undefined);
     const {
         processModel,
         executableCapabilityIds,
         executeCapability,
-    } = useSemanticProcessWorkspace({ processId: viewedProcessId });
+    } = useSemanticProcessWorkspace({ processId });
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
-    if (!viewedProcessId) {
+    if (!processId) {
         return (
             <Card className="bg-white text-black border border-gray-200 shadow-sm" data-testid="ghg-workflow-panel">
                 <div className="p-6 space-y-3">

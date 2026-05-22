@@ -5,7 +5,6 @@ export {
     approveIfNeeded,
     waitAndApproveIfNeeded,
     waitForApproved,
-    waitForCreateConfirm,
     waitForWalletConnected,
     waitForWalletReady,
 } from './test-helpers';

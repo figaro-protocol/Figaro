@@ -7,8 +7,8 @@
  * Capital, GHG) over a react-flow canvas. Pure presentation: takes orders
  * as props, owns no live-state hooks. Consumers:
  *
- *   - OrderGraph (live consumer): reads orders from useOrderStore +
- *     useProcessOrders, renders into the terminal workspace.
+ *   - live process-graph consumers read orders from useOrderStore +
+ *     useProcessOrders and render via this canvas.
  *   - DesignerProcessCanvas (planned): feeds synthetic orders for the
  *     /builders/designer/new flow.
  *
@@ -450,7 +450,7 @@ export interface ProcessGraphCanvasProps {
      *     (empty / partial / complete per drawer category).
      *   - Node `cursor:pointer` + a tooltip signal that nodes are
      *     click-to-edit.
-     * Live workspaces (e.g. /terminal) omit this prop and keep the lens UI.
+     * Live workspaces omit this prop and keep the lens UI.
      */
     designerMode?: boolean;
 }

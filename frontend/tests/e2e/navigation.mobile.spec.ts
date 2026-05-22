@@ -10,20 +10,20 @@ import { NAV_LINKS } from '../../components/shared/navLinks';
 import { waitForReactHydration } from './test-helpers';
 
 /**
- * Navigate to `/terminal` and wait for the hamburger button to be
+ * Navigate to an app page and wait for the hamburger button to be
  * hydrated. `MobileNav` is a `"use client"` component — clicking the
  * hamburger before React attaches its `onClick` handler lands focus
  * on the button but never fires `setIsOpen`, leaving the drawer
  * unmounted and the test flaky.
  */
-async function gotoTerminalHydrated(page: Page): Promise<void> {
-    await page.goto('/terminal?e2e=mock', { waitUntil: 'load' });
+async function gotoAppNavHydrated(page: Page): Promise<void> {
+    await page.goto('/orders?e2e=mock', { waitUntil: 'load' });
     await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
 }
 
 test.describe('Mobile navigation (Pixel 5)', () => {
     test('hamburger is visible and desktop nav is hidden', async ({ page }) => {
-        await gotoTerminalHydrated(page);
+        await gotoAppNavHydrated(page);
 
         const hamburger = page.getByRole('button', { name: 'Toggle mobile menu' });
         await expect(hamburger).toBeVisible();
@@ -33,7 +33,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     });
 
     test('clicking hamburger opens the drawer, close button closes it', async ({ page }) => {
-        await gotoTerminalHydrated(page);
+        await gotoAppNavHydrated(page);
 
         const hamburger = page.getByRole('button', { name: 'Toggle mobile menu' });
         await hamburger.click();
@@ -51,7 +51,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     });
 
     test('clicking a drawer link navigates and closes the drawer', async ({ page }) => {
-        await gotoTerminalHydrated(page);
+        await gotoAppNavHydrated(page);
 
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
@@ -65,7 +65,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     });
 
     test('backdrop click closes the drawer', async ({ page }) => {
-        await gotoTerminalHydrated(page);
+        await gotoAppNavHydrated(page);
 
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });

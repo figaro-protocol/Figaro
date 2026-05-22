@@ -93,7 +93,7 @@ test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
 
         // Build a buyer-signed CommitmentPayload. Mirrors what
         // useCommitmentFlow.initiate would have produced if the buyer
-        // had walked the /terminal share flow.
+        // had walked the commitment-share flow.
         const buyer = privateKeyToAccount(BUYER_KEY);
         const seller = privateKeyToAccount(SELLER_KEY);
         const payment = 1_000000000000000000n; // 1 ETH

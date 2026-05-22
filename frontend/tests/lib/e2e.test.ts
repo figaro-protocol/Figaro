@@ -21,12 +21,12 @@ describe("shared e2e helpers", () => {
     });
 
     it("reads mock and devnet modes from the browser session", () => {
-        window.history.replaceState({}, "", "/terminal?e2e=mock");
+        window.history.replaceState({}, "", "/orders?e2e=mock");
         expect(getE2EModeSession()).toBe("mock");
         expect(isE2EMockSession()).toBe(true);
         expect(isE2EDevnetSession()).toBe(false);
 
-        window.history.replaceState({}, "", "/terminal?e2e=devnet");
+        window.history.replaceState({}, "", "/orders?e2e=devnet");
         expect(getE2EModeSession()).toBe("devnet");
         expect(isE2EMockSession()).toBe(false);
         expect(isE2EDevnetSession()).toBe(true);

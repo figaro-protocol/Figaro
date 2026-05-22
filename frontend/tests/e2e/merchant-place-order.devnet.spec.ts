@@ -5,9 +5,7 @@
  * on `/m/[merchant]` (cart → btn-place-order → approval → commit →
  * redirect to /orders/<processId>) had no devnet coverage. G11
  * (`merchant-page.devnet.spec.ts`) covers the browse + cart-add
- * surface but stops short of the commit; the kernel commit path is
- * exercised by lifecycle.devnet from a different entry point
- * (/terminal create-order form), so the merchant-page-specific
+ * surface but stops short of the commit; the merchant-page-specific
  * checkout pipeline was the gap.
  *
  * What this exercises:

@@ -90,7 +90,7 @@ describe("GHGWorkflowPanel", () => {
     it("routes disclosure writes through the semantic capability executor", async () => {
         const user = userEvent.setup();
 
-        render(<GHGWorkflowPanel />);
+        render(<GHGWorkflowPanel processId="0xtestprocess" />);
 
         await user.click(screen.getByRole("button", { name: /root-order/i }));
         await user.click(screen.getByRole("button", { name: /submit commitment/i }));

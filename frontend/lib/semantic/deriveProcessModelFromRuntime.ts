@@ -81,8 +81,8 @@ function roleCapabilities(_order: Order, _address?: string, _isE2EMock = false):
     // behavior; the seller's own wallet sees their own commitments.
     //
     // GHGWorkflowPanel reads these capabilities to surface the
-    // "Submit commitment" / "Submit inventory" affordances at
-    // /terminal. Without this derivation the panel renders but its
+    // "Submit commitment" / "Submit inventory" affordances on the
+    // order page. Without this derivation the panel renders but its
     // submit buttons stay disabled (no executable capability).
     if (isSeller && order.agreementHash) {
         const agreement = loadAgreement(order.agreementHash as Hex);

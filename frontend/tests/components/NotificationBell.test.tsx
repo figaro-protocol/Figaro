@@ -79,18 +79,18 @@ describe("NotificationBell", () => {
         expect(screen.getByText("New Order Committed")).toBeInTheDocument();
     });
 
-    it("marks a notification as read, selects the process, and routes to the terminal", async () => {
+    it("marks a notification as read, selects the process, and routes to the order page", async () => {
         const user = userEvent.setup();
         render(<NotificationBell />);
         await user.click(screen.getByRole("button", { name: /notifications: 1 unread/i }));
         await user.click(screen.getByLabelText(/unread notification: new order committed/i));
         expect(mocks.markAsReadMock).toHaveBeenCalledWith("notif-1");
         expect(mocks.setViewedProcessIdMock).toHaveBeenCalledWith("0xprocess");
-        expect(mocks.pushMock).toHaveBeenCalledWith("/terminal");
+        expect(mocks.pushMock).toHaveBeenCalledWith("/orders/0xprocess");
     });
 
-    it("does not push when already on the terminal", async () => {
-        mocks.pathnameMock.mockReturnValue("/terminal");
+    it("does not push when already on the order page", async () => {
+        mocks.pathnameMock.mockReturnValue("/orders/0xprocess");
         const user = userEvent.setup();
         render(<NotificationBell />);
         await user.click(screen.getByRole("button", { name: /notifications: 1 unread/i }));

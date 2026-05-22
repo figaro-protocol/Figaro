@@ -8,9 +8,9 @@ import { hexEqual } from "@/lib/shared/evm";
  * Independent of the local-commerce-shaped `OperatorCatalogue` type:
  * a `Listing` is the projection of (subject + bindings + optional metadata)
  * into a shape the `OperatorCard` can render across any assembly. An
- * operator with zero bindings still produces a `Listing`; clicking such a
- * listing routes to `/terminal?seller=<address>` rather than to an
- * assembly runtime. An operator with multiple bindings carries them all
+ * operator with zero bindings still produces a `Listing`; clicking any
+ * listing routes to its `/m/<address>` detail page. An operator with
+ * multiple bindings carries them all
  * so the card can display assembly badges and the click-through can pick
  * the primary.
  */
@@ -151,18 +151,11 @@ export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): 
 }
 
 /**
- * Given a listing's bindings, pick the destination URL for a card click.
- * - 1+ bindings → `/m/<address>` (per-merchant detail page)
- * - 0 bindings → `/terminal?seller=<address>` (kernel-direct commit fallback)
- *
- * The merchant detail page (Increment 3) replaces the prior shape that
- * routed buyers into a generic assembly runtime keyed by `?operator=`. The
- * /m page itself reads the merchant's catalogue and bindings — assembly
- * disambiguation now happens inside that page when relevant.
+ * The destination URL for a listing card click: the per-merchant detail
+ * page. The /m page reads the merchant's catalogue and bindings; assembly
+ * disambiguation happens inside that page. An operator with no bindings
+ * still has a /m page — it surfaces the catalogue without a fulfilment path.
  */
 export function listingClickThroughHref(listing: Listing): string {
-    if (listing.bindings.length === 0) {
-        return `/terminal?seller=${listing.address}`;
-    }
     return `/m/${listing.address}`;
 }

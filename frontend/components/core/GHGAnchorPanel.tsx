@@ -5,7 +5,6 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
-import { useOrderStore } from "@/lib/core/store";
 import {
     useProcessDisclosureSummary,
     formatActualGrams,
@@ -18,11 +17,10 @@ import { GHG_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 import { truncateHex } from "@/lib/shared/formatHex";
 import type { Hex } from "viem";
 
-export function GHGAnchorPanel() {
-    const viewedProcessId = useOrderStore((state) => state.viewedProcessId);
-    const { summary, loading } = useProcessDisclosureSummary(viewedProcessId as Hex | undefined);
+export function GHGAnchorPanel({ processId }: { processId: string }) {
+    const { summary, loading } = useProcessDisclosureSummary(processId as Hex | undefined);
 
-    if (!viewedProcessId) {
+    if (!processId) {
         return (
             <Card className="bg-white text-black border border-gray-200 shadow-sm" data-testid="ghg-anchor-panel">
                 <div className="p-6 space-y-3">
