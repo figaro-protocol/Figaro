@@ -20,10 +20,10 @@ interface Props {
     isLoading: boolean;
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, testId }: { label: string; value: string; testId: string }) {
     return (
         <div className="rounded border border-neutral-200 px-3 py-2">
-            <div className="text-lg font-semibold text-black tabular-nums">{value}</div>
+            <div className="text-lg font-semibold text-black tabular-nums" data-testid={testId}>{value}</div>
             <div className="text-xs text-neutral-500">{label}</div>
         </div>
     );
@@ -59,14 +59,14 @@ export function OperatorTrackRecord({ record, isLoading }: Props) {
             ) : (
                 <>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        <Stat label="processes completed" value={String(record.completedProcesses)} />
-                        <Stat label="processes active" value={String(record.activeProcesses)} />
-                        <Stat label="orders sold" value={String(record.ordersSold)} />
-                        <Stat label="orders bought" value={String(record.ordersBought)} />
-                        <Stat label="buyers served" value={String(record.buyersServed)} />
-                        <Stat label="sellers used" value={String(record.sellersUsed)} />
-                        <Stat label="auction jobs won" value={String(record.auctionJobsWon)} />
-                        <Stat label="attestations emitted" value={String(record.attestationsEmitted)} />
+                        <Stat testId="track-stat-completed" label="processes completed" value={String(record.completedProcesses)} />
+                        <Stat testId="track-stat-active" label="processes active" value={String(record.activeProcesses)} />
+                        <Stat testId="track-stat-orders-sold" label="orders sold" value={String(record.ordersSold)} />
+                        <Stat testId="track-stat-orders-bought" label="orders bought" value={String(record.ordersBought)} />
+                        <Stat testId="track-stat-buyers-served" label="buyers served" value={String(record.buyersServed)} />
+                        <Stat testId="track-stat-sellers-used" label="sellers used" value={String(record.sellersUsed)} />
+                        <Stat testId="track-stat-auction-jobs" label="auction jobs won" value={String(record.auctionJobsWon)} />
+                        <Stat testId="track-stat-attestations" label="attestations emitted" value={String(record.attestationsEmitted)} />
                     </div>
 
                     {record.valueTransacted.length > 0 && (
