@@ -1324,6 +1324,9 @@ export async function placeLocalCommerceOrderUI(
         fulfilmentMode?: string;
         geohash?: string;
         deliveryAddress?: string;
+        /** buyer-assigned coordination — the courier the buyer picks, by
+         *  catalogue name. Selected after the fulfilment mode, before placing. */
+        courierName?: string;
     },
 ): Promise<Hex> {
     const fulfilmentMode = opts.fulfilmentMode ?? 'deliver:seller-assigned';
@@ -1353,6 +1356,10 @@ export async function placeLocalCommerceOrderUI(
     await page.getByTestId('select-fulfilment-mode').selectOption(fulfilmentMode);
     await page.getByTestId('input-delivery-geohash').fill(geohash);
     await page.getByTestId('input-delivery-address').fill(deliveryAddress);
+    if (opts.courierName) {
+        // buyer-assigned coordination — the buyer picks the courier by name.
+        await page.getByTestId('select-buyer-courier').selectOption({ label: opts.courierName });
+    }
     await page.getByTestId('btn-place-order').click();
 
     for (let i = 0; i < 2; i++) {

@@ -237,6 +237,18 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // The human-readable street address — sent to the courier over the
     // coordination channel (off-agreement; the operational delivery detail).
     const [deliveryAddress, setDeliveryAddress] = useState("");
+    // buyer-assigned coordination: the buyer picks the courier at checkout.
+    const [selectedCourier, setSelectedCourier] = useState("");
+    // Delivery-offering operators the buyer may pick as the courier — any
+    // registered operator with a `delivery`-category catalogue item; the
+    // merchant itself is excluded.
+    const availableCouriers = useMemo(
+        () => restaurants.filter(
+            (r) => !hexEqual(r.address, merchantAddressLower)
+                && r.menu.some((i) => i.category === "delivery"),
+        ),
+        [restaurants, merchantAddressLower],
+    );
 
     // Auto-chain: when approval confirms, proceed to commit signing.
     useEffect(() => {
@@ -517,15 +529,22 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 return;
             }
 
-            // The courier wallet is the operator's designated courier for
-            // this assembly (seller-assigned coordination; dutch-auction /
-            // buyer-assigned courier selection is follow-on work).
-            const courier = pickedAssembly!.counterpartyBindings
-                .find((cb) => cb.schemaId === "figaro-courier-process-v1")
-                ?.addresses[0];
+            // The courier: buyer-assigned coordination → the buyer picked one
+            // at checkout; seller-assigned → the merchant designated one in
+            // the assembly's counterpartyBindings. (dutch-auction returned
+            // above.) The courier-order commit below is identical either way.
+            const courier = fulfillmentMode === "deliver:buyer-assigned"
+                ? (selectedCourier ? (selectedCourier as `0x${string}`) : undefined)
+                : pickedAssembly!.counterpartyBindings
+                    .find((cb) => cb.schemaId === "figaro-courier-process-v1")
+                    ?.addresses[0];
             if (!courier) {
                 multiOrderCheckout.current = false;
-                setCheckoutError("This assembly needs a courier, but the merchant has designated none.");
+                setCheckoutError(
+                    fulfillmentMode === "deliver:buyer-assigned"
+                        ? "Choose a courier before placing the order."
+                        : "This assembly needs a courier, but the merchant has designated none.",
+                );
                 return;
             }
 
@@ -966,6 +985,36 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                             rows={2}
                                             className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
                                         />
+
+                                        {fulfillmentMode === "deliver:buyer-assigned" && (
+                                            <div className="space-y-1.5 pt-1">
+                                                <label
+                                                    htmlFor="buyer-courier-select"
+                                                    className="text-xs font-semibold text-neutral-500 block"
+                                                >
+                                                    Choose your courier
+                                                </label>
+                                                <select
+                                                    id="buyer-courier-select"
+                                                    value={selectedCourier}
+                                                    onChange={(e) => setSelectedCourier(e.target.value)}
+                                                    data-testid="select-buyer-courier"
+                                                    className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                                                >
+                                                    <option value="" data-testid="option-buyer-courier-unset">
+                                                        Select a courier…
+                                                    </option>
+                                                    {availableCouriers.map((c) => (
+                                                        <option key={c.address} value={c.address}>
+                                                            {c.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <p className="text-[11px] text-neutral-500">
+                                                    buyer-assigned delivery — you pick the courier; their published rate applies.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -977,6 +1026,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                         || merchantCartItems.length === 0
                                         || !fulfillmentMode
                                         || (fulfillmentMode.startsWith("deliver:") && !deliveryLocation.geohash)
+                                        || (fulfillmentMode === "deliver:buyer-assigned" && !selectedCourier)
                                     }
                                     data-testid="btn-place-order"
                                     className="w-full"
