@@ -68,8 +68,8 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.
 
-- **Component tier** (`tests/components/`, 9 files) — React Testing Library:
-  `Header`, `MobileNav`, `NotificationBell`, `ProcessList`, `ManifestForm`,
+- **Component tier** (`tests/components/`, 8 files) — React Testing Library:
+  `Header`, `MobileNav`, `NotificationBell`, `ManifestForm`,
   `GHGWorkflowPanel`, `TokenAddressInput`, `TokenApprovalFlow`,
   `TokenDecimalDisplayFlows`.
 - **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
@@ -88,21 +88,23 @@ is e2e-only.
 against Anvil + deployed contracts (action in the UI, reaction in the UI). By area:
 
 - Commerce / checkout / order lifecycle: `merchant-page`, `merchant-place-order`,
-  `onsite-purchase`, `commitment-share`, `inbox`, `inbox-accept`, `lifecycle`,
-  `multi-round-composition`, `ui-feedback`.
+  `onsite-purchase`, `inbox`, `inbox-accept`, `multi-round-composition`.
 - Designer + assembly registry: `designer-publish`, `designer-save-draft`,
   `designer-view`, `designer-agreement-drawer`, `designer-delivery-modality`,
   `designer-drafts-delete`, `scenario-direct-sale`, `scenario-local-commerce`,
-  `seeded-assembly-fork`, `published-list-ui`, `assembly-registry`.
+  `scenario-local-commerce-offset`, `seeded-assembly-fork`, `published-list-ui`,
+  `assembly-registry`.
 - Operators: `operators-onboarding`, `operator-edit-ui`,
   `operator-update-profile`, `operator-withdraw`.
 - Order / role surfaces: `seller-timeline`, `spectator-view`, `audit-page`,
-  `audit-page-seller`.
+  `audit-page-seller`, `local-commerce-offset-scenario` (full multi-role
+  emissions-aware runtime: commit → coordinate → emissions → offset → resolve).
 - Attestation + delivery: `buyer-attestation`, `proximity-proof`,
-  `proximity-proof-ui`, `delivery-lifecycle`, `dutch-auction-lifecycle`.
-- GHG / offsets: `ghg-workflow`, `ghg-lens`, `ghg-submit-ui`,
-  `offset-retirement`, `offset-retirement-ui`.
-- Dispute: `dispute-ui`. FIG token: `fig-claim`, `fig-claim-ui`. Permit: `permit`.
+  `proximity-proof-ui`, `dutch-auction-lifecycle`.
+- GHG / offsets: `offset-retirement`, `offset-retirement-ui`. (GHG
+  panel-level coverage now lives end-to-end in
+  `local-commerce-offset-scenario`.)
+- Dispute: `dispute-ui`. FIG token: `fig-claim`, `fig-claim-ui`.
 
 **mobile (`*.mobile.spec.ts`, 1 spec)** — responsive/viewport chrome jsdom
 can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
