@@ -5,10 +5,6 @@ broadcast/
 dist/
 /verify/
 
-# Hardhat (removed — Foundry handles all compilation/testing)
-hh-artifacts/
-hh-cache/
-
 # Node dependencies
 node_modules/
 frontend/node_modules/
@@ -29,9 +25,6 @@ frontend/tsconfig.tsbuildinfo
 # dev/e2e runs; per-machine state, not source.
 frontend/.figaro/
 .vercel
-
-# Archived legacy frontend (preserved locally; not version-controlled)
-archive-frontend/
 
 # Local Claude Code state. Contributor-facing artifacts (agents/, skills/,
 # hooks/, and project-level settings.json) are tracked as ecosystem artifacts;
@@ -101,15 +94,6 @@ formal/*_TTrace_*.bin
 formal/tla2tools.jar
 tlc_output.txt
 *.tla.backup
-
-# Mythril
-mythril/
-
-# Cairo
-cairo/target/
-cairo/.snfoundry_cache/
-cairo/test_output.txt
-cairo/.coverage*
 
 # Rust / Prover
 prover/target/
