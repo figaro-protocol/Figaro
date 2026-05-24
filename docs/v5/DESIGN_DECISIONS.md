@@ -75,8 +75,12 @@ is a choice, not an exploit.
 
 **Pattern**: FigaroCore, AttestationCoordinator, SchemaRegistry,
 SchemaRegistrationHelper, DutchAuction, OperatorRegistry, AssemblyRegistry,
-ProcessOffsetReceipt, FigaroBatchVerifier, FigToken, and RpgfMinter have no
-owner, no pause function, no upgrade path, and no admin recovery.
+ProcessOffsetReceipt, and FigaroBatchVerifier have no owner, no pause function,
+no upgrade path, and no admin recovery. FigToken has a one-shot deployer who
+registers minter contracts then renounces (`deployerMintRenounced`); RpgfMinter
+has a `submitter` (sequencer wallet) authorized to call `submitRoot` against
+the SP1 verifier — these are bounded privileged actors, documented separately
+in `CONTRACTS.md`.
 
 **Why it looks wrong**: Most protocols include emergency controls for incident
 response.
