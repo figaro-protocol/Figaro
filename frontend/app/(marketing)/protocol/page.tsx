@@ -10,7 +10,7 @@ export default function Protocol() {
     return (
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-2xl">
             <h1 className="text-heading-h1 text-ink-heading mb-3">
-                How the lockbox works.
+                How any two parties can transact directly, anywhere.
             </h1>
             <p className="text-body-lead text-ink-muted italic mb-8">
                 Two deposits, each bigger than the deal. One rule for who opens the box. That is the entire machine.
