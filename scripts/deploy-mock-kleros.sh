@@ -11,7 +11,8 @@ set -e
 # Usage:  ./scripts/deploy-mock-kleros.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/frontend/.env.local"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$REPO_ROOT/frontend/.env.local"
 
 RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
 export DEPLOYER_PRIVATE_KEY="${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
