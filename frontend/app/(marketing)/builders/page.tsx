@@ -34,15 +34,44 @@ export default function BuildersPage() {
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 Figaro is structurally different. Its core &mdash; the part that holds the money and settles the deal &mdash; is finished, frozen, and owned by no one. It cannot be changed, paused, or pointed at new rules; not by a company, not by the people who wrote it. There is nothing to be locked out of, because there is no one to do the locking.
             </p>
-            <p className="text-base text-ink-body leading-relaxed mb-5">
-                What you build on top is open to anyone. The protocol carries structured agreements &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each kind is a schema, and adding a new one is permissionless: you write it, you register it, it is live. No application, no approval, no gatekeeper. Larger compositions and new coordination mechanisms layer on the same way.
+            <h2 className="text-heading-h2 text-ink-heading mt-12 mb-4">
+                Five builders, one substrate.
+            </h2>
+            <p className="text-base text-ink-body leading-relaxed mb-6">
+                Every layer above the frozen kernel is permissionless to extend. Five distinct roles do that work:
             </p>
-            <p className="text-base text-ink-body leading-relaxed mb-5">
-                What you build is used by both people and autonomous agents. The protocol is actor-neutral &mdash; a wallet is a wallet, a signature is a signature &mdash; so the tools you ship reach human and software participants equally.
-            </p>
-            <p className="text-base text-ink-body leading-relaxed mb-5">
-                And here is what no other protocol offers: it pays the people who extend it. Sixty percent of the entire token supply &mdash; 600 million FIG &mdash; is reserved for one group only: the authors of schemas that get used. Not a grant you pitch for &mdash; a formula that measures real adoption (how many separate settled deals your schema carried, across how many distinct counterparties) and routes funding to you accordingly. Build something the network comes to rely on, and the network pays you back.
-            </p>
+            <dl className="space-y-6 text-base mb-8">
+                <div>
+                    <dt className="font-semibold text-ink-heading">Contract authors</dt>
+                    <dd className="text-ink-body leading-relaxed mt-1">
+                        Write new mechanism contracts above the kernel &mdash; auctions, registries, attestation coordinators, role resolvers. Anyone can deploy a new contract; nothing about the existing protocol changes. The kernel is frozen; everything else is permissionless.
+                    </dd>
+                </div>
+                <div>
+                    <dt className="font-semibold text-ink-heading">Schema authors</dt>
+                    <dd className="text-ink-body leading-relaxed mt-1">
+                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each schema is registered permissionlessly: write it, bind a validator, it is live. Sixty percent of the FIG supply (600 million) is reserved for this group, distributed by a fixed formula that measures real adoption across distinct counterparty pairs.
+                    </dd>
+                </div>
+                <div>
+                    <dt className="font-semibold text-ink-heading">Assembly authors</dt>
+                    <dd className="text-ink-body leading-relaxed mt-1">
+                        Compose schemas and roles into multi-party bonded processes. The Designer tool produces drafts on a canvas; publishing anchors the manifest in the AssemblyRegistry, parallel to the schema registry. Assemblies are how new use cases &mdash; delivery, supply chain, freelance work &mdash; get expressed in the protocol&apos;s vocabulary.
+                    </dd>
+                </div>
+                <div>
+                    <dt className="font-semibold text-ink-heading">Token issuance</dt>
+                    <dd className="text-ink-body leading-relaxed mt-1">
+                        Deploy new tokens using protocol primitives. The kernel is token-agnostic for bonding and settlement; any ERC-20 can be the unit of a deal. FIG itself follows this pattern &mdash; a Schelling-point cryptocurrency denominated in the trade the substrate secures.
+                    </dd>
+                </div>
+                <div>
+                    <dt className="font-semibold text-ink-heading">Humans and agents</dt>
+                    <dd className="text-ink-body leading-relaxed mt-1">
+                        Every layer above can be authored by software as easily as by people. The protocol is actor-neutral &mdash; a wallet is a wallet, a signature is a signature. Tooling for human builders is tooling for autonomous agents, and the same.
+                    </dd>
+                </div>
+            </dl>
             <p className="text-base text-ink-body leading-relaxed mb-12">
                 Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; not yet on a public network, not yet independently audited. The reward tranches unlock at years two, five, and nine &mdash; built to reward durable contribution, not a quick flip. What you can do today is read the code, write a schema against the live validator stack, and watch the whole thing settle a deal end to end on a local network.
             </p>
