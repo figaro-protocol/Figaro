@@ -350,7 +350,7 @@ All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No
 - **Mechanism modules:** `DutchAuction.sol`, `OperatorRegistry.sol`, `AssemblyRegistry.sol` (permissionless assembly anchoring — the assembly artifact family's registry, parallel to `SchemaRegistry`/`OperatorRegistry`), `ProcessOffsetReceipt.sol` (Path A carbon-offset receipts anchor — separate primitive per separation-of-concerns; receipts are not attestations, no agreement clause required).
 - **FIG token (`src/fig/`):** `FigToken.sol`, `RpgfMinter.sol`, `IFigMinter.sol`. 1B fixed supply: 100M founders + 300M DAO genesis-minted, 600M schema-author RPGF (yr 2/5/9). Per-tranche Merkle root is submitted at tranche time after an SP1 proof verifies it; aggregation logic lives in `prover/rpgf/` (Rust). FIG is not a governance token; `FigaroBatchVerifier` is not a minter.
 - **Batch verification:** `FigaroBatchVerifier.sol`, `interfaces/ISP1Verifier.sol`, `mocks/MockSP1Verifier.sol`.
-- **Mocks:** `mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`, `MockOffsetAggregator.sol`, `MockKlerosArbitrableProxy.sol`, `MockKlerosArbitrator.sol`; `echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`.
+- **Mocks:** `mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`, `MockOffsetAggregator.sol`, `MockKlerosArbitrableProxy.sol`, `MockKlerosArbitrator.sol`; `echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`, `EchidnaFigToken.sol`, `EchidnaRpgfMinter.sol`.
 
 If `docs/v5/CONTRACTS.md` does not list a contract, treat it as not existing in this repo.
 
@@ -388,7 +388,7 @@ gap). Maintain lockstep.
 
 ## Frontend — Pointer
 
-**`frontend/` is the only active frontend.** The prior frontend was archived to `archive-frontend/` on 2026-04-26 — do not edit it.
+**`frontend/` is the only active frontend.** The prior V4 frontend was moved to `archive-frontend/` on 2026-04-26 and untracked from the repo in `a6110c6` (2026-05-24); it is not present in fresh clones.
 
 Route catalogue, lib map, designer surface, block model, component tree, and wallet-provider scope rules → `docs/v5/FRONTEND.md`.
 

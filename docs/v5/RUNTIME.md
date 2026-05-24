@@ -183,7 +183,7 @@ The first-pass shared runtime implementation seeds now live under `frontend/lib/
 
 The workspace renderer now also consumes bound runtime context to constrain role selection when a connected address matches a bound institution subject, and it scopes the mechanism inspector to the selected role context instead of always showing the full assembly indiscriminately.
 
-Per-operator visual identity in V5 flows through `lib/shared/merchantBranding.ts` + `MerchantBrandingModule` directly from `useOperatorProfile()`. The V4 ENS/IPFS skinning system (per-binding `assets.cssURI`, hydrated asset documents, `data-skin` attributes on 20+ component surfaces) was retired in the V4→V5 narrowing — it shipped in `archive-frontend` but was never re-wired in V5, where the `OperatorRegistry` metadata schema exposes only `logoURI`. See the retired §5 below and the commit chain N1–N5.
+Per-operator visual identity in V5 flows through `lib/shared/merchantBranding.ts` + `MerchantBrandingModule` directly from `useOperatorProfile()`. The V4 ENS/IPFS skinning system (per-binding `assets.cssURI`, hydrated asset documents, `data-skin` attributes on 20+ component surfaces) was retired in the V4→V5 narrowing — it shipped in `archive-frontend` (untracked from the repo in `a6110c6`; not in fresh clones) but was never re-wired in V5, where the `OperatorRegistry` metadata schema exposes only `logoURI`. See the retired §5 below and the commit chain N1–N5.
 ---
 
 # Part 2 — Frontend Runtime Model
@@ -320,7 +320,8 @@ We do not need a separate "view recipe" primitive yet. The current assembly view
 The skin-bundle wrapper layer was retired in the V4→V5 narrowing. The V4
 ENS/IPFS skinning system (per-binding `assets.cssURI`, hydrated asset
 documents, `data-skin` attributes on 20+ surfaces) shipped in the prior
-frontend (`archive-frontend/SKINNING_HOOKS.md`) but was never re-wired in
+frontend (formerly `archive-frontend/SKINNING_HOOKS.md`; untracked from
+the repo in `a6110c6` and not in fresh clones) but was never re-wired in
 V5 — V5's `OperatorRegistry` metadata surface exposes only `logoURI`, and
 no production code constructed a `ResolvedAssemblySkinBundle`.
 

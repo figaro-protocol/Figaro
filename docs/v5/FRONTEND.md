@@ -1,9 +1,10 @@
 # Frontend — Structure
 
 Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend/` is the only
-active frontend.** The prior frontend was archived to
-`archive-frontend/` on 2026-04-26 — do not edit it. If a frontend change is
-needed, it ships in `frontend/` only.
+active frontend.** The prior V4 frontend was moved to `archive-frontend/` on
+2026-04-26 and untracked from the repo in `a6110c6` (2026-05-24); it is not
+present in fresh clones. If a frontend change is needed, it ships in
+`frontend/` only.
 
 CLAUDE.md keeps the active-frontend declaration and indexes this file; the per-route catalogue, lib map, designer surface, and wallet-provider scope live here.
 
