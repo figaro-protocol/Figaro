@@ -15,8 +15,9 @@ set -e
 #   RPC_URL=https://... PRIVATE_KEY=0x... ./scripts/deploy-local.sh  # Any chain
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CORE_ENV="$SCRIPT_DIR/frontend/.env.local"
-DEPLOY_DIR="$SCRIPT_DIR/.deployments"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CORE_ENV="$REPO_ROOT/frontend/.env.local"
+DEPLOY_DIR="$REPO_ROOT/.deployments"
 CORE_MANIFEST="$DEPLOY_DIR/local.json"
 
 RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
