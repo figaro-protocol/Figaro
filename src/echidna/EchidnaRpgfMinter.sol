@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {FigToken} from "../src/fig/FigToken.sol";
-import {RpgfMinter} from "../src/fig/RpgfMinter.sol";
-import {ISP1Verifier} from "../src/interfaces/ISP1Verifier.sol";
+import {FigToken} from "../fig/FigToken.sol";
+import {RpgfMinter} from "../fig/RpgfMinter.sol";
+import {ISP1Verifier} from "../interfaces/ISP1Verifier.sol";
 
 /// @notice Echidna-compatible SP1 verifier — accepts any proof bytes.
 contract EchidnaSP1Verifier is ISP1Verifier {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {FigToken} from "../src/fig/FigToken.sol";
+import {FigToken} from "../fig/FigToken.sol";
 
 /// @title Echidna property-based tests for FigToken
 contract EchidnaFigToken {
