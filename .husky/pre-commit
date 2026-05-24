@@ -1,2 +1,2 @@
 npx lint-staged
-bash lint-claude-md.sh
+bash scripts/lint-claude-md.sh

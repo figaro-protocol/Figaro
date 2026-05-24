@@ -8,11 +8,10 @@
 # Four checks:
 #
 #   1. PATH EXISTENCE — every backticked path-like string in CLAUDE.md
-#      (src/*.sol, script/*.sol, frontend/**/*.{ts,tsx,json},
+#      (src/*.sol, script/*.sol, scripts/*.sh, frontend/**/*.{ts,tsx,json},
 #      docs/v5/*.md, paper/**/*.tex, prover/**/*.rs, sdk/**/*.ts,
-#      .github/**, .claude/**, test/**, formal/**, certora/**,
-#      root-level *.sh) must exist on disk. Optional :LINE or :LINE-RANGE
-#      suffixes are tolerated.
+#      .github/**, .claude/**, test/**, formal/**, certora/**) must
+#      exist on disk. Optional :LINE or :LINE-RANGE suffixes are tolerated.
 #
 #   2. ENV VARS — the set of NEXT_PUBLIC_* keys in CLAUDE.md must equal
 #      the set in frontend/.env.local (when present). Missing-in-doc and
@@ -29,7 +28,7 @@
 #   1 — drift detected
 #
 # Run manually:
-#   bash lint-claude-md.sh
+#   bash scripts/lint-claude-md.sh
 #
 # Wired into .husky/pre-commit so it fires on every commit, even when
 # CLAUDE.md itself wasn't touched — most drift accumulates from
@@ -52,7 +51,7 @@ fi
 # `:LINE` or `:LINE-RANGE` suffix used for source citations.
 paths=$(grep -oE '`[^`]+`' "$CLAUDE_MD" \
     | sed 's/^`//; s/`$//' \
-    | grep -E '^((src|script|frontend|docs/v5|paper|prover|sdk|\.github|\.claude|test|formal|certora|\./)[A-Za-z0-9_./-]+\.(sol|ts|tsx|json|md|tex|rs|sh|yaml|yml)|[A-Za-z0-9_-]+\.sh)(:[0-9-]+)?$' \
+    | grep -E '^(src|script|scripts|frontend|docs/v5|paper|prover|sdk|\.github|\.claude|test|formal|certora|\./)[A-Za-z0-9_./-]+\.(sol|ts|tsx|json|md|tex|rs|sh|yaml|yml)(:[0-9-]+)?$' \
     | sed 's/:[0-9-]*$//' \
     | sort -u)
 

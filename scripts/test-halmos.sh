@@ -40,8 +40,8 @@
 #   which z3 halmos
 #
 # Usage:
-#   ./test-halmos.sh
-#   HALMOS_SOLVER_TIMEOUT_MS=900000 ./test-halmos.sh   # raise per-assertion timeout (ms)
+#   ./scripts/test-halmos.sh
+#   HALMOS_SOLVER_TIMEOUT_MS=900000 ./scripts/test-halmos.sh   # raise per-assertion timeout (ms)
 #
 # Exit codes:
 #   0  — all 7 properties proved

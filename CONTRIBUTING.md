@@ -26,7 +26,7 @@ cd prover && cargo fetch
 
 ```bash
 # Deploy contracts to local Anvil
-./deploy-local.sh
+./scripts/deploy-local.sh
 
 # Start frontend (port 3000)
 cd frontend && npm run dev
@@ -41,12 +41,16 @@ cd sdk && npm test
 cd prover && cargo test
 
 # Mythril analysis (Docker)
-./mythril-docker.sh src/fig/FigToken.sol
+./scripts/mythril-docker.sh src/fig/FigToken.sol
 ```
 
-## Canonical scripts folder
+## Scripts layout
 
-The canonical folder for repo scripts is `script/` (singular). If you add helper scripts, place them in `script/` and update `README.md` accordingly.
+Two distinct folders:
+- `script/` (singular, Foundry-reserved) — `.s.sol` deploy scripts (`Deploy.s.sol`, `DeployMainnet.s.sol`, `DeployMockKleros.s.sol`, `MintTokens.s.sol`).
+- `scripts/` (plural) — shell automation (`deploy-*.sh`, `lint-*.sh`, `test-*.sh`, `mythril-docker.sh`, `coverage.sh`, `setup-local.sh`).
+
+When adding new tooling, pick the folder that matches the file type. Update `README.md` if you add a new entry-point command.
 
 ## Tests and CI
 
@@ -94,7 +98,7 @@ Subagents do not chain directly. The schema-author returns to the main session, 
 cd agents/factotum
 npm install
 cp .env.example .env
-# Edit .env with a fresh test key and addresses from deploy-local.sh
+# Edit .env with a fresh test key and addresses from scripts/deploy-local.sh
 npm run dev
 ```
 

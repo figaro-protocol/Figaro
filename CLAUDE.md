@@ -148,7 +148,7 @@ the same data) is still a finding — that is the "no new helpers" case
 
 ### Documentation Discipline
 
-When a code change makes a doc statement stale, fix the doc in the same session. `lint-claude-md.sh` runs in pre-commit and fails on mechanically-detectable CLAUDE.md drift (broken backticked paths, env-var diff vs `frontend/.env.local`, missing entries in the mocks / deploy-scripts inventories).
+When a code change makes a doc statement stale, fix the doc in the same session. `scripts/lint-claude-md.sh` runs in pre-commit and fails on mechanically-detectable CLAUDE.md drift (broken backticked paths, env-var diff vs `frontend/.env.local`, missing entries in the mocks / deploy-scripts inventories).
 
 **Authoritative docs that must stay in sync** (when code changes, update these):
 
@@ -206,23 +206,23 @@ One test layer per concern. These boundaries are hard; respect them when writing
 # Foundry — must use --via-ir (default profile fails on stack depth)
 forge test --via-ir
 
-# Halmos symbolic execution (z3 solver) — installer-checked wrapper
-./test-halmos.sh
+# Halmos symbolic execution (z3 solver)
+./scripts/test-halmos.sh
 # Prereqs (one-time): brew install z3 && pipx install halmos
 
 # Echidna property-based fuzzing
-./test-echidna.sh
+./scripts/test-echidna.sh
 # Prereqs (one-time): brew install echidna
 
-# TLA+ model checking (24 invariants across 3 models: FigaroCore + FigToken + RpgfMinter)
-./test-tla.sh
-# Prereqs (one-time): Java 11+ and curl tla2tools.jar into formal/ (see script header)
+# TLA+ model checking (24 invariants across 3 models)
+./scripts/test-tla.sh
+# Prereqs (one-time): Java 11+; script auto-fetches tla2tools.jar into formal/
 
 # Certora formal verification (paid cloud service)
-./test-certora.sh
+./scripts/test-certora.sh
 # Prereqs (one-time): pip install certora-cli ; export CERTORAKEY=...
-# Prelude: runs ./lint-token-ops.sh to gate certora/token-ops.inventory
-# against every ERC20 transfer call site in src/.
+# Prelude: scripts/lint-token-ops.sh gates certora/token-ops.inventory against
+# every ERC20 transfer call site in src/.
 
 # Frontend
 cd frontend && npm run type-check
@@ -417,7 +417,7 @@ cd sdk && npm run lint    # tsc --noEmit
 Four project tools run in Docker, not natively on the host:
 
 - **IPFS (Kubo).** Pins operator profiles, catalogues, manifests, uploaded media via `lib/shared/ipfsService.ts`. Endpoint `http://127.0.0.1:5001`; image `ipfs/kubo:latest`. Kubo's default CORS needs the dev origin allowlisted + a restart before pinning works.
-- **Mythril.** Symbolic-execution via `mythril-docker.sh` (image `mythril/myth`). Opportunistic, not in the standard test loop.
+- **Mythril.** Symbolic-execution via `scripts/mythril-docker.sh` (image `mythril/myth`). Opportunistic, not in the standard test loop.
 - **GraphQL indexing (subgraph).** `graph-node` + Postgres stack when a subgraph indexer is being exercised. Opportunistic; no subgraph artifacts currently in the repo.
 - **LaTeX → PDF.** `paper/` builds compile via `texlive/texlive` (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citations). No native LaTeX on the host.
 
@@ -448,7 +448,7 @@ NEXT_PUBLIC_RPGF_MINTER=0x...
 # Batch verifier
 NEXT_PUBLIC_BATCH_VERIFIER=0x...
 
-# Dispute resolution (devnet Kleros mock — set via deploy-mock-kleros.sh)
+# Dispute resolution (devnet Kleros mock — set via scripts/deploy-mock-kleros.sh)
 NEXT_PUBLIC_KLEROS_ARBITRABLE_PROXY=0x...
 NEXT_PUBLIC_KLEROS_ARBITRATOR_EXTRA_DATA=0x...
 NEXT_PUBLIC_KLEROS_MOCK_BANNER=true
@@ -465,7 +465,7 @@ NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
 ### Scripts
 
 ```bash
-./deploy-local.sh                          # Deploy to local Anvil
+./scripts/deploy-local.sh                          # Deploy to local Anvil
 
 cd frontend && npm run dev                # Dev server
 
@@ -488,7 +488,7 @@ cd prover && cargo test -p figaro-sequencer
 
 - `script/Deploy.s.sol` — devnet (Anvil), uses mock verifier and mock tokens
 - `script/DeployMainnet.s.sol` — mainnet, no mocks; reads all sensitive params from env
-- `script/DeployMockKleros.s.sol` — devnet only; deploys `MockKlerosArbitrator` + `MockKlerosArbitrableProxy`. Run via `./deploy-mock-kleros.sh` after `./deploy-local.sh`.
+- `script/DeployMockKleros.s.sol` — devnet only; deploys `MockKlerosArbitrator` + `MockKlerosArbitrableProxy`. Run via `./scripts/deploy-mock-kleros.sh` after `./scripts/deploy-local.sh`.
 - `script/MintTokens.s.sol` — utility: mint test tokens to existing devnet accounts
 
 ---

@@ -19,10 +19,10 @@
 #                            Error`.
 #
 # Wired into the root package.json lint-staged block under
-# `frontend/**/*.{ts,tsx}`. Run via `bash lint-type-safety.sh`.
+# `frontend/**/*.{ts,tsx}`. Run via `bash scripts/lint-type-safety.sh`.
 #
 # Run manually:
-#   bash lint-type-safety.sh path/to/file.ts [more files...]
+#   bash scripts/lint-type-safety.sh path/to/file.ts [more files...]
 #
 # Exit code: 0 on clean, 1 on any violation.
 

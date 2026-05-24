@@ -34,8 +34,8 @@
 #   export CERTORAKEY=<key>        # from https://certora.com/signup
 #
 # Usage:
-#   ./test-certora.sh                          # run all specs
-#   ./test-certora.sh FigaroCore               # run only FigaroCore.conf
+#   ./scripts/test-certora.sh                          # run all specs
+#   ./scripts/test-certora.sh FigaroCore               # run only FigaroCore.conf
 #
 # Exit codes:
 #   0  — all invocations dispatched successfully (cloud verification may still be pending)
@@ -62,13 +62,13 @@ echo ""
 
 # Token-ops inventory gate: every ERC20 transfer call site in src/ must be
 # tracked. Runs before any cloud dispatch so a stale inventory fails fast.
-if [ -x "./lint-token-ops.sh" ]; then
-    ./lint-token-ops.sh || exit $?
+if [ -x "./scripts/lint-token-ops.sh" ]; then
+    ./scripts/lint-token-ops.sh || exit $?
     echo ""
 fi
 
 # Default spec list; callers can override by passing spec basenames as args
-# (e.g. ./test-certora.sh FigaroCore).
+# (e.g. ./scripts/test-certora.sh FigaroCore).
 if [ "$#" -gt 0 ]; then
     SPECS=("$@")
 else

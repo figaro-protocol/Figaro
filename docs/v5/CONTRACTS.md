@@ -201,7 +201,7 @@ prover would reject every batch.
 
 - `src/mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`
 - `src/mocks/MockOffsetAggregator.sol` — devnet stand-in for Klima KlimaInfinity / Toucan OffsetHelper. Fixed `pricePerTon` constructor arg, pulls input token via `transferFrom`, emits `Retired`. Wired into `Deploy.s.sol` only — mainnet uses real aggregators.
-- `src/mocks/MockKlerosArbitrableProxy.sol`, `src/mocks/MockKlerosArbitrator.sol` — devnet stand-ins for the Kleros dispute-resolution flow; deployed via `script/DeployMockKleros.s.sol` (run from `./deploy-mock-kleros.sh`) on top of `./deploy-local.sh`. Mainnet uses the real Kleros contracts.
+- `src/mocks/MockKlerosArbitrableProxy.sol`, `src/mocks/MockKlerosArbitrator.sol` — devnet stand-ins for the Kleros dispute-resolution flow; deployed via `script/DeployMockKleros.s.sol` (run from `./scripts/deploy-mock-kleros.sh`) on top of `./scripts/deploy-local.sh`. Mainnet uses the real Kleros contracts.
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist

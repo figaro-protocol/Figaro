@@ -30,7 +30,7 @@
 #   # or: https://github.com/crytic/echidna/releases
 #
 # Usage:
-#   ./test-echidna.sh
+#   ./scripts/test-echidna.sh
 #
 # Exit codes:
 #   0  — all properties held across the configured fuzz budget

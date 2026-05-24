@@ -24,9 +24,9 @@
   "lint-staged": {
     "frontend/**/*.{ts,tsx}": [
       "bash -c 'cd frontend && npx tsc --noEmit'",
-      "bash lint-canonical-imports.sh",
-      "bash lint-no-eyebrows.sh",
-      "bash lint-type-safety.sh"
+      "bash scripts/lint-canonical-imports.sh",
+      "bash scripts/lint-no-eyebrows.sh",
+      "bash scripts/lint-type-safety.sh"
     ],
     "src/**/*.sol": [
       "forge fmt"

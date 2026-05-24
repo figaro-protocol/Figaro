@@ -10,4 +10,4 @@ time forge test --via-ir --no-match-test "test_Gas_MaxOrdersResolvableUnder30MGa
 echo ""
 echo "💡 Tip: Skips gas-ceiling test for speed."
 echo "   Full suite: forge test --via-ir"
-echo "   Specific test: ./test-fast.sh --match-test YOUR_TEST"
+echo "   Specific test: ./scripts/test-fast.sh --match-test YOUR_TEST"

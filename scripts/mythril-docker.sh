@@ -1,10 +1,10 @@
 #!/bin/bash
 # Mythril analysis script for Figaro contracts using Docker.
-# Usage: ./mythril-docker.sh [contract-path] [extra-mythril-args]
+# Usage: ./scripts/mythril-docker.sh [contract-path] [extra-mythril-args]
 
 set -e
 
-PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 CONTRACT_PATH=${1:-src/fig/FigToken.sol}
 shift || true
 

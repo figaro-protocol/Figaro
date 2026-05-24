@@ -32,9 +32,9 @@ depth = 15
 via_ir = true
 
 # NOTE: Coverage requires --ir-minimum flag due to instrumentation overhead
-# Usage: ./coverage.sh (or forge coverage --ir-minimum)
+# Usage: ./scripts/coverage.sh (or forge coverage --ir-minimum)
 # GasCeilingTest is excluded from coverage because its assertions are calibrated
-# for non-instrumented bytecode — see coverage.sh.
+# for non-instrumented bytecode — see scripts/coverage.sh.
 
 # Production profile for pre-deployment testing
 # Usage: forge build --profile production && forge test --profile production

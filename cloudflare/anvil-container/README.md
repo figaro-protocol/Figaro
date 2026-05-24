@@ -58,7 +58,7 @@ wrangler containers exec --class AnvilContainer --instance anvil-singleton -- rm
 wrangler deploy --redeploy --class AnvilContainer
 ```
 
-After the reset, run `./deploy-local.sh` (or its production equivalent) against the Anvil RPC endpoint to redeploy contracts.
+After the reset, run `./scripts/deploy-local.sh` (or its production equivalent) against the Anvil RPC endpoint to redeploy contracts.
 
 ### Backing up state before a wipe
 

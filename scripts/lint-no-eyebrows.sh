@@ -16,11 +16,11 @@
 #      background are NOT eyebrows; they are badges and pass.
 #
 # Wired into the root package.json lint-staged block under
-# `frontend/**/*.{ts,tsx}`. Run via `bash lint-no-eyebrows.sh`
+# `frontend/**/*.{ts,tsx}`. Run via `bash scripts/lint-no-eyebrows.sh`
 # (lint-staged spawn does not resolve `./` relative paths).
 #
 # Run manually:
-#   bash lint-no-eyebrows.sh path/to/file.tsx [more files...]
+#   bash scripts/lint-no-eyebrows.sh path/to/file.tsx [more files...]
 #
 # Exit code: 0 on clean, 1 on any violation.
 

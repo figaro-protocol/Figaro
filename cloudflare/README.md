@@ -150,7 +150,7 @@ The first beta participant visits `https://<subdomain>.figaroprotocol.com/?code=
 ## What's NOT in this directory
 
 - The Next.js app itself (lives in `frontend/` in the parent repo). Deploy via `wrangler pages deploy frontend/.next` or via the Cloudflare Pages dashboard's Git integration.
-- Contract deployment scripts (live in `script/` in the parent repo). Run `./deploy-local.sh` against the Anvil container's RPC endpoint to populate it.
+- Contract deployment scripts (live in `script/` in the parent repo). Run `./scripts/deploy-local.sh` against the Anvil container's RPC endpoint to populate it.
 - The actual access codes (out of scope — the Project Operator generates and distributes them privately).
 
 ## Why this exists in code, not just a backlog item

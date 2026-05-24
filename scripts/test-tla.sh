@@ -39,8 +39,8 @@
 # Override the jar location via TLA2TOOLS env var if you keep it elsewhere.
 #
 # Usage:
-#   ./test-tla.sh
-#   TLA2TOOLS=/path/to/tla2tools.jar ./test-tla.sh
+#   ./scripts/test-tla.sh
+#   TLA2TOOLS=/path/to/tla2tools.jar ./scripts/test-tla.sh
 #
 # Exit codes:
 #   0  — all 24 invariants hold across the explored state space (three models)

@@ -138,7 +138,7 @@ For schemaId `figaro-<name>-v1`, produce:
 
 ### 5.5 — Registration
 
-- Add registration to `script/` deploy / seed scripts and `deploy-local.sh` so the schemaId binds to the validator address on startup.
+- Add registration to `script/` deploy / seed scripts and `scripts/deploy-local.sh` so the schemaId binds to the validator address on startup.
 - The first-write-wins property of `SchemaRegistry` means registration is one-shot per chain — write the script defensively (idempotent: skip if already registered, fail if registered to a different address).
 
 ### 5.6 — User-facing surfaces
@@ -171,10 +171,10 @@ cd sdk && npm test
 forge test --via-ir --match-contract Figaro<Name>V1Validator
 
 # 3. Halmos (symbolic execution on the validator's revert conditions)
-./test-halmos.sh   # or scoped: halmos --contract Figaro<Name>V1ValidatorTest
+./scripts/test-halmos.sh   # or scoped: halmos --contract Figaro<Name>V1ValidatorTest
 
 # 4. Echidna (property fuzzing — only if invariants warrant)
-./test-echidna.sh
+./scripts/test-echidna.sh
 
 # 5. Schema lockstep (invoke the figaro-schema-lockstep subagent)
 # It must report your new schemaId in lockstep across all required surfaces.

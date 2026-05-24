@@ -44,7 +44,7 @@ echo ""
 # Step 3: Deploy the canonical local stack
 echo "🚀 Step 3: Deploying the canonical local stack..."
 echo "   deploy-local.sh writes frontend/.env.local and .deployments/local.json"
-./deploy-local.sh
+./scripts/deploy-local.sh
 echo ""
 
 # Step 5: Install frontend dependencies if needed

@@ -5,7 +5,7 @@
 # elsewhere.
 #
 # Wired into the root package.json `lint-staged` block under
-# `frontend/**/*.{ts,tsx}`. Run via `bash lint-canonical-imports.sh`
+# `frontend/**/*.{ts,tsx}`. Run via `bash scripts/lint-canonical-imports.sh`
 # (lint-staged spawn does not resolve `./` relative paths).
 #
 # Three checks:
@@ -19,7 +19,7 @@
 #      canonical home.
 #
 # Run manually:
-#   bash lint-canonical-imports.sh path/to/file.ts [more files...]
+#   bash scripts/lint-canonical-imports.sh path/to/file.ts [more files...]
 #
 # Exit code: 0 on clean, 1 on any violation.
 

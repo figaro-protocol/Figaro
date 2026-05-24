@@ -8,7 +8,7 @@ set -e
 # (see script/DeployMockKleros.s.sol). Run this AFTER ./deploy-local.sh — the
 # devnet is ephemeral, so re-run on every redeploy.
 #
-# Usage:  ./deploy-mock-kleros.sh
+# Usage:  ./scripts/deploy-mock-kleros.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/frontend/.env.local"

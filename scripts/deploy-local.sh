@@ -11,8 +11,8 @@ set -e
 #        MockToken, MockPermitToken, FigaroBatchVerifier.
 #
 # Usage:
-#   ./deploy-local.sh                                  # Anvil (default)
-#   RPC_URL=https://... PRIVATE_KEY=0x... ./deploy-local.sh  # Any chain
+#   ./scripts/deploy-local.sh                                  # Anvil (default)
+#   RPC_URL=https://... PRIVATE_KEY=0x... ./scripts/deploy-local.sh  # Any chain
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORE_ENV="$SCRIPT_DIR/frontend/.env.local"

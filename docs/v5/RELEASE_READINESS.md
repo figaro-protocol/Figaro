@@ -67,8 +67,8 @@ Use these commands as the release gate. Expected output means successful complet
 Observed results — each command below completes with exit code 0 and no failed or skipped tests. This gate asserts pass/fail; the harness inventory (suite, file, property, and rule counts) is `TESTING.md`.
 
 - `forge test --via-ir`: 0 failed, 0 skipped
-- `./test-halmos.sh`: all symbolic proofs passed (the wrapper checks prerequisites and splits `check_resolutionPayouts` into its own invocation — the raw 5-minute ceiling is unreliable)
-- `./test-certora.sh`: all CVL specs verified
+- `./scripts/test-halmos.sh`: all symbolic proofs passed (the wrapper checks prerequisites and splits `check_resolutionPayouts` into its own invocation — the raw 5-minute ceiling is unreliable)
+- `./scripts/test-certora.sh`: all CVL specs verified
 - `cd frontend && npm run type-check`: passed
 - `cd frontend && npm run build`: passed
 - `cd frontend && npx vitest run`: passed
@@ -88,7 +88,7 @@ Expected output:
 ### Halmos Symbolic Proofs
 
 ```bash
-./test-halmos.sh
+./scripts/test-halmos.sh
 ```
 
 Prereqs (one-time): `brew install z3 && pipx install halmos`.

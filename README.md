@@ -104,7 +104,7 @@ derivation.
 
 ```bash
 # Deploy contracts to local Anvil
-./deploy-local.sh
+./scripts/deploy-local.sh
 
 # Start the frontend (port 3000)
 cd frontend && npm install && npm run dev
@@ -114,15 +114,15 @@ Anvil at `http://127.0.0.1:8545` (chain ID 31337).
 
 ### Developer setup & canonical scripts
 
-- **Scripts layout:** Foundry deploy scripts (`*.s.sol`) live in `script/`. Shell scripts (`deploy-*.sh`, `lint-*.sh`, `test-*.sh`, `mythril-docker.sh`, `coverage.sh`, `setup-local.sh`) live at the repo root and are invoked from there.
+- **Scripts layout:** Foundry deploy scripts (`*.s.sol`) live in `script/`. Shell scripts (`deploy-*.sh`, `lint-*.sh`, `test-*.sh`, `scripts/mythril-docker.sh`, `scripts/coverage.sh`, `scripts/setup-local.sh`) live at the repo root and are invoked from there.
 - **Common commands:**
 
 ```bash
 # Deploy contracts to local Anvil
-./deploy-local.sh
+./scripts/deploy-local.sh
 
 # Run Mythril analysis (via Docker)
-./mythril-docker.sh src/fig/FigToken.sol
+./scripts/mythril-docker.sh src/fig/FigToken.sol
 
 # Start frontend dev server
 cd frontend && npm install && npm run dev
@@ -149,10 +149,10 @@ cd frontend && npx vitest run               # Frontend unit
 cd frontend && npx playwright test --project=mock    # E2E, no chain
 cd frontend && npx playwright test --project=devnet  # E2E, Anvil required
 cd prover && cargo test                     # Rust (kernel + sequencer)
-./test-echidna.sh                           # Echidna fuzzing
-./test-halmos.sh                            # Halmos symbolic proofs
-./test-tla.sh                               # TLA+ model checking
-./test-certora.sh                           # Certora CVL (paid cloud)
+./scripts/test-echidna.sh                           # Echidna fuzzing
+./scripts/test-halmos.sh                            # Halmos symbolic proofs
+./scripts/test-tla.sh                               # TLA+ model checking
+./scripts/test-certora.sh                           # Certora CVL (paid cloud)
 ```
 
 ## Formal Verification

@@ -37,7 +37,7 @@ typed-error revert. (Topology has no validator — manifest-only clause.)
 | `FigToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
 | `RpgfMinter.spec` | 12 | submitter/minter/programVKey immutable, per-stage unlockTime immutable, root one-shot, totalAllocated locked-with-root, claim-flag monotonic, only-submitter sets root, claim preconditions (stage-bound, root-set, unlocked, not-already-claimed). |
 
-Companion: `certora/token-ops.inventory` + `lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
+Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 
 ## Echidna — 3 harnesses, 23 properties
 
@@ -121,4 +121,4 @@ can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
 
 ## Opportunistic — Mythril
 
-Mythril runs out-of-loop via `mythril-docker.sh` (Docker image `mythril/myth`, 300s execution timeout, solc 0.8.26). Not wired into pre-commit or CI; invoked by hand on specific contracts when a deep symbolic-execution pass is wanted alongside Halmos / Certora / Echidna. See CLAUDE.md "Docker-hosted services" for the Docker convention.
+Mythril runs out-of-loop via `scripts/mythril-docker.sh` (Docker image `mythril/myth`, 300s execution timeout, solc 0.8.26). Not wired into pre-commit or CI; invoked by hand on specific contracts when a deep symbolic-execution pass is wanted alongside Halmos / Certora / Echidna. See CLAUDE.md "Docker-hosted services" for the Docker convention.
