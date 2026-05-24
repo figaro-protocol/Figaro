@@ -33,7 +33,7 @@ The ink ramp is namespaced `ink.*` rather than `text.*` to avoid the `text-text-
 
 | Token         | Hex       | Tailwind utility    | Use                                                      |
 |---------------|-----------|---------------------|----------------------------------------------------------|
-| `ink.heading` | `#1c1814` | `text-ink-heading`  | Page H1, strong heading emphasis.                        |
+| `ink.heading` | `#3d2817` | `text-ink-heading`  | Page H1, strong heading emphasis. Warm walnut brown.     |
 | `ink.primary` | `#3a322a` | `text-ink-primary`  | Default body text — set on `<body>`.                     |
 | `ink.body`    | `#5a4f42` | `text-ink-body`     | Lead paragraphs, body text on subtle surfaces.           |
 | `ink.muted`   | `#857c6e` | `text-ink-muted`    | Captions, secondary metadata.                            |

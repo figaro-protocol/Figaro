@@ -34,7 +34,7 @@ const config: Config = {
                 // failed visible-warmth test against Tailwind's gray.* ramp;
                 // replaced with R>G>B warm-neutral ramp (sumi → cocoa → khaki).
                 ink: {
-                    heading: '#1c1814',
+                    heading: '#3d2817',
                     primary: '#3a322a',
                     body: '#5a4f42',
                     muted: '#857c6e',
