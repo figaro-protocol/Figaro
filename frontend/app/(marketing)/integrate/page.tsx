@@ -189,7 +189,7 @@ const state = reconstruct(events);
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Where to look" bottomPad="extra">
+            <MarketingSection title="Where to look">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro-Prototype2</a>. SDK lives at <code>sdk/</code>.</li>
                     <li><strong>SDK README:</strong> <code>sdk/README.md</code> in the repo. Covers every subpath export and the test-harness conventions.</li>
@@ -205,6 +205,27 @@ const state = reconstruct(events);
                     <Link href="/discover" className="underline">Discover</Link>{" "}(operator catalogue);&nbsp;
                     <Link href="/schemas" className="underline">Schemas</Link>{" "}(attestation content for indexers).
                 </p>
+            </MarketingSection>
+
+            <MarketingSection title="More for builders" bottomPad="wide">
+                <ul className="space-y-3 text-base">
+                    <li>
+                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
+                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                    </li>
+                    <li>
+                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
+                    </li>
+                    <li>
+                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
+                    </li>
+                    <li>
+                        <Link href="/builders/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>
+                        <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and the factotum reference implementation.</span>
+                    </li>
+                </ul>
             </MarketingSection>
         </>
     );

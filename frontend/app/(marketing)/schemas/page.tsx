@@ -73,7 +73,7 @@ export default function Schemas() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Where to look" bottomPad="extra">
+            <MarketingSection title="Where to look">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>SDK module:</strong> <code>@figaro/core/schemas</code> &mdash; meta-schema validator, <code>validateContent</code>, per-schema encoders. The canonical source of the spec format. See <Link href="/integrate" className="underline">Integrate</Link>.</li>
                     <li><strong>On-chain interface:</strong> <code>src/ISchemaValidator.sol</code> &mdash; the two-method interface every on-chain validator implements. Contract catalogue at <Link href="/spec" className="underline">/spec</Link>.</li>
@@ -85,6 +85,27 @@ export default function Schemas() {
                 <p className="mt-6 text-sm text-ink-muted">
                     Composition tools and the assembly designer: <Link href="/builders" className="underline">/builders</Link>.
                 </p>
+            </MarketingSection>
+
+            <MarketingSection title="More for builders" bottomPad="wide">
+                <ul className="space-y-3 text-base">
+                    <li>
+                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
+                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                    </li>
+                    <li>
+                        <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>
+                        <span className="text-ink-body"> &mdash; composition templates wiring schemas into multi-order processes; anchored on AssemblyRegistry.</span>
+                    </li>
+                    <li>
+                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
+                    </li>
+                    <li>
+                        <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
+                        <span className="text-ink-body"> &mdash; <code>@figaro/core</code>: ABIs, event parsers, content encoders, commitment builders.</span>
+                    </li>
+                </ul>
             </MarketingSection>
         </>
     );

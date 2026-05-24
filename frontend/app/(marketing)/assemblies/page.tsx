@@ -53,12 +53,33 @@ export default function Assemblies() {
                 <AssemblyInventory />
             </MarketingSection>
 
-            <MarketingSection title="Where to publish" bottomPad="extra">
+            <MarketingSection title="Where to publish">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Designer:</strong> compose an assembly on the canvas at <Link href="/builders/designer" className="underline">/builders/designer</Link>, then publish to <code>AssemblyRegistry</code> in one transaction. The publish flow pins the manifest to IPFS, simulates the registration, and confirms the receipt before declaring success.</li>
                     <li><strong>Worked reference:</strong> the local-commerce assembly at <Link href="/local-commerce" className="underline">/local-commerce</Link> &mdash; merchant root order, courier sub-order, handoff certifications, GHG disclosures, jurisdiction anchoring.</li>
                     <li><strong>Schema set:</strong> the schemas an assembly may compose are listed at <Link href="/schemas" className="underline">/schemas</Link>.</li>
                     <li><strong>Contract:</strong> <code>src/AssemblyRegistry.sol</code> &mdash; permissionless, first-write-wins, immutable. See <Link href="/spec" className="underline">/spec</Link>.</li>
+                </ul>
+            </MarketingSection>
+
+            <MarketingSection title="More for builders" bottomPad="wide">
+                <ul className="space-y-3 text-base">
+                    <li>
+                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
+                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                    </li>
+                    <li>
+                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
+                    </li>
+                    <li>
+                        <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">Local Commerce</Link>
+                        <span className="text-ink-body"> &mdash; three-role bonded process reference assembly (buyer + merchant + courier).</span>
+                    </li>
+                    <li>
+                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
+                    </li>
                 </ul>
             </MarketingSection>
         </>

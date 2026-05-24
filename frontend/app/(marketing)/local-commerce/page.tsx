@@ -71,7 +71,7 @@ export default function LocalCommercePage() {
                 </p>
             </section>
 
-            <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-12">
+            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Where to go from here
                 </h2>
@@ -90,6 +90,30 @@ export default function LocalCommercePage() {
                         <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="text-ink-heading hover:underline">
                             Source &rarr;
                         </a>
+                    </li>
+                </ul>
+            </section>
+
+            <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-12">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">
+                    More for builders
+                </h2>
+                <ul className="space-y-3 text-base">
+                    <li>
+                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
+                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                    </li>
+                    <li>
+                        <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>
+                        <span className="text-ink-body"> &mdash; composition templates wiring schemas into multi-order processes; anchored on AssemblyRegistry.</span>
+                    </li>
+                    <li>
+                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
+                    </li>
+                    <li>
+                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
                     </li>
                 </ul>
             </section>

@@ -57,7 +57,7 @@ export default function BuildersAgents() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Where to go from here" bottomPad="wide">
+            <MarketingSection title="Where to go from here">
                 <ul className="space-y-3 text-base">
                     <li>
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">The SDK</Link>
@@ -70,6 +70,27 @@ export default function BuildersAgents() {
                     <li>
                         <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
                         <span className="text-ink-body"> &mdash; the validator stack agents read and write through. Authoring a new schema is permissionless.</span>
+                    </li>
+                </ul>
+            </MarketingSection>
+
+            <MarketingSection title="More for builders" bottomPad="wide">
+                <ul className="space-y-3 text-base">
+                    <li>
+                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
+                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                    </li>
+                    <li>
+                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
+                    </li>
+                    <li>
+                        <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
+                        <span className="text-ink-body"> &mdash; <code>@figaro/core</code>: ABIs, event parsers, content encoders, commitment builders.</span>
+                    </li>
+                    <li>
+                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
                     </li>
                 </ul>
             </MarketingSection>

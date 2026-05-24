@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
     title: "How schema authors get paid — Figaro Protocol",
@@ -33,6 +34,30 @@ export default function Rpgf() {
             <p className="text-base text-ink-body leading-relaxed">
                 One last thing, and it is the whole point: the formula is fixed. It was set when the protocol was deployed and cannot be changed &mdash; not by the founders, not by a vote. Each round it is computed once, the same way for every author, and checked by a proof before any FIG can be claimed. No single author can take more than fifteen percent of one round. No one decides who deserves what &mdash; the arithmetic does.
             </p>
+
+            <h2 className="text-base font-semibold text-ink-heading mt-16 mb-4">
+                More for builders
+            </h2>
+            <ul className="space-y-3 text-base">
+                <li>
+                    <Link href="/builders" className="text-ink-heading font-medium hover:underline">
+                        Builders
+                    </Link>
+                    <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                </li>
+                <li>
+                    <Link href="/schemas" className="text-ink-heading font-medium hover:underline">
+                        Schemas
+                    </Link>
+                    <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
+                </li>
+                <li>
+                    <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">
+                        Composability
+                    </Link>
+                    <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
+                </li>
+            </ul>
         </section>
     );
 }

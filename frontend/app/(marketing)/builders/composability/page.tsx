@@ -104,7 +104,7 @@ export default function Composability() {
                 </div>
             </MarketingSection>
 
-            <MarketingSection title="Read next" bottomPad="wide">
+            <MarketingSection title="Read next">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li>
                         <Link href="/protocol" className="text-ink-heading font-medium hover:underline">Protocol</Link>
@@ -125,6 +125,27 @@ export default function Composability() {
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
                         {" — "}
                         the SDK surface: ABIs, event parsers, deterministic state reconstruction, schema encoders.
+                    </li>
+                </ul>
+            </MarketingSection>
+
+            <MarketingSection title="More for builders" bottomPad="wide">
+                <ul className="space-y-3 text-base">
+                    <li>
+                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
+                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                    </li>
+                    <li>
+                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
+                    </li>
+                    <li>
+                        <Link href="/builders/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>
+                        <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and the factotum reference implementation.</span>
+                    </li>
+                    <li>
+                        <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
+                        <span className="text-ink-body"> &mdash; <code>@figaro/core</code>: ABIs, event parsers, content encoders, commitment builders.</span>
                     </li>
                 </ul>
             </MarketingSection>
