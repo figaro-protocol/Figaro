@@ -14,10 +14,9 @@ export function Footer() {
                         <h4 className={COL_HEADER_CLS}>Protocol</h4>
                         <div className="space-y-2">
                             <Link href="/protocol" className={COL_LINK_CLS}>Protocol mechanisms</Link>
+                            <Link href="/why" className={COL_LINK_CLS}>Why</Link>
                             <Link href="/cryptoeconomics" className={COL_LINK_CLS}>Cryptoeconomics</Link>
                             <Link href="/spec" className={COL_LINK_CLS}>Specifications</Link>
-                            <Link href="/schemas" className={COL_LINK_CLS}>Schemas</Link>
-                            <Link href="/assemblies" className={COL_LINK_CLS}>Assemblies</Link>
                         </div>
                     </div>
                     <div>
@@ -26,17 +25,19 @@ export function Footer() {
                             <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
                             <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
                             <Link href="/builders/composability" className={COL_LINK_CLS}>Composability</Link>
+                            <Link href="/schemas" className={COL_LINK_CLS}>Schemas</Link>
+                            <Link href="/assemblies" className={COL_LINK_CLS}>Assemblies</Link>
+                            <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
                             <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
                             <Link href="/rpgf" className={COL_LINK_CLS}>RPGF</Link>
-                            <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
+                            <Link href="/fig" className={COL_LINK_CLS}>FIG token</Link>
                         </div>
                     </div>
                     <div>
-                        <h4 className={COL_HEADER_CLS}>Ecosystem</h4>
+                        <h4 className={COL_HEADER_CLS}>Users</h4>
                         <div className="space-y-2">
                             <Link href="/discover" className={COL_LINK_CLS}>Discover operators</Link>
                             <Link href="/operators" className={COL_LINK_CLS}>Operators</Link>
-                            <Link href="/fig" className={COL_LINK_CLS}>FIG Token</Link>
                         </div>
                     </div>
                 </div>
