@@ -8,18 +8,13 @@
  */
 
 import { PrivateKey } from "eciesjs";
+import { bytesToHex } from "@/lib/shared/evm";
 
 export interface EphemeralKeypair {
     /** Hex-encoded 32-byte private key. */
     privateKeyHex: string;
     /** Hex-encoded compressed (33-byte) public key. */
     publicKeyHex: string;
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-    return Array.from(bytes)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
 }
 
 /** Generate a fresh ephemeral secp256k1 keypair for a single order. */

@@ -17,6 +17,7 @@
  */
 import { keccak256, encodePacked, type Hex } from "viem";
 import type { BuildOrderAgreementParams } from "@/lib/core/orderAgreement";
+import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 /**
  * The auction id for a process's courier edge. Derived from the processId
@@ -46,21 +47,9 @@ export interface CourierAuctionDraft {
 const draftKey = (processId: string) => `figaro:courier-draft:${processId}`;
 
 export function stashCourierDraft(processId: string, draft: CourierAuctionDraft): void {
-    if (typeof window === "undefined") return;
-    try {
-        window.localStorage.setItem(draftKey(processId), JSON.stringify(draft));
-    } catch {
-        /* quota / storage unavailable — non-fatal; the order page surfaces
-           the absence as "courier draft missing" rather than crashing. */
-    }
+    writeJsonStorage(draftKey(processId), draft);
 }
 
 export function loadCourierDraft(processId: string): CourierAuctionDraft | null {
-    if (typeof window === "undefined") return null;
-    try {
-        const raw = window.localStorage.getItem(draftKey(processId));
-        return raw ? (JSON.parse(raw) as CourierAuctionDraft) : null;
-    } catch {
-        return null;
-    }
+    return readJsonStorage<CourierAuctionDraft | null>(draftKey(processId), null);
 }

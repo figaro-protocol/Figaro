@@ -5,6 +5,7 @@ import { useConnect, useAccount, useChainId } from "wagmi";
 import { TEST_HELPERS_ENABLED, windowSafe } from "@/lib/core/testHelpers";
 import { useOrderStore } from "@/lib/core/store";
 import { calculateBonds } from "@figaro/core";
+import { bytesToHex } from "@/lib/shared/evm";
 
 type MockStoredOrder = {
     id: string;
@@ -147,7 +148,7 @@ export default function ClientInit() {
                     const paymentFloat = Number(paymentStr || '0');
                     const paymentWei = BigInt(Math.floor(paymentFloat * 1e18));
 
-                    const processId = '0x' + Array.from(new TextEncoder().encode(`proc-${Date.now()}`)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 64);
+                    const processId = `0x${bytesToHex(new TextEncoder().encode(`proc-${Date.now()}`)).slice(0, 64)}`;
                     const orderId = Date.now();
 
                     const orders: Record<string, MockStoredOrder> = {};
@@ -214,7 +215,7 @@ export default function ClientInit() {
                         }
                     } catch (e) { /* ignore */ }
 
-                    const processId = opts?.processId || ('0x' + Array.from(new TextEncoder().encode(`proc-${Date.now()}`)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 64));
+                    const processId = opts?.processId || `0x${bytesToHex(new TextEncoder().encode(`proc-${Date.now()}`)).slice(0, 64)}`;
 
                     const order = {
                         id: orderId.toString(),

@@ -25,8 +25,8 @@ export function hexEqual(
 /**
  * True when a hex string carries no bytes — `null`, `undefined`, `""`, or the
  * bare `"0x"` prefix. Sentinel values like `ZERO_BYTES32` (zero-valued bytes32)
- * and `LEGACY_MANIFEST` (`"0x01"` manifest marker) carry distinct semantic
- * meaning and should be compared against directly rather than folded in here.
+ * carry distinct semantic meaning and should be compared against directly
+ * rather than folded in here.
  *
  * Type predicate so call sites can rely on negative narrowing — after
  * `if (isEmptyHex(x)) ...` an `else` branch (or post-guard early return)
@@ -36,4 +36,16 @@ export function isEmptyHex<T extends string>(
     hex: T | null | undefined,
 ): hex is (T & ("" | "0x")) | null | undefined {
     return !hex || hex === "0x";
+}
+
+/**
+ * Encode a byte sequence as a hex string (no `0x` prefix). Replaces the
+ * `Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")`
+ * pattern that was reinvented across handoff / encoding / store / dispute /
+ * ClientInit. Callers that want a 0x-prefixed value wrap the result.
+ */
+export function bytesToHex(bytes: Uint8Array): string {
+    return Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
 }

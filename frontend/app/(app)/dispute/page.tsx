@@ -64,7 +64,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { CONTRACTS } from "@/lib/core/contracts";
-import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, bytesToHex } from "@/lib/shared/evm";
 import { isValidAddress } from "@/components/operators/TokenAddressInput";
 import {
     buildConsentDisputeEvidence,
@@ -174,10 +174,7 @@ async function computeClaimDigest(
     const payload = JSON.stringify({ citedSection, claimText });
     const bytes = new TextEncoder().encode(payload);
     const hash = await crypto.subtle.digest("SHA-256", bytes);
-    const hex = Array.from(new Uint8Array(hash))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-    return `0x${hex}` as Hex;
+    return `0x${bytesToHex(new Uint8Array(hash))}` as Hex;
 }
 
 function isValidCid(value: string): boolean {
