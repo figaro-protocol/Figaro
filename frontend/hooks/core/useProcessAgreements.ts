@@ -46,7 +46,7 @@ function getStore(): CacheStore {
 }
 
 export function useProcessAgreements(agreementHashes: string[]): Map<string, Agreement> {
-    const [, setVersion] = useState(0);
+    const [version, setVersion] = useState(0);
     const store = getStore();
 
     // Subscribe to cache mutations — any consumer's hydration completing
@@ -99,5 +99,12 @@ export function useProcessAgreements(agreementHashes: string[]): Map<string, Agr
         };
     }, [stableKey, store]);
 
-    return store.cache;
+    // Return a fresh Map snapshot keyed on the bump-version so consumers'
+    // useMemo([..., agreements]) sees a ref change when the underlying cache
+    // mutates. Returning the singleton `store.cache` directly was the prior
+    // shape; React's identity-stable Map kept useMemo deps === between
+    // renders and downstream `recourses` / `klerosConfig` memos skipped the
+    // post-hydration recompute, leaving panels stuck in their initial
+    // "agreements empty" branch.
+    return useMemo(() => new Map(store.cache), [store, version]);
 }
