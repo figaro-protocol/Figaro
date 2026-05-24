@@ -48,9 +48,12 @@
     }
 
     /* Links: no underline by default; hover reveals underline + color shift.
-       Buttons and brand marks rendered as <a> opt out via `hover:no-underline`. */
+       Buttons and brand marks rendered as <a> opt out via `hover:no-underline`.
+       Default color is `ink-primary` (dark warm), not `ink-heading` (amber),
+       so links don't pull the heading-only color into every nav row, footer
+       column, and inline body link. */
     a {
-        @apply text-ink-heading transition-colors duration-200;
+        @apply text-ink-primary transition-colors duration-200;
         text-decoration: none;
         text-underline-offset: 4px;
         text-decoration-thickness: 1.5px;
