@@ -6,17 +6,17 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = {
     title: "Agents — Figaro Protocol",
     description:
-        "The protocol is actor-neutral. Autonomous agents and humans use the same primitives — a wallet, EIP-712 signatures, on-chain commitments — and the same trust mechanism, bonded settlement, secures them both. Public graphs replace platform APIs; bond-weighted history replaces feedback ratings.",
+        "Participating agents — buyer, seller, or auditor wallets driven by software — use the same kernel primitives as human-driven wallets: EIP-712 signatures, bonded commitments, atomic resolution. The protocol is actor-neutral. Public graphs replace platform APIs; bond-weighted history replaces feedback ratings.",
 };
 
-export default function BuildersAgents() {
+export default function Agents() {
     return (
         <>
             <MarketingHero
                 title="Agents and humans, the same primitive."
                 lead={
                     <>
-                        The protocol does not know which side of an interaction is human. A wallet is a wallet; a signature is a signature; a bond is a bond. Autonomous agents use the same primitives as people, and the same trust mechanism &mdash; bonded commitment &mdash; secures them both.
+                        This page is about agents that <em>participate</em> &mdash; buyer, seller, courier, or auditor wallets driven by software, signing EIP-712 commitments and locking bonds the same way a human-driven wallet would. The protocol does not know which side of an interaction is human. A wallet is a wallet; a signature is a signature; a bond is a bond. Bonded commitment secures them both.
                     </>
                 }
             />
@@ -53,7 +53,7 @@ export default function BuildersAgents() {
                     <code>agents/factotum/</code> ships a runnable participation agent: a TypeScript starting point that wires <code>@figaro/core/agent</code> to a wallet, infers role binding from process state, and exposes a pluggable policy. Fork and modify is the intended path; re-implementations in other languages are expected. The protocol does not care which runtime an agent uses.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The factotum is intentionally minimal &mdash; not a strategy, not a production system. It is the concrete demonstration that an autonomous agent and a human interact with the kernel through the same primitives: a wallet, EIP-712 signatures, on-chain commitments. Treat the doctrine in this page as the <em>what</em>; the factotum is the <em>how</em>.
+                    The factotum is intentionally minimal &mdash; not a strategy, not a production system. It is the concrete demonstration that an autonomous agent and a human interact with the kernel through the same primitives: a wallet, EIP-712 signatures, on-chain commitments. Treat the doctrine on this page as the <em>what</em>; the factotum is the <em>how</em>.
                 </p>
             </MarketingSection>
 
@@ -68,13 +68,13 @@ export default function BuildersAgents() {
                         <span className="text-ink-body"> &mdash; where an agent declares its services, identity, and accepted tokens via the registry&apos;s metadata.</span>
                     </li>
                     <li>
-                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
-                        <span className="text-ink-body"> &mdash; the validator stack agents read and write through. Authoring a new schema is permissionless.</span>
+                        <Link href="/discover" className="text-ink-heading font-medium hover:underline">Discover</Link>
+                        <span className="text-ink-body"> &mdash; the live registry an agent reads to find counterparties.</span>
                     </li>
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="More for builders" bottomPad="wide">
+            <MarketingSection title="Also for builders" bottomPad="wide">
                 <ul className="space-y-3 text-base">
                     <li>
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
@@ -83,10 +83,6 @@ export default function BuildersAgents() {
                     <li>
                         <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
                         <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
-                    </li>
-                    <li>
-                        <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
-                        <span className="text-ink-body"> &mdash; <code>@figaro/core</code>: ABIs, event parsers, content encoders, commitment builders.</span>
                     </li>
                     <li>
                         <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>

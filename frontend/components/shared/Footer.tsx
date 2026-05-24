@@ -29,6 +29,7 @@ export function Footer() {
                         <Link href="/users" className={COL_LINK_CLS}>Users</Link>
                         <Link href="/discover" className={COL_LINK_CLS}>Discover operators</Link>
                         <Link href="/operators" className={COL_LINK_CLS}>Operators</Link>
+                        <Link href="/agents" className={COL_LINK_CLS}>Agents</Link>
                     </div>
                 </div>
                 <div className="mt-12 pt-8 border-t border-default flex flex-col gap-4 text-xs text-ink-muted sm:flex-row sm:items-start sm:justify-between">

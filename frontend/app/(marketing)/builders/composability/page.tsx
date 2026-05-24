@@ -140,7 +140,7 @@ export default function Composability() {
                         <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
                     </li>
                     <li>
-                        <Link href="/builders/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>
+                        <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>
                         <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and the factotum reference implementation.</span>
                     </li>
                     <li>

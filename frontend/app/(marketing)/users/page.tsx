@@ -21,7 +21,7 @@ export default function Users() {
                 }
             />
 
-            <MarketingSection title="Two paths." bottomPad="wide">
+            <MarketingSection title="Two paths.">
                 <div className="space-y-10">
                     <div>
                         <h3 className="text-heading-h3 text-ink-heading">Discover</h3>
@@ -42,6 +42,15 @@ export default function Users() {
                         </Link>
                     </div>
                 </div>
+            </MarketingSection>
+
+            <MarketingSection title="Or run an agent." bottomPad="wide">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Either path can be driven by software instead of a person. A buyer wallet or a seller wallet can be a script, an LLM, or a long-running service &mdash; the kernel does not distinguish. Same signatures, same bonds, same resolution.
+                </p>
+                <Link href="/agents" className="text-ink-heading font-medium hover:underline">
+                    Agents &rarr;
+                </Link>
             </MarketingSection>
         </>
     );
