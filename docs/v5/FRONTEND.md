@@ -22,50 +22,56 @@ Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory list
 - Merchants: `/inbox` (incoming + active + completed) → `/orders/[processId]` (fire merchant-process events).
 - Builders: `/builders/designer/view/[slug]` (assembly inspector). The prior `/i/[slug]` route was deleted; its inbound bookmarks redirect to `/discover`.
 
-The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `AgreementDrawer`); the palette/canvas/inspector three-column shape was rejected as "wrong-direction" — see `feedback_designer_dag_is_canonical.md`.
+The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `AgreementDrawer`); the palette/canvas/inspector three-column shape was rejected as "wrong-direction" during this project's evolution.
 
 ## Key Library Areas (`lib/`)
 
 - **`core/`** — FigaroCore hooks, commitment/agreement utilities
+- **`audit/`** — Audit-bundle assembly + verification (read path for `/audit/[processId]`)
+- **`commerce/`** — Checkout / cart provider (`CommerceProvider`, `useCheckout`)
+- **`designer/`** — Synthetic DAG session + autosave + fork (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `manifestToDraft.ts`, `deriveDesignSurface.ts`, `agreementHints.ts`)
 - **`dispute/`** — Kleros evidence, delivery attestation 4 modes
 - **`handoff/`** — ECDH key exchange, per-order encryption
 - **`mechanisms/`** — Mechanism hooks (Dutch auction, courier process, DID:web, attestation coordinator, FIG token, …)
-- **`semantic/`** — Runtime-process model derivation. Entries: `deriveProcessModelFromRuntime.ts`, `financialsProjection.ts`, `models.ts`
+- **`operators/`** — Operator-profile / onboarding state helpers
+- **`seller/`** — Seller-side catalogue / merchant helpers
+- **`semantic/`** — Runtime-process model derivation: `deriveProcessModelFromRuntime.ts`, `financialsProjection.ts`, `models.ts`
 - **`shared/`** — Wagmi config (`chains.ts`, `connectors.ts`, `rpc.ts`), IPFS (`ipfsService.ts`), schema specs (`schemaSpecSource.ts` + `schemas/`), operator + catalogue metadata (`operatorProfileMetadata.ts`, `sellerCatalogueMetadata.ts`, `discoveryService.ts`), slug↔label tables (`assemblyLabels.ts`)
-- **`commerce/`**, **`console/`**
 
 ## Designer tool surface (`frontend/`)
 
-The Designer is a DAG editor — assembly designers fork a reference assembly or start blank, modify the bonded-process DAG on the canvas, edit per-node clauses in a side drawer, and save drafts to local storage. The canvas DAG is an assembly-tier composition; the kernel itself only ever sees the linear `commit` chains that result at runtime. The three-column palette/canvas/inspector shape was rejected during this project's evolution — see `feedback_designer_dag_is_canonical.md`.
+The Designer is a DAG editor — assembly designers start blank or fork an existing published assembly, modify the bonded-process DAG on the canvas, edit per-node clauses in a side drawer, save drafts to local storage, and publish to the on-chain `AssemblyRegistry` when ready. The canvas DAG is an assembly-tier composition; the kernel itself only ever sees the linear `commit` chains that result at runtime. The three-column palette/canvas/inspector shape was rejected during this project's evolution.
 
 **Routes:**
-- `/builders/designer` — landing. Lists local drafts (`<DraftsList>`) and the 6 forkable reference assemblies (`REFERENCE_ASSEMBLIES`).
+- `/builders/designer` — landing. Three sections: drafts (`<DraftsList>`, localStorage), the wallet's published assemblies (`<PublishedList>`, reconstructed from `AssemblyRegistered` events), and the schemas catalogue (`<SchemasList>`, read from `SchemaRegistry`).
 - `/builders/designer/new` — blank DAG editor. Three init paths: `?draft=slug` query, autosaved current session, or fresh blank.
-- `/builders/designer/edit/[slug]` — fork an existing reference assembly into the editor.
-- `/builders/designer/view/[slug]` — read-only view of a reference assembly.
+- `/builders/designer/edit/[slug]` — fork an existing published assembly into the editor.
+- `/builders/designer/view/[slug]` — read-only view of a published assembly.
 
-**Components:**
-- `components/core/ProcessGraphCanvas.tsx` — the DAG canvas. Drag green handle to spawn sub-orders; drag onto another node to merge fan-in; click edge pill to swap fulfilment method.
-- `app/(app)/builders/designer/_components/AgreementDrawer.tsx` — per-node clause editor (Geo / GHG / Topology baseline-graph clauses).
-- `app/(app)/builders/designer/_components/DraftsList.tsx` — saved-drafts list on the landing.
+**Components (`app/(app)/builders/designer/_components/`):**
+- `DesignerCanvas.tsx` — the shared editor surface used by `/new` and `/edit/[slug]`. Hosts the toolbar (← Assemblies | name | saved hint | Save | Publish | Reset), the DAG canvas, the agreement drawer, and the autosave loop.
+- `AgreementDrawer.tsx` — per-node clause editor (Geo / GHG / Topology baseline-graph clauses + the rest of the agreement surface).
+- `DraftsList.tsx` — saved-drafts list on the landing.
+- `PublishedList.tsx` — published-assemblies list for the connected wallet.
+- `SchemasList.tsx` — schemas catalogue on the landing.
+- Shared DAG canvas: `components/core/ProcessGraphCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in; click edge pill to swap fulfilment method).
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `swapSyntheticFulfilmentMethod`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/manifestToDraft.ts` (fork a published assembly's manifest into an editable draft).
-
-No publish-to-registry path exists today; saved drafts stay in localStorage. `DesignerPublishDrawer.tsx` was specified in this doc historically but never built.
 
 ## Schema validation in the frontend
 
 - `useSchemaValidator(schemaId)` hook (`hooks/core/`) — binds `validateContent`
   to a form value. `{ isReady, validate, loadError }`.
-- `schemaSpecSource.ts` — preloads built-in specs at module load (15 local-commerce
-  schemas live in `lib/shared/schemas/`); supports async `loadSchemaSpec(id, uri)`
-  for IPFS-resolved specs.
+- `schemaSpecSource.ts` — preloads built-in specs at module load (17 schemas in
+  `lib/shared/schemas/` — 16 runtime-attestable + the manifest-only
+  `figaro-topology-v1`); supports async `loadSchemaSpec(id, uri)` for
+  IPFS-resolved specs.
 
 ## Components (`components/`)
 
 - **`core/`** — order flows, bond/token, builder/assembly, semantic. Assembly rendering shell: `AssemblyProcessWorkspace` (all `Institution*` names have been renamed)
 - **`modules/`** — feature modules (e.g. `MerchantBrandingModule`). The prior module registry and the `/i/[slug]` runtime that rendered registered modules were retired in the V4→V5 narrowing; consumer surfaces are now purpose-shaped pages (`/m/[merchant]`, `/orders/[processId]`, `/inbox`).
-- **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs; **`console/`** and **`operators/`** — route-specific panels
+- **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs; **`operators/`** — route-specific panels (onboarding shell + edit forms)
 
 ## Wallet-provider scope per route
 
@@ -78,6 +84,6 @@ governing wallet-provider load:
 
 **Rules:**
 
-1. Do NOT gate read-only pages behind `useAccount` / `isConnected`. Wallet-connect is a signing prerequisite, not a login (see `feedback_wallet_connect_not_auth.md`). A user who has never connected must be able to read every Reference / read-only and Marketing route.
+1. Do NOT gate read-only pages behind `useAccount` / `isConnected`. Wallet-connect is a signing prerequisite, not a login. A user who has never connected must be able to read every Reference / read-only and Marketing route.
 2. For inline write affordances on Reference pages, use `WalletGate` (the canonical inline-gate wrapper).
 3. The `(marketing)` / `(app)` route-group split is in place: `app/(marketing)/layout.tsx` does NOT mount `<Providers>`; only `app/(app)/layout.tsx` does. Marketing pages still read on-chain state via the standalone `publicClient` exported from `lib/shared/wagmi.ts` — `/schemas` and `/assemblies` are the canonical event-driven marketing inventory pages.
