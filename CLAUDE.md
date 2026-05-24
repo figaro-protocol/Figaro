@@ -18,7 +18,7 @@ Agents — human-driven or autonomous — have bounded write scope. These are ha
 
 ### Never edit, ever
 
-- **`src/FigaroCore.sol`** — the kernel is frozen. The `kernel-warn.sh` hook surfaces this at edit time; do not bypass.
+- **`src/FigaroCore.sol`** — the kernel is frozen. The `.claude/hooks/kernel-warn.sh` hook surfaces this at edit time; do not bypass.
 - **`src/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
 - **Any deployed contract on a chain anyone is using.** First-write-wins binding in `OperatorRegistry`, `SchemaRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
 - **Existing registered schemas.** Once a `schemaId` is bound to its `ISchemaValidator`, the binding is permanent. To change behavior, register a new schemaId (e.g., `figaro-foo-v1` → `figaro-foo-v2`); never mutate the v1 contract or its Layer A spec in `frontend/lib/shared/schemas/`.
@@ -42,7 +42,7 @@ An agent may NOT:
 
 ### Where these rules are enforced
 
-- **Path-level rules** (e.g., "never edit `src/FigaroCore.sol`") can be enforced at the Claude Code harness level via `.claude/settings.json` `permissions.deny` entries plus the existing `kernel-warn.sh` hook. The harness blocks (or prompts on) the tool call before it reaches the file.
+- **Path-level rules** (e.g., "never edit `src/FigaroCore.sol`") can be enforced at the Claude Code harness level via `.claude/settings.json` `permissions.deny` entries plus the existing `.claude/hooks/kernel-warn.sh` hook. The harness blocks (or prompts on) the tool call before it reaches the file.
 - **Ownership-level rules** (e.g., "do not edit another user's assembly") cannot be enforced by the harness — the harness has no notion of which wallet owns which file. They live in agent prompts, in CLAUDE.md, and in human review at PR/commit time.
 
 See `.claude/skills/figaro-kernel-discipline/SKILL.md` for the kernel-specific anti-patterns; that skill is the canonical source the kernel-reviewer subagent reads.
@@ -55,7 +55,7 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 ### General Coding Discipline
 
-Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its "Simplicity First" / YAGNI bullets (which contradict the runtime-infrastructure doctrine in `docs/v5/RUNTIME.md` and the `frontend/lib/` notes below; the non-conflicting parts are covered by "Stick to the protocol — no 2 cents").
+Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which contradict the runtime-infrastructure doctrine in `docs/v5/RUNTIME.md`).
 
 **Open every task by reformulating, then asking.** Before the first
 substantive action on any non-trivial task — code or not — restate the
@@ -148,7 +148,7 @@ the same data) is still a finding — that is the "no new helpers" case
 
 ### Documentation Discipline
 
-When a code change makes a doc statement stale, fix the doc in the same session.
+When a code change makes a doc statement stale, fix the doc in the same session. `lint-claude-md.sh` runs in pre-commit and fails on mechanically-detectable CLAUDE.md drift (broken backticked paths, env-var diff vs `frontend/.env.local`, missing entries in the mocks / deploy-scripts inventories).
 
 **Authoritative docs that must stay in sync** (when code changes, update these):
 
@@ -221,9 +221,8 @@ forge test --via-ir
 # Certora formal verification (paid cloud service)
 ./test-certora.sh
 # Prereqs (one-time): pip install certora-cli ; export CERTORAKEY=...
-# Prelude: runs ./lint-token-ops.sh to gate on certora/token-ops.inventory
-# being in sync with every ERC20 transfer call site in src/ — new transfer
-# calls without a matching inventory entry fail before any cloud dispatch.
+# Prelude: runs ./lint-token-ops.sh to gate certora/token-ops.inventory
+# against every ERC20 transfer call site in src/.
 
 # Frontend
 cd frontend && npm run type-check
