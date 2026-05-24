@@ -177,13 +177,36 @@ export default function Specifications() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Extension" bottomPad="wide">
+            <MarketingSection title="Extension">
                 <p className="text-sm text-ink-body leading-relaxed">
                     Mechanisms, schemas, and role models extend the protocol without altering the kernel. The kernel invariants the Extension doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/SCHEMAS.md" target="_blank" rel="noopener noreferrer" className="underline">SCHEMAS.md</a>{" "}
                     for the schema validation architecture and the anchoring doctrine, and the{" "}
                     <Link href="/builders" className="underline">Builders</Link> surface for composition tools.
                 </p>
+            </MarketingSection>
+
+            <MarketingSection title="More on the protocol" bottomPad="wide">
+                <ul className="space-y-3 text-base">
+                    <li>
+                        <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
+                            Protocol
+                        </Link>
+                        <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
+                    </li>
+                    <li>
+                        <Link href="/why" className="text-ink-heading font-medium hover:underline">
+                            Why
+                        </Link>
+                        <span className="text-ink-body"> &mdash; cryptoeconomics for trade. The lineage from Bitcoin and Ethereum, and what each layer secures.</span>
+                    </li>
+                    <li>
+                        <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
+                            Cryptoeconomics
+                        </Link>
+                        <span className="text-ink-body"> &mdash; the eight disciplines that read the substrate, organized along the Voshmgir &amp; Zargham taxonomy, and the papers along each.</span>
+                    </li>
+                </ul>
             </MarketingSection>
         </>
     );
