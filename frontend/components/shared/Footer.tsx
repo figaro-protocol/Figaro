@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const COL_LINK_CLS =
-    "block text-sm text-ink-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded";
+    "block text-sm text-ink-muted hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded";
 
 export function Footer() {
     return (
