@@ -26,7 +26,7 @@ export interface NavLink {
 export const NAV_LINKS: NavLink[] = [
     { href: "/protocol", label: "Protocol" },
     { href: "/builders", label: "Builders" },
-    { href: "/discover", label: "Users" },
+    { href: "/users", label: "Users" },
 ];
 
 // Every entry below MUST be a route that lives in `app/(app)/`. The

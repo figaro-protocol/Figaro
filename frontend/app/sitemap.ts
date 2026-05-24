@@ -24,6 +24,7 @@ const PUBLIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[numb
     { path: "/schemas", changeFrequency: "weekly", priority: 0.7 },
     { path: "/integrate", changeFrequency: "weekly", priority: 0.7 },
     { path: "/operators", changeFrequency: "weekly", priority: 0.7 },
+    { path: "/users", changeFrequency: "weekly", priority: 0.9 },
     { path: "/discover", changeFrequency: "weekly", priority: 0.6 },
 ];
 

@@ -41,10 +41,10 @@ export default function Home() {
                             Schemas, assemblies, tokens, agents &mdash; what you can build on the substrate.
                         </p>
                     </Link>
-                    <Link href="/discover" className="group block">
+                    <Link href="/users" className="group block">
                         <h2 className="text-heading-h3 text-ink-heading group-hover:underline">Users</h2>
                         <p className="text-sm text-ink-muted mt-2 leading-relaxed">
-                            Discover operators and transact through bonded processes.
+                            Buyers, merchants, operators, auditors, agents &mdash; how to participate.
                         </p>
                     </Link>
                 </div>
