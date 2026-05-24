@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
 import {
+    useDepositLockPeriod,
     useOperatorProfile,
     useRegistrationDeposit,
     useWithdrawDeposit,
@@ -76,11 +77,12 @@ export function OperatorLanding() {
         return <WelcomeView />;
     }
 
-    const [metadataURI] = profileData;
+    const [metadataURI, registeredBlock] = profileData;
     return (
         <RegisteredCard
             address={address!}
             metadataURI={metadataURI}
+            registeredBlock={registeredBlock}
             deposit={deposit}
             onWithdrawn={() => refetch()}
         />
@@ -92,6 +94,7 @@ export function OperatorLanding() {
 interface RegisteredCardProps {
     address: `0x${string}`;
     metadataURI: string;
+    registeredBlock: bigint | null;
     deposit: bigint | undefined;
     onWithdrawn: () => void;
 }
@@ -99,6 +102,7 @@ interface RegisteredCardProps {
 function RegisteredCard({
     address,
     metadataURI,
+    registeredBlock,
     deposit,
     onWithdrawn,
 }: RegisteredCardProps) {
@@ -153,7 +157,11 @@ function RegisteredCard({
                 )}
             </header>
 
-            <ManageList deposit={deposit} onWithdrawn={onWithdrawn} />
+            <ManageList
+                deposit={deposit}
+                registeredBlock={registeredBlock}
+                onWithdrawn={onWithdrawn}
+            />
         </div>
     );
 }
@@ -171,9 +179,11 @@ function RegisteredCard({
  */
 function ManageList({
     deposit,
+    registeredBlock,
     onWithdrawn,
 }: {
     deposit: bigint | undefined;
+    registeredBlock: bigint | null;
     onWithdrawn: () => void;
 }) {
     const items: Array<{ label: string; description: string; href: string | null }> = [
@@ -212,25 +222,78 @@ function ManageList({
                     </li>
                 ),
             )}
-            <WithdrawRow deposit={deposit} onWithdrawn={onWithdrawn} />
+            <WithdrawRow
+                deposit={deposit}
+                registeredBlock={registeredBlock}
+                onWithdrawn={onWithdrawn}
+            />
         </ul>
     );
 }
 
 function WithdrawRow({
     deposit,
+    registeredBlock,
     onWithdrawn,
 }: {
     deposit: bigint | undefined;
+    registeredBlock: bigint | null;
     onWithdrawn: () => void;
 }) {
     const { address } = useAccount();
     const client = usePublicClient();
+    const { data: lockPeriod } = useDepositLockPeriod();
     const { withdraw, isPending, isConfirming, isSuccess, hash, error } = useWithdrawDeposit();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [confirming, setConfirming] = useState(false);
     const [receiptHash, setReceiptHash] = useState<`0x${string}` | null>(null);
     const isProcessing = isPending || isConfirming;
+
+    // Chain-anchored lock probe. _registeredAt is `internal` so we read it
+    // indirectly: take registeredBlock from the indexer-derived state, fetch
+    // that block's `timestamp`, add `depositLockPeriod`. The latest block's
+    // timestamp + wall-clock are used to compute a chain↔wall offset so a
+    // local 1s tick can render the countdown without per-second RPC chatter.
+    // The simulate gate inside handleWithdraw is the authoritative check;
+    // the countdown here is upfront UX to avoid a wasted wallet signature.
+    const [unlockAtSec, setUnlockAtSec] = useState<bigint | null>(null);
+    const [chainOffsetMs, setChainOffsetMs] = useState<number>(0);
+    const [probeReady, setProbeReady] = useState(false);
+    const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
+    useEffect(() => {
+        if (!client || registeredBlock === null || lockPeriod === undefined) {
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                const [regBlock, latestBlock] = await Promise.all([
+                    client.getBlock({ blockNumber: registeredBlock }),
+                    client.getBlock(),
+                ]);
+                if (cancelled) return;
+                setUnlockAtSec(regBlock.timestamp + (lockPeriod as bigint));
+                setChainOffsetMs(Number(latestBlock.timestamp) * 1000 - Date.now());
+            } finally {
+                if (!cancelled) setProbeReady(true);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [client, registeredBlock, lockPeriod]);
+
+    const unlockAtMs = unlockAtSec !== null ? Number(unlockAtSec) * 1000 : null;
+    const effectiveNowMs = nowMs + chainOffsetMs;
+    const remainingMs = unlockAtMs !== null ? unlockAtMs - effectiveNowMs : null;
+    const isLocked = remainingMs !== null && remainingMs > 0;
+
+    useEffect(() => {
+        if (!isLocked) return;
+        const id = setInterval(() => setNowMs(Date.now()), 1000);
+        return () => clearInterval(id);
+    }, [isLocked]);
 
     // Hold the receipt visible after success — let the operator dismiss
     // it explicitly. Only then does the parent refetch (which causes the
@@ -306,11 +369,42 @@ function WithdrawRow({
     }
 
     if (!confirming) {
+        const depositLabel = deposit !== undefined ? `${formatEther(deposit)} ETH` : "deposit";
+        if (!probeReady) {
+            return (
+                <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
+                    <div>
+                        <span className="text-ink-body">Withdraw deposit</span>
+                        <span className="ml-2 text-xs">Checking lock status…</span>
+                    </div>
+                </li>
+            );
+        }
+        if (isLocked && remainingMs !== null) {
+            return (
+                <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
+                    <div>
+                        <span className="text-ink-body">Withdraw deposit</span>
+                        <span className="ml-2 text-xs">
+                            Reclaim {depositLabel} — available in {formatLockRemaining(remainingMs)}.
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        disabled
+                        aria-disabled="true"
+                        className="text-xs text-ink-faint opacity-50 cursor-not-allowed"
+                    >
+                        Locked
+                    </button>
+                </li>
+            );
+        }
         return (
             <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
                 <div>
                     <span className="text-ink-body">Withdraw deposit</span>
-                    <span className="ml-2 text-xs">De-register and reclaim {deposit !== undefined ? `${formatEther(deposit)} ETH` : "deposit"} — only after the one-year lock has elapsed.</span>
+                    <span className="ml-2 text-xs">De-register and reclaim {depositLabel}.</span>
                 </div>
                 <button
                     type="button"
@@ -350,3 +444,14 @@ function WithdrawRow({
     );
 }
 
+function formatLockRemaining(ms: number): string {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+}
