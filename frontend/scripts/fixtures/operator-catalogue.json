@@ -2,11 +2,12 @@
   "subjectAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "menu": [
     {
-      "id": "tyaddxh0",
+      "id": "5qyljbi2",
       "name": "Test item",
       "price": "1",
       "category": "General",
-      "available": true
+      "available": true,
+      "pricingPolicy": "fixed"
     }
   ],
   "version": "1.0.0",
