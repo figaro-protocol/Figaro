@@ -154,7 +154,6 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 
 - `CLAUDE.md` — this file
 - `docs/v5/CONTRACTS.md`, `docs/v5/SCHEMAS.md`, `docs/v5/FRONTEND.md`, `docs/v5/TESTING.md` — the inventories CLAUDE.md indexes
-- `.github/copilot-instructions.md` — same inventory, Copilot framing
 - `sdk/README.md` — SDK entry points
 - `docs/v5/VERIFICATION_MAP.md` — invariant → test → formal layer map
 - User-facing schema surfaces in `frontend/app/`. The `/schemas` inventory renders from the `schemaCategories.ts` registry, so a newly registered schema appears there automatically (see the schema checklist below). Pages that name schemas in prose still need a manual pass when a new schema lands — `grep -rl "<schemaId>" frontend/app/` finds them.
