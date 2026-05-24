@@ -114,7 +114,7 @@ Anvil at `http://127.0.0.1:8545` (chain ID 31337).
 
 ### Developer setup & canonical scripts
 
-- **Canonical scripts folder:** `script/` (singular). The repo previously had a `scripts/` folder; any tools there were consolidated into `script/`.
+- **Scripts layout:** Foundry deploy scripts (`*.s.sol`) live in `script/`. Shell scripts (`deploy-*.sh`, `lint-*.sh`, `test-*.sh`, `mythril-docker.sh`, `coverage.sh`, `setup-local.sh`) live at the repo root and are invoked from there.
 - **Common commands:**
 
 ```bash
@@ -134,7 +134,7 @@ forge test --via-ir
 cd sdk && npm test
 ```
 
-The `script/` directory now contains helper deployment and analysis scripts (Deploy.s.sol, DeployMainnet.s.sol, MintTokens.s.sol, mythril-docker.sh).
+`script/` holds the Foundry deploy scripts (`Deploy.s.sol`, `DeployMainnet.s.sol`, `DeployMockKleros.s.sol`, `MintTokens.s.sol`).
 
 ---
 
