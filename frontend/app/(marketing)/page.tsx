@@ -22,7 +22,7 @@ export default function Home() {
                 }
             >
                 <p className="text-base text-ink-body leading-relaxed mt-8 mb-5">
-                    Both sides lock a deposit larger than the deal into a program that holds the deposits and follows one fixed rule for releasing them. Honor the deal and each side recovers its stake. Cheat and both forfeit. Because cheating costs more than it can win, cooperation is the dominant strategy by structural means.
+                    Both sides &mdash; each holding a wallet &mdash; lock a stablecoin deposit larger than the deal into a program that holds the deposits and follows one fixed rule for releasing them. Honor the deal and each side recovers its stake. Cheat and both forfeit. Because cheating costs more than it can win, cooperation is the dominant strategy by structural means.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Nobody runs the program. There is no company behind it and no account that can be closed. It is shared infrastructure, the way the internet is. Cryptoeconomics for trade.

@@ -15,7 +15,7 @@ export default function Why() {
                 title="Cryptoeconomics for trade."
                 lead={
                     <>
-                        Bitcoin invented cryptoeconomics &mdash; a substrate whose value is denominated in bitcoin. Ethereum extended the lineage with programmability. Figaro continues it, and addresses what neither did: trade itself.
+                        Bitcoin invented cryptoeconomics &mdash; a substrate whose value is denominated in bitcoin, the first cryptocurrency. Ethereum extended the lineage with programmability and its own cryptocurrency, ether. Figaro continues the lineage, and addresses what neither did: trade itself.
                     </>
                 }
             />
