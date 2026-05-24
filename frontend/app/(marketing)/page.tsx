@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
+import { ReadButton } from "@/components/shared/ReadButton";
+import { BuildButton } from "@/components/shared/BuildButton";
+import { DiscoverButton } from "@/components/shared/DiscoverButton";
 
 export const metadata: Metadata = {
     title: "Figaro Protocol",
@@ -29,24 +31,27 @@ export default function Home() {
 
             <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-xl">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <Link href="/protocol" className="group block">
-                        <h2 className="text-heading-h3 text-ink-heading group-hover:underline">Protocol</h2>
-                        <p className="text-sm text-ink-muted mt-2 leading-relaxed">
+                    <div>
+                        <h2 className="text-heading-h3 text-ink-heading">Protocol</h2>
+                        <p className="text-sm text-ink-muted mt-2 mb-5 leading-relaxed">
                             The substrate &mdash; the kernel, the math, the specification.
                         </p>
-                    </Link>
-                    <Link href="/builders" className="group block">
-                        <h2 className="text-heading-h3 text-ink-heading group-hover:underline">Builders</h2>
-                        <p className="text-sm text-ink-muted mt-2 leading-relaxed">
+                        <ReadButton />
+                    </div>
+                    <div>
+                        <h2 className="text-heading-h3 text-ink-heading">Builders</h2>
+                        <p className="text-sm text-ink-muted mt-2 mb-5 leading-relaxed">
                             Schemas, assemblies, tokens, agents &mdash; what you can build on the substrate.
                         </p>
-                    </Link>
-                    <Link href="/users" className="group block">
-                        <h2 className="text-heading-h3 text-ink-heading group-hover:underline">Users</h2>
-                        <p className="text-sm text-ink-muted mt-2 leading-relaxed">
+                        <BuildButton className="inline-flex" />
+                    </div>
+                    <div>
+                        <h2 className="text-heading-h3 text-ink-heading">Users</h2>
+                        <p className="text-sm text-ink-muted mt-2 mb-5 leading-relaxed">
                             Buyers, merchants, operators, auditors, agents &mdash; how to participate.
                         </p>
-                    </Link>
+                        <DiscoverButton className="inline-flex" />
+                    </div>
                 </div>
             </section>
         </>
