@@ -93,9 +93,6 @@ export default function BuildersPage() {
                     <span className="text-ink-body"> &mdash; how schema authors get paid: 60% of the FIG supply, by a fixed formula, for schemas that get used.</span>
                 </li>
             </ul>
-            <p className="mt-12 text-sm text-ink-muted leading-relaxed">
-                Continue: <Link href="/protocol" className="underline">Protocol</Link> &mdash; how it works &middot; <Link href="/users" className="underline">Users</Link> &mdash; how to participate.
-            </p>
         </section>
     );
 }

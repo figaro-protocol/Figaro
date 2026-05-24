@@ -34,9 +34,29 @@ export default function Protocol() {
             <p className="text-base text-ink-body leading-relaxed">
                 That is the whole of it: a deposit large enough that cheating loses, and one clear rule for who opens the box. Everything else Figaro can do &mdash; carrying many kinds of agreement, linking long chains of contributors &mdash; is built on those two facts and changes neither. Figaro is still in development; the mechanism described here is built and tested, but not yet running on a public network. The hard part was never the machinery. It was making it simple enough that you never have to trust the person on the other side.
             </p>
-            <p className="mt-12 text-sm text-ink-muted leading-relaxed">
-                Continue: <Link href="/builders" className="underline">Builders</Link> &mdash; what to build on the protocol &middot; <Link href="/users" className="underline">Users</Link> &mdash; how to participate.
-            </p>
+            <h2 className="text-base font-semibold text-ink-heading mt-12 mb-4">
+                More on the protocol
+            </h2>
+            <ul className="space-y-3 text-base">
+                <li>
+                    <Link href="/why" className="text-ink-heading font-medium hover:underline">
+                        Why
+                    </Link>
+                    <span className="text-ink-body"> &mdash; cryptoeconomics for trade. The lineage from Bitcoin and Ethereum, and what each layer secures.</span>
+                </li>
+                <li>
+                    <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
+                        Cryptoeconomics
+                    </Link>
+                    <span className="text-ink-body"> &mdash; the eight disciplines that read the substrate, organized along the Voshmgir &amp; Zargham taxonomy, and the papers along each.</span>
+                </li>
+                <li>
+                    <Link href="/spec" className="text-ink-heading font-medium hover:underline">
+                        Specifications
+                    </Link>
+                    <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, schema, mechanism modules, with source links and verification status.</span>
+                </li>
+            </ul>
         </section>
     );
 }
