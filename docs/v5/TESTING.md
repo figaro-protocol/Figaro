@@ -26,7 +26,7 @@ typed-error revert. (Topology has no validator — manifest-only clause.)
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosRpgfMinter.t.sol` | 8 | Claim flag set, already-claimed revert, not-unlocked revert, invalid-stage revert, root-not-set revert, submitter auth, root one-shot, zero-root rejection |
 
-## Certora (`certora/`) — 6 specs, 43 declared rules
+## Certora (`certora/`) — 6 specs, 44 declared rules (46 sub-rules)
 
 | Spec | Rules | Covers |
 |---|---|---|
@@ -64,15 +64,15 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 `Inv_ClaimImpliesUnlocked`, `Inv_TotalAllocatedLockedWithRoot`,
 `Inv_StageIndexBounded`.
 
-## Frontend Vitest (`frontend/tests/`) — 2 tiers, 65 files
+## Frontend Vitest (`frontend/tests/`) — 2 tiers, 64 files
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.
 
-- **Component tier** (`tests/components/`, 8 files) — React Testing Library:
+- **Component tier** (`tests/components/`, 9 files) — React Testing Library:
   `Header`, `MobileNav`, `NotificationBell`, `ManifestForm`,
-  `GHGWorkflowPanel`, `TokenAddressInput`, `TokenApprovalFlow`,
-  `TokenDecimalDisplayFlows`.
-- **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
+  `GHGWorkflowPanel`, `OperatorTrackRecord`, `TokenAddressInput`,
+  `TokenApprovalFlow`, `TokenDecimalDisplayFlows`.
+- **Lib tier** (`tests/lib/`, 55 files) — pure-client unit tests: commitment
   preparation + stores, agreement manifest, schema-spec source, discovery +
   catalogue pipeline, GHG disclosure, delivery/handoff attestation, dispute
   evidence, IPFS service, token conversion, geocode, and per-hook tests
@@ -84,7 +84,7 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
 
-**devnet (`*.devnet.spec.ts`, 43 specs)** — every spec drives the real UI
+**devnet (`*.devnet.spec.ts`, 47 specs)** — every spec drives the real UI
 against Anvil + deployed contracts (action in the UI, reaction in the UI). By area:
 
 - Commerce / checkout / order lifecycle: `merchant-page`, `merchant-place-order`,
@@ -118,3 +118,7 @@ can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
   schema's parse, per-schema content checks for `figaro-ghg-protocol-v1` and `figaro-geo-v2`, and
   a check that all 16 embedded canonical specs the content gate uses parse and resolve by schemaId.
 - `figaro-rpgf` (`prover/rpgf/`): substrate-broadening aggregator + conformance to TypeScript simulator.
+
+## Opportunistic — Mythril
+
+Mythril runs out-of-loop via `script/mythril-docker.sh` (Docker image `mythril/myth`, 300s execution timeout, solc 0.8.26). Not wired into pre-commit or CI; invoked by hand on specific contracts when a deep symbolic-execution pass is wanted alongside Halmos / Certora / Echidna. See CLAUDE.md "Docker-hosted services" for the Docker convention.

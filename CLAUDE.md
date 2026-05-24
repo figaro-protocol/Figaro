@@ -214,7 +214,7 @@ forge test --via-ir
 ./test-echidna.sh
 # Prereqs (one-time): brew install echidna
 
-# TLA+ model checking (15 invariants across 2 models: FigaroCore + FigToken)
+# TLA+ model checking (24 invariants across 3 models: FigaroCore + FigToken + RpgfMinter)
 ./test-tla.sh
 # Prereqs (one-time): Java 11+ and curl tla2tools.jar into formal/ (see script header)
 
@@ -414,12 +414,14 @@ cd sdk && npm run lint    # tsc --noEmit
 
 ### Docker-hosted services
 
-Two project services run in Docker, not natively on the host:
+Four project tools run in Docker, not natively on the host:
 
-- **IPFS (Kubo).** `lib/shared/ipfsService.ts` pins operator profiles, catalogues, manifests, and uploaded media. Default endpoint `http://127.0.0.1:5001`. Image: `ipfs/kubo:latest`. Kubo's default CORS policy rejects browser requests from the dev server; the container needs `API.HTTPHeaders.Access-Control-Allow-Origin` set to the dev origin and a restart before pinning works.
-- **LaTeX → PDF.** `paper/` builds compile via the `texlive/texlive` image (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citation resolution). No native LaTeX on the host.
+- **IPFS (Kubo).** Pins operator profiles, catalogues, manifests, uploaded media via `lib/shared/ipfsService.ts`. Endpoint `http://127.0.0.1:5001`; image `ipfs/kubo:latest`. Kubo's default CORS needs the dev origin allowlisted + a restart before pinning works.
+- **Mythril.** Symbolic-execution via `script/mythril-docker.sh` (image `mythril/myth`). Opportunistic, not in the standard test loop.
+- **GraphQL indexing (subgraph).** `graph-node` + Postgres stack when a subgraph indexer is being exercised. Opportunistic; no subgraph artifacts currently in the repo.
+- **LaTeX → PDF.** `paper/` builds compile via `texlive/texlive` (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citations). No native LaTeX on the host.
 
-**Convention: the agent handles Docker, not the user.** When a session needs IPFS up, a paper rebuilt, or a container reconfigured, the agent runs the `docker` commands. The user keeps Docker Desktop running and doesn't drop into the daemon directly. Caveat: containers started with `run_in_background` may be reaped by the harness lifecycle — for services that must outlive a single turn, ask the user to start them in their own terminal (same convention as Anvil).
+**Convention: the agent handles Docker, not the user.** Agent runs `docker run` / `exec` / `compose` / `restart`; user keeps Docker Desktop alive. Caveat: containers started via `run_in_background` may be reaped by the harness — long-lived services (IPFS daemon, graph-node) should be started by the user in their own terminal, same convention as Anvil.
 
 ### Environment Variables (`.env.local` in `frontend/`)
 
