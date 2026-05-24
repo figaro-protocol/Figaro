@@ -37,6 +37,18 @@ import {
     readLocalDeploymentConfig,
     waitForWalletConnected,
 } from './devnet-helpers';
+import {
+    JURISDICTION_SCHEMA_KEY,
+    canonicalizeAgreement,
+    type Agreement,
+} from '../../lib/core/agreementManifest';
+// `createRootOrder` returns the on-chain commitment whose `agreementHash` is
+// hashed by `@figaro/core`. For figaro-jurisdiction-v1 specifically that hash
+// diverges from `lib/core/agreementManifest.computeAgreementHash` because the
+// SDK's Category-2 encoder drops the kleros* fields. Seed localStorage with
+// the commitment's hash (same view the frontend's hydrate path sees on chain),
+// not `seedAgreementForWallet`'s lib-derived hash. See backlog "SDK/lib hash
+// divergence on figaro-jurisdiction-v1".
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -87,13 +99,47 @@ test.describe('Dispute create + evidence via the audit page (devnet)', () => {
 
         await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, SELLER_KEY);
 
-        const { processId } = await createRootOrder({
+        // Layer-3 recourse is clause-driven (commit b2a5646 — the audit
+        // page's klerosConfig requires both a figaro-jurisdiction-v1
+        // section that names a Kleros court AND the env-resolved proxy).
+        // Commit an agreement that authors the General Court so the
+        // panel surfaces the Raise Dispute affordance.
+        const agreement: Agreement = {
+            version: 'a1',
+            buyer: ANVIL_ACCOUNTS[0] as `0x${string}`,
+            seller: ANVIL_ACCOUNTS[1] as `0x${string}`,
+            sections: [
+                {
+                    schema: JURISDICTION_SCHEMA_KEY,
+                    data: { klerosCourt: 'general', klerosMinJurors: 3 },
+                },
+            ],
+        };
+
+        const { processId, commitment } = await createRootOrder({
             buyerKey: BUYER_KEY,
             sellerKey: SELLER_KEY,
             coreAddress,
             tokenAddress,
             payment: 1_000_000_000_000_000_000n,
+            agreement,
         });
+
+        // Pre-populate the buyer wallet's localStorage with the agreement
+        // body keyed by the chain-side hash (same function createRootOrder
+        // used). `useProcessAgreements` hydrates via the localStorage cache
+        // first, so seeding here makes the jurisdiction clause readable
+        // without round-tripping IPFS.
+        const agreementHash = commitment.agreementHash;
+        const canonical = canonicalizeAgreement(agreement);
+        await page.addInitScript(
+            ({ hash, body }: { hash: string; body: string }) => {
+                try {
+                    window.localStorage.setItem(`figaro:agreement:${hash}`, body);
+                } catch { /* storage unavailable */ }
+            },
+            { hash: agreementHash, body: canonical },
+        );
 
         // F8: DisputeStatusPanel is process-scoped on the audit page — the
         // route param drives it directly.
