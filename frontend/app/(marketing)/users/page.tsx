@@ -78,6 +78,9 @@ export default function Users() {
                         <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives.</span>
                     </li>
                 </ul>
+                <p className="mt-12 text-sm text-ink-muted leading-relaxed">
+                    Continue: <Link href="/protocol" className="underline">Protocol</Link> &mdash; how it works &middot; <Link href="/builders" className="underline">Builders</Link> &mdash; extend it.
+                </p>
             </MarketingSection>
         </>
     );

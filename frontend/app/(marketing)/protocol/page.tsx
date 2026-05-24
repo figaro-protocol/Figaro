@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
     title: "How it works — Figaro Protocol",
@@ -32,6 +33,9 @@ export default function Protocol() {
             </p>
             <p className="text-base text-ink-body leading-relaxed">
                 That is the whole of it: a deposit large enough that cheating loses, and one clear rule for who opens the box. Everything else Figaro can do &mdash; carrying many kinds of agreement, linking long chains of contributors &mdash; is built on those two facts and changes neither. Figaro is still in development; the mechanism described here is built and tested, but not yet running on a public network. The hard part was never the machinery. It was making it simple enough that you never have to trust the person on the other side.
+            </p>
+            <p className="mt-12 text-sm text-ink-muted leading-relaxed">
+                Continue: <Link href="/builders" className="underline">Builders</Link> &mdash; what to build on the protocol &middot; <Link href="/users" className="underline">Users</Link> &mdash; how to participate.
             </p>
         </section>
     );
