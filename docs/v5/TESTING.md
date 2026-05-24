@@ -68,11 +68,11 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.
 
-- **Component tier** (`tests/components/`, 9 files) — React Testing Library:
-  `Header`, `MobileNav`, `NotificationBell`, `ManifestForm`,
-  `GHGWorkflowPanel`, `OperatorTrackRecord`, `TokenAddressInput`,
-  `TokenApprovalFlow`, `TokenDecimalDisplayFlows`.
-- **Lib tier** (`tests/lib/`, 55 files) — pure-client unit tests: commitment
+- **Component tier** (`tests/components/`, 8 files) — React Testing Library:
+  `Header`, `MobileNav`, `NotificationBell`, `GHGWorkflowPanel`,
+  `OperatorTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
+  `TokenDecimalDisplayFlows`.
+- **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
   preparation + stores, agreement manifest, schema-spec source, discovery +
   catalogue pipeline, GHG disclosure, delivery/handoff attestation, dispute
   evidence, IPFS service, token conversion, geocode, and per-hook tests
