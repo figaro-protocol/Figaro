@@ -417,7 +417,7 @@ cd sdk && npm run lint    # tsc --noEmit
 Four project tools run in Docker, not natively on the host:
 
 - **IPFS (Kubo).** Pins operator profiles, catalogues, manifests, uploaded media via `lib/shared/ipfsService.ts`. Endpoint `http://127.0.0.1:5001`; image `ipfs/kubo:latest`. Kubo's default CORS needs the dev origin allowlisted + a restart before pinning works.
-- **Mythril.** Symbolic-execution via `script/mythril-docker.sh` (image `mythril/myth`). Opportunistic, not in the standard test loop.
+- **Mythril.** Symbolic-execution via `mythril-docker.sh` (image `mythril/myth`). Opportunistic, not in the standard test loop.
 - **GraphQL indexing (subgraph).** `graph-node` + Postgres stack when a subgraph indexer is being exercised. Opportunistic; no subgraph artifacts currently in the repo.
 - **LaTeX → PDF.** `paper/` builds compile via `texlive/texlive` (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citations). No native LaTeX on the host.
 

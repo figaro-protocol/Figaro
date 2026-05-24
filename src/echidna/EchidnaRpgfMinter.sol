@@ -54,9 +54,7 @@ contract EchidnaRpgfMinter {
         // submitter. (Auth on submitRoot is symbolically verified by
         // the Halmos harness; here we focus on claim-side invariants.)
         uint64[3] memory unlocks = [uint64(1), uint64(2), uint64(3)];
-        minter = new RpgfMinter(
-            address(token), address(verifier), PROGRAM_VKEY, address(this), unlocks
-        );
+        minter = new RpgfMinter(address(token), address(verifier), PROGRAM_VKEY, address(this), unlocks);
         token.registerMinter(address(minter), 600_000_000 ether);
 
         _minterTarget = address(token);
@@ -71,9 +69,8 @@ contract EchidnaRpgfMinter {
         // hashed per OZ MerkleProof convention.
         bytes32 leafA = keccak256(abi.encodePacked(alice, CLAIM_AMOUNT));
         bytes32 leafB = keccak256(abi.encodePacked(bob, CLAIM_AMOUNT));
-        bytes32 root = leafA <= leafB
-            ? keccak256(abi.encodePacked(leafA, leafB))
-            : keccak256(abi.encodePacked(leafB, leafA));
+        bytes32 root =
+            leafA <= leafB ? keccak256(abi.encodePacked(leafA, leafB)) : keccak256(abi.encodePacked(leafB, leafA));
         bytes memory pv = abi.encode(uint8(0), root, CLAIM_AMOUNT * 2, uint32(2));
         minter.submitRoot(pv, hex"");
     }
@@ -85,11 +82,8 @@ contract EchidnaRpgfMinter {
         bytes32 leafB = keccak256(abi.encodePacked(bob, CLAIM_AMOUNT));
         bytes32[] memory proof = new bytes32[](1);
         proof[0] = leafB;
-        (bool ok,) = address(minter).call(
-            abi.encodeWithSignature(
-                "claim(uint8,uint256,bytes32[])", uint8(0), CLAIM_AMOUNT, proof
-            )
-        );
+        (bool ok,) = address(minter)
+            .call(abi.encodeWithSignature("claim(uint8,uint256,bytes32[])", uint8(0), CLAIM_AMOUNT, proof));
         if (ok) _aliceClaimedStage0 = true;
     }
 
@@ -98,11 +92,8 @@ contract EchidnaRpgfMinter {
         bytes32 leafA = keccak256(abi.encodePacked(alice, CLAIM_AMOUNT));
         bytes32[] memory proof = new bytes32[](1);
         proof[0] = leafA;
-        (bool ok,) = address(minter).call(
-            abi.encodeWithSignature(
-                "claim(uint8,uint256,bytes32[])", uint8(0), CLAIM_AMOUNT, proof
-            )
-        );
+        (bool ok,) = address(minter)
+            .call(abi.encodeWithSignature("claim(uint8,uint256,bytes32[])", uint8(0), CLAIM_AMOUNT, proof));
         if (ok) _bobClaimedStage0 = true;
     }
 

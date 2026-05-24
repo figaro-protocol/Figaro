@@ -41,7 +41,7 @@ cd sdk && npm test
 cd prover && cargo test
 
 # Mythril analysis (Docker)
-./script/mythril-docker.sh src/fig/FigToken.sol
+./mythril-docker.sh src/fig/FigToken.sol
 ```
 
 ## Canonical scripts folder

@@ -8,13 +8,13 @@
 #        echidna_cumulative_accounting     echidna_atomic_resolution
 #        echidna_state_monotonicity
 #
-#   2. RpgfMinter (echidna/EchidnaRpgfMinter.sol) — 8 invariants
+#   2. RpgfMinter (src/echidna/EchidnaRpgfMinter.sol) — 8 invariants
 #        echidna_claim_flag_monotonic      echidna_total_minted_within_cap
 #        echidna_minter_immutable          echidna_submitter_immutable
 #        echidna_program_vkey_immutable    echidna_unlock_times_immutable
 #        echidna_root_one_shot             echidna_claim_balance_consistency
 #
-#   3. FigToken (echidna/EchidnaFigToken.sol) — 8 invariants
+#   3. FigToken (src/echidna/EchidnaFigToken.sol) — 8 invariants
 #        echidna_max_supply_never_exceeded            echidna_deployer_can_renounce
 #        echidna_deployer_cannot_mint_after_renounce  echidna_minter_cap_enforced
 #        echidna_no_zero_address_minter               echidna_no_mint_to_zero_address
@@ -58,11 +58,12 @@ echidna . \
     --config echidna.yaml \
     "$@"
 
-# RpgfMinter and FigToken live outside forge's `src/` tree, so crytic-compile
-# is given the file path directly. Same testLimit / seqLen / timeout for parity.
+# RpgfMinter and FigToken harnesses live in src/echidna/ alongside the kernel
+# harness. Invoked by explicit file path (not `echidna . --contract X`) so each
+# pass keeps its own --workers / --timeout knobs independent of echidna.yaml.
 echo ""
 echo "── Pass 2/3: RpgfMinter (EchidnaRpgfMinter) ──"
-echidna echidna/EchidnaRpgfMinter.sol \
+echidna src/echidna/EchidnaRpgfMinter.sol \
     --contract EchidnaRpgfMinter \
     --test-limit 50000 \
     --seq-len 30 \
@@ -73,7 +74,7 @@ echidna echidna/EchidnaRpgfMinter.sol \
 
 echo ""
 echo "── Pass 3/3: FigToken (EchidnaFigToken) ──"
-echidna echidna/EchidnaFigToken.sol \
+echidna src/echidna/EchidnaFigToken.sol \
     --contract EchidnaFigToken \
     --test-limit 50000 \
     --seq-len 30 \

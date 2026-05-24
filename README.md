@@ -122,7 +122,7 @@ Anvil at `http://127.0.0.1:8545` (chain ID 31337).
 ./deploy-local.sh
 
 # Run Mythril analysis (via Docker)
-./script/mythril-docker.sh src/fig/FigToken.sol
+./mythril-docker.sh src/fig/FigToken.sol
 
 # Start frontend dev server
 cd frontend && npm install && npm run dev
