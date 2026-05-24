@@ -31,26 +31,32 @@ export default function Home() {
 
             <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-xl">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div>
+                    <div className="text-center flex flex-col">
                         <h2 className="text-heading-h3 text-ink-heading">Protocol</h2>
                         <p className="text-sm text-ink-muted mt-2 mb-5 leading-relaxed">
                             The substrate &mdash; the kernel, the math, the specification.
                         </p>
-                        <ReadButton />
+                        <div className="mt-auto">
+                            <ReadButton className="inline-flex min-w-[160px] justify-center" />
+                        </div>
                     </div>
-                    <div>
+                    <div className="text-center flex flex-col">
                         <h2 className="text-heading-h3 text-ink-heading">Builders</h2>
                         <p className="text-sm text-ink-muted mt-2 mb-5 leading-relaxed">
                             Schemas, assemblies, tokens, agents &mdash; what you can build on the substrate.
                         </p>
-                        <BuildButton className="inline-flex" />
+                        <div className="mt-auto">
+                            <BuildButton className="inline-flex min-w-[160px] justify-center" />
+                        </div>
                     </div>
-                    <div>
+                    <div className="text-center flex flex-col">
                         <h2 className="text-heading-h3 text-ink-heading">Users</h2>
                         <p className="text-sm text-ink-muted mt-2 mb-5 leading-relaxed">
                             Buyers, merchants, operators, auditors, agents &mdash; how to participate.
                         </p>
-                        <DiscoverButton className="inline-flex" />
+                        <div className="mt-auto">
+                            <DiscoverButton className="inline-flex min-w-[160px] justify-center" />
+                        </div>
                     </div>
                 </div>
             </section>
