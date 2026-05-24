@@ -55,12 +55,7 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 ### General Coding Discipline
 
-Adapted from the community `andrej-karpathy-skills` CLAUDE.md (rules distilled
-from Karpathy's notes on LLM coding pitfalls). That file's "Simplicity First"
-rule is deliberately not imported: its YAGNI bullets contradict the
-runtime-infrastructure doctrine in `docs/v5/RUNTIME.md` and the
-`frontend/lib/` notes below, and its non-conflicting part is already covered
-by "Stick to the protocol — no 2 cents".
+Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its "Simplicity First" / YAGNI bullets (which contradict the runtime-infrastructure doctrine in `docs/v5/RUNTIME.md` and the `frontend/lib/` notes below; the non-conflicting parts are covered by "Stick to the protocol — no 2 cents").
 
 **Open every task by reformulating, then asking.** Before the first
 substantive action on any non-trivial task — code or not — restate the
@@ -129,8 +124,8 @@ The MAD equilibrium is fragile — any single escape hatch degrades it.
 ### Frontend = runtime infrastructure, not product code
 
 `frontend/lib/` is runtime infrastructure where the abstraction IS the
-deliverable. Catalogues (`blockMetadata.ts`, mechanism packages,
-service-binding interfaces, skin bundles, the semantic-model layer in
+deliverable. Catalogues (`shared/schemaCategories.ts`, `shared/schemaSpecSource.ts`,
+mechanism packages, service-binding interfaces, the semantic-model layer in
 `lib/semantic/`) exist to be composed by UI surfaces — some shipped
 (`AgreementDrawer`, `/m/[merchant]`, `/orders/[processId]`, `/inbox`,
 `/discover`), some not yet built. See RUNTIME.md Parts 1–3 for the
@@ -183,7 +178,7 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 
 ### Paper Authorship Discipline
 
-Every paper in `paper/` must stand on its own. The corpus was derived from a single archive paper (`paper/archive.figaro3.tex`) and the derivative-paper artifacts must not survive into preprint. When authoring or revising any paper, audit against all of the following — and surface any drift before declaring the paper done:
+Every paper in `paper/` must stand on its own. The corpus was derived from a single archive paper (`paper/archive/figaro3.tex`) and the derivative-paper artifacts must not survive into preprint. When authoring or revising any paper, audit against all of the following — and surface any drift before declaring the paper done:
 
 - **No companion-paper references.** No "in the companion implementation paper", no "developed in the institutional-economics paper", no `\Cref` to sections in other files. If a claim isn't in this paper, it isn't in this paper. Refer to results by their substance — "the escape-hatch theorem", "the bonding equilibrium", "the verification stack" — not by which paper carries them. The rule applies to every paper in the corpus, including synthesis papers; if synthesis is what a paper does, it must do so by re-stating or naming-by-result, not by punting to other papers.
 - **Topic discipline.** A mechanism-design paper contains mechanism design — no Solidity, no DAG, no legal/normative framing, no overlays (interest-bearing bonds, time-varying multipliers, etc.). A kernel-implementation paper doesn't contain economics. An institutional-economics paper doesn't contain Solidity. Match the paper's stated subject and stop there.
@@ -246,132 +241,38 @@ Full harness inventory (file lists, property names, rule counts) → `docs/v5/TE
 
 **Figaro is not an app, a firm, or an economic system. It is the TCP/IP of Trade.**
 
-It is a stateless, ownerless protocol that defines the smallest possible unit of a
-secure handshake: **The Bonded Commitment**. Two parties who have never met can
-transact with mathematical certainty that cooperation is the dominant strategy —
-no arbitrator, no timeout, no admin backdoor.
+A stateless, ownerless protocol that defines the smallest unit of a secure handshake: **The Bonded Commitment**. Two parties who have never met transact with mathematical certainty that cooperation is the dominant strategy — no arbitrator, no timeout, no admin backdoor.
 
-The kernel runs **two mechanisms** doing distinct work — they compose, they
-don't substitute. Match Paper A abstract (lines 67–77) directly.
+The kernel runs **two mechanisms** doing distinct work — they compose, they don't substitute.
 
-**Mechanism 1 — Asymmetric bonding** (buyer locks 2× payment, seller locks
-2× cumulative value): produces the bilateral Nash equilibrium (cooperation
-weakly dominates defection for both parties; unique profile surviving iterated
-elimination of weakly dominated strategies; Paper A Theorem 4.3) AND scales
-the bilateral primitive from 2-party to N-party process chains via
-**progressive collateralization** (each seller bonds against cumulative
-upstream value, creating a mesh of independently secured edges, each edge
-carrying its own equilibrium at every depth; Theorem 5.5). The kernel only
-sees linear chains — `commit` calls extending a monotonic cumulative-value
-accumulator — so the equilibrium analysis is per-edge and never traverses a
-DAG. Whatever DAG topology an assembly composes lives in the upper
-composability layers, not in the kernel. 2× is the minimum viable multiplier
-(Theorem 4.6).
+- **Mechanism 1 — Asymmetric bonding** (buyer locks 2× payment, seller locks 2× cumulative value): produces the bilateral Nash equilibrium (cooperation weakly dominates defection for both parties; unique profile surviving iterated elimination of weakly dominated strategies) AND scales the bilateral primitive from 2-party to N-party process chains via **progressive collateralization** — each seller bonds against cumulative upstream value, creating a mesh of independently secured edges, each carrying its own equilibrium at every depth. The kernel only sees linear chains — `commit` calls extending a monotonic cumulative-value accumulator — so the equilibrium analysis is per-edge and never traverses a DAG. Whatever DAG topology an assembly composes lives in the upper composability layers, not in the kernel. 2× is the minimum viable multiplier.
+- **Mechanism 2 — Buyer dominance** (only the buyer can trigger `resolveProcess`; resolution is **atomic** — all orders in the process settle together or not at all): operates on the already-scaled mesh to enforce inter-seller coordination. Atomic resolution induces a weakest-link subgame among sellers — endogenous peer pressure of magnitude Pᵢ + 2Gᵢ on every co-seller, reproducing Grameen joint-liability peer enforcement under strictly weaker assumptions (no repeated interaction, no shared community, no exogenous punishment technology).
 
-**Mechanism 2 — Buyer dominance** (only the buyer can trigger `resolveProcess`,
-and resolution is **atomic** — all orders in the process settle together or
-not at all): operates on the already-scaled mesh to enforce inter-seller
-coordination, cooperation, and communication. The atomic-resolution rule is
-buyer dominance's forcing function: it induces a weakest-link subgame among
-sellers (Theorem 5.10, Endogenous Coordination Pressure) — endogenous
-peer pressure of magnitude Pᵢ + 2Gᵢ on every co-seller, without explicit
-communication or governance. This reproduces Grameen joint-liability
-microfinance's peer-enforcement outcome under strictly weaker assumptions
-(no repeated interaction, no local information, no exogenous punishment
-technology; Proposition 5.14, Assumption Reduction on Cooperation Pressure).
+Under the **RWA-as-wallet** frame this cohort dynamic is a **social mechanism** in the precise sense — bond architecture produces social-coordination behavior (peer pressure, cohort negotiation, burden-sharing) endogenously, with no social-substrate prerequisites. Full apparatus in `paper/figaro-accounting.tex` §7; framings in memory (`reference_rwa_as_wallet.md`, `reference_social_mechanism.md`).
 
-Under the RWA-as-wallet frame this cohort dynamic is a **social mechanism**
-in the precise sense: it produces social-coordination behavior (peer pressure,
-cohort negotiation, burden-sharing, coverage of struggling counterparts)
-endogenously through the bond architecture, with no social-substrate
-prerequisites — no repeated interaction, no shared community, no exogenous
-punishment technology. Each co-seller is an RWA-as-wallet whose continued
-participation in its markets depends on receipts covering the asset's
-off-chain operating expenses (the node analogy; full apparatus in
-`paper/figaro-accounting.tex` §7 and `~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/reference_rwa_as_wallet.md`).
-A failed resolution is not an isolated capital loss but a sustainability hit
-that propagates into the wallet's ability to keep operating. The weakest-link
-result tells you the cohort outcome; the RWA-sustainability frame tells you
-why each node in the cohort cares. See
-`~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/reference_social_mechanism.md`
-for the full framing and the papers it applies to.
-
-The mechanisms are inseparable in practice. Bonding alone gives a mesh of
-independently bonded edges — multi-party coordination would still require N
-mutual agreements at resolution. Buyer-dominance alone gives a single party
-who can resolve whatever they want — without bonding it's worthless. Together:
-the bonding ratio creates the mesh; buyer dominance + atomic resolution make
-the mesh resolvable from a single signature AND propagate cooperation pressure
-through it.
+The mechanisms are inseparable in practice. Bonding alone gives a mesh of independently bonded edges — multi-party coordination would still require N mutual agreements at resolution. Buyer-dominance alone gives a single party who can resolve whatever they want — worthless without bonding. Together: the bonding ratio creates the mesh; buyer dominance + atomic resolution make the mesh resolvable from a single signature AND propagate cooperation pressure through it.
 
 Plus one security constraint:
-- **No escape hatches** — any unilateral exit path weakens the Nash
-  equilibrium (Theorem 4.7). Either α≥½ breaks weak dominance directly
-  (timeout case), or the exit requires a third party J ∉ {B, S} whose
-  incentives aren't bond-constrained (arbitrator / governance vote — unbonded
-  actor). External legal forums adjudicating under duress / frustration /
-  impossibility are NOT this kind of escape hatch (Remark 4.8): they're
-  constrained by their own institutional bond structures and operate on the
-  bonded commitment as evidentiary input.
+- **No escape hatches** — any unilateral exit path weakens the Nash equilibrium. Either α≥½ breaks weak dominance directly (timeout case), or the exit requires a third party J ∉ {B, S} whose incentives aren't bond-constrained (arbitrator / governance vote — unbonded actor). External legal forums adjudicating under duress / frustration / impossibility are NOT this kind of escape hatch: they're constrained by their own institutional bond structures and operate on the bonded commitment as evidentiary input.
 
 Immutable evidence is produced by the on-chain composition layer, not the kernel.
 
 **Common mistakes to avoid:**
-1. Do not collapse the two mechanisms to "one mechanism plus rules." Buyer
-   dominance with atomic resolution does mechanism-style work — it enforces
-   inter-seller coordination via the weakest-link subgame, not just
-   convenience-of-resolution. (Earlier framings called buyer dominance "just
-   a rule that operates on the already-scaled mesh"; that under-states what
-   it does.)
-2. Do not say buyer dominance + atomic resolution "scale the mechanism from
-   two parties to N." Scaling is asymmetric bonding's work via progressive
-   collateralization. Buyer dominance enforces coordination on the
-   already-scaled mesh.
-3. Do not treat the no-escape-hatches property as a third mechanism. It's a
-   security constraint protecting the equilibrium induced by the two
-   mechanisms.
+1. Do not collapse the two mechanisms to "one mechanism plus rules." Buyer dominance with atomic resolution does mechanism-style work — it enforces inter-seller coordination via the weakest-link subgame, not just convenience-of-resolution.
+2. Do not say buyer dominance + atomic resolution "scale the mechanism from two parties to N." Scaling is asymmetric bonding's work via progressive collateralization. Buyer dominance enforces coordination on the already-scaled mesh.
+3. Do not treat the no-escape-hatches property as a third mechanism. It's a security constraint protecting the equilibrium induced by the two mechanisms.
 
-Every participant is an independent value-adder. What traditional models call a
-"restaurant" is a process composed of independent contributors — a cook, a kitchen
-operator, an ingredient sourcer — each bonding and settling independently. The
-assembly that composes them may form any topology its designer chooses (the upper
-composability layer is where DAG shape lives); the kernel sees only the linear
-chains of `commit` calls that result.
-Each bonded process is a transaction-scoped institution that dissolves at settlement.
+Every participant is an independent value-adder. What traditional models call a "restaurant" is a process composed of independent contributors — cook, kitchen operator, ingredient sourcer — each bonding and settling independently. The kernel sees only the linear chains of `commit` calls that result; assembly topology lives in the upper composability layer. Each bonded process is a transaction-scoped institution that dissolves at settlement.
 
-Read `docs/v5/VISION.md` for the full extrapolation.
-Read `docs/v5/THEORY.md` for the game-theoretic derivation.
+Theorem references and the full game-theoretic derivation → `docs/v5/THEORY.md`. Post-firm economy, Coasean collapse, token denomination → `docs/v5/VISION.md`.
 
 ### Why the Name
 
-**Figaro** is the factotum of the city. In Rossini's *Il Barbiere di
-Siviglia* (1816, libretto by Sterbini, drawn from Beaumarchais's *Le
-Barbier de Séville*, 1775), the character declares himself the city's
-factotum in the famous "Largo al factotum" aria — running errands,
-brokering favors, mediating between parties of incommensurable standing,
-making commerce of the whole household work without owning any of it. The
-kernel is named for what it does: the factotum of the network, the
-coordinator of everything without being the owner of anything. FigaroCore
-holds collateral, executes commitments, and discharges resolution —
-exactly the coordination function the character performs, at protocol
-scale. The naming dates to Figaro-Original (Genovese & Daliana, March
-2022); the project's intellectual lineage is sketched briefly in
-`docs/v5/VISION.md` "Appendix: Project Lineage". The metaphor
-is the thesis, not decoration.
+**Figaro** is the factotum of the city — Rossini's *Il Barbiere di Siviglia* (1816), the "Largo al factotum" aria: running errands, brokering favors, mediating between parties of incommensurable standing, making commerce of the whole household work without owning any of it. The kernel is named for what it does — the coordinator of everything without being the owner of anything. Naming dates to Figaro-Original (Genovese & Daliana, March 2022); lineage in `docs/v5/VISION.md` "Appendix: Project Lineage". The metaphor is the thesis, not decoration.
 
-**FIG** is a speech-act identifier, the way ETH, BTC, USDC, and USD are. It
-is not a consumer brand name that has to semantically signal infrastructure;
-it is the name by which the token gets invoked in transactions and
-conversations. "Send me 10 FIG" works in speech the way "send me 10 ETH"
-does. Evaluate FIG by whether it fits the speech register, not by
-Fortune-500 brand logic.
+**FIG** is a speech-act identifier, the way ETH, BTC, USDC, and USD are. "Send me 10 FIG" works in speech the way "send me 10 ETH" does — evaluate FIG by speech-register fit, not Fortune-500 brand logic.
 
-When an agent surfaces naming questions, proposes renames, or writes
-user-facing copy about the protocol, apply these framings. Do not apply Web2
-consumer-brand evaluation to Web3 protocol names or token tickers. Do not
-introduce alternative metaphors for the protocol's name (no "the Uber-killer",
-no "like Stripe but decentralized", no "Web3 e-commerce rails"). The
-factotum-of-the-network framing is canonical.
+When an agent surfaces naming questions or writes user-facing copy: apply these framings. Do not apply Web2 consumer-brand evaluation to a Web3 protocol; do not introduce alternative metaphors (no "the Uber-killer", no "like Stripe but decentralized", no "Web3 e-commerce rails"). The factotum-of-the-network framing is canonical.
 
 ### Framing Discipline
 
@@ -412,8 +313,7 @@ parallel, not nested.
 
 - **Schemas** — anchored via `SchemaRegistry` + per-schema `ISchemaValidator`.
 - **Operators** — anchored via `OperatorRegistry` (event-emitting, metadataURI-pointing).
-- **Assemblies** — composition templates that USE schemas. On-chain anchor shape
-  TBD; must be parallel to schemas/operators, not subordinate to either.
+- **Assemblies** — composition templates that USE schemas. Anchored via `AssemblyRegistry` — parallel to schemas/operators, not subordinate to either.
 
 **The rule.** Each family gets its own registry/anchor, identity scheme, evolution
 path, and indexer event stream. Do not nest one inside another, even when an
@@ -445,16 +345,14 @@ operating in this repo.
 
 ## Smart Contracts — Pointer
 
-All contracts live in `src/`. Solidity 0.8.26, Foundry. V3 in `archive-v3/`. No contract belongs to a dapp; every one is a permissionless primitive.
-
-High-level inventory (full per-contract surfaces, function lists, ABI changes, and "what does NOT exist" → `docs/v5/CONTRACTS.md`):
+All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No contract belongs to a dapp; every one is a permissionless primitive. Full per-contract surfaces, ABI changes, and "what does NOT exist" → `docs/v5/CONTRACTS.md`. High-level inventory:
 
 - **Kernel (frozen):** `FigaroCore.sol`, `CommitmentTypes.sol`.
 - **Attestation & schema:** `AttestationCoordinator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `ISchemaValidator.sol`, `IRoleResolver.sol`, 16 per-schema validators in `src/schemaValidators/`.
 - **Mechanism modules:** `DutchAuction.sol`, `OperatorRegistry.sol`, `AssemblyRegistry.sol` (permissionless assembly anchoring — the assembly artifact family's registry, parallel to `SchemaRegistry`/`OperatorRegistry`), `ProcessOffsetReceipt.sol` (Path A carbon-offset receipts anchor — separate primitive per separation-of-concerns; receipts are not attestations, no agreement clause required).
 - **FIG token (`src/fig/`):** `FigToken.sol`, `RpgfMinter.sol`, `IFigMinter.sol`. 1B fixed supply: 100M founders + 300M DAO genesis-minted, 600M schema-author RPGF (yr 2/5/9). Per-tranche Merkle root is submitted at tranche time after an SP1 proof verifies it; aggregation logic lives in `prover/rpgf/` (Rust). FIG is not a governance token; `FigaroBatchVerifier` is not a minter.
 - **Batch verification:** `FigaroBatchVerifier.sol`, `interfaces/ISP1Verifier.sol`, `mocks/MockSP1Verifier.sol`.
-- **Mocks:** `mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`, `MockOffsetAggregator.sol`; `echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`.
+- **Mocks:** `mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`, `MockOffsetAggregator.sol`, `MockKlerosArbitrableProxy.sol`, `MockKlerosArbitrator.sol`; `echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`.
 
 If `docs/v5/CONTRACTS.md` does not list a contract, treat it as not existing in this repo.
 
@@ -465,7 +363,7 @@ If `docs/v5/CONTRACTS.md` does not list a contract, treat it as not existing in 
 Three layers must ship together for any new schema:
 
 - **Layer A** (TypeScript, `@figaro/core/schemas`): `parseSchemaSpec`, `validateContent`, per-schema content encoders. Frontend consumes via `useSchemaValidator(schemaId)` + `schemaSpecSource.ts`.
-- **Layer B** (Rust SP1 prover): `prover/schema/` (`figaro-schema` crate). Mirrors Layer A byte-for-byte (15-test conformance suite locked against `sdk/tests/schemas/validate.test.ts`) PLUS per-schema canonical ABI encoders that mirror viem's `encodeAbiParameters` from `sdk/src/schemas/encode.ts` (17-test encode-conformance suite). Wired into `figaro-kernel`'s `apply_batch` via `AttestationContentProof { content_json, inclusion_proof, section_data }` on `AttestAsSeller`/`AttestAsBuyer` — when present, five gates run inside the proof: (1) `schema_id` resolves to a canonical spec compiled into the prover (`embedded_spec_json` — never caller-supplied), (2) content validates, (3) `encode_content_for_schema` derives canonical bytes from JSON, (4) `keccak256(derived_bytes) == content_ref`, (5) for a seller attestation, a sorted-pair Merkle `inclusion_proof` binds the schema's section leaf to the order's signed `agreement_hash` (buyer attestations skip Gate 5). The derive-from-JSON step is the cross-form binding — the bytes Layer C decodes come from the same JSON Layer B validates. `figaro_sequencer::mempool::Mempool` runs the same five gates at submission time (`pre_check_attest_content`) so the prover never receives batches the kernel would reject. 7 kernel-integration tests in `prover/lib/tests/parity.rs` + 7 mempool-boundary tests in `prover/sequencer/tests/sequencer.rs` cover accept + each reject path at both layers.
+- **Layer B** (Rust SP1 prover): `prover/schema/` mirrors Layer A byte-for-byte (15-test conformance suite locked against `sdk/tests/schemas/validate.test.ts`) plus per-schema canonical ABI encoders mirroring viem's `encodeAbiParameters` (17-test encode-conformance suite). Wired into `figaro-kernel`'s `apply_batch` via a five-gate `AttestationContentProof` on `AttestAsSeller`/`AttestAsBuyer`; `figaro_sequencer::mempool::Mempool` re-runs the same gates at submission time so the prover never receives batches the kernel would reject. The derive-from-JSON gate is the cross-form binding — the bytes Layer C decodes come from the same JSON Layer B validates. Per-gate semantics, test list, and reject-path coverage → `docs/v5/SCHEMAS.md` and memory `reference_schema_validator_stack.md`.
 - **Layer C** (Solidity): per-schema `ISchemaValidator` contracts in `src/schemaValidators/`, bound through `AttestationCoordinator.setValidator(schemaId, validator)`. **Permissionless, first-write-wins, immutable.** No validator → no attestation under that schemaId (`ValidatorNotSet`).
 
 There are 17 protocol schemas total: 16 runtime-attestable (each with a validator contract) + `figaro-topology-v1`, which is a manifest-only clause (no validator, DAG reconstructed off-chain by indexers from the signed manifest). Full table → `docs/v5/SCHEMAS.md`.
@@ -523,30 +421,45 @@ Two project services run in Docker, not natively on the host:
 - **IPFS (Kubo).** `lib/shared/ipfsService.ts` pins operator profiles, catalogues, manifests, and uploaded media. Default endpoint `http://127.0.0.1:5001`. Image: `ipfs/kubo:latest`. Kubo's default CORS policy rejects browser requests from the dev server; the container needs `API.HTTPHeaders.Access-Control-Allow-Origin` set to the dev origin and a restart before pinning works.
 - **LaTeX → PDF.** `paper/` builds compile via the `texlive/texlive` image (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citation resolution). No native LaTeX on the host.
 
-**Convention: the agent handles Docker, not the user.** When a session needs IPFS up, a paper rebuilt, or a container reconfigured, the agent runs the `docker run` / `docker exec` / `docker compose` / `docker restart` commands. The user keeps Docker Desktop running and doesn't drop into the daemon directly. (Caveat the agent should know: containers I start with `run_in_background` may be reaped by the harness lifecycle — for services that need to outlive a single conversation turn, ask the user to start them in their own terminal, same convention as Anvil.)
+**Convention: the agent handles Docker, not the user.** When a session needs IPFS up, a paper rebuilt, or a container reconfigured, the agent runs the `docker` commands. The user keeps Docker Desktop running and doesn't drop into the daemon directly. Caveat: containers started with `run_in_background` may be reaped by the harness lifecycle — for services that must outlive a single turn, ask the user to start them in their own terminal (same convention as Anvil).
 
 ### Environment Variables (`.env.local` in `frontend/`)
 
 ```
+# Kernel + core registries
 NEXT_PUBLIC_FIGARO_CORE=0x...
 NEXT_PUBLIC_TOKEN_ADDRESS=0x...
 NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=0x...
 NEXT_PUBLIC_ATTESTATION_COORDINATOR=0x...
 NEXT_PUBLIC_SCHEMA_REGISTRY=0x...
+NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=0x...
 NEXT_PUBLIC_OPERATOR_REGISTRY=0x...
+NEXT_PUBLIC_ASSEMBLY_REGISTRY=0x...
 NEXT_PUBLIC_DUTCH_AUCTION=0x...
-NEXT_PUBLIC_FIG_TOKEN_ADDRESS=0x...
-NEXT_PUBLIC_STAGED_AIRDROP=0x...
-NEXT_PUBLIC_BATCH_VERIFIER=0x...
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
 
-# IPFS — used by ipfsService.ts (publishJSON, uploadFile) and merchantBranding.ts (logo resolution).
-# Defaults target a local Kubo node (`brew install ipfs && ipfs daemon`, or the official Docker image).
-# Both URLs accept any IPFS-API-compatible / gateway endpoint (Pinata, web3.storage, self-hosted Kubo, etc.).
+# Carbon-offset receipts (Path A) + its devnet aggregator mock
+NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=0x...
+NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR=0x...
+
+# FIG token + RPGF minter
+NEXT_PUBLIC_FIG_TOKEN_ADDRESS=0x...
+NEXT_PUBLIC_RPGF_MINTER=0x...
+
+# Batch verifier
+NEXT_PUBLIC_BATCH_VERIFIER=0x...
+
+# Dispute resolution (devnet Kleros mock — set via deploy-mock-kleros.sh)
+NEXT_PUBLIC_KLEROS_ARBITRABLE_PROXY=0x...
+NEXT_PUBLIC_KLEROS_ARBITRATOR_EXTRA_DATA=0x...
+NEXT_PUBLIC_KLEROS_MOCK_BANNER=true
+
+# Wallet + dev helpers
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
+NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
+
+# IPFS — used by ipfsService.ts + merchantBranding.ts. Defaults target local Kubo; any IPFS-API/gateway endpoint works (Pinata, web3.storage, self-hosted).
 NEXT_PUBLIC_IPFS_API_URL=http://127.0.0.1:5001
 NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
-
-# Optional: Kleros, sequencer
 ```
 
 ### Scripts
@@ -575,6 +488,7 @@ cd prover && cargo test -p figaro-sequencer
 
 - `script/Deploy.s.sol` — devnet (Anvil), uses mock verifier and mock tokens
 - `script/DeployMainnet.s.sol` — mainnet, no mocks; reads all sensitive params from env
+- `script/DeployMockKleros.s.sol` — devnet only; deploys `MockKlerosArbitrator` + `MockKlerosArbitrableProxy`. Run via `./deploy-mock-kleros.sh` after `./deploy-local.sh`.
 - `script/MintTokens.s.sol` — utility: mint test tokens to existing devnet accounts
 
 ---
