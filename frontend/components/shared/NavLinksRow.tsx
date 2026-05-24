@@ -21,7 +21,7 @@ export function NavLinksRow({
     testId = "desktop-nav",
     variant = "primary",
 }: NavLinksRowProps = {}) {
-    const sizeClass = variant === "secondary" ? "text-xs text-neutral-600" : "text-sm";
+    const sizeClass = variant === "secondary" ? "text-xs text-neutral-600" : "text-base";
     return (
         <nav
             className={`hidden md:flex flex-1 justify-center items-center gap-6 ${sizeClass}`}
