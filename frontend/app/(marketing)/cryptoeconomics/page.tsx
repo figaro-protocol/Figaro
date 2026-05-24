@@ -186,13 +186,36 @@ export default function Cryptoeconomics() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Contributing" bottomPad="wide">
+            <MarketingSection title="Contributing">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     To declare current work, surface a received grant, publish a contributor handle, or amend a group&apos;s charter, open a pull request against <code>frontend/lib/shared/groupsRegistry.ts</code>. PRs are reviewed at merge time; conversation about scope happens on Telegram before codification.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed">
                     The disciplinary list tracks Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em>. The composability tiers track the extension doctrine on <Link href="/builders/composability" className="underline">composability</Link>. If either upstream taxonomy converges on a different shape, this page will follow.
                 </p>
+            </MarketingSection>
+
+            <MarketingSection title="More on the protocol" bottomPad="wide">
+                <ul className="space-y-3 text-base">
+                    <li>
+                        <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
+                            Protocol
+                        </Link>
+                        <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
+                    </li>
+                    <li>
+                        <Link href="/why" className="text-ink-heading font-medium hover:underline">
+                            Why
+                        </Link>
+                        <span className="text-ink-body"> &mdash; cryptoeconomics for trade. The lineage from Bitcoin and Ethereum, and what each layer secures.</span>
+                    </li>
+                    <li>
+                        <Link href="/spec" className="text-ink-heading font-medium hover:underline">
+                            Specifications
+                        </Link>
+                        <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, schema, mechanism modules, with source links and verification status.</span>
+                    </li>
+                </ul>
             </MarketingSection>
         </>
     );
