@@ -125,7 +125,13 @@ describe("catalogueFetcher", () => {
 
 // ── cataloguePublisher ────────────────────────────────────────────────────────
 
-vi.mock("@/lib/shared/ipfsService", () => ({
+// Partial override — preserve the original `IPFS_GATEWAY_URL` export so
+// `merchantBranding.resolveContentURI` can still build a gateway URL.
+// Without `...actual` the named import becomes undefined and the throw
+// at `resolveContentURI` is swallowed by `uriFetcher`'s catch, masking
+// the real failure as "fetch never called".
+vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/shared/ipfsService")>()),
     DEFAULT_IPFS_SERVICE: {
         pinJSON: vi.fn().mockResolvedValue("QmPublished123"),
         buildURI: (cid: string) => `ipfs://${cid}`,
