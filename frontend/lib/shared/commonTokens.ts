@@ -54,9 +54,9 @@ const CHAIN_TOKENS: Record<number, () => CommonToken[]> = {
     // Local Anvil — env-driven mocks.
     31337: localTokens,
 
-    // Base Sepolia (testnet)
-    84532: () => [
-        { address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", symbol: "USDC", name: "USD Coin (testnet)" },
+    // Sepolia (testnet) — Circle's official testnet USDC.
+    11155111: () => [
+        { address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", symbol: "USDC", name: "USD Coin (Sepolia testnet)" },
     ],
 
     // Ethereum mainnet
@@ -64,23 +64,6 @@ const CHAIN_TOKENS: Record<number, () => CommonToken[]> = {
         { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", symbol: "USDC", name: "USD Coin" },
         { address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", symbol: "USDT", name: "Tether USD" },
         { address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", symbol: "DAI", name: "Dai Stablecoin" },
-    ],
-
-    // Base mainnet
-    8453: () => [
-        { address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", symbol: "USDC", name: "USD Coin" },
-    ],
-
-    // Optimism
-    10: () => [
-        { address: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", symbol: "USDC", name: "USD Coin" },
-        { address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", symbol: "USDT", name: "Tether USD" },
-    ],
-
-    // Arbitrum One
-    42161: () => [
-        { address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", symbol: "USDC", name: "USD Coin" },
-        { address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", symbol: "USDT", name: "Tether USD" },
     ],
 };
 
