@@ -73,9 +73,10 @@ is a choice, not an exploit.
 
 ## 4. No owner, no admin, no escape hatch — by design
 
-**Pattern**: FigaroCore, AttestationCoordinator, SchemaRegistry, DutchAuction,
-and OperatorRegistry have no owner, no pause function, no upgrade path, and
-no admin recovery.
+**Pattern**: FigaroCore, AttestationCoordinator, SchemaRegistry,
+SchemaRegistrationHelper, DutchAuction, OperatorRegistry, AssemblyRegistry,
+ProcessOffsetReceipt, FigaroBatchVerifier, FigToken, and RpgfMinter have no
+owner, no pause function, no upgrade path, and no admin recovery.
 
 **Why it looks wrong**: Most protocols include emergency controls for incident
 response.
