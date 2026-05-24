@@ -38,6 +38,9 @@ export default function BuildersPage() {
                 What you build on top is open to anyone. The protocol carries structured agreements &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each kind is a schema, and adding a new one is permissionless: you write it, you register it, it is live. No application, no approval, no gatekeeper. Larger compositions and new coordination mechanisms layer on the same way.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
+                What you build is used by both people and autonomous agents. The protocol is actor-neutral &mdash; a wallet is a wallet, a signature is a signature &mdash; so the tools you ship reach human and software participants equally.
+            </p>
+            <p className="text-base text-ink-body leading-relaxed mb-5">
                 And here is what no other protocol offers: it pays the people who extend it. Sixty percent of the entire token supply &mdash; 600 million FIG &mdash; is reserved for one group only: the authors of schemas that get used. Not a grant you pitch for &mdash; a formula that measures real adoption (how many separate settled deals your schema carried, across how many distinct counterparties) and routes funding to you accordingly. Build something the network comes to rely on, and the network pays you back.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-12">
@@ -76,6 +79,12 @@ export default function BuildersPage() {
                         Composability
                     </Link>
                     <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
+                </li>
+                <li>
+                    <Link href="/builders/agents" className="text-ink-heading font-medium hover:underline">
+                        Agents
+                    </Link>
+                    <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and the factotum reference implementation.</span>
                 </li>
                 <li>
                     <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">
