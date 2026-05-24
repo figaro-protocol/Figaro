@@ -15,13 +15,17 @@ CLAUDE.md keeps the lockstep principle and the adding-a-schema checklist; this f
 - `validateContent(content, spec, { stage? })` — validates a JS object against
   a parsed spec. Closed schemas: rejects unknown fields. Per-stage overrides
   via `spec.stages[stage]`.
-- Per-schema content encoders (`encodeHandoffContent`, `encodeCommerceContent`,
-  `encodeGHGScopeContent`, `encodeFulfilmentContent`, `encodeGeoContent`,
-  `encodeProximityPolicyContent`, `encodeProximityProofContent`,
-  `encodeMerchantContent`, `encodeCourierContent`) — bridge between TS objects
-  and ABI bytes expected by
-  the on-chain validator. Each schema's encoder is the canonical TS-side
-  declaration of its field-to-position mapping. Topology has no encoder —
+- Per-schema content encoders (`encodeCommerceContent`, `encodeGeoContent`,
+  `encodeFulfilmentV2Content`, `encodeJurisdictionContent`,
+  `encodeGHGScopeContent` (shared across the 5 GHG sister schemas),
+  `encodeGHGMeasurementContent`, `encodeProximityPolicyContent`,
+  `encodeProximityProofContent`, `encodeOffsetPolicyContent`,
+  `encodeMerchantContent`, `encodeCourierContent`, `encodeConsentContent`)
+  plus a generic `encodeContentFromSpec` — bridge between TS objects and
+  the ABI bytes expected by the on-chain validator. Each schema's encoder
+  is the canonical TS-side declaration of its field-to-position mapping.
+  12 distinct encoder shapes across the 16 runtime-attestable schemas
+  (the 5 GHG sister schemas share one shape). Topology has no encoder —
   it's a manifest-only clause with no runtime attestation.
 
 Frontend wiring: `useSchemaValidator(schemaId)` hook + `schemaSpecSource.ts`

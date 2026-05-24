@@ -12,7 +12,7 @@ This file is the canonical inventory. CLAUDE.md indexes it; agents must not refe
 - 2 external functions: `commit` (unified dual-signed), `resolveProcess`
 - 3 mappings: `processes` (ProcessState), `orderStatus` (uint8), `orderProcessId` (bytes32)
 - EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution
-- Covered by Foundry unit tests, 7 Echidna properties, 7 Halmos symbolic proofs (FigaroCore), and 5 Certora CVL specs (the StagedMerkleAirdrop Halmos pass + Certora spec were retired alongside the contract — see `docs/v5/VERIFICATION_MAP.md` for the current per-contract verification coverage)
+- Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 6 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, BatchVerifierTokenOps, FigToken, RpgfMinter — the StagedMerkleAirdrop Halmos pass + Certora spec were retired alongside the contract; see `docs/v5/VERIFICATION_MAP.md` for the current per-contract verification coverage)
 
 **`src/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
 Single `Commitment` struct for both root and sub-orders; `processId` zero for root.
@@ -201,6 +201,7 @@ prover would reject every batch.
 
 - `src/mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`
 - `src/mocks/MockOffsetAggregator.sol` — devnet stand-in for Klima KlimaInfinity / Toucan OffsetHelper. Fixed `pricePerTon` constructor arg, pulls input token via `transferFrom`, emits `Retired`. Wired into `Deploy.s.sol` only — mainnet uses real aggregators.
+- `src/mocks/MockKlerosArbitrableProxy.sol`, `src/mocks/MockKlerosArbitrator.sol` — devnet stand-ins for the Kleros dispute-resolution flow; deployed via `script/DeployMockKleros.s.sol` (run from `./deploy-mock-kleros.sh`) on top of `./deploy-local.sh`. Mainnet uses the real Kleros contracts.
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist
