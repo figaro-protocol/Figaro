@@ -34,6 +34,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
+import { fetchCommitmentPayloadJsonByCid } from "@/lib/shared/coordinationMessagingService";
 import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
 import { displayNameForAddress } from "@/lib/shared/operatorListing";
 import type { Listing } from "@/lib/shared/operatorListing";
@@ -166,9 +167,14 @@ export function MerchantInbox() {
             .subscribeAnyCommitmentPayload({
                 address,
                 walletClient: walletClient ?? null,
-                callback: (payloadJson, orderId) => {
+                callback: async (payloadCid, orderId) => {
                     if (cancelled || receivedOrderIds.current.has(orderId)) return;
                     try {
+                        const payloadJson = await fetchCommitmentPayloadJsonByCid(
+                            services.evidenceTransport,
+                            payloadCid,
+                        );
+                        if (cancelled) return;
                         const payload = deserializePayload(payloadJson);
                         if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
                         const isSeller = hexEqual(address, payload.commitment.seller);
@@ -176,7 +182,7 @@ export function MerchantInbox() {
                         receivedOrderIds.current.add(orderId);
                         setPending((prev) => [...prev, payload]);
                     } catch {
-                        // Malformed payload — ignore.
+                        // Malformed payload or IPFS fetch failure — ignore.
                     }
                 },
             })

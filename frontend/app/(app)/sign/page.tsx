@@ -24,6 +24,7 @@ import { primeAgreementArtifact } from "@/lib/core/agreementStore";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { formatToken } from "@/lib/shared/utils";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
+import { fetchCommitmentPayloadJsonByCid } from "@/lib/shared/coordinationMessagingService";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 type InboxStatus = "idle" | "listening" | "received" | "error";
@@ -32,7 +33,7 @@ function SignPageContent() {
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
     const searchParams = useSearchParams();
-    const { coordinationMessaging } = useRuntimeServices();
+    const { coordinationMessaging, evidenceTransport } = useRuntimeServices();
     const { counterSign, broadcast, step, error: commitError, payload, reset } = useCommitmentFlow();
     const hydratedPayloadRef = useRef<string | null>(null);
     const receivedTransportOrderIdsRef = useRef<Set<string>>(new Set());
@@ -105,10 +106,26 @@ function SignPageContent() {
         void coordinationMessaging.subscribeAnyCommitmentPayload({
             address,
             walletClient,
-            callback: async (payloadJson, orderId) => {
+            callback: async (payloadCid, orderId) => {
                 if (cancelled || receivedTransportOrderIdsRef.current.has(orderId)) {
                     return;
                 }
+
+                let payloadJson: string;
+                try {
+                    payloadJson = await fetchCommitmentPayloadJsonByCid(
+                        evidenceTransport,
+                        payloadCid,
+                    );
+                } catch (error) {
+                    if (!cancelled) {
+                        setInboxStatus("error");
+                        setInboxError(extractErrorMessage(error, "Could not fetch the commitment payload from IPFS."));
+                    }
+                    return;
+                }
+
+                if (cancelled) return;
 
                 const nextPayload = await parseSerializedPayload(payloadJson);
                 if (cancelled || !nextPayload) {
@@ -144,7 +161,7 @@ function SignPageContent() {
             cancelled = true;
             cleanup?.();
         };
-    }, [address, coordinationMessaging, parsed, parseSerializedPayload, rawInput, searchParams, walletClient]);
+    }, [address, coordinationMessaging, evidenceTransport, parsed, parseSerializedPayload, rawInput, searchParams, walletClient]);
 
     const handleCounterSign = async () => {
         if (!parsed) return;

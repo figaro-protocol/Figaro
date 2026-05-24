@@ -190,7 +190,7 @@ export async function createXmtpChannel(
 
         // ── Commitment payload exchange via XMTP DM ──
 
-        async sendCommitmentPayload({ recipientAddress, orderId, payloadJson }) {
+        async sendCommitmentPayload({ recipientAddress, orderId, payloadCid }) {
             const dm = await client.conversations.createDmWithIdentifier({
                 identifier: recipientAddress.toLowerCase(),
                 identifierKind: IdentifierKind.Ethereum,
@@ -198,7 +198,7 @@ export async function createXmtpChannel(
             const payload: CommitmentSignatureMessage = {
                 type: "COMMITMENT_PAYLOAD",
                 orderId,
-                payloadJson,
+                payloadCid,
                 ts: Date.now(),
             };
             await dm.sendText(JSON.stringify(payload));
@@ -208,7 +208,7 @@ export async function createXmtpChannel(
             return listenForMessage<CommitmentSignatureMessage>(
                 "COMMITMENT_PAYLOAD",
                 orderId,
-                (msg, senderInboxId) => callback(msg.payloadJson, senderInboxId),
+                (msg, senderInboxId) => callback(msg.payloadCid, senderInboxId),
             );
         },
 
@@ -235,7 +235,7 @@ export async function createXmtpChannel(
                             }
 
                             seen.add(messageKey);
-                            callback(parsed.payloadJson, parsed.orderId);
+                            callback(parsed.payloadCid, parsed.orderId);
                         }
                     }
 
@@ -256,7 +256,7 @@ export async function createXmtpChannel(
                         }
 
                         seen.add(messageKey);
-                        callback(parsed.payloadJson, parsed.orderId);
+                        callback(parsed.payloadCid, parsed.orderId);
                     }
                 } catch (err) {
                     console.warn("[xmtp] commitment inbox listener error:", err);

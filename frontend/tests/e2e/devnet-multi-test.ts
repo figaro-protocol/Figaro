@@ -136,25 +136,44 @@ export async function gotoAsWallet(
 }
 
 /**
- * Pre-inject a CommitmentPayload into the mock CoordinationChannel's
+ * Pin the serialized commitment payload to the local Kubo daemon and
+ * return the resulting CID. Mirrors the production `pinBlob` path that
+ * `CommitmentSharePanel.handleSendViaXmtp` uses, so the seller's IPFS
+ * dereference (`fetchCommitmentPayloadJsonByCid`) finds the payload on
+ * the gateway when the inbox subscriber fires.
+ */
+async function pinCommitmentPayloadJsonToLocalIpfs(payloadJson: string): Promise<string> {
+    const apiUrl = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+    const blob = new Blob([payloadJson], { type: 'application/json' });
+    const form = new FormData();
+    form.append('file', blob);
+    const res = await fetch(`${apiUrl}/api/v0/add?pin=true`, { method: 'POST', body: form });
+    if (!res.ok) {
+        throw new Error(`IPFS pin failed: ${res.status} ${res.statusText}`);
+    }
+    const result = (await res.json()) as { Hash?: unknown };
+    if (typeof result.Hash !== 'string' || result.Hash.length === 0) {
+        throw new Error('IPFS pin returned no CID');
+    }
+    return result.Hash;
+}
+
+/**
+ * Pre-inject a CommitmentPayload arrival into the mock CoordinationChannel's
  * localStorage so the seller's `/inbox` `subscribeAnyCommitmentPayload`
  * picks it up as a pending order when the page mounts. Simulates an
  * XMTP arrival in devnet mode (`?e2e=devnet` triggers the mock channel
  * per `lib/handoff/channel.ts:172-178`).
  *
- * Storage key + message shape mirror `lib/handoff/mockChannel.ts:23`
- * (`__FIGARO_COORDINATION_MOCK_MESSAGES__`) — when the inbox's
- * subscriber registers, `onAnyCommitmentPayload` replays
- * already-persisted COMMITMENT_PAYLOAD entries via queueMicrotask, so a
- * test that writes the entry BEFORE navigation sees the pending card
- * render on mount.
+ * Wire shape mirrors `lib/handoff/mockChannel.ts`'s
+ * `StoredCommitmentSignatureMessage` — the envelope carries a `payloadCid`
+ * and the production receiver dereferences it via the IPFS gateway. The
+ * payload is pinned to the local Kubo daemon here so the seller-side
+ * fetch resolves the same byte string back.
  *
  * The MerchantInbox subscriber filters by `payload.commitment.seller
- * === address` (MerchantInbox.tsx:174) — pass a `commitment` whose
- * `seller` matches the wallet the page is connected as.
- *
- * Phase 2 C1 will exercise this for real; Phase 0 only ships the
- * helper.
+ * === address` (MerchantInbox.tsx) — pass a `commitment` whose `seller`
+ * matches the wallet the page is connected as.
  */
 export async function simulateXmtpCommitmentArrival(
     page: Page,
@@ -170,10 +189,12 @@ export async function simulateXmtpCommitmentArrival(
     },
 ): Promise<void> {
     const MOCK_STORAGE_KEY = '__FIGARO_COORDINATION_MOCK_MESSAGES__';
+    const payloadJson = JSON.stringify(opts.payload);
+    const payloadCid = await pinCommitmentPayloadJsonToLocalIpfs(payloadJson);
     const message = {
         type: 'COMMITMENT_PAYLOAD' as const,
         orderId: opts.orderId,
-        payloadJson: JSON.stringify(opts.payload),
+        payloadCid,
         ts: Date.now(),
         senderIdentity: opts.senderIdentity,
     };

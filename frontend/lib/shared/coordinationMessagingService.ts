@@ -2,6 +2,7 @@ import {
     getCoordinationChannel,
     type CoordinationChannel,
 } from "@/lib/handoff/channel";
+import type { IpfsService } from "@/lib/shared/ipfsService";
 
 export interface WalletMessageSignerSource {
     signMessage(params: { message: string }): Promise<`0x${string}`>;
@@ -57,18 +58,18 @@ export interface CoordinationMessagingService {
         params: CoordinationMessagingContext & {
             recipientAddress: string;
             orderId: string;
-            payloadJson: string;
+            payloadCid: string;
         },
     ): Promise<void>;
     subscribeCommitmentPayload(
         params: CoordinationMessagingContext & {
             orderId: string;
-            callback: (payloadJson: string, senderIdentity: string) => void;
+            callback: (payloadCid: string, senderIdentity: string) => void;
         },
     ): Promise<() => void>;
     subscribeAnyCommitmentPayload(
         params: CoordinationMessagingContext & {
-            callback: (payloadJson: string, orderId: string) => void;
+            callback: (payloadCid: string, orderId: string) => void;
         },
     ): Promise<() => void>;
     sendHandoffAddress(
@@ -150,25 +151,25 @@ class DefaultCoordinationMessagingService implements CoordinationMessagingServic
         return channel.onWrappedKey(orderId, callback);
     }
 
-    async sendCommitmentPayload({ recipientAddress, orderId, payloadJson, ...context }: CoordinationMessagingContext & {
+    async sendCommitmentPayload({ recipientAddress, orderId, payloadCid, ...context }: CoordinationMessagingContext & {
         recipientAddress: string;
         orderId: string;
-        payloadJson: string;
+        payloadCid: string;
     }): Promise<void> {
         const channel = await this.getChannel(context);
-        await channel.sendCommitmentPayload({ recipientAddress, orderId, payloadJson });
+        await channel.sendCommitmentPayload({ recipientAddress, orderId, payloadCid });
     }
 
     async subscribeCommitmentPayload({ orderId, callback, ...context }: CoordinationMessagingContext & {
         orderId: string;
-        callback: (payloadJson: string, senderIdentity: string) => void;
+        callback: (payloadCid: string, senderIdentity: string) => void;
     }): Promise<() => void> {
         const channel = await this.getChannel(context);
         return channel.onCommitmentPayload(orderId, callback);
     }
 
     async subscribeAnyCommitmentPayload({ callback, ...context }: CoordinationMessagingContext & {
-        callback: (payloadJson: string, orderId: string) => void;
+        callback: (payloadCid: string, orderId: string) => void;
     }): Promise<() => void> {
         const channel = await this.getChannel(context);
         return channel.onAnyCommitmentPayload(callback);
@@ -194,3 +195,23 @@ class DefaultCoordinationMessagingService implements CoordinationMessagingServic
 
 export const DEFAULT_COORDINATION_MESSAGING_SERVICE: CoordinationMessagingService =
     new DefaultCoordinationMessagingService();
+
+/**
+ * Dereference an IPFS-pinned commitment payload to its JSON string.
+ * Used by inbox-style subscribers that receive a CID and need the
+ * underlying AnyCommitmentPayload JSON for parsing.
+ */
+export async function fetchCommitmentPayloadJsonByCid(
+    ipfs: Pick<IpfsService, "resolveFetchUrl">,
+    payloadCid: string,
+): Promise<string> {
+    const url = ipfs.resolveFetchUrl(`ipfs://${payloadCid}`);
+    if (!url) {
+        throw new Error(`Could not resolve IPFS gateway URL for CID: ${payloadCid}`);
+    }
+    const res = await fetch(url);
+    if (!res.ok) {
+        throw new Error(`IPFS fetch failed for CID ${payloadCid}: ${res.status} ${res.statusText}`);
+    }
+    return await res.text();
+}

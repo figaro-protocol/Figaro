@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
     broadcast: vi.fn(async () => undefined),
     reset: vi.fn(),
     subscribeAnyCommitmentPayload: vi.fn(async () => vi.fn()),
+    fetchCommitmentPayloadJsonByCid: vi.fn(async () => "payload"),
 }));
 
 const navigationMocks = vi.hoisted(() => ({
@@ -88,7 +89,14 @@ vi.mock("@/lib/shared/runtimeServicesContext", () => ({
         coordinationMessaging: {
             subscribeAnyCommitmentPayload: mocks.subscribeAnyCommitmentPayload,
         },
+        evidenceTransport: {
+            resolveFetchUrl: vi.fn(() => "http://localhost/ipfs/QmStub"),
+        },
     }),
+}));
+
+vi.mock("@/lib/shared/coordinationMessagingService", () => ({
+    fetchCommitmentPayloadJsonByCid: mocks.fetchCommitmentPayloadJsonByCid,
 }));
 
 import SignPage from "@/app/(app)/sign/page";
@@ -101,6 +109,8 @@ describe("token-decimal display flows", () => {
         mocks.reset.mockReset();
         mocks.subscribeAnyCommitmentPayload.mockReset();
         mocks.subscribeAnyCommitmentPayload.mockResolvedValue(vi.fn());
+        mocks.fetchCommitmentPayloadJsonByCid.mockReset();
+        mocks.fetchCommitmentPayloadJsonByCid.mockResolvedValue("payload");
         navigationMocks.searchParams = new URLSearchParams();
     });
 
@@ -133,8 +143,8 @@ describe("token-decimal display flows", () => {
 
     it("hydrates SignPage from the XMTP inbox when a commitment arrives", async () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        mocks.subscribeAnyCommitmentPayload.mockImplementation((async ({ callback }: { callback: (payloadJson: string, orderId: string) => void }) => {
-            callback("payload", "order-1");
+        mocks.subscribeAnyCommitmentPayload.mockImplementation((async ({ callback }: { callback: (payloadCid: string, orderId: string) => Promise<void> | void }) => {
+            await callback("QmStub", "order-1");
             return vi.fn();
         }) as any);
 
@@ -145,6 +155,7 @@ describe("token-decimal display flows", () => {
         });
 
         expect(mocks.subscribeAnyCommitmentPayload).toHaveBeenCalled();
+        expect(mocks.fetchCommitmentPayloadJsonByCid).toHaveBeenCalledWith(expect.anything(), "QmStub");
         expect(screen.queryByTestId("input-commitment-payload")).not.toBeInTheDocument();
     });
 });

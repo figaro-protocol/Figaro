@@ -127,7 +127,7 @@ function notifyMessage(
             notify("ECDH_WRAPPED_KEY", message.orderId, message.wrappedKeyB64, message.senderIdentity);
             return;
         case "COMMITMENT_PAYLOAD":
-            notify("COMMITMENT_PAYLOAD", message.orderId, message.payloadJson, message.senderIdentity, message.orderId);
+            notify("COMMITMENT_PAYLOAD", message.orderId, message.payloadCid, message.senderIdentity, message.orderId);
             return;
         case "HANDOFF_ADDRESS":
             notify("HANDOFF_ADDRESS", message.orderId, message.deliveryAddress, message.senderIdentity);
@@ -263,11 +263,11 @@ export function createMockChannel(ownerAddress: string): CoordinationChannel {
 
         // ── Commitment payload exchange ──
 
-        async sendCommitmentPayload({ recipientAddress: _, orderId, payloadJson }) {
+        async sendCommitmentPayload({ recipientAddress: _, orderId, payloadCid }) {
             const msg: StoredMockMessage = {
                 type: "COMMITMENT_PAYLOAD",
                 orderId,
-                payloadJson,
+                payloadCid,
                 ts: Date.now(),
                 senderIdentity: ownerAddress,
             };
@@ -279,9 +279,9 @@ export function createMockChannel(ownerAddress: string): CoordinationChannel {
                 (message): message is StoredCommitmentSignatureMessage => isStoredCommitmentSignatureMessage(message) && message.orderId === orderId,
             );
             if (existing) {
-                queueMicrotask(() => callback(existing.payloadJson, existing.senderIdentity));
+                queueMicrotask(() => callback(existing.payloadCid, existing.senderIdentity));
             }
-            return subscribe("COMMITMENT_PAYLOAD", (pj, s) => callback(pj as string, s as string), orderId);
+            return subscribe("COMMITMENT_PAYLOAD", (pc, s) => callback(pc as string, s as string), orderId);
         },
 
         onAnyCommitmentPayload(callback) {
@@ -289,12 +289,12 @@ export function createMockChannel(ownerAddress: string): CoordinationChannel {
                 isStoredCommitmentSignatureMessage,
             );
             for (const message of existing) {
-                queueMicrotask(() => callback(message.payloadJson, message.orderId));
+                queueMicrotask(() => callback(message.payloadCid, message.orderId));
             }
 
             return subscribe(
                 "COMMITMENT_PAYLOAD",
-                (payloadJson, _senderIdentity, orderId) => callback(payloadJson as string, orderId as string),
+                (payloadCid, _senderIdentity, orderId) => callback(payloadCid as string, orderId as string),
             );
         },
 

@@ -40,12 +40,16 @@ export interface EcdhWrappedKeyMessage {
     ts: number;
 }
 
-/** Commitment payload: carries an unsigned or partially-signed EIP-712 commitment for dual-sig collection. */
+/** Commitment payload: carries an IPFS CID pointing to a JSON-serialized
+ *  AnyCommitmentPayload. The sender pins the payload at share time; the
+ *  receiver dereferences via the configured IPFS transport. Keeps the
+ *  XMTP envelope small and gives late subscribers a durable retrieval
+ *  path independent of XMTP DM history. */
 export interface CommitmentSignatureMessage {
     type: "COMMITMENT_PAYLOAD";
     orderId: string;
-    /** JSON-serialized AnyCommitmentPayload (from useCommitmentFlow). */
-    payloadJson: string;
+    /** Bare IPFS CID (no `ipfs://` prefix) of the pinned payload JSON. */
+    payloadCid: string;
     ts: number;
 }
 
@@ -129,30 +133,31 @@ export interface CoordinationChannel {
     // ── Commitment payload exchange ───────────────────────────
 
     /**
-     * Send an unsigned or partially-signed commitment payload to the counter-party
-     * for dual-signature collection.
+     * Send the IPFS CID of a pinned commitment payload to the counter-party
+     * for dual-signature collection. The sender is responsible for pinning
+     * the payload JSON before invoking; the receiver dereferences via IPFS.
      */
     sendCommitmentPayload(params: {
         recipientAddress: string;
         orderId: string;
-        payloadJson: string;
+        payloadCid: string;
     }): Promise<void>;
 
     /**
-     * Subscribe to incoming commitment payloads for a specific order.
+     * Subscribe to incoming commitment-payload CIDs for a specific order.
      * Returns an unsubscribe function.
      */
     onCommitmentPayload(
         orderId: string,
-        callback: (payloadJson: string, senderIdentity: string) => void,
+        callback: (payloadCid: string, senderIdentity: string) => void,
     ): () => void;
 
     /**
-     * Subscribe to any incoming commitment payloads for the connected wallet.
+     * Subscribe to any incoming commitment-payload CIDs for the connected wallet.
      * Returns an unsubscribe function.
      */
     onAnyCommitmentPayload(
-        callback: (payloadJson: string, orderId: string) => void,
+        callback: (payloadCid: string, orderId: string) => void,
     ): () => void;
 
     // ── Handoff address ───────────────────────────────────────
