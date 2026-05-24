@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
@@ -55,13 +56,36 @@ export default function Why() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="Trade was the missing layer." bottomPad="wide">
+            <MarketingSection title="Trade was the missing layer.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Trade across non-trust has always required a friction layer &mdash; banks, courts, platforms, arbitrators, escrow agents, jurisdictions &mdash; each absorbing some part of the trust gap and charging for the absorption. The friction was load-bearing because there was no substrate that secured the trade itself.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Figaro is that substrate. Two parties bond directly; the protocol enforces the bilateral commitment mathematically; settlement is atomic. The institutions that filled the trust gap are not removed by Figaro &mdash; the architecture makes them structurally unnecessary.
                 </p>
+            </MarketingSection>
+
+            <MarketingSection title="More on the protocol" bottomPad="wide">
+                <ul className="space-y-3 text-base">
+                    <li>
+                        <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
+                            Protocol
+                        </Link>
+                        <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
+                    </li>
+                    <li>
+                        <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
+                            Cryptoeconomics
+                        </Link>
+                        <span className="text-ink-body"> &mdash; the eight disciplines that read the substrate, organized along the Voshmgir &amp; Zargham taxonomy, and the papers along each.</span>
+                    </li>
+                    <li>
+                        <Link href="/spec" className="text-ink-heading font-medium hover:underline">
+                            Specifications
+                        </Link>
+                        <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, schema, mechanism modules, with source links and verification status.</span>
+                    </li>
+                </ul>
             </MarketingSection>
         </>
     );
