@@ -12,6 +12,7 @@ const SITE_URL =
 const PUBLIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }[] = [
     { path: "/", changeFrequency: "weekly", priority: 1.0 },
     { path: "/protocol", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/why", changeFrequency: "weekly", priority: 0.9 },
     { path: "/cryptoeconomics", changeFrequency: "weekly", priority: 0.9 },
     { path: "/spec", changeFrequency: "weekly", priority: 0.9 },
     { path: "/builders", changeFrequency: "weekly", priority: 0.9 },
