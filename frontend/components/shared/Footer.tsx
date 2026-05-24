@@ -1,46 +1,35 @@
 import Link from "next/link";
 
-const COL_HEADER_CLS =
-    "text-sm font-semibold text-ink-heading mb-4";
 const COL_LINK_CLS =
-    "block text-ink-heading hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded";
+    "block text-ink-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded";
 
 export function Footer() {
     return (
         <footer className="border-t border-default bg-canvas">
             <div className="container mx-auto px-6 py-16">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-                    <div>
-                        <h4 className={COL_HEADER_CLS}>Protocol</h4>
-                        <div className="space-y-2">
-                            <Link href="/protocol" className={COL_LINK_CLS}>Protocol mechanisms</Link>
-                            <Link href="/why" className={COL_LINK_CLS}>Why</Link>
-                            <Link href="/cryptoeconomics" className={COL_LINK_CLS}>Cryptoeconomics</Link>
-                            <Link href="/spec" className={COL_LINK_CLS}>Specifications</Link>
-                        </div>
+                    <div className="space-y-2">
+                        <Link href="/protocol" className={COL_LINK_CLS}>Protocol mechanisms</Link>
+                        <Link href="/why" className={COL_LINK_CLS}>Why</Link>
+                        <Link href="/cryptoeconomics" className={COL_LINK_CLS}>Cryptoeconomics</Link>
+                        <Link href="/spec" className={COL_LINK_CLS}>Specifications</Link>
                     </div>
-                    <div>
-                        <h4 className={COL_HEADER_CLS}>Builders</h4>
-                        <div className="space-y-2">
-                            <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
-                            <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
-                            <Link href="/builders/composability" className={COL_LINK_CLS}>Composability</Link>
-                            <Link href="/schemas" className={COL_LINK_CLS}>Schemas</Link>
-                            <Link href="/assemblies" className={COL_LINK_CLS}>Assemblies</Link>
-                            <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
-                            <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
-                            <Link href="/rpgf" className={COL_LINK_CLS}>RPGF</Link>
-                            <Link href="/fig" className={COL_LINK_CLS}>FIG token</Link>
-                        </div>
+                    <div className="space-y-2">
+                        <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
+                        <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
+                        <Link href="/builders/composability" className={COL_LINK_CLS}>Composability</Link>
+                        <Link href="/schemas" className={COL_LINK_CLS}>Schemas</Link>
+                        <Link href="/assemblies" className={COL_LINK_CLS}>Assemblies</Link>
+                        <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
+                        <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
+                        <Link href="/rpgf" className={COL_LINK_CLS}>RPGF</Link>
+                        <Link href="/fig" className={COL_LINK_CLS}>FIG token</Link>
                     </div>
-                    <div>
-                        <h4 className={COL_HEADER_CLS}>Users</h4>
-                        <div className="space-y-2">
-                            <Link href="/users" className={COL_LINK_CLS}>Users</Link>
-                            <Link href="/discover" className={COL_LINK_CLS}>Discover operators</Link>
-                            <Link href="/operators" className={COL_LINK_CLS}>Operators</Link>
-                            <Link href="/audit" className={COL_LINK_CLS}>Audit</Link>
-                        </div>
+                    <div className="space-y-2">
+                        <Link href="/users" className={COL_LINK_CLS}>Users</Link>
+                        <Link href="/discover" className={COL_LINK_CLS}>Discover operators</Link>
+                        <Link href="/operators" className={COL_LINK_CLS}>Operators</Link>
+                        <Link href="/audit" className={COL_LINK_CLS}>Audit</Link>
                     </div>
                 </div>
                 <div className="mt-12 pt-8 border-t border-default flex flex-col gap-4 text-xs text-ink-muted sm:flex-row sm:items-start sm:justify-between">
