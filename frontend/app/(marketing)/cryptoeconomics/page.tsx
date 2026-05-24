@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { GROUPS_REGISTRY } from "@/lib/shared/groupsRegistry";
 
 export const metadata: Metadata = {
-    title: "Research — Figaro Protocol",
+    title: "Cryptoeconomics — Figaro Protocol",
     description:
         "The eight cryptoeconomic disciplines that read the Figaro substrate, the papers organized along them, the composability working groups, and how the work is funded.",
 };
@@ -43,7 +43,7 @@ const COMPOSITION_GROUPS: CompositionGroup[] = [
     },
 ];
 
-export default function Research() {
+export default function Cryptoeconomics() {
     return (
         <>
             <MarketingHero

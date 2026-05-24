@@ -7,7 +7,7 @@ import type { DisciplineIndex } from "@/components/shared/DisciplineGlyph";
  * without departing from the taxonomy.
  *
  * Papers, `currentWork`, `grants`, and `venue` are all optional. Every
- * discipline always has a charter; `/research` renders whatever
+ * discipline always has a charter; `/cryptoeconomics` renders whatever
  * concrete work exists under each one, or just the charter when none
  * does yet. The asymmetry surfaces where the project actually is.
  *
