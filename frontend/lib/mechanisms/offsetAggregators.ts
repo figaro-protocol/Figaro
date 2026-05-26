@@ -7,10 +7,11 @@
  * functions that normalize per-aggregator function signatures into one
  * interface the hook uses.
  *
- * - Polygon mainnet (chainId 137): Klima KlimaInfinity diamond +
- *   Toucan OffsetHelper. Verified addresses pulled from each provider's
- *   docs and verified on Polygonscan; ABI fragments are the subset the
- *   bridge needs (quote + retire + retirement event).
+ * - Polygon mainnet (chainId 137): KlimaRetirementAggregator V2 (the
+ *   IKlimaInfinity-typed entrypoint) + Toucan OffsetHelper. Verified
+ *   addresses pulled from each provider's docs and verified on Polygonscan;
+ *   ABI fragments are the subset the bridge needs (quote + retire +
+ *   retirement event).
  *
  * - Devnet / Anvil (chainId 31337): MockOffsetAggregator deployed by
  *   script/Deploy.s.sol, address read from NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR.
