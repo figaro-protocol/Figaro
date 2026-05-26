@@ -1,8 +1,76 @@
 {
   "agreements": {
-    "0x00b10049cd2eb4d8225d8068abc8cc38aed34de5e05e1e49e096fd1ae203ec2f": {
+    "0x82285a0485093d5cd593aef3d498ec40cce89e089444254bd7a1cf55ef853511": {
       "buyer": "0xde51000000000000000000000000000000000000",
       "sections": [
+        {
+          "data": {
+            "klerosCourt": "general",
+            "klerosMinJurors": 3
+          },
+          "schema": "figaro-arbitration-kleros-v1"
+        },
+        {
+          "data": {
+            "currency": "0x0000000000000000000000000000000000000000",
+            "lineItems": [],
+            "payment": "500000000000000000"
+          },
+          "schema": "figaro-commerce-v1"
+        },
+        {
+          "data": {},
+          "schema": "figaro-courier-process-v1"
+        },
+        {
+          "data": {
+            "classOfService": "S",
+            "destinationGeohash": "0",
+            "massGrams": 1,
+            "originGeohash": "0",
+            "volumeMl": 1
+          },
+          "schema": "figaro-geo-v2"
+        },
+        {
+          "data": {
+            "bands": [
+              "zone-wifi"
+            ]
+          },
+          "schema": "figaro-proximity-policy-v1"
+        },
+        {
+          "data": {
+            "band": "zone-wifi",
+            "deviceSig": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "nonce": "0x0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "schema": "figaro-proximity-proof-v1"
+        },
+        {
+          "data": {
+            "parentOrderHashes": [
+              "0xorder0proces0000000000000000000000000000000000000000000000000000"
+            ],
+            "topologyMode": "explicit"
+          },
+          "schema": "figaro-topology-v1"
+        }
+      ],
+      "seller": "0xde51000000000000000000000000000000000003",
+      "version": "a1"
+    },
+    "0xce0ec73fd58209464338d8ed75229e6836c454f82dbaddeff025553c50881a46": {
+      "buyer": "0xde51000000000000000000000000000000000000",
+      "sections": [
+        {
+          "data": {
+            "klerosCourt": "general",
+            "klerosMinJurors": 3
+          },
+          "schema": "figaro-arbitration-kleros-v1"
+        },
         {
           "data": {
             "currency": "0x0000000000000000000000000000000000000000",
@@ -36,13 +104,6 @@
           "schema": "figaro-geo-v2"
         },
         {
-          "data": {
-            "klerosCourt": "general",
-            "klerosMinJurors": 3
-          },
-          "schema": "figaro-jurisdiction-v1"
-        },
-        {
           "data": {},
           "schema": "figaro-merchant-process-v1"
         },
@@ -56,67 +117,6 @@
       ],
       "seller": "0xde51000000000000000000000000000000000001",
       "version": "a1"
-    },
-    "0x5982001a431607eaae89a49e2dbf2c269ce242fd2638067873dbd582e27a089b": {
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "sections": [
-        {
-          "data": {
-            "currency": "0x0000000000000000000000000000000000000000",
-            "lineItems": [],
-            "payment": "500000000000000000"
-          },
-          "schema": "figaro-commerce-v1"
-        },
-        {
-          "data": {},
-          "schema": "figaro-courier-process-v1"
-        },
-        {
-          "data": {
-            "classOfService": "S",
-            "destinationGeohash": "0",
-            "massGrams": 1,
-            "originGeohash": "0",
-            "volumeMl": 1
-          },
-          "schema": "figaro-geo-v2"
-        },
-        {
-          "data": {
-            "klerosCourt": "general",
-            "klerosMinJurors": 3
-          },
-          "schema": "figaro-jurisdiction-v1"
-        },
-        {
-          "data": {
-            "bands": [
-              "zone-wifi"
-            ]
-          },
-          "schema": "figaro-proximity-policy-v1"
-        },
-        {
-          "data": {
-            "band": "zone-wifi",
-            "deviceSig": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-            "nonce": "0x0000000000000000000000000000000000000000000000000000000000000000"
-          },
-          "schema": "figaro-proximity-proof-v1"
-        },
-        {
-          "data": {
-            "parentOrderHashes": [
-              "0xorder0proces0000000000000000000000000000000000000000000000000000"
-            ],
-            "topologyMode": "explicit"
-          },
-          "schema": "figaro-topology-v1"
-        }
-      ],
-      "seller": "0xde51000000000000000000000000000000000003",
-      "version": "a1"
     }
   },
   "name": "Local Commerce (Dutch auction)",
@@ -124,36 +124,36 @@
   "nextSellerIndex": 4,
   "orders": [
     {
-      "agreementHash": "0x00b10049cd2eb4d8225d8068abc8cc38aed34de5e05e1e49e096fd1ae203ec2f",
+      "agreementHash": "0xce0ec73fd58209464338d8ed75229e6836c454f82dbaddeff025553c50881a46",
       "buyer": "0xde51000000000000000000000000000000000000",
       "buyerBond": "2000000000000000000",
       "cumulativeValue": "1000000000000000000",
       "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779467603",
+      "deadline": "1779830391",
       "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
       "payment": "1000000000000000000",
-      "processId": "0xprocess19e5051dd8b0000000000000000000000000000000000000000000000",
+      "processId": "0xprocess19e65f195130000000000000000000000000000000000000000000000",
       "salt": "1",
       "seller": "0xde51000000000000000000000000000000000001",
       "sellerBond": "2000000000000000000",
       "state": 0
     },
     {
-      "agreementHash": "0x5982001a431607eaae89a49e2dbf2c269ce242fd2638067873dbd582e27a089b",
+      "agreementHash": "0x82285a0485093d5cd593aef3d498ec40cce89e089444254bd7a1cf55ef853511",
       "buyer": "0xde51000000000000000000000000000000000000",
       "buyerBond": "1000000000000000000",
       "cumulativeValue": "1500000000000000000",
       "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779467604",
+      "deadline": "1779830392",
       "id": "0xorder2proces0000000000000000000000000000000000000000000000000000",
       "payment": "500000000000000000",
-      "processId": "0xprocess19e5051dd8b0000000000000000000000000000000000000000000000",
+      "processId": "0xprocess19e65f195130000000000000000000000000000000000000000000000",
       "salt": "3",
       "seller": "0xde51000000000000000000000000000000000003",
       "sellerBond": "3000000000000000000",
       "state": 0
     }
   ],
-  "processId": "0xprocess19e5051dd8b0000000000000000000000000000000000000000000000",
+  "processId": "0xprocess19e65f195130000000000000000000000000000000000000000000000",
   "slug": "local-commerce-dutch"
 }

@@ -26,7 +26,8 @@ import {
     encodeGHGMeasurementContent,
     encodeGeoContent,
     encodeFulfilmentV2Content,
-    encodeJurisdictionContent,
+    encodeArbitrationKlerosContent,
+    encodeApplicableLawContent,
     encodeCommerceContent,
     encodeProximityPolicyContent,
     encodeProximityProofContent,
@@ -41,7 +42,8 @@ import ghgIsoSpecRaw from "../../src/schemas/examples/figaro-ghg-iso-14064-v1.js
 import ghgMeasurementSpecRaw from "../../src/schemas/examples/figaro-ghg-measurement-v1.json" with { type: "json" };
 import geoSpecRaw from "../../src/schemas/examples/figaro-geo-v2.json" with { type: "json" };
 import fulfilmentSpecRaw from "../../src/schemas/examples/figaro-fulfilment-v2.json" with { type: "json" };
-import jurisdictionSpecRaw from "../../src/schemas/examples/figaro-jurisdiction-v1.json" with { type: "json" };
+import arbitrationKlerosSpecRaw from "../../src/schemas/examples/figaro-arbitration-kleros-v1.json" with { type: "json" };
+import applicableLawSpecRaw from "../../src/schemas/examples/figaro-applicable-law-v1.json" with { type: "json" };
 import commerceSpecRaw from "../../src/schemas/examples/figaro-commerce-v1.json" with { type: "json" };
 import proximityPolicySpecRaw from "../../src/schemas/examples/figaro-proximity-policy-v1.json" with { type: "json" };
 import proximityProofSpecRaw from "../../src/schemas/examples/figaro-proximity-proof-v1.json" with { type: "json" };
@@ -126,11 +128,17 @@ const fixtures: Fixture[] = [
         expectMatch: true,
     },
     {
-        // klerosCourt absent → index 0 either way.
-        name: "jurisdiction law-only",
-        spec: specOf(jurisdictionSpecRaw),
+        name: "applicable-law law-only",
+        spec: specOf(applicableLawSpecRaw),
         content: { applicableLaw: "US-CA" },
-        perSchema: (c) => encodeJurisdictionContent(c as never),
+        perSchema: (c) => encodeApplicableLawContent(c as never),
+        expectMatch: true,
+    },
+    {
+        name: "applicable-law forum + language",
+        spec: specOf(applicableLawSpecRaw),
+        content: { applicableLaw: "US-CA", forum: "JAMS-arbitration", language: "en" },
+        perSchema: (c) => encodeApplicableLawContent(c as never),
         expectMatch: true,
     },
     // ── Diverge: 1-based enum tables vs canonical 0-based ──
@@ -159,10 +167,10 @@ const fixtures: Fixture[] = [
         expectMatch: false,
     },
     {
-        name: "jurisdiction kleros",
-        spec: specOf(jurisdictionSpecRaw),
+        name: "arbitration-kleros general / 5 jurors",
+        spec: specOf(arbitrationKlerosSpecRaw),
         content: { klerosCourt: "general", klerosMinJurors: 5 },
-        perSchema: (c) => encodeJurisdictionContent(c as never),
+        perSchema: (c) => encodeArbitrationKlerosContent(c as never),
         expectMatch: false,
     },
     {

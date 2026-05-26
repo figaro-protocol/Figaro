@@ -94,12 +94,14 @@ function buildEvidenceDisplayURI(processId: string, chainId: number, coreAddress
 interface DisputeStatusPanelProps {
     processId: `0x${string}`;
     /** Kleros configuration. If omitted, the panel shows as "not configured".
-     *  The caller derives it from the assembly's jurisdiction clause — the
-     *  court is the clause's; the arbitrableProxy address is deployment config. */
+     *  The caller derives it from the assembly's `figaro-arbitration-kleros-v1`
+     *  clause — the court is the clause's; the arbitrableProxy address is
+     *  deployment config. */
     klerosConfig?: KlerosConfig;
-    /** Recourse forum(s) the assembly's figaro-jurisdiction-v1 clause(s)
-     *  authored — surfaced so the disputing party sees the forum the designer
-     *  named. Display-only; the Kleros flow runs on klerosConfig. */
+    /** Recourse forum(s) the assembly's dispute-resolution clauses authored
+     *  (`figaro-arbitration-kleros-v1` and/or `figaro-applicable-law-v1`) —
+     *  surfaced so the disputing party sees the forum the designer named.
+     *  Display-only; the Kleros flow runs on klerosConfig. */
     recourses?: readonly JurisdictionRecourse[];
     /** If known, the local dispute ID on the ArbitrableProxy. */
     localDisputeId?: bigint;
@@ -302,7 +304,7 @@ export function DisputeStatusPanel({
                     data-testid="dispute-recourse-list"
                 >
                     <p className="text-[11px] font-semibold text-neutral-500">
-                        Recourse forum — from the assembly&apos;s jurisdiction clause
+                        Recourse forum — from the assembly&apos;s dispute-resolution clauses
                     </p>
                     {recourses.map((r) =>
                         r.kind === "kleros" ? (

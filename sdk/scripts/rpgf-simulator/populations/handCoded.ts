@@ -134,9 +134,9 @@ const ARCHETYPES: readonly Archetype[] = [
     name: "jurisdiction-baseline",
     description: "Off-chain dispute jurisdiction. Cluster A.",
     snapshotsAtTranches: [
-      snap({ schemaId: "figaro-jurisdiction-v1", category: "committed-policy", orderCount: 4_000, attsPerOrder: 1.4, distinctBuyers: 1_000, distinctSellers: 800, distinctBuyerSellerPairs: 2_000, meanChainPosition: 1 }),
-      snap({ schemaId: "figaro-jurisdiction-v1", category: "committed-policy", orderCount: 20_000, attsPerOrder: 1.4, distinctBuyers: 5_000, distinctSellers: 4_000, distinctBuyerSellerPairs: 12_000, meanChainPosition: 1 }),
-      snap({ schemaId: "figaro-jurisdiction-v1", category: "committed-policy", orderCount: 70_000, attsPerOrder: 1.4, distinctBuyers: 15_000, distinctSellers: 12_000, distinctBuyerSellerPairs: 50_000, meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-arbitration-kleros-v1", category: "committed-policy", orderCount: 4_000, attsPerOrder: 1.4, distinctBuyers: 1_000, distinctSellers: 800, distinctBuyerSellerPairs: 2_000, meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-arbitration-kleros-v1", category: "committed-policy", orderCount: 20_000, attsPerOrder: 1.4, distinctBuyers: 5_000, distinctSellers: 4_000, distinctBuyerSellerPairs: 12_000, meanChainPosition: 1 }),
+      snap({ schemaId: "figaro-arbitration-kleros-v1", category: "committed-policy", orderCount: 70_000, attsPerOrder: 1.4, distinctBuyers: 15_000, distinctSellers: 12_000, distinctBuyerSellerPairs: 50_000, meanChainPosition: 1 }),
     ],
   },
   {

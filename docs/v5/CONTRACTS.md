@@ -73,7 +73,8 @@ Validators are pure / view, no admin, no mutable state.
 `FigaroProximityPolicyV1Validator` (Category-2, committed band) +
 `FigaroProximityProofV1Validator` (Category-1, runtime witness),
 `FigaroMerchantProcessV1Validator`,
-`FigaroCourierProcessV1Validator`, `FigaroJurisdictionV1Validator`,
+`FigaroCourierProcessV1Validator`,
+`FigaroArbitrationKlerosV1Validator`, `FigaroApplicableLawV1Validator`,
 `FigaroConsentV1Validator`,
 `FigaroOffsetPolicyV1Validator` (Category-2, committed providers).
 Each ABI-decodes per-schema content (no on-chain JSON parsing) and reverts with

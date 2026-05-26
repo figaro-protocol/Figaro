@@ -63,8 +63,8 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 - `useSchemaValidator(schemaId)` hook (`hooks/core/`) — binds `validateContent`
   to a form value. `{ isReady, validate, loadError }`.
-- `schemaSpecSource.ts` — preloads built-in specs at module load (17 schemas in
-  `lib/shared/schemas/` — 16 runtime-attestable + the manifest-only
+- `schemaSpecSource.ts` — preloads built-in specs at module load (18 schemas in
+  `lib/shared/schemas/` — 17 runtime-attestable + the manifest-only
   `figaro-topology-v1`); supports async `loadSchemaSpec(id, uri)` for
   IPFS-resolved specs.
 

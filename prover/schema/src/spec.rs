@@ -54,7 +54,7 @@ pub enum SchemaDrawerArticle {
     Logistics,
     Attestations,
     Emissions,
-    Jurisdiction,
+    DisputeResolution,
     Consent,
 }
 
@@ -67,7 +67,7 @@ impl SchemaDrawerArticle {
             "logistics" => Some(Self::Logistics),
             "attestations" => Some(Self::Attestations),
             "emissions" => Some(Self::Emissions),
-            "jurisdiction" => Some(Self::Jurisdiction),
+            "dispute-resolution" => Some(Self::DisputeResolution),
             "consent" => Some(Self::Consent),
             _ => None,
         }
@@ -588,7 +588,7 @@ fn parse_block_binding(
                 err(
                     errors,
                     &format!("{path}.drawerArticle"),
-                    "drawerArticle must be one of: identity, order, fulfilment, logistics, attestations, emissions, jurisdiction, consent",
+                    "drawerArticle must be one of: identity, order, fulfilment, logistics, attestations, emissions, dispute-resolution, consent",
                 );
                 return None;
             }

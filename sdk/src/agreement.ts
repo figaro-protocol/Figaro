@@ -20,7 +20,8 @@ import { keccak256, toHex, concat, type Hex } from "viem";
 import {
     encodeGeoContent,
     encodeFulfilmentV2Content,
-    encodeJurisdictionContent,
+    encodeArbitrationKlerosContent,
+    encodeApplicableLawContent,
     encodeGHGScopeContent,
     encodeCommerceContent,
     encodeProximityPolicyContent,
@@ -28,7 +29,7 @@ import {
     encodeConsentContent,
     type GeoContent,
     type FulfilmentV2Content,
-    type JurisdictionContent,
+    type KlerosCourt,
     type GHGScopeContent,
     type CommerceContent,
     type ProximityBand,
@@ -110,7 +111,11 @@ const CATEGORY_2_ENCODERS: Record<string, (data: Record<string, unknown>) => Hex
         classOfService: data.classOfService as GeoContent["classOfService"],
     } satisfies GeoContent),
     "figaro-fulfilment-v2": (data) => encodeFulfilmentV2Content(data as unknown as FulfilmentV2Content),
-    "figaro-jurisdiction-v1": (data) => encodeJurisdictionContent({
+    "figaro-arbitration-kleros-v1": (data) => encodeArbitrationKlerosContent({
+        klerosCourt: data.klerosCourt as KlerosCourt,
+        klerosMinJurors: typeof data.klerosMinJurors === "number" ? data.klerosMinJurors : undefined,
+    }),
+    "figaro-applicable-law-v1": (data) => encodeApplicableLawContent({
         applicableLaw: data.applicableLaw as string,
         forum: data.forum as string | undefined,
         language: data.language as string | undefined,

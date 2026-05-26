@@ -36,7 +36,8 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import {
     readAssemblyClause,
     readAssemblyOrderGhgStandards,
-    JURISDICTION_SCHEMA_KEY,
+    APPLICABLE_LAW_SCHEMA_KEY,
+    ARBITRATION_KLEROS_SCHEMA_KEY,
     PROXIMITY_POLICY_SCHEMA_KEY,
     type Agreement,
 } from "@/lib/core/agreementManifest";
@@ -75,22 +76,32 @@ const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
 ];
 
 /**
- * Extract the figaro-jurisdiction-v1 clause an assembly authored, as the
+ * Extract the dispute-resolution clauses an assembly authored —
+ * `figaro-arbitration-kleros-v1` (decentralized ODR layer) and/or
+ * `figaro-applicable-law-v1` (state / ADR recourse layer) — as the
  * manifest fields `buildOrderAgreement` re-emits into the committed order's
- * agreement. Layer-3 dispute recourse is read off this clause — without it
- * the committed order names no off-chain forum and the dispute surface has
- * nothing to drive. Returns `{}` for an assembly with no jurisdiction clause.
+ * agreement. Without these the committed order names no off-chain forum and
+ * the dispute surface has nothing to drive. Returns `{}` for an assembly
+ * with no dispute-resolution clauses.
  */
 function assemblyJurisdictionFields(
     manifest: { agreements: Record<string, Agreement> },
 ): Record<string, string> {
-    const section = readAssemblyClause(manifest, JURISDICTION_SCHEMA_KEY);
-    if (!section) return {};
     const out: Record<string, string> = {};
-    for (const key of ["klerosCourt", "klerosMinJurors", "applicableLaw", "forum", "language"]) {
-        const v = section.data[key];
-        if (typeof v === "string" && v) out[key] = v;
-        else if (typeof v === "number") out[key] = String(v);
+    const kleros = readAssemblyClause(manifest, ARBITRATION_KLEROS_SCHEMA_KEY);
+    if (kleros) {
+        for (const key of ["klerosCourt", "klerosMinJurors"]) {
+            const v = kleros.data[key];
+            if (typeof v === "string" && v) out[key] = v;
+            else if (typeof v === "number") out[key] = String(v);
+        }
+    }
+    const law = readAssemblyClause(manifest, APPLICABLE_LAW_SCHEMA_KEY);
+    if (law) {
+        for (const key of ["applicableLaw", "forum", "language"]) {
+            const v = law.data[key];
+            if (typeof v === "string" && v) out[key] = v;
+        }
     }
     return out;
 }

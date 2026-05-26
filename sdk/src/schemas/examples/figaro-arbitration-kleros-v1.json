@@ -1,0 +1,24 @@
+{
+    "schemaId": "figaro-arbitration-kleros-v1",
+    "version": 1,
+    "title": "Kleros decentralized arbitration",
+    "description": "Off-chain dispute resolution via Kleros, the decentralized juror court. Selects a Kleros subcourt and a minimum juror count for any dispute escalated from this order. This schema covers one specific arbitration provider; sister `figaro-arbitration-<provider>-v1` schemas would cover other decentralized ODR providers as they integrate with Figaro. Compose with `figaro-applicable-law-v1` to add a state-law / ADR recourse layer.",
+    "categories": ["arbitration", "evidence-law"],
+    "fields": [
+        {
+            "name": "klerosCourt",
+            "type": "enum",
+            "values": ["general", "blockchain-nontechnical", "blockchain-technical", "english-language"],
+            "required": true,
+            "description": "Kleros subcourt. general = catch-all; blockchain-nontechnical / blockchain-technical = on-chain-agreement disputes; english-language = disputes hinging on English-language interpretation."
+        },
+        {
+            "name": "klerosMinJurors",
+            "type": "integer",
+            "min": 1,
+            "max": 99,
+            "required": false,
+            "description": "Minimum jurors for the Kleros subcourt. Kleros default is 3."
+        }
+    ]
+}

@@ -34,7 +34,7 @@ contract DeployScriptTest is Test {
 
         AttestationCoordinator ac = AttestationCoordinator(coordinator);
 
-        bytes32[16] memory expected = [
+        bytes32[17] memory expected = [
             keccak256("figaro-commerce-v1"),
             keccak256("figaro-geo-v2"),
             keccak256("figaro-fulfilment-v2"),
@@ -48,7 +48,8 @@ contract DeployScriptTest is Test {
             keccak256("figaro-proximity-proof-v1"),
             keccak256("figaro-merchant-process-v1"),
             keccak256("figaro-courier-process-v1"),
-            keccak256("figaro-jurisdiction-v1"),
+            keccak256("figaro-arbitration-kleros-v1"),
+            keccak256("figaro-applicable-law-v1"),
             keccak256("figaro-consent-v1"),
             keccak256("figaro-offset-policy-v1")
         ];

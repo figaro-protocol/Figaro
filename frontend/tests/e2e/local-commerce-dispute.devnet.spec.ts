@@ -6,7 +6,7 @@
  * coordination) are kernel mechanisms; Layer 3 is the off-chain forum, and
  * the parties' agreement NAMES it. The buyer commits the local-commerce
  * process, then escalates from /audit/[processId] to the forum the
- * assembly's figaro-jurisdiction-v1 clause authored.
+ * assembly's figaro-arbitration-kleros-v1 clause authored.
  *
  * The point of this spec is that the dispute is CLAUSE-DRIVEN: the recourse
  * forum surfaced — and the Kleros court the dispute is raised on — come from
@@ -80,7 +80,7 @@ const ARBITRABLE_PROXY_DISPUTES_ABI = parseAbi([
     'function disputes(uint256 _localID) view returns (bytes extraData, bool isRuled, uint256 ruling, uint256 disputeIDOnArbitratorSide)',
 ]);
 
-// The local-commerce assembly's figaro-jurisdiction-v1 clause names Kleros
+// The local-commerce assembly's figaro-arbitration-kleros-v1 clause names Kleros
 // General Court (subcourt 1); with no klerosMinJurors authored the resolver
 // falls back to the court's schema default (3). arbitratorExtraData is
 // abi.encode(uint96 subcourtID, uint96 minJurors).
@@ -152,7 +152,7 @@ test.describe('Local-commerce dispute — Layer-3 recourse (devnet)', () => {
         const panel = page.getByTestId('audit-dispute-section');
         await panel.waitFor({ timeout: 30000 });
 
-        // The dispute surface read the assembly's figaro-jurisdiction-v1
+        // The dispute surface read the assembly's figaro-arbitration-kleros-v1
         // clause and surfaced its forum — Kleros, General Court.
         const recourse = page.getByTestId('dispute-recourse-kleros');
         await expect(recourse).toBeVisible({ timeout: 30000 });

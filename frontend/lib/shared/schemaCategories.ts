@@ -38,7 +38,8 @@ import ghgISO14064Spec from "@/lib/shared/schemas/figaro-ghg-iso-14064-v1.json";
 import ghgMeasurementSpec from "@/lib/shared/schemas/figaro-ghg-measurement-v1.json";
 import ghgPAS2050Spec from "@/lib/shared/schemas/figaro-ghg-pas-2050-v1.json";
 import ghgProtocolSpec from "@/lib/shared/schemas/figaro-ghg-protocol-v1.json";
-import jurisdictionSpec from "@/lib/shared/schemas/figaro-jurisdiction-v1.json";
+import applicableLawSpec from "@/lib/shared/schemas/figaro-applicable-law-v1.json";
+import arbitrationKlerosSpec from "@/lib/shared/schemas/figaro-arbitration-kleros-v1.json";
 import merchantProcessSpec from "@/lib/shared/schemas/figaro-merchant-process-v1.json";
 import offsetPolicySpec from "@/lib/shared/schemas/figaro-offset-policy-v1.json";
 import proximityPolicySpec from "@/lib/shared/schemas/figaro-proximity-policy-v1.json";
@@ -58,6 +59,7 @@ export type SchemaCategory =
     | "geo"
     | "emissions"
     | "jurisdiction"
+    | "arbitration"
     | "proximity"
     | "topology";
 
@@ -78,6 +80,7 @@ export const CATEGORY_LABELS: Record<SchemaCategory, string> = {
     geo: "Geo",
     emissions: "Emissions",
     jurisdiction: "Jurisdiction",
+    arbitration: "Arbitration",
     proximity: "Proximity",
     topology: "Topology",
 };
@@ -92,7 +95,8 @@ export const CATEGORY_DESCRIPTIONS: Record<SchemaCategory, string> = {
     fulfilment: "Modality, coordination, and handoff point in one clause.",
     geo: "Geographic origin and destination, plus shipment mass, volume, and class of service.",
     emissions: "GHG accounting (per industry standard or custom).",
-    jurisdiction: "Off-chain dispute-resolution jurisdiction.",
+    jurisdiction: "State / ADR / traditional-jurisdiction recourse layer.",
+    arbitration: "Decentralized off-chain arbitration via Kleros or another provider.",
     proximity: "Proximity verification policy and proof.",
     topology: "DAG lineage and parent-order relationships.",
 };
@@ -115,7 +119,8 @@ export const SCHEMA_TIER_MAP: Readonly<Record<string, SchemaTier>> = {
     "figaro-ghg-iso-14064-v1": "designer-time",
     "figaro-ghg-pas-2050-v1": "designer-time",
     "figaro-ghg-protocol-v1": "designer-time",
-    "figaro-jurisdiction-v1": "designer-time",
+    "figaro-applicable-law-v1": "designer-time",
+    "figaro-arbitration-kleros-v1": "designer-time",
     "figaro-offset-policy-v1": "designer-time",
     "figaro-proximity-policy-v1": "designer-time",
     "figaro-topology-v1": "designer-time",
@@ -176,7 +181,8 @@ export const SCHEMA_FAMILY_MAP: Readonly<Record<string, SchemaFamily>> = {
     "figaro-proximity-proof-v1": "lifecycle-proximity",
     "figaro-merchant-process-v1": "process-logs",
     "figaro-courier-process-v1": "process-logs",
-    "figaro-jurisdiction-v1": "legal",
+    "figaro-applicable-law-v1": "legal",
+    "figaro-arbitration-kleros-v1": "legal",
     "figaro-consent-v1": "legal",
 };
 
@@ -211,7 +217,8 @@ const ALL_SPECS: readonly SchemaSpecMeta[] = [
     ghgMeasurementSpec,
     ghgPAS2050Spec,
     ghgProtocolSpec,
-    jurisdictionSpec,
+    applicableLawSpec,
+    arbitrationKlerosSpec,
     merchantProcessSpec,
     offsetPolicySpec,
     proximityPolicySpec,

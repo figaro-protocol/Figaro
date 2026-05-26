@@ -11,7 +11,8 @@ import {
     GHG_MEASUREMENT_SCHEMA_KEY,
     GHG_STANDARD_TO_SCHEMA,
     GHG_SCHEMA_TO_STANDARD,
-    JURISDICTION_SCHEMA_KEY,
+    ARBITRATION_KLEROS_SCHEMA_KEY,
+    APPLICABLE_LAW_SCHEMA_KEY,
     CONSENT_SCHEMA_KEY,
     COURIER_PROCESS_SCHEMA_KEY,
     MERCHANT_PROCESS_SCHEMA_KEY,
@@ -178,7 +179,10 @@ export interface AgreementSummary {
         /** Proximity-policy bands offered. */
         bands: readonly string[];
     };
+    /** Applicable-law / state / ADR recourse layer. */
     jurisdiction?: Record<string, unknown>;
+    /** Decentralized arbitration provider clause (e.g., Kleros). */
+    arbitration?: Record<string, unknown>;
     consent?: Record<string, unknown>;
 }
 
@@ -316,18 +320,22 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     const language = readManifestExtra(params.manifestFields, ["language"]);
     const ALLOWED_KLEROS_COURTS = ["general", "blockchain-nontechnical", "blockchain-technical", "english-language"];
     const klerosCourtValue = klerosCourt && ALLOWED_KLEROS_COURTS.includes(klerosCourt) ? klerosCourt : undefined;
-    if (klerosCourtValue || applicableLaw) {
-        const data: Record<string, unknown> = {};
-        if (klerosCourtValue) {
-            data.klerosCourt = klerosCourtValue;
-            const parsed = klerosMinJurorsRaw ? Number(klerosMinJurorsRaw) : 3;
-            data.klerosMinJurors = Number.isFinite(parsed) && parsed >= 1 ? parsed : 3;
-        }
-        if (applicableLaw) data.applicableLaw = applicableLaw;
+    if (klerosCourtValue) {
+        const parsed = klerosMinJurorsRaw ? Number(klerosMinJurorsRaw) : 3;
+        sections.push({
+            schema: ARBITRATION_KLEROS_SCHEMA_KEY,
+            data: {
+                klerosCourt: klerosCourtValue,
+                klerosMinJurors: Number.isFinite(parsed) && parsed >= 1 ? parsed : 3,
+            },
+        });
+    }
+    if (applicableLaw) {
+        const data: Record<string, unknown> = { applicableLaw };
         if (forum) data.forum = forum;
         if (language) data.language = language;
         sections.push({
-            schema: JURISDICTION_SCHEMA_KEY,
+            schema: APPLICABLE_LAW_SCHEMA_KEY,
             data,
         });
     }
@@ -404,7 +412,8 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
     const topologySection = getSection(agreement, TOPOLOGY_SCHEMA_KEY);
     const fulfilmentSection = getSection(agreement, FULFILMENT_V2_SCHEMA_KEY);
     const proximitySection = getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
-    const jurisdictionSection = getSection(agreement, JURISDICTION_SCHEMA_KEY);
+    const arbitrationSection = getSection(agreement, ARBITRATION_KLEROS_SCHEMA_KEY);
+    const applicableLawSection = getSection(agreement, APPLICABLE_LAW_SCHEMA_KEY);
     const consentSection = getSection(agreement, CONSENT_SCHEMA_KEY);
     // GHG disclosure is multi-valued: agreement may carry one section per
     // standard the merchant reports under.
@@ -474,7 +483,8 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
                     : [],
             }
             : undefined,
-        jurisdiction: jurisdictionSection?.data,
+        jurisdiction: applicableLawSection?.data,
+        arbitration: arbitrationSection?.data,
         consent: consentSection?.data,
     };
 }

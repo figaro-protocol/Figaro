@@ -333,7 +333,7 @@ fn every_embedded_spec_parses_and_matches_its_schema_id() {
         );
         count += 1;
     }
-    assert_eq!(count, 16, "expected 16 embedded protocol schemas");
+    assert_eq!(count, 17, "expected 17 embedded protocol schemas");
 }
 
 #[test]
@@ -345,11 +345,11 @@ fn embedded_spec_json_is_none_for_non_protocol_schemas() {
 }
 
 #[test]
-fn embedded_spec_tiers_partition_cross_checking_12_and_4() {
+fn embedded_spec_tiers_partition_cross_checking_13_and_4() {
     // The kernel's Gate 5 derives `cross_checks` from each spec's block
     // tier (`SchemaSpec::cross_checks`). Every runtime-attestable schema
     // must declare a category-1 or category-2 tier — never manifest-only —
-    // and the split must stay 12 cross-checking (Category-2 declarative
+    // and the split must stay 13 cross-checking (Category-2 declarative
     // clauses) / 4 not (Category-1 runtime-only schemas).
     let mut cross = 0;
     let mut plain = 0;
@@ -370,6 +370,6 @@ fn embedded_spec_tiers_partition_cross_checking_12_and_4() {
             plain += 1;
         }
     }
-    assert_eq!(cross, 12, "12 Category-2 cross-checking schemas");
+    assert_eq!(cross, 13, "13 Category-2 cross-checking schemas");
     assert_eq!(plain, 4, "4 Category-1 runtime-only schemas");
 }

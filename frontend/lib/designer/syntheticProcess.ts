@@ -492,23 +492,15 @@ export function readAgreementFields(order: Order): ManifestFields {
         fields.proximityBands = [...summary.proximity.bands];
     }
 
-    // ── jurisdiction ───────────────────────────────────────────
-    // Legacy migration: pre-v2-jurisdiction synthetic orders carried
-    // applicableLaw: "Kleros" as a sentinel for Kleros opt-in. Kleros is
-    // not a body of law — it's the ODR venue. Re-interpret the legacy
-    // sentinel as layer-2 opt-in and drop the misleading applicableLaw.
-    const rawKlerosCourt = summary?.jurisdiction?.klerosCourt;
+    // ── arbitration (Kleros) ───────────────────────────────────
+    const rawKlerosCourt = summary?.arbitration?.klerosCourt;
+    if (typeof rawKlerosCourt === "string") fields.klerosCourt = rawKlerosCourt;
+    const klerosMinJurors = summary?.arbitration?.klerosMinJurors;
+    if (typeof klerosMinJurors === "number") fields.klerosMinJurors = String(klerosMinJurors);
+
+    // ── applicable law (state / ADR) ───────────────────────────
     const rawApplicableLaw = summary?.jurisdiction?.applicableLaw;
-    const isLegacyKlerosSentinel = rawApplicableLaw === "Kleros" && typeof rawKlerosCourt !== "string";
-    if (isLegacyKlerosSentinel) {
-        fields.klerosCourt = "general";
-        fields.klerosMinJurors = "3";
-    } else {
-        if (typeof rawKlerosCourt === "string") fields.klerosCourt = rawKlerosCourt;
-        const klerosMinJurors = summary?.jurisdiction?.klerosMinJurors;
-        if (typeof klerosMinJurors === "number") fields.klerosMinJurors = String(klerosMinJurors);
-        if (typeof rawApplicableLaw === "string") fields.applicableLaw = rawApplicableLaw;
-    }
+    if (typeof rawApplicableLaw === "string") fields.applicableLaw = rawApplicableLaw;
     const forum = summary?.jurisdiction?.forum;
     if (typeof forum === "string") fields.forum = forum;
     const language = summary?.jurisdiction?.language;

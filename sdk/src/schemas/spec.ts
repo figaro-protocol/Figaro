@@ -93,7 +93,7 @@ export type SchemaDrawerArticle =
     | "logistics"
     | "attestations"
     | "emissions"
-    | "jurisdiction"
+    | "dispute-resolution"
     | "consent";
 
 /** Doctrinal tier per the protocol-extension doctrine. Independent of the
@@ -181,7 +181,7 @@ const VALID_STRING_FORMATS: ReadonlySet<string> = new Set([
 
 const VALID_DRAWER_ARTICLES: ReadonlySet<string> = new Set([
     "identity", "order", "fulfilment", "logistics",
-    "attestations", "emissions", "jurisdiction", "consent",
+    "attestations", "emissions", "dispute-resolution", "consent",
 ]);
 
 const VALID_SCHEMA_TIERS: ReadonlySet<string> = new Set([

@@ -35,7 +35,7 @@ macro_rules! embed {
     };
 }
 
-/// The 16 runtime-attestable protocol schemas.
+/// The 17 runtime-attestable protocol schemas.
 const EMBEDDED_SPECS: &[EmbeddedSpec] = &[
     embed!("figaro-ghg-protocol-v1"),
     embed!("figaro-ghg-iso-14064-v1"),
@@ -45,7 +45,8 @@ const EMBEDDED_SPECS: &[EmbeddedSpec] = &[
     embed!("figaro-ghg-measurement-v1"),
     embed!("figaro-geo-v2"),
     embed!("figaro-fulfilment-v2"),
-    embed!("figaro-jurisdiction-v1"),
+    embed!("figaro-arbitration-kleros-v1"),
+    embed!("figaro-applicable-law-v1"),
     embed!("figaro-commerce-v1"),
     embed!("figaro-proximity-policy-v1"),
     embed!("figaro-proximity-proof-v1"),
@@ -56,7 +57,7 @@ const EMBEDDED_SPECS: &[EmbeddedSpec] = &[
 ];
 
 /// The canonical spec JSON for a schemaId hash, or `None` if the schemaId
-/// is not one of the 16 runtime-attestable protocol schemas (third-party
+/// is not one of the 17 runtime-attestable protocol schemas (third-party
 /// schemas, `figaro-topology-v1`, etc.).
 pub fn embedded_spec_json(schema_id: &B256) -> Option<&'static str> {
     EMBEDDED_SPECS

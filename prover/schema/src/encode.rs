@@ -89,7 +89,8 @@ pub fn encode_content_for_schema(schema_id: &str, content: &Value) -> Result<Vec
 
         "figaro-geo-v2" => encode_geo(content),
         "figaro-fulfilment-v2" => encode_fulfilment(content),
-        "figaro-jurisdiction-v1" => encode_jurisdiction(content),
+        "figaro-arbitration-kleros-v1" => encode_arbitration_kleros(content),
+        "figaro-applicable-law-v1" => encode_applicable_law(content),
         "figaro-commerce-v1" => encode_commerce(content),
         "figaro-proximity-policy-v1" => encode_proximity_policy(content),
         "figaro-proximity-proof-v1" => encode_proximity_proof(content),
@@ -302,7 +303,7 @@ fn encode_fulfilment(content: &Value) -> Result<Vec<u8>, EncodeError> {
     Ok(encode_params(vec![modalities, coordinations, handoff_points]))
 }
 
-// ── figaro-jurisdiction-v1 ───────────────────────────────────────────
+// ── figaro-arbitration-kleros-v1 ─────────────────────────────────────
 
 const KLEROS_COURT: &[(&str, u8)] = &[
     ("general", 1),
@@ -311,32 +312,35 @@ const KLEROS_COURT: &[(&str, u8)] = &[
     ("english-language", 4),
 ];
 
-fn encode_jurisdiction(content: &Value) -> Result<Vec<u8>, EncodeError> {
-    let kleros_court_index = match opt_field(content, "klerosCourt") {
-        Some(v) => enum_index("klerosCourt", as_str(v, "klerosCourt")?, KLEROS_COURT)?,
-        None => 0,
-    };
-    let kleros_min_jurors = if kleros_court_index == 0 {
-        0u8
-    } else {
-        match opt_field(content, "klerosMinJurors") {
-            Some(v) => {
-                let n = as_u64(v, "klerosMinJurors")?;
-                if n > 255 {
-                    return Err(EncodeError::OutOfRange {
-                        field: "klerosMinJurors",
-                        value: n.to_string(),
-                    });
-                }
-                n as u8
+fn encode_arbitration_kleros(content: &Value) -> Result<Vec<u8>, EncodeError> {
+    let kleros_court_index = enum_index(
+        "klerosCourt",
+        as_str(get_field(content, "klerosCourt")?, "klerosCourt")?,
+        KLEROS_COURT,
+    )?;
+    let kleros_min_jurors = match opt_field(content, "klerosMinJurors") {
+        Some(v) => {
+            let n = as_u64(v, "klerosMinJurors")?;
+            if n > 255 {
+                return Err(EncodeError::OutOfRange {
+                    field: "klerosMinJurors",
+                    value: n.to_string(),
+                });
             }
-            None => 3,
+            n as u8
         }
+        None => 3,
     };
-    let applicable_law = opt_field(content, "applicableLaw")
-        .map(|v| as_str(v, "applicableLaw"))
-        .transpose()?
-        .unwrap_or("");
+    Ok(encode_params(vec![
+        DynSolValue::Uint(U256::from(kleros_court_index), 8),
+        DynSolValue::Uint(U256::from(kleros_min_jurors), 8),
+    ]))
+}
+
+// ── figaro-applicable-law-v1 ─────────────────────────────────────────
+
+fn encode_applicable_law(content: &Value) -> Result<Vec<u8>, EncodeError> {
+    let applicable_law = as_str(get_field(content, "applicableLaw")?, "applicableLaw")?;
     let forum = opt_field(content, "forum")
         .map(|v| as_str(v, "forum"))
         .transpose()?
@@ -346,8 +350,6 @@ fn encode_jurisdiction(content: &Value) -> Result<Vec<u8>, EncodeError> {
         .transpose()?
         .unwrap_or("");
     Ok(encode_params(vec![
-        DynSolValue::Uint(U256::from(kleros_court_index), 8),
-        DynSolValue::Uint(U256::from(kleros_min_jurors), 8),
         DynSolValue::String(applicable_law.to_string()),
         DynSolValue::String(forum.to_string()),
         DynSolValue::String(language.to_string()),

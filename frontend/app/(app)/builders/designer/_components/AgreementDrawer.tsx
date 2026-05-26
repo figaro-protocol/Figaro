@@ -37,12 +37,13 @@ import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import {
     COMMERCE_SCHEMA_KEY,
+    APPLICABLE_LAW_SCHEMA_KEY,
+    ARBITRATION_KLEROS_SCHEMA_KEY,
     CONSENT_SCHEMA_KEY,
     COURIER_PROCESS_SCHEMA_KEY,
     FULFILMENT_V2_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
     GHG_DISCLOSURE_SCHEMA_KEYS,
-    JURISDICTION_SCHEMA_KEY,
     MERCHANT_PROCESS_SCHEMA_KEY,
 } from "@/lib/core/agreementManifest";
 import { getSchemaInfo } from "@/lib/shared/schemaCategories";
@@ -62,7 +63,7 @@ type ArticleKey =
     | "logistics"
     | "attestations"
     | "emissions"
-    | "jurisdiction"
+    | "dispute-resolution"
     | "consent";
 
 const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
@@ -72,7 +73,7 @@ const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
     { key: "logistics", label: "Logistics" },
     { key: "attestations", label: "Attestations" },
     { key: "emissions", label: "Emissions" },
-    { key: "jurisdiction", label: "Jurisdiction" },
+    { key: "dispute-resolution", label: "Dispute resolution" },
     { key: "consent", label: "Consent" },
 ];
 
@@ -227,7 +228,9 @@ export function AgreementDrawer({
     const merchantProcessAvailable = isOnChain(MERCHANT_PROCESS_SCHEMA_KEY);
     const courierProcessAvailable = isOnChain(COURIER_PROCESS_SCHEMA_KEY);
     const fulfilmentAvailable = isOnChain(FULFILMENT_V2_SCHEMA_KEY);
-    const jurisdictionAvailable = isOnChain(JURISDICTION_SCHEMA_KEY);
+    const arbitrationKlerosAvailable = isOnChain(ARBITRATION_KLEROS_SCHEMA_KEY);
+    const applicableLawAvailable = isOnChain(APPLICABLE_LAW_SCHEMA_KEY);
+    const disputeResolutionAvailable = arbitrationKlerosAvailable && applicableLawAvailable;
     const consentAvailable = isOnChain(CONSENT_SCHEMA_KEY);
     const availableGhgKeys = useMemo<readonly string[]>(
         () =>
@@ -752,9 +755,9 @@ export function AgreementDrawer({
                         </section>
                     )}
 
-                    {openSection === "jurisdiction" && (
-                        <section data-testid="drawer-section-jurisdiction">
-                            {jurisdictionAvailable ? (
+                    {openSection === "dispute-resolution" && (
+                        <section data-testid="drawer-section-dispute-resolution">
+                            {disputeResolutionAvailable ? (
                                 <JurisdictionArticle
                                     klerosCourt={klerosCourtValue}
                                     klerosMinJurors={klerosMinJurorsValue}
@@ -770,9 +773,18 @@ export function AgreementDrawer({
                             ) : (
                                 <p
                                     className="text-xs text-amber-700"
-                                    data-testid="drawer-jurisdiction-unavailable"
+                                    data-testid="drawer-dispute-resolution-unavailable"
                                 >
-                                    <code className="font-mono text-[11px]">{JURISDICTION_SCHEMA_KEY}</code>{" "}
+                                    {!arbitrationKlerosAvailable && (
+                                        <>
+                                            <code className="font-mono text-[11px]">{ARBITRATION_KLEROS_SCHEMA_KEY}</code>{" "}
+                                        </>
+                                    )}
+                                    {!applicableLawAvailable && (
+                                        <>
+                                            <code className="font-mono text-[11px]">{APPLICABLE_LAW_SCHEMA_KEY}</code>{" "}
+                                        </>
+                                    )}
                                     is not registered on the network this site is reading; this article is unavailable.
                                 </p>
                             )}

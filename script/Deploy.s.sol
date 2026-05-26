@@ -30,7 +30,8 @@ import "../src/schemaValidators/FigaroOffsetPolicyV1Validator.sol";
 import "../src/schemaValidators/FigaroProximityProofV1Validator.sol";
 import "../src/schemaValidators/FigaroMerchantProcessV1Validator.sol";
 import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
-import "../src/schemaValidators/FigaroJurisdictionV1Validator.sol";
+import "../src/schemaValidators/FigaroArbitrationKlerosV1Validator.sol";
+import "../src/schemaValidators/FigaroApplicableLawV1Validator.sol";
 import "../src/schemaValidators/FigaroConsentV1Validator.sol";
 import "../src/AssemblyRegistry.sol";
 import "../src/ProcessOffsetReceipt.sol";
@@ -118,12 +119,17 @@ contract Deploy is Script {
         schemas.registerSchema(
             keccak256("figaro-courier-process-v1"), 1, keccak256("ipfs://figaro-courier-process/v1")
         );
-        schemas.registerSchema(keccak256("figaro-jurisdiction-v1"), 1, keccak256("ipfs://figaro-jurisdiction/v1"));
+        schemas.registerSchema(
+            keccak256("figaro-arbitration-kleros-v1"), 1, keccak256("ipfs://figaro-arbitration-kleros/v1")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-applicable-law-v1"), 1, keccak256("ipfs://figaro-applicable-law/v1")
+        );
         schemas.registerSchema(keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"));
         schemas.registerSchema(
             keccak256("figaro-offset-policy-v1"), 1, keccak256("ipfs://figaro-offset-policy/v1")
         );
-        console.log("Registered 17 reference schemas");
+        console.log("Registered 18 reference schemas");
 
         // ── Schema validators ───────────────────────────────────────
         // Deploy per-schema validator contracts and wire them into the
@@ -356,7 +362,10 @@ contract Deploy is Script {
             keccak256("figaro-courier-process-v1"), address(new FigaroCourierProcessV1Validator())
         );
         attestation.setValidator(
-            keccak256("figaro-jurisdiction-v1"), address(new FigaroJurisdictionV1Validator())
+            keccak256("figaro-arbitration-kleros-v1"), address(new FigaroArbitrationKlerosV1Validator())
+        );
+        attestation.setValidator(
+            keccak256("figaro-applicable-law-v1"), address(new FigaroApplicableLawV1Validator())
         );
         attestation.setValidator(
             keccak256("figaro-consent-v1"), address(new FigaroConsentV1Validator())
@@ -364,6 +373,6 @@ contract Deploy is Script {
         attestation.setValidator(
             keccak256("figaro-offset-policy-v1"), address(new FigaroOffsetPolicyV1Validator())
         );
-        console.log("Registered 16 schema validators with AttestationCoordinator");
+        console.log("Registered 17 schema validators with AttestationCoordinator");
     }
 }

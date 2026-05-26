@@ -363,7 +363,7 @@ Three layers must ship together for any new schema:
 - **Layer B** (Rust SP1 prover): `prover/schema/` mirrors Layer A byte-for-byte (15-test conformance suite locked against `sdk/tests/schemas/validate.test.ts`) plus per-schema canonical ABI encoders mirroring viem's `encodeAbiParameters` (17-test encode-conformance suite). Wired into `figaro-kernel`'s `apply_batch` via a five-gate `AttestationContentProof` on `AttestAsSeller`/`AttestAsBuyer`; `figaro_sequencer::mempool::Mempool` re-runs the same gates at submission time so the prover never receives batches the kernel would reject. The derive-from-JSON gate is the cross-form binding — the bytes Layer C decodes come from the same JSON Layer B validates. Per-gate semantics, test list, and reject-path coverage → `docs/v5/SCHEMAS.md` and memory `reference_schema_validator_stack.md`.
 - **Layer C** (Solidity): per-schema `ISchemaValidator` contracts in `src/schemaValidators/`, bound through `AttestationCoordinator.setValidator(schemaId, validator)`. **Permissionless, first-write-wins, immutable.** No validator → no attestation under that schemaId (`ValidatorNotSet`).
 
-There are 17 protocol schemas total: 16 runtime-attestable (each with a validator contract) + `figaro-topology-v1`, which is a manifest-only clause (no validator, DAG reconstructed off-chain by indexers from the signed manifest). Full table → `docs/v5/SCHEMAS.md`.
+There are 18 protocol schemas total: 17 runtime-attestable (each with a validator contract) + `figaro-topology-v1`, which is a manifest-only clause (no validator, DAG reconstructed off-chain by indexers from the signed manifest). Full table → `docs/v5/SCHEMAS.md`.
 
 ### Adding a new schema — checklist
 

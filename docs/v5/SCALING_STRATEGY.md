@@ -418,21 +418,20 @@ carries `max`.)
 1. *Enum index.* `EnumFieldSpec` carries only `values`; today's
    per-schema index tables are inconsistent (merchant/courier 0-based,
    geo/fulfilment/proximity/offset/kleros 1-based). Canonical rule: index
-   = 0-based position in `values`. The one optional *scalar* enum,
-   `figaro-jurisdiction-v1`'s `klerosCourt`, gets an explicit leading
-   `"none"` value so index 0 is a declared state, not a sentinel. Enum
-   *arrays* need no sentinel — an absent optional array is the empty array.
+   = 0-based position in `values`. Enum *arrays* need no sentinel — an
+   absent optional array is the empty array.
 2. *Defaults.* No `default` field is needed: "absent optional → ABI
    zero-value" covers every current case (`scope`→0, `evidenceUri`→`""`,
-   `coordinations`/`handoffPoints`→`[]`, `klerosCourt`→0).
+   `coordinations`/`handoffPoints`→`[]`).
 
-**`figaro-jurisdiction-v1` — the one non-structural encoder.** It forces
-`klerosMinJurors` to 0 when `klerosCourt` is unset, and defaults it to 3
-otherwise. Encoding becomes literal: `klerosMinJurors` encodes as
-declared (absent → 0). The "court-set ⇒ jurors coherent" rule becomes a
-`validate_content` cross-field constraint; the "suggest 3" default moves
-to the authoring UI. For already-consistent content the encoded bytes
-are unchanged — jurisdiction does not migrate.
+**Arbitration / applicable-law — fully structural after the jurisdiction
+split.** The split of legacy `figaro-jurisdiction-v1` into
+`figaro-arbitration-kleros-v1` (required `klerosCourt` + optional
+`klerosMinJurors`) and `figaro-applicable-law-v1` (required
+`applicableLaw` + optional `forum` + `language`) eliminates the prior
+non-structural carve-out: both new schemas encode their fields literally.
+The "suggest 3 jurors" default lives in the authoring UI, not the
+encoder.
 
 **`figaro-consent-v1` — the one layout change.** Its `documents`
 object-array is encoded struct-of-arrays (`bytes32[], string[],

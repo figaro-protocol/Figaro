@@ -170,10 +170,10 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
         // Root order — delivery / dutch-auction, plus the merchant
         // operator-process clause. Geo is default-on by RPGF design.
         expect(rootAgreement.sections.map((s) => s.schema).sort()).toEqual([
+            'figaro-arbitration-kleros-v1',
             'figaro-commerce-v1',
             'figaro-fulfilment-v2',
             'figaro-geo-v2',
-            'figaro-jurisdiction-v1',
             'figaro-merchant-process-v1',
             'figaro-topology-v1',
         ]);
@@ -188,10 +188,10 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
         // authored proximity-policy handoff clause + its proximity-proof
         // placeholder leaf, and a topology section linking back to the root.
         expect(courierAgreement.sections.map((s) => s.schema).sort()).toEqual([
+            'figaro-arbitration-kleros-v1',
             'figaro-commerce-v1',
             'figaro-courier-process-v1',
             'figaro-geo-v2',
-            'figaro-jurisdiction-v1',
             'figaro-proximity-policy-v1',
             'figaro-proximity-proof-v1',
             'figaro-topology-v1',

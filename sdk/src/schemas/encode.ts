@@ -125,15 +125,13 @@ export function encodeFulfilmentV2Content(content: FulfilmentV2Content): Hex {
     );
 }
 
-// ── figaro-jurisdiction-v1 ──────────────────────────────────────────────────
+// ── figaro-arbitration-kleros-v1 ────────────────────────────────────────────
 //
-// Three-layer dispute resolution. Layer 1 (kernel mechanisms — asymmetric
-// bonding + buyer dominance) is always active and not encoded here. Layer 2
-// (Kleros — decentralized off-chain arbitration) sits in `klerosCourt` +
-// `klerosMinJurors`. Layer 3 (state / ADR / traditional) sits in
-// `applicableLaw` + `forum` + `language`. At least one of `klerosCourt` or
-// `applicableLaw` must be set; otherwise the section is empty and shouldn't
-// exist.
+// Off-chain dispute resolution via the Kleros decentralized juror court.
+// Selects a subcourt and a minimum juror count. One specific arbitration
+// provider; sister `figaro-arbitration-<provider>-v1` schemas would cover
+// other decentralized ODR providers as they integrate with Figaro. Compose
+// with `figaro-applicable-law-v1` to add a state-law / ADR recourse layer.
 
 export type KlerosCourt = "general" | "blockchain-nontechnical" | "blockchain-technical" | "english-language";
 
@@ -144,40 +142,45 @@ const KLEROS_COURT_INDEX: Record<KlerosCourt, number> = {
     "english-language": 4,
 };
 
-export interface JurisdictionContent {
-    /** Layer 2 — Kleros subcourt. Omit to opt out of Kleros. */
-    klerosCourt?: KlerosCourt;
-    /** Layer 2 — Kleros minimum juror count. Defaults to 3 if klerosCourt
-     *  is set and this is omitted. Ignored when klerosCourt is unset. */
+export interface ArbitrationKlerosContent {
+    /** Kleros subcourt. Required. */
+    klerosCourt: KlerosCourt;
+    /** Minimum juror count. Defaults to 3 (Kleros's own default) if omitted. */
     klerosMinJurors?: number;
-    /** Layer 3 — body of law that governs the contract. ISO 3166 code
-     *  (e.g., "US-CA"), "EU" / "INTL", or a free-form non-state legal-order
-     *  identifier. Omit to use Kleros (layer 2) alone. */
-    applicableLaw?: string;
-    /** Layer 3 — named adjudication venue (optional). */
+}
+
+export function encodeArbitrationKlerosContent(content: ArbitrationKlerosContent): Hex {
+    const klerosCourtIndex = KLEROS_COURT_INDEX[content.klerosCourt];
+    const klerosMinJurors = content.klerosMinJurors ?? 3;
+    return encodeAbiParameters(
+        [{ type: "uint8" }, { type: "uint8" }],
+        [klerosCourtIndex, klerosMinJurors],
+    );
+}
+
+// ── figaro-applicable-law-v1 ────────────────────────────────────────────────
+//
+// State / ADR / traditional-jurisdiction recourse layer. Identifies the body
+// of law governing the order and, optionally, the named adjudication venue
+// and proceedings language. Provider-agnostic by construction (free-form
+// strings). Compose with `figaro-arbitration-kleros-v1` (or another
+// `figaro-arbitration-<provider>-v1`) to add a decentralized ODR layer.
+
+export interface ApplicableLawContent {
+    /** Body of law that governs the contract. ISO 3166 code (e.g., "US-CA"),
+     *  "EU" / "INTL", or a free-form non-state legal-order identifier.
+     *  Required. */
+    applicableLaw: string;
+    /** Named adjudication venue (optional). */
     forum?: string;
-    /** Layer 3 — ISO 639 language code for adjudication (optional). */
+    /** ISO 639 language code for adjudication (optional). */
     language?: string;
 }
 
-export function encodeJurisdictionContent(content: JurisdictionContent): Hex {
-    const klerosCourtIndex = content.klerosCourt ? KLEROS_COURT_INDEX[content.klerosCourt] : 0;
-    const klerosMinJurors = klerosCourtIndex === 0 ? 0 : (content.klerosMinJurors ?? 3);
+export function encodeApplicableLawContent(content: ApplicableLawContent): Hex {
     return encodeAbiParameters(
-        [
-            { type: "uint8" },
-            { type: "uint8" },
-            { type: "string" },
-            { type: "string" },
-            { type: "string" },
-        ],
-        [
-            klerosCourtIndex,
-            klerosMinJurors,
-            content.applicableLaw ?? "",
-            content.forum ?? "",
-            content.language ?? "",
-        ],
+        [{ type: "string" }, { type: "string" }, { type: "string" }],
+        [content.applicableLaw, content.forum ?? "", content.language ?? ""],
     );
 }
 

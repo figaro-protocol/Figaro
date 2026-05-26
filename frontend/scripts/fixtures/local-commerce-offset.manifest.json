@@ -1,8 +1,15 @@
 {
   "agreements": {
-    "0x9fe1cf5db11074cd487c1d616aa67c5d52dd529bdf4a6bdf0543f328f5e2448a": {
+    "0x2ccc20056ea7ef70005cc2aa8a04d8d4b76a702802bac495a34ccb2a25a9402a": {
       "buyer": "0xde51000000000000000000000000000000000000",
       "sections": [
+        {
+          "data": {
+            "klerosCourt": "general",
+            "klerosMinJurors": 3
+          },
+          "schema": "figaro-arbitration-kleros-v1"
+        },
         {
           "data": {
             "currency": "0x0000000000000000000000000000000000000000",
@@ -46,13 +53,6 @@
           "schema": "figaro-ghg-measurement-v1"
         },
         {
-          "data": {
-            "klerosCourt": "general",
-            "klerosMinJurors": 3
-          },
-          "schema": "figaro-jurisdiction-v1"
-        },
-        {
           "data": {},
           "schema": "figaro-merchant-process-v1"
         },
@@ -67,9 +67,16 @@
       "seller": "0xde51000000000000000000000000000000000001",
       "version": "a1"
     },
-    "0xde1d7e1cd9e6ff813761e48a57edd3ee75be73ce54ac400c3db1d8b9a24c3d46": {
+    "0x6cf0caa852f6fd4a9b172453683fc55a2217a24a60059ce19786208a2ee4e740": {
       "buyer": "0xde51000000000000000000000000000000000000",
       "sections": [
+        {
+          "data": {
+            "klerosCourt": "general",
+            "klerosMinJurors": 3
+          },
+          "schema": "figaro-arbitration-kleros-v1"
+        },
         {
           "data": {
             "currency": "0x0000000000000000000000000000000000000000",
@@ -101,13 +108,6 @@
         {
           "data": {},
           "schema": "figaro-ghg-measurement-v1"
-        },
-        {
-          "data": {
-            "klerosCourt": "general",
-            "klerosMinJurors": 3
-          },
-          "schema": "figaro-jurisdiction-v1"
         },
         {
           "data": {
@@ -144,36 +144,36 @@
   "nextSellerIndex": 4,
   "orders": [
     {
-      "agreementHash": "0x9fe1cf5db11074cd487c1d616aa67c5d52dd529bdf4a6bdf0543f328f5e2448a",
+      "agreementHash": "0x2ccc20056ea7ef70005cc2aa8a04d8d4b76a702802bac495a34ccb2a25a9402a",
       "buyer": "0xde51000000000000000000000000000000000000",
       "buyerBond": "2000000000000000000",
       "cumulativeValue": "1000000000000000000",
       "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779482745",
+      "deadline": "1779830398",
       "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
       "payment": "1000000000000000000",
-      "processId": "0xprocess19e5138eb4a0000000000000000000000000000000000000000000000",
+      "processId": "0xprocess19e65f1b09e0000000000000000000000000000000000000000000000",
       "salt": "1",
       "seller": "0xde51000000000000000000000000000000000001",
       "sellerBond": "2000000000000000000",
       "state": 0
     },
     {
-      "agreementHash": "0xde1d7e1cd9e6ff813761e48a57edd3ee75be73ce54ac400c3db1d8b9a24c3d46",
+      "agreementHash": "0x6cf0caa852f6fd4a9b172453683fc55a2217a24a60059ce19786208a2ee4e740",
       "buyer": "0xde51000000000000000000000000000000000000",
       "buyerBond": "1000000000000000000",
       "cumulativeValue": "1500000000000000000",
       "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779482746",
+      "deadline": "1779830400",
       "id": "0xorder2proces0000000000000000000000000000000000000000000000000000",
       "payment": "500000000000000000",
-      "processId": "0xprocess19e5138eb4a0000000000000000000000000000000000000000000000",
+      "processId": "0xprocess19e65f1b09e0000000000000000000000000000000000000000000000",
       "salt": "3",
       "seller": "0xde51000000000000000000000000000000000003",
       "sellerBond": "3000000000000000000",
       "state": 0
     }
   ],
-  "processId": "0xprocess19e5138eb4a0000000000000000000000000000000000000000000000",
+  "processId": "0xprocess19e65f1b09e0000000000000000000000000000000000000000000000",
   "slug": "local-commerce-offset"
 }

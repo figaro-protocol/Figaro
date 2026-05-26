@@ -69,10 +69,14 @@ fn fixtures() -> Vec<(&'static str, Value, bool)> {
             json!({ "eventType": "in-transit" }),
             true,
         ),
-        // klerosCourt absent → 0 either way, so the law-only fixture matches.
         (
-            "figaro-jurisdiction-v1",
+            "figaro-applicable-law-v1",
             json!({ "applicableLaw": "US-CA" }),
+            true,
+        ),
+        (
+            "figaro-applicable-law-v1",
+            json!({ "applicableLaw": "US", "forum": "JAMS-arbitration", "language": "en" }),
             true,
         ),
         // ── Diverge: 1-based enum tables vs canonical 0-based ──
@@ -94,7 +98,7 @@ fn fixtures() -> Vec<(&'static str, Value, bool)> {
             false,
         ),
         (
-            "figaro-jurisdiction-v1",
+            "figaro-arbitration-kleros-v1",
             json!({ "klerosCourt": "general", "klerosMinJurors": 5 }),
             false,
         ),

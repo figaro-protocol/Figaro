@@ -7,7 +7,7 @@ import {
     FULFILMENT_V2_SCHEMA_KEY,
     GEO_SCHEMA_KEY,
     GHG_MEASUREMENT_SCHEMA_KEY,
-    JURISDICTION_SCHEMA_KEY,
+    APPLICABLE_LAW_SCHEMA_KEY,
     PROXIMITY_POLICY_SCHEMA_KEY,
     PROXIMITY_PROOF_SCHEMA_KEY,
     TOPOLOGY_SCHEMA_KEY,
@@ -103,7 +103,7 @@ describe("extractContract", () => {
             },
         },
         {
-            schema: JURISDICTION_SCHEMA_KEY,
+            schema: APPLICABLE_LAW_SCHEMA_KEY,
             data: { applicableLaw: "US-NY", forum: "JAMS-arbitration", language: "en" },
         },
     ]);

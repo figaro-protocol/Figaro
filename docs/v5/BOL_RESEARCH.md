@@ -420,7 +420,7 @@ buyer↔courier order's agreement.
 | Cargo description (line items) | `figaro-commerce-v1.lineItems` | itemId / name / quantity / unitPrice. Cleartext today; encryption is a separate backlog item ("line-item privacy"). |
 | Freight (carriage payment) | `figaro-commerce-v1.payment` + `currency` (on the buyer↔courier order, not the buyer↔merchant order) | The carriage is its own commerce clause on its own order. |
 | Liability for non-performance | The bond mechanism (asymmetric bonding + atomic resolution) | Figaro's bond *is* the liability mechanism; Hague-Visby tonnage-based caps are incommensurable with this bond structure. |
-| Applicable law / forum | `figaro-jurisdiction-v1` | applicableLaw + forum + language. The doc-of-title transferability is governed by this clause, but Figaro has no transferability to govern. |
+| Applicable law / forum | `figaro-applicable-law-v1` | applicableLaw + forum + language. The doc-of-title transferability is governed by this clause, but Figaro has no transferability to govern. |
 | DAG topology | `figaro-topology-v1` | parentOrderHashes — needed to render the multi-leg structure when the BoL is for one leg of a longer chain. |
 | Carrier per-role event log | `figaro-courier-process-v1` | 8 event types: available / accepted / en-route-pickup / arrived-pickup / in-transit / arrived-dropoff / completed / cancelled. |
 

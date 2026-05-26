@@ -152,10 +152,10 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         // incentivised — see memory reference_analytics_graph_rpgf), not
         // removed here.
         expect(agreement.sections.map((s) => s.schema).sort()).toEqual([
+            'figaro-arbitration-kleros-v1',
             'figaro-commerce-v1',
             'figaro-fulfilment-v2',
             'figaro-geo-v2',
-            'figaro-jurisdiction-v1',
             'figaro-topology-v1',
         ]);
 

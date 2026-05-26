@@ -33,8 +33,9 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
     const coordinatorSources = useMemo(() => [createDeliveryCoordinatorSource()], []);
     const role = hexEqual(address, orders[0]?.buyer ?? "") ? "buyer" : "seller";
 
-    // Layer-3 recourse is whatever the assembly's figaro-jurisdiction-v1
-    // clause(s) named — read off the committed orders, not a global default.
+    // Layer-3 recourse is whatever the assembly's dispute-resolution clauses
+    // (`figaro-arbitration-kleros-v1` and/or `figaro-applicable-law-v1`)
+    // named — read off the committed orders, not a global default.
     const recourses = useMemo(() => resolveProcessRecourse(orders, agreements), [orders, agreements]);
     // The Kleros raise-dispute flow uses the court the clause authored; the
     // arbitrableProxy address is deployment config, so it stays from env.

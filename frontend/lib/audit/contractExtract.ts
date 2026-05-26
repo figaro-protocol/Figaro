@@ -15,9 +15,9 @@ import {
     type AgreementSection,
     type AnyAgreementSection,
     type RedactableAgreement,
+    APPLICABLE_LAW_SCHEMA_KEY,
     COMMERCE_SCHEMA_KEY,
     FULFILMENT_V2_SCHEMA_KEY,
-    JURISDICTION_SCHEMA_KEY,
     TOPOLOGY_SCHEMA_KEY,
     computeSectionLeaf,
     isRedactedSection,
@@ -53,7 +53,8 @@ const SCHEMA_TITLE: Record<string, string> = {
     "figaro-geo-v2": "Geography — origin + destination + mass + volume + class",
     "figaro-fulfilment-v2": "Fulfilment — modality + coordination + handoffPoint",
     "figaro-topology-v1": "Topology — DAG lineage",
-    "figaro-jurisdiction-v1": "Jurisdiction — applicable law + forum",
+    "figaro-arbitration-kleros-v1": "Arbitration — Kleros decentralized court",
+    "figaro-applicable-law-v1": "Applicable law — state / ADR / forum",
     "figaro-ghg-protocol-v1": "GHG — Protocol Corporate Standard",
     "figaro-ghg-iso-14064-v1": "GHG — ISO 14064",
     "figaro-ghg-pas-2050-v1": "GHG — PAS 2050",
@@ -150,9 +151,9 @@ function clauseFromSection(section: AnyAgreementSection): ContractClause {
 }
 
 function extractJurisdictionSummary(agreement: Agreement | RedactableAgreement) {
-    const jurisdiction = findCleartextSection(agreement, JURISDICTION_SCHEMA_KEY);
-    if (!jurisdiction) return undefined;
-    const data = jurisdiction.data as { applicableLaw?: string; forum?: string; language?: string };
+    const applicableLaw = findCleartextSection(agreement, APPLICABLE_LAW_SCHEMA_KEY);
+    if (!applicableLaw) return undefined;
+    const data = applicableLaw.data as { applicableLaw?: string; forum?: string; language?: string };
     if (!data.applicableLaw || typeof data.applicableLaw !== "string") return undefined;
     return {
         applicableLaw: data.applicableLaw,

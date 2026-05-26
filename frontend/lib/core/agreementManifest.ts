@@ -172,7 +172,12 @@ export const TOPOLOGY_SCHEMA_KEY = "figaro-topology-v1";
 /** Fulfilment-composition schema. Three orthogonal fields (modality,
  *  coordination, handoffPoint) in one clause. */
 export const FULFILMENT_V2_SCHEMA_KEY = "figaro-fulfilment-v2";
-export const JURISDICTION_SCHEMA_KEY = "figaro-jurisdiction-v1";
+/** Decentralized off-chain arbitration via Kleros. Sister schemas would
+ *  cover other ODR providers — `figaro-arbitration-<provider>-v1`. */
+export const ARBITRATION_KLEROS_SCHEMA_KEY = "figaro-arbitration-kleros-v1";
+/** State / ADR / traditional-jurisdiction recourse layer. Provider-agnostic
+ *  by construction (free-form string fields). */
+export const APPLICABLE_LAW_SCHEMA_KEY = "figaro-applicable-law-v1";
 /** Consent attestation: a wallet binds itself to an off-chain legal document
  *  by its keccak256 hash + version + title. Reusable as a designer-time clause
  *  on any assembly that needs cryptographic consent (beta participation,
@@ -342,7 +347,8 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
     const {
         encodeGeoContent,
         encodeFulfilmentV2Content,
-        encodeJurisdictionContent,
+        encodeArbitrationKlerosContent,
+        encodeApplicableLawContent,
         encodeGHGScopeContent,
         encodeProximityPolicyContent,
         encodeOffsetPolicyContent,
@@ -374,13 +380,16 @@ function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>
                 coordinations: asAny(data.coordinations ?? []),
                 handoffPoints: asAny(data.handoffPoints ?? []),
             });
-        case "figaro-jurisdiction-v1":
-            return (data) => encodeJurisdictionContent({
+        case "figaro-arbitration-kleros-v1":
+            return (data) => encodeArbitrationKlerosContent({
                 klerosCourt: asAny(data.klerosCourt),
                 klerosMinJurors: typeof data.klerosMinJurors === "number"
                     ? data.klerosMinJurors
                     : undefined,
-                applicableLaw: data.applicableLaw as string | undefined,
+            });
+        case "figaro-applicable-law-v1":
+            return (data) => encodeApplicableLawContent({
+                applicableLaw: data.applicableLaw as string,
                 forum: data.forum as string | undefined,
                 language: data.language as string | undefined,
             });

@@ -24,8 +24,8 @@ test.describe('Schemas marketing inventory (devnet)', () => {
         await page.goto('/schemas');
 
         // The count line is SchemaInventory's resolved-state proof.
-        // Deploy.s.sol registers all 17 reference schemas, so liveKnown=17.
-        await expect(page.getByText(/17 schemas are registered/)).toBeVisible({
+        // Deploy.s.sol registers all 18 reference schemas, so liveKnown=18.
+        await expect(page.getByText(/18 schemas are registered/)).toBeVisible({
             timeout: 15_000,
         });
 
@@ -34,7 +34,8 @@ test.describe('Schemas marketing inventory (devnet)', () => {
         // Row id pattern is `#schema-<schemaId>` per SchemaInventory.
         await expect(page.locator('#schema-figaro-commerce-v1')).toBeVisible();
         await expect(page.locator('#schema-figaro-fulfilment-v2')).toBeVisible();
-        await expect(page.locator('#schema-figaro-jurisdiction-v1')).toBeVisible();
+        await expect(page.locator('#schema-figaro-arbitration-kleros-v1')).toBeVisible();
+        await expect(page.locator('#schema-figaro-applicable-law-v1')).toBeVisible();
         await expect(page.locator('#schema-figaro-topology-v1')).toBeVisible();
     });
 });

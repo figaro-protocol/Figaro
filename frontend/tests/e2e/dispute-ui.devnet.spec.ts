@@ -38,17 +38,10 @@ import {
     waitForWalletConnected,
 } from './devnet-helpers';
 import {
-    JURISDICTION_SCHEMA_KEY,
+    ARBITRATION_KLEROS_SCHEMA_KEY,
     canonicalizeAgreement,
     type Agreement,
 } from '../../lib/core/agreementManifest';
-// `createRootOrder` returns the on-chain commitment whose `agreementHash` is
-// hashed by `@figaro/core`. For figaro-jurisdiction-v1 specifically that hash
-// diverges from `lib/core/agreementManifest.computeAgreementHash` because the
-// SDK's Category-2 encoder drops the kleros* fields. Seed localStorage with
-// the commitment's hash (same view the frontend's hydrate path sees on chain),
-// not `seedAgreementForWallet`'s lib-derived hash. See backlog "SDK/lib hash
-// divergence on figaro-jurisdiction-v1".
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -99,18 +92,18 @@ test.describe('Dispute create + evidence via the audit page (devnet)', () => {
 
         await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, SELLER_KEY);
 
-        // Layer-3 recourse is clause-driven (commit b2a5646 — the audit
-        // page's klerosConfig requires both a figaro-jurisdiction-v1
-        // section that names a Kleros court AND the env-resolved proxy).
-        // Commit an agreement that authors the General Court so the
-        // panel surfaces the Raise Dispute affordance.
+        // Layer-3 recourse is clause-driven — the audit page's klerosConfig
+        // requires a `figaro-arbitration-kleros-v1` section that names a
+        // Kleros court AND the env-resolved proxy. Commit an agreement that
+        // authors the General Court so the panel surfaces the Raise Dispute
+        // affordance.
         const agreement: Agreement = {
             version: 'a1',
             buyer: ANVIL_ACCOUNTS[0] as `0x${string}`,
             seller: ANVIL_ACCOUNTS[1] as `0x${string}`,
             sections: [
                 {
-                    schema: JURISDICTION_SCHEMA_KEY,
+                    schema: ARBITRATION_KLEROS_SCHEMA_KEY,
                     data: { klerosCourt: 'general', klerosMinJurors: 3 },
                 },
             ],

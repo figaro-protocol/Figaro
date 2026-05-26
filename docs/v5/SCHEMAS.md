@@ -24,7 +24,7 @@ CLAUDE.md keeps the lockstep principle and the adding-a-schema checklist; this f
   plus a generic `encodeContentFromSpec` — bridge between TS objects and
   the ABI bytes expected by the on-chain validator. Each schema's encoder
   is the canonical TS-side declaration of its field-to-position mapping.
-  12 distinct encoder shapes across the 16 runtime-attestable schemas
+  13 distinct encoder shapes across the 17 runtime-attestable schemas
   (the 5 GHG sister schemas share one shape). Topology has no encoder —
   it's a manifest-only clause with no runtime attestation.
 
@@ -87,12 +87,12 @@ Conformance is locked across the prover test crates:
 
 - `prover/schema/tests/conformance.rs` — spec-parse + content-validation
   conformance against `sdk/tests/schemas/validate.test.ts`, every shipped
-  protocol schema's parse, and a check that all 16 embedded canonical
+  protocol schema's parse, and a check that all 17 embedded canonical
   specs parse and resolve by schemaId.
 - `prover/schema/tests/encode_conformance.rs` — per-schema
   canonical-encoder output is byte-for-byte equal to viem's
-  `encodeAbiParameters` output for the same input (covers all 12 distinct
-  encoder shapes across the 16 runtime-attestable schemas). Test vectors
+  `encodeAbiParameters` output for the same input (covers all 13 distinct
+  encoder shapes across the 17 runtime-attestable schemas). Test vectors
   were captured from the TypeScript encoders.
 - `prover/lib/tests/parity.rs` — kernel-integration tests
   (`attest_as_seller_with_valid_content_proof_passes`,
@@ -135,9 +135,9 @@ Lives off-chain as JSON at the URI hashed into `SchemaRegistry.uriHash`.
 Built-in specs ship in `sdk/src/schemas/examples/` and
 `frontend/lib/shared/schemas/` (the application's working copy).
 
-## The 17 protocol schemas
+## The 18 protocol schemas
 
-16 runtime-attestable schemas (each with a Layer C validator) plus the
+17 runtime-attestable schemas (each with a Layer C validator) plus the
 manifest-only `figaro-topology-v1`.
 
 | schemaId | What it carries | Attestation surface |
@@ -157,7 +157,8 @@ manifest-only `figaro-topology-v1`.
 | `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing (Category-2) | Layer A + C |
 | `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A + C |
 | `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A + C |
-| `figaro-jurisdiction-v1` | Off-chain dispute-resolution jurisdiction (applicable law + forum + language) — baseline graph per Paper E | Layer A + C |
+| `figaro-arbitration-kleros-v1` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>-v1` schemas would cover future ODR providers | Layer A + C |
+| `figaro-applicable-law-v1` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration schemas | Layer A + C |
 | `figaro-consent-v1` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` family) | Layer A + C |
 
 The five `figaro-ghg-<standard>-v1` entries are sister schemas — one per
