@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = {
     title: "Security — Figaro Protocol",
     description:
-        "Plain-language answers to the security questions you should ask before sending money through Figaro. What the protocol guarantees, what it does not, and how the guarantees are verified.",
+        "Plain-language answers to the security questions you should ask before sending tokens through Figaro. What the protocol guarantees, what it does not, and how the guarantees are verified.",
 };
 
 export default function Security() {
@@ -16,12 +16,12 @@ export default function Security() {
                 title="Security."
                 lead={
                     <>
-                        Plain-language answers to the security questions you should ask before sending money through a protocol you didn&apos;t write. Each section names a concern, states what the protocol guarantees, and names the residual risk honestly &mdash; if the answer has a caveat, the caveat is in the same paragraph as the guarantee.
+                        Plain-language answers to the security questions you should ask before sending tokens through a protocol you didn&apos;t write. Each section names a concern, states what the protocol guarantees, and names the residual risk honestly &mdash; if the answer has a caveat, the caveat is in the same paragraph as the guarantee.
                     </>
                 }
             />
 
-            <MarketingSection title="Who holds the money?" sectionId="custody">
+            <MarketingSection title="Who holds the tokens?" sectionId="custody">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     No one. When a buyer and seller commit to a process, the payment and both bonds move into <em>FigaroCore</em> &mdash; the kernel contract &mdash; and stay there until the buyer signs the atomic resolution that releases them. There is no custodian, no escrow account, no platform balance sheet, no off-chain ledger reconciling who is owed what.
                 </p>
@@ -53,7 +53,7 @@ export default function Security() {
                     Key loss is a wallet concern, not a protocol concern. The defense is the same posture as for ETH or USDC: hardware wallet, multisig, or social recovery configured at the wallet layer. Figaro inherits whatever your wallet provides; it adds no recovery surface and removes none.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The caveat is sharp. The kernel has no recovery path of any kind. If a buyer with an active process loses access to their keys, no one can sign the resolution that releases the funds &mdash; not Figaro, not a court order, not a software update. The bonds stay locked. This is an explicit accepted risk of the protocol&apos;s no-escape-hatch posture: the same property that prevents anyone from stealing funds also prevents anyone from recovering them. Plan key custody before you commit money to an active process.
+                    The caveat is sharp. The kernel has no recovery path of any kind. If a buyer with an active process loses access to their keys, no one can sign the resolution that releases the funds &mdash; not Figaro, not a court order, not a software update. The bonds stay locked. This is an explicit accepted risk of the protocol&apos;s no-escape-hatch posture: the same property that prevents anyone from stealing funds also prevents anyone from recovering them. Plan key custody before you commit tokens to an active process.
                 </p>
             </MarketingSection>
 
@@ -79,7 +79,7 @@ export default function Security() {
 
             <MarketingSection title="Who can shut this down or freeze your funds?" sectionId="shutdown">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    No one. FigaroCore has no admin, no owner, no pause function, no upgrade key, no governance with discretionary power over funds. The kernel does not contain code that any address can call to halt settlement, blacklist a participant, or move money it does not have a signed commitment against. There is nothing to capture because there is no privileged role to hold.
+                    No one. FigaroCore has no admin, no owner, no pause function, no upgrade key, no governance with discretionary power over funds. The kernel does not contain code that any address can call to halt settlement, blacklist a participant, or move tokens it does not have a signed commitment against. There is nothing to capture because there is no privileged role to hold.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The caveat is the underlying chain. If Ethereum itself halts, settlement halts &mdash; that risk is external to Figaro and shared with every other Ethereum protocol. Inside Figaro, no party can halt the kernel; the property is called <em>no escape hatches</em>, and the protocol&apos;s security argument depends on it. Removing it would mean a different protocol with different guarantees.
