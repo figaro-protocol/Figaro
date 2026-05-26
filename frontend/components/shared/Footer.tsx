@@ -35,7 +35,7 @@ export function Footer() {
                 <div className="mt-12 pt-8 border-t border-default flex flex-col gap-4 text-xs text-ink-muted sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex flex-wrap gap-x-5 gap-y-1">
                         <a
-                            href="https://github.com/figaro-protocol/Figaro-Prototype2"
+                            href="https://github.com/figaro-protocol/Figaro"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
@@ -43,7 +43,7 @@ export function Footer() {
                             GitHub
                         </a>
                         <a
-                            href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/LICENSE"
+                            href="https://github.com/figaro-protocol/Figaro/blob/main/LICENSE"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
@@ -51,7 +51,7 @@ export function Footer() {
                             MIT license
                         </a>
                         <a
-                            href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/AUDIT_REPORT.md"
+                            href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/AUDIT_REPORT.md"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"

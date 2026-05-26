@@ -36,7 +36,7 @@ export function resolveModelId(modelAlias?: string): string {
 
 // Load and parse a canonical Figaro agent from disk.
 //
-// `repoRoot` is the absolute path to the Figaro-Prototype2 repo root. The .md
+// `repoRoot` is the absolute path to the Figaro repo root. The .md
 // file is resolved relative to it via FIGARO_AGENT_FILES. The .md file in
 // .claude/agents/ remains the single source of truth — this loader is a
 // reader, not a duplicator.

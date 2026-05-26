@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     description: "Canonical on-chain surface: kernel, attestation coordinator, schema registry, validators in force, token, batch verifier, and optional protocol contracts.",
 };
 
-const GH = "https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/src";
+const GH = "https://github.com/figaro-protocol/Figaro/blob/main/src";
 
 export default function Specifications() {
     return (
@@ -19,7 +19,7 @@ export default function Specifications() {
                 lead={
                     <>
                         Every contract is a permissionless primitive. No contract belongs to a dapp. Solidity 0.8.26. Source-available at{" "}
-                        <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="underline">figaro-protocol/Figaro-Prototype2</a>.
+                        <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">figaro-protocol/Figaro</a>.
                     </>
                 }
             />
@@ -172,7 +172,7 @@ export default function Specifications() {
                 </div>
                 <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}
-                    <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/RELEASE_READINESS.md" target="_blank" rel="noopener noreferrer" className="underline">RELEASE_READINESS.md</a>{" "}
+                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/RELEASE_READINESS.md" target="_blank" rel="noopener noreferrer" className="underline">RELEASE_READINESS.md</a>{" "}
                     for gate criteria, the frozen-surface declaration, and the hardening completion record.
                 </p>
             </MarketingSection>
@@ -180,7 +180,7 @@ export default function Specifications() {
             <MarketingSection title="Extension">
                 <p className="text-sm text-ink-body leading-relaxed">
                     Mechanisms, schemas, and role models extend the protocol without altering the kernel. The kernel invariants the Extension doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>. See{" "}
-                    <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/SCHEMAS.md" target="_blank" rel="noopener noreferrer" className="underline">SCHEMAS.md</a>{" "}
+                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/SCHEMAS.md" target="_blank" rel="noopener noreferrer" className="underline">SCHEMAS.md</a>{" "}
                     for the schema validation architecture and the anchoring doctrine, and the{" "}
                     <Link href="/builders" className="underline">Builders</Link> surface for composition tools.
                 </p>

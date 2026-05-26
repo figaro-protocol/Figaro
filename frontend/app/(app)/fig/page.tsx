@@ -126,7 +126,7 @@ export default function FigPage() {
                     <li>Not a yield instrument. Bonds are locked, not productive. No protocol fee, no emission to liquidity providers.</li>
                 </ul>
                 <p className="text-sm text-gray-600 mt-6">
-                    Full treatment: <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/FIG_TOKEN.md" target="_blank" rel="noopener noreferrer" className="underline">FIG_TOKEN.md</a>.
+                    Full treatment: <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/FIG_TOKEN.md" target="_blank" rel="noopener noreferrer" className="underline">FIG_TOKEN.md</a>.
                 </p>
             </section>
 
@@ -229,7 +229,7 @@ export default function FigPage() {
                     </div>
                 </dl>
                 <p className="text-sm text-gray-600 mt-4">
-                    Source: <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/src/fig/FigToken.sol" target="_blank" rel="noopener noreferrer" className="underline"><code>FigToken.sol</code></a> · <a href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/src/fig/RpgfMinter.sol" target="_blank" rel="noopener noreferrer" className="underline"><code>RpgfMinter.sol</code></a>.
+                    Source: <a href="https://github.com/figaro-protocol/Figaro/blob/main/src/fig/FigToken.sol" target="_blank" rel="noopener noreferrer" className="underline"><code>FigToken.sol</code></a> · <a href="https://github.com/figaro-protocol/Figaro/blob/main/src/fig/RpgfMinter.sol" target="_blank" rel="noopener noreferrer" className="underline"><code>RpgfMinter.sol</code></a>.
                 </p>
             </section>
         </div>

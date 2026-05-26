@@ -39,7 +39,7 @@ export default function Composability() {
                 <p className="text-sm text-ink-muted">
                     Full doctrine:{" "}
                     <a
-                        href="https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/SCHEMAS.md"
+                        href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/SCHEMAS.md"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="underline"

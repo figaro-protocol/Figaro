@@ -191,7 +191,7 @@ export async function waitAndApproveIfNeeded(page: Page): Promise<void> {
  * via `goto` (which only waits for the `load` event, not hydration).
  * Pre-hydration clicks land focus on the button but don't fire the
  * React `onClick` — a common flake pattern documented in
- * `~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/reference_e2e_flake_patterns.md`.
+ * `~/.claude/projects/-Users-adaliana-Figaro/memory/reference_e2e_flake_patterns.md`.
  */
 export async function waitForReactHydration(
     page: Page,

@@ -1,6 +1,6 @@
-# Contributing to Figaro-Prototype2
+# Contributing to Figaro
 
-Thanks for helping maintain Figaro-Prototype2. This file describes the recommended local setup, common commands, repository conventions, and brief rules to keep docs in sync with code changes.
+Thanks for helping maintain Figaro. This file describes the recommended local setup, common commands, repository conventions, and brief rules to keep docs in sync with code changes.
 
 ## Quickstart (local dev)
 

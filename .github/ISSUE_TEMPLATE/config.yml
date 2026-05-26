@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/SECURITY.md
+    url: https://github.com/figaro-protocol/Figaro/blob/main/SECURITY.md
     about: Do not open a public issue for a vulnerability — follow the security policy.
   - name: Getting help / questions
-    url: https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/SUPPORT.md
+    url: https://github.com/figaro-protocol/Figaro/blob/main/SUPPORT.md
     about: Where to look and how to ask a non-bug question.
   - name: Design decisions — read before filing a "kernel bug"
-    url: https://github.com/figaro-protocol/Figaro-Prototype2/blob/main/docs/v5/DESIGN_DECISIONS.md
+    url: https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/DESIGN_DECISIONS.md
     about: 14 patterns that look like vulnerabilities but are correct by design.

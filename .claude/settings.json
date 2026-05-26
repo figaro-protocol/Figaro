@@ -28,14 +28,14 @@
       "Bash(cat*)",
       "Bash(wc*)",
       "Bash(jq*)",
-      "Edit(/Users/adaliana/Figaro-Prototype2/frontend/**)",
-      "Write(/Users/adaliana/Figaro-Prototype2/frontend/**)",
+      "Edit(/Users/adaliana/Figaro/frontend/**)",
+      "Write(/Users/adaliana/Figaro/frontend/**)",
       "Edit(**/frontend/**)",
       "Write(**/frontend/**)",
       "Edit(./frontend/**)",
       "Write(./frontend/**)",
-      "Edit(/Users/adaliana/Figaro-Prototype2/.claude/agents/**)",
-      "Write(/Users/adaliana/Figaro-Prototype2/.claude/agents/**)"
+      "Edit(/Users/adaliana/Figaro/.claude/agents/**)",
+      "Write(/Users/adaliana/Figaro/.claude/agents/**)"
     ],
     "deny": [
       "Bash(git push*)",

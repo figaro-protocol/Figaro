@@ -1,6 +1,6 @@
 # Figaro GHG Protocol Specification
 
-Status: active conceptual specification for the generic GHG model in Figaro-Prototype2. The current on-chain implementation is narrower than the full target model described below: today the live primitives are `SchemaRegistry` for schema anchoring and `AttestationCoordinator` for schema-typed attestations.
+Status: active conceptual specification for the generic GHG model in Figaro. The current on-chain implementation is narrower than the full target model described below: today the live primitives are `SchemaRegistry` for schema anchoring and `AttestationCoordinator` for schema-typed attestations.
 
 This document defines what the generic GHG feature is for, what objects exist in the protocol, what each object means, and which invariants downstream apps must preserve.
 
@@ -302,9 +302,9 @@ The generic GHG layer must not encode app-specific business semantics such as:
 
 Those belong in downstream service-layer adapters such as Figaro Local Commerce.
 
-## Role Of The Prototype2 Dapp
+## Role Of The Figaro Dapp
 
-The Prototype2 dapp is the reference surface for the generic protocol model.
+The Figaro dapp is the reference surface for the generic protocol model.
 
 Its GHG responsibilities are:
 

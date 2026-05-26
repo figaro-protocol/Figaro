@@ -376,7 +376,7 @@ When working in this repository:
    wrong regardless of how useful it seems.
 
 2. **No contract belongs to a dapp.** Every contract is a permissionless
-   primitive. The two-repo split (Prototype2 / Figaro-eats) is organizational,
+   primitive. The two-repo split (Figaro / Figaro-eats) is organizational,
    not an ownership boundary.
 
 3. **Token denomination matters.** When building UI or mechanism modules,
@@ -384,7 +384,7 @@ When working in this repository:
    technical detail. The user selecting a token is expressing something about
    their relationship to the counterparty and the broader economy.
 
-4. **The runtime thesis is the default.** Prototype2 is the canonical runtime.
+4. **The runtime thesis is the default.** Figaro is the canonical runtime.
    Downstream repos are archetypes and proving grounds. Archetypes may
    specialize presentation; settlement semantics remain anchored here.
 

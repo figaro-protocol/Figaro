@@ -87,7 +87,7 @@ export default function LocalCommercePage() {
                         </Link>
                     </li>
                     <li>
-                        <a href="https://github.com/figaro-protocol/Figaro-Prototype2" target="_blank" rel="noopener noreferrer" className="text-ink-heading hover:underline">
+                        <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading hover:underline">
                             Source &rarr;
                         </a>
                     </li>

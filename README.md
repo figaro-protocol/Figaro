@@ -16,7 +16,7 @@ The organizational consequence: each process assembles a temporary institution o
 
 ## What This Repo Contains
 
-`Figaro-Prototype2` is the canonical runtime. It owns:
+`Figaro` is the canonical runtime. It owns:
 
 - **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
 - **Mechanism modules** — attestation, schema registry, Dutch auction, operator registry

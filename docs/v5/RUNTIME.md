@@ -33,7 +33,7 @@ The frontend should therefore be able to render and operate many institution ass
 When you are unsure how to interpret a new feature, document, or frontend
 surface, default to these assumptions:
 
-1. `Figaro-Prototype2` is the canonical runtime, semantic layer, builder surface,
+1. `Figaro` is the canonical runtime, semantic layer, builder surface,
    and shared module environment
 2. downstream repos such as `Figaro-eats` are archetypes and proving grounds,
    not the main architectural center of gravity
@@ -42,7 +42,7 @@ surface, default to these assumptions:
 
 ## Why The Builder Exists
 
-The builder work in Prototype2 exists because the target is not one app.
+The builder work in Figaro exists because the target is not one app.
 
 The target is a reusable runtime that can:
 
@@ -59,7 +59,7 @@ It is one archetype assembly that proves how multiple coordination mechanisms ca
 
 ### Runtime Thesis
 
-Prototype2 is the canonical runtime.
+Figaro is the canonical runtime.
 Concrete use cases are institution assemblies or downstream archetype packages.
 
 Practical consequences by role:
@@ -73,7 +73,7 @@ Practical consequences by role:
 ### Vertical Thesis
 
 Each use case becomes its own primary app.
-Prototype2 remains protocol plus tooling.
+Figaro remains protocol plus tooling.
 
 Practical consequences by role:
 
@@ -139,9 +139,9 @@ Presentation should never be able to change settlement semantics.
 
 ## Repository Roles
 
-### Prototype2
+### Figaro
 
-Prototype2 should own:
+Figaro should own:
 
 1. protocol kernel and generic extensions
 2. semantic model layer

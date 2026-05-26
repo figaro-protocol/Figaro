@@ -34,9 +34,9 @@ If the input is clean, say so in one line and add `READY`.
 
 Before auditing, skim:
 
-- `~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/feedback_read_trajectory_not_snapshot.md`
-- `~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/feedback_no_2_cents.md`
-- `~/.claude/projects/-Users-adaliana-Figaro-Prototype2/memory/feedback_verify_against_source.md`
+- `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_read_trajectory_not_snapshot.md`
+- `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_no_2_cents.md`
+- `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_verify_against_source.md`
 - `CLAUDE.md` (project root) for current doctrine
 
 ---
