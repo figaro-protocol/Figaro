@@ -53,8 +53,8 @@
 
 % ════════════════════════════════════════════════════════════════════
 \begin{abstract}
-The bonded settlement primitive of the companion mechanism paper is
-analyzed there as a full-rationality mechanism: cooperation is the
+The bonded settlement primitive admits a mechanism-design
+analysis as a full-rationality mechanism: cooperation is the
 unique profile surviving iterated elimination of weakly dominated
 strategies, and the analysis assumes complete information, no
 non-pecuniary preferences, and no coordination failure under
@@ -116,9 +116,9 @@ the rational-choice assumption is robust to behavioral
 departures only if the departures preserve the mechanism's
 load-bearing equilibrium properties; many do not.
 
-The companion mechanism paper of this corpus
-(Paper~A) proves that cooperation is weakly dominant for both
-parties in the bonded game, and is the unique profile surviving
+The mechanism-design treatment of the bonded primitive proves
+that cooperation is weakly dominant for both parties in the
+bonded game, and is the unique profile surviving
 iterated elimination of weakly dominated strategies. The proof
 assumes complete information, full rationality, no non-pecuniary
 preferences, and no coordination failure under pessimistic
@@ -187,9 +187,8 @@ thinking-tasks compare to the alternatives.
 \section{The Settlement Primitive}
 \label{sec:primitive}
 
-The bonded primitive is developed formally in the companion
-mechanism paper, with the deployed Solidity implementation
-verified in the companion implementation paper through
+The bonded primitive has a formal mechanism-design treatment,
+and its deployed Solidity implementation is verified through
 TLA\textsuperscript{+}, Halmos symbolic execution, Echidna
 property-based fuzzing, and Certora specification rules. We
 summarize the features the present paper uses.
@@ -776,19 +775,19 @@ property than rational-choice optimality, and it is, we suggest,
 the more important property for any mechanism that aspires to
 operate at population scale among real participants.
 
-The contribution of this paper is the behavioral analysis. The
-mechanism-design contribution is in the companion mechanism paper.
-The combined argument is that the bonded primitive is both
-formally elegant under full rationality and behaviorally robust
+The contribution of this paper is the behavioral analysis.
+Combined with the mechanism-design treatment, the argument is
+that the bonded primitive is both formally elegant under full
+rationality and behaviorally robust
 under documented departures from full rationality. Whether the
 behavioral predictions hold experimentally and in field deployment
 is the question the architecture invites and that we identify as
 the experimental work future research should undertake.
 
 \section*{Acknowledgments}
-The behavioral analysis builds on the mechanism-design work of
-the companion mechanism paper and on the externality-engagement
-treatment in the political-economy and coercion companion papers.
+The behavioral analysis builds on the mechanism-design work and
+on the externality-engagement treatments in the political-economy
+and coercion literatures.
 I thank the experimental-economics research community whose work
 on weakest-link coordination, loss aversion, and peer pressure
 provides the empirical anchor against which the present analysis

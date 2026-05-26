@@ -63,11 +63,11 @@ jurisdiction-dependent. This paper examines what happens to the
 boundary of the firm when one of those underlying costs collapses to
 a fixed, jurisdiction-displaced capital lockup.
 
-We take as given the existence of a settlement primitive---developed
-formally in the companion mechanism paper, with a
-verified Solidity implementation in the companion implementation
-paper---that prices the cost of trust at
-exactly $2\times$ the transaction value in temporarily locked
+We take as given the existence of a settlement
+primitive---developed formally in its mechanism-design treatment
+and implemented as a verified Solidity contract---that prices
+the cost of trust at exactly $2\times$ the transaction value in
+temporarily locked
 capital, with no recurring extraction, no arbitrator, and no
 jurisdictional dependency. Treating this primitive as exogenous, we
 ask two questions. First, what does the existence of such a
@@ -87,9 +87,9 @@ directly. The subordination layer loses its cost advantage for the
 class of transactions identified below; what emerges is not the
 abolition of the firm, but its demotion from the privileged
 organizational container to one pattern among several. The
-companion political-economy paper develops what
-this demotion looks like from the outside; the present paper is
-internal institutional-economics.
+political-economy diagnostic develops what this demotion looks
+like from the outside; the present paper is internal
+institutional-economics.
 \end{abstract}
 
 \medskip
@@ -119,12 +119,11 @@ jurisdiction-dependent.
 This paper asks what happens to that boundary when one of the
 underlying costs---contract enforcement between mutually distrusting
 parties---collapses to a fixed, jurisdiction-displaced capital
-lockup. The collapse is not a thought experiment: the companion
-mechanism paper presents the mechanism with
-formal proofs of cooperation as the unique surviving Nash
-equilibrium, and the companion implementation paper presents
-a verified Solidity implementation audited through
-TLA\textsuperscript{+} model checking, property-based fuzzing,
+lockup. The collapse is not a thought experiment: the mechanism
+admits formal proofs of cooperation as the unique surviving Nash
+equilibrium, and the deployed Solidity implementation has been
+audited through TLA\textsuperscript{+} model checking,
+property-based fuzzing,
 symbolic execution, and specification checking.
 
 We treat that primitive as exogenous. The contribution of this paper
@@ -138,8 +137,8 @@ treasury communities, peer networks, transaction-scoped assemblies,
 agent coalitions, and forms whose naming is yet to stabilize.
 
 \paragraph{Paper organization.}
-\Cref{sec:primitive} summarizes the settlement primitive, citing the
-companion papers for the formal development and implementation.
+\Cref{sec:primitive} summarizes the settlement primitive,
+taking the formal development and implementation as given.
 \Cref{sec:threshold} develops the Coasean threshold shift.
 \Cref{sec:patterns} treats the firm as one organizational pattern
 among many, introducing subordination as the variable whose cost
@@ -174,9 +173,9 @@ We use ``Mechanism 1'' and ``Mechanism 2'' below where the
 distinction is load-bearing.
 
 We summarize here only the properties of the primitive that the
-present argument uses. The full definitions and theorems are in
-the companion mechanism paper; the implementation and
-verification in the companion implementation paper.
+present argument uses. The full definitions, theorems,
+implementation, and verification belong to their own registers
+and are taken as given here.
 
 \paragraph{Asymmetric bonding.}
 For a transaction with payment $\pay > 0$ and cumulative upstream
@@ -204,9 +203,9 @@ punishment technology.
 
 \paragraph{No escape hatches.}
 The primitive has no timeout, no admin override, no governance
-mechanism, no protocol fee, and no upgrade path. The companion
-mechanism paper proves that any such escape hatch weakens the
-equilibrium.
+mechanism, no protocol fee, and no upgrade path. The
+mechanism-design analysis proves that any such escape hatch
+weakens the equilibrium.
 
 \paragraph{What the primitive does \emph{not} provide.}
 For the institutional argument that follows, two non-properties
@@ -334,9 +333,9 @@ fully specify. The caution applies to our argument. Mechanism~1
 prices the enforcement cost; that addresses one component of the
 firm's bundle, not all of it. The cooperation-promotion work that
 Holmstrom and Roberts attribute to firms is precisely what
-Mechanism~2 supplies through the weakest-link subgame analyzed in
-the companion mechanism paper: each seller's payout depends on
-universal cooperation, so the cooperation-promotion function is
+Mechanism~2 supplies through the weakest-link subgame: each
+seller's payout depends on universal cooperation, so the
+cooperation-promotion function is
 discharged by the bonding mesh's structure rather than by a
 manager. The two-mechanism composition addresses both components
 of the firm's bundle that the Holmstrom--Roberts critique
@@ -406,9 +405,9 @@ or an $N$-way mutual signing at the moment of resolution. Any of
 those three responses re-introduces the firm-shaped container
 under a different name. Mechanism~2 (buyer dominance with atomic
 resolution) makes the mesh of edges resolvable as a unit at the
-buyer's signature, and the weakest-link subgame the companion
-mechanism paper develops propagates cooperation pressure through
-the mesh without managerial authority or external choreography.
+buyer's signature, and the weakest-link subgame propagates
+cooperation pressure through the mesh without managerial
+authority or external choreography.
 The transaction-scoped assembly clears itself. The Coasean shift
 of \Cref{sec:threshold} is what makes the assembly competitive
 with the firm at the cost margin; Mechanism~2 is what makes the
@@ -469,8 +468,8 @@ defined by who has signed a process commitment; sanctions are
 graduated by the bonded mesh's payoff structure (each seller's
 bond is forfeit, not penalty-as-a-policy); conflict resolution
 defaults to atomic resolution at the buyer's signature, with
-external legal forums available as evidentiary consumers per the
-companion evidence-and-law paper. Other principles --- collective
+external legal forums available as evidentiary consumers of the
+bonded commitment. Other principles --- collective
 choice, congruence with local conditions --- are properties of the
 graph the parties compose on top of the kernel, not of the kernel
 itself. The point is not that the assembly is an Ostrom commons
@@ -516,8 +515,7 @@ The kernel guarantees only the \texttt{commit}/\texttt{resolveProcess}
 bond structure; the credential and attestation apparatus described
 in this paragraph is realized at the protocol tier by extensions
 (attestation coordinators, schema registries) whose composition
-discipline is developed in the companion implementation
-paper.} the wallet can hold
+discipline is part of the implementation surface.} the wallet can hold
 content-addressed credentials --- attested capabilities, operator
 profiles, and (at the runtime tier) NFT-anchored deeds --- that
 certify the asset's identity and performance history. In the firm
@@ -612,9 +610,8 @@ double-entry bookkeeping in the tradition of
 incidental: at scale, an entity that cannot maintain accurate
 records of its position cannot grow, attract investment, pay
 taxes, or contract with third parties who require disclosure.
-The companion accounting paper
-develops the argument that a \figaro{} process is a
-self-closing ledger period, and that the apparatus that grew up
+A \figaro{} process is a self-closing ledger period --- and the
+apparatus that grew up
 around the books (bookkeeping, accounting, audit) becomes
 optional for activity that settles through the protocol. The
 implication for the present argument is that the firm's
@@ -664,9 +661,9 @@ played by tokens designed specifically to serve as focal points
 in the sense of \citet{schelling1960strategy}: anchors around
 which participants converge to signal alignment with a specific
 ecosystem, without central authority and without relying on any
-of the token's financial-mechanism features. The companion
-FIG token paper develops this category in
-detail, with \textsc{Btc} and \textsc{Eth} as precedents at the
+of the token's financial-mechanism features. The FIG token
+treatment develops this category in detail, with \textsc{Btc}
+and \textsc{Eth} as precedents at the
 money and settlement layers respectively, and the \fig{} token
 as the focal anchor for participants who coordinate around the
 bonded-commitment primitive specifically. A Schelling-point
@@ -726,44 +723,28 @@ organizational knowledge, risk pooling, legal personhood) must
 still be bundled somewhere; the bundling question is open. Third, a
 question of a different character: why this shift is qualitatively
 harder to recognize than to specify, and what that difficulty
-itself reveals about the architecture of contemporary coordination
-infrastructure. That third question is addressed in the companion
-political-economy paper.
+itself reveals about the architecture of contemporary
+coordination infrastructure. That third question belongs to the
+political-economy register and is treated there.
 
-\paragraph{A note on scope alignment across the companion papers.}
+\paragraph{A note on scope.}
 This paper bounds its claim by two scope conditions: the Coasean
 comparison (\Cref{prop:coasean-shift}: $2\pay$ vs. coordination
-overhead) and asset specificity (\Cref{sec:patterns}). The
-political-economy companion paper bounds its
-claim differently, by hegemonic legibility --- its argument applies
-wherever the primitive makes a previously-presupposed
-coordination function visible as a design artifact. The labor-law
-companion paper bounds its claim by asset
-specificity alone. The companion evidence-and-law paper bounds its claim least
-restrictively --- wherever the primitive is used, its evidentiary
-framework applies. Each bound is internally reasonable within
-its paper's discipline. Read across the set, these bounds are
-compatible but not identical. The theoretical-cluster domain is
-the \emph{intersection} of the four scope conditions, not their
-union: a given transaction lies within the cluster's shared
-domain only if the primitive's Coasean threshold is met, asset
-specificity is low or structurally handled, the coordination
-function is legible as a design choice, and the evidentiary
-framework is practically accessible for the parties' jurisdictional
-situation. A transaction that satisfies three of the four
-conditions but not the fourth is in-scope for three papers and
-out-of-scope for one; readers constructing arguments about such
-transactions should check which papers apply. We flag this here
-because each companion's scope condition is developed within its
-own register and the inter-paper alignment is not elsewhere made
-explicit.
+overhead) and asset specificity (\Cref{sec:patterns}). Both must
+hold for a transaction to lie within the paper's argumentative
+domain; readers constructing arguments about transactions that
+satisfy one condition but not the other should treat the
+argument with corresponding partial force. Adjacent diagnostic
+treatments bound their claims by different conditions (hegemonic
+legibility, labor-law specificity, evidentiary access); the
+present paper does not adjudicate among those bounds.
 
 \section*{Acknowledgments}
 I thank the readers and collaborators who pressed me to separate
 the institutional-economics argument made here from its
-political-economy half (now in the companion
-political-economy paper). The two were entangled in
-earlier drafts in a way that did neither audience justice.
+political-economy half (now treated separately). The two were
+entangled in earlier drafts in a way that did neither audience
+justice.
 
 
 % ════════════════════════════════════════════════════════════════════
