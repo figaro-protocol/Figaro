@@ -65,7 +65,18 @@ function buildCsp(nonce: string, frameAncestors: string): string {
         // allowed.
         "img-src 'self' data: blob: https: http://127.0.0.1:*",
         "font-src 'self' data: https://fonts.gstatic.com",
-        "connect-src 'self' ws: wss: http://127.0.0.1:* https://*.walletconnect.com https://*.walletconnect.org https://*.infura.io",
+        // `data:` is required for @react-pdf/renderer's fontkit, which
+        // loads its Harfbuzz WASM module as a `data:application/octet-stream`
+        // URI on first use. /consent's PDF receipt depends on it; without
+        // this the consent page hangs at "Pinning…" with the WASM blocked
+        // by CSP. Widening connect-src to `data:` does not let pages exfil
+        // data cross-origin (browsers still block that), so the practical
+        // attack surface is narrow.
+        "connect-src 'self' data: ws: wss: http://127.0.0.1:* https://*.walletconnect.com https://*.walletconnect.org https://*.infura.io",
+        // @react-pdf/renderer also creates a Web Worker from a `blob:` URL
+        // for layout. Without an explicit worker-src the fallback to
+        // script-src disallows blob:, blocking the worker.
+        "worker-src 'self' blob:",
         "frame-src 'self' https://*.walletconnect.com",
         `frame-ancestors ${frameAncestors}`,
         "base-uri 'self'",

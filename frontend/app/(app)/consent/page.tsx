@@ -68,8 +68,17 @@ interface SignedReceipt {
     signedAt: string;
     documentCid: string | null;
     receiptCid: string | null;
-    pdfBlob: Blob;
+    pdfBlob: Blob | null;
+    pdfError: string | null;
 }
+
+// Hard cap on PDF generation: fontkit cold-loads its Harfbuzz WASM and
+// @react-pdf spins up a layout worker. A browser CSP or extension can
+// silently block either; without a timeout the page wedges at the
+// "pinning" stage forever. The signature itself — the artifact the
+// consent ceremony exists to capture — is already pinned by the time
+// the PDF starts, so a PDF-build failure is recoverable.
+const PDF_BUILD_TIMEOUT_MS = 15_000;
 
 async function pinDocumentText(): Promise<string | null> {
     try {
@@ -205,15 +214,27 @@ export default function ConsentPage() {
             // ── Step 2: pin document + build PDF + pin receipt ──────────
             setStage("pinning");
             const documentCid = await pinDocumentText();
-            const pdfBlob = await buildPdf({
-                domain,
-                signature,
-                signer,
-                signedAt,
-                documentCid,
-                accessCode,
-            });
-            const receiptCid = await pinReceipt(pdfBlob);
+
+            // PDF generation is best-effort: race it against a hard timeout so a
+            // CSP-blocked WASM/worker (or any other hang inside fontkit / the
+            // react-pdf renderer) can't strand the user mid-ceremony.
+            let pdfBlob: Blob | null = null;
+            let pdfError: string | null = null;
+            try {
+                pdfBlob = await Promise.race<Blob>([
+                    buildPdf({ domain, signature, signer, signedAt, documentCid, accessCode }),
+                    new Promise<Blob>((_, reject) =>
+                        setTimeout(
+                            () => reject(new Error("PDF generation timed out")),
+                            PDF_BUILD_TIMEOUT_MS,
+                        ),
+                    ),
+                ]);
+            } catch (e) {
+                pdfError = extractErrorMessage(e, "Receipt PDF could not be generated");
+            }
+
+            const receiptCid = pdfBlob ? await pinReceipt(pdfBlob) : null;
 
             setReceipt({
                 signature,
@@ -222,6 +243,7 @@ export default function ConsentPage() {
                 documentCid,
                 receiptCid,
                 pdfBlob,
+                pdfError,
             });
             setStage("post-sign");
             setShowOnboarding(true);
@@ -233,7 +255,7 @@ export default function ConsentPage() {
     };
 
     const handleDownloadPdf = () => {
-        if (!receipt) return;
+        if (!receipt || !receipt.pdfBlob) return;
         const url = URL.createObjectURL(receipt.pdfBlob);
         const a = document.createElement("a");
         a.href = url;
@@ -382,15 +404,27 @@ export default function ConsentPage() {
                         </div>
                     </div>
 
-                    <div className="flex gap-2">
-                        <Button
-                            onClick={handleDownloadPdf}
-                            variant="outline"
-                            data-testid="btn-download-receipt"
-                            className="flex-1"
+                    {receipt.pdfError && (
+                        <p
+                            className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5"
+                            data-testid="consent-pdf-error"
                         >
-                            Download PDF receipt
-                        </Button>
+                            Receipt PDF couldn&apos;t be generated ({receipt.pdfError}). The
+                            EIP-712 signature is the artifact; your document CID above is
+                            the durable record.
+                        </p>
+                    )}
+                    <div className="flex gap-2">
+                        {receipt.pdfBlob && (
+                            <Button
+                                onClick={handleDownloadPdf}
+                                variant="outline"
+                                data-testid="btn-download-receipt"
+                                className="flex-1"
+                            >
+                                Download PDF receipt
+                            </Button>
+                        )}
                         <Button
                             onClick={handleContinue}
                             data-testid="btn-continue-to-app"
