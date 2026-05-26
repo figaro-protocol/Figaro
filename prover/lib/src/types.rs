@@ -337,6 +337,7 @@ pub enum KernelError {
     IncompleteOrderList { required: u64, provided: u64 },
     DuplicateCommitment,
     InvalidRootCumulativeValue,
+    ProcessAlreadyResolved,
     Overflow,
     InvalidSignature,
     // AttestationCoordinator errors

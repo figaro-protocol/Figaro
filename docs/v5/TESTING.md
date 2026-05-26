@@ -88,7 +88,7 @@ is e2e-only.
 against Anvil + deployed contracts (action in the UI, reaction in the UI). By area:
 
 - Commerce / checkout / order lifecycle: `merchant-page`, `merchant-place-order`,
-  `onsite-purchase`, `inbox`, `inbox-accept`, `multi-round-composition`.
+  `onsite-purchase`, `inbox`, `inbox-accept`, `process-closure`.
 - Designer + assembly registry: `designer-publish`, `designer-save-draft`,
   `designer-view`, `designer-agreement-drawer`, `designer-delivery-modality`,
   `designer-drafts-delete`, `scenario-direct-sale`, `scenario-local-commerce`,

@@ -76,6 +76,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     error DuplicateCommitment();
     error FeeOnTransferDetected();
     error InvalidRootCumulativeValue();
+    error ProcessAlreadyResolved();
 
     // ── Process state (the minimal accumulator) ───────────────────
 
@@ -185,6 +186,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
             // ── Sub-order: extend existing process ────────────────
             ProcessState storage ps = processes[processId];
             if (ps.rootBuyer == address(0)) revert UnknownProcess();
+            if (ps.activeOrderCount == 0) revert ProcessAlreadyResolved();
             if (c.buyer != ps.rootBuyer) revert NotProcessBuyer();
             if (c.currency != address(ps.currency)) revert CurrencyMismatch();
 

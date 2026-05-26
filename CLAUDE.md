@@ -108,7 +108,6 @@ It is a primitive for enforcing bilateral agreements — closer to TCP/IP than t
 
 These each break a specific protocol property:
 
-- **Finalized flag on resolved process** → breaks multi-round composition
 - **Timeout or recovery path for locked bonds** → breaks buyer dominance (MAD)
 - **Admin, owner, or pause function** → breaks no-escape-hatch invariant
 - **Yield on locked bonds / bond-lending pools** → breaks asymmetric bonding

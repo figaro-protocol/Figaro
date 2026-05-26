@@ -264,7 +264,18 @@ these three contracts entered `src/` after the original freeze and were
 not previously declared in the audited surface. No contract code is
 being changed by this amendment, only the scope declaration. The Task 3 +
 Task 4 mainnet-parameter and AssemblyRegistry-mainnet-parity items were
-added to the Remaining Tasks section in the same amendment.
+added to the Remaining Tasks section in the same amendment. Amended
+2026-05-26 to close the post-resolve commit gate: `FigaroCore.commit`'s
+sub-order branch now reverts with `ProcessAlreadyResolved` when
+`ps.activeOrderCount == 0`. The change is one comparison against an
+existing storage field; no new storage, no new lifecycle enum. The kernel
+matches the design intent recorded in `DESIGN_DECISIONS.md` item #1 —
+a processId is permanently closed at `resolveProcess`. The Rust prover
+(`prover/lib/src/kernel.rs`) was updated in lockstep to mirror the gate.
+`DESIGN_DECISIONS.md` item #1 was rewritten from defending multi-round
+composition to defending closure-at-resolve; the corresponding "Finalized
+flag → breaks multi-round composition" line was removed from
+`CLAUDE.md`'s Common Misframings list.
 
 The following Solidity surface is declared frozen for external audit.
 No feature changes, refactors, or dependency upgrades will be made to

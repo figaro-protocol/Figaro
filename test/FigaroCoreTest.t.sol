@@ -569,4 +569,39 @@ contract FigaroCoreTest is Test {
         // sellerPayout (150) + buyerPayout (50) = 200 = 4×payment back to same address
         assertEq(token.balanceOf(buyer), balBefore, "net zero after self-deal");
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 22: Sub-order on a resolved process reverts (ProcessAlreadyResolved)
+    //
+    // Process closure semantics: resolveProcess settles every order in the
+    // process atomically (activeOrderCount = 0). The processId is closed —
+    // a new sub-order cannot extend it. Parties wanting a follow-on
+    // bonded relationship sign a fresh root commitment, getting a new
+    // processId.
+    // ═══════════════════════════════════════════════════════════════
+
+    function test_subOrder_onResolvedProcess_reverts() public {
+        // Commit root + resolve the process.
+        (bytes32 processId, , CommitmentTypes.Commitment memory rootC) = _commitRoot(10 ether, 1);
+
+        CommitmentTypes.Commitment[] memory commitments = new CommitmentTypes.Commitment[](1);
+        commitments[0] = rootC;
+        vm.prank(buyer);
+        core.resolveProcess(processId, commitments);
+
+        // Confirm process is fully resolved (activeOrderCount cleared).
+        (, , , uint256 activeCount) = core.processes(processId);
+        assertEq(activeCount, 0, "process resolved");
+
+        // Attempt a sub-order on the resolved processId — must revert.
+        // cumulativeValue persists at 10 ether from the resolved round, so
+        // a sub-order paying 5 ether would expect cumulative 15 ether. The
+        // gate trips before the cumulative-value check.
+        CommitmentTypes.Commitment memory subC = _subCommitment(processId, seller2, 5 ether, 15 ether, 99);
+        bytes memory bSig = _signCommitment(subC, BUYER_KEY);
+        bytes memory sSig = _signCommitment(subC, SELLER2_KEY);
+
+        vm.expectRevert(FigaroCore.ProcessAlreadyResolved.selector);
+        core.commit(subC, bSig, sSig);
+    }
 }

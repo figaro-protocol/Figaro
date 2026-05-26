@@ -150,6 +150,9 @@ fn apply_commit(
             .processes
             .get_mut(&process_id)
             .ok_or(KernelError::UnknownProcess)?;
+        if ps.active_order_count == 0 {
+            return Err(KernelError::ProcessAlreadyResolved);
+        }
         if c.buyer != ps.root_buyer {
             return Err(KernelError::NotProcessBuyer);
         }

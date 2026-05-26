@@ -10,24 +10,41 @@ before reviewing the code will prevent the most common false-positive findings.
 
 ---
 
-## 1. Process can receive new sub-orders after resolution
+## 1. Resolved processId is permanently closed
 
-**Pattern**: After `resolveProcess()` sets `ps.activeOrderCount = 0`, the
-`ProcessState` struct is not deleted and no `finalized` flag is set. A new
-sub-order can be committed to the same `processId`.
+**Pattern**: `resolveProcess()` sets `ps.activeOrderCount = 0`. Any
+subsequent `commit()` targeting that same `processId` reverts with
+`ProcessAlreadyResolved`. The `ProcessState` struct is not deleted —
+`rootBuyer`, `currency`, and `cumulativeValue` persist — but the gate at
+the top of the sub-order branch refuses extension.
 
-**Why it looks wrong**: A resolved process receiving new orders appears to be
-a missing lifecycle guard — an "already settled" case that should be blocked.
+**Why it looks like overhead**: A reviewer trained on permissionless
+substrate design might expect a closure-less model, where bilateral
+signatures alone gate extension. "If both parties want a follow-on round,
+let them sign one against the same processId" sounds protocol-aligned.
 
-**Why it is correct**: Committing any sub-order requires valid EIP-712
-signatures from both the buyer and the seller. Neither party can unilaterally
-reopen a process. If both parties sign a new sub-order referencing an existing
-`processId`, they are bilaterally agreeing to a new round under the same
-process. This is the intended multi-round composition model.
+**Why the gate is correct**: Each bonded process is a transaction-scoped
+institution that dissolves at settlement (CLAUDE.md). The closure is the
+*dissolution*. Parties wanting a follow-on bonded relationship sign a
+fresh root commitment, getting a new `processId`; cross-process
+composition (a sub-order in process A roots process B) carries the
+"this is a continuation" semantic at the assembly layer, not the kernel.
 
-Adding a `finalized` flag would impose a web2 lifecycle state machine on a
-kernel whose invariants are enforced entirely by cryptographic agreement, not
-on-chain state. The signature requirement is the protection.
+The gate is implemented in the minimum-possible form: a single comparison
+against the existing `activeOrderCount` field, which `resolveProcess`
+already maintains. There is no new lifecycle enum, no `finalized` flag,
+no additional storage. The closure semantic is derived from data the
+kernel already keeps. This is invariant enforcement using existing state,
+not a state machine added on top.
+
+**The kernel's overall design philosophy**: bilateral EIP-712 signatures
+are the principal enforcement mechanism, and the kernel deliberately
+avoids state that signatures alone could enforce. This entry is the one
+place where state-based enforcement is justified: the bond-locking and
+cumulative-value invariants tie the process together as a single
+institution, and that institution's lifetime is finite. Reopening would
+require the cumulative-value accumulator to reset, which would break the
+progressive-collateralization property for any new orders.
 
 ---
 
