@@ -36,6 +36,26 @@ export const CORE_ABI = parseAbi([
     "event OrderCurrency(bytes32 indexed orderHash, address indexed currency)",
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",
+
+    // ── Errors (must mirror src/FigaroCore.sol) ──────────────────────
+    // Carried in the ABI so viem can decode reverts by name rather than
+    // surfacing raw 4-byte selectors. Order matches the contract.
+    "error DeadlineExpired()",
+    "error InvalidBuyerSignature()",
+    "error InvalidSellerSignature()",
+    "error ZeroPayment()",
+    "error ProcessAlreadyExists()",
+    "error UnknownProcess()",
+    "error CumulativeValueMismatch(uint256 expected, uint256 actual)",
+    "error NotProcessBuyer()",
+    "error CurrencyMismatch()",
+    "error OrderNotCommitted(bytes32 orderHash)",
+    "error NoActiveOrders()",
+    "error IncompleteOrderList(uint256 required, uint256 provided)",
+    "error DuplicateCommitment()",
+    "error FeeOnTransferDetected()",
+    "error InvalidRootCumulativeValue()",
+    "error ProcessAlreadyResolved()",
 ]);
 
 // ── Individual event ABIs (for log filtering) ───────────────────────────────
