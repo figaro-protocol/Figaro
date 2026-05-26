@@ -73,7 +73,7 @@ export default function BuildersPage() {
                 </div>
             </dl>
             <p className="text-base text-ink-body leading-relaxed mb-12">
-                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; not yet on a public network, not yet independently audited. The reward tranches unlock at years two, five, and nine &mdash; built to reward durable contribution, not a quick flip. What you can do today is read the code, write a schema against the live validator stack, and watch the whole thing settle a deal end to end on a local network.
+                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; not yet on a public network, <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward tranches unlock at years two, five, and nine &mdash; built to reward durable contribution, not a quick flip. What you can do today is read the code, write a schema against the live validator stack, and watch the whole thing settle a deal end to end on a local network.
             </p>
             <h2 className="text-base font-semibold text-ink-heading mb-4">
                 Where to start
@@ -102,6 +102,12 @@ export default function BuildersPage() {
                         The contract surface
                     </Link>
                     <span className="text-ink-body"> &mdash; every contract above the kernel, with its source link and verification status.</span>
+                </li>
+                <li>
+                    <Link href="/security#builders-registries" className="text-ink-heading font-medium hover:underline">
+                        Security posture for authors
+                    </Link>
+                    <span className="text-ink-body"> &mdash; first-write-wins registry binding, immutable validators, three-tier anti-spam posture, and what an immutable v1 means for how you ship.</span>
                 </li>
                 <li>
                     <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">

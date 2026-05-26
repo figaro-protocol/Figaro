@@ -44,6 +44,12 @@ export default function Users() {
                 </div>
             </MarketingSection>
 
+            <MarketingSection title="Before you commit.">
+                <p className="text-base text-ink-body leading-relaxed">
+                    Two questions sit under both paths: who holds the money while a deal is open, and what happens if the other party defects? The short answers are <em>no one</em> and <em>the defector loses more than the honest party, every time</em> &mdash; bonded against the kernel directly, no custodian, no escrow account. The longer answers, with every honest caveat, are at <Link href="/security" className="text-ink-heading font-medium hover:underline">security</Link>.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="Or run an agent." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Either path can be driven by software instead of a person. A buyer wallet or a seller wallet can be a script, an LLM, or a long-running service &mdash; the kernel does not distinguish. Same signatures, same bonds, same resolution.
