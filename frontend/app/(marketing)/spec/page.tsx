@@ -198,7 +198,7 @@ export default function Specifications() {
                         <Link href="/why" className="text-ink-heading font-medium hover:underline">
                             Why
                         </Link>
-                        <span className="text-ink-body"> &mdash; cryptoeconomics for trade. The lineage from Bitcoin and Ethereum, and what each layer secures.</span>
+                        <span className="text-ink-body"> &mdash; the rule-making lineage: coercion, cognition, crypto. What Figaro contributes to the third.</span>
                     </li>
                     <li>
                         <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">

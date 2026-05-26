@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { ReadButton } from "@/components/shared/ReadButton";
 import { BuildButton } from "@/components/shared/BuildButton";
@@ -22,10 +23,15 @@ export default function Home() {
                 }
             >
                 <p className="text-base text-ink-body leading-relaxed mt-8 mb-5">
-                    Both sides &mdash; each holding a wallet &mdash; lock a stablecoin deposit larger than the deal into a program that holds the deposits and follows one fixed rule for releasing them. Honor the deal and each side recovers its stake. Cheat and both forfeit. Because cheating costs more than it can win, cooperation is the dominant strategy by structural means.
+                    Both sides &mdash; each holding a wallet &mdash; lock a token deposit larger than the deal into a program that holds the deposits and follows one fixed rule for releasing them. Honor the deal and each side recovers its stake. Cheat and both forfeit. Because cheating costs more than it can win, cooperation is the dominant strategy by structural means.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Nobody runs the program. There is no company behind it and no account that can be closed. It is shared infrastructure, the way the internet is. Cryptoeconomics for trade.
+                </p>
+                <p className="text-sm text-ink-muted italic mt-6">
+                    <Link href="/why" className="hover:underline">
+                        Why this exists &rarr;
+                    </Link>
                 </p>
             </MarketingHero>
 

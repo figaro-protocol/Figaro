@@ -6,62 +6,90 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = {
     title: "Why — Figaro Protocol",
     description:
-        "Bitcoin secured issuance. Ethereum secured computation. Figaro secures trade. The cryptoeconomic lineage, the distinction from traditional economics on crypto rails, and what becomes possible when trade itself is the substrate.",
+        "Three eras of rule-making — coercion, cognition, crypto. What changes when economic rules become common knowledge enforced by mathematics, and what Figaro contributes.",
 };
 
 export default function Why() {
     return (
         <>
             <MarketingHero
-                title="Cryptoeconomics for trade."
+                title="Three eras of rule-making."
                 lead={
                     <>
-                        Bitcoin invented cryptoeconomics &mdash; a substrate whose value is denominated in bitcoin, the first cryptocurrency. Ethereum extended the lineage with programmability and its own cryptocurrency, ether. Figaro continues the lineage, and addresses what neither did: trade itself.
+                        Coercion. Cognition. Crypto. Each is a way humans give rules legitimacy. The first two are ancient, sophisticated, and persistent. The third is new &mdash; and brings something the first two could not: clarity, anchored in mathematics and deterministic computing. Figaro is what cryptoeconomics looks like when it is applied to trade.
                     </>
                 }
             />
 
-            <MarketingSection title="Three substrates, three properties.">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Bitcoin secured issuance. Its kernel &mdash; proof of work &mdash; produces blocks, and the token denominates the work expended to produce them. The proof <em>is</em> the bitcoin. The substrate does not secure trade between parties; it secures the issuance ledger.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Ethereum secured computation. The same kind of kernel, generalized: any program anyone can write runs on the substrate, and the token denominates the right to occupy computation. The substrate does not secure trade between parties; it secures the execution of programs.
-                </p>
+            <MarketingSection title="Coercion.">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Figaro secures trade. Two parties who have never met exchange value across non-trust, and the substrate makes cooperation the dominant strategy by structural means. The FIG token denominates the trade the substrate secures.
+                    The oldest answer to who governs is force &mdash; <em>might makes right</em>. The answer was challenged almost immediately. Force without legitimacy is unstable; the ruled have always found ways to refuse it.
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Cryptoeconomics is not traditional economics on crypto rails.">
+            <MarketingSection title="Cognition.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Most of what now runs on Ethereum &mdash; lending markets, automated market-makers, derivatives, yield instruments &mdash; is traditional finance ported to a new venue. The mechanisms are unchanged; only the substrate is. That is finance on crypto rails. It is not cryptoeconomics.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Cryptoeconomics is the discipline of using cryptographic primitives to secure economic properties that institutions used to secure. Bitcoin secured issuance directly. Ethereum secured execution directly. Each redesigned its layer; neither ported it.
+                    To legitimize the rules they make, societies developed a second apparatus: shared mental models. Environmental knowledge, mythology, oral tradition, eventually written law. The apparatus has grown sophisticated as societies have scaled &mdash; administrative law, contracts, treaties, regulatory regimes &mdash; but the underlying mechanism is the one antiquity used. Legitimacy by belief, sustained by institutions trusted to carry the belief.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Figaro is cryptoeconomics for trade. The properties a firm or platform or court used to secure &mdash; counterparty honesty, atomic settlement, dispute jurisdiction &mdash; become properties of the substrate. The mechanism is redesigned, not ported.
+                    Both coercion and cognition remain with us. Both can be captured by interests &mdash; at best collaboratively, at worst as instruments turned against the ruled. Sophisticated institutions can carry sophisticated capture.
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Proof of Work, Proof of Stake, Proof of Trade.">
+            <MarketingSection title="Crypto.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Each cryptoeconomic substrate is named for the work its token denominates.
+                    Bitcoin introduced a third way to make rules. Encode them in a deterministic program. Publish the rules that cannot be encoded. Attach a token denominated in the economic value of the resource the program secures. The result is a substrate whose rules are common knowledge by construction and enforced by mathematics, not by any institution.
                 </p>
-                <ul className="space-y-3 text-base text-ink-body leading-relaxed">
-                    <li><strong>Proof of Work</strong> &mdash; bitcoin denominates computation expended to issue.</li>
-                    <li><strong>Proof of Stake</strong> &mdash; ether denominates capital locked to validate.</li>
-                    <li><strong>Proof of Trade</strong> &mdash; FIG denominates the trade the substrate secures.</li>
-                </ul>
-            </MarketingSection>
-
-            <MarketingSection title="Trade was the missing layer.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Trade across non-trust has always required a friction layer &mdash; banks, courts, platforms, arbitrators, escrow agents, jurisdictions &mdash; each absorbing some part of the trust gap and charging for the absorption. The friction was load-bearing because there was no substrate that secured the trade itself.
+                    Layer-one networks furnish measurable guarantees on which further economic systems can be built.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Figaro is that substrate. Two parties bond directly; the protocol enforces the bilateral commitment mathematically; settlement is atomic. The institutions that filled the trust gap are not removed by Figaro &mdash; the architecture makes them structurally unnecessary.
+                    Crypto does not substitute for coercion or cognition. They persist. What crypto adds is <em>clarity</em>: a rule set that cannot be quietly captured because it cannot be quietly changed.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Figaro is cryptoeconomics for trade.">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Most of what runs on crypto today is one of two things: traditional financial products ported to a new venue, or grifters exploiting the same social engineering that underlies adoption. Figaro is neither. It is cryptoeconomics applied to value-added processes &mdash; trade.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    A third strain ports the institutional apparatus directly: on-chain governance projects that recreate corporate or legislative voting on crypto rails, legal-engineering toolchains that lift written contracts onto chain. The cognitive era&apos;s instruments, running on a new substrate. Figaro is not that either.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    As a primitive, Figaro is the substrate for any economic system grounded in value-added. Supply chains. Manufacturing &mdash; physical or digital. Internal corporate processes. The substrate takes no position on where value flows or under what conditions; the participants in each process decide.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Above the kernel: schemas carrying the general terms-and-conditions that recur across processes, and a consent schema carrying the special terms that would otherwise sit in a written contract. Schemas compose into processes &mdash; what the protocol calls assemblies. Operators index processes freely; buyers negotiate the terms directly, with no intermediary in the path.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Traditional negotiation rests on a belief &mdash; that the counterparties are acting in good faith. The assumption belongs to the cognitive era; it holds when the institutions ready to enforce it remain trusted, and weakens when they do not.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Figaro does not assume good faith. It asks each party to demonstrate it, directly, by posting a bond against the commitment they are making &mdash; putting money where the mouth is. Posting the bond is the parties' act of subscribing to the mechanism's rules. Like any deterministic system, follow the rules and the outcome is guaranteed. The bond is not an expenditure in the traditional sense. It replaces the pre-existing requirement for lawyers, accountants, or a legal entity to wrap the relationship and underwrite the assumption.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    Buyer dominance and atomic settlement compact, into a single call, the value-added work that a legal entity used to hold and meter. When the process is token-bound, the value of the assembled work accrues to the token, not to a share price. The token recenters as defining a community of users &mdash; not a substitute for fiat money. The denominations in a wallet reflect its owner&apos;s communities and values. The kernel takes no position on which token; any ERC20 the community already uses can carry the trade.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="How Figaro grows.">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Figaro is built to be extended. Anyone can author a new schema, register it on-chain, and be paid retroactively for schemas the network comes to rely on &mdash; sixty percent of the FIG supply is reserved for schema authors, distributed by a fixed formula that measures settled use. No application, no committee.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    Schemas are one extension surface. Assemblies are another &mdash; communities compose schemas into the processes they need, with the operators who run them indexing those processes freely. The protocol grows by what it actually carries. <Link href="/builders" className="text-ink-heading font-medium hover:underline">More on building on Figaro</Link>.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="The current moment.">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Since 2001 the Edelman Trust Barometer has tracked steady decline in the trust the public places in its institutions. The decline is not bounded to any one country or sector; it is structural. The institutions that carry the cognitive apparatus &mdash; media, government, business, civil society &mdash; show diminishing capacity to sustain the belief the apparatus needs.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The same period has seen social engineering deployed at scale.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    Figaro is one contribution to a substrate that captures less well: economic rules that are common knowledge, enforced by mathematics, owned by no one. Clarity is a partial defense. It is the defense the third era makes available.
                 </p>
             </MarketingSection>
 
@@ -72,6 +100,12 @@ export default function Why() {
                             Protocol
                         </Link>
                         <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
+                    </li>
+                    <li>
+                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">
+                            Builders
+                        </Link>
+                        <span className="text-ink-body"> &mdash; how to extend the protocol: author a schema, register it on-chain, earn from settled use under the FIG schema-author allocation.</span>
                     </li>
                     <li>
                         <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
