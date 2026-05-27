@@ -133,7 +133,10 @@ export async function createDispute(
     });
 
     const hash = await walletClient.writeContract(request);
-    await publicClient.waitForTransactionReceipt({ hash });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== "success") {
+        throw new Error(`Dispute creation transaction reverted on-chain (tx ${hash}).`);
+    }
 
     return localDisputeID;
 }

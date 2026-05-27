@@ -188,7 +188,10 @@ export function useDutchAuction(order: AuctionOrder) {
         try {
             const txHash = await auctionActions.claim(auctionId);
             if (publicClient && txHash) {
-                await publicClient.waitForTransactionReceipt({ hash: txHash });
+                const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+                if (receipt.status !== "success") {
+                    throw new Error(`Claim transaction reverted on-chain (tx ${txHash}).`);
+                }
             }
             refetchAuction?.();
             refetchPrice?.();
@@ -202,7 +205,10 @@ export function useDutchAuction(order: AuctionOrder) {
         try {
             const txHash = await auctionActions.cancel(auctionId);
             if (publicClient && txHash) {
-                await publicClient.waitForTransactionReceipt({ hash: txHash });
+                const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+                if (receipt.status !== "success") {
+                    throw new Error(`Cancel transaction reverted on-chain (tx ${txHash}).`);
+                }
             }
             refetchAuction?.();
         } catch {
