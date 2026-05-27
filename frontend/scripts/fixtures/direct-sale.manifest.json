@@ -1,73 +1,73 @@
 {
-  "agreements": {
-    "0xb5808db46126e5149412e6c24b1e8cf45ffd6083c0e9e3c2e6a25fd37ca34d0b": {
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "sections": [
-        {
-          "data": {
-            "klerosCourt": "general",
-            "klerosMinJurors": 3
-          },
-          "schema": "figaro-arbitration-kleros-v1"
-        },
-        {
-          "data": {
-            "currency": "0x0000000000000000000000000000000000000000",
-            "lineItems": [],
-            "payment": "1000000000000000000"
-          },
-          "schema": "figaro-commerce-v1"
-        },
-        {
-          "data": {
-            "modalities": [
-              "consume-onsite"
-            ]
-          },
-          "schema": "figaro-fulfilment-v2"
-        },
-        {
-          "data": {
-            "classOfService": "S",
-            "destinationGeohash": "0",
-            "massGrams": 1,
-            "originGeohash": "0",
-            "volumeMl": 1
-          },
-          "schema": "figaro-geo-v2"
-        },
-        {
-          "data": {
-            "parentOrderHashes": [],
-            "topologyMode": "root"
-          },
-          "schema": "figaro-topology-v1"
+    "agreements": {
+        "0x5b6b34f3ee78e13a23ec29820a2aaeb59ba72dab8f83ea0d887f455bceea0574": {
+            "buyer": "0xde51000000000000000000000000000000000000",
+            "sections": [
+                {
+                    "data": {
+                        "klerosCourt": "general",
+                        "klerosMinJurors": 3
+                    },
+                    "schema": "figaro-arbitration-kleros-v1"
+                },
+                {
+                    "data": {
+                        "currency": "0x0000000000000000000000000000000000000000",
+                        "lineItems": [],
+                        "payment": "1000000000000000000"
+                    },
+                    "schema": "figaro-commerce-v1"
+                },
+                {
+                    "data": {
+                        "modalities": [
+                            "consume-onsite"
+                        ]
+                    },
+                    "schema": "figaro-fulfilment-v2"
+                },
+                {
+                    "data": {
+                        "classOfService": "S",
+                        "destinationGeohash": "0",
+                        "massGrams": 1,
+                        "originGeohash": "0",
+                        "volumeMl": 1
+                    },
+                    "schema": "figaro-geo-v2"
+                },
+                {
+                    "data": {
+                        "parentOrderHashes": [],
+                        "topologyMode": "root"
+                    },
+                    "schema": "figaro-topology-v1"
+                }
+            ],
+            "seller": "0xde51000000000000000000000000000000000001",
+            "version": "a1"
         }
-      ],
-      "seller": "0xde51000000000000000000000000000000000001",
-      "version": "a1"
-    }
-  },
-  "name": "Direct Sale",
-  "nextOrderIndex": 1,
-  "nextSellerIndex": 2,
-  "orders": [
-    {
-      "agreementHash": "0xb5808db46126e5149412e6c24b1e8cf45ffd6083c0e9e3c2e6a25fd37ca34d0b",
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "buyerBond": "2000000000000000000",
-      "cumulativeValue": "1000000000000000000",
-      "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779830359",
-      "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
-      "payment": "1000000000000000000",
-      "processId": "0xprocess19e65f118070000000000000000000000000000000000000000000000",
-      "salt": "1",
-      "seller": "0xde51000000000000000000000000000000000001",
-      "sellerBond": "2000000000000000000",
-      "state": 0
-    }
-  ],
-  "processId": "0xprocess19e65f118070000000000000000000000000000000000000000000000",
-  "slug": "direct-sale"
+    },
+    "name": "Direct Sale",
+    "nextOrderIndex": 1,
+    "nextSellerIndex": 2,
+    "orders": [
+        {
+            "agreementHash": "0x5b6b34f3ee78e13a23ec29820a2aaeb59ba72dab8f83ea0d887f455bceea0574",
+            "buyer": "0xde51000000000000000000000000000000000000",
+            "buyerBond": "2000000000000000000",
+            "cumulativeValue": "1000000000000000000",
+            "currency": "0x0000000000000000000000000000000000000000",
+            "deadline": "1779830359",
+            "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
+            "payment": "1000000000000000000",
+            "processId": "0xprocess19e65f118070000000000000000000000000000000000000000000000",
+            "salt": "1",
+            "seller": "0xde51000000000000000000000000000000000001",
+            "sellerBond": "2000000000000000000",
+            "state": 0
+        }
+    ],
+    "processId": "0xprocess19e65f118070000000000000000000000000000000000000000000000",
+    "slug": "direct-sale"
 }

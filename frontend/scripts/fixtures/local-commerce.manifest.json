@@ -1,159 +1,159 @@
 {
-  "agreements": {
-    "0x82285a0485093d5cd593aef3d498ec40cce89e089444254bd7a1cf55ef853511": {
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "sections": [
-        {
-          "data": {
-            "klerosCourt": "general",
-            "klerosMinJurors": 3
-          },
-          "schema": "figaro-arbitration-kleros-v1"
-        },
-        {
-          "data": {
-            "currency": "0x0000000000000000000000000000000000000000",
-            "lineItems": [],
-            "payment": "500000000000000000"
-          },
-          "schema": "figaro-commerce-v1"
-        },
-        {
-          "data": {},
-          "schema": "figaro-courier-process-v1"
-        },
-        {
-          "data": {
-            "classOfService": "S",
-            "destinationGeohash": "0",
-            "massGrams": 1,
-            "originGeohash": "0",
-            "volumeMl": 1
-          },
-          "schema": "figaro-geo-v2"
-        },
-        {
-          "data": {
-            "bands": [
-              "zone-wifi"
-            ]
-          },
-          "schema": "figaro-proximity-policy-v1"
-        },
-        {
-          "data": {
-            "band": "zone-wifi",
-            "deviceSig": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-            "nonce": "0x0000000000000000000000000000000000000000000000000000000000000000"
-          },
-          "schema": "figaro-proximity-proof-v1"
-        },
-        {
-          "data": {
-            "parentOrderHashes": [
-              "0xorder0proces0000000000000000000000000000000000000000000000000000"
+    "agreements": {
+        "0xf11e2a0c0f9951bdf42dbd8a82c86d428e40e9e61e6e62e74a538ced2e9220ae": {
+            "buyer": "0xde51000000000000000000000000000000000000",
+            "sections": [
+                {
+                    "data": {
+                        "klerosCourt": "general",
+                        "klerosMinJurors": 3
+                    },
+                    "schema": "figaro-arbitration-kleros-v1"
+                },
+                {
+                    "data": {
+                        "currency": "0x0000000000000000000000000000000000000000",
+                        "lineItems": [],
+                        "payment": "500000000000000000"
+                    },
+                    "schema": "figaro-commerce-v1"
+                },
+                {
+                    "data": {},
+                    "schema": "figaro-courier-process-v1"
+                },
+                {
+                    "data": {
+                        "classOfService": "S",
+                        "destinationGeohash": "0",
+                        "massGrams": 1,
+                        "originGeohash": "0",
+                        "volumeMl": 1
+                    },
+                    "schema": "figaro-geo-v2"
+                },
+                {
+                    "data": {
+                        "bands": [
+                            "zone-wifi"
+                        ]
+                    },
+                    "schema": "figaro-proximity-policy-v1"
+                },
+                {
+                    "data": {
+                        "band": "zone-wifi",
+                        "deviceSig": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                        "nonce": "0x0000000000000000000000000000000000000000000000000000000000000000"
+                    },
+                    "schema": "figaro-proximity-proof-v1"
+                },
+                {
+                    "data": {
+                        "parentOrderHashes": [
+                            "0xorder0proces0000000000000000000000000000000000000000000000000000"
+                        ],
+                        "topologyMode": "explicit"
+                    },
+                    "schema": "figaro-topology-v1"
+                }
             ],
-            "topologyMode": "explicit"
-          },
-          "schema": "figaro-topology-v1"
+            "seller": "0xde51000000000000000000000000000000000003",
+            "version": "a1"
+        },
+        "0x37fcee8745346462969c39437e54a1df2216a112ee717dd6a26e8f4a2a545547": {
+            "buyer": "0xde51000000000000000000000000000000000000",
+            "sections": [
+                {
+                    "data": {
+                        "klerosCourt": "general",
+                        "klerosMinJurors": 3
+                    },
+                    "schema": "figaro-arbitration-kleros-v1"
+                },
+                {
+                    "data": {
+                        "currency": "0x0000000000000000000000000000000000000000",
+                        "lineItems": [],
+                        "payment": "1000000000000000000"
+                    },
+                    "schema": "figaro-commerce-v1"
+                },
+                {
+                    "data": {
+                        "coordinations": [
+                            "seller-assigned"
+                        ],
+                        "handoffPoints": [
+                            "face-to-face"
+                        ],
+                        "modalities": [
+                            "delivery"
+                        ]
+                    },
+                    "schema": "figaro-fulfilment-v2"
+                },
+                {
+                    "data": {
+                        "classOfService": "S",
+                        "destinationGeohash": "0",
+                        "massGrams": 1,
+                        "originGeohash": "0",
+                        "volumeMl": 1
+                    },
+                    "schema": "figaro-geo-v2"
+                },
+                {
+                    "data": {},
+                    "schema": "figaro-merchant-process-v1"
+                },
+                {
+                    "data": {
+                        "parentOrderHashes": [],
+                        "topologyMode": "root"
+                    },
+                    "schema": "figaro-topology-v1"
+                }
+            ],
+            "seller": "0xde51000000000000000000000000000000000001",
+            "version": "a1"
         }
-      ],
-      "seller": "0xde51000000000000000000000000000000000003",
-      "version": "a1"
     },
-    "0xe90cd37027a87eaf022342ae2ae75f86057064fed5ce8c6b2e8529bea7f10fe7": {
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "sections": [
+    "name": "Local Commerce",
+    "nextOrderIndex": 3,
+    "nextSellerIndex": 4,
+    "orders": [
         {
-          "data": {
-            "klerosCourt": "general",
-            "klerosMinJurors": 3
-          },
-          "schema": "figaro-arbitration-kleros-v1"
-        },
-        {
-          "data": {
+            "agreementHash": "0x37fcee8745346462969c39437e54a1df2216a112ee717dd6a26e8f4a2a545547",
+            "buyer": "0xde51000000000000000000000000000000000000",
+            "buyerBond": "2000000000000000000",
+            "cumulativeValue": "1000000000000000000",
             "currency": "0x0000000000000000000000000000000000000000",
-            "lineItems": [],
-            "payment": "1000000000000000000"
-          },
-          "schema": "figaro-commerce-v1"
+            "deadline": "1779830409",
+            "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
+            "payment": "1000000000000000000",
+            "processId": "0xprocess19e65f1d9950000000000000000000000000000000000000000000000",
+            "salt": "1",
+            "seller": "0xde51000000000000000000000000000000000001",
+            "sellerBond": "2000000000000000000",
+            "state": 0
         },
         {
-          "data": {
-            "coordinations": [
-              "seller-assigned"
-            ],
-            "handoffPoints": [
-              "face-to-face"
-            ],
-            "modalities": [
-              "delivery"
-            ]
-          },
-          "schema": "figaro-fulfilment-v2"
-        },
-        {
-          "data": {
-            "classOfService": "S",
-            "destinationGeohash": "0",
-            "massGrams": 1,
-            "originGeohash": "0",
-            "volumeMl": 1
-          },
-          "schema": "figaro-geo-v2"
-        },
-        {
-          "data": {},
-          "schema": "figaro-merchant-process-v1"
-        },
-        {
-          "data": {
-            "parentOrderHashes": [],
-            "topologyMode": "root"
-          },
-          "schema": "figaro-topology-v1"
+            "agreementHash": "0xf11e2a0c0f9951bdf42dbd8a82c86d428e40e9e61e6e62e74a538ced2e9220ae",
+            "buyer": "0xde51000000000000000000000000000000000000",
+            "buyerBond": "1000000000000000000",
+            "cumulativeValue": "1500000000000000000",
+            "currency": "0x0000000000000000000000000000000000000000",
+            "deadline": "1779830410",
+            "id": "0xorder2proces0000000000000000000000000000000000000000000000000000",
+            "payment": "500000000000000000",
+            "processId": "0xprocess19e65f1d9950000000000000000000000000000000000000000000000",
+            "salt": "3",
+            "seller": "0xde51000000000000000000000000000000000003",
+            "sellerBond": "3000000000000000000",
+            "state": 0
         }
-      ],
-      "seller": "0xde51000000000000000000000000000000000001",
-      "version": "a1"
-    }
-  },
-  "name": "Local Commerce",
-  "nextOrderIndex": 3,
-  "nextSellerIndex": 4,
-  "orders": [
-    {
-      "agreementHash": "0xe90cd37027a87eaf022342ae2ae75f86057064fed5ce8c6b2e8529bea7f10fe7",
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "buyerBond": "2000000000000000000",
-      "cumulativeValue": "1000000000000000000",
-      "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779830409",
-      "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
-      "payment": "1000000000000000000",
-      "processId": "0xprocess19e65f1d9950000000000000000000000000000000000000000000000",
-      "salt": "1",
-      "seller": "0xde51000000000000000000000000000000000001",
-      "sellerBond": "2000000000000000000",
-      "state": 0
-    },
-    {
-      "agreementHash": "0x82285a0485093d5cd593aef3d498ec40cce89e089444254bd7a1cf55ef853511",
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "buyerBond": "1000000000000000000",
-      "cumulativeValue": "1500000000000000000",
-      "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779830410",
-      "id": "0xorder2proces0000000000000000000000000000000000000000000000000000",
-      "payment": "500000000000000000",
-      "processId": "0xprocess19e65f1d9950000000000000000000000000000000000000000000000",
-      "salt": "3",
-      "seller": "0xde51000000000000000000000000000000000003",
-      "sellerBond": "3000000000000000000",
-      "state": 0
-    }
-  ],
-  "processId": "0xprocess19e65f1d9950000000000000000000000000000000000000000000000",
-  "slug": "local-commerce"
+    ],
+    "processId": "0xprocess19e65f1d9950000000000000000000000000000000000000000000000",
+    "slug": "local-commerce"
 }
