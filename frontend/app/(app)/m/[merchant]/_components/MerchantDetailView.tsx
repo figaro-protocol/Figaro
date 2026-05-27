@@ -481,6 +481,24 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                             return ghgStandards.length > 0 ? { ghgStandards } : {};
                         })()
                         : {}),
+                    // Propagate a proximity-policy clause when the assembly's
+                    // ROOT order carries one — the pickup-handoff case, where
+                    // the merchant↔buyer order itself is the handoff edge.
+                    // Per-order scope (not multi-order readAssemblyClause): a
+                    // delivery assembly has its proximity clause on the courier
+                    // sub-order, which must NOT leak onto the root.
+                    ...(pickedAssembly?.manifest.orders[0]?.agreementHash
+                        ? (() => {
+                            const rootAgreement = pickedAssembly.manifest.agreements[
+                                pickedAssembly.manifest.orders[0].agreementHash
+                            ] as Agreement | undefined;
+                            const policy = rootAgreement?.sections.find(
+                                (s) => s.schema === PROXIMITY_POLICY_SCHEMA_KEY,
+                            );
+                            const bands = (policy?.data as { bands?: string[] } | undefined)?.bands ?? [];
+                            return bands.length > 0 ? { proximityBands: bands } : {};
+                        })()
+                        : {}),
                     // Geo fields aggregated from the cart's catalogue annotations.
                     // mass / volume strings are parsed by `parseMassToGrams` /
                     // `parseVolumeToMl` in `manifestFieldsToGeoSection`; class_

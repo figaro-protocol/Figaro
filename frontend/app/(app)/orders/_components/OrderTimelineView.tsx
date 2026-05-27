@@ -37,7 +37,13 @@ import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
 import { findListingByAddress } from "@/lib/shared/operatorListing";
 import type { SemanticTone } from "@/lib/shared/tones";
 import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
-import { COURIER_PROCESS_SCHEMA_ID, useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
+import {
+    COURIER_PROCESS_SCHEMA_ID,
+    PROXIMITY_SCHEMA_ID,
+    encodeProximityProofContent,
+    useCourierProcessActions,
+} from "@/lib/mechanisms/useCourierProcess";
+import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { getSection, PROXIMITY_POLICY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import type { CourierEvent, MerchantEvent } from "@figaro/core/schemas";
@@ -331,6 +337,7 @@ export function OrderTimelineView({ processId }: Props) {
     const workspace = useSemanticProcessWorkspace({ processId });
     const merchantActions = useMerchantProcessActions();
     const courierActions = useCourierProcessActions();
+    const { submitBuyerAttestation } = useAttestationCoordinatorActions();
     const { listings } = useOperatorListings();
 
     const [events, setEvents] = useState<MerchantTimelineEvent[]>([]);
@@ -339,6 +346,9 @@ export function OrderTimelineView({ processId }: Props) {
     const [merchantError, setMerchantError] = useState<string | null>(null);
     const [courierPending, setCourierPending] = useState(false);
     const [courierError, setCourierError] = useState<string | null>(null);
+    const [buyerProofPending, setBuyerProofPending] = useState(false);
+    const [buyerProofError, setBuyerProofError] = useState<string | null>(null);
+    const [proximityAttesters, setProximityAttesters] = useState<string[]>([]);
     const [tick, setTick] = useState(0);
 
     useEffect(() => {
@@ -380,6 +390,30 @@ export function OrderTimelineView({ processId }: Props) {
                 }
             } finally {
                 if (!cancelled) setEventsLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [publicClient, chainId, processId, tick]);
+
+    // Proximity-proof attestation log on this process — both the buyer
+    // and the merchant attest under figaro-proximity-proof-v1 at the
+    // pickup handoff edge. The set of attesters drives the per-role gate
+    // on the "submit handoff proof" buttons (each party attests once).
+    useEffect(() => {
+        if (!publicClient || !chainId || !processId) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const logs = await getAttestationsByProcessAndSchema(
+                    publicClient, chainId, processId, PROXIMITY_SCHEMA_ID,
+                );
+                if (cancelled) return;
+                const attesters = logs
+                    .map((log) => ((log.args ?? {}) as { attester?: string }).attester ?? "")
+                    .filter((a) => a.length > 0);
+                setProximityAttesters(attesters);
+            } catch {
+                if (!cancelled) setProximityAttesters([]);
             }
         })();
         return () => { cancelled = true; };
@@ -472,6 +506,27 @@ export function OrderTimelineView({ processId }: Props) {
     // ("Active" | "Resolved") in `deriveProcessModelFromRuntime`.
     const isResolved = allOrders.length > 0 && allOrders.every((order) => order.state !== "Active");
 
+    // Pickup-edge handoff certification. When the merchant↔buyer root order
+    // itself carries a committed figaro-proximity-policy-v1 clause AND there
+    // is no courier sub-order, the handoff is buyer↔merchant rather than
+    // merchant↔courier. The same proximity-proof primitive applies; both
+    // parties attest under figaro-proximity-proof-v1 against the same root
+    // order, just from opposite role gates (attestAsBuyer / attestAsSeller).
+    const rootHasProximityPolicy = useMemo(() => {
+        if (!rootOrder) return false;
+        const agreement = workspace.processAgreements.get(rootOrder.agreementHash) ?? null;
+        return !!agreement && !!getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
+    }, [rootOrder, workspace.processAgreements]);
+    const isPickupHandoff = rootHasProximityPolicy && !courierSubOrder;
+    const buyerAlreadyAttestedProximity = useMemo(() => {
+        if (!address) return false;
+        return proximityAttesters.some((a) => hexEqual(a, address));
+    }, [proximityAttesters, address]);
+    const merchantAlreadyAttestedProximity = useMemo(() => {
+        if (!rootOrder) return false;
+        return proximityAttesters.some((a) => hexEqual(a, rootOrder.seller));
+    }, [proximityAttesters, rootOrder]);
+
     const status = role === "seller"
         ? deriveMerchantStatus(events, isResolved)
         : deriveBuyerStatus(sellerDisplayName, events, isResolved);
@@ -556,22 +611,25 @@ export function OrderTimelineView({ processId }: Props) {
         }
     };
 
-    // Merchant cross-witness of the merchant→courier pickup. Pairs a
-    // proximity-proof attestation (target = courier sub-order, role =
-    // merchant's root order) with the merchant-process `handed-off` event
-    // on the merchant's own order. The inclusion proof opens against the
-    // courier's manifest's proximity-proof clause; the merchant's manifest
-    // does not need to carry the clause.
+    // Merchant cross-witness of the pickup handoff. Two cases collapsed
+    // into the same primitive:
+    //   - Delivery: target = courier sub-order, role = merchant's root order.
+    //     Proximity-policy lives on the courier's manifest.
+    //   - Pickup:   target = role = merchant's root order. Proximity-policy
+    //     lives on the merchant's own manifest (the buyer↔merchant order).
+    // Both cases call signalWithProof; submitSellerAttestation collapses to
+    // a single commitment when roleOrderHash === orderHash.
     const handleMerchantProximityProof = async () => {
-        if (!rootOrder || !courierSubOrder) return;
+        if (!rootOrder) return;
+        const proximityOrder = courierSubOrder ?? rootOrder;
         setMerchantPending(true);
         setMerchantError(null);
         try {
             const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
-            const band = readCommittedBand(courierSubOrder.agreementHash);
+            const band = readCommittedBand(proximityOrder.agreementHash);
             await merchantActions.signalWithProof({
                 merchantOrderHash: rootOrder.orderId,
-                proximityTargetOrderHash: courierSubOrder.orderId,
+                proximityTargetOrderHash: proximityOrder.orderId,
                 eventType: "handed-off",
                 proof: { band, nonce, deviceSig: COURIER_DEVICE_SIG_PLACEHOLDER },
             });
@@ -580,6 +638,35 @@ export function OrderTimelineView({ processId }: Props) {
             setMerchantError(extractErrorMessage(cause, "Merchant handoff attestation failed"));
         } finally {
             setMerchantPending(false);
+        }
+    };
+
+    // Buyer-side pickup witness — symmetric to the merchant path, but
+    // through attestAsBuyer. The buyer attests proximity-proof against
+    // their own (= the merchant↔buyer root) order. No process schema for
+    // buyers per kernel-participant principle — proximity-proof is the
+    // one runtime witness the buyer co-signs.
+    const handleBuyerPickupProof = async () => {
+        if (!rootOrder) return;
+        setBuyerProofPending(true);
+        setBuyerProofError(null);
+        try {
+            const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
+            const band = readCommittedBand(rootOrder.agreementHash);
+            await submitBuyerAttestation({
+                orderHash: rootOrder.orderId as Hex,
+                schemaId: PROXIMITY_SCHEMA_ID,
+                stage: band,
+                content: encodeProximityProofContent({
+                    band, nonce, deviceSig: COURIER_DEVICE_SIG_PLACEHOLDER,
+                }),
+                failureMessage: "Buyer pickup proof submission failed",
+            });
+            setTick((t) => t + 1);
+        } catch (cause: unknown) {
+            setBuyerProofError(extractErrorMessage(cause, "Buyer pickup proof failed"));
+        } finally {
+            setBuyerProofPending(false);
         }
     };
 
@@ -657,6 +744,36 @@ export function OrderTimelineView({ processId }: Props) {
                         ) : resolveCapability ? (
                             <>
                                 <PreResolveOffsetPanel processId={processId as `0x${string}`} />
+                                {isPickupHandoff && !buyerAlreadyAttestedProximity && (
+                                    <div className="space-y-2 rounded border border-neutral-200 bg-neutral-50 p-3">
+                                        <p className="text-sm text-neutral-700">
+                                            Submit an on-chain proximity proof to witness the
+                                            handoff from {sellerDisplayName}. Fires the{" "}
+                                            <code className="font-mono text-xs">figaro-proximity-proof-v1</code>{" "}
+                                            attestation against your order.
+                                        </p>
+                                        <Button
+                                            onClick={handleBuyerPickupProof}
+                                            disabled={buyerProofPending}
+                                            data-testid="btn-buyer-pickup-proof"
+                                        >
+                                            {buyerProofPending ? "Submitting…" : "Submit handoff proof"}
+                                        </Button>
+                                        {buyerProofError && (
+                                            <p className="text-sm text-red-600" data-testid="buyer-proof-error">
+                                                {buyerProofError}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                                {isPickupHandoff && buyerAlreadyAttestedProximity && (
+                                    <p
+                                        className="text-sm rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-neutral-700"
+                                        data-testid="buyer-proximity-attested"
+                                    >
+                                        Handoff proof witnessed.
+                                    </p>
+                                )}
                                 <p className="text-sm text-neutral-700">
                                     When you have received the order from {sellerDisplayName}, confirm to release
                                     bonds and finalise.
@@ -679,21 +796,27 @@ export function OrderTimelineView({ processId }: Props) {
 
                 {role === "seller" && (
                     <>
-                        {next === "handed-off" && courierSubOrder ? (
-                            // Cross-witness path: when this order has a
-                            // courier sub-order, the merchant's `handed-off`
-                            // moment is paired with a proximity-proof
-                            // attestation against the courier's manifest.
-                            // Without a courier sub-order (pickup-modality
-                            // variant, not yet authored as a fixture) the
-                            // standard lifecycle button below applies.
+                        {next === "handed-off" && (courierSubOrder || isPickupHandoff) && !merchantAlreadyAttestedProximity ? (
+                            // Cross-witness path. Two variants reach the same
+                            // primitive (signalWithProof = proximity-proof +
+                            // merchant-process handed-off):
+                            //   - Delivery: proximity-policy lives on the
+                            //     courier sub-order; the proof opens against
+                            //     the courier's manifest.
+                            //   - Pickup:   proximity-policy lives on the
+                            //     merchant's own (root) manifest; the proof
+                            //     opens against the same order. The buyer
+                            //     attests the symmetric witness via
+                            //     btn-buyer-pickup-proof.
                             <>
                                 <p className="text-sm text-neutral-700">
-                                    Submit an on-chain proximity proof to certify
-                                    the merchant→courier pickup. Fires the{" "}
+                                    {courierSubOrder
+                                        ? "Submit an on-chain proximity proof to certify the merchant→courier pickup."
+                                        : `Submit an on-chain proximity proof to certify the handoff to ${buyerDisplayName}.`}
+                                    {" "}Fires the{" "}
                                     <code className="font-mono text-xs">figaro-proximity-proof-v1</code>{" "}
-                                    attestation against the courier's order plus
-                                    the merchant-process <code className="font-mono text-xs">handed-off</code> event.
+                                    attestation plus the merchant-process{" "}
+                                    <code className="font-mono text-xs">handed-off</code> event.
                                 </p>
                                 <Button
                                     onClick={handleMerchantProximityProof}
