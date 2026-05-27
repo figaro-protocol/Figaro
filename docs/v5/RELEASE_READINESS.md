@@ -78,11 +78,11 @@ Either way: reflect the chosen disposition in `docs/v5/CONTRACTS.md` and `CLAUDE
 
 ### Task 5: Launch Scenario — Assembly Seeding Decision
 
-`frontend/scripts/seed-devnet.mjs` currently registers 2 assemblies (`direct-sale`, `local-commerce`); `frontend/scripts/fixtures/` now holds 5 captured manifests (adds `local-commerce-buyer-assigned`, `local-commerce-dutch`, `local-commerce-offset`). `script/DeployMainnet.s.sol` currently seeds no assemblies. Assemblies are permissionless, so no-seed is a valid choice for either surface.
+`frontend/scripts/seed-devnet.mjs` currently registers all 6 captured manifests in `frontend/scripts/fixtures/`: `direct-sale`, `local-commerce`, `local-commerce-buyer-assigned`, `local-commerce-dutch`, `local-commerce-offset`, and `local-commerce-pickup`. `script/DeployMainnet.s.sol` currently seeds no assemblies. Assemblies are permissionless, so no-seed is a valid choice for either surface.
 
 Required output:
 
-1. devnet seed list — decide which of the 5 captured manifests `seed-devnet.mjs` ships with; update the seeder accordingly
+1. devnet seed list — confirmed: all 6 captured manifests ship with `seed-devnet.mjs`; remaining decision is whether any should be dropped (none flagged)
 2. mainnet seed list — decide whether `DeployMainnet.s.sol` seeds any assemblies at launch; record the disposition. If Task 4 disposition (2) is taken, the mainnet half collapses to n/a (no `AssemblyRegistry` deployed)
 3. reasoning recorded inline at the seed-call site (devnet) and in `DeployMainnet.s.sol` (mainnet) — why these and not others
 

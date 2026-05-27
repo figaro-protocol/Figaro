@@ -75,9 +75,14 @@ Implementation-facing docs:
 
 ### Reference Assemblies
 
-The reference assemblies are `local-commerce`, `direct-sale`,
-`figaro-procurement`, `figaro-disclosure-review`, `figaro-equipment-rental`,
-and `figaro-freelance`.
+The reference assemblies are `direct-sale` (1-node consume-onsite),
+`local-commerce` (2-node merchant + seller-assigned courier),
+`local-commerce-buyer-assigned` (buyer chooses the courier),
+`local-commerce-dutch` (Dutch-auction courier edge),
+`local-commerce-offset` (emissions-aware variant with GHG disclosure +
+proximity-policy clauses), and `local-commerce-pickup` (1-node pickup
+with handoff certification — buyer + merchant both attest
+`figaro-proximity-proof-v1` at the handoff edge).
 
 Assembly authoring and parsing live in `frontend/lib/designer/`; published
 assemblies are anchored on-chain via `src/AssemblyRegistry.sol` with their

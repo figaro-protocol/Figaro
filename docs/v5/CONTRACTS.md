@@ -62,7 +62,7 @@ composer. Use for any post-deploy third-party schema registration.
 invalid content; binds to one schemaId via `schemaId() view returns (bytes32)`.
 Validators are pure / view, no admin, no mutable state.
 
-**`src/schemaValidators/`** — 16 production validator contracts, one per
+**`src/schemaValidators/`** — 17 production validator contracts, one per
 *runtime-attestable* schemaId (local-commerce use case + jurisdiction baseline + consent):
 `FigaroCommerceV1Validator`, `FigaroGeoV2Validator`,
 `FigaroFulfilmentV2Validator`, plus the 5 GHG sister schemas

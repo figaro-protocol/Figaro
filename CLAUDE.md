@@ -345,7 +345,7 @@ operating in this repo.
 All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No contract belongs to a dapp; every one is a permissionless primitive. Full per-contract surfaces, ABI changes, and "what does NOT exist" → `docs/v5/CONTRACTS.md`. High-level inventory:
 
 - **Kernel (frozen):** `FigaroCore.sol`, `CommitmentTypes.sol`.
-- **Attestation & schema:** `AttestationCoordinator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `ISchemaValidator.sol`, `IRoleResolver.sol`, 16 per-schema validators in `src/schemaValidators/`.
+- **Attestation & schema:** `AttestationCoordinator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `ISchemaValidator.sol`, `IRoleResolver.sol`, 17 per-schema validators in `src/schemaValidators/`.
 - **Mechanism modules:** `DutchAuction.sol`, `OperatorRegistry.sol`, `AssemblyRegistry.sol` (permissionless assembly anchoring — the assembly artifact family's registry, parallel to `SchemaRegistry`/`OperatorRegistry`), `ProcessOffsetReceipt.sol` (Path A carbon-offset receipts anchor — separate primitive per separation-of-concerns; receipts are not attestations, no agreement clause required).
 - **FIG token (`src/fig/`):** `FigToken.sol`, `RpgfMinter.sol`, `IFigMinter.sol`. 1B fixed supply: 100M founders + 300M DAO genesis-minted, 600M schema-author RPGF (yr 2/5/9). Per-tranche Merkle root is submitted at tranche time after an SP1 proof verifies it; aggregation logic lives in `prover/rpgf/` (Rust). FIG is not a governance token; `FigaroBatchVerifier` is not a minter.
 - **Batch verification:** `FigaroBatchVerifier.sol`, `interfaces/ISP1Verifier.sol`, `mocks/MockSP1Verifier.sol`.
