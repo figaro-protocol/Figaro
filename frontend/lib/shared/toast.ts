@@ -22,82 +22,41 @@ function parseContractError(error: unknown): string {
             const errorName = revertError.data?.errorName ?? '';
             const errorArgs = revertError.data?.args ?? [];
 
-            // Map Figaro contract errors to user-friendly messages
+            // Map Figaro contract errors to user-friendly messages.
+            // FigaroCore error set is 1:1 with src/FigaroCore.sol — keep ordering aligned.
             switch (errorName) {
-                // --- FigaroCore errors ---
-                case 'ZeroAddress':
-                    return 'Invalid address: cannot be zero';
-                case 'SelfDeal':
-                    return 'Cannot create an order with yourself';
-                case 'ZeroPayment':
-                    return 'Payment amount must be greater than zero';
-                case 'ZeroAmount':
-                    return 'Amount must be greater than zero';
-                case 'EmptyManifest':
-                    return 'Order manifest cannot be empty';
-                case 'NotBuyer':
-                    return 'Only the buyer can perform this action';
-                case 'NotSeller':
-                    return 'Only the seller can perform this action';
-                case 'OrderNotFound':
-                    return 'Order not found';
-                case 'OrderNotActive':
-                    return 'Order is not in Active state';
                 case 'DeadlineExpired':
                     return 'Commitment deadline has expired';
                 case 'InvalidBuyerSignature':
                     return 'Invalid buyer signature on commitment';
                 case 'InvalidSellerSignature':
                     return 'Invalid seller signature on commitment';
-                case 'SelfDeal':
-                    return 'Buyer and seller cannot be the same address';
                 case 'ZeroPayment':
                     return 'Payment amount must be greater than zero';
                 case 'ProcessAlreadyExists':
                     return 'Process ID already exists';
+                case 'UnknownProcess':
+                    return 'Unknown process ID';
                 case 'CumulativeValueMismatch':
                     return 'Cumulative value does not match expected total';
                 case 'NotProcessBuyer':
                     return 'Only the process buyer can resolve';
                 case 'CurrencyMismatch':
                     return 'Currency does not match the process';
-                case 'DuplicateCommitment':
-                    return 'This commitment has already been submitted';
-                case 'UnknownProcess':
-                    return 'Unknown process ID';
-                case 'ProcessTooLarge':
-                    return 'Process has reached maximum active orders';
+                case 'OrderNotCommitted':
+                    return 'Order has not been committed';
                 case 'NoActiveOrders':
-                    return 'No active orders found in this process';
+                    return 'No active orders in this process';
                 case 'IncompleteOrderList':
                     return 'Resolution requires the complete list of active order IDs';
-                case 'NoBond':
-                    return 'No bond locked for this order';
-                case 'BondsNotLocked':
-                    return 'Both bonds must be locked before resolution';
-                case 'InsufficientAvailable':
-                    return 'Insufficient available balance to withdraw';
-                case 'InsufficientFees':
-                    return 'Insufficient accrued fees';
-                case 'FeeOutOfRange':
-                    return 'Fee rate is outside the allowed range';
+                case 'DuplicateCommitment':
+                    return 'This commitment has already been submitted';
                 case 'FeeOnTransferDetected':
                     return 'Fee-on-transfer tokens are not supported';
-                case 'InvalidPermitTarget':
-                    return 'Permit target address does not match the token';
-                case 'PermitCallFailed':
-                    return 'Token permit call failed — check signature or expiry';
-                case 'PreAcceptHookRejected':
-                    return 'Pre-accept condition not yet satisfied';
-                case 'InvalidMaxProcessSize':
-                    return 'Invalid maximum process size';
-                case 'CannotSetSelfAsRouter':
-                    return 'Cannot set the contract itself as a permit router';
-                case 'TooManyUiParents':
-                case 'InvalidUiParent':
-                case 'UiParentProcessMismatch':
-                case 'DuplicateUiParent':
-                    return 'Invalid UI parent configuration';
+                case 'InvalidRootCumulativeValue':
+                    return 'Root order cumulative value must equal its payment';
+                case 'ProcessAlreadyResolved':
+                    return 'Process has already been resolved';
                 default:
                     return errorName || revertError.shortMessage || 'Transaction reverted';
             }
