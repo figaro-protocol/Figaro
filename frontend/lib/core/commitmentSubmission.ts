@@ -67,7 +67,10 @@ export async function submitPreparedCommitment({
         );
 
         if (!isE2EMock && waitForCommitReceipt && hash && publicClient) {
-            await publicClient.waitForTransactionReceipt({ hash });
+            const receipt = await publicClient.waitForTransactionReceipt({ hash });
+            if (receipt.status !== "success") {
+                throw new Error(`Commitment transaction reverted on-chain (tx ${hash}).`);
+            }
         }
 
         return { mode: "broadcast", hash };

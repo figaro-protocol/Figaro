@@ -22,7 +22,10 @@ export async function submitPermitTransaction({
     });
 
     if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== "success") {
+            throw new Error(`Permit transaction reverted on-chain (tx ${hash}).`);
+        }
     }
 
     return hash;
