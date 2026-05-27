@@ -135,7 +135,11 @@ const TOUCAN_OFFSET_HELPER_ADDRESS: Address = "0x7cB7C0484d4F2324F51d81E2368823c
 const TOUCAN_OFFSET_HELPER_ABI = parseAbi([
     "function calculateNeededTokenAmount(address _fromToken, address _poolToken, uint256 _toAmount) view returns (uint256 amountIn)",
     "function autoOffsetExactOutToken(address _fromToken, address _poolToken, uint256 _amountToOffset) returns (address[] tco2s, uint256[] amounts)",
-    "event Redeemed(address indexed sender, address indexed poolToken, address[] tco2s, uint256[] amounts)",
+    // No `indexed` annotation: verified against live Polygon emission by
+    // test/PolygonOffsetForkTest.t.sol — `sender` and `poolToken` are in
+    // event data, not topics. Any consumer that topic-filters on these
+    // fields would silently miss every event.
+    "event Redeemed(address sender, address poolToken, address[] tco2s, uint256[] amounts)",
 ] as const);
 
 const toucanPolygonAdapter: AggregatorAdapter = {
