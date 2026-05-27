@@ -228,6 +228,42 @@ family carries its own anchor and never nests inside another — see CLAUDE.md
 (Layer C above): new meaning is a new `schemaId`, never a mutation of an old
 one.
 
+## Composition and decomposition — when to merge or split schemas
+
+Two failure modes appear at the boundary between schemas. Each has a
+canonical fix and a precedent in the repo's history.
+
+**Merge when two schemas duplicate one concept.** If two schemas occupy the
+same conceptual space and the only difference is which single enum field they
+expose, they are not independent — they are a degenerate parameterisation of
+one concept. Replace with one schema whose orthogonal fields make the
+parameterisation explicit. Precedent: `figaro-handoff-v1` was merged into
+`figaro-fulfilment-v2` (commit `d4eda40`, 2026-05-11). Both schemas described
+"how the order moves between parties"; both used a single enum to express
+modality. The merge produced a single schema with three orthogonal fields
+(`modalities`, `coordinations`, `handoffPoints`) — each a multi-valued enum
+where the cross-product is the actual decision space. Same conceptual
+coverage, one schema, no duplicate validation surface.
+
+**Split when one schema conflates two cryptographic categories.** A schema is
+either Category-2 (committed at agreement signing, fixed for the order's life)
+or Category-1 (attested at runtime, supplied by a per-event witness). One
+schema cannot be both. If a single schema tries to carry both the
+agreement-time policy AND the runtime proof, split it into a sister-schema
+pair. Precedent: `figaro-proximity-v1` was split into `figaro-proximity-policy-v1`
+(Category-2, committed band) + `figaro-proximity-proof-v1` (Category-1,
+runtime witness) in commit `cc7a394` (2026-04-26), mirroring the existing
+GHG-disclosure / GHG-measurement sister-schema pattern. The split aligns each
+schema with one cryptographic category, lets each evolve independently, and
+preserves the binding via the policy clause's reference to its proof.
+
+**The diagnostic.** Before adding a schema, ask: (a) does an existing schema
+already cover this concept with a different enum value? If yes, extend the
+existing schema's fields, do not add a new one. (b) Does the proposed schema
+mix committed and runtime content? If yes, split into the sister-schema pair
+before registering. Both checks are cheap to do at design time and expensive
+to undo once `schemaId` is bound on chain.
+
 ## Adding a new schema — checklist
 
 1. JSON spec in `sdk/src/schemas/examples/<schema>.json`.
