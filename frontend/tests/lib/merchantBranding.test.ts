@@ -8,7 +8,7 @@ import {
     clearBrandingCache,
     resolveMerchantBrandingFromOperatorProfile,
 } from '@/lib/shared/merchantBranding';
-import { OPERATOR_PROFILE_METADATA_EXAMPLE } from '@/lib/shared/operatorProfileMetadata';
+import { OPERATOR_PROFILE_METADATA_EXAMPLE } from './__fixtures__/operatorMetadata';
 
 describe('merchantBranding', () => {
     describe('resolveContentURI', () => {

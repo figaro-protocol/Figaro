@@ -334,40 +334,6 @@ export function tryParseOperatorProfileDocument(
     }
 }
 
-// ── Example ────────────────────────────────────────────────────────────────
-
-/** Synthetic example profile — used by docs/tests as a valid
- *  `OperatorProfileMetadata` instance. The wallet address is
- *  deliberately not in the standard Anvil account series so it can't
- *  collide with a developer's test wallet. */
-export const OPERATOR_PROFILE_METADATA_EXAMPLE: OperatorProfileMetadata = {
-    subjectAddress: "0xeXAMPLeeXAMPLeeXAMPLeeXAMPLeeXAMPLe0001" as `0x${string}`,
-    name: "Example Merchant",
-    description: "Synthetic operator profile used as a documentation example.",
-    specialty: "Example specialty",
-    location: {
-        geohash: "dr5reg",
-        addressText: "Example City, Example State",
-    },
-    branding: {
-        displayName: "Example Merchant",
-        logoURI: "ipfs://example/logo.png",
-        heroImageURI: "ipfs://example/hero.png",
-        accentColor: "#1f6feb",
-        themeClass: "merchant-example",
-    },
-    assets: {
-        cssURI: "ipfs://example/theme.css",
-        imageBaseURI: "ipfs://example/assets/",
-    },
-    acceptedTokens: [
-        { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", symbol: "USDC", name: "USD Coin" },
-    ],
-    defaultTokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    catalogueURI: "ipfs://example/catalogue.json",
-    version: "1.0.0",
-};
-
 // ── Convenience projections (used by call-sites that need a subset) ───────────
 
 export interface AgentServiceInfo {

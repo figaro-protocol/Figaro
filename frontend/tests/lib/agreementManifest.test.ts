@@ -329,7 +329,7 @@ describe("manifestFieldsToGeoSection", () => {
 describe("operatorCatalogueMetadata example", () => {
     it("example item carries schemaAttestations", async () => {
         const { SELLER_CATALOGUE_METADATA_EXAMPLE } = await import(
-            "@/lib/shared/operatorCatalogueMetadata"
+            "./__fixtures__/operatorMetadata"
         );
         const pizza = SELLER_CATALOGUE_METADATA_EXAMPLE.menu.find((i) => i.id === "pizza1");
         expect(pizza?.schemaAttestations).toBeDefined();

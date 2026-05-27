@@ -238,34 +238,4 @@ export interface OperatorCatalogueMetadata {
     unitSystem?: UnitSystem;
 }
 
-export const SELLER_CATALOGUE_METADATA_EXAMPLE: OperatorCatalogueMetadata = {
-    subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    menu: [
-        {
-            id: "pizza1",
-            name: "Margherita Pizza",
-            description: "Classic tomato, mozzarella, and basil",
-            price: "0.01",
-            category: "Pizza",
-            image: "ipfs://example/margherita.png",
-            available: true,
-            schemaAttestations: {
-                "figaro-allergen-v1": {
-                    allergenFree: ["gluten-free-crust-option"],
-                    contains: ["dairy", "gluten"],
-                },
-            },
-        },
-        {
-            id: "drink1",
-            name: "Soft Drink",
-            description: "Cola, Sprite, or Fanta",
-            price: "0.002",
-            category: "Drinks",
-            image: "ipfs://example/drink.png",
-            available: true,
-        },
-    ],
-    version: "1.0.0",
-};
 
