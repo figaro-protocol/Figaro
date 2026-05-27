@@ -12,13 +12,14 @@
             "name": "klerosCourt",
             "type": "enum",
             "values": [
+                "none",
                 "general",
                 "blockchain-nontechnical",
                 "blockchain-technical",
                 "english-language"
             ],
             "required": true,
-            "description": "Kleros subcourt. general = catch-all; blockchain-nontechnical / blockchain-technical = on-chain-agreement disputes; english-language = disputes hinging on English-language interpretation."
+            "description": "Kleros subcourt. none = sentinel (index 0; not a valid selection — authors must pick a real court); general = catch-all; blockchain-nontechnical / blockchain-technical = on-chain-agreement disputes; english-language = disputes hinging on English-language interpretation. Position-as-index: the generic encoder maps each value to its 0-based position; the leading `none` preserves the 1-based-sentinel semantics other Layer-C validators historically relied on."
         },
         {
             "name": "klerosMinJurors",
