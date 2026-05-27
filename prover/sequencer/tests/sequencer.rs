@@ -192,8 +192,9 @@ async fn mempool_accepts_register_schema() {
     let key = make_signing_key(BUYER_KEY);
     let schema_id = keccak256(b"test-schema-v1");
     let uri_hash = keccak256(b"ipfs://Qm...");
+    let family = keccak256(b"test-family");
 
-    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash);
+    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&key, &digest);
 
@@ -201,6 +202,7 @@ async fn mempool_accepts_register_schema() {
         schema_id,
         version: 1,
         uri_hash,
+        family,
         registrar_sig: sig,
     };
 
@@ -774,7 +776,8 @@ async fn e2e_two_sequential_batches() {
     let key = make_signing_key(BUYER_KEY);
     let schema_id = keccak256(b"test-schema");
     let uri_hash = keccak256(b"ipfs://test");
-    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash);
+    let family = keccak256(b"test-family");
+    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&key, &digest);
 
@@ -782,6 +785,7 @@ async fn e2e_two_sequential_batches() {
         schema_id,
         version: 1,
         uri_hash,
+        family,
         registrar_sig: sig,
     };
     pool.submit(schema_op).await.unwrap();

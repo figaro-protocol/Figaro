@@ -63,6 +63,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         bytes32 schemaId;
         uint64 version;
         bytes32 uriHash;
+        bytes32 family;
         address registrar;
     }
 
@@ -112,7 +113,9 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     );
 
     /// @dev WARNING: This event shares its topic hash with SchemaRegistry.SchemaRegistered. Indexers MUST filter by contract address.
-    event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, address indexed registrar);
+    event SchemaRegistered(
+        bytes32 indexed schemaId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar
+    );
 
     /// @dev WARNING: This event shares its topic hash with SchemaRegistry.MechanismSchemaSet. Indexers MUST filter by contract address.
     event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId);
@@ -286,7 +289,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         return keccak256(packed);
     }
 
-    /// @dev Schemas: schemaId(32) + version(8) + uriHash(32) + registrar(20) = 92 bytes each.
+    /// @dev Schemas: schemaId(32) + version(8) + uriHash(32) + family(32) + registrar(20) = 124 bytes each.
     ///      Mechanisms: mechanism(20) + schemaId(32) = 52 bytes each.
     ///      Combined into one hash matching the Rust `compute_schema_events_hash`.
     function _hashSchemas(SchemaData[] calldata schemas, MechanismSchemaData[] calldata mechanisms)
@@ -296,12 +299,13 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     {
         uint256 sLen = schemas.length;
         uint256 mLen = mechanisms.length;
-        bytes memory packed = new bytes(sLen * 92 + mLen * 52);
+        bytes memory packed = new bytes(sLen * 124 + mLen * 52);
         uint256 offset;
         for (uint256 i = 0; i < sLen; i++) {
             bytes32 schemaId = schemas[i].schemaId;
             uint64 version = schemas[i].version;
             bytes32 uriHash = schemas[i].uriHash;
+            bytes32 family = schemas[i].family;
             address registrar = schemas[i].registrar;
             assembly {
                 let dst := add(add(packed, 32), offset)
@@ -309,9 +313,10 @@ contract FigaroBatchVerifier is ReentrancyGuard {
                 // version is uint64 = 8 bytes, big-endian at offset 32
                 mstore(add(dst, 32), shl(192, version))
                 mstore(add(dst, 40), uriHash)
-                mstore(add(dst, 72), shl(96, registrar))
+                mstore(add(dst, 72), family)
+                mstore(add(dst, 104), shl(96, registrar))
             }
-            offset += 92;
+            offset += 124;
         }
         for (uint256 i = 0; i < mLen; i++) {
             address mechanism = mechanisms[i].mechanism;
@@ -412,7 +417,9 @@ contract FigaroBatchVerifier is ReentrancyGuard {
 
     function _emitSchemas(SchemaData[] calldata schemas, MechanismSchemaData[] calldata mechanisms) internal {
         for (uint256 i = 0; i < schemas.length; i++) {
-            emit SchemaRegistered(schemas[i].schemaId, schemas[i].version, schemas[i].uriHash, schemas[i].registrar);
+            emit SchemaRegistered(
+                schemas[i].schemaId, schemas[i].version, schemas[i].uriHash, schemas[i].family, schemas[i].registrar
+            );
         }
         for (uint256 i = 0; i < mechanisms.length; i++) {
             emit MechanismSchemaSet(mechanisms[i].mechanism, mechanisms[i].schemaId);

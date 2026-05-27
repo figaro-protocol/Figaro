@@ -564,6 +564,7 @@ fn apply_register_schema(
     schema_id: &B256,
     version: u64,
     uri_hash: &B256,
+    family: &B256,
     registrar_sig: &Signature,
     events: &mut Vec<SchemaEventData>,
 ) -> Result<(), KernelError> {
@@ -573,7 +574,7 @@ fn apply_register_schema(
     }
 
     // ── Recover registrar address ──
-    let struct_hash = register_schema_struct_hash(schema_id, version, uri_hash);
+    let struct_hash = register_schema_struct_hash(schema_id, version, uri_hash, family);
     let digest = typed_data_hash(domain, &struct_hash);
     let registrar = recover_signer(&digest, registrar_sig)?;
 
@@ -583,6 +584,7 @@ fn apply_register_schema(
         schema_id: *schema_id,
         version,
         uri_hash: *uri_hash,
+        family: *family,
         registrar,
     });
 
@@ -708,6 +710,8 @@ pub fn compute_attestation_events_hash(events: &[AttestationEventData]) -> B256 
 }
 
 /// Deterministic hash of schema events for inclusion in public values.
+/// Per-schema record (matches Solidity `_hashSchemas`):
+///   schemaId(32) + version(8) + uriHash(32) + family(32) + registrar(20) = 124 bytes
 pub fn compute_schema_events_hash(
     schemas: &[SchemaEventData],
     mechanisms: &[MechanismSchemaEventData],
@@ -717,6 +721,7 @@ pub fn compute_schema_events_hash(
         data.extend_from_slice(e.schema_id.as_slice());
         data.extend_from_slice(&e.version.to_be_bytes());
         data.extend_from_slice(e.uri_hash.as_slice());
+        data.extend_from_slice(e.family.as_slice());
         data.extend_from_slice(e.registrar.as_slice());
     }
     for e in mechanisms {
@@ -862,6 +867,7 @@ fn apply_batch_inner(
                 schema_id,
                 version,
                 uri_hash,
+                family,
                 registrar_sig,
             } => {
                 apply_register_schema(
@@ -870,6 +876,7 @@ fn apply_batch_inner(
                     schema_id,
                     *version,
                     uri_hash,
+                    family,
                     registrar_sig,
                     &mut schema_events,
                 )?;

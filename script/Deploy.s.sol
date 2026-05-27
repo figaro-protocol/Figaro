@@ -96,38 +96,92 @@ contract Deploy is Script {
         SchemaRegistry schemas = new SchemaRegistry();
         console.log("SchemaRegistry deployed at:", address(schemas));
 
-        // Register reference schemas (18 figaro-* schemas: 17 runtime-attestable + figaro-topology-v1 manifest-only)
-        schemas.registerSchema(keccak256("figaro-topology-v1"), 1, keccak256("ipfs://figaro-topology/v1"));
-        schemas.registerSchema(keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"));
-        schemas.registerSchema(keccak256("figaro-geo-v2"), 1, keccak256("ipfs://figaro-geo/v2"));
-        schemas.registerSchema(keccak256("figaro-fulfilment-v2"), 1, keccak256("ipfs://figaro-fulfilment/v2"));
-        schemas.registerSchema(keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"));
-        schemas.registerSchema(keccak256("figaro-ghg-iso-14064-v1"), 1, keccak256("ipfs://figaro-ghg-iso-14064/v1"));
-        schemas.registerSchema(keccak256("figaro-ghg-pas-2050-v1"), 1, keccak256("ipfs://figaro-ghg-pas-2050/v1"));
-        schemas.registerSchema(keccak256("figaro-ghg-en-16258-v1"), 1, keccak256("ipfs://figaro-ghg-en-16258/v1"));
-        schemas.registerSchema(keccak256("figaro-ghg-custom-v1"), 1, keccak256("ipfs://figaro-ghg-custom/v1"));
-        schemas.registerSchema(keccak256("figaro-ghg-measurement-v1"), 1, keccak256("ipfs://figaro-ghg-measurement/v1"));
+        // Register reference schemas (18 figaro-* schemas: 17 runtime-attestable + figaro-topology-v1 manifest-only).
+        // The 4th argument is the family — keccak256 of the primary category from each schema's
+        // Layer-A spec (categories[0] in frontend/lib/shared/schemas/*.json). The RPGF SP1 program
+        // reads `family` (not `schemaId`) to decide Tier-1 weighting — see prover/rpgf/src/formula.rs.
+        // Tier-1 families are {keccak256("geo"), keccak256("fulfilment")}; new schemas registering
+        // under those families inherit the Tier-1 boost without redeploying the FIG system.
         schemas.registerSchema(
-            keccak256("figaro-proximity-policy-v1"), 1, keccak256("ipfs://figaro-proximity-policy/v1")
+            keccak256("figaro-topology-v1"), 1, keccak256("ipfs://figaro-topology/v1"), keccak256("topology")
         );
         schemas.registerSchema(
-            keccak256("figaro-proximity-proof-v1"), 1, keccak256("ipfs://figaro-proximity-proof/v1")
+            keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"), keccak256("commerce")
         );
         schemas.registerSchema(
-            keccak256("figaro-merchant-process-v1"), 1, keccak256("ipfs://figaro-merchant-process/v1")
+            keccak256("figaro-geo-v2"), 1, keccak256("ipfs://figaro-geo/v2"), keccak256("geo")
         );
         schemas.registerSchema(
-            keccak256("figaro-courier-process-v1"), 1, keccak256("ipfs://figaro-courier-process/v1")
+            keccak256("figaro-fulfilment-v2"), 1, keccak256("ipfs://figaro-fulfilment/v2"), keccak256("fulfilment")
         );
         schemas.registerSchema(
-            keccak256("figaro-arbitration-kleros-v1"), 1, keccak256("ipfs://figaro-arbitration-kleros/v1")
+            keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"), keccak256("emissions")
         );
         schemas.registerSchema(
-            keccak256("figaro-applicable-law-v1"), 1, keccak256("ipfs://figaro-applicable-law/v1")
+            keccak256("figaro-ghg-iso-14064-v1"),
+            1,
+            keccak256("ipfs://figaro-ghg-iso-14064/v1"),
+            keccak256("emissions")
         );
-        schemas.registerSchema(keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"));
         schemas.registerSchema(
-            keccak256("figaro-offset-policy-v1"), 1, keccak256("ipfs://figaro-offset-policy/v1")
+            keccak256("figaro-ghg-pas-2050-v1"), 1, keccak256("ipfs://figaro-ghg-pas-2050/v1"), keccak256("emissions")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-ghg-en-16258-v1"), 1, keccak256("ipfs://figaro-ghg-en-16258/v1"), keccak256("emissions")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-ghg-custom-v1"), 1, keccak256("ipfs://figaro-ghg-custom/v1"), keccak256("emissions")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-ghg-measurement-v1"),
+            1,
+            keccak256("ipfs://figaro-ghg-measurement/v1"),
+            keccak256("emissions")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-proximity-policy-v1"),
+            1,
+            keccak256("ipfs://figaro-proximity-policy/v1"),
+            keccak256("proximity")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-proximity-proof-v1"),
+            1,
+            keccak256("ipfs://figaro-proximity-proof/v1"),
+            keccak256("proximity")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-merchant-process-v1"),
+            1,
+            keccak256("ipfs://figaro-merchant-process/v1"),
+            keccak256("operator-process")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-courier-process-v1"),
+            1,
+            keccak256("ipfs://figaro-courier-process/v1"),
+            keccak256("operator-process")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-arbitration-kleros-v1"),
+            1,
+            keccak256("ipfs://figaro-arbitration-kleros/v1"),
+            keccak256("arbitration")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-applicable-law-v1"),
+            1,
+            keccak256("ipfs://figaro-applicable-law/v1"),
+            keccak256("jurisdiction")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"), keccak256("consent")
+        );
+        schemas.registerSchema(
+            keccak256("figaro-offset-policy-v1"),
+            1,
+            keccak256("ipfs://figaro-offset-policy/v1"),
+            keccak256("emissions")
         );
         console.log("Registered 18 reference schemas");
 

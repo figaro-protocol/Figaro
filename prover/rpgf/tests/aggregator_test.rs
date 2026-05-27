@@ -7,6 +7,20 @@ fn schema_id(s: &[u8]) -> B256 {
     B256::from_slice(&Keccak256::digest(s))
 }
 
+fn family_for(schema: &[u8]) -> B256 {
+    // Mirror script/Deploy.s.sol family assignments for the schemas
+    // referenced in these tests.
+    let slug: &[u8] = match schema {
+        b"figaro-commerce-v1" => b"commerce",
+        b"figaro-geo-v2" => b"geo",
+        b"figaro-fulfilment-v2" => b"fulfilment",
+        b"figaro-courier-process-v1" => b"operator-process",
+        b"figaro-topology-v1" => b"topology",
+        _ => b"test-family",
+    };
+    B256::from_slice(&Keccak256::digest(slug))
+}
+
 fn snap(
     schema: &[u8],
     author: Address,
@@ -17,6 +31,7 @@ fn snap(
     SchemaSnapshot {
         schema_id: schema_id(schema),
         schema_author: author,
+        family: family_for(schema),
         resolved_attestation_count: processes * 2,
         distinct_processes: processes,
         distinct_attestation_stages: 1,

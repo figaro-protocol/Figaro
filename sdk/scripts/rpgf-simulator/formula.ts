@@ -12,9 +12,12 @@ import { TRANCHE_BUDGETS_FIG } from "./types.js";
 // ─── Tier-1 graph weighting ──────────────────────────────────────────
 // Deploy-frozen weights expressing the protocol's prior about which
 // public graphs are load-bearing for the substrate. Two dimensions:
-//   1. Category — schemas in {fulfilment, geo} carry the tier-1
-//      category boost. topology participates via the chain-depth signal,
-//      not as a category (it has no runtime attestations of its own).
+//   1. Family — schemas whose family is in {fulfilment, geo} carry the
+//      tier-1 category boost. The *set of Tier-1 families* is deploy-
+//      frozen; the *set of schemas inside each family* grows
+//      permissionlessly via SchemaRegistry.registerSchema(..., family).
+//      topology participates via the chain-depth signal, not as a
+//      family (it has no runtime attestations of its own).
 //   2. Topology — every schema's attestations are embedded in orders
 //      with a chain position. Schemas attested in multi-party (deeper)
 //      orders contribute more to the topology graph.
@@ -27,9 +30,9 @@ import { TRANCHE_BUDGETS_FIG } from "./types.js";
 // quanta. Value-weighting would import a TradFi-style "TVL matters"
 // metric and create Goodhart pressure to inflate transaction values.
 
-const TIER1_CATEGORY_SCHEMAS: ReadonlySet<string> = new Set([
-  "figaro-fulfilment-v2",
-  "figaro-geo-v2",
+const TIER1_FAMILIES: ReadonlySet<string> = new Set([
+  "fulfilment",
+  "geo",
 ]);
 
 const CATEGORY_WEIGHT_TIER1 = 3.0;
@@ -45,7 +48,7 @@ export interface WeightBreakdown {
 }
 
 export function tier1Weight(s: SchemaSnapshot): WeightBreakdown {
-  const wCategory = TIER1_CATEGORY_SCHEMAS.has(s.schemaId)
+  const wCategory = TIER1_FAMILIES.has(s.family)
     ? CATEGORY_WEIGHT_TIER1
     : CATEGORY_WEIGHT_DEFAULT;
 

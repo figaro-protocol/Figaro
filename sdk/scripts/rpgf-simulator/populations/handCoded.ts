@@ -5,6 +5,34 @@ import type {
   SchemaSnapshot,
 } from "../types.js";
 
+// Mirrors script/Deploy.s.sol family assignments (primary category of
+// each schema's Layer-A spec). Hypothetical schemas pick a default that
+// keeps them out of the Tier-1 boost.
+const FAMILY_BY_SCHEMA: Readonly<Record<string, string>> = {
+  "figaro-commerce-v1": "commerce",
+  "figaro-consent-v1": "consent",
+  "figaro-geo-v2": "geo",
+  "figaro-fulfilment-v2": "fulfilment",
+  "figaro-ghg-protocol-v1": "emissions",
+  "figaro-ghg-iso-14064-v1": "emissions",
+  "figaro-ghg-pas-2050-v1": "emissions",
+  "figaro-ghg-en-16258-v1": "emissions",
+  "figaro-ghg-custom-v1": "emissions",
+  "figaro-ghg-measurement-v1": "emissions",
+  "figaro-offset-policy-v1": "emissions",
+  "figaro-proximity-policy-v1": "proximity",
+  "figaro-proximity-proof-v1": "proximity",
+  "figaro-merchant-process-v1": "operator-process",
+  "figaro-courier-process-v1": "operator-process",
+  "figaro-arbitration-kleros-v1": "arbitration",
+  "figaro-applicable-law-v1": "jurisdiction",
+  "figaro-topology-v1": "topology",
+};
+
+function familyFor(schemaId: string): string {
+  return FAMILY_BY_SCHEMA[schemaId] ?? "unknown";
+}
+
 interface SnapInputs {
   schemaId: string;
   category: SchemaCategory;
@@ -20,6 +48,7 @@ interface SnapInputs {
 function snap(inp: SnapInputs): SchemaSnapshot {
   return {
     schemaId: inp.schemaId,
+    family: familyFor(inp.schemaId),
     category: inp.category,
     resolvedAttestationCount: Math.round(inp.orderCount * inp.attsPerOrder),
     distinctProcesses: Math.max(1, Math.round(inp.orderCount * 0.85)),
@@ -35,6 +64,7 @@ function snap(inp: SnapInputs): SchemaSnapshot {
 function zero(schemaId: string, category: SchemaCategory): SchemaSnapshot {
   return {
     schemaId,
+    family: familyFor(schemaId),
     category,
     resolvedAttestationCount: 0,
     distinctProcesses: 0,

@@ -56,6 +56,7 @@ function pickCategory(rng: () => number, w: RandomFillerOptions["categoryWeights
 function zeroSnap(schemaId: string): SchemaSnapshot {
   return {
     schemaId,
+    family: "unknown",
     category: "committed-policy",
     resolvedAttestationCount: 0,
     distinctProcesses: 0,
@@ -110,6 +111,7 @@ function generate(options: RandomFillerOptions): Archetype[] {
       const distinctBuyerSellerPairs = Math.min(orderCount, Math.max(1, Math.round(distinctBuyers * sellerDiversity)));
       return {
         schemaId,
+        family: "random",
         category: cat,
         resolvedAttestationCount: attestationCount,
         distinctProcesses,

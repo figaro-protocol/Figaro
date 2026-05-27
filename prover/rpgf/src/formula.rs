@@ -19,13 +19,17 @@ const CATEGORY_WEIGHT_DEFAULT: f64 = 1.0;
 const TOPOLOGY_WEIGHT_MIN: f64 = 1.0;
 const TOPOLOGY_WEIGHT_MAX: f64 = 3.0;
 
-/// Tier-1 category schemas. Hard-coded at deploy. Reversible only by a
-/// new FIG-system deployment (since the minter is sealed via
-/// `FigToken.renounceDeployerMint`).
-fn is_tier1_category(schema_id: &B256) -> bool {
-    let fulfilment_v2 = keccak256_str(b"figaro-fulfilment-v2");
-    let geo_v2 = keccak256_str(b"figaro-geo-v2");
-    *schema_id == fulfilment_v2 || *schema_id == geo_v2
+/// Tier-1 families. Hard-coded at deploy. Reversible only by a new FIG-
+/// system deployment (since the minter is sealed via
+/// `FigToken.renounceDeployerMint`). The *set of Tier-1 families* is
+/// deploy-frozen; the *set of schemas inside each family* grows
+/// permissionlessly — any third-party schema registered with
+/// `family = keccak256("geo")` or `keccak256("fulfilment")` inherits the
+/// Tier-1 weight at the next tranche without touching the kernel.
+fn is_tier1_family(family: &B256) -> bool {
+    let fulfilment = keccak256_str(b"fulfilment");
+    let geo = keccak256_str(b"geo");
+    *family == fulfilment || *family == geo
 }
 
 fn keccak256_str(s: &[u8]) -> B256 {
@@ -41,7 +45,7 @@ pub struct WeightBreakdown {
 }
 
 pub fn tier1_weight(s: &SchemaSnapshot) -> WeightBreakdown {
-    let w_category = if is_tier1_category(&s.schema_id) {
+    let w_category = if is_tier1_family(&s.family) {
         CATEGORY_WEIGHT_TIER1
     } else {
         CATEGORY_WEIGHT_DEFAULT

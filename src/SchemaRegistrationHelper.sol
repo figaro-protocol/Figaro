@@ -62,17 +62,25 @@ contract SchemaRegistrationHelper {
     /// @param schemaId  keccak256 of the human-readable schema name.
     /// @param version   Schema version number (passed through to SchemaRegistry).
     /// @param uriHash   keccak256 of the off-chain spec URI.
+    /// @param family    keccak256 of the family slug (passed through to SchemaRegistry).
     /// @param validator Address of the deployed `ISchemaValidator` contract for `schemaId`.
     /// @dev Reverts on any of the underlying contract reverts:
     ///      - `SchemaRegistry.AlreadyRegistered(schemaId)` if schema is already registered
     ///      - `SchemaRegistry.ZeroUriHash()` if uriHash is zero
+    ///      - `SchemaRegistry.ZeroFamily()` if family is zero
     ///      - `AttestationCoordinator.ZeroValidator()` if validator is zero
     ///      - `AttestationCoordinator.ValidatorAlreadySet(schemaId)` if a binding already exists
     ///      - `AttestationCoordinator.InvalidValidatorBinding(schemaId, ...)` on schemaId mismatch
     ///      Solidity transaction semantics guarantee atomicity: any revert in the
     ///      second call rolls back the first call (and vice versa).
-    function registerSchemaAndValidator(bytes32 schemaId, uint64 version, bytes32 uriHash, address validator) external {
-        schemaRegistry.registerSchema(schemaId, version, uriHash);
+    function registerSchemaAndValidator(
+        bytes32 schemaId,
+        uint64 version,
+        bytes32 uriHash,
+        bytes32 family,
+        address validator
+    ) external {
+        schemaRegistry.registerSchema(schemaId, version, uriHash, family);
         attestationCoordinator.setValidator(schemaId, validator);
     }
 }

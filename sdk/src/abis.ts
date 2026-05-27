@@ -131,9 +131,9 @@ export const EV_AUCTION_CLAIMED = parseAbiItem(
 
 export const SCHEMA_REGISTRY_ABI = parseAbi([
     "function registered(bytes32 schemaId) view returns (bool)",
-    "function registerSchema(bytes32 schemaId, uint64 version, bytes32 uriHash) external",
+    "function registerSchema(bytes32 schemaId, uint64 version, bytes32 uriHash, bytes32 family) external",
     "function setMechanismSchema(bytes32 schemaId) external",
-    "event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, address indexed registrar)",
+    "event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar)",
     "event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId)",
 ]);
 
@@ -147,14 +147,14 @@ export const SCHEMA_REGISTRY_ABI = parseAbi([
 export const SCHEMA_REGISTRATION_HELPER_ABI = parseAbi([
     "function schemaRegistry() view returns (address)",
     "function attestationCoordinator() view returns (address)",
-    "function registerSchemaAndValidator(bytes32 schemaId, uint64 version, bytes32 uriHash, address validator) external",
+    "function registerSchemaAndValidator(bytes32 schemaId, uint64 version, bytes32 uriHash, bytes32 family, address validator) external",
 ]);
 
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch settlement ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 schemaId, uint64 version, bytes32 uriHash, address registrar)[] schemas, (address mechanism, bytes32 schemaId)[] mechanismSchemas, (uint8 tag, address operator, string metadataURI)[] operatorEvents) events) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 schemaId, uint64 version, bytes32 uriHash, bytes32 family, address registrar)[] schemas, (address mechanism, bytes32 schemaId)[] mechanismSchemas, (uint8 tag, address operator, string metadataURI)[] operatorEvents) events) external",
 
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",
@@ -165,7 +165,7 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Events (protocol-compatible re-emissions + BatchSettled) ─────
     "event BatchSettled(uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount)",
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)",
-    "event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, address indexed registrar)",
+    "event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar)",
     "event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId)",
     "event OperatorRegistered(address indexed operator, string metadataURI)",
     "event OperatorProfileUpdated(address indexed operator, string metadataURI)",

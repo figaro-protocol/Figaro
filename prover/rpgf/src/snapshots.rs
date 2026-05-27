@@ -28,7 +28,7 @@ impl SchemaAccumulator {
         self.total_chain_position_weight += order.chain_position as u64;
     }
 
-    fn into_snapshot(self, schema_id: B256, schema_author: Address) -> SchemaSnapshot {
+    fn into_snapshot(self, schema_id: B256, schema_author: Address, family: B256) -> SchemaSnapshot {
         let attestation_count = self.attestation_count;
         let mean_chain_position_x1e6 = if attestation_count > 0 {
             (self.total_chain_position_weight.saturating_mul(1_000_000)) / attestation_count
@@ -38,6 +38,7 @@ impl SchemaAccumulator {
         SchemaSnapshot {
             schema_id,
             schema_author,
+            family,
             resolved_attestation_count: attestation_count,
             distinct_processes: self.processes.len() as u64,
             distinct_attestation_stages: self.stages.len() as u8,
@@ -99,6 +100,12 @@ pub fn build_tranche_input(
         .map(|s| (s.schema_id, s.registrar))
         .collect();
 
+    let schema_family: HashMap<B256, B256> = events
+        .schemas_registered
+        .iter()
+        .map(|s| (s.schema_id, s.family))
+        .collect();
+
     let mut per_schema: HashMap<B256, SchemaAccumulator> = HashMap::new();
 
     for att in &events.attestations {
@@ -116,7 +123,8 @@ pub fn build_tranche_input(
         .into_iter()
         .map(|(schema_id, acc)| {
             let author = schema_author.get(&schema_id).copied().unwrap_or(Address::ZERO);
-            acc.into_snapshot(schema_id, author)
+            let family = schema_family.get(&schema_id).copied().unwrap_or(B256::ZERO);
+            acc.into_snapshot(schema_id, author, family)
         })
         .collect();
 

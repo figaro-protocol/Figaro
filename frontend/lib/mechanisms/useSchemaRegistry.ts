@@ -36,6 +36,10 @@ export interface RegisteredSchemaEvent {
     schemaName: string | null;
     version: number;
     uriHash: `0x${string}`;
+    /** keccak256 of the family slug (e.g. keccak256("geo")). Permanently
+     *  bound to the schema at registration; consumed by the RPGF Tier-1
+     *  weighting in the SP1 program. */
+    family: `0x${string}`;
     registrar: `0x${string}`;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
@@ -77,6 +81,7 @@ function mapSchemaRegisteredLog(log: SchemaRegisteredLog): RegisteredSchemaEvent
         schemaId: `0x${string}`;
         version: bigint | number;
         uriHash: `0x${string}`;
+        family: `0x${string}`;
         registrar: `0x${string}`;
     }>;
     const schemaIdHash = (args.schemaId ?? "0x") as `0x${string}`;
@@ -85,6 +90,7 @@ function mapSchemaRegisteredLog(log: SchemaRegisteredLog): RegisteredSchemaEvent
         schemaName: resolveSchemaName(schemaIdHash),
         version: Number(args.version ?? 0),
         uriHash: (args.uriHash ?? "0x") as `0x${string}`,
+        family: (args.family ?? "0x") as `0x${string}`,
         registrar: (args.registrar ?? "0x") as `0x${string}`,
         blockNumber: log.blockNumber ?? 0n,
         transactionHash: (log.transactionHash ?? "0x") as `0x${string}`,

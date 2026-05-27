@@ -104,7 +104,13 @@ contract FigaroBatchVerifierTest is Test {
         for (uint256 i = 0; i < schemas.length; i++) {
             packed = bytes.concat(
                 packed,
-                abi.encodePacked(schemas[i].schemaId, schemas[i].version, schemas[i].uriHash, schemas[i].registrar)
+                abi.encodePacked(
+                    schemas[i].schemaId,
+                    schemas[i].version,
+                    schemas[i].uriHash,
+                    schemas[i].family,
+                    schemas[i].registrar
+                )
             );
         }
         for (uint256 i = 0; i < mechanisms.length; i++) {
@@ -511,7 +517,11 @@ contract FigaroBatchVerifierTest is Test {
 
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](1);
         sch[0] = FigaroBatchVerifier.SchemaData({
-            schemaId: bytes32(uint256(0x51)), version: 1, uriHash: bytes32(uint256(0xA1)), registrar: bob
+            schemaId: bytes32(uint256(0x51)),
+            version: 1,
+            uriHash: bytes32(uint256(0xA1)),
+            family: bytes32(uint256(0xF1)),
+            registrar: bob
         });
 
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](1);
@@ -528,8 +538,10 @@ contract FigaroBatchVerifierTest is Test {
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
         );
 
-        vm.expectEmit(true, true, false, true);
-        emit FigaroBatchVerifier.SchemaRegistered(bytes32(uint256(0x51)), 1, bytes32(uint256(0xA1)), bob);
+        vm.expectEmit(true, true, true, true);
+        emit FigaroBatchVerifier.SchemaRegistered(
+            bytes32(uint256(0x51)), 1, bytes32(uint256(0xA1)), bytes32(uint256(0xF1)), bob
+        );
 
         vm.expectEmit(true, true, false, true);
         emit FigaroBatchVerifier.MechanismSchemaSet(charlie, bytes32(uint256(0x51)));
@@ -739,7 +751,11 @@ contract FigaroBatchVerifierTest is Test {
         // Submit schema data but use empty hash
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](1);
         sch[0] = FigaroBatchVerifier.SchemaData({
-            schemaId: bytes32(uint256(0x51)), version: 1, uriHash: bytes32(uint256(0xA1)), registrar: bob
+            schemaId: bytes32(uint256(0x51)),
+            version: 1,
+            uriHash: bytes32(uint256(0xA1)),
+            family: bytes32(uint256(0xF1)),
+            registrar: bob
         });
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
         FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](0);

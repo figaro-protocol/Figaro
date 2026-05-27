@@ -9,11 +9,26 @@ fn schema_id(s: &[u8]) -> B256 {
     B256::from_slice(&Keccak256::digest(s))
 }
 
+fn family_for(schema: &[u8]) -> B256 {
+    // Mirror script/Deploy.s.sol family assignments for the schemas
+    // referenced in these tests. Open namespace — any keccak slug works
+    // on-chain; the test fixtures pick canonical ones.
+    let slug: &[u8] = match schema {
+        b"figaro-commerce-v1" => b"commerce",
+        b"figaro-geo-v2" => b"geo",
+        b"figaro-fulfilment-v2" => b"fulfilment",
+        b"hypothetical-wash-v1" => b"test-family",
+        _ => b"test-family",
+    };
+    B256::from_slice(&Keccak256::digest(slug))
+}
+
 fn schema_reg(schema: &[u8], registrar: Address) -> SchemaRegisteredEvent {
     SchemaRegisteredEvent {
         schema_id: schema_id(schema),
         version: 1,
         uri_hash: B256::ZERO,
+        family: family_for(schema),
         registrar,
     }
 }

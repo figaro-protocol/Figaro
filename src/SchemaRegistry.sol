@@ -21,6 +21,16 @@ pragma solidity 0.8.26;
 ///         Mechanism self-declaration: any contract can emit which schema
 ///         it uses. Frontends read these events to determine encoding.
 ///
+///         Family tag: each schema declares a `family` (bytes32, typically
+///         keccak256 of a category slug such as "geo" or "fulfilment").
+///         The family is the unit the RPGF substrate-broadening formula
+///         weights — Tier-1 family hashes are deploy-frozen in the SP1
+///         program (see `prover/rpgf/src/formula.rs`), so registering a
+///         new schema under an existing Tier-1 family confers the Tier-1
+///         weight without touching the kernel or formula. The on-chain
+///         namespace is open — anyone can mint a new family by passing
+///         a fresh hash; only `bytes32(0)` is rejected.
+///
 /// @dev V3 ManifestSchemaRegistry had: Ownable, Schema struct storage,
 ///      activate/deactivate state machine, getters, counter. All removed.
 ///      Only the dedup guard (has this schemaId been registered?) and
@@ -35,8 +45,14 @@ contract SchemaRegistry {
     /// @param schemaId   keccak256 of the human-readable schema name.
     /// @param version    Schema version number.
     /// @param uriHash    keccak256 of the off-chain spec URI (IPFS, etc.).
+    /// @param family     keccak256 of the family slug (e.g. "geo", "fulfilment").
+    ///                   Indexers + the RPGF SP1 program key Tier-1 weighting off
+    ///                   this; new schemas joining an existing Tier-1 family
+    ///                   inherit the weight without redeployment.
     /// @param registrar  Address that registered the schema.
-    event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, address indexed registrar);
+    event SchemaRegistered(
+        bytes32 indexed schemaId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar
+    );
 
     /// @notice Emitted when a mechanism declares which schema it uses.
     /// @param mechanism  The declaring contract address (msg.sender).
@@ -48,6 +64,7 @@ contract SchemaRegistry {
     error AlreadyRegistered(bytes32 schemaId);
     error NotRegistered(bytes32 schemaId);
     error ZeroUriHash();
+    error ZeroFamily();
 
     // ── Schema registration (permissionless) ────────────────────────
 
@@ -55,11 +72,15 @@ contract SchemaRegistry {
     /// @param schemaId  keccak256 of the human-readable schema name.
     /// @param version   Schema version number.
     /// @param uriHash   keccak256 of the off-chain spec URI.
-    function registerSchema(bytes32 schemaId, uint64 version, bytes32 uriHash) external {
+    /// @param family    keccak256 of the family slug (e.g. `keccak256("geo")`).
+    ///                  Permanently bound to the schema; consumed by the RPGF
+    ///                  Tier-1 weighting in `prover/rpgf/src/formula.rs`.
+    function registerSchema(bytes32 schemaId, uint64 version, bytes32 uriHash, bytes32 family) external {
         if (uriHash == bytes32(0)) revert ZeroUriHash();
+        if (family == bytes32(0)) revert ZeroFamily();
         if (registered[schemaId]) revert AlreadyRegistered(schemaId);
         registered[schemaId] = true;
-        emit SchemaRegistered(schemaId, version, uriHash, msg.sender);
+        emit SchemaRegistered(schemaId, version, uriHash, family, msg.sender);
     }
 
     // ── Mechanism self-declaration (permissionless) ─────────────────

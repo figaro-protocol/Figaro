@@ -25,6 +25,9 @@ fn canonical_snapshot(schema_byte: u8, author: Address) -> SchemaSnapshot {
     SchemaSnapshot {
         schema_id: schema_id_byte(schema_byte),
         schema_author: author,
+        // family is B256::ZERO so wCategory = 1.0 (zero is not a Tier-1
+        // family hash). All four schemas equally weighted.
+        family: B256::ZERO,
         resolved_attestation_count: 200,
         distinct_processes: 100,
         distinct_attestation_stages: 1,
@@ -32,8 +35,7 @@ fn canonical_snapshot(schema_byte: u8, author: Address) -> SchemaSnapshot {
         distinct_sellers: 50,
         distinct_buyer_seller_pairs: 50,
         total_chain_position_weight: 200,
-        // Mean chain pos 1.0 → wTopology = 1.0 (baseline). Schema IDs
-        // chosen so wCategory = 1.0 (not in tier-1 set). Weight = 1.0
+        // Mean chain pos 1.0 → wTopology = 1.0 (baseline). Weight = 1.0
         // overall — all four schemas equally weighted.
         mean_chain_position_x1e6: 1_000_000,
     }

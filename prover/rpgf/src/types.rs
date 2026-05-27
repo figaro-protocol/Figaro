@@ -15,6 +15,11 @@ pub struct SchemaSnapshot {
     pub schema_id: B256,
     /// First-write-wins binder from SchemaRegistry — receives the FIG.
     pub schema_author: Address,
+    /// Family tag from SchemaRegistry — the unit the Tier-1 boost reads.
+    /// `B256::ZERO` signals the registration event was missing from the
+    /// upstream decoder stream (same documented-incomplete signal as
+    /// `schema_author == Address::ZERO`).
+    pub family: B256,
 
     pub resolved_attestation_count: u64,
     pub distinct_processes: u64,

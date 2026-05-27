@@ -35,6 +35,7 @@ contract SchemaRegistrationHelperTest is Test {
 
     bytes32 constant TEST_SCHEMA = keccak256("test-schema-v1");
     bytes32 constant URI_HASH = keccak256("ipfs://test-schema/v1");
+    bytes32 constant TEST_FAMILY = keccak256("test-family");
 
     function setUp() public {
         core = new FigaroCore();
@@ -64,7 +65,7 @@ contract SchemaRegistrationHelperTest is Test {
 
     function test_happyPath_registersAndBinds() public {
         MockValidator validator = new MockValidator(TEST_SCHEMA);
-        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(validator));
+        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(validator));
 
         assertTrue(registry.registered(TEST_SCHEMA));
         assertEq(coordinator.schemaValidator(TEST_SCHEMA), address(validator));
@@ -73,12 +74,12 @@ contract SchemaRegistrationHelperTest is Test {
     function test_emitsBothEvents() public {
         MockValidator validator = new MockValidator(TEST_SCHEMA);
 
-        vm.expectEmit(true, true, false, true, address(registry));
-        emit SchemaRegistry.SchemaRegistered(TEST_SCHEMA, 1, URI_HASH, address(helper));
+        vm.expectEmit(true, true, true, true, address(registry));
+        emit SchemaRegistry.SchemaRegistered(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(helper));
         vm.expectEmit(true, true, false, false, address(coordinator));
         emit AttestationCoordinator.ValidatorSet(TEST_SCHEMA, address(validator));
 
-        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(validator));
+        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(validator));
     }
 
     function test_registrarRecordedAsHelperAddress() public {
@@ -88,13 +89,14 @@ contract SchemaRegistrationHelperTest is Test {
         MockValidator validator = new MockValidator(TEST_SCHEMA);
 
         vm.recordLogs();
-        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(validator));
+        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(validator));
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
-        bytes32 topic = keccak256("SchemaRegistered(bytes32,uint64,bytes32,address)");
+        bytes32 topic = keccak256("SchemaRegistered(bytes32,uint64,bytes32,bytes32,address)");
         for (uint256 i = 0; i < logs.length; i++) {
-            if (logs[i].topics.length == 3 && logs[i].topics[0] == topic) {
-                address registrar = address(uint160(uint256(logs[i].topics[2])));
+            // Indexed: schemaId, family, registrar → 3 indexed + topic0 = 4 topics.
+            if (logs[i].topics.length == 4 && logs[i].topics[0] == topic) {
+                address registrar = address(uint160(uint256(logs[i].topics[3])));
                 assertEq(registrar, address(helper), "registrar should be helper");
                 return;
             }
@@ -106,22 +108,28 @@ contract SchemaRegistrationHelperTest is Test {
 
     function test_revertsIfSchemaAlreadyRegistered() public {
         // Pre-register the schema directly via SchemaRegistry.
-        registry.registerSchema(TEST_SCHEMA, 1, URI_HASH);
+        registry.registerSchema(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY);
         MockValidator validator = new MockValidator(TEST_SCHEMA);
 
         vm.expectRevert(abi.encodeWithSelector(SchemaRegistry.AlreadyRegistered.selector, TEST_SCHEMA));
-        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(validator));
+        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(validator));
     }
 
     function test_revertsIfZeroUriHash() public {
         MockValidator validator = new MockValidator(TEST_SCHEMA);
         vm.expectRevert(SchemaRegistry.ZeroUriHash.selector);
-        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, bytes32(0), address(validator));
+        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, bytes32(0), TEST_FAMILY, address(validator));
+    }
+
+    function test_revertsIfZeroFamily() public {
+        MockValidator validator = new MockValidator(TEST_SCHEMA);
+        vm.expectRevert(SchemaRegistry.ZeroFamily.selector);
+        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, bytes32(0), address(validator));
     }
 
     function test_revertsIfZeroValidator() public {
         vm.expectRevert(AttestationCoordinator.ZeroValidator.selector);
-        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(0));
+        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(0));
     }
 
     function test_revertsIfValidatorSchemaIdMismatch() public {
@@ -135,7 +143,7 @@ contract SchemaRegistrationHelperTest is Test {
                 wrongSchemaId
             )
         );
-        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(validator));
+        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(validator));
     }
 
     function test_revertsIfValidatorAlreadyBound() public {
@@ -151,7 +159,7 @@ contract SchemaRegistrationHelperTest is Test {
         // Helper attempts: register schema + bind a different validator. The bind fails.
         MockValidator legitimate = new MockValidator(TEST_SCHEMA);
         vm.expectRevert(abi.encodeWithSelector(AttestationCoordinator.ValidatorAlreadySet.selector, TEST_SCHEMA));
-        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(legitimate));
+        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(legitimate));
     }
 
     // ── Atomicity (both-or-neither) ──────────────────────────────────────────
@@ -164,7 +172,7 @@ contract SchemaRegistrationHelperTest is Test {
         bytes32 wrongSchemaId = keccak256("wrong-schema-v1");
         MockValidator validator = new MockValidator(wrongSchemaId);
 
-        try helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(validator)) {
+        try helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(validator)) {
             revert("expected revert");
         } catch {
             assertFalse(registry.registered(TEST_SCHEMA), "schema should not be registered after failed bind");
@@ -172,7 +180,7 @@ contract SchemaRegistrationHelperTest is Test {
     }
 
     function test_atomicity_failedZeroValidatorDoesNotLeaveSchemaRegistered() public {
-        try helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(0)) {
+        try helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(0)) {
             revert("expected revert");
         } catch {
             assertFalse(registry.registered(TEST_SCHEMA), "schema should not be registered after failed bind");
@@ -187,7 +195,7 @@ contract SchemaRegistrationHelperTest is Test {
 
         // Helper attempts — fails on setValidator.
         MockValidator legitimate = new MockValidator(TEST_SCHEMA);
-        try helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(legitimate)) {
+        try helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(legitimate)) {
             revert("expected revert");
         } catch {
             assertFalse(registry.registered(TEST_SCHEMA), "schema should not be registered after failed bind");
@@ -207,7 +215,7 @@ contract SchemaRegistrationHelperTest is Test {
     function test_helperBoundSchemaCannotBeReBoundDirectly() public {
         // Register + bind via helper.
         MockValidator validator = new MockValidator(TEST_SCHEMA);
-        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, address(validator));
+        helper.registerSchemaAndValidator(TEST_SCHEMA, 1, URI_HASH, TEST_FAMILY, address(validator));
 
         // Direct setValidator call after helper-bind should also revert
         // (first-write-wins is enforced at the coordinator level, helper is not special).

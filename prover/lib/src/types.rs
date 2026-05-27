@@ -163,6 +163,9 @@ pub enum KernelOp {
         schema_id: B256,
         version: u64,
         uri_hash: B256,
+        /// keccak256 of the family slug (e.g. keccak256("geo")). Permanently
+        /// bound to the schema; consumed by RPGF Tier-1 weighting.
+        family: B256,
         /// EIP-712 authorization from the registrar.
         registrar_sig: Signature,
     },
@@ -267,6 +270,7 @@ pub struct SchemaEventData {
     pub schema_id: B256,
     pub version: u64,
     pub uri_hash: B256,
+    pub family: B256,
     pub registrar: Address,
 }
 

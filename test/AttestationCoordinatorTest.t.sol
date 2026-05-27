@@ -84,11 +84,12 @@ contract AttestationCoordinatorTest is Test {
         // ── SchemaRegistry: register all local-commerce schemas ────────
         schemas = new SchemaRegistry();
         bytes32 testUri = keccak256("ipfs://figaro-test-uri");
-        schemas.registerSchema(LIFECYCLE_SCHEMA, 1, testUri);
-        schemas.registerSchema(GHG_SCHEMA, 1, testUri);
-        schemas.registerSchema(PROXIMITY_SCHEMA, 1, testUri);
-        schemas.registerSchema(COMMERCE_SCHEMA, 1, testUri);
-        schemas.registerSchema(FULFILMENT_SCHEMA, 1, testUri);
+        bytes32 testFamily = keccak256("test-family");
+        schemas.registerSchema(LIFECYCLE_SCHEMA, 1, testUri, testFamily);
+        schemas.registerSchema(GHG_SCHEMA, 1, testUri, testFamily);
+        schemas.registerSchema(PROXIMITY_SCHEMA, 1, testUri, testFamily);
+        schemas.registerSchema(COMMERCE_SCHEMA, 1, testUri, testFamily);
+        schemas.registerSchema(FULFILMENT_SCHEMA, 1, testUri, testFamily);
 
         // ── AttestationCoordinator: register a permissive validator for each schema ─
         // Production deployments register the real per-schema validators from

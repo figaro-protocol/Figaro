@@ -4,12 +4,17 @@ use serde::{Deserialize, Serialize};
 /// Mirrors `SchemaRegistry.SchemaRegistered` (also re-emitted by
 /// `FigaroBatchVerifier`). The `registrar` field is the `schemaAuthor` —
 /// the first-write-wins wallet that called `registerSchema`, and the
-/// recipient of any RPGF allocation for this schemaId.
+/// recipient of any RPGF allocation for this schemaId. `family` is the
+/// permanent family tag bound to the schema at registration; the RPGF
+/// formula reads `family` (not `schema_id`) to decide Tier-1 weighting,
+/// so a new schema joining an existing Tier-1 family inherits the boost
+/// without redeploying the FIG system.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SchemaRegisteredEvent {
     pub schema_id: B256,
     pub version: u64,
     pub uri_hash: B256,
+    pub family: B256,
     pub registrar: Address,
 }
 

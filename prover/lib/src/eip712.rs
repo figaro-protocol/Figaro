@@ -127,20 +127,22 @@ pub fn attest_buyer_struct_hash(
 // ── Schema authorization ──────────────────────────────────────────
 
 /// Struct hash for schema registration authorization.
-/// `RegisterSchema(bytes32 schemaId,uint64 version,bytes32 uriHash)`
+/// `RegisterSchema(bytes32 schemaId,uint64 version,bytes32 uriHash,bytes32 family)`
 pub fn register_schema_struct_hash(
     schema_id: &B256,
     version: u64,
     uri_hash: &B256,
+    family: &B256,
 ) -> B256 {
     let type_hash = keccak256(
-        b"RegisterSchema(bytes32 schemaId,uint64 version,bytes32 uriHash)",
+        b"RegisterSchema(bytes32 schemaId,uint64 version,bytes32 uriHash,bytes32 family)",
     );
-    let mut data = Vec::with_capacity(128);
+    let mut data = Vec::with_capacity(160);
     data.extend_from_slice(type_hash.as_slice());
     data.extend_from_slice(schema_id.as_slice());
     data.extend_from_slice(&alloy_primitives::U256::from(version).to_be_bytes::<32>());
     data.extend_from_slice(uri_hash.as_slice());
+    data.extend_from_slice(family.as_slice());
     keccak256(&data)
 }
 

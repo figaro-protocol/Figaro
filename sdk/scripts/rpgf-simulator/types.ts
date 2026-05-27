@@ -24,6 +24,8 @@ export type DiversityVariant =
 
 export interface SchemaSnapshot {
   schemaId: string;
+  /** Family slug — keys Tier-1 boost. e.g. "geo", "fulfilment", "commerce". */
+  family: string;
   category: SchemaCategory;
 
   resolvedAttestationCount: number;

@@ -177,9 +177,10 @@ impl Mempool {
                 schema_id,
                 version,
                 uri_hash,
+                family,
                 registrar_sig,
             } => {
-                let struct_hash = register_schema_struct_hash(schema_id, *version, uri_hash);
+                let struct_hash = register_schema_struct_hash(schema_id, *version, uri_hash, family);
                 let digest = typed_data_hash(&domain, &struct_hash);
                 recover_signer(&digest, registrar_sig)
                     .map_err(|e| format!("invalid register-schema signature: {e}"))?;

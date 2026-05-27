@@ -362,6 +362,7 @@ contract ParityVectors is Test {
             schemaId: keccak256("figaro-test-v1"),
             version: 1,
             uriHash: keccak256("ipfs://test"),
+            family: keccak256("test-family"),
             registrar: address(0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa)
         });
 
@@ -373,11 +374,12 @@ contract ParityVectors is Test {
         bytes32 computed = _hashSchemasHelper(schemas, mechs);
         emit log_named_bytes32("PARITY:schemaHash", computed);
 
-        // Manual cross-check: schema(32+8+32+20=92) + mechanism(20+32=52)
+        // Manual cross-check: schema(32+8+32+32+20=124) + mechanism(20+32=52)
         bytes memory packed = abi.encodePacked(
             keccak256("figaro-test-v1"),
             uint64(1),
             keccak256("ipfs://test"),
+            keccak256("test-family"),
             address(0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa),
             address(0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB),
             keccak256("figaro-test-v1")
@@ -443,7 +445,13 @@ contract ParityVectors is Test {
         for (uint256 i = 0; i < schemas.length; i++) {
             packed = bytes.concat(
                 packed,
-                abi.encodePacked(schemas[i].schemaId, schemas[i].version, schemas[i].uriHash, schemas[i].registrar)
+                abi.encodePacked(
+                    schemas[i].schemaId,
+                    schemas[i].version,
+                    schemas[i].uriHash,
+                    schemas[i].family,
+                    schemas[i].registrar
+                )
             );
         }
         for (uint256 i = 0; i < mechs.length; i++) {

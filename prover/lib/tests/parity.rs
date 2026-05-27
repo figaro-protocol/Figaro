@@ -328,8 +328,9 @@ fn test_register_schema() {
     let domain = domain_separator(CHAIN_ID, CORE);
     let schema_id = keccak256(b"figaro-courier-process-v1");
     let uri_hash = keccak256(b"ipfs://Qm...");
+    let family = keccak256(b"operator-process");
 
-    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash);
+    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&registrar_key, &digest);
 
@@ -341,6 +342,7 @@ fn test_register_schema() {
             schema_id,
             version: 1,
             uri_hash,
+            family,
             registrar_sig: sig,
         }],
         prev_state: empty_snapshot(),
@@ -360,8 +362,9 @@ fn test_register_schema_duplicate_fails() {
     let domain = domain_separator(CHAIN_ID, CORE);
     let schema_id = keccak256(b"figaro-test-v1");
     let uri_hash = keccak256(b"ipfs://test");
+    let family = keccak256(b"test-family");
 
-    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash);
+    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&registrar_key, &digest);
 
@@ -374,12 +377,14 @@ fn test_register_schema_duplicate_fails() {
                 schema_id,
                 version: 1,
                 uri_hash,
+                family,
                 registrar_sig: sig.clone(),
             },
             KernelOp::RegisterSchema {
                 schema_id,
                 version: 2,
                 uri_hash,
+                family,
                 registrar_sig: sig,
             },
         ],
@@ -397,9 +402,10 @@ fn test_set_mechanism_schema() {
     let domain = domain_separator(CHAIN_ID, CORE);
     let schema_id = keccak256(b"figaro-ghg-v1");
     let uri_hash = keccak256(b"ipfs://ghg");
+    let family = keccak256(b"emissions");
 
     // First register the schema
-    let reg_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash);
+    let reg_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
     let reg_digest = typed_data_hash(&domain, &reg_struct);
     let reg_sig = sign_digest(&registrar_key, &reg_digest);
 
@@ -417,6 +423,7 @@ fn test_set_mechanism_schema() {
                 schema_id,
                 version: 1,
                 uri_hash,
+                family,
                 registrar_sig: reg_sig,
             },
             KernelOp::SetMechanismSchema {
@@ -812,7 +819,8 @@ fn test_mixed_batch_all_operations() {
     // Schema registration
     let schema_id = keccak256(b"figaro-mixed-test-v1");
     let uri_hash = keccak256(b"ipfs://mixed");
-    let schema_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash);
+    let family = keccak256(b"test-family");
+    let schema_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
     let schema_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &schema_struct));
 
     // Operator registration
@@ -843,6 +851,7 @@ fn test_mixed_batch_all_operations() {
                 schema_id,
                 version: 1,
                 uri_hash,
+                family,
                 registrar_sig: schema_sig,
             },
             // 3. Register operator

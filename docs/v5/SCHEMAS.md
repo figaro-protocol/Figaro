@@ -192,9 +192,12 @@ manifest.
 
 A schema is an *anchored artifact family*: an off-chain definition whose
 meaning must stay stable across parties, tools, and time, anchored on-chain by
-a minimal reference point — `schemaId` + `uriHash` in `SchemaRegistry`, plus
-the Layer C validator. Not every value that flows through an order deserves
-one.
+a minimal reference point — `schemaId` + `uriHash` + `family` in
+`SchemaRegistry`, plus the Layer C validator. Not every value that flows
+through an order deserves one. The `family` (e.g. `keccak256("geo")`) is the
+unit the RPGF SP1 program weights — Tier-1 families are deploy-frozen, but
+new schemas register under existing families permissionlessly and inherit
+the weight without any FIG-system redeployment.
 
 Separate two kinds of data:
 
@@ -241,7 +244,7 @@ one.
    needed when a downstream Rust consumer wants strongly-typed content
    (the SP1 prover guest, for instance, can pass through serde_json::Value).
 8. Register the schema in `frontend/lib/shared/schemaCategories.ts` — add its spec JSON to `ALL_SPECS` and assign its `SCHEMA_TIER_MAP` and `SCHEMA_FAMILY_MAP` entries; `assertTaxonomyComplete()` fails the build if the tier or family assignment is missing. This supplies the schema's title and family for the designer drawer and the `/schemas` inventory — the inventory reads its *set* live from on-chain `SchemaRegistry` events, so the schema also needs the step-9 on-chain registration to appear there.
-9. `setValidator(schemaId, validator)` call added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. (Bootstrap-time atomicity: the deploy scripts inline schema registration + validator binding within a single broadcast transaction. Post-deploy third-party schemas should use `SchemaRegistrationHelper.registerSchemaAndValidator(...)` instead — see "Third-party schema deployment" below.)
+9. `registerSchema(schemaId, version, uriHash, family)` + `setValidator(schemaId, validator)` calls added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. The `family` is `keccak256(primaryCategory)` from the spec's `categories[0]` (Tier-1 boost goes to `keccak256("geo")` and `keccak256("fulfilment")`). (Bootstrap-time atomicity: the deploy scripts inline schema registration + validator binding within a single broadcast transaction. Post-deploy third-party schemas should use `SchemaRegistrationHelper.registerSchemaAndValidator(...)` instead — see "Third-party schema deployment" below.)
 
 If any step is skipped the validator gate either rejects all attestations under that schemaId
 (missing on-chain validator) or silently accepts content the spec would have rejected (Layer A
@@ -256,7 +259,7 @@ so no front-running window exists at genesis.
 
 For any **third-party schema** registered post-deploy, the schema author MUST
 perform both writes in a single transaction. The recommended path is
-**`SchemaRegistrationHelper.registerSchemaAndValidator(schemaId, version, uriHash, validator)`**
+**`SchemaRegistrationHelper.registerSchemaAndValidator(schemaId, version, uriHash, family, validator)`**
 — a stateless, no-admin helper contract deployed alongside the protocol that
 composes the two underlying public calls atomically. Alternative paths: a
 custom deploy script, or a wallet multicall covering both writes.
