@@ -21,6 +21,7 @@ import type { PublicClient } from "viem";
 import { encodeAbiParameters, encodePacked, hashTypedData, keccak256 } from "viem";
 import { getAllOrderCommitted } from "@/lib/core/indexer";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 const STORE_PREFIX = "figaro:commitment:";
 const COMMITMENT_TYPEHASH = keccak256(
@@ -171,15 +172,15 @@ function fromStored(s: StoredCommitment): Commitment {
 
 /** Save a commitment keyed by its order hash. */
 export function saveCommitment(orderHash: Hex, commitment: Commitment): void {
-    localStorage.setItem(STORE_PREFIX + orderHash, JSON.stringify(toStored(commitment)));
+    writeJsonStorage(STORE_PREFIX + orderHash, toStored(commitment));
 }
 
 /** Load a commitment by order hash. Returns null if not found. */
 export function loadCommitment(orderHash: Hex): Commitment | null {
-    const raw = localStorage.getItem(STORE_PREFIX + orderHash);
-    if (!raw) return null;
+    const stored = readJsonStorage<StoredCommitment | null>(STORE_PREFIX + orderHash, null);
+    if (!stored) return null;
     try {
-        return fromStored(JSON.parse(raw));
+        return fromStored(stored);
     } catch {
         return null;
     }
