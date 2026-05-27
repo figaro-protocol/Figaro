@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { OrderState } from "@figaro/core";
-import { bytesToHex } from "@/lib/shared/evm";
+import { textToBytes32 } from "@/lib/shared/evm";
 
 // Re-export so existing consumers keep working
 export { OrderState };
@@ -50,10 +50,7 @@ export interface ProcessInfo {
 // ---------------------------------------------------------------------------
 
 export function generateProcessId(): string {
-    const timestamp = Date.now();
-    const random = Math.random().toString();
-    const bytes = new TextEncoder().encode(`process-${timestamp}-${random}`);
-    return `0x${bytesToHex(bytes).slice(0, 64)}`; // 32 bytes = 64 hex chars
+    return textToBytes32(`process-${Date.now()}-${Math.random()}`);
 }
 
 // ---------------------------------------------------------------------------

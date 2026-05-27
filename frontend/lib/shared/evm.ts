@@ -49,3 +49,14 @@ export function bytesToHex(bytes: Uint8Array): string {
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
 }
+
+/**
+ * Truncate the UTF-8 encoding of `text` to 32 bytes (64 hex chars) and
+ * return the 0x-prefixed form. Used by mock and synthetic-id paths that
+ * need a bytes32-shaped key derived from a label. Does NOT zero-pad —
+ * inputs shorter than 32 bytes produce a shorter hex string; callers
+ * supply enough entropy to fill the 32 bytes.
+ */
+export function textToBytes32(text: string): string {
+    return `0x${bytesToHex(new TextEncoder().encode(text)).slice(0, 64)}`;
+}
