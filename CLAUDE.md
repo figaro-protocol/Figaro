@@ -505,7 +505,7 @@ Core theory:
 Security & verification:
 - `DESIGN_DECISIONS.md` — 14 intentional patterns that look like vulnerabilities **(read before auditing)**
 - `VERIFICATION_MAP.md` — Every invariant → code → test → formal layer
-- `RELEASE_READINESS.md` — Gate criteria, hardening completion record, frozen Solidity surface declaration for external audit
+- `RELEASE_READINESS.md` — Gate criteria, remaining tasks, frozen Solidity surface declaration for external audit
 - `SCALING_STRATEGY.md` — Proof-based scaling, batch sequencer architecture, sequencer trust model (consolidated)
 
 Architecture:

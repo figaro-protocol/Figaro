@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-05-24 (registry-surface evaluation — Claude Opus 4.7).
+Last updated: 2026-05-27 (streamlining pass + launch-scenario task moved in from the backlog — Claude Opus 4.7).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -26,18 +26,9 @@ This is not because the current pass surfaced a new contract defect. It is becau
 - event-sourced state reconstruction assumptions used by the SDK and frontend were rechecked against the live kernel events
 - fee-on-transfer rejection remains explicit in both the kernel and the active test suite
 
-## Release Blockers
-
-These are the remaining blockers for calling the live V5 system publicly release-ready:
-
-1. external audit decision and scheduling
-2. Solidity surface freeze before that audit
-3. mainnet `OperatorRegistry` parameter resolution — `script/DeployMainnet.s.sol:184` currently uses devnet placeholder `(0.001 ether, 365 days)` with an explicit "DO NOT SHIP TO MAINNET WITHOUT REVIEW" comment at lines 168-183
-4. `AssemblyRegistry` mainnet-parity decision — the contract is deployed by `script/Deploy.s.sol` (devnet) but not imported or deployed by `script/DeployMainnet.s.sol`; either it ships at mainnet with reasoned parameters or it is explicitly deferred with the runtime consequence documented
-
 ## Remaining Tasks
 
-Two concrete tasks remain before the public-release gate is closed:
+The concrete tasks that remain before the public-release gate is closed:
 
 ### Task 1: Freeze The Audited Solidity Surface
 
@@ -85,19 +76,19 @@ Required output (one of):
 
 Either way: reflect the chosen disposition in `docs/v5/CONTRACTS.md` and `CLAUDE.md` so the mainnet contract inventory is unambiguous.
 
+### Task 5: Launch Scenario — Assembly Seeding Decision
+
+`frontend/scripts/seed-devnet.mjs` currently registers 2 assemblies (`direct-sale`, `local-commerce`); `frontend/scripts/fixtures/` now holds 5 captured manifests (adds `local-commerce-buyer-assigned`, `local-commerce-dutch`, `local-commerce-offset`). `script/DeployMainnet.s.sol` currently seeds no assemblies. Assemblies are permissionless, so no-seed is a valid choice for either surface.
+
+Required output:
+
+1. devnet seed list — decide which of the 5 captured manifests `seed-devnet.mjs` ships with; update the seeder accordingly
+2. mainnet seed list — decide whether `DeployMainnet.s.sol` seeds any assemblies at launch; record the disposition. If Task 4 disposition (2) is taken, the mainnet half collapses to n/a (no `AssemblyRegistry` deployed)
+3. reasoning recorded inline at the seed-call site (devnet) and in `DeployMainnet.s.sol` (mainnet) — why these and not others
+
 ## Validation Commands
 
-Use these commands as the release gate. Expected output means successful completion with exit code `0` and the stated pass criteria.
-
-Observed results — each command below completes with exit code 0 and no failed or skipped tests. This gate asserts pass/fail; the harness inventory (suite, file, property, and rule counts) is `TESTING.md`.
-
-- `forge test --via-ir`: 0 failed, 0 skipped
-- `./scripts/test-halmos.sh`: all symbolic proofs passed (the wrapper checks prerequisites and splits `check_resolutionPayouts` into its own invocation — the raw 5-minute ceiling is unreliable)
-- `./scripts/test-certora.sh`: all CVL specs verified
-- `cd frontend && npm run type-check`: passed
-- `cd frontend && npm run build`: passed
-- `cd frontend && npx vitest run`: passed
-- `cd frontend && npm run test:e2e:devnet`: passed
+Use these commands as the release gate. Expected output means successful completion with exit code `0` and the stated pass criteria. This gate asserts pass/fail; the harness inventory (suite, file, property, and rule counts) is `TESTING.md`.
 
 ### Contracts
 
@@ -187,16 +178,6 @@ These are current runtime posture decisions, not release blockers:
 2. `/builders/templates` is a routing surface into assembly-based template discovery, not a legacy on-chain registry UI
 3. geolocation remains allowed for same-origin runtime surfaces instead of being narrowed to a brittle route allowlist, because handoff and delivery-attestation modules are runtime-composable across multiple live pages
 
-## External Audit Decision
-
-Decision: yes, a final external audit pass is required before public release.
-
-Required posture for that audit:
-
-1. freeze `src/`, `src/fig/`, and the deployment scripts that define the audited Solidity surface
-2. avoid feature churn during the audit window
-3. treat any post-audit Solidity edits as requiring either a narrow follow-up review or a repeat audit decision
-
 ## Pre-Mainnet Deployment Verification
 
 Deploy-time configuration checks to run against the mainnet deployment before
@@ -210,72 +191,9 @@ external-audit gates above:
 - `AssemblyRegistry.registrationDeposit` and `AssemblyRegistry.depositLockPeriod` == the mainnet values picked per Task 3 — if Task 4 disposition (1) is taken. If disposition (2) is taken, `AssemblyRegistry` is not deployed and this check does not apply.
 - All settlement tokens are non-rebasing and non-fee-on-transfer.
 
-## Pre-Release Hardening Pass — Completed 2026-04-26
-
-A six-section hardening checklist was worked through to completion before
-this readiness assessment was finalized. All items checked off; the full
-checklist was archived after the work landed. Summary of what the pass
-covered:
-
-1. **Versioning cleanup** — drop residual V4-as-live language across
-   docs and code, leaving V3/V4 references only in archive directories
-   and external API names that genuinely use that literal (`_hashTypedDataV4`).
-2. **Solidity hardening** — re-run Foundry, refresh NatSpec + audit
-   docs, reconfirm fee-on-transfer rejection and event semantics, decide
-   on the external-audit gate.
-3. **React runtime hardening** — production-header policy verification,
-   missing-hook-dependency cleanup in stateful flows, `any`-usage
-   reduction in event/indexing/console plumbing, removal of disabled
-   account-abstraction code.
-4. **Documentation and release posture** — refresh the audit and inventory
-   docs to live contract names + test counts, record exact validation
-   commands, document accepted risks explicitly.
-5. **Cairo rewrite prerequisites** — freeze the V5 kernel invariants as
-   the only source of truth for any future Cairo port, archive the old
-   pre-V5 Cairo lifecycle.
-6. **Exit criteria** — green Foundry + frontend type-check + frontend
-   build + warning-debt resolution + verified header policy.
-
-Earlier (V3-era) gas-consumption empirical numbers have been
-superseded by the gas-ceiling figure (≈2,145 orders within the 30M
-Ethereum gas limit; see `SCALING_STRATEGY.md` and `FigaroCore.sol`).
-
 ## Freeze Notice — Solidity Surface Frozen for External Audit
 
-**Date**: 2026-04-20 (initial freeze declaration), amended 2026-04-21
-to land a pre-audit batch of findings (FIG allocation restructured to
-genesis-mint + staged airdrop contract, `MerkleAirdrop`/`TrancheVesting`
-deleted, `figToken` dead-code field removed from `FigaroBatchVerifier`,
-`DOMAIN_SEPARATOR()` getter added, `totalRegisteredCap` sum-enforcement
-added to `FigToken`); amended 2026-05-06 to revise the
-`OperatorRegistry` surface — the `role` parameter was dropped from
-`register` and from the `OperatorRegistered` event; `updateProfile`
-was added (caller-only metadata replacement, no deposit movement, emits
-`OperatorProfileUpdated`); the `OperatorRole` enum and `InvalidRole`
-error were removed. `FigaroBatchVerifier` was updated in lockstep:
-`OperatorEventInput` drops the `role` field; the tagged-union encoding
-shrinks to {1=Registered, 2=ProfileUpdated} with a 53-byte record;
-the dead `OperatorUpdated` / `OperatorDeactivated` / `OperatorReactivated`
-events were deleted. Amended 2026-05-24 to add `ISchemaValidator.sol`
-(introduced 2026-04-26, commit `cc7a394`), `AssemblyRegistry.sol`
-(introduced 2026-05-12, commit `8881861`), and `ProcessOffsetReceipt.sol`
-(introduced 2026-05-15, commit `218d0da`) to the frozen-scope table —
-these three contracts entered `src/` after the original freeze and were
-not previously declared in the audited surface. No contract code is
-being changed by this amendment, only the scope declaration. The Task 3 +
-Task 4 mainnet-parameter and AssemblyRegistry-mainnet-parity items were
-added to the Remaining Tasks section in the same amendment. Amended
-2026-05-26 to close the post-resolve commit gate: `FigaroCore.commit`'s
-sub-order branch now reverts with `ProcessAlreadyResolved` when
-`ps.activeOrderCount == 0`. The change is one comparison against an
-existing storage field; no new storage, no new lifecycle enum. The kernel
-matches the design intent recorded in `DESIGN_DECISIONS.md` item #1 —
-a processId is permanently closed at `resolveProcess`. The Rust prover
-(`prover/lib/src/kernel.rs`) was updated in lockstep to mirror the gate.
-`DESIGN_DECISIONS.md` item #1 was rewritten from defending multi-round
-composition to defending closure-at-resolve; the corresponding "Finalized
-flag → breaks multi-round composition" line was removed from
-`CLAUDE.md`'s Common Misframings list.
+**Initial freeze**: 2026-04-20. Subsequent amendments landed a pre-audit findings batch (FIG allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `OperatorRegistry` surface (dropped `role` from `register` + `OperatorRegistered`, added `updateProfile`, removed `OperatorRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.OperatorEventInput`); expanded the frozen-scope declaration to add `ISchemaValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). Amendment history is in `git log`; current frozen scope is below.
 
 The following Solidity surface is declared frozen for external audit.
 No feature changes, refactors, or dependency upgrades will be made to
@@ -313,7 +231,7 @@ Expected output: empty.
 |---|---|
 | `docs/v5/DESIGN_DECISIONS.md` | 14 intentional patterns that look like vulnerabilities (read first) |
 | `docs/v5/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
-| `docs/v5/RELEASE_READINESS.md` (this file) | Gate criteria, frozen scope, hardening completion record |
+| `docs/v5/RELEASE_READINESS.md` (this file) | Gate criteria, remaining tasks, frozen scope |
 | `docs/v5/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for (consolidated from former `BATCH_SEQUENCER.md` + `SEQUENCER_TRUST_MODEL.md`) |
 
 The AI-audit history is provided for context only. The external auditor
@@ -329,12 +247,3 @@ Any Solidity edit after the freeze commit must be:
 
 Changes to `test/`, `frontend/`, `sdk/`, or `prover/` do not require
 re-audit unless they expose a new on-chain attack surface.
-
-## Documentation Posture
-
-The canonical live release-readiness set is now:
-
-1. `docs/v5/CURRENT_STATE.md`
-2. `docs/v5/RELEASE_READINESS.md` (this file — also carries the freeze
-   notice + hardening completion record)
-3. `docs/v5/VERIFICATION_MAP.md`
