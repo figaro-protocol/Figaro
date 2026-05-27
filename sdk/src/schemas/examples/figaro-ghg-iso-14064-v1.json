@@ -3,7 +3,9 @@
     "version": 1,
     "title": "ISO 14064",
     "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under the ISO 14064 family (parts 1, 2, and 3).",
-    "categories": ["emissions"],
+    "categories": [
+        "emissions"
+    ],
     "fields": [
         {
             "name": "scope",
@@ -13,5 +15,15 @@
             "required": false,
             "description": "GHG Protocol scope: 1 (direct), 2 (purchased energy), 3 (value chain). Optional individually."
         }
-    ]
+    ],
+    "block": {
+        "tier": "category-2",
+        "drawerArticle": "emissions",
+        "mechanismKinds": [
+            "disclosure"
+        ],
+        "moduleIds": [
+            "disclosure-actions"
+        ]
+    }
 }

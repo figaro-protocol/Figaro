@@ -3,7 +3,9 @@
     "version": 2,
     "title": "Logistics",
     "description": "Origin and destination geohashes plus shipment mass, volume, and class of service. Required when fulfilment includes delivery.",
-    "categories": ["geo"],
+    "categories": [
+        "geo"
+    ],
     "fields": [
         {
             "name": "originGeohash",
@@ -12,7 +14,7 @@
             "minLength": 1,
             "maxLength": 12,
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
-            "description": "Origin geohash (base32). 1–12 characters; longer = higher precision."
+            "description": "Origin geohash (base32). 1\u201312 characters; longer = higher precision."
         },
         {
             "name": "destinationGeohash",
@@ -21,7 +23,7 @@
             "minLength": 1,
             "maxLength": 12,
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
-            "description": "Destination geohash (base32). 1–12 characters; longer = higher precision."
+            "description": "Destination geohash (base32). 1\u201312 characters; longer = higher precision."
         },
         {
             "name": "massGrams",
@@ -29,7 +31,7 @@
             "required": true,
             "min": 1,
             "max": 4294967295,
-            "description": "Shipment mass in whole grams. Must be at least 1 g; capped at uint32 max (≈4.29 million kg)."
+            "description": "Shipment mass in whole grams. Must be at least 1 g; capped at uint32 max (\u22484.29 million kg)."
         },
         {
             "name": "volumeMl",
@@ -37,14 +39,30 @@
             "required": true,
             "min": 1,
             "max": 4294967295,
-            "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (≈4.29 million L)."
+            "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (\u22484.29 million L)."
         },
         {
             "name": "classOfService",
             "type": "enum",
             "required": true,
-            "values": ["S", "E", "F", "C"],
+            "values": [
+                "S",
+                "E",
+                "F",
+                "C"
+            ],
             "description": "Class of service. S = Standard (room temperature, not fragile). E = Express (priority window). F = Fragile (handle with care). C = Cold Chain (refrigerated transport required)."
         }
-    ]
+    ],
+    "block": {
+        "tier": "category-2",
+        "drawerArticle": "logistics",
+        "mechanismKinds": [
+            "coordinator"
+        ],
+        "moduleIds": [
+            "handoff-details",
+            "handoff-tracker"
+        ]
+    }
 }

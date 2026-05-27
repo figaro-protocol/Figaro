@@ -3,7 +3,10 @@
     "version": 1,
     "title": "Applicable law and forum",
     "description": "State / ADR / traditional-jurisdiction recourse layer. Identifies the body of law governing the order and, optionally, the named adjudication venue and proceedings language. Provider-agnostic by construction (free-form strings). Compose with `figaro-arbitration-kleros-v1` (or another `figaro-arbitration-<provider>-v1`) to add a decentralized ODR layer.",
-    "categories": ["jurisdiction", "evidence-law"],
+    "categories": [
+        "jurisdiction",
+        "evidence-law"
+    ],
     "fields": [
         {
             "name": "applicableLaw",
@@ -29,5 +32,17 @@
             "maxLength": 16,
             "description": "ISO 639-1 / 639-2 language code for adjudication proceedings (e.g., 'en', 'fr', 'zh', 'ar'). Empty means: official language of the forum."
         }
-    ]
+    ],
+    "block": {
+        "tier": "category-2",
+        "drawerArticle": "dispute-resolution",
+        "mechanismKinds": [],
+        "moduleIds": [
+            "dispute-status"
+        ],
+        "routes": [
+            "/dispute",
+            "/evidence-display"
+        ]
+    }
 }

@@ -60,7 +60,10 @@ for (const file of manifestFiles) {
         }
     }
 
-    fs.writeFileSync(file, JSON.stringify(manifest, null, 4) + "\n");
+    // 2-space indent matches the live FIGARO_CAPTURE_FIXTURES e2e writer
+    // (frontend/lib/designer/...). Stay byte-identical so a future
+    // regen-then-capture round-trip produces zero diff.
+    fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + "\n");
     console.log(
         `  ${path.basename(file)}: ${Object.keys(newAgreements).length} agreement(s), ${
             (manifest.orders ?? []).length

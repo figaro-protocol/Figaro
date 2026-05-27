@@ -3,7 +3,10 @@
     "version": 1,
     "title": "Merchant internal process events",
     "description": "Event stream emitted by a merchant operator (restaurant, retail, service merchant, etc.) to coordinate with buyer and courier. The event log is the SSoT for the merchant's role in the order lifecycle. Generic across local-commerce verticals; the event vocabulary maps to the merchant's order-fulfillment flow.",
-    "categories": ["lifecycle", "operator-process"],
+    "categories": [
+        "lifecycle",
+        "operator-process"
+    ],
     "fields": [
         {
             "name": "eventType",
@@ -27,5 +30,16 @@
             "maxLength": 512,
             "description": "Optional reference to off-chain evidence (e.g., photo of meal, ticket scan, packing slip)."
         }
-    ]
+    ],
+    "block": {
+        "tier": "category-1",
+        "drawerArticle": "attestations",
+        "mechanismKinds": [
+            "coordinator"
+        ],
+        "moduleIds": [
+            "coordinator-actions",
+            "merchant-fulfilment"
+        ]
+    }
 }

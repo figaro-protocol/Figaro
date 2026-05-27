@@ -2,19 +2,38 @@
     "schemaId": "figaro-proximity-policy-v1",
     "version": 1,
     "title": "Proximity-verification policy",
-    "description": "Committed proximity-verification options for this assembly: the set of detection bands a merchant offers (zone-wifi, nearby-ble, contact-nfc). Multi-valued — at template time the merchant declares which bands are acceptable; at runtime a buyer's commitment carries the bands required. An order without a proximity-policy clause has no proximity verification. Per-handoff nonce + signed witness payload travel in the sister schema figaro-proximity-proof-v1 at runtime.",
-    "categories": ["proximity"],
+    "description": "Committed proximity-verification options for this assembly: the set of detection bands a merchant offers (zone-wifi, nearby-ble, contact-nfc). Multi-valued \u2014 at template time the merchant declares which bands are acceptable; at runtime a buyer's commitment carries the bands required. An order without a proximity-policy clause has no proximity verification. Per-handoff nonce + signed witness payload travel in the sister schema figaro-proximity-proof-v1 at runtime.",
+    "categories": [
+        "proximity"
+    ],
     "fields": [
         {
             "name": "bands",
             "type": "array",
             "items": {
                 "type": "enum",
-                "values": ["zone-wifi", "nearby-ble", "contact-nfc"]
+                "values": [
+                    "zone-wifi",
+                    "nearby-ble",
+                    "contact-nfc"
+                ]
             },
             "minItems": 1,
             "required": true,
             "description": "Required detection modalities. zone-wifi = same WiFi network. nearby-ble = BLE proximity. contact-nfc = physical NFC tap. At least one must be set when this clause is included in an agreement."
         }
-    ]
+    ],
+    "block": {
+        "tier": "category-2",
+        "drawerArticle": "fulfilment",
+        "mechanismKinds": [
+            "coordinator",
+            "attestation"
+        ],
+        "moduleIds": [
+            "coordinator-actions",
+            "delivery-attestation"
+        ],
+        "sisterSchemaId": "figaro-proximity-proof-v1"
+    }
 }

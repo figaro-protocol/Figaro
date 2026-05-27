@@ -2,8 +2,11 @@
     "schemaId": "figaro-consent-v1",
     "version": 1,
     "title": "Cryptographic consent attestations",
-    "description": "Records that a wallet has cryptographically attested to one or more off-chain legal documents identified by their keccak256 content hashes. Pattern: off-chain document semantics, on-chain anchor for shared reference integrity. Multi-valued — an agreement can bind to several documents simultaneously (e.g., ToS + Privacy Policy + NDA + custom merchant-buyer terms). Each entry preserves the (consenter, documentHash, documentVersion, documentTitle) tuple needed by counterparties, auditors, and arbitrators to reason about shared references over time. Consenter address is recoverable from the EIP-712 signature on the AttestationCoordinator call (not stored in content). Append-only: revocation is a separate off-chain process, not a content mutation; future revisions require figaro-consent-v2.",
-    "categories": ["consent", "evidence-law"],
+    "description": "Records that a wallet has cryptographically attested to one or more off-chain legal documents identified by their keccak256 content hashes. Pattern: off-chain document semantics, on-chain anchor for shared reference integrity. Multi-valued \u2014 an agreement can bind to several documents simultaneously (e.g., ToS + Privacy Policy + NDA + custom merchant-buyer terms). Each entry preserves the (consenter, documentHash, documentVersion, documentTitle) tuple needed by counterparties, auditors, and arbitrators to reason about shared references over time. Consenter address is recoverable from the EIP-712 signature on the AttestationCoordinator call (not stored in content). Append-only: revocation is a separate off-chain process, not a content mutation; future revisions require figaro-consent-v2.",
+    "categories": [
+        "consent",
+        "evidence-law"
+    ],
     "fields": [
         {
             "name": "documents",
@@ -40,5 +43,14 @@
             },
             "description": "Non-empty list of consent-referenced documents. Each carries its own hash + version + title."
         }
-    ]
+    ],
+    "block": {
+        "tier": "category-2",
+        "drawerArticle": "consent",
+        "mechanismKinds": [],
+        "moduleIds": [],
+        "routes": [
+            "/consent"
+        ]
+    }
 }
