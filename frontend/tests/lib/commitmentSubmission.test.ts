@@ -25,7 +25,7 @@ describe("submitPreparedCommitment", () => {
     it("broadcasts immediately and submits a permit when configured", async () => {
         const signAndBroadcastCommitment = vi.fn(async () => "0xabc");
         const initiateAsParty = vi.fn();
-        const waitForTransactionReceipt = vi.fn(async () => undefined);
+        const waitForTransactionReceipt = vi.fn(async () => ({ status: "success" }));
 
         const result = await submitPreparedCommitment({
             prepared: {

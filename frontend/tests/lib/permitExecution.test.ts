@@ -5,7 +5,7 @@ describe("submitPermitTransaction", () => {
     it("sends the permit transaction and waits for confirmation when a public client is available", async () => {
         const sendTransaction = vi.fn(async () => "0xabc" as `0x${string}`);
         const publicClient = {
-            waitForTransactionReceipt: vi.fn(async () => undefined),
+            waitForTransactionReceipt: vi.fn(async () => ({ status: "success" })),
         };
 
         const hash = await submitPermitTransaction({
