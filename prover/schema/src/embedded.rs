@@ -66,6 +66,17 @@ pub fn embedded_spec_json(schema_id: &B256) -> Option<&'static str> {
         .map(|e| e.spec_json)
 }
 
+/// The canonical spec JSON for a human-readable schemaId string. Same
+/// return contract as `embedded_spec_json` but accepts the string form
+/// directly — most callers have the string in hand. Pairs with
+/// `crate::spec::parse_schema_spec` and `crate::encode::encode_content_from_spec`.
+pub fn embedded_spec_json_by_key(schema_id: &str) -> Option<&'static str> {
+    EMBEDDED_SPECS
+        .iter()
+        .find(|e| e.schema_key == schema_id)
+        .map(|e| e.spec_json)
+}
+
 /// All embedded `(schema_key, spec_json)` pairs — for conformance tests.
 pub fn all_embedded_specs() -> impl Iterator<Item = (&'static str, &'static str)> {
     EMBEDDED_SPECS.iter().map(|e| (e.schema_key, e.spec_json))

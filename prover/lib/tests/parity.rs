@@ -10,6 +10,26 @@ use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::apply_batch;
 use figaro_kernel::types::*;
 
+/// Encode `content` under the canonical Layer B encoder for the given
+/// schema key. Post-Keystone there is no per-schema dispatch — every
+/// caller looks up the embedded spec, parses it, and runs
+/// `encode_content_from_spec`. This three-step pattern lives here so
+/// the test bodies stay one-liners.
+fn encode_for_schema_key(schema_id_str: &str, content: &serde_json::Value) -> Vec<u8> {
+    let json = figaro_schema::embedded_spec_json_by_key(schema_id_str)
+        .unwrap_or_else(|| panic!("no embedded spec for {schema_id_str}"));
+    let parsed: serde_json::Value = serde_json::from_str(json)
+        .unwrap_or_else(|e| panic!("embedded spec for {schema_id_str} is not valid JSON: {e}"));
+    let spec = match figaro_schema::parse_schema_spec(&parsed) {
+        figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
+        figaro_schema::ParseSchemaSpecResult::Err(errors) => {
+            panic!("embedded spec for {schema_id_str} failed to parse: {errors:?}")
+        }
+    };
+    figaro_schema::encode_content_from_spec(&spec, content)
+        .unwrap_or_else(|e| panic!("canonical encoder must succeed for {schema_id_str}: {e}"))
+}
+
 // ── Test keys (match Foundry's constants) ─────────────────────────
 
 const BUYER_KEY: u64 = 0xB0B;
@@ -909,7 +929,7 @@ fn test_mixed_batch_all_operations() {
 /// The committed role commitment's `agreement_hash` is the single-section
 /// agreement tree whose lone clause is this schema, so Gate 5 (agreement
 /// inclusion) verifies with an empty proof — `agreement_hash` IS the leaf.
-/// `content_ref` is `keccak256(encode_content_for_schema(...))`, so Gates
+/// `content_ref` is `keccak256(encode_for_schema_key(...))`, so Gates
 /// 3–4 also pass for valid content. The caller must commit the returned
 /// pair together: `agreement_hash` is part of the commitment struct hash,
 /// so the Commit and the AttestAsSeller must reference the same commitment.
@@ -921,8 +941,7 @@ fn build_commit_and_canonical_attest(
     content_json: serde_json::Value,
 ) -> Vec<KernelOp> {
     let schema_id = keccak256(schema_id_str.as_bytes());
-    let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
-        .expect("canonical encoder must succeed");
+    let canonical_bytes = encode_for_schema_key(schema_id_str, &content_json);
     let content_ref = keccak256(canonical_bytes.as_slice());
 
     // Single-section agreement: the lone section leaf IS the agreement_hash.
@@ -1206,7 +1225,7 @@ fn attest_as_seller_with_wrong_inclusion_proof_fails() {
     let schema_id = keccak256(schema_id_str.as_bytes());
     let content_json = serde_json::json!({ "scope": 1 });
     let canonical_bytes =
-        figaro_schema::encode_content_for_schema(schema_id_str, &content_json).unwrap();
+        encode_for_schema_key(schema_id_str, &content_json);
     let content_ref = keccak256(canonical_bytes.as_slice());
 
     // Single-section agreement: agreement_hash IS the lone section leaf.
@@ -1279,7 +1298,7 @@ fn attest_as_seller_non_cross_checking_schema_requires_section_data() {
     let schema_id = keccak256(schema_id_str.as_bytes());
     let content_json = serde_json::json!({ "grams": "1000" });
     let canonical_bytes =
-        figaro_schema::encode_content_for_schema(schema_id_str, &content_json).unwrap();
+        encode_for_schema_key(schema_id_str, &content_json);
     let content_ref = keccak256(canonical_bytes.as_slice());
 
     let root_struct = commitment_struct_hash(&root);

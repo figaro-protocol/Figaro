@@ -1,14 +1,25 @@
-//! Conformance tests for the per-schema Rust ABI encoders. The expected
-//! bytes are byte-for-byte equal to the output of viem's
-//! `encodeAbiParameters` invoked by the corresponding TypeScript encoder
-//! in `sdk/src/schemas/encode.ts`. Vectors were captured by running
-//! `node generate_vectors.mjs` against the published TS encoders.
+//! Conformance tests for the generic Rust ABI encoder. Each test runs
+//! `encode_content_from_spec` against an embedded spec + content payload
+//! and asserts the bytes match the byte-for-byte canonical output of
+//! viem's `encodeAbiParameters`. Vectors here lock Layer B's encoder to
+//! Layer A's TypeScript (`sdk/src/schemas/encode.ts`); the kernel's
+//! cross-form-binding gate depends on this equivalence.
 //!
-//! Whenever an encoder changes on either side (TS or Rust), regenerate
-//! and update both columns — the kernel's cross-form binding gate
-//! depends on this equivalence.
+//! After the Keystone cutover (single spec-driven encoder, no per-schema
+//! dispatch), the canonical encoding rule is:
+//!   - top-level fields encode as `abi_encode_params` in declaration order
+//!   - enums map to `uint8` = 0-based position in `EnumFieldSpec::values`
+//!   - absent optional fields encode as the ABI zero-value of their type
+//!   - object-arrays encode as `tuple[]`
+//!
+//! Whenever a schema's spec changes (field added/removed, enum values
+//! reordered, type changed), regenerate the corresponding vector and
+//! update the assertion. The matching TS vector in
+//! `sdk/tests/schemas/encode.test.ts` must change in the same commit.
 
-use figaro_schema::encode_content_for_schema;
+use figaro_schema::{
+    embedded_spec_json_by_key, encode_content_from_spec, parse_schema_spec, ParseSchemaSpecResult,
+};
 use serde_json::{json, Value};
 
 fn to_hex(bytes: &[u8]) -> String {
@@ -16,7 +27,17 @@ fn to_hex(bytes: &[u8]) -> String {
 }
 
 fn assert_encode(schema_id: &str, content: Value, expected_hex: &str) {
-    let bytes = encode_content_for_schema(schema_id, &content)
+    let json_str = embedded_spec_json_by_key(schema_id)
+        .unwrap_or_else(|| panic!("no embedded spec for {schema_id}"));
+    let parsed: Value = serde_json::from_str(json_str)
+        .unwrap_or_else(|e| panic!("embedded spec for {schema_id} is not valid JSON: {e}"));
+    let spec = match parse_schema_spec(&parsed) {
+        ParseSchemaSpecResult::Ok(s) => s,
+        ParseSchemaSpecResult::Err(errors) => {
+            panic!("embedded spec for {schema_id} failed to parse: {errors:?}")
+        }
+    };
+    let bytes = encode_content_from_spec(&spec, &content)
         .unwrap_or_else(|e| panic!("encode failed for {schema_id}: {e}"));
     assert_eq!(
         to_hex(&bytes),
@@ -24,6 +45,8 @@ fn assert_encode(schema_id: &str, content: Value, expected_hex: &str) {
         "schemaId {schema_id} bytes diverged from TypeScript canonical encoding",
     );
 }
+
+// ── Non-byte-changing schemas: vectors unchanged from pre-cutover ────
 
 #[test]
 fn ghg_protocol_scope_1() {
@@ -45,8 +68,6 @@ fn ghg_protocol_scope_unset_defaults_to_zero() {
 
 #[test]
 fn ghg_iso_14064_uses_same_encoder() {
-    // Sister schemas share the encoder — verify a non-protocol sister
-    // emits the same bytes for the same content.
     assert_encode(
         "figaro-ghg-iso-14064-v1",
         json!({ "scope": 2 }),
@@ -60,57 +81,6 @@ fn ghg_measurement_grams_1000() {
         "figaro-ghg-measurement-v1",
         json!({ "grams": "1000" }),
         "0x00000000000000000000000000000000000000000000000000000000000003e8",
-    );
-}
-
-#[test]
-fn geo_v2_basic() {
-    assert_encode(
-        "figaro-geo-v2",
-        json!({
-            "originGeohash": "dr5ru",
-            "destinationGeohash": "dr5x1",
-            "massGrams": 1000,
-            "volumeMl": 500,
-            "classOfService": "S",
-        }),
-        "0x00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000001f400000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000005647235727500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000056472357831000000000000000000000000000000000000000000000000000000",
-    );
-}
-
-#[test]
-fn fulfilment_delivery_only() {
-    assert_encode(
-        "figaro-fulfilment-v2",
-        json!({
-            "modalities": ["delivery"],
-            "coordinations": ["buyer-assigned"],
-            "handoffPoints": ["face-to-face"],
-        }),
-        "0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
-    );
-}
-
-#[test]
-fn arbitration_kleros_general_5() {
-    assert_encode(
-        "figaro-arbitration-kleros-v1",
-        json!({
-            "klerosCourt": "general",
-            "klerosMinJurors": 5,
-        }),
-        "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000005",
-    );
-}
-
-#[test]
-fn arbitration_kleros_default_jurors() {
-    assert_encode(
-        "figaro-arbitration-kleros-v1",
-        json!({
-            "klerosCourt": "blockchain-technical",
-        }),
-        "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000003",
     );
 }
 
@@ -157,37 +127,6 @@ fn commerce_one_item() {
 }
 
 #[test]
-fn proximity_policy_two_bands() {
-    assert_encode(
-        "figaro-proximity-policy-v1",
-        json!({ "bands": ["zone-wifi", "contact-nfc"] }),
-        "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000003",
-    );
-}
-
-#[test]
-fn proximity_proof_basic() {
-    assert_encode(
-        "figaro-proximity-proof-v1",
-        json!({
-            "band": "nearby-ble",
-            "nonce": format!("0x{}", "ab".repeat(32)),
-            "deviceSig": "0xdeadbeef",
-        }),
-        "0x0000000000000000000000000000000000000000000000000000000000000002abababababababababababababababababababababababababababababababab00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000004deadbeef00000000000000000000000000000000000000000000000000000000",
-    );
-}
-
-#[test]
-fn offset_policy_two_providers() {
-    assert_encode(
-        "figaro-offset-policy-v1",
-        json!({ "providers": ["klima", "toucan"] }),
-        "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002",
-    );
-}
-
-#[test]
 fn merchant_accepted() {
     assert_encode(
         "figaro-merchant-process-v1",
@@ -209,7 +148,108 @@ fn courier_in_transit_no_evidence() {
 }
 
 #[test]
+fn arbitration_kleros_general_5() {
+    // klerosCourt = "general" → position 1 in [none, general, ...].
+    // The "none" insertion at position 0 preserves the legacy index for
+    // every real subcourt — only the (never-emitted) sentinel slot moved.
+    assert_encode(
+        "figaro-arbitration-kleros-v1",
+        json!({
+            "klerosCourt": "general",
+            "klerosMinJurors": 5,
+        }),
+        "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000005",
+    );
+}
+
+#[test]
+fn arbitration_kleros_blockchain_technical_no_jurors() {
+    // klerosCourt = "blockchain-technical" → position 3. klerosMinJurors
+    // absent + optional → ABI zero (0x...000), not the legacy 1-arg
+    // default of 3. Court-routing UI applies its own default at dispute
+    // time; the encoder does not.
+    assert_encode(
+        "figaro-arbitration-kleros-v1",
+        json!({
+            "klerosCourt": "blockchain-technical",
+        }),
+        "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000000",
+    );
+}
+
+// ── Byte-changing schemas: vectors regenerated under the canonical rule
+
+#[test]
+fn geo_v2_basic() {
+    // classOfService "S" → position 0 in [S, E, F, C]
+    // (previous per-schema encoder used 1-based; bytes shift accordingly)
+    assert_encode(
+        "figaro-geo-v2",
+        json!({
+            "originGeohash": "dr5ru",
+            "destinationGeohash": "dr5x1",
+            "massGrams": 1000,
+            "volumeMl": 500,
+            "classOfService": "S",
+        }),
+        "0x00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000001f400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005647235727500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000056472357831000000000000000000000000000000000000000000000000000000",
+    );
+}
+
+#[test]
+fn fulfilment_delivery_only() {
+    // modalities ["delivery"] → [2] in [consume-onsite, pickup, delivery, virtual]
+    // coordinations ["buyer-assigned"] → [0] in [buyer-assigned, seller-assigned, dutch-auction]
+    // handoffPoints ["face-to-face"] → [0] in [face-to-face, dead-drop, parking-area, locker]
+    assert_encode(
+        "figaro-fulfilment-v2",
+        json!({
+            "modalities": ["delivery"],
+            "coordinations": ["buyer-assigned"],
+            "handoffPoints": ["face-to-face"],
+        }),
+        "0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000",
+    );
+}
+
+#[test]
+fn proximity_policy_two_bands() {
+    // bands ["zone-wifi", "contact-nfc"] → [0, 2] in [zone-wifi, nearby-ble, contact-nfc]
+    assert_encode(
+        "figaro-proximity-policy-v1",
+        json!({ "bands": ["zone-wifi", "contact-nfc"] }),
+        "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002",
+    );
+}
+
+#[test]
+fn proximity_proof_basic() {
+    // band "nearby-ble" → 1 in [zone-wifi, nearby-ble, contact-nfc]
+    assert_encode(
+        "figaro-proximity-proof-v1",
+        json!({
+            "band": "nearby-ble",
+            "nonce": format!("0x{}", "ab".repeat(32)),
+            "deviceSig": "0xdeadbeef",
+        }),
+        "0x0000000000000000000000000000000000000000000000000000000000000001abababababababababababababababababababababababababababababababab00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000004deadbeef00000000000000000000000000000000000000000000000000000000",
+    );
+}
+
+#[test]
+fn offset_policy_two_providers() {
+    // providers ["klima", "toucan"] → [0, 1] in [klima, toucan, moss, custom]
+    assert_encode(
+        "figaro-offset-policy-v1",
+        json!({ "providers": ["klima", "toucan"] }),
+        "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    );
+}
+
+#[test]
 fn consent_one_doc() {
+    // documents array switches from struct-of-arrays (bytes32[], string[],
+    // string[]) to tuple[] — the canonical "object-array → tuple[]" rule.
     assert_encode(
         "figaro-consent-v1",
         json!({
@@ -219,19 +259,26 @@ fn consent_one_doc() {
                 "documentTitle": "Terms",
             }],
         }),
-        "0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000000011111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003312e3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000055465726d73000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000201111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000003312e30000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000055465726d73000000000000000000000000000000000000000000000000000000",
+    );
+}
+
+// ── Unsupported-schema path ─────────────────────────────────────────
+
+#[test]
+fn unknown_schema_has_no_embedded_spec() {
+    assert!(
+        embedded_spec_json_by_key("figaro-bogus-v99").is_none(),
+        "third-party schemaIds should not be found in the embedded set",
     );
 }
 
 #[test]
-fn unsupported_schema_errors_cleanly() {
-    let err = encode_content_for_schema("figaro-bogus-v99", &json!({})).unwrap_err();
-    assert!(matches!(err, figaro_schema::EncodeError::UnsupportedSchema(_)));
-}
-
-#[test]
-fn topology_v1_is_intentionally_unsupported() {
-    // Manifest-only — no validator, never attested at runtime.
-    let err = encode_content_for_schema("figaro-topology-v1", &json!({})).unwrap_err();
-    assert!(matches!(err, figaro_schema::EncodeError::UnsupportedSchema(_)));
+fn topology_v1_has_no_embedded_spec() {
+    // Manifest-only — no validator, never attested at runtime, so no
+    // canonical encoding either.
+    assert!(
+        embedded_spec_json_by_key("figaro-topology-v1").is_none(),
+        "topology is manifest-only; embedded set must exclude it",
+    );
 }

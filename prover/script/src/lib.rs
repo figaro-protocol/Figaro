@@ -84,7 +84,20 @@ pub fn build_canonical_batch_input(with_content_proof: bool) -> BatchInput {
     let schema_id = keccak256(schema_id_str.as_bytes());
     let family = keccak256(b"emissions");
     let content_json = serde_json::json!({ "scope": 1 });
-    let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
+    // Look up the embedded spec, parse, encode through the generic encoder.
+    // Post-Keystone there is no per-schema dispatch; every caller of the
+    // canonical encoder does this three-step lookup explicitly.
+    let spec_json = figaro_schema::embedded_spec_json_by_key(schema_id_str)
+        .expect("no embedded spec for schema");
+    let spec_value: serde_json::Value = serde_json::from_str(spec_json)
+        .expect("embedded spec is not valid JSON");
+    let parsed_spec = match figaro_schema::parse_schema_spec(&spec_value) {
+        figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
+        figaro_schema::ParseSchemaSpecResult::Err(errors) => {
+            panic!("embedded spec failed to parse: {:?}", errors)
+        }
+    };
+    let canonical_bytes = figaro_schema::encode_content_from_spec(&parsed_spec, &content_json)
         .expect("script-time encoding must succeed");
     let full_content_ref = keccak256(canonical_bytes.as_slice());
     // Single-section agreement: agreement_hash IS the lone section leaf, so

@@ -52,7 +52,7 @@ pub struct Signature {
 ///      never supplied by the caller.
 ///   2. `validate_content(content_json, embedded_spec, stage)` returns
 ///      Ok — the structured form passes the Layer B validator.
-///   3. `encode_content_for_schema(schemaId, content_json)` produces ABI
+///   3. `encode_content_from_spec(spec, content_json)` produces ABI
 ///      bytes byte-for-byte identical to viem's encoders in
 ///      `sdk/src/schemas/encode.ts`. The encoder is the cross-form
 ///      binding — it derives the canonical byte form *from* the JSON, so
@@ -368,7 +368,7 @@ pub enum KernelError {
     /// is too new or the caller is attempting to attest under a
     /// non-runtime schemaId (e.g. `figaro-topology-v1`).
     SchemaEncoderMissing(String),
-    /// `encode_content_for_schema` failed for a reason other than
+    /// `encode_content_from_spec` failed for a reason other than
     /// missing schema (bad field type, unknown enum value, etc.).
     ContentEncodingFailed(String),
     /// Gate 5: the content proof's sorted-pair Merkle `inclusion_proof`

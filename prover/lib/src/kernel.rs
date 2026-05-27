@@ -285,10 +285,12 @@ fn apply_resolve(
 ///      `schema_id`, never supplied by the caller, so the constraint set
 ///      is covered by the program verification key.
 ///   2. `validate_content(content_json, embedded_spec, stage)` succeeds.
-///   3. `encode_content_for_schema(schemaId, content_json)` derives the
+///   3. `encode_content_from_spec(parsed_spec, content_json)` derives the
 ///      canonical ABI byte form from the JSON — the cross-form binding:
 ///      the bytes Layer C decodes are derived from the JSON Layer B
 ///      validates, so they describe the same content by construction.
+///      Post-Keystone there is no per-schema dispatch; one generic encoder
+///      drives all 17 runtime-attestable schemas.
 ///   4. `keccak256(derived_bytes) == content_ref` — binds the derived
 ///      bytes to the on-chain commitment value.
 ///   5. When `agreement_hash` is `Some` (seller attestations), the
@@ -361,14 +363,12 @@ fn validate_attestation_content(
     }
 
     // ── Gate 3: re-derive canonical ABI bytes from the JSON ──
-    let derived_bytes = figaro_schema::encode_content_for_schema(
-        &parsed.schema_id,
-        &content_json_value,
-    )
-    .map_err(|e| match e {
-        figaro_schema::EncodeError::UnsupportedSchema(id) => KernelError::SchemaEncoderMissing(id),
-        other => KernelError::ContentEncodingFailed(other.to_string()),
-    })?;
+    // Generic encoder reads the parsed spec directly — the schemaId
+    // lookup happened at Gate 1, so any failure here is a content
+    // encoding error (field type mismatch, malformed hex, etc.),
+    // never a missing encoder.
+    let derived_bytes = figaro_schema::encode_content_from_spec(&parsed, &content_json_value)
+        .map_err(|e| KernelError::ContentEncodingFailed(e.to_string()))?;
 
     // ── Gate 4: derived bytes hash to the on-chain content_ref ──
     let computed = keccak256(derived_bytes.as_slice());
