@@ -31,9 +31,8 @@ import {
     type Agreement,
 } from '@figaro/core';
 import {
-    encodeMerchantContent,
-    encodeCourierContent,
-    encodeProximityProofContent,
+    embeddedSpec,
+    encodeContentFromSpec,
     type ProximityBand,
 } from '@figaro/core/schemas';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
@@ -542,7 +541,7 @@ async function ensureGhgSchema(schemaRegistryAddress: `0x${string}`, signerKey: 
             address: schemaRegistryAddress,
             abi: SCHEMA_REGISTRY_ABI,
             functionName: 'registerSchema',
-            args: [GHG_SCHEMA_ID, 1n, schemaUriHash],
+            args: [GHG_SCHEMA_ID, 1n, schemaUriHash, keccak256(stringToHex('emissions'))],
         });
         await publicClient.waitForTransactionReceipt({ hash: await signerClient.writeContract(request) });
     }
@@ -837,7 +836,10 @@ export async function sendLifecycleSignal(
     const { sectionData, proof } = agreementReceipt(deliveryCommitment, COURIER_PROCESS_SCHEMA_KEY);
     // Category-1 courier-process content: (uint8 eventType, string evidenceUri).
     // No byte-equality cross-check with sectionData.
-    const content = encodeCourierContent({ eventType: mapping.eventType, evidenceUri: '' });
+    const content = encodeContentFromSpec(
+        embeddedSpec('figaro-courier-process-v1')!,
+        { eventType: mapping.eventType, evidenceUri: '' },
+    );
     const { request } = await publicClient.simulateContract({
         account: driver.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
         functionName: 'attestAsSeller',
@@ -860,7 +862,10 @@ export async function restaurantPrepSignals(foodOrderHash: `0x${string}`, _deliv
     const { sectionData, proof } = agreementReceipt(foodCommitment, MERCHANT_PROCESS_SCHEMA_KEY);
 
     // Preparing: restaurant attests prep-started on the food order
-    const prepContent = encodeMerchantContent({ eventType: 'prep-started', evidenceUri: '' });
+    const prepContent = encodeContentFromSpec(
+        embeddedSpec('figaro-merchant-process-v1')!,
+        { eventType: 'prep-started', evidenceUri: '' },
+    );
     const { request: prepReq } = await publicClient.simulateContract({
         account: restaurant.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
         functionName: 'attestAsSeller',
@@ -869,7 +874,10 @@ export async function restaurantPrepSignals(foodOrderHash: `0x${string}`, _deliv
     await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(prepReq) });
 
     // PickupReady: restaurant attests ready-for-pickup on the food order
-    const readyContent = encodeMerchantContent({ eventType: 'ready-for-pickup', evidenceUri: '' });
+    const readyContent = encodeContentFromSpec(
+        embeddedSpec('figaro-merchant-process-v1')!,
+        { eventType: 'ready-for-pickup', evidenceUri: '' },
+    );
     const { request: readyReq } = await publicClient.simulateContract({
         account: restaurant.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
         functionName: 'attestAsSeller',
@@ -937,11 +945,10 @@ export async function attestProximityProofAsSeller(opts: {
     if (!commitment) throw new Error(`Missing seeded commitment for ${opts.orderHash}`);
 
     const { sectionData, proof } = agreementReceipt(commitment, PROXIMITY_PROOF_SCHEMA_KEY);
-    const content = encodeProximityProofContent({
-        band: opts.band,
-        nonce: opts.nonce,
-        deviceSig: opts.deviceSig,
-    });
+    const content = encodeContentFromSpec(
+        embeddedSpec('figaro-proximity-proof-v1')!,
+        { band: opts.band, nonce: opts.nonce, deviceSig: opts.deviceSig },
+    );
 
     const seller = privateKeyToAccount(opts.sellerKey);
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });

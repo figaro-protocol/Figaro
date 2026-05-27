@@ -1,14 +1,36 @@
 /**
- * Content encoders for the local-commerce schemas.
+ * Generic spec-driven content encoder — TypeScript mirror of the Rust
+ * `prover/schema/src/encode.rs`. Both must stay byte-identical: the
+ * SP1 prover's cross-form-binding gate derives content bytes via the
+ * Rust encoder and asserts they match the on-chain `content_ref`,
+ * which off-chain producers compute via the TS encoder.
  *
- * Each function takes a typed payload (matching the JSON schema spec) and
- * returns the ABI-encoded bytes that the on-chain validator expects.
+ * Post-Keystone there is no per-schema dispatch — one encoder drives
+ * every schema. New schemas plug in by declaring their spec; no
+ * encoder code is needed. See docs/v5/SCALING_STRATEGY.md "Keystone
+ * Design — Canonical ABI Mapping" for the encoding rule:
  *
- * The encoders are the bridge between Layer A (TS validateContent — checks
- * a JS object against the JSON spec) and Layer C (Solidity validator —
- * checks ABI-decoded fields). For every schema both layers must agree on
- * the field-to-position mapping; this file is the canonical TS-side
- * declaration of those positions.
+ *   - top-level fields encode as `encodeAbiParameters` in declaration order
+ *   - `boolean` → `bool`
+ *   - `integer` / `bigint` → `uint256` (width is encode-irrelevant)
+ *   - `enum` → `uint8` = 0-based position in `EnumFieldSpec.values`
+ *   - `string` (no format) → `string`
+ *   - `string` `bytes32-hex` → `bytes32`
+ *   - `string` `address-hex` → `address`
+ *   - `string` `bytes-hex` → `bytes`
+ *   - `array<T>` → `T[]` (element type mapped recursively)
+ *   - `object` → `tuple(...)` of its fields, declaration order
+ *
+ * Absent optional fields encode as the ABI zero-value of their type
+ * (`0`, `""`, `false`, empty array, zero-bytes). A required absent
+ * field throws (caller-detectable; validation should already have
+ * caught it upstream).
+ *
+ * Per-schema *types* (`GeoContent`, `KlerosCourt`, `ConsentDocument`,
+ * …) are preserved here as a courtesy to downstream code that wants
+ * domain-typed values rather than `Record<string, unknown>`. The
+ * type names are not load-bearing for the encoder — they're a
+ * convenience layer that runs independently.
  */
 
 import { encodeAbiParameters, type AbiParameter, type Hex } from "viem";
@@ -18,213 +40,64 @@ import type { FieldSpec, SchemaSpec } from "./spec.js";
 
 export const EMPTY_CONTENT: Hex = "0x";
 
-// ── figaro-topology-v1 ──────────────────────────────────────────────────────
-// Topology is a manifest-only clause — it lives inside the signed agreement at
-// commit time and is never fired as a runtime attestation. No ABI encoder is
-// needed; the off-chain manifest carries `{topologyMode, parentOrderHashes}`
-// as a JSON section.
-
-// ── figaro-geo-v2 ───────────────────────────────────────────────────────────
+// ── Per-schema content types (for downstream typing convenience) ────────────
 //
-// Origin / destination geohashes plus the shipment's physical envelope (mass,
-// volume) and class of service. v2 promotes mass/volume/class from optional
-// metadata to first-class validated fields; every field is required when this
-// clause is included. Class-of-service is encoded as a uint8 index on-chain
-// (S=1, E=2, F=3, C=4) to mirror figaro-fulfilment-v2's enum-as-uint8 pattern.
+// These mirror the field shapes of each protocol schema. Consumers can
+// supply a `Record<string, unknown>` directly to `encodeContentFromSpec`;
+// these typed aliases just narrow the surface for code that wants TS-side
+// help. None of the index tables that used to back the deleted per-schema
+// encoders survive — the canonical 0-based-position rule is enforced by
+// the spec at runtime, not by hand-maintained enum maps.
 
 /** Class of service. S = Standard. E = Express. F = Fragile. C = Cold Chain. */
 export type ClassOfService = "S" | "E" | "F" | "C";
 
-const CLASS_OF_SERVICE_INDEX: Record<ClassOfService, number> = {
-    "S": 1,
-    "E": 2,
-    "F": 3,
-    "C": 4,
-};
-
 export interface GeoContent {
     originGeohash: string;
     destinationGeohash: string;
-    /** Whole grams. Must be ≥ 1; capped at uint32-max. */
+    /** Whole grams. */
     massGrams: number;
-    /** Whole millilitres. Must be ≥ 1; capped at uint32-max. */
+    /** Whole millilitres. */
     volumeMl: number;
     classOfService: ClassOfService;
 }
-
-export function encodeGeoContent(content: GeoContent): Hex {
-    return encodeAbiParameters(
-        [
-            { type: "string" },
-            { type: "string" },
-            { type: "uint32" },
-            { type: "uint32" },
-            { type: "uint8" },
-        ],
-        [
-            content.originGeohash,
-            content.destinationGeohash,
-            content.massGrams,
-            content.volumeMl,
-            CLASS_OF_SERVICE_INDEX[content.classOfService],
-        ],
-    );
-}
-
-// ── figaro-fulfilment-v2 ────────────────────────────────────────────────────
-//
-// Offered fulfilment options for an order. Three orthogonal multi-valued
-// dimensions: modalities (one or more of consume-onsite / pickup / delivery /
-// virtual), courier coordinations (meaningful only when delivery is among the
-// modalities), and handoff points. Every order has a fulfilment clause —
-// fully-virtual products carry modalities: ["virtual"]. Proximity verification
-// of the handoff lives in figaro-proximity-policy-v1, not here.
 
 export type FulfilmentModality = "consume-onsite" | "pickup" | "delivery" | "virtual";
 export type FulfilmentCoordination = "buyer-assigned" | "seller-assigned" | "dutch-auction";
 export type FulfilmentHandoffPoint = "face-to-face" | "dead-drop" | "parking-area" | "locker";
 
-const FULFILMENT_MODALITY_INDEX: Record<FulfilmentModality, number> = {
-    "consume-onsite": 1,
-    "pickup": 2,
-    "delivery": 3,
-    "virtual": 4,
-};
-
-const FULFILMENT_COORDINATION_INDEX: Record<FulfilmentCoordination, number> = {
-    "buyer-assigned": 1,
-    "seller-assigned": 2,
-    "dutch-auction": 3,
-};
-
-const FULFILMENT_HANDOFF_POINT_INDEX: Record<FulfilmentHandoffPoint, number> = {
-    "face-to-face": 1,
-    "dead-drop": 2,
-    "parking-area": 3,
-    "locker": 4,
-};
-
 export interface FulfilmentV2Content {
-    /** Non-empty list of modalities on offer. */
     modalities: readonly FulfilmentModality[];
-    /** Required non-empty when "delivery" is among `modalities`; rejected
-     *  non-empty otherwise. */
-    coordinations?: readonly FulfilmentCoordination[];
-    /** Optional list of handoff points on offer. */
-    handoffPoints?: readonly FulfilmentHandoffPoint[];
+    coordinations: readonly FulfilmentCoordination[];
+    handoffPoints: readonly FulfilmentHandoffPoint[];
 }
 
-export function encodeFulfilmentV2Content(content: FulfilmentV2Content): Hex {
-    return encodeAbiParameters(
-        [{ type: "uint8[]" }, { type: "uint8[]" }, { type: "uint8[]" }],
-        [
-            content.modalities.map((m) => FULFILMENT_MODALITY_INDEX[m]),
-            (content.coordinations ?? []).map((c) => FULFILMENT_COORDINATION_INDEX[c]),
-            (content.handoffPoints ?? []).map((h) => FULFILMENT_HANDOFF_POINT_INDEX[h]),
-        ],
-    );
-}
-
-// ── figaro-arbitration-kleros-v1 ────────────────────────────────────────────
-//
-// Off-chain dispute resolution via the Kleros decentralized juror court.
-// Selects a subcourt and a minimum juror count. One specific arbitration
-// provider; sister `figaro-arbitration-<provider>-v1` schemas would cover
-// other decentralized ODR providers as they integrate with Figaro. Compose
-// with `figaro-applicable-law-v1` to add a state-law / ADR recourse layer.
-
-export type KlerosCourt = "general" | "blockchain-nontechnical" | "blockchain-technical" | "english-language";
-
-const KLEROS_COURT_INDEX: Record<KlerosCourt, number> = {
-    "general": 1,
-    "blockchain-nontechnical": 2,
-    "blockchain-technical": 3,
-    "english-language": 4,
-};
+/** Kleros subcourt. `none` is a sentinel (index 0; not a valid selection). */
+export type KlerosCourt =
+    | "none"
+    | "general"
+    | "blockchain-nontechnical"
+    | "blockchain-technical"
+    | "english-language";
 
 export interface ArbitrationKlerosContent {
-    /** Kleros subcourt. Required. */
     klerosCourt: KlerosCourt;
-    /** Minimum juror count. Defaults to 3 (Kleros's own default) if omitted. */
     klerosMinJurors?: number;
 }
 
-export function encodeArbitrationKlerosContent(content: ArbitrationKlerosContent): Hex {
-    const klerosCourtIndex = KLEROS_COURT_INDEX[content.klerosCourt];
-    const klerosMinJurors = content.klerosMinJurors ?? 3;
-    return encodeAbiParameters(
-        [{ type: "uint8" }, { type: "uint8" }],
-        [klerosCourtIndex, klerosMinJurors],
-    );
-}
-
-// ── figaro-applicable-law-v1 ────────────────────────────────────────────────
-//
-// State / ADR / traditional-jurisdiction recourse layer. Identifies the body
-// of law governing the order and, optionally, the named adjudication venue
-// and proceedings language. Provider-agnostic by construction (free-form
-// strings). Compose with `figaro-arbitration-kleros-v1` (or another
-// `figaro-arbitration-<provider>-v1`) to add a decentralized ODR layer.
-
 export interface ApplicableLawContent {
-    /** Body of law that governs the contract. ISO 3166 code (e.g., "US-CA"),
-     *  "EU" / "INTL", or a free-form non-state legal-order identifier.
-     *  Required. */
     applicableLaw: string;
-    /** Named adjudication venue (optional). */
     forum?: string;
-    /** ISO 639 language code for adjudication (optional). */
     language?: string;
 }
 
-export function encodeApplicableLawContent(content: ApplicableLawContent): Hex {
-    return encodeAbiParameters(
-        [{ type: "string" }, { type: "string" }, { type: "string" }],
-        [content.applicableLaw, content.forum ?? "", content.language ?? ""],
-    );
-}
-
-// ── figaro-ghg-<standard>-v1 family (sister schemas) ────────────────────────
-//
-// Five sister schemas, one per accounting standard. The standard identity
-// lives in the schemaId, not in a content enum. All five share the same
-// `(uint8 scope)` content shape and the same encoder. Pick the schema by
-// schemaId at the manifest builder; pass scope content via this encoder.
-//
-// Sister schemaIds:
-//   - figaro-ghg-protocol-v1  (GHG Protocol Corporate Standard + WRI/WBCSD guidance)
-//   - figaro-ghg-iso-14064-v1 (ISO 14064 family, parts 1/2/3)
-//   - figaro-ghg-pas-2050-v1  (PAS 2050:2011)
-//   - figaro-ghg-en-16258-v1  (EN 16258 transport methodology)
-//   - figaro-ghg-custom-v1    (custom / non-standard methodology)
-
 export interface GHGScopeContent {
-    scope?: 0 | 1 | 2 | 3;
+    scope?: number;
 }
-
-export function encodeGHGScopeContent(content: GHGScopeContent): Hex {
-    return encodeAbiParameters(
-        [{ type: "uint8" }],
-        [content.scope ?? 0],
-    );
-}
-
-// ── figaro-ghg-measurement-v1 ───────────────────────────────────────────────
-//
-// Runtime grams CO2e measurement. Pair with any figaro-ghg-<standard>-v1
-// sister schema when the accounting standard and scope need to be committed
-// at contract time; measurement is Category-1 (runtime-only), so the grams
-// value is NOT cross-checked against the committed sectionData.
 
 export interface GHGMeasurementContent {
-    grams: bigint;
+    grams: string;
 }
-
-export function encodeGHGMeasurementContent(content: GHGMeasurementContent): Hex {
-    return encodeAbiParameters([{ type: "uint256" }], [content.grams]);
-}
-
-// ── figaro-commerce-v1 ──────────────────────────────────────────────────────
 
 export interface CommerceLineItem {
     itemId: string;
@@ -239,203 +112,63 @@ export interface CommerceContent {
     lineItems: readonly CommerceLineItem[];
 }
 
-export function encodeCommerceContent(content: CommerceContent): Hex {
-    return encodeAbiParameters(
-        [
-            { type: "address" },
-            { type: "uint256" },
-            {
-                type: "tuple[]",
-                components: [
-                    { type: "string", name: "itemId" },
-                    { type: "string", name: "name" },
-                    { type: "uint256", name: "quantity" },
-                    { type: "uint256", name: "unitPrice" },
-                ],
-            },
-        ],
-        [content.currency, content.payment, content.lineItems as readonly CommerceLineItem[]],
-    );
-}
-
-// ── figaro-proximity-policy-v1 + figaro-proximity-proof-v1 (sister schemas) ─
-//
-// Policy commits the required band at agreement signing (Category-2,
-// byte-equality enforced). Proof carries the per-handoff nonce + signed
-// witness payload at runtime (Category-1, content fresh per attestation).
-// Off-chain consumers should verify proof.band == policy.band when needed.
-// Sister-schema split mirrors GHG-disclosure (committed) +
-// GHG-measurement (runtime).
-
-/** Detection modalities. Indices match across the policy + proof schemas. */
 export type ProximityBand = "zone-wifi" | "nearby-ble" | "contact-nfc";
 
-const PROXIMITY_BAND_INDEX: Record<ProximityBand, number> = {
-    "zone-wifi": 1, "nearby-ble": 2, "contact-nfc": 3,
-};
-
 export interface ProximityPolicyContent {
-    /** Non-empty list of bands the merchant offers (or the buyer commits to)
-     *  for this order. Empty would mean "no proximity required" — express that
-     *  by omitting the policy clause entirely. */
     bands: readonly ProximityBand[];
-}
-
-export function encodeProximityPolicyContent(content: ProximityPolicyContent): Hex {
-    return encodeAbiParameters(
-        [{ type: "uint8[]" }],
-        [content.bands.map((b) => PROXIMITY_BAND_INDEX[b])],
-    );
 }
 
 export interface ProximityProofContent {
     band: ProximityBand;
-    nonce: Hex;       // bytes32
-    deviceSig: Hex;   // bytes
+    nonce: Hex;
+    deviceSig: Hex;
 }
-
-export function encodeProximityProofContent(content: ProximityProofContent): Hex {
-    return encodeAbiParameters(
-        [{ type: "uint8" }, { type: "bytes32" }, { type: "bytes" }],
-        [PROXIMITY_BAND_INDEX[content.band], content.nonce, content.deviceSig],
-    );
-}
-
-// ── figaro-offset-policy-v1 ──────────────────────────────────────────────────
-//
-// Carbon-offset providers an assembly accepts for emissions compensation.
-// Multi-valued — same shape pattern as proximity-policy-v1. The actual offset
-// purchase is modeled as a sub-order against the chosen provider; this clause
-// anchors the policy declaration, not the purchase.
 
 export type OffsetProvider = "klima" | "toucan" | "moss" | "custom";
 
-const OFFSET_PROVIDER_INDEX: Record<OffsetProvider, number> = {
-    "klima": 1,
-    "toucan": 2,
-    "moss": 3,
-    "custom": 4,
-};
-
 export interface OffsetPolicyContent {
-    /** Non-empty list of offset providers the merchant offers (or the buyer
-     *  commits to) for this order. Empty would mean no offset path — express
-     *  that by omitting the policy clause entirely. */
     providers: readonly OffsetProvider[];
 }
 
-export function encodeOffsetPolicyContent(content: OffsetPolicyContent): Hex {
-    return encodeAbiParameters(
-        [{ type: "uint8[]" }],
-        [content.providers.map((p) => OFFSET_PROVIDER_INDEX[p])],
-    );
-}
-
-// ── figaro-merchant-process-v1 ──────────────────────────────────────────────
-//
-// Sovereignty primitive: merchant attests their own internal events under this
-// schema as the SSoT for "what the merchant has done." Generic across local-
-// commerce verticals (restaurants, retail, service merchants).
-
 export type MerchantEvent =
-    | "order-received" | "accepted" | "prep-started"
-    | "ready-for-pickup" | "handed-off" | "cancelled";
-
-const MERCHANT_EVENT_INDEX: Record<MerchantEvent, number> = {
-    "order-received": 0, "accepted": 1, "prep-started": 2,
-    "ready-for-pickup": 3, "handed-off": 4, "cancelled": 5,
-};
+    | "order-received"
+    | "accepted"
+    | "prep-started"
+    | "ready-for-pickup"
+    | "handed-off"
+    | "cancelled";
 
 export interface MerchantContent {
     eventType: MerchantEvent;
     evidenceUri?: string;
 }
 
-export function encodeMerchantContent(content: MerchantContent): Hex {
-    return encodeAbiParameters(
-        [{ type: "uint8" }, { type: "string" }],
-        [MERCHANT_EVENT_INDEX[content.eventType], content.evidenceUri ?? ""],
-    );
-}
-
-// ── figaro-consent-v1 ───────────────────────────────────────────────────────
-//
-// Cryptographic consent attestation. Anchors the binding between a wallet
-// (recovered from the EIP-712 signature on the AttestationCoordinator call,
-// visible in the `attester` field of the Attestation event) and an off-chain
-// legal document identified by its keccak256 content hash. Pattern: off-chain
-// document semantics, on-chain anchor for shared reference integrity.
-//
-// Append-only: revocation is a separate off-chain process and does NOT mutate
-// the on-chain attestation. A new document version requires figaro-consent-v2.
-//
-// Bounded inputs (length limits enforced both Layer A and Layer C) prevent
-// griefing via unbounded calldata.
-
 export interface ConsentDocument {
-    /** keccak256 of the canonical document text. 32-byte hex (0x...). */
     documentHash: Hex;
-    /** Semver-style version identifier; bounded to 32 chars. */
     documentVersion: string;
-    /** Human-readable document name; bounded to 200 chars. */
     documentTitle: string;
 }
 
 export interface ConsentContent {
-    /** Non-empty list of referenced documents. */
     documents: readonly ConsentDocument[];
 }
 
-export function encodeConsentContent(content: ConsentContent): Hex {
-    const hashes = content.documents.map((d) => d.documentHash);
-    const versions = content.documents.map((d) => d.documentVersion);
-    const titles = content.documents.map((d) => d.documentTitle);
-    return encodeAbiParameters(
-        [{ type: "bytes32[]" }, { type: "string[]" }, { type: "string[]" }],
-        [hashes, versions, titles],
-    );
-}
-
-// ── figaro-courier-process-v1 ───────────────────────────────────────────────
-//
-// Sovereignty primitive: courier attests their own internal events under this
-// schema as the SSoT for "what the courier has done." Generic across transport
-// modes (driver, cyclist, walker, drone, autonomous vehicle).
-
 export type CourierEvent =
-    | "available" | "accepted" | "en-route-pickup" | "arrived-pickup"
-    | "in-transit" | "arrived-dropoff" | "completed" | "cancelled";
-
-const COURIER_EVENT_INDEX: Record<CourierEvent, number> = {
-    "available": 0, "accepted": 1, "en-route-pickup": 2, "arrived-pickup": 3,
-    "in-transit": 4, "arrived-dropoff": 5, "completed": 6, "cancelled": 7,
-};
+    | "available"
+    | "accepted"
+    | "en-route-pickup"
+    | "arrived-pickup"
+    | "in-transit"
+    | "arrived-dropoff"
+    | "completed"
+    | "cancelled";
 
 export interface CourierContent {
     eventType: CourierEvent;
     evidenceUri?: string;
 }
 
-export function encodeCourierContent(content: CourierContent): Hex {
-    return encodeAbiParameters(
-        [{ type: "uint8" }, { type: "string" }],
-        [COURIER_EVENT_INDEX[content.eventType], content.evidenceUri ?? ""],
-    );
-}
-
 // ── Generic spec-driven encoder ─────────────────────────────────────────────
-//
-// `encodeContentFromSpec` derives the ABI encoding from the parsed SchemaSpec
-// alone — no per-schema code. It mirrors the Rust `encode_content_from_spec`
-// (prover/schema/src/encode.rs); the two MUST stay byte-identical. Additive:
-// the per-schema encoders above remain the wired-in path until the keystone
-// cutover. See docs/v5/SCALING_STRATEGY.md "Keystone Design — Canonical ABI
-// Mapping".
-//
-// Canonical rule: top-level fields encode in declaration order; an enum
-// encodes as the 0-based position of its value in `values`; an absent
-// optional field encodes as the ABI zero-value of its type; an object-array
-// encodes as `tuple[]`; integer and bigint alike encode as `uint256`.
 
 /** The viem ABI-parameter descriptor for a spec field. */
 function abiParamOf(field: FieldSpec): AbiParameter {

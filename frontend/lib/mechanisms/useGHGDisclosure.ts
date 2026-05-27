@@ -43,7 +43,7 @@ import {
     getAttestationsByOrder,
     type IndexedAttestationLog,
 } from "@/lib/core/indexer";
-import { encodeGHGMeasurementContent } from "@figaro/core/schemas";
+import { embeddedSpec, encodeContentFromSpec } from "@figaro/core/schemas";
 
 export type AttestationRecord = {
     orderHash: string;
@@ -83,7 +83,10 @@ export type ProcessDisclosureSummary = {
  * Shape: `abi.encode(uint256 grams)` — 32 bytes, big-endian padded.
  */
 export function encodeMeasurementGramsContent(grams: bigint): Hex {
-    return encodeGHGMeasurementContent({ grams });
+    return encodeContentFromSpec(
+        embeddedSpec("figaro-ghg-measurement-v1")!,
+        { grams: grams.toString() },
+    );
 }
 
 /**

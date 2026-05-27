@@ -327,125 +327,37 @@ function schemaIdOf(schemaKey: string): `0x${string}` {
 }
 
 /**
- * Encoders for Category-2 (declarative-clause) schemas. These produce the ABI
- * bytes that match the on-chain validator's `abi.decode` for each schema.
- * Both `sectionData` (committed at agreement time) and runtime attestation
- * `content` must open to these exact bytes — the validator enforces
- * `keccak256(content) == keccak256(sectionData)` to prevent drift.
+ * Return the on-chain sectionData bytes for an agreement section.
  *
- * Category-1 schemas (merchant-process, courier-process, proximity-proof,
- * ghg-measurement) have no committed clause; their sectionData remains
- * canonical JSON and the validator does not cross-check. The sister schema
- * figaro-proximity-policy-v1 IS Category-2 — band committed at agreement
- * time so off-chain consumers can verify proof.band == policy.band.
- */
-function getCategory2Encoder(schemaKey: string): ((data: Record<string, unknown>) => `0x${string}`) | null {
-    // Encoders live in the `@figaro/core/schemas` subpath; require them
-    // dynamically to keep this module loadable in test environments where
-    // the SDK is resolved via link / pnpm / vitest.
-    const schemasMod = require("@figaro/core/schemas") as typeof import("@figaro/core/schemas");
-    const {
-        encodeGeoContent,
-        encodeFulfilmentV2Content,
-        encodeArbitrationKlerosContent,
-        encodeApplicableLawContent,
-        encodeGHGScopeContent,
-        encodeProximityPolicyContent,
-        encodeOffsetPolicyContent,
-        encodeCommerceContent,
-        encodeConsentContent,
-    } = schemasMod;
-    // Cast `data.*` strings to the SDK encoder enum types at the call site.
-    // Runtime mismatches (unknown enum values) surface as TypeError inside the
-    // encoder and surface to the hook as an encoding failure — that's the
-    // intended behaviour; upstream builders are expected to supply SDK-valid
-    // enum strings.
-    const asAny = <T>(v: unknown) => v as T;
-    switch (schemaKey) {
-        case "figaro-geo-v2":
-            return (data) => encodeGeoContent({
-                originGeohash: data.originGeohash as string,
-                destinationGeohash: data.destinationGeohash as string,
-                massGrams: Number(data.massGrams),
-                volumeMl: Number(data.volumeMl),
-                // Accept either the SDK short code or the catalogue long form
-                // here — see `classOfServiceToShortCode`. Without this bridge,
-                // a section authored with `"fragile"` would surface as a cryptic
-                // `numberToHex(undefined)` from viem at hash time.
-                classOfService: classOfServiceToShortCode(data.classOfService),
-            });
-        case "figaro-fulfilment-v2":
-            return (data) => encodeFulfilmentV2Content({
-                modalities: asAny(data.modalities ?? []),
-                coordinations: asAny(data.coordinations ?? []),
-                handoffPoints: asAny(data.handoffPoints ?? []),
-            });
-        case "figaro-arbitration-kleros-v1":
-            return (data) => encodeArbitrationKlerosContent({
-                klerosCourt: asAny(data.klerosCourt),
-                klerosMinJurors: typeof data.klerosMinJurors === "number"
-                    ? data.klerosMinJurors
-                    : undefined,
-            });
-        case "figaro-applicable-law-v1":
-            return (data) => encodeApplicableLawContent({
-                applicableLaw: data.applicableLaw as string,
-                forum: data.forum as string | undefined,
-                language: data.language as string | undefined,
-            });
-        case "figaro-ghg-protocol-v1":
-        case "figaro-ghg-iso-14064-v1":
-        case "figaro-ghg-pas-2050-v1":
-        case "figaro-ghg-en-16258-v1":
-        case "figaro-ghg-custom-v1":
-            return (data) => encodeGHGScopeContent({
-                scope: data.scope as 0 | 1 | 2 | 3 | undefined,
-            });
-        case "figaro-proximity-policy-v1":
-            return (data) => encodeProximityPolicyContent({
-                bands: asAny(data.bands ?? []),
-            });
-        case "figaro-offset-policy-v1":
-            return (data) => encodeOffsetPolicyContent({
-                providers: asAny(data.providers ?? []),
-            });
-        case "figaro-consent-v1":
-            return (data) => encodeConsentContent({
-                documents: Array.isArray(data.documents)
-                    ? (data.documents as Array<{
-                        documentHash: `0x${string}`;
-                        documentVersion: string;
-                        documentTitle: string;
-                    }>)
-                    : [],
-            });
-        case "figaro-commerce-v1":
-            return (data) => encodeCommerceContent({
-                currency: data.currency as `0x${string}`,
-                payment: BigInt(data.payment as string | number | bigint),
-                lineItems: ((data.lineItems as Array<Record<string, unknown>>) ?? []).map((li) => ({
-                    itemId: li.itemId as string,
-                    name: li.name as string,
-                    quantity: BigInt(li.quantity as string | number | bigint),
-                    unitPrice: BigInt(li.unitPrice as string | number | bigint),
-                })),
-            });
-        default:
-            return null;
-    }
-}
-
-/**
- * Return the on-chain sectionData bytes for an agreement section. For
- * Category-2 schemas (declarative clauses) this is ABI-encoded in the same
- * shape the runtime validator expects as `content`, so the on-chain
- * byte-equality check `keccak256(content) == keccak256(sectionData)` can
- * succeed. For Category-1 schemas (runtime-only events — lifecycle, proximity)
- * this is canonical JSON bytes as before.
+ * Category-2 schemas (declarative clauses) encode their data via the
+ * generic canonical encoder — the same path the runtime attestation's
+ * `content` takes — so the on-chain byte-equality check
+ * `keccak256(content) == keccak256(sectionData)` succeeds. Category-1
+ * schemas (no committed clause: lifecycle events, proximity proofs,
+ * ghg-measurement) and unknown schemas fall through to canonical JSON
+ * bytes.
+ *
+ * Post-Keystone there is no per-schema dispatch; the embedded spec
+ * drives both encoding and tier classification.
+ *
+ * One field-level adapter: `figaro-geo-v2.classOfService` is normalised
+ * to the SDK short code before encoding — a section authored with the
+ * catalogue long form (`"fragile"`) would otherwise surface as a cryptic
+ * encoder error. The other 16 schemas pass their data through as-is.
  */
 export function getSectionDataBytes(section: AgreementSection): `0x${string}` {
-    const encoder = getCategory2Encoder(section.schema);
-    if (encoder) return encoder(section.data);
+    // Resolve the embedded spec via dynamic require so this module stays
+    // loadable in test environments where the SDK is resolved via link /
+    // pnpm / vitest.
+    const { embeddedSpec, encodeContentFromSpec } =
+        require("@figaro/core/schemas") as typeof import("@figaro/core/schemas");
+    const spec = embeddedSpec(section.schema);
+    if (spec && spec.block?.tier === "category-2") {
+        const data = section.schema === "figaro-geo-v2"
+            ? { ...section.data, classOfService: classOfServiceToShortCode(section.data.classOfService) }
+            : section.data;
+        return encodeContentFromSpec(spec, data);
+    }
     return toHex(new TextEncoder().encode(canonicalizeSectionData(section.data)));
 }
 

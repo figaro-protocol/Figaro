@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { decodeAbiParameters, type Hex } from "viem";
-import { encodeConsentContent, type ConsentContent } from "../../src/schemas/encode.js";
+import { embeddedSpec } from "../../src/schemas/embedded.js";
+import { encodeContentFromSpec, type ConsentContent } from "../../src/schemas/encode.js";
 import { parseSchemaSpec } from "../../src/schemas/spec.js";
 import { validateContent } from "../../src/schemas/validate.js";
 import consentSpecRaw from "../../src/schemas/examples/figaro-consent-v1.json" with { type: "json" };
@@ -8,11 +9,33 @@ import consentSpecRaw from "../../src/schemas/examples/figaro-consent-v1.json" w
 const SAMPLE_HASH: Hex = `0x${"ab".repeat(32)}`;
 const ALT_HASH: Hex = `0x${"cd".repeat(32)}`;
 
-function decodeConsent(bytes: Hex): readonly [readonly Hex[], readonly string[], readonly string[]] {
+const CONSENT_SPEC = embeddedSpec("figaro-consent-v1")!;
+function encodeConsent(content: ConsentContent): Hex {
+    return encodeContentFromSpec(CONSENT_SPEC, content as unknown as Record<string, unknown>);
+}
+
+/**
+ * Post-Keystone consent encodes as `documents: tuple[]` per the
+ * canonical object-array rule (struct-of-arrays was the pre-Keystone
+ * per-schema shape). Each document tuple is
+ * `(bytes32 documentHash, string documentVersion, string documentTitle)`.
+ */
+function decodeConsent(
+    bytes: Hex,
+): readonly [readonly { documentHash: Hex; documentVersion: string; documentTitle: string }[]] {
     return decodeAbiParameters(
-        [{ type: "bytes32[]" }, { type: "string[]" }, { type: "string[]" }],
+        [
+            {
+                type: "tuple[]",
+                components: [
+                    { type: "bytes32", name: "documentHash" },
+                    { type: "string", name: "documentVersion" },
+                    { type: "string", name: "documentTitle" },
+                ],
+            },
+        ],
         bytes,
-    ) as readonly [readonly Hex[], readonly string[], readonly string[]];
+    ) as readonly [readonly { documentHash: Hex; documentVersion: string; documentTitle: string }[]];
 }
 
 describe("figaro-consent-v1 — spec", () => {
@@ -104,12 +127,11 @@ describe("figaro-consent-v1 — encode/decode round-trip", () => {
                 { documentHash: SAMPLE_HASH, documentVersion: "1.0.0", documentTitle: "Privacy Policy" },
             ],
         };
-        const bytes = encodeConsentContent(content);
-        const [hashes, versions, titles] = decodeConsent(bytes);
-        expect(hashes.length).toBe(1);
-        expect(hashes[0].toLowerCase()).toBe(SAMPLE_HASH.toLowerCase());
-        expect(versions[0]).toBe("1.0.0");
-        expect(titles[0]).toBe("Privacy Policy");
+        const [docs] = decodeConsent(encodeConsent(content));
+        expect(docs.length).toBe(1);
+        expect(docs[0].documentHash.toLowerCase()).toBe(SAMPLE_HASH.toLowerCase());
+        expect(docs[0].documentVersion).toBe("1.0.0");
+        expect(docs[0].documentTitle).toBe("Privacy Policy");
     });
 
     it("encodes and decodes multiple documents exactly", () => {
@@ -119,11 +141,10 @@ describe("figaro-consent-v1 — encode/decode round-trip", () => {
                 { documentHash: ALT_HASH, documentVersion: "2025-04-29", documentTitle: "Privacy Policy" },
             ],
         };
-        const bytes = encodeConsentContent(content);
-        const [hashes, versions, titles] = decodeConsent(bytes);
-        expect(hashes.length).toBe(2);
-        expect(versions[1]).toBe("2025-04-29");
-        expect(titles[0]).toBe("Terms of Service");
+        const [docs] = decodeConsent(encodeConsent(content));
+        expect(docs.length).toBe(2);
+        expect(docs[1].documentVersion).toBe("2025-04-29");
+        expect(docs[0].documentTitle).toBe("Terms of Service");
     });
 
     it("preserves a Unicode title through round-trip", () => {
@@ -132,9 +153,8 @@ describe("figaro-consent-v1 — encode/decode round-trip", () => {
                 { documentHash: SAMPLE_HASH, documentVersion: "2025-04-29", documentTitle: "プライバシーポリシー" },
             ],
         };
-        const bytes = encodeConsentContent(content);
-        const [, , titles] = decodeConsent(bytes);
-        expect(titles[0]).toBe("プライバシーポリシー");
+        const [docs] = decodeConsent(encodeConsent(content));
+        expect(docs[0].documentTitle).toBe("プライバシーポリシー");
     });
 
     it("encodes deterministically", () => {
@@ -143,6 +163,6 @@ describe("figaro-consent-v1 — encode/decode round-trip", () => {
                 { documentHash: SAMPLE_HASH, documentVersion: "1.0.0", documentTitle: "Privacy Policy" },
             ],
         };
-        expect(encodeConsentContent(content)).toBe(encodeConsentContent(content));
+        expect(encodeConsent(content)).toBe(encodeConsent(content));
     });
 });

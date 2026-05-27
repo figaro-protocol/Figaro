@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { encodeAbiParameters, keccak256, stringToHex, type Hex } from "viem";
-import { encodeCourierContent, type CourierEvent } from "@figaro/core/schemas";
+import { embeddedSpec, encodeContentFromSpec, type CourierEvent } from "@figaro/core/schemas";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { COURIER_PROCESS_SCHEMA_KEY, PROXIMITY_PROOF_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 
@@ -94,7 +94,10 @@ export function useCourierProcessActions() {
             orderHash: orderHash as Hex,
             schemaId: COURIER_PROCESS_SCHEMA_ID,
             stage: COURIER_EVENT_STAGE[eventType],
-            content: encodeCourierContent({ eventType, evidenceUri }),
+            content: encodeContentFromSpec(
+                embeddedSpec("figaro-courier-process-v1")!,
+                { eventType, evidenceUri },
+            ),
             failureMessage: `Courier ${eventType} attestation failed`,
         });
     }, [submitSellerAttestation]);

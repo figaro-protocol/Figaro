@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { keccak256, stringToHex, type Hex } from "viem";
-import { encodeMerchantContent, type MerchantEvent } from "@figaro/core/schemas";
+import { embeddedSpec, encodeContentFromSpec, type MerchantEvent } from "@figaro/core/schemas";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { MERCHANT_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
 import {
@@ -81,7 +81,10 @@ export function useMerchantProcessActions() {
             orderHash: orderHash as Hex,
             schemaId: MERCHANT_PROCESS_SCHEMA_ID,
             stage: MERCHANT_EVENT_STAGE[eventType],
-            content: encodeMerchantContent({ eventType, evidenceUri }),
+            content: encodeContentFromSpec(
+                embeddedSpec("figaro-merchant-process-v1")!,
+                { eventType, evidenceUri },
+            ),
             failureMessage: `Merchant ${eventType} attestation failed`,
         });
     }, [submitSellerAttestation]);

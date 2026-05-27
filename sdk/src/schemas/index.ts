@@ -37,7 +37,7 @@ export type {
 
 export { validateContent } from "./validate.js";
 
-// ── Content encoders for each schema (TS ↔ ABI bridge) ──────────────────────
+// ── Content encoding (TS ↔ ABI bridge) ──────────────────────────────────────
 
 export type {
     GeoContent,
@@ -68,18 +68,9 @@ export type {
 
 export {
     EMPTY_CONTENT,
-    encodeGeoContent,
-    encodeFulfilmentV2Content,
-    encodeArbitrationKlerosContent,
-    encodeApplicableLawContent,
-    encodeGHGScopeContent,
-    encodeGHGMeasurementContent,
-    encodeCommerceContent,
-    encodeProximityPolicyContent,
-    encodeProximityProofContent,
-    encodeOffsetPolicyContent,
-    encodeMerchantContent,
-    encodeCourierContent,
-    encodeConsentContent,
     encodeContentFromSpec,
 } from "./encode.js";
+
+// ── Embedded protocol-schema spec catalog ───────────────────────────────────
+
+export { embeddedSpec, allEmbeddedSpecs } from "./embedded.js";

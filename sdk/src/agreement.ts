@@ -17,25 +17,8 @@
  */
 
 import { keccak256, toHex, concat, type Hex } from "viem";
-import {
-    encodeGeoContent,
-    encodeFulfilmentV2Content,
-    encodeArbitrationKlerosContent,
-    encodeApplicableLawContent,
-    encodeGHGScopeContent,
-    encodeCommerceContent,
-    encodeProximityPolicyContent,
-    encodeOffsetPolicyContent,
-    encodeConsentContent,
-    type GeoContent,
-    type FulfilmentV2Content,
-    type KlerosCourt,
-    type GHGScopeContent,
-    type CommerceContent,
-    type ProximityBand,
-    type OffsetProvider,
-    type ConsentDocument,
-} from "./schemas/encode.js";
+import { encodeContentFromSpec } from "./schemas/encode.js";
+import { embeddedSpec } from "./schemas/embedded.js";
 
 // ── Core types ──────────────────────────────────────────────────────────────
 
@@ -90,72 +73,23 @@ function schemaIdOf(schemaKey: string): Hex {
 }
 
 /**
- * Encoders for Category-2 (declarative-clause) schemas. These produce the ABI
- * bytes that match the on-chain validator's `abi.decode` for each schema.
- * Both `sectionData` (committed at agreement time) and runtime attestation
- * `content` must open to these exact bytes — the validator enforces
- * `keccak256(content) == keccak256(sectionData)` to prevent drift.
+ * Return the on-chain sectionData bytes for an agreement section.
  *
- * Category-1 schemas (merchant-process, courier-process, proximity-proof,
- * ghg-measurement) have no committed clause; their sectionData remains
- * canonical JSON and the validator does not cross-check. Note: the sister
- * schema figaro-proximity-policy-v1 IS Category-2 (committed band), while
- * figaro-proximity-proof-v1 is Category-1 (runtime witness payload).
- */
-const CATEGORY_2_ENCODERS: Record<string, (data: Record<string, unknown>) => Hex> = {
-    "figaro-geo-v2": (data) => encodeGeoContent({
-        originGeohash: data.originGeohash as string,
-        destinationGeohash: data.destinationGeohash as string,
-        massGrams: Number(data.massGrams),
-        volumeMl: Number(data.volumeMl),
-        classOfService: data.classOfService as GeoContent["classOfService"],
-    } satisfies GeoContent),
-    "figaro-fulfilment-v2": (data) => encodeFulfilmentV2Content(data as unknown as FulfilmentV2Content),
-    "figaro-arbitration-kleros-v1": (data) => encodeArbitrationKlerosContent({
-        klerosCourt: data.klerosCourt as KlerosCourt,
-        klerosMinJurors: typeof data.klerosMinJurors === "number" ? data.klerosMinJurors : undefined,
-    }),
-    "figaro-applicable-law-v1": (data) => encodeApplicableLawContent({
-        applicableLaw: data.applicableLaw as string,
-        forum: data.forum as string | undefined,
-        language: data.language as string | undefined,
-    }),
-    "figaro-ghg-protocol-v1": (data) => encodeGHGScopeContent(data as GHGScopeContent),
-    "figaro-ghg-iso-14064-v1": (data) => encodeGHGScopeContent(data as GHGScopeContent),
-    "figaro-ghg-pas-2050-v1": (data) => encodeGHGScopeContent(data as GHGScopeContent),
-    "figaro-ghg-en-16258-v1": (data) => encodeGHGScopeContent(data as GHGScopeContent),
-    "figaro-ghg-custom-v1": (data) => encodeGHGScopeContent(data as GHGScopeContent),
-    "figaro-proximity-policy-v1": (data) => encodeProximityPolicyContent({
-        bands: (data.bands as readonly ProximityBand[]) ?? [],
-    }),
-    "figaro-offset-policy-v1": (data) => encodeOffsetPolicyContent({
-        providers: (data.providers as readonly OffsetProvider[]) ?? [],
-    }),
-    "figaro-consent-v1": (data) => encodeConsentContent({
-        documents: (data.documents as readonly ConsentDocument[]) ?? [],
-    }),
-    "figaro-commerce-v1": (data) => encodeCommerceContent({
-        currency: data.currency as Hex,
-        payment: BigInt(data.payment as string | number | bigint),
-        lineItems: ((data.lineItems as Array<Record<string, unknown>>) ?? []).map((li) => ({
-            itemId: li.itemId as string,
-            name: li.name as string,
-            quantity: BigInt(li.quantity as string | number | bigint),
-            unitPrice: BigInt(li.unitPrice as string | number | bigint),
-        })),
-    }),
-};
-
-/**
- * Return the on-chain sectionData bytes for an agreement section. For
- * Category-2 schemas (declarative clauses) this is ABI-encoded in the same
- * shape the runtime validator expects as `content`, so the on-chain
- * byte-equality check `keccak256(content) == keccak256(sectionData)` can
- * succeed. For other schemas this is canonical JSON bytes.
+ * Category-2 schemas (declarative clauses) encode their data via the
+ * generic canonical encoder — the same path the runtime attestation's
+ * `content` takes — so the on-chain byte-equality check
+ * `keccak256(content) == keccak256(sectionData)` succeeds. Category-1
+ * schemas (no committed clause) and unknown schemas fall through to
+ * canonical JSON bytes.
+ *
+ * Post-Keystone there is no per-schema dispatch table; the embedded
+ * spec drives both encoding and tier classification.
  */
 export function getSectionDataBytes(section: AgreementSection): Hex {
-    const encoder = CATEGORY_2_ENCODERS[section.schema];
-    if (encoder) return encoder(section.data);
+    const spec = embeddedSpec(section.schema);
+    if (spec && spec.block?.tier === "category-2") {
+        return encodeContentFromSpec(spec, section.data);
+    }
     return toHex(new TextEncoder().encode(canonicalizeSectionData(section.data)));
 }
 
