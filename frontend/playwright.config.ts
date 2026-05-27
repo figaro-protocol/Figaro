@@ -44,13 +44,7 @@ export default defineConfig({
     },
 
     webServer: {
-        // NEXT_DIST_DIR=.next-playwright isolates this dev server's build
-        // artifacts from the user's local `npm run dev` (which uses the
-        // default `.next/`). Without isolation, both processes shared the
-        // webpack pack-cache and corrupted each other during long suite
-        // runs (per reference_next_cache_corruption.md). next.config.mjs
-        // reads this env var.
-        command: `NEXT_DIST_DIR=.next-playwright PORT=${PLAYWRIGHT_PORT} npm run dev`,
+        command: `PORT=${PLAYWRIGHT_PORT} npm run dev`,
         url: PLAYWRIGHT_BASE_URL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
