@@ -8,6 +8,14 @@
 const nextConfig = {
     reactStrictMode: true,
 
+    // Isolate the Playwright dev server's build artifacts from the user's
+    // local `npm run dev` (`.next`). Both processes used to share `.next/`
+    // and corrupt each other's webpack pack-cache during long suite runs
+    // (per reference_next_cache_corruption.md). Playwright sets
+    // NEXT_DIST_DIR=.next-playwright via its webServer command; everything
+    // else (including production builds) keeps the default `.next`.
+    distDir: process.env.NEXT_DIST_DIR ?? '.next',
+
     // Proxy /rpc → local Anvil node so browser requests avoid CORS and
     // all wagmi/viem transport calls work via a same-origin path.
     // Disabled in production builds to prevent open RPC proxy exposure.
