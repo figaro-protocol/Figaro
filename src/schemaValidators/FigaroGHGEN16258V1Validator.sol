@@ -10,7 +10,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 ///         declaration of energy consumption and GHG emissions of transport
 ///         services).
 ///
-/// @dev Content ABI encoding: `abi.encode(uint8 scope)`.
+/// @dev Content ABI encoding: `abi.encode(uint256 scope)` (canonical: every `integer` field encodes as uint256).
 ///      scope: 0 = unset, 1 = direct (Scope 1), 2 = purchased energy (Scope 2),
 ///             3 = value chain (Scope 3)
 ///
@@ -21,10 +21,10 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 contract FigaroGHGEN16258V1Validator is ISchemaValidator {
     bytes32 public constant override schemaId = keccak256("figaro-ghg-en-16258-v1");
 
-    uint8 internal constant MAX_SCOPE = 3;
+    uint256 internal constant MAX_SCOPE = 3;
 
     error SchemaIdMismatch(bytes32 got, bytes32 expected);
-    error InvalidScope(uint8 got);
+    error InvalidScope(uint256 got);
     /// @dev Runtime `content` must byte-equal the committed clause `sectionData`.
     error SectionDataMismatch();
 
@@ -41,7 +41,7 @@ contract FigaroGHGEN16258V1Validator is ISchemaValidator {
     {
         if (id != schemaId) revert SchemaIdMismatch(id, schemaId);
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
-        uint8 scope = abi.decode(content, (uint8));
+        uint256 scope = abi.decode(content, (uint256));
         if (scope > MAX_SCOPE) revert InvalidScope(scope);
     }
 }

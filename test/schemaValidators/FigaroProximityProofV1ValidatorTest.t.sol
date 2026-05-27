@@ -24,42 +24,39 @@ contract FigaroProximityProofV1ValidatorTest is Test {
         assertEq(validator.schemaId(), ID);
     }
 
+    // Canonical 0-based positions: 0=zone-wifi, 1=nearby-ble, 2=contact-nfc
+
     function test_acceptsEachBand() public view {
-        for (uint8 b = 1; b <= 3; b++) {
+        for (uint8 b = 0; b <= 2; b++) {
             validator.validate(ID, 0, "", abi.encode(b, NONCE, _validSig()));
         }
     }
 
-    function test_rejectsZeroBand() public {
-        vm.expectRevert(abi.encodeWithSelector(FigaroProximityProofV1Validator.InvalidBand.selector, uint8(0)));
-        validator.validate(ID, 0, "", abi.encode(uint8(0), NONCE, _validSig()));
-    }
-
-    function test_rejectsBandAboveThree() public {
-        vm.expectRevert(abi.encodeWithSelector(FigaroProximityProofV1Validator.InvalidBand.selector, uint8(4)));
-        validator.validate(ID, 0, "", abi.encode(uint8(4), NONCE, _validSig()));
+    function test_rejectsBandAboveMax() public {
+        vm.expectRevert(abi.encodeWithSelector(FigaroProximityProofV1Validator.InvalidBand.selector, uint8(3)));
+        validator.validate(ID, 0, "", abi.encode(uint8(3), NONCE, _validSig()));
     }
 
     function test_rejectsZeroNonce() public {
         vm.expectRevert(FigaroProximityProofV1Validator.ZeroNonce.selector);
-        validator.validate(ID, 0, "", abi.encode(uint8(1), bytes32(0), _validSig()));
+        validator.validate(ID, 0, "", abi.encode(uint8(0), bytes32(0), _validSig()));
     }
 
     function test_rejectsTooShortSig() public {
         bytes memory shortSig = new bytes(64);
         vm.expectRevert(abi.encodeWithSelector(FigaroProximityProofV1Validator.DeviceSigTooShort.selector, uint256(64)));
-        validator.validate(ID, 0, "", abi.encode(uint8(1), NONCE, shortSig));
+        validator.validate(ID, 0, "", abi.encode(uint8(0), NONCE, shortSig));
     }
 
     function test_rejectsTooLongSig() public {
         bytes memory bigSig = new bytes(513);
         vm.expectRevert(abi.encodeWithSelector(FigaroProximityProofV1Validator.DeviceSigTooLong.selector, uint256(513)));
-        validator.validate(ID, 0, "", abi.encode(uint8(1), NONCE, bigSig));
+        validator.validate(ID, 0, "", abi.encode(uint8(0), NONCE, bigSig));
     }
 
     function test_acceptsContractSig_512Bytes() public view {
         bytes memory eip1271Sig = new bytes(512);
-        validator.validate(ID, 0, "", abi.encode(uint8(2), NONCE, eip1271Sig));
+        validator.validate(ID, 0, "", abi.encode(uint8(1), NONCE, eip1271Sig));
     }
 
     function test_rejectsMismatchedSchemaId() public {
@@ -67,6 +64,6 @@ contract FigaroProximityProofV1ValidatorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(FigaroProximityProofV1Validator.SchemaIdMismatch.selector, other, ID)
         );
-        validator.validate(other, 0, "", abi.encode(uint8(1), NONCE, _validSig()));
+        validator.validate(other, 0, "", abi.encode(uint8(0), NONCE, _validSig()));
     }
 }

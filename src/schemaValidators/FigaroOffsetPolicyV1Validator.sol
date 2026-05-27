@@ -13,18 +13,18 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 ///
 /// @dev Content ABI encoding: `abi.encode(uint8[] providers)`.
 ///
-///      Each provider index is one of:
-///        1 = klima   (Klima DAO)
-///        2 = toucan  (Toucan Protocol — BCT / NCT)
-///        3 = moss    (Moss.Earth — MCO2)
-///        4 = custom  (self-declared operator registered against the assembly)
+///      Post-Keystone canonical 0-based positions:
+///        0 = klima   (Klima DAO)
+///        1 = toucan  (Toucan Protocol — BCT / NCT)
+///        2 = moss    (Moss.Earth — MCO2)
+///        3 = custom  (self-declared operator registered against the assembly)
 ///
 ///      An order without offset-policy has no offset path; an INCLUDED
 ///      clause must carry at least one provider.
 contract FigaroOffsetPolicyV1Validator is ISchemaValidator {
     bytes32 public constant override schemaId = keccak256("figaro-offset-policy-v1");
 
-    uint8 internal constant MAX_PROVIDER = 4;
+    uint8 internal constant MAX_PROVIDER = 3;
 
     error SchemaIdMismatch(bytes32 got, bytes32 expected);
     error ProvidersEmpty();
@@ -49,7 +49,7 @@ contract FigaroOffsetPolicyV1Validator is ISchemaValidator {
         if (providers.length == 0) revert ProvidersEmpty();
         for (uint256 i = 0; i < providers.length; i++) {
             uint8 p = providers[i];
-            if (p == 0 || p > MAX_PROVIDER) revert InvalidProvider(p);
+            if (p > MAX_PROVIDER) revert InvalidProvider(p);
         }
     }
 }

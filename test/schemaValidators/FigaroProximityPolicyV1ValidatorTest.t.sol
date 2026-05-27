@@ -31,15 +31,17 @@ contract FigaroProximityPolicyV1ValidatorTest is Test {
         assertEq(validator.schemaId(), ID);
     }
 
+    // Canonical 0-based positions: 0=zone-wifi, 1=nearby-ble, 2=contact-nfc
+
     function test_acceptsEachKnownBand() public view {
-        for (uint8 b = 1; b <= 3; b++) {
+        for (uint8 b = 0; b <= 2; b++) {
             bytes memory c = _encode(_u8(b));
             validator.validate(ID, 0, c, c);
         }
     }
 
     function test_acceptsMultipleBands() public view {
-        bytes memory c = _encode(_u8(1, 3));
+        bytes memory c = _encode(_u8(0, 2));
         validator.validate(ID, 0, c, c);
     }
 
@@ -50,20 +52,14 @@ contract FigaroProximityPolicyV1ValidatorTest is Test {
         validator.validate(ID, 0, c, c);
     }
 
-    function test_rejectsZeroBandIndex() public {
-        bytes memory c = _encode(_u8(0));
-        vm.expectRevert(abi.encodeWithSelector(FigaroProximityPolicyV1Validator.InvalidBand.selector, uint8(0)));
-        validator.validate(ID, 0, c, c);
-    }
-
-    function test_rejectsBandAboveThree() public {
-        bytes memory c = _encode(_u8(4));
-        vm.expectRevert(abi.encodeWithSelector(FigaroProximityPolicyV1Validator.InvalidBand.selector, uint8(4)));
+    function test_rejectsBandAboveMax() public {
+        bytes memory c = _encode(_u8(3));
+        vm.expectRevert(abi.encodeWithSelector(FigaroProximityPolicyV1Validator.InvalidBand.selector, uint8(3)));
         validator.validate(ID, 0, c, c);
     }
 
     function test_rejectsMismatchedSchemaId() public {
-        bytes memory c = _encode(_u8(1));
+        bytes memory c = _encode(_u8(0));
         bytes32 other = keccak256("not-proximity-policy");
         vm.expectRevert(
             abi.encodeWithSelector(FigaroProximityPolicyV1Validator.SchemaIdMismatch.selector, other, ID)
@@ -72,8 +68,8 @@ contract FigaroProximityPolicyV1ValidatorTest is Test {
     }
 
     function test_rejectsSectionDataMismatch() public {
-        bytes memory section = _encode(_u8(2));
-        bytes memory content = _encode(_u8(3));
+        bytes memory section = _encode(_u8(1));
+        bytes memory content = _encode(_u8(2));
         vm.expectRevert(FigaroProximityPolicyV1Validator.SectionDataMismatch.selector);
         validator.validate(ID, 0, section, content);
     }

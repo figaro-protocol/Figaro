@@ -12,17 +12,17 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 ///
 /// @dev Content ABI encoding: `abi.encode(uint8[] bands)`.
 ///
-///      Each band index is one of:
-///        1 = zone-wifi    (same WiFi network)
-///        2 = nearby-ble   (BLE proximity)
-///        3 = contact-nfc  (physical NFC tap)
+///      Post-Keystone canonical 0-based positions:
+///        0 = zone-wifi    (same WiFi network)
+///        1 = nearby-ble   (BLE proximity)
+///        2 = contact-nfc  (physical NFC tap)
 ///
 ///      An order without proximity verification has no proximity-policy clause
 ///      in its agreement; an INCLUDED clause must carry at least one band.
 contract FigaroProximityPolicyV1Validator is ISchemaValidator {
     bytes32 public constant override schemaId = keccak256("figaro-proximity-policy-v1");
 
-    uint8 internal constant MAX_BAND = 3;
+    uint8 internal constant MAX_BAND = 2;
 
     error SchemaIdMismatch(bytes32 got, bytes32 expected);
     error BandsEmpty();
@@ -47,7 +47,7 @@ contract FigaroProximityPolicyV1Validator is ISchemaValidator {
         if (bands.length == 0) revert BandsEmpty();
         for (uint256 i = 0; i < bands.length; i++) {
             uint8 b = bands[i];
-            if (b == 0 || b > MAX_BAND) revert InvalidBand(b);
+            if (b > MAX_BAND) revert InvalidBand(b);
         }
     }
 }

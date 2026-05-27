@@ -9,6 +9,11 @@ contract FigaroFulfilmentV2ValidatorTest is Test {
     bytes32 constant ID = keccak256("figaro-fulfilment-v2");
     bytes32 constant OTHER_ID = keccak256("figaro-other-v1");
 
+    // Canonical 0-based enum positions (post-Keystone):
+    //   modalities:    0=consume-onsite, 1=pickup, 2=delivery, 3=virtual
+    //   coordinations: 0=buyer-assigned, 1=seller-assigned, 2=dutch-auction
+    //   handoffPoints: 0=face-to-face, 1=dead-drop, 2=parking-area, 3=locker
+
     function setUp() public {
         validator = new FigaroFulfilmentV2Validator();
     }
@@ -41,39 +46,42 @@ contract FigaroFulfilmentV2ValidatorTest is Test {
     }
 
     function test_acceptsSingleConsumeOnsite() public view {
-        bytes memory c = _encode(_u8(1), _empty(), _empty());
+        bytes memory c = _encode(_u8(0), _empty(), _empty());
         validator.validate(ID, 0, c, c);
     }
 
     function test_acceptsSinglePickup() public view {
-        bytes memory c = _encode(_u8(2), _empty(), _empty());
+        bytes memory c = _encode(_u8(1), _empty(), _empty());
         validator.validate(ID, 0, c, c);
     }
 
     function test_acceptsSingleVirtual() public view {
-        bytes memory c = _encode(_u8(4), _empty(), _empty());
+        bytes memory c = _encode(_u8(3), _empty(), _empty());
         validator.validate(ID, 0, c, c);
     }
 
     function test_acceptsDeliveryWithCoordinations() public view {
-        bytes memory c = _encode(_u8(3), _u8(1, 2), _empty());
+        // delivery=2, coordinations=[buyer-assigned, seller-assigned]=[0, 1]
+        bytes memory c = _encode(_u8(2), _u8(0, 1), _empty());
         validator.validate(ID, 0, c, c);
     }
 
     function test_acceptsMultiModalityWithDelivery() public view {
-        bytes memory c = _encode(_u8(2, 3), _u8(2), _empty());
+        // [pickup, delivery]=[1, 2], coordinations=[dutch-auction]=[2]
+        bytes memory c = _encode(_u8(1, 2), _u8(2), _empty());
         validator.validate(ID, 0, c, c);
     }
 
     function test_acceptsHandoffPoints() public view {
-        for (uint8 hp = 1; hp <= 4; hp++) {
-            bytes memory c = _encode(_u8(3), _u8(2), _u8(hp));
+        for (uint8 hp = 0; hp <= 3; hp++) {
+            bytes memory c = _encode(_u8(2), _u8(0), _u8(hp));
             validator.validate(ID, 0, c, c);
         }
     }
 
     function test_acceptsMultipleHandoffPoints() public view {
-        bytes memory c = _encode(_u8(3), _u8(2), _u8(1, 4));
+        // delivery=2, coord=[buyer-assigned]=[0], handoffs=[face-to-face, locker]=[0, 3]
+        bytes memory c = _encode(_u8(2), _u8(0), _u8(0, 3));
         validator.validate(ID, 0, c, c);
     }
 
@@ -83,57 +91,54 @@ contract FigaroFulfilmentV2ValidatorTest is Test {
         validator.validate(ID, 0, c, c);
     }
 
-    function test_rejectsZeroModalityIndex() public {
-        bytes memory c = _encode(_u8(0), _empty(), _empty());
-        vm.expectRevert(abi.encodeWithSelector(FigaroFulfilmentV2Validator.InvalidModality.selector, uint8(0)));
-        validator.validate(ID, 0, c, c);
-    }
-
     function test_rejectsOutOfRangeModality() public {
-        bytes memory c = _encode(_u8(5), _empty(), _empty());
-        vm.expectRevert(abi.encodeWithSelector(FigaroFulfilmentV2Validator.InvalidModality.selector, uint8(5)));
+        bytes memory c = _encode(_u8(4), _empty(), _empty());
+        vm.expectRevert(abi.encodeWithSelector(FigaroFulfilmentV2Validator.InvalidModality.selector, uint8(4)));
         validator.validate(ID, 0, c, c);
     }
 
     function test_rejectsCoordinationsWithoutDelivery() public {
-        bytes memory c = _encode(_u8(2), _u8(1), _empty());
+        // pickup=1, but coordinations supplied
+        bytes memory c = _encode(_u8(1), _u8(0), _empty());
         vm.expectRevert(FigaroFulfilmentV2Validator.CoordinationsWithoutDelivery.selector);
         validator.validate(ID, 0, c, c);
     }
 
     function test_rejectsDeliveryWithoutCoordinations() public {
-        bytes memory c = _encode(_u8(3), _empty(), _empty());
+        bytes memory c = _encode(_u8(2), _empty(), _empty());
         vm.expectRevert(FigaroFulfilmentV2Validator.CoordinationsRequiredForDelivery.selector);
         validator.validate(ID, 0, c, c);
     }
 
     function test_rejectsInvalidCoordination() public {
-        bytes memory c = _encode(_u8(3), _u8(4), _empty());
-        vm.expectRevert(abi.encodeWithSelector(FigaroFulfilmentV2Validator.InvalidCoordination.selector, uint8(4)));
+        // delivery=2, coord=[3] (out of range; valid are 0..2)
+        bytes memory c = _encode(_u8(2), _u8(3), _empty());
+        vm.expectRevert(abi.encodeWithSelector(FigaroFulfilmentV2Validator.InvalidCoordination.selector, uint8(3)));
         validator.validate(ID, 0, c, c);
     }
 
     function test_rejectsInvalidHandoffPoint() public {
-        bytes memory c = _encode(_u8(2), _empty(), _u8(5));
-        vm.expectRevert(abi.encodeWithSelector(FigaroFulfilmentV2Validator.InvalidHandoffPoint.selector, uint8(5)));
+        // pickup=1 (no coord), handoffs=[4] (out of range; valid are 0..3)
+        bytes memory c = _encode(_u8(1), _empty(), _u8(4));
+        vm.expectRevert(abi.encodeWithSelector(FigaroFulfilmentV2Validator.InvalidHandoffPoint.selector, uint8(4)));
         validator.validate(ID, 0, c, c);
     }
 
     function test_rejectsMismatchedSchemaId() public {
-        bytes memory c = _encode(_u8(1), _empty(), _empty());
+        bytes memory c = _encode(_u8(0), _empty(), _empty());
         vm.expectRevert(abi.encodeWithSelector(FigaroFulfilmentV2Validator.SchemaIdMismatch.selector, OTHER_ID, ID));
         validator.validate(OTHER_ID, 0, c, c);
     }
 
     function test_rejectsSectionDataMismatch() public {
-        bytes memory section = _encode(_u8(1), _empty(), _empty());
-        bytes memory content = _encode(_u8(2), _empty(), _empty());
+        bytes memory section = _encode(_u8(0), _empty(), _empty());
+        bytes memory content = _encode(_u8(1), _empty(), _empty());
         vm.expectRevert(FigaroFulfilmentV2Validator.SectionDataMismatch.selector);
         validator.validate(ID, 0, section, content);
     }
 
     function test_acceptsAnyStage() public view {
-        bytes memory c = _encode(_u8(1), _empty(), _empty());
+        bytes memory c = _encode(_u8(0), _empty(), _empty());
         validator.validate(ID, 0, c, c);
         validator.validate(ID, 1, c, c);
         validator.validate(ID, 255, c, c);

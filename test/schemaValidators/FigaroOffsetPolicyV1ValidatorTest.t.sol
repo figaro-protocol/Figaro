@@ -31,15 +31,17 @@ contract FigaroOffsetPolicyV1ValidatorTest is Test {
         assertEq(validator.schemaId(), ID);
     }
 
+    // Canonical 0-based positions: 0=klima, 1=toucan, 2=moss, 3=custom
+
     function test_acceptsEachKnownProvider() public view {
-        for (uint8 p = 1; p <= 4; p++) {
+        for (uint8 p = 0; p <= 3; p++) {
             bytes memory c = _encode(_u8(p));
             validator.validate(ID, 0, c, c);
         }
     }
 
     function test_acceptsMultipleProviders() public view {
-        bytes memory c = _encode(_u8(1, 4));
+        bytes memory c = _encode(_u8(0, 3));
         validator.validate(ID, 0, c, c);
     }
 
@@ -50,20 +52,14 @@ contract FigaroOffsetPolicyV1ValidatorTest is Test {
         validator.validate(ID, 0, c, c);
     }
 
-    function test_rejectsZeroProviderIndex() public {
-        bytes memory c = _encode(_u8(0));
-        vm.expectRevert(abi.encodeWithSelector(FigaroOffsetPolicyV1Validator.InvalidProvider.selector, uint8(0)));
-        validator.validate(ID, 0, c, c);
-    }
-
-    function test_rejectsProviderAboveFour() public {
-        bytes memory c = _encode(_u8(5));
-        vm.expectRevert(abi.encodeWithSelector(FigaroOffsetPolicyV1Validator.InvalidProvider.selector, uint8(5)));
+    function test_rejectsProviderAboveMax() public {
+        bytes memory c = _encode(_u8(4));
+        vm.expectRevert(abi.encodeWithSelector(FigaroOffsetPolicyV1Validator.InvalidProvider.selector, uint8(4)));
         validator.validate(ID, 0, c, c);
     }
 
     function test_rejectsMismatchedSchemaId() public {
-        bytes memory c = _encode(_u8(1));
+        bytes memory c = _encode(_u8(0));
         bytes32 other = keccak256("not-offset-policy");
         vm.expectRevert(
             abi.encodeWithSelector(FigaroOffsetPolicyV1Validator.SchemaIdMismatch.selector, other, ID)
@@ -72,8 +68,8 @@ contract FigaroOffsetPolicyV1ValidatorTest is Test {
     }
 
     function test_rejectsSectionDataMismatch() public {
-        bytes memory section = _encode(_u8(1));
-        bytes memory content = _encode(_u8(2));
+        bytes memory section = _encode(_u8(0));
+        bytes memory content = _encode(_u8(1));
         vm.expectRevert(FigaroOffsetPolicyV1Validator.SectionDataMismatch.selector);
         validator.validate(ID, 0, section, content);
     }

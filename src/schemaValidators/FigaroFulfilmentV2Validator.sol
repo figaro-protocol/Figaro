@@ -8,20 +8,21 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 ///         Multi-valued across three orthogonal dimensions.
 ///
 /// @dev Content ABI encoding: `abi.encode(uint8[] modalities, uint8[] coordinations, uint8[] handoffPoints)`.
-///        modalities[i]     — 1 = consume-onsite, 2 = pickup, 3 = delivery, 4 = virtual
-///        coordinations[i]  — 1 = buyer-assigned, 2 = seller-assigned, 3 = dutch-auction
-///                            coordinations MUST be non-empty IFF delivery is among modalities
-///        handoffPoints[i]  — 1 = face-to-face, 2 = dead-drop, 3 = parking-area, 4 = locker
 ///
-///       Index 0 is reserved as "unset" and rejected if it appears in any array
-///       — arrays carry only valid enum values.
+///      Post-Keystone canonical 0-based enum positions:
+///        modalities[i]     — 0 = consume-onsite, 1 = pickup, 2 = delivery, 3 = virtual
+///        coordinations[i]  — 0 = buyer-assigned, 1 = seller-assigned, 2 = dutch-auction
+///                            coordinations MUST be non-empty IFF delivery is among modalities
+///        handoffPoints[i]  — 0 = face-to-face, 1 = dead-drop, 2 = parking-area, 3 = locker
+///
+///      All positions are valid choices; an out-of-range index is rejected.
 contract FigaroFulfilmentV2Validator is ISchemaValidator {
     bytes32 public constant override schemaId = keccak256("figaro-fulfilment-v2");
 
-    uint8 internal constant MODALITY_MAX = 4;
-    uint8 internal constant COORDINATION_MAX = 3;
-    uint8 internal constant HANDOFF_POINT_MAX = 4;
-    uint8 internal constant MODALITY_DELIVERY = 3;
+    uint8 internal constant MODALITY_MAX = 3;
+    uint8 internal constant COORDINATION_MAX = 2;
+    uint8 internal constant HANDOFF_POINT_MAX = 3;
+    uint8 internal constant MODALITY_DELIVERY = 2;
 
     error SchemaIdMismatch(bytes32 got, bytes32 expected);
     error ModalitiesEmpty();
@@ -55,13 +56,13 @@ contract FigaroFulfilmentV2Validator is ISchemaValidator {
         bool hasDelivery = false;
         for (uint256 i = 0; i < modalities.length; i++) {
             uint8 m = modalities[i];
-            if (m == 0 || m > MODALITY_MAX) revert InvalidModality(m);
+            if (m > MODALITY_MAX) revert InvalidModality(m);
             if (m == MODALITY_DELIVERY) hasDelivery = true;
         }
 
         for (uint256 i = 0; i < coordinations.length; i++) {
             uint8 c = coordinations[i];
-            if (c == 0 || c > COORDINATION_MAX) revert InvalidCoordination(c);
+            if (c > COORDINATION_MAX) revert InvalidCoordination(c);
         }
 
         if (coordinations.length > 0 && !hasDelivery) revert CoordinationsWithoutDelivery();
@@ -69,7 +70,7 @@ contract FigaroFulfilmentV2Validator is ISchemaValidator {
 
         for (uint256 i = 0; i < handoffPoints.length; i++) {
             uint8 h = handoffPoints[i];
-            if (h == 0 || h > HANDOFF_POINT_MAX) revert InvalidHandoffPoint(h);
+            if (h > HANDOFF_POINT_MAX) revert InvalidHandoffPoint(h);
         }
     }
 }

@@ -23,7 +23,8 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 ///
 /// @dev Content ABI encoding: `abi.encode(uint8 band, bytes32 nonce, bytes deviceSig)`.
 ///
-///      band: 1 = zone-wifi, 2 = nearby-ble, 3 = contact-nfc (0 rejected)
+///      Post-Keystone canonical 0-based positions:
+///        band: 0 = zone-wifi, 1 = nearby-ble, 2 = contact-nfc
 ///      nonce: per-handoff bytes32, must be non-zero
 ///      deviceSig: signed witness payload from a paired device.
 ///                 Length range 65–512 bytes (raw 65 = ECDSA r,s,v;
@@ -31,7 +32,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 contract FigaroProximityProofV1Validator is ISchemaValidator {
     bytes32 public constant override schemaId = keccak256("figaro-proximity-proof-v1");
 
-    uint8 internal constant MAX_BAND = 3;
+    uint8 internal constant MAX_BAND = 2;
     uint256 internal constant MIN_SIG_LEN = 65;
     uint256 internal constant MAX_SIG_LEN = 512;
 
@@ -55,7 +56,7 @@ contract FigaroProximityProofV1Validator is ISchemaValidator {
     {
         if (id != schemaId) revert SchemaIdMismatch(id, schemaId);
         (uint8 band, bytes32 nonce, bytes memory deviceSig) = abi.decode(content, (uint8, bytes32, bytes));
-        if (band == 0 || band > MAX_BAND) revert InvalidBand(band);
+        if (band > MAX_BAND) revert InvalidBand(band);
         if (nonce == bytes32(0)) revert ZeroNonce();
         if (deviceSig.length < MIN_SIG_LEN) revert DeviceSigTooShort(deviceSig.length);
         if (deviceSig.length > MAX_SIG_LEN) revert DeviceSigTooLong(deviceSig.length);
