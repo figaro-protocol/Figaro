@@ -469,7 +469,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
                 <Input
                     id={`${idPrefix}-name`}
                     type="text"
-                    placeholder="e.g. Margherita Pizza"
+                    placeholder="e.g. Bike tune-up"
                     value={item.name}
                     onChange={(e) => onChange("name", e.target.value)}
                 />
@@ -500,7 +500,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
                     <Input
                         id={`${idPrefix}-category`}
                         type="text"
-                        placeholder="e.g. Pizza"
+                        placeholder="e.g. Service"
                         value={item.category}
                         onChange={(e) => onChange("category", e.target.value)}
                     />

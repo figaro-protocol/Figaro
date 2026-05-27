@@ -511,7 +511,7 @@ export function OnboardingProfileForm({
                         <Input
                             id="profile-geohash"
                             type="text"
-                            placeholder="e.g. dr5reg"
+                            placeholder="e.g. dr5regw3pp"
                             value={form.geohash}
                             onChange={(e) => setField("geohash", e.target.value)}
                         />
