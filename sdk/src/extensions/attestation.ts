@@ -10,6 +10,11 @@
 
 import { keccak256, stringToHex, toHex } from "viem";
 import type { Hex, Address, AttestationEvent } from "../types.js";
+import ghgProtocolSpec from "../schemas/examples/figaro-ghg-protocol-v1.json" with { type: "json" };
+import ghgISO14064Spec from "../schemas/examples/figaro-ghg-iso-14064-v1.json" with { type: "json" };
+import ghgPAS2050Spec from "../schemas/examples/figaro-ghg-pas-2050-v1.json" with { type: "json" };
+import ghgEN16258Spec from "../schemas/examples/figaro-ghg-en-16258-v1.json" with { type: "json" };
+import ghgCustomSpec from "../schemas/examples/figaro-ghg-custom-v1.json" with { type: "json" };
 
 // ── Schema ID derivation ────────────────────────────────────────────────────
 
@@ -65,15 +70,40 @@ export const DISCLOSURE_KIND_LABELS: Record<DisclosureKind, string> = {
 
 // ── GHG norm references ─────────────────────────────────────────────────────
 
+/** Concise editorial scope tag per disclosure schema — published with the SDK
+ *  so non-React consumers don't need to load the spec JSON to render chips.
+ *  Not in the spec JSON itself; the spec's `description` is the full prose. */
+const GHG_SCOPES: Record<GHGDisclosureSchemaKey, string> = {
+    "figaro-ghg-protocol-v1": "Scope 1/2/3 corporate accounting",
+    "figaro-ghg-iso-14064-v1": "Quantification, reporting & verification",
+    "figaro-ghg-pas-2050-v1": "Product carbon footprint",
+    "figaro-ghg-en-16258-v1": "Transport energy & GHG",
+    "figaro-ghg-custom-v1": "Self-declared accounting basis",
+};
+
+/** Labels derived from each spec JSON's `title` — single source of truth.
+ *  Adding a sister schema means importing its spec above and adding it here;
+ *  the TypeScript `Record<GHGDisclosureSchemaKey, ...>` enforces completeness. */
+const GHG_LABELS: Record<GHGDisclosureSchemaKey, string> = {
+    "figaro-ghg-protocol-v1": ghgProtocolSpec.title,
+    "figaro-ghg-iso-14064-v1": ghgISO14064Spec.title,
+    "figaro-ghg-pas-2050-v1": ghgPAS2050Spec.title,
+    "figaro-ghg-en-16258-v1": ghgEN16258Spec.title,
+    "figaro-ghg-custom-v1": ghgCustomSpec.title,
+};
+
 /** Normative-standard reference for each disclosure schema. 1:1 with
- *  `GHG_DISCLOSURE_SCHEMA_KEYS`; each `id` IS the schemaId. */
-export const GHG_NORM_REFERENCES = [
-    { id: "figaro-ghg-protocol-v1", label: "GHG Protocol Corporate Standard", scope: "Scope 1/2/3 corporate accounting" },
-    { id: "figaro-ghg-iso-14064-v1", label: "ISO 14064", scope: "Quantification, reporting & verification" },
-    { id: "figaro-ghg-pas-2050-v1", label: "PAS 2050", scope: "Product carbon footprint" },
-    { id: "figaro-ghg-en-16258-v1", label: "EN 16258", scope: "Transport energy & GHG" },
-    { id: "figaro-ghg-custom-v1", label: "Custom methodology", scope: "Self-declared accounting basis" },
-] as const;
+ *  `GHG_DISCLOSURE_SCHEMA_KEYS`; each `id` IS the schemaId. `label` derives
+ *  from the schema's spec JSON `title`; `scope` is SDK-published editorial. */
+export const GHG_NORM_REFERENCES: ReadonlyArray<{
+    id: GHGDisclosureSchemaKey;
+    label: string;
+    scope: string;
+}> = GHG_DISCLOSURE_SCHEMA_KEYS.map((id) => ({
+    id,
+    label: GHG_LABELS[id],
+    scope: GHG_SCOPES[id],
+}));
 
 // ── GHG content ref encoding/decoding ───────────────────────────────────────
 

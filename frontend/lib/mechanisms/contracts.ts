@@ -7,7 +7,6 @@
  * Import rule: core/ code must NEVER import from mechanisms/.
  * mechanisms/ code may freely import from core/.
  */
-import { GHG_DISCLOSURE_SCHEMA_KEYS } from "@/lib/core/agreementManifest";
 export {
     OPERATOR_REGISTRY_ABI,
     FIG_TOKEN_ABI,
@@ -37,17 +36,6 @@ export const DISCLOSURE_KIND_DESCRIPTIONS: Record<number, string> = {
     2: "Restatement correcting a prior inventory — GHG Protocol Corporate Standard Ch. 5",
     3: "Third-party verification or validation statement — ISO 14064-3",
 };
-
-/** Normative-standard reference for each disclosure schema. 1:1 with
- *  `GHG_DISCLOSURE_SCHEMA_KEYS` (canonical in `lib/core/agreementManifest`);
- *  each `id` IS the schemaId. */
-export const GHG_NORM_REFERENCES = [
-    { id: "figaro-ghg-protocol-v1", label: "GHG Protocol Corporate Standard", scope: "Scope 1/2/3 corporate accounting" },
-    { id: "figaro-ghg-iso-14064-v1", label: "ISO 14064", scope: "Quantification, reporting & verification" },
-    { id: "figaro-ghg-pas-2050-v1", label: "PAS 2050", scope: "Product carbon footprint" },
-    { id: "figaro-ghg-en-16258-v1", label: "EN 16258", scope: "Transport energy & GHG" },
-    { id: "figaro-ghg-custom-v1", label: "Custom methodology", scope: "Self-declared accounting basis" },
-] as const;
 
 export const DISCLOSURE_KIND = {
     commitment: 0,

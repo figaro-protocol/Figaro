@@ -4,21 +4,38 @@
  */
 "use client";
 
+import { useMemo } from "react";
+import { keccak256, toBytes, type Hex } from "viem";
 import { Card } from "@/components/ui/Card";
 import {
     useProcessDisclosureSummary,
     formatActualGrams,
 } from "@/lib/mechanisms/useGHGDisclosure";
-import {
-    DISCLOSURE_KIND_LABELS,
-    GHG_NORM_REFERENCES,
-} from "@/lib/mechanisms/contracts";
+import { DISCLOSURE_KIND_LABELS } from "@/lib/mechanisms/contracts";
 import { GHG_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { useAllRegisteredSchemas } from "@/lib/mechanisms/useSchemaRegistry";
+import { SCHEMAS_BY_FAMILY, SCHEMA_TIER_MAP } from "@/lib/shared/schemaCategories";
 import { truncateHex } from "@/lib/shared/formatHex";
-import type { Hex } from "viem";
 
 export function GHGAnchorPanel({ processId }: { processId: string }) {
     const { summary, loading } = useProcessDisclosureSummary(processId as Hex | undefined);
+    const { data: registered } = useAllRegisteredSchemas();
+
+    // Live set of registered GHG disclosure schemas — intersection of the
+    // on-chain SchemaRegistry events with the bundled emissions family
+    // (designer-time tier excludes figaro-ghg-measurement-v1, which is
+    // runtime). Mirrors SchemaInventory's read-live + intersect pattern.
+    const applicableStandards = useMemo(() => {
+        if (registered === null) return [];
+        const onChain = new Set(registered.map((e) => e.schemaIdHash.toLowerCase()));
+        const emissions = SCHEMAS_BY_FAMILY.find((g) => g.family === "emissions");
+        if (!emissions) return [];
+        return emissions.schemas.filter(
+            (s) =>
+                SCHEMA_TIER_MAP[s.schemaId] === "designer-time" &&
+                onChain.has(keccak256(toBytes(s.schemaId)).toLowerCase()),
+        );
+    }, [registered]);
 
     if (!processId) {
         return (
@@ -37,15 +54,15 @@ export function GHGAnchorPanel({ processId }: { processId: string }) {
                 <h3 className="text-sm font-semibold text-black">GHG Schema Anchors</h3>
                 <p className="text-xs text-gray-500 font-mono">{GHG_SCHEMA_KEY}</p>
 
-                {/* Applicable standards */}
+                {/* Applicable standards — live from SchemaRegistry */}
                 <div className="flex flex-wrap gap-1">
-                    {GHG_NORM_REFERENCES.map((ref) => (
+                    {applicableStandards.map((s) => (
                         <span
-                            key={ref.id}
-                            title={ref.scope}
+                            key={s.schemaId}
+                            title={s.description}
                             className="inline-block rounded border border-teal-200 bg-teal-50 px-1.5 py-0.5 text-xs font-medium text-teal-700"
                         >
-                            {ref.label}
+                            {s.title}
                         </span>
                     ))}
                 </div>
