@@ -38,6 +38,7 @@ import {
     readAssemblyOrderGhgStandards,
     APPLICABLE_LAW_SCHEMA_KEY,
     ARBITRATION_KLEROS_SCHEMA_KEY,
+    MERCHANT_PROCESS_SCHEMA_KEY,
     PROXIMITY_POLICY_SCHEMA_KEY,
     type Agreement,
 } from "@/lib/core/agreementManifest";
@@ -458,11 +459,26 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     destination: "",
                     fulfilmentMethod: fulfillmentMode,
                     handoffMode: mapFulfilmentToHandoff(fulfillmentMode),
-                    // A delivery order has the merchant run a prep-and-handoff
-                    // process (order-received → … → handed-off to the courier),
-                    // so the food order anchors figaro-merchant-process-v1 —
-                    // without the clause the merchant cannot attest it.
-                    ...(fulfillmentMode.startsWith("deliver:") ? { merchantProcessIncluded: true } : {}),
+                    // The committed root order anchors figaro-merchant-process-v1
+                    // whenever the merchant runs a lifecycle (order-received →
+                    // … → handed-off). Delivery always needs it (the
+                    // merchant→courier handoff is a merchant-process event);
+                    // pickup needs it too (the buyer↔merchant handoff is the
+                    // same lifecycle). Read from the assembly's root order's
+                    // agreement — same shape as the proximityBands per-order
+                    // IIFE below — so any assembly that authors the clause
+                    // gets it propagated, not just delivery-modality ones.
+                    ...(pickedAssembly?.manifest.orders[0]?.agreementHash
+                        ? (() => {
+                            const rootAgreement = pickedAssembly.manifest.agreements[
+                                pickedAssembly.manifest.orders[0].agreementHash
+                            ] as Agreement | undefined;
+                            const hasMerchantProcess = !!rootAgreement?.sections.find(
+                                (s) => s.schema === MERCHANT_PROCESS_SCHEMA_KEY,
+                            );
+                            return hasMerchantProcess ? { merchantProcessIncluded: true } : {};
+                        })()
+                        : (fulfillmentMode.startsWith("deliver:") ? { merchantProcessIncluded: true } : {})),
                     // The off-chain dispute forum the assembly authored — the
                     // committed order carries the jurisdiction clause so the
                     // dispute surface can read its Layer-3 recourse.

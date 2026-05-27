@@ -100,7 +100,7 @@ const ERC20_VIEW_ABI = parseAbi([
 // `local-commerce` seller-assigned, `local-commerce-dutch` dutch-auction,
 // `local-commerce-buyer-assigned` buyer-assigned.
 const FIXTURE_DIR = path.resolve(SCRIPT_DIR, 'fixtures');
-const ASSEMBLY_FIXTURES = ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned', 'local-commerce-offset'];
+const ASSEMBLY_FIXTURES = ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned', 'local-commerce-offset', 'local-commerce-pickup'];
 
 /** Sorted-key, bigint-as-string JSON — mirrors `canonicalize` in
  *  frontend/lib/mechanisms/useAssemblyRegistry.ts, so the contentHash this
@@ -135,7 +135,7 @@ const OPERATORS = [
     { addressIndex: 5, name: 'Counter & Co.', specialty: 'in-person counter sales', bind: ['direct-sale'], geohash: 'dr5regw2' },
     { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'], couriers: [7], geohash: 'dr5regw5' },
     { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'], deliveryCatalogue: true, geohash: 'dr5regw3' },
-    { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned'], couriers: [7], geohash: 'dr5regw7' },
+    { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned', 'local-commerce-pickup'], couriers: [7], geohash: 'dr5regw7' },
     // local-commerce-offset is seller-assigned — the same fulfilment mode as
     // local-commerce — and checkout selects an assembly by fulfilment mode,
     // so two seller-assigned assemblies on one merchant collide. It gets its
