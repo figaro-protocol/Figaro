@@ -5,6 +5,11 @@ import { keccak256, stringToHex, type Hex } from "viem";
 import { encodeMerchantContent, type MerchantEvent } from "@figaro/core/schemas";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { MERCHANT_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import {
+    encodeProximityProofContent,
+    PROXIMITY_SCHEMA_ID,
+    type ProximityProof,
+} from "@/lib/mechanisms/useCourierProcess";
 
 /**
  * Sovereign merchant event log — `figaro-merchant-process-v1`. The merchant
@@ -41,6 +46,20 @@ export interface MerchantSignalInput {
     roleOrderHash?: string;
 }
 
+export interface MerchantSignalWithProofInput {
+    /** The merchant's own order — this is BOTH the role (auth) AND the
+     *  target for the merchant-process event. */
+    merchantOrderHash: string;
+    /** The courier's order — target for the proximity-proof attestation.
+     *  The merchant's role-order is the auth side; the inclusion proof opens
+     *  against the courier's manifest, which carries the proximity-proof clause. */
+    proximityTargetOrderHash: string;
+    /** Merchant-process event paired with the proof — typically `handed-off`,
+     *  the lifecycle moment that coincides with the merchant→courier pickup. */
+    eventType: MerchantEvent;
+    proof: ProximityProof;
+}
+
 export function useMerchantProcessActions() {
     const {
         submitSellerAttestation,
@@ -67,8 +86,39 @@ export function useMerchantProcessActions() {
         });
     }, [submitSellerAttestation]);
 
+    /**
+     * Cross-witness the merchant→courier pickup. Pairs a proximity-proof
+     * attestation (target = courier's order, role = merchant's order — the
+     * inclusion proof opens against the courier's manifest, which already
+     * carries the proximity-proof clause) with the merchant's own
+     * lifecycle event (typically `handed-off`, target = merchant's order).
+     *
+     * Two on-chain attestations result: one under proximity-proof-v1 on
+     * the courier's order with the merchant as attester, one under
+     * merchant-process-v1 on the merchant's order. Off-chain consumers
+     * see both witnesses at the pickup edge — merchant's and courier's.
+     */
+    const signalWithProof = useCallback(async ({
+        merchantOrderHash,
+        proximityTargetOrderHash,
+        eventType,
+        proof,
+    }: MerchantSignalWithProofInput) => {
+        await submitSellerAttestation({
+            roleOrderHash: merchantOrderHash as Hex,
+            orderHash: proximityTargetOrderHash as Hex,
+            schemaId: PROXIMITY_SCHEMA_ID,
+            stage: proof.band,
+            content: encodeProximityProofContent(proof),
+            failureMessage: "Merchant proximity proof submission failed",
+        });
+
+        return signal({ orderHash: merchantOrderHash, eventType });
+    }, [submitSellerAttestation, signal]);
+
     return {
         signal,
+        signalWithProof,
         isPending,
         isConfirming,
         isSuccess,

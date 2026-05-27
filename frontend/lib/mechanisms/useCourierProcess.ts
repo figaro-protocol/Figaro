@@ -54,7 +54,7 @@ export interface ProximityProof {
  * Shape: `abi.encode(uint8 band, bytes32 nonce, bytes deviceSig)` — matches
  * the on-chain validator's `abi.decode(content, (uint8, bytes32, bytes))`.
  */
-function encodeProximityProofContent(proof: ProximityProof): `0x${string}` {
+export function encodeProximityProofContent(proof: ProximityProof): `0x${string}` {
     return encodeAbiParameters(
         [{ type: "uint8" }, { type: "bytes32" }, { type: "bytes" }],
         [proof.band, proof.nonce, proof.deviceSig],

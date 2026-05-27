@@ -436,6 +436,16 @@ export function OrderTimelineView({ processId }: Props) {
             (order) => order.orderId !== processModel.rootOrderId && hexEqual(address, order.seller),
         ) ?? null;
     }, [processModel, address, isBuyer, isSeller]);
+    // For the merchant view: any non-root sub-order in this process. Distinct
+    // from `courierOrder` above (which requires the viewer to be the courier).
+    // The merchant uses this to cross-witness the pickup edge with a
+    // proximity-proof attestation against the courier's manifest.
+    const courierSubOrder = useMemo(() => {
+        if (!processModel) return null;
+        return processModel.orders.find(
+            (order) => order.orderId !== processModel.rootOrderId,
+        ) ?? null;
+    }, [processModel]);
     const role: "buyer" | "seller" | "courier" | "spectator" =
         isBuyer ? "buyer" : isSeller ? "seller" : courierOrder ? "courier" : "spectator";
 
@@ -499,6 +509,20 @@ export function OrderTimelineView({ processId }: Props) {
         }
     };
 
+    // Read the committed proximity-policy band off the courier sub-order's
+    // agreement (the policy lives on the courier's manifest, not the
+    // merchant's). Both the courier's own proof and the merchant's cross-
+    // witness derive their band from this same source so the on-chain
+    // attestations agree on the committed band.
+    const readCommittedBand = (orderAgreementHash: string): number => {
+        const agreement = workspace.processAgreements.get(orderAgreementHash) ?? null;
+        const committedBand = agreement
+            ? ((getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY)
+                ?.data as { bands?: string[] } | undefined)?.bands ?? [])[0]
+            : undefined;
+        return PROXIMITY_BAND_INDEX[committedBand ?? ""] ?? 1;
+    };
+
     const handleCourierProximityProof = async () => {
         if (!courierOrder || !publicClient) return;
         setCourierPending(true);
@@ -507,15 +531,7 @@ export function OrderTimelineView({ processId }: Props) {
             // Fresh 32-byte nonce per handoff — the validator rejects a
             // zero nonce, and a unique nonce keeps each proof distinct.
             const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
-            // Read the band off the courier order's committed
-            // figaro-proximity-policy-v1 clause — the proof carries the band
-            // the assembly authored, not a hardcoded default.
-            const courierAgreement = workspace.processAgreements.get(courierOrder.agreementHash) ?? null;
-            const committedBand = courierAgreement
-                ? ((getSection(courierAgreement, PROXIMITY_POLICY_SCHEMA_KEY)
-                    ?.data as { bands?: string[] } | undefined)?.bands ?? [])[0]
-                : undefined;
-            const band = PROXIMITY_BAND_INDEX[committedBand ?? ""] ?? 1;
+            const band = readCommittedBand(courierOrder.agreementHash);
             // Which handoff edge: the courier-process event log decides. Once
             // arrived-pickup is attested, this proof certifies the
             // courier→buyer dropoff; before it, the merchant→courier pickup.
@@ -537,6 +553,33 @@ export function OrderTimelineView({ processId }: Props) {
             setCourierError(extractErrorMessage(cause, "Proximity proof submission failed"));
         } finally {
             setCourierPending(false);
+        }
+    };
+
+    // Merchant cross-witness of the merchant→courier pickup. Pairs a
+    // proximity-proof attestation (target = courier sub-order, role =
+    // merchant's root order) with the merchant-process `handed-off` event
+    // on the merchant's own order. The inclusion proof opens against the
+    // courier's manifest's proximity-proof clause; the merchant's manifest
+    // does not need to carry the clause.
+    const handleMerchantProximityProof = async () => {
+        if (!rootOrder || !courierSubOrder) return;
+        setMerchantPending(true);
+        setMerchantError(null);
+        try {
+            const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
+            const band = readCommittedBand(courierSubOrder.agreementHash);
+            await merchantActions.signalWithProof({
+                merchantOrderHash: rootOrder.orderId,
+                proximityTargetOrderHash: courierSubOrder.orderId,
+                eventType: "handed-off",
+                proof: { band, nonce, deviceSig: COURIER_DEVICE_SIG_PLACEHOLDER },
+            });
+            setTick((t) => t + 1);
+        } catch (cause: unknown) {
+            setMerchantError(extractErrorMessage(cause, "Merchant handoff attestation failed"));
+        } finally {
+            setMerchantPending(false);
         }
     };
 
@@ -636,7 +679,31 @@ export function OrderTimelineView({ processId }: Props) {
 
                 {role === "seller" && (
                     <>
-                        {next ? (
+                        {next === "handed-off" && courierSubOrder ? (
+                            // Cross-witness path: when this order has a
+                            // courier sub-order, the merchant's `handed-off`
+                            // moment is paired with a proximity-proof
+                            // attestation against the courier's manifest.
+                            // Without a courier sub-order (pickup-modality
+                            // variant, not yet authored as a fixture) the
+                            // standard lifecycle button below applies.
+                            <>
+                                <p className="text-sm text-neutral-700">
+                                    Submit an on-chain proximity proof to certify
+                                    the merchant→courier pickup. Fires the{" "}
+                                    <code className="font-mono text-xs">figaro-proximity-proof-v1</code>{" "}
+                                    attestation against the courier's order plus
+                                    the merchant-process <code className="font-mono text-xs">handed-off</code> event.
+                                </p>
+                                <Button
+                                    onClick={handleMerchantProximityProof}
+                                    disabled={merchantPending || merchantActions.isPending || merchantActions.isConfirming}
+                                    data-testid="btn-merchant-proximity-proof"
+                                >
+                                    {merchantPending ? "Submitting…" : "Submit handoff proof"}
+                                </Button>
+                            </>
+                        ) : next ? (
                             <Button
                                 onClick={handleMerchantNext}
                                 disabled={merchantPending || merchantActions.isPending || merchantActions.isConfirming}

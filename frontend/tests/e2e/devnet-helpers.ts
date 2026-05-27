@@ -54,7 +54,16 @@ const LOCAL_ANVIL = defineChain({
 
 // figaro-merchant-process-v1 happy-path stages — order-received through
 // handed-off — the merchant walks these in the coordination step.
-const MERCHANT_STEPS = ['order-received', 'accepted', 'prep-started', 'ready-for-pickup', 'handed-off'] as const;
+/** The merchant's pre-handoff lifecycle stages, driven by sequential
+ *  `btn-merchant-next-<step>` clicks. The final `handed-off` stage is fired
+ *  by `btn-merchant-proximity-proof` instead — it's paired with the
+ *  merchant's cross-witness proximity-proof attestation against the courier
+ *  order (`OrderTimelineView.tsx` swaps the button when a courier sub-order
+ *  exists). */
+const MERCHANT_PRE_HANDOFF_STEPS = ['order-received', 'accepted', 'prep-started', 'ready-for-pickup'] as const;
+/** Merchant-process `handed-off` event stage — the attestation the
+ *  `btn-merchant-proximity-proof` click pairs with the proximity-proof. */
+const MERCHANT_HANDED_OFF_STAGE = 4;
 const ATTESTATION_EVENT_ABI = parseAbi([
     'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)',
 ]);
@@ -1484,10 +1493,35 @@ export async function runDeliveryCoordination(
     // ── Merchant walks the figaro-merchant-process-v1 coordination ──
     await gotoAsWallet(page, opts.merchant, `/orders/${opts.processId}?e2e=devnet`);
     await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-    for (const step of MERCHANT_STEPS) {
+    for (const step of MERCHANT_PRE_HANDOFF_STEPS) {
         const btn = page.getByTestId(`btn-merchant-next-${step}`);
         await btn.waitFor({ state: 'visible', timeout: 60000 });
         await btn.click();
+    }
+    // Final handoff: the merchant's `handed-off` event is paired with a
+    // cross-witness proximity-proof against the courier's order. Wait for
+    // both attestations to land before moving on.
+    const merchantHandoffBtn = page.getByTestId('btn-merchant-proximity-proof');
+    await expect(merchantHandoffBtn).toBeEnabled({ timeout: 60000 });
+    await merchantHandoffBtn.click();
+    const merchantHandoffDeadline = Date.now() + 90_000;
+    for (;;) {
+        const events = await publicClient.getContractEvents({
+            address: coordinator, abi: ATTESTATION_EVENT_ABI, eventName: 'Attestation',
+            args: { processId: opts.processId, attester: opts.merchant as Hex }, fromBlock: 0n,
+        });
+        const handedOff = events.some((e) => {
+            const args = (e as { args: { schemaId?: Hex; stage?: number } }).args;
+            return args.schemaId === MERCHANT_PROCESS_SCHEMA_ID && Number(args.stage) === MERCHANT_HANDED_OFF_STAGE;
+        });
+        const proofWitness = events.some(
+            (e) => (e as { args: { schemaId?: Hex } }).args.schemaId === PROXIMITY_PROOF_SCHEMA_ID,
+        );
+        if (handedOff && proofWitness) break;
+        if (Date.now() > merchantHandoffDeadline) {
+            throw new Error('merchant handoff (handed-off + proximity-proof cross-witness) timed out');
+        }
+        await new Promise((r) => setTimeout(r, 1000));
     }
     await expect(page.locator('[data-testid^="btn-merchant-next-"]')).toHaveCount(0, { timeout: 60000 });
     if (opts.emissions?.merchant) {
