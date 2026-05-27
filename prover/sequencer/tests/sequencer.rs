@@ -23,6 +23,26 @@ const TOKEN: Address = address!("5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f");
 const CORE: Address = address!("2e234DAe75C793f67A35089C9d99245E1C58470b");
 const CHAIN_ID: u64 = 31337;
 
+// ── Schema-encoder helper (post-Keystone: no per-schema dispatch) ─
+//
+// Look up the embedded spec, parse, encode through the generic encoder.
+// Mirrors the helper in prover/lib/tests/parity.rs.
+
+fn encode_for_schema_key(schema_id_str: &str, content: &serde_json::Value) -> Vec<u8> {
+    let json = figaro_schema::embedded_spec_json_by_key(schema_id_str)
+        .unwrap_or_else(|| panic!("no embedded spec for {schema_id_str}"));
+    let parsed: serde_json::Value = serde_json::from_str(json)
+        .unwrap_or_else(|e| panic!("embedded spec for {schema_id_str} is not valid JSON: {e}"));
+    let spec = match figaro_schema::parse_schema_spec(&parsed) {
+        figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
+        figaro_schema::ParseSchemaSpecResult::Err(errors) => {
+            panic!("embedded spec for {schema_id_str} failed to parse: {errors:?}")
+        }
+    };
+    figaro_schema::encode_content_from_spec(&spec, content)
+        .unwrap_or_else(|e| panic!("canonical encoder must succeed for {schema_id_str}: {e}"))
+}
+
 // ── Signing helpers (same as kernel parity tests) ─────────────────
 
 fn make_signing_key(secret: u64) -> SigningKey {
@@ -270,8 +290,7 @@ fn build_attest_seller_with_proof(
     let seller_key = make_signing_key(SELLER1_KEY);
     let schema_id = keccak256(schema_id_str.as_bytes());
 
-    let canonical_bytes = figaro_schema::encode_content_for_schema(schema_id_str, &content_json)
-        .expect("canonical encoder must succeed for this test fixture");
+    let canonical_bytes = encode_for_schema_key(schema_id_str, &content_json);
     let content_ref = override_content_ref.unwrap_or_else(|| keccak256(canonical_bytes.as_slice()));
 
     // Single-section agreement: agreement_hash IS the lone section leaf, so
@@ -431,8 +450,7 @@ async fn mempool_rejects_wrong_inclusion_proof() {
     let schema_id_str = "figaro-ghg-protocol-v1";
     let schema_id = keccak256(schema_id_str.as_bytes());
     let content_json = serde_json::json!({ "scope": 1 });
-    let canonical_bytes =
-        figaro_schema::encode_content_for_schema(schema_id_str, &content_json).unwrap();
+    let canonical_bytes = encode_for_schema_key(schema_id_str, &content_json);
     let content_ref = keccak256(canonical_bytes.as_slice());
 
     let mut role = root_commitment();

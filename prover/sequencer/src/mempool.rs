@@ -283,9 +283,10 @@ fn pre_check_attest_content(
     }
 
     // ── Gate 3: re-derive canonical ABI bytes from the JSON ──
-    let derived =
-        figaro_schema::encode_content_for_schema(&parsed.schema_id, &content_json_value)
-            .map_err(|e| format!("content_proof canonical encoding failed: {e}"))?;
+    // Post-Keystone: one generic encoder reads the parsed spec directly;
+    // schemaId-string lookup was the kernel's Gate 1 above. No second dispatch.
+    let derived = figaro_schema::encode_content_from_spec(&parsed, &content_json_value)
+        .map_err(|e| format!("content_proof canonical encoding failed: {e}"))?;
 
     // ── Gate 4: derived bytes hash to the on-chain content_ref ──
     if &keccak256(derived.as_slice()) != content_ref {
