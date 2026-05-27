@@ -1,5 +1,3 @@
-them into transaction-scoped institutions.
-
 # Figaro Protocol
 
 **Figaro is not an app, a firm, or an economic system. It is the TCP/IP of Trade.**
@@ -20,13 +18,13 @@ The organizational consequence: each process assembles a temporary institution o
 
 - **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
 - **Mechanism modules** — attestation, schema registry, Dutch auction, operator registry
-- **FIG token** — settlement-anchored emission, time-locks, batch verifier
+- **FIG token** — 1B fixed supply, 10/30/60 split (founders / DAO / schema-author RPGF), time-locks, SP1-proved per-tranche minting
 - **SDK** — `@figaro/core`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **SP1 prover** — Rust workspace: kernel library, guest program, batch sequencer
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
 - **Paper** — Academic paper in `paper/`
-- **Contributor agents** — `.claude/agents/` ships twelve Claude Code subagents covering protocol authoring (kernel-reviewer, schema-lockstep, schema-author, runtime-ui-author, assembly-author, paper-reviewer), operations (memory-hygiene, deploy-runner, feedback-triage), and communications (marketing-author, site-ia, visual-design). `agents/factotum/` is a runnable participation-agent reference with a policy library, `agents/sdk/` packages the subagents as `@figaro/agent-sdk` for non-Claude-Code runtimes, and `agents/examples/` walks through two end-to-end scenarios (TradeLens replacement, Spirit Air replacement). See [CONTRIBUTING.md](CONTRIBUTING.md#contributor-agents).
+- **Contributor agents** — `.claude/agents/` ships sixteen Claude Code subagents covering protocol authoring (kernel-reviewer, schema-lockstep, schema-author, runtime-ui-author, assembly-author, paper-reviewer), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor), operations (memory-hygiene, deploy-runner, feedback-triage), and communications (marketing-author, site-ia, visual-design). `agents/factotum/` is a runnable participation-agent reference with a policy library, `agents/sdk/` packages the subagents as `@figaro/agent-sdk` for non-Claude-Code runtimes, and `agents/examples/` walks through two end-to-end scenarios (TradeLens replacement, Spirit Air replacement). See [CONTRIBUTING.md](CONTRIBUTING.md#contributor-agents).
 
 Start with [docs/v5/CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) for the reading path.
 
@@ -63,10 +61,14 @@ frontend/                   Next.js 14 runtime
   tests/e2e/                Playwright specs (mock, mock-mobile, devnet)
 
 prover/                     Rust SP1 workspace
-  figaro-kernel/            Kernel library
-  figaro-sequencer/         Batch sequencer
-  figaro-guest/             SP1 guest program
-  figaro-prove-test/        Mock prover test
+  lib/                      Kernel library (figaro-kernel)
+  program/                  SP1 kernel guest program
+  script/                   SP1 kernel prove script
+  sequencer/                Batch sequencer + mempool
+  rpgf/                     RPGF aggregation library (figaro-rpgf)
+  rpgf-program/             SP1 RPGF guest program
+  rpgf-script/              SP1 RPGF prove script
+  schema/                   Generic schema validator (mirrors Layer A)
 
 agents/                     Reference agent implementations
   factotum/                 Runnable participation-agent (uses @figaro/core/agent)
@@ -114,7 +116,7 @@ Anvil at `http://127.0.0.1:8545` (chain ID 31337).
 
 ### Developer setup & canonical scripts
 
-- **Scripts layout:** Foundry deploy scripts (`*.s.sol`) live in `script/`. Shell scripts (`deploy-*.sh`, `lint-*.sh`, `test-*.sh`, `scripts/mythril-docker.sh`, `scripts/coverage.sh`, `scripts/setup-local.sh`) live at the repo root and are invoked from there.
+- **Scripts layout:** Foundry deploy scripts (`*.s.sol`) live in `script/` (singular, Foundry-reserved). Shell scripts (`deploy-*.sh`, `lint-*.sh`, `test-*.sh`, `mythril-docker.sh`, `coverage.sh`, `setup-local.sh`) live in `scripts/` (plural).
 - **Common commands:**
 
 ```bash
@@ -146,9 +148,9 @@ See [CLAUDE.md](CLAUDE.md#testing) for the full inventory. Quick commands:
 forge test --via-ir                         # Foundry
 cd sdk && npm test                          # SDK
 cd frontend && npx vitest run               # Frontend unit
-cd frontend && npx playwright test --project=mock    # E2E, no chain
-cd frontend && npx playwright test --project=devnet  # E2E, Anvil required
-cd prover && cargo test                     # Rust (kernel + sequencer)
+cd frontend && npm run test:e2e:mobile      # Responsive/viewport (jsdom can't)
+cd frontend && npm run test:e2e:devnet      # E2E, real UI against Anvil + contracts
+cd prover && cargo test                     # Rust (kernel + sequencer + rpgf)
 ./scripts/test-echidna.sh                           # Echidna fuzzing
 ./scripts/test-halmos.sh                            # Halmos symbolic proofs
 ./scripts/test-tla.sh                               # TLA+ model checking
@@ -166,14 +168,24 @@ See [formal/README.md](formal/README.md) and [CLAUDE.md](CLAUDE.md#testing) for 
 
 ## Design Documents
 
-All active docs live in `docs/v5/`:
+All active docs live in `docs/v5/`. Start with [CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) for the reading path.
+
+Inventories indexed by CLAUDE.md:
+
+- [CONTRACTS.md](docs/v5/CONTRACTS.md) — Smart-contract inventory
+- [SCHEMAS.md](docs/v5/SCHEMAS.md) — Schema validation architecture + per-schema table
+- [FRONTEND.md](docs/v5/FRONTEND.md) — Route catalogue, lib map, designer surface
+- [TESTING.md](docs/v5/TESTING.md) — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright / Rust harness inventory
+
+Core theory + design:
 
 - [VISION.md](docs/v5/VISION.md) — Post-firm economy, Coasean collapse, token denomination
 - [THEORY.md](docs/v5/THEORY.md) — Game-theoretic derivation of six protocol properties
-- [FIG_TOKEN.md](docs/v5/FIG_TOKEN.md) — Token design: allocation, emission, time-locks
+- [FIG_TOKEN.md](docs/v5/FIG_TOKEN.md) — Token design: allocation, RPGF emission, time-locks
 - [SCALING_STRATEGY.md](docs/v5/SCALING_STRATEGY.md) — Proof-based batching, SP1
 - [RUNTIME.md](docs/v5/RUNTIME.md) — Why this is a runtime, not just contracts (thesis + frontend model + semantic layer)
-- [CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) — Reading path and archive map
+- [DESIGN_DECISIONS.md](docs/v5/DESIGN_DECISIONS.md) — 14 intentional patterns that look like vulnerabilities (read before auditing)
+- [VERIFICATION_MAP.md](docs/v5/VERIFICATION_MAP.md) — Every invariant → code → test → formal layer
 
 ## License
 

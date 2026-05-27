@@ -4,7 +4,7 @@ Thanks for helping maintain Figaro. This file describes the recommended local se
 
 ## Quickstart (local dev)
 
-Prerequisites: Foundry, Node.js 18+, Rust toolchain (for `prover`), Docker (optional for Mythril).
+Prerequisites: Foundry, Node.js 18+, Rust toolchain (for `prover`), Docker (the agent runs IPFS / Mythril / LaTeX through it — keep Docker Desktop running).
 
 1. Install dependencies
 
@@ -75,10 +75,14 @@ The project ships agent-shaped tooling — usable by humans, AI assistants, or a
 - **`figaro-paper-reviewer`** — read-only verifier for academic-paper claims against the canonical code. Catches drift between `paper/*.tex` and `src/` / `formal/`. Cites both paper passages and source line numbers. Invoke when reviewing paper edits, when the kernel changes, or before publication.
 - **`figaro-memory-hygiene`** — periodic audit of memory files (`~/.claude/projects/<project>/memory/`). Flags oversized files, drift, orphans. Output is a table — explicitly resists narrative. Invoke monthly or when memory bloat is suspected.
 - **`figaro-deploy-runner`** — walks through `cloudflare/README.md`'s deployment runbook with confirmation gates before destructive actions (KV creation, container push, Worker deploy, contract deployment). Coordinator, not authority. Invoke when deploying or making infra changes.
-- **`figaro-feedback-triage`** — classifies and routes incoming beta-participant feedback (bug / composable-protection gap / framing observation / general). Composable-protection gaps and framing observations get priority weighting per `feedback_figaro_high_stakes.md` and ETHICS.md. Invoke once feedback is flowing.
+- **`figaro-feedback-triage`** — classifies and routes incoming beta-participant feedback (bug / composable-protection gap / framing observation / general). Invoke once feedback is flowing.
 - **`figaro-marketing-author`** — authors and reviews participant-facing words across all surfaces (marketing pages, onboarding modals, emails, page descriptions). Knows the project's framing language (TCP/IP of trade, coordination protocol, asymmetric bonding) and refuses DeFi/TradFi vocabulary, startup framing, decorative claims. Every claim traces to a theorem, proposition, or spec. Invoke when writing/revising marketing copy or auditing existing copy.
 - **`figaro-site-ia`** — read-only auditor for site information architecture. Reviews route structure, navigation, page-purpose overlap, reading paths, cross-linking. Recommends; does not restructure pages directly. Pairs with `marketing-author` (copy) and `visual-design` (primitives). Invoke when adding/removing pages, when navigation changes are proposed, or after audits flag IA issues.
 - **`figaro-visual-design`** — owns the design system: Tailwind config, semantic color tokens, typography, shared UI primitives in `frontend/components/ui/`, accessibility (WCAG / ARIA). Does NOT write feature UI; that's `runtime-ui-author`'s domain. Invoke when establishing/maintaining design tokens, after a11y audits, or when primitives are reimplemented multiple times.
+- **`figaro-assumption-auditor`** — read-only gate that audits proposed plans, briefs, and copy for the recurring failure modes (web2 drift, marketing/app tangling, unverified codebase claims, tier inflation, decorative claims, CTA stacking). Invoke BEFORE dispatching other agents or writing files on any marketing-surface change.
+- **`figaro-audit-commitment-checker`** — read-only gate that grades a proposed audit finding + refactor against the operator's commitment list. Invoke per finding during a comprehensive frontend audit, BEFORE the operator sees the finding.
+- **`figaro-literalness-auditor`** — read-only gate that audits proposed audits, migration plans, and architectural framings for literal-state-as-design errors (treating one shipped artifact as design intent, ignoring trajectory, inflating an outlier into a rule). Invoke BEFORE presenting any audit that names a "limit", "constraint", or "missing capability".
+- **`figaro-separation-of-concerns-auditor`** — read-only gate that audits architectural proposals for layer-boundary collapse — specifically, proposals that reuse an existing registry/primitive to host an artifact family that should have its own parallel primitive. Invoke BEFORE recommending an anchoring or registry-reuse choice.
 
 These rely on the canonical `figaro-kernel-discipline` skill at `.claude/skills/` and the `kernel-warn.sh` hook at `.claude/hooks/`. The skill is the single source of truth for kernel rules; the subagents are tool-constrained executors.
 
@@ -138,9 +142,11 @@ Both surface the same structural gap: there is no `figaro-assembly-author` subag
 Per repository policy, when a code change makes an existing doc statement stale, update the affected docs in the same change. Key files to keep in sync include:
 
 - `CLAUDE.md`
-- `.github/copilot-instructions.md`
+- `docs/v5/CONTRACTS.md`, `docs/v5/SCHEMAS.md`, `docs/v5/FRONTEND.md`, `docs/v5/TESTING.md` — the inventories CLAUDE.md indexes
 - `sdk/README.md`
 - `docs/v5/` design docs referenced by the code you change
+
+`scripts/lint-claude-md.sh` runs in pre-commit and fails on mechanically-detectable drift (broken backticked paths, env-var diff vs `frontend/.env.local`, missing entries in the mocks / deploy-scripts inventories).
 
 When in doubt, update or add a short note in `README.md` describing new scripts, env vars, or developer commands.
 
