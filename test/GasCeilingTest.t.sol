@@ -25,6 +25,16 @@ contract GasCeilingTest is Test {
     uint256 internal constant PAYMENT = 1 ether;
     uint256 internal constant INITIAL_BALANCE = 1_000_000 ether;
 
+    // ── Per-order gas anchors (mirror frontend/lib/shared/chainGasCeilings.ts) ──
+    // The frontend reads `RESOLVE_GAS_PER_ORDER` and `COMMIT_GAS_PER_ORDER`
+    // to derive per-process and per-block ceilings on whatever chain the
+    // user is connected to. These constants are the canonical empirical
+    // anchors; `scripts/lint-chain-gas.sh` asserts the TS module's
+    // matching constants are byte-equal so either side moves the other
+    // moves too. If you bump one, bump both.
+    uint256 internal constant RESOLVE_GAS_PER_ORDER = 14_000;
+    uint256 internal constant COMMIT_GAS_PER_ORDER = 224_000;
+
     function setUp() public {
         buyer = vm.addr(BUYER_KEY);
         token = new MockPermitToken();
@@ -150,10 +160,23 @@ contract GasCeilingTest is Test {
 
         // Empirical finding: ~2,145 orders fit in 30M gas (~14k gas/order).
         // This test builds up to 1,800 orders (Foundry's default test-function
-        // gas limit constrains how many we can construct).  Assert >1,500 to
-        // catch per-order cost regressions.  Full ceiling verified with:
+        // gas limit constrains how many we can construct). Assert >1,500 to
+        // catch per-order cost regressions. Full ceiling verified with:
         //   forge test --match-test test_Gas_MaxOrders -vv --gas-limit 9999999999
         assertGt(lo, 1500, "Must resolve >1500 orders within 30M gas");
+
+        // Anchor the chain-aware ceiling computation in
+        // frontend/lib/shared/chainGasCeilings.ts: the per-order gas cost
+        // observed here must not exceed `RESOLVE_GAS_PER_ORDER`. If this
+        // ever fails, the TS constant + this constant both need bumping
+        // (the lint script catches drift between them; this assertion
+        // catches the underlying empirical drift).
+        uint256 perOrder = gasUsedAtLo / lo;
+        assertLe(
+            perOrder,
+            RESOLVE_GAS_PER_ORDER,
+            "Per-order resolve cost exceeds RESOLVE_GAS_PER_ORDER; bump the constant in lockstep with chainGasCeilings.ts"
+        );
     }
 
     // ── Atomic enforcement: partial submission always reverts ────

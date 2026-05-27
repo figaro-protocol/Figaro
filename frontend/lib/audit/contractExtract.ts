@@ -176,13 +176,21 @@ function extractLineage(agreement: Agreement | RedactableAgreement) {
 
 function extractFulfilmentSummary(agreement: Agreement | RedactableAgreement) {
     const fulfilment = findCleartextSection(agreement, FULFILMENT_V2_SCHEMA_KEY);
-    const data = fulfilment?.data as { modality?: unknown; coordination?: unknown } | undefined;
-    const modality = typeof data?.modality === "string" ? data.modality : undefined;
+    const data = fulfilment?.data as
+        | { modalities?: unknown; coordinations?: unknown }
+        | undefined;
+    // Read the schema-correct plural arrays. Earlier this code read
+    // singular `modality`/`coordination` keys that never existed in
+    // figaro-fulfilment-v2 — works only when the section's data
+    // accidentally carried both shapes.
+    const modalitiesArr = Array.isArray(data?.modalities) ? data.modalities : [];
+    const modality = typeof modalitiesArr[0] === "string" ? modalitiesArr[0] : undefined;
     if (!modality) return undefined;
-    const coordination = typeof data?.coordination === "string" ? data.coordination : undefined;
+    const coordinationsArr = Array.isArray(data?.coordinations) ? data.coordinations : [];
+    const coordination = typeof coordinationsArr[0] === "string" ? coordinationsArr[0] : undefined;
     // Reconstruct the legacy canonical method string for backward-compat
-    // consumers. v2 stores modality + coordination as independent fields;
-    // the canonical method collapses them.
+    // consumers. v2 stores modalities + coordinations as independent
+    // arrays; the canonical method collapses the first of each.
     if (modality === "delivery" && coordination) {
         return { method: `deliver:${coordination}` };
     }

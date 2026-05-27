@@ -51,7 +51,13 @@ const GEO_SECTION: AgreementSection = {
 
 const FULFILMENT_SECTION: AgreementSection = {
     schema: "figaro-fulfilment-v2",
-    data: { modality: "delivery", coordination: "dutch-auction", handoffPoint: "face-to-face" },
+    // Plural arrays per the schema spec — Keystone's strict encoder rejects
+    // singular keys (which the pre-Keystone JSON fallback silently accepted).
+    data: {
+        modalities: ["delivery"],
+        coordinations: ["dutch-auction"],
+        handoffPoints: ["face-to-face"],
+    },
 };
 
 const GHG_SECTION: AgreementSection = {
@@ -206,8 +212,11 @@ describe("computeSectionLeaf", () => {
     });
 
     it("changes when schema key changes, even with identical data", () => {
-        const leafA = computeSectionLeaf({ schema: "figaro-fulfilment-v2", data: { modality: "pickup" } });
-        const leafB = computeSectionLeaf({ schema: "figaro-proximity-proof-v1", data: { modality: "pickup" } });
+        // Use a schema-agnostic placeholder (no spec means JSON fallback)
+        // so the assertion is purely about schema-key salting the leaf.
+        const placeholder = { irrelevant: true };
+        const leafA = computeSectionLeaf({ schema: "third-party-foo-v1", data: placeholder });
+        const leafB = computeSectionLeaf({ schema: "third-party-bar-v1", data: placeholder });
         expect(leafA).not.toBe(leafB);
     });
 });

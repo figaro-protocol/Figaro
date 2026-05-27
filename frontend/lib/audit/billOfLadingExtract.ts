@@ -117,7 +117,11 @@ export function extractBillOfLading(
 ): BillOfLadingDocument {
     const fulfilment = getSectionByKey(agreement, FULFILMENT_V2_SCHEMA_KEY);
     const geo = getSectionByKey(agreement, GEO_SCHEMA_KEY);
-    const fulfilmentData = fulfilment?.data as { handoffPoint?: string } | undefined;
+    const fulfilmentData = fulfilment?.data as { handoffPoints?: unknown } | undefined;
+    const handoffPointsArr = Array.isArray(fulfilmentData?.handoffPoints)
+        ? fulfilmentData.handoffPoints
+        : [];
+    const handoffMode = typeof handoffPointsArr[0] === "string" ? handoffPointsArr[0] : undefined;
     const geoData = geo?.data as {
         originGeohash?: string;
         destinationGeohash?: string;
@@ -167,7 +171,7 @@ export function extractBillOfLading(
         bolNumber: order.id,
         consignor: order.seller,
         consignee: order.buyer,
-        handoffMode: fulfilmentData?.handoffPoint,
+        handoffMode,
         originGeohash: geoData?.originGeohash,
         destinationGeohash: geoData?.destinationGeohash,
         massGrams: geoData?.massGrams,

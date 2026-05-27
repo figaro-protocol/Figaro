@@ -90,7 +90,7 @@ describe("extractContract", () => {
     const agreement = makeAgreement([
         {
             schema: FULFILMENT_V2_SCHEMA_KEY,
-            data: { modality: "pickup", handoffPoint: "face-to-face" },
+            data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] },
         },
         {
             schema: GEO_SCHEMA_KEY,
@@ -194,7 +194,7 @@ describe("extractContract — fulfilment summary", () => {
         const ag = makeAgreement([
             {
                 schema: FULFILMENT_V2_SCHEMA_KEY,
-                data: { modality: "delivery", coordination: "dutch-auction" },
+                data: { modalities: ["delivery"], coordinations: ["dutch-auction"], handoffPoints: [] },
             },
         ]);
         const c = extractContract(makeOrder(), ag);
@@ -258,7 +258,7 @@ describe("extractInvoice", () => {
 describe("extractBillOfLading", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
+        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
         { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
     ]);
 
@@ -369,7 +369,7 @@ describe("extractBillOfLading", () => {
 describe("buildHashAppendix", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
+        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
     ]);
     const attestations: AttestationRecord[] = [
         {
@@ -693,7 +693,7 @@ describe("isCarriageOrder", () => {
 
     it("returns false for buyer↔merchant orders (no courier-process clause)", () => {
         const agreement = makeAgreement([
-            { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
+            { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
             { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         ]);
         expect(isCarriageOrder(agreement)).toBe(false);
@@ -713,7 +713,7 @@ describe("isCarriageOrder", () => {
 describe("buildAuditBundle", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
+        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
         { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         { schema: COURIER_PROCESS_SCHEMA_KEY, data: {} },
     ]);
@@ -746,7 +746,7 @@ describe("buildAuditBundle", () => {
 
     it("omits billOfLading on a non-carriage order (e.g. buyer↔merchant goods sale)", () => {
         const merchantAgreement = makeAgreement([
-            { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
+            { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
             { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         ]);
         const merchantBundle = buildAuditBundle(order, merchantAgreement, []);
@@ -768,7 +768,7 @@ describe("buildAuditBundle", () => {
 describe("buildAuditBundle with redacted commerce section", () => {
     const order = makeOrder();
     const cleartextAgreement = makeAgreement([
-        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modality: "pickup", handoffPoint: "face-to-face" } },
+        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
         { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
     ]);
 
@@ -817,7 +817,7 @@ describe("buildAuditBundle with redacted commerce section", () => {
         const bundle = buildAuditBundle(order, redacted, []);
         const fulfilmentClause = bundle.contract.clauses.find((c) => c.schemaKey === "figaro-fulfilment-v2")!;
         expect(fulfilmentClause.sealed).toBeUndefined();
-        expect(fulfilmentClause.body).toEqual({ modality: "pickup", handoffPoint: "face-to-face" });
+        expect(fulfilmentClause.body).toEqual({ modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] });
     });
 
     it("cleartext path is unchanged when no redaction is applied", () => {

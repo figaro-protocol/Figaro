@@ -10,9 +10,10 @@
  *   2. Compute the canonical content hash (keccak256 of stable JSON).
  *   3. Pin the manifest to IPFS via DEFAULT_IPFS_SERVICE.
  *   4. Call AssemblyRegistry.registerAssembly(slug, nodeCount,
- *      contentHash, metadataURI). The registry's only on-chain check
- *      is that nodeCount fits the per-process gas ceiling
- *      (MAX_NODES_PER_ASSEMBLY = 2145, set per FigaroCore docs).
+ *      contentHash, metadataURI). The publish-side check is that
+ *      nodeCount fits the per-process gas ceiling, derived at runtime
+ *      from the active chain's block gas limit via
+ *      `maxOrdersResolvablePerProcess` in `@/lib/shared/chainGasCeilings`.
  *      All other content validation lives at the per-schema layer
  *      and runs when each order's clauses are attested at commit time.
  *
@@ -41,6 +42,7 @@ import {
     tryParseOperatorProfileDocument,
     type CounterpartyBinding,
 } from "@/lib/shared/operatorProfileMetadata";
+import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 
 export const ASSEMBLY_REGISTRY_ABI = parseAbi([
     "function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable",
@@ -52,11 +54,11 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
     "event DepositWithdrawn(bytes32 indexed slugHash, address indexed author, uint256 amount)",
 ] as const);
 
-/** Per-process gas ceiling at the kernel resolveProcess path. Documented
- *  in `src/FigaroCore.sol:240-250`. Enforced publish-side here (and
- *  again buyer-side at commit time) because the contract can't see
- *  off-chain manifest content to enforce it on-chain. */
-export const MAX_NODES_PER_ASSEMBLY = 2145;
+// Per-process gas ceiling moved to `@/lib/shared/chainGasCeilings`
+// (`maxOrdersResolvablePerProcess`) — the ceiling depends on the active
+// chain's block gas limit and is no longer a hardcoded 2,145 literal.
+// The old `MAX_NODES_PER_ASSEMBLY` export is gone; callers that need
+// the chain-aware cap import `maxOrdersResolvablePerProcess` directly.
 
 /** Off-chain manifest persisted to IPFS. Content-addressed by keccak256
  *  of its canonical JSON serialization (`canonicalize` below). The
@@ -724,9 +726,10 @@ export function usePublishAssembly() {
         if (!address) {
             throw new Error("Connect a wallet before publishing.");
         }
-        if (snapshot.orders.length > MAX_NODES_PER_ASSEMBLY) {
+        const perProcessCap = await maxOrdersResolvablePerProcess(client);
+        if (snapshot.orders.length > perProcessCap) {
             throw new Error(
-                `Assembly has ${snapshot.orders.length} orders; the per-process gas ceiling is ${MAX_NODES_PER_ASSEMBLY}. Compose multiple processes instead.`,
+                `Assembly has ${snapshot.orders.length} orders; the per-process gas ceiling on this chain is ${perProcessCap}. Compose multiple processes instead.`,
             );
         }
         const deposit = await client.readContract({
