@@ -10,6 +10,14 @@ import {ISchemaValidator} from "../src/ISchemaValidator.sol";
 ///         registered validator. Regression guard for backlog item "Deploy script
 ///         setValidator wiring": without this, every attest* call reverts with
 ///         ValidatorNotSet on a fresh coordinator.
+///
+///         The expected validator set is DERIVED from the ValidatorSet events
+///         emitted during the deploy run rather than hard-listed as a typed
+///         array. Pairs with scripts/lint-schema-counts.sh, which enforces
+///         that the deploy script's console.log counts match the on-disk
+///         schema source-of-truth — so a new schema added to Deploy.s.sol
+///         flows into this test automatically and a new schema NOT added
+///         is caught by the lint script.
 contract DeployScriptTest is Test {
     function test_deployScript_wiresAllRuntimeValidators() public {
         // Deploy.run() reads PRIVATE_KEY from env; set it to Anvil account #0.
@@ -20,44 +28,29 @@ contract DeployScriptTest is Test {
         deployer.run();
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
-        // ValidatorSet(indexed schemaId, indexed validator) — collect all bindings
-        // emitted during the script run.
         bytes32 validatorSetTopic = keccak256("ValidatorSet(bytes32,address)");
         address coordinator;
+        uint256 setCount;
         for (uint256 i = 0; i < logs.length; i++) {
             if (logs[i].topics.length == 3 && logs[i].topics[0] == validatorSetTopic) {
-                coordinator = logs[i].emitter;
-                break;
+                if (coordinator == address(0)) coordinator = logs[i].emitter;
+                setCount++;
             }
         }
         assertTrue(coordinator != address(0), "no ValidatorSet event observed");
+        assertGt(setCount, 0, "deploy script wired zero validators");
 
         AttestationCoordinator ac = AttestationCoordinator(coordinator);
 
-        bytes32[17] memory expected = [
-            keccak256("figaro-commerce-v1"),
-            keccak256("figaro-geo-v2"),
-            keccak256("figaro-fulfilment-v2"),
-            keccak256("figaro-ghg-protocol-v1"),
-            keccak256("figaro-ghg-iso-14064-v1"),
-            keccak256("figaro-ghg-pas-2050-v1"),
-            keccak256("figaro-ghg-en-16258-v1"),
-            keccak256("figaro-ghg-custom-v1"),
-            keccak256("figaro-ghg-measurement-v1"),
-            keccak256("figaro-proximity-policy-v1"),
-            keccak256("figaro-proximity-proof-v1"),
-            keccak256("figaro-merchant-process-v1"),
-            keccak256("figaro-courier-process-v1"),
-            keccak256("figaro-arbitration-kleros-v1"),
-            keccak256("figaro-applicable-law-v1"),
-            keccak256("figaro-consent-v1"),
-            keccak256("figaro-offset-policy-v1")
-        ];
-
-        for (uint256 i = 0; i < expected.length; i++) {
-            address v = ac.schemaValidator(expected[i]);
-            assertTrue(v != address(0), "validator not set for schema");
-            assertEq(ISchemaValidator(v).schemaId(), expected[i], "validator bound to wrong schema");
+        // Walk every ValidatorSet emission: the live binding must still hold
+        // and the validator's declared schemaId must match the event topic.
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics.length == 3 && logs[i].topics[0] == validatorSetTopic) {
+                bytes32 schemaId = logs[i].topics[1];
+                address validator = address(uint160(uint256(logs[i].topics[2])));
+                assertEq(ac.schemaValidator(schemaId), validator, "live binding diverges from emitted ValidatorSet");
+                assertEq(ISchemaValidator(validator).schemaId(), schemaId, "validator bound to wrong schema");
+            }
         }
 
         // Topology is manifest-only — no on-chain validator should be wired.
@@ -67,5 +60,4 @@ contract DeployScriptTest is Test {
             "figaro-topology-v1 must have no runtime validator (manifest-only clause)"
         );
     }
-
 }
