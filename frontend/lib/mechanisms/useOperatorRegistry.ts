@@ -12,7 +12,7 @@
  * not registry state.
  */
 import { useCallback, useState, useEffect } from "react";
-import { useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
 import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "./contracts";
 import { getOperatorState, getOperatorMetadataURI } from "@/lib/core/indexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
@@ -108,52 +108,124 @@ export function useOperatorProfile(address: `0x${string}` | undefined) {
 
 // ── Write hooks ───────────────────────────────────────────────────────────────
 
+// Each write hook below follows the canonical 4-step pattern:
+//   simulate → write → wait → status-check
+// Simulate runs before the wallet opens so the user sees a typed revert
+// (kernel error name, decoded via the merged extractErrorMessage) instead
+// of a silent on-chain revert after submission. The returned `isSuccess`
+// is gated on `receipt.status === "success"` — `useWaitForTransactionReceipt`'s
+// own `isSuccess` flag fires on receipt-fetched, which is true even when
+// the transaction reverted.
+
 export function useRegisterOperator() {
+    const client = usePublicClient();
+    const { address: account } = useAccount();
     const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
-    const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+    const {
+        isLoading: isConfirming,
+        isSuccess: receiptFetched,
+        data: receipt,
+    } = useWaitForTransactionReceipt({ hash });
+    const isSuccess = receiptFetched && receipt?.status === "success";
 
     async function register(metadataURI: string, value?: bigint) {
-        if (!registry) return;
-        return writeContractAsync({
+        if (!registry) throw new Error("OperatorRegistry address not configured");
+        if (!client) throw new Error("No public client available");
+        if (!account) throw new Error("Wallet not connected");
+        await client.simulateContract({
+            address: registry,
+            abi: OPERATOR_REGISTRY_ABI,
+            functionName: "register",
+            args: [metadataURI],
+            value: value ?? 0n,
+            account,
+        });
+        const txHash = await writeContractAsync({
             address: registry,
             abi: OPERATOR_REGISTRY_ABI,
             functionName: "register",
             args: [metadataURI],
             value: value ?? 0n,
         });
+        const r = await client.waitForTransactionReceipt({ hash: txHash });
+        if (r.status !== "success") {
+            throw new Error(`Register transaction reverted on-chain (tx ${txHash}).`);
+        }
+        return txHash;
     }
 
     return { register, isPending, isConfirming, isSuccess, error, hash };
 }
 
 export function useUpdateProfile() {
+    const client = usePublicClient();
+    const { address: account } = useAccount();
     const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
-    const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+    const {
+        isLoading: isConfirming,
+        isSuccess: receiptFetched,
+        data: receipt,
+    } = useWaitForTransactionReceipt({ hash });
+    const isSuccess = receiptFetched && receipt?.status === "success";
 
     async function updateProfile(metadataURI: string) {
-        if (!registry) return;
-        return writeContractAsync({
+        if (!registry) throw new Error("OperatorRegistry address not configured");
+        if (!client) throw new Error("No public client available");
+        if (!account) throw new Error("Wallet not connected");
+        await client.simulateContract({
+            address: registry,
+            abi: OPERATOR_REGISTRY_ABI,
+            functionName: "updateProfile",
+            args: [metadataURI],
+            account,
+        });
+        const txHash = await writeContractAsync({
             address: registry,
             abi: OPERATOR_REGISTRY_ABI,
             functionName: "updateProfile",
             args: [metadataURI],
         });
+        const r = await client.waitForTransactionReceipt({ hash: txHash });
+        if (r.status !== "success") {
+            throw new Error(`Profile update reverted on-chain (tx ${txHash}).`);
+        }
+        return txHash;
     }
 
     return { updateProfile, isPending, isConfirming, isSuccess, error, hash };
 }
 
 export function useWithdrawDeposit() {
+    const client = usePublicClient();
+    const { address: account } = useAccount();
     const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
-    const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+    const {
+        isLoading: isConfirming,
+        isSuccess: receiptFetched,
+        data: receipt,
+    } = useWaitForTransactionReceipt({ hash });
+    const isSuccess = receiptFetched && receipt?.status === "success";
 
     async function withdraw() {
-        if (!registry) return;
-        return writeContractAsync({
+        if (!registry) throw new Error("OperatorRegistry address not configured");
+        if (!client) throw new Error("No public client available");
+        if (!account) throw new Error("Wallet not connected");
+        await client.simulateContract({
+            address: registry,
+            abi: OPERATOR_REGISTRY_ABI,
+            functionName: "withdraw",
+            account,
+        });
+        const txHash = await writeContractAsync({
             address: registry,
             abi: OPERATOR_REGISTRY_ABI,
             functionName: "withdraw",
         });
+        const r = await client.waitForTransactionReceipt({ hash: txHash });
+        if (r.status !== "success") {
+            throw new Error(`Withdraw transaction reverted on-chain (tx ${txHash}).`);
+        }
+        return txHash;
     }
 
     return { withdraw, isPending, isConfirming, isSuccess, error, hash };
