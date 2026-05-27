@@ -870,6 +870,98 @@ contract FigaroBatchVerifierTest is Test {
         _settle(pv, positions, att, sch, mech, ops);
     }
 
+    // ── Approval + balance edge cases ─────────────────────────────
+    //
+    // The happy-path settle tests above assume the user has both
+    // sufficient balance and `type(uint256).max` approval (set in
+    // setUp). The sequencer is expected to verify these pre-submission
+    // (NatSpec lines 397-403). These tests cover the on-chain safety
+    // net when the sequencer's pre-check is stale or absent — every
+    // path must revert the entire batch, never partially settle.
+
+    function test_revert_insufficientApproval() public {
+        // User has balance but approval < deposit. settleBatch must
+        // revert when the token's transferFrom hits the allowance
+        // check inside _pullExact.
+        address dave = makeAddr("dave");
+        token.mint(dave, INITIAL_BALANCE);
+        vm.prank(dave);
+        token.approve(address(bv), 100 ether); // less than the 1000-ether deposit
+
+        bytes32 newRoot = bytes32(uint256(0x201));
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](1);
+        positions[0] =
+            FigaroBatchVerifier.NetPosition({token: address(token), user: dave, deposit: 1000 ether, payout: 0});
+
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.AttestationData[] memory att,
+            FigaroBatchVerifier.SchemaData[] memory sch,
+            FigaroBatchVerifier.MechanismSchemaData[] memory mech,
+            FigaroBatchVerifier.OperatorEventInput[] memory ops
+        ) = _buildBatch(newRoot, positions);
+
+        vm.expectRevert();
+        _settle(pv, positions, att, sch, mech, ops);
+    }
+
+    function test_revert_insufficientBalance() public {
+        // User has approval but balance < deposit. settleBatch must
+        // revert when transferFrom hits the balance check.
+        address dave = makeAddr("dave");
+        token.mint(dave, 100 ether); // less than the 1000-ether deposit
+        vm.prank(dave);
+        token.approve(address(bv), type(uint256).max);
+
+        bytes32 newRoot = bytes32(uint256(0x202));
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](1);
+        positions[0] =
+            FigaroBatchVerifier.NetPosition({token: address(token), user: dave, deposit: 1000 ether, payout: 0});
+
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.AttestationData[] memory att,
+            FigaroBatchVerifier.SchemaData[] memory sch,
+            FigaroBatchVerifier.MechanismSchemaData[] memory mech,
+            FigaroBatchVerifier.OperatorEventInput[] memory ops
+        ) = _buildBatch(newRoot, positions);
+
+        vm.expectRevert();
+        _settle(pv, positions, att, sch, mech, ops);
+    }
+
+    function test_revert_approvalRevokedAfterSubmission() public {
+        // Approval-revocation DoS scenario flagged in the contract NatSpec
+        // (lines 397-403): sequencer captures proof + verifies approval,
+        // user revokes approval before the batch lands on-chain, settleBatch
+        // must revert the whole batch atomically. Test simulates by setting
+        // up a valid approval, building the batch, then revoking before settle.
+        bytes32 newRoot = bytes32(uint256(0x203));
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](1);
+        positions[0] =
+            FigaroBatchVerifier.NetPosition({token: address(token), user: alice, deposit: 1000 ether, payout: 0});
+
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.AttestationData[] memory att,
+            FigaroBatchVerifier.SchemaData[] memory sch,
+            FigaroBatchVerifier.MechanismSchemaData[] memory mech,
+            FigaroBatchVerifier.OperatorEventInput[] memory ops
+        ) = _buildBatch(newRoot, positions);
+
+        // Alice revokes approval AFTER sequencer captured the proof but
+        // BEFORE the batch lands on-chain. Default setUp had her at max.
+        vm.prank(alice);
+        token.approve(address(bv), 0);
+
+        vm.expectRevert();
+        _settle(pv, positions, att, sch, mech, ops);
+
+        // State root must not advance — the revert is atomic.
+        assertEq(bv.stateRoot(), GENESIS_ROOT, "state root must not advance on failed settle");
+        assertEq(bv.batchCount(), 0, "batch count must not increment on failed settle");
+    }
+
     // ── Batch counter increments ──────────────────────────────────
 
     function test_batchCounterIncrements() public {
