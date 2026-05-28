@@ -10,7 +10,7 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 `ProcessOffsetReceiptTest`, `FigaroBatchVerifierTest`, `DeployScriptTest`,
 `ParityVectors`, `fig/FigToken.t.sol`, `fig/RpgfMinter.t.sol`,
 `fig/RpgfMinterConformance.t.sol`, `BatchGasCeilingTest`, `BatchGasBoundaryTest`,
-`GasCeilingTest`.
+`GasCeilingTest`, `SwapAndCommitCoordinatorTest`, `MockKlerosArbitratorTest`.
 
 `test/schemaValidators/` — one test file per `ISchemaValidator` implementation
 (currently 16: commerce, consent, geo, fulfilment, the 5 GHG sister schemas
