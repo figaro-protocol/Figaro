@@ -156,7 +156,7 @@ const state = reconstruct(events);
                 <h3 className="text-heading-h3 text-ink-heading mb-4">Compositional surfaces.</h3>
                 <ul className="space-y-4">
                     <LabelledListRow label="Forums" uppercase>
-                        <strong>Kleros, SIAC, ICC, courts.</strong> Parties&apos; agreement designates the forum; Figaro exports its evidence bundle there. Kernel does not adjudicate. Kleros wired today; other forums are off-chain referents named in the agreement. See <a href="/papers/figaro-legal.pdf" className="underline">Paper E (legal)</a>.
+                        <strong>Kleros, SIAC, ICC, courts.</strong> Parties&apos; agreement designates the forum; Figaro exports its evidence bundle there. Kernel does not adjudicate. Kleros wired today; other forums are off-chain referents named in the agreement. See <a href="/papers/on-chain-evidence" className="underline">On-Chain Evidence, Off-Chain Adjudication</a>.
                     </LabelledListRow>
                     <LabelledListRow label="Offsets" uppercase>
                         <strong>Klima DAO, Toucan, Moss.</strong> Architectural slot for an offset operator that bonds as a seller. Walkthrough above.

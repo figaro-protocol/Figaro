@@ -355,7 +355,7 @@ as `NONDET` — they cannot touch this contract's storage.)
 
 ### Status
 
-43 declared rules across 6 specs (up from 35 after the RpgfMinter spec
+45 declared rules across 6 specs (up from 35 after the RpgfMinter spec
 was added). **All green**. AC re-dispatched 2026-04-23 after the
 agreement-receipt ABI change — 8/8 sub-rules verified.
 
@@ -405,7 +405,7 @@ export CERTORAKEY=<your-key>
 |---|---|---|---|
 | **TLA+ model checking** | 3 models | 24 invariants (FigaroCore: 7 across 6,087,113 states / 4m 8s; FigToken: 8 across 160,844 states / 9s; RpgfMinter: 9 across 11,821 states / 7s — all via `./scripts/test-tla.sh`) | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + FIG token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) + RPGF minter state machine (immutables, root one-shot, claim-flag monotonicity, time-lock, stage-bound) |
 | **Halmos symbolic testing** | 2 files | 15 properties | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. RpgfMinter (8): claim sets flag, already-claimed revert, not-unlocked revert, invalid-stage revert, root-not-set revert, submitter auth, root one-shot, zero-root rejection. |
-| **Certora formal verification** | 6 specs | 43 declared rules (8 + 7 + 7/8 + 4 + 6/7 + 12) | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability + validator-gate on the new commitment-arg ABI. TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. BatchVerifierTokenOps: single-position settleBatch balance-flow proofs. FigToken: supply cap + minter registry preservation. RpgfMinter: immutables, root one-shot, totalAllocated-locked-with-root, claim-flag monotonicity, submitter authorization, claim preconditions (stage-bound, root-set, unlocked, not-already-claimed). |
+| **Certora formal verification** | 6 specs | 45 declared rules (8 + 7 + 7 + 4 + 6 + 13) | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability + validator-gate on the new commitment-arg ABI. TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. BatchVerifierTokenOps: single-position settleBatch balance-flow proofs. FigToken: supply cap + minter registry preservation. RpgfMinter: immutables, root one-shot, totalAllocated-locked-with-root, claim-flag monotonicity, submitter authorization, claim preconditions (stage-bound, root-set, unlocked, not-already-claimed). |
 | **Echidna fuzzing** | 2 harnesses | 15 properties | Kernel (7): solvency, monotonicity, buyer dominance, atomicity. RpgfMinter (8): claim-flag monotonicity, total-minted-within-cap, immutables, root one-shot, claim balance consistency. |
 | **Foundry unit tests** | 14 suites | 225 tests | Core lifecycle, revert branches, mechanisms, gas, FIG, staged airdrop, parity vectors |
 | **SDK Vitest** | 12 files | 166 tests | Event parsing, state reconstruction, bond math, commitments, extensions |
