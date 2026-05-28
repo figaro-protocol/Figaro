@@ -12,6 +12,7 @@ export function Footer() {
                         <Link href="/protocol" className={COL_LINK_CLS}>Protocol mechanisms</Link>
                         <Link href="/why" className={COL_LINK_CLS}>Why</Link>
                         <Link href="/cryptoeconomics" className={COL_LINK_CLS}>Cryptoeconomics</Link>
+                        <Link href="/papers" className={COL_LINK_CLS}>Papers</Link>
                         <Link href="/security" className={COL_LINK_CLS}>Security</Link>
                         <Link href="/spec" className={COL_LINK_CLS}>Specifications</Link>
                     </div>

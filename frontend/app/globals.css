@@ -164,10 +164,13 @@
     }
 }
 
-/* Settlement-confirmation print layout — hide chrome, keep document body. */
+/* Print layout — hide chrome, keep document body. The App Router has no
+   `#__next` wrapper (that was the Pages Router), so a `body>*:not(#__next)`
+   selector would match every body child and blank the whole page; chrome is
+   hidden by its semantic tags instead (HeaderShell is <header>, Footer is
+   <footer>) plus the explicit .print\:hidden opt-out. */
 @media print {
 
-    body>*:not(#__next),
     header,
     nav,
     footer,
@@ -181,5 +184,61 @@
 
     @page {
         margin: 1cm;
+    }
+}
+
+/* ── Paper-as-page ──────────────────────────────────────────────────────────
+   Prose papers are authored as pages and exported to PDF via the browser's
+   own print path (the "Download PDF" control calls window.print()). The
+   @media print block above already hides nav/header/footer and any
+   .print\:hidden control. On screen the watermark is hidden; in print it is
+   shown and pagination is tightened so a long paper breaks cleanly. */
+.paper-watermark {
+    display: none;
+}
+
+@media print {
+    .paper-watermark {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        z-index: 0;
+        transform: rotate(-45deg);
+        font-size: 5rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.15);
+        /* Force browsers to print the watermark color as-is — some lighten or
+           drop faint text when "background graphics" is off. */
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .paper-body {
+        position: relative;
+        z-index: 1;
+    }
+
+    .paper-body h2,
+    .paper-body h3 {
+        break-after: avoid-page;
+    }
+
+    .paper-body p,
+    .paper-body li {
+        orphans: 3;
+        widows: 3;
+    }
+
+    .paper-remark,
+    .paper-figure {
+        break-inside: avoid;
+    }
+
+    .paper-references {
+        break-before: page;
     }
 }

@@ -57,7 +57,7 @@ export default function Cryptoeconomics() {
 
             <MarketingSection title="Eight disciplines, eight lenses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    The disciplinary list anchors to Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024) &mdash; eight disciplines, fixed. Each frames the substrate, carries its own papers, and runs its own working group. Implementation work &mdash; schema authoring, contract development, assembly composition &mdash; organizes at <Link href="/builders" className="underline">/builders</Link>.
+                    The disciplinary list anchors to Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024) &mdash; eight disciplines, fixed. Each frames the substrate, carries its own papers &mdash; collected on the <Link href="/papers" className="underline">Papers</Link> page &mdash; and runs its own working group. Implementation work &mdash; schema authoring, contract development, assembly composition &mdash; organizes at <Link href="/builders" className="underline">/builders</Link>.
                 </p>
                 <div className="space-y-10">
                     {GROUPS_REGISTRY.map((g) => (
@@ -81,20 +81,6 @@ export default function Cryptoeconomics() {
                                 <p className="text-sm text-ink-body leading-relaxed">
                                     {g.charter}
                                 </p>
-                                {g.papers.length > 0 && (
-                                    <ul className="mt-3 space-y-1 text-sm">
-                                        {g.papers.map((p) => (
-                                            <li key={p.href}>
-                                                <a
-                                                    href={p.href}
-                                                    className="text-ink-body hover:text-ink-heading"
-                                                >
-                                                    {p.title}
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
                                 {g.currentWork && g.currentWork.length > 0 && (
                                     <ul className="mt-3 space-y-1 text-xs text-ink-muted list-disc pl-5">
                                         {g.currentWork.map((w, i) => (
