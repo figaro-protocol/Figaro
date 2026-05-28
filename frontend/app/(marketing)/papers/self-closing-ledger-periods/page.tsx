@@ -21,7 +21,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
             author="Alessandro Daliana"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="bookkeeping, accounting, auditing, double-entry, triple-entry, smart contracts, verifiable records, Pacioli"
+            keywords="bookkeeping, accounting, auditing, double-entry, triple-entry, smart contracts, verifiable records, Pacioli, e-invoicing, EN 16931"
             abstract={
                 <>
                     <p>
@@ -52,6 +52,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                     <li>American Institute of Certified Public Accountants. <em>AU-C Section 570: The Auditor&rsquo;s Consideration of an Entity&rsquo;s Ability to Continue as a Going Concern</em>. AICPA, Durham, NC, 2020.</li>
                     <li>Governmental Accounting Standards Board. <em>Statement No. 33: Accounting and Financial Reporting for Nonexchange Transactions</em>. GASB, Norwalk, CT, December 1998.</li>
                     <li>Governmental Accounting Standards Board. <em>Statement No. 34: Basic Financial Statements &mdash; and Management&rsquo;s Discussion and Analysis &mdash; for State and Local Governments</em>. GASB, Norwalk, CT, June 1999.</li>
+                    <li>European Committee for Standardization (CEN). <em>EN 16931-1:2017 &mdash; Electronic Invoicing, Part 1: Semantic Data Model of the Core Elements of an Electronic Invoice</em>. CEN, Brussels, 2017.</li>
                     <li>Giordano, F., Condon, M., &amp; Castonguay, P. EIP-1271: Standard Signature Validation Method for Contracts. Ethereum Improvement Proposal 1271, 2018.</li>
                     <li>Kindleberger, C. P. <em>A Financial History of Western Europe</em>. Oxford University Press, New York, 2nd ed., 1993.</li>
                     <li>Mattessich, R. <em>Accounting and Analytical Methods: Measurement and Projection of Income and Wealth in the Micro- and Macro-Economy</em>. Richard D. Irwin, Homewood, IL, 1964.</li>
@@ -291,6 +292,36 @@ export default function SelfClosingLedgerPeriodsPaper() {
                 <PaperRun title="Regulatory compliance ahead of regulatory catch-up.">
                     Tax law, securities law, and sector-specific regulation assume conventional books. For an extended period &mdash; probably decades &mdash; firms operating on Figaro processes will need to produce conventional financial statements from their on-chain records to satisfy regulatory requirements. This translation work is a professional function. Eventually regulation may update to reference chain state directly; in the interim, the accountant&rsquo;s role includes producing traditional outputs from non-traditional inputs.
                 </PaperRun>
+                <PaperRun title="A worked projection: the European e-invoice norm.">
+                    The translation can be made concrete. EN&nbsp;16931-1:2017 (CEN, 2017) defines the <em>semantic data model</em> of the core electronic invoice &mdash; not a file format, but the meaning and cardinality of an invoice&rsquo;s information elements, serialised into one of two permitted syntaxes (OASIS UBL&nbsp;2.1 or UN/CEFACT CII). It is the model that Directive&nbsp;2014/55/EU obliged European public bodies to accept; the &ldquo;VAT in the Digital Age&rdquo; package (adopted 11&nbsp;March&nbsp;2025) makes an EN&nbsp;16931-conformant structured invoice the definition of an EU e-invoice for intra-Community transactions from 2030 &mdash; regulation moving, as this section anticipated, toward machine-readable structured records rather than away from them. A settled Figaro process <em>projects</em> onto that model. The projection is a runtime-tier serialisation, not a kernel property, and it sorts the invoice&rsquo;s elements into two classes that recover precisely the byproduct-versus-interpretive split this paper has drawn throughout.
+                </PaperRun>
+                <p>The first class &mdash; the intrinsic commercial elements &mdash; falls out of the settlement record as byproduct:</p>
+                <div className="my-4 overflow-x-auto">
+                    <table className="text-sm border-collapse">
+                        <thead>
+                            <tr>
+                                <th className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">EN 16931 core element</th>
+                                <th className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">Recovered from the process as</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td className="border border-default px-3 py-1.5">Invoice number (BT-1)</td><td className="border border-default px-3 py-1.5">the commitment digest / order hash</td></tr>
+                            <tr><td className="border border-default px-3 py-1.5">Issue date (BT-2)</td><td className="border border-default px-3 py-1.5">the resolution event&rsquo;s block timestamp</td></tr>
+                            <tr><td className="border border-default px-3 py-1.5">Invoice type code (BT-3)</td><td className="border border-default px-3 py-1.5">projection constant (commercial invoice, code 380)</td></tr>
+                            <tr><td className="border border-default px-3 py-1.5">Invoice currency (BT-5)</td><td className="border border-default px-3 py-1.5">the process currency (single-denomination per process)</td></tr>
+                            <tr><td className="border border-default px-3 py-1.5">Seller (BG-4, BT-27)</td><td className="border border-default px-3 py-1.5">the seller wallet address</td></tr>
+                            <tr><td className="border border-default px-3 py-1.5">Buyer (BG-7, BT-44)</td><td className="border border-default px-3 py-1.5">the root-buyer wallet address</td></tr>
+                            <tr><td className="border border-default px-3 py-1.5">Invoice lines (BG-25, BT-131)</td><td className="border border-default px-3 py-1.5">the sub-orders &mdash; each commit&rsquo;s payment <Math>{"P_i"}</Math> with its <code>agreementHash</code>-referenced description</td></tr>
+                            <tr><td className="border border-default px-3 py-1.5">Net document total (BG-22, BT-106)</td><td className="border border-default px-3 py-1.5"><Math>{"\\sum_i P_i"}</Math> across the process&rsquo;s orders</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>
+                    The second class &mdash; the tax elements &mdash; does not fall out, and cannot: seller VAT identifier (BT-31), the VAT breakdown (BG-23), category code (BT-118), rate (BT-119), tax point date (BT-7), tax representative (BG-11), and the VAT-inclusive total (BT-112). These presuppose a VAT-registered entity in a particular regime. The model itself treats them as <em>conditional</em> rather than unconditional: BT-31 has cardinality 0..1 and becomes required only through rule BR-S-02 &mdash; when an invoice line is standard-rated for VAT. The tax apparatus attaches when, and only when, the entity is inside a taxable regime; for a transaction that is not, the intrinsic class above is already a complete core invoice. That conditional trigger is exactly the jurisdiction-specific registration status the kernel does not hold and the assembly graph does: an EU-jurisdiction assembly supplies BT-31 and the VAT breakdown from the operator&rsquo;s registration data, and the kernel supplies the rest as byproduct.
+                </p>
+                <p>
+                    This is the same move the paper makes for GASB&rsquo;s tax-versus-fee distinction and for ASC&nbsp;606 revenue timing: the kernel produces the structured record; the jurisdiction-specific interpretation attaches above it. EN&nbsp;16931 is named here because it is the most fully specified invoice norm, not because the kernel is European &mdash; it is one jurisdiction&rsquo;s model, and the same byproduct projects onto other jurisdictions&rsquo; invoice models with their own conditional tax fields. The projection reaches the <em>core</em> model; national profiles (XRechnung, Peppol BIS) add further mandatory fields the same way, from graph-tier configuration rather than from the kernel.
+                </p>
             </PaperSection>
 
             <PaperSection title="8. Wallets, Real-World Assets, and Treasury Composition">
@@ -382,7 +413,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                     Professional accounting work continues in the three categories identified in Section 7: interpretive work, translation, and audit against reality. The argument reduces the scope of record-keeping work, not of accounting work in general.
                 </PaperRun>
                 <PaperRun title="The argument does not claim regulatory simplification.">
-                    Regulators have their own institutional logic and will adapt to the protocol at their own pace. Tax authorities in particular are unlikely to accept chain-state inspection as a substitute for conventional filings in the short term. The professional work of translating on-chain records into jurisdictional-format filings will continue indefinitely and may even expand.
+                    Regulators have their own institutional logic and will adapt to the protocol at their own pace. Tax authorities in particular are unlikely to accept chain-state inspection as a substitute for conventional filings in the short term. The professional work of translating on-chain records into jurisdictional-format filings will continue indefinitely and may even expand. The EN&nbsp;16931 projection of Section&nbsp;7 is a mapping, not a compliance claim: it shows the core invoice model is recoverable from the settlement record plus jurisdiction-supplied tax data &mdash; not that a Figaro process is by itself a compliant e-invoice or discharges any filing obligation.
                 </PaperRun>
                 <PaperRun title="The argument does not claim the chain is infallible.">
                     The on-chain record is only as reliable as the chain&rsquo;s consensus and the cryptographic primitives underneath. A chain reorganization that unwinds finalized state, a signature-scheme break, or a validator-level censorship event could all compromise the accounting record. These risks exist and are not new. What is new is that they are concentrated at the chain layer rather than distributed across party-held books; whether that is a net improvement depends on the relative reliability of the two regimes.
