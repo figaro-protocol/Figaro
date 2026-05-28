@@ -84,7 +84,7 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
 
-**devnet (`*.devnet.spec.ts`, 50 specs)** — every spec drives the real UI
+**devnet (`*.devnet.spec.ts`, 52 specs)** — every spec drives the real UI
 against Anvil + deployed contracts (action in the UI, reaction in the UI). By area:
 
 - Commerce / checkout / order lifecycle: `merchant-page`, `merchant-place-order`,
@@ -93,6 +93,7 @@ against Anvil + deployed contracts (action in the UI, reaction in the UI). By ar
   `designer-view`, `designer-agreement-drawer`, `designer-delivery-modality`,
   `designer-drafts-delete`, `scenario-direct-sale`, `scenario-local-commerce`,
   `scenario-local-commerce-offset`, `scenario-local-commerce-pickup`,
+  `scenario-kit-assembly` (authors the 4-node DAG-join diamond),
   `seeded-assembly-fork`, `published-list-ui`, `assembly-registry`.
 - Operators: `operators-onboarding`, `operator-edit-ui`,
   `operator-update-profile`, `operator-withdraw`.
@@ -101,7 +102,9 @@ against Anvil + deployed contracts (action in the UI, reaction in the UI). By ar
   emissions-aware runtime: commit → coordinate → emissions → offset → resolve),
   `local-commerce-pickup-runtime` (full buyer↔merchant pickup runtime: commit
   → merchant lifecycle → both parties witness proximity-proof at handoff →
-  resolve).
+  resolve), `kit-assembly-runtime` (4-node diamond: buyer commits all four
+  orders with live per-contributor pricing → one atomic resolve pays every
+  seller; per-party schema-exercise is open — see backlog).
 - Attestation + delivery: `buyer-attestation`, `proximity-proof`,
   `proximity-proof-ui`, `dutch-auction-lifecycle`.
 - GHG / offsets: `offset-retirement`, `offset-retirement-ui`. (GHG

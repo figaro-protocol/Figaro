@@ -18,6 +18,13 @@ export const IPFS_GATEWAY_URL =
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+// A pin/upload must never block its caller indefinitely. An unbounded fetch to
+// Kubo that connects but never responds would hang the checkout's
+// `prepareOrderCommitment` forever (the agreement-pin path has a graceful
+// inline-agreement fallback for *rejections* but not for hangs). Bound the
+// request so a stalled pin rejects and the fallback can take over.
+const IPFS_REQUEST_TIMEOUT_MS = 8000;
+
 const ALLOWED_FILE_TYPES = new Set([
     "image/jpeg",
     "image/png",
@@ -129,10 +136,18 @@ class DefaultIpfsService implements IpfsService {
         failureMessage: string,
         emptyCidMessage: string,
     ): Promise<string> {
-        const res = await fetch(`${this.apiUrl}/api/v0/add?pin=true`, {
-            method: "POST",
-            body,
-        });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), IPFS_REQUEST_TIMEOUT_MS);
+        let res: Response;
+        try {
+            res = await fetch(`${this.apiUrl}/api/v0/add?pin=true`, {
+                method: "POST",
+                body,
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timer);
+        }
 
         if (!res.ok) {
             throw new Error(`${failureMessage}: ${res.status} ${res.statusText}`);

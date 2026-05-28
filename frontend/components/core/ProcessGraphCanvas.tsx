@@ -110,6 +110,16 @@ type OrderNodeData = Order & {
      *  Read-only views (e.g. /view) leave this false so the bottom handle
      *  renders as a plain dot without the "+" affordance. */
     canAddNodes: boolean;
+    /** Designer click-authoring: spawn a sub-order child of this node. The
+     *  keyboard-accessible companion to the drag-from-handle path. */
+    onAddSubOrderClick?: (parentOrderId: string) => void;
+    /** Designer click-authoring: add an existing order as an additional
+     *  parent of this node (the many-to-one merge / join). */
+    onAddParentClick?: (childOrderId: string, parentOrderId: string) => void;
+    /** Orders the add-parent picker offers — every other order not already a
+     *  parent of this node. The merge handler still rejects self/duplicate/
+     *  cycle with a notice. Empty/omitted for single-node designs. */
+    candidateParents?: Array<{ id: string; label: string }>;
 };
 
 // ── Per-order GHG disclosure section ────────────────────────────────────────
@@ -213,6 +223,21 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             aria-label={STATE_LABELS[data.state]}
                         />
                     )}
+                    {data.designerMode && data.onAddSubOrderClick && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                data.onAddSubOrderClick?.(data.id);
+                            }}
+                            data-testid={`btn-add-suborder-${data.id}`}
+                            aria-label={`Add a sub-order under order ${data.id.slice(0, 8)}`}
+                            title="Add a sub-order (child) of this order"
+                            className="nodrag w-5 h-5 rounded-full border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 hover:border-neutral-500 text-xs leading-none flex items-center justify-center"
+                        >
+                            +
+                        </button>
+                    )}
                     {data.onDelete && !data.isRoot && (
                         <button
                             type="button"
@@ -223,7 +248,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             data-testid={`order-node-${data.id}-delete`}
                             aria-label={`Delete order ${data.id.slice(0, 8)}`}
                             title="Delete this order (and any descendants)"
-                            className="w-5 h-5 rounded-full border border-red-300 bg-white text-red-600 hover:bg-red-50 hover:border-red-500 text-xs leading-none flex items-center justify-center"
+                            className="nodrag w-5 h-5 rounded-full border border-red-300 bg-white text-red-600 hover:bg-red-50 hover:border-red-500 text-xs leading-none flex items-center justify-center"
                         >
                             ×
                         </button>
@@ -322,6 +347,28 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                     </div>
                 )}
             </div>
+            {data.designerMode && data.onAddParentClick && data.candidateParents && data.candidateParents.length > 0 && (
+                <div className="nodrag mt-1.5 pt-1.5 border-t border-neutral-100">
+                    <select
+                        data-testid={`select-add-parent-${data.id}`}
+                        aria-label={`Add a parent to order ${data.id.slice(0, 8)}`}
+                        title="Add an existing order as a parent (creates a join)"
+                        defaultValue=""
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                            const parentId = e.target.value;
+                            e.currentTarget.value = "";
+                            if (parentId) data.onAddParentClick?.(data.id, parentId);
+                        }}
+                        className="nodrag w-full rounded border border-neutral-300 bg-white text-[10px] text-neutral-600 px-1 py-0.5"
+                    >
+                        <option value="" disabled>+ add parent…</option>
+                        {data.candidateParents.map((p) => (
+                            <option key={p.id} value={p.id}>{p.label}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
             <Handle
                 type="source"
                 position={Position.Bottom}
@@ -510,12 +557,19 @@ export function ProcessGraphCanvas({
                 (pid) => pid !== order.id && knownOrderIds.has(pid),
             );
             const isRoot = knownParents.length === 0;
+            // Add-parent picker options: every other order not already a
+            // parent. Labelled "Order N" to match the drawer's node tabs.
+            const candidateParents = onAddParent
+                ? orders
+                    .filter((o) => o.id !== order.id && !knownParents.includes(o.id))
+                    .map((o) => ({ id: o.id, label: `Order ${orders.findIndex((x) => x.id === o.id) + 1}` }))
+                : undefined;
 
             return {
                 id: order.id,
                 type: "order",
                 position: posMap.get(order.id) ?? { x: 0, y: 0 },
-                data: { ...order, decimals, isBuyer, isSeller, activeLens, agreementSummary, onDelete: onDeleteNode, isRoot, designerMode, canAddNodes: onAddSubOrder !== undefined || onAddParent !== undefined } satisfies OrderNodeData,
+                data: { ...order, decimals, isBuyer, isSeller, activeLens, agreementSummary, onDelete: onDeleteNode, isRoot, designerMode, canAddNodes: onAddSubOrder !== undefined || onAddParent !== undefined, onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
             };
         });
 

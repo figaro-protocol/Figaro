@@ -439,8 +439,13 @@ export function collectDescendants(rootId: string, orders: Order[]): Set<string>
 }
 
 /** Read the order's agreement back into a ManifestFields shape for the drawer's initial state. */
-export function readAgreementFields(order: Order): ManifestFields {
-    const agreement = loadAgreement(order.agreementHash);
+export function readAgreementFields(
+    order: Order,
+    suppliedAgreement?: ReturnType<typeof loadAgreement>,
+): ManifestFields {
+    // Checkout passes the assembly manifest's own inlined agreement so the
+    // clauses are read from the assembly, not the browser's local store.
+    const agreement = suppliedAgreement ?? loadAgreement(order.agreementHash);
     const summary = summarizeAgreement(agreement);
     const fields: ManifestFields = { origin: summary?.geo?.origin ?? "—" };
 

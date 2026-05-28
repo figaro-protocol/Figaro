@@ -104,6 +104,7 @@ function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
         category: asString(record.category, `${path}.category`),
         image: asOptionalString(record.image, `${path}.image`),
         available: asBoolean(record.available, `${path}.available`),
+        assemblySlug: asOptionalString(record.assemblySlug, `${path}.assemblySlug`),
         massGrams: parseOptionalNumber(record.massGrams, `${path}.massGrams`),
         volumeMl: parseOptionalNumber(record.volumeMl, `${path}.volumeMl`),
         classOfService: parseOptionalClassOfService(record.classOfService, `${path}.classOfService`),

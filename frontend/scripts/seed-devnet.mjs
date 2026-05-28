@@ -70,6 +70,7 @@ const LOCAL_ANVIL = defineChain({
 // surfaces readably instead of as a bare 4-byte selector.
 const OPERATOR_REGISTRY_ABI = parseAbi([
     'function register(string metadataURI) external payable',
+    'function updateProfile(string metadataURI) external',
     'error AlreadyRegistered()',
     'error InsufficientDeposit()',
 ]);
@@ -100,7 +101,7 @@ const ERC20_VIEW_ABI = parseAbi([
 // `local-commerce` seller-assigned, `local-commerce-dutch` dutch-auction,
 // `local-commerce-buyer-assigned` buyer-assigned.
 const FIXTURE_DIR = path.resolve(SCRIPT_DIR, 'fixtures');
-const ASSEMBLY_FIXTURES = ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned', 'local-commerce-offset', 'local-commerce-pickup'];
+const ASSEMBLY_FIXTURES = ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned', 'local-commerce-offset', 'local-commerce-pickup', 'kit-assembly'];
 
 /** Sorted-key, bigint-as-string JSON — mirrors `canonicalize` in
  *  frontend/lib/mechanisms/useAssemblyRegistry.ts, so the contentHash this
@@ -133,9 +134,33 @@ function canonicalize(value) {
 // courier order's figaro-geo-v2 originGeohash (the pickup point).
 const OPERATORS = [
     { addressIndex: 5, name: 'Counter & Co.', specialty: 'in-person counter sales', bind: ['direct-sale'], geohash: 'dr5regw2' },
-    { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'], couriers: [7], geohash: 'dr5regw5' },
-    { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'], deliveryCatalogue: true, geohash: 'dr5regw3' },
-    { addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery', bind: ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned', 'local-commerce-pickup'], couriers: [7], geohash: 'dr5regw7' },
+    // `kitComponent` — this operator contributes a sub-assembly to Mercato's
+    // kit (product 212). The item lives in the contributor's OWN catalogue,
+    // priced publicly AND with a rate negotiated for Mercato. The kit checkout
+    // reads it live (rate-for-lead), so the contributor stays sovereign over
+    // its price — nothing is copied into Mercato's assembly.
+    { addressIndex: 6, name: 'Rosso Kitchen', specialty: 'prepared food', bind: ['local-commerce'], couriers: [7], geohash: 'dr5regw5', kitComponent: { id: 'kit-housing', name: 'Housing subassembly', publicPrice: '0.55', mercatoPrice: '0.5' } },
+    { addressIndex: 7, name: 'Swift Courier', specialty: 'last-mile delivery', bind: ['local-commerce'], deliveryCatalogue: true, geohash: 'dr5regw3', kitComponent: { id: 'kit-fastening', name: 'Fastening subassembly', publicPrice: '0.6', mercatoPrice: '0.5' } },
+    {
+        addressIndex: 8, name: 'Mercato General', specialty: 'retail and delivery',
+        bind: ['direct-sale', 'local-commerce', 'local-commerce-dutch', 'local-commerce-buyer-assigned', 'local-commerce-pickup', 'kit-assembly'],
+        couriers: [7],
+        // kit-assembly (a 4-node diamond): Mercato is the lead/coordinator (A,
+        // the root — and the assembler D it doubles as, so it sells two orders).
+        // `kitCounterparties` names the wallet behind each sub-order keyed by
+        // that order's counterparty schema; proximity-policy is shared by B and
+        // D, so the checkout's bindingCursor hands B→Swift(7), D→Mercato(8) by
+        // commit order. The buyer reaches the kit by selecting `kitProduct`
+        // (product-driven), not a fulfilment mode.
+        kitCounterparties: { 'figaro-proximity-policy-v1': [7, 8], 'figaro-ghg-measurement-v1': [6] },
+        kitProduct: {
+            id: 'product-212', name: 'Product 212 — assembled kit',
+            description: 'A kit several sellers assemble; the buyer sees each contributor\'s cut.',
+            price: '1', pricingPolicy: 'fixed', category: 'kit', available: true,
+            assemblySlug: 'kit-assembly',
+        },
+        geohash: 'dr5regw7',
+    },
     // local-commerce-offset is seller-assigned — the same fulfilment mode as
     // local-commerce — and checkout selects an assembly by fulfilment mode,
     // so two seller-assigned assemblies on one merchant collide. It gets its
@@ -286,7 +311,7 @@ async function main() {
         // a delivery price list: two fixed service levels (standard + express,
         // each with a negotiated rate for Mercato General) and one buyer-set
         // item where the buyer names the delivery fee at checkout.
-        const catalogue = op.deliveryCatalogue
+        let catalogue = op.deliveryCatalogue
             ? {
                 ...catalogueFixture,
                 subjectAddress: account.address,
@@ -322,7 +347,37 @@ async function main() {
                     },
                 ],
             }
-            : { ...catalogueFixture, subjectAddress: account.address };
+            : op.kitProduct
+                // Append the kit product to the shared catalogue — menu[0] stays
+                // the fixture item (specs read it), the kit product is the
+                // product-driven entry to the assembly.
+                ? {
+                    ...catalogueFixture,
+                    subjectAddress: account.address,
+                    menu: [...(catalogueFixture.menu ?? []), op.kitProduct],
+                }
+                : { ...catalogueFixture, subjectAddress: account.address };
+
+        // A kit contributor's component lives in its own catalogue, with a
+        // rate negotiated for Mercato. The kit checkout resolves it live.
+        if (op.kitComponent) {
+            catalogue = {
+                ...catalogue,
+                menu: [
+                    ...(catalogue.menu ?? []),
+                    {
+                        id: op.kitComponent.id,
+                        name: op.kitComponent.name,
+                        description: 'Sub-assembly supplied to Mercato\'s kit (product 212).',
+                        price: op.kitComponent.publicPrice,
+                        pricingPolicy: 'fixed',
+                        negotiatedPrices: [{ counterparty: mercatoAddress, price: op.kitComponent.mercatoPrice }],
+                        category: 'component',
+                        available: true,
+                    },
+                ],
+            };
+        }
         const catalogueURI = await pinJSON(ipfsApiUrl, JSON.stringify(catalogue));
 
         const profile = {
@@ -360,6 +415,20 @@ async function main() {
                         }],
                     }
                     : {}),
+                // kit-assembly: one counterparty binding per sub-order schema,
+                // each pointing at the wallet(s) that fill that node. Order in
+                // the address list is significant for a shared key (B then D
+                // for proximity-policy), matching the checkout's commit order.
+                ...(assemblySlug === 'kit-assembly' && op.kitCounterparties
+                    ? {
+                        counterpartyBindings: Object.entries(op.kitCounterparties).map(([schemaId, indices]) => ({
+                            schemaId,
+                            addresses: indices.map(
+                                (i) => mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: i }).address,
+                            ),
+                        })),
+                    }
+                    : {}),
                 version: '0.1.0',
             })),
         };
@@ -381,7 +450,22 @@ async function main() {
             console.log(`      catalogue ${catalogueURI}`);
         } catch (err) {
             if (isAlreadyRegistered(err)) {
-                console.log(`  · ${op.name} (${account.address}) — already registered, skipped`);
+                // Registered by a prior run. Refresh the profile to the current
+                // seed definition via updateProfile (the canonical edit path —
+                // caller-only, no deposit/lock change) so re-seeding picks up
+                // catalogue changes (e.g. new kit-component items) without a
+                // redeploy. The frontend reads the new catalogue on next load.
+                const { request } = await publicClient.simulateContract({
+                    account: account.address,
+                    address: operatorRegistry,
+                    abi: OPERATOR_REGISTRY_ABI,
+                    functionName: 'updateProfile',
+                    args: [metadataURI],
+                });
+                const hash = await opClient.writeContract(request);
+                await publicClient.waitForTransactionReceipt({ hash });
+                console.log(`  ↻ ${op.name} (${account.address}) — profile refreshed`);
+                console.log(`      catalogue ${catalogueURI}`);
             } else {
                 throw err;
             }

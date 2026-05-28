@@ -44,7 +44,12 @@ import {
     useCourierProcessActions,
 } from "@/lib/mechanisms/useCourierProcess";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
-import { getSection, PROXIMITY_POLICY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import {
+    getSection,
+    COURIER_PROCESS_SCHEMA_KEY,
+    MERCHANT_PROCESS_SCHEMA_KEY,
+    PROXIMITY_POLICY_SCHEMA_KEY,
+} from "@/lib/core/agreementManifest";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import type { CourierEvent, MerchantEvent } from "@figaro/core/schemas";
 import type { CapabilityModel } from "@/lib/semantic/models";
@@ -460,46 +465,54 @@ export function OrderTimelineView({ processId }: Props) {
         ?? (rootOrder ? formatAddress(rootOrder.buyer) : "the buyer");
 
     const isBuyer = !!rootOrder && hexEqual(address, rootOrder.buyer);
-    const isSeller = !!rootOrder && hexEqual(address, rootOrder.seller);
-    // A courier is the seller of a non-root sub-order — distinct from the
-    // root seller (the merchant). Without this branch the courier falls
-    // through to "spectator" and the handoff action is unreachable.
-    const courierOrder = useMemo(() => {
-        if (!processModel || !address || isBuyer || isSeller) return null;
-        return processModel.orders.find(
-            (order) => order.orderId !== processModel.rootOrderId && hexEqual(address, order.seller),
-        ) ?? null;
-    }, [processModel, address, isBuyer, isSeller]);
-    // For the merchant view: any non-root sub-order in this process. Distinct
-    // from `courierOrder` above (which requires the viewer to be the courier).
-    // The merchant uses this to cross-witness the pickup edge with a
-    // proximity-proof attestation against the courier's manifest.
-    const courierSubOrder = useMemo(() => {
-        if (!processModel) return null;
-        return processModel.orders.find(
-            (order) => order.orderId !== processModel.rootOrderId,
-        ) ?? null;
-    }, [processModel]);
-    const role: "buyer" | "seller" | "courier" | "spectator" =
-        isBuyer ? "buyer" : isSeller ? "seller" : courierOrder ? "courier" : "spectator";
+    // The order the connected wallet sells — the root order or ANY sub-order.
+    // The seller-side surface is driven by the schemas THIS order carries, not
+    // by a fixed merchant-vs-courier role: figaro-merchant-process-v1 →
+    // lifecycle events; figaro-courier-process-v1 → courier proximity proof;
+    // figaro-proximity-policy-v1 → handoff witness. One surface, every
+    // assembly topology (delivery, pickup, on-site, the kit diamond).
+    // A wallet may sell MORE THAN ONE order in a process (e.g. coordinate AND
+    // serve). No kernel constraint forbids a repeated seller — FigaroCore.commit
+    // enforces only buyer == rootBuyer. One order surfaces one clause-driven
+    // frontend at a time, so the seller switches between the orders it holds.
+    const sellerOrders = useMemo(() => {
+        if (!processModel || !address) return [];
+        return processModel.orders.filter((order) => hexEqual(address, order.seller));
+    }, [processModel, address]);
+    const [selectedSellerOrderId, setSelectedSellerOrderId] = useState<string | null>(null);
+    const sellerOrder = useMemo(() => {
+        if (sellerOrders.length === 0) return null;
+        return sellerOrders.find((o) => o.orderId === selectedSellerOrderId) ?? sellerOrders[0];
+    }, [sellerOrders, selectedSellerOrderId]);
+    const isSeller = !!sellerOrder;
+    const isSellerRoot = !!sellerOrder && !!rootOrder && sellerOrder.orderId === rootOrder.orderId;
+    const sellerOrderSchemas = useMemo(() => {
+        if (!sellerOrder) return [] as string[];
+        const agreement = workspace.processAgreements.get(sellerOrder.agreementHash) ?? null;
+        return agreement ? agreement.sections.map((section) => section.schema) : [];
+    }, [sellerOrder, workspace.processAgreements]);
+    const sellerHasMerchantProcess = sellerOrderSchemas.includes(MERCHANT_PROCESS_SCHEMA_KEY);
+    const sellerHasCourierProcess = sellerOrderSchemas.includes(COURIER_PROCESS_SCHEMA_KEY);
+    const role: "buyer" | "seller" | "spectator" =
+        isBuyer ? "buyer" : isSeller ? "seller" : "spectator";
 
     // The courier receives the buyer's human-readable delivery address over
     // the coordination channel (the geohash is the on-agreement term).
     const [handoffAddress, setHandoffAddress] = useState<string | null>(null);
     useEffect(() => {
-        if (role !== "courier" || !courierOrder || !address) return;
+        if (!sellerOrder || !sellerHasCourierProcess || !address) return;
         let unsubscribe: (() => void) | undefined;
         let cancelled = false;
         DEFAULT_COORDINATION_MESSAGING_SERVICE.subscribeHandoffAddress({
             address,
-            orderId: courierOrder.orderId,
+            orderId: sellerOrder.orderId,
             callback: (deliveryAddress) => setHandoffAddress(deliveryAddress),
         }).then((u) => {
             if (cancelled) u();
             else unsubscribe = u;
         }).catch(() => { /* coordination channel unavailable */ });
         return () => { cancelled = true; unsubscribe?.(); };
-    }, [role, courierOrder, address]);
+    }, [sellerOrder, sellerHasCourierProcess, address]);
 
     const allOrders = processModel?.orders ?? [];
     // OrderNodeModel.state is the OrderState enum reverse-mapped to a string
@@ -517,15 +530,31 @@ export function OrderTimelineView({ processId }: Props) {
         const agreement = workspace.processAgreements.get(rootOrder.agreementHash) ?? null;
         return !!agreement && !!getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
     }, [rootOrder, workspace.processAgreements]);
-    const isPickupHandoff = rootHasProximityPolicy && !courierSubOrder;
+    // Buyer↔merchant handoff (no intermediary): the root carries proximity AND
+    // the process is a single order — the buyer co-witnesses (pickup / on-site).
+    const isPickupHandoff = rootHasProximityPolicy && allOrders.length <= 1;
+    // The order the seller witnesses proximity against: its own order when it
+    // carries the policy (pickup / on-site / a kit node); otherwise — for the
+    // root merchant in a delivery — the sub-order that carries it (the courier
+    // edge the merchant cross-witnesses).
+    const sellerProximityTargetOrder = useMemo(() => {
+        if (!sellerOrder) return null;
+        if (sellerOrderSchemas.includes(PROXIMITY_POLICY_SCHEMA_KEY)) return sellerOrder;
+        if (!isSellerRoot || !processModel) return null;
+        return processModel.orders.find((order) => {
+            if (order.orderId === sellerOrder.orderId) return false;
+            const agreement = workspace.processAgreements.get(order.agreementHash) ?? null;
+            return !!agreement && !!getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
+        }) ?? null;
+    }, [sellerOrder, sellerOrderSchemas, isSellerRoot, processModel, workspace.processAgreements]);
     const buyerAlreadyAttestedProximity = useMemo(() => {
         if (!address) return false;
         return proximityAttesters.some((a) => hexEqual(a, address));
     }, [proximityAttesters, address]);
-    const merchantAlreadyAttestedProximity = useMemo(() => {
-        if (!rootOrder) return false;
-        return proximityAttesters.some((a) => hexEqual(a, rootOrder.seller));
-    }, [proximityAttesters, rootOrder]);
+    const sellerAlreadyAttestedProximity = useMemo(() => {
+        if (!address) return false;
+        return proximityAttesters.some((a) => hexEqual(a, address));
+    }, [proximityAttesters, address]);
 
     const status = role === "seller"
         ? deriveMerchantStatus(events, isResolved)
@@ -547,12 +576,12 @@ export function OrderTimelineView({ processId }: Props) {
     };
 
     const handleMerchantNext = async () => {
-        if (!next || !rootOrder) return;
+        if (!next || !sellerOrder) return;
         setMerchantPending(true);
         setMerchantError(null);
         try {
             await merchantActions.signal({
-                orderHash: rootOrder.orderId,
+                orderHash: sellerOrder.orderId,
                 eventType: next,
             });
             // Re-fetch events on success
@@ -579,14 +608,14 @@ export function OrderTimelineView({ processId }: Props) {
     };
 
     const handleCourierProximityProof = async () => {
-        if (!courierOrder || !publicClient) return;
+        if (!sellerOrder || !publicClient) return;
         setCourierPending(true);
         setCourierError(null);
         try {
             // Fresh 32-byte nonce per handoff — the validator rejects a
             // zero nonce, and a unique nonce keeps each proof distinct.
             const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
-            const band = readCommittedBand(courierOrder.agreementHash);
+            const band = readCommittedBand(sellerOrder.agreementHash);
             // Which handoff edge: the courier-process event log decides. Once
             // arrived-pickup is attested, this proof certifies the
             // courier→buyer dropoff; before it, the merchant→courier pickup.
@@ -599,7 +628,7 @@ export function OrderTimelineView({ processId }: Props) {
             );
             const eventType: CourierEvent = pickupDone ? "arrived-dropoff" : "arrived-pickup";
             await courierActions.signalWithProof({
-                orderHash: courierOrder.orderId,
+                orderHash: sellerOrder.orderId,
                 eventType,
                 proof: { band, nonce, deviceSig: COURIER_DEVICE_SIG_PLACEHOLDER },
             });
@@ -620,15 +649,15 @@ export function OrderTimelineView({ processId }: Props) {
     // Both cases call signalWithProof; submitSellerAttestation collapses to
     // a single commitment when roleOrderHash === orderHash.
     const handleMerchantProximityProof = async () => {
-        if (!rootOrder) return;
-        const proximityOrder = courierSubOrder ?? rootOrder;
+        if (!sellerOrder) return;
+        const proximityOrder = sellerProximityTargetOrder ?? sellerOrder;
         setMerchantPending(true);
         setMerchantError(null);
         try {
             const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
             const band = readCommittedBand(proximityOrder.agreementHash);
             await merchantActions.signalWithProof({
-                merchantOrderHash: rootOrder.orderId,
+                merchantOrderHash: sellerOrder.orderId,
                 proximityTargetOrderHash: proximityOrder.orderId,
                 eventType: "handed-off",
                 proof: { band, nonce, deviceSig: COURIER_DEVICE_SIG_PLACEHOLDER },
@@ -706,8 +735,11 @@ export function OrderTimelineView({ processId }: Props) {
                     Process <span data-testid="order-process-id">{truncateHex(processId, { head: 10, tail: 6 })}</span>
                     {" · "}
                     {role === "buyer" && <>You are the buyer · seller: <span className="text-neutral-700">{sellerDisplayName}</span></>}
-                    {role === "seller" && <>You are the seller · buyer: <span className="text-neutral-700">{buyerDisplayName}</span></>}
-                    {role === "courier" && <>You are the courier on a delivery sub-order of this process</>}
+                    {role === "seller" && (
+                        isSellerRoot
+                            ? <>You are the seller · buyer: <span className="text-neutral-700">{buyerDisplayName}</span></>
+                            : <>You are the seller of a sub-order in this process</>
+                    )}
                     {role === "spectator" && <>Read-only — your wallet is neither buyer nor seller on this order</>}
                 </p>
             </header>
@@ -725,8 +757,38 @@ export function OrderTimelineView({ processId }: Props) {
             {/* Primary action */}
             <section className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">
                 <p className="text-xs font-semibold text-neutral-500">
-                    {role === "buyer" ? "Your action" : role === "seller" ? "Next step" : role === "courier" ? "Handoff" : "Status"}
+                    {role === "buyer" ? "Your action" : role === "seller" ? "Next step" : "Status"}
                 </p>
+
+                {/* When the connected wallet sells more than one order in this
+                    process, switch between them — each order surfaces its own
+                    clause-driven frontend below. */}
+                {role === "seller" && sellerOrders.length > 1 && (
+                    <div
+                        className="flex flex-row flex-wrap gap-1 pb-2 border-b border-neutral-200"
+                        data-testid="seller-order-switcher"
+                    >
+                        {sellerOrders.map((o, i) => {
+                            const active = o.orderId === sellerOrder?.orderId;
+                            return (
+                                <button
+                                    key={o.orderId}
+                                    type="button"
+                                    onClick={() => setSelectedSellerOrderId(o.orderId)}
+                                    aria-pressed={active}
+                                    data-testid={`seller-order-tab-${o.orderId}`}
+                                    className={`shrink-0 rounded border px-3 py-1 text-xs ${
+                                        active
+                                            ? "border-black bg-black text-white"
+                                            : "border-neutral-300 bg-white text-neutral-600 hover:border-neutral-500"
+                                    }`}
+                                >
+                                    Order {i + 1}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {role === "buyer" && (
                     <>
@@ -794,24 +856,22 @@ export function OrderTimelineView({ processId }: Props) {
                     </>
                 )}
 
-                {role === "seller" && (
+                {role === "seller" && sellerHasMerchantProcess && (
                     <>
-                        {next === "handed-off" && (courierSubOrder || isPickupHandoff) && !merchantAlreadyAttestedProximity ? (
-                            // Cross-witness path. Two variants reach the same
-                            // primitive (signalWithProof = proximity-proof +
-                            // merchant-process handed-off):
-                            //   - Delivery: proximity-policy lives on the
-                            //     courier sub-order; the proof opens against
-                            //     the courier's manifest.
-                            //   - Pickup:   proximity-policy lives on the
-                            //     merchant's own (root) manifest; the proof
-                            //     opens against the same order. The buyer
-                            //     attests the symmetric witness via
-                            //     btn-buyer-pickup-proof.
+                        {next === "handed-off" && sellerProximityTargetOrder && !sellerAlreadyAttestedProximity ? (
+                            // Cross-witness path. signalWithProof =
+                            // proximity-proof + merchant-process handed-off,
+                            // opened against whichever order carries the
+                            // proximity policy: a downstream sub-order (the
+                            // delivery courier edge the merchant cross-witnesses)
+                            // or the seller's own order (pickup / on-site / a
+                            // kit node). The buyer attests the symmetric witness
+                            // via btn-buyer-pickup-proof when there is no
+                            // intermediary.
                             <>
                                 <p className="text-sm text-neutral-700">
-                                    {courierSubOrder
-                                        ? "Submit an on-chain proximity proof to certify the merchant→courier pickup."
+                                    {sellerProximityTargetOrder.orderId !== sellerOrder?.orderId
+                                        ? "Submit an on-chain proximity proof to certify the handoff to the next leg."
                                         : `Submit an on-chain proximity proof to certify the handoff to ${buyerDisplayName}.`}
                                     {" "}Fires the{" "}
                                     <code className="font-mono text-xs">figaro-proximity-proof-v1</code>{" "}
@@ -849,7 +909,7 @@ export function OrderTimelineView({ processId }: Props) {
                     </>
                 )}
 
-                {role === "courier" && (
+                {role === "seller" && sellerHasCourierProcess && !sellerHasMerchantProcess && (
                     <>
                         {handoffAddress && (
                             <div
@@ -879,6 +939,14 @@ export function OrderTimelineView({ processId }: Props) {
                             </p>
                         )}
                     </>
+                )}
+
+                {role === "seller" && !sellerHasMerchantProcess && !sellerHasCourierProcess && (
+                    <p className="text-sm text-neutral-600" data-testid="seller-no-lifecycle">
+                        {isResolved
+                            ? "Order complete."
+                            : "No lifecycle attestations for this order. File any emissions disclosures above; the buyer resolves the process."}
+                    </p>
                 )}
 
                 {role === "spectator" && (

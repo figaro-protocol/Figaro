@@ -17,6 +17,7 @@ export interface OperatorCatalogueItem {
     available?: boolean;
     pricingPolicy?: CataloguePricingPolicy;
     negotiatedPrices?: NegotiatedPriceEntry[];
+    assemblySlug?: string;
 }
 
 /**
@@ -45,6 +46,7 @@ export function tryParseCatalogueItems(doc: unknown): OperatorCatalogueItem[] | 
             negotiatedPrices: Array.isArray(item.negotiatedPrices)
                 ? (item.negotiatedPrices as NegotiatedPriceEntry[])
                 : undefined,
+            assemblySlug: typeof item.assemblySlug === 'string' ? item.assemblySlug : undefined,
         }))
         .filter((item) => item.name.trim().length > 0);
 }

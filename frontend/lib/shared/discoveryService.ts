@@ -51,6 +51,7 @@ function profileToCatalogue(
             classOfService: item.classOfService,
             pricingPolicy: item.pricingPolicy,
             negotiatedPrices: item.negotiatedPrices,
+            assemblySlug: item.assemblySlug,
         })),
         acceptedTokens: profile.acceptedTokens,
         defaultTokenAddress: profile.defaultTokenAddress,
@@ -122,6 +123,7 @@ async function fetchOperatorAsCatalogue(
                 available: i.available ?? true,
                 pricingPolicy: i.pricingPolicy,
                 negotiatedPrices: i.negotiatedPrices,
+                assemblySlug: i.assemblySlug,
             })),
             version: '1.0.0',
         }

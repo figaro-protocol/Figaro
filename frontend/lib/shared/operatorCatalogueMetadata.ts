@@ -105,6 +105,14 @@ export interface CatalogueItemMetadata {
     image?: string;
     available: boolean;
     /**
+     * Optional assembly this product is realised through. When set, selecting
+     * this item drives the checkout to compose the named multi-party assembly
+     * (e.g. a kit assembled by several sellers) rather than resolving an
+     * assembly by fulfilment modality. Product-driven selection: the buyer
+     * picks the product; the product names the process it composes.
+     */
+    assemblySlug?: string;
+    /**
      * Item mass in grams. Storage canonical: always metric. The editor
      * accepts oz/lbs input when the catalogue's `unitSystem` is
      * "imperial" and converts to grams before persisting. Optional —

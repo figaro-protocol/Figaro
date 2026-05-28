@@ -32,6 +32,7 @@ import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
 import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitmentStore";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
+import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/core/assemblySubOrderPlan";
 import { CONTRACTS } from "@/lib/core/contracts";
 import {
     readAssemblyClause,
@@ -42,6 +43,9 @@ import {
     PROXIMITY_POLICY_SCHEMA_KEY,
     type Agreement,
 } from "@/lib/core/agreementManifest";
+import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
+import { readAgreementFields } from "@/lib/designer/syntheticProcess";
+import type { ManifestFields } from "@/lib/core/encoding";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { courierAuctionId, stashCourierDraft } from "@/lib/mechanisms/courierAuction";
 import { CourierCataloguePicker, type CourierSelection } from "@/components/core/CourierCataloguePicker";
@@ -367,6 +371,12 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // page is merchant-scoped. Items from other merchants live in the global
     // cart but aren't shown here.
     const merchantCartItems = items.filter((it) => it.sellerId === operatorCatalogue.id);
+    // Product-driven assembly selection — when a cart item names an assembly
+    // (CatalogueItemMetadata.assemblySlug), the product picks the process and
+    // the fulfilment-mode dropdown is bypassed.
+    const cartProductAssemblySlug = merchantCartItems
+        .map((it) => operatorCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
+        .find((slug): slug is string => !!slug);
     // The pricing policy of a cart line's catalogue item — drives the
     // buyer-set price input in the cart aside below.
     const menuPolicyOf = (menuItemId: string) =>
@@ -380,6 +390,41 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     const merchantBuyerBond = merchantTotalAmount > 0n
         ? calculateBonds(merchantTotalAmount, merchantTotalAmount).buyerBond
         : 0n;
+
+    // Product-driven assembly: the price the buyer pays is the sum of every
+    // contributor's cut, each priced LIVE from that contributor's own
+    // catalogue (rate negotiated with this merchant), plus the lead's own
+    // orders. Built from the SAME planSubOrderSellers + resolveSubOrderPayment
+    // the checkout commits with, so the shown total equals what commits. The
+    // buyer sees what each seller actually gets — Figaro's transparency.
+    // Plain computation, not a hook: this sits after the component's
+    // loading/not-found early return, so a useMemo here would run
+    // conditionally and break the Rules of Hooks. The cost is a 4-order
+    // topological sort — negligible per render.
+    const kitBreakdown = ((): { rows: Array<{ name: string; payment: bigint }>; total: bigint } | null => {
+        if (!cartProductAssemblySlug) return null;
+        const assembly = boundAssemblies.find((a) => a.manifest.slug === cartProductAssemblySlug);
+        if (!assembly || assembly.manifest.orders.length <= 1) return null;
+        const lead = operatorCatalogue.address as `0x${string}`;
+        const nameOf = (addr: `0x${string}`) =>
+            operatorCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
+        let plan: ReturnType<typeof planSubOrderSellers>;
+        try {
+            plan = planSubOrderSellers(assembly);
+        } catch {
+            return null;
+        }
+        const rows = [
+            { name: nameOf(lead), payment: merchantTotalAmount },
+            ...plan.map(({ node, seller }) => ({
+                name: seller ? nameOf(seller) : "(unbound)",
+                payment: seller
+                    ? resolveSubOrderPayment({ node, seller, leadAddress: lead, operatorCatalogues, tokenDecimals })
+                    : 0n,
+            })),
+        ];
+        return { rows, total: rows.reduce((s, r) => s + r.payment, 0n) };
+    })();
 
     // Sum mass + volume across the cart (in metric — storage shape). Each
     // line aggregates as `perItem * quantity`. Display formats to the
@@ -414,7 +459,15 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             return;
         }
         if (merchantCartItems.length === 0) return;
-        if (!fulfillmentMode) {
+        // Product-driven selection: a catalogue item may name the assembly it
+        // composes (e.g. a kit assembled by several sellers). When the cart
+        // carries such an item the PRODUCT picks the assembly — the buyer
+        // selects what they want, not how it's fulfilled. Falls back to the
+        // fulfilment-mode dropdown for ordinary single-/two-party assemblies.
+        const productAssemblySlug = merchantCartItems
+            .map((it) => operatorCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
+            .find((slug): slug is string => !!slug);
+        if (!fulfillmentMode && !productAssemblySlug) {
             setCheckoutError("Select a fulfilment mode before placing the order.");
             return;
         }
@@ -427,14 +480,13 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             return;
         }
         const sellerAddress = operatorCatalogue.address as `0x${string}`;
-        // The picked assembly drives the order. A multi-order assembly
-        // (e.g. local-commerce) is a process of more than one order — the
-        // root merchant order plus a courier order whose manifest topology
-        // section names the root as parent. The kernel sees a linear commit
-        // chain; the parent edge is an off-chain topology fact, not kernel state.
-        const pickedAssembly = boundAssemblies.find(
-            (a) => a.fulfilmentMethod === fulfillmentMode,
-        );
+        // The picked assembly drives the order. Product-driven: the cart item
+        // names the assembly by slug. Otherwise a multi-order assembly
+        // (e.g. local-commerce) is selected by fulfilment mode. The kernel sees
+        // a linear commit chain; the parent edges are off-chain topology.
+        const pickedAssembly = productAssemblySlug
+            ? boundAssemblies.find((a) => a.manifest.slug === productAssemblySlug)
+            : boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
         const isMultiOrder = !!pickedAssembly && pickedAssembly.manifest.orders.length > 1;
         try {
             setCheckoutError(null);
@@ -457,8 +509,11 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 manifestFields: {
                     origin: "",
                     destination: "",
-                    fulfilmentMethod: fulfillmentMode,
-                    handoffMode: mapFulfilmentToHandoff(fulfillmentMode),
+                    // Product-driven assemblies carry no fulfilment modality on
+                    // the lead/root order — the empty method adds no fulfilment
+                    // clause there (the handoffs live on the sub-orders).
+                    fulfilmentMethod: fulfillmentMode ?? "",
+                    handoffMode: fulfillmentMode ? mapFulfilmentToHandoff(fulfillmentMode) : "",
                     // The committed root order anchors figaro-merchant-process-v1
                     // whenever the merchant runs a lifecycle (order-received →
                     // … → handed-off). Delivery always needs it (the
@@ -478,7 +533,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                             );
                             return hasMerchantProcess ? { merchantProcessIncluded: true } : {};
                         })()
-                        : (fulfillmentMode.startsWith("deliver:") ? { merchantProcessIncluded: true } : {})),
+                        : (fulfillmentMode?.startsWith("deliver:") ? { merchantProcessIncluded: true } : {})),
                     // The off-chain dispute forum the assembly authored — the
                     // committed order carries the jurisdiction clause so the
                     // dispute surface can read its Layer-3 recourse.
@@ -524,7 +579,6 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
                 },
             });
-
             const immediateCommit = isE2EMockSession() || isE2EDevnetSession();
             if (!immediateCommit) {
                 // Production two-party relay — root order only. Multi-order
@@ -539,126 +593,160 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 return;
             }
 
-            // ── Multi-order assembly: root order, then the courier order ──
-            // Suppress the single-commit redirect until both orders land.
+            // ── Multi-order assembly: commit the root, then walk the
+            //    manifest's remaining orders in topological order ──────────
+            // Generic over any topology (delivery's root→courier, the
+            // kit-assembly diamond, …). Each non-root order's seller is read
+            // from the operator's counterpartyBindings by the schema that
+            // order carries; its clauses come from the assembly manifest; its
+            // synthetic parent ids are remapped to the real on-chain order
+            // hashes as they commit; the global cumulative value accumulates
+            // in commit order. The Dutch-auction edge and CourierCataloguePicker
+            // stay as the delivery-specific INPUT path, applied to the order
+            // carrying figaro-courier-process-v1.
             multiOrderCheckout.current = true;
             await signAndPlace(prepared.commitment, prepared.commitmentMeta, "buyer");
 
+            const manifest = pickedAssembly!.manifest;
             const processId = computeCommitmentProcessId(prepared.commitment, chainId, CONTRACTS.core);
-            const rootOrderHash = computeOrderHash(prepared.commitment, chainId, CONTRACTS.core);
+            const rootOrder = manifest.orders[0];
+            const realOrderHash = new Map<string, `0x${string}`>([
+                [rootOrder.id, computeOrderHash(prepared.commitment, chainId, CONTRACTS.core)],
+            ]);
+            let cumulativeValue = merchantTotalAmount;
 
-            // ── Dutch-auction delivery: the courier edge is DEFERRED ──
-            // Rather than commit a seller-assigned courier now, open a
-            // descending-price auction for the courier job. The courier
-            // order joins the process when a courier claims it — incremental
-            // process assembly. Stash the courier order's build parameters
-            // (everything known now except the courier address + cleared
-            // price) for the post-claim commit on the order page.
-            if (fulfillmentMode === "deliver:dutch-auction") {
-                const daManifest = pickedAssembly!.manifest;
-                const daBands = (readAssemblyClause(daManifest, PROXIMITY_POLICY_SCHEMA_KEY)
-                    ?.data as { bands?: string[] } | undefined)?.bands ?? [];
-                stashCourierDraft(processId, {
-                    buyer,
-                    currency,
-                    processId,
-                    parentOrderHashes: [rootOrderHash],
-                    manifestFields: {
+            // Topologically ordered non-root orders, each with its resolved
+            // seller. Shared with the cart breakdown (planSubOrderSellers) so
+            // the price the buyer sees is the price that commits.
+            for (const { node, seller: boundSeller } of planSubOrderSellers(pickedAssembly!)) {
+                const agreement = manifest.agreements[node.agreementHash!];
+                const nodeSchemas = (agreement?.sections ?? []).map((s) => s.schema);
+                const parentOrderHashes = (getTopologyParentOrderHashes(agreement) ?? [])
+                    .map((pid) => realOrderHash.get(pid))
+                    .filter((h): h is `0x${string}` => !!h);
+                const isCourierEdge = nodeSchemas.includes("figaro-courier-process-v1")
+                    && fulfillmentMode?.startsWith("deliver:");
+
+                // ── Dutch-auction courier edge: deferred to an auction ──
+                // It joins the process when a courier claims it; the order
+                // page commits it post-claim from the stashed draft.
+                if (isCourierEdge && fulfillmentMode === "deliver:dutch-auction") {
+                    const daBands = (readAssemblyClause(manifest, PROXIMITY_POLICY_SCHEMA_KEY)
+                        ?.data as { bands?: string[] } | undefined)?.bands ?? [];
+                    stashCourierDraft(processId, {
+                        buyer,
+                        currency,
+                        processId,
+                        parentOrderHashes,
+                        manifestFields: {
+                            origin: operatorCatalogue?.geohash ?? "",
+                            destination: deliveryLocation.geohash ?? "",
+                            courierProcessIncluded: true,
+                            ...assemblyJurisdictionFields(manifest),
+                            ...(daBands.length > 0 ? { proximityBands: daBands } : {}),
+                            ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
+                            ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
+                            class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
+                        },
+                        deliveryAddress: deliveryAddress.trim() || undefined,
+                    });
+                    const auctionTxHash = await createAuction(
+                        courierAuctionId(processId),
+                        parseToken(deliveryMaxPrice, tokenDecimals),
+                        processId,
+                        currency,
+                    );
+                    if (publicClient && auctionTxHash) {
+                        await publicClient.waitForTransactionReceipt({ hash: auctionTxHash });
+                    }
+                    continue;
+                }
+
+                // ── Resolve this order's seller, payment, and clauses ──
+                let seller: `0x${string}`;
+                let payment: bigint;
+                let manifestFields: ManifestFields;
+                let courierToNotify: `0x${string}` | null = null;
+
+                if (isCourierEdge) {
+                    // Delivery: the buyer chose the courier, the price, and the
+                    // destination through CourierCataloguePicker.
+                    if (!courierSelection) {
+                        multiOrderCheckout.current = false;
+                        setCheckoutError("Choose a courier and a delivery service before placing the order.");
+                        return;
+                    }
+                    seller = courierSelection.courier;
+                    payment = parseToken(courierSelection.price, tokenDecimals);
+                    courierToNotify = seller;
+                    const bands = (readAssemblyClause(manifest, PROXIMITY_POLICY_SCHEMA_KEY)
+                        ?.data as { bands?: string[] } | undefined)?.bands ?? [];
+                    const ghgStandards = readAssemblyOrderGhgStandards(manifest, node.agreementHash);
+                    manifestFields = {
                         origin: operatorCatalogue?.geohash ?? "",
                         destination: deliveryLocation.geohash ?? "",
                         courierProcessIncluded: true,
-                        ...assemblyJurisdictionFields(daManifest),
-                        ...(daBands.length > 0 ? { proximityBands: daBands } : {}),
+                        ...assemblyJurisdictionFields(manifest),
+                        ...(bands.length > 0 ? { proximityBands: bands } : {}),
+                        ...(ghgStandards.length > 0 ? { ghgStandards } : {}),
                         ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
                         ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
                         class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
-                    },
-                    deliveryAddress: deliveryAddress.trim() || undefined,
-                });
-                const auctionTxHash = await createAuction(
-                    courierAuctionId(processId),
-                    parseToken(deliveryMaxPrice, tokenDecimals),
-                    processId,
-                    currency,
-                );
-                // Wait for the auction to mine before navigating — the order
-                // page reads the auction on mount, and a stale read would
-                // show no auction with no automatic recovery.
-                if (publicClient && auctionTxHash) {
-                    await publicClient.waitForTransactionReceipt({ hash: auctionTxHash });
-                }
-                multiOrderCheckout.current = false;
-                clearCart();
-                resetCommitment();
-                router.push(`/orders/${processId}`);
-                return;
-            }
-
-            // The courier + delivery price came from CourierCataloguePicker —
-            // the merchant's partner list (seller-assigned) or any address the
-            // buyer entered (buyer-assigned); the buyer picked a delivery item
-            // from the courier's catalogue. dutch-auction returned above.
-            if (!courierSelection) {
-                multiOrderCheckout.current = false;
-                setCheckoutError("Choose a courier and a delivery service before placing the order.");
-                return;
-            }
-            const courier = courierSelection.courier;
-            const courierPayment = parseToken(courierSelection.price, tokenDecimals);
-
-            // The committed courier order carries the proximity-policy band the
-            // picked assembly declares (the assembly is the template).
-            const assemblyManifest = pickedAssembly!.manifest;
-            const courierProximityBands: string[] =
-                (readAssemblyClause(assemblyManifest, PROXIMITY_POLICY_SCHEMA_KEY)
-                    ?.data as { bands?: string[] } | undefined)?.bands ?? [];
-            const courierPrepared = await prepareOrderCommitment({
-                buyer,
-                seller: courier,
-                currency,
-                payment: courierPayment,
-                processId,
-                parentOrderHashes: [rootOrderHash],
-                expectedCumulativeValue: merchantTotalAmount + courierPayment,
-                manifestFields: {
-                    origin: operatorCatalogue?.geohash ?? "",
-                    destination: deliveryLocation.geohash ?? "",
-                    courierProcessIncluded: true,
-                    ...assemblyJurisdictionFields(assemblyManifest),
-                    ...(courierProximityBands.length > 0 ? { proximityBands: courierProximityBands } : {}),
-                    // Propagate the courier order's GHG clauses from the
-                    // assembly — same pattern as the root order above.
-                    ...((() => {
-                        const ghgStandards = readAssemblyOrderGhgStandards(
-                            assemblyManifest,
-                            assemblyManifest.orders[1]?.agreementHash,
-                        );
-                        return ghgStandards.length > 0 ? { ghgStandards } : {};
-                    })()),
-                    ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
-                    ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
-                    class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
-                },
-            });
-            await signAndPlace(courierPrepared.commitment, courierPrepared.commitmentMeta, "buyer");
-
-            // Send the human-readable delivery address to the courier over
-            // the coordination channel — best-effort: both commits already
-            // landed, so a channel failure must not fail the checkout.
-            if (deliveryAddress.trim()) {
-                try {
-                    await DEFAULT_COORDINATION_MESSAGING_SERVICE.sendHandoffAddress({
-                        address: buyer,
-                        recipientAddress: courier,
-                        orderId: computeOrderHash(courierPrepared.commitment, chainId, CONTRACTS.core),
-                        deliveryAddress: deliveryAddress.trim(),
+                    };
+                } else {
+                    // Generic sub-order: seller resolved upstream from the
+                    // operator's counterpartyBindings (shared with the cart
+                    // breakdown); clauses read from the assembly manifest.
+                    if (!boundSeller) {
+                        multiOrderCheckout.current = false;
+                        setCheckoutError("This assembly has a sub-order with no designated counterparty — the operator must bind one.");
+                        return;
+                    }
+                    seller = boundSeller;
+                    // Contributor nodes are priced LIVE from the contributor's
+                    // own catalogue (rate negotiated with the lead); the lead's
+                    // own nodes keep the manifest figure. Returns a bigint, so
+                    // the cumulative add stays numeric.
+                    payment = resolveSubOrderPayment({
+                        node, seller, leadAddress: sellerAddress,
+                        operatorCatalogues, tokenDecimals,
                     });
-                } catch (cause) {
-                    console.warn("Handoff address send to courier failed", cause);
+                    manifestFields = readAgreementFields(node, agreement);
+                }
+
+                cumulativeValue += payment;
+                const subPrepared = await prepareOrderCommitment({
+                    buyer,
+                    seller,
+                    currency,
+                    payment,
+                    processId,
+                    parentOrderHashes,
+                    expectedCumulativeValue: cumulativeValue,
+                    manifestFields,
+                });
+                await signAndPlace(subPrepared.commitment, subPrepared.commitmentMeta, "buyer");
+                realOrderHash.set(
+                    node.id,
+                    computeOrderHash(subPrepared.commitment, chainId, CONTRACTS.core),
+                );
+
+                // Delivery: hand the human-readable address to the courier.
+                if (courierToNotify && deliveryAddress.trim()) {
+                    try {
+                        await DEFAULT_COORDINATION_MESSAGING_SERVICE.sendHandoffAddress({
+                            address: buyer,
+                            recipientAddress: courierToNotify,
+                            orderId: computeOrderHash(subPrepared.commitment, chainId, CONTRACTS.core),
+                            deliveryAddress: deliveryAddress.trim(),
+                        });
+                    } catch (cause) {
+                        console.warn("Handoff address send to courier failed", cause);
+                    }
                 }
             }
 
-            // Both orders committed — navigate to the process page.
+            // All orders committed — navigate to the process page.
             multiOrderCheckout.current = false;
             clearCart();
             resetCommitment();
@@ -933,12 +1021,33 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                 </ul>
 
                                 <div className="border-t border-neutral-200 pt-3 space-y-1.5 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-neutral-600">Payment to merchant</span>
-                                        <span className="text-neutral-900 tabular-nums">
-                                            {formatToken(merchantTotalAmount, tokenDecimals)}
-                                        </span>
-                                    </div>
+                                    {kitBreakdown ? (
+                                        // Each contributor's cut, priced live from their own
+                                        // catalogue — the buyer sees what every seller gets.
+                                        <div className="space-y-1" data-testid="cart-contributor-breakdown">
+                                            {kitBreakdown.rows.map((row, i) => (
+                                                <div key={i} className="flex justify-between">
+                                                    <span className="text-neutral-600">{row.name}</span>
+                                                    <span className="text-neutral-900 tabular-nums">
+                                                        {formatToken(row.payment, tokenDecimals)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-medium">
+                                                <span className="text-neutral-700">Total to all sellers</span>
+                                                <span className="text-neutral-900 tabular-nums" data-testid="cart-kit-total">
+                                                    {formatToken(kitBreakdown.total, tokenDecimals)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex justify-between">
+                                            <span className="text-neutral-600">Payment to merchant</span>
+                                            <span className="text-neutral-900 tabular-nums">
+                                                {formatToken(merchantTotalAmount, tokenDecimals)}
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between">
                                         <span className="text-neutral-600">Your bond (refundable on resolve)</span>
                                         <span className="text-neutral-900 tabular-nums">
@@ -966,6 +1075,16 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                     )}
                                 </div>
 
+                                {cartProductAssemblySlug ? (
+                                    <div
+                                        data-testid="product-assembly-note"
+                                        className="rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600"
+                                    >
+                                        Fulfilled as the{" "}
+                                        <span className="font-mono">{cartProductAssemblySlug}</span>{" "}
+                                        assembly — multiple sellers, each settled in the same resolve.
+                                    </div>
+                                ) : (
                                 <div>
                                     <label
                                         htmlFor="fulfilment-mode-select"
@@ -996,6 +1115,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                         ))}
                                     </select>
                                 </div>
+                                )}
 
                                 {fulfillmentMode?.startsWith("deliver:") && (
                                     <div className="space-y-1.5" data-testid="delivery-location-block">
@@ -1058,8 +1178,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                         isApproving
                                         || placingOrder
                                         || merchantCartItems.length === 0
-                                        || !fulfillmentMode
-                                        || (fulfillmentMode.startsWith("deliver:") && !deliveryLocation.geohash)
+                                        || (!fulfillmentMode && !cartProductAssemblySlug)
+                                        || (fulfillmentMode?.startsWith("deliver:") && !deliveryLocation.geohash)
                                         || ((fulfillmentMode === "deliver:seller-assigned" || fulfillmentMode === "deliver:buyer-assigned") && !courierSelection)
                                     }
                                     data-testid="btn-place-order"
@@ -1071,7 +1191,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                             ? "Approving payment…"
                                             : placingOrder
                                                 ? "Placing order…"
-                                                : !fulfillmentMode
+                                                : (!fulfillmentMode && !cartProductAssemblySlug)
                                                     ? "Select fulfilment to order"
                                                     : "Place order"}
                                 </Button>

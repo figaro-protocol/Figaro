@@ -28,6 +28,10 @@ export interface CatalogueItem {
     pricingPolicy?: CataloguePricingPolicy;
     /** Per-counterparty negotiated prices — see `CatalogueItemMetadata`. */
     negotiatedPrices?: NegotiatedPriceEntry[];
+    /** Optional assembly this product composes — see `CatalogueItemMetadata`.
+     *  When set, selecting this item drives the named multi-party assembly
+     *  (product-driven selection) instead of a fulfilment-modality choice. */
+    assemblySlug?: string;
 }
 
 /**
