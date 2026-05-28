@@ -2,8 +2,8 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {MockKlerosArbitrator} from "../../src/mocks/MockKlerosArbitrator.sol";
-import {MockKlerosArbitrableProxy} from "../../src/mocks/MockKlerosArbitrableProxy.sol";
+import {MockKlerosArbitrator} from "../src/mocks/MockKlerosArbitrator.sol";
+import {MockKlerosArbitrableProxy} from "../src/mocks/MockKlerosArbitrableProxy.sol";
 
 contract MockKlerosArbitratorTest is Test {
     MockKlerosArbitrator arb;
