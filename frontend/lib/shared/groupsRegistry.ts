@@ -137,6 +137,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
             { title: "The Subordination Variable", href: "/papers/subordination-variable" },
             { title: "The Visibility of Coordination", href: "/papers/visibility-of-coordination" },
             { title: "The Ungoverned Substrate", href: "/papers/ungoverned-substrate" },
+            { title: "Corridors Without a Hegemon: Bonded Settlement as Common Infrastructure Beneath Rival Trade Corridors", href: "/papers/corridors-without-a-hegemon" },
         ],
     },
     {
