@@ -23,13 +23,13 @@ export default function Why() {
 
             <MarketingSection title="Coercion.">
                 <p className="text-base text-ink-body leading-relaxed">
-                    The oldest answer to who governs is force &mdash; <em>might makes right</em>. The answer was challenged almost immediately. Force without legitimacy is unstable; the ruled have always found ways to refuse it.
+                    The oldest answer to who governs is force &mdash; <em>might makes right</em>. Force can compel an action, but it cannot by itself make the rule legitimate in the mind of the person it binds. Force without legitimacy is unstable; the ruled have always found ways to refuse it.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Cognition.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    To legitimize the rules they make, societies developed a second apparatus: shared mental models. Environmental knowledge, mythology, oral tradition, eventually written law. The apparatus has grown sophisticated as societies have scaled &mdash; administrative law, contracts, treaties, regulatory regimes &mdash; but the underlying mechanism is the one antiquity used. Legitimacy by belief, sustained by institutions trusted to carry the belief.
+                    A rule has to do two things at once: constrain the actions of a community&apos;s members, and stay legitimate in the minds of all of them as it does. Force is good at the first and poor at the second. So societies developed a second apparatus to carry the legitimacy &mdash; shared mental models. Environmental knowledge, mythology, oral tradition, eventually written law. The apparatus has grown sophisticated as societies have scaled &mdash; administrative law, contracts, treaties, regulatory regimes &mdash; but the underlying mechanism is the one antiquity used. Legitimacy by belief, sustained by institutions trusted to carry the belief.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Both coercion and cognition remain with us. Both can be captured by interests &mdash; at best collaboratively, at worst as instruments turned against the ruled. Sophisticated institutions can carry sophisticated capture.

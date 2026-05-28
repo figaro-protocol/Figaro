@@ -14,7 +14,7 @@ export default function LocalCommercePage() {
                     Three roles, one bonded process.
                 </h1>
                 <p className="text-body-lead text-ink-body max-w-2xl">
-                    An assembly composing a local-commerce process from protocol primitives. Three roles (buyer, merchant, courier), one root bonded commitment, one sub-order, atomic settlement. Generic across food, retail, and service verticals; the reference instance uses food delivery as the concrete shape.
+                    An assembly composing a local-commerce process from protocol primitives. A process is a transaction-scoped institution: it exists only for this order &mdash; from the first commit to the buyer&apos;s resolution &mdash; and dissolves at settlement. Three roles (buyer, merchant, courier), one root bonded commitment, one sub-order, atomic settlement. Generic across food, retail, and service verticals; the reference instance uses food delivery as the concrete shape.
                 </p>
             </section>
 
