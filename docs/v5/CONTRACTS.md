@@ -111,6 +111,27 @@ from attestations** per separation-of-concerns doctrine — they do not require
 a committed agreement clause or a merkle inclusion proof, so they can't be
 hosted under `AttestationCoordinator`.
 
+**`src/SwapAndCommitCoordinator.sol`** — Off-protocol executor letting a buyer
+and/or seller post their FigaroCore bond in a token other than the process bond
+currency. One external function, `swapAndCommit(c, buyerSig, sellerSig,
+buyerFunding, sellerFunding)`: for each enabled leg it pulls the party's input
+token via a Permit2 signature (`IPermit2SignatureTransfer.permitTransferFrom`),
+forwards caller-supplied swap calldata to an immutable `router` (the Uniswap
+Universal Router in production), forwards the swapped bond currency to the
+party's EOA, then calls `FigaroCore.commit`. Because the kernel pulls each bond
+from the named party (`c.buyer`/`c.seller`) and never checks `msg.sender`, the
+coordinator funds the party in-place rather than substituting itself — the
+EIP-712 commitment stays bilaterally signed and the coordinator never becomes a
+counterparty. Bond amounts are derived from the commitment (2·payment,
+2·expectedCumulativeValue), never passed in, so a caller cannot under-fund the
+pull; the leg reverts (`OutputBelowBond`) if the swap yields less than the bond.
+`ReentrancyGuard`; immutable `figaroCore`/`permit2`/`router`. Kernel untouched;
+the swap venue is an off-protocol auxiliary; permissionless first-write-wins
+means alternative coordinators with different routers/MEV policies are valid
+extensions. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
+bond currency (same as the base flow) plus a one-time `approve(Permit2, …)` for
+the input token. EIP-7702 and ERC-4337 variants are out of scope.
+
 **`src/OperatorRegistry.sol`** — Permissionless operator self-registration with
 reclaimable ETH deposit. Three external functions: `register(metadataURI)` (sets
 the dedup guard, consumes the deposit, emits `OperatorRegistered`),
@@ -203,6 +224,8 @@ prover would reject every batch.
 - `src/mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`
 - `src/mocks/MockOffsetAggregator.sol` — devnet stand-in for Klima KlimaInfinity / Toucan OffsetHelper. Fixed `pricePerTon` constructor arg, pulls input token via `transferFrom`, emits `Retired`. Wired into `Deploy.s.sol` only — mainnet uses real aggregators.
 - `src/mocks/MockKlerosArbitrableProxy.sol`, `src/mocks/MockKlerosArbitrator.sol` — devnet stand-ins for the Kleros dispute-resolution flow; deployed via `script/DeployMockKleros.s.sol` (run from `./scripts/deploy-mock-kleros.sh`) on top of `./scripts/deploy-local.sh`. Mainnet uses the real Kleros contracts.
+- `src/mocks/MockPermit2.sol` — test stand-in for Uniswap Permit2 SignatureTransfer; implements `permitTransferFrom` (deadline + amount enforced, signature not verified), pulling the owner's input token under the standard one-time Permit2 approval. Test-only (`SwapAndCommitCoordinatorTest`); not wired into any deploy script — mainnet uses the canonical Permit2.
+- `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Test-only (`SwapAndCommitCoordinatorTest`); not wired into any deploy script — mainnet uses the real Uniswap Universal Router.
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist
