@@ -156,11 +156,13 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
             }>;
         };
 
-        // V5 AssemblyManifest — one root order, one agreement. Distinct from
-        // direct-sale (no proximity-* + no merchant-process) and from
-        // local-commerce (no courier sub-order). Demonstrates the snap-
-        // together principle: proximity-policy + proximity-proof are the
-        // same blocks the local-commerce courier carries, applied to a
+        // V5 AssemblyManifest — one root order, one agreement. Shares the
+        // handoff-cert stack with direct-sale (consume-onsite) — proximity-
+        // policy + proximity-proof + merchant-process on a 1-node graph; the
+        // two differ only by fulfilment modality (pickup vs consume-onsite).
+        // Distinct from local-commerce (no courier sub-order). Demonstrates
+        // the snap-together principle: proximity-policy + proximity-proof are
+        // the same blocks the local-commerce courier carries, applied to a
         // 1-node graph.
         expect(manifest.slug).toBe(slug);
         expect(manifest.orders).toHaveLength(1);

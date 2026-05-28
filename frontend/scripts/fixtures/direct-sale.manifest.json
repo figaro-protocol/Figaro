@@ -1,6 +1,6 @@
 {
   "agreements": {
-    "0x154bf6c01d47fc0352741211b289ed10d9a3ee303975da39bc35a01602b58665": {
+    "0xedd503888fc5dd58659f9354088e3e5a156a301b19e83c5c886b9e71a6b0748f": {
       "buyer": "0xde51000000000000000000000000000000000000",
       "sections": [
         {
@@ -20,6 +20,9 @@
         },
         {
           "data": {
+            "handoffPoints": [
+              "face-to-face"
+            ],
             "modalities": [
               "consume-onsite"
             ]
@@ -35,6 +38,26 @@
             "volumeMl": 1
           },
           "schema": "figaro-geo-v2"
+        },
+        {
+          "data": {},
+          "schema": "figaro-merchant-process-v1"
+        },
+        {
+          "data": {
+            "bands": [
+              "zone-wifi"
+            ]
+          },
+          "schema": "figaro-proximity-policy-v1"
+        },
+        {
+          "data": {
+            "band": "zone-wifi",
+            "deviceSig": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "nonce": "0x0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "schema": "figaro-proximity-proof-v1"
         },
         {
           "data": {
@@ -53,21 +76,21 @@
   "nextSellerIndex": 2,
   "orders": [
     {
-      "agreementHash": "0x154bf6c01d47fc0352741211b289ed10d9a3ee303975da39bc35a01602b58665",
+      "agreementHash": "0xedd503888fc5dd58659f9354088e3e5a156a301b19e83c5c886b9e71a6b0748f",
       "buyer": "0xde51000000000000000000000000000000000000",
       "buyerBond": "2000000000000000000",
       "cumulativeValue": "1000000000000000000",
       "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779908687",
+      "deadline": "1779969047",
       "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
       "payment": "1000000000000000000",
-      "processId": "0xprocess19e6a9c465c0000000000000000000000000000000000000000000000",
+      "processId": "0xprocess19e6e354d340000000000000000000000000000000000000000000000",
       "salt": "1",
       "seller": "0xde51000000000000000000000000000000000001",
       "sellerBond": "2000000000000000000",
       "state": 0
     }
   ],
-  "processId": "0xprocess19e6a9c465c0000000000000000000000000000000000000000000000",
+  "processId": "0xprocess19e6e354d340000000000000000000000000000000000000000000000",
   "slug": "direct-sale"
 }
