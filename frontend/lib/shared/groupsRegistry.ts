@@ -71,7 +71,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         discipline: "Mechanism design · institutional economics · monetary theory",
         charter: "The kernel rests on a game-theoretic argument: asymmetric bonding with a 2× minimum ratio produces a Nash equilibrium, scales itself from two to N parties through progressive collateralization, and makes the subordination axis of the Coasean firm structurally optional — shifting the Coasean transaction-cost threshold inward, so the standing firm is no longer the uniquely efficient unit of production within the domain the primitive covers. This group reads the substrate as economists and game theorists read it — equilibrium analysis, institutional form, monetary design.",
         papers: [
-            { title: "Asymmetric Bonding: A Self-Enforcing Settlement Primitive", href: "/papers/figaro-mechanism.pdf" },
+            { title: "Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination", href: "/papers/asymmetric-bonding" },
             { title: "From Firms to Transaction-Scoped Institutions: A Coasean Re-Examination", href: "/papers/transaction-scoped-institutions" },
             { title: "FIG: A Schelling-Point Token for the Figaro Coordination Ecosystem", href: "/papers/fig-schelling-point-token" },
         ],
@@ -98,7 +98,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         discipline: "Cryptographic primitives · adversarial review · formal verification · protocol extension · runtime architecture",
         charter: "Two complementary lenses on the protocol's CS surface. Paper C reads the kernel adversarially: where does the invariant break, and what proves that it does not? EIP-712 dual-signed commitments, merkle-bound attestation receipts, SP1-proven batch execution, the formal-verification stack. Paper N reads what stands above the kernel as a research object: schema design as a CS discipline (four-layer verification stack, append-only identity, first-write-wins binding, atomic-bind pattern), the coordinator pattern with formal composition semantics and equilibrium-preservation conditions, and the seven-layer runtime composition pipeline. Implementation work (schema authoring, contract development, assembly composition, frontend) organizes separately at /builders.",
         papers: [
-            { title: "Asymmetric Bonding and Buyer Dominance: A Verified Solidity Settlement Kernel", href: "/papers/figaro-verification.pdf" },
+            { title: "Asymmetric Bonding and Buyer Dominance: A Verified Solidity Settlement Kernel", href: "/papers/verified-settlement-kernel" },
             { title: "Protocol Extension and Runtime Composition", href: "/papers/protocol-extension" },
         ],
         currentWork: [

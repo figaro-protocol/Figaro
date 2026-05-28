@@ -7,7 +7,7 @@ import { GROUPS_REGISTRY } from "@/lib/shared/groupsRegistry";
 export const metadata: Metadata = {
     title: "Papers — Figaro Protocol",
     description:
-        "The Figaro paper corpus, organized along the eight cryptoeconomic disciplines. Prose papers read in the browser and print to PDF; math-heavy papers download as typeset PDFs.",
+        "The Figaro paper corpus, organized along the eight cryptoeconomic disciplines. Each paper reads in the browser and exports to PDF from the page.",
 };
 
 export default function Papers() {
@@ -19,7 +19,7 @@ export default function Papers() {
                 title="Papers."
                 lead={
                     <>
-                        The corpus, organized along the eight cryptoeconomic disciplines &mdash; each paper translating the bonded settlement primitive into one discipline&apos;s vocabulary. Prose papers read in the browser and export to PDF from the page; math-heavy papers download as typeset PDFs. The disciplines themselves, the working groups, and how the work is funded sit at{" "}
+                        The corpus, organized along the eight cryptoeconomic disciplines &mdash; each paper translating the bonded settlement primitive into one discipline&apos;s vocabulary. Each paper reads in the browser, with server-rendered math, and exports to PDF from the page. The disciplines themselves, the working groups, and how the work is funded sit at{" "}
                         <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
                             cryptoeconomics
                         </Link>
