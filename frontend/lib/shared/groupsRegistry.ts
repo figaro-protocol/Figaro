@@ -124,6 +124,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
             { title: "On-Chain Evidence, Off-Chain Adjudication", href: "/papers/on-chain-evidence" },
             { title: "The Wallet as Legal Subject", href: "/papers/wallet-legal-subject" },
             { title: "Coercion as a Substrate Variable", href: "/papers/coercion-variable" },
+            { title: "The Disclosure Asymmetry: Cryptoeconomic Mechanism Design and the Engineering of Consent", href: "/papers/the-disclosure-asymmetry" },
         ],
     },
     {
