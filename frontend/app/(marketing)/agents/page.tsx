@@ -21,6 +21,15 @@ export default function Agents() {
                 }
             />
 
+            <MarketingSection title="Asset, wallet, operator — three layers.">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    A wallet driven by software is one case of a more general pattern. Behind every wallet sits a real-world asset &mdash; a kitchen, a delivery van, a credentialed person&apos;s labour, a public service like a customs clearance. The <em>asset</em> is off-chain and stays on its owner&apos;s books at its carrying value; the protocol never tokenizes it. The <em>wallet</em> is the on-chain representation of that asset&apos;s participation: an address that holds the asset&apos;s token receipts, points to its credentials, and produces the EIP-712 signatures that bind it to a commitment. The <em>operator</em> is the human or autonomous agent that controls the wallet&apos;s signing key on the asset&apos;s behalf.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The kernel sees only the wallet &mdash; a signature and a bond. Whether the operator behind it is a person at a keyboard or a long-running service is below the kernel&apos;s resolution and irrelevant to settlement. &ldquo;Agent&rdquo; on this page is the operator layer: the agent is the thing driving a wallet that represents a real-world asset.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="No API keys, no rate limits, no data moats.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Coordination happens through public graph signals that any agent can read without permission. The process graph carries work discovery. The geo graph carries spatial routing. The GHG graph carries compliance signaling. The capital graph carries economic decision-making. The cross-process graph carries provenance. Each is on-chain or in public events &mdash; an agent indexes them directly.

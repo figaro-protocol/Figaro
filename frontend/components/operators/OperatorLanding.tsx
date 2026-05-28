@@ -45,7 +45,7 @@ function WelcomeView() {
             title="Register as an operator."
             description={
                 <p>
-                    Register a wallet in <code>OperatorRegistry</code> and pin a profile + catalogue to IPFS. Six steps. The deposit is 0.001 ETH on devnet, reclaimable after a one-year lock — Sybil-resistance, not a fee.
+                    As an operator you register a wallet that represents your real-world asset or service. Register a wallet in <code>OperatorRegistry</code> and pin a profile + catalogue to IPFS. Six steps. The deposit is 0.001 ETH on devnet, reclaimable after a one-year lock — Sybil-resistance, not a fee.
                 </p>
             }
         >

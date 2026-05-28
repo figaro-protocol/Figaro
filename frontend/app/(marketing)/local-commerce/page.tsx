@@ -22,6 +22,9 @@ export default function LocalCommercePage() {
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Roles
                 </h2>
+                <p className="text-base text-ink-body leading-relaxed mb-6">
+                    Each role is held by a wallet, and each wallet represents a real-world asset or service &mdash; the asset stays off-chain on its owner&apos;s books, the wallet is its on-chain handle, and an operator controls the signing key on the asset&apos;s behalf. The &ldquo;maps to&rdquo; line in each role below names that asset layer: the merchant&apos;s wallet represents a kitchen or a shop, the courier&apos;s wallet represents a delivery vehicle. A public-authority wallet &mdash; a municipal food-safety inspection, a road authority charging per-mile &mdash; is a participant on the same footing: a wallet representing a real-world service whose committed payment costs the buyer exactly the way any other commit does.
+                </p>
                 <dl className="space-y-4 text-sm">
                     <div>
                         <dt className="text-base font-semibold text-ink-heading">Buyer</dt>
@@ -57,7 +60,7 @@ export default function LocalCommercePage() {
                     </li>
                     <li className="border-b border-default pb-3">
                         <div className="text-ink-heading font-medium"><code>OperatorRegistry</code></div>
-                        <p className="text-sm text-ink-muted mt-0.5">Permissionless self-registration for merchants and couriers (across all local-commerce verticals) with a reclaimable ETH deposit. Event-sourced (role + metadataURI in <code>OperatorRegistered</code>); on-chain state is dedup-only. No admin, no KYC, no profile-edit / deactivate / reactivate — switch role or metadata via withdraw + re-register.</p>
+                        <p className="text-sm text-ink-muted mt-0.5">Permissionless self-registration for merchants and couriers (across all local-commerce verticals) with a reclaimable ETH deposit. Event-sourced (metadataURI in <code>OperatorRegistered</code>); on-chain state is dedup-only. No admin, no KYC, no profile-edit / deactivate / reactivate — switch metadata via withdraw + re-register.</p>
                     </li>
                 </ul>
             </section>

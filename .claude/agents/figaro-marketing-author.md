@@ -56,6 +56,7 @@ These are not stylistic preferences; each one breaks the project's framing or im
 |---|---|
 | "DeFi" / "decentralized finance" anywhere on the project's surfaces | Figaro is a coordination protocol, not a financial application |
 | "Trading," "yield," "lending," "liquidity," "pools," "investment vehicle" | TradFi vocabulary; Figaro has no fee, no yield, no investment surface |
+| **"RWA" / "real-world asset" framed as tokenized, fractionalized, or on-chain *ownership* of an asset** | That is the DeFi RWA-tokenization narrative — the *opposite* of Figaro's meaning. In Figaro the wallet represents the asset's *participation*; it never tokenizes or re-represents the asset, which stays on the entity's balance sheet at carrying value (`paper/figaro-accounting.tex` §7, lines 838–841). Deliver the asset/wallet/operator concept in plain language; never let it read as asset-tokenization. The bare acronym "RWA" reads as DeFi — prefer the plain description on first-encounter surfaces. |
 | "Startup" / "company" / "team" framing | Figaro is a protocol, not a company |
 | "Token launch" / "ICO" / "presale" / "buy FIG" | FIG is retroactive public-goods funding; there is no buy-side token surface |
 | "Kill Uber" / "kill the firm" / "platform-tax destroyer" | Defines Figaro by elimination; the mechanism replaces firms structurally, not as combat |
@@ -141,6 +142,24 @@ For specific concepts:
 - The token = "FIG token" — it's a Schelling point, not a payment unit, not an investment vehicle
 - The firm dissolution = "the coordination firm becomes structurally unnecessary in coordination-heavy sectors" — narrow and accurate, not "the firm dies"
 - Disputes = "Kleros first, jurisdictional fallback" — the protocol's chosen escalation per the consent agreement §10
+
+### Participant model — asset / wallet / operator
+
+The canonical model for *who participates* in a Figaro process. Source of truth: `paper/figaro-accounting.tex` §7 (`\label{sec:treasury-composition}`). Use it to name participants precisely and to fix the recurring conflations (operator ≠ wallet; a wallet-acting-as-seller ≠ the operator).
+
+Three layers, kept distinct:
+
+- **Asset** — the off-chain real-world thing whose participation produces value: physical capital (a kitchen, a delivery van, a landing slot, a server), a credentialed individual (a pilot, a courier, an engineer, a doctor), or a public service (a security checkpoint, a customs clearance, a road network). Off-chain by definition.
+- **Wallet** — the on-chain representation of that asset's *participation*: an address holding the asset's token earnings and NFT pointers to its off-chain credentials, producing the EIP-712 signatures that bind it to bonded commitments. The kernel sees **only** the wallet.
+- **Operator** — the human or autonomous agent who controls the wallet's signing key on the asset's behalf. The operator-acts-for-asset relationship is below the kernel's resolution.
+
+Load-bearing distinctions to preserve in copy:
+
+- **It is not DeFi RWA-tokenization.** The wallet does **not** contain, tokenize, fractionalize, or re-represent the asset — the asset stays on the entity's balance sheet at carrying value. The wallet is a *signing apparatus + earnings pocket* through which the asset transacts (§7, lines 838–841). On first-encounter surfaces, lead with the plain description ("the wallet represents something real — a kitchen, a van, a person's labor"); reserve the acronym "RWA" for technical readers, and when used, distinguish it from asset-tokenization explicitly. See the forbidden-pattern row.
+- **Going-concern / sustainability** — a wallet sustains its participation the way a business sustains operation under the going-concern assertion: on-chain receipts must, over time, cover the asset's off-chain operating expenses (fuel, parts, labor, premises, regulatory fees, capital amortization), or the operator stops bonding the wallet into processes and it drops out of the market. The market enforces this through ordinary rational exit — **not** the kernel (§7 "going-concern condition"). The blockchain-node analogy is the intuition: a node earns fees that must cover its electricity/hardware or the operator shuts it off.
+- **Public-authority wallets are RWA-as-wallet on the same footing as commercial** — a security-screening authority, an airport authority, a road authority: each is a wallet representing a real-world service whose continued operation requires receipts covering its expenses. The kernel does not distinguish a "tax" from a "fee for service"; both are payments to a service-providing wallet (§7 "Public-authority wallets"). Do not frame authority charges as outside-the-market or tax-shaped at the settlement layer.
+
+Naming hygiene this corrects: don't call a wallet "an operator"; don't collapse "operator" into "seller" (seller is the wallet's *role* in a given order); don't reify topology labels (merchant, courier) as entities — they are descriptions of what asset a wallet represents.
 
 ---
 
