@@ -96,9 +96,10 @@ proposing, check the change against:
 1. **The six protocol properties** (asymmetric bonding, progressive
    collateralization, buyer dominance, atomic resolution, immutable evidence,
    no escape hatches). Does the change preserve all six?
-2. **The game-theoretic theorems** in `paper/figaro-mechanism.tex`
-   (Theorems: Two-Party Nash, Minimal Viable Bond Multiplier, Escape-Hatch
-   Weakness, N-Party Nash, Self-Enforcing DAG Honesty).
+2. **The game-theoretic theorems** on the `/papers/asymmetric-bonding`
+   page (Theorems: Two-Party Nash Equilibrium, Minimal Viable Bond
+   Multiplier, Escape-Hatch Weakness, N-Party Nash Equilibrium,
+   Cumulative-Value Reporting Honesty).
 3. **The TLA⁺ invariants** in `formal/FigaroCore.tla` (TokenConservation,
    ContractSolvency, WalletNonNegative, CumulativeIntegrity,
    ActiveCountCorrect, ResolutionAlwaysPossible, TypeOK).
@@ -117,7 +118,7 @@ belongs there, or discarding it entirely if it does not.
 ## Reference Files (Read Before Acting)
 
 - `docs/v5/DESIGN_DECISIONS.md` — 14 false-positive patterns, authoritative
-- `paper/figaro-mechanism.tex` — game-theoretic proofs (mechanism paper)
+- `/papers/asymmetric-bonding` page — game-theoretic proofs (mechanism paper)
 - `docs/v5/VERIFICATION_MAP.md` — invariant → code → test → formal layer
 - `docs/v5/THEORY.md` — derivation of the six properties
 - `CLAUDE.md` — working inventory and naming conventions

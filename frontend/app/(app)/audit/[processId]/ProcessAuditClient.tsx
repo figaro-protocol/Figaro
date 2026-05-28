@@ -15,7 +15,7 @@ import { hexEqual } from "@/lib/shared/evm";
 
 /**
  * Dispute escalation for the process. In the three-layer dispute model
- * (figaro3e: Layer 1 bonding + Layer 2 coordination, then Layer 3 — the
+ * (on-chain-evidence paper: Layer 1 bonding + Layer 2 coordination, then Layer 3 — the
  * evidentiary record exported to an off-chain forum), escalation happens
  * at the end of a process, so the panel lives here, beside the
  * audit-bundle PDF the forum would receive. Process-scoped: one panel per

@@ -1,7 +1,7 @@
 /**
  * Process-jurisdiction recourse resolution.
  *
- * Layer 3 of the three-layer dispute model (figaro3e) is the only
+ * Layer 3 of the three-layer dispute model (see the on-chain-evidence paper) is the only
  * *configured* layer: Layers 1 (bonding) and 2 (peer coordination) are
  * kernel mechanisms, always on. Layer 3 is the off-chain forum, and the
  * parties' agreement NAMES it — the `figaro-arbitration-kleros-v1` and

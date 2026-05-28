@@ -56,7 +56,7 @@ These are not stylistic preferences; each one breaks the project's framing or im
 |---|---|
 | "DeFi" / "decentralized finance" anywhere on the project's surfaces | Figaro is a coordination protocol, not a financial application |
 | "Trading," "yield," "lending," "liquidity," "pools," "investment vehicle" | TradFi vocabulary; Figaro has no fee, no yield, no investment surface |
-| **"RWA" / "real-world asset" framed as tokenized, fractionalized, or on-chain *ownership* of an asset** | That is the DeFi RWA-tokenization narrative — the *opposite* of Figaro's meaning. In Figaro the wallet represents the asset's *participation*; it never tokenizes or re-represents the asset, which stays on the entity's balance sheet at carrying value (`paper/figaro-accounting.tex` §7, lines 838–841). Deliver the asset/wallet/operator concept in plain language; never let it read as asset-tokenization. The bare acronym "RWA" reads as DeFi — prefer the plain description on first-encounter surfaces. |
+| **"RWA" / "real-world asset" framed as tokenized, fractionalized, or on-chain *ownership* of an asset** | That is the DeFi RWA-tokenization narrative — the *opposite* of Figaro's meaning. In Figaro the wallet represents the asset's *participation*; it never tokenizes or re-represents the asset, which stays on the entity's balance sheet at carrying value (`/papers/self-closing-ledger-periods`, §7 treasury composition). Deliver the asset/wallet/operator concept in plain language; never let it read as asset-tokenization. The bare acronym "RWA" reads as DeFi — prefer the plain description on first-encounter surfaces. |
 | "Startup" / "company" / "team" framing | Figaro is a protocol, not a company |
 | "Token launch" / "ICO" / "presale" / "buy FIG" | FIG is retroactive public-goods funding; there is no buy-side token surface |
 | "Kill Uber" / "kill the firm" / "platform-tax destroyer" | Defines Figaro by elimination; the mechanism replaces firms structurally, not as combat |
@@ -145,7 +145,7 @@ For specific concepts:
 
 ### Participant model — asset / wallet / operator
 
-The canonical model for *who participates* in a Figaro process. Source of truth: `paper/figaro-accounting.tex` §7 (`\label{sec:treasury-composition}`). Use it to name participants precisely and to fix the recurring conflations (operator ≠ wallet; a wallet-acting-as-seller ≠ the operator).
+The canonical model for *who participates* in a Figaro process. Source of truth: the `/papers/self-closing-ledger-periods` page, §7 (treasury composition). Use it to name participants precisely and to fix the recurring conflations (operator ≠ wallet; a wallet-acting-as-seller ≠ the operator).
 
 Three layers, kept distinct:
 

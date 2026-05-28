@@ -2,7 +2,7 @@
  * local-commerce-dispute.devnet.spec.ts
  *
  * The dispute variant of the local-commerce scenario — Layer 3 of the
- * three-layer dispute model (figaro3e). Layers 1 (bonding) and 2 (peer
+ * three-layer dispute model (on-chain-evidence paper). Layers 1 (bonding) and 2 (peer
  * coordination) are kernel mechanisms; Layer 3 is the off-chain forum, and
  * the parties' agreement NAMES it. The buyer commits the local-commerce
  * process, then escalates from /audit/[processId] to the forum the

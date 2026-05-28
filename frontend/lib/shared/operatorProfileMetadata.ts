@@ -8,8 +8,8 @@
  * The profile is the stable identity envelope: name, branding/CSS/images,
  * location, accepted-token list (an identity declaration — each token
  * signals which value system the operator coordinates with: legal-system,
- * community, settlement-layer, or value-anchoring; see
- * `paper/figaro3b1.tex` §"Token Denomination as Coordination Signal"),
+ * community, settlement-layer, or value-anchoring; see the
+ * transaction-scoped-institutions paper at `/papers/transaction-scoped-institutions`),
  * default pricing token, assembly bindings, agent endpoints, and the URI
  * of the volatile catalogue document. Item
  * lists live in the catalogue (`OperatorCatalogueMetadata`) so item edits
@@ -132,9 +132,9 @@ export interface OperatorProfileMetadata {
      * value system the operator coordinates with — stablecoins for
      * legal-system alignment, DAO governance tokens for community
      * membership in that DAO, ETH for settlement-layer alignment,
-     * commodity-backed tokens for value anchoring (see
-     * `paper/figaro3b1.tex` §"Token Denomination as Coordination
-     * Signal"). It is not a financial-market position.
+     * commodity-backed tokens for value anchoring (see the
+     * transaction-scoped-institutions paper at
+     * `/papers/transaction-scoped-institutions`). It is not a financial-market position.
      */
     acceptedTokens?: AcceptedTokenMetadata[];
     /**
