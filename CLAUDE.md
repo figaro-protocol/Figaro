@@ -176,7 +176,7 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 
 ### Paper Authorship Discipline
 
-Every paper in `paper/` must stand on its own. The corpus was derived from a single archive paper (`paper/archive/figaro3.tex`) and the derivative-paper artifacts must not survive into preprint. When authoring or revising any paper, audit against all of the following — and surface any drift before declaring the paper done:
+Every paper (now a `/papers/<slug>` page) must stand on its own. The corpus was derived from a single archive paper, retained in git history, and the derivative-paper artifacts must not survive into the published page. When authoring or revising any paper, audit against all of the following — and surface any drift before declaring the paper done:
 
 - **No companion-paper references.** No "in the companion implementation paper", no "developed in the institutional-economics paper", no `\Cref` to sections in other files. If a claim isn't in this paper, it isn't in this paper. Refer to results by their substance — "the escape-hatch theorem", "the bonding equilibrium", "the verification stack" — not by which paper carries them. The rule applies to every paper in the corpus, including synthesis papers; if synthesis is what a paper does, it must do so by re-stating or naming-by-result, not by punting to other papers.
 - **Topic discipline.** A mechanism-design paper contains mechanism design — no Solidity, no DAG, no legal/normative framing, no overlays (interest-bearing bonds, time-varying multipliers, etc.). A kernel-implementation paper doesn't contain economics. An institutional-economics paper doesn't contain Solidity. Match the paper's stated subject and stop there.
@@ -186,7 +186,7 @@ Every paper in `paper/` must stand on its own. The corpus was derived from a sin
 - **Attribution consistency.** Citation key ↔ `\bibitem` author label ↔ acknowledgement language must all agree. If the bibitem credits "Solidity Team", the cite key shouldn't be `buterin2016` and the acknowledgement shouldn't credit Vitalik. Pick one attribution and align all three sites.
 - **No "actors are legally free" framing in mechanism-design papers.** Actors have agency — that's the mechanism-design assumption. Don't dilute it with legality framing or punt to companion labor-law/institutional-economics papers; either the assumption is in scope (and stated as agency) or it's out of scope (and unstated).
 
-When asked to revise a paper, audit against all eight rules and surface drift. The corpus is now web-native (each paper is a `/papers/<slug>` page rendered with server-side KaTeX; no LaTeX remains except `paper/one-pager.tex` and `paper/archive/`). The migration of the mechanism paper to `/papers/asymmetric-bonding` — a combined conformance + truth pass — is the canonical example of this audit applied end-to-end.
+When asked to revise a paper, audit against all eight rules and surface drift. The corpus is now web-native (each paper is a `/papers/<slug>` page rendered with server-side KaTeX; no LaTeX remains in the repo — the archive origin lives in git history). The migration of the mechanism paper to `/papers/asymmetric-bonding` — a combined conformance + truth pass — is the canonical example of this audit applied end-to-end.
 
 ### Test Layers — Separation of Concerns
 
@@ -418,7 +418,7 @@ Four project tools run in Docker, not natively on the host:
 - **IPFS (Kubo).** Pins operator profiles, catalogues, manifests, uploaded media via `lib/shared/ipfsService.ts`. Endpoint `http://127.0.0.1:5001`; image `ipfs/kubo:latest`. Kubo's default CORS needs the dev origin allowlisted + a restart before pinning works.
 - **Mythril.** Symbolic-execution via `scripts/mythril-docker.sh` (image `mythril/myth`). Opportunistic, not in the standard test loop.
 - **GraphQL indexing (subgraph).** `graph-node` + Postgres stack when a subgraph indexer is being exercised. Opportunistic; no subgraph artifacts currently in the repo.
-- **LaTeX → PDF.** `paper/` builds compile via `texlive/texlive` (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citations). No native LaTeX on the host.
+- **LaTeX → PDF.** No in-repo LaTeX targets — the paper corpus is web-native (`/papers/<slug>` pages) and the `paper/` folder was removed (2026-05-28). The `texlive/texlive` image (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citations) remains the way to build any ad-hoc or git-restored `.tex`; no native LaTeX on the host.
 
 **Convention: the agent handles Docker, not the user.** Agent runs `docker run` / `exec` / `compose` / `restart`; user keeps Docker Desktop alive. Caveat: containers started via `run_in_background` may be reaped by the harness — long-lived services (IPFS daemon, graph-node) should be started by the user in their own terminal, same convention as Anvil.
 
