@@ -253,10 +253,10 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
 
         // 1. Register a minimal assembly. `useAssemblyChoices` reads
-        //    AssemblyRegistered events + fetches the manifest JSON, so
+        //    AssemblyRegistered events + fetches the assemblyDoc JSON, so
         //    both must exist on-chain + IPFS for the row to render.
         //    AssemblyDocument needs `name` + `orders[]`; orderless or
-        //    fully empty manifests still render as a choice — what
+        //    fully empty assemblyDocs still render as a choice — what
         //    matters for this test is that the slug is selectable.
         const assemblyDocument = {
             slug: `phase4-c4d-${Date.now()}`,

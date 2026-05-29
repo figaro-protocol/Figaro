@@ -6,7 +6,7 @@
  * variant of `local-commerce`.
  *
  * This spec MIGRATES the assembly off a hand-coded fixture: the seed's
- * `local-commerce-dutch.manifest.json` is now captured from the live
+ * `local-commerce-dutch.assembly-document.json` is now captured from the live
  * designer (FIGARO_CAPTURE_FIXTURES), exactly like `local-commerce` and
  * `direct-sale`. The two-node shape is identical to `scenario-local-commerce`;
  * the only difference is the courier coordination — `dutch-auction` (the
@@ -134,7 +134,7 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
         await confirmBtn.click();
         await expect(page.getByText(/Published\b/i).first()).toBeVisible({ timeout: 60000 });
 
-        // ── On-chain: AssemblyRegistered, then fetch the manifest ─────────
+        // ── On-chain: AssemblyRegistered, then fetch the assemblyDoc ─────────
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const events = await publicClient.getContractEvents({
             address: assemblyRegistry,
@@ -149,7 +149,7 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
 
         // ── Verify the published AssemblyDocument ─────────────────────────
         const cid = metadataURI.slice('ipfs://'.length);
-        const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
+        const assemblyDoc = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
             orders: Array<{ id: string; agreementHash: string }>;
             agreements: Record<string, {
@@ -159,11 +159,11 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
         };
 
         // V5 AssemblyDocument — two orders: root (merchant) + courier sub-order.
-        expect(manifest.slug).toBe(slug);
-        expect(manifest.orders).toHaveLength(2);
-        const [rootOrder, courierOrder] = manifest.orders;
-        const rootAgreement = manifest.agreements[rootOrder.agreementHash];
-        const courierAgreement = manifest.agreements[courierOrder.agreementHash];
+        expect(assemblyDoc.slug).toBe(slug);
+        expect(assemblyDoc.orders).toHaveLength(2);
+        const [rootOrder, courierOrder] = assemblyDoc.orders;
+        const rootAgreement = assemblyDoc.agreements[rootOrder.agreementHash];
+        const courierAgreement = assemblyDoc.agreements[courierOrder.agreementHash];
         expect(rootAgreement?.version).toBe('a1');
         expect(courierAgreement?.version).toBe('a1');
 
@@ -202,12 +202,12 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
         expect(courierTopology?.data.topologyMode).toBe('explicit');
         expect(courierTopology?.data.parentOrderHashes).toEqual([rootOrder.id]);
 
-        // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
+        // Capture this assemblyDoc as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(assemblyDoc, {
             slug: 'local-commerce-dutch',
             name: 'Local Commerce (Dutch auction)',
         });
-        expect(manifest.agreements).toEqual(fixtureAgreements);
+        expect(assemblyDoc.agreements).toEqual(fixtureAgreements);
     });
 });

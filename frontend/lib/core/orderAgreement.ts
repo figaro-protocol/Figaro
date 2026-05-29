@@ -52,7 +52,7 @@ const ALLOWED_COORDINATIONS: ReadonlyArray<string> = ["buyer-assigned", "seller-
 const ALLOWED_HANDOFF_POINTS: ReadonlyArray<string> = ["face-to-face", "dead-drop", "parking-area", "locker"];
 const ALLOWED_PROXIMITY_BANDS: ReadonlyArray<string> = ["zone-wifi", "nearby-ble", "contact-nfc"];
 
-/** Filter a manifest-field array down to known enum values. */
+/** Filter a assemblyDoc-field array down to known enum values. */
 function readAssemblyDocumentArray(
     fields: ClauseFields | undefined,
     key: string,
@@ -236,7 +236,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     }
 
     // Per-role sovereign event-log anchoring. Driven by the Attestations-tab
-    // manifest flags (merchantProcessIncluded / courierProcessIncluded). When
+    // assemblyDoc flags (merchantProcessIncluded / courierProcessIncluded). When
     // delivery is offered in this order's fulfilment, merchant-process is
     // auto-anchored (the drawer enforces the locked-on rule too); when this
     // order is a delivery-spawned courier sub-order, courier-process is

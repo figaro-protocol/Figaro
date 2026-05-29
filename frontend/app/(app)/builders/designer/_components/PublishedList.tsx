@@ -4,12 +4,12 @@
  * PublishedList — renders the connected wallet's published assemblies.
  *
  * Reads from `useAssemblyChoices(address)` which combines the
- * `AssemblyRegistered` event log with lazy manifest enrichment (name,
+ * `AssemblyRegistered` event log with lazy assemblyDoc enrichment (name,
  * order count, clause set). The same hook backs the seller-profile
  * assembly picker, so the two surfaces can't drift on what they show
  * about an assembly.
  *
- * Each row has a Fork button (re-uses the manifest the hook already
+ * Each row has a Fork button (re-uses the assemblyDoc the hook already
  * fetched) and an Inspect link to /view/[slug]. No-wallet, empty, and
  * loading states each render their own message.
  */
@@ -36,7 +36,7 @@ export function PublishedList() {
 
     const handleFork = useCallback(
         async (choice: AssemblyChoice) => {
-            if (choice.state !== "loaded" || !choice.manifest) {
+            if (choice.state !== "loaded" || !choice.assemblyDoc) {
                 window.alert(
                     `Manifest for "${choice.slug}" is not yet available. Wait for it to load (or check the IPFS gateway) before forking.`,
                 );
@@ -44,7 +44,7 @@ export function PublishedList() {
             }
             setForking(choice.slug);
             try {
-                const outcome = forkPublishedAssembly(choice.slug, choice.manifest);
+                const outcome = forkPublishedAssembly(choice.slug, choice.assemblyDoc);
                 if (!outcome) return;
                 router.push(`/builders/designer/edit/${encodeURIComponent(outcome.finalSlug)}`);
             } catch (err) {
@@ -99,7 +99,7 @@ export function PublishedList() {
                             /{choice.slug}
                         </p>
                         {choice.state === "loading" && (
-                            <p className="text-[11px] text-ink-muted mt-1">Loading manifest…</p>
+                            <p className="text-[11px] text-ink-muted mt-1">Loading assemblyDoc…</p>
                         )}
                         {choice.state === "error" && (
                             <p className="text-[11px] text-amber-700 mt-1">

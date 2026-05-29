@@ -56,7 +56,7 @@ export default function LocalCommercePage() {
                     </li>
                     <li className="border-b border-default pb-3">
                         <div className="text-ink-heading font-medium"><code>AttestationCoordinator</code></div>
-                        <p className="text-sm text-ink-muted mt-0.5">Runtime attestation surface for lifecycle, proximity, and GHG events. Every attestation carries a merkle inclusion proof against the signed agreement manifest.</p>
+                        <p className="text-sm text-ink-muted mt-0.5">Runtime attestation surface for lifecycle, proximity, and GHG events. Every attestation carries a merkle inclusion proof against the signed agreement assemblyDoc.</p>
                     </li>
                     <li className="border-b border-default pb-3">
                         <div className="text-ink-heading font-medium"><code>SellerRegistry</code></div>

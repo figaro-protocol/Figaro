@@ -48,7 +48,7 @@ export interface PersistedHandoffArtifacts {
 export interface OrderWithManifest {
     processId: string;
     orderId: string;
-    manifest: string;
+    assemblyDoc: string;
     txHash?: string;
 }
 

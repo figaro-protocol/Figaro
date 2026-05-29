@@ -10,7 +10,7 @@
  * price, which lives in the contributor's OWN catalogue (a public rate, plus
  * an optional rate negotiated with a counterparty). Nothing is copied into the
  * lead's assembly. The lead's own orders are priced from the assembly the lead
- * authored (the manifest figure).
+ * authored (the assemblyDoc figure).
  */
 
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
@@ -20,7 +20,7 @@ import { resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata"
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";
 
-export type AssemblyDocumentOrder = BoundAssembly["manifest"]["orders"][number];
+export type AssemblyDocumentOrder = BoundAssembly["assemblyDoc"]["orders"][number];
 
 /**
  * Topologically order an assembly's non-root orders and resolve each one's
@@ -35,14 +35,14 @@ export type AssemblyDocumentOrder = BoundAssembly["manifest"]["orders"][number];
 export function planSubOrderSellers(
     assembly: BoundAssembly,
 ): Array<{ node: AssemblyDocumentOrder; seller: `0x${string}` | null }> {
-    const { manifest } = assembly;
-    const rootId = manifest.orders[0]?.id;
+    const { assemblyDoc } = assembly;
+    const rootId = assemblyDoc.orders[0]?.id;
     const settled = new Set<string>(rootId ? [rootId] : []);
-    const pending = manifest.orders.filter((o) => o.id !== rootId);
+    const pending = assemblyDoc.orders.filter((o) => o.id !== rootId);
     const ordered: AssemblyDocumentOrder[] = [];
     while (pending.length > 0) {
         const idx = pending.findIndex((o) =>
-            (getTopologyParentOrderHashes(manifest.agreements[o.agreementHash!]) ?? [])
+            (getTopologyParentOrderHashes(assemblyDoc.agreements[o.agreementHash!]) ?? [])
                 .every((p) => settled.has(p)),
         );
         if (idx === -1) {
@@ -54,7 +54,7 @@ export function planSubOrderSellers(
     }
     const cursor = new Map<string, number>();
     return ordered.map((node) => {
-        const agreement = manifest.agreements[node.agreementHash!];
+        const agreement = assemblyDoc.agreements[node.agreementHash!];
         const nodeClauses = (agreement?.sections ?? []).map((s) => s.clause);
         const binding = assembly.counterpartyBindings.find((cb) => nodeClauses.includes(cb.clauseId));
         if (!binding || binding.addresses.length === 0) return { node, seller: null };
@@ -68,13 +68,13 @@ export function planSubOrderSellers(
  * Resolve a sub-order's payment as a bigint.
  *
  * The lead's OWN nodes are priced from the assembly the lead authored (the
- * manifest figure). A contributor's node is priced LIVE from the contributor's
+ * assemblyDoc figure). A contributor's node is priced LIVE from the contributor's
  * own catalogue — the rate negotiated with the lead if one exists, else the
  * public price — the same `resolveCatalogueItemPrice` path the delivery leg
- * uses, minus the picker. Falls back to the manifest figure only if the
+ * uses, minus the picker. Falls back to the assemblyDoc figure only if the
  * contributor publishes no component item.
  *
- * Returns a bigint: the manifest stores payments as decimal-wei strings (JSON
+ * Returns a bigint: the assemblyDoc stores payments as decimal-wei strings (JSON
  * has no bigint), so a bare `cumulative += node.payment` would string-concat
  * (bigint + string), corrupting the cumulative. Coercion happens here.
  */

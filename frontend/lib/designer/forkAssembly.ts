@@ -11,12 +11,12 @@
  *   - Persisting the new draft to localStorage.
  *
  * What the helper does NOT own (caller's responsibility):
- *   - Fetching the manifest (callers may already have it — e.g. the
- *     view page already loaded the manifest to render the canvas).
+ *   - Fetching the assemblyDoc (callers may already have it — e.g. the
+ *     view page already loaded the assemblyDoc to render the canvas).
  *   - Loading-state UI (the two callers shape their `forking` state
  *     differently — slug-keyed vs boolean).
  *   - Router navigation (router lives in component scope).
- *   - Error handling around the manifest fetch.
+ *   - Error handling around the assemblyDoc fetch.
  *
  * Returns the final slug on success (caller navigates to
  * `/builders/designer/edit/${finalSlug}`), or `null` if the user
@@ -32,7 +32,7 @@ import type { AssemblyDocument } from "@/lib/mechanisms/useAssemblyRegistry";
 
 export function forkPublishedAssembly(
     sourceSlug: string,
-    manifest: AssemblyDocument,
+    assemblyDoc: AssemblyDocument,
 ): { finalSlug: string } | null {
     const defaultSlug = uniqueDraftSlug(`${sourceSlug}-fork`);
     const proposed =
@@ -46,7 +46,7 @@ export function forkPublishedAssembly(
     const trimmed = proposed.trim();
     if (!trimmed) return null;
     const finalSlug = uniqueDraftSlug(trimmed);
-    const draft = assemblyDocumentToDraft(manifest, { slug: finalSlug });
+    const draft = assemblyDocumentToDraft(assemblyDoc, { slug: finalSlug });
     saveNamedDraft(draft);
     return { finalSlug };
 }

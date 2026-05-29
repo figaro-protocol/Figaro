@@ -22,7 +22,7 @@ import {
  * `(uint8 eventType, string evidenceUri)`.
  *
  * The merchant-process section must be present in the signed agreement
- * manifest for the on-chain inclusion proof to open. `buildOrderAgreement`
+ * assemblyDoc for the on-chain inclusion proof to open. `buildOrderAgreement`
  * appends it by default whenever a fulfilment section is present (the
  * seller will be acting as a merchant).
  */
@@ -52,7 +52,7 @@ export interface MerchantSignalWithProofInput {
     merchantOrderHash: string;
     /** The courier's order — target for the proximity-proof attestation.
      *  The merchant's role-order is the auth side; the inclusion proof opens
-     *  against the courier's manifest, which carries the proximity-proof clause. */
+     *  against the courier's assemblyDoc, which carries the proximity-proof clause. */
     proximityTargetOrderHash: string;
     /** Merchant-process event paired with the proof — typically `handed-off`,
      *  the lifecycle moment that coincides with the merchant→courier pickup. */
@@ -92,7 +92,7 @@ export function useMerchantProcessActions() {
     /**
      * Cross-witness the merchant→courier pickup. Pairs a proximity-proof
      * attestation (target = courier's order, role = merchant's order — the
-     * inclusion proof opens against the courier's manifest, which already
+     * inclusion proof opens against the courier's assemblyDoc, which already
      * carries the proximity-proof clause) with the merchant's own
      * lifecycle event (typically `handed-off`, target = merchant's order).
      *

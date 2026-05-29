@@ -112,7 +112,7 @@ test.describe('OrderTimelineView seller side (devnet)', () => {
         // buyer's CommitmentPayload carries the agreement and the seller's
         // useCommitmentFlow writes it to localStorage. The viem seed
         // bypasses that path; without this pre-populate, the page surfaces
-        // "Agreement manifest unavailable for 0x... — cannot generate
+        // "Agreement assemblyDoc unavailable for 0x... — cannot generate
         // inclusion proof" and the merchantActions.signal fails before
         // simulate.
         await seedAgreementForWallet(page, agreement);

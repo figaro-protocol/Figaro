@@ -5,12 +5,12 @@
  * `AssemblyRegistry.AssemblyRegistered` events through the standalone
  * viem `publicClient` via `useAssemblyChoices` — the same composition
  * the seller profile and the designer's PublishedList consume. Each
- * row's identity (slug, author, content hash) is on-chain; the manifest
+ * row's identity (slug, author, content hash) is on-chain; the assemblyDoc
  * (name, order count, clauses) fetches lazily from IPFS per row.
  *
  * The spec registers one fresh assembly via viem directly (faster than
  * the UI publish flow and self-contained) with a fake IPFS URI on
- * purpose. The manifest fetch will fail and the row will render in
+ * purpose. The assemblyDoc fetch will fail and the row will render in
  * "error" state — slug-as-name with a "Manifest unavailable" hint —
  * which is still a row keyed on `#assembly-<slug>`. Its existence
  * proves the marketing-tier event read fired and matched.
@@ -102,7 +102,7 @@ test.describe('Assemblies marketing inventory (devnet)', () => {
         // Row id pattern is `#assembly-<slug>` per AssemblyInventory.
         const row = page.locator(`#assembly-${slug}`);
         await expect(row).toBeVisible({ timeout: 15_000 });
-        // Slug appears in the row twice: as the fallback name (manifest
+        // Slug appears in the row twice: as the fallback name (assemblyDoc
         // failed to fetch so `name = event.slug`) and as the monospace
         // code element. Either match counts.
         await expect(row).toContainText(slug);

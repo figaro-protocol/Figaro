@@ -17,7 +17,7 @@ import { COURIER_PROCESS_CLAUSE_KEY, PROXIMITY_PROOF_CLAUSE_KEY } from "@/lib/co
  * `(uint8 eventType, string evidenceUri)`.
  *
  * The courier-process section must be present in the signed agreement
- * manifest for the on-chain inclusion proof to open. (Auto-anchor wiring
+ * assemblyDoc for the on-chain inclusion proof to open. (Auto-anchor wiring
  * for courier sub-orders is the auto-anchor symmetry fix tracked separately
  * — `buildOrderAgreement` today anchors merchant-process unconditionally.)
  */

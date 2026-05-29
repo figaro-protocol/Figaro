@@ -19,7 +19,7 @@
  *  3. **Completed orders** — same as (2) but resolved.
  *
  * Single dedicated page; assembly choice isn't relevant at inbox time
- * (the assembly is encoded in the buyer's commitment manifest).
+ * (the assembly is encoded in the buyer's commitment assemblyDoc).
  */
 
 import Link from "next/link";

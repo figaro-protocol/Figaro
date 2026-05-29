@@ -207,7 +207,7 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
         await confirmBtn.click();
         await expect(page.getByText(/Published\b/i).first()).toBeVisible({ timeout: 60000 });
 
-        // ── On-chain: AssemblyRegistered, then fetch the manifest ──────────
+        // ── On-chain: AssemblyRegistered, then fetch the assemblyDoc ──────────
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const events = await publicClient.getContractEvents({
             address: assemblyRegistry,
@@ -222,7 +222,7 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
 
         // ── Verify the published AssemblyDocument topology ─────────────────
         const cid = metadataURI.slice('ipfs://'.length);
-        const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
+        const assemblyDoc = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
             orders: Array<{ id: string; agreementHash: string }>;
             agreements: Record<string, {
@@ -231,13 +231,13 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
             }>;
         };
 
-        expect(manifest.slug).toBe(slug);
-        expect(manifest.orders).toHaveLength(4);
+        expect(assemblyDoc.slug).toBe(slug);
+        expect(assemblyDoc.orders).toHaveLength(4);
 
         // Per-order topology parents (figaro-topology-v1.parentOrderHashes).
         const parentsByOrder = new Map<string, string[]>();
-        for (const order of manifest.orders) {
-            const ag = manifest.agreements[order.agreementHash];
+        for (const order of assemblyDoc.orders) {
+            const ag = assemblyDoc.agreements[order.agreementHash];
             const topo = ag.sections.find((s) => s.clause === 'figaro-topology-v1');
             parentsByOrder.set(order.id, (topo?.data.parentOrderHashes as string[] | undefined) ?? []);
         }
@@ -258,19 +258,19 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
         // Clause spread composed across the nodes — each runtime-attestable /
         // counterparty-key clause lands on exactly one node.
         const countWith = (clause: string) =>
-            manifest.orders.filter((o) =>
-                manifest.agreements[o.agreementHash].sections.some((s) => s.clause === clause),
+            assemblyDoc.orders.filter((o) =>
+                assemblyDoc.agreements[o.agreementHash].sections.some((s) => s.clause === clause),
             ).length;
         expect(countWith('figaro-merchant-process-v1')).toBe(1); // A — lifecycle
         expect(countWith('figaro-proximity-policy-v1')).toBe(2); // B + D — shared counterparty key
         expect(countWith('figaro-ghg-measurement-v1')).toBe(1);  // C — emissions
 
-        // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
+        // Capture this assemblyDoc as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(assemblyDoc, {
             slug: 'kit-assembly',
             name: 'Kit Assembly',
         });
-        expect(manifest.agreements).toEqual(fixtureAgreements);
+        expect(assemblyDoc.agreements).toEqual(fixtureAgreements);
     });
 });

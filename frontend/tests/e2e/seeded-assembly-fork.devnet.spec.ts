@@ -28,7 +28,7 @@
 import { test, expect } from './devnet-multi-test';
 import { evmRevert, evmSnapshot } from './devnet-helpers';
 
-// The seed registers this slug from scripts/fixtures/direct-sale.manifest.json.
+// The seed registers this slug from scripts/fixtures/direct-sale.assembly-document.json.
 const SEEDED_SLUG = 'direct-sale';
 const SEEDED_NAME = 'Direct Sale';
 
@@ -41,13 +41,13 @@ test.describe('Fork a seeded assembly from /view/[slug] (devnet)', () => {
     test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
-    // On-chain resolve + IPFS manifest fetch + fork hydration + nav.
+    // On-chain resolve + IPFS assemblyDoc fetch + fork hydration + nav.
     test.setTimeout(180_000);
 
     test('views the seeded direct-sale assembly and forks it into an editable draft', async ({ page }) => {
         // ── View the seeded assembly read-only ───────────────────────
         // /view resolves `direct-sale` from the chain: AssemblyRegistered
-        // by slugHash (no author filter) -> IPFS manifest. A fresh browser
+        // by slugHash (no author filter) -> IPFS assemblyDoc. A fresh browser
         // context carries no `direct-sale` localStorage draft, so the
         // on-chain branch is taken.
         await page.goto(
@@ -79,7 +79,7 @@ test.describe('Fork a seeded assembly from /view/[slug] (devnet)', () => {
 
         // The fork hydrated into an editable canvas — not just a URL change.
         // direct-sale is the one-node scenario, so assemblyDocumentToDraft carried
-        // the manifest's single root order through.
+        // the assemblyDoc's single root order through.
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
         await expect(orderNodes).toHaveCount(1, { timeout: 10000 });

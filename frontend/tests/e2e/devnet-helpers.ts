@@ -132,7 +132,7 @@ type CoreCommitment = {
 const seededCommitments = new Map<`0x${string}`, CoreCommitment>();
 const agreementsByHash = new Map<`0x${string}`, Agreement>();
 
-// ── Reference agreement manifests ────────────────────────────────────────
+// ── Reference agreement assemblyDocs ────────────────────────────────────────
 // Phase-4a requires every attestation to carry an inclusion proof against the
 // order's signed `agreementHash`. We commit a minimal agreement containing the
 // clause the seed's attestation will fire under, so the coordinator accepts
@@ -355,7 +355,7 @@ export async function createRootOrder(opts: {
     tokenAddress: `0x${string}`;
     payment: bigint;
     agreementHash?: `0x${string}`;
-    /** Optional signed agreement manifest. When supplied, its merkle root is
+    /** Optional signed agreement assemblyDoc. When supplied, its merkle root is
      *  used as the order's `agreementHash` and is cached so later attestation
      *  helpers can produce inclusion proofs. */
     agreement?: Agreement;
@@ -1016,33 +1016,33 @@ export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: 
 }
 
 /**
- * Capture-or-guard a designer-published assembly manifest as a seed fixture.
+ * Capture-or-guard a designer-published assembly assemblyDoc as a seed fixture.
  *
- * With `FIGARO_CAPTURE_FIXTURES` set, writes the manifest — `slug` and
+ * With `FIGARO_CAPTURE_FIXTURES` set, writes the assemblyDoc — `slug` and
  * `name` normalised to the canonical reference values — to
- * `scripts/fixtures/<slug>.manifest.json`, the data `seed-devnet.mjs`
+ * `scripts/fixtures/<slug>.assembly-document.json`, the data `seed-devnet.mjs`
  * replays. Without it, loads that committed fixture and returns its
  * `agreements` map so the spec can drift-guard the live designer output
- * (`expect(manifest.agreements).toEqual(...)`).
+ * (`expect(assemblyDoc.agreements).toEqual(...)`).
  *
- * `agreements` is the deterministic part of the manifest — per-run
+ * `agreements` is the deterministic part of the assemblyDoc — per-run
  * `processId` / `deadline` live only on `orders` — so it is a stable
  * drift signal: if the designer's clause generation changes, the
  * committed fixture stops matching and must be re-captured.
  */
 export function captureOrGuardAssemblyDocument(
-    manifest: Record<string, unknown> & { agreements: Record<string, unknown> },
+    assemblyDoc: Record<string, unknown> & { agreements: Record<string, unknown> },
     opts: { slug: string; name: string },
 ): Record<string, unknown> {
     const fixturePath = path.resolve(
         __dirname,
-        `../../scripts/fixtures/${opts.slug}.manifest.json`,
+        `../../scripts/fixtures/${opts.slug}.assembly-document.json`,
     );
     if (process.env.FIGARO_CAPTURE_FIXTURES) {
-        const normalized = { ...manifest, slug: opts.slug, name: opts.name };
+        const normalized = { ...assemblyDoc, slug: opts.slug, name: opts.name };
         fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
         fs.writeFileSync(fixturePath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
-        return manifest.agreements;
+        return assemblyDoc.agreements;
     }
     const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as {
         agreements: Record<string, unknown>;

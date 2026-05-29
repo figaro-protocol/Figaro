@@ -11,9 +11,9 @@
  *     the captured `scripts/fixtures/seller-catalogue.json`) and is bound
  *     to the seeded assemblies in seller-side roles.
  *
- * The assembly manifests are NOT authored here — a V5 AssemblyManifest is
+ * The assembly assemblyDocs are NOT authored here — a V5 AssemblyManifest is
  * a designer-canvas snapshot. They are captured fixtures in
- * `scripts/fixtures/<slug>.manifest.json`, produced by the
+ * `scripts/fixtures/<slug>.assembly-document.json`, produced by the
  * scenario-*.devnet.spec.ts authoring walks (run with
  * FIGARO_CAPTURE_FIXTURES=1). This script replays them verbatim; the
  * on-chain contentHash re-derives from the canonical serialization,
@@ -245,18 +245,18 @@ async function main() {
 
     console.log('Assemblies:');
     for (const name of ASSEMBLY_FIXTURES) {
-        const fixturePath = path.resolve(FIXTURE_DIR, `${name}.manifest.json`);
+        const fixturePath = path.resolve(FIXTURE_DIR, `${name}.assembly-document.json`);
         if (!fs.existsSync(fixturePath)) {
             throw new Error(
                 `Missing fixture ${fixturePath} — capture it with ` +
                 `FIGARO_CAPTURE_FIXTURES=1 npx playwright test scenario-${name}.devnet`,
             );
         }
-        const manifest = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
-        const slug = manifest.slug;
+        const assemblyDoc = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+        const slug = assemblyDoc.slug;
         // The pinned bytes and the contentHash both derive from the canonical
-        // serialization, so a consumer re-verifying the manifest matches.
-        const json = canonicalize(manifest);
+        // serialization, so a consumer re-verifying the assemblyDoc matches.
+        const json = canonicalize(assemblyDoc);
         const contentHash = keccak256(toHex(json));
         const metadataURI = await pinJSON(ipfsApiUrl, json);
         try {
@@ -271,7 +271,7 @@ async function main() {
             const hash = await authorClient.writeContract(request);
             await publicClient.waitForTransactionReceipt({ hash });
             console.log(`  ✓ ${slug} — registered (author ${author.address})`);
-            console.log(`      manifest ${metadataURI}`);
+            console.log(`      assemblyDoc ${metadataURI}`);
         } catch (err) {
             if (isAlreadyRegistered(err)) {
                 console.log(`  · ${slug} — already registered, skipped`);

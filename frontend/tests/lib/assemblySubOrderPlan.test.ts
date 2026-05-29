@@ -31,7 +31,7 @@ function agreement(parents: string[], roleClause?: string) {
     };
 }
 
-// payment as decimal-wei STRINGS — the manifest's JSON shape (no bigint).
+// payment as decimal-wei STRINGS — the assemblyDoc's JSON shape (no bigint).
 const assembly = {
     slug: "kit-assembly",
     name: "Kit",
@@ -40,7 +40,7 @@ const assembly = {
         { clauseId: PROX, addresses: [SWIFT, MERCATO] },
         { clauseId: GHG, addresses: [ROSSO] },
     ],
-    manifest: {
+    assemblyDoc: {
         slug: "kit-assembly",
         name: "Kit",
         processId: "0x0",
@@ -85,7 +85,7 @@ const catalogues = [
 ] as unknown as SellerCatalogue[];
 
 const orderById = (id: string): AssemblyDocumentOrder =>
-    assembly.manifest.orders.find((o) => o.id === id)!;
+    assembly.assemblyDoc.orders.find((o) => o.id === id)!;
 const payArgs = (node: AssemblyDocumentOrder, seller: `0x${string}`) => ({
     node, seller, leadAddress: MERCATO, sellerCatalogues: catalogues, tokenDecimals: 18,
 });
@@ -113,11 +113,11 @@ describe("resolveSubOrderPayment", () => {
         expect(resolveSubOrderPayment(payArgs(orderById("B"), SWIFT))).toBe(500000000000000000n);
     });
 
-    it("prices the lead's own node from the manifest figure", () => {
+    it("prices the lead's own node from the assemblyDoc figure", () => {
         expect(resolveSubOrderPayment(payArgs(orderById("D"), MERCATO))).toBe(250000000000000000n);
     });
 
-    it("falls back to the manifest figure when the contributor has no component item", () => {
+    it("falls back to the assemblyDoc figure when the contributor has no component item", () => {
         expect(resolveSubOrderPayment({ ...payArgs(orderById("B"), SWIFT), sellerCatalogues: [] }))
             .toBe(500000000000000000n);
     });

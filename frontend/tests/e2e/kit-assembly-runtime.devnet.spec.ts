@@ -27,7 +27,7 @@
  * redistributed off-ledger.
  *
  * Per-order payments — A's is the product price (1.0); B/C/D come from the
- * assembly manifest (0.5 / 0.5 / 0.25). Each seller NETS its payment across
+ * assembly assemblyDoc (0.5 / 0.5 / 0.25). Each seller NETS its payment across
  * commit (posts 2× cumulative bond) + resolve (recovers bond + payment):
  *   Mercato (A + D) → +1.25 · Swift (B) → +0.5 · Rosso (C) → +0.5.
  *

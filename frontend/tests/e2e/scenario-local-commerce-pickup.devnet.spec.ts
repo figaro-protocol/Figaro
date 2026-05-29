@@ -132,7 +132,7 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
         await confirmBtn.click();
         await expect(page.getByText(/Published\b/i).first()).toBeVisible({ timeout: 60000 });
 
-        // ── On-chain: AssemblyRegistered, then fetch the manifest ──────────
+        // ── On-chain: AssemblyRegistered, then fetch the assemblyDoc ──────────
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const events = await publicClient.getContractEvents({
             address: assemblyRegistry,
@@ -147,7 +147,7 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
 
         // ── Verify the published AssemblyDocument ──────────────────────────
         const cid = metadataURI.slice('ipfs://'.length);
-        const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
+        const assemblyDoc = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
             orders: Array<{ id: string; agreementHash: string }>;
             agreements: Record<string, {
@@ -164,9 +164,9 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
         // the snap-together principle: proximity-policy + proximity-proof are
         // the same blocks the local-commerce courier carries, applied to a
         // 1-node graph.
-        expect(manifest.slug).toBe(slug);
-        expect(manifest.orders).toHaveLength(1);
-        const agreement = manifest.agreements[manifest.orders[0].agreementHash];
+        expect(assemblyDoc.slug).toBe(slug);
+        expect(assemblyDoc.orders).toHaveLength(1);
+        const agreement = assemblyDoc.agreements[assemblyDoc.orders[0].agreementHash];
         expect(agreement?.version).toBe('a1');
         expect(agreement.sections.map((s) => s.clause).sort()).toEqual([
             'figaro-arbitration-kleros-v1',
@@ -189,12 +189,12 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
         const topology = agreement.sections.find((s) => s.clause === 'figaro-topology-v1');
         expect(topology?.data.topologyMode).toBe('root');
 
-        // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
+        // Capture this assemblyDoc as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(assemblyDoc, {
             slug: 'local-commerce-pickup',
             name: 'Local Commerce Pickup',
         });
-        expect(manifest.agreements).toEqual(fixtureAgreements);
+        expect(assemblyDoc.agreements).toEqual(fixtureAgreements);
     });
 });

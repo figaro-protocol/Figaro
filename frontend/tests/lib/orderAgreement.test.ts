@@ -70,7 +70,7 @@ describe("buildOrderAgreement", () => {
         ]);
     });
 
-    it("adds a fulfilment-v2 section and ghg from multi-valued manifest arrays", () => {
+    it("adds a fulfilment-v2 section and ghg from multi-valued assemblyDoc arrays", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,

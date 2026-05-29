@@ -102,7 +102,7 @@ const DEFAULT_NODE_MANIFEST_FIELDS: ClauseFields = {
 
 export function createSyntheticRootOrder(
     session: SyntheticProcessSession,
-    /** Per-root manifest overrides. Merged onto DEFAULT_NODE_MANIFEST_FIELDS.
+    /** Per-root assemblyDoc overrides. Merged onto DEFAULT_NODE_MANIFEST_FIELDS.
      *  Used by `assemblyDocumentToDraft` to seed an IPFS-pinned assembly's kleros +
      *  fulfilment fields into the new draft's root. */
     assemblyDocumentOverrides?: Partial<ClauseFields>,
@@ -150,7 +150,7 @@ export function createSyntheticRootOrder(
 export function createSyntheticSubOrder(
     session: SyntheticProcessSession,
     parent: Order,
-    /** Optional per-sub-order manifest overrides. Merged onto
+    /** Optional per-sub-order assemblyDoc overrides. Merged onto
      *  DEFAULT_NODE_MANIFEST_FIELDS — use this to mark role-specific
      *  flags at creation time (e.g., `courierProcessIncluded: true` for
      *  delivery-spawned courier sub-orders). */
@@ -362,7 +362,7 @@ export function editSyntheticAgreement(
     const existingMethod = deriveFulfilmentMethod(order);
 
     // Fulfilment method is preserved across edits — the user changes it via
-    // the edge pill, not the section editor. If the caller's manifest patch
+    // the edge pill, not the section editor. If the caller's assemblyDoc patch
     // already specifies fulfilmentMethod, that wins.
     const baseFields: ClauseFields = edits.clauseFields ?? {
         origin: "—",
@@ -443,7 +443,7 @@ export function readAgreementFields(
     order: Order,
     suppliedAgreement?: ReturnType<typeof loadAgreement>,
 ): ClauseFields {
-    // Checkout passes the assembly manifest's own inlined agreement so the
+    // Checkout passes the assembly assemblyDoc's own inlined agreement so the
     // clauses are read from the assembly, not the browser's local store.
     const agreement = suppliedAgreement ?? loadAgreement(order.agreementHash);
     const summary = summarizeAgreement(agreement);

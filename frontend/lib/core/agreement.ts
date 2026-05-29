@@ -621,18 +621,18 @@ export function findCleartextSection(
 }
 
 /**
- * Find the first section across an assembly manifest's inlined agreements
- * that matches `clause`. The manifest-shaped sibling of `getSection`, which
- * scopes to a single agreement: a manifest inlines one `Agreement` per
+ * Find the first section across an assembly assemblyDoc's inlined agreements
+ * that matches `clause`. The assemblyDoc-shaped sibling of `getSection`, which
+ * scopes to a single agreement: a assemblyDoc inlines one `Agreement` per
  * order, and a clause an assembly authored — jurisdiction, proximity-policy
  * — may live on any of them. Returns `undefined` when no agreement carries
  * the clause.
  */
 export function readAssemblyClause(
-    manifest: { agreements: Record<string, Agreement> },
+    assemblyDoc: { agreements: Record<string, Agreement> },
     clause: string,
 ): AgreementSection | undefined {
-    for (const agreement of Object.values(manifest.agreements)) {
+    for (const agreement of Object.values(assemblyDoc.agreements)) {
         const section = getSection(agreement, clause);
         if (section) return section;
     }
@@ -641,17 +641,17 @@ export function readAssemblyClause(
 
 /**
  * Read the GHG disclosure standards declared by a specific order's agreement
- * in an assembly manifest. The checkout pipeline reads these and propagates
+ * in an assembly assemblyDoc. The checkout pipeline reads these and propagates
  * them into the per-order commitment via `clauseFields.ghgStandards`, so
  * the committed agreement carries the same disclosure clauses (and their
  * paired measurement clause) the assembly author declared.
  */
 export function readAssemblyOrderGhgStandards(
-    manifest: { agreements: Record<string, Agreement> },
+    assemblyDoc: { agreements: Record<string, Agreement> },
     agreementHash: string | undefined,
 ): GHGDisclosureClauseKey[] {
     if (!agreementHash) return [];
-    const agreement = manifest.agreements[agreementHash];
+    const agreement = assemblyDoc.agreements[agreementHash];
     if (!agreement) return [];
     const allowed = GHG_DISCLOSURE_CLAUSE_KEYS as readonly string[];
     return agreement.sections

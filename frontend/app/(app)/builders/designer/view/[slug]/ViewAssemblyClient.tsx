@@ -7,7 +7,7 @@
  *   1. localStorage draft (loadNamedDraft) — work-in-progress in this
  *      browser.
  *   2. On-chain published assembly — AssemblyRegistered event filtered
- *      by slugHash, then the manifest fetched from IPFS via metadataURI.
+ *      by slugHash, then the assemblyDoc fetched from IPFS via metadataURI.
  *
  * If the slug exists in both places, the draft wins (it's more current
  * by definition; the on-chain one is the prior snapshot). If neither,
@@ -57,7 +57,7 @@ type ResolvedSource =
         kind: "published";
         name: string;
         orders: Order[];
-        manifest: AssemblyDocument;
+        assemblyDoc: AssemblyDocument;
     }
     | { kind: "error"; message: string };
 
@@ -144,9 +144,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     }
                     const log = logs[0];
                     const metadataURI = (log.args.metadataURI ?? "") as string;
-                    const manifest = await fetchAssemblyDocument(metadataURI);
+                    const assemblyDoc = await fetchAssemblyDocument(metadataURI);
                     if (cancelled) return;
-                    if (!manifest) {
+                    if (!assemblyDoc) {
                         setResolved({
                             kind: "error",
                             message:
@@ -154,9 +154,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         });
                         return;
                     }
-                    seedAssemblyDocumentAgreementsToStore(manifest);
-                    const orders = manifest.orders.map(rehydrateOrder);
-                    setResolved({ kind: "published", name: manifest.name, orders, manifest });
+                    seedAssemblyDocumentAgreementsToStore(assemblyDoc);
+                    const orders = assemblyDoc.orders.map(rehydrateOrder);
+                    setResolved({ kind: "published", name: assemblyDoc.name, orders, assemblyDoc });
                     return;
                 } catch (err) {
                     if (cancelled) return;
@@ -214,7 +214,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         if (resolved.kind !== "published") return;
         setForking(true);
         try {
-            const outcome = forkPublishedAssembly(slug, resolved.manifest);
+            const outcome = forkPublishedAssembly(slug, resolved.assemblyDoc);
             if (!outcome) return;
             router.push(`/builders/designer/edit/${encodeURIComponent(outcome.finalSlug)}`);
         } catch (err) {
@@ -263,7 +263,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 <h1 className="text-heading-h2 text-ink-heading">Published.</h1>
                 <p className="text-sm text-ink-body">
                     The slug <code>{receipt.slug}</code> is now anchored on
-                    the AssemblyRegistry. The manifest is pinned to IPFS;
+                    the AssemblyRegistry. The assemblyDoc is pinned to IPFS;
                     the slug binding is irreversible.
                 </p>
                 <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default w-full">
@@ -322,7 +322,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 disabled={confirming}
                 className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
                 data-testid="review-confirm-publish"
-                title="Pin manifest to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
+                title="Pin the assembly document to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
             >
                 {confirming ? "Publishing…" : "Confirm publish — irreversible"}
             </button>
@@ -364,7 +364,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         Review before publish — this action is irreversible.
                     </p>
                     <p className="text-xs text-amber-800 mt-1 max-w-3xl leading-relaxed">
-                        Confirming will pin the assembly manifest to IPFS, lock the
+                        Confirming will pin the assembly assemblyDoc to IPFS, lock the
                         registration deposit, and anchor the slug{" "}
                         <code className="font-mono">/{slug}</code> on-chain. The slug
                         binding is permanent — once registered it cannot be reassigned,

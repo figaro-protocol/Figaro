@@ -5,10 +5,10 @@
  * separation-of-concerns doctrine.
  *
  * Publish flow:
- *   1. Build a full off-chain manifest from the snapshot — topology
+ *   1. Build a full off-chain assemblyDoc from the snapshot — topology
  *      (orders array), per-order agreement bodies (inlined), and prose.
  *   2. Compute the canonical content hash (keccak256 of stable JSON).
- *   3. Pin the manifest to IPFS via DEFAULT_IPFS_SERVICE.
+ *   3. Pin the assemblyDoc to IPFS via DEFAULT_IPFS_SERVICE.
  *   4. Call AssemblyRegistry.registerAssembly(slug, nodeCount,
  *      contentHash, metadataURI). The publish-side check is that
  *      nodeCount fits the per-process gas ceiling, derived at runtime
@@ -60,7 +60,7 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
 // The old `MAX_NODES_PER_ASSEMBLY` export is gone; callers that need
 // the chain-aware cap import `maxOrdersResolvablePerProcess` directly.
 
-/** Off-chain manifest persisted to IPFS. Content-addressed by keccak256
+/** Off-chain assemblyDoc persisted to IPFS. Content-addressed by keccak256
  *  of its canonical JSON serialization (`canonicalize` below). The
  *  on-chain binding stores only contentHash + metadataURI; this object
  *  carries the topology + per-order agreements. */
@@ -76,7 +76,7 @@ export interface AssemblyDocument {
      *  agreement's figaro-topology-v1 section. */
     orders: Order[];
     /** Per-agreementHash, the full agreement document with all clause
-     *  sections. Inlined so the manifest is self-contained — consumers
+     *  sections. Inlined so the assemblyDoc is self-contained — consumers
      *  don't need a separate agreement-store fetch. */
     agreements: Record<string, Agreement>;
 }
@@ -100,8 +100,8 @@ export function getAssemblyRegistry(): `0x${string}` | null {
     return addr as `0x${string}`;
 }
 
-/** Build a self-contained manifest from a DesignSnapshot. Inlines every
- *  order's agreement so the manifest doesn't depend on any external
+/** Build a self-contained assemblyDoc from a DesignSnapshot. Inlines every
+ *  order's agreement so the assemblyDoc doesn't depend on any external
  *  agreement-store state. Throws if any order's agreement is missing
  *  locally. */
 export function buildAssemblyDocument(snapshot: DesignSnapshot): AssemblyDocument {
@@ -132,12 +132,12 @@ export function buildAssemblyDocument(snapshot: DesignSnapshot): AssemblyDocumen
     };
 }
 
-/** Canonicalize the manifest and compute (canonical bytes, content hash). */
-export function serializeAssemblyDocument(manifest: AssemblyDocument): {
+/** Canonicalize the assemblyDoc and compute (canonical bytes, content hash). */
+export function serializeAssemblyDocument(assemblyDoc: AssemblyDocument): {
     json: string;
     contentHash: `0x${string}`;
 } {
-    const json = canonicalize(manifest);
+    const json = canonicalize(assemblyDoc);
     const contentHash = keccak256(toHex(json));
     return { json, contentHash };
 }
@@ -190,7 +190,7 @@ function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
         }
         if (name === "EmptySlug") return new Error("Cannot publish with an empty slug.");
         if (name === "EmptyMetadataURI") return new Error("The IPFS pin returned an empty URI.");
-        if (name === "EmptyContentHash") return new Error("Computed an empty content hash — likely a manifest-builder bug.");
+        if (name === "EmptyContentHash") return new Error("Computed an empty content hash — likely a assemblyDoc-builder bug.");
     }
     return err instanceof Error ? err : new Error(String(err));
 }
@@ -274,10 +274,10 @@ export function useAllPublishedAssemblies() {
 }
 
 /**
- * Fetch the IPFS-pinned manifest at `metadataURI`. Returns the parsed
+ * Fetch the IPFS-pinned assemblyDoc at `metadataURI`. Returns the parsed
  * JSON or null on failure (gateway unreachable, malformed JSON, etc.).
  * The on-chain binding's `contentHash` should match
- * `keccak256(canonicalize(manifest))` — callers that need integrity
+ * `keccak256(canonicalize(assemblyDoc))` — callers that need integrity
  * can verify after fetch.
  */
 export async function fetchAssemblyDocument(
@@ -312,12 +312,12 @@ export function chainIdToNetworkTarget(chainId: number): string {
     }
 }
 
-/** Walk the manifest's inlined agreements and collect the unique set of
+/** Walk the assemblyDoc's inlined agreements and collect the unique set of
  *  clauses anchored across all orders. Sorted alphabetically for stable
  *  display order. */
-export function collectAssemblyClauses(manifest: AssemblyDocument): string[] {
+export function collectAssemblyClauses(assemblyDoc: AssemblyDocument): string[] {
     const set = new Set<string>();
-    for (const agreement of Object.values(manifest.agreements)) {
+    for (const agreement of Object.values(assemblyDoc.agreements)) {
         for (const section of agreement.sections) {
             if (typeof section.clause === "string") set.add(section.clause);
         }
@@ -341,15 +341,15 @@ export function collectAssemblyClauses(manifest: AssemblyDocument): string[] {
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the seller's profile. */
-export function requiredCounterpartyClauses(manifest: AssemblyDocument): string[] {
+export function requiredCounterpartyClauses(assemblyDoc: AssemblyDocument): string[] {
     const COUNTERPARTY_PROCESS_CLAUSES: ReadonlySet<string> = new Set([
         "figaro-courier-process-v1",
     ]);
 
     const agreementByOrderId = new Map<string, Agreement>();
-    for (const order of manifest.orders) {
+    for (const order of assemblyDoc.orders) {
         if (!order.agreementHash) continue;
-        const agreement = manifest.agreements[order.agreementHash];
+        const agreement = assemblyDoc.agreements[order.agreementHash];
         if (agreement) agreementByOrderId.set(order.id, agreement);
     }
 
@@ -370,9 +370,9 @@ export function requiredCounterpartyClauses(manifest: AssemblyDocument): string[
     }
 
     const clauses = new Set<string>();
-    for (const order of manifest.orders) {
+    for (const order of assemblyDoc.orders) {
         if (!order.agreementHash) continue;
-        const agreement = manifest.agreements[order.agreementHash];
+        const agreement = assemblyDoc.agreements[order.agreementHash];
         if (!agreement) continue;
 
         const parents = parentOrderIds(agreement);
@@ -405,15 +405,15 @@ export function formatAssemblyClauseList(clauses: readonly string[]): string {
 }
 
 /**
- * A published assembly enriched with manifest-derived fields, suitable
+ * A published assembly enriched with assemblyDoc-derived fields, suitable
  * for surfacing to a user as a selectable / inspectable choice.
  *
  * Manifest fetch is lazy per-row; `state` tracks the lifecycle. While
  * `state === "loading"`, `name` falls back to `slug` so the UI can
  * render the row immediately. When `state === "loaded"`, all
- * manifest-derived fields are populated.
+ * assemblyDoc-derived fields are populated.
  */
-/** Per-assembly manifest fetch state: requested, succeeded, or failed. */
+/** Per-assembly assemblyDoc fetch state: requested, succeeded, or failed. */
 export type AssemblyDocumentFetchState = "loading" | "loaded" | "error";
 
 export interface AssemblyChoice {
@@ -424,23 +424,23 @@ export interface AssemblyChoice {
     blockNumber: bigint;
     networkTargets: readonly string[];
     state: AssemblyDocumentFetchState;
-    /** Display name from the manifest; falls back to `slug` until loaded. */
+    /** Display name from the assemblyDoc; falls back to `slug` until loaded. */
     name: string;
     /** Available when state === "loaded". */
     orderCount: number | null;
     /** Available when state === "loaded". Sorted, deduped clauseIds. */
     clauses: readonly string[] | null;
-    /** The full manifest when state === "loaded". Avoids re-fetching from
+    /** The full assemblyDoc when state === "loaded". Avoids re-fetching from
      *  consumers that need it (e.g. fork). */
-    manifest: AssemblyDocument | null;
+    assemblyDoc: AssemblyDocument | null;
 }
 
 /**
  * Lists every published assembly (optionally filtered to one author)
- * enriched with manifest data — name, order count, clause set.
+ * enriched with assemblyDoc data — name, order count, clause set.
  *
  * Composes `usePublishedAssemblies` (event log) with a lazy per-row
- * manifest fetch. Both `PublishedList` (designer index) and the
+ * assemblyDoc fetch. Both `PublishedList` (designer index) and the
  * seller-profile assembly picker consume this — keeping one fetch
  * strategy and one enriched shape means they can't drift apart.
  */
@@ -454,7 +454,7 @@ export function useAssemblyChoices(
     // — and undefined on the marketing tier where no provider is mounted.
     const chainId = activeChain.id;
     const [assemblyDocumentState, setAssemblyDocumentState] = useState<
-        Map<string, { state: AssemblyDocumentFetchState; manifest: AssemblyDocument | null }>
+        Map<string, { state: AssemblyDocumentFetchState; assemblyDoc: AssemblyDocument | null }>
     >(new Map());
     /** Hashes whose fetch has already been kicked off. A ref (not state)
      *  because we want to guard against double-fetch without retriggering
@@ -468,18 +468,18 @@ export function useAssemblyChoices(
             inFlightRef.current.add(event.contentHash);
             setAssemblyDocumentState((prev) => {
                 const next = new Map(prev);
-                next.set(event.contentHash, { state: "loading", manifest: null });
+                next.set(event.contentHash, { state: "loading", assemblyDoc: null });
                 return next;
             });
             fetchAssemblyDocument(event.metadataURI).then(
-                (manifest) => {
+                (assemblyDoc) => {
                     setAssemblyDocumentState((prev) => {
                         const next = new Map(prev);
                         next.set(
                             event.contentHash,
-                            manifest
-                                ? { state: "loaded", manifest }
-                                : { state: "error", manifest: null },
+                            assemblyDoc
+                                ? { state: "loaded", assemblyDoc }
+                                : { state: "error", assemblyDoc: null },
                         );
                         return next;
                     });
@@ -487,7 +487,7 @@ export function useAssemblyChoices(
                 () => {
                     setAssemblyDocumentState((prev) => {
                         const next = new Map(prev);
-                        next.set(event.contentHash, { state: "error", manifest: null });
+                        next.set(event.contentHash, { state: "error", assemblyDoc: null });
                         return next;
                     });
                 },
@@ -508,7 +508,7 @@ export function useAssemblyChoices(
         return events.map((event) => {
             const entry = assemblyDocumentState.get(event.contentHash);
             const state = entry?.state ?? "loading";
-            const manifest = entry?.manifest ?? null;
+            const assemblyDoc = entry?.assemblyDoc ?? null;
             return {
                 slug: event.slug,
                 author: event.author,
@@ -517,22 +517,22 @@ export function useAssemblyChoices(
                 blockNumber: event.blockNumber,
                 networkTargets: [networkTarget],
                 state,
-                name: manifest?.name ?? event.slug,
-                orderCount: manifest ? manifest.orders.length : null,
-                clauses: manifest ? collectAssemblyClauses(manifest) : null,
-                manifest,
+                name: assemblyDoc?.name ?? event.slug,
+                orderCount: assemblyDoc ? assemblyDoc.orders.length : null,
+                clauses: assemblyDoc ? collectAssemblyClauses(assemblyDoc) : null,
+                assemblyDoc,
             };
         });
     }, [events, assemblyDocumentState, chainId]);
     return { data, isLoading, refetch };
 }
 
-/** A seller's on-chain bound assembly, manifest resolved. */
+/** A seller's on-chain bound assembly, assemblyDoc resolved. */
 export interface BoundAssembly {
     slug: string;
-    /** Display name from the manifest; falls back to the slug. */
+    /** Display name from the assemblyDoc; falls back to the slug. */
     name: string;
-    manifest: AssemblyDocument;
+    assemblyDoc: AssemblyDocument;
     /** Canonical fulfilment method of the root order — the buyer's
      *  selection when this assembly is picked. `null` when the root
      *  fulfilment clause is absent or malformed. */
@@ -545,7 +545,7 @@ export interface BoundAssembly {
 }
 
 export interface SellerBoundAssemblies {
-    /** The seller's on-chain bound assemblies, manifests resolved —
+    /** The seller's on-chain bound assemblies, assemblyDocs resolved —
      *  the buyer-facing choice set at checkout. Each bound assembly is
      *  one option the seller offers; the buyer picks one. */
     assemblies: BoundAssembly[];
@@ -553,23 +553,23 @@ export interface SellerBoundAssemblies {
      *  assemblies. Derived from `assemblies` — kept for callers that
      *  only need the flat modality set. */
     modalities: string[];
-    /** True while either the seller-profile or the manifest fetches are in flight. */
+    /** True while either the seller-profile or the assemblyDoc fetches are in flight. */
     isLoading: boolean;
     /** True when at least one of the seller's bindings matched a published assembly. */
     hasOnChainBinding: boolean;
 }
 
 /** Extract the fulfilment shape (modalities + coordinations) from a
- *  manifest's root order agreement. The root order is the first order in
+ *  assemblyDoc's root order agreement. The root order is the first order in
  *  the topology — if a consumer needs sub-order fulfilment, they walk the
  *  orders array themselves. */
 function extractRootFulfilment(
-    manifest: AssemblyDocument,
+    assemblyDoc: AssemblyDocument,
 ): { modalities: string[]; coordinations: string[] } {
     const empty = { modalities: [], coordinations: [] };
-    const rootOrder = manifest.orders[0];
+    const rootOrder = assemblyDoc.orders[0];
     if (!rootOrder?.agreementHash) return empty;
-    const agreement = manifest.agreements[rootOrder.agreementHash];
+    const agreement = assemblyDoc.agreements[rootOrder.agreementHash];
     if (!agreement) return empty;
     const fulfilmentSection = agreement.sections.find(
         (s: { clause: string }) => s.clause === FULFILMENT_V2_CLAUSE_KEY,
@@ -587,7 +587,7 @@ function extractRootFulfilment(
  * Resolves a seller's on-chain bound assemblies into the buyer-facing
  * choice set. Reads the seller's profile (SellerRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with
- * the published assembly events, and fetches each matched manifest.
+ * the published assembly events, and fetches each matched assemblyDoc.
  *
  * When `hasOnChainBinding` is true, `assemblies` is the authoritative
  * buyer-facing choice set — the buyer picks one assembly at checkout —
@@ -649,17 +649,17 @@ export function useSellerBoundAssemblies(
                     return;
                 }
 
-                const manifests = await Promise.all(
+                const assemblyDocs = await Promise.all(
                     matchedEvents.map((e) => fetchAssemblyDocument(e.metadataURI)),
                 );
                 if (cancelled) return;
 
-                // matchedEvents and manifests are index-aligned (Promise.all
+                // matchedEvents and assemblyDocs are index-aligned (Promise.all
                 // over a .map preserves order). Pair them into BoundAssembly,
-                // dropping any manifest that failed to fetch.
+                // dropping any assemblyDoc that failed to fetch.
                 const assemblies: BoundAssembly[] = [];
                 const modalitySet = new Set<string>();
-                manifests.forEach((m, i) => {
+                assemblyDocs.forEach((m, i) => {
                     if (!m) return;
                     const slug = matchedEvents[i].slug;
                     const { modalities, coordinations } = extractRootFulfilment(m);
@@ -669,7 +669,7 @@ export function useSellerBoundAssemblies(
                     assemblies.push({
                         slug,
                         name: m.name || slug,
-                        manifest: m,
+                        assemblyDoc: m,
                         fulfilmentMethod: deriveCanonicalFulfilmentMethod(modalities, coordinations),
                         counterpartyBindings: binding?.counterpartyBindings ?? [],
                     });
@@ -706,7 +706,7 @@ export function usePublishAssembly() {
         useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-    /** Build a manifest from the snapshot, pin to IPFS, fetch the
+    /** Build a assemblyDoc from the snapshot, pin to IPFS, fetch the
      *  registry's deposit amount, simulate to catch reverts (slug
      *  collision, wrong deposit) BEFORE opening the wallet, send the
      *  transaction, then wait for the receipt and verify status is
@@ -737,8 +737,8 @@ export function usePublishAssembly() {
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "registrationDeposit",
         });
-        const manifest = buildAssemblyDocument(snapshot);
-        const { json, contentHash } = serializeAssemblyDocument(manifest);
+        const assemblyDoc = buildAssemblyDocument(snapshot);
+        const { json, contentHash } = serializeAssemblyDocument(assemblyDoc);
         const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
 
         // Simulate before opening the wallet — catches slug collision /
@@ -749,19 +749,19 @@ export function usePublishAssembly() {
                 address: registry,
                 abi: ASSEMBLY_REGISTRY_ABI,
                 functionName: "registerAssembly",
-                args: [manifest.slug, contentHash, ipfs.uri],
+                args: [assemblyDoc.slug, contentHash, ipfs.uri],
                 value: deposit,
                 account: address,
             });
         } catch (err) {
-            throw translatePublishRevert(err, manifest.slug);
+            throw translatePublishRevert(err, assemblyDoc.slug);
         }
 
         const txHash = await writeContractAsync({
             address: registry,
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "registerAssembly",
-            args: [manifest.slug, contentHash, ipfs.uri],
+            args: [assemblyDoc.slug, contentHash, ipfs.uri],
             value: deposit,
         });
 

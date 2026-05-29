@@ -168,11 +168,11 @@ export async function waitForReactHydration(
 
 
 
-function decodeMockAssemblyDocumentText(manifest: string | undefined): string | null {
-    if (!manifest || !manifest.startsWith('0x') || manifest.length <= 2) return null;
+function decodeMockAssemblyDocumentText(assemblyDoc: string | undefined): string | null {
+    if (!assemblyDoc || !assemblyDoc.startsWith('0x') || assemblyDoc.length <= 2) return null;
 
     try {
-        return Buffer.from(manifest.slice(2), 'hex').toString('utf8').replace(/\0+$/g, '').trim() || null;
+        return Buffer.from(assemblyDoc.slice(2), 'hex').toString('utf8').replace(/\0+$/g, '').trim() || null;
     } catch {
         return null;
     }
@@ -199,14 +199,14 @@ function parseVolumeToMl(value: string | undefined): number {
     return Math.round(numeric);
 }
 
-function parseMockClauseFields(manifest: string | undefined): {
+function parseMockClauseFields(assemblyDoc: string | undefined): {
     origin?: string;
     destination?: string;
     massGrams?: number;
     volumeMl?: number;
     classOfService?: string;
 } | null {
-    const decoded = decodeMockAssemblyDocumentText(manifest);
+    const decoded = decodeMockAssemblyDocumentText(assemblyDoc);
     if (!decoded) return null;
 
     if (!decoded.includes(':')) {

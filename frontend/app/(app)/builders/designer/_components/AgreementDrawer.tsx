@@ -15,7 +15,7 @@
  * populated agreement sections lives in `AgreementPreviewModal.tsx` and
  * `lib/audit/`.
  *
- * Persistence: every manifest-field change rebuilds the agreement
+ * Persistence: every assemblyDoc-field change rebuilds the agreement
  * (`editSyntheticAgreement` → `buildOrderAgreement`) and updates the
  * order's `agreementHash`. Inclusion is therefore cryptographically real.
  *
@@ -78,7 +78,7 @@ const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
 ];
 
 /**
- * Per-clause sentinel manifest fields. Toggling a clause "Included"
+ * Per-clause sentinel assemblyDoc fields. Toggling a clause "Included"
  * applies these values; toggling "Not included" deletes them.
  *
  * Sentinels are chosen so the encoder (`@figaro/core/clauses`) emits a
@@ -89,7 +89,7 @@ const CLAUSE_SENTINELS: Record<string, Record<string, string>> = {
     // figaro-geo-v2 requires all five fields. Origin / destination get
     // minimum-length geohashes. Mass / volume default to 1 (the smallest
     // value the v2 validator accepts; 0 reverts). Class defaults to "S"
-    // (Standard). `clauseFieldsToGeoSection` reads these manifest keys
+    // (Standard). `clauseFieldsToGeoSection` reads these assemblyDoc keys
     // and produces an encoder-valid section. Real values flow in at
     // commit-time from the buyer's runtime UI.
     [GEO_CLAUSE_KEY]: { origin: "0", destination: "0", mass: "1g", volume: "1ml", class_: "S" },
@@ -113,7 +113,7 @@ function isFieldFilled(fields: ClauseFields, key: string): boolean {
     return true;
 }
 
-/** Geo clause is "included" when its required fields are set in the manifest. */
+/** Geo clause is "included" when its required fields are set in the assemblyDoc. */
 function isClauseIncluded(clauseId: string, fields: ClauseFields): boolean {
     if (clauseId === GEO_CLAUSE_KEY) {
         return isFieldFilled(fields, "origin") && isFieldFilled(fields, "destination");
@@ -135,7 +135,7 @@ interface Props {
     /** True when the parent of the currently-selected sub-order has Delivery
      *  in its Fulfilment article. Drives the Attestations tab's
      *  courier-process lock-on rule when editing a courier sub-order — the
-     *  drawer cannot see the parent's manifest directly, so the page is
+     *  drawer cannot see the parent's assemblyDoc directly, so the page is
      *  expected to compute and pass this. False / undefined when editing a
      *  root order (or any sub-order whose parent has no delivery). */
     parentDeliveryActive?: boolean;
@@ -354,7 +354,7 @@ export function AgreementDrawer({
         }
         // Delivery → merchant-process auto-included on this (merchant) order.
         // The courier sub-order is spawned by the page handler with
-        // courierProcessIncluded already set on its manifest.
+        // courierProcessIncluded already set on its assemblyDoc.
         if (becomingDelivery) {
             out.merchantProcessIncluded = true;
         }
@@ -368,7 +368,7 @@ export function AgreementDrawer({
         commitFields(out);
     }
 
-    /** Per-role process-log toggles. Each writes a boolean manifest field
+    /** Per-role process-log toggles. Each writes a boolean assemblyDoc field
      *  that buildOrderAgreement reads to decide whether to anchor the
      *  matching figaro-merchant-process-v1 / figaro-courier-process-v1
      *  clause in this order's agreement. Sentinel-style — written when on,

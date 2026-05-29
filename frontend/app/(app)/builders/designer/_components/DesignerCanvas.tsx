@@ -555,7 +555,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     disabled={publishInFlight || hasPublished || !nameValid}
                     data-testid="designer-publish"
                     className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title={nameDisabledTitle ?? "Pin manifest to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."}
+                    title={nameDisabledTitle ?? "Pin the assembly document to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."}
                 >
                     {publishInFlight ? "Publishing…" : hasPublished ? "Published" : "Publish"}
                 </button>

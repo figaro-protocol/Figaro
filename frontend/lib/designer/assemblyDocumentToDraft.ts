@@ -1,11 +1,11 @@
 /**
  * assemblyDocumentToDraft — hydrates a `DesignSnapshot` from an IPFS-pinned
  * `AssemblyDocument`. Powers the "Fork" button on `PublishedList`:
- * a published assembly's manifest is fetched, this helper turns it
+ * a published assembly's assemblyDoc is fetched, this helper turns it
  * into a localStorage draft under a new slug, and the canvas opens
  * at /builders/designer/edit/<new-slug>.
  *
- * The new manifest format is self-contained — it carries the full
+ * The new assemblyDoc format is self-contained — it carries the full
  * topology (orders array) and inlines every order's agreement body.
  * Hydration is therefore mostly a straight copy: assign a new slug,
  * deserialize bigint fields, re-save the inlined agreements into the
@@ -35,26 +35,26 @@ export function rehydrateOrder(raw: Order): Order {
 
 /** Re-save every inlined agreement into the local agreement store so
  *  downstream `loadAgreement(hash)` calls resolve to the bodies the
- *  manifest carried. Used by `assemblyDocumentToDraft` (fork path) and by the
+ *  assemblyDoc carried. Used by `assemblyDocumentToDraft` (fork path) and by the
  *  `/view` on-chain resolver (read-only inspect / publish review). */
-export function seedAssemblyDocumentAgreementsToStore(manifest: AssemblyDocument): void {
-    for (const agreement of Object.values(manifest.agreements)) {
+export function seedAssemblyDocumentAgreementsToStore(assemblyDoc: AssemblyDocument): void {
+    for (const agreement of Object.values(assemblyDoc.agreements)) {
         saveAgreement(agreement);
     }
 }
 
 export function assemblyDocumentToDraft(
-    manifest: AssemblyDocument,
+    assemblyDoc: AssemblyDocument,
     options: { slug: string; name?: string },
 ): DesignSnapshot {
-    seedAssemblyDocumentAgreementsToStore(manifest);
+    seedAssemblyDocumentAgreementsToStore(assemblyDoc);
     return {
         slug: options.slug,
-        name: options.name ?? `Fork of ${manifest.name}`,
-        processId: manifest.processId,
-        nextOrderIndex: manifest.nextOrderIndex,
-        nextSellerIndex: manifest.nextSellerIndex,
-        orders: manifest.orders.map(rehydrateOrder),
+        name: options.name ?? `Fork of ${assemblyDoc.name}`,
+        processId: assemblyDoc.processId,
+        nextOrderIndex: assemblyDoc.nextOrderIndex,
+        nextSellerIndex: assemblyDoc.nextSellerIndex,
+        orders: assemblyDoc.orders.map(rehydrateOrder),
         createdAt: Date.now(),
         updatedAt: Date.now(),
     };

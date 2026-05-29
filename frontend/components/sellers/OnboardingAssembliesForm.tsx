@@ -23,7 +23,7 @@ import {
  * assemblies they participate in. Each selected assembly becomes an
  * `AssemblyBindingRecord` on `state.assemblies`.
  *
- * Per-binding counterparty editing: assemblies whose manifest contains
+ * Per-binding counterparty editing: assemblies whose assemblyDoc contains
  * a non-root order with a per-role process clause (e.g. a courier
  * sub-order with `figaro-courier-process-v1`) require the seller to
  * designate at least one wallet for that role. The picker surfaces an
@@ -195,8 +195,8 @@ export function OnboardingAssembliesForm({
                 {choices.map((choice) => {
                     const isSelected = selected.has(choice.slug);
                     const requiredClauses =
-                        choice.state === "loaded" && choice.manifest
-                            ? requiredCounterpartyClauses(choice.manifest)
+                        choice.state === "loaded" && choice.assemblyDoc
+                            ? requiredCounterpartyClauses(choice.assemblyDoc)
                             : [];
                     const counterparties = counterpartiesBySlug.get(choice.slug) ?? [];
                     return (
@@ -223,7 +223,7 @@ export function OnboardingAssembliesForm({
                                             </code>
                                         </div>
                                         {choice.state === "loading" && (
-                                            <p className="text-[11px] text-ink-faint">Loading manifest…</p>
+                                            <p className="text-[11px] text-ink-faint">Loading assemblyDoc…</p>
                                         )}
                                         {choice.state === "error" && (
                                             <p className="text-[11px] text-amber-700">

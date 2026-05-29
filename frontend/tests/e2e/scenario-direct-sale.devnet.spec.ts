@@ -4,7 +4,7 @@
  * Authors the `direct-sale` reference assembly through the real designer
  * canvas and publishes it on-chain — the canonical V5 authoring path
  * (designer DesignSnapshot -> buildAssemblyDocument -> AssemblyRegistry).
- * No hand-authored manifest: the canvas produces the AssemblyDocument, so
+ * No hand-authored assemblyDoc: the canvas produces the AssemblyDocument, so
  * its shape is correct by construction.
  *
  * direct-sale is the one-node consume-onsite scenario — a single root
@@ -152,7 +152,7 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
 
         // ── Verify the published AssemblyDocument ───────────────────────
         const cid = metadataURI.slice('ipfs://'.length);
-        const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
+        const assemblyDoc = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
             orders: Array<{ agreementHash: string }>;
             agreements: Record<string, {
@@ -162,9 +162,9 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         };
 
         // V5 AssemblyDocument — one root order, one agreement.
-        expect(manifest.slug).toBe(slug);
-        expect(manifest.orders).toHaveLength(1);
-        const agreement = manifest.agreements[manifest.orders[0].agreementHash];
+        expect(assemblyDoc.slug).toBe(slug);
+        expect(assemblyDoc.orders).toHaveLength(1);
+        const agreement = assemblyDoc.agreements[assemblyDoc.orders[0].agreementHash];
         expect(agreement?.version).toBe('a1');
 
         // direct-sale's clause set — a consume-onsite root order with handoff
@@ -196,12 +196,12 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         const topology = agreement.sections.find((s) => s.clause === 'figaro-topology-v1');
         expect(topology?.data.topologyMode).toBe('root');
 
-        // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
+        // Capture this assemblyDoc as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(assemblyDoc, {
             slug: 'direct-sale',
             name: 'Direct Sale',
         });
-        expect(manifest.agreements).toEqual(fixtureAgreements);
+        expect(assemblyDoc.agreements).toEqual(fixtureAgreements);
     });
 });

@@ -2,8 +2,8 @@
 import { ZERO_BYTES32, bytesToHex } from "@/lib/shared/evm";
 
 /**
- * Structural type for per-order manifest content carried in the agreement.
- * The on-chain `bytes manifest` codec was retired (no consumer); this type
+ * Structural type for per-order assemblyDoc content carried in the agreement.
+ * The on-chain `bytes assemblyDoc` codec was retired (no consumer); this type
  * survives as the contract between `buildOrderAgreement` and its callers,
  * who project it into the agreement object directly.
  */

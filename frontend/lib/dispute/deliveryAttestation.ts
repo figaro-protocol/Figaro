@@ -99,7 +99,7 @@ export interface GeohashMatchAttestation {
     processId: string;
     /** Fulfiller's GPS-derived geohash (precision 6–8). */
     fulfillerGeohash: string;
-    /** Order's dropoff geohash from the manifest. */
+    /** Order's dropoff geohash from the assemblyDoc. */
     orderDropoffGeohash: string;
     /** Geohash precision used for comparison. */
     precision: number;

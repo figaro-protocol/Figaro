@@ -149,7 +149,7 @@ test.describe('Pickup runtime — buyer + merchant both witness the handoff (dev
         // Mercato General's array of bound assemblies now includes
         // local-commerce-pickup; the binding-driven path surfaces "Pickup"
         // alongside the other four. Selecting it loads the pickup
-        // assembly's manifest, which carries proximity-policy on the root
+        // assembly's assemblyDoc, which carries proximity-policy on the root
         // — and SellerDetailView propagates that into clauseFields so
         // the committed root agreement also carries proximity-policy.
         await expect(page.getByTestId('option-fulfilment-pickup')).toHaveCount(1, { timeout: 20000 });

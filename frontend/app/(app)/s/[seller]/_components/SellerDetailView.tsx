@@ -84,16 +84,16 @@ const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
  * Extract the dispute-resolution clauses an assembly authored —
  * `figaro-arbitration-kleros-v1` (decentralized ODR layer) and/or
  * `figaro-applicable-law-v1` (state / ADR recourse layer) — as the
- * manifest fields `buildOrderAgreement` re-emits into the committed order's
+ * assemblyDoc fields `buildOrderAgreement` re-emits into the committed order's
  * agreement. Without these the committed order names no off-chain forum and
  * the dispute surface has nothing to drive. Returns `{}` for an assembly
  * with no dispute-resolution clauses.
  */
 function assemblyJurisdictionFields(
-    manifest: { agreements: Record<string, Agreement> },
+    assemblyDoc: { agreements: Record<string, Agreement> },
 ): Record<string, string> {
     const out: Record<string, string> = {};
-    const kleros = readAssemblyClause(manifest, ARBITRATION_KLEROS_CLAUSE_KEY);
+    const kleros = readAssemblyClause(assemblyDoc, ARBITRATION_KLEROS_CLAUSE_KEY);
     if (kleros) {
         for (const key of ["klerosCourt", "klerosMinJurors"]) {
             const v = kleros.data[key];
@@ -101,7 +101,7 @@ function assemblyJurisdictionFields(
             else if (typeof v === "number") out[key] = String(v);
         }
     }
-    const law = readAssemblyClause(manifest, APPLICABLE_LAW_CLAUSE_KEY);
+    const law = readAssemblyClause(assemblyDoc, APPLICABLE_LAW_CLAUSE_KEY);
     if (law) {
         for (const key of ["applicableLaw", "forum", "language"]) {
             const v = law.data[key];
@@ -403,8 +403,8 @@ export function SellerDetailView({ sellerAddress }: Props) {
     // topological sort — negligible per render.
     const kitBreakdown = ((): { rows: Array<{ name: string; payment: bigint }>; total: bigint } | null => {
         if (!cartProductAssemblySlug) return null;
-        const assembly = boundAssemblies.find((a) => a.manifest.slug === cartProductAssemblySlug);
-        if (!assembly || assembly.manifest.orders.length <= 1) return null;
+        const assembly = boundAssemblies.find((a) => a.assemblyDoc.slug === cartProductAssemblySlug);
+        if (!assembly || assembly.assemblyDoc.orders.length <= 1) return null;
         const lead = sellerCatalogue.address as `0x${string}`;
         const nameOf = (addr: `0x${string}`) =>
             sellerCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
@@ -428,7 +428,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
 
     // Sum mass + volume across the cart (in metric — storage shape). Each
     // line aggregates as `perItem * quantity`. Display formats to the
-    // catalogue's unitSystem at render time; the commit-time manifest
+    // catalogue's unitSystem at render time; the commit-time assemblyDoc
     // sends the metric numbers directly.
     const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
     const cartMassGrams = cartItems.reduce((sum, cartItem) => {
@@ -485,9 +485,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
         // (e.g. local-commerce) is selected by fulfilment mode. The kernel sees
         // a linear commit chain; the parent edges are off-chain topology.
         const pickedAssembly = productAssemblySlug
-            ? boundAssemblies.find((a) => a.manifest.slug === productAssemblySlug)
+            ? boundAssemblies.find((a) => a.assemblyDoc.slug === productAssemblySlug)
             : boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
-        const isMultiOrder = !!pickedAssembly && pickedAssembly.manifest.orders.length > 1;
+        const isMultiOrder = !!pickedAssembly && pickedAssembly.assemblyDoc.orders.length > 1;
         try {
             setCheckoutError(null);
             const prepared = await prepareOrderCommitment({
@@ -523,10 +523,10 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     // agreement — same shape as the proximityBands per-order
                     // IIFE below — so any assembly that authors the clause
                     // gets it propagated, not just delivery-modality ones.
-                    ...(pickedAssembly?.manifest.orders[0]?.agreementHash
+                    ...(pickedAssembly?.assemblyDoc.orders[0]?.agreementHash
                         ? (() => {
-                            const rootAgreement = pickedAssembly.manifest.agreements[
-                                pickedAssembly.manifest.orders[0].agreementHash
+                            const rootAgreement = pickedAssembly.assemblyDoc.agreements[
+                                pickedAssembly.assemblyDoc.orders[0].agreementHash
                             ] as Agreement | undefined;
                             const hasMerchantProcess = !!rootAgreement?.sections.find(
                                 (s) => s.clause === MERCHANT_PROCESS_CLAUSE_KEY,
@@ -537,17 +537,17 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     // The off-chain dispute forum the assembly authored — the
                     // committed order carries the jurisdiction clause so the
                     // dispute surface can read its Layer-3 recourse.
-                    ...(pickedAssembly ? assemblyJurisdictionFields(pickedAssembly.manifest) : {}),
+                    ...(pickedAssembly ? assemblyJurisdictionFields(pickedAssembly.assemblyDoc) : {}),
                     // Propagate any GHG disclosure clauses the assembly's root
                     // order declared — the committed agreement must carry them
                     // (with their paired figaro-ghg-measurement-v1 clause) so
                     // the seller can file grams measurements and the buyer can
                     // size carbon offsets at runtime.
-                    ...(pickedAssembly && pickedAssembly.manifest.orders[0]
+                    ...(pickedAssembly && pickedAssembly.assemblyDoc.orders[0]
                         ? (() => {
                             const ghgStandards = readAssemblyOrderGhgStandards(
-                                pickedAssembly.manifest,
-                                pickedAssembly.manifest.orders[0].agreementHash,
+                                pickedAssembly.assemblyDoc,
+                                pickedAssembly.assemblyDoc.orders[0].agreementHash,
                             );
                             return ghgStandards.length > 0 ? { ghgStandards } : {};
                         })()
@@ -558,10 +558,10 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     // Per-order scope (not multi-order readAssemblyClause): a
                     // delivery assembly has its proximity clause on the courier
                     // sub-order, which must NOT leak onto the root.
-                    ...(pickedAssembly?.manifest.orders[0]?.agreementHash
+                    ...(pickedAssembly?.assemblyDoc.orders[0]?.agreementHash
                         ? (() => {
-                            const rootAgreement = pickedAssembly.manifest.agreements[
-                                pickedAssembly.manifest.orders[0].agreementHash
+                            const rootAgreement = pickedAssembly.assemblyDoc.agreements[
+                                pickedAssembly.assemblyDoc.orders[0].agreementHash
                             ] as Agreement | undefined;
                             const policy = rootAgreement?.sections.find(
                                 (s) => s.clause === PROXIMITY_POLICY_CLAUSE_KEY,
@@ -594,11 +594,11 @@ export function SellerDetailView({ sellerAddress }: Props) {
             }
 
             // ── Multi-order assembly: commit the root, then walk the
-            //    manifest's remaining orders in topological order ──────────
+            //    assemblyDoc's remaining orders in topological order ──────────
             // Generic over any topology (delivery's root→courier, the
             // kit-assembly diamond, …). Each non-root order's seller is read
             // from the seller's counterpartyBindings by the clause that
-            // order carries; its clauses come from the assembly manifest; its
+            // order carries; its clauses come from the assembly assemblyDoc; its
             // synthetic parent ids are remapped to the real on-chain order
             // hashes as they commit; the global cumulative value accumulates
             // in commit order. The Dutch-auction edge and SellerCataloguePicker
@@ -607,9 +607,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
             multiOrderCheckout.current = true;
             await signAndPlace(prepared.commitment, prepared.commitmentMeta, "buyer");
 
-            const manifest = pickedAssembly!.manifest;
+            const assemblyDoc = pickedAssembly!.assemblyDoc;
             const processId = computeCommitmentProcessId(prepared.commitment, chainId, CONTRACTS.core);
-            const rootOrder = manifest.orders[0];
+            const rootOrder = assemblyDoc.orders[0];
             const realOrderHash = new Map<string, `0x${string}`>([
                 [rootOrder.id, computeOrderHash(prepared.commitment, chainId, CONTRACTS.core)],
             ]);
@@ -619,7 +619,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             // seller. Shared with the cart breakdown (planSubOrderSellers) so
             // the price the buyer sees is the price that commits.
             for (const { node, seller: boundSeller } of planSubOrderSellers(pickedAssembly!)) {
-                const agreement = manifest.agreements[node.agreementHash!];
+                const agreement = assemblyDoc.agreements[node.agreementHash!];
                 const nodeClauses = (agreement?.sections ?? []).map((s) => s.clause);
                 const parentOrderHashes = (getTopologyParentOrderHashes(agreement) ?? [])
                     .map((pid) => realOrderHash.get(pid))
@@ -631,7 +631,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 // It joins the process when a courier claims it; the order
                 // page commits it post-claim from the stashed draft.
                 if (isCourierEdge && fulfillmentMode === "deliver:dutch-auction") {
-                    const daBands = (readAssemblyClause(manifest, PROXIMITY_POLICY_CLAUSE_KEY)
+                    const daBands = (readAssemblyClause(assemblyDoc, PROXIMITY_POLICY_CLAUSE_KEY)
                         ?.data as { bands?: string[] } | undefined)?.bands ?? [];
                     stashSellerDraft(processId, {
                         buyer,
@@ -642,7 +642,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                             origin: sellerCatalogue?.geohash ?? "",
                             destination: deliveryLocation.geohash ?? "",
                             courierProcessIncluded: true,
-                            ...assemblyJurisdictionFields(manifest),
+                            ...assemblyJurisdictionFields(assemblyDoc),
                             ...(daBands.length > 0 ? { proximityBands: daBands } : {}),
                             ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
                             ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
@@ -679,14 +679,14 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     seller = sellerSelection.seller;
                     payment = parseToken(sellerSelection.price, tokenDecimals);
                     sellerToNotify = seller;
-                    const bands = (readAssemblyClause(manifest, PROXIMITY_POLICY_CLAUSE_KEY)
+                    const bands = (readAssemblyClause(assemblyDoc, PROXIMITY_POLICY_CLAUSE_KEY)
                         ?.data as { bands?: string[] } | undefined)?.bands ?? [];
-                    const ghgStandards = readAssemblyOrderGhgStandards(manifest, node.agreementHash);
+                    const ghgStandards = readAssemblyOrderGhgStandards(assemblyDoc, node.agreementHash);
                     clauseFields = {
                         origin: sellerCatalogue?.geohash ?? "",
                         destination: deliveryLocation.geohash ?? "",
                         courierProcessIncluded: true,
-                        ...assemblyJurisdictionFields(manifest),
+                        ...assemblyJurisdictionFields(assemblyDoc),
                         ...(bands.length > 0 ? { proximityBands: bands } : {}),
                         ...(ghgStandards.length > 0 ? { ghgStandards } : {}),
                         ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
@@ -696,7 +696,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 } else {
                     // Generic sub-order: seller resolved upstream from the
                     // seller's counterpartyBindings (shared with the cart
-                    // breakdown); clauses read from the assembly manifest.
+                    // breakdown); clauses read from the assembly assemblyDoc.
                     if (!boundSeller) {
                         multiOrderCheckout.current = false;
                         setCheckoutError("This assembly has a sub-order with no designated counterparty — the seller must bind one.");
@@ -705,7 +705,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     seller = boundSeller;
                     // Contributor nodes are priced LIVE from the contributor's
                     // own catalogue (rate negotiated with the lead); the lead's
-                    // own nodes keep the manifest figure. Returns a bigint, so
+                    // own nodes keep the assemblyDoc figure. Returns a bigint, so
                     // the cumulative add stays numeric.
                     payment = resolveSubOrderPayment({
                         node, seller, leadAddress: sellerAddress,

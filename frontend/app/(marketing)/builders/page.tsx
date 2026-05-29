@@ -56,7 +56,7 @@ export default function BuildersPage() {
                 <div>
                     <dt className="font-semibold text-ink-heading">Assembly authors</dt>
                     <dd className="text-ink-body leading-relaxed mt-1">
-                        Compose clauses and roles into multi-party bonded processes. The Designer tool produces drafts on a canvas; publishing anchors the manifest in the AssemblyRegistry, parallel to the clause registry. Assemblies are how new use cases &mdash; delivery, supply chain, freelance work &mdash; get expressed in the protocol&apos;s vocabulary.
+                        Compose clauses and roles into multi-party bonded processes. The Designer tool produces drafts on a canvas; publishing anchors the assemblyDoc in the AssemblyRegistry, parallel to the clause registry. Assemblies are how new use cases &mdash; delivery, supply chain, freelance work &mdash; get expressed in the protocol&apos;s vocabulary.
                     </dd>
                 </div>
                 <div>

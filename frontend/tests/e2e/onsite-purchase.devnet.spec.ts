@@ -260,7 +260,7 @@ test.describe('On-site purchase from seeded Counter & Co. (devnet)', () => {
         await expect(page.getByTestId(`cart-line-${ITEM.id}`)).toBeVisible({ timeout: 10000 });
 
         // Counter & Co. binds only `direct-sale` → the dropdown narrows to
-        // consume-onsite. Selecting it loads the assembly's manifest, which
+        // consume-onsite. Selecting it loads the assembly's assemblyDoc, which
         // now carries proximity-policy on the root — SellerDetailView
         // propagates that into clauseFields so the committed root agreement
         // carries proximity-policy too (the gate the handoff buttons check).

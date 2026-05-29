@@ -594,7 +594,7 @@ export function OrderTimelineView({ processId }: Props) {
     };
 
     // Read the committed proximity-policy band off the courier sub-order's
-    // agreement (the policy lives on the courier's manifest, not the
+    // agreement (the policy lives on the courier's assemblyDoc, not the
     // merchant's). Both the courier's own proof and the merchant's cross-
     // witness derive their band from this same source so the on-chain
     // attestations agree on the committed band.
@@ -643,9 +643,9 @@ export function OrderTimelineView({ processId }: Props) {
     // Merchant cross-witness of the pickup handoff. Two cases collapsed
     // into the same primitive:
     //   - Delivery: target = courier sub-order, role = merchant's root order.
-    //     Proximity-policy lives on the courier's manifest.
+    //     Proximity-policy lives on the courier's assemblyDoc.
     //   - Pickup:   target = role = merchant's root order. Proximity-policy
-    //     lives on the merchant's own manifest (the buyer↔merchant order).
+    //     lives on the merchant's own assemblyDoc (the buyer↔merchant order).
     // Both cases call signalWithProof; submitSellerAttestation collapses to
     // a single commitment when roleOrderHash === orderHash.
     const handleMerchantProximityProof = async () => {

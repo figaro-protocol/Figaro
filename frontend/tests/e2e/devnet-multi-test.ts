@@ -54,7 +54,7 @@ export const test = base.extend<{ page: Page }>({
  * Needed by seller-side tests on `/orders/[processId]`: the page's
  * merchantActions.signal builds an inclusion proof against the
  * committed agreement, and without local hydration the UI shows
- * "Agreement manifest unavailable for 0x... — cannot generate
+ * "Agreement assemblyDoc unavailable for 0x... — cannot generate
  * inclusion proof".
  *
  * Storage key + canonical-JSON format match `agreementStore.ts`

@@ -84,7 +84,7 @@ function deserializeOrder(s: SerializedOrder): Order {
  *    serialized as decimal strings). `assemblyDocumentToDraft` re-hydrates it
  *    back into a `DesignSnapshot` for the editor.
  *
- * No "snapshot vs draft vs manifest" type duality — same shape, three
+ * No "snapshot vs draft vs assemblyDoc" type duality — same shape, three
  * persistence states.
  */
 export interface DesignSnapshot {
