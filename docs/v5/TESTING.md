@@ -84,19 +84,18 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
 
-**devnet (`*.devnet.spec.ts`, 52 specs)** — every spec drives the real UI
+**devnet (`*.devnet.spec.ts`, 44 specs)** — every spec drives the real UI
 against Anvil + deployed contracts (action in the UI, reaction in the UI). By area:
 
-- Commerce / checkout / order lifecycle: `merchant-page`, `merchant-place-order`,
-  `onsite-purchase`, `inbox`, `inbox-accept`, `process-closure`.
+- Commerce / checkout / order lifecycle: `seller-page`, `seller-place-order`,
+  `onsite-purchase`, `inbox`, `inbox-accept`.
 - Designer + assembly registry: `designer-publish`, `designer-save-draft`,
   `designer-view`, `designer-agreement-drawer`, `designer-delivery-modality`,
   `designer-drafts-delete`, `scenario-direct-sale`, `scenario-local-commerce`,
   `scenario-local-commerce-offset`, `scenario-local-commerce-pickup`,
   `scenario-kit-assembly` (authors the 4-node DAG-join diamond),
-  `seeded-assembly-fork`, `published-list-ui`, `assembly-registry`.
-- Sellers: `sellers-onboarding`, `seller-edit-ui`,
-  `seller-update-profile`, `seller-withdraw`.
+  `seeded-assembly-fork`, `published-list-ui`.
+- Sellers: `sellers-onboarding`, `seller-edit-ui`, `seller-withdraw`.
 - Order / role surfaces: `seller-timeline`, `spectator-view`, `audit-page`,
   `audit-page-seller`, `local-commerce-offset-scenario` (full multi-role
   emissions-aware runtime: commit → coordinate → emissions → offset → resolve),
@@ -105,12 +104,17 @@ against Anvil + deployed contracts (action in the UI, reaction in the UI). By ar
   resolve), `kit-assembly-runtime` (4-node diamond: buyer commits all four
   orders with live per-contributor pricing → one atomic resolve pays every
   seller; per-party schema-exercise is open — see backlog).
-- Attestation + delivery: `buyer-attestation`, `proximity-proof`,
-  `proximity-proof-ui`, `dutch-auction-lifecycle`.
-- GHG / offsets: `offset-retirement`, `offset-retirement-ui`. (GHG
-  panel-level coverage now lives end-to-end in
-  `local-commerce-offset-scenario`.)
-- Dispute: `dispute-ui`. FIG token: `fig-claim`, `fig-claim-ui`.
+- Attestation + delivery: `proximity-proof-ui`.
+- GHG / offsets: `offset-retirement-ui`. (GHG panel-level coverage also
+  lives end-to-end in `local-commerce-offset-scenario`.)
+- Dispute: `dispute-ui`. FIG token: `fig-claim-ui`.
+
+Retired from the e2e suite (drove no UI — contract tests misfiled into Playwright;
+behavior lives in Foundry): `assembly-registry` (AssemblyRegistryTest),
+`buyer-attestation` (AttestationCoordinatorTest), `dutch-auction-lifecycle`
+(DutchAuctionTest), `fig-claim` (fig/RpgfMinter.t.sol), `offset-retirement`
+(ProcessOffsetReceiptTest), `process-closure` (FigaroCoreTest), `proximity-proof`
+(FigaroProximityProofV1ValidatorTest), `seller-update-profile` (SellerRegistryTest).
 
 **mobile (`*.mobile.spec.ts`, 1 spec)** — responsive/viewport chrome jsdom
 can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
