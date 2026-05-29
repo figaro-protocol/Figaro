@@ -79,7 +79,7 @@ export type CataloguePricingPolicy = "fixed" | "buyer-set" | "dutch-auction";
 /**
  * A negotiated price for a specific counterparty — one row of a
  * per-client rate card. `counterparty` is the address the price was
- * agreed with (e.g. a courier's rate per merchant served).
+ * agreed with (e.g. a delivery seller's rate per counterparty served).
  */
 export interface NegotiatedPriceEntry {
     counterparty: `0x${string}`;
@@ -153,9 +153,9 @@ export interface ResolvedCataloguePrice {
  * `counterparty` wins; otherwise the item's public `price` +
  * `pricingPolicy` apply.
  *
- * General over every seller's catalogue — a merchant's goods row and a
- * courier's delivery row resolve through this one function. There is no
- * courier-specific pricing path. The parameter is structural so both the
+ * General over every seller's catalogue — a goods row and a delivery row
+ * resolve through this one function. There is no delivery-specific pricing
+ * path. The parameter is structural so both the
  * on-disk `CatalogueItemMetadata` and the buyer-side `CatalogueItem`
  * projection satisfy it.
  */

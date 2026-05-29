@@ -6,7 +6,7 @@
  * line items in its `data` field. This extractor projects those fields
  * into the structured invoice shape an auditor or tax preparer expects.
  *
- * The line items array is the merchant's catalogue projection at agreement
+ * The line items array is the seller's catalogue projection at agreement
  * time — what was ordered, at what unit price, in what quantity. It was
  * signed by both parties, so the invoice IS the contract excerpt for the
  * commercial terms.

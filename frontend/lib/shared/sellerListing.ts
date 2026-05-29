@@ -151,8 +151,8 @@ export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): 
 }
 
 /**
- * The destination URL for a listing card click: the per-merchant detail
- * page. The /m page reads the merchant's catalogue and bindings; assembly
+ * The destination URL for a listing card click: the per-seller detail
+ * page. The /s page reads the seller's catalogue and bindings; assembly
  * disambiguation happens inside that page. An seller with no bindings
  * still has a /m page — it surfaces the catalogue without a fulfilment path.
  */

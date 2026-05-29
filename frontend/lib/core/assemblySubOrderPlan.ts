@@ -1,7 +1,7 @@
 /**
  * Pricing + seller resolution for an assembly's sub-orders.
  *
- * Shared by the merchant checkout (which commits) and the cart breakdown
+ * Shared by the seller checkout (which commits) and the cart breakdown
  * (which displays the price) so the figure the buyer sees is exactly the
  * figure that commits — they read the SAME seller and the SAME payment per
  * node and cannot drift apart.
@@ -70,7 +70,7 @@ export function planSubOrderSellers(
  * The lead's OWN nodes are priced from the assembly the lead authored (the
  * manifest figure). A contributor's node is priced LIVE from the contributor's
  * own catalogue — the rate negotiated with the lead if one exists, else the
- * public price — the same `resolveCatalogueItemPrice` path the courier leg
+ * public price — the same `resolveCatalogueItemPrice` path the delivery leg
  * uses, minus the picker. Falls back to the manifest figure only if the
  * contributor publishes no component item.
  *

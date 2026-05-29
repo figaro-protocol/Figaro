@@ -35,7 +35,7 @@ export const NAV_LINKS: NavLink[] = [
 // `app/(marketing)/`, do NOT add it here — it belongs in `NAV_LINKS`.
 //
 // The first two entries (Orders, Inbox) are the consumer's primary
-// surfaces — buyer's order list and merchant's incoming-orders inbox.
+// surfaces — buyer's order list and seller's incoming-orders inbox.
 // They precede the protocol-tier surfaces (Builders, Terminal, etc.) so a
 // participant who already has a wallet connected has a one-click path to
 // "their" work.

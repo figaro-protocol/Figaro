@@ -26,7 +26,7 @@ export interface PublishResult {
 }
 
 /**
- * Validate, pin to IPFS, and return the URI for a merchant catalogue.
+ * Validate, pin to IPFS, and return the URI for a seller catalogue.
  *
  * Performs a round-trip validation: the document is parsed through the
  * strict parser before pinning to ensure only valid documents get published.

@@ -63,7 +63,7 @@ export interface SellerLocation {
  * Designates the wallets the seller entrusts as counterparties on
  * this assembly's sub-orders, keyed by the sub-order's process schema.
  *
- * Example: a merchant bound to `local-commerce-merchant-delivery` has
+ * Example: a seller bound to `local-commerce-merchant-delivery` has
  * a `counterpartyBindings[{ schemaId: "figaro-courier-process-v1",
  * addresses: [0xA, 0xB] }]` entry. At checkout, the cart fills the
  * courier sub-order's seller field from this list. Without this field

@@ -566,7 +566,7 @@ export function OnboardingProfileForm({
                         label="Upload logo"
                     />
                     <p className="text-xs text-ink-faint mt-1">
-                        Optional. Pinned to IPFS. Shown on the discover card and the merchant detail page.
+                        Optional. Pinned to IPFS. Shown on the discover card and the seller detail page.
                     </p>
                 </FormField>
             </section>

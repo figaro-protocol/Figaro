@@ -527,7 +527,7 @@ export function useAssemblyChoices(
     return { data, isLoading, refetch };
 }
 
-/** A merchant's on-chain bound assembly, manifest resolved. */
+/** A seller's on-chain bound assembly, manifest resolved. */
 export interface BoundAssembly {
     slug: string;
     /** Display name from the manifest; falls back to the slug. */
@@ -545,7 +545,7 @@ export interface BoundAssembly {
 }
 
 export interface SellerBoundAssemblies {
-    /** The merchant's on-chain bound assemblies, manifests resolved —
+    /** The seller's on-chain bound assemblies, manifests resolved —
      *  the buyer-facing choice set at checkout. Each bound assembly is
      *  one option the seller offers; the buyer picks one. */
     assemblies: BoundAssembly[];
@@ -555,7 +555,7 @@ export interface SellerBoundAssemblies {
     modalities: string[];
     /** True while either the seller-profile or the manifest fetches are in flight. */
     isLoading: boolean;
-    /** True when at least one of the merchant's bindings matched a published assembly. */
+    /** True when at least one of the seller's bindings matched a published assembly. */
     hasOnChainBinding: boolean;
 }
 
@@ -584,8 +584,8 @@ function extractRootFulfilment(
 }
 
 /**
- * Resolves a merchant's on-chain bound assemblies into the buyer-facing
- * choice set. Reads the merchant's seller profile (SellerRegistry →
+ * Resolves a seller's on-chain bound assemblies into the buyer-facing
+ * choice set. Reads the seller's profile (SellerRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with
  * the published assembly events, and fetches each matched manifest.
  *

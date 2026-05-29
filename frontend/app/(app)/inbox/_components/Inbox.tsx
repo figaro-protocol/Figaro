@@ -234,8 +234,7 @@ export function Inbox() {
     return (
         <div data-testid="inbox" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
             <header>
-                <p className="text-xs font-semibold text-neutral-500">Merchant inbox</p>
-                <h1 className="mt-1 text-3xl font-bold text-black">Inbox</h1>
+                <h1 className="text-3xl font-bold text-black">Inbox</h1>
                 <p className="mt-2 text-sm text-neutral-600">
                     Incoming orders awaiting acceptance, plus orders you&apos;re currently fulfilling.
                 </p>

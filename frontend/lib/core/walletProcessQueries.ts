@@ -2,7 +2,7 @@
 
 /**
  * Role-aware process queries used by `/orders` (buyer surface) and
- * `/inbox` (merchant surface). Both pages need the same shape: one row
+ * `/inbox` (seller surface). Both pages need the same shape: one row
  * per process the connected wallet initiated in a given role, plus the
  * root order's metadata (counterparty, payment, currency, status).
  *

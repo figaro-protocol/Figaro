@@ -1,7 +1,7 @@
 /**
  * lib/mechanisms/useSellerBranding.ts
  *
- * React hook for resolving merchant branding from SellerRegistry events.
+ * React hook for resolving seller branding from SellerRegistry events.
  * Uses the indexer to find the latest metadataURI for a seller address,
  * fetches the metadata document, and returns resolved branding.
  */

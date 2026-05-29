@@ -62,7 +62,7 @@ export interface SellerCatalogue {
     /** Free-form public street address (optional). */
     addressText?: string;
     menu: CatalogueItem[];
-    /** Tokens the merchant accepts at settlement. */
+    /** Tokens the seller accepts at settlement. */
     acceptedTokens?: AcceptedTokenMetadata[];
     /** The token catalogue prices are denominated in (one of `acceptedTokens`). */
     defaultTokenAddress?: `0x${string}`;
