@@ -20,7 +20,7 @@ import {
     canonicalizeAgreement,
     computeAgreementHash,
     type Agreement,
-} from '../../lib/core/agreementManifest';
+} from '../../lib/core/agreement';
 
 const multiInjectPath = path.resolve(__dirname, './fixtures/inject-ethereum-multi.js');
 

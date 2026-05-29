@@ -19,7 +19,7 @@
 
 import { formatToken } from "@/lib/shared/utils";
 import type { Commitment } from "@figaro/core";
-import type { Agreement, AgreementSection } from "@/lib/core/agreementManifest";
+import type { Agreement, AgreementSection } from "@/lib/core/agreement";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { ModalChrome } from "@/components/ui/ModalChrome";
 

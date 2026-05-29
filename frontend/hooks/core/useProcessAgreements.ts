@@ -22,7 +22,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { hydrateAgreement } from "@/lib/core/agreementStore";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
-import type { Agreement } from "@/lib/core/agreementManifest";
+import type { Agreement } from "@/lib/core/agreement";
 
 // Singleton cache shared by every consumer. localStorage is the cache's
 // own write surface (via hydrateAgreement); this Map gives React a reactive

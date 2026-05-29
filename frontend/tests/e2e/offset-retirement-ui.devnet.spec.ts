@@ -45,7 +45,7 @@ import {
 import {
     GHG_CLAUSE_KEY,
     GHG_MEASUREMENT_CLAUSE_KEY,
-} from '@/lib/core/agreementManifest';
+} from '@/lib/core/agreement';
 import {
     ATTESTATION_COORDINATOR_ABI,
     buildSectionInclusionProof,

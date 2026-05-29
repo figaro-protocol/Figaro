@@ -12,7 +12,7 @@ import {
     PROXIMITY_PROOF_CLAUSE_KEY,
     TOPOLOGY_CLAUSE_KEY,
     computeSectionLeaf,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { extractContract } from "@/lib/audit/contractExtract";
 import { extractInvoice } from "@/lib/audit/invoiceExtract";
@@ -773,7 +773,7 @@ describe("buildAuditBundle with redacted commerce section", () => {
     ]);
 
     it("invoice surfaces lineItemsSealed when commerce is redacted", async () => {
-        const { redactSections } = await import("@/lib/core/agreementManifest");
+        const { redactSections } = await import("@/lib/core/agreement");
         const redacted = redactSections(cleartextAgreement, ["figaro-commerce-v1"]);
         const bundle = buildAuditBundle(order, redacted, []);
         expect(bundle.invoice.lineItemsSealed).toBe(true);
@@ -785,7 +785,7 @@ describe("buildAuditBundle with redacted commerce section", () => {
     });
 
     it("contract clauses include a sealed commerce clause with the leaf hash preserved", async () => {
-        const { redactSections, computeSectionLeaf } = await import("@/lib/core/agreementManifest");
+        const { redactSections, computeSectionLeaf } = await import("@/lib/core/agreement");
         const commerceLeafBefore = computeSectionLeaf(
             cleartextAgreement.sections.find((s) => s.clause === "figaro-commerce-v1")!,
         );
@@ -798,7 +798,7 @@ describe("buildAuditBundle with redacted commerce section", () => {
     });
 
     it("hash-appendix labels the sealed leaf and uses the stored leaf value", async () => {
-        const { redactSections, computeSectionLeaf } = await import("@/lib/core/agreementManifest");
+        const { redactSections, computeSectionLeaf } = await import("@/lib/core/agreement");
         const commerceLeaf = computeSectionLeaf(
             cleartextAgreement.sections.find((s) => s.clause === "figaro-commerce-v1")!,
         );
@@ -812,7 +812,7 @@ describe("buildAuditBundle with redacted commerce section", () => {
     });
 
     it("non-redacted sections in the same bundle still surface cleartext data", async () => {
-        const { redactSections } = await import("@/lib/core/agreementManifest");
+        const { redactSections } = await import("@/lib/core/agreement");
         const redacted = redactSections(cleartextAgreement, ["figaro-commerce-v1"]);
         const bundle = buildAuditBundle(order, redacted, []);
         const fulfilmentClause = bundle.contract.clauses.find((c) => c.clauseKey === "figaro-fulfilment-v2")!;

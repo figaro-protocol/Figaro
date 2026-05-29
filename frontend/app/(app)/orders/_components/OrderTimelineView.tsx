@@ -49,7 +49,7 @@ import {
     COURIER_PROCESS_CLAUSE_KEY,
     MERCHANT_PROCESS_CLAUSE_KEY,
     PROXIMITY_POLICY_CLAUSE_KEY,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import type { CourierEvent, MerchantEvent } from "@figaro/core/clauses";
 import type { CapabilityModel } from "@/lib/semantic/models";

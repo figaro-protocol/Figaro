@@ -45,7 +45,7 @@ import {
     GEO_CLAUSE_KEY,
     GHG_DISCLOSURE_CLAUSE_KEYS,
     MERCHANT_PROCESS_CLAUSE_KEY,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import { getClauseInfo } from "@/lib/shared/clauseCategories";
 import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";

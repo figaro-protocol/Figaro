@@ -16,7 +16,7 @@ import {
     type Agreement,
     type AgreementSection,
     type AgreementLineItem,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
 
 const SELLER = ANVIL_ACCOUNTS[1];

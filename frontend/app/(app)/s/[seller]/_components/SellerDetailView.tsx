@@ -42,7 +42,7 @@ import {
     MERCHANT_PROCESS_CLAUSE_KEY,
     PROXIMITY_POLICY_CLAUSE_KEY,
     type Agreement,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
 import { readAgreementFields } from "@/lib/designer/syntheticProcess";
 import type { ClauseFields } from "@/lib/core/encoding";

@@ -69,4 +69,4 @@ export {
 // Manifest clause registry hook
 export { useManifestClause, useManifestClauseCount } from "./useManifestClause";
 export type { ManifestClause } from "./useManifestClause";
-export { FULFILMENT_V2_CLAUSE_KEY } from "@/lib/core/agreementManifest";
+export { FULFILMENT_V2_CLAUSE_KEY } from "@/lib/core/agreement";

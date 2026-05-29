@@ -26,7 +26,7 @@ import type { PartyRole } from "@/lib/core/walletProcessQueries";
 import { isValidAddress } from "@/components/sellers/TokenAddressInput";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { saveCommitment, computeOrderHash } from "@/lib/core/commitmentStore";
-import type { Agreement } from "@/lib/core/agreementManifest";
+import type { Agreement } from "@/lib/core/agreement";
 import { hydrateAgreement, loadAgreement, primeAgreementArtifact, saveAgreementUri } from "@/lib/core/agreementStore";
 import { requestSignConfirmation } from "@/lib/core/commitmentSignPreviewStore";
 import { strippingReviver } from "@/lib/shared/safeJson";

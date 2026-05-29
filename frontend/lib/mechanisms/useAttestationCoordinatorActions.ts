@@ -12,7 +12,7 @@ import {
     buildSectionInclusionProof,
     getSectionById,
     getSectionDataBytes,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 
 type SellerAttestationInput = {
     /** The order being attested — its `agreementHash` anchors the inclusion proof. */

@@ -1,5 +1,5 @@
 import { Locator, Page, expect } from '@playwright/test';
-import { canonicalizeAgreement, computeAgreementHash, type Agreement, type AgreementSection } from '../../lib/core/agreementManifest';
+import { canonicalizeAgreement, computeAgreementHash, type Agreement, type AgreementSection } from '../../lib/core/agreement';
 import { ZERO_ADDRESS } from '../../lib/shared/evm';
 import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from '../anvilAccounts';
 

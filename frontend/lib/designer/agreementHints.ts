@@ -16,7 +16,7 @@ import type { Order } from "@/lib/core/store";
 import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { COURIER_PROCESS_CLAUSE_KEY } from "@/lib/core/agreementManifest";
+import { COURIER_PROCESS_CLAUSE_KEY } from "@/lib/core/agreement";
 
 export interface AgreementHints {
     hasChildren: boolean;

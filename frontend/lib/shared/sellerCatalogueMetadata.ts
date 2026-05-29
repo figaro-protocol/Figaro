@@ -35,7 +35,7 @@ export const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F
  * layer (and a number of upstream surfaces) stores the long form
  * ("standard"/"express"/"fragile"/"cold-chain"); this helper accepts
  * either and throws a typed error on anything else. Centralising the
- * normalisation here keeps callers — `agreementManifest`, test helpers,
+ * normalisation here keeps callers — `agreement module`, test helpers,
  * future clause bridges — from each re-implementing the catalogue
  * convention, and replaces the previous failure mode (a cryptic
  * `numberToHex(undefined)` from viem) with a clear message.

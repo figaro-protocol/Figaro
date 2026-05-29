@@ -1,5 +1,5 @@
 /**
- * lib/core/agreementManifest.ts
+ * lib/core/agreement.ts
  *
  * Clause-composed agreement. The off-chain semantic layer whose merkle root
  * becomes the on-chain `agreementHash` in CoreV5's OrderCommitment.
@@ -42,16 +42,16 @@
  * ## Why this works universally
  *
  * The core protocol is universal because of **mechanism design**, not because
- * of this manifest layer. Asymmetric bonding creates a Nash equilibrium where
+ * of this agreement layer. Asymmetric bonding creates a Nash equilibrium where
  * cooperation dominates — regardless of who holds the wallet: human, AI agent,
  * bot, or any other entity. The mechanism doesn't care. It just works.
  *
- * This manifest layer is the **terms of sale** layer on top of that universal
+ * This agreement layer is the **terms of sale** layer on top of that universal
  * mechanism. Clauses are infinitely extensible — new terms add new sections
  * without changing existing types. The seller declares which terms they support;
  * the buyer selects from them; both sign the composition.
  *
- * The contract treats agreementHash as opaque bytes32. The manifest itself
+ * The contract treats agreementHash as opaque bytes32. The agreement itself
  * lives off-chain (IPFS, localStorage, or encrypted channel) so either party
  * can reconstruct and verify it.
  */
@@ -183,7 +183,7 @@ export const APPLICABLE_LAW_CLAUSE_KEY = "figaro-applicable-law-v1";
  *  on any assembly that needs cryptographic consent (beta participation,
  *  ToS acceptance, NDA, governance vote receipts, etc.). */
 export const CONSENT_CLAUSE_KEY = "figaro-consent-v1";
-/** Default GHG disclosure clause used by single-standard manifest flows. */
+/** Default GHG disclosure clause used by single-standard agreement flows. */
 export const GHG_CLAUSE_KEY: GHGDisclosureClauseKey = "figaro-ghg-iso-14064-v1";
 export const GHG_CLAUSE_ID = keccak256(stringToHex(GHG_CLAUSE_KEY));
 /** All five GHG disclosure sister clauses (one per accounting standard). */
@@ -429,7 +429,7 @@ function buildMerkleRoot(leaves: readonly `0x${string}`[]): `0x${string}` {
 export function computeAgreementHash(agreement: Agreement): `0x${string}` {
     const leaves = agreement.sections.map(computeSectionLeaf);
     // Sort leaves lexicographically so the root is order-insensitive; this
-    // complements the `sortSections` clause-key ordering used during manifest
+    // complements the `sortSections` clause-key ordering used during agreement
     // composition and guarantees the same root regardless of insertion order.
     leaves.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     return buildMerkleRoot(leaves);

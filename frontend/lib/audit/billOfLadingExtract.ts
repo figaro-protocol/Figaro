@@ -30,7 +30,7 @@ import {
     GEO_CLAUSE_KEY,
     MERCHANT_PROCESS_CLAUSE_KEY,
     findCleartextSection,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { DELIVERY_LIFECYCLE_STAGES, type ExtractedDocument } from "./types";

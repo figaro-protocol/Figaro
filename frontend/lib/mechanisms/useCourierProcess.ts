@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { encodeAbiParameters, keccak256, stringToHex, type Hex } from "viem";
 import { embeddedSpec, encodeContentFromSpec, type CourierEvent } from "@figaro/core/clauses";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
-import { COURIER_PROCESS_CLAUSE_KEY, PROXIMITY_PROOF_CLAUSE_KEY } from "@/lib/core/agreementManifest";
+import { COURIER_PROCESS_CLAUSE_KEY, PROXIMITY_PROOF_CLAUSE_KEY } from "@/lib/core/agreement";
 
 /**
  * Sovereign courier event log — `figaro-courier-process-v1`. The courier
@@ -24,7 +24,7 @@ import { COURIER_PROCESS_CLAUSE_KEY, PROXIMITY_PROOF_CLAUSE_KEY } from "@/lib/co
 export const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex(COURIER_PROCESS_CLAUSE_KEY));
 
 /** keccak256 of the runtime proximity-proof clauseId. Derived here for
- *  courier callers; the key itself lives canonically in agreementManifest. */
+ *  courier callers; the key itself lives canonically in agreement module. */
 export const PROXIMITY_CLAUSE_ID = keccak256(stringToHex(PROXIMITY_PROOF_CLAUSE_KEY));
 
 /** uint8 stage values matching the `figaro-courier-process-v1` enum. */

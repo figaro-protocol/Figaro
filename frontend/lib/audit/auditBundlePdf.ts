@@ -12,7 +12,7 @@
 
 import type { PublicClient } from "viem";
 import type { Order } from "@/lib/core/store";
-import { COMMERCE_CLAUSE_KEY, redactSections, type Agreement } from "@/lib/core/agreementManifest";
+import { COMMERCE_CLAUSE_KEY, redactSections, type Agreement } from "@/lib/core/agreement";
 import type { IndexedAttestationLog } from "@/lib/core/indexer";
 import {
     getAttestationsByOrder,

@@ -24,7 +24,7 @@ import {
     computeAgreementHash,
     COURIER_PROCESS_CLAUSE_KEY,
     MERCHANT_PROCESS_CLAUSE_KEY,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import { loadAgreement, saveAgreement } from "@/lib/core/agreementStore";
 import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
 

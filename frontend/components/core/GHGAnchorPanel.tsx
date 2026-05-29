@@ -12,7 +12,7 @@ import {
     formatActualGrams,
 } from "@/lib/mechanisms/useGHGDisclosure";
 import { DISCLOSURE_KIND_LABELS } from "@/lib/mechanisms/contracts";
-import { GHG_CLAUSE_KEY } from "@/lib/core/agreementManifest";
+import { GHG_CLAUSE_KEY } from "@/lib/core/agreement";
 import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
 import { CLAUSES_BY_FAMILY, CLAUSE_TIER_MAP } from "@/lib/shared/clauseCategories";
 import { truncateHex } from "@/lib/shared/formatHex";

@@ -10,7 +10,7 @@ import {
     saveAgreement,
     saveAgreementUri,
 } from "@/lib/core/agreementStore";
-import { computeAgreementHash } from "@/lib/core/agreementManifest";
+import { computeAgreementHash } from "@/lib/core/agreement";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
 
 const BUYER = ANVIL_ACCOUNTS[0];

@@ -27,7 +27,7 @@ import {
     PROXIMITY_POLICY_CLAUSE_KEY,
     PROXIMITY_PROOF_CLAUSE_KEY,
     isRedactedSection,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import type { AttestationReceipt, ExtractedDocument } from "./types";

@@ -35,7 +35,7 @@ import {
     type AgreementSection,
     type AnyAgreementSection,
     type RedactableAgreement,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";

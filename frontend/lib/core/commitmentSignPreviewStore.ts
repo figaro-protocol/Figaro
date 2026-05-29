@@ -27,7 +27,7 @@
  */
 
 import type { Commitment } from "@figaro/core";
-import type { Agreement } from "@/lib/core/agreementManifest";
+import type { Agreement } from "@/lib/core/agreement";
 
 export interface PendingPreview {
     id: number;

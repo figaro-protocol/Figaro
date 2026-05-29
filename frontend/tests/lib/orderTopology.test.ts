@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { computeAgreementHash } from "@/lib/core/agreementManifest";
+import { computeAgreementHash } from "@/lib/core/agreement";
 import { saveAgreement } from "@/lib/core/agreementStore";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
 import { buildAgreementsFromCache, deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";

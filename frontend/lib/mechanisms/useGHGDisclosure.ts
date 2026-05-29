@@ -31,7 +31,7 @@ import {
 import { isEmptyHex, ZERO_BYTES32 } from "@/lib/shared/evm";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import { GHG_MEASUREMENT_CLAUSE_ID, GHG_CLAUSE_ID } from "@/lib/core/agreementManifest";
+import { GHG_MEASUREMENT_CLAUSE_ID, GHG_CLAUSE_ID } from "@/lib/core/agreement";
 import {
     DISCLOSURE_KIND,
     DISCLOSURE_KIND_LABELS,

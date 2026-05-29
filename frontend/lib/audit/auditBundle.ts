@@ -20,7 +20,7 @@
  * `docs/v5/BOL_RESEARCH.md` for the full rationale.
  */
 
-import { COURIER_PROCESS_CLAUSE_KEY, type Agreement, type RedactableAgreement } from "@/lib/core/agreementManifest";
+import { COURIER_PROCESS_CLAUSE_KEY, type Agreement, type RedactableAgreement } from "@/lib/core/agreement";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { extractContract, type ContractDocument } from "./contractExtract";

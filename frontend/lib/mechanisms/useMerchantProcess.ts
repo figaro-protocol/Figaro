@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { keccak256, stringToHex, type Hex } from "viem";
 import { embeddedSpec, encodeContentFromSpec, type MerchantEvent } from "@figaro/core/clauses";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
-import { MERCHANT_PROCESS_CLAUSE_KEY } from "@/lib/core/agreementManifest";
+import { MERCHANT_PROCESS_CLAUSE_KEY } from "@/lib/core/agreement";
 import {
     encodeProximityProofContent,
     PROXIMITY_CLAUSE_ID,

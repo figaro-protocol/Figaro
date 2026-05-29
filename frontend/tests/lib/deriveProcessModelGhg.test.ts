@@ -17,7 +17,7 @@ import {
     GHG_CLAUSE_KEY,
     type Agreement,
     computeAgreementHash,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { type Order, OrderState } from "@/lib/core/store";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";

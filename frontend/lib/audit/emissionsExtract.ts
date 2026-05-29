@@ -27,7 +27,7 @@ import {
     GHG_CLAUSE_TO_STANDARD,
     isRedactedSection,
     type RedactableAgreement,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import type { AttestationReceipt, ExtractedDocument } from "./types";

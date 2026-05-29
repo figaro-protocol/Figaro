@@ -6,7 +6,7 @@ import {
     canonicalizeAgreement,
     computeAgreementHash,
     type Agreement,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 
 const STORE_PREFIX = "figaro:agreement:";
 const URI_PREFIX = "figaro:agreement-uri:";

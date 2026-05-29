@@ -34,7 +34,7 @@ import {
     type ProximityBand,
 } from '@figaro/core/clauses';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
-import { GHG_CLAUSE_KEY, GHG_CLAUSE_ID } from '@/lib/core/agreementManifest';
+import { GHG_CLAUSE_KEY, GHG_CLAUSE_ID } from '@/lib/core/agreement';
 import { ZERO_PROCESS_ID } from '@/lib/shared/evm';
 import { gotoAsWallet } from './devnet-multi-test';
 

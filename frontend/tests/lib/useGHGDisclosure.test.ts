@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { encodeFunctionData, type PublicClient } from "viem";
-import { GHG_MEASUREMENT_CLAUSE_ID, GHG_CLAUSE_ID } from "@/lib/core/agreementManifest";
+import { GHG_MEASUREMENT_CLAUSE_ID, GHG_CLAUSE_ID } from "@/lib/core/agreement";
 import {
     DISCLOSURE_KIND,
     MEASUREMENT_KIND,

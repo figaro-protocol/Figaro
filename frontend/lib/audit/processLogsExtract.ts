@@ -24,7 +24,7 @@ import type { ExtractedDocument } from "./types";
 import {
     COURIER_PROCESS_CLAUSE_KEY,
     MERCHANT_PROCESS_CLAUSE_KEY,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 
 export interface ProcessLogEntry {
     clauseKey: string;

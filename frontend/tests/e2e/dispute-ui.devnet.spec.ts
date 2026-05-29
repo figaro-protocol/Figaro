@@ -41,7 +41,7 @@ import {
     ARBITRATION_KLEROS_CLAUSE_KEY,
     canonicalizeAgreement,
     type Agreement,
-} from '../../lib/core/agreementManifest';
+} from '../../lib/core/agreement';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({

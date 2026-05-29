@@ -22,7 +22,7 @@ import {
     ARBITRATION_KLEROS_CLAUSE_KEY,
     getSection,
     type Agreement,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import { getKlerosCourt, encodeArbitratorExtraData, type KlerosCourt } from "./klerosCourts";
 import type { KlerosConfig } from "./klerosProxy";
 

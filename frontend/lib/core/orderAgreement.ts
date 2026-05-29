@@ -24,7 +24,7 @@ import {
     type Agreement,
     type AgreementSection,
     type TopologyMode,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 
 // ── Multi-valued fulfilment + proximity composition ────────────────────────
 //

@@ -2,7 +2,7 @@ import type { Hex } from "viem";
 import { generateSalt, computeDeadline, type Commitment } from "@figaro/core";
 import { saveAgreement, publishAgreement } from "@/lib/core/agreementStore";
 import { buildOrderAgreement, type BuildOrderAgreementParams } from "@/lib/core/orderAgreement";
-import type { Agreement } from "@/lib/core/agreementManifest";
+import type { Agreement } from "@/lib/core/agreement";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 
 

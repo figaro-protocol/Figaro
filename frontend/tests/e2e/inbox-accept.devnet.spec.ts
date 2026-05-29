@@ -51,7 +51,7 @@ import {
     readLocalDeploymentConfig,
     signCommitment,
 } from './devnet-helpers';
-import { computeAgreementHash } from '../../lib/core/agreementManifest';
+import { computeAgreementHash } from '../../lib/core/agreement';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({

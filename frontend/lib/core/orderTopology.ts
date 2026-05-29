@@ -1,5 +1,5 @@
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { type Agreement, type TopologyMode } from "@/lib/core/agreementManifest";
+import { type Agreement, type TopologyMode } from "@/lib/core/agreement";
 import {
     getTopologyMode,
     getTopologyParentOrderHashes,

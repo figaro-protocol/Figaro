@@ -5,7 +5,7 @@ import {
     getSection,
     type Agreement,
     type TopologyMode,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";

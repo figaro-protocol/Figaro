@@ -28,7 +28,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicCl
 import { publicClient, activeChain } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { FULFILMENT_V2_CLAUSE_KEY, TOPOLOGY_CLAUSE_KEY } from "@/lib/core/agreementManifest";
+import { FULFILMENT_V2_CLAUSE_KEY, TOPOLOGY_CLAUSE_KEY } from "@/lib/core/agreement";
 import {
     deriveCanonicalFulfilmentMethod,
     type CanonicalFulfilmentMethod,

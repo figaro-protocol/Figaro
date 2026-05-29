@@ -23,7 +23,7 @@ import {
     isRedactedSection,
     findAnySection,
     findCleartextSection,
-} from "@/lib/core/agreementManifest";
+} from "@/lib/core/agreement";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";

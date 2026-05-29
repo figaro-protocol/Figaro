@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSection } from "@/lib/core/agreementManifest";
+import { getSection } from "@/lib/core/agreement";
 import {
     buildOrderAgreement,
     getTopologyMode,
