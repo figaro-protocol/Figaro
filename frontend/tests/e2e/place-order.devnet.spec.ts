@@ -1,17 +1,17 @@
 /**
- * merchant-place-order.devnet.spec.ts
+ * place-order.devnet.spec.ts
  *
  * Phase 2 C2 of the e2e remediation plan: the full place-order flow
  * on `/s/[seller]` (cart → btn-place-order → approval → commit →
  * redirect to /orders/<processId>) had no devnet coverage. G11
- * (`merchant-page.devnet.spec.ts`) covers the browse + cart-add
- * surface but stops short of the commit; the merchant-page-specific
+ * (`seller-page.devnet.spec.ts`) covers the browse + cart-add
+ * surface but stops short of the commit; the seller-page-specific
  * checkout pipeline was the gap.
  *
  * What this exercises:
  *   - Seller-side IPFS pin of catalogue + profile + SellerRegistry.register
  *     (lifted from G11's seed).
- *   - Buyer (anvil[0]) navigates to /m/<sellerAddress>.
+ *   - Buyer (anvil[0]) navigates to /s/<sellerAddress>.
  *   - Click `btn-add-<itemId>` → cart line appears.
  *   - Select `consume-onsite` from `select-fulfilment-mode`.
  *   - Token approval if buyer doesn't yet have allowance.
@@ -50,8 +50,8 @@ const LOCAL_ANVIL = defineChain({
 });
 
 const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
-const MERCHANT_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
-const MERCHANT_ADDR = ANVIL_ACCOUNTS[1];
+const SELLER_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
+const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
 const REGISTRATION_DEPOSIT = parseEther('0.001');
 
@@ -70,13 +70,13 @@ function getRegistryAddress(): Hex {
     return addr;
 }
 
-interface SeededMerchant {
+interface SeededSeller {
     address: Hex;
     itemId: string;
     itemName: string;
 }
 
-async function seedRegisteredMerchant(): Promise<SeededMerchant> {
+async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
     const config = readLocalDeploymentConfig();
     const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
 
@@ -84,14 +84,14 @@ async function seedRegisteredMerchant(): Promise<SeededMerchant> {
     const itemName = 'Place-Order Test Item';
 
     const catalogue = {
-        subjectAddress: MERCHANT_ADDR,
+        subjectAddress: SELLER_ADDR,
         version: '1.0.0',
         unitSystem: 'metric' as const,
         menu: [
             {
                 id: itemId,
                 name: itemName,
-                description: 'Seeded by merchant-place-order.devnet.spec.ts',
+                description: 'Seeded by place-order.devnet.spec.ts',
                 price: '0.01',
                 category: 'Test',
                 image: '🍕',
@@ -102,9 +102,9 @@ async function seedRegisteredMerchant(): Promise<SeededMerchant> {
     const { uri: catalogueURI } = await pinJSONToIPFS(catalogue);
 
     const profile = {
-        subjectAddress: MERCHANT_ADDR,
-        name: `Devnet Merchant ${Date.now()}`,
-        description: 'Seller seeded by merchant-place-order.devnet.spec.ts',
+        subjectAddress: SELLER_ADDR,
+        name: `Devnet Seller ${Date.now()}`,
+        description: 'Seller seeded by place-order.devnet.spec.ts',
         catalogueURI,
         acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
         defaultTokenAddress: tokenAddress,
@@ -112,20 +112,20 @@ async function seedRegisteredMerchant(): Promise<SeededMerchant> {
     const { uri: profileURI } = await pinJSONToIPFS(profile);
 
     const registry = getRegistryAddress();
-    const merchant = privateKeyToAccount(MERCHANT_KEY);
+    const seller = privateKeyToAccount(SELLER_KEY);
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const merchantClient = createWalletClient({ account: merchant, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const sellerClient = createWalletClient({ account: seller, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const { request } = await publicClient.simulateContract({
-        account: merchant.address,
+        account: seller.address,
         address: registry,
         abi: SELLER_REGISTRY_ABI,
         functionName: 'register',
         args: [profileURI],
         value: REGISTRATION_DEPOSIT,
     });
-    await publicClient.waitForTransactionReceipt({ hash: await merchantClient.writeContract(request) });
+    await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
 
-    return { address: MERCHANT_ADDR as Hex, itemId, itemName };
+    return { address: SELLER_ADDR as Hex, itemId, itemName };
 }
 
 let outerSnapshot: string;
@@ -149,9 +149,9 @@ test.describe('/s/[seller] full place-order flow (devnet)', () => {
         // separate token-approval step in the UI — keeps the spec
         // focused on the commit path (permit.devnet covers the
         // approval-via-permit branch).
-        await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, MERCHANT_KEY);
+        await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, SELLER_KEY);
 
-        const seeded = await seedRegisteredMerchant();
+        const seeded = await seedRegisteredSellerWithCatalogue();
 
         // Buyer (anvil[0]) is the default ?e2e=devnet account; no
         // wallet switch needed.
@@ -179,7 +179,7 @@ test.describe('/s/[seller] full place-order flow (devnet)', () => {
         await page.getByTestId(`btn-add-${seeded.itemId}`).click();
         await expect(page.getByTestId(`cart-line-${seeded.itemId}`)).toBeVisible({ timeout: 10000 });
 
-        // Pick a fulfilment mode. Merchant has no on-chain assembly
+        // Pick a fulfilment mode. Seller has no on-chain assembly
         // bindings and the catalogue has no fulfillmentModes field, so
         // supportedModes falls back to ALL_FULFILMENT_MODES — every
         // option renders. consume-onsite is the simplest.

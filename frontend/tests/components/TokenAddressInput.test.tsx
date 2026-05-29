@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { TokenAddressInput, isValidAddress, useTokenSymbol } from '@/components/sellers/TokenAddressInput';
+import { TokenAddressInput, useTokenSymbol } from '@/components/sellers/TokenAddressInput';
 
 // ── Override global wagmi mock for useReadContract ────────────────────────────
 
@@ -12,33 +12,8 @@ vi.mock('wagmi', () => ({
     useReadContract: (...args: unknown[]) => useReadContractMock(...args),
 }));
 
-// ── isValidAddress ────────────────────────────────────────────────────────────
-
-describe('isValidAddress', () => {
-    it('accepts a well-formed 40-hex address', () => {
-        expect(isValidAddress('0x70997970C51812dc3A010C7d01b50e0d17dc79C8')).toBe(true);
-    });
-
-    it('accepts lower-case hex', () => {
-        expect(isValidAddress('0x70997970c51812dc3a010c7d01b50e0d17dc79c8')).toBe(true);
-    });
-
-    it('rejects an address that is too short', () => {
-        expect(isValidAddress('0x1234')).toBe(false);
-    });
-
-    it('rejects an address with no 0x prefix', () => {
-        expect(isValidAddress('70997970C51812dc3A010C7d01b50e0d17dc79C8')).toBe(false);
-    });
-
-    it('rejects an empty string', () => {
-        expect(isValidAddress('')).toBe(false);
-    });
-
-    it('rejects a non-hex character in the body', () => {
-        expect(isValidAddress('0xGGGG7970C51812dc3A010C7d01b50e0d17dc79C8')).toBe(false);
-    });
-});
+// `isValidAddress` (pure function) is unit-tested in tests/lib/addressIntegrity.test.ts.
+// This file covers the COMPONENT behavior only.
 
 // ── TokenAddressInput ─────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 /**
- * merchant-page.devnet.spec.ts
+ * seller-page.devnet.spec.ts
  *
  * /s/[seller] is the buyer-facing catalogue page — branding hero,
  * menu grid, cart, place-order CTA. The page reads the seller's
@@ -12,14 +12,14 @@
  *   2. Pin an SellerProfileMetadata JSON that points to the
  *      catalogue CID.
  *   3. Register the seller on-chain with the profile URI.
- *   4. Open /m/<sellerAddress>?e2e=devnet from a buyer wallet.
+ *   4. Open /s/<sellerAddress>?e2e=devnet from a buyer wallet.
  *
  * Assertions: the seller-detail-view shell renders for the seller
  * address, the menu item from the seeded catalogue appears, clicking
  * Add lands a cart line. The full place-order tx flow (approval +
  * commitment signing + redirect) is deferred — it's exercised by the
  * commit-side tests (commitment-share.devnet, lifecycle.devnet). What
- * this spec specifically protects is the merchant-page composition:
+ * this spec specifically protects is the seller-page composition:
  * IPFS-pinned seller profile + catalogue → SellerDetailView's
  * menu render → cart.
  *
@@ -54,8 +54,8 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 
-const MERCHANT_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
-const MERCHANT_ADDR = ANVIL_ACCOUNTS[1];
+const SELLER_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
+const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
 const REGISTRATION_DEPOSIT = parseEther('0.001');
 
@@ -76,7 +76,7 @@ function getRegistryAddress(): Hex {
     return addr;
 }
 
-interface SeededMerchant {
+interface SeededSeller {
     address: Hex;
     profileURI: string;
     catalogueURI: string;
@@ -89,7 +89,7 @@ interface SeededMerchant {
  * the seller on-chain. Returns the URIs and the seeded menu item's
  * id/name so the test can locate it via testid.
  */
-async function seedRegisteredMerchant(): Promise<SeededMerchant> {
+async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
     const config = readLocalDeploymentConfig();
     const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
 
@@ -97,14 +97,14 @@ async function seedRegisteredMerchant(): Promise<SeededMerchant> {
     const itemName = 'Devnet Test Item';
 
     const catalogue = {
-        subjectAddress: MERCHANT_ADDR,
+        subjectAddress: SELLER_ADDR,
         version: '1.0.0',
         unitSystem: 'metric' as const,
         menu: [
             {
                 id: itemId,
                 name: itemName,
-                description: 'Seeded by merchant-page.devnet.spec.ts',
+                description: 'Seeded by seller-page.devnet.spec.ts',
                 price: '0.01',
                 category: 'Test',
                 image: '🍕',
@@ -115,9 +115,9 @@ async function seedRegisteredMerchant(): Promise<SeededMerchant> {
     const { uri: catalogueURI } = await pinJSONToIPFS(catalogue);
 
     const profile = {
-        subjectAddress: MERCHANT_ADDR,
-        name: `Devnet Merchant ${Date.now()}`,
-        description: 'Seller seeded by merchant-page.devnet.spec.ts',
+        subjectAddress: SELLER_ADDR,
+        name: `Devnet Seller ${Date.now()}`,
+        description: 'Seller seeded by seller-page.devnet.spec.ts',
         catalogueURI,
         acceptedTokens: [
             {
@@ -132,21 +132,21 @@ async function seedRegisteredMerchant(): Promise<SeededMerchant> {
 
     // ── Register on-chain ────────────────────────────────────────────
     const registry = getRegistryAddress();
-    const merchant = privateKeyToAccount(MERCHANT_KEY);
+    const seller = privateKeyToAccount(SELLER_KEY);
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const merchantClient = createWalletClient({ account: merchant, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const sellerClient = createWalletClient({ account: seller, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const { request } = await publicClient.simulateContract({
-        account: merchant.address,
+        account: seller.address,
         address: registry,
         abi: SELLER_REGISTRY_ABI,
         functionName: 'register',
         args: [profileURI],
         value: REGISTRATION_DEPOSIT,
     });
-    await publicClient.waitForTransactionReceipt({ hash: await merchantClient.writeContract(request) });
+    await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
 
     return {
-        address: MERCHANT_ADDR as Hex,
+        address: SELLER_ADDR as Hex,
         profileURI,
         catalogueURI,
         itemId,
@@ -166,8 +166,8 @@ test.describe('/s/[seller] (devnet)', () => {
     // Discovery + IPFS round-trip pushes this past the 60s default.
     test.setTimeout(120_000);
 
-    test('renders the merchant view, lists the seeded catalogue item, and adds it to the cart', async ({ page }) => {
-        const seeded = await seedRegisteredMerchant();
+    test('renders the seller view, lists the seeded catalogue item, and adds it to the cart', async ({ page }) => {
+        const seeded = await seedRegisteredSellerWithCatalogue();
 
         // Buyer wallet is anvil[0] by default — connect via ?e2e=devnet.
         await page.goto(`/s/${seeded.address}?e2e=devnet`, { waitUntil: 'domcontentloaded' });

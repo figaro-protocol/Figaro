@@ -54,6 +54,10 @@ describe("isValidAddress", () => {
         expect(isValidAddress("")).toBe(false);
         expect(isValidAddress("0x1234")).toBe(false);
         expect(isValidAddress("nope")).toBe(false);
+        // 40 hex digits but no 0x prefix (ported from TokenAddressInput.test).
+        expect(isValidAddress("70997970C51812dc3A010C7d01b50e0d17dc79C8")).toBe(false);
+        // non-hex char in the body.
+        expect(isValidAddress("0xGGGG7970C51812dc3A010C7d01b50e0d17dc79C8")).toBe(false);
     });
 });
 
