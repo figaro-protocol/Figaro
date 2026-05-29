@@ -1,22 +1,22 @@
 /**
- * Embedded protocol schema specs — TypeScript mirror of
- * `prover/schema/src/embedded.rs`.
+ * Embedded protocol clause specs — TypeScript mirror of
+ * `prover/clause/src/embedded.rs`.
  *
  * Bundles the 18 Figaro protocol spec JSONs from `./examples/` so SDK
  * consumers (agreement encoder, validator wrappers, etc.) can look up
- * a canonical spec by its human-readable schemaId without an
+ * a canonical spec by its human-readable clauseId without an
  * out-of-band fetch. Specs are parsed lazily on first lookup and
  * cached.
  *
  * The Layer-A source of truth lives in
- * `frontend/lib/shared/schemas/<schemaId>.json`; the copies under
- * `sdk/src/schemas/examples/` are kept byte-identical (schema-lockstep
+ * `frontend/lib/shared/clauses/<clauseId>.json`; the copies under
+ * `sdk/src/clauses/examples/` are kept byte-identical (clause-lockstep
  * memory). The Rust prover embeds the frontend copies directly via
  * `include_str!`; the SDK imports the example copies because
  * `resolveJsonModule` only resolves inside the package tree.
  */
 
-import { parseSchemaSpec, type SchemaSpec } from "./spec.js";
+import { parseClauseSpec, type ClauseSpec } from "./spec.js";
 
 import applicableLawSpec from "./examples/figaro-applicable-law-v1.json" with { type: "json" };
 import arbitrationKlerosSpec from "./examples/figaro-arbitration-kleros-v1.json" with { type: "json" };
@@ -58,12 +58,12 @@ const RAW_SPECS: Readonly<Record<string, unknown>> = {
     "figaro-topology-v1": topologySpec,
 };
 
-let PARSED_CACHE: Map<string, SchemaSpec> | null = null;
+let PARSED_CACHE: Map<string, ClauseSpec> | null = null;
 
-function buildCache(): Map<string, SchemaSpec> {
-    const cache = new Map<string, SchemaSpec>();
+function buildCache(): Map<string, ClauseSpec> {
+    const cache = new Map<string, ClauseSpec>();
     for (const [key, raw] of Object.entries(RAW_SPECS)) {
-        const result = parseSchemaSpec(raw);
+        const result = parseClauseSpec(raw);
         if (result.ok) {
             cache.set(key, result.spec);
         } else {
@@ -79,22 +79,22 @@ function buildCache(): Map<string, SchemaSpec> {
 }
 
 /**
- * Look up a parsed `SchemaSpec` by its human-readable schemaId.
- * Returns `undefined` for unknown schemaIds (third-party schemas not
+ * Look up a parsed `ClauseSpec` by its human-readable clauseId.
+ * Returns `undefined` for unknown clauseIds (third-party clauses not
  * embedded in the SDK).
  */
-export function embeddedSpec(schemaId: string): SchemaSpec | undefined {
+export function embeddedSpec(clauseId: string): ClauseSpec | undefined {
     if (!PARSED_CACHE) {
         PARSED_CACHE = buildCache();
     }
-    return PARSED_CACHE.get(schemaId);
+    return PARSED_CACHE.get(clauseId);
 }
 
 /**
- * Iterate over every embedded `(schemaId, spec)` pair. Useful for
+ * Iterate over every embedded `(clauseId, spec)` pair. Useful for
  * conformance tests + drift checks against the Rust embedded set.
  */
-export function allEmbeddedSpecs(): Array<[string, SchemaSpec]> {
+export function allEmbeddedSpecs(): Array<[string, ClauseSpec]> {
     if (!PARSED_CACHE) {
         PARSED_CACHE = buildCache();
     }

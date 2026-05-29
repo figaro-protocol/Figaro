@@ -21,10 +21,10 @@
             "types": "./dist/extensions/index.d.ts",
             "default": "./dist/extensions/index.js"
         },
-        "./schemas": {
-            "import": "./dist/schemas/index.js",
-            "types": "./dist/schemas/index.d.ts",
-            "default": "./dist/schemas/index.js"
+        "./clauses": {
+            "import": "./dist/clauses/index.js",
+            "types": "./dist/clauses/index.d.ts",
+            "default": "./dist/clauses/index.js"
         }
     },
     "files": [

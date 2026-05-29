@@ -117,7 +117,7 @@ export function parseAttestationLogs(logs: Log[]): AttestationEvent[] {
                 orderHash: a.orderHash as Hex,
                 processId: a.processId as Hex,
                 attester: a.attester as Address,
-                schemaId: a.schemaId as Hex,
+                clauseId: a.clauseId as Hex,
                 stage: Number(a.stage),
                 contentRef: a.contentRef as Hex,
                 blockNumber: Number(log.blockNumber ?? 0),

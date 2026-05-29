@@ -37,7 +37,7 @@ export type SequencerOp =
         type: "AttestAsSeller";
         role_commitment: SequencerCommitment;
         order_hash: Hex;
-        schema_id: Hex;
+        clause_id: Hex;
         stage: number;
         content_ref: Hex;
         seller_sig: SequencerSignature;
@@ -46,21 +46,21 @@ export type SequencerOp =
         type: "AttestAsBuyer";
         process_id: Hex;
         order_hash: Hex;
-        schema_id: Hex;
+        clause_id: Hex;
         stage: number;
         content_ref: Hex;
         buyer_sig: SequencerSignature;
     }
     | {
-        type: "RegisterSchema";
-        schema_id: Hex;
+        type: "RegisterClause";
+        clause_id: Hex;
         version: number;
         uri_hash: Hex;
         registrar_sig: SequencerSignature;
     }
     | {
-        type: "SetMechanismSchema";
-        schema_id: Hex;
+        type: "SetMechanismClause";
+        clause_id: Hex;
         mechanism_sig: SequencerSignature;
     }
     | {

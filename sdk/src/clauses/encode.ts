@@ -1,12 +1,12 @@
 /**
  * Generic spec-driven content encoder — TypeScript mirror of the Rust
- * `prover/schema/src/encode.rs`. Both must stay byte-identical: the
+ * `prover/clause/src/encode.rs`. Both must stay byte-identical: the
  * SP1 prover's cross-form-binding gate derives content bytes via the
  * Rust encoder and asserts they match the on-chain `content_ref`,
  * which off-chain producers compute via the TS encoder.
  *
- * Post-Keystone there is no per-schema dispatch — one encoder drives
- * every schema. New schemas plug in by declaring their spec; no
+ * Post-Keystone there is no per-clause dispatch — one encoder drives
+ * every clause. New clauses plug in by declaring their spec; no
  * encoder code is needed. See docs/v5/SCALING_STRATEGY.md "Keystone
  * Design — Canonical ABI Mapping" for the encoding rule:
  *
@@ -26,7 +26,7 @@
  * field throws (caller-detectable; validation should already have
  * caught it upstream).
  *
- * Per-schema *types* (`GeoContent`, `KlerosCourt`, `ConsentDocument`,
+ * Per-clause *types* (`GeoContent`, `KlerosCourt`, `ConsentDocument`,
  * …) are preserved here as a courtesy to downstream code that wants
  * domain-typed values rather than `Record<string, unknown>`. The
  * type names are not load-bearing for the encoder — they're a
@@ -34,18 +34,18 @@
  */
 
 import { encodeAbiParameters, type AbiParameter, type Hex } from "viem";
-import type { FieldSpec, SchemaSpec } from "./spec.js";
+import type { FieldSpec, ClauseSpec } from "./spec.js";
 
-// ── Empty content (some schemas accept empty bytes) ─────────────────────────
+// ── Empty content (some clauses accept empty bytes) ─────────────────────────
 
 export const EMPTY_CONTENT: Hex = "0x";
 
-// ── Per-schema content types (for downstream typing convenience) ────────────
+// ── Per-clause content types (for downstream typing convenience) ────────────
 //
-// These mirror the field shapes of each protocol schema. Consumers can
+// These mirror the field shapes of each protocol clause. Consumers can
 // supply a `Record<string, unknown>` directly to `encodeContentFromSpec`;
 // these typed aliases just narrow the surface for code that wants TS-side
-// help. None of the index tables that used to back the deleted per-schema
+// help. None of the index tables that used to back the deleted per-clause
 // encoders survive — the canonical 0-based-position rule is enforced by
 // the spec at runtime, not by hand-maintained enum maps.
 
@@ -257,11 +257,11 @@ function abiValueOf(field: FieldSpec, raw: unknown): unknown {
 }
 
 /**
- * Encode JSON content to canonical ABI bytes from the parsed `SchemaSpec`
+ * Encode JSON content to canonical ABI bytes from the parsed `ClauseSpec`
  * alone. Byte-identical to the Rust `encode_content_from_spec`.
  */
 export function encodeContentFromSpec(
-    spec: SchemaSpec,
+    spec: ClauseSpec,
     content: Record<string, unknown>,
 ): Hex {
     const params = spec.fields.map(abiParamOf);

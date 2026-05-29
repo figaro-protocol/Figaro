@@ -1,44 +1,44 @@
 /**
  * @figaro/core/extensions — Attestation & GHG
  *
- * Schema ID derivation, attestation event filtering, GHG disclosure
+ * Clause ID derivation, attestation event filtering, GHG disclosure
  * encoding/decoding, and process disclosure summaries.
  *
- * Folds Schema Registry helpers + GHG domain logic into a single
- * module since they're tightly coupled through schemaId.
+ * Folds Clause Registry helpers + GHG domain logic into a single
+ * module since they're tightly coupled through clauseId.
  */
 
 import { keccak256, stringToHex, toHex } from "viem";
 import type { Hex, Address, AttestationEvent } from "../types.js";
-import ghgProtocolSpec from "../schemas/examples/figaro-ghg-protocol-v1.json" with { type: "json" };
-import ghgISO14064Spec from "../schemas/examples/figaro-ghg-iso-14064-v1.json" with { type: "json" };
-import ghgPAS2050Spec from "../schemas/examples/figaro-ghg-pas-2050-v1.json" with { type: "json" };
-import ghgEN16258Spec from "../schemas/examples/figaro-ghg-en-16258-v1.json" with { type: "json" };
-import ghgCustomSpec from "../schemas/examples/figaro-ghg-custom-v1.json" with { type: "json" };
+import ghgProtocolSpec from "../clauses/examples/figaro-ghg-protocol-v1.json" with { type: "json" };
+import ghgISO14064Spec from "../clauses/examples/figaro-ghg-iso-14064-v1.json" with { type: "json" };
+import ghgPAS2050Spec from "../clauses/examples/figaro-ghg-pas-2050-v1.json" with { type: "json" };
+import ghgEN16258Spec from "../clauses/examples/figaro-ghg-en-16258-v1.json" with { type: "json" };
+import ghgCustomSpec from "../clauses/examples/figaro-ghg-custom-v1.json" with { type: "json" };
 
-// ── Schema ID derivation ────────────────────────────────────────────────────
+// ── Clause ID derivation ────────────────────────────────────────────────────
 
 /**
- * Compute a schema ID from a string key.
- * This is the canonical way to derive schema IDs.
- * Matches how schemas are registered on-chain: keccak256(stringToHex(name)).
+ * Compute a clause ID from a string key.
+ * This is the canonical way to derive clause IDs.
+ * Matches how clauses are registered on-chain: keccak256(stringToHex(name)).
  *
  * @example
  * ```ts
- * const schemaId = computeSchemaId("figaro-ghg-iso-14064-v1");
+ * const clauseId = computeClauseId("figaro-ghg-iso-14064-v1");
  * ```
  */
-export function computeSchemaId(key: string): Hex {
+export function computeClauseId(key: string): Hex {
     return keccak256(stringToHex(key));
 }
 
-// ── Well-known schema keys ──────────────────────────────────────────────────
+// ── Well-known clause keys ──────────────────────────────────────────────────
 
 /**
- * GHG disclosure sister schemas — one per accounting standard. The standard
- * identity lives in the schemaId; the content shape is shared across all five.
+ * GHG disclosure sister clauses — one per accounting standard. The standard
+ * identity lives in the clauseId; the content shape is shared across all five.
  */
-export const GHG_DISCLOSURE_SCHEMA_KEYS = [
+export const GHG_DISCLOSURE_CLAUSE_KEYS = [
     "figaro-ghg-protocol-v1",
     "figaro-ghg-iso-14064-v1",
     "figaro-ghg-pas-2050-v1",
@@ -46,7 +46,7 @@ export const GHG_DISCLOSURE_SCHEMA_KEYS = [
     "figaro-ghg-custom-v1",
 ] as const;
 
-export type GHGDisclosureSchemaKey = (typeof GHG_DISCLOSURE_SCHEMA_KEYS)[number];
+export type GHGDisclosureClauseKey = (typeof GHG_DISCLOSURE_CLAUSE_KEYS)[number];
 
 // ── GHG disclosure kinds (stage values in AttestationCoordinator) ────────────
 
@@ -70,10 +70,10 @@ export const DISCLOSURE_KIND_LABELS: Record<DisclosureKind, string> = {
 
 // ── GHG norm references ─────────────────────────────────────────────────────
 
-/** Concise editorial scope tag per disclosure schema — published with the SDK
+/** Concise editorial scope tag per disclosure clause — published with the SDK
  *  so non-React consumers don't need to load the spec JSON to render chips.
  *  Not in the spec JSON itself; the spec's `description` is the full prose. */
-const GHG_SCOPES: Record<GHGDisclosureSchemaKey, string> = {
+const GHG_SCOPES: Record<GHGDisclosureClauseKey, string> = {
     "figaro-ghg-protocol-v1": "Scope 1/2/3 corporate accounting",
     "figaro-ghg-iso-14064-v1": "Quantification, reporting & verification",
     "figaro-ghg-pas-2050-v1": "Product carbon footprint",
@@ -82,9 +82,9 @@ const GHG_SCOPES: Record<GHGDisclosureSchemaKey, string> = {
 };
 
 /** Labels derived from each spec JSON's `title` — single source of truth.
- *  Adding a sister schema means importing its spec above and adding it here;
- *  the TypeScript `Record<GHGDisclosureSchemaKey, ...>` enforces completeness. */
-const GHG_LABELS: Record<GHGDisclosureSchemaKey, string> = {
+ *  Adding a sister clause means importing its spec above and adding it here;
+ *  the TypeScript `Record<GHGDisclosureClauseKey, ...>` enforces completeness. */
+const GHG_LABELS: Record<GHGDisclosureClauseKey, string> = {
     "figaro-ghg-protocol-v1": ghgProtocolSpec.title,
     "figaro-ghg-iso-14064-v1": ghgISO14064Spec.title,
     "figaro-ghg-pas-2050-v1": ghgPAS2050Spec.title,
@@ -92,14 +92,14 @@ const GHG_LABELS: Record<GHGDisclosureSchemaKey, string> = {
     "figaro-ghg-custom-v1": ghgCustomSpec.title,
 };
 
-/** Normative-standard reference for each disclosure schema. 1:1 with
- *  `GHG_DISCLOSURE_SCHEMA_KEYS`; each `id` IS the schemaId. `label` derives
- *  from the schema's spec JSON `title`; `scope` is SDK-published editorial. */
+/** Normative-standard reference for each disclosure clause. 1:1 with
+ *  `GHG_DISCLOSURE_CLAUSE_KEYS`; each `id` IS the clauseId. `label` derives
+ *  from the clause's spec JSON `title`; `scope` is SDK-published editorial. */
 export const GHG_NORM_REFERENCES: ReadonlyArray<{
-    id: GHGDisclosureSchemaKey;
+    id: GHGDisclosureClauseKey;
     label: string;
     scope: string;
-}> = GHG_DISCLOSURE_SCHEMA_KEYS.map((id) => ({
+}> = GHG_DISCLOSURE_CLAUSE_KEYS.map((id) => ({
     id,
     label: GHG_LABELS[id],
     scope: GHG_SCOPES[id],
@@ -156,7 +156,7 @@ export function formatGrams(grams: bigint): string {
 
 /**
  * Filter raw event logs by source contract address. Use this when processing
- * `Attestation`, `SchemaRegistered`, `MechanismSchemaSet`, `SellerRegistered`,
+ * `Attestation`, `ClauseRegistered`, `MechanismClauseSet`, `SellerRegistered`,
  * or any other event re-emitted from `FigaroBatchVerifier` with the same
  * topic hash as its direct-path counterpart. Without contract-address
  * filtering, indexers conflate batch-re-emitted events with direct-path ones
@@ -188,13 +188,13 @@ export function filterLogsBySource<T extends { address: Address }>(
 }
 
 /**
- * Filter attestation events by schema ID.
+ * Filter attestation events by clause ID.
  */
-export function filterBySchema(
+export function filterByClause(
     events: AttestationEvent[],
-    schemaId: Hex,
+    clauseId: Hex,
 ): AttestationEvent[] {
-    return events.filter((e) => e.schemaId === schemaId);
+    return events.filter((e) => e.clauseId === clauseId);
 }
 
 /**
@@ -231,7 +231,7 @@ export function filterByStage(
 
 export interface ProcessDisclosureSummary {
     processId: Hex;
-    /** Total attestation events for this process under the GHG schema. */
+    /** Total attestation events for this process under the GHG clause. */
     attestationCount: number;
     /** Number of commitment-stage attestations. */
     commitmentCount: number;
@@ -248,15 +248,15 @@ export interface ProcessDisclosureSummary {
  *
  * @param allAttestations All attestation events (will be filtered internally).
  * @param processId       The process to summarize.
- * @param ghgSchemaId     The GHG schema ID to filter by.
+ * @param ghgClauseId     The GHG clause ID to filter by.
  */
 export function buildProcessDisclosureSummary(
     allAttestations: AttestationEvent[],
     processId: Hex,
-    ghgSchemaId: Hex,
+    ghgClauseId: Hex,
 ): ProcessDisclosureSummary {
     const attestations = allAttestations.filter(
-        (e) => e.processId === processId && e.schemaId === ghgSchemaId,
+        (e) => e.processId === processId && e.clauseId === ghgClauseId,
     );
 
     const commitments = attestations.filter((e) => e.stage === DisclosureKind.Commitment);

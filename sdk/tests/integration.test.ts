@@ -126,7 +126,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
             core: coreAddress,
             attestationCoordinator: "0x0000000000000000000000000000000000000000" as Address,
             dutchAuction: "0x0000000000000000000000000000000000000000" as Address,
-            schemaRegistry: "0x0000000000000000000000000000000000000000" as Address,
+            clauseRegistry: "0x0000000000000000000000000000000000000000" as Address,
         };
     }, 30_000);
 

@@ -93,15 +93,15 @@ export async function resolveProcess(
  * @param sectionData The raw clause bytes committed in the agreement manifest.
  *               Use `canonicalizeSectionData(section.data)` + encode to Hex.
  * @param proof  Merkle inclusion proof produced by `buildSectionInclusionProof`.
- * @param content ABI-encoded content per the schema's encoding (use the
- *                encoders in `@figaro/core/schemas`).
+ * @param content ABI-encoded content per the clause's encoding (use the
+ *                encoders in `@figaro/core/clauses`).
  */
 export async function attestAsSeller(
     walletClient: WalletClient,
     coordinatorAddress: Address,
     role: Commitment,
     target: Commitment,
-    schemaId: Hex,
+    clauseId: Hex,
     stage: number,
     sectionData: Hex,
     proof: readonly Hex[],
@@ -113,7 +113,7 @@ export async function attestAsSeller(
         address: coordinatorAddress,
         abi: ATTESTATION_COORDINATOR_ABI,
         functionName: "attestAsSeller",
-        args: [role, target, schemaId, stage, sectionData, proof, content],
+        args: [role, target, clauseId, stage, sectionData, proof, content],
     });
     return { hash };
 }
@@ -126,7 +126,7 @@ export async function attestAsBuyer(
     walletClient: WalletClient,
     coordinatorAddress: Address,
     target: Commitment,
-    schemaId: Hex,
+    clauseId: Hex,
     stage: number,
     sectionData: Hex,
     proof: readonly Hex[],
@@ -138,7 +138,7 @@ export async function attestAsBuyer(
         address: coordinatorAddress,
         abi: ATTESTATION_COORDINATOR_ABI,
         functionName: "attestAsBuyer",
-        args: [target, schemaId, stage, sectionData, proof, content],
+        args: [target, clauseId, stage, sectionData, proof, content],
     });
     return { hash };
 }

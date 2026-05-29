@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseSchemaSpec } from "../../src/schemas/spec.js";
+import { parseClauseSpec } from "../../src/clauses/spec.js";
 
-describe("parseSchemaSpec — meta-schema validation", () => {
+describe("parseClauseSpec — meta-clause validation", () => {
     it("accepts a minimal valid spec", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "test-v1",
             version: 1,
             title: "Test",
@@ -16,13 +16,13 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("rejects a non-object input", () => {
-        const result = parseSchemaSpec("not an object");
+        const result = parseClauseSpec("not an object");
         expect(result.ok).toBe(false);
         if (!result.ok) expect(result.errors[0].path).toBe("$");
     });
 
-    it("rejects missing schemaId", () => {
-        const result = parseSchemaSpec({
+    it("rejects missing clauseId", () => {
+        const result = parseClauseSpec({
             version: 1, title: "T", description: "D", fields: [],
         });
         expect(result.ok).toBe(false);
@@ -30,7 +30,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("rejects unknown field type", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "wat", required: true }],
         });
@@ -39,13 +39,13 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("validates string format values", () => {
-        const ok = parseSchemaSpec({
+        const ok = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "addr", type: "string", required: true, format: "address-hex" }],
         });
         expect(ok.ok).toBe(true);
 
-        const bad = parseSchemaSpec({
+        const bad = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true, format: "ipv6" }],
         });
@@ -53,7 +53,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("accepts spec with categories array", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             categories: ["emissions", "lifecycle"],
             fields: [{ name: "x", type: "string", required: true }],
@@ -63,7 +63,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("omits categories when absent", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
         });
@@ -72,7 +72,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("rejects non-array categories", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             categories: "emissions",
             fields: [{ name: "x", type: "string", required: true }],
@@ -82,7 +82,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("rejects empty-string category entries", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             categories: ["emissions", ""],
             fields: [{ name: "x", type: "string", required: true }],
@@ -92,7 +92,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("recursively parses array.items", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{
                 name: "tags", type: "array", required: true,
@@ -103,7 +103,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("recursively parses object.fields", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{
                 name: "loc", type: "object", required: true,
@@ -117,7 +117,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("validates enum requires non-empty values array", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "enum", required: true, values: [] }],
         });
@@ -125,7 +125,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("parses stage overrides", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
             stages: {
@@ -138,7 +138,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("rejects bigint min/max as a number (must be string)", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "amount", type: "bigint", required: true, min: 0 }],
         });
@@ -146,7 +146,7 @@ describe("parseSchemaSpec — meta-schema validation", () => {
     });
 
     it("rejects invalid regex pattern", () => {
-        const result = parseSchemaSpec({
+        const result = parseClauseSpec({
             schemaId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true, pattern: "(unclosed" }],
         });

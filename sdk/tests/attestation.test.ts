@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-    computeSchemaId,
-    GHG_DISCLOSURE_SCHEMA_KEYS,
+    computeClauseId,
+    GHG_DISCLOSURE_CLAUSE_KEYS,
     DisclosureKind,
     DISCLOSURE_KIND_LABELS,
     encodeCommitmentRef,
@@ -9,7 +9,7 @@ import {
     decodeGramsRef,
     formatGrams,
     filterLogsBySource,
-    filterBySchema,
+    filterByClause,
     filterByProcess,
     filterByOrder,
     filterByStage,
@@ -25,17 +25,17 @@ const addr = (n: number): Address =>
 const hex32 = (n: number): Hex =>
     `0x${n.toString(16).padStart(64, "0")}` as Hex;
 
-// Use the ISO-14064 sister schema as the canonical GHG schema for tests.
-const GHG_SCHEMA_KEY = "figaro-ghg-iso-14064-v1";
-const GHG_SCHEMA_ID = keccak256(stringToHex(GHG_SCHEMA_KEY));
-const OTHER_SCHEMA_ID = keccak256(stringToHex("other-schema"));
+// Use the ISO-14064 sister clause as the canonical GHG clause for tests.
+const GHG_CLAUSE_KEY = "figaro-ghg-iso-14064-v1";
+const GHG_CLAUSE_ID = keccak256(stringToHex(GHG_CLAUSE_KEY));
+const OTHER_CLAUSE_ID = keccak256(stringToHex("other-clause"));
 
 function makeAttestation(overrides: Partial<AttestationEvent> = {}): AttestationEvent {
     return {
         orderHash: hex32(1),
         processId: hex32(100),
         attester: addr(1),
-        schemaId: GHG_SCHEMA_ID,
+        clauseId: GHG_CLAUSE_ID,
         stage: DisclosureKind.Commitment,
         contentRef: hex32(0),
         blockNumber: 10,
@@ -43,35 +43,35 @@ function makeAttestation(overrides: Partial<AttestationEvent> = {}): Attestation
     };
 }
 
-// ── computeSchemaId ─────────────────────────────────────────────────────────
+// ── computeClauseId ─────────────────────────────────────────────────────────
 
-describe("computeSchemaId", () => {
+describe("computeClauseId", () => {
     it("matches keccak256(stringToHex(key))", () => {
-        const id = computeSchemaId("figaro-ghg-iso-14064-v1");
+        const id = computeClauseId("figaro-ghg-iso-14064-v1");
         expect(id).toBe(keccak256(stringToHex("figaro-ghg-iso-14064-v1")));
     });
 
     it("different keys produce different IDs", () => {
-        const a = computeSchemaId("key-a");
-        const b = computeSchemaId("key-b");
+        const a = computeClauseId("key-a");
+        const b = computeClauseId("key-b");
         expect(a).not.toBe(b);
     });
 
-    it("GHG_SCHEMA_KEY produces known hash", () => {
-        expect(computeSchemaId(GHG_SCHEMA_KEY)).toBe(GHG_SCHEMA_ID);
+    it("GHG_CLAUSE_KEY produces known hash", () => {
+        expect(computeClauseId(GHG_CLAUSE_KEY)).toBe(GHG_CLAUSE_ID);
     });
 });
 
 // ── GHG constants ───────────────────────────────────────────────────────────
 
 describe("GHG constants", () => {
-    it("GHG_DISCLOSURE_SCHEMA_KEYS contains 5 sister schemas", () => {
-        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toHaveLength(5);
-        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toContain("figaro-ghg-protocol-v1");
-        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toContain("figaro-ghg-iso-14064-v1");
-        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toContain("figaro-ghg-pas-2050-v1");
-        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toContain("figaro-ghg-en-16258-v1");
-        expect(GHG_DISCLOSURE_SCHEMA_KEYS).toContain("figaro-ghg-custom-v1");
+    it("GHG_DISCLOSURE_CLAUSE_KEYS contains 5 sister clauses", () => {
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toHaveLength(5);
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-protocol-v1");
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-iso-14064-v1");
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-pas-2050-v1");
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-en-16258-v1");
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-custom-v1");
     });
 
     it("DisclosureKind has 4 values", () => {
@@ -146,14 +146,14 @@ describe("formatGrams", () => {
 
 describe("event filtering", () => {
     const events: AttestationEvent[] = [
-        makeAttestation({ processId: hex32(100), schemaId: GHG_SCHEMA_ID, stage: 0 }),
-        makeAttestation({ processId: hex32(100), schemaId: OTHER_SCHEMA_ID, stage: 1 }),
-        makeAttestation({ processId: hex32(200), schemaId: GHG_SCHEMA_ID, stage: 1 }),
-        makeAttestation({ processId: hex32(100), schemaId: GHG_SCHEMA_ID, stage: 1, orderHash: hex32(5) }),
+        makeAttestation({ processId: hex32(100), clauseId: GHG_CLAUSE_ID, stage: 0 }),
+        makeAttestation({ processId: hex32(100), clauseId: OTHER_CLAUSE_ID, stage: 1 }),
+        makeAttestation({ processId: hex32(200), clauseId: GHG_CLAUSE_ID, stage: 1 }),
+        makeAttestation({ processId: hex32(100), clauseId: GHG_CLAUSE_ID, stage: 1, orderHash: hex32(5) }),
     ];
 
-    it("filterBySchema", () => {
-        expect(filterBySchema(events, GHG_SCHEMA_ID)).toHaveLength(3);
+    it("filterByClause", () => {
+        expect(filterByClause(events, GHG_CLAUSE_ID)).toHaveLength(3);
     });
 
     it("filterByProcess", () => {
@@ -224,31 +224,31 @@ describe("buildProcessDisclosureSummary", () => {
         const events: AttestationEvent[] = [
             makeAttestation({
                 processId: hex32(100),
-                schemaId: GHG_SCHEMA_ID,
+                clauseId: GHG_CLAUSE_ID,
                 stage: DisclosureKind.Commitment,
             }),
             makeAttestation({
                 processId: hex32(100),
-                schemaId: GHG_SCHEMA_ID,
+                clauseId: GHG_CLAUSE_ID,
                 stage: DisclosureKind.Inventory,
                 contentRef: encodeGramsRef(500n),
             }),
             makeAttestation({
                 processId: hex32(100),
-                schemaId: GHG_SCHEMA_ID,
+                clauseId: GHG_CLAUSE_ID,
                 stage: DisclosureKind.Inventory,
                 contentRef: encodeGramsRef(300n),
             }),
             // Different process — should be excluded
             makeAttestation({
                 processId: hex32(999),
-                schemaId: GHG_SCHEMA_ID,
+                clauseId: GHG_CLAUSE_ID,
                 stage: DisclosureKind.Inventory,
                 contentRef: encodeGramsRef(999n),
             }),
         ];
 
-        const summary = buildProcessDisclosureSummary(events, hex32(100), GHG_SCHEMA_ID);
+        const summary = buildProcessDisclosureSummary(events, hex32(100), GHG_CLAUSE_ID);
         expect(summary.processId).toBe(hex32(100));
         expect(summary.attestationCount).toBe(3);
         expect(summary.commitmentCount).toBe(1);
@@ -257,7 +257,7 @@ describe("buildProcessDisclosureSummary", () => {
     });
 
     it("returns zeros when no matching events", () => {
-        const summary = buildProcessDisclosureSummary([], hex32(100), GHG_SCHEMA_ID);
+        const summary = buildProcessDisclosureSummary([], hex32(100), GHG_CLAUSE_ID);
         expect(summary.attestationCount).toBe(0);
         expect(summary.totalActualGrams).toBe(0n);
     });

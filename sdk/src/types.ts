@@ -88,7 +88,7 @@ export interface AttestationEvent {
     orderHash: Hex;
     processId: Hex;
     attester: Address;
-    schemaId: Hex;
+    clauseId: Hex;
     stage: number;
     contentRef: Hex;
     blockNumber: number;
@@ -145,7 +145,7 @@ export interface FigaroAddresses {
     core: Address;
     token?: Address;
     attestationCoordinator?: Address;
-    schemaRegistry?: Address;
+    clauseRegistry?: Address;
     dutchAuction?: Address;
     batchVerifier?: Address;
 }

@@ -70,17 +70,17 @@ export interface AttestAction extends BaseAction {
     /** Orders this address can attest against. */
     orderHashes: Hex[];
     /**
-     * Optional schemaId for the attestation. When omitted, the executor picks
+     * Optional clauseId for the attestation. When omitted, the executor picks
      * a role-appropriate default (e.g. `figaro-courier-process-v1` for a
      * sub-order carrying that clause). Must correspond to a clause committed in the
      * target's signed agreement — otherwise the coordinator's inclusion-proof
      * gate rejects the call.
      */
-    schemaId?: Hex;
+    clauseId?: Hex;
     /** Optional stage; executor default is 1. */
     stage?: number;
     /** Optional ABI-encoded content. Omit to default to the committed
-     *  sectionData (correct for Category-2 schemas). */
+     *  sectionData (correct for Category-2 clauses). */
     content?: Hex;
     /** Optional — seller-attest only. Supply a distinct role commitment for
      *  cross-order attestation; omit for same-order attestation. */

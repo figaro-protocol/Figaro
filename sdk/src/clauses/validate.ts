@@ -1,12 +1,12 @@
 /**
- * Content validator — validates a content value against a parsed SchemaSpec.
+ * Content validator — validates a content value against a parsed ClauseSpec.
  *
  * Call sites: frontend form gates, SDK agent-action preflight, later mirrored
- * in the on-chain JSONSchemaValidator contract and the SP1 prover.
+ * in the on-chain JSONClauseValidator contract and the SP1 prover.
  */
 
 import type {
-    SchemaSpec,
+    ClauseSpec,
     FieldSpec,
     StringFieldSpec,
     IntegerFieldSpec,
@@ -145,11 +145,11 @@ function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, err
         }
         validateField(childValue, field, childPath, errors);
     }
-    // Reject unknown fields — schema is a closed contract.
+    // Reject unknown fields — clause is a closed contract.
     for (const key of Object.keys(value)) {
         if (!known.has(key)) {
             const childPath = path === "$" ? `$.${key}` : `${path}.${key}`;
-            errors.push({ path: childPath, message: `unknown field "${key}" not declared in schema` });
+            errors.push({ path: childPath, message: `unknown field "${key}" not declared in clause` });
         }
     }
 }
@@ -171,13 +171,13 @@ function validateField(value: unknown, spec: FieldSpec, path: string, errors: Va
 }
 
 /**
- * Validate content against a SchemaSpec. If `options.stage` is set and the
+ * Validate content against a ClauseSpec. If `options.stage` is set and the
  * spec defines a matching stage override, those fields are used; otherwise
  * the spec's default `fields` apply.
  */
 export function validateContent(
     content: unknown,
-    spec: SchemaSpec,
+    spec: ClauseSpec,
     options: ValidateOptions = {},
 ): ValidationResult {
     const fields: readonly FieldSpec[] =

@@ -84,22 +84,22 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 
 export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "function core() view returns (address)",
-    "function schemaValidator(bytes32 schemaId) view returns (address)",
-    "function setValidator(bytes32 schemaId, address validator) external",
+    "function clauseValidator(bytes32 clauseId) view returns (address)",
+    "function setValidator(bytes32 clauseId, address validator) external",
     // All three paths now take the full Commitment(s) so the coordinator can
     // recover `agreementHash` without new kernel state, and carry `sectionData`
     // + merkle `proof` so the attestation's clause is provably part of the
     // signed agreement.
-    `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 schemaId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
-    `function attestAsBuyer(${COMMITMENT_TUPLE} target, bytes32 schemaId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
-    `function attestViaResolver(${COMMITMENT_TUPLE} target, bytes32 schemaId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
-    "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)",
-    "event ValidatorSet(bytes32 indexed schemaId, address indexed validator)",
-    "error InvalidInclusionProof(bytes32 agreementHash, bytes32 schemaId)",
+    `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
+    `function attestAsBuyer(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
+    `function attestViaResolver(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
+    "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
+    "event ValidatorSet(bytes32 indexed clauseId, address indexed validator)",
+    "error InvalidInclusionProof(bytes32 agreementHash, bytes32 clauseId)",
 ]);
 
 export const EV_ATTESTATION = parseAbiItem(
-    "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)",
+    "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
 );
 
 // ── DutchAuction ABI ────────────────────────────────────────────────────────
@@ -127,34 +127,34 @@ export const EV_AUCTION_CLAIMED = parseAbiItem(
     "event AuctionClaimed(bytes32 indexed auctionId, address indexed provider, uint256 clearingPrice)",
 );
 
-// ── SchemaRegistry ABI ──────────────────────────────────────────────────────
+// ── ClauseRegistry ABI ──────────────────────────────────────────────────────
 
-export const SCHEMA_REGISTRY_ABI = parseAbi([
-    "function registered(bytes32 schemaId) view returns (bool)",
-    "function registerSchema(bytes32 schemaId, uint64 version, bytes32 uriHash, bytes32 family) external",
-    "function setMechanismSchema(bytes32 schemaId) external",
-    "event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar)",
-    "event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId)",
+export const CLAUSE_REGISTRY_ABI = parseAbi([
+    "function registered(bytes32 clauseId) view returns (bool)",
+    "function registerClause(bytes32 clauseId, uint64 version, bytes32 uriHash, bytes32 family) external",
+    "function setMechanismClause(bytes32 clauseId) external",
+    "event ClauseRegistered(bytes32 indexed clauseId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar)",
+    "event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId)",
 ]);
 
-// ── SchemaRegistrationHelper ABI ────────────────────────────────────────────
-// Atomic register-schema + bind-validator helper. Closes the M-1 front-running
-// window between SchemaRegistry.registerSchema and AttestationCoordinator.setValidator
+// ── ClauseRegistrationHelper ABI ────────────────────────────────────────────
+// Atomic register-clause + bind-validator helper. Closes the M-1 front-running
+// window between ClauseRegistry.registerClause and AttestationCoordinator.setValidator
 // (DESIGN_DECISIONS.md #13). Stateless, no admin — anyone can call. Use this when
-// registering a non-bootstrap schema; the alternative is the two primitives called
-// separately (which exposes a front-running window for high-stakes schemas).
+// registering a non-bootstrap clause; the alternative is the two primitives called
+// separately (which exposes a front-running window for high-stakes clauses).
 
-export const SCHEMA_REGISTRATION_HELPER_ABI = parseAbi([
-    "function schemaRegistry() view returns (address)",
+export const CLAUSE_REGISTRATION_HELPER_ABI = parseAbi([
+    "function clauseRegistry() view returns (address)",
     "function attestationCoordinator() view returns (address)",
-    "function registerSchemaAndValidator(bytes32 schemaId, uint64 version, bytes32 uriHash, bytes32 family, address validator) external",
+    "function registerClauseAndValidator(bytes32 clauseId, uint64 version, bytes32 uriHash, bytes32 family, address validator) external",
 ]);
 
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch settlement ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 schemaId, uint64 version, bytes32 uriHash, bytes32 family, address registrar)[] schemas, (address mechanism, bytes32 schemaId)[] mechanismSchemas, (uint8 tag, address seller, string metadataURI)[] sellerEvents) events) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, uint64 version, bytes32 uriHash, bytes32 family, address registrar)[] clauses, (address mechanism, bytes32 clauseId)[] mechanismClauses, (uint8 tag, address seller, string metadataURI)[] sellerEvents) events) external",
 
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",
@@ -164,9 +164,9 @@ export const BATCH_VERIFIER_ABI = parseAbi([
 
     // ── Events (protocol-compatible re-emissions + BatchSettled) ─────
     "event BatchSettled(uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount)",
-    "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)",
-    "event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar)",
-    "event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId)",
+    "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
+    "event ClauseRegistered(bytes32 indexed clauseId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar)",
+    "event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId)",
     "event SellerRegistered(address indexed seller, string metadataURI)",
     "event SellerProfileUpdated(address indexed seller, string metadataURI)",
 ]);
@@ -225,5 +225,5 @@ export const RPGF_MINTER_ABI = parseAbi([
     "function programVKey() view returns (bytes32)",
     "function STAGE_COUNT() view returns (uint8)",
     "event Claimed(uint8 indexed stageIndex, address indexed account, uint256 amount)",
-    "event RootSubmitted(uint8 indexed stageIndex, bytes32 indexed root, uint256 totalAllocated, uint32 schemaCount)",
+    "event RootSubmitted(uint8 indexed stageIndex, bytes32 indexed root, uint256 totalAllocated, uint32 clauseCount)",
 ]);

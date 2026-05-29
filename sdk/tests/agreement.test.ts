@@ -13,11 +13,11 @@ const SELLER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as `0x${string}`;
 const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 
 const COMMERCE: AgreementSection = {
-    schema: "figaro-commerce-v1",
+    clause: "figaro-commerce-v1",
     data: { currency: CURRENCY, payment: "1000000000000000000", lineItems: [] },
 };
 const GEO: AgreementSection = {
-    schema: "figaro-geo-v2",
+    clause: "figaro-geo-v2",
     data: {
         originGeohash: "dr5reg",
         destinationGeohash: "dr5reh",
@@ -27,14 +27,14 @@ const GEO: AgreementSection = {
     },
 };
 const GHG: AgreementSection = {
-    schema: "figaro-ghg-iso-14064-v1",
-    // Standard identity lives in the schemaId; data carries only scope.
-    // Category-2 schemas use ABI encoding for sectionData — the clause values
+    clause: "figaro-ghg-iso-14064-v1",
+    // Standard identity lives in the clauseId; data carries only scope.
+    // Category-2 clauses use ABI encoding for sectionData — the clause values
     // must be encoder-valid.
     data: { scope: 1 },
 };
 const FULFILMENT: AgreementSection = {
-    schema: "figaro-fulfilment-v2",
+    clause: "figaro-fulfilment-v2",
     data: { modalities: ["pickup"], handoffPoints: ["face-to-face"] },
 };
 
@@ -43,7 +43,7 @@ function agreement(sections: AgreementSection[]): Agreement {
         version: "a1",
         buyer: BUYER,
         seller: SELLER,
-        sections: [...sections].sort((a, b) => a.schema.localeCompare(b.schema)),
+        sections: [...sections].sort((a, b) => a.clause.localeCompare(b.clause)),
     };
 }
 
@@ -61,9 +61,9 @@ describe("computeSectionLeaf", () => {
         expect(computeSectionLeaf(COMMERCE)).not.toBe(computeSectionLeaf(modified));
     });
 
-    it("changes when schema key changes with identical data", () => {
-        const leafA = computeSectionLeaf({ schema: "a", data: { x: 1 } });
-        const leafB = computeSectionLeaf({ schema: "b", data: { x: 1 } });
+    it("changes when clause key changes with identical data", () => {
+        const leafA = computeSectionLeaf({ clause: "a", data: { x: 1 } });
+        const leafB = computeSectionLeaf({ clause: "b", data: { x: 1 } });
         expect(leafA).not.toBe(leafB);
     });
 });
@@ -91,10 +91,10 @@ describe("computeAgreementHash", () => {
         expect(h1).not.toBe(h2);
     });
 
-    it("rejects agreements with duplicate schema keys", () => {
+    it("rejects agreements with duplicate clause keys", () => {
         const dup = { ...GHG, data: { ...GHG.data, scope: 2 } };
         expect(() => computeAgreementHash(agreement([GHG, dup])))
-            .toThrow(/Duplicate schema keys.*figaro-ghg-iso-14064-v1/);
+            .toThrow(/Duplicate clause keys.*figaro-ghg-iso-14064-v1/);
     });
 });
 
@@ -111,7 +111,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
         const a = agreement([COMMERCE, GHG]);
         const root = computeAgreementHash(a);
         for (const s of a.sections) {
-            const { leaf, proof } = buildSectionInclusionProof(a, s.schema);
+            const { leaf, proof } = buildSectionInclusionProof(a, s.clause);
             expect(proof).toHaveLength(1);
             expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
         }
@@ -121,7 +121,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
         const a = agreement([COMMERCE, GEO, GHG, FULFILMENT]);
         const root = computeAgreementHash(a);
         for (const s of a.sections) {
-            const { leaf, proof } = buildSectionInclusionProof(a, s.schema);
+            const { leaf, proof } = buildSectionInclusionProof(a, s.clause);
             expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
         }
     });
@@ -130,7 +130,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
         const a = agreement([COMMERCE, GEO, GHG]);
         const root = computeAgreementHash(a);
         for (const s of a.sections) {
-            const { leaf, proof } = buildSectionInclusionProof(a, s.schema);
+            const { leaf, proof } = buildSectionInclusionProof(a, s.clause);
             expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
         }
     });

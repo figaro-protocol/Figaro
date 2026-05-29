@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseSchemaSpec } from "../../src/schemas/spec.js";
-import { validateContent } from "../../src/schemas/validate.js";
+import { parseClauseSpec } from "../../src/clauses/spec.js";
+import { validateContent } from "../../src/clauses/validate.js";
 
 function specOf(fields: object[], stages?: Record<number, object[]>) {
-    const result = parseSchemaSpec({
+    const result = parseClauseSpec({
         schemaId: "t-v1", version: 1, title: "T", description: "D",
         fields,
         ...(stages !== undefined && { stages }),
@@ -99,7 +99,7 @@ describe("validateContent — happy paths", () => {
         if (!result.ok) expect(result.errors[0].path).toBe("$.x");
     });
 
-    it("rejects unknown fields not declared in schema", () => {
+    it("rejects unknown fields not declared in clause", () => {
         const spec = specOf([
             { name: "x", type: "string", required: true },
         ]);

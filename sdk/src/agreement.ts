@@ -1,13 +1,13 @@
 /**
- * agreement.ts — schema-composed agreement manifest + merkle root + inclusion proofs.
+ * agreement.ts — clause-composed agreement manifest + merkle root + inclusion proofs.
  *
  * An Agreement is the off-chain semantic layer whose merkle root becomes the
- * on-chain `agreementHash` in the signed Commitment struct. Each clause (schema
+ * on-chain `agreementHash` in the signed Commitment struct. Each clause (clause
  * section) is a leaf; inclusion proofs let runtime attestations prove their
  * content was committed to at contract-signing time.
  *
- * Leaf format: `keccak256(schemaId || sectionDataHash)` where
- *   - `schemaId` = `keccak256(schemaKey)` (matches on-chain bytes32 id)
+ * Leaf format: `keccak256(clauseId || sectionDataHash)` where
+ *   - `clauseId` = `keccak256(clauseKey)` (matches on-chain bytes32 id)
  *   - `sectionDataHash` = `keccak256(canonicalJSON(section.data))`
  *
  * Merkle tree: OpenZeppelin-style sorted-pair hashing. Leaves are sorted
@@ -17,23 +17,23 @@
  */
 
 import { keccak256, toHex, concat, type Hex } from "viem";
-import { encodeContentFromSpec } from "./schemas/encode.js";
-import { embeddedSpec } from "./schemas/embedded.js";
+import { encodeContentFromSpec } from "./clauses/encode.js";
+import { embeddedSpec } from "./clauses/embedded.js";
 
 // ── Core types ──────────────────────────────────────────────────────────────
 
 /**
- * A single clause in the agreement. The schema key identifies the vocabulary
- * (registered in SchemaRegistry); data is the clause content per that schema.
+ * A single clause in the agreement. The clause key identifies the vocabulary
+ * (registered in ClauseRegistry); data is the clause content per that clause.
  */
 export interface AgreementSection {
-    schema: string;
+    clause: string;
     data: Record<string, unknown>;
 }
 
 /**
- * The signed agreement. Parties compose sections from registered schemas, sort
- * by schema key, and sign the merkle root of the leaves.
+ * The signed agreement. Parties compose sections from registered clauses, sort
+ * by clause key, and sign the merkle root of the leaves.
  */
 export interface Agreement {
     version: "a1";
@@ -68,25 +68,25 @@ export function canonicalizeSectionData(data: Record<string, unknown>): string {
 
 const ZERO_HASH = `0x${"0".repeat(64)}` as Hex;
 
-function schemaIdOf(schemaKey: string): Hex {
-    return keccak256(toHex(new TextEncoder().encode(schemaKey)));
+function clauseIdOf(clauseKey: string): Hex {
+    return keccak256(toHex(new TextEncoder().encode(clauseKey)));
 }
 
 /**
  * Return the on-chain sectionData bytes for an agreement section.
  *
- * Category-2 schemas (declarative clauses) encode their data via the
+ * Category-2 clauses (declarative clauses) encode their data via the
  * generic canonical encoder — the same path the runtime attestation's
  * `content` takes — so the on-chain byte-equality check
  * `keccak256(content) == keccak256(sectionData)` succeeds. Category-1
- * schemas (no committed clause) and unknown schemas fall through to
+ * clauses (no committed clause) and unknown clauses fall through to
  * canonical JSON bytes.
  *
- * Post-Keystone there is no per-schema dispatch table; the embedded
+ * Post-Keystone there is no per-clause dispatch table; the embedded
  * spec drives both encoding and tier classification.
  */
 export function getSectionDataBytes(section: AgreementSection): Hex {
-    const spec = embeddedSpec(section.schema);
+    const spec = embeddedSpec(section.clause);
     if (spec && spec.block?.tier === "category-2") {
         return encodeContentFromSpec(spec, section.data);
     }
@@ -94,13 +94,13 @@ export function getSectionDataBytes(section: AgreementSection): Hex {
 }
 
 /**
- * Compute one merkle leaf: `keccak256(schemaId || keccak256(sectionDataBytes))`.
+ * Compute one merkle leaf: `keccak256(clauseId || keccak256(sectionDataBytes))`.
  * Uses `getSectionDataBytes` so leaves computed off-chain match the coordinator's
  * reconstruction during inclusion-proof verification.
  */
 export function computeSectionLeaf(section: AgreementSection): Hex {
     return keccak256(
-        concat([schemaIdOf(section.schema), keccak256(getSectionDataBytes(section))]),
+        concat([clauseIdOf(section.clause), keccak256(getSectionDataBytes(section))]),
     );
 }
 
@@ -130,10 +130,10 @@ function buildMerkleRoot(leaves: readonly Hex[]): Hex {
  * section leaves. Empty agreements return bytes32(0).
  */
 export function computeAgreementHash(agreement: Agreement): Hex {
-    const keys = agreement.sections.map((s) => s.schema);
+    const keys = agreement.sections.map((s) => s.clause);
     const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
     if (dupes.length > 0) {
-        throw new Error(`Duplicate schema keys in agreement: ${[...new Set(dupes)].join(", ")}`);
+        throw new Error(`Duplicate clause keys in agreement: ${[...new Set(dupes)].join(", ")}`);
     }
     const leaves = agreement.sections.map(computeSectionLeaf);
     leaves.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
@@ -147,11 +147,11 @@ export function computeAgreementHash(agreement: Agreement): Hex {
  */
 export function buildSectionInclusionProof(
     agreement: Agreement,
-    schemaKey: string,
+    clauseKey: string,
 ): { leaf: Hex; proof: Hex[] } {
-    const section = agreement.sections.find((s) => s.schema === schemaKey);
+    const section = agreement.sections.find((s) => s.clause === clauseKey);
     if (!section) {
-        throw new Error(`Section not found: ${schemaKey}`);
+        throw new Error(`Section not found: ${clauseKey}`);
     }
 
     const targetLeaf = computeSectionLeaf(section);

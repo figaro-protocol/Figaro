@@ -1,39 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { parseSchemaSpec } from "../../src/schemas/spec.js";
-import { validateContent } from "../../src/schemas/validate.js";
-import topologySpecRaw from "../../src/schemas/examples/figaro-topology-v1.json" with { type: "json" };
-import commerceSpecRaw from "../../src/schemas/examples/figaro-commerce-v1.json" with { type: "json" };
-import geoSpecRaw from "../../src/schemas/examples/figaro-geo-v2.json" with { type: "json" };
-import fulfilmentV2SpecRaw from "../../src/schemas/examples/figaro-fulfilment-v2.json" with { type: "json" };
-import arbitrationKlerosSpecRaw from "../../src/schemas/examples/figaro-arbitration-kleros-v1.json" with { type: "json" };
-import applicableLawSpecRaw from "../../src/schemas/examples/figaro-applicable-law-v1.json" with { type: "json" };
-import ghgProtocolSpecRaw from "../../src/schemas/examples/figaro-ghg-protocol-v1.json" with { type: "json" };
-import ghgIso14064SpecRaw from "../../src/schemas/examples/figaro-ghg-iso-14064-v1.json" with { type: "json" };
-import ghgPas2050SpecRaw from "../../src/schemas/examples/figaro-ghg-pas-2050-v1.json" with { type: "json" };
-import ghgEn16258SpecRaw from "../../src/schemas/examples/figaro-ghg-en-16258-v1.json" with { type: "json" };
-import ghgCustomSpecRaw from "../../src/schemas/examples/figaro-ghg-custom-v1.json" with { type: "json" };
-import ghgMeasurementSpecRaw from "../../src/schemas/examples/figaro-ghg-measurement-v1.json" with { type: "json" };
-import proximityPolicySpecRaw from "../../src/schemas/examples/figaro-proximity-policy-v1.json" with { type: "json" };
-import proximityProofSpecRaw from "../../src/schemas/examples/figaro-proximity-proof-v1.json" with { type: "json" };
-import offsetPolicySpecRaw from "../../src/schemas/examples/figaro-offset-policy-v1.json" with { type: "json" };
-import merchantSpecRaw from "../../src/schemas/examples/figaro-merchant-process-v1.json" with { type: "json" };
-import courierSpecRaw from "../../src/schemas/examples/figaro-courier-process-v1.json" with { type: "json" };
+import { parseClauseSpec } from "../../src/clauses/spec.js";
+import { validateContent } from "../../src/clauses/validate.js";
+import topologySpecRaw from "../../src/clauses/examples/figaro-topology-v1.json" with { type: "json" };
+import commerceSpecRaw from "../../src/clauses/examples/figaro-commerce-v1.json" with { type: "json" };
+import geoSpecRaw from "../../src/clauses/examples/figaro-geo-v2.json" with { type: "json" };
+import fulfilmentV2SpecRaw from "../../src/clauses/examples/figaro-fulfilment-v2.json" with { type: "json" };
+import arbitrationKlerosSpecRaw from "../../src/clauses/examples/figaro-arbitration-kleros-v1.json" with { type: "json" };
+import applicableLawSpecRaw from "../../src/clauses/examples/figaro-applicable-law-v1.json" with { type: "json" };
+import ghgProtocolSpecRaw from "../../src/clauses/examples/figaro-ghg-protocol-v1.json" with { type: "json" };
+import ghgIso14064SpecRaw from "../../src/clauses/examples/figaro-ghg-iso-14064-v1.json" with { type: "json" };
+import ghgPas2050SpecRaw from "../../src/clauses/examples/figaro-ghg-pas-2050-v1.json" with { type: "json" };
+import ghgEn16258SpecRaw from "../../src/clauses/examples/figaro-ghg-en-16258-v1.json" with { type: "json" };
+import ghgCustomSpecRaw from "../../src/clauses/examples/figaro-ghg-custom-v1.json" with { type: "json" };
+import ghgMeasurementSpecRaw from "../../src/clauses/examples/figaro-ghg-measurement-v1.json" with { type: "json" };
+import proximityPolicySpecRaw from "../../src/clauses/examples/figaro-proximity-policy-v1.json" with { type: "json" };
+import proximityProofSpecRaw from "../../src/clauses/examples/figaro-proximity-proof-v1.json" with { type: "json" };
+import offsetPolicySpecRaw from "../../src/clauses/examples/figaro-offset-policy-v1.json" with { type: "json" };
+import merchantSpecRaw from "../../src/clauses/examples/figaro-merchant-process-v1.json" with { type: "json" };
+import courierSpecRaw from "../../src/clauses/examples/figaro-courier-process-v1.json" with { type: "json" };
 
-describe("example schema specs — parse + validate sample content", () => {
+describe("example clause specs — parse + validate sample content", () => {
     it("figaro-topology-v1 spec parses cleanly", () => {
-        const result = parseSchemaSpec(topologySpecRaw);
+        const result = parseClauseSpec(topologySpecRaw);
         expect(result.ok).toBe(true);
     });
 
     it("figaro-topology-v1 accepts a root-order content", () => {
-        const parsed = parseSchemaSpec(topologySpecRaw);
+        const parsed = parseClauseSpec(topologySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const root = { topologyMode: "root", parentOrderHashes: [] };
         expect(validateContent(root, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-topology-v1 accepts an explicit child-order content", () => {
-        const parsed = parseSchemaSpec(topologySpecRaw);
+        const parsed = parseClauseSpec(topologySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const child = {
             topologyMode: "explicit",
@@ -43,14 +43,14 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-topology-v1 rejects unknown topologyMode", () => {
-        const parsed = parseSchemaSpec(topologySpecRaw);
+        const parsed = parseClauseSpec(topologySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const bogus = { topologyMode: "fork", parentOrderHashes: [] };
         expect(validateContent(bogus, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-topology-v1 rejects malformed parent hashes", () => {
-        const parsed = parseSchemaSpec(topologySpecRaw);
+        const parsed = parseClauseSpec(topologySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const bogus = { topologyMode: "explicit", parentOrderHashes: ["not-hex"] };
         expect(validateContent(bogus, parsed.spec).ok).toBe(false);
@@ -59,11 +59,11 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-commerce-v1 ──
 
     it("figaro-commerce-v1 spec parses cleanly", () => {
-        expect(parseSchemaSpec(commerceSpecRaw).ok).toBe(true);
+        expect(parseClauseSpec(commerceSpecRaw).ok).toBe(true);
     });
 
     it("figaro-commerce-v1 accepts an order with line items", () => {
-        const parsed = parseSchemaSpec(commerceSpecRaw);
+        const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const ok = validateContent({
             currency: "0x" + "ab".repeat(20),
@@ -74,7 +74,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-commerce-v1 rejects zero payment", () => {
-        const parsed = parseSchemaSpec(commerceSpecRaw);
+        const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const result = validateContent({
             currency: "0x" + "ab".repeat(20),
@@ -87,7 +87,7 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-geo-v2 ──
 
     it("figaro-geo-v2 accepts valid 5-tuple", () => {
-        const parsed = parseSchemaSpec(geoSpecRaw);
+        const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             originGeohash: "u4pruydqqv",
@@ -99,7 +99,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-geo-v2 accepts every class-of-service value", () => {
-        const parsed = parseSchemaSpec(geoSpecRaw);
+        const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const cls of ["S", "E", "F", "C"]) {
             expect(validateContent({
@@ -113,7 +113,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-geo-v2 rejects geohash with disallowed characters", () => {
-        const parsed = parseSchemaSpec(geoSpecRaw);
+        const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // 'a' is not in the geohash base32 alphabet
         expect(validateContent({
@@ -126,7 +126,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-geo-v2 rejects zero mass", () => {
-        const parsed = parseSchemaSpec(geoSpecRaw);
+        const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             originGeohash: "u",
@@ -138,7 +138,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-geo-v2 rejects zero volume", () => {
-        const parsed = parseSchemaSpec(geoSpecRaw);
+        const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             originGeohash: "u",
@@ -150,7 +150,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-geo-v2 rejects unknown class-of-service", () => {
-        const parsed = parseSchemaSpec(geoSpecRaw);
+        const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             originGeohash: "u",
@@ -162,7 +162,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-geo-v2 rejects missing required fields", () => {
-        const parsed = parseSchemaSpec(geoSpecRaw);
+        const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // mass/volume/class are now required
         expect(validateContent({
@@ -174,12 +174,12 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-fulfilment-v2 ──
 
     it("figaro-fulfilment-v2 spec parses cleanly", () => {
-        const result = parseSchemaSpec(fulfilmentV2SpecRaw);
+        const result = parseClauseSpec(fulfilmentV2SpecRaw);
         expect(result.ok).toBe(true);
     });
 
     it("figaro-fulfilment-v2 accepts each single-modality content", () => {
-        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const modality of ["consume-onsite", "pickup", "delivery", "virtual"]) {
             expect(validateContent({ modalities: [modality] }, parsed.spec).ok).toBe(true);
@@ -187,13 +187,13 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-fulfilment-v2 accepts multi-modality offers", () => {
-        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ modalities: ["pickup", "delivery"], coordinations: ["seller-assigned"] }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-fulfilment-v2 accepts each delivery coordination", () => {
-        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const coordination of ["buyer-assigned", "seller-assigned", "dutch-auction"]) {
             expect(validateContent({ modalities: ["delivery"], coordinations: [coordination] }, parsed.spec).ok).toBe(true);
@@ -201,7 +201,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-fulfilment-v2 accepts multiple coordinations + handoff points", () => {
-        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             modalities: ["delivery"],
@@ -211,19 +211,19 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-fulfilment-v2 rejects an unknown modality", () => {
-        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ modalities: ["teleport"] }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-fulfilment-v2 rejects empty modalities array", () => {
-        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ modalities: [] }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-fulfilment-v2 rejects missing modalities", () => {
-        const parsed = parseSchemaSpec(fulfilmentV2SpecRaw);
+        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ coordinations: ["buyer-assigned"] }, parsed.spec).ok).toBe(false);
     });
@@ -231,25 +231,25 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-arbitration-kleros-v1 ──
 
     it("figaro-arbitration-kleros-v1 accepts a subcourt with default jurors", () => {
-        const parsed = parseSchemaSpec(arbitrationKlerosSpecRaw);
+        const parsed = parseClauseSpec(arbitrationKlerosSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ klerosCourt: "general" }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-arbitration-kleros-v1 accepts a subcourt with explicit juror count", () => {
-        const parsed = parseSchemaSpec(arbitrationKlerosSpecRaw);
+        const parsed = parseClauseSpec(arbitrationKlerosSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ klerosCourt: "blockchain-nontechnical", klerosMinJurors: 5 }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-arbitration-kleros-v1 rejects unknown klerosCourt", () => {
-        const parsed = parseSchemaSpec(arbitrationKlerosSpecRaw);
+        const parsed = parseClauseSpec(arbitrationKlerosSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ klerosCourt: "small-claims" }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-arbitration-kleros-v1 rejects missing klerosCourt", () => {
-        const parsed = parseSchemaSpec(arbitrationKlerosSpecRaw);
+        const parsed = parseClauseSpec(arbitrationKlerosSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ klerosMinJurors: 3 }, parsed.spec).ok).toBe(false);
     });
@@ -257,36 +257,36 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-applicable-law-v1 ──
 
     it("figaro-applicable-law-v1 accepts state-law + named forum", () => {
-        const parsed = parseSchemaSpec(applicableLawSpecRaw);
+        const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ applicableLaw: "US-CA", forum: "JAMS-arbitration", language: "en" }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-applicable-law-v1 accepts non-state legal order", () => {
-        const parsed = parseSchemaSpec(applicableLawSpecRaw);
+        const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ applicableLaw: "Sharia", forum: "", language: "ar" }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-applicable-law-v1 accepts minimal applicableLaw only", () => {
-        const parsed = parseSchemaSpec(applicableLawSpecRaw);
+        const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ applicableLaw: "EU" }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-applicable-law-v1 rejects missing applicableLaw", () => {
-        const parsed = parseSchemaSpec(applicableLawSpecRaw);
+        const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ forum: "JAMS-arbitration" }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-applicable-law-v1 rejects applicableLaw shorter than 2 chars", () => {
-        const parsed = parseSchemaSpec(applicableLawSpecRaw);
+        const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ applicableLaw: "U" }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-ghg-<standard>-v1 sister schemas ──
+    // ── figaro-ghg-<standard>-v1 sister clauses ──
 
     const ghgSisterSpecs: Array<[string, unknown]> = [
         ["figaro-ghg-protocol-v1", ghgProtocolSpecRaw],
@@ -298,7 +298,7 @@ describe("example schema specs — parse + validate sample content", () => {
 
     for (const [name, specRaw] of ghgSisterSpecs) {
         it(`${name} accepts each scope (1, 2, 3)`, () => {
-            const parsed = parseSchemaSpec(specRaw);
+            const parsed = parseClauseSpec(specRaw);
             if (!parsed.ok) throw new Error("spec failed to parse");
             for (const scope of [1, 2, 3]) {
                 expect(validateContent({ scope }, parsed.spec).ok).toBe(true);
@@ -306,13 +306,13 @@ describe("example schema specs — parse + validate sample content", () => {
         });
 
         it(`${name} rejects scope 4`, () => {
-            const parsed = parseSchemaSpec(specRaw);
+            const parsed = parseClauseSpec(specRaw);
             if (!parsed.ok) throw new Error("spec failed to parse");
             expect(validateContent({ scope: 4 }, parsed.spec).ok).toBe(false);
         });
 
-        it(`${name} rejects unknown fields (closed schema)`, () => {
-            const parsed = parseSchemaSpec(specRaw);
+        it(`${name} rejects unknown fields (closed clause)`, () => {
+            const parsed = parseClauseSpec(specRaw);
             if (!parsed.ok) throw new Error("spec failed to parse");
             expect(validateContent({ scope: 1, standard: "GHG-Protocol" }, parsed.spec).ok).toBe(false);
         });
@@ -321,11 +321,11 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-ghg-measurement-v1 ──
 
     it("figaro-ghg-measurement-v1 spec parses cleanly", () => {
-        expect(parseSchemaSpec(ghgMeasurementSpecRaw).ok).toBe(true);
+        expect(parseClauseSpec(ghgMeasurementSpecRaw).ok).toBe(true);
     });
 
     it("figaro-ghg-measurement-v1 accepts each stage with a grams value", () => {
-        const parsed = parseSchemaSpec(ghgMeasurementSpecRaw);
+        const parsed = parseClauseSpec(ghgMeasurementSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (let s = 0; s <= 3; s++) {
             expect(validateContent({ grams: "1250" }, parsed.spec, { stage: s }).ok).toBe(true);
@@ -333,7 +333,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-ghg-measurement-v1 rejects missing grams", () => {
-        const parsed = parseSchemaSpec(ghgMeasurementSpecRaw);
+        const parsed = parseClauseSpec(ghgMeasurementSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({}, parsed.spec, { stage: 1 }).ok).toBe(false);
     });
@@ -341,7 +341,7 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-proximity-policy-v1 ──
 
     it("figaro-proximity-policy-v1 accepts each declared band as a single-element list", () => {
-        const parsed = parseSchemaSpec(proximityPolicySpecRaw);
+        const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const band of ["zone-wifi", "nearby-ble", "contact-nfc"]) {
             expect(validateContent({ bands: [band] }, parsed.spec).ok).toBe(true);
@@ -349,25 +349,25 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-proximity-policy-v1 accepts multi-band offers", () => {
-        const parsed = parseSchemaSpec(proximityPolicySpecRaw);
+        const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ bands: ["nearby-ble", "contact-nfc"] }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-proximity-policy-v1 rejects empty bands array", () => {
-        const parsed = parseSchemaSpec(proximityPolicySpecRaw);
+        const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ bands: [] }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-proximity-policy-v1 rejects an unknown band", () => {
-        const parsed = parseSchemaSpec(proximityPolicySpecRaw);
+        const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ bands: ["psychic"] }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-proximity-policy-v1 rejects unknown fields (closed schema — proof fields land in sister schema)", () => {
-        const parsed = parseSchemaSpec(proximityPolicySpecRaw);
+    it("figaro-proximity-policy-v1 rejects unknown fields (closed clause — proof fields land in sister clause)", () => {
+        const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             bands: ["contact-nfc"],
@@ -378,7 +378,7 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-proximity-proof-v1 ──
 
     it("figaro-proximity-proof-v1 accepts a contact-nfc proof", () => {
-        const parsed = parseSchemaSpec(proximityProofSpecRaw);
+        const parsed = parseClauseSpec(proximityProofSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             band: "contact-nfc",
@@ -388,7 +388,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-proximity-proof-v1 rejects an unknown band", () => {
-        const parsed = parseSchemaSpec(proximityProofSpecRaw);
+        const parsed = parseClauseSpec(proximityProofSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             band: "psychic",
@@ -400,7 +400,7 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-offset-policy-v1 ──
 
     it("figaro-offset-policy-v1 accepts each declared provider", () => {
-        const parsed = parseSchemaSpec(offsetPolicySpecRaw);
+        const parsed = parseClauseSpec(offsetPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const provider of ["klima", "toucan", "moss", "custom"]) {
             expect(validateContent({ providers: [provider] }, parsed.spec).ok).toBe(true);
@@ -408,19 +408,19 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-offset-policy-v1 accepts multi-provider offers", () => {
-        const parsed = parseSchemaSpec(offsetPolicySpecRaw);
+        const parsed = parseClauseSpec(offsetPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ providers: ["klima", "toucan"] }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-offset-policy-v1 rejects empty providers array", () => {
-        const parsed = parseSchemaSpec(offsetPolicySpecRaw);
+        const parsed = parseClauseSpec(offsetPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ providers: [] }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-offset-policy-v1 rejects an unknown provider", () => {
-        const parsed = parseSchemaSpec(offsetPolicySpecRaw);
+        const parsed = parseClauseSpec(offsetPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ providers: ["unicorn-tears"] }, parsed.spec).ok).toBe(false);
     });
@@ -428,7 +428,7 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-merchant-process-v1 ──
 
     it("figaro-merchant-process-v1 accepts each known eventType", () => {
-        const parsed = parseSchemaSpec(merchantSpecRaw);
+        const parsed = parseClauseSpec(merchantSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const e of ["order-received", "accepted", "prep-started", "ready-for-pickup", "handed-off", "cancelled"]) {
             expect(validateContent({ eventType: e }, parsed.spec).ok).toBe(true);
@@ -436,7 +436,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-merchant-process-v1 rejects unknown eventType", () => {
-        const parsed = parseSchemaSpec(merchantSpecRaw);
+        const parsed = parseClauseSpec(merchantSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ eventType: "burned-the-meal" }, parsed.spec).ok).toBe(false);
     });
@@ -444,7 +444,7 @@ describe("example schema specs — parse + validate sample content", () => {
     // ── figaro-courier-process-v1 ──
 
     it("figaro-courier-process-v1 accepts each known eventType", () => {
-        const parsed = parseSchemaSpec(courierSpecRaw);
+        const parsed = parseClauseSpec(courierSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const e of ["available", "accepted", "en-route-pickup", "arrived-pickup", "in-transit", "arrived-dropoff", "completed", "cancelled"]) {
             expect(validateContent({ eventType: e }, parsed.spec).ok).toBe(true);
@@ -452,7 +452,7 @@ describe("example schema specs — parse + validate sample content", () => {
     });
 
     it("figaro-courier-process-v1 rejects unknown eventType", () => {
-        const parsed = parseSchemaSpec(courierSpecRaw);
+        const parsed = parseClauseSpec(courierSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ eventType: "teleported" }, parsed.spec).ok).toBe(false);
     });

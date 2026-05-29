@@ -1,10 +1,10 @@
 /**
- * @figaro/core/schemas — Schema-spec format + content validator
+ * @figaro/core/clauses — Clause-spec format + content validator
  *
- * The single source of truth for schema-content validation, shared by:
+ * The single source of truth for clause-content validation, shared by:
  *   - Client-side form gates (frontend / SDK)
- *   - On-chain per-schema validator contracts (future, Solidity)
- *   - SP1 prover schema enforcement (future, Rust mirror)
+ *   - On-chain per-clause validator contracts (future, Solidity)
+ *   - SP1 prover clause enforcement (future, Rust mirror)
  *
  * All three layers parse the same spec JSON and apply the same validation
  * rules. If this format changes, every layer must be updated in lockstep.
@@ -22,12 +22,12 @@ export type {
     ArrayFieldSpec,
     ObjectFieldSpec,
     FieldSpec,
-    SchemaSpec,
+    ClauseSpec,
     SpecParseError,
-    ParseSchemaSpecResult,
+    ParseClauseSpecResult,
 } from "./spec.js";
 
-export { parseSchemaSpec } from "./spec.js";
+export { parseClauseSpec } from "./spec.js";
 
 export type {
     ValidationError,
@@ -71,6 +71,6 @@ export {
     encodeContentFromSpec,
 } from "./encode.js";
 
-// ── Embedded protocol-schema spec catalog ───────────────────────────────────
+// ── Embedded protocol-clause spec catalog ───────────────────────────────────
 
 export { embeddedSpec, allEmbeddedSpecs } from "./embedded.js";

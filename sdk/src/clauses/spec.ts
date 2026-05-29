@@ -1,15 +1,15 @@
 /**
- * Figaro schema-spec format — single source of truth for schema-content
+ * Figaro clause-spec format — single source of truth for clause-content
  * validation across three layers:
  *   1. Client-side validator (this module)
- *   2. On-chain per-schema validator contract (Solidity, future)
+ *   2. On-chain per-clause validator contract (Solidity, future)
  *   3. SP1 prover (Rust mirror, future)
  *
- * The format is a closed subset of JSON Schema. Small, predictable, and
+ * The format is a closed subset of JSON Clause. Small, predictable, and
  * designed to be mirrored faithfully in Rust without ambiguity.
  *
  * Validators in all three layers MUST agree on interpretation. If you
- * extend this format, update the meta-schema parser, the contract, and
+ * extend this format, update the meta-clause parser, the contract, and
  * the prover in lockstep.
  */
 
@@ -85,8 +85,8 @@ export type FieldSpec =
     | ArrayFieldSpec
     | ObjectFieldSpec;
 
-/** Drawer article a schema composes into on the designer canvas. */
-export type SchemaDrawerArticle =
+/** Drawer article a clause composes into on the designer canvas. */
+export type ClauseDrawerArticle =
     | "identity"
     | "order"
     | "fulfilment"
@@ -99,66 +99,66 @@ export type SchemaDrawerArticle =
 /** Doctrinal tier per the protocol-extension doctrine. Independent of the
  *  designer-palette category (`BlockMetadata.category`); the two used to be
  *  both called "category" and got conflated. Now renamed. */
-export type SchemaTier = "category-1" | "category-2" | "manifest-only";
+export type ClauseTier = "category-1" | "category-2" | "manifest-only";
 
 /**
- * Block-binding metadata — the single source of truth for how a schema
- * composes into the UI. Replaces the hand-maintained SCHEMA_OWNERSHIP map
- * and the schemaIds field on BlockMetadata, both of which were redundant
+ * Block-binding metadata — the single source of truth for how a clause
+ * composes into the UI. Replaces the hand-maintained CLAUSE_OWNERSHIP map
+ * and the clauseIds field on BlockMetadata, both of which were redundant
  * with each other and had drifted out of sync.
  *
- * Each schema declares its own binding here. Consumers:
- *   - Designer drawer (which article composes this schema)
+ * Each clause declares its own binding here. Consumers:
+ *   - Designer drawer (which article composes this clause)
  *   - Canvas → assembly derivation (which mechanism kinds + module IDs
- *     to include when this schema is anchored in an order)
- *   - Runtime composer (which modules to mount per anchored schema)
- *   - Route-tier surfaces (which routes surface this schema)
+ *     to include when this clause is anchored in an order)
+ *   - Runtime composer (which modules to mount per anchored clause)
+ *   - Route-tier surfaces (which routes surface this clause)
  *
  * The on-chain validator + Rust prover ignore this field — it's purely
  * UI/composition metadata.
  */
-export interface SchemaBlockBinding {
+export interface ClauseBlockBinding {
     /** Doctrinal tier. */
-    tier: SchemaTier;
-    /** Drawer article that composes this schema in the canvas designer.
-     *  Undefined when the schema is runtime-only (Category-1 sister of a
+    tier: ClauseTier;
+    /** Drawer article that composes this clause in the canvas designer.
+     *  Undefined when the clause is runtime-only (Category-1 sister of a
      *  Category-2 clause) and not user-toggleable. */
-    drawerArticle?: SchemaDrawerArticle;
-    /** Mechanism kinds an assembly should include when this schema is
-     *  anchored in any of its orders. Empty when the schema has no
+    drawerArticle?: ClauseDrawerArticle;
+    /** Mechanism kinds an assembly should include when this clause is
+     *  anchored in any of its orders. Empty when the clause has no
      *  capability-dispatching mechanism (e.g. consent, jurisdiction). */
     mechanismKinds: readonly string[];
-    /** Runtime view-tier modules that consume / produce this schema's
-     *  data. Empty when the schema is route-tier only. */
+    /** Runtime view-tier modules that consume / produce this clause's
+     *  data. Empty when the clause is route-tier only. */
     moduleIds: readonly string[];
-    /** Route-tier blocks that surface this schema (e.g. ["/dispute",
-     *  "/evidence-display"]). Empty when the schema is view-tier only or
+    /** Route-tier blocks that surface this clause (e.g. ["/dispute",
+     *  "/evidence-display"]). Empty when the clause is view-tier only or
      *  has no UI at all. */
     routes?: readonly string[];
-    /** Sister schema in a Category-1 ↔ Category-2 pair. Omit for
+    /** Sister clause in a Category-1 ↔ Category-2 pair. Omit for
      *  unsisters and for one-to-many runtime sisters. */
-    sisterSchemaId?: string;
+    sisterClauseId?: string;
 }
 
-export interface SchemaSpec {
-    /** Human-readable schema name. keccak256(schemaId) is the on-chain bytes32. */
-    schemaId: string;
-    /** Schema version. Should match the vN suffix in schemaId. */
+export interface ClauseSpec {
+    /** Human-readable clause name. keccak256(clauseId) is the on-chain bytes32. */
+    clauseId: string;
+    /** Clause version. Should match the vN suffix in clauseId. */
     version: number;
     /** Display title. */
     title: string;
     /** Prose description. */
     description: string;
-    /** Optional discovery categories — open taxonomy used by builder/browser surfaces to filter schemas by topic (e.g. "emissions", "geo", "lifecycle"). Not enforcement metadata. */
+    /** Optional discovery categories — open taxonomy used by builder/browser surfaces to filter clauses by topic (e.g. "emissions", "geo", "lifecycle"). Not enforcement metadata. */
     categories?: readonly string[];
     /** Default field shape; applies to all stages unless a stage override is set. */
     fields: readonly FieldSpec[];
     /** Optional per-stage overrides. Keyed by stage number (matches AttestationCoordinator stage uint8). */
     stages?: Readonly<Record<number, readonly FieldSpec[]>>;
     /** Block-binding metadata for the designer + runtime composer. See
-     *  SchemaBlockBinding. Optional only for forward-compat with external
-     *  schemas; every protocol schema declares it. */
-    block?: SchemaBlockBinding;
+     *  ClauseBlockBinding. Optional only for forward-compat with external
+     *  clauses; every protocol clause declares it. */
+    block?: ClauseBlockBinding;
 }
 
 export interface SpecParseError {
@@ -167,8 +167,8 @@ export interface SpecParseError {
     message: string;
 }
 
-export type ParseSchemaSpecResult =
-    | { ok: true; spec: SchemaSpec }
+export type ParseClauseSpecResult =
+    | { ok: true; spec: ClauseSpec }
     | { ok: false; errors: SpecParseError[] };
 
 const VALID_FIELD_TYPES: ReadonlySet<string> = new Set([
@@ -184,7 +184,7 @@ const VALID_DRAWER_ARTICLES: ReadonlySet<string> = new Set([
     "attestations", "emissions", "dispute-resolution", "consent",
 ]);
 
-const VALID_SCHEMA_TIERS: ReadonlySet<string> = new Set([
+const VALID_CLAUSE_TIERS: ReadonlySet<string> = new Set([
     "category-1", "category-2", "manifest-only",
 ]);
 
@@ -370,14 +370,14 @@ function parseBlockBinding(
     raw: unknown,
     path: string,
     errors: SpecParseError[],
-): SchemaBlockBinding | null {
+): ClauseBlockBinding | null {
     if (!isObject(raw)) {
         errors.push({ path, message: "block binding must be an object" });
         return null;
     }
     const tier = raw.tier;
-    if (typeof tier !== "string" || !VALID_SCHEMA_TIERS.has(tier)) {
-        errors.push({ path: `${path}.tier`, message: `tier must be one of: ${[...VALID_SCHEMA_TIERS].join(", ")}` });
+    if (typeof tier !== "string" || !VALID_CLAUSE_TIERS.has(tier)) {
+        errors.push({ path: `${path}.tier`, message: `tier must be one of: ${[...VALID_CLAUSE_TIERS].join(", ")}` });
         return null;
     }
     if (raw.drawerArticle !== undefined) {
@@ -396,33 +396,33 @@ function parseBlockBinding(
         if (r === null) return null;
         routes = r;
     }
-    if (raw.sisterSchemaId !== undefined) {
-        if (typeof raw.sisterSchemaId !== "string" || raw.sisterSchemaId.length === 0) {
-            errors.push({ path: `${path}.sisterSchemaId`, message: "sisterSchemaId must be a non-empty string when present" });
+    if (raw.sisterClauseId !== undefined) {
+        if (typeof raw.sisterClauseId !== "string" || raw.sisterClauseId.length === 0) {
+            errors.push({ path: `${path}.sisterClauseId`, message: "sisterClauseId must be a non-empty string when present" });
             return null;
         }
     }
     return {
-        tier: tier as SchemaTier,
-        ...(raw.drawerArticle !== undefined && { drawerArticle: raw.drawerArticle as SchemaDrawerArticle }),
+        tier: tier as ClauseTier,
+        ...(raw.drawerArticle !== undefined && { drawerArticle: raw.drawerArticle as ClauseDrawerArticle }),
         mechanismKinds,
         moduleIds,
         ...(routes !== undefined && { routes }),
-        ...(raw.sisterSchemaId !== undefined && { sisterSchemaId: raw.sisterSchemaId as string }),
+        ...(raw.sisterClauseId !== undefined && { sisterClauseId: raw.sisterClauseId as string }),
     };
 }
 
 /**
- * Parse and validate an unknown value as a SchemaSpec. Validates the
- * meta-schema (the structure of the spec itself, not any content).
+ * Parse and validate an unknown value as a ClauseSpec. Validates the
+ * meta-clause (the structure of the spec itself, not any content).
  */
-export function parseSchemaSpec(raw: unknown): ParseSchemaSpecResult {
+export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     const errors: SpecParseError[] = [];
     if (!isObject(raw)) {
-        return { ok: false, errors: [{ path: "$", message: "schema spec must be an object" }] };
+        return { ok: false, errors: [{ path: "$", message: "clause spec must be an object" }] };
     }
-    const { schemaId, version, title, description, categories, fields, stages, block } = raw;
-    if (typeof schemaId !== "string" || schemaId.length === 0) {
+    const { schemaId: clauseId, version, title, description, categories, fields, stages, block } = raw;
+    if (typeof clauseId !== "string" || clauseId.length === 0) {
         errors.push({ path: "$.schemaId", message: "schemaId must be a non-empty string" });
     }
     if (typeof version !== "number" || !Number.isInteger(version) || version < 0) {
@@ -482,7 +482,7 @@ export function parseSchemaSpec(raw: unknown): ParseSchemaSpecResult {
             }
         }
     }
-    let parsedBlock: SchemaBlockBinding | undefined;
+    let parsedBlock: ClauseBlockBinding | undefined;
     if (block !== undefined) {
         const b = parseBlockBinding(block, "$.block", errors);
         if (b !== null) parsedBlock = b;
@@ -491,7 +491,7 @@ export function parseSchemaSpec(raw: unknown): ParseSchemaSpecResult {
     return {
         ok: true,
         spec: {
-            schemaId: schemaId as string,
+            clauseId: clauseId as string,
             version: version as number,
             title: title as string,
             description: description as string,

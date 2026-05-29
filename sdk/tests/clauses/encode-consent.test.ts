@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { decodeAbiParameters, type Hex } from "viem";
-import { embeddedSpec } from "../../src/schemas/embedded.js";
-import { encodeContentFromSpec, type ConsentContent } from "../../src/schemas/encode.js";
-import { parseSchemaSpec } from "../../src/schemas/spec.js";
-import { validateContent } from "../../src/schemas/validate.js";
-import consentSpecRaw from "../../src/schemas/examples/figaro-consent-v1.json" with { type: "json" };
+import { embeddedSpec } from "../../src/clauses/embedded.js";
+import { encodeContentFromSpec, type ConsentContent } from "../../src/clauses/encode.js";
+import { parseClauseSpec } from "../../src/clauses/spec.js";
+import { validateContent } from "../../src/clauses/validate.js";
+import consentSpecRaw from "../../src/clauses/examples/figaro-consent-v1.json" with { type: "json" };
 
 const SAMPLE_HASH: Hex = `0x${"ab".repeat(32)}`;
 const ALT_HASH: Hex = `0x${"cd".repeat(32)}`;
@@ -17,7 +17,7 @@ function encodeConsent(content: ConsentContent): Hex {
 /**
  * Post-Keystone consent encodes as `documents: tuple[]` per the
  * canonical object-array rule (struct-of-arrays was the pre-Keystone
- * per-schema shape). Each document tuple is
+ * per-clause shape). Each document tuple is
  * `(bytes32 documentHash, string documentVersion, string documentTitle)`.
  */
 function decodeConsent(
@@ -40,12 +40,12 @@ function decodeConsent(
 
 describe("figaro-consent-v1 — spec", () => {
     it("spec parses cleanly", () => {
-        const result = parseSchemaSpec(consentSpecRaw);
+        const result = parseClauseSpec(consentSpecRaw);
         expect(result.ok).toBe(true);
     });
 
     it("accepts a single-document payload", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
+        const parsed = parseClauseSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
             documents: [
@@ -60,7 +60,7 @@ describe("figaro-consent-v1 — spec", () => {
     });
 
     it("accepts a multi-document payload", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
+        const parsed = parseClauseSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
             documents: [
@@ -72,19 +72,19 @@ describe("figaro-consent-v1 — spec", () => {
     });
 
     it("rejects empty documents array (minItems 1)", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
+        const parsed = parseClauseSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ documents: [] }, parsed.spec).ok).toBe(false);
     });
 
     it("rejects missing documents (required)", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
+        const parsed = parseClauseSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({}, parsed.spec).ok).toBe(false);
     });
 
     it("rejects non-bytes32 documentHash", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
+        const parsed = parseClauseSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
             documents: [{ documentHash: "0xdeadbeef", documentVersion: "1.0.0", documentTitle: "Privacy Policy" }],
@@ -93,7 +93,7 @@ describe("figaro-consent-v1 — spec", () => {
     });
 
     it("rejects empty documentVersion (minLength 1)", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
+        const parsed = parseClauseSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
             documents: [{ documentHash: SAMPLE_HASH, documentVersion: "", documentTitle: "Privacy Policy" }],
@@ -102,7 +102,7 @@ describe("figaro-consent-v1 — spec", () => {
     });
 
     it("rejects documentVersion longer than 32 chars", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
+        const parsed = parseClauseSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
             documents: [{ documentHash: SAMPLE_HASH, documentVersion: "a".repeat(33), documentTitle: "Privacy Policy" }],
@@ -111,7 +111,7 @@ describe("figaro-consent-v1 — spec", () => {
     });
 
     it("rejects documentTitle longer than 200 chars", () => {
-        const parsed = parseSchemaSpec(consentSpecRaw);
+        const parsed = parseClauseSpec(consentSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const content = {
             documents: [{ documentHash: SAMPLE_HASH, documentVersion: "1.0.0", documentTitle: "a".repeat(201) }],

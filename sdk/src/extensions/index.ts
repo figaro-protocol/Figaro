@@ -6,7 +6,7 @@
  *
  * Modules:
  * - Dutch auction: price curves, claim evaluation, state derivation
- * - Attestation & GHG: schema IDs, event filtering, disclosure summaries
+ * - Attestation & GHG: clause IDs, event filtering, disclosure summaries
  * - Geo & handoff: geohash matching, Haversine distance, evidence envelopes
  */
 
@@ -33,8 +33,8 @@ export type {
 // ── Attestation & GHG ──────────────────────────────────────────────────────
 
 export {
-    computeSchemaId,
-    GHG_DISCLOSURE_SCHEMA_KEYS,
+    computeClauseId,
+    GHG_DISCLOSURE_CLAUSE_KEYS,
     DisclosureKind,
     DISCLOSURE_KIND_LABELS,
     GHG_NORM_REFERENCES,
@@ -43,7 +43,7 @@ export {
     decodeGramsRef,
     formatGrams,
     filterLogsBySource,
-    filterBySchema,
+    filterByClause,
     filterByProcess,
     filterByOrder,
     filterByStage,
