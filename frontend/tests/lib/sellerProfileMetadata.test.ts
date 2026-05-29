@@ -29,10 +29,9 @@ describe('seller profile metadata parser', () => {
             displayName: "Bob's Pizza",
             logoURI: 'ipfs://QmLogo',
             accentColor: '#c2410c',
-            themeClass: 'merchant-pizza',
+            themeClass: 'seller-pizza',
         },
         assets: {
-            cssURI: 'ipfs://QmCss',
             imageBaseURI: 'ipfs://QmImages/',
         },
         version: '1.0.0',
@@ -47,8 +46,7 @@ describe('seller profile metadata parser', () => {
             expect(result.acceptedTokens).toHaveLength(2);
             expect(result.acceptedTokens?.[0]?.address).toBe('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48');
             expect(result.services?.mcp).toBe('https://example.com/mcp');
-            expect(result.branding?.themeClass).toBe('merchant-pizza');
-            expect(result.assets?.cssURI).toBe('ipfs://QmCss');
+            expect(result.branding?.themeClass).toBe('seller-pizza');
             expect(result.version).toBe('1.0.0');
         });
 

@@ -72,10 +72,9 @@ describe('sellerBranding', () => {
                     logoURI: 'ipfs://QmLogo123',
                     heroImageURI: 'ipfs://QmHero456',
                     accentColor: '#c2410c',
-                    themeClass: 'merchant-pizza',
+                    themeClass: 'seller-pizza',
                 },
                 assets: {
-                    cssURI: 'ipfs://QmCSS789',
                     imageBaseURI: 'ipfs://QmImages/',
                 },
             };
@@ -91,16 +90,15 @@ describe('sellerBranding', () => {
             expect(result).not.toBeNull();
             expect(result!.branding.displayName).toBe("Bob's Pizza");
             expect(result!.branding.accentColor).toBe('#c2410c');
-            expect(result!.branding.themeClass).toBe('merchant-pizza');
+            expect(result!.branding.themeClass).toBe('seller-pizza');
             expect(result!.logoURL).toBe('http://127.0.0.1:8080/ipfs/QmLogo123');
             expect(result!.heroImageURL).toBe('http://127.0.0.1:8080/ipfs/QmHero456');
-            expect(result!.cssURL).toBe('http://127.0.0.1:8080/ipfs/QmCSS789');
             expect(result!.name).toBe("Bob's Pizza Palace");
         });
 
         it('returns partial branding when only some fields exist', async () => {
             const mockDoc = {
-                name: 'Minimal Merchant',
+                name: 'Minimal Seller',
                 branding: {
                     accentColor: '#333',
                 },
@@ -118,7 +116,6 @@ describe('sellerBranding', () => {
             expect(result!.branding.accentColor).toBe('#333');
             expect(result!.branding.logoURI).toBeUndefined();
             expect(result!.logoURL).toBeUndefined();
-            expect(result!.assets.cssURI).toBeUndefined();
         });
 
         it('returns null when fetch fails', async () => {
@@ -192,7 +189,7 @@ describe('sellerBranding', () => {
         });
 
         it('handles document with no branding or assets gracefully', async () => {
-            const mockDoc = { name: 'Bare Merchant' };
+            const mockDoc = { name: 'Bare Seller' };
 
             vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
                 ok: true,
@@ -211,35 +208,28 @@ describe('sellerBranding', () => {
                 themeClass: undefined,
             });
             expect(result!.assets).toEqual({
-                cssURI: undefined,
                 imageBaseURI: undefined,
             });
-            expect(result!.name).toBe('Bare Merchant');
+            expect(result!.name).toBe('Bare Seller');
         });
 
         it('resolves branding directly from seller catalogue metadata', () => {
             const result = resolveSellerBrandingFromSellerProfile(SELLER_PROFILE_METADATA_EXAMPLE);
 
             expect(result).not.toBeNull();
-            expect(result!.branding.displayName).toBe("Example Merchant");
+            expect(result!.branding.displayName).toBe("Example Seller");
             expect(result!.logoURL).toBe('http://127.0.0.1:8080/ipfs/example/logo.png');
             expect(result!.heroImageURL).toBe('http://127.0.0.1:8080/ipfs/example/hero.png');
-            expect(result!.cssURL).toBe('http://127.0.0.1:8080/ipfs/example/theme.css');
         });
 
         it('applies a branding override without fetching seller metadata', async () => {
             const brandingOverride = resolveSellerBrandingFromSellerProfile(SELLER_PROFILE_METADATA_EXAMPLE);
-            const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-                ok: true,
-                text: () => Promise.resolve('.merchant-pizza { color: red; }'),
-            } as Response);
 
             render(createElement(
                 SellerBrandingModule,
                 {
                     sellerAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
                     brandingOverride,
-                    dataSkinId: 'binding-bobs-pizza-palace-local-anvil',
                     children: createElement('div', null, 'Branded child'),
                 },
                 createElement('div', null, 'Branded child')
@@ -248,12 +238,9 @@ describe('sellerBranding', () => {
             const wrapper = screen.getByText('Branded child').parentElement as HTMLDivElement;
 
             await waitFor(() => {
-                expect(wrapper.className).toContain('merchant-example');
-                expect(wrapper.style.getPropertyValue('--merchant-accent')).toBe('#1f6feb');
+                expect(wrapper.className).toContain('seller-example');
+                expect(wrapper.style.getPropertyValue('--seller-accent')).toBe('#1f6feb');
             });
-
-            expect(wrapper.getAttribute('data-skin')).toBe('binding-bobs-pizza-palace-local-anvil');
-            expect(fetchSpy).toHaveBeenCalledWith('http://127.0.0.1:8080/ipfs/example/theme.css');
         });
     });
 });

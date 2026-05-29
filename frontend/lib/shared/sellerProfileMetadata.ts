@@ -47,9 +47,8 @@ export interface SellerAgentServices {
     ens?: string;
 }
 
-/** Asset URIs associated with the seller's branding (CSS + images). */
+/** Asset URIs associated with the seller's branding. */
 export interface SellerAssetReferences {
-    cssURI?: string;
     imageBaseURI?: string;
 }
 
@@ -271,7 +270,6 @@ function parseAssetsField(value: unknown, path: string): SellerAssetReferences |
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     return {
-        cssURI: asOptionalString(record.cssURI, `${path}.cssURI`),
         imageBaseURI: asOptionalString(record.imageBaseURI, `${path}.imageBaseURI`),
     };
 }

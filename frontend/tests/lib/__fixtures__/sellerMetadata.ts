@@ -44,7 +44,7 @@ export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {
 
 export const SELLER_PROFILE_METADATA_EXAMPLE: SellerProfileMetadata = {
     subjectAddress: "0xeXAMPLeeXAMPLeeXAMPLeeXAMPLeeXAMPLe0001" as `0x${string}`,
-    name: "Example Merchant",
+    name: "Example Seller",
     description: "Synthetic seller profile used as a documentation example.",
     specialty: "Example specialty",
     location: {
@@ -52,14 +52,13 @@ export const SELLER_PROFILE_METADATA_EXAMPLE: SellerProfileMetadata = {
         addressText: "Example City, Example State",
     },
     branding: {
-        displayName: "Example Merchant",
+        displayName: "Example Seller",
         logoURI: "ipfs://example/logo.png",
         heroImageURI: "ipfs://example/hero.png",
         accentColor: "#1f6feb",
-        themeClass: "merchant-example",
+        themeClass: "seller-example",
     },
     assets: {
-        cssURI: "ipfs://example/theme.css",
         imageBaseURI: "ipfs://example/assets/",
     },
     acceptedTokens: [

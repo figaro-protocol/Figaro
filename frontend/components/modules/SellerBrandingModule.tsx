@@ -1,17 +1,15 @@
 /**
  * components/modules/SellerBrandingModule.tsx
  *
- * Scoped CSS and branding injection for seller-themed UI regions.
+ * Scoped branding for seller-themed UI regions.
  *
- * Three responsibilities:
- * 1. Set CSS custom properties from the seller's accentColor
- * 2. Inject external CSS from the seller's assets.cssURI, wrapped in
- *    @layer seller {} so it cannot override protocol-critical styles
- * 3. Apply the seller's themeClass to the container
+ * Two responsibilities:
+ * 1. Set the --seller-accent CSS custom property from the seller's accentColor
+ * 2. Apply the seller's themeClass to the container
  *
  * Usage:
  *   <SellerBrandingModule sellerAddress={address}>
- *     <RestaurantCard ... />
+ *     {children}
  *   </SellerBrandingModule>
  */
 "use client";
@@ -26,7 +24,6 @@ interface SellerBrandingModuleProps {
     /** Optional CSS class added to the wrapper div */
     className?: string;
     brandingOverride?: ResolvedSellerBranding | null;
-    dataSkinId?: string;
 }
 
 export function SellerBrandingModule({
@@ -34,12 +31,10 @@ export function SellerBrandingModule({
     children,
     className,
     brandingOverride,
-    dataSkinId,
 }: SellerBrandingModuleProps) {
     const { branding: resolvedBranding } = useSellerBranding(brandingOverride ? undefined : sellerAddress);
     const branding = brandingOverride ?? resolvedBranding;
     const containerRef = useRef<HTMLDivElement>(null);
-    const styleElementRef = useRef<HTMLStyleElement | null>(null);
 
     // Set CSS custom properties from accentColor
     useEffect(() => {
@@ -53,80 +48,11 @@ export function SellerBrandingModule({
         }
     }, [branding?.branding.accentColor]);
 
-    // Inject external CSS wrapped in @layer seller {}
-    useEffect(() => {
-        if (!branding?.cssURL) {
-            // Clean up previous style element
-            if (styleElementRef.current) {
-                styleElementRef.current.remove();
-                styleElementRef.current = null;
-            }
-            return;
-        }
-
-        let cancelled = false;
-        const url = branding.cssURL;
-
-        fetch(url)
-            .then((res) => {
-                if (!res.ok) throw new Error(`CSS fetch failed: ${res.status}`);
-                return res.text();
-            })
-            .then((cssText) => {
-                if (cancelled) return;
-
-                // RA-1: Sanitise seller CSS to prevent data exfiltration and injection.
-                // Strip url(), @import, expression(), -moz-binding — these can load
-                // external resources or execute code.  The @layer wrapper only
-                // controls cascade priority, not what the CSS can do.
-                const sanitized = cssText
-                    .replace(/@import\b[^;]*;/gi, "/* @import removed */")
-                    .replace(/expression\s*\(/gi, "/* expression removed */")
-                    .replace(/-moz-binding\s*:/gi, "/* -moz-binding removed */")
-                    .replace(/url\s*\(/gi, "/* url( removed */");
-
-                // Wrap in cascade layer so seller CSS cannot override protocol styles
-                const wrapped = `@layer seller {\n${sanitized}\n}`;
-
-                // Reuse or create style element
-                if (styleElementRef.current) {
-                    styleElementRef.current.setAttribute(
-                        "data-seller-branding",
-                        dataSkinId ?? sellerAddress ?? "unknown",
-                    );
-                    styleElementRef.current.textContent = wrapped;
-                } else {
-                    const style = document.createElement("style");
-                    style.setAttribute("data-seller-branding", dataSkinId ?? sellerAddress ?? "unknown");
-                    style.textContent = wrapped;
-                    document.head.appendChild(style);
-                    styleElementRef.current = style;
-                }
-            })
-            .catch(() => {
-                // Silently fail — seller CSS is cosmetic, not critical
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [branding?.cssURL, dataSkinId, sellerAddress]);
-
-    // Clean up style element on unmount
-    useEffect(() => {
-        return () => {
-            if (styleElementRef.current) {
-                styleElementRef.current.remove();
-                styleElementRef.current = null;
-            }
-        };
-    }, []);
-
     const themeClass = branding?.branding.themeClass ?? "";
     const classes = [className, themeClass].filter(Boolean).join(" ");
 
     return (
-        <div ref={containerRef} className={classes || undefined} data-skin={dataSkinId || undefined}>
+        <div ref={containerRef} className={classes || undefined}>
             {children}
         </div>
     );

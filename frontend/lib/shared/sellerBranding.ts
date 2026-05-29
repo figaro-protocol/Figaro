@@ -8,8 +8,8 @@
  * The metadata document the on-chain `metadataURI` points to is an
  * `SellerProfileMetadata` record; only its branding-relevant subset
  * (name, branding, assets) is extracted here. The profile pins the
- * branding payload (logo, hero, CSS, image base URI) so buyer
- * frontends can skin against the seller's identity.
+ * branding payload (logo, hero, image base URI) so buyer
+ * frontends can render the seller's identity.
  *
  * NOTE (Phase-2): `resolveContentURI` is a neutral IPFS/HTTP URI resolver
  * that duplicates `ipfsService.resolveFetchUrl`. It lives here only for
@@ -27,7 +27,6 @@ import { IPFS_GATEWAY_URL } from "@/lib/shared/ipfsService";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface SellerAssets {
-    cssURI?: string;
     imageBaseURI?: string;
 }
 
@@ -38,8 +37,6 @@ export interface ResolvedSellerBranding {
     logoURL?: string;
     /** Gateway-resolved hero image URL */
     heroImageURL?: string;
-    /** Gateway-resolved CSS URL */
-    cssURL?: string;
     /** Raw seller name (top-level, not branding.displayName) */
     name?: string;
 }
@@ -87,7 +84,6 @@ export function resolveSellerBrandingDocument(input: {
     };
 
     const a: SellerAssets = {
-        cssURI: typeof assets.cssURI === "string" ? assets.cssURI : undefined,
         imageBaseURI: typeof assets.imageBaseURI === "string" ? assets.imageBaseURI : undefined,
     };
 
@@ -96,7 +92,6 @@ export function resolveSellerBrandingDocument(input: {
         assets: a,
         logoURL: b.logoURI ? resolveContentURI(b.logoURI) : undefined,
         heroImageURL: b.heroImageURI ? resolveContentURI(b.heroImageURI) : undefined,
-        cssURL: a.cssURI ? resolveContentURI(a.cssURI) : undefined,
         name: typeof input.name === "string" ? input.name : undefined,
     };
 }
@@ -114,7 +109,6 @@ export function resolveSellerBrandingFromSellerProfile(
         || metadata.branding?.heroImageURI
         || metadata.branding?.accentColor
         || metadata.branding?.themeClass
-        || metadata.assets?.cssURI
         || metadata.assets?.imageBaseURI
     );
 
