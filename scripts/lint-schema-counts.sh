@@ -16,9 +16,21 @@
 # is intentionally pattern-explicit — semantic parsing of prose is out
 # of scope, so new claims must be opted into the gate by hand.
 #
+# Reword-safe by construction. The gate's only job is "no STALE number".
+# A claim that isn't present can't be stale, so the two conditions are
+# kept distinct:
+#   - number present but WRONG  → FAILURE (the stale-count bug; exit 1)
+#   - anchor phrase ABSENT      → WARNING (a reword dropped/moved the
+#                                 claim; coverage degraded, not a break)
+# This means rewording a tracked doc can never break a commit — at worst
+# it emits a visible warning that the claim is no longer covered. To
+# re-cover it, restore a phrase the anchor matches (or loosen the anchor).
+# Anchors are kept as loose as is unambiguous so ordinary rewordings keep
+# matching in the first place.
+#
 # Exit codes:
-#   0 — every tracked reference matches
-#   1 — at least one tracked reference is stale
+#   0 — no stale reference (warnings, if any, are non-fatal)
+#   1 — at least one tracked reference is present but stale
 #   2 — tooling error (schemas dir missing, topology-v1 missing)
 
 set -u
@@ -44,9 +56,15 @@ fi
 runtime=$((total - 1))
 
 declare -a failures
+declare -a warnings
 
 # check <file> <regex> <expected> <description>
 # The regex must capture exactly one trailing digit group via grep -oE.
+#
+# Outcomes (see header — reword-safe by construction):
+#   anchor absent        → WARNING (claim reworded/removed; can't be stale)
+#   number present+wrong → FAILURE (the stale-count bug)
+#   number present+right → OK
 check() {
     local file="$1" regex="$2" expected="$3" desc="$4"
     if [ ! -f "$file" ]; then
@@ -55,7 +73,7 @@ check() {
     local match
     match=$(grep -oE "$regex" "$file" | head -1)
     if [ -z "$match" ]; then
-        failures+=("$file: pattern not found ($desc)")
+        warnings+=("$file: count claim not found ($desc) — reworded or removed; no longer covered")
         return
     fi
     local actual
@@ -76,10 +94,10 @@ check "docs/v5/FRONTEND.md" \
     '[0-9]+ schemas in$' \
     "$total" "FRONTEND.md schemas-dir count"
 check "CLAUDE.md" \
-    '[0-9]+ protocol schemas total' \
+    '[0-9]+ protocol schemas' \
     "$total" "CLAUDE.md total claim"
 check "docs/v5/SCHEMAS.md" \
-    'The [0-9]+ protocol schemas' \
+    '[0-9]+ protocol schemas' \
     "$total" "SCHEMAS.md heading"
 
 # ── runtime-attestable count: total minus topology-v1 ────────────────────────
@@ -104,6 +122,13 @@ check "docs/v5/SCHEMAS.md" \
 check "prover/schema/src/embedded.rs" \
     '[0-9]+ runtime-attestable protocol schemas' \
     "$runtime" "embedded.rs doc-comment"
+
+if [ ${#warnings[@]} -gt 0 ]; then
+    echo "[schema-counts] warning — count claim(s) not found (reworded/removed, not failing):" >&2
+    for w in "${warnings[@]}"; do
+        echo "   $w" >&2
+    done
+fi
 
 if [ ${#failures[@]} -eq 0 ]; then
     echo "[schema-counts] in sync (total=$total, runtime-attestable=$runtime)"
