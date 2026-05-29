@@ -11,7 +11,7 @@
  * Usage:
  *   const queue = new ActionQueue<{ bindingId?: string; roleKind?: string }>();
  *   queue.enqueue(action, {
- *     approvalContext: { bindingId: "binding:bobs-pizza-palace:local-anvil", roleKind: "merchant" },
+ *     approvalContext: { bindingId: "binding:bobs-pizza-palace:local-anvil", roleKind: "seller" },
  *   });                                     // Agent proposes with review context
  *   const pending = queue.pending();        // Human reviews
  *   const item = queue.approve(id);         // Human approves

@@ -20,7 +20,7 @@
  * const queue = new ActionQueue<{ bindingId?: string; roleKind?: string }>();
  * queue.enqueueAll(actions.map((action) => ({
  *   action,
- *   approvalContext: { bindingId: "binding:bobs-pizza-palace:local-anvil", roleKind: "merchant" },
+ *   approvalContext: { bindingId: "binding:bobs-pizza-palace:local-anvil", roleKind: "seller" },
  * })));
  * const approved = queue.approve(1);
  *

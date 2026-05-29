@@ -72,7 +72,7 @@ export interface AttestAction extends BaseAction {
     /**
      * Optional schemaId for the attestation. When omitted, the executor picks
      * a role-appropriate default (e.g. `figaro-courier-process-v1` for a
-     * courier sub-order). Must correspond to a clause committed in the
+     * sub-order carrying that clause). Must correspond to a clause committed in the
      * target's signed agreement — otherwise the coordinator's inclusion-proof
      * gate rejects the call.
      */

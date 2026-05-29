@@ -53,14 +53,14 @@ describe("ActionQueue", () => {
         queue.enqueue(mkAction(), {
             approvalContext: {
                 bindingId: "binding:bobs-pizza-palace:local-anvil",
-                roleKind: "merchant",
+                roleKind: "seller",
             },
         });
 
         const item = queue.approve(1);
         expect(item.approvalContext).toEqual({
             bindingId: "binding:bobs-pizza-palace:local-anvil",
-            roleKind: "merchant",
+            roleKind: "seller",
         });
     });
 

@@ -109,9 +109,9 @@ Use the format in `agents/examples/*/assembly.md` as your template. ASCII DAG sk
 
 For each role in the assembly, recommend one of the factotum reference policies in `agents/factotum/src/policies/`:
 
-- `basicMerchantPolicy` — single-seller, accept-if-price-ok
-- `sellerOfRecordPolicy` — fan-out to sub-suppliers under threshold
-- `courierBidderPolicy` — Dutch auction claim with margin gate
+- `basicSellerPolicy` — single seller, accept-if-price-ok
+- `sellerOfRecordPolicy` — fan-out to sub-order sellers under threshold
+- `auctionBidderPolicy` — Dutch auction claim with margin gate
 - `auditorPolicy` — passive attestation only
 - `buyerWithBudgetPolicy` — buyer-side variant with budget tracking
 
@@ -151,7 +151,7 @@ The runtime stores assemblies as `DesignDraft` (per `project_designer_persistenc
     { "id": "figaro-container-seal-v1", "rationale": "<one sentence>" }
   ],
   "rolePolicies": [
-    { "role": "shipper", "policy": "basicMerchantPolicy", "config": "{ maxValue: ... }" }
+    { "role": "shipper", "policy": "basicSellerPolicy", "config": "{ maxValue: ... }" }
   ]
 }
 ```

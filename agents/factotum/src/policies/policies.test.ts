@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import type { ProposedAction, CommitSubOrderAction } from "@figaro/core/agent";
 import {
-  basicMerchantPolicy,
+  basicSellerPolicy,
   sellerOfRecordPolicy,
-  courierBidderPolicy,
+  auctionBidderPolicy,
   auditorPolicy,
   buyerWithBudgetPolicy,
 } from "./index.js";
@@ -45,22 +45,22 @@ function makeResolve(): ProposedAction {
   };
 }
 
-describe("basicMerchantPolicy", () => {
+describe("basicSellerPolicy", () => {
   it("accepts commits within bounds", async () => {
-    const policy = basicMerchantPolicy({ maxValue: 1000n });
+    const policy = basicSellerPolicy({ maxValue: 1000n });
     const decisions = await policy.decide([{ action: makeCommit(500n) }]);
     expect(decisions[0].action).toBe("approve");
   });
 
   it("rejects commits above maxValue", async () => {
-    const policy = basicMerchantPolicy({ maxValue: 1000n });
+    const policy = basicSellerPolicy({ maxValue: 1000n });
     const decisions = await policy.decide([{ action: makeCommit(1500n) }]);
     expect(decisions[0].action).toBe("reject");
     expect(decisions[0].reason).toMatch(/max value/);
   });
 
   it("respects minValue", async () => {
-    const policy = basicMerchantPolicy({ minValue: 100n, maxValue: 1000n });
+    const policy = basicSellerPolicy({ minValue: 100n, maxValue: 1000n });
     const decisions = await policy.decide([{ action: makeCommit(50n) }]);
     expect(decisions[0].action).toBe("reject");
     expect(decisions[0].reason).toMatch(/min value/);
@@ -69,7 +69,7 @@ describe("basicMerchantPolicy", () => {
   it("respects trustedBuyers whitelist", async () => {
     const trusted = "0x1234567890123456789012345678901234567890" as const;
     const other = "0xabcdef0123456789012345678901234567890123" as const;
-    const policy = basicMerchantPolicy({
+    const policy = basicSellerPolicy({
       maxValue: 1000n,
       trustedBuyers: new Set([trusted]),
     });
@@ -80,7 +80,7 @@ describe("basicMerchantPolicy", () => {
   });
 
   it("auto-approves attestations", async () => {
-    const policy = basicMerchantPolicy({ maxValue: 1000n });
+    const policy = basicSellerPolicy({ maxValue: 1000n });
     const decisions = await policy.decide([{ action: makeAttest("seller") }]);
     expect(decisions[0].action).toBe("approve");
   });
@@ -114,9 +114,9 @@ describe("sellerOfRecordPolicy", () => {
   });
 });
 
-describe("courierBidderPolicy", () => {
+describe("auctionBidderPolicy", () => {
   it("approves commits with sufficient margin", async () => {
-    const policy = courierBidderPolicy({
+    const policy = auctionBidderPolicy({
       estimateMyCost: () => 1000n,
       minMarginBps: 500n, // 5%
     });
@@ -126,7 +126,7 @@ describe("courierBidderPolicy", () => {
   });
 
   it("rejects commits below margin", async () => {
-    const policy = courierBidderPolicy({
+    const policy = auctionBidderPolicy({
       estimateMyCost: () => 1000n,
       minMarginBps: 1000n, // 10%
     });
@@ -137,7 +137,7 @@ describe("courierBidderPolicy", () => {
   });
 
   it("refuses to bid blind on zero cost estimate", async () => {
-    const policy = courierBidderPolicy({
+    const policy = auctionBidderPolicy({
       estimateMyCost: () => 0n,
       minMarginBps: 500n,
     });

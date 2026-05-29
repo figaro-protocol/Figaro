@@ -1,7 +1,7 @@
 import type { ProposedAction } from "@figaro/core/agent";
 import { makeAutonomousPolicy, type Policy } from "../policy.js";
 
-export interface BasicMerchantConfig {
+export interface BasicSellerConfig {
   /** Reject commits below this value (in commit-currency smallest unit). */
   minValue?: bigint;
   /** Reject commits at or above this value. */
@@ -10,15 +10,15 @@ export interface BasicMerchantConfig {
   trustedBuyers?: Set<`0x${string}`>;
 }
 
-// basicMerchantPolicy — a single-seller merchant that accepts inbound commits
+// basicSellerPolicy — a single seller that accepts inbound commits
 // if value falls within configured bounds. Routine attestations execute
 // autonomously; resolutions stay HITL (handled by a separate factotum or
 // escalation channel).
 //
 // Use for: small sellers offering a fixed catalogue at known prices, where
 // inbound commits arrive from a stable customer base.
-export function basicMerchantPolicy<TContext = unknown>(
-  config: BasicMerchantConfig,
+export function basicSellerPolicy<TContext = unknown>(
+  config: BasicSellerConfig,
 ): Policy<ProposedAction, TContext> {
   return makeAutonomousPolicy<ProposedAction, TContext>((action) => {
     if (action.type === "attest-as-seller") {

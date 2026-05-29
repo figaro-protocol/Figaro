@@ -68,8 +68,9 @@ async function tick(
   await ctx.sync();
 
   // The proposer infers role from process state + my address.
-  // Same factotum, different role per process — buyer here, seller there, courier elsewhere.
-  // This is what actor-neutrality looks like in code.
+  // Same factotum, different role per process — buyer in one, seller in another.
+  // The role is read from state, never hard-coded; this is what actor-neutrality
+  // looks like in code.
   const myProcesses = ctx.getMyProcesses(myAddress);
   if (myProcesses.length === 0) return;
 

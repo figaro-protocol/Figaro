@@ -12,7 +12,7 @@ export interface BuyerWithBudgetConfig {
   budgetSpent?: { value: bigint };
 }
 
-// buyerWithBudgetPolicy — buyer-side variant of basicMerchant. Accepts commits
+// buyerWithBudgetPolicy — buyer-side variant of basicSeller. Accepts commits
 // up to a per-commit limit and a total-budget ceiling. Auto-resolves processes
 // (the buyer-dominance side). Attestations not applicable.
 //
