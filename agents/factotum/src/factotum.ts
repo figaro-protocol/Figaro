@@ -15,7 +15,7 @@ export interface FactotumAddresses {
   core: `0x${string}`;
   schemaRegistry: `0x${string}`;
   attestationCoordinator: `0x${string}`;
-  operatorRegistry: `0x${string}`;
+  sellerRegistry: `0x${string}`;
 }
 
 export interface FactotumConfig {

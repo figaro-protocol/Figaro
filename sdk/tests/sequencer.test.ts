@@ -106,19 +106,19 @@ describe("SequencerClient.toRustEnum", () => {
         expect(result.Resolve).toHaveProperty("commitments");
     });
 
-    it("converts a RegisterOperator op", () => {
-        // Web2-strip (2026-04-26): only RegisterOperator survives. Update /
+    it("converts a RegisterSeller op", () => {
+        // Web2-strip (2026-04-26): only RegisterSeller survives. Update /
         // Deactivate / Reactivate were removed from the sequencer wire format.
         const op: SequencerOp = {
-            type: "RegisterOperator",
+            type: "RegisterSeller",
             role: 1,
             metadata_uri: "ipfs://QmOp",
-            operator_sig: toSequencerSig(DUMMY_SIG),
+            seller_sig: toSequencerSig(DUMMY_SIG),
         };
         const result = SequencerClient.toRustEnum(op);
-        expect(result).toHaveProperty("RegisterOperator");
-        expect(result.RegisterOperator).toHaveProperty("operator_sig");
-        expect(result.RegisterOperator).toMatchObject({ role: 1, metadata_uri: "ipfs://QmOp" });
+        expect(result).toHaveProperty("RegisterSeller");
+        expect(result.RegisterSeller).toHaveProperty("seller_sig");
+        expect(result.RegisterSeller).toMatchObject({ role: 1, metadata_uri: "ipfs://QmOp" });
     });
 });
 

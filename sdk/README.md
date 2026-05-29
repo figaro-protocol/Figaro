@@ -113,7 +113,7 @@ import {
   geohashesMatch,
   resolveDidWeb,
   didDocumentMatchesAddress,
-  buildOperatorDidDocument,
+  buildSellerDidDocument,
 } from "@figaro/core/extensions";
 
 // Dutch auction: compute current price on a descending curve

@@ -6,7 +6,7 @@ import {
     resolveDidWeb,
     extractEthereumAddresses,
     didDocumentMatchesAddress,
-    buildOperatorDidDocument,
+    buildSellerDidDocument,
 } from "../src/extensions/did.js";
 import type { DIDDocument } from "../src/extensions/did.js";
 
@@ -349,19 +349,19 @@ describe("resolveDidWeb", () => {
     });
 
     it("resolves DID with path", async () => {
-        const pathDoc = { ...validDoc, id: "did:web:example.com:operators:alice" };
+        const pathDoc = { ...validDoc, id: "did:web:example.com:sellers:alice" };
         const mockFetch = vi.fn().mockResolvedValue({
             ok: true,
             json: () => Promise.resolve(pathDoc),
         });
 
         const result = await resolveDidWeb(
-            "did:web:example.com:operators:alice",
+            "did:web:example.com:sellers:alice",
             mockFetch,
         );
         expect(result.error).toBeNull();
         expect(mockFetch).toHaveBeenCalledWith(
-            "https://example.com/operators/alice/did.json",
+            "https://example.com/sellers/alice/did.json",
             expect.anything(),
         );
     });
@@ -417,37 +417,37 @@ describe("resolveDidWeb", () => {
     });
 });
 
-// ── buildOperatorDidDocument ────────────────────────────────────────────────
+// ── buildSellerDidDocument ────────────────────────────────────────────────
 
-describe("buildOperatorDidDocument", () => {
+describe("buildSellerDidDocument", () => {
     it("builds a minimal DID Document", () => {
-        const doc = buildOperatorDidDocument(
-            "did:web:operator.example.com",
+        const doc = buildSellerDidDocument(
+            "did:web:seller.example.com",
             "0x89a932207c485f85226d86f7cd486a89a24fcc12",
             31337,
         );
 
-        expect(doc.id).toBe("did:web:operator.example.com");
+        expect(doc.id).toBe("did:web:seller.example.com");
         expect(doc["@context"]).toContain("https://www.w3.org/ns/did/v1");
         expect(doc.verificationMethod).toHaveLength(1);
         expect(doc.verificationMethod![0].blockchainAccountId).toBe(
             "eip155:31337:0x89a932207c485f85226d86f7cd486a89a24fcc12",
         );
         expect(doc.authentication).toEqual([
-            "did:web:operator.example.com#controller",
+            "did:web:seller.example.com#controller",
         ]);
     });
 
     it("includes service endpoints when provided", () => {
-        const doc = buildOperatorDidDocument(
-            "did:web:operator.example.com",
+        const doc = buildSellerDidDocument(
+            "did:web:seller.example.com",
             "0x89a932207c485f85226d86f7cd486a89a24fcc12",
             1,
             [
                 {
-                    id: "did:web:operator.example.com#mcp",
+                    id: "did:web:seller.example.com#mcp",
                     type: "MCPEndpoint",
-                    serviceEndpoint: "https://operator.example.com/mcp",
+                    serviceEndpoint: "https://seller.example.com/mcp",
                 },
             ],
         );
@@ -457,7 +457,7 @@ describe("buildOperatorDidDocument", () => {
     });
 
     it("omits service array when no services provided", () => {
-        const doc = buildOperatorDidDocument(
+        const doc = buildSellerDidDocument(
             "did:web:example.com",
             "0x0000000000000000000000000000000000000001",
             1,
@@ -467,7 +467,7 @@ describe("buildOperatorDidDocument", () => {
     });
 
     it("produces a document that passes validation", () => {
-        const doc = buildOperatorDidDocument(
+        const doc = buildSellerDidDocument(
             "did:web:example.com",
             "0x0000000000000000000000000000000000000001",
             1,

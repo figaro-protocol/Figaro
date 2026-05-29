@@ -6,7 +6,7 @@ A factotum is a fork-and-modify starting point for any agent — human-driven or
 
 This is the **operational** form of Figaro's actor-neutrality claim. The protocol does not distinguish between human and AI participants; both interact through the same kernel primitives — a wallet, EIP-712 signatures, and on-chain commitments. This package shows what that looks like in code.
 
-> See `docs/v5/AI_AGENT_COORDINATION.md` for the underlying doctrine: how agents discover work via public graph signals, and how ERC-8004 service endpoints are encoded in `OperatorRegistry.metadataURI`.
+> See `docs/v5/AI_AGENT_COORDINATION.md` for the underlying doctrine: how agents discover work via public graph signals, and how ERC-8004 service endpoints are encoded in `SellerRegistry.metadataURI`.
 
 ---
 
@@ -17,7 +17,7 @@ sync → propose → policy → execute
 ```
 
 1. **Sync** — `FigaroContext` reconstructs every process from on-chain events. No subgraph, no indexer, no API.
-2. **Propose** — `proposeActions(briefing, myAddress)` returns the actions available to this address given current process state. Role is inferred (buyer / seller / courier / auditor) from the process graph, not configured.
+2. **Propose** — `proposeActions(briefing, myAddress)` returns the actions available to this address given current process state. Role is inferred (buyer / seller / auditor) from the process graph, not configured.
 3. **Policy** — a pluggable decision layer. Default: human-in-the-loop (HITL) — every action prompts. Alternative: autonomous, with a rule function you write.
 4. **Execute** — `executeAction(walletClient, addresses, action)` builds and submits the transaction. Sequential, never parallel.
 
@@ -47,7 +47,7 @@ npm run dev
 
 The factotum will print its address, sync the chain, and prompt for approval each time it has a proposed action.
 
-To act as a different role, fund a different test address and use that key. The proposer will surface buyer / seller / courier / auditor actions automatically based on process membership.
+To act as a different role, fund a different test address and use that key. The proposer will surface buyer / seller / auditor actions automatically based on process membership.
 
 ---
 
@@ -117,7 +117,7 @@ A few minutes later the seller has done their attestation work (handoff, fulfilm
 
 Bonds return, payment settles, the process closes. The factotum loops on, waiting for the next process this wallet becomes a party to.
 
-That's the whole loop. The same code path serves any role — buyer, seller, courier, auditor — because the proposer infers role from process state, not from configuration. Fund a different test address with a different role, run the same factotum, get different actions.
+That's the whole loop. The same code path serves any role — buyer, seller, auditor — because the proposer infers role from process state, not from configuration. Fund a different test address with a different role, run the same factotum, get different actions.
 
 ---
 
@@ -212,7 +212,7 @@ Two cautions:
 
 ## Identity: ERC-8004 and `did:web`
 
-If you want your agent to be discoverable by other agents — not required, but useful at protocol scale — register a `services` block in your `OperatorRegistry.metadataURI`:
+If you want your agent to be discoverable by other agents — not required, but useful at protocol scale — register a `services` block in your `SellerRegistry.metadataURI`:
 
 ```json
 {
@@ -225,7 +225,7 @@ If you want your agent to be discoverable by other agents — not required, but 
 }
 ```
 
-The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`, and `buildOperatorDidDocument()` in `@figaro/core/extensions`. See `docs/v5/AI_AGENT_COORDINATION.md` for the convention; ERC-8004 alignment is metadata-only and requires no contract changes.
+The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`, and `buildSellerDidDocument()` in `@figaro/core/extensions`. See `docs/v5/AI_AGENT_COORDINATION.md` for the convention; ERC-8004 alignment is metadata-only and requires no contract changes.
 
 ---
 

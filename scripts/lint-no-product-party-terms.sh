@@ -27,7 +27,9 @@
 # vocabulary entrenchment in names/routes/ids, not local readability.
 #
 # `driver` / `vendor` / `supplier` are not yet enforced (stray, low-count;
-# fold in when next touched). `operator` is enforced separately once 2b lands.
+# fold in when next touched). `operator` (Figaro-party sense) is now enforced too;
+# the "Project Operator" beta-consent copy is prose, not a declaration/route/testid,
+# so it does not match the patterns below.
 #
 # Wired into the root package.json lint-staged block under
 # `frontend/**/*.{ts,tsx}`. Run manually:

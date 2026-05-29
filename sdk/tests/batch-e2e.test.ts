@@ -98,7 +98,7 @@ function loadBytecode(contractPath: string): Hex {
 // The Rust kernel computes:
 //   root = keccak256(keccak256("") × 5)
 // — one empty-hash per state sub-map (processes, order_status,
-// order_process_id, schemas_registered, operators_registered); an empty
+// order_process_id, schemas_registered, sellers_registered); an empty
 // BTreeMap hashes to keccak256(""). See prover/lib/src/state.rs `compute_root`.
 
 function computeGenesisRoot(): Hex {
