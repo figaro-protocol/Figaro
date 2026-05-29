@@ -86,7 +86,7 @@ export function getMissingContractEnv(): string[] {
     if (!process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR) missing.push("NEXT_PUBLIC_ATTESTATION_COORDINATOR");
     if (!process.env.NEXT_PUBLIC_SCHEMA_REGISTRY) missing.push("NEXT_PUBLIC_SCHEMA_REGISTRY");
     if (!process.env.NEXT_PUBLIC_DUTCH_AUCTION) missing.push("NEXT_PUBLIC_DUTCH_AUCTION");
-    if (!process.env.NEXT_PUBLIC_OPERATOR_REGISTRY) missing.push("NEXT_PUBLIC_OPERATOR_REGISTRY");
+    if (!process.env.NEXT_PUBLIC_SELLER_REGISTRY) missing.push("NEXT_PUBLIC_SELLER_REGISTRY");
     if (!process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS) missing.push("NEXT_PUBLIC_FIG_TOKEN_ADDRESS");
     return missing;
 }

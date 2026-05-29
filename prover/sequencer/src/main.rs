@@ -1,4 +1,4 @@
-/// Figaro Batch Sequencer — devnet single-operator sequencer.
+/// Figaro Batch Sequencer — devnet single-seller sequencer.
 ///
 /// Collects signed protocol operations via HTTP, assembles batches on a
 /// timer, runs the SP1 mock prover, and submits settlement transactions

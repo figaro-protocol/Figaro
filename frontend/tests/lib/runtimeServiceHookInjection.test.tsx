@@ -16,14 +16,14 @@ import {
     removePendingHandoffIntent,
     savePendingHandoffIntent,
 } from "@/lib/handoff/handoffIntent";
-import { useOperatorCatalogue } from "@/lib/mechanisms/useOperatorCatalogue";
+import { useSellerCatalogue } from "@/lib/mechanisms/useSellerCatalogue";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
 import {
     RuntimeServicesProvider,
     useRuntimeServices,
 } from "@/lib/shared/runtimeServicesContext";
-import type { OperatorCatalogue } from "@/lib/seller/types";
-import type { OperatorCatalogueMetadata } from "@/lib/shared/operatorCatalogueMetadata";
+import type { SellerCatalogue } from "@/lib/seller/types";
+import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 import type { CatalogueService } from "@/lib/shared/catalogueService";
 import type { DiscoveryService } from "@/lib/shared/discoveryService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
@@ -33,10 +33,10 @@ const usePublicClientMock = vi.fn();
 const useChainIdMock = vi.fn();
 const useAccountMock = vi.fn();
 const useWalletClientMock = vi.fn();
-const getOperatorMetadataURIMock = vi.fn();
+const getSellerMetadataURIMock = vi.fn();
 const getBlockNumberMock = vi.fn();
 const watchContractEventMock = vi.fn();
-const defaultFetchOperatorCatalogueMock = vi.fn();
+const defaultFetchSellerCatalogueMock = vi.fn();
 const defaultListFallbackRestaurantsMock = vi.fn();
 const defaultIsRegistryConfiguredMock = vi.fn();
 const defaultListRestaurantsMock = vi.fn();
@@ -68,12 +68,12 @@ vi.mock("wagmi", () => ({
 }));
 
 vi.mock("@/lib/core/indexer", () => ({
-    getOperatorMetadataURI: (...args: unknown[]) => getOperatorMetadataURIMock(...args),
+    getSellerMetadataURI: (...args: unknown[]) => getSellerMetadataURIMock(...args),
 }));
 
 vi.mock("@/lib/shared/catalogueService", () => ({
     DEFAULT_CATALOGUE_SERVICE: {
-        fetchOperatorCatalogue: (...args: unknown[]) => defaultFetchOperatorCatalogueMock(...args),
+        fetchSellerCatalogue: (...args: unknown[]) => defaultFetchSellerCatalogueMock(...args),
     },
 }));
 
@@ -133,7 +133,7 @@ const publicClient = {
     getBlockNumber: (...args: unknown[]) => getBlockNumberMock(...args),
     watchContractEvent: (...args: unknown[]) => watchContractEventMock(...args),
 };
-const fallbackRestaurant: OperatorCatalogue = {
+const fallbackRestaurant: SellerCatalogue = {
     id: "fallback-1",
     name: "Fallback Merchant",
     description: "Fallback catalogue",
@@ -145,7 +145,7 @@ const fallbackRestaurant: OperatorCatalogue = {
     fulfillmentModes: ["deliver:seller-assigned"],
 };
 
-const injectedRestaurant: OperatorCatalogue = {
+const injectedRestaurant: SellerCatalogue = {
     id: "merchant-1",
     name: "Injected Merchant",
     description: "Injected discovery result",
@@ -188,10 +188,10 @@ describe("runtime service hook injection", () => {
         useChainIdMock.mockReset();
         useAccountMock.mockReset();
         useWalletClientMock.mockReset();
-        getOperatorMetadataURIMock.mockReset();
+        getSellerMetadataURIMock.mockReset();
         getBlockNumberMock.mockReset();
         watchContractEventMock.mockReset();
-        defaultFetchOperatorCatalogueMock.mockReset();
+        defaultFetchSellerCatalogueMock.mockReset();
         defaultListFallbackRestaurantsMock.mockReset();
         defaultIsRegistryConfiguredMock.mockReset();
         defaultListRestaurantsMock.mockReset();
@@ -229,19 +229,19 @@ describe("runtime service hook injection", () => {
     });
 
     it("uses an injected catalogue service instead of the default provider", async () => {
-        getOperatorMetadataURIMock.mockResolvedValueOnce("ipfs://merchant-a");
+        getSellerMetadataURIMock.mockResolvedValueOnce("ipfs://merchant-a");
 
-        const catalogue: OperatorCatalogueMetadata = {
+        const catalogue: SellerCatalogueMetadata = {
             subjectAddress: "0x0000000000000000000000000000000000000011",
             menu: [],
             version: "1.0.0",
         };
-        const fetchOperatorCatalogue = vi.fn().mockResolvedValue(catalogue);
+        const fetchSellerCatalogue = vi.fn().mockResolvedValue(catalogue);
         const service = {
-            fetchOperatorCatalogue,
+            fetchSellerCatalogue,
         } as unknown as CatalogueService;
 
-        const { result } = renderHook(() => useOperatorCatalogue(
+        const { result } = renderHook(() => useSellerCatalogue(
             "0x0000000000000000000000000000000000000011",
             { service },
         ));
@@ -250,8 +250,8 @@ describe("runtime service hook injection", () => {
             expect(result.current.catalogue).toEqual(catalogue);
         });
 
-        expect(fetchOperatorCatalogue).toHaveBeenCalledWith("ipfs://merchant-a");
-        expect(defaultFetchOperatorCatalogueMock).not.toHaveBeenCalled();
+        expect(fetchSellerCatalogue).toHaveBeenCalledWith("ipfs://merchant-a");
+        expect(defaultFetchSellerCatalogueMock).not.toHaveBeenCalled();
     });
 
     it("uses an injected discovery service instead of the default provider", async () => {

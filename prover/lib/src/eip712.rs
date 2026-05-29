@@ -156,14 +156,14 @@ pub fn set_mechanism_schema_struct_hash(schema_id: &B256) -> B256 {
     keccak256(&data)
 }
 
-// ── Operator authorization ────────────────────────────────────────
+// ── Seller authorization ────────────────────────────────────────
 
-/// Struct hash for operator registration authorization.
-/// `RegisterOperator(string metadataURI)`
+/// Struct hash for seller registration authorization.
+/// `RegisterSeller(string metadataURI)`
 ///
 /// Per EIP-712: string values are hashed with keccak256.
-pub fn register_operator_struct_hash(metadata_uri: &str) -> B256 {
-    let type_hash = keccak256(b"RegisterOperator(string metadataURI)");
+pub fn register_seller_struct_hash(metadata_uri: &str) -> B256 {
+    let type_hash = keccak256(b"RegisterSeller(string metadataURI)");
     let uri_hash = keccak256(metadata_uri.as_bytes());
     let mut data = Vec::with_capacity(64);
     data.extend_from_slice(type_hash.as_slice());
@@ -171,7 +171,7 @@ pub fn register_operator_struct_hash(metadata_uri: &str) -> B256 {
     keccak256(&data)
 }
 
-/// Struct hash for operator profile-update authorization.
+/// Struct hash for seller profile-update authorization.
 /// `UpdateProfile(string metadataURI)`
 pub fn update_profile_struct_hash(metadata_uri: &str) -> B256 {
     let type_hash = keccak256(b"UpdateProfile(string metadataURI)");

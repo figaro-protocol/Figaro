@@ -6,7 +6,7 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 
 `FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
 `AttestationCoordinatorTest`, `SchemaRegistryTest`, `SchemaRegistrationHelperTest`,
-`AssemblyRegistryTest`, `DutchAuctionTest`, `OperatorRegistryTest`,
+`AssemblyRegistryTest`, `DutchAuctionTest`, `SellerRegistryTest`,
 `ProcessOffsetReceiptTest`, `FigaroBatchVerifierTest`, `DeployScriptTest`,
 `ParityVectors`, `fig/FigToken.t.sol`, `fig/RpgfMinter.t.sol`,
 `fig/RpgfMinterConformance.t.sol`, `BatchGasCeilingTest`, `BatchGasBoundaryTest`,
@@ -70,7 +70,7 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 
 - **Component tier** (`tests/components/`, 8 files) — React Testing Library:
   `Header`, `MobileNav`, `NotificationBell`, `GHGWorkflowPanel`,
-  `OperatorTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
+  `SellerTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
   `TokenDecimalDisplayFlows`.
 - **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
   preparation + stores, agreement manifest, schema-spec source, discovery +
@@ -95,8 +95,8 @@ against Anvil + deployed contracts (action in the UI, reaction in the UI). By ar
   `scenario-local-commerce-offset`, `scenario-local-commerce-pickup`,
   `scenario-kit-assembly` (authors the 4-node DAG-join diamond),
   `seeded-assembly-fork`, `published-list-ui`, `assembly-registry`.
-- Operators: `operators-onboarding`, `operator-edit-ui`,
-  `operator-update-profile`, `operator-withdraw`.
+- Sellers: `sellers-onboarding`, `seller-edit-ui`,
+  `seller-update-profile`, `seller-withdraw`.
 - Order / role surfaces: `seller-timeline`, `spectator-view`, `audit-page`,
   `audit-page-seller`, `local-commerce-offset-scenario` (full multi-role
   emissions-aware runtime: commit → coordinate → emissions → offset → resolve),

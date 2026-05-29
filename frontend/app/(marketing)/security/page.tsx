@@ -95,12 +95,12 @@ export default function Security() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Can someone hijack a schema or operator slot?" sectionId="builders-registries">
+            <MarketingSection title="Can someone hijack a schema or seller slot?" sectionId="builders-registries">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Schema, operator, and assembly anchoring is permissionless and first-write-wins. Once an identifier is bound to a contract or a profile, the binding is immutable &mdash; no admin can rebind it, no later registrant can displace it. The validator contract bound to a schema is required to be pure: no external state reads, no block- or time-dependence, no external calls. Once it is deployed and bound, its behavior is fixed for as long as the chain exists.
+                    Schema, seller, and assembly anchoring is permissionless and first-write-wins. Once an identifier is bound to a contract or a profile, the binding is immutable &mdash; no admin can rebind it, no later registrant can displace it. The validator contract bound to a schema is required to be pure: no external state reads, no block- or time-dependence, no external calls. Once it is deployed and bound, its behavior is fixed for as long as the chain exists.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The three artifact families have different anti-spam postures, calibrated to the asymmetry of their attack surfaces: schemas register with no deposit (the schema-author RPGF anchors trust over time); operators register with a medium deposit and a lock period; assemblies register with a heavier deposit and a permanent slug burn. Harmonization across the three would weaken the design &mdash; the asymmetry is the point.
+                    The three artifact families have different anti-spam postures, calibrated to the asymmetry of their attack surfaces: schemas register with no deposit (the schema-author RPGF anchors trust over time); sellers register with a medium deposit and a lock period; assemblies register with a heavier deposit and a permanent slug burn. Harmonization across the three would weaken the design &mdash; the asymmetry is the point.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The caveat for authors: a buggy validator you deploy is permanent. The remediation path is to deploy v2 under a new schemaId; the v1 keeps doing whatever it does, and anyone already using it stays on it until they migrate. The discipline this asks of authors is the same as the discipline of publishing a kernel: ship the result you can defend, not the result you can patch.

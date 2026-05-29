@@ -46,8 +46,8 @@ const LOCAL_ANVIL = defineChain({
 // Buyer — anvil[0], the default ?e2e=devnet account.
 const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const BUYER_ADDR = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as const;
-// Swift Courier — seeded courier operator on anvil[7]. In the dutch-auction
-// flow the courier is NOT pre-designated; any operator may claim the job.
+// Swift Courier — seeded courier seller on anvil[7]. In the dutch-auction
+// flow the courier is NOT pre-designated; any seller may claim the job.
 const COURIER_KEY = '0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356' as const;
 const SWIFT_COURIER_ADDR = '0x14dC79964da2C08b23698B3D3cc7Ca32193d9955' as const;
 // Mercato General — seeded merchant, anvil[8]; bound to local-commerce-dutch.
@@ -55,7 +55,7 @@ const MERCATO_ADDR = '0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f' as const;
 
 const catalogueFixture = JSON.parse(
     fs.readFileSync(
-        path.resolve(__dirname, '../../scripts/fixtures/operator-catalogue.json'),
+        path.resolve(__dirname, '../../scripts/fixtures/seller-catalogue.json'),
         'utf8',
     ),
 ) as { menu: Array<{ id: string }> };

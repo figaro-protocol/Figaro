@@ -3,16 +3,16 @@ import {
     createDiscoveryService,
 } from '@/lib/shared/discoveryService';
 
-const getActiveOperatorsMock = vi.fn();
+const getActiveSellersMock = vi.fn();
 const fetchDocumentMock = vi.fn();
 
 vi.mock('@/lib/core/indexer', () => ({
-    getActiveOperators: (...args: unknown[]) => getActiveOperatorsMock(...args),
+    getActiveSellers: (...args: unknown[]) => getActiveSellersMock(...args),
 }));
 
 vi.mock('@/lib/mechanisms/contracts', () => ({
     MECHANISM_CONTRACTS: {
-        operatorRegistry: '0x1111111111111111111111111111111111111111',
+        sellerRegistry: '0x1111111111111111111111111111111111111111',
     },
 }));
 
@@ -28,13 +28,13 @@ describe('discoveryService', () => {
     let discoveryService: ReturnType<typeof createDiscoveryService>;
 
     beforeEach(() => {
-        getActiveOperatorsMock.mockReset();
+        getActiveSellersMock.mockReset();
         fetchDocumentMock.mockReset();
         discoveryService = createDiscoveryService({ fetchDocument: fetchDocumentMock });
     });
 
-    it('returns an empty result when the registry has no operators', async () => {
-        getActiveOperatorsMock.mockResolvedValueOnce([]);
+    it('returns an empty result when the registry has no sellers', async () => {
+        getActiveSellersMock.mockResolvedValueOnce([]);
 
         const result = await discoveryService.listCatalogues({} as never, 31337);
 
@@ -43,8 +43,8 @@ describe('discoveryService', () => {
         expect(result.source.mock).toBe(0);
     });
 
-    it('maps a OperatorCatalogueMetadata document into a discovery restaurant', async () => {
-        getActiveOperatorsMock.mockResolvedValueOnce([
+    it('maps a SellerCatalogueMetadata document into a discovery restaurant', async () => {
+        getActiveSellersMock.mockResolvedValueOnce([
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
                 role: 1,
@@ -83,15 +83,15 @@ describe('discoveryService', () => {
         }));
     });
 
-    it('maps an operator profile document into a discovery restaurant and follows catalogueURI', async () => {
-        getActiveOperatorsMock.mockResolvedValueOnce([
+    it('maps an seller profile document into a discovery restaurant and follows catalogueURI', async () => {
+        getActiveSellersMock.mockResolvedValueOnce([
             {
                 address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
                 role: 1,
                 metadataURI: 'ipfs://op-profile',
             },
         ]);
-        // First fetch: operator profile
+        // First fetch: seller profile
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             name: 'Street Tacos',
             description: 'Local taco stand',
@@ -118,8 +118,8 @@ describe('discoveryService', () => {
         expect(result.catalogues[0].menu[0].name).toBe('Al Pastor');
     });
 
-    it('maps an operator profile without a catalogueURI into a restaurant with an empty menu', async () => {
-        getActiveOperatorsMock.mockResolvedValueOnce([
+    it('maps an seller profile without a catalogueURI into a restaurant with an empty menu', async () => {
+        getActiveSellersMock.mockResolvedValueOnce([
             {
                 address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
                 role: 1,
@@ -138,8 +138,8 @@ describe('discoveryService', () => {
         expect(fetchDocumentMock).toHaveBeenCalledTimes(1);
     });
 
-    it('returns an empty result when the operator-event lookup fails', async () => {
-        getActiveOperatorsMock.mockRejectedValueOnce(new Error('indexer offline'));
+    it('returns an empty result when the seller-event lookup fails', async () => {
+        getActiveSellersMock.mockRejectedValueOnce(new Error('indexer offline'));
 
         const result = await discoveryService.listCatalogues({} as never, 31337);
 
@@ -148,8 +148,8 @@ describe('discoveryService', () => {
         expect(result.source.mock).toBe(0);
     });
 
-    it('excludes operators whose documents cannot be fetched', async () => {
-        getActiveOperatorsMock.mockResolvedValueOnce([
+    it('excludes sellers whose documents cannot be fetched', async () => {
+        getActiveSellersMock.mockResolvedValueOnce([
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
                 role: 1,

@@ -2,25 +2,25 @@
  * merchant-page.devnet.spec.ts
  *
  * /s/[seller] is the buyer-facing catalogue page — branding hero,
- * menu grid, cart, place-order CTA. The page reads the operator's
+ * menu grid, cart, place-order CTA. The page reads the seller's
  * profile + catalogue from IPFS via useRegisteredCatalogues and
  * mounts the cart against useCheckout. No devnet coverage existed
  * pre-2026-05-19.
  *
  * Seed flow (no UI wizard):
- *   1. Pin a OperatorCatalogueMetadata JSON to local Kubo.
- *   2. Pin an OperatorProfileMetadata JSON that points to the
+ *   1. Pin a SellerCatalogueMetadata JSON to local Kubo.
+ *   2. Pin an SellerProfileMetadata JSON that points to the
  *      catalogue CID.
- *   3. Register the operator on-chain with the profile URI.
+ *   3. Register the seller on-chain with the profile URI.
  *   4. Open /m/<sellerAddress>?e2e=devnet from a buyer wallet.
  *
- * Assertions: the seller-detail-view shell renders for the operator
+ * Assertions: the seller-detail-view shell renders for the seller
  * address, the menu item from the seeded catalogue appears, clicking
  * Add lands a cart line. The full place-order tx flow (approval +
  * commitment signing + redirect) is deferred — it's exercised by the
  * commit-side tests (commitment-share.devnet, lifecycle.devnet). What
  * this spec specifically protects is the merchant-page composition:
- * IPFS-pinned operator profile + catalogue → SellerDetailView's
+ * IPFS-pinned seller profile + catalogue → SellerDetailView's
  * menu render → cart.
  *
  * Requires:
@@ -59,19 +59,19 @@ const MERCHANT_ADDR = ANVIL_ACCOUNTS[1];
 
 const REGISTRATION_DEPOSIT = parseEther('0.001');
 
-const OPERATOR_REGISTRY_ABI = parseAbi([
+const SELLER_REGISTRY_ABI = parseAbi([
     'function register(string metadataURI) external payable',
-    'event OperatorRegistered(address indexed operator, string metadataURI)',
+    'event SellerRegistered(address indexed seller, string metadataURI)',
     'error AlreadyRegistered()',
 ]);
 
 function getRegistryAddress(): Hex {
     const config = readLocalDeploymentConfig();
-    const addr = (process.env.NEXT_PUBLIC_OPERATOR_REGISTRY
-        ?? config.operatorRegistry
+    const addr = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
+        ?? config.sellerRegistry
         ?? '') as Hex;
     if (!addr || addr.length !== 42) {
-        throw new Error('NEXT_PUBLIC_OPERATOR_REGISTRY not set — run ./deploy-local.sh');
+        throw new Error('NEXT_PUBLIC_SELLER_REGISTRY not set — run ./deploy-local.sh');
     }
     return addr;
 }
@@ -85,8 +85,8 @@ interface SeededMerchant {
 }
 
 /**
- * Pins an operator profile + catalogue to the local Kubo and registers
- * the operator on-chain. Returns the URIs and the seeded menu item's
+ * Pins an seller profile + catalogue to the local Kubo and registers
+ * the seller on-chain. Returns the URIs and the seeded menu item's
  * id/name so the test can locate it via testid.
  */
 async function seedRegisteredMerchant(): Promise<SeededMerchant> {
@@ -117,7 +117,7 @@ async function seedRegisteredMerchant(): Promise<SeededMerchant> {
     const profile = {
         subjectAddress: MERCHANT_ADDR,
         name: `Devnet Merchant ${Date.now()}`,
-        description: 'Operator seeded by merchant-page.devnet.spec.ts',
+        description: 'Seller seeded by merchant-page.devnet.spec.ts',
         catalogueURI,
         acceptedTokens: [
             {
@@ -138,7 +138,7 @@ async function seedRegisteredMerchant(): Promise<SeededMerchant> {
     const { request } = await publicClient.simulateContract({
         account: merchant.address,
         address: registry,
-        abi: OPERATOR_REGISTRY_ABI,
+        abi: SELLER_REGISTRY_ABI,
         functionName: 'register',
         args: [profileURI],
         value: REGISTRATION_DEPOSIT,
@@ -173,7 +173,7 @@ test.describe('/s/[seller] (devnet)', () => {
         await page.goto(`/s/${seeded.address}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
 
         // The page mounts SellerDetailView and queries
-        // useRegisteredCatalogues, which iterates registered operators
+        // useRegisteredCatalogues, which iterates registered sellers
         // and fetches profile+catalogue from IPFS. First-mount race
         // with discovery: reload once if the menu hasn't rendered.
         const detailView = page.getByTestId('seller-detail-view');

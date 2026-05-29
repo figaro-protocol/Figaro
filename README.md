@@ -17,7 +17,7 @@ The organizational consequence: each process assembles a temporary institution o
 `Figaro` is the canonical runtime. It owns:
 
 - **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
-- **Mechanism modules** — attestation, schema registry, Dutch auction, operator registry
+- **Mechanism modules** — attestation, schema registry, Dutch auction, seller registry
 - **FIG token** — 1B fixed supply, 10/30/60 split (founders / DAO / schema-author RPGF), time-locks, SP1-proved per-tranche minting
 - **SDK** — `@figaro/core`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
@@ -43,7 +43,7 @@ src/                        Solidity contracts (0.8.26, Foundry)
   AttestationCoordinator.sol  Zero-storage role-gated attestation
   SchemaRegistry.sol        Permissionless schema anchoring
   DutchAuction.sol          Descending-price allocation
-  OperatorRegistry.sol      On-chain operator registration
+  SellerRegistry.sol      On-chain seller registration
   FigaroBatchVerifier.sol   SP1 batch proof verifier
   fig/                      FIG token (ERC-20, emission, time-locks)
   interfaces/               ISP1Verifier, IRoleResolverV4

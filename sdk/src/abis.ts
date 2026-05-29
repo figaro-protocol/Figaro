@@ -154,7 +154,7 @@ export const SCHEMA_REGISTRATION_HELPER_ABI = parseAbi([
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch settlement ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 schemaId, uint64 version, bytes32 uriHash, bytes32 family, address registrar)[] schemas, (address mechanism, bytes32 schemaId)[] mechanismSchemas, (uint8 tag, address operator, string metadataURI)[] operatorEvents) events) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 schemaId, uint64 version, bytes32 uriHash, bytes32 family, address registrar)[] schemas, (address mechanism, bytes32 schemaId)[] mechanismSchemas, (uint8 tag, address seller, string metadataURI)[] sellerEvents) events) external",
 
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",
@@ -167,8 +167,8 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)",
     "event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar)",
     "event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId)",
-    "event OperatorRegistered(address indexed operator, string metadataURI)",
-    "event OperatorProfileUpdated(address indexed operator, string metadataURI)",
+    "event SellerRegistered(address indexed seller, string metadataURI)",
+    "event SellerProfileUpdated(address indexed seller, string metadataURI)",
 ]);
 
 export const EV_BATCH_SETTLED = parseAbiItem(
@@ -187,17 +187,17 @@ export const ERC20_ABI = parseAbi([
     "function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external",
 ]);
 
-// ── OperatorRegistry ABI ────────────────────────────────────────────────────
+// ── SellerRegistry ABI ────────────────────────────────────────────────────
 
-export const OPERATOR_REGISTRY_ABI = parseAbi([
+export const SELLER_REGISTRY_ABI = parseAbi([
     "function register(string metadataURI) external payable",
     "function updateProfile(string metadataURI) external",
     "function withdraw() external",
     "function registrationDeposit() view returns (uint256)",
     "function depositLockPeriod() view returns (uint256)",
-    "event OperatorRegistered(address indexed operator, string metadataURI)",
-    "event OperatorProfileUpdated(address indexed operator, string metadataURI)",
-    "event OperatorWithdrawn(address indexed operator, uint256 deposit)",
+    "event SellerRegistered(address indexed seller, string metadataURI)",
+    "event SellerProfileUpdated(address indexed seller, string metadataURI)",
+    "event SellerWithdrawn(address indexed seller, uint256 deposit)",
 ]);
 
 // ── FIG Token ABIs ──────────────────────────────────────────────────────────

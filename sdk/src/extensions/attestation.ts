@@ -156,7 +156,7 @@ export function formatGrams(grams: bigint): string {
 
 /**
  * Filter raw event logs by source contract address. Use this when processing
- * `Attestation`, `SchemaRegistered`, `MechanismSchemaSet`, `OperatorRegistered`,
+ * `Attestation`, `SchemaRegistered`, `MechanismSchemaSet`, `SellerRegistered`,
  * or any other event re-emitted from `FigaroBatchVerifier` with the same
  * topic hash as its direct-path counterpart. Without contract-address
  * filtering, indexers conflate batch-re-emitted events with direct-path ones

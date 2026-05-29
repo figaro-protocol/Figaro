@@ -5,8 +5,8 @@ pragma solidity 0.8.26;
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice On-chain dedup guard + event emission for assembly registration.
-///         Parallel to `SchemaRegistry` (schemas) and `OperatorRegistry`
-///         (operators) — each artifact family carries its own anchor per
+///         Parallel to `SchemaRegistry` (schemas) and `SellerRegistry`
+///         (sellers) — each artifact family carries its own anchor per
 ///         the protocol's separation-of-concerns doctrine.
 ///
 ///         An assembly is a composition template that USES schemas. The
@@ -32,7 +32,7 @@ pragma solidity 0.8.26;
 ///         (`registrationDeposit`, immutable at deploy). After the
 ///         lock period elapses, the author can call `withdrawDeposit`
 ///         to reclaim their ETH. The slug binding is permanent — it
-///         is NOT cleared on withdraw, because buyers and operators
+///         is NOT cleared on withdraw, because buyers and sellers
 ///         that reference the slug rely on its content staying
 ///         stable. The deposit is purely an upfront Sybil-resistance
 ///         tax with a refund path, not a fee.

@@ -1,7 +1,7 @@
 /**
  * Bill of Lading extractor — pure projection of an order's handoff + geo
  * clauses (signed at commit) plus per-role sovereign event-log attestations
- * (emitted at runtime by the merchant and courier operators) into a
+ * (emitted at runtime by the merchant and courier sellers) into a
  * structured BoL document.
  *
  * The BoL combines two layers:
@@ -99,7 +99,7 @@ export interface BillOfLadingDocument extends ExtractedDocument {
  * The merchant attests stages 0-1 because those events live in the
  * merchant's physical workflow (prep, ready). The courier attests stages
  * 2-4 because those events live in the courier's transport workflow
- * (en route, picked up, delivered). Each operator is the sovereign
+ * (en route, picked up, delivered). Each seller is the sovereign
  * authority over their own events.
  */
 const STAGE_SOURCE: Record<number, { schemaKey: string; eventStage: number }> = {

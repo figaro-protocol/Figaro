@@ -9,7 +9,7 @@
  * checkout pipeline was the gap.
  *
  * What this exercises:
- *   - Seller-side IPFS pin of catalogue + profile + OperatorRegistry.register
+ *   - Seller-side IPFS pin of catalogue + profile + SellerRegistry.register
  *     (lifted from G11's seed).
  *   - Buyer (anvil[0]) navigates to /m/<sellerAddress>.
  *   - Click `btn-add-<itemId>` → cart line appears.
@@ -55,17 +55,17 @@ const MERCHANT_ADDR = ANVIL_ACCOUNTS[1];
 
 const REGISTRATION_DEPOSIT = parseEther('0.001');
 
-const OPERATOR_REGISTRY_ABI = parseAbi([
+const SELLER_REGISTRY_ABI = parseAbi([
     'function register(string metadataURI) external payable',
 ]);
 
 function getRegistryAddress(): Hex {
     const config = readLocalDeploymentConfig();
-    const addr = (process.env.NEXT_PUBLIC_OPERATOR_REGISTRY
-        ?? config.operatorRegistry
+    const addr = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
+        ?? config.sellerRegistry
         ?? '') as Hex;
     if (!addr || addr.length !== 42) {
-        throw new Error('NEXT_PUBLIC_OPERATOR_REGISTRY not set — run ./deploy-local.sh');
+        throw new Error('NEXT_PUBLIC_SELLER_REGISTRY not set — run ./deploy-local.sh');
     }
     return addr;
 }
@@ -104,7 +104,7 @@ async function seedRegisteredMerchant(): Promise<SeededMerchant> {
     const profile = {
         subjectAddress: MERCHANT_ADDR,
         name: `Devnet Merchant ${Date.now()}`,
-        description: 'Operator seeded by merchant-place-order.devnet.spec.ts',
+        description: 'Seller seeded by merchant-place-order.devnet.spec.ts',
         catalogueURI,
         acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
         defaultTokenAddress: tokenAddress,
@@ -118,7 +118,7 @@ async function seedRegisteredMerchant(): Promise<SeededMerchant> {
     const { request } = await publicClient.simulateContract({
         account: merchant.address,
         address: registry,
-        abi: OPERATOR_REGISTRY_ABI,
+        abi: SELLER_REGISTRY_ABI,
         functionName: 'register',
         args: [profileURI],
         value: REGISTRATION_DEPOSIT,

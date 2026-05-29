@@ -2,7 +2,7 @@
  * kit-assembly-runtime.devnet.spec.ts
  *
  * End-to-end runtime for the `kit-assembly` diamond against the SEEDED Mercato
- * General operator (anvil[8]) — the lead/coordinator the buyer browses.
+ * General seller (anvil[8]) — the lead/coordinator the buyer browses.
  *
  * The scenario (the diamond as a "productive" process of independent
  * value-adders): the buyer selects PRODUCT 212 from Mercato's catalogue.
@@ -62,7 +62,7 @@ const LOCAL_ANVIL = defineChain({
 const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const BUYER_ADDR = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as const;
 
-// The four diamond sellers (seeded operators). Mercato is the lead (A) AND the
+// The four diamond sellers (seeded sellers). Mercato is the lead (A) AND the
 // assembler (D); Swift fills B, Rosso fills C — resolved from Mercato's
 // kit-assembly counterpartyBindings (proximity-policy → [Swift, Mercato],
 // ghg-measurement → [Rosso]).

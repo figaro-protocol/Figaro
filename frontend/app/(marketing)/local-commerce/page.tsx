@@ -23,7 +23,7 @@ export default function LocalCommercePage() {
                     Roles
                 </h2>
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    Each role is held by a wallet, and each wallet represents a real-world asset or service &mdash; the asset stays off-chain on its owner&apos;s books, the wallet is its on-chain handle, and an operator controls the signing key on the asset&apos;s behalf. The &ldquo;maps to&rdquo; line in each role below names that asset layer: the merchant&apos;s wallet represents a kitchen or a shop, the courier&apos;s wallet represents a delivery vehicle. A public-authority wallet &mdash; a municipal food-safety inspection, a road authority charging per-mile &mdash; is a participant on the same footing: a wallet representing a real-world service whose committed payment costs the buyer exactly the way any other commit does.
+                    Each role is held by a wallet, and each wallet represents a real-world asset or service &mdash; the asset stays off-chain on its owner&apos;s books, the wallet is its on-chain handle, and an seller controls the signing key on the asset&apos;s behalf. The &ldquo;maps to&rdquo; line in each role below names that asset layer: the merchant&apos;s wallet represents a kitchen or a shop, the courier&apos;s wallet represents a delivery vehicle. A public-authority wallet &mdash; a municipal food-safety inspection, a road authority charging per-mile &mdash; is a participant on the same footing: a wallet representing a real-world service whose committed payment costs the buyer exactly the way any other commit does.
                 </p>
                 <dl className="space-y-4 text-sm">
                     <div>
@@ -59,8 +59,8 @@ export default function LocalCommercePage() {
                         <p className="text-sm text-ink-muted mt-0.5">Runtime attestation surface for lifecycle, proximity, and GHG events. Every attestation carries a merkle inclusion proof against the signed agreement manifest.</p>
                     </li>
                     <li className="border-b border-default pb-3">
-                        <div className="text-ink-heading font-medium"><code>OperatorRegistry</code></div>
-                        <p className="text-sm text-ink-muted mt-0.5">Permissionless self-registration for merchants and couriers (across all local-commerce verticals) with a reclaimable ETH deposit. Event-sourced (metadataURI in <code>OperatorRegistered</code>); on-chain state is dedup-only. No admin, no KYC, no profile-edit / deactivate / reactivate — switch metadata via withdraw + re-register.</p>
+                        <div className="text-ink-heading font-medium"><code>SellerRegistry</code></div>
+                        <p className="text-sm text-ink-muted mt-0.5">Permissionless self-registration for merchants and couriers (across all local-commerce verticals) with a reclaimable ETH deposit. Event-sourced (metadataURI in <code>SellerRegistered</code>); on-chain state is dedup-only. No admin, no KYC, no profile-edit / deactivate / reactivate — switch metadata via withdraw + re-register.</p>
                     </li>
                 </ul>
             </section>

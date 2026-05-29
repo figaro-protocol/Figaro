@@ -321,27 +321,27 @@ contract ParityVectors is Test {
         assertEq(computed, keccak256(packed), "attestation hash manual cross-check");
     }
 
-    /// @notice Operator events hash with mixed tags (registered + profile-updated).
-    function test_parity_operatorEventsHash() public {
+    /// @notice Seller events hash with mixed tags (registered + profile-updated).
+    function test_parity_sellerEventsHash() public {
         _deployBatchVerifier();
 
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](2);
-        ops[0] = FigaroBatchVerifier.OperatorEventInput({
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](2);
+        ops[0] = FigaroBatchVerifier.SellerEventInput({
             tag: 1, // Registered
-            operator: address(0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa),
+            seller: address(0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa),
             metadataURI: "ipfs://QmTest123"
         });
-        ops[1] = FigaroBatchVerifier.OperatorEventInput({
+        ops[1] = FigaroBatchVerifier.SellerEventInput({
             tag: 2, // ProfileUpdated
-            operator: address(0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC),
+            seller: address(0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC),
             metadataURI: "ipfs://QmUpdated"
         });
 
-        bytes32 computed = _hashOperatorEventsHelper(ops);
-        emit log_named_bytes32("PARITY:operatorEventsHash", computed);
+        bytes32 computed = _hashSellerEventsHelper(ops);
+        emit log_named_bytes32("PARITY:sellerEventsHash", computed);
 
         // Manual cross-check: 53-byte record per event
-        // tag(1) + operator(20) + keccak256(metadataURI)(32)
+        // tag(1) + seller(20) + keccak256(metadataURI)(32)
         bytes memory packed = abi.encodePacked(
             uint8(1),
             address(0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa),
@@ -350,7 +350,7 @@ contract ParityVectors is Test {
             address(0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC),
             keccak256("ipfs://QmUpdated")
         );
-        assertEq(computed, keccak256(packed), "operator events hash manual cross-check");
+        assertEq(computed, keccak256(packed), "seller events hash manual cross-check");
     }
 
     /// @notice Schema + mechanism schema combined hash.
@@ -422,7 +422,7 @@ contract ParityVectors is Test {
         return keccak256(packed);
     }
 
-    function _hashOperatorEventsHelper(FigaroBatchVerifier.OperatorEventInput[] memory events)
+    function _hashSellerEventsHelper(FigaroBatchVerifier.SellerEventInput[] memory events)
         internal
         pure
         returns (bytes32)
@@ -431,7 +431,7 @@ contract ParityVectors is Test {
         for (uint256 i = 0; i < events.length; i++) {
             packed = bytes.concat(
                 packed,
-                abi.encodePacked(events[i].tag, events[i].operator, keccak256(bytes(events[i].metadataURI)))
+                abi.encodePacked(events[i].tag, events[i].seller, keccak256(bytes(events[i].metadataURI)))
             );
         }
         return keccak256(packed);

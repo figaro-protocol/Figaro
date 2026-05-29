@@ -1,19 +1,19 @@
 /**
  * lib/shared/cataloguePublisher.ts
  *
- * Write path for operator catalogues.
- * Serializes a OperatorCatalogueMetadata document → pins to IPFS → returns
- * the IPFS URI. The URI is then referenced from the operator's profile
+ * Write path for seller catalogues.
+ * Serializes a SellerCatalogueMetadata document → pins to IPFS → returns
+ * the IPFS URI. The URI is then referenced from the seller's profile
  * document (as `catalogueURI`) which itself is pinned and registered
- * on-chain via `OperatorRegistry.register(profileURI)` for first-time
- * operators or `OperatorRegistry.updateProfile(profileURI)` for already-
- * registered operators (the latter does not consume the deposit or
+ * on-chain via `SellerRegistry.register(profileURI)` for first-time
+ * sellers or `SellerRegistry.updateProfile(profileURI)` for already-
+ * registered sellers (the latter does not consume the deposit or
  * restart the lock period). This module handles the off-chain pin only;
  * the caller orchestrates the on-chain call.
  */
 
-import type { OperatorCatalogueMetadata } from "@/lib/shared/operatorCatalogueMetadata";
-import { parseOperatorCatalogueDocument } from "@/lib/shared/operatorCatalogueMetadataParser";
+import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
 import { invalidateCatalogueCache } from "@/lib/shared/catalogueFetcher";
 import { clearBrandingCache } from "@/lib/shared/sellerBranding";
@@ -33,12 +33,12 @@ export interface PublishResult {
  *
  * @throws If the document fails validation or IPFS pinning fails.
  */
-export async function publishOperatorCatalogue(
-    catalogue: OperatorCatalogueMetadata,
+export async function publishSellerCatalogue(
+    catalogue: SellerCatalogueMetadata,
     evidenceTransport: Pick<IpfsService, "pinJSON" | "buildURI"> = DEFAULT_IPFS_SERVICE,
 ): Promise<PublishResult> {
     // Round-trip validation — rejects invalid documents before pinning
-    parseOperatorCatalogueDocument(catalogue, "catalogue-publish");
+    parseSellerCatalogueDocument(catalogue, "catalogue-publish");
 
     const cid = await evidenceTransport.pinJSON(catalogue);
     const uri = evidenceTransport.buildURI(cid);

@@ -14,7 +14,7 @@ fn family_for(schema: &[u8]) -> B256 {
         b"figaro-commerce-v1" => b"commerce",
         b"figaro-geo-v2" => b"geo",
         b"figaro-fulfilment-v2" => b"fulfilment",
-        b"figaro-courier-process-v1" => b"operator-process",
+        b"figaro-courier-process-v1" => b"seller-process",
         b"figaro-topology-v1" => b"topology",
         _ => b"test-family",
     };

@@ -18,7 +18,7 @@ import {
     getAttestationsByOrder,
     getAllAuctionCreated,
     getAllAuctionClaimed,
-    getAllOperatorRegistered,
+    getAllSellerRegistered,
 } from "@/lib/core/indexer";
 import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
 import type {
@@ -26,8 +26,8 @@ import type {
     DutchAuctionClaimedEvent,
 } from "@/lib/audit/dutchAuctionExtract";
 import type {
-    OperatorRegisteredEvent,
-} from "@/lib/audit/operatorRegistryExtract";
+    SellerRegisteredEvent,
+} from "@/lib/audit/sellerRegistryExtract";
 import {
     projectFinancials,
     type FinancialsModel,
@@ -94,11 +94,11 @@ function toAuctionClaimed(log: IndexedLog): DutchAuctionClaimedEvent | null {
     };
 }
 
-function toOperatorRegistered(log: IndexedLog): OperatorRegisteredEvent | null {
+function toSellerRegistered(log: IndexedLog): SellerRegisteredEvent | null {
     const a = log.args;
-    if (!a || typeof a.operator !== "string") return null;
+    if (!a || typeof a.seller !== "string") return null;
     return {
-        operator: a.operator,
+        seller: a.seller,
         metadataURI: typeof a.metadataURI === "string" ? a.metadataURI : "",
         blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
         transactionHash: log.transactionHash,
@@ -146,13 +146,13 @@ export async function buildAuditBundlePdfBlob(
 
     let auctionCreatedAll: DutchAuctionCreatedEvent[] = [];
     let auctionClaimedAll: DutchAuctionClaimedEvent[] = [];
-    let operatorRegisteredAll: OperatorRegisteredEvent[] = [];
+    let sellerRegisteredAll: SellerRegisteredEvent[] = [];
     if (publicClient) {
         try {
             const [createdLogs, claimedLogs, opRegLogs] = await Promise.all([
                 getAllAuctionCreated(publicClient, chainId),
                 getAllAuctionClaimed(publicClient, chainId),
-                getAllOperatorRegistered(publicClient, chainId),
+                getAllSellerRegistered(publicClient, chainId),
             ]);
             auctionCreatedAll = (createdLogs as IndexedLog[])
                 .map(toAuctionCreated)
@@ -160,9 +160,9 @@ export async function buildAuditBundlePdfBlob(
             auctionClaimedAll = (claimedLogs as IndexedLog[])
                 .map(toAuctionClaimed)
                 .filter((r): r is DutchAuctionClaimedEvent => r !== null);
-            operatorRegisteredAll = (opRegLogs as IndexedLog[])
-                .map(toOperatorRegistered)
-                .filter((r): r is OperatorRegisteredEvent => r !== null);
+            sellerRegisteredAll = (opRegLogs as IndexedLog[])
+                .map(toSellerRegistered)
+                .filter((r): r is SellerRegisteredEvent => r !== null);
         } catch {
             // Non-fatal — extractors will report auctionApplicable=false /
             // registered=false and the bundle still renders.
@@ -200,7 +200,7 @@ export async function buildAuditBundlePdfBlob(
             buildAuditBundle(order, agreement, attestations, {
                 auctionCreatedEvents: orderAuctionsCreated,
                 auctionClaimedEvents: orderAuctionsClaimed,
-                operatorRegistrationEvents: operatorRegisteredAll,
+                sellerRegistrationEvents: sellerRegisteredAll,
             }),
         );
     }

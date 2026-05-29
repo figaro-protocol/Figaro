@@ -25,7 +25,7 @@ Agents — human-driven or autonomous — have bounded write scope. These are ha
 
 - **`src/FigaroCore.sol`** — the kernel is frozen. The `.claude/hooks/kernel-warn.sh` hook surfaces this at edit time; do not bypass.
 - **`src/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
-- **Any deployed contract on a chain anyone is using.** First-write-wins binding in `OperatorRegistry`, `SchemaRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
+- **Any deployed contract on a chain anyone is using.** First-write-wins binding in `SellerRegistry`, `SchemaRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
 - **Existing registered schemas.** Once a `schemaId` is bound to its `ISchemaValidator`, the binding is permanent. To change behavior, register a new schemaId (e.g., `figaro-foo-v1` → `figaro-foo-v2`); never mutate the v1 contract or its Layer A spec in `frontend/lib/shared/schemas/`. (Carve-out: cosmetic metadata fields the validator never reads — `categories`, docstrings — are overridable; content-shape is not.)
 - **Reference assemblies** in the runtime that are shared infrastructure. New assemblies go in new files; treat existing reference assemblies as immutable for any agent.
 
@@ -35,13 +35,13 @@ The protocol is actor-neutral: any wallet can hold the same role any other walle
 
 An agent acting for wallet `W` may write:
 
-- W's own off-chain metadata (operator-registry entries, ENS/`did:web` documents, agent service descriptions).
+- W's own off-chain metadata (seller-registry entries, ENS/`did:web` documents, agent service descriptions).
 - Assemblies where W is `rootBuyer` or seller-of-record.
 - New artifacts W is authoring — new schemas, new validator contracts, new factotum forks, new frontend pages.
 
 An agent may NOT:
 
-- Edit assemblies, attestations, or operator-registry entries belonging to other wallets — even if reading them is fine.
+- Edit assemblies, attestations, or seller-registry entries belonging to other wallets — even if reading them is fine.
 - Modify shared infrastructure (kernel, registries, reference assemblies) under the framing of "fixing it for everyone." That is a maintainer decision, not an agent decision.
 - Submit transactions that affect another wallet's bond, attestation, or settlement state without that wallet's signature.
 
@@ -68,7 +68,7 @@ The kernel runs **two mechanisms that compose, not substitute**, plus one securi
 
 The mechanisms are inseparable in practice: bonding alone gives a mesh that still needs N mutual agreements to resolve; buyer-dominance alone gives a resolver with nothing at stake. Together, the bonding ratio creates the mesh and buyer dominance + atomic resolution make it resolvable from a single signature while propagating cooperation pressure through it.
 
-The kernel sees only **linear process chains** — `commit` calls extending a monotonic cumulative-value accumulator (`ProcessState`: `rootBuyer`, `currency`, `cumulativeValue`, `activeOrderCount` — no DAG fields). DAG topology lives in the upper composability layer, reconstructed off-chain by indexers, never in the kernel. Each bonded process is a transaction-scoped institution that dissolves at settlement; every participant is an independent value-adder. What a traditional model calls a "restaurant" is a process of independent contributors — cook, kitchen operator, ingredient sourcer — each bonding and settling independently.
+The kernel sees only **linear process chains** — `commit` calls extending a monotonic cumulative-value accumulator (`ProcessState`: `rootBuyer`, `currency`, `cumulativeValue`, `activeOrderCount` — no DAG fields). DAG topology lives in the upper composability layer, reconstructed off-chain by indexers, never in the kernel. Each bonded process is a transaction-scoped institution that dissolves at settlement; every participant is an independent value-adder. What a traditional model calls a "restaurant" is a process of independent contributors — cook, kitchen seller, ingredient sourcer — each bonding and settling independently.
 
 **Three mistakes to avoid:**
 1. Do not collapse the two mechanisms to "one mechanism plus rules." Atomic resolution does mechanism-style work — it enforces inter-seller coordination via the weakest-link subgame, not just convenience-of-resolution.
@@ -127,12 +127,12 @@ Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new
 Each protocol artifact family has its own anchoring primitive. Families are parallel, not nested.
 
 - **Schemas** — anchored via `SchemaRegistry` + per-schema `ISchemaValidator`.
-- **Operators** — anchored via `OperatorRegistry` (event-emitting, metadataURI-pointing).
-- **Assemblies** — composition templates that USE schemas. Anchored via `AssemblyRegistry` — parallel to schemas/operators, not subordinate to either.
+- **Sellers** — anchored via `SellerRegistry` (event-emitting, metadataURI-pointing).
+- **Assemblies** — composition templates that USE schemas. Anchored via `AssemblyRegistry` — parallel to schemas/sellers, not subordinate to either.
 
 **The rule.** Each family gets its own registry/anchor, identity scheme, evolution path, and indexer event stream. Do not nest one inside another, even when an existing primitive could be made to host the new one.
 
-**The test.** Does the proposed reuse make Layer A reference Layer B's existence? The dependency arrows between families point one way: assemblies use schemas; schemas do not know assemblies exist. Operators declare assemblies in their metadata JSON; `OperatorRegistry` does not reference assemblyIds on-chain. If a proposal inverts an arrow, it is wrong, regardless of how much Solidity it saves.
+**The test.** Does the proposed reuse make Layer A reference Layer B's existence? The dependency arrows between families point one way: assemblies use schemas; schemas do not know assemblies exist. Sellers declare assemblies in their metadata JSON; `SellerRegistry` does not reference assemblyIds on-chain. If a proposal inverts an arrow, it is wrong, regardless of how much Solidity it saves.
 
 **The temptation to refuse.** "We already have `SchemaRegistry` — can we register this new artifact under it?" When the test answer is yes, refuse the reuse. "Avoiding a new contract" / "minimum new surface" is NOT a valid optimization criterion when it costs a layer boundary. Conceptual cleanliness is the protocol-scale optimization; code reuse is not.
 

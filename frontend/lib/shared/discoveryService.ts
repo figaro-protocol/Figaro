@@ -1,31 +1,31 @@
 import type { PublicClient } from 'viem';
-import { getActiveOperators } from '@/lib/core/indexer';
-import type { OperatorCatalogue } from '@/lib/seller/types';
+import { getActiveSellers } from '@/lib/core/indexer';
+import type { SellerCatalogue } from '@/lib/seller/types';
 import { MECHANISM_CONTRACTS } from '@/lib/mechanisms/contracts';
 import { resolveContentURI } from '@/lib/shared/sellerBranding';
-import type { OperatorCatalogueMetadata } from '@/lib/shared/operatorCatalogueMetadata';
+import type { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
 import {
-    OperatorProfileMetadata,
-    tryParseOperatorProfileDocument,
-} from '@/lib/shared/operatorProfileMetadata';
-import { tryParseCatalogueItems } from '@/lib/shared/operatorProfileAdapter';
+    SellerProfileMetadata,
+    tryParseSellerProfileDocument,
+} from '@/lib/shared/sellerProfileMetadata';
+import { tryParseCatalogueItems } from '@/lib/shared/sellerProfileAdapter';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 
-/** Only allow safe URI schemes for operator-declared image URLs. */
+/** Only allow safe URI schemes for seller-declared image URLs. */
 function isSafeImageURI(uri: string): boolean {
     return /^(https?:\/\/|ipfs:\/\/|\/ipfs\/)/i.test(uri);
 }
 
 export interface DiscoveryResult {
-    catalogues: OperatorCatalogue[];
+    catalogues: SellerCatalogue[];
     source: { ipfs: number; mock: number };
 }
 
 function profileToCatalogue(
-    profile: OperatorProfileMetadata,
-    catalogue: OperatorCatalogueMetadata | undefined,
+    profile: SellerProfileMetadata,
+    catalogue: SellerCatalogueMetadata | undefined,
     index: number,
-): OperatorCatalogue {
+): SellerCatalogue {
     const address = profile.subjectAddress ?? catalogue?.subjectAddress ?? '0x0';
     return {
         id: address !== '0x0' ? address.toLowerCase() : `ipfs-${index}`,
@@ -61,12 +61,12 @@ function profileToCatalogue(
     };
 }
 
-async function fetchOperatorAsCatalogue(
+async function fetchSellerAsCatalogue(
     address: string,
     metadataURI: string,
     index: number,
     fetchFn: (url: string) => Promise<Response>,
-): Promise<OperatorCatalogue | null> {
+): Promise<SellerCatalogue | null> {
     const url = resolveContentURI(metadataURI);
     if (!url) return null;
 
@@ -74,16 +74,16 @@ async function fetchOperatorAsCatalogue(
     const doc = await safeJsonFromResponse<unknown>(res);
     if (!doc) return null;
 
-    // The on-chain metadataURI points to the operator profile document.
+    // The on-chain metadataURI points to the seller profile document.
     // The profile carries identity / branding / accepted tokens, plus a
     // catalogueURI pointing to the (separately-pinned) volatile items
     // list.
-    const profile = tryParseOperatorProfileDocument(doc);
+    const profile = tryParseSellerProfileDocument(doc);
     if (!profile) return null;
 
     // Stamp the wallet onto the profile so downstream renderers can
     // route from the listing back to /m/<address>.
-    const stamped: OperatorProfileMetadata = {
+    const stamped: SellerProfileMetadata = {
         ...profile,
         subjectAddress: profile.subjectAddress ?? (address as `0x${string}`),
     };
@@ -111,7 +111,7 @@ async function fetchOperatorAsCatalogue(
         items = tryParseCatalogueItems(doc);
     }
 
-    const catalogue: OperatorCatalogueMetadata | undefined = items && items.length > 0
+    const catalogue: SellerCatalogueMetadata | undefined = items && items.length > 0
         ? {
             subjectAddress: stamped.subjectAddress!,
             menu: items.map((i) => ({
@@ -150,7 +150,7 @@ export function createDiscoveryService(
 
     const service: DiscoveryService = {
         isRegistryConfigured() {
-            return !!MECHANISM_CONTRACTS.operatorRegistry && MECHANISM_CONTRACTS.operatorRegistry.length === 42;
+            return !!MECHANISM_CONTRACTS.sellerRegistry && MECHANISM_CONTRACTS.sellerRegistry.length === 42;
         },
         async listCatalogues(client: PublicClient, chainId: number) {
             if (!service.isRegistryConfigured()) {
@@ -158,20 +158,20 @@ export function createDiscoveryService(
             }
 
             try {
-                const operators = await getActiveOperators(client, chainId);
-                if (operators.length === 0) return EMPTY_RESULT;
+                const sellers = await getActiveSellers(client, chainId);
+                if (sellers.length === 0) return EMPTY_RESULT;
 
                 // The catalogue's items signal what business the seller is
                 // in; there is no nominal categorization field to filter on.
-                // fetchOperatorAsCatalogue is the gate that drops operators
+                // fetchSellerAsCatalogue is the gate that drops sellers
                 // whose document doesn't parse as a seller catalogue.
                 const results = await Promise.all(
-                    operators.map(async (operator, index) => {
+                    sellers.map(async (seller, index) => {
                         try {
-                            if (!operator.metadataURI) return null;
-                            return await fetchOperatorAsCatalogue(
-                                operator.address,
-                                operator.metadataURI,
+                            if (!seller.metadataURI) return null;
+                            return await fetchSellerAsCatalogue(
+                                seller.address,
+                                seller.metadataURI,
                                 index,
                                 fetchFn,
                             );
@@ -181,7 +181,7 @@ export function createDiscoveryService(
                     }),
                 );
 
-                const catalogues = results.filter((r): r is OperatorCatalogue => r !== null);
+                const catalogues = results.filter((r): r is SellerCatalogue => r !== null);
                 return {
                     catalogues,
                     source: { ipfs: catalogues.length, mock: 0 },

@@ -2,7 +2,7 @@
  * lib/shared/assemblyLabels.ts
  *
  * Single source of truth for the slug → human-label translation tables
- * used across the Discover page (`OperatorDiscovery`, `OperatorCard`)
+ * used across the Discover page (`SellerDiscovery`, `SellerCard`)
  * and any future surface that surfaces protocol-tier slugs to readers.
  *
  * Two axes:

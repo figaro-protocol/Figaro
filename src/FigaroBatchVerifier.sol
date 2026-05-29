@@ -10,7 +10,7 @@ import "./interfaces/ISP1Verifier.sol";
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Accepts a zero-knowledge proof that a batch of protocol operations
-///         (commits, resolves, attestations, schema registrations, operator
+///         (commits, resolves, attestations, schema registrations, seller
 ///         mutations) produces a valid state transition. The contract verifies
 ///         the proof, reconciles net token positions, re-emits protocol-
 ///         compatible events, and advances the state root.
@@ -27,7 +27,7 @@ import "./interfaces/ISP1Verifier.sol";
 ///           4: tokenOpsHash    (bytes32)
 ///           5: attestationEventsHash (bytes32)
 ///           6: schemaEventsHash (bytes32)
-///           7: operatorEventsHash (bytes32)
+///           7: sellerEventsHash (bytes32)
 contract FigaroBatchVerifier is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -72,15 +72,15 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         bytes32 schemaId;
     }
 
-    /// @dev Operator events are a tagged union in the prover.
+    /// @dev Seller events are a tagged union in the prover.
     ///      tag: 1=Registered, 2=ProfileUpdated.
-    ///      Both tags carry the same payload — `operator` + `metadataURI`.
+    ///      Both tags carry the same payload — `seller` + `metadataURI`.
     ///      The tag is preserved (rather than collapsing to two separate
     ///      arrays) so additional event variants stay forward-compatible
     ///      without changing the calldata shape.
-    struct OperatorEventInput {
+    struct SellerEventInput {
         uint8 tag;
-        address operator;
+        address seller;
         string metadataURI;
     }
 
@@ -90,13 +90,13 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         AttestationData[] attestations;
         SchemaData[] schemas;
         MechanismSchemaData[] mechanismSchemas;
-        OperatorEventInput[] operatorEvents;
+        SellerEventInput[] sellerEvents;
     }
 
     // ── Events (protocol-compatible re-emissions) ─────────────────
 
     /// @notice Summary event emitted per settled batch.
-    /// @dev WARNING: Batch events use the same topic hashes as direct-path events (AttestationCoordinator, SchemaRegistry, OperatorRegistry).
+    /// @dev WARNING: Batch events use the same topic hashes as direct-path events (AttestationCoordinator, SchemaRegistry, SellerRegistry).
     ///      Indexers MUST filter by contract address to distinguish batch from direct events. See audit finding M-3.
     event BatchSettled(
         uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount
@@ -120,11 +120,11 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     /// @dev WARNING: This event shares its topic hash with SchemaRegistry.MechanismSchemaSet. Indexers MUST filter by contract address.
     event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId);
 
-    /// @dev WARNING: This event shares its topic hash with OperatorRegistry.OperatorRegistered. Indexers MUST filter by contract address.
-    event OperatorRegistered(address indexed operator, string metadataURI);
+    /// @dev WARNING: This event shares its topic hash with SellerRegistry.SellerRegistered. Indexers MUST filter by contract address.
+    event SellerRegistered(address indexed seller, string metadataURI);
 
-    /// @dev WARNING: This event shares its topic hash with OperatorRegistry.OperatorProfileUpdated. Indexers MUST filter by contract address.
-    event OperatorProfileUpdated(address indexed operator, string metadataURI);
+    /// @dev WARNING: This event shares its topic hash with SellerRegistry.SellerProfileUpdated. Indexers MUST filter by contract address.
+    event SellerProfileUpdated(address indexed seller, string metadataURI);
 
     // ── Errors ────────────────────────────────────────────────────
 
@@ -134,8 +134,8 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     error PositionHashMismatch();
     error AttestationHashMismatch();
     error SchemaHashMismatch();
-    error OperatorHashMismatch();
-    error InvalidOperatorTag(uint8 tag);
+    error SellerHashMismatch();
+    error InvalidSellerTag(uint8 tag);
     error FeeOnTransferDetected();
     error ZeroVerifier();
     error VerifierNotContract();
@@ -172,7 +172,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     /// @param proof        The SP1 validity proof for the batch.
     /// @param publicValues ABI-encoded public values (8 × 32-byte words).
     /// @param positions    Net token positions to reconcile (hash-verified against proof).
-    /// @param events       Attestation, schema, and operator events to re-emit (hash-verified).
+    /// @param events       Attestation, schema, and seller events to re-emit (hash-verified).
     function settleBatch(
         bytes calldata proof,
         bytes calldata publicValues,
@@ -203,8 +203,8 @@ contract FigaroBatchVerifier is ReentrancyGuard {
             revert AttestationHashMismatch();
         }
         if (_hashSchemas(events.schemas, events.mechanismSchemas) != pv.schEventsHash) revert SchemaHashMismatch();
-        if (_hashOperatorEvents(events.operatorEvents) != pv.opEventsHash) {
-            revert OperatorHashMismatch();
+        if (_hashSellerEvents(events.sellerEvents) != pv.opEventsHash) {
+            revert SellerHashMismatch();
         }
 
         // ── 4. Execute token transfers ────────────────────────────
@@ -213,7 +213,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         // ── 5. Re-emit protocol events ────────────────────────────
         _emitAttestations(events.attestations);
         _emitSchemas(events.schemas, events.mechanismSchemas);
-        _emitOperatorEvents(events.operatorEvents);
+        _emitSellerEvents(events.sellerEvents);
 
         // ── 6. Advance state ──────────────────────────────────────
         stateRoot = pv.newRoot;
@@ -331,22 +331,22 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         return keccak256(packed);
     }
 
-    /// @dev Tagged union matching Rust `compute_operator_events_hash`:
-    ///      0x01 Registered:    tag(1) + operator(20) + keccak256(metadataURI)(32) = 53
-    ///      0x02 ProfileUpdated: tag(1) + operator(20) + keccak256(metadataURI)(32) = 53
-    function _hashOperatorEvents(OperatorEventInput[] calldata events) internal pure returns (bytes32) {
+    /// @dev Tagged union matching Rust `compute_seller_events_hash`:
+    ///      0x01 Registered:    tag(1) + seller(20) + keccak256(metadataURI)(32) = 53
+    ///      0x02 ProfileUpdated: tag(1) + seller(20) + keccak256(metadataURI)(32) = 53
+    function _hashSellerEvents(SellerEventInput[] calldata events) internal pure returns (bytes32) {
         uint256 len = events.length;
         // All current tags share a 53-byte record. Validate first so the
         // packed buffer never grows around an unknown tag.
         for (uint256 i = 0; i < len; i++) {
             uint8 tag = events[i].tag;
-            if (tag != 1 && tag != 2) revert InvalidOperatorTag(tag);
+            if (tag != 1 && tag != 2) revert InvalidSellerTag(tag);
         }
         bytes memory packed = new bytes(len * 53);
         uint256 offset;
         for (uint256 i = 0; i < len; i++) {
             uint8 tag = events[i].tag;
-            address op = events[i].operator;
+            address op = events[i].seller;
             bytes32 uriHash = keccak256(bytes(events[i].metadataURI));
             assembly {
                 let dst := add(add(packed, 32), offset)
@@ -426,14 +426,14 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         }
     }
 
-    function _emitOperatorEvents(OperatorEventInput[] calldata events) internal {
+    function _emitSellerEvents(SellerEventInput[] calldata events) internal {
         for (uint256 i = 0; i < events.length; i++) {
             uint8 tag = events[i].tag;
             if (tag == 1) {
-                emit OperatorRegistered(events[i].operator, events[i].metadataURI);
+                emit SellerRegistered(events[i].seller, events[i].metadataURI);
             } else {
-                // tag == 2 — _hashOperatorEvents already rejects unknown tags
-                emit OperatorProfileUpdated(events[i].operator, events[i].metadataURI);
+                // tag == 2 — _hashSellerEvents already rejects unknown tags
+                emit SellerProfileUpdated(events[i].seller, events[i].metadataURI);
             }
         }
     }

@@ -35,7 +35,7 @@ capital), not ex-post (courts and police), making it jurisdiction-independent.
 What makes this more than a clever escrow:
 
 1. **Process trees** turn pairwise bonds into N-party value-added processes.
-   There is no "restaurant" — there is a cook, a kitchen operator, an
+   There is no "restaurant" — there is a cook, a kitchen seller, an
    ingredient sourcer, a courier, each an independent node in a tree. Every
    node adds value, bonds capital, and is compensated directly via settlement.
    The entire tree resolves atomically — all or nothing.
@@ -55,7 +55,7 @@ What makes this more than a clever escrow:
 
 4. **Composable institutions** — the protocol provides settlement security;
    additional mechanisms (auctions, attestation coordinators, disclosure
-   modules, operator registries) layer on top without weakening the bonding
+   modules, seller registries) layer on top without weakening the bonding
    guarantee.
    An institution is a composition of mechanisms, not a monolithic application.
 
@@ -160,7 +160,7 @@ value-adders:
 
 - **Ride-hail**: buyer + driver (+ vehicle owner, + maintenance provider…),
   geohash routing, auction allocation
-- **Prepared food**: buyer + cook + ingredient sourcer + kitchen operator +
+- **Prepared food**: buyer + cook + ingredient sourcer + kitchen seller +
   courier, value flowing through the tree to every contributor
 - **Repair dispatch**: buyer + diagnostician + parts sourcer + technician,
   lifecycle signals, sealed address
@@ -266,7 +266,7 @@ threshold required — only solvency.
 
 **No firms, no employees.** Every participant in a process is an
 independent value-adder. The entity formerly known as a "restaurant" does not
-exist — what exists is a cook, a kitchen operator, an ingredient sourcer, each
+exist — what exists is a cook, a kitchen seller, an ingredient sourcer, each
 bonding independently, each compensated directly for the value they add. A
 "driver" is a fulfiller who won an auction, not an employee dispatched by
 management. Token fees flow to each node for the value it contributes —
@@ -299,7 +299,7 @@ coordination network.
 The singleton stays safe because of a critical architectural separation:
 **bonds are capital; payments are income.** The core bonding mechanism locks
 and releases collateral — that is all it does. Extensions (attestation
-coordinators, auctions, disclosure modules, operator registries) operate on
+coordinators, auctions, disclosure modules, seller registries) operate on
 coordination, discovery, and evidence surfaces around the process. They can
 inform routing, allocation, and attestations, but they do not alter the bond
 mechanism or buyer-only resolution. This is how the protocol scales
@@ -313,7 +313,7 @@ confuse tiers (e.g., "add yield to locked bonds") misidentify what they touch.
 | Tier | What it is | Boundary |
 |---|---|---|
 | **Kernel** | `FigaroCore`. The irreducible settlement primitive: 2 external functions, 3 mappings, no owner, no fee, no escape hatches. Secures the process graph via asymmetric bonding. | Nothing modifies the kernel's payoff matrix. |
-| **Protocol** | Kernel + extension doctrine + public graphs. Attestation, schema registry, mechanism modules (auctions, lifecycle coordinators, operator registry), five semantic graphs. | Extensions read kernel state but never weaken its guarantees. |
+| **Protocol** | Kernel + extension doctrine + public graphs. Attestation, schema registry, mechanism modules (auctions, lifecycle coordinators, seller registry), five semantic graphs. | Extensions read kernel state but never weaken its guarantees. |
 | **Runtime** | Protocol + semantic derivation layer + institution assembly schema + builder surfaces + UI. The complete operational environment. | Institutions grow on top; they can wither or be replaced without shaking the kernel. |
 
 The kernel is bedrock; the protocol is law; the runtime is the shared workshop;
@@ -489,7 +489,7 @@ would work too, but it's wasted capital for no extra deterrent.
 
 Think about ordering a burger. In the current world, you think you're
 buying from "Joe's Burger Joint." But under that name, there's a cook
-making the burger, an ingredient sourcer, a kitchen operator, a driver,
+making the burger, an ingredient sourcer, a kitchen seller, a driver,
 and a platform like DoorDash sitting on top taking a cut.
 
 In Figaro, "Joe's Burger Joint" doesn't exist as one thing. There's a
@@ -499,7 +499,7 @@ In Figaro, "Joe's Burger Joint" doesn't exist as one thing. There's a
 You (buyer)
  └─ Cook (makes the burger, bonds $X)
      ├─ Ingredient person (got the tomatoes, bonds $Y)
-     └─ Kitchen operator (provides the space, bonds $Z)
+     └─ Kitchen seller (provides the space, bonds $Z)
  └─ Driver (delivers it, bonds $W)
 ```
 

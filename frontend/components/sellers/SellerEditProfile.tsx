@@ -1,0 +1,185 @@
+"use client";
+
+/**
+ * SellerEditProfile — re-uses the wizard's profile form to edit a
+ * registered seller's on-chain profile metadata. Routes from the
+ * `/sellers` manage-list "Identity" row.
+ *
+ * Lifecycle:
+ *   1. Fetch the wallet's current on-chain metadataURI (from the
+ *      indexer's event-derived state) and the profile JSON behind
+ *      it (from IPFS).
+ *   2. Seed `useOnboardingState.profile` with the fetched fields so
+ *      the shared `OnboardingProfileForm` hydrates pre-populated.
+ *   3. Render the form with `onSave` that calls
+ *      `useUpdateSellerProfile.save(...)` — pin merged JSON,
+ *      dispatch `updateProfile`.
+ *   4. On success, redirect back to `/sellers`.
+ *
+ * Wallet-not-connected and wallet-not-registered cases redirect
+ * to `/sellers` (mirrors the redirect-on-miss pattern at
+ * `/sellers` itself).
+ */
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
+import { Card } from "@/components/ui/Card";
+import { useMounted } from "@/lib/shared/useMounted";
+import { useSellerProfile } from "@/lib/mechanisms/useSellerRegistry";
+import { useOnboardingState } from "@/lib/seller/onboardingState";
+import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
+import { resolveContentURI } from "@/lib/shared/sellerBranding";
+import { tryParseSellerProfileDocument } from "@/lib/shared/sellerProfileMetadata";
+import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
+import { OnboardingProfileForm } from "@/components/sellers/OnboardingProfileForm";
+import type { OnboardingProfileDraft } from "@/lib/seller/onboardingState";
+
+export function SellerEditProfile() {
+    const router = useRouter();
+    const mounted = useMounted();
+    const { address, isConnected } = useAccount();
+    const { data: registryData, isLoading: registryLoading } = useSellerProfile(address);
+    const { update, loaded } = useOnboardingState(address);
+
+    const [existingProfile, setExistingProfile] = useState<SellerProfileMetadata | null>(null);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+    const [seeded, setSeeded] = useState(false);
+
+    // Redirect unregistered wallets to onboarding.
+    useEffect(() => {
+        if (!mounted) return;
+        if (!isConnected) {
+            router.replace("/sellers");
+            return;
+        }
+        if (!registryLoading && !registryData) {
+            router.replace("/sellers");
+        }
+    }, [mounted, isConnected, registryLoading, registryData, router]);
+
+    // Fetch the on-chain profile JSON.
+    useEffect(() => {
+        if (!registryData) return;
+        const [metadataURI] = registryData;
+        const url = resolveContentURI(metadataURI);
+        if (!url) {
+            setFetchError("Profile URI couldn't be resolved.");
+            return;
+        }
+        let cancelled = false;
+        fetch(url)
+            .then((r) => r.json())
+            .then((doc) => {
+                if (cancelled) return;
+                const parsed = tryParseSellerProfileDocument(doc);
+                if (parsed) {
+                    setExistingProfile(parsed);
+                } else {
+                    setFetchError("Profile JSON didn't parse as an seller profile.");
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setFetchError("Couldn't fetch profile from IPFS.");
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [registryData]);
+
+    // Seed the wizard's localStorage-backed state with the fetched
+    // profile so OnboardingProfileForm hydrates pre-populated. The
+    // form's hydration gate (useOnboardingState `loaded` flag) is
+    // honored — we wait for `loaded` before writing.
+    useEffect(() => {
+        if (seeded) return;
+        if (!loaded) return;
+        if (!existingProfile) return;
+        const draft: OnboardingProfileDraft = {
+            name: existingProfile.name,
+            description: existingProfile.description,
+            specialty: existingProfile.specialty,
+            location: existingProfile.location,
+            branding: existingProfile.branding,
+            assets: existingProfile.assets,
+            acceptedTokens: existingProfile.acceptedTokens,
+            defaultTokenAddress: existingProfile.defaultTokenAddress,
+        };
+        update({ profile: draft });
+        setSeeded(true);
+    }, [seeded, loaded, existingProfile, update]);
+
+    const updater = useUpdateSellerProfile(existingProfile);
+
+    // Redirect back to /sellers on a confirmed update. No refetch here:
+    // `useSellerProfile` is per-call-site local state, so refetching this
+    // component's instance can't refresh /sellers (which has its own) —
+    // and the synchronous re-render + re-fetch it kicked raced the
+    // router.push navigation. /sellers reads fresh on mount regardless.
+    useEffect(() => {
+        if (updater.isSuccess) {
+            router.push("/sellers");
+        }
+    }, [updater.isSuccess, router]);
+
+    if (!mounted) {
+        return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
+    }
+    if (!isConnected) {
+        return <Card className="p-8 text-sm text-ink-faint">Redirecting…</Card>;
+    }
+    if (registryLoading || !registryData) {
+        return <Card className="p-8 text-sm text-ink-faint">Reading registry…</Card>;
+    }
+
+    if (fetchError) {
+        return (
+            <Card className="p-8 space-y-3">
+                <p className="text-sm text-red-600" role="alert">{fetchError}</p>
+                <p className="text-xs text-ink-faint">
+                    Couldn&apos;t load the existing profile, so editing it isn&apos;t safe — saving without the existing fields would clobber them.
+                </p>
+            </Card>
+        );
+    }
+
+    if (!existingProfile) {
+        return <Card className="p-8 text-sm text-ink-faint">Fetching profile from IPFS…</Card>;
+    }
+    if (!seeded) {
+        return <Card className="p-8 text-sm text-ink-faint">Setting up editor…</Card>;
+    }
+
+    async function handleSave(draft: OnboardingProfileDraft): Promise<void> {
+        // The draft shape lines up with the top-level
+        // SellerProfileMetadata fields it edits — pass through. The
+        // only structural difference is `location.geohash`: the draft
+        // marks it optional, the on-chain shape requires a string.
+        // Default to "" so the merge doesn't widen the on-chain type.
+        const normalizedLocation = draft.location
+            ? {
+                geohash: draft.location.geohash ?? "",
+                addressText: draft.location.addressText,
+            }
+            : undefined;
+        await updater.save({
+            ...draft,
+            location: normalizedLocation,
+        });
+    }
+
+    return (
+        <OnboardingProfileForm
+            onSave={handleSave}
+            submitLabel="Save changes"
+            backHref="/sellers"
+            backLabel="← Cancel"
+            submitInFlight={updater.isPending || updater.isConfirming}
+            externalError={
+                updater.error
+                    ? (updater.error.message ?? String(updater.error))
+                    : null
+            }
+        />
+    );
+}

@@ -59,7 +59,7 @@ export default function Why() {
                     As a primitive, Figaro is the substrate for any economic system grounded in value-added. Supply chains. Manufacturing &mdash; physical or digital. Internal corporate processes. The substrate takes no position on where value flows or under what conditions; the participants in each process decide.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Above the kernel: schemas carrying the general terms-and-conditions that recur across processes, and a consent schema carrying the special terms that would otherwise sit in a written contract. Schemas compose into processes &mdash; what the protocol calls assemblies. Operators index processes freely; buyers negotiate the terms directly, with no intermediary in the path.
+                    Above the kernel: schemas carrying the general terms-and-conditions that recur across processes, and a consent schema carrying the special terms that would otherwise sit in a written contract. Schemas compose into processes &mdash; what the protocol calls assemblies. Sellers index processes freely; buyers negotiate the terms directly, with no intermediary in the path.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Traditional negotiation rests on a belief &mdash; that the counterparties are acting in good faith. The assumption belongs to the cognitive era; it holds when the institutions ready to enforce it remain trusted, and weakens when they do not.
@@ -71,7 +71,7 @@ export default function Why() {
                     Buyer dominance and atomic settlement compact, into a single call, the value-added work that a legal entity used to hold and meter. When the process is token-bound, the value of the assembled work accrues to the token, not to a share price. The token recenters as defining a community of users &mdash; not a substitute for fiat money. The denominations in a wallet reflect its owner&apos;s communities and values. The kernel takes no position on which token; any ERC20 the community already uses can carry the trade.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Each wallet represents something real &mdash; a kitchen, a vehicle, a person&apos;s labour, a public service &mdash; and it sustains its participation the way a business does under going-concern, or the way a node sustains a blockchain. Receipts from on-chain participation have to cover the asset&apos;s off-chain operating expenses over time; when they stop covering them, the operator stops bonding the wallet into processes and it drops out of the market it served. The kernel does not enforce this. The market does, through ordinary rational exit.
+                    Each wallet represents something real &mdash; a kitchen, a vehicle, a person&apos;s labour, a public service &mdash; and it sustains its participation the way a business does under going-concern, or the way a node sustains a blockchain. Receipts from on-chain participation have to cover the asset&apos;s off-chain operating expenses over time; when they stop covering them, the seller stops bonding the wallet into processes and it drops out of the market it served. The kernel does not enforce this. The market does, through ordinary rational exit.
                 </p>
             </MarketingSection>
 
@@ -80,7 +80,7 @@ export default function Why() {
                     Figaro is built to be extended. Anyone can author a new schema, register it on-chain, and be paid retroactively for schemas the network comes to rely on &mdash; sixty percent of the FIG supply is reserved for schema authors, distributed by a fixed formula that measures settled use. No application, no committee.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Schemas are one extension surface. Assemblies are another &mdash; communities compose schemas into the processes they need, with the operators who run them indexing those processes freely. The protocol grows by what it actually carries. <Link href="/builders" className="text-ink-heading font-medium hover:underline">More on building on Figaro</Link>.
+                    Schemas are one extension surface. Assemblies are another &mdash; communities compose schemas into the processes they need, with the sellers who run them indexing those processes freely. The protocol grows by what it actually carries. <Link href="/builders" className="text-ink-heading font-medium hover:underline">More on building on Figaro</Link>.
                 </p>
             </MarketingSection>
 

@@ -26,19 +26,19 @@ export default function Users() {
                     <div>
                         <h3 className="text-heading-h3 text-ink-heading">Discover</h3>
                         <p className="text-base text-ink-body leading-relaxed mt-2 mb-4">
-                            Browse the operators currently on the registry, pick a counterparty, place a bonded order. You hold the buyer role; the seller is whoever you transact with.
+                            Browse the sellers currently on the registry, pick a counterparty, place a bonded order. You hold the buyer role; the seller is whoever you transact with.
                         </p>
                         <Link href="/discover" className="text-ink-heading font-medium hover:underline">
                             Open the registry &rarr;
                         </Link>
                     </div>
                     <div>
-                        <h3 className="text-heading-h3 text-ink-heading">Join as an operator</h3>
+                        <h3 className="text-heading-h3 text-ink-heading">Join as an seller</h3>
                         <p className="text-base text-ink-body leading-relaxed mt-2 mb-4">
-                            Register an identity, declare a catalogue, set accepted tokens. As an operator you run a wallet that represents your real-world asset or service &mdash; a kitchen, a vehicle, your labour. Buyers find you through the registry; the wallet takes the seller role on every deal that comes through.
+                            Register an identity, declare a catalogue, set accepted tokens. As an seller you run a wallet that represents your real-world asset or service &mdash; a kitchen, a vehicle, your labour. Buyers find you through the registry; the wallet takes the seller role on every deal that comes through.
                         </p>
-                        <Link href="/operators" className="text-ink-heading font-medium hover:underline">
-                            Operator onboarding &rarr;
+                        <Link href="/sellers" className="text-ink-heading font-medium hover:underline">
+                            Seller onboarding &rarr;
                         </Link>
                     </div>
                 </div>

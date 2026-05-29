@@ -203,7 +203,7 @@ export interface FixedRateQuoterConfig {
  * Build a `TokenConversionService` backed by an in-memory rate table.
  *
  * Useful in dev environments where Uniswap is not deployed, in tests
- * where determinism matters, or in any environment where the operator
+ * where determinism matters, or in any environment where the seller
  * declares a manual rate table (e.g. a stable-pair desk that prices
  * its own tokens 1:1 against USDC).
  *

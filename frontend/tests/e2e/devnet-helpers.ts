@@ -266,7 +266,7 @@ type DeploymentConfig = {
     attestationCoordinator?: `0x${string}`;
     schemaRegistry?: `0x${string}`;
     dutchAuction?: `0x${string}`;
-    operatorRegistry?: `0x${string}`;
+    sellerRegistry?: `0x${string}`;
     assemblyRegistry?: `0x${string}`;
 };
 
@@ -289,7 +289,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_ATTESTATION_COORDINATOR') config.attestationCoordinator = value;
             if (key === 'NEXT_PUBLIC_SCHEMA_REGISTRY') config.schemaRegistry = value;
             if (key === 'NEXT_PUBLIC_DUTCH_AUCTION') config.dutchAuction = value;
-            if (key === 'NEXT_PUBLIC_OPERATOR_REGISTRY') config.operatorRegistry = value;
+            if (key === 'NEXT_PUBLIC_SELLER_REGISTRY') config.sellerRegistry = value;
             if (key === 'NEXT_PUBLIC_ASSEMBLY_REGISTRY') config.assemblyRegistry = value;
         }
     }
@@ -301,7 +301,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
         config.attestationCoordinator = config.attestationCoordinator ?? (contents as any).attestationCoordinator;
         config.schemaRegistry = config.schemaRegistry ?? (contents as any).schemaRegistry;
         config.dutchAuction = config.dutchAuction ?? (contents as any).dutchAuction;
-        config.operatorRegistry = config.operatorRegistry ?? contents.operatorRegistry;
+        config.sellerRegistry = config.sellerRegistry ?? contents.sellerRegistry;
         config.assemblyRegistry = config.assemblyRegistry ?? (contents as any).assemblyRegistry;
     }
 
@@ -1027,19 +1027,19 @@ export async function attestGhgAsBuyer(
     return hash;
 }
 
-/** OperatorRegistry ABI fragment for seedRegisteredOperator. Local copy keeps
+/** SellerRegistry ABI fragment for seedRegisteredSeller. Local copy keeps
  *  the seed helper independent of the frontend's full ABI export. */
-const OPERATOR_REGISTRY_REGISTER_ABI = parseAbi([
+const SELLER_REGISTRY_REGISTER_ABI = parseAbi([
     'function register(string metadataURI) external payable',
-    'event OperatorRegistered(address indexed operator, string metadataURI)',
+    'event SellerRegistered(address indexed seller, string metadataURI)',
 ]);
 
-const OPERATOR_REGISTRATION_DEPOSIT = parseEther('0.001');
+const SELLER_REGISTRATION_DEPOSIT = parseEther('0.001');
 
-/** Minimal profile shape for `seedRegisteredOperator`. Mirrors the required
- *  + most-common fields of `OperatorProfileMetadata` so callers can author
+/** Minimal profile shape for `seedRegisteredSeller`. Mirrors the required
+ *  + most-common fields of `SellerProfileMetadata` so callers can author
  *  a registration JSON without pulling the full frontend metadata type. */
-export interface SeedOperatorProfile {
+export interface SeedSellerProfile {
     name: string;
     description?: string;
     specialty?: string;
@@ -1048,63 +1048,63 @@ export interface SeedOperatorProfile {
     defaultTokenAddress?: `0x${string}`;
 }
 
-/** Result of `seedRegisteredOperator`. Includes the on-chain address (derived
+/** Result of `seedRegisteredSeller`. Includes the on-chain address (derived
  *  from the wallet key) and the IPFS URI of the pinned profile JSON. */
-export interface SeededOperator {
+export interface SeededSeller {
     address: `0x${string}`;
     profileURI: string;
     profileCid: string;
 }
 
 /**
- * Pin a fresh operator profile JSON to local Kubo and register the wallet
- * on `OperatorRegistry`. Pairs with `merchant-page.devnet.spec.ts`'s
+ * Pin a fresh seller profile JSON to local Kubo and register the wallet
+ * on `SellerRegistry`. Pairs with `merchant-page.devnet.spec.ts`'s
  * inline seeder (which inlines this for the catalogue+merchant case); the
- * helper here is the generic "any registered operator" seed, used by
- * Phase 4 C4 to set up the `/operators/edit/*` UI tests (those routes
- * require a real IPFS-pinned profile so `OperatorEditProfile` can mount
+ * helper here is the generic "any registered seller" seed, used by
+ * Phase 4 C4 to set up the `/sellers/edit/*` UI tests (those routes
+ * require a real IPFS-pinned profile so `SellerEditProfile` can mount
  * the form).
  *
  * Requires Kubo running at NEXT_PUBLIC_IPFS_API_URL (default
  * http://127.0.0.1:5001) and `./deploy-local.sh` having populated
- * NEXT_PUBLIC_OPERATOR_REGISTRY.
+ * NEXT_PUBLIC_SELLER_REGISTRY.
  */
-export async function seedRegisteredOperator(opts: {
+export async function seedRegisteredSeller(opts: {
     walletKey: `0x${string}`;
-    profile: SeedOperatorProfile;
-}): Promise<SeededOperator> {
+    profile: SeedSellerProfile;
+}): Promise<SeededSeller> {
     const localConfig = readLocalDeploymentConfig();
-    const operatorRegistry = (process.env.NEXT_PUBLIC_OPERATOR_REGISTRY
-        ?? localConfig.operatorRegistry) as `0x${string}` | undefined;
-    if (!operatorRegistry) {
-        throw new Error('NEXT_PUBLIC_OPERATOR_REGISTRY not set — run ./deploy-local.sh');
+    const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
+        ?? localConfig.sellerRegistry) as `0x${string}` | undefined;
+    if (!sellerRegistry) {
+        throw new Error('NEXT_PUBLIC_SELLER_REGISTRY not set — run ./deploy-local.sh');
     }
 
-    const operator = privateKeyToAccount(opts.walletKey);
+    const seller = privateKeyToAccount(opts.walletKey);
 
-    // Pin the profile JSON. Frontend's OperatorEditProfile.tsx fetches this
-    // URI via gateway and parses with `tryParseOperatorProfileDocument`, so
+    // Pin the profile JSON. Frontend's SellerEditProfile.tsx fetches this
+    // URI via gateway and parses with `tryParseSellerProfileDocument`, so
     // the shape must satisfy that parser. Required field: `name`.
     const profileDoc = {
-        subjectAddress: operator.address,
+        subjectAddress: seller.address,
         ...opts.profile,
     };
     const { cid, uri: profileURI } = await pinJSONToIPFS(profileDoc);
 
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const operatorClient = createWalletClient({ account: operator, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const sellerClient = createWalletClient({ account: seller, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const { request } = await publicClient.simulateContract({
-        account: operator.address,
-        address: operatorRegistry,
-        abi: OPERATOR_REGISTRY_REGISTER_ABI,
+        account: seller.address,
+        address: sellerRegistry,
+        abi: SELLER_REGISTRY_REGISTER_ABI,
         functionName: 'register',
         args: [profileURI],
-        value: OPERATOR_REGISTRATION_DEPOSIT,
+        value: SELLER_REGISTRATION_DEPOSIT,
     });
-    await publicClient.waitForTransactionReceipt({ hash: await operatorClient.writeContract(request) });
+    await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
 
     return {
-        address: operator.address as `0x${string}`,
+        address: seller.address as `0x${string}`,
         profileURI,
         profileCid: cid,
     };
@@ -1174,7 +1174,7 @@ export async function clearFigClaimsFixture(stageIndex: 0 | 1 | 2): Promise<void
  *
  * Mirrors what `ipfsService.publishJSON` does in the browser, but talks to
  * Kubo from Node directly. Used by devnet tests that need to seed an
- * operator profile or catalogue document in IPFS without walking the
+ * seller profile or catalogue document in IPFS without walking the
  * full onboarding wizard.
  */
 export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: string }> {
@@ -1227,9 +1227,9 @@ export function captureOrGuardAssemblyManifest(
     return fixture.agreements;
 }
 
-/** OperatorRegistry registration event — carries the profile metadataURI. */
-const OPERATOR_REGISTERED_EVENT_ABI = parseAbi([
-    'event OperatorRegistered(address indexed operator, string metadataURI)',
+/** SellerRegistry registration event — carries the profile metadataURI. */
+const SELLER_REGISTERED_EVENT_ABI = parseAbi([
+    'event SellerRegistered(address indexed seller, string metadataURI)',
 ]);
 
 /** Resolve an `ipfs://` URI to a Kubo-gateway URL. */
@@ -1241,50 +1241,50 @@ function resolveIpfsURI(uri: string): string {
 }
 
 /**
- * Capture-or-guard a wizard-published operator catalogue as a seed fixture.
+ * Capture-or-guard a wizard-published seller catalogue as a seed fixture.
  *
- * Reads `operatorAddress`'s on-chain profile (OperatorRegistered event ->
+ * Reads `sellerAddress`'s on-chain profile (SellerRegistered event ->
  * metadataURI), follows the profile's `catalogueURI` to the pinned
- * OperatorCatalogueMetadata. With `FIGARO_CAPTURE_FIXTURES` set, writes it to
- * `scripts/fixtures/operator-catalogue.json` — the data `seed-devnet.mjs`
+ * SellerCatalogueMetadata. With `FIGARO_CAPTURE_FIXTURES` set, writes it to
+ * `scripts/fixtures/seller-catalogue.json` — the data `seed-devnet.mjs`
  * replays. Without it, drift-guards the live catalogue's `menu` against the
  * committed fixture and throws on mismatch.
  *
  * Same capture-or-guard pattern as `captureOrGuardAssemblyManifest`: the
- * canonical authoring UI (here the operator-registration wizard) produces
+ * canonical authoring UI (here the seller-registration wizard) produces
  * the artifact; the seed replays it; the spec guards the two stay in sync.
  */
-export async function captureOrGuardOperatorCatalogue(operatorAddress: string): Promise<void> {
+export async function captureOrGuardSellerCatalogue(sellerAddress: string): Promise<void> {
     const config = readLocalDeploymentConfig();
-    const operatorRegistry = (process.env.NEXT_PUBLIC_OPERATOR_REGISTRY
-        ?? config.operatorRegistry) as `0x${string}` | undefined;
-    if (!operatorRegistry) {
-        throw new Error('NEXT_PUBLIC_OPERATOR_REGISTRY not set — run ./deploy-local.sh');
+    const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
+        ?? config.sellerRegistry) as `0x${string}` | undefined;
+    if (!sellerRegistry) {
+        throw new Error('NEXT_PUBLIC_SELLER_REGISTRY not set — run ./deploy-local.sh');
     }
 
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const events = await publicClient.getContractEvents({
-        address: operatorRegistry,
-        abi: OPERATOR_REGISTERED_EVENT_ABI,
-        eventName: 'OperatorRegistered',
-        args: { operator: operatorAddress as `0x${string}` },
+        address: sellerRegistry,
+        abi: SELLER_REGISTERED_EVENT_ABI,
+        eventName: 'SellerRegistered',
+        args: { seller: sellerAddress as `0x${string}` },
         fromBlock: 0n,
     });
     if (events.length === 0) {
-        throw new Error(`No OperatorRegistered event for ${operatorAddress}`);
+        throw new Error(`No SellerRegistered event for ${sellerAddress}`);
     }
     const profileURI = events[events.length - 1].args.metadataURI as string;
     const profile = await (await fetch(resolveIpfsURI(profileURI))).json() as {
         catalogueURI?: string;
     };
     if (!profile.catalogueURI) {
-        throw new Error(`Operator ${operatorAddress} profile carries no catalogueURI`);
+        throw new Error(`Seller ${sellerAddress} profile carries no catalogueURI`);
     }
     const catalogue = await (await fetch(resolveIpfsURI(profile.catalogueURI))).json() as {
         menu: unknown[];
     };
 
-    const fixturePath = path.resolve(__dirname, '../../scripts/fixtures/operator-catalogue.json');
+    const fixturePath = path.resolve(__dirname, '../../scripts/fixtures/seller-catalogue.json');
     if (process.env.FIGARO_CAPTURE_FIXTURES) {
         fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
         fs.writeFileSync(fixturePath, `${JSON.stringify(catalogue, null, 2)}\n`, 'utf8');
@@ -1302,7 +1302,7 @@ export async function captureOrGuardOperatorCatalogue(operatorAddress: string): 
         });
     if (JSON.stringify(withoutIds(catalogue.menu)) !== JSON.stringify(withoutIds(fixture.menu))) {
         throw new Error(
-            'scripts/fixtures/operator-catalogue.json drift — the wizard-published ' +
+            'scripts/fixtures/seller-catalogue.json drift — the wizard-published ' +
             'catalogue no longer matches the committed fixture; re-capture with ' +
             'FIGARO_CAPTURE_FIXTURES=1.',
         );
@@ -1312,7 +1312,7 @@ export async function captureOrGuardOperatorCatalogue(operatorAddress: string): 
 /**
  * Advance Anvil's block timestamp by `seconds` and mine an empty block
  * so reads pick up the new `block.timestamp`. Used by tests that exercise
- * time-locked paths (OperatorRegistry.withdraw's 365-day lock,
+ * time-locked paths (SellerRegistry.withdraw's 365-day lock,
  * RpgfMinter unlock cliffs, etc.).
  *
  * Pair with `evmSnapshot()` / `evmRevert()` so the time jump doesn't leak

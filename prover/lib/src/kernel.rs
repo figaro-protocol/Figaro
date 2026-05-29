@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::eip712::{
     attest_buyer_struct_hash, attest_seller_struct_hash, commitment_struct_hash,
     compute_order_hash, domain_separator,
-    recover_signer, register_operator_struct_hash,
+    recover_signer, register_seller_struct_hash,
     register_schema_struct_hash, resolve_struct_hash, set_mechanism_schema_struct_hash,
     typed_data_hash, update_profile_struct_hash,
 };
@@ -618,44 +618,44 @@ fn apply_set_mechanism_schema(
     Ok(())
 }
 
-// ── OperatorRegistry operations ──────────────────────────────────
+// ── SellerRegistry operations ──────────────────────────────────
 //
-// Two operator-registry mutations survive in the batched kernel:
+// Two seller-registry mutations survive in the batched kernel:
 //
-//   - RegisterOperator: sets the dedup guard and emits Registered.
+//   - RegisterSeller: sets the dedup guard and emits Registered.
 //   - UpdateProfile:    requires the dedup guard to already be set and emits
 //                       ProfileUpdated. Deposit + lock period are not touched.
 //
 // Lifecycle flags (deactivate / reactivate) and on-chain role tracking
-// stay out of the kernel — operator availability is signal-by-availability,
+// stay out of the kernel — seller availability is signal-by-availability,
 // and the seller's role is whatever their catalogue (referenced by
 // metadata_uri) declares through its archetype.
 
-fn apply_register_operator(
+fn apply_register_seller(
     state: &mut KernelState,
     domain: &B256,
     metadata_uri: &str,
-    operator_sig: &Signature,
-    events: &mut Vec<OperatorEventData>,
+    seller_sig: &Signature,
+    events: &mut Vec<SellerEventData>,
 ) -> Result<(), KernelError> {
-    let struct_hash = register_operator_struct_hash(metadata_uri);
+    let struct_hash = register_seller_struct_hash(metadata_uri);
     let digest = typed_data_hash(domain, &struct_hash);
-    let operator = recover_signer(&digest, operator_sig)?;
+    let seller = recover_signer(&digest, seller_sig)?;
 
     // Dedup guard
     if state
-        .operators_registered
-        .get(&operator)
+        .sellers_registered
+        .get(&seller)
         .copied()
         .unwrap_or(false)
     {
-        return Err(KernelError::OperatorAlreadyRegistered);
+        return Err(KernelError::SellerAlreadyRegistered);
     }
 
-    state.operators_registered.insert(operator, true);
+    state.sellers_registered.insert(seller, true);
 
-    events.push(OperatorEventData::Registered {
-        operator,
+    events.push(SellerEventData::Registered {
+        seller,
         metadata_uri: metadata_uri.to_string(),
     });
 
@@ -666,27 +666,27 @@ fn apply_update_profile(
     state: &KernelState,
     domain: &B256,
     metadata_uri: &str,
-    operator_sig: &Signature,
-    events: &mut Vec<OperatorEventData>,
+    seller_sig: &Signature,
+    events: &mut Vec<SellerEventData>,
 ) -> Result<(), KernelError> {
     let struct_hash = update_profile_struct_hash(metadata_uri);
     let digest = typed_data_hash(domain, &struct_hash);
-    let operator = recover_signer(&digest, operator_sig)?;
+    let seller = recover_signer(&digest, seller_sig)?;
 
     // Caller must already be registered. There is no path through which one
     // address can update another's metadata URI — the EIP-712 signature pins
     // the caller and the dedup-guard check pins them to a registered slot.
     if !state
-        .operators_registered
-        .get(&operator)
+        .sellers_registered
+        .get(&seller)
         .copied()
         .unwrap_or(false)
     {
-        return Err(KernelError::OperatorNotRegistered);
+        return Err(KernelError::SellerNotRegistered);
     }
 
-    events.push(OperatorEventData::ProfileUpdated {
-        operator,
+    events.push(SellerEventData::ProfileUpdated {
+        seller,
         metadata_uri: metadata_uri.to_string(),
     });
 
@@ -731,19 +731,19 @@ pub fn compute_schema_events_hash(
     keccak256(&data)
 }
 
-/// Deterministic hash of operator events for inclusion in public values.
-/// Tagged-union encoding (matches Solidity `_hashOperatorEvents`):
-///   0x01 Registered:    tag(1) + operator(20) + keccak256(metadata_uri)(32) = 53
-///   0x02 ProfileUpdated: tag(1) + operator(20) + keccak256(metadata_uri)(32) = 53
-pub fn compute_operator_events_hash(events: &[OperatorEventData]) -> B256 {
+/// Deterministic hash of seller events for inclusion in public values.
+/// Tagged-union encoding (matches Solidity `_hashSellerEvents`):
+///   0x01 Registered:    tag(1) + seller(20) + keccak256(metadata_uri)(32) = 53
+///   0x02 ProfileUpdated: tag(1) + seller(20) + keccak256(metadata_uri)(32) = 53
+pub fn compute_seller_events_hash(events: &[SellerEventData]) -> B256 {
     let mut data = Vec::new();
     for e in events {
-        let (tag, operator, metadata_uri) = match e {
-            OperatorEventData::Registered { operator, metadata_uri } => (0x01u8, operator, metadata_uri),
-            OperatorEventData::ProfileUpdated { operator, metadata_uri } => (0x02u8, operator, metadata_uri),
+        let (tag, seller, metadata_uri) = match e {
+            SellerEventData::Registered { seller, metadata_uri } => (0x01u8, seller, metadata_uri),
+            SellerEventData::ProfileUpdated { seller, metadata_uri } => (0x02u8, seller, metadata_uri),
         };
         data.push(tag);
-        data.extend_from_slice(operator.as_slice());
+        data.extend_from_slice(seller.as_slice());
         data.extend_from_slice(&keccak256(metadata_uri.as_bytes()).0);
     }
     keccak256(&data)
@@ -782,7 +782,7 @@ fn apply_batch_inner(
     let mut attestation_events = Vec::new();
     let mut schema_events = Vec::new();
     let mut mechanism_schema_events = Vec::new();
-    let mut operator_events = Vec::new();
+    let mut seller_events = Vec::new();
 
     for op in &input.operations {
         match op {
@@ -894,29 +894,29 @@ fn apply_batch_inner(
                 )?;
             }
 
-            // ── Operator ──
-            KernelOp::RegisterOperator {
+            // ── Seller ──
+            KernelOp::RegisterSeller {
                 metadata_uri,
-                operator_sig,
+                seller_sig,
             } => {
-                apply_register_operator(
+                apply_register_seller(
                     &mut state,
                     &domain,
                     metadata_uri,
-                    operator_sig,
-                    &mut operator_events,
+                    seller_sig,
+                    &mut seller_events,
                 )?;
             }
             KernelOp::UpdateProfile {
                 metadata_uri,
-                operator_sig,
+                seller_sig,
             } => {
                 apply_update_profile(
                     &state,
                     &domain,
                     metadata_uri,
-                    operator_sig,
-                    &mut operator_events,
+                    seller_sig,
+                    &mut seller_events,
                 )?;
             }
         }
@@ -927,13 +927,13 @@ fn apply_batch_inner(
     let ops_hash = compute_positions_hash(&positions);
     let att_hash = compute_attestation_events_hash(&attestation_events);
     let sch_hash = compute_schema_events_hash(&schema_events, &mechanism_schema_events);
-    let op_hash = compute_operator_events_hash(&operator_events);
+    let op_hash = compute_seller_events_hash(&seller_events);
 
     let batch_events = BatchEvents {
         attestations: attestation_events,
         schemas: schema_events,
         mechanism_schemas: mechanism_schema_events,
-        operators: operator_events,
+        sellers: seller_events,
     };
 
     Ok((
@@ -945,7 +945,7 @@ fn apply_batch_inner(
             token_ops_hash: ops_hash,
             attestation_events_hash: att_hash,
             schema_events_hash: sch_hash,
-            operator_events_hash: op_hash,
+            seller_events_hash: op_hash,
         },
         positions,
         batch_events,

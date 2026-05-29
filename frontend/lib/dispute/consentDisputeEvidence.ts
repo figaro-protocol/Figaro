@@ -33,7 +33,7 @@
 import type { Address, Hex } from "viem";
 import type { KlerosMetaEvidence, KlerosEvidence } from "./klerosEvidence";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { isValidAddress } from "@/components/operators/TokenAddressInput";
+import { isValidAddress } from "@/components/sellers/TokenAddressInput";
 
 // ---------------------------------------------------------------------------
 // MetaEvidence
@@ -95,13 +95,13 @@ export function buildConsentDisputeMetaEvidence(
  *
  * - `participant` — a beta participant alleging the Project Operator (or
  *   another Participant) has breached an obligation owed to them.
- * - `operator` — the Project Operator alleging a Participant has breached
+ * - `seller` — the Project Operator alleging a Participant has breached
  *   the agreement (e.g. §3.2 / §3.4 / §3.6).
  *
  * The label travels with the Evidence envelope so the Kleros juror can
  * frame the claim correctly without inferring it from text.
  */
-export type ConsentDisputeParty = "participant" | "operator";
+export type ConsentDisputeParty = "participant" | "seller";
 
 /**
  * The disputed consent attestation, as recovered from the receipt PDF /
@@ -299,7 +299,7 @@ export function buildConsentDisputeEvidence(
     }
 
     // ── Envelope ────────────────────────────────────────────────────
-    const submitterLabel = input.submittingParty === "operator"
+    const submitterLabel = input.submittingParty === "seller"
         ? "Project Operator"
         : "Participant";
 

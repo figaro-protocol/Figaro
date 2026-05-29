@@ -5,7 +5,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 
 /// @title FigaroCourierProcessV1Validator
 /// @notice Validates `figaro-courier-process-v1` content — event-stream schema
-///         for a courier operator's role in an order lifecycle. Generic across
+///         for a courier seller's role in an order lifecycle. Generic across
 ///         transport modes (driver, cyclist, walker, drone, autonomous vehicle);
 ///         the event vocabulary maps to a transport job's pickup-to-dropoff flow.
 ///
@@ -16,7 +16,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 ///      the timestamped block. See Paper E (settlement on-chain by nature,
 ///      adjudication off-chain by nature) for the broader framing.
 ///
-/// @dev Off-chain operators (merchants, couriers, locker operators, etc.) need
+/// @dev Off-chain sellers (merchants, couriers, locker sellers, etc.) need
 ///      a per-role process schema because their state transitions happen in
 ///      physical reality — not as kernel ops. Kernel-participant roles (the
 ///      buyer, who acts via `commit` / `resolveProcess`) do NOT need a

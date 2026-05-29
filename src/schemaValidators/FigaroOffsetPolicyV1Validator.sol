@@ -17,7 +17,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 ///        0 = klima   (Klima DAO)
 ///        1 = toucan  (Toucan Protocol — BCT / NCT)
 ///        2 = moss    (Moss.Earth — MCO2)
-///        3 = custom  (self-declared operator registered against the assembly)
+///        3 = custom  (self-declared seller registered against the assembly)
 ///
 ///      An order without offset-policy has no offset path; an INCLUDED
 ///      clause must carry at least one provider.

@@ -57,19 +57,19 @@ export interface OpenSubOrderComposerCapabilityAction {
     currency?: `0x${string}`;
 }
 
-export interface RegisterOperatorCapabilityAction {
+export interface RegisterSellerCapabilityAction {
     executionType: "transaction";
-    kind: "register-operator";
+    kind: "register-seller";
 }
 
-export interface UpdateOperatorProfileCapabilityAction {
+export interface UpdateSellerProfileCapabilityAction {
     executionType: "transaction";
-    kind: "update-operator-profile";
+    kind: "update-seller-profile";
 }
 
-export interface WithdrawOperatorDepositCapabilityAction {
+export interface WithdrawSellerDepositCapabilityAction {
     executionType: "transaction";
-    kind: "withdraw-operator-deposit";
+    kind: "withdraw-seller-deposit";
 }
 
 export interface SubmitDisclosureCommitmentCapabilityAction {
@@ -171,9 +171,9 @@ export interface PrototypeCapabilityAction {
 export type CapabilityActionDescriptor =
     | ResolveProcessCapabilityAction
     | OpenSubOrderComposerCapabilityAction
-    | RegisterOperatorCapabilityAction
-    | UpdateOperatorProfileCapabilityAction
-    | WithdrawOperatorDepositCapabilityAction
+    | RegisterSellerCapabilityAction
+    | UpdateSellerProfileCapabilityAction
+    | WithdrawSellerDepositCapabilityAction
     | SubmitDisclosureCommitmentCapabilityAction
     | SubmitDisclosureInventoryCapabilityAction
     | SubmitMerchantProcessSignalCapabilityAction
@@ -222,18 +222,18 @@ export function isDisclosureInventoryCapability(
         && capability.action.kind === "submit-disclosure-inventory";
 }
 
-export interface RegisterOperatorCapabilityInput {
-    kind: "register-operator";
+export interface RegisterSellerCapabilityInput {
+    kind: "register-seller";
     metadataURI?: string;
 }
 
-export interface UpdateOperatorProfileCapabilityInput {
-    kind: "update-operator-profile";
+export interface UpdateSellerProfileCapabilityInput {
+    kind: "update-seller-profile";
     metadataURI?: string;
 }
 
-export interface WithdrawOperatorDepositCapabilityInput {
-    kind: "withdraw-operator-deposit";
+export interface WithdrawSellerDepositCapabilityInput {
+    kind: "withdraw-seller-deposit";
 }
 
 export interface SubmitDisclosureCommitmentCapabilityInput {
@@ -251,9 +251,9 @@ export interface SubmitCourierProcessSignalWithProofCapabilityInput {
 }
 
 export type CapabilityExecutionInput =
-    | RegisterOperatorCapabilityInput
-    | UpdateOperatorProfileCapabilityInput
-    | WithdrawOperatorDepositCapabilityInput
+    | RegisterSellerCapabilityInput
+    | UpdateSellerProfileCapabilityInput
+    | WithdrawSellerDepositCapabilityInput
     | SubmitDisclosureCommitmentCapabilityInput
     | SubmitDisclosureInventoryCapabilityInput
     | SubmitCourierProcessSignalWithProofCapabilityInput;

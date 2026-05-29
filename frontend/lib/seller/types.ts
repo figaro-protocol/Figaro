@@ -4,8 +4,8 @@ import type {
     CataloguePricingPolicy,
     NegotiatedPriceEntry,
     UnitSystem,
-} from "@/lib/shared/operatorCatalogueMetadata";
-import type { OperatorAgentServices } from "@/lib/shared/operatorProfileMetadata";
+} from "@/lib/shared/sellerCatalogueMetadata";
+import type { SellerAgentServices } from "@/lib/shared/sellerProfileMetadata";
 
 export interface CatalogueItem {
     id: string;
@@ -35,27 +35,27 @@ export interface CatalogueItem {
 }
 
 /**
- * Buyer-side projection of an operator's profile + catalogue.
+ * Buyer-side projection of an seller's profile + catalogue.
  *
  * Sources:
- *  - profile (`OperatorProfileMetadata`): name, slug, description,
+ *  - profile (`SellerProfileMetadata`): name, slug, description,
  *    specialty, location (geohash + addressText), branding, accepted
  *    tokens, default token, agent services.
- *  - catalogue (`OperatorCatalogueMetadata`): items.
+ *  - catalogue (`SellerCatalogueMetadata`): items.
  *
  * Carries no closed-taxonomy fields. Earlier revisions had
  * `cuisine`/`rating`/`deliveryTime`/`minimumOrder` — none of those
  * exist in the underlying schemas; they were rendered from
  * hardcoded defaults and have been removed. `specialty` is the
- * free-form open-string self-description the operator authors
+ * free-form open-string self-description the seller authors
  * themselves.
  */
-export interface OperatorCatalogue {
+export interface SellerCatalogue {
     id: string;
     name: string;
     address: string;
     description: string;
-    /** Free-form self-description (e.g. "Italian", "Mobile espresso", etc.). Authored by the operator; no closed taxonomy. */
+    /** Free-form self-description (e.g. "Italian", "Mobile espresso", etc.). Authored by the seller; no closed taxonomy. */
     specialty: string;
     image: string;
     geohash?: string;
@@ -66,8 +66,8 @@ export interface OperatorCatalogue {
     acceptedTokens?: AcceptedTokenMetadata[];
     /** The token catalogue prices are denominated in (one of `acceptedTokens`). */
     defaultTokenAddress?: `0x${string}`;
-    /** ERC-8004-compatible service endpoints (optional, for agent-driven operators). */
-    agentServices?: OperatorAgentServices;
+    /** ERC-8004-compatible service endpoints (optional, for agent-driven sellers). */
+    agentServices?: SellerAgentServices;
     fulfillmentModes?: Array<
         | "consume-onsite"
         | "pickup"
@@ -76,7 +76,7 @@ export interface OperatorCatalogue {
         | "deliver:seller-assigned"
         | "deliver:dutch-auction"
     >;
-    /** Operator's preferred display unit system for mass / volume. Storage
+    /** Seller's preferred display unit system for mass / volume. Storage
      *  is always metric; this field only governs UI formatting. */
     unitSystem?: UnitSystem;
 }

@@ -4,7 +4,7 @@ import {
     addressIntegrity,
     classifyTokenError,
     isValidAddress,
-} from "@/components/operators/TokenAddressInput";
+} from "@/components/sellers/TokenAddressInput";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 
 // USDC mainnet — known checksum address.

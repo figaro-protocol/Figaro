@@ -82,7 +82,7 @@ export function ConsentOnboardingModal({ onDismiss }: ConsentOnboardingModalProp
                     <h3 className="font-semibold text-black mb-1">What you are testing</h3>
                     <p>
                         The Figaro runtime — the user-facing surfaces (terminal,
-                        operators, designer, audit, audit-bundle export) —
+                        sellers, designer, audit, audit-bundle export) —
                         running against a development chain. No real funds are
                         at risk.
                     </p>
@@ -104,17 +104,17 @@ export function ConsentOnboardingModal({ onDismiss }: ConsentOnboardingModalProp
                     <p>
                         Report bugs, friction, and surprises through the
                         in-app feedback channel (coming soon) or directly to
-                        the Operator at the address from your beta invitation.
+                        the Seller at the address from your beta invitation.
                         Concrete examples — what you tried, what you saw,
                         what you expected — are most useful.
                     </p>
                 </div>
 
                 <div>
-                    <h3 className="font-semibold text-black mb-1">Reaching the Operator</h3>
+                    <h3 className="font-semibold text-black mb-1">Reaching the Seller</h3>
                     <p>
                         For questions about the beta, withdrawal, or anything
-                        else, contact the Operator at the address provided in
+                        else, contact the Seller at the address provided in
                         your invitation. You may stop participating at any time
                         without penalty.
                     </p>
@@ -125,7 +125,7 @@ export function ConsentOnboardingModal({ onDismiss }: ConsentOnboardingModalProp
                     <p>
                         If you believe the Agreement has been breached or
                         something has gone seriously wrong, contact the
-                        Operator first — most issues resolve directly. If a
+                        Seller first — most issues resolve directly. If a
                         dispute remains unresolved, the formal escalation per
                         §10 of the Agreement is <strong>Kleros</strong>, the
                         decentralized arbitration protocol. You may invoke

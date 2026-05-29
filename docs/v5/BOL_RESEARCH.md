@@ -219,7 +219,7 @@ post-mortem literature matter for Figaro:
   accessed according to the contracted level of visibility"*
   (piernext.portdebarcelona.cat). Different parties saw different
   slices; data governance was centralized by a small set of node
-  operators.
+  sellers.
 - **The dual-role problem**. Maersk was both consortium leader and a
   major commercial actor in the market the consortium was meant to
   serve. Competing shippers and freight forwarders refused to commit

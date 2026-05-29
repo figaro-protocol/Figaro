@@ -4,10 +4,10 @@
  * attestations into a per-role event timeline.
  *
  * Per CLAUDE.md "When to add a per-role process schema": these two
- * schemas exist because off-chain operators (merchants, couriers) need
+ * schemas exist because off-chain sellers (merchants, couriers) need
  * a sovereign event log to make their physical-world state changes
  * tamper-proof evidence. The kernel records the buyer's actions
- * directly (commit / resolveProcess); the off-chain operators record
+ * directly (commit / resolveProcess); the off-chain sellers record
  * theirs via these per-role process schemas.
  *
  * Both schemas have the same content shape: `(uint8 eventType,

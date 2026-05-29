@@ -204,7 +204,7 @@ fn test_full_batch_commit_and_state() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operators_registered: vec![],
+            sellers_registered: vec![],
         },
     };
 
@@ -275,7 +275,7 @@ fn test_full_batch_commit_resolve_payouts() {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operators_registered: vec![],
+            sellers_registered: vec![],
         },
     };
 
@@ -337,7 +337,7 @@ fn empty_snapshot() -> KernelStateSnapshot {
         order_status: vec![],
         order_process_id: vec![],
         schemas_registered: vec![],
-        operators_registered: vec![],    }
+        sellers_registered: vec![],    }
 }
 
 // ── Schema Registry tests ─────────────────────────────────────────
@@ -348,7 +348,7 @@ fn test_register_schema() {
     let domain = domain_separator(CHAIN_ID, CORE);
     let schema_id = keccak256(b"figaro-courier-process-v1");
     let uri_hash = keccak256(b"ipfs://Qm...");
-    let family = keccak256(b"operator-process");
+    let family = keccak256(b"seller-process");
 
     let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
     let digest = typed_data_hash(&domain, &struct_hash);
@@ -485,49 +485,49 @@ fn test_set_mechanism_schema_unregistered_fails() {
     assert!(matches!(err, KernelError::SchemaNotRegistered(_)));
 }
 
-// ── Operator Registry tests ───────────────────────────────────────
+// ── Seller Registry tests ───────────────────────────────────────
 
 #[test]
-fn test_register_operator() {
-    let operator_key = make_signing_key(SELLER1_KEY);
+fn test_register_seller() {
+    let seller_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
-    let metadata = "ipfs://QmOperator1";
+    let metadata = "ipfs://QmSeller1";
 
-    let struct_hash = register_operator_struct_hash(metadata);
+    let struct_hash = register_seller_struct_hash(metadata);
     let digest = typed_data_hash(&domain, &struct_hash);
-    let sig = sign_digest(&operator_key, &digest);
+    let sig = sign_digest(&seller_key, &digest);
 
     let input = BatchInput {
         chain_id: CHAIN_ID,
         verifying_contract: CORE,
         block_timestamp: 1000,
-        operations: vec![KernelOp::RegisterOperator {
+        operations: vec![KernelOp::RegisterSeller {
             metadata_uri: metadata.to_string(),
-            operator_sig: sig,
+            seller_sig: sig,
         }],
         prev_state: empty_snapshot(),
     };
 
     let (pv, _positions, events) = apply_batch(&input).unwrap();
     assert_ne!(pv.prev_state_root, pv.new_state_root);
-    assert_eq!(events.operators.len(), 1);
-    let OperatorEventData::Registered { operator, metadata_uri } = &events.operators[0]
+    assert_eq!(events.sellers.len(), 1);
+    let SellerEventData::Registered { seller, metadata_uri } = &events.sellers[0]
     else {
-        panic!("expected Registered, got {:?}", &events.operators[0]);
+        panic!("expected Registered, got {:?}", &events.sellers[0]);
     };
-    assert_eq!(*operator, SELLER1);
+    assert_eq!(*seller, SELLER1);
     assert_eq!(metadata_uri, metadata);
 }
 
 #[test]
-fn test_register_operator_duplicate_fails() {
-    let operator_key = make_signing_key(SELLER1_KEY);
+fn test_register_seller_duplicate_fails() {
+    let seller_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
 
     let make_sig = |uri: &str| {
-        let struct_hash = register_operator_struct_hash(uri);
+        let struct_hash = register_seller_struct_hash(uri);
         let digest = typed_data_hash(&domain, &struct_hash);
-        sign_digest(&operator_key, &digest)
+        sign_digest(&seller_key, &digest)
     };
 
     let input = BatchInput {
@@ -535,74 +535,74 @@ fn test_register_operator_duplicate_fails() {
         verifying_contract: CORE,
         block_timestamp: 1000,
         operations: vec![
-            KernelOp::RegisterOperator {
+            KernelOp::RegisterSeller {
                 metadata_uri: "ipfs://first".to_string(),
-                operator_sig: make_sig("ipfs://first"),
+                seller_sig: make_sig("ipfs://first"),
             },
-            KernelOp::RegisterOperator {
+            KernelOp::RegisterSeller {
                 metadata_uri: "ipfs://second".to_string(),
-                operator_sig: make_sig("ipfs://second"),
+                seller_sig: make_sig("ipfs://second"),
             },
         ],
         prev_state: empty_snapshot(),
     };
 
     let err = apply_batch(&input).unwrap_err();
-    assert!(matches!(err, KernelError::OperatorAlreadyRegistered));
+    assert!(matches!(err, KernelError::SellerAlreadyRegistered));
 }
 
 #[test]
 fn test_update_profile_emits_profile_updated_event() {
-    let operator_key = make_signing_key(SELLER1_KEY);
+    let seller_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
 
-    let reg_struct = register_operator_struct_hash("ipfs://v1");
+    let reg_struct = register_seller_struct_hash("ipfs://v1");
     let reg_digest = typed_data_hash(&domain, &reg_struct);
-    let reg_sig = sign_digest(&operator_key, &reg_digest);
+    let reg_sig = sign_digest(&seller_key, &reg_digest);
 
     let upd_struct = update_profile_struct_hash("ipfs://v2");
     let upd_digest = typed_data_hash(&domain, &upd_struct);
-    let upd_sig = sign_digest(&operator_key, &upd_digest);
+    let upd_sig = sign_digest(&seller_key, &upd_digest);
 
     let input = BatchInput {
         chain_id: CHAIN_ID,
         verifying_contract: CORE,
         block_timestamp: 1000,
         operations: vec![
-            KernelOp::RegisterOperator {
+            KernelOp::RegisterSeller {
                 metadata_uri: "ipfs://v1".to_string(),
-                operator_sig: reg_sig,
+                seller_sig: reg_sig,
             },
             KernelOp::UpdateProfile {
                 metadata_uri: "ipfs://v2".to_string(),
-                operator_sig: upd_sig,
+                seller_sig: upd_sig,
             },
         ],
         prev_state: empty_snapshot(),
     };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
-    assert_eq!(events.operators.len(), 2);
+    assert_eq!(events.sellers.len(), 2);
     assert!(matches!(
-        &events.operators[0],
-        OperatorEventData::Registered { .. }
+        &events.sellers[0],
+        SellerEventData::Registered { .. }
     ));
-    let OperatorEventData::ProfileUpdated { operator, metadata_uri } = &events.operators[1]
+    let SellerEventData::ProfileUpdated { seller, metadata_uri } = &events.sellers[1]
     else {
-        panic!("expected ProfileUpdated, got {:?}", &events.operators[1]);
+        panic!("expected ProfileUpdated, got {:?}", &events.sellers[1]);
     };
-    assert_eq!(*operator, SELLER1);
+    assert_eq!(*seller, SELLER1);
     assert_eq!(metadata_uri, "ipfs://v2");
 }
 
 #[test]
 fn test_update_profile_unregistered_fails() {
-    let operator_key = make_signing_key(SELLER1_KEY);
+    let seller_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
 
     let upd_struct = update_profile_struct_hash("ipfs://orphan");
     let upd_digest = typed_data_hash(&domain, &upd_struct);
-    let upd_sig = sign_digest(&operator_key, &upd_digest);
+    let upd_sig = sign_digest(&seller_key, &upd_digest);
 
     let input = BatchInput {
         chain_id: CHAIN_ID,
@@ -610,13 +610,13 @@ fn test_update_profile_unregistered_fails() {
         block_timestamp: 1000,
         operations: vec![KernelOp::UpdateProfile {
             metadata_uri: "ipfs://orphan".to_string(),
-            operator_sig: upd_sig,
+            seller_sig: upd_sig,
         }],
         prev_state: empty_snapshot(),
     };
 
     let err = apply_batch(&input).unwrap_err();
-    assert!(matches!(err, KernelError::OperatorNotRegistered));
+    assert!(matches!(err, KernelError::SellerNotRegistered));
 }
 
 // ── Attestation tests ─────────────────────────────────────────────
@@ -843,8 +843,8 @@ fn test_mixed_batch_all_operations() {
     let schema_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
     let schema_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &schema_struct));
 
-    // Operator registration
-    let op_struct = register_operator_struct_hash("ipfs://op");
+    // Seller registration
+    let op_struct = register_seller_struct_hash("ipfs://op");
     let op_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &op_struct));
 
     // Seller attestation
@@ -874,10 +874,10 @@ fn test_mixed_batch_all_operations() {
                 family,
                 registrar_sig: schema_sig,
             },
-            // 3. Register operator
-            KernelOp::RegisterOperator {
+            // 3. Register seller
+            KernelOp::RegisterSeller {
                 metadata_uri: "ipfs://op".to_string(),
-                operator_sig: op_sig,
+                seller_sig: op_sig,
             },
             // 4. Attest as seller
             KernelOp::AttestAsSeller {
@@ -901,16 +901,16 @@ fn test_mixed_batch_all_operations() {
 
     let (pv, positions, events) = apply_batch(&input).unwrap();
 
-    // State changed (commit + resolve + schema + operator)
+    // State changed (commit + resolve + schema + seller)
     assert_ne!(pv.prev_state_root, pv.new_state_root);
     // Event hashes are non-zero (events were emitted)
     assert_ne!(pv.attestation_events_hash, B256::ZERO);
     assert_ne!(pv.schema_events_hash, B256::ZERO);
-    assert_ne!(pv.operator_events_hash, B256::ZERO);
+    assert_ne!(pv.seller_events_hash, B256::ZERO);
     // Events collected
     assert_eq!(events.attestations.len(), 1);
     assert_eq!(events.schemas.len(), 1);
-    assert_eq!(events.operators.len(), 1);
+    assert_eq!(events.sellers.len(), 1);
     // Token flows exist (from commit + resolve)
     assert!(!positions.is_empty());
 }
@@ -1348,7 +1348,7 @@ fn test_genesis_root_print() {
     let root_hex = format!("0x{}", alloy_primitives::hex::encode(root.as_slice()));
     eprintln!("GENESIS ROOT: {}", root_hex);
     // Genesis root = keccak256 of 5 concatenated keccak256("") sub-hashes
-    // (empty processes, order_status, order_process_id, schemas, operators
+    // (empty processes, order_status, order_process_id, schemas, sellers
     // maps). Changed when settlement-anchored FIG emission was removed from
     // the kernel — devnet only, no mainnet impact. Source of truth going
     // forward; deploy scripts must use this value.

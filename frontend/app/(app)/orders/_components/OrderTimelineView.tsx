@@ -33,8 +33,8 @@ import { GHGWorkflowPanel } from "@/components/core/GHGWorkflowPanel";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
 import { getAttestationsByProcessAndSchema } from "@/lib/core/indexer";
 import { getAttestationContent } from "@/lib/mechanisms/useGHGDisclosure";
-import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
-import { findListingByAddress } from "@/lib/shared/operatorListing";
+import { useSellerListings } from "@/lib/mechanisms/useSellerListings";
+import { findListingByAddress } from "@/lib/shared/sellerListing";
 import type { SemanticTone } from "@/lib/shared/tones";
 import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import {
@@ -343,7 +343,7 @@ export function OrderTimelineView({ processId }: Props) {
     const merchantActions = useMerchantProcessActions();
     const courierActions = useCourierProcessActions();
     const { submitBuyerAttestation } = useAttestationCoordinatorActions();
-    const { listings } = useOperatorListings();
+    const { listings } = useSellerListings();
 
     const [events, setEvents] = useState<MerchantTimelineEvent[]>([]);
     const [eventsLoading, setEventsLoading] = useState(false);

@@ -7,7 +7,7 @@ import "forge-std/console.sol";
 import "../src/FigaroCore.sol";
 import "../src/AttestationCoordinator.sol";
 import "../src/SchemaRegistry.sol";
-import "../src/OperatorRegistry.sol";
+import "../src/SellerRegistry.sol";
 import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
 import "../src/fig/RpgfMinter.sol";
@@ -81,7 +81,7 @@ contract DeployMainnet is Script {
     address internal _core;
     address internal _attestation;
     address internal _schemas;
-    address internal _operators;
+    address internal _sellers;
     address internal _auction;
     address internal _fig;
     address internal _airdrop;
@@ -193,13 +193,13 @@ contract DeployMainnet is Script {
             keccak256("figaro-merchant-process-v1"),
             1,
             keccak256("ipfs://figaro-merchant-process/v1"),
-            keccak256("operator-process")
+            keccak256("seller-process")
         );
         schemas.registerSchema(
             keccak256("figaro-courier-process-v1"),
             1,
             keccak256("ipfs://figaro-courier-process/v1"),
-            keccak256("operator-process")
+            keccak256("seller-process")
         );
         schemas.registerSchema(
             keccak256("figaro-arbitration-kleros-v1"),
@@ -224,26 +224,26 @@ contract DeployMainnet is Script {
         );
         console.log("SchemaRegistry: 18 reference schemas registered");
 
-        // ── OperatorRegistry ────────────────────────────────────────
+        // ── SellerRegistry ────────────────────────────────────────
         // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
         // The deposit + lock pair is the Sybil-resistance knob (see
-        // OperatorRegistry NatSpec on `depositLockPeriod`). Picking
+        // SellerRegistry NatSpec on `depositLockPeriod`). Picking
         // mainnet values needs explicit reasoning recorded here:
         //   - registrationDeposit: $X target in ETH at deploy-time price?
         //     Bonded participation cost is the floor of attacker
         //     discouragement. Too low → cheap Sybil farms; too high →
-        //     locks out small operators.
-        //   - depositLockPeriod: how long does an operator commit to a
+        //     locks out small sellers.
+        //   - depositLockPeriod: how long does an seller commit to a
         //     given role/metadata before they can withdraw + reassert?
         //     Every role/metadata change goes through withdraw +
         //     re-register (web2-strip 2026-04-26). Too short →
         //     deposits churn freely (Sybil mitigation weakens); too
-        //     long → exit friction discourages legitimate operators.
+        //     long → exit friction discourages legitimate sellers.
         // Devnet uses (0.001 ether, 365 days) as ergonomic defaults.
         // Replace these before mainnet broadcast.
-        OperatorRegistry operators = new OperatorRegistry(0.001 ether, 365 days);
-        _operators = address(operators);
-        console.log("OperatorRegistry:       ", _operators);
+        SellerRegistry sellers = new SellerRegistry(0.001 ether, 365 days);
+        _sellers = address(sellers);
+        console.log("SellerRegistry:       ", _sellers);
 
         DutchAuction auction = new DutchAuction(30 minutes, 2000);
         _auction = address(auction);
@@ -403,7 +403,7 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=  ", _attestation);
         console.log("  NEXT_PUBLIC_SCHEMA_REGISTRY=          ", _schemas);
         console.log("  NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=", _schemaHelper);
-        console.log("  NEXT_PUBLIC_OPERATOR_REGISTRY=        ", _operators);
+        console.log("  NEXT_PUBLIC_SELLER_REGISTRY=        ", _sellers);
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=            ", _auction);
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=        ", _fig);
         console.log("  NEXT_PUBLIC_RPGF_MINTER=              ", _airdrop);

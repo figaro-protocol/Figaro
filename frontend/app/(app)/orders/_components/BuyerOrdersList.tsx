@@ -19,13 +19,13 @@ import { formatToken } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { WalletGate } from "@/components/core/WalletGate";
 import { useWalletProcessRows } from "@/lib/core/walletProcessQueries";
-import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
-import { displayNameForAddress } from "@/lib/shared/operatorListing";
+import { useSellerListings } from "@/lib/mechanisms/useSellerListings";
+import { displayNameForAddress } from "@/lib/shared/sellerListing";
 
 export function BuyerOrdersList() {
     const { isConnected } = useAccount();
     const { rows, isLoading } = useWalletProcessRows("buyer");
-    const { listings } = useOperatorListings();
+    const { listings } = useSellerListings();
 
     return (
         <div data-testid="buyer-orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-6">

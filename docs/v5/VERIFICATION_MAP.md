@@ -23,7 +23,7 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 ### In-scope (this document)
 
 - **Kernel**: `src/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
-- **Protocol extensions**: `AttestationCoordinator`, `SchemaRegistry`, `DutchAuction`, `OperatorRegistry`, `FigaroBatchVerifier`
+- **Protocol extensions**: `AttestationCoordinator`, `SchemaRegistry`, `DutchAuction`, `SellerRegistry`, `FigaroBatchVerifier`
 - **FIG token ecosystem**: `FigToken`, `RpgfMinter` (replaced `StagedMerkleAirdrop` 2026-05; formal-verification status reset — see "Retired properties" below)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
 - **Tests**: the Foundry, Halmos, Certora, Echidna, and TLA+ harnesses, plus the SDK suite — suite, file, property, and rule counts are in `TESTING.md` (the single source)
@@ -67,7 +67,7 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 - `E-1` **Attestation role gating**: only verified role-holder (buyer/seller/resolver) can attest
 - `E-2` **Schema immutability**: registered schemas cannot be overwritten
 - `E-3` **Auction price monotonicity**: Dutch auction price only decreases over time
-- `E-4` **Operator deposit lock**: withdrawal only after deactivation + lock period
+- `E-4` **Seller deposit lock**: withdrawal only after deactivation + lock period
 - `E-5` **Batch state root continuity**: each batch must chain from previous state root
 - `E-6` **FIG supply cap**: total minted ≤ 1,000,000,000 FIG (enforced on every mint path)
 - `E-7` **Per-stage one-shot claim** (RpgfMinter — Halmos `check_alreadyClaimedReverts`, Echidna `echidna_claim_flag_monotonic`, Certora `claimedFlagMonotonic` + `claimRequiresNotAlreadyClaimed`, TLA+ enforced by `Claim` action guard)
@@ -113,7 +113,7 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 | E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: 20 tests covering all 3 paths + cross-order same-process | `/legal` → Six evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Schema validators in force |
 | E-2 | Registered schemas cannot be overwritten | `registerSchema`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `SchemaRegistryTest`: 12 tests including dedup | `/builders` → Schema validators in force; `/local-commerce` → schema-typed events |
 | E-3 | Dutch auction price only decreases over time | `getCurrentPrice`: linear decay from `maxPrice` to floor, time-based | `DutchAuctionTest`: 35 tests covering price decay, floor BPS, claim, cancel, expire | `/local-commerce` → Dutch auction description; `/verification` → Coordinator pattern (Dutch auction reference instance); `/builders` → Three levels |
-| E-4 | Operator deposit lock — withdraw only after `registeredAt + lockPeriod` | `withdraw()`: requires `_registered[msg.sender]` + `block.timestamp >= registeredAt + lockPeriod`; clears the dedup guard so the same address can re-register with the lock restarting. `updateProfile()` is a separate caller-only path that emits a new `OperatorProfileUpdated` event without touching the deposit or restarting the lock | `OperatorRegistryTest`: 18 tests covering register, deposit-bound match, dedup, withdraw flow, lock-period gate, re-registration restarts the lock, plus updateProfile (only-self, no deposit movement, no lock reset) | `/local-commerce` → Operator Registry; `/operators`; `/builders` → Operator identity |
+| E-4 | Seller deposit lock — withdraw only after `registeredAt + lockPeriod` | `withdraw()`: requires `_registered[msg.sender]` + `block.timestamp >= registeredAt + lockPeriod`; clears the dedup guard so the same address can re-register with the lock restarting. `updateProfile()` is a separate caller-only path that emits a new `SellerProfileUpdated` event without touching the deposit or restarting the lock | `SellerRegistryTest`: 18 tests covering register, deposit-bound match, dedup, withdraw flow, lock-period gate, re-registration restarts the lock, plus updateProfile (only-self, no deposit movement, no lock reset) | `/local-commerce` → Seller Registry; `/sellers`; `/builders` → Seller identity |
 | E-5 | Batch state root continuity | `settleBatch()`: `require(prevStateRoot == currentStateRoot)` + `currentStateRoot = newStateRoot` | `FigaroBatchVerifierTest`: 22 tests covering state root chain, re-emission | `/builders` → Batch verification (state root, SP1, net positions, event re-emission) |
 | E-6 | FIG supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FigToken.t.sol`: ~22 tests covering cap enforcement, multi-minter, renounce | `/fig` → FIG dashboard (supply display); `/fig/design` → Supply integrity (Paper D) |
 | E-7 | RpgfMinter: each address can claim at most once per stage | `claim(stageIndex, ...)`: reverts `AlreadyClaimed(stageIndex, msg.sender)` if `claimed[stageIndex][msg.sender]` is set; otherwise sets it before mint | `RpgfMinter.t.sol`: `test_CannotClaimSameStageTwice`; `RpgfMinterConformance.t.sol`: `test_RecaimByAuthorFailsAsOneShot` | `/fig` → per-stage claim status |
@@ -131,7 +131,7 @@ This section tracks features that are not protocol invariants but are significan
 | **Handoff encryption (ECDH)** | `frontend/lib/handoff/` (13 files) | — | `/local-commerce` → Handoff Encryption | `HandoffKeyExchangeModule`, `HandoffTrackerModule`, `HandoffDetailsModule` | — |
 | **Delivery attestation (4 modes)** | `frontend/lib/dispute/deliveryAttestation.ts` | `@figaro/core/extensions`: `geohashesMatch`, `haversineDistance` | `/local-commerce` → Proximity Proofs; `/builders` → attestation modes | `DeliveryAttestationPanel`, `/evidence-display` | — |
 | **GHG disclosure** | `frontend/lib/mechanisms/useGHGDisclosure.ts` | `@figaro/core/extensions`: `encodeGramsRef`, `decodeGramsRef`, `buildProcessDisclosureSummary` | `/local-commerce` → GHG two-stage; `/builders` → Schema validators in force | `GHGAnchorPanel`, `GHGWorkflowPanel`, `DisclosureModule` | — |
-| **DID:web identity** | `frontend/lib/mechanisms/useDidWeb.ts` | `@figaro/core/extensions`: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `buildOperatorDidDocument` | `/builders` → Operator identity | `DidVerificationBadge` (component) | — |
+| **DID:web identity** | `frontend/lib/mechanisms/useDidWeb.ts` | `@figaro/core/extensions`: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `buildSellerDidDocument` | `/builders` → Seller identity | `DidVerificationBadge` (component) | — |
 | **Kleros dispute / evidence** | `frontend/lib/dispute/` (6 files) | `@figaro/core/extensions`: Kleros evidence envelope | `/builders` → Kleros integration | `/evidence-display` (full rendering for jurors) | — |
 | **Agent SDK** | `sdk/` (3 subpath exports) | Self-referential (166 tests) | `/builders` → Agent SDK section | — | — |
 | **Semantic derivation** | `frontend/lib/semantic/` (7 files) | — | `/builders` → How the runtime renders institutions | `/workbench` → SemanticProcessWorkspacePanel | — |
@@ -392,7 +392,7 @@ export CERTORAKEY=<your-key>
 | `hitl.test.ts` | ActionQueue HITL — approve/reject/execute lifecycle | Agent coordination |
 | `attestation.test.ts` | Schema IDs, GHG constants, grams encoding, event filtering, disclosure summaries | E-1, E-2 |
 | `auction.test.ts` | Price curves, floor BPS, claim evaluation, auction state derivation | E-3 |
-| `did.test.ts` | did:web validation, resolution, address extraction, operator DID docs | DID:web identity |
+| `did.test.ts` | did:web validation, resolution, address extraction, seller DID docs | DID:web identity |
 | `geo.test.ts` | Geohash matching, haversine distance, photo+GPS evidence | Delivery attestation |
 | `batch-e2e.test.ts` | End-to-end batch settlement (SP1 mock) | E-5 |
 | `sequencer.test.ts` | Batch sequencer API, mempool, state mirror, batch assembly | Batch sequencer |

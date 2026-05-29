@@ -7,7 +7,7 @@ import "forge-std/console.sol";
 import "../src/FigaroCore.sol";
 import "../src/AttestationCoordinator.sol";
 import "../src/SchemaRegistry.sol";
-import "../src/OperatorRegistry.sol";
+import "../src/SellerRegistry.sol";
 import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
 import "../src/fig/RpgfMinter.sol";
@@ -51,7 +51,7 @@ contract MockToken is ERC20 {
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, SchemaRegistry,
-///         OperatorRegistry, DutchAuction, FigToken, MockToken, MockPermitToken.
+///         SellerRegistry, DutchAuction, FigToken, MockToken, MockPermitToken.
 ///         Registers reference schemas. Mints test tokens to Anvil accounts.
 ///
 ///         Devnet FIG allocation (mirrors canonical 10/30/60 shape at token scale):
@@ -154,13 +154,13 @@ contract Deploy is Script {
             keccak256("figaro-merchant-process-v1"),
             1,
             keccak256("ipfs://figaro-merchant-process/v1"),
-            keccak256("operator-process")
+            keccak256("seller-process")
         );
         schemas.registerSchema(
             keccak256("figaro-courier-process-v1"),
             1,
             keccak256("ipfs://figaro-courier-process/v1"),
-            keccak256("operator-process")
+            keccak256("seller-process")
         );
         schemas.registerSchema(
             keccak256("figaro-arbitration-kleros-v1"),
@@ -204,7 +204,7 @@ contract Deploy is Script {
 
         // ── AssemblyRegistry ────────────────────────────────────────
         // Permissionless first-write-wins anchor for designer-built
-        // assemblies. Parallel to SchemaRegistry and OperatorRegistry —
+        // assemblies. Parallel to SchemaRegistry and SellerRegistry —
         // each artifact family has its own registry per the
         // separation-of-concerns doctrine. The registry takes no on-chain
         // claims about manifest content (manifests live off-chain on
@@ -212,9 +212,9 @@ contract Deploy is Script {
         // at attestation time.
         //
         // Spam protection via reclaimable deposit + lock — same pattern
-        // OperatorRegistry uses but adapted: withdraw returns the ETH
+        // SellerRegistry uses but adapted: withdraw returns the ETH
         // after the lock period, but the slug binding stays permanently
-        // because buyers and operators rely on slug stability.
+        // because buyers and sellers rely on slug stability.
         //
         // Devnet values:
         //   - 0.001 ETH deposit so test wallets can register without
@@ -227,7 +227,7 @@ contract Deploy is Script {
         AssemblyRegistry assemblies = new AssemblyRegistry(0.001 ether, 1095 days);
         console.log("AssemblyRegistry deployed at:", address(assemblies));
 
-        // ── OperatorRegistry ────────────────────────────────────────
+        // ── SellerRegistry ────────────────────────────────────────
         // Deposit + lock chosen for devnet ergonomics:
         //   - 0.001 ETH so test wallets can register without faucet drama;
         //   - 365 days so the lock is non-trivial enough that local devs
@@ -235,8 +235,8 @@ contract Deploy is Script {
         //     a year" UX before real deploys.
         // Mainnet picks its own values via DeployMainnet.s.sol — record
         // the reasoning there.
-        OperatorRegistry operators = new OperatorRegistry(0.001 ether, 365 days);
-        console.log("OperatorRegistry deployed at:", address(operators));
+        SellerRegistry sellers = new SellerRegistry(0.001 ether, 365 days);
+        console.log("SellerRegistry deployed at:", address(sellers));
 
         // ── DutchAuction ────────────────────────────────────────────
         DutchAuction auction = new DutchAuction(
@@ -310,7 +310,7 @@ contract Deploy is Script {
         // ── BatchVerifier (SP1 — mock verifier for devnet) ──────────
         // Genesis root = keccak256 of 5 concatenated keccak256("")
         // sub-hashes — empty processes, order_status, order_process_id,
-        // schemas, operators maps. Matches the Rust kernel's
+        // schemas, sellers maps. Matches the Rust kernel's
         // KernelState::new().compute_root().
         //
         // Note: FigaroBatchVerifier is NOT a FIG minter and never will be.
@@ -351,7 +351,7 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=", address(attestation));
         console.log("  NEXT_PUBLIC_SCHEMA_REGISTRY=", address(schemas));
         console.log("  NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=", address(schemaHelper));
-        console.log("  NEXT_PUBLIC_OPERATOR_REGISTRY=", address(operators));
+        console.log("  NEXT_PUBLIC_SELLER_REGISTRY=", address(sellers));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
         console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=", address(offsetReceipts));
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=", address(auction));

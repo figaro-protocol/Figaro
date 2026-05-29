@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseAgentServices } from '@/lib/mechanisms/useOperatorRegistry';
+import { parseAgentServices } from '@/lib/mechanisms/useSellerRegistry';
 
 describe('parseAgentServices', () => {
     it('returns isAgent=false when no services key is present', () => {
@@ -58,14 +58,14 @@ describe('parseAgentServices', () => {
 
     it('ignores non-string service values', () => {
         const result = parseAgentServices({
-            services: { mcp: 123, a2a: true, rest: null, did: 'did:web:operator.example.com' },
+            services: { mcp: 123, a2a: true, rest: null, did: 'did:web:seller.example.com' },
         });
 
         expect(result.isAgent).toBe(true);
         expect(result.services.mcp).toBeUndefined();
         expect(result.services.a2a).toBeUndefined();
         expect(result.services.rest).toBeUndefined();
-        expect(result.services.did).toBe('did:web:operator.example.com');
+        expect(result.services.did).toBe('did:web:seller.example.com');
     });
 
     it('filters non-string capability entries', () => {

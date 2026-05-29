@@ -54,7 +54,7 @@ export type SchemaCategory =
     | "consent"
     | "evidence-law"
     | "lifecycle"
-    | "operator-process"
+    | "seller-process"
     | "fulfilment"
     | "geo"
     | "emissions"
@@ -75,7 +75,7 @@ export const CATEGORY_LABELS: Record<SchemaCategory, string> = {
     consent: "Consent",
     "evidence-law": "Evidence & law",
     lifecycle: "Lifecycle",
-    "operator-process": "Operator process",
+    "seller-process": "Seller process",
     fulfilment: "Fulfilment",
     geo: "Geo",
     emissions: "Emissions",
@@ -91,7 +91,7 @@ export const CATEGORY_DESCRIPTIONS: Record<SchemaCategory, string> = {
     consent: "Cryptographic attestation to off-chain legal documents.",
     "evidence-law": "Legal evidence anchoring for off-chain forums.",
     lifecycle: "Stage progression and event streams over time.",
-    "operator-process": "Sovereign event logs for off-chain operators.",
+    "seller-process": "Sovereign event logs for off-chain sellers.",
     fulfilment: "Modality, coordination, and handoff point in one clause.",
     geo: "Geographic origin and destination, plus shipment mass, volume, and class of service.",
     emissions: "GHG accounting (per industry standard or custom).",

@@ -123,7 +123,7 @@ event window the sequencer supplied — not that the window mirrors chain histor
 
 **Recipient.** A schema's allocation goes to its `schemaAuthor` — the
 first-write-wins wallet that registered the schema on `SchemaRegistry`. One
-schema, one recipient. There is no per-attestation, per-operator, or
+schema, one recipient. There is no per-attestation, per-seller, or
 per-settlement reward path anywhere in the system.
 
 **What is measured.** Per tranche, the aggregator builds one snapshot per schema

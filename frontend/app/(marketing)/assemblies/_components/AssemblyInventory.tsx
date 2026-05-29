@@ -12,7 +12,7 @@ function truncateAddress(addr: `0x${string}`): string {
 /**
  * The `/assemblies` inventory, read live from `AssemblyRegistry`.
  *
- * Reuses `useAssemblyChoices` — the same composition the operator profile
+ * Reuses `useAssemblyChoices` — the same composition the seller profile
  * and the designer's published-list consume. Each row's identity (slug,
  * author, content hash) is on-chain; the manifest (name, order count,
  * schemas) fetches lazily from IPFS per row.

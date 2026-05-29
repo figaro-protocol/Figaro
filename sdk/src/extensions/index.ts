@@ -78,7 +78,7 @@ export {
     resolveDidWeb,
     extractEthereumAddresses,
     didDocumentMatchesAddress,
-    buildOperatorDidDocument,
+    buildSellerDidDocument,
 } from "./did.js";
 export type {
     VerificationMethod,

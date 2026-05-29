@@ -79,7 +79,7 @@ surfaces that compose the runtime.
 
 The Participant is not purchasing, investing in, lending to, borrowing
 from, or otherwise engaging in any financial transaction with the Project
-Operator or any other party through this beta.
+Seller or any other party through this beta.
 
 3. WHAT THE PARTICIPANT COMMITS TO
 
@@ -102,7 +102,7 @@ details; (d) coordinating with the Project Operator before formal media
 engagements (journalism interviews, podcasts, conference talks, articles
 in publications with editorial reach); casual social posts and personal
 blogs do not require coordination; (e) when uncertain, asking the Project
-Operator before publishing. The constructive-engagement obligation expires
+Seller before publishing. The constructive-engagement obligation expires
 automatically one year from the effective date of this Agreement,
 regardless of whether public release of the project has occurred.
 
@@ -165,7 +165,7 @@ on-chain records may be lost; durable records of consent and material
 interactions are preserved separately by the Project Operator (the PDF
 receipt of this signing ceremony is one such record). The testnet may be
 unavailable, experience errors, or behave unexpectedly. The Project
-Operator makes no warranties of fitness, availability, or correctness.
+Seller makes no warranties of fitness, availability, or correctness.
 Beta access is provisional and may be revoked by the Project Operator at
 any time, with or without cause.
 
@@ -174,7 +174,7 @@ any time, with or without cause.
 This Agreement takes effect on signing and remains in effect until the
 earlier of: (a) the Project Operator publicly releases the project; (b)
 one year from the effective date; or (c) the Participant or the Project
-Operator terminates the Participant's access.
+Seller terminates the Participant's access.
 
 The Participant may withdraw from the beta at any time by notifying the
 Project Operator. On withdrawal, beta access ends immediately. Sections

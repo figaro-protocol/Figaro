@@ -262,7 +262,7 @@ function CoverPage({ processId, buyer, generatedAt }: {
                 Sections: Process timeline (FigaroCore lifecycle, once for the
                 whole process). Then per order, repeated: Contract · Invoice ·
                 Bill of Lading · Emissions · Proximity · Sovereign process
-                logs · Dutch auction trail · Operator registry. Then once for
+                logs · Dutch auction trail · Seller registry. Then once for
                 the whole process: Financials (consolidated) · Hash appendix.
             </Text>
             <PageFooter processId={processId} />
@@ -759,7 +759,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                 </View>
             </View>
             <Text style={styles.note}>
-                Sovereign event logs from off-chain operators. Per CLAUDE.md, the
+                Sovereign event logs from off-chain sellers. Per CLAUDE.md, the
                 buyer&apos;s actions are the kernel events (commit / resolveProcess);
                 merchants and couriers record theirs via these per-role process
                 schemas to make their physical-world state changes tamper-proof.
@@ -914,13 +914,13 @@ function DutchAuctionPage({ doc }: { doc: AuditBundle["dutchAuction"] }) {
     );
 }
 
-// ── Operator registry page ──────────────────────────────────────────────────
+// ── Seller registry page ──────────────────────────────────────────────────
 
-function OperatorRegistryPage({ doc }: { doc: AuditBundle["operatorRegistry"] }) {
+function SellerRegistryPage({ doc }: { doc: AuditBundle["sellerRegistry"] }) {
     return (
         <Page size="A4" style={styles.page}>
             <View style={styles.header}>
-                <Text style={styles.label}>Operator registry</Text>
+                <Text style={styles.label}>Seller registry</Text>
                 <Text style={styles.h1}>{doc.title}</Text>
             </View>
             <View style={styles.section}>
@@ -956,7 +956,7 @@ function OperatorRegistryPage({ doc }: { doc: AuditBundle["operatorRegistry"] })
             )}
             <Text style={styles.note}>
                 The Figaro kernel does not enforce seller registration —
-                OperatorRegistry is advisory off-chain metadata. Every
+                SellerRegistry is advisory off-chain metadata. Every
                 legitimate seller is expected to register (runtime convention);
                 an unregistered seller is itself an audit-significant flag.
             </Text>
@@ -1294,7 +1294,7 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
                 <DutchAuctionPage key={`auction-${bundle.dutchAuction.orderHash}`} doc={bundle.dutchAuction} />
             ))}
             {data.perOrderBundles.map((bundle) => (
-                <OperatorRegistryPage key={`opreg-${bundle.operatorRegistry.orderHash}`} doc={bundle.operatorRegistry} />
+                <SellerRegistryPage key={`opreg-${bundle.sellerRegistry.orderHash}`} doc={bundle.sellerRegistry} />
             ))}
             <FinancialsPage model={data.financials} />
             {data.perOrderBundles.map((bundle) => (

@@ -132,26 +132,26 @@ extensions. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for t
 bond currency (same as the base flow) plus a one-time `approve(Permit2, …)` for
 the input token. EIP-7702 and ERC-4337 variants are out of scope.
 
-**`src/OperatorRegistry.sol`** — Permissionless operator self-registration with
+**`src/SellerRegistry.sol`** — Permissionless seller self-registration with
 reclaimable ETH deposit. Three external functions: `register(metadataURI)` (sets
-the dedup guard, consumes the deposit, emits `OperatorRegistered`),
+the dedup guard, consumes the deposit, emits `SellerRegistered`),
 `updateProfile(metadataURI)` (caller-only metadata replacement, no deposit
-movement, emits `OperatorProfileUpdated`), and `withdraw()` (returns the deposit
+movement, emits `SellerProfileUpdated`), and `withdraw()` (returns the deposit
 and clears the dedup guard once the lock period has elapsed). Three events:
-`OperatorRegistered`, `OperatorProfileUpdated`, `OperatorWithdrawn`. State is
+`SellerRegistered`, `SellerProfileUpdated`, `SellerWithdrawn`. State is
 dedup-only (`_registered: address → bool`) plus the registration timestamp that
 backs the deposit-lock gate. **No `_active` flag, no role enum, no `deactivate`
-/ `reactivate`**: operator availability is signal-by-availability off-chain, not
+/ `reactivate`**: seller availability is signal-by-availability off-chain, not
 registry state, and a seller's role is whatever their catalogue (referenced by
 `metadataURI`) declares through its archetype. The deposit and lock are
 spam-protection knobs only; profile updates do not require withdrawing. The
-kernel does not gate any operation on operator state — this registry is
+kernel does not gate any operation on seller state — this registry is
 advisory metadata for off-chain discovery surfaces.
 
 **`src/AssemblyRegistry.sol`** — Permissionless assembly anchoring with a
 reclaimable ETH deposit. An assembly is a composition template that USES
 schemas; this registry is the assembly artifact family's anchor, parallel to
-`SchemaRegistry` (schemas) and `OperatorRegistry` (operators) per the
+`SchemaRegistry` (schemas) and `SellerRegistry` (sellers) per the
 separation-of-concerns doctrine. Two external functions: `registerAssembly(slug,
 contentHash, metadataURI)` (first-write-wins, requires the immutable
 `registrationDeposit`, emits `AssemblyRegistered`) and `withdrawDeposit(slug)`
@@ -159,7 +159,7 @@ contentHash, metadataURI)` (first-write-wins, requires the immutable
 `DepositWithdrawn`). State is one mapping `bindings: slugHash → AssemblyBinding`
 {author, registeredAt, depositWithdrawn, contentHash, metadataURI}. The slug
 binding is permanent — `withdrawDeposit` returns only the ETH and never clears
-the binding, because buyers and operators that reference the slug rely on its
+the binding, because buyers and sellers that reference the slug rely on its
 content staying stable; the deposit is an upfront Sybil-resistance tax with a
 refund path, not a fee. No owner, no admin, no fee, no `transferAssembly`, no
 `removeAssembly`. The contract does not validate manifest content — per-clause

@@ -1,7 +1,7 @@
 //! Reusable test-fixture builders for the figaro-prover guest program.
 //!
 //! `build_canonical_batch_input` produces a comprehensive end-to-end batch
-//! (commit + schema register + operator register + seller attest with
+//! (commit + schema register + seller register + seller attest with
 //! Layer B content_proof + buyer attest + resolve) that the SP1 mock or
 //! real prover can execute against the guest program in `../program`.
 //!
@@ -60,7 +60,7 @@ pub fn sign_commitment(c: &Commitment, domain: &B256, key: &SigningKey) -> Signa
 // ── Canonical batch builder ──────────────────────────────────────────
 
 /// Construct the canonical end-to-end batch the guest program exercises:
-/// commit → register schema → register operator → seller attest →
+/// commit → register schema → register seller → seller attest →
 /// buyer attest → resolve.
 ///
 /// `with_content_proof = true` attaches a Layer B `AttestationContentProof`
@@ -133,7 +133,7 @@ pub fn build_canonical_batch_input(with_content_proof: bool) -> BatchInput {
     let schema_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
     let schema_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &schema_struct));
 
-    let op_struct = register_operator_struct_hash("ipfs://QmOp");
+    let op_struct = register_seller_struct_hash("ipfs://QmOp");
     let op_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &op_struct));
 
     let content_ref = if with_content_proof {
@@ -168,9 +168,9 @@ pub fn build_canonical_batch_input(with_content_proof: bool) -> BatchInput {
                 family,
                 registrar_sig: schema_sig,
             },
-            KernelOp::RegisterOperator {
+            KernelOp::RegisterSeller {
                 metadata_uri: "ipfs://QmOp".to_string(),
-                operator_sig: op_sig,
+                seller_sig: op_sig,
             },
             KernelOp::AttestAsSeller {
                 role_commitment: root.clone(),
@@ -209,7 +209,7 @@ pub fn build_canonical_batch_input(with_content_proof: bool) -> BatchInput {
             order_status: vec![],
             order_process_id: vec![],
             schemas_registered: vec![],
-            operators_registered: vec![],
+            sellers_registered: vec![],
         },
     }
 }

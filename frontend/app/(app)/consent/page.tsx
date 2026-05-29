@@ -458,7 +458,7 @@ export default function ConsentPage() {
                 </p>
                 <p>
                     Contact the Project Operator at the address provided in your
-                    beta invitation. The Operator handles all questions, withdrawals,
+                    beta invitation. The Seller handles all questions, withdrawals,
                     and disputes during the beta — most issues resolve directly.
                 </p>
                 <p>

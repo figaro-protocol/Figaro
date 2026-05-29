@@ -75,22 +75,22 @@ The proof-based kernel is implemented and tested:
 
 **Rust kernel** (`prover/lib/`): Full protocol surface translated to Rust.
 8 `KernelOp` variants covering commit, resolve, attestation (seller/buyer),
-schema registration, mechanism-schema binding, and operator register +
+schema registration, mechanism-schema binding, and seller register +
 update-profile. 5-mapping Merkle state (processes, orderStatus,
-orderProcessId, schemasRegistered, operatorsRegistered). 30 unit tests.
+orderProcessId, schemasRegistered, sellersRegistered). 30 unit tests.
 EIP-712 signature verification with byte-exact parity to the Solidity kernel.
 
 **SP1 guest program** (`prover/program/`): Executes `apply_batch()` in
 the SP1 zkVM and commits `PublicValues` (8 fields: prev/new state roots,
 chain binding, 4 event hashes). Verified execution: ~1.0M cycles for a
-6-operation mixed batch (commit + schema + operator + attest-seller +
+6-operation mixed batch (commit + schema + seller + attest-seller +
 attest-buyer + resolve) with the k256 SP1 precompile patched in
 (`prover/Cargo.toml`); a real Core proof of that batch generates and
 verifies locally.
 
 **On-chain verifier** (`src/FigaroBatchVerifier.sol`): Accepts SP1 proofs,
 verifies state root continuity and chain binding, hash-verifies auxiliary
-data (positions, attestation events, schema events, operator events),
+data (positions, attestation events, schema events, seller events),
 executes net token transfers, and re-emits protocol-compatible events.
 The legacy FIG-mint path has been removed along with the `figToken`
 constructor argument; the batch verifier does not and will not mint FIG.
@@ -109,7 +109,7 @@ the Succinct SP1 verifier gateway ABI.
    single-currency invariant
 2. each `resolveProcess` in the batch preserved buyer dominance,
    atomic resolution, conservation, and direct transfer semantics
-3. each attestation, schema registration, and operator mutation
+3. each attestation, schema registration, and seller mutation
    preserved the corresponding authorization gates
 4. the resulting state root follows from the prior state root under
    the V5 kernel rules — no transition was skipped, reordered, or
@@ -121,7 +121,7 @@ the Succinct SP1 verifier gateway ABI.
   block gas limits
 - the on-chain footprint per settlement batch collapses to a single
   proof verification, state-root update, and net token reconciliation
-- mechanism events (attestation, schema, operator) are hash-verified
+- mechanism events (attestation, schema, seller) are hash-verified
   against the proof and re-emitted for frontend/indexer compatibility
 - the kernel invariants are preserved exactly — the proof enforces
   the same rules the Solidity kernel enforces, just at batch scale
@@ -231,7 +231,7 @@ by submitting directly to `FigaroCore` on-chain.
    hashing sorted key-value pairs from each mapping. On-chain state
    root chain prevents fabricated state transitions.
 
-3. **Sequencing**: Single-operator sequencer for devnet. Collects
+3. **Sequencing**: Single-seller sequencer for devnet. Collects
    EIP-712 signed operations, validates pre-checks (approvals, state
    consistency), assembles `BatchInput`, runs prover, submits to
    verifier contract. Cannot fabricate, steal, or violate invariants.
@@ -243,7 +243,7 @@ by submitting directly to `FigaroCore` on-chain.
    settlement model.
 
 5. **Event reconstruction**: The verifier contract re-emits all mechanism
-   events (attestation, schema, operator) with protocol-compatible
+   events (attestation, schema, seller) with protocol-compatible
    signatures. Events are hash-verified against proof commitments.
    The SDK's event-sourced architecture (`eventCache.ts` single swap
    point, 4s poll) consumes verifier events identically to `FigaroCore`
@@ -585,7 +585,7 @@ Participants submit signed protocol operations to the sequencer via a
 JSON-RPC or REST endpoint. Each operation is a typed message containing:
 
 - The operation type (commit, resolve, attest, register-schema,
-  register-operator, etc.)
+  register-seller, etc.)
 - The operation payload (commitment struct, process ID, attestation data, etc.)
 - EIP-712 signatures from the required parties
 
@@ -636,7 +636,7 @@ the Figaro kernel program in the zkVM and produces:
 - A validity proof
 - `PublicValues` (8 fields: prev/new state roots, chain binding, 4 event hashes)
 - `NetPosition[]` (aggregated token movements)
-- `BatchEvents` (attestation, schema, operator events)
+- `BatchEvents` (attestation, schema, seller events)
 
 For devnet, the MockProver is used (no real proof generation).
 For testnet and mainnet, the sequencer runs the open-source SP1 prover
@@ -654,7 +654,7 @@ settleBatch(
   proof,           // SP1 proof bytes
   publicValues,    // ABI-encoded 8 × 32-byte words
   positions,       // NetPosition[] for token reconciliation
-  events           // BatchEventData (attestations, schemas, operators)
+  events           // BatchEventData (attestations, schemas, sellers)
 )
 ```
 
@@ -759,7 +759,7 @@ Rust crate in `prover/sequencer/`. 6 modules, 22 tests.
 - MockSP1Verifier (no real proof generation)
 - Time-based batch trigger (configurable, default 10s)
 - 22 tests: mempool pre-checks (valid/invalid signatures, wrong chain,
-  drain, sequential IDs, schema/operator/resolve ops), state mirror
+  drain, sequential IDs, schema/seller/resolve ops), state mirror
   (genesis determinism, snapshot roundtrip, advance), assembler,
   API (status, submit valid/invalid, pending count), end-to-end
   (mempool → assemble → kernel → advance, sequential batch chaining)
@@ -776,7 +776,7 @@ Rust crate in `prover/sequencer/`. 6 modules, 22 tests.
 - Shared sequencer set with leader rotation
 - MEV protection (not currently a concern — the kernel has no MEV surface,
   but worth monitoring as usage patterns evolve)
-- Economic incentives for sequencer operators (potentially FIG-denominated)
+- Economic incentives for sequencer sellers (potentially FIG-denominated)
 
 ---
 
@@ -787,7 +787,7 @@ Date: 2026-04-20
 
 This document defines what must be trusted about the batch sequencer, what is
 guaranteed by the ZK proof regardless of sequencer behavior, and what operational
-procedures the sequencer operator must follow.
+procedures the sequencer seller must follow.
 
 ---
 
@@ -815,7 +815,7 @@ The SP1 program is the single source of truth for valid state transitions
 - `prevStateRoot == currentStateRoot` (chain continuity)
 - `chainId` matches the chain where the verifier contract is deployed
 - `verifyingContract` matches the FigaroBatchVerifier address
-- Hashes of positions, attestations, schemas, and operator events match the
+- Hashes of positions, attestations, schemas, and seller events match the
   proof public inputs
 
 These checks mean that **no invalid state transition can be applied**, even if
@@ -843,8 +843,8 @@ The protocol's safety invariants (bond math, buyer dominance, atomic resolution)
 are enforced entirely by FigaroCore. Batch settlement is an additional coordination
 layer, not a prerequisite for process resolution.
 
-**Implication**: the sequencer should be treated as a liveness-trusted operator,
-not a safety-trusted operator.
+**Implication**: the sequencer should be treated as a liveness-trusted seller,
+not a safety-trusted seller.
 
 ---
 
@@ -926,13 +926,13 @@ optionally rate-limit known offenders.
 | State transition correctness | None | SP1 ZK proof + on-chain verifier |
 | Chain continuity | None | `prevStateRoot == currentStateRoot` check |
 | Cross-chain replay prevention | None | `chainId` + `verifyingContract` in proof public inputs |
-| Batch liveness | Yes — sequencer operator | Operational SLA; no on-chain enforcement |
-| Approval integrity before batch | Yes — sequencer operator | Pre-submission approval check (operational) |
+| Batch liveness | Yes — sequencer seller | Operational SLA; no on-chain enforcement |
+| Approval integrity before batch | Yes — sequencer seller | Pre-submission approval check (operational) |
 | Ordering of settlements within a batch | None (up to SP1 program) | Deterministic kernel execution |
 
 ---
 
-## Sequencer Operator Requirements
+## Sequencer Seller Requirements
 
 1. **Monitor FigaroCore events**: watch for `ProcessResolved` and `OrderCommitted`
    events in real time to avoid falling behind.

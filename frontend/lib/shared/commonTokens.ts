@@ -2,7 +2,7 @@
  * lib/shared/commonTokens.ts
  *
  * Per-chain registry of well-known ERC-20 tokens to surface as quick-add
- * suggestions in operator-side forms (e.g. the onboarding wizard's
+ * suggestions in seller-side forms (e.g. the onboarding wizard's
  * accepted-tokens field). Replaces the bare-address input with a
  * "+ USDC" / "+ USDT" / "+ Mock" picker.
  *
@@ -11,7 +11,7 @@
  */
 
 import { ZERO_ADDRESS } from "./evm";
-import { isValidAddress } from "@/components/operators/TokenAddressInput";
+import { isValidAddress } from "@/components/sellers/TokenAddressInput";
 
 export interface CommonToken {
     address: `0x${string}`;

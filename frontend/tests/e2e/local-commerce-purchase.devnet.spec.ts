@@ -2,14 +2,14 @@
  * local-commerce-purchase.devnet.spec.ts
  *
  * End-to-end local-commerce purchase against the SEEDED Mercato General
- * operator — which carries an ARRAY of two bound assemblies
+ * seller — which carries an ARRAY of two bound assemblies
  * (`direct-sale` + `local-commerce`). The checkout reads that array and
  * surfaces each as a buyer option; the buyer picks `local-commerce`, and
  * the checkout drives a two-order process: the food order (buyer↔merchant)
  * and the courier order (buyer↔Swift Courier), the courier resolved from
- * the operator's seller-assigned `counterpartyBindings` roster.
+ * the seller's seller-assigned `counterpartyBindings` roster.
  *
- * This is the "test the array of assemblies" scenario — the operator's
+ * This is the "test the array of assemblies" scenario — the seller's
  * `assemblyBindings[]` is the array; the frontend reads it, surfaces each
  * as an option, and the chosen assembly drives the process.
  *
@@ -50,7 +50,7 @@ const LOCAL_ANVIL = defineChain({
 const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const BUYER_ADDR = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as const;
 
-// Mercato General — seeded operator (seed-devnet.mjs OPERATORS[3]) on
+// Mercato General — seeded seller (seed-devnet.mjs SELLERS[3]) on
 // anvil[8], bound to BOTH `direct-sale` and `local-commerce` — the array
 // of assemblies. Its local-commerce binding designates Swift Courier
 // (anvil[7]) as the seller-assigned courier.
@@ -60,7 +60,7 @@ const MERCATO_ADDR = '0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f' as const;
 // seed replays, so a fixture re-capture moves spec + seed together.
 const catalogueFixture = JSON.parse(
     fs.readFileSync(
-        path.resolve(__dirname, '../../scripts/fixtures/operator-catalogue.json'),
+        path.resolve(__dirname, '../../scripts/fixtures/seller-catalogue.json'),
         'utf8',
     ),
 ) as { menu: Array<{ id: string; name: string; price: string }> };
@@ -90,7 +90,7 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
     // Catalogue discovery + binding resolution + two sequential commits.
     test.setTimeout(300_000);
 
-    test('buyer picks local-commerce from the operator assembly array — food + courier orders both commit', async ({ page }) => {
+    test('buyer picks local-commerce from the seller assembly array — food + courier orders both commit', async ({ page }) => {
         const { core, token } = deploymentAddresses();
 
         // Pre-approve the buyer; the devnet commit shortcut auto-approves
@@ -128,7 +128,7 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         // Mercato General binds four assemblies; once useSellerBoundAssemblies
         // resolves, the checkout surfaces each as a buyer option — including
         // direct-sale → consume-onsite and local-commerce → deliver:seller-assigned.
-        // Their presence is the "frontend read the operator's array" check.
+        // Their presence is the "frontend read the seller's array" check.
         await expect(page.getByTestId('option-fulfilment-deliver:seller-assigned')).toHaveCount(1, { timeout: 20000 });
         await expect(page.getByTestId('option-fulfilment-consume-onsite')).toHaveCount(1);
 

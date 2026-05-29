@@ -1,7 +1,7 @@
 /**
  * lib/mechanisms/useSellerBranding.ts
  *
- * React hook for resolving merchant branding from OperatorRegistry events.
+ * React hook for resolving merchant branding from SellerRegistry events.
  * Uses the indexer to find the latest metadataURI for a seller address,
  * fetches the metadata document, and returns resolved branding.
  */
@@ -11,7 +11,7 @@ import {
     fetchSellerBranding,
     type ResolvedSellerBranding,
 } from "@/lib/shared/sellerBranding";
-import { useAsyncOperatorResource } from "@/lib/mechanisms/useAsyncOperatorResource";
+import { useAsyncSellerResource } from "@/lib/mechanisms/useAsyncSellerResource";
 
 export interface UseSellerBrandingResult {
     branding: ResolvedSellerBranding | null;
@@ -22,7 +22,7 @@ export interface UseSellerBrandingResult {
 export function useSellerBranding(
     sellerAddress: `0x${string}` | undefined
 ): UseSellerBrandingResult {
-    const { data, isLoading, error } = useAsyncOperatorResource(sellerAddress, {
+    const { data, isLoading, error } = useAsyncSellerResource(sellerAddress, {
         fetcher: fetchSellerBranding,
         failureMessage: "Failed to fetch branding",
     });

@@ -62,7 +62,7 @@ const MERCATO_ADDR = '0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f' as const;
 
 const catalogueFixture = JSON.parse(
     fs.readFileSync(
-        path.resolve(__dirname, '../../scripts/fixtures/operator-catalogue.json'),
+        path.resolve(__dirname, '../../scripts/fixtures/seller-catalogue.json'),
         'utf8',
     ),
 ) as { menu: Array<{ id: string }> };

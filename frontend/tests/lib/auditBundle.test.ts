@@ -26,9 +26,9 @@ import {
     type DutchAuctionClaimedEvent,
 } from "@/lib/audit/dutchAuctionExtract";
 import {
-    extractOperatorRegistry,
-    type OperatorRegisteredEvent,
-} from "@/lib/audit/operatorRegistryExtract";
+    extractSellerRegistry,
+    type SellerRegisteredEvent,
+} from "@/lib/audit/sellerRegistryExtract";
 import { buildHashAppendix } from "@/lib/audit/hashAppendix";
 import { buildAuditBundle, isCarriageOrder } from "@/lib/audit/auditBundle";
 
@@ -598,52 +598,52 @@ describe("extractDutchAuction", () => {
     });
 });
 
-// ── Operator registry extractor ──────────────────────────────────────────────
+// ── Seller registry extractor ──────────────────────────────────────────────
 
-describe("extractOperatorRegistry", () => {
+describe("extractSellerRegistry", () => {
     const order = makeOrder();
 
     it("reports registered=false with audit notice when the seller has no registration event", () => {
-        const doc = extractOperatorRegistry(order, []);
+        const doc = extractSellerRegistry(order, []);
         expect(doc.registered).toBe(false);
         expect(doc.notice).toContain("NOT registered");
         expect(doc.metadataURI).toBeUndefined();
     });
 
     it("surfaces the seller's registration record when present", () => {
-        const ev: OperatorRegisteredEvent = {
-            operator: order.seller,
+        const ev: SellerRegisteredEvent = {
+            seller: order.seller,
             metadataURI: "ipfs://QmMerchantMeta",
             blockNumber: 50,
             transactionHash: "0xREG",
         };
-        const doc = extractOperatorRegistry(order, [ev]);
+        const doc = extractSellerRegistry(order, [ev]);
         expect(doc.registered).toBe(true);
         expect(doc.metadataURI).toBe("ipfs://QmMerchantMeta");
         expect(doc.registeredAtBlock).toBe(50);
         expect(doc.notice).toBe("");
     });
 
-    it("filters out events for other operators (cross-operator leakage)", () => {
-        const ev: OperatorRegisteredEvent = {
-            operator: "0xOTHER_OPERATOR",
+    it("filters out events for other sellers (cross-seller leakage)", () => {
+        const ev: SellerRegisteredEvent = {
+            seller: "0xOTHER_SELLER",
             metadataURI: "ipfs://other",
             blockNumber: 50, transactionHash: "0xREG",
         };
-        const doc = extractOperatorRegistry(order, [ev]);
+        const doc = extractSellerRegistry(order, [ev]);
         expect(doc.registered).toBe(false);
     });
 
     it("uses the latest registration when the seller re-registered after withdraw", () => {
-        const old: OperatorRegisteredEvent = {
-            operator: order.seller, metadataURI: "ipfs://old",
+        const old: SellerRegisteredEvent = {
+            seller: order.seller, metadataURI: "ipfs://old",
             blockNumber: 50, transactionHash: "0xOLD",
         };
-        const fresh: OperatorRegisteredEvent = {
-            operator: order.seller, metadataURI: "ipfs://fresh",
+        const fresh: SellerRegisteredEvent = {
+            seller: order.seller, metadataURI: "ipfs://fresh",
             blockNumber: 200, transactionHash: "0xFRESH",
         };
-        const doc = extractOperatorRegistry(order, [old, fresh]);
+        const doc = extractSellerRegistry(order, [old, fresh]);
         expect(doc.metadataURI).toBe("ipfs://fresh");
         expect(doc.registeredAtBlock).toBe(200);
     });
@@ -671,7 +671,7 @@ describe("AuditBundle — every document carries buyer + seller addresses", () =
             bundle.proximity,
             bundle.processLogs,
             bundle.dutchAuction,
-            bundle.operatorRegistry,
+            bundle.sellerRegistry,
             bundle.hashAppendix,
         ];
         for (const doc of docs) {
@@ -727,7 +727,7 @@ describe("buildAuditBundle", () => {
         expect(bundle.proximity).toBeDefined();
         expect(bundle.processLogs).toBeDefined();
         expect(bundle.dutchAuction).toBeDefined();
-        expect(bundle.operatorRegistry).toBeDefined();
+        expect(bundle.sellerRegistry).toBeDefined();
         expect(bundle.hashAppendix).toBeDefined();
     });
 
@@ -735,7 +735,7 @@ describe("buildAuditBundle", () => {
         const docs = [
             bundle.contract, bundle.invoice, bundle.billOfLading!,
             bundle.emissions, bundle.proximity, bundle.processLogs,
-            bundle.dutchAuction, bundle.operatorRegistry, bundle.hashAppendix,
+            bundle.dutchAuction, bundle.sellerRegistry, bundle.hashAppendix,
         ];
         for (const doc of docs) {
             expect(doc.orderHash).toBe(order.id);
@@ -758,7 +758,7 @@ describe("buildAuditBundle", () => {
         expect(merchantBundle.proximity).toBeDefined();
         expect(merchantBundle.processLogs).toBeDefined();
         expect(merchantBundle.dutchAuction).toBeDefined();
-        expect(merchantBundle.operatorRegistry).toBeDefined();
+        expect(merchantBundle.sellerRegistry).toBeDefined();
         expect(merchantBundle.hashAppendix).toBeDefined();
     });
 });

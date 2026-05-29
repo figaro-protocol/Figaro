@@ -3,7 +3,7 @@
  *
  * Shared validation primitives used across every strict JSON parser in
  * `lib/shared/`. Five parsers (`runtimeIdentityParser`,
- * `operatorCatalogueMetadataParser`, `operatorProfileMetadata`,
+ * `sellerCatalogueMetadataParser`, `sellerProfileMetadata`,
  * `assemblyParser`, `runtimeIdentityDocument`) previously each carried
  * their own line-for-line copies of these helpers; this module is the
  * single source.
@@ -14,7 +14,7 @@
  * so error messages localise the failure for the user.
  */
 
-import { isValidAddress } from "@/components/operators/TokenAddressInput";
+import { isValidAddress } from "@/components/sellers/TokenAddressInput";
 
 export type UnknownRecord = Record<string, unknown>;
 

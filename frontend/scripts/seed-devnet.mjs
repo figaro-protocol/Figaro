@@ -6,9 +6,9 @@
  *
  *   - 2 assemblies on AssemblyRegistry — `direct-sale` (one-node,
  *     in-person) and `local-commerce` (buyer -> merchant -> courier).
- *   - 4 operator profiles on OperatorRegistry — all SELLERS (buyers are
- *     never registered operators). Each carries a catalogue (replayed from
- *     the captured `scripts/fixtures/operator-catalogue.json`) and is bound
+ *   - 4 seller profiles on SellerRegistry — all SELLERS (buyers are
+ *     never registered sellers). Each carries a catalogue (replayed from
+ *     the captured `scripts/fixtures/seller-catalogue.json`) and is bound
  *     to the seeded assemblies in seller-side roles.
  *
  * The assembly manifests are NOT authored here — a V5 AssemblyManifest is
@@ -46,14 +46,14 @@ import { mnemonicToAccount } from 'viem/accounts';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 // Anvil's deterministic default mnemonic. anvil[0] authors the assemblies.
-// Operators are seeded on anvil[5..8] — disjoint from anvil[0..4], the
+// Sellers are seeded on anvil[5..8] — disjoint from anvil[0..4], the
 // account range the devnet test suite registers and asserts on. Sharing
 // accounts collides (a spec's register() reverts AlreadyRegistered, an
 // "unregistered wallet" assertion fails). All of anvil[0..9] are funded.
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const RPC_URL = process.env.FIGARO_RPC_URL ?? 'http://127.0.0.1:8545';
 
-// Both registries take a flat 0.001 ETH refundable deposit. OperatorRegistry
+// Both registries take a flat 0.001 ETH refundable deposit. SellerRegistry
 // checks `msg.value != registrationDeposit` (InsufficientDeposit); the
 // AssemblyRegistry checks the same (WrongDeposit) — the value must be exact.
 const REGISTRATION_DEPOSIT = parseEther('0.001');
@@ -68,7 +68,7 @@ const LOCAL_ANVIL = defineChain({
 // Error entries are required so viem can decode a revert into a named
 // error — `isAlreadyRegistered` matches on the name, and any other revert
 // surfaces readably instead of as a bare 4-byte selector.
-const OPERATOR_REGISTRY_ABI = parseAbi([
+const SELLER_REGISTRY_ABI = parseAbi([
     'function register(string metadataURI) external payable',
     'function updateProfile(string metadataURI) external',
     'error AlreadyRegistered()',
@@ -85,7 +85,7 @@ const ASSEMBLY_REGISTRY_ABI = parseAbi([
 ]);
 
 // Minimal ERC-20 view fragment — the seed reads the deployed MockToken's
-// symbol/name so seeded operator profiles can declare it as a real
+// symbol/name so seeded seller profiles can declare it as a real
 // accepted-token entry (mirroring onboarding-wizard output) rather than
 // leaving checkout to MerchantDetailView's env-var fallback.
 const ERC20_VIEW_ABI = parseAbi([
@@ -116,25 +116,25 @@ function canonicalize(value) {
     });
 }
 
-// ── Operators — all sellers, seeded on anvil[5..8] ──────────────────────────
+// ── Sellers — all sellers, seeded on anvil[5..8] ──────────────────────────
 // anvil[5..8] are disjoint from anvil[0..4] (the test suite's account range),
-// so the seed never collides with a spec that registers an operator or
+// so the seed never collides with a spec that registers an seller or
 // asserts an account is unregistered. The binding spread covers every shape:
-// three single-assembly operators and one bound to both.
-// `couriers` — anvil indices this operator designates as trusted couriers;
+// three single-assembly sellers and one bound to both.
+// `couriers` — anvil indices this seller designates as trusted couriers;
 // the seed writes them into the local-commerce binding's
 // `counterpartyBindings` (the seller-assigned courier roster the checkout
 // reads when a buyer picks a delivery assembly).
-// `deliveryCatalogue` — this operator is a courier; its catalogue is the
+// `deliveryCatalogue` — this seller is a courier; its catalogue is the
 // universal catalogue too, its menu a delivery offering rather than the
 // generic goods fixture.
-// `geohash` — the operator's location. Local commerce is one-hop / last
-// mile: the operators and the buyer all sit in one neighbourhood (the
+// `geohash` — the seller's location. Local commerce is one-hop / last
+// mile: the sellers and the buyer all sit in one neighbourhood (the
 // `dr5regw*` cells are ~38 m apart). Drives geo-aware discovery and the
 // courier order's figaro-geo-v2 originGeohash (the pickup point).
-const OPERATORS = [
+const SELLERS = [
     { addressIndex: 5, name: 'Counter & Co.', specialty: 'in-person counter sales', bind: ['direct-sale'], geohash: 'dr5regw2' },
-    // `kitComponent` — this operator contributes a sub-assembly to Mercato's
+    // `kitComponent` — this seller contributes a sub-assembly to Mercato's
     // kit (product 212). The item lives in the contributor's OWN catalogue,
     // priced publicly AND with a rate negotiated for Mercato. The kit checkout
     // reads it live (rate-for-lead), so the contributor stays sovereign over
@@ -198,7 +198,7 @@ async function pinJSON(apiUrl, json) {
     return `ipfs://${result.Hash}`;
 }
 
-/** First-write-wins reverts: OperatorRegistry `AlreadyRegistered`,
+/** First-write-wins reverts: SellerRegistry `AlreadyRegistered`,
  *  AssemblyRegistry `SlugAlreadyRegistered`. Both make a re-run a no-op. */
 function isAlreadyRegistered(err) {
     return /AlreadyRegistered/i.test(err instanceof Error ? err.message : String(err));
@@ -206,14 +206,14 @@ function isAlreadyRegistered(err) {
 
 async function main() {
     const env = readEnvLocal();
-    const operatorRegistry = env.NEXT_PUBLIC_OPERATOR_REGISTRY;
+    const sellerRegistry = env.NEXT_PUBLIC_SELLER_REGISTRY;
     const assemblyRegistry = env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
     const mockToken = env.NEXT_PUBLIC_TOKEN_ADDRESS;
     const ipfsApiUrl = env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
 
-    if (!operatorRegistry || !assemblyRegistry || !mockToken) {
+    if (!sellerRegistry || !assemblyRegistry || !mockToken) {
         throw new Error(
-            'NEXT_PUBLIC_OPERATOR_REGISTRY / NEXT_PUBLIC_ASSEMBLY_REGISTRY / ' +
+            'NEXT_PUBLIC_SELLER_REGISTRY / NEXT_PUBLIC_ASSEMBLY_REGISTRY / ' +
             'NEXT_PUBLIC_TOKEN_ADDRESS missing from frontend/.env.local — run ./deploy-local.sh first.',
         );
     }
@@ -225,7 +225,7 @@ async function main() {
         throw new Error(`Cannot reach Anvil at ${RPC_URL} — is it running?`);
     }
 
-    // The deployed MockToken's identity — seeded operator profiles declare it
+    // The deployed MockToken's identity — seeded seller profiles declare it
     // as their accepted + default settlement token, so /m/<merchant> checkout
     // reads a real token declaration off the profile.
     const [tokenSymbol, tokenName] = await Promise.all([
@@ -234,7 +234,7 @@ async function main() {
     ]);
 
     console.log(`Seeding devnet (${RPC_URL})`);
-    console.log(`  OperatorRegistry  ${operatorRegistry}`);
+    console.log(`  SellerRegistry  ${sellerRegistry}`);
     console.log(`  AssemblyRegistry  ${assemblyRegistry}`);
     console.log(`  SettlementToken   ${mockToken} (${tokenSymbol})`);
     console.log(`  IPFS              ${ipfsApiUrl}\n`);
@@ -281,15 +281,15 @@ async function main() {
         }
     }
 
-    // ── Operators — sellers on anvil[5..8] ───────────────────────────────────
-    // Each operator's catalogue replays the captured wizard fixture, with
-    // the menu re-pointed at the operator's own address (the fixture's
+    // ── Sellers — sellers on anvil[5..8] ───────────────────────────────────
+    // Each seller's catalogue replays the captured wizard fixture, with
+    // the menu re-pointed at the seller's own address (the fixture's
     // subjectAddress is anvil[0], the wizard wallet that authored it).
-    const catalogueFixturePath = path.resolve(FIXTURE_DIR, 'operator-catalogue.json');
+    const catalogueFixturePath = path.resolve(FIXTURE_DIR, 'seller-catalogue.json');
     if (!fs.existsSync(catalogueFixturePath)) {
         throw new Error(
             `Missing fixture ${catalogueFixturePath} — capture it with ` +
-            'FIGARO_CAPTURE_FIXTURES=1 npx playwright test operators-onboarding.devnet',
+            'FIGARO_CAPTURE_FIXTURES=1 npx playwright test sellers-onboarding.devnet',
         );
     }
     const catalogueFixture = JSON.parse(fs.readFileSync(catalogueFixturePath, 'utf8'));
@@ -297,15 +297,15 @@ async function main() {
     // Mercato General's address — referenced by Swift Courier's negotiated
     // price list (a per-merchant rate card on the courier's delivery item).
     const mercatoAddress = mnemonicToAccount(ANVIL_MNEMONIC, {
-        addressIndex: OPERATORS.find((o) => o.name === 'Mercato General').addressIndex,
+        addressIndex: SELLERS.find((o) => o.name === 'Mercato General').addressIndex,
     }).address;
 
-    console.log('\nOperators:');
-    for (const op of OPERATORS) {
+    console.log('\nSellers:');
+    for (const op of SELLERS) {
         const account = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: op.addressIndex });
         const opClient = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        // Pin this operator's catalogue first — its URI is referenced from
+        // Pin this seller's catalogue first — its URI is referenced from
         // the profile document, so it must exist before the profile is pinned.
         // A courier's catalogue is the universal catalogue too — its menu is
         // a delivery price list: two fixed service levels (standard + express,
@@ -400,7 +400,7 @@ async function main() {
                 subjectAddress: account.address,
                 assemblySlug,
                 networkTargets: ['local-anvil'],
-                // A seller-assigned delivery assembly needs the operator's
+                // A seller-assigned delivery assembly needs the seller's
                 // designated courier roster — the counterparty wallets the
                 // checkout's courier picker offers. Both local-commerce and
                 // local-commerce-offset are seller-assigned; the dutch and
@@ -437,8 +437,8 @@ async function main() {
         try {
             const { request } = await publicClient.simulateContract({
                 account: account.address,
-                address: operatorRegistry,
-                abi: OPERATOR_REGISTRY_ABI,
+                address: sellerRegistry,
+                abi: SELLER_REGISTRY_ABI,
                 functionName: 'register',
                 args: [metadataURI],
                 value: REGISTRATION_DEPOSIT,
@@ -457,8 +457,8 @@ async function main() {
                 // redeploy. The frontend reads the new catalogue on next load.
                 const { request } = await publicClient.simulateContract({
                     account: account.address,
-                    address: operatorRegistry,
-                    abi: OPERATOR_REGISTRY_ABI,
+                    address: sellerRegistry,
+                    abi: SELLER_REGISTRY_ABI,
                     functionName: 'updateProfile',
                     args: [metadataURI],
                 });

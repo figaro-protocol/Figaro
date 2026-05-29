@@ -36,10 +36,10 @@ import {
     type DutchAuctionClaimedEvent,
 } from "./dutchAuctionExtract";
 import {
-    extractOperatorRegistry,
-    type OperatorRegistryDocument,
-    type OperatorRegisteredEvent,
-} from "./operatorRegistryExtract";
+    extractSellerRegistry,
+    type SellerRegistryDocument,
+    type SellerRegisteredEvent,
+} from "./sellerRegistryExtract";
 import { buildHashAppendix, type HashAppendixDocument } from "./hashAppendix";
 
 /** True when the order's committed agreement carries
@@ -63,7 +63,7 @@ export interface AuditBundle {
     proximity: ProximityDocument;
     processLogs: ProcessLogsDocument;
     dutchAuction: DutchAuctionDocument;
-    operatorRegistry: OperatorRegistryDocument;
+    sellerRegistry: SellerRegistryDocument;
     hashAppendix: HashAppendixDocument;
 }
 
@@ -74,10 +74,10 @@ export interface AuditBundleInputs {
     auctionCreatedEvents?: readonly DutchAuctionCreatedEvent[];
     /** AuctionClaimed events scoped to the same auctionIds. */
     auctionClaimedEvents?: readonly DutchAuctionClaimedEvent[];
-    /** OperatorRegistered events filtered to events where the indexed
-     *  `operator` matches `order.seller`. Empty array if the seller is
+    /** SellerRegistered events filtered to events where the indexed
+     *  `seller` matches `order.seller`. Empty array if the seller is
      *  unregistered — the extractor surfaces that as an audit notice. */
-    operatorRegistrationEvents?: readonly OperatorRegisteredEvent[];
+    sellerRegistrationEvents?: readonly SellerRegisteredEvent[];
 }
 
 export function buildAuditBundle(
@@ -102,9 +102,9 @@ export function buildAuditBundle(
             inputs.auctionCreatedEvents ?? [],
             inputs.auctionClaimedEvents ?? [],
         ),
-        operatorRegistry: extractOperatorRegistry(
+        sellerRegistry: extractSellerRegistry(
             order,
-            inputs.operatorRegistrationEvents ?? [],
+            inputs.sellerRegistrationEvents ?? [],
         ),
         hashAppendix: buildHashAppendix(order, agreement, attestations),
     };

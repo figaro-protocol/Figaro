@@ -5,7 +5,7 @@
  * otherwise render the gated children" pattern.
  *
  * Replaces the inline duplicates that used to be repeated across
- * assembly-runtime views and the legacy operator-onboarding form
+ * assembly-runtime views and the legacy seller-onboarding form
  * (each had its own `if (!address) { hint + <ConnectButton /> } else
  * { ... }` block). The Web2 UI/UX audit (2026-04-26) flagged the
  * duplication; this is the one-place wrapper.
@@ -17,7 +17,7 @@
  *     <p>No active processes found for this wallet.</p>
  *   </WalletGate>
  *
- *   // Standalone full-panel gate (e.g. operator onboarding entry point):
+ *   // Standalone full-panel gate (e.g. seller onboarding entry point):
  *   <WalletGate
  *     variant="standalone"
  *     title="Connect your wallet to continue"

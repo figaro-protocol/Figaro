@@ -980,7 +980,7 @@ function AttestationsArticle({
     return (
         <div className="space-y-5">
             <p className="text-xs text-neutral-500 leading-relaxed">
-                Per-role sovereign event logs. Each operator (merchant, courier)
+                Per-role sovereign event logs. Each seller (merchant, courier)
                 attests their own internal events under their own schema. Each
                 clause anchors the on-chain inclusion proof for that role&apos;s
                 runtime attestations.

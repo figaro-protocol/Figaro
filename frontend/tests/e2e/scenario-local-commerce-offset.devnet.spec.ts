@@ -173,7 +173,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
         expect(courierAgreement?.version).toBe('a1');
 
         // Root order — delivery / seller-assigned + the merchant
-        // operator-process clause + the GHG emissions-disclosure clause.
+        // seller-process clause + the GHG emissions-disclosure clause.
         const rootSchemas = rootAgreement.sections.map((s) => s.schema);
         for (const clause of [
             'figaro-commerce-v1',
@@ -189,7 +189,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
         const fulfilment = rootAgreement.sections.find((s) => s.schema === 'figaro-fulfilment-v2');
         expect(fulfilment?.data.coordinations).toEqual(['seller-assigned']);
 
-        // Courier sub-order — the courier operator-process clause, the
+        // Courier sub-order — the courier seller-process clause, the
         // proximity-policy handoff clause, and the GHG emissions clause.
         const courierSchemas = courierAgreement.sections.map((s) => s.schema);
         for (const clause of [

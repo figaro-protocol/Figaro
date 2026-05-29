@@ -134,16 +134,16 @@ agent discoverability via service endpoint declarations. Figaro does not
 depend on ERC-8004 — the bonding mechanism already provides trust, and
 settlement history already provides reputation. However, autonomous agents
 that want cross-protocol discoverability can declare ERC-8004-compatible
-service endpoints in their `OperatorRegistry.metadataURI` JSON.
+service endpoints in their `SellerRegistry.metadataURI` JSON.
 
 ### Why This Is a Metadata Convention, Not a Contract Change
 
-Figaro's `OperatorRegistry` already stores an arbitrary `metadataURI` per
-operator. The URI resolves to a JSON file for the relevant participant
+Figaro's `SellerRegistry` already stores an arbitrary `metadataURI` per
+seller. The URI resolves to a JSON file for the relevant participant
 surface. Agents simply include a `services` key in that JSON.
 
 No new contracts are needed:
-- **Identity** → `OperatorRegistry` already handles this (metadataURI)
+- **Identity** → `SellerRegistry` already handles this (metadataURI)
 - **Reputation** → Bond-weighted settlement history is strictly superior to
   ERC-8004's permissionless feedback (which has Sybil vulnerability)
 - **Validation** → Buyer dominance + 2× bond asymmetry already enforces
@@ -151,7 +151,7 @@ No new contracts are needed:
 
 ### Agent Service JSON Convention
 
-An autonomous agent includes a `services` section in its operator metadata.
+An autonomous agent includes a `services` section in its seller metadata.
 The schema can be anchored in `SchemaRegistry` as
 `erc8004-agent-services-v1` for reference integrity.
 
@@ -193,7 +193,7 @@ The schema can be anchored in `SchemaRegistry` as
 | `services.ens` | string | ENS name |
 | `capabilities` | string[] | Self-declared capability tags |
 
-All fields are optional. An operator with no `services` key is a
+All fields are optional. An seller with no `services` key is a
 human-operated participant — the default case. Frontends detect agent
 status by checking for the presence of the `services` key.
 
@@ -204,12 +204,12 @@ A `did:web` identifier resolves to a DID Document hosted at a well-known
 HTTPS URL:
 
 - `did:web:example.com` → `https://example.com/.well-known/did.json`
-- `did:web:example.com:operators:alice` → `https://example.com/operators/alice/did.json`
+- `did:web:example.com:sellers:alice` → `https://example.com/sellers/alice/did.json`
 
-The DID Document contains verification methods with the operator's
+The DID Document contains verification methods with the seller's
 Ethereum address in CAIP-10 format (`eip155:<chainId>:<address>`),
 enabling cryptographic verification that the DID controller matches
-the on-chain operator address.
+the on-chain seller address.
 
 ```json
 {
@@ -231,7 +231,7 @@ the on-chain operator address.
 ```
 
 The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`, and
-`buildOperatorDidDocument()` in `@figaro/core/extensions`. The frontend
+`buildSellerDidDocument()` in `@figaro/core/extensions`. The frontend
 provides the `useDidVerification()` hook in
 `lib/mechanisms/useDidWeb.ts`.
 
@@ -239,7 +239,7 @@ provides the `useDidVerification()` hook in
 
 | Concern | ERC-8004 | Figaro |
 |---------|----------|--------|
-| Identity | ERC-721 mint | OperatorRegistry event + bond history |
+| Identity | ERC-721 mint | SellerRegistry event + bond history |
 | Trust | Permissionless feedback (Sybil-vulnerable) | 2× bonding equilibrium (MAD) |
 | Reputation | Arbitrary int128 ratings | Settlement volume + token acceptance |
 | Validation | External provers (zkML, TEE) | Buyer dominance + on-chain evidence |

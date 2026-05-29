@@ -2,11 +2,11 @@
  * lib/shared/sellerBranding.ts
  *
  * Seller branding metadata fetcher.
- * Resolves IPFS/HTTP URIs from OperatorRegistry.metadataURI, fetches the
- * operator profile document, and extracts branding + asset fields.
+ * Resolves IPFS/HTTP URIs from SellerRegistry.metadataURI, fetches the
+ * seller profile document, and extracts branding + asset fields.
  *
  * The metadata document the on-chain `metadataURI` points to is an
- * `OperatorProfileMetadata` record; only its branding-relevant subset
+ * `SellerProfileMetadata` record; only its branding-relevant subset
  * (name, branding, assets) is extracted here. The profile pins the
  * branding payload (logo, hero, CSS, image base URI) so buyer
  * frontends can skin against the seller's identity.
@@ -19,8 +19,8 @@
 
 import type {
     SellerBrandingMetadata,
-} from "@/lib/shared/operatorCatalogueMetadata";
-import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
+} from "@/lib/shared/sellerCatalogueMetadata";
+import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { IPFS_GATEWAY_URL } from "@/lib/shared/ipfsService";
 
@@ -101,8 +101,8 @@ export function resolveSellerBrandingDocument(input: {
     };
 }
 
-export function resolveSellerBrandingFromOperatorProfile(
-    metadata: Pick<OperatorProfileMetadata, "name" | "branding" | "assets"> | null | undefined,
+export function resolveSellerBrandingFromSellerProfile(
+    metadata: Pick<SellerProfileMetadata, "name" | "branding" | "assets"> | null | undefined,
 ): ResolvedSellerBranding | null {
     if (!metadata) {
         return null;

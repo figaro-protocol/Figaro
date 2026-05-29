@@ -222,7 +222,7 @@ fake universal ontology that registers every document as a first-class object.
 The schema layer stays grounded in concrete coordination problems — process
 obligations, disclosures, verifiable reference integrity — not in possibility.
 
-Schemas are one artifact family among several (operators, assemblies); each
+Schemas are one artifact family among several (sellers, assemblies); each
 family carries its own anchor and never nests inside another — see CLAUDE.md
 "Separation of Concerns — Artifact Families". Schema identity is append-only
 (Layer C above): new meaning is a new `schemaId`, never a mutation of an old
@@ -272,7 +272,7 @@ to undo once `schemaId` is bound on chain.
 4. SDK examples test in `sdk/tests/schemas/examples.test.ts`.
 5. Solidity `Foo<Schema>V1Validator.sol` in `src/schemaValidators/`. Validate function MUST be declared `external pure override` (no external state reads, no `block.*`/`tx.*`, no external calls). Use `bytes32 public constant override schemaId = keccak256("...")` so the schemaId is a compile-time literal — `immutable` constructor-set schemaIds force the override to `view` and forfeit the EVM-enforced determinism guarantee. See `ISchemaValidator` NatSpec for the rationale.
 
-   **When to add an operator-process schema vs not** (kernel-participant vs off-chain-operator principle): an off-chain operator needs its own process schema if and only if its state transitions are off-chain. Off-chain operators (merchants, couriers, locker operators, etc.) need a process schema because their state transitions happen in physical reality and need a sovereign event log to be tamper-proof evidence. Kernel participants — most importantly the **buyer**, who acts via `commit` and `resolveProcess` — do NOT need a process schema; their evidence IS the kernel event log itself. `merchant-process` and `courier-process` are sovereign-log primitives in this sense. Don't add `figaro-buyer-process-v1` — it would duplicate kernel events. Do add a process schema for any new off-chain operator whose internal events need to be on-chain attestable. The schema-category taxonomy carries this as the `operator-process` category (see `frontend/lib/shared/schemaCategories.ts`).
+   **When to add an seller-process schema vs not** (kernel-participant vs off-chain-seller principle): an off-chain seller needs its own process schema if and only if its state transitions are off-chain. Off-chain sellers (merchants, couriers, locker sellers, etc.) need a process schema because their state transitions happen in physical reality and need a sovereign event log to be tamper-proof evidence. Kernel participants — most importantly the **buyer**, who acts via `commit` and `resolveProcess` — do NOT need a process schema; their evidence IS the kernel event log itself. `merchant-process` and `courier-process` are sovereign-log primitives in this sense. Don't add `figaro-buyer-process-v1` — it would duplicate kernel events. Do add a process schema for any new off-chain seller whose internal events need to be on-chain attestable. The schema-category taxonomy carries this as the `seller-process` category (see `frontend/lib/shared/schemaCategories.ts`).
 6. Foundry test in `test/schemaValidators/`.
 7. Rust mirror at Layer B is generic (`prover/schema/`). A new schema does
    NOT require a new Rust file — Layer B parses any spec at runtime from

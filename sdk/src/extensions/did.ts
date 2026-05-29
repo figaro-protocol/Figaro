@@ -278,13 +278,13 @@ export function didDocumentMatchesAddress(
 // ── DID Document Builder ────────────────────────────────────────────────────
 
 /**
- * Build a minimal DID Document for a Figaro operator.
+ * Build a minimal DID Document for a Figaro seller.
  *
- * This is a convenience function for operators who want to self-host
+ * This is a convenience function for sellers who want to self-host
  * their DID Document. The document uses `EcdsaSecp256k1RecoveryMethod2020`
- * with the operator's Ethereum address as the verification method.
+ * with the seller's Ethereum address as the verification method.
  */
-export function buildOperatorDidDocument(
+export function buildSellerDidDocument(
     did: string,
     ethereumAddress: string,
     chainId: number,

@@ -37,9 +37,9 @@ import { hexEqual } from "@/lib/shared/evm";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { fetchCommitmentPayloadJsonByCid } from "@/lib/shared/coordinationMessagingService";
-import { useOperatorListings } from "@/lib/mechanisms/useOperatorListings";
-import { displayNameForAddress } from "@/lib/shared/operatorListing";
-import type { Listing } from "@/lib/shared/operatorListing";
+import { useSellerListings } from "@/lib/mechanisms/useSellerListings";
+import { displayNameForAddress } from "@/lib/shared/sellerListing";
+import type { Listing } from "@/lib/shared/sellerListing";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 
@@ -146,7 +146,7 @@ export function Inbox() {
     const { data: walletClient } = useWalletClient();
     const services = useRuntimeServices();
     const { rows, isLoading } = useWalletProcessRows("seller");
-    const { listings } = useOperatorListings();
+    const { listings } = useSellerListings();
 
     const { counterSign, broadcast, error: flowError, reset, step: flowStep } = useCommitmentFlow();
 

@@ -1,31 +1,31 @@
 /**
  * lib/mechanisms/useRegisteredCatalogues.ts
  *
- * Hook that discovers all registered operators from OperatorRegistry
+ * Hook that discovers all registered sellers from SellerRegistry
  * events (via the indexer), fetches their catalogues from IPFS, and
- * projects them to the buyer-side `OperatorCatalogue` UI type for the
+ * projects them to the buyer-side `SellerCatalogue` UI type for the
  * discovery module. Plural-of-wallets — each wallet has at most one
  * catalogue.
  *
  * Returns an empty list when the registry isn't configured or no
- * operators have registered. Empty-state copy is the caller's
- * responsibility (e.g. `/discover` renders a "no operators yet" CTA).
+ * sellers have registered. Empty-state copy is the caller's
+ * responsibility (e.g. `/discover` renders a "no sellers yet" CTA).
  */
 "use client";
 
 import { useState, useEffect } from "react";
 import { usePublicClient, useChainId } from "wagmi";
-import type { OperatorCatalogue } from "@/lib/seller/types";
+import type { SellerCatalogue } from "@/lib/seller/types";
 import {
     DEFAULT_DISCOVERY_SERVICE,
     type DiscoveryService,
 } from "@/lib/shared/discoveryService";
 
 export interface UseRegisteredCataloguesResult {
-    catalogues: OperatorCatalogue[];
+    catalogues: SellerCatalogue[];
     isLoading: boolean;
     /** Per-source provenance. `ipfs` = catalogues fetched from
-     *  OperatorRegistry → IPFS. `mock` stays 0 in live mode; the field
+     *  SellerRegistry → IPFS. `mock` stays 0 in live mode; the field
      *  remains on the type for callers that still surface a provenance
      *  badge, but no longer carries fixture data. */
     source: { ipfs: number; mock: number };

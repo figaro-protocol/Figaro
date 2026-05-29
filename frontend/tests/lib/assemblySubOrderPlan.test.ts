@@ -5,7 +5,7 @@ import {
     type ManifestOrder,
 } from "@/lib/core/assemblySubOrderPlan";
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
-import type { OperatorCatalogue } from "@/lib/seller/types";
+import type { SellerCatalogue } from "@/lib/seller/types";
 
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
 // B carries proximity-policy, C carries ghg-measurement, D carries
@@ -82,12 +82,12 @@ const catalogues = [
             negotiatedPrices: [{ counterparty: MERCATO, price: "0.5" }], available: true,
         }],
     },
-] as unknown as OperatorCatalogue[];
+] as unknown as SellerCatalogue[];
 
 const orderById = (id: string): ManifestOrder =>
     assembly.manifest.orders.find((o) => o.id === id)!;
 const payArgs = (node: ManifestOrder, seller: `0x${string}`) => ({
-    node, seller, leadAddress: MERCATO, operatorCatalogues: catalogues, tokenDecimals: 18,
+    node, seller, leadAddress: MERCATO, sellerCatalogues: catalogues, tokenDecimals: 18,
 });
 
 describe("planSubOrderSellers", () => {
@@ -118,7 +118,7 @@ describe("resolveSubOrderPayment", () => {
     });
 
     it("falls back to the manifest figure when the contributor has no component item", () => {
-        expect(resolveSubOrderPayment({ ...payArgs(orderById("B"), SWIFT), operatorCatalogues: [] }))
+        expect(resolveSubOrderPayment({ ...payArgs(orderById("B"), SWIFT), sellerCatalogues: [] }))
             .toBe(500000000000000000n);
     });
 

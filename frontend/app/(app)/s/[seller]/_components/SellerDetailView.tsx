@@ -3,7 +3,7 @@
 /**
  * SellerDetailView — per-seller landing page rendered at `/s/[seller]`.
  *
- * Replaces the prior `/i/<assembly>?operator=<addr>` UX where the buyer
+ * Replaces the prior `/i/<assembly>?seller=<addr>` UX where the buyer
  * landed in a generic assembly runtime that re-listed all sellers. This
  * page is seller-shaped: hero with branding, full menu grid, inline cart
  * with explicit "Place order" CTA, and post-commit redirect to
@@ -49,9 +49,9 @@ import type { ManifestFields } from "@/lib/core/encoding";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { sellerAuctionId, stashSellerDraft } from "@/lib/mechanisms/sellerAuction";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
-import { OperatorTrackRecord } from "@/components/core/OperatorTrackRecord";
-import { useOperatorTrackRecord } from "@/lib/mechanisms/useOperatorTrackRecord";
-import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
+import { SellerTrackRecord } from "@/components/core/SellerTrackRecord";
+import { useSellerTrackRecord } from "@/lib/mechanisms/useSellerTrackRecord";
+import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
@@ -67,9 +67,9 @@ import { useSellerBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
 import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE } from "@/lib/shared/operatorCatalogueMetadata";
+import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE } from "@/lib/shared/sellerCatalogueMetadata";
 
-import type { CatalogueItem, OperatorCatalogue } from "@/lib/seller/types";
+import type { CatalogueItem, SellerCatalogue } from "@/lib/seller/types";
 
 const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "consume-onsite",
@@ -124,14 +124,14 @@ export function SellerDetailView({ sellerAddress }: Props) {
     const router = useRouter();
     const chainId = useChainId();
     const publicClient = usePublicClient();
-    const { catalogues: operatorCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
+    const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
-    const operatorCatalogue = useMemo(
-        () => operatorCatalogues.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
-        [operatorCatalogues, sellerAddressLower],
+    const sellerCatalogue = useMemo(
+        () => sellerCatalogues.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
+        [sellerCatalogues, sellerAddressLower],
     );
 
-    // Identity lookup is reserved for follow-on enrichment (operator
+    // Identity lookup is reserved for follow-on enrichment (seller
     // attestations, did:web profiles). The runtime fixture's accent colour
     // currently lives in the catalogue branding metadata, not the
     // SubjectRecord — `SellerBrandingModule` reads the catalogue path
@@ -140,16 +140,16 @@ export function SellerDetailView({ sellerAddress }: Props) {
     const accentTone: string | undefined = undefined;
 
     const { address: buyer } = useCommerce();
-    // The operator's accepted-token identity declaration: pricing-token +
+    // The seller's accepted-token identity declaration: pricing-token +
     // accepted-tokens come from THEIR profile, not from project-level
     // CONTRACTS.* env vars. The env-var fallback only kicks in for fixture /
     // pre-schema-split catalogues that don't carry a defaultTokenAddress.
-    const currency = (operatorCatalogue?.defaultTokenAddress
+    const currency = (sellerCatalogue?.defaultTokenAddress
         ?? CONTRACTS.mockToken
         ?? CONTRACTS.permitToken) as `0x${string}`;
     const { data: resolvedSymbol } = useTokenSymbol(currency);
     const tokenSymbol = resolvedSymbol
-        ?? operatorCatalogue?.acceptedTokens?.find(
+        ?? sellerCatalogue?.acceptedTokens?.find(
             (t) => hexEqual(t.address, currency),
         )?.symbol
         ?? "";
@@ -187,13 +187,13 @@ export function SellerDetailView({ sellerAddress }: Props) {
         if (hasOnChainBinding && boundModalities.length > 0) {
             return ALL_FULFILMENT_MODES.filter((m) => boundModalities.includes(m));
         }
-        if (!operatorCatalogue?.fulfillmentModes || operatorCatalogue.fulfillmentModes.length === 0) {
+        if (!sellerCatalogue?.fulfillmentModes || sellerCatalogue.fulfillmentModes.length === 0) {
             return ALL_FULFILMENT_MODES;
         }
-        return ALL_FULFILMENT_MODES.filter((m) => operatorCatalogue.fulfillmentModes!.includes(m));
-    }, [operatorCatalogue?.fulfillmentModes, boundModalities, hasOnChainBinding]);
+        return ALL_FULFILMENT_MODES.filter((m) => sellerCatalogue.fulfillmentModes!.includes(m));
+    }, [sellerCatalogue?.fulfillmentModes, boundModalities, hasOnChainBinding]);
 
-    // Buyer-facing delivery options = the operator's array of bound
+    // Buyer-facing delivery options = the seller's array of bound
     // assemblies. Each bound assembly is one option; its root fulfilment
     // method is the cart selection. A merchant with no on-chain bindings
     // falls back to the catalogue-derived `supportedModes`.
@@ -270,7 +270,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
     }, [boundAssemblies, fulfillmentMode]);
     // The merchant's public-graph track record — settlement + coordination
     // history reconstructed from on-chain events.
-    const { trackRecord, isLoading: trackRecordLoading } = useOperatorTrackRecord(sellerAddressLower);
+    const { trackRecord, isLoading: trackRecordLoading } = useSellerTrackRecord(sellerAddressLower);
 
     // Auto-chain: when approval confirms, proceed to commit signing.
     useEffect(() => {
@@ -322,18 +322,18 @@ export function SellerDetailView({ sellerAddress }: Props) {
         );
     }
 
-    if (!operatorCatalogue) {
+    if (!sellerCatalogue) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
                 <p className="text-xs font-semibold text-neutral-500 mb-3">Seller not found</p>
                 <h1 className="text-3xl font-bold text-black">No seller registered for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
                 <p className="text-sm text-neutral-600">
-                    This wallet hasn&apos;t registered itself in <code className="text-xs">OperatorRegistry</code> on the network
+                    This wallet hasn&apos;t registered itself in <code className="text-xs">SellerRegistry</code> on the network
                     you&apos;re connected to, or hasn&apos;t pinned a catalogue. If this is your wallet, you can complete the registration through the onboarding flow.
                 </p>
                 <div className="flex items-center gap-3 pt-2">
-                    <Link href="/operators" className="inline-block text-sm px-3 py-1.5 rounded border border-black bg-black text-white hover:bg-neutral-800">
-                        Register as an operator
+                    <Link href="/sellers" className="inline-block text-sm px-3 py-1.5 rounded border border-black bg-black text-white hover:bg-neutral-800">
+                        Register as an seller
                     </Link>
                     <Link href="/discover" className="inline-block underline text-sm text-black hover:text-neutral-600">
                         ← Back to discover
@@ -346,9 +346,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
     const handleAddItem = (menuItem: CatalogueItem) => {
         addItem({
             menuItemId: menuItem.id,
-            sellerId: operatorCatalogue.id,
-            sellerAddress: operatorCatalogue.address,
-            sellerName: operatorCatalogue.name,
+            sellerId: sellerCatalogue.id,
+            sellerAddress: sellerCatalogue.address,
+            sellerName: sellerCatalogue.name,
             name: menuItem.name,
             price: menuItem.price,
             quantity: 1,
@@ -357,12 +357,12 @@ export function SellerDetailView({ sellerAddress }: Props) {
     };
 
     const handleRemoveItem = (menuItemId: string) => {
-        removeItem(menuItemId, operatorCatalogue.id);
+        removeItem(menuItemId, sellerCatalogue.id);
     };
 
     const getItemQuantity = (menuItemId: string) => {
         const cartItem = items.find(
-            (item) => item.menuItemId === menuItemId && item.sellerId === operatorCatalogue.id,
+            (item) => item.menuItemId === menuItemId && item.sellerId === sellerCatalogue.id,
         );
         return cartItem?.quantity || 0;
     };
@@ -370,17 +370,17 @@ export function SellerDetailView({ sellerAddress }: Props) {
     // Filter cart to items from THIS merchant only — the inline cart on this
     // page is merchant-scoped. Items from other merchants live in the global
     // cart but aren't shown here.
-    const sellerCartItems = items.filter((it) => it.sellerId === operatorCatalogue.id);
+    const sellerCartItems = items.filter((it) => it.sellerId === sellerCatalogue.id);
     // Product-driven assembly selection — when a cart item names an assembly
     // (CatalogueItemMetadata.assemblySlug), the product picks the process and
     // the fulfilment-mode dropdown is bypassed.
     const cartProductAssemblySlug = sellerCartItems
-        .map((it) => operatorCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
+        .map((it) => sellerCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
         .find((slug): slug is string => !!slug);
     // The pricing policy of a cart line's catalogue item — drives the
     // buyer-set price input in the cart aside below.
     const menuPolicyOf = (menuItemId: string) =>
-        operatorCatalogue.menu.find((m) => m.id === menuItemId)?.pricingPolicy ?? "fixed";
+        sellerCatalogue.menu.find((m) => m.id === menuItemId)?.pricingPolicy ?? "fixed";
     const sellerTotalAmount = sellerCartItems.reduce(
         // `item.price` may be empty mid-edit on a buyer-set line — treat as 0;
         // the executeCheckout guard blocks an unpriced buyer-set commit.
@@ -405,9 +405,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
         if (!cartProductAssemblySlug) return null;
         const assembly = boundAssemblies.find((a) => a.manifest.slug === cartProductAssemblySlug);
         if (!assembly || assembly.manifest.orders.length <= 1) return null;
-        const lead = operatorCatalogue.address as `0x${string}`;
+        const lead = sellerCatalogue.address as `0x${string}`;
         const nameOf = (addr: `0x${string}`) =>
-            operatorCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
+            sellerCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
         let plan: ReturnType<typeof planSubOrderSellers>;
         try {
             plan = planSubOrderSellers(assembly);
@@ -419,7 +419,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             ...plan.map(({ node, seller }) => ({
                 name: seller ? nameOf(seller) : "(unbound)",
                 payment: seller
-                    ? resolveSubOrderPayment({ node, seller, leadAddress: lead, operatorCatalogues, tokenDecimals })
+                    ? resolveSubOrderPayment({ node, seller, leadAddress: lead, sellerCatalogues, tokenDecimals })
                     : 0n,
             })),
         ];
@@ -430,14 +430,14 @@ export function SellerDetailView({ sellerAddress }: Props) {
     // line aggregates as `perItem * quantity`. Display formats to the
     // catalogue's unitSystem at render time; the commit-time manifest
     // sends the metric numbers directly.
-    const cartUnitSystem = operatorCatalogue.unitSystem ?? "metric";
+    const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
     const sellerMassGrams = sellerCartItems.reduce((sum, cartItem) => {
-        const menuItem = operatorCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
+        const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem?.massGrams) return sum;
         return sum + menuItem.massGrams * cartItem.quantity;
     }, 0);
     const sellerVolumeMl = sellerCartItems.reduce((sum, cartItem) => {
-        const menuItem = operatorCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
+        const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem?.volumeMl) return sum;
         return sum + menuItem.volumeMl * cartItem.quantity;
     }, 0);
@@ -445,7 +445,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
     // no item carries a class annotation.
     const sellerClassOfService: CatalogueClassOfService = sellerCartItems.reduce<CatalogueClassOfService>(
         (highest, cartItem) => {
-            const menuItem = operatorCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
+            const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
             const itemClass = menuItem?.classOfService;
             if (!itemClass) return highest;
             return CLASS_PRIORITY[itemClass] > CLASS_PRIORITY[highest] ? itemClass : highest;
@@ -465,7 +465,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
         // selects what they want, not how it's fulfilled. Falls back to the
         // fulfilment-mode dropdown for ordinary single-/two-party assemblies.
         const productAssemblySlug = sellerCartItems
-            .map((it) => operatorCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
+            .map((it) => sellerCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
             .find((slug): slug is string => !!slug);
         if (!fulfillmentMode && !productAssemblySlug) {
             setCheckoutError("Select a fulfilment mode before placing the order.");
@@ -479,7 +479,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             setCheckoutError(`Enter your price for "${unpricedBuyerSet.name}" before placing the order.`);
             return;
         }
-        const sellerAddress = operatorCatalogue.address as `0x${string}`;
+        const sellerAddress = sellerCatalogue.address as `0x${string}`;
         // The picked assembly drives the order. Product-driven: the cart item
         // names the assembly by slug. Otherwise a multi-order assembly
         // (e.g. local-commerce) is selected by fulfilment mode. The kernel sees
@@ -597,7 +597,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             //    manifest's remaining orders in topological order ──────────
             // Generic over any topology (delivery's root→courier, the
             // kit-assembly diamond, …). Each non-root order's seller is read
-            // from the operator's counterpartyBindings by the schema that
+            // from the seller's counterpartyBindings by the schema that
             // order carries; its clauses come from the assembly manifest; its
             // synthetic parent ids are remapped to the real on-chain order
             // hashes as they commit; the global cumulative value accumulates
@@ -639,7 +639,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         processId,
                         parentOrderHashes,
                         manifestFields: {
-                            origin: operatorCatalogue?.geohash ?? "",
+                            origin: sellerCatalogue?.geohash ?? "",
                             destination: deliveryLocation.geohash ?? "",
                             courierProcessIncluded: true,
                             ...assemblyJurisdictionFields(manifest),
@@ -683,7 +683,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         ?.data as { bands?: string[] } | undefined)?.bands ?? [];
                     const ghgStandards = readAssemblyOrderGhgStandards(manifest, node.agreementHash);
                     manifestFields = {
-                        origin: operatorCatalogue?.geohash ?? "",
+                        origin: sellerCatalogue?.geohash ?? "",
                         destination: deliveryLocation.geohash ?? "",
                         courierProcessIncluded: true,
                         ...assemblyJurisdictionFields(manifest),
@@ -695,11 +695,11 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     };
                 } else {
                     // Generic sub-order: seller resolved upstream from the
-                    // operator's counterpartyBindings (shared with the cart
+                    // seller's counterpartyBindings (shared with the cart
                     // breakdown); clauses read from the assembly manifest.
                     if (!boundSeller) {
                         multiOrderCheckout.current = false;
-                        setCheckoutError("This assembly has a sub-order with no designated counterparty — the operator must bind one.");
+                        setCheckoutError("This assembly has a sub-order with no designated counterparty — the seller must bind one.");
                         return;
                     }
                     seller = boundSeller;
@@ -709,7 +709,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     // the cumulative add stays numeric.
                     payment = resolveSubOrderPayment({
                         node, seller, leadAddress: sellerAddress,
-                        operatorCatalogues, tokenDecimals,
+                        sellerCatalogues, tokenDecimals,
                     });
                     manifestFields = readAgreementFields(node, agreement);
                 }
@@ -788,7 +788,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
         }
     };
 
-    const categories = Array.from(new Set(operatorCatalogue.menu.map((item) => item.category)));
+    const categories = Array.from(new Set(sellerCatalogue.menu.map((item) => item.category)));
     const placingOrder = commitStep === "signing" || commitStep === "broadcasting" || commitStep === "ready";
 
     return (
@@ -808,28 +808,28 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     <div className="flex flex-wrap items-start gap-5">
                         <SellerLogo
                             sellerAddress={sellerAddressTyped}
-                            fallbackEmoji={operatorCatalogue.image}
-                            fallbackName={operatorCatalogue.name}
+                            fallbackEmoji={sellerCatalogue.image}
+                            fallbackName={sellerCatalogue.name}
                             size={88}
                         />
                         <div className="flex-1 min-w-0">
-                            {operatorCatalogue.specialty && (
+                            {sellerCatalogue.specialty && (
                                 <p
                                     className="text-xs font-semibold text-neutral-500"
                                     style={accentTone ? { color: accentTone } : undefined}
                                 >
-                                    {operatorCatalogue.specialty}
+                                    {sellerCatalogue.specialty}
                                 </p>
                             )}
-                            <h1 className="mt-1 text-4xl font-bold text-black">{operatorCatalogue.name}</h1>
-                            <p className="mt-3 max-w-2xl text-base text-neutral-700">{operatorCatalogue.description}</p>
-                            {operatorCatalogue.addressText && (
-                                <p className="mt-2 text-sm text-neutral-500">{operatorCatalogue.addressText}</p>
+                            <h1 className="mt-1 text-4xl font-bold text-black">{sellerCatalogue.name}</h1>
+                            <p className="mt-3 max-w-2xl text-base text-neutral-700">{sellerCatalogue.description}</p>
+                            {sellerCatalogue.addressText && (
+                                <p className="mt-2 text-sm text-neutral-500">{sellerCatalogue.addressText}</p>
                             )}
                             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-                                {operatorCatalogue.acceptedTokens && operatorCatalogue.acceptedTokens.length > 0 && (
+                                {sellerCatalogue.acceptedTokens && sellerCatalogue.acceptedTokens.length > 0 && (
                                     <span data-testid="seller-accepted-tokens">
-                                        Accepts: {operatorCatalogue.acceptedTokens.map((t) => t.symbol).join(", ")}
+                                        Accepts: {sellerCatalogue.acceptedTokens.map((t) => t.symbol).join(", ")}
                                     </span>
                                 )}
                                 {tokenSymbol && (
@@ -842,9 +842,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     </div>
                 </header>
 
-                {/* Operator track record — public-graph-derived settlement
+                {/* Seller track record — public-graph-derived settlement
                     + coordination history, recomputed from on-chain events. */}
-                <OperatorTrackRecord record={trackRecord} isLoading={trackRecordLoading} />
+                <SellerTrackRecord record={trackRecord} isLoading={trackRecordLoading} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-8 items-start">
                     {/* Menu */}
@@ -854,7 +854,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                             <div key={category}>
                                 <h2 className="text-lg font-semibold text-black mb-3">{category}</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {operatorCatalogue.menu
+                                    {sellerCatalogue.menu
                                         .filter((item) => item.category === category)
                                         .map((menuItem) => {
                                             const quantity = getItemQuantity(menuItem.id);
@@ -945,7 +945,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         {sellerCartItems.length === 0 ? (
                             <p className="text-sm text-neutral-500">
                                 Your cart is empty. Add items from the menu to start an order with{" "}
-                                <span className="font-semibold text-black">{operatorCatalogue.name}</span>.
+                                <span className="font-semibold text-black">{sellerCatalogue.name}</span>.
                             </p>
                         ) : (
                             <>
@@ -962,7 +962,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeLine(item.menuItemId, operatorCatalogue.id)}
+                                                    onClick={() => removeLine(item.menuItemId, sellerCatalogue.id)}
                                                     className="text-neutral-400 hover:text-red-600 text-lg leading-none px-1 shrink-0"
                                                     aria-label={`Remove ${item.name} from cart`}
                                                     data-testid={`cart-line-delete-${item.menuItemId}`}
@@ -974,7 +974,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                 <div className="flex items-center gap-2">
                                                     <button
                                                         type="button"
-                                                        onClick={() => removeItem(item.menuItemId, operatorCatalogue.id)}
+                                                        onClick={() => removeItem(item.menuItemId, sellerCatalogue.id)}
                                                         className="w-7 h-7 rounded border border-neutral-300 bg-white text-black text-base hover:bg-neutral-100"
                                                         aria-label={`Remove one ${item.name}`}
                                                         data-testid={`cart-line-decrement-${item.menuItemId}`}
@@ -1000,7 +1000,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                             type="text"
                                                             inputMode="decimal"
                                                             value={item.price}
-                                                            onChange={(e) => updateItemPrice(item.menuItemId, operatorCatalogue.id, e.target.value)}
+                                                            onChange={(e) => updateItemPrice(item.menuItemId, sellerCatalogue.id, e.target.value)}
                                                             placeholder="Your price"
                                                             aria-label={`Your price for ${item.name}`}
                                                             data-testid={`cart-line-buyer-price-${item.menuItemId}`}

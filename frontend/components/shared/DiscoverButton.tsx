@@ -9,7 +9,7 @@ interface DiscoverButtonProps {
 }
 
 /**
- * Primary curriculum CTA — routes to `/discover` (operator listing). Renders
+ * Primary curriculum CTA — routes to `/discover` (seller listing). Renders
  * on every header except `/discover` itself (don't show the CTA on its
  * destination). Used by MarketingHeader, Header, and MobileNav.
  *

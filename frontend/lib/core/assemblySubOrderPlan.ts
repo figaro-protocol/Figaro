@@ -14,9 +14,9 @@
  */
 
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
-import type { OperatorCatalogue } from "@/lib/seller/types";
+import type { SellerCatalogue } from "@/lib/seller/types";
 import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
-import { resolveCatalogueItemPrice } from "@/lib/shared/operatorCatalogueMetadata";
+import { resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";
 
@@ -24,7 +24,7 @@ export type ManifestOrder = BoundAssembly["manifest"]["orders"][number];
 
 /**
  * Topologically order an assembly's non-root orders and resolve each one's
- * seller from the operator's counterparty bindings. A schema shared by sibling
+ * seller from the seller's counterparty bindings. A schema shared by sibling
  * orders draws distinct wallets by commit order (the per-schema cursor), so the
  * ordering is significant and must match the checkout's commit order. `seller`
  * is `null` when the assembly binds no counterparty for that order's schema.
@@ -82,12 +82,12 @@ export function resolveSubOrderPayment(args: {
     node: ManifestOrder;
     seller: `0x${string}`;
     leadAddress: `0x${string}`;
-    operatorCatalogues: OperatorCatalogue[];
+    sellerCatalogues: SellerCatalogue[];
     tokenDecimals: number;
 }): bigint {
-    const { node, seller, leadAddress, operatorCatalogues, tokenDecimals } = args;
+    const { node, seller, leadAddress, sellerCatalogues, tokenDecimals } = args;
     if (hexEqual(seller, leadAddress)) return BigInt(node.payment ?? 0n);
-    const catalogue = operatorCatalogues.find((c) => hexEqual(c.address, seller));
+    const catalogue = sellerCatalogues.find((c) => hexEqual(c.address, seller));
     const item = catalogue?.menu.find((i) => i.category === "component");
     if (!item) return BigInt(node.payment ?? 0n);
     return parseToken(resolveCatalogueItemPrice(item, leadAddress).price, tokenDecimals);

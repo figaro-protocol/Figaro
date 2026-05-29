@@ -91,7 +91,7 @@ is a choice, not an exploit.
 ## 4. No owner, no admin, no escape hatch — by design
 
 **Pattern**: FigaroCore, AttestationCoordinator, SchemaRegistry,
-SchemaRegistrationHelper, DutchAuction, OperatorRegistry, AssemblyRegistry,
+SchemaRegistrationHelper, DutchAuction, SellerRegistry, AssemblyRegistry,
 ProcessOffsetReceipt, and FigaroBatchVerifier have no owner, no pause function,
 no upgrade path, and no admin recovery. FigToken has a one-shot deployer who
 registers minter contracts then renounces (`deployerMintRenounced`); RpgfMinter
@@ -248,7 +248,7 @@ cannot buy and sell in different tokens within the same process.
 Nash-stable from chain state alone — no oracle, no DEX dependency, no pre-agreed
 FX rate. Mixing currencies within one process would require all three to compare
 "buyer bond" against "seller bond" at settlement, and each reintroduces a
-discretionary actor (oracle operator, DEX router, a counterparty picking the
+discretionary actor (oracle seller, DEX router, a counterparty picking the
 rate). Kernel-level single-currency binding is precisely what preserves
 trust-minimization.
 

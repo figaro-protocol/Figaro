@@ -2,10 +2,10 @@
     "schemaId": "figaro-courier-process-v1",
     "version": 1,
     "title": "Courier internal process events",
-    "description": "Event stream emitted by a courier operator (driver, cyclist, walker, drone, autonomous vehicle, etc.) to coordinate with buyer and merchant. The event log is the SSoT for the courier's role in the order lifecycle. Generic across transport modes; the event vocabulary maps to a transport job's pickup-to-dropoff flow.",
+    "description": "Event stream emitted by a courier seller (driver, cyclist, walker, drone, autonomous vehicle, etc.) to coordinate with buyer and merchant. The event log is the SSoT for the courier's role in the order lifecycle. Generic across transport modes; the event vocabulary maps to a transport job's pickup-to-dropoff flow.",
     "categories": [
         "lifecycle",
-        "operator-process"
+        "seller-process"
     ],
     "fields": [
         {

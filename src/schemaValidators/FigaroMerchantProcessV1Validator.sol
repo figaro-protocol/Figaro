@@ -5,7 +5,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 
 /// @title FigaroMerchantProcessV1Validator
 /// @notice Validates `figaro-merchant-process-v1` content — event-stream schema
-///         for a merchant operator's role in an order lifecycle. Generic across
+///         for a merchant seller's role in an order lifecycle. Generic across
 ///         local-commerce verticals (restaurants, retail, service merchants);
 ///         the event vocabulary maps to the merchant's order-fulfillment flow.
 ///
@@ -16,7 +16,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 ///      timestamped block. See Paper E (settlement on-chain by nature,
 ///      adjudication off-chain by nature) for the broader framing.
 ///
-/// @dev Off-chain operators (merchants, couriers, locker operators, etc.) need
+/// @dev Off-chain sellers (merchants, couriers, locker sellers, etc.) need
 ///      a per-role process schema because their state transitions happen in
 ///      physical reality — not as kernel ops. Kernel-participant roles (the
 ///      buyer, who acts via `commit` / `resolveProcess`) do NOT need a

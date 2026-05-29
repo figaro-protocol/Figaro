@@ -1,18 +1,18 @@
 import {
-    fetchOperatorCatalogue,
+    fetchSellerCatalogue,
     invalidateCatalogueCache,
 } from '@/lib/shared/catalogueFetcher';
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from '@/lib/shared/ipfsService';
 import {
-    publishOperatorCatalogue,
+    publishSellerCatalogue,
     type PublishResult,
 } from '@/lib/shared/cataloguePublisher';
-import type { OperatorCatalogueMetadata } from '@/lib/shared/operatorCatalogueMetadata';
+import type { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
 
 export interface CatalogueService {
-    fetchOperatorCatalogue(metadataURI: string): Promise<OperatorCatalogueMetadata | null>;
-    invalidateOperatorCatalogue(metadataURI: string): void;
-    publishOperatorCatalogue(catalogue: OperatorCatalogueMetadata): Promise<PublishResult>;
+    fetchSellerCatalogue(metadataURI: string): Promise<SellerCatalogueMetadata | null>;
+    invalidateSellerCatalogue(metadataURI: string): void;
+    publishSellerCatalogue(catalogue: SellerCatalogueMetadata): Promise<PublishResult>;
 }
 
 export interface CatalogueServiceOptions {
@@ -25,12 +25,12 @@ export function createCatalogueService(
     const evidenceTransport = options.evidenceTransport ?? DEFAULT_IPFS_SERVICE;
 
     return {
-        fetchOperatorCatalogue,
-        invalidateOperatorCatalogue(metadataURI: string) {
+        fetchSellerCatalogue,
+        invalidateSellerCatalogue(metadataURI: string) {
             invalidateCatalogueCache(metadataURI);
         },
-        publishOperatorCatalogue(catalogue: OperatorCatalogueMetadata) {
-            return publishOperatorCatalogue(catalogue, evidenceTransport);
+        publishSellerCatalogue(catalogue: SellerCatalogueMetadata) {
+            return publishSellerCatalogue(catalogue, evidenceTransport);
         },
     };
 }

@@ -4,7 +4,7 @@
  * Smoke for the marketing `/assemblies` inventory. The page reads
  * `AssemblyRegistry.AssemblyRegistered` events through the standalone
  * viem `publicClient` via `useAssemblyChoices` — the same composition
- * the operator profile and the designer's PublishedList consume. Each
+ * the seller profile and the designer's PublishedList consume. Each
  * row's identity (slug, author, content hash) is on-chain; the manifest
  * (name, order count, schemas) fetches lazily from IPFS per row.
  *

@@ -110,7 +110,7 @@ and how processes interconnect.
 
 Making these graphs public enables:
 
-1. **Autonomous coordination** — AI agents and human operators discover
+1. **Autonomous coordination** — AI agents and human sellers discover
    work through graph queries, not platform-mediated matching.
 2. **Heat maps and demand prediction** — Geohash clusters reveal demand
    patterns without exposing individual transaction details.
@@ -149,7 +149,7 @@ different trust model, update frequency, and audience:
 | Process | Protocol-enforced | All participants | Per lifecycle event |
 | Geo | Institution-declared | Drivers, agents, analytics | Per order creation |
 | GHG | Protocol-derived | Reporters, auditors | Per disclosure event |
-| Capital | Protocol-enforced | LPs, operators, analytics | Per settlement |
+| Capital | Protocol-enforced | LPs, sellers, analytics | Per settlement |
 | Cross-Process | Protocol-derived | Process provenance tools | Per link creation |
 
 Making these boundaries explicit in the UI — through visual separation,

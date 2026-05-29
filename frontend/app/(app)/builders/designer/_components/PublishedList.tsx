@@ -5,7 +5,7 @@
  *
  * Reads from `useAssemblyChoices(address)` which combines the
  * `AssemblyRegistered` event log with lazy manifest enrichment (name,
- * order count, schema set). The same hook backs the operator-profile
+ * order count, schema set). The same hook backs the seller-profile
  * assembly picker, so the two surfaces can't drift on what they show
  * about an assembly.
  *

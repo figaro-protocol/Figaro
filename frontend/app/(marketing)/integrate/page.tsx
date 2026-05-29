@@ -31,7 +31,7 @@ export default function Integrate() {
                     Nothing in the kernel distinguishes a human signer from an agent &mdash; an EIP-712 signature is an EIP-712 signature. <code>@figaro/core/agent</code> ships <code>FigaroContext</code>, <code>proposeActions</code>, and <code>ActionQueue</code>: an agent receives kernel state, returns the set of valid actions, and submits via a wallet client. The queue runs in two modes &mdash; human-in-the-loop approval, or fully autonomous submission &mdash; without changes to the underlying call sites.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    What this enables: agents that hold roles in a process (a courier-bot bonded against cumulative value, an offset-burning operator settling under the same atomic-resolution rule, an audit agent reading reconstructed state and posting attestations). Bonding makes the agent legible to its counterparty &mdash; cooperation is dominant for the agent on the same arithmetic that makes it dominant for a human (Paper A, Theorem 4.3).
+                    What this enables: agents that hold roles in a process (a courier-bot bonded against cumulative value, an offset-burning seller settling under the same atomic-resolution rule, an audit agent reading reconstructed state and posting attestations). Bonding makes the agent legible to its counterparty &mdash; cooperation is dominant for the agent on the same arithmetic that makes it dominant for a human (Paper A, Theorem 4.3).
                 </p>
                 <p className="text-sm text-ink-muted">
                     Subpath: <code>@figaro/core/agent</code>. Full subpath table below.
@@ -139,13 +139,13 @@ const state = reconstruct(events);
                         Architectural example &mdash; carbon offset before settlement
                     </h3>
                     <p className="text-sm text-ink-body leading-relaxed mb-4">
-                        A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the GHG schema has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset operator registered with the assembly, adding the offset purchase to the same process before closing. (The offset operator is whichever counterparty the assembly admits; integrators could register Klima DAO, Toucan, Moss, or any bonded operator.)
+                        A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the GHG schema has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset seller registered with the assembly, adding the offset purchase to the same process before closing. (The offset seller is whichever counterparty the assembly admits; integrators could register Klima DAO, Toucan, Moss, or any bonded seller.)
                     </p>
                     <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
-                        <li><strong>UI surfaces the option.</strong> A live quote from a bonded offset operator registered against the assembly.</li>
-                        <li><strong>Buyer commits a sub-order.</strong> Same <code>processId</code>, non-zero <code>cumulativeValue</code>, offset operator as seller. Buyer bonds <code>2&times;Y</code>; operator bonds 2&times; cumulative value (Paper A, Theorem 4.3).</li>
+                        <li><strong>UI surfaces the option.</strong> A live quote from a bonded offset seller registered against the assembly.</li>
+                        <li><strong>Buyer commits a sub-order.</strong> Same <code>processId</code>, non-zero <code>cumulativeValue</code>, offset seller as seller. Buyer bonds <code>2&times;Y</code>; seller bonds 2&times; cumulative value (Paper A, Theorem 4.3).</li>
                         <li><strong>Wallet handles any token swap.</strong> Multi-token bookkeeping is resolved before the commit; the kernel sees a single-currency sub-order.</li>
-                        <li><strong>Operator delivers.</strong> Burns the offset and posts the burn receipt as an attestation against the sub-order.</li>
+                        <li><strong>Seller delivers.</strong> Burns the offset and posts the burn receipt as an attestation against the sub-order.</li>
                         <li><strong>Buyer calls <code>resolveProcess</code> once.</strong> Main order and offset sub-order settle atomically. Offset receipt joins the evidence bundle.</li>
                     </ol>
                     <p className="mt-4 text-sm text-ink-muted leading-relaxed">
@@ -159,7 +159,7 @@ const state = reconstruct(events);
                         <strong>Kleros, SIAC, ICC, courts.</strong> Parties&apos; agreement designates the forum; Figaro exports its evidence bundle there. Kernel does not adjudicate. Kleros wired today; other forums are off-chain referents named in the agreement. See <a href="/papers/on-chain-evidence" className="underline">On-Chain Evidence, Off-Chain Adjudication</a>.
                     </LabelledListRow>
                     <LabelledListRow label="Offsets" uppercase>
-                        <strong>Klima DAO, Toucan, Moss.</strong> Architectural slot for an offset operator that bonds as a seller. Walkthrough above.
+                        <strong>Klima DAO, Toucan, Moss.</strong> Architectural slot for an offset seller that bonds as a seller. Walkthrough above.
                     </LabelledListRow>
                     <LabelledListRow label="Prediction" uppercase>
                         <strong>Polymarket, Augur.</strong> Compositional target for outcome-resolution oracles that feed attestations gating a process.
@@ -193,7 +193,7 @@ const state = reconstruct(events);
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro</a>. SDK lives at <code>sdk/</code>.</li>
                     <li><strong>SDK README:</strong> <code>sdk/README.md</code> in the repo. Covers every subpath export and the test-harness conventions.</li>
-                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>DUTCH_AUCTION_ABI</code>, <code>SCHEMA_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>OPERATOR_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>, <code>RPGF_MINTER_ABI</code>. All exported from <code>@figaro/core</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
+                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>DUTCH_AUCTION_ABI</code>, <code>SCHEMA_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>, <code>RPGF_MINTER_ABI</code>. All exported from <code>@figaro/core</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Tests as documentation:</strong> <code>sdk/tests/</code> includes round-trip tests of every exported primitive. If the README is ambiguous, read the tests.</li>
                 </ul>
                 <p className="mt-8 text-sm text-ink-muted leading-relaxed">
@@ -202,7 +202,7 @@ const state = reconstruct(events);
                     <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>{" "}(academic frame);&nbsp;
                     <Link href="/builders" className="underline">Builders</Link>{" "}(composition tools);&nbsp;
                     <Link href="/local-commerce" className="underline">Local Commerce</Link>{" "}(reference assembly);&nbsp;
-                    <Link href="/discover" className="underline">Discover</Link>{" "}(operator catalogue);&nbsp;
+                    <Link href="/discover" className="underline">Discover</Link>{" "}(seller catalogue);&nbsp;
                     <Link href="/schemas" className="underline">Schemas</Link>{" "}(attestation content for indexers).
                 </p>
             </MarketingSection>

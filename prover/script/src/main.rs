@@ -56,7 +56,7 @@ async fn main() {
     println!("Token ops hash:      {:?}", pv.token_ops_hash);
     println!("Attestation hash:    {:?}", pv.attestation_events_hash);
     println!("Schema hash:         {:?}", pv.schema_events_hash);
-    println!("Operator hash:       {:?}", pv.operator_events_hash);
+    println!("Seller hash:       {:?}", pv.seller_events_hash);
 
     assert_ne!(pv.prev_state_root, pv.new_state_root, "state should change");
     assert_eq!(pv.chain_id, CHAIN_ID);

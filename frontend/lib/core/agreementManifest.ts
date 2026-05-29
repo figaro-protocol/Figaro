@@ -58,7 +58,7 @@
 
 import { concat, keccak256, stringToHex, toHex } from "viem";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
-import { classOfServiceToShortCode } from "@/lib/shared/operatorCatalogueMetadata";
+import { classOfServiceToShortCode } from "@/lib/shared/sellerCatalogueMetadata";
 
 // ── Core types ───────────────────────────────────────────────────────────────
 

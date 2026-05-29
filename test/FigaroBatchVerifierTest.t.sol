@@ -119,7 +119,7 @@ contract FigaroBatchVerifierTest is Test {
         return keccak256(packed);
     }
 
-    function _hashOperatorEvents(FigaroBatchVerifier.OperatorEventInput[] memory events)
+    function _hashSellerEvents(FigaroBatchVerifier.SellerEventInput[] memory events)
         internal
         pure
         returns (bytes32)
@@ -130,7 +130,7 @@ contract FigaroBatchVerifierTest is Test {
             // Tags 1 (Registered) and 2 (ProfileUpdated) share an encoding;
             // unknown tags are rejected by the contract before hashing.
             packed = bytes.concat(
-                packed, abi.encodePacked(tag, events[i].operator, keccak256(bytes(events[i].metadataURI)))
+                packed, abi.encodePacked(tag, events[i].seller, keccak256(bytes(events[i].metadataURI)))
             );
         }
         return keccak256(packed);
@@ -145,18 +145,18 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory attestations,
             FigaroBatchVerifier.SchemaData[] memory schemas,
             FigaroBatchVerifier.MechanismSchemaData[] memory mechanisms,
-            FigaroBatchVerifier.OperatorEventInput[] memory operators
+            FigaroBatchVerifier.SellerEventInput[] memory sellers
         )
     {
         attestations = new FigaroBatchVerifier.AttestationData[](0);
         schemas = new FigaroBatchVerifier.SchemaData[](0);
         mechanisms = new FigaroBatchVerifier.MechanismSchemaData[](0);
-        operators = new FigaroBatchVerifier.OperatorEventInput[](0);
+        sellers = new FigaroBatchVerifier.SellerEventInput[](0);
 
         bytes32 posHash = _hashPositions(positions);
         bytes32 attHash = _hashAttestations(attestations);
         bytes32 schHash = _hashSchemas(schemas, mechanisms);
-        bytes32 opHash = _hashOperatorEvents(operators);
+        bytes32 opHash = _hashSellerEvents(sellers);
 
         publicValues = _encodePublicValues(
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
@@ -171,11 +171,11 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.AttestationData[] memory att,
         FigaroBatchVerifier.SchemaData[] memory sch,
         FigaroBatchVerifier.MechanismSchemaData[] memory mech,
-        FigaroBatchVerifier.OperatorEventInput[] memory ops
+        FigaroBatchVerifier.SellerEventInput[] memory ops
     ) internal {
         FigaroBatchVerifier.BatchEventData memory events =
             FigaroBatchVerifier.BatchEventData({
-                attestations: att, schemas: sch, mechanismSchemas: mech, operatorEvents: ops
+                attestations: att, schemas: sch, mechanismSchemas: mech, sellerEvents: ops
             });
         bv.settleBatch(hex"", pv, positions, events);
     }
@@ -200,7 +200,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att,
             FigaroBatchVerifier.SchemaData[] memory sch,
             FigaroBatchVerifier.MechanismSchemaData[] memory mech,
-            FigaroBatchVerifier.OperatorEventInput[] memory ops
+            FigaroBatchVerifier.SellerEventInput[] memory ops
         ) = _buildBatch(newRoot, positions);
 
         vm.expectEmit(true, true, true, true);
@@ -227,7 +227,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att,
             FigaroBatchVerifier.SchemaData[] memory sch,
             FigaroBatchVerifier.MechanismSchemaData[] memory mech,
-            FigaroBatchVerifier.OperatorEventInput[] memory ops
+            FigaroBatchVerifier.SellerEventInput[] memory ops
         ) = _buildBatch(newRoot, positions);
 
         uint256 aliceBefore = token.balanceOf(alice);
@@ -254,7 +254,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att,
             FigaroBatchVerifier.SchemaData[] memory sch,
             FigaroBatchVerifier.MechanismSchemaData[] memory mech,
-            FigaroBatchVerifier.OperatorEventInput[] memory ops
+            FigaroBatchVerifier.SellerEventInput[] memory ops
         ) = _buildBatch(newRoot, positions);
 
         uint256 bobBefore = token.balanceOf(bob);
@@ -280,7 +280,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att,
             FigaroBatchVerifier.SchemaData[] memory sch,
             FigaroBatchVerifier.MechanismSchemaData[] memory mech,
-            FigaroBatchVerifier.OperatorEventInput[] memory ops
+            FigaroBatchVerifier.SellerEventInput[] memory ops
         ) = _buildBatch(newRoot, positions);
 
         uint256 charlieBefore = token.balanceOf(charlie);
@@ -309,7 +309,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att,
             FigaroBatchVerifier.SchemaData[] memory sch,
             FigaroBatchVerifier.MechanismSchemaData[] memory mech,
-            FigaroBatchVerifier.OperatorEventInput[] memory ops
+            FigaroBatchVerifier.SellerEventInput[] memory ops
         ) = _buildBatch(newRoot, positions);
 
         uint256 aliceBefore = token.balanceOf(alice);
@@ -334,7 +334,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att1,
             FigaroBatchVerifier.SchemaData[] memory sch1,
             FigaroBatchVerifier.MechanismSchemaData[] memory mech1,
-            FigaroBatchVerifier.OperatorEventInput[] memory ops1
+            FigaroBatchVerifier.SellerEventInput[] memory ops1
         ) = _buildBatch(root2, empty);
         _settle(pv1, empty, att1, sch1, mech1, ops1);
         assertEq(bv.stateRoot(), root2);
@@ -344,7 +344,7 @@ contract FigaroBatchVerifierTest is Test {
         bytes32 posHash = _hashPositions(empty);
         bytes32 attHash = _hashAttestations(att1);
         bytes32 schHash = _hashSchemas(sch1, mech1);
-        bytes32 opHash = _hashOperatorEvents(ops1);
+        bytes32 opHash = _hashSellerEvents(ops1);
 
         bytes memory pv2 =
             _encodePublicValues(root2, root3, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash);
@@ -363,7 +363,7 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.AttestationData[] memory att = new FigaroBatchVerifier.AttestationData[](0);
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](0);
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](0);
 
         bytes memory pv = _encodePublicValues(
             badPrev,
@@ -373,7 +373,7 @@ contract FigaroBatchVerifierTest is Test {
             _hashPositions(empty),
             _hashAttestations(att),
             _hashSchemas(sch, mech),
-            _hashOperatorEvents(ops)
+            _hashSellerEvents(ops)
         );
 
         vm.expectRevert(abi.encodeWithSelector(FigaroBatchVerifier.StateRootMismatch.selector, GENESIS_ROOT, badPrev));
@@ -389,7 +389,7 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.AttestationData[] memory att = new FigaroBatchVerifier.AttestationData[](0);
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](0);
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](0);
 
         bytes memory pv = _encodePublicValues(
             GENESIS_ROOT,
@@ -399,7 +399,7 @@ contract FigaroBatchVerifierTest is Test {
             _hashPositions(empty),
             _hashAttestations(att),
             _hashSchemas(sch, mech),
-            _hashOperatorEvents(ops)
+            _hashSellerEvents(ops)
         );
 
         vm.expectRevert(
@@ -417,7 +417,7 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.AttestationData[] memory att = new FigaroBatchVerifier.AttestationData[](0);
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](0);
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](0);
 
         address badContract = address(0xBEEF);
         bytes memory pv = _encodePublicValues(
@@ -428,7 +428,7 @@ contract FigaroBatchVerifierTest is Test {
             _hashPositions(empty),
             _hashAttestations(att),
             _hashSchemas(sch, mech),
-            _hashOperatorEvents(ops)
+            _hashSellerEvents(ops)
         );
 
         vm.expectRevert(
@@ -450,7 +450,7 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.AttestationData[] memory att = new FigaroBatchVerifier.AttestationData[](0);
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](0);
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](0);
 
         // Use empty position hash (wrong)
         FigaroBatchVerifier.NetPosition[] memory emptyPos = new FigaroBatchVerifier.NetPosition[](0);
@@ -463,7 +463,7 @@ contract FigaroBatchVerifierTest is Test {
             _hashPositions(emptyPos), // wrong hash
             _hashAttestations(att),
             _hashSchemas(sch, mech),
-            _hashOperatorEvents(ops)
+            _hashSellerEvents(ops)
         );
 
         vm.expectRevert(FigaroBatchVerifier.PositionHashMismatch.selector);
@@ -488,12 +488,12 @@ contract FigaroBatchVerifierTest is Test {
 
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](0);
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](0);
 
         bytes32 posHash = _hashPositions(positions);
         bytes32 attHash = _hashAttestations(att);
         bytes32 schHash = _hashSchemas(sch, mech);
-        bytes32 opHash = _hashOperatorEvents(ops);
+        bytes32 opHash = _hashSellerEvents(ops);
 
         bytes memory pv = _encodePublicValues(
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
@@ -527,12 +527,12 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](1);
         mech[0] = FigaroBatchVerifier.MechanismSchemaData({mechanism: charlie, schemaId: bytes32(uint256(0x51))});
 
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](0);
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](0);
 
         bytes32 posHash = _hashPositions(positions);
         bytes32 attHash = _hashAttestations(att);
         bytes32 schHash = _hashSchemas(sch, mech);
-        bytes32 opHash = _hashOperatorEvents(ops);
+        bytes32 opHash = _hashSellerEvents(ops);
 
         bytes memory pv = _encodePublicValues(
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
@@ -549,9 +549,9 @@ contract FigaroBatchVerifierTest is Test {
         _settle(pv, positions, att, sch, mech, ops);
     }
 
-    // ── Operator events re-emitted ────────────────────────────────
+    // ── Seller events re-emitted ────────────────────────────────
 
-    function test_settleBatch_operatorRegisteredEvent() public {
+    function test_settleBatch_sellerRegisteredEvent() public {
         bytes32 newRoot = bytes32(uint256(0x9));
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
 
@@ -559,31 +559,31 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
 
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](1);
-        ops[0] = FigaroBatchVerifier.OperatorEventInput({
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](1);
+        ops[0] = FigaroBatchVerifier.SellerEventInput({
             tag: 1, // Registered
-            operator: alice,
+            seller: alice,
             metadataURI: "ipfs://QmFoo"
         });
 
         bytes32 posHash = _hashPositions(positions);
         bytes32 attHash = _hashAttestations(att);
         bytes32 schHash = _hashSchemas(sch, mech);
-        bytes32 opHash = _hashOperatorEvents(ops);
+        bytes32 opHash = _hashSellerEvents(ops);
 
         bytes memory pv = _encodePublicValues(
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
         );
 
         vm.expectEmit(true, false, false, true);
-        emit FigaroBatchVerifier.OperatorRegistered(alice, "ipfs://QmFoo");
+        emit FigaroBatchVerifier.SellerRegistered(alice, "ipfs://QmFoo");
 
         _settle(pv, positions, att, sch, mech, ops);
     }
 
-    // ── Operator profile-updated event ────────────────────────────
+    // ── Seller profile-updated event ────────────────────────────
 
-    function test_settleBatch_operatorProfileUpdated() public {
+    function test_settleBatch_sellerProfileUpdated() public {
         bytes32 newRoot = bytes32(uint256(0xA));
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
 
@@ -591,31 +591,31 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
 
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](1);
-        ops[0] = FigaroBatchVerifier.OperatorEventInput({
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](1);
+        ops[0] = FigaroBatchVerifier.SellerEventInput({
             tag: 2, // ProfileUpdated
-            operator: bob,
+            seller: bob,
             metadataURI: "ipfs://QmBar"
         });
 
         bytes32 posHash = _hashPositions(positions);
         bytes32 attHash = _hashAttestations(att);
         bytes32 schHash = _hashSchemas(sch, mech);
-        bytes32 opHash = _hashOperatorEvents(ops);
+        bytes32 opHash = _hashSellerEvents(ops);
 
         bytes memory pv = _encodePublicValues(
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
         );
 
         vm.expectEmit(true, false, false, true);
-        emit FigaroBatchVerifier.OperatorProfileUpdated(bob, "ipfs://QmBar");
+        emit FigaroBatchVerifier.SellerProfileUpdated(bob, "ipfs://QmBar");
 
         _settle(pv, positions, att, sch, mech, ops);
     }
 
-    // ── Invalid operator tag revert ───────────────────────────────
+    // ── Invalid seller tag revert ───────────────────────────────
 
-    function test_revert_invalidOperatorTag() public {
+    function test_revert_invalidSellerTag() public {
         bytes32 newRoot = bytes32(uint256(0xB));
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
 
@@ -623,14 +623,14 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
 
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](1);
-        ops[0] = FigaroBatchVerifier.OperatorEventInput({
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](1);
+        ops[0] = FigaroBatchVerifier.SellerEventInput({
             tag: 3, // first unsupported tag past {Registered=1, ProfileUpdated=2}
-            operator: alice,
+            seller: alice,
             metadataURI: ""
         });
 
-        // The contract's `_hashOperatorEvents` rejects unknown tags up front,
+        // The contract's `_hashSellerEvents` rejects unknown tags up front,
         // so the call reverts there regardless of what opHash we submit.
         bytes32 posHash = _hashPositions(positions);
         bytes32 attHash = _hashAttestations(att);
@@ -641,7 +641,7 @@ contract FigaroBatchVerifierTest is Test {
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
         );
 
-        vm.expectRevert(abi.encodeWithSelector(FigaroBatchVerifier.InvalidOperatorTag.selector, uint8(3)));
+        vm.expectRevert(abi.encodeWithSelector(FigaroBatchVerifier.InvalidSellerTag.selector, uint8(3)));
         _settle(pv, positions, att, sch, mech, ops);
     }
 
@@ -668,21 +668,21 @@ contract FigaroBatchVerifierTest is Test {
             contentRef: bytes32(uint256(0x444))
         });
 
-        // One operator registration
+        // One seller registration
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
 
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](1);
-        ops[0] = FigaroBatchVerifier.OperatorEventInput({
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](1);
+        ops[0] = FigaroBatchVerifier.SellerEventInput({
             tag: 1,
-            operator: charlie,
+            seller: charlie,
             metadataURI: "ipfs://QmBar"
         });
 
         bytes32 posHash = _hashPositions(positions);
         bytes32 attHash = _hashAttestations(att);
         bytes32 schHash = _hashSchemas(sch, mech);
-        bytes32 opHash = _hashOperatorEvents(ops);
+        bytes32 opHash = _hashSellerEvents(ops);
 
         bytes memory pv = _encodePublicValues(
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
@@ -718,7 +718,7 @@ contract FigaroBatchVerifierTest is Test {
 
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](0);
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](0);
 
         // Use empty attestation hash (wrong)
         FigaroBatchVerifier.AttestationData[] memory emptyAtt = new FigaroBatchVerifier.AttestationData[](0);
@@ -731,7 +731,7 @@ contract FigaroBatchVerifierTest is Test {
             _hashPositions(positions),
             _hashAttestations(emptyAtt), // wrong hash
             _hashSchemas(sch, mech),
-            _hashOperatorEvents(ops)
+            _hashSellerEvents(ops)
         );
 
         vm.expectRevert(FigaroBatchVerifier.AttestationHashMismatch.selector);
@@ -758,7 +758,7 @@ contract FigaroBatchVerifierTest is Test {
             registrar: bob
         });
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](0);
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](0);
 
         // Use empty schema hash (wrong)
         FigaroBatchVerifier.SchemaData[] memory emptySch = new FigaroBatchVerifier.SchemaData[](0);
@@ -771,16 +771,16 @@ contract FigaroBatchVerifierTest is Test {
             _hashPositions(positions),
             _hashAttestations(att),
             _hashSchemas(emptySch, mech), // wrong hash
-            _hashOperatorEvents(ops)
+            _hashSellerEvents(ops)
         );
 
         vm.expectRevert(FigaroBatchVerifier.SchemaHashMismatch.selector);
         _settle(pv, positions, att, sch, mech, ops);
     }
 
-    // ── Operator hash mismatch revert ─────────────────────────────
+    // ── Seller hash mismatch revert ─────────────────────────────
 
-    function test_revert_operatorHashMismatch() public {
+    function test_revert_sellerHashMismatch() public {
         bytes32 newRoot = bytes32(uint256(0xF));
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
 
@@ -788,13 +788,13 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
 
-        // Submit operator data but use empty hash
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](1);
+        // Submit seller data but use empty hash
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](1);
         ops[0] =
-            FigaroBatchVerifier.OperatorEventInput({tag: 1, operator: alice, metadataURI: "ipfs://QmTest"});
+            FigaroBatchVerifier.SellerEventInput({tag: 1, seller: alice, metadataURI: "ipfs://QmTest"});
 
-        // Use empty operator hash (wrong)
-        FigaroBatchVerifier.OperatorEventInput[] memory emptyOps = new FigaroBatchVerifier.OperatorEventInput[](0);
+        // Use empty seller hash (wrong)
+        FigaroBatchVerifier.SellerEventInput[] memory emptyOps = new FigaroBatchVerifier.SellerEventInput[](0);
 
         bytes memory pv = _encodePublicValues(
             GENESIS_ROOT,
@@ -804,16 +804,16 @@ contract FigaroBatchVerifierTest is Test {
             _hashPositions(positions),
             _hashAttestations(att),
             _hashSchemas(sch, mech),
-            _hashOperatorEvents(emptyOps) // wrong hash
+            _hashSellerEvents(emptyOps) // wrong hash
         );
 
-        vm.expectRevert(FigaroBatchVerifier.OperatorHashMismatch.selector);
+        vm.expectRevert(FigaroBatchVerifier.SellerHashMismatch.selector);
         _settle(pv, positions, att, sch, mech, ops);
     }
 
-    // ── Operator updated event (tag 2) ────────────────────────────
+    // ── Seller updated event (tag 2) ────────────────────────────
 
-    function test_settleBatch_operatorProfileUpdatedEvent_distinctTopic() public {
+    function test_settleBatch_sellerProfileUpdatedEvent_distinctTopic() public {
         bytes32 newRoot = bytes32(uint256(0x10A));
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
 
@@ -821,24 +821,24 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
         FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
 
-        FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](1);
-        ops[0] = FigaroBatchVerifier.OperatorEventInput({
+        FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](1);
+        ops[0] = FigaroBatchVerifier.SellerEventInput({
             tag: 2, // ProfileUpdated
-            operator: alice,
+            seller: alice,
             metadataURI: "ipfs://QmUpdated"
         });
 
         bytes32 posHash = _hashPositions(positions);
         bytes32 attHash = _hashAttestations(att);
         bytes32 schHash = _hashSchemas(sch, mech);
-        bytes32 opHash = _hashOperatorEvents(ops);
+        bytes32 opHash = _hashSellerEvents(ops);
 
         bytes memory pv = _encodePublicValues(
             GENESIS_ROOT, newRoot, uint64(block.chainid), address(bv), posHash, attHash, schHash, opHash
         );
 
         vm.expectEmit(true, false, false, true);
-        emit FigaroBatchVerifier.OperatorProfileUpdated(alice, "ipfs://QmUpdated");
+        emit FigaroBatchVerifier.SellerProfileUpdated(alice, "ipfs://QmUpdated");
 
         _settle(pv, positions, att, sch, mech, ops);
     }
@@ -863,7 +863,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att,
             FigaroBatchVerifier.SchemaData[] memory sch,
             FigaroBatchVerifier.MechanismSchemaData[] memory mech,
-            FigaroBatchVerifier.OperatorEventInput[] memory ops
+            FigaroBatchVerifier.SellerEventInput[] memory ops
         ) = _buildBatch(newRoot, positions);
 
         vm.expectRevert(FigaroBatchVerifier.FeeOnTransferDetected.selector);
@@ -898,7 +898,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att,
             FigaroBatchVerifier.SchemaData[] memory sch,
             FigaroBatchVerifier.MechanismSchemaData[] memory mech,
-            FigaroBatchVerifier.OperatorEventInput[] memory ops
+            FigaroBatchVerifier.SellerEventInput[] memory ops
         ) = _buildBatch(newRoot, positions);
 
         vm.expectRevert();
@@ -923,7 +923,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att,
             FigaroBatchVerifier.SchemaData[] memory sch,
             FigaroBatchVerifier.MechanismSchemaData[] memory mech,
-            FigaroBatchVerifier.OperatorEventInput[] memory ops
+            FigaroBatchVerifier.SellerEventInput[] memory ops
         ) = _buildBatch(newRoot, positions);
 
         vm.expectRevert();
@@ -946,7 +946,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att,
             FigaroBatchVerifier.SchemaData[] memory sch,
             FigaroBatchVerifier.MechanismSchemaData[] memory mech,
-            FigaroBatchVerifier.OperatorEventInput[] memory ops
+            FigaroBatchVerifier.SellerEventInput[] memory ops
         ) = _buildBatch(newRoot, positions);
 
         // Alice revokes approval AFTER sequencer captured the proof but
@@ -974,7 +974,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.AttestationData[] memory att = new FigaroBatchVerifier.AttestationData[](0);
             FigaroBatchVerifier.SchemaData[] memory sch = new FigaroBatchVerifier.SchemaData[](0);
             FigaroBatchVerifier.MechanismSchemaData[] memory mech = new FigaroBatchVerifier.MechanismSchemaData[](0);
-            FigaroBatchVerifier.OperatorEventInput[] memory ops = new FigaroBatchVerifier.OperatorEventInput[](0);
+            FigaroBatchVerifier.SellerEventInput[] memory ops = new FigaroBatchVerifier.SellerEventInput[](0);
 
             bytes memory pv = _encodePublicValues(
                 prevRoot,
@@ -984,7 +984,7 @@ contract FigaroBatchVerifierTest is Test {
                 _hashPositions(empty),
                 _hashAttestations(att),
                 _hashSchemas(sch, mech),
-                _hashOperatorEvents(ops)
+                _hashSellerEvents(ops)
             );
             _settle(pv, empty, att, sch, mech, ops);
         }

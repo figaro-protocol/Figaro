@@ -89,7 +89,7 @@ fn empty_snapshot() -> KernelStateSnapshot {
         order_status: vec![],
         order_process_id: vec![],
         schemas_registered: vec![],
-        operators_registered: vec![],
+        sellers_registered: vec![],
     }
 }
 
@@ -231,18 +231,18 @@ async fn mempool_accepts_register_schema() {
 }
 
 #[tokio::test]
-async fn mempool_accepts_register_operator() {
+async fn mempool_accepts_register_seller() {
     let pool = Mempool::new(CHAIN_ID, CORE);
     let domain = domain_separator(CHAIN_ID, CORE);
     let key = make_signing_key(SELLER1_KEY);
 
-    let struct_hash = register_operator_struct_hash("ipfs://merchant-meta");
+    let struct_hash = register_seller_struct_hash("ipfs://merchant-meta");
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&key, &digest);
 
-    let op = KernelOp::RegisterOperator {
+    let op = KernelOp::RegisterSeller {
         metadata_uri: "ipfs://merchant-meta".to_string(),
-        operator_sig: sig,
+        seller_sig: sig,
     };
 
     let id = pool.submit(op).await.unwrap();

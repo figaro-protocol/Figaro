@@ -42,9 +42,9 @@ sol! {
             bytes32 schemaId;
         }
 
-        struct OperatorEventInputCall {
+        struct SellerEventInputCall {
             uint8 tag;
-            address operator;
+            address seller;
             string metadataURI;
         }
 
@@ -52,7 +52,7 @@ sol! {
             AttestationDataCall[] attestations;
             SchemaDataCall[] schemas;
             MechanismSchemaDataCall[] mechanismSchemas;
-            OperatorEventInputCall[] operatorEvents;
+            SellerEventInputCall[] sellerEvents;
         }
 
         function settleBatch(
@@ -140,22 +140,22 @@ pub async fn submit_batch(
         })
         .collect();
 
-    let operator_events: Vec<IFigaroBatchVerifier::OperatorEventInputCall> = result
+    let seller_events: Vec<IFigaroBatchVerifier::SellerEventInputCall> = result
         .events
-        .operators
+        .sellers
         .iter()
         .map(|o| match o {
-            OperatorEventData::Registered { operator, metadata_uri } => {
-                IFigaroBatchVerifier::OperatorEventInputCall {
+            SellerEventData::Registered { seller, metadata_uri } => {
+                IFigaroBatchVerifier::SellerEventInputCall {
                     tag: 1,
-                    operator: *operator,
+                    seller: *seller,
                     metadataURI: metadata_uri.clone(),
                 }
             }
-            OperatorEventData::ProfileUpdated { operator, metadata_uri } => {
-                IFigaroBatchVerifier::OperatorEventInputCall {
+            SellerEventData::ProfileUpdated { seller, metadata_uri } => {
+                IFigaroBatchVerifier::SellerEventInputCall {
                     tag: 2,
-                    operator: *operator,
+                    seller: *seller,
                     metadataURI: metadata_uri.clone(),
                 }
             }
@@ -166,7 +166,7 @@ pub async fn submit_batch(
         attestations,
         schemas,
         mechanismSchemas: mechanism_schemas,
-        operatorEvents: operator_events,
+        sellerEvents: seller_events,
     };
 
     let contract =

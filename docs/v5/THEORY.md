@@ -25,7 +25,7 @@ yields independently bonded edges that can't multi-party coordinate;
 buyer-dominance alone is worthless without the bonding equilibrium. Together,
 they make the mesh resolvable from a single signature with cooperation
 pressure propagating through it. The architecture makes trusted intermediaries
-— escrows, arbitrators, platform operators — structurally unnecessary.
+— escrows, arbitrators, platform sellers — structurally unnecessary.
 
 Enforcement operates across three layers: economic self-interest (bonding),
 social pressure among co-dependent sellers (atomic resolution as buyer

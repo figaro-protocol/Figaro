@@ -3,9 +3,9 @@
  *
  * Storage on `CatalogueItemMetadata.massGrams` / `volumeMl` is always
  * metric. These helpers do two jobs:
- *   - parse editor input in the operator's chosen unit system into
+ *   - parse editor input in the seller's chosen unit system into
  *     metric for storage (`parseInputToGrams`, `parseInputToMl`);
- *   - format stored metric values back to the operator's unit system
+ *   - format stored metric values back to the seller's unit system
  *     for display (`formatMass`, `formatVolume`).
  *
  * No conversion happens at storage. No conversion happens on-chain
@@ -13,7 +13,7 @@
  * Conversion is purely a UX edge.
  */
 
-import type { UnitSystem } from "@/lib/shared/operatorCatalogueMetadata";
+import type { UnitSystem } from "@/lib/shared/sellerCatalogueMetadata";
 
 // ── Conversion constants ─────────────────────────────────────────────────────
 
@@ -22,10 +22,10 @@ const GRAMS_PER_OUNCE = 28.349523125;
 /** 1 US fluid ounce = 29.5735295625 millilitres. */
 const ML_PER_FLOZ = 29.5735295625;
 
-// ── Editor input parsing (operator-typed string → metric number) ─────────────
+// ── Editor input parsing (seller-typed string → metric number) ─────────────
 
 /**
- * Parse a number the operator typed in the editor into grams. When the
+ * Parse a number the seller typed in the editor into grams. When the
  * catalogue's `unitSystem` is "imperial", the input is interpreted as
  * ounces. Returns `undefined` when the input is empty or not a finite
  * number; the caller treats undefined as "no mass on this item".
@@ -37,7 +37,7 @@ export function parseInputToGrams(input: string, system: UnitSystem): number | u
 }
 
 /**
- * Parse a number the operator typed in the editor into millilitres. When
+ * Parse a number the seller typed in the editor into millilitres. When
  * the catalogue's `unitSystem` is "imperial", the input is interpreted
  * as US fluid ounces. Returns `undefined` per `parseInputToGrams`.
  */
@@ -47,10 +47,10 @@ export function parseInputToMl(input: string, system: UnitSystem): number | unde
     return system === "imperial" ? value * ML_PER_FLOZ : value;
 }
 
-// ── Stored value → editor input (metric → operator's unit) ──────────────────
+// ── Stored value → editor input (metric → seller's unit) ──────────────────
 
 /**
- * Convert a stored gram value into a number the operator's editor can
+ * Convert a stored gram value into a number the seller's editor can
  * display. Returns "" for missing values so the input renders empty.
  * For imperial, returns ounces formatted to two decimals.
  */
@@ -63,7 +63,7 @@ export function gramsToInput(grams: number | undefined, system: UnitSystem): str
 }
 
 /**
- * Convert a stored ml value into a number the operator's editor can
+ * Convert a stored ml value into a number the seller's editor can
  * display. Returns "" for missing values. For imperial, returns US
  * fluid ounces formatted to two decimals.
  */

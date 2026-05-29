@@ -47,7 +47,7 @@ async fn guest_program_executes_full_batch_with_content_proof() {
     assert_ne!(pv.prev_state_root, pv.new_state_root, "state must advance");
     assert_ne!(pv.attestation_events_hash, B256::ZERO, "attestation events must be hashed");
     assert_ne!(pv.schema_events_hash, B256::ZERO, "schema events must be hashed");
-    assert_ne!(pv.operator_events_hash, B256::ZERO, "operator events must be hashed");
+    assert_ne!(pv.seller_events_hash, B256::ZERO, "seller events must be hashed");
 }
 
 #[tokio::test]
@@ -87,7 +87,7 @@ async fn guest_program_full_and_minimal_diverge_on_attestation_hash() {
     // — only the seller attestation's content_ref changes between modes.
     assert_eq!(full.new_state_root, minimal.new_state_root);
     assert_eq!(full.schema_events_hash, minimal.schema_events_hash);
-    assert_eq!(full.operator_events_hash, minimal.operator_events_hash);
+    assert_eq!(full.seller_events_hash, minimal.seller_events_hash);
 }
 
 #[tokio::test]

@@ -140,8 +140,8 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
         // The drawer's node-tab row surfaces all four orders (the per-node
         // authoring surface, not just the canvas). Each sub-order also gets a
         // DISTINCT counterparty-key schema so the checkout resolves its seller
-        // from the operator's counterpartyBindings; the root's seller is the
-        // browsed operator. The spread exercises the registry across one
+        // from the seller's counterpartyBindings; the root's seller is the
+        // browsed seller. The spread exercises the registry across one
         // assembly: commerce / fulfilment / geo / topology / arbitration on
         // every node, plus merchant-process (A), proximity (B + D), GHG (C).
         await page.getByTestId(`order-node-${a}`).click();

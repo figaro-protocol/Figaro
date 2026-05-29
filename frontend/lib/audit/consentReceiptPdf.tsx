@@ -187,7 +187,7 @@ export interface ConsentReceiptData {
     /** IPFS CID of the canonical document text (pinned alongside the receipt). */
     documentCid: string | null;
     /**
-     * Beta access code that links this signer to the operator's invitation
+     * Beta access code that links this signer to the seller's invitation
      * record. Embedded as a watermark + as the binding identifier in the
      * receipt body. May be null in dev environments.
      */

@@ -178,27 +178,27 @@ pub enum KernelOp {
         mechanism_sig: Signature,
     },
 
-    // ── OperatorRegistry ──────────────────────────────────────────
+    // ── SellerRegistry ──────────────────────────────────────────
 
-    /// Register a new operator. Batched equivalent of register().
+    /// Register a new seller. Batched equivalent of register().
     /// Role is not an on-chain field — a seller's role is whatever their
     /// catalogue (referenced by `metadata_uri`) declares through its archetype.
-    RegisterOperator {
+    RegisterSeller {
         metadata_uri: String,
-        /// EIP-712 authorization from the operator.
-        operator_sig: Signature,
+        /// EIP-712 authorization from the seller.
+        seller_sig: Signature,
     },
 
-    /// Update an operator's metadata URI. Batched equivalent of updateProfile().
-    /// Caller-only: only the registered operator may update its own profile.
+    /// Update an seller's metadata URI. Batched equivalent of updateProfile().
+    /// Caller-only: only the registered seller may update its own profile.
     /// The deposit and lock period are spam-protection knobs and are not
     /// disturbed; discovery indexers compute "current metadata URI" as the
-    /// most-recent OperatorRegistered or OperatorProfileUpdated event for
+    /// most-recent SellerRegistered or SellerProfileUpdated event for
     /// an address.
     UpdateProfile {
         metadata_uri: String,
-        /// EIP-712 authorization from the operator.
-        operator_sig: Signature,
+        /// EIP-712 authorization from the seller.
+        seller_sig: Signature,
     },
 }
 
@@ -213,11 +213,11 @@ pub struct KernelStateSnapshot {
     pub order_process_id: Vec<(B256, B256)>,
     /// SchemaRegistry: registered schemas (dedup guard).
     pub schemas_registered: Vec<(B256, bool)>,
-    /// OperatorRegistry: dedup guard per operator address. Lifecycle flags
-    /// removed (web2-strip 2026-04-26) — operator availability is
+    /// SellerRegistry: dedup guard per seller address. Lifecycle flags
+    /// removed (web2-strip 2026-04-26) — seller availability is
     /// signal-by-availability, not registry state. Role + metadata travel
-    /// in the OperatorRegistered event only.
-    pub operators_registered: Vec<(Address, bool)>,
+    /// in the SellerRegistered event only.
+    pub sellers_registered: Vec<(Address, bool)>,
 }
 
 // ── SP1 I/O types ─────────────────────────────────────────────────
@@ -248,8 +248,8 @@ pub struct PublicValues {
     pub attestation_events_hash: B256,
     /// Hash of schema events emitted in this batch.
     pub schema_events_hash: B256,
-    /// Hash of operator events emitted in this batch.
-    pub operator_events_hash: B256,
+    /// Hash of seller events emitted in this batch.
+    pub seller_events_hash: B256,
 }
 
 /// An attestation event proven by the batch. The on-chain verifier
@@ -281,23 +281,23 @@ pub struct MechanismSchemaEventData {
     pub schema_id: B256,
 }
 
-/// An operator registry event proven by the batch.
+/// An seller registry event proven by the batch.
 ///
 /// Two variants:
-///   - `Registered`     — first registration of an address (mirrors `OperatorRegistry.OperatorRegistered`).
-///   - `ProfileUpdated` — metadata URI replacement by a registered operator
-///     (mirrors `OperatorRegistry.OperatorProfileUpdated`).
+///   - `Registered`     — first registration of an address (mirrors `SellerRegistry.SellerRegistered`).
+///   - `ProfileUpdated` — metadata URI replacement by a registered seller
+///     (mirrors `SellerRegistry.SellerProfileUpdated`).
 ///
 /// Lifecycle flags (deactivate / reactivate) are signal-by-availability,
 /// not registry state.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum OperatorEventData {
+pub enum SellerEventData {
     Registered {
-        operator: Address,
+        seller: Address,
         metadata_uri: String,
     },
     ProfileUpdated {
-        operator: Address,
+        seller: Address,
         metadata_uri: String,
     },
 }
@@ -308,7 +308,7 @@ pub struct BatchEvents {
     pub attestations: Vec<AttestationEventData>,
     pub schemas: Vec<SchemaEventData>,
     pub mechanism_schemas: Vec<MechanismSchemaEventData>,
-    pub operators: Vec<OperatorEventData>,
+    pub sellers: Vec<SellerEventData>,
 }
 
 /// Net token position per (token, user) across the batch.
@@ -351,9 +351,9 @@ pub enum KernelError {
     // SchemaRegistry errors
     SchemaAlreadyRegistered(B256),
     SchemaNotRegistered(B256),
-    // OperatorRegistry errors
-    OperatorAlreadyRegistered,
-    OperatorNotRegistered,
+    // SellerRegistry errors
+    SellerAlreadyRegistered,
+    SellerNotRegistered,
     // Layer B (figaro-schema) gates on AttestationContentProof
     /// An attestation under a content-bearing protocol schema (one with an
     /// embedded spec) carried a non-zero `content_ref` but no

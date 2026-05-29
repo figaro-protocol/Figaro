@@ -1,7 +1,7 @@
 /**
  * useAssemblyRegistry — hooks for publishing designer-built assemblies
- * to the on-chain `AssemblyRegistry`. Parallel to `useOperatorRegistry`
- * (operators) and the schema-registry wiring (schemas) per the
+ * to the on-chain `AssemblyRegistry`. Parallel to `useSellerRegistry`
+ * (sellers) and the schema-registry wiring (schemas) per the
  * separation-of-concerns doctrine.
  *
  * Publish flow:
@@ -36,12 +36,12 @@ import {
 import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { useOperatorProfile } from "./useOperatorRegistry";
+import { useSellerProfile } from "./useSellerRegistry";
 import { resolveContentURI } from "@/lib/shared/sellerBranding";
 import {
-    tryParseOperatorProfileDocument,
+    tryParseSellerProfileDocument,
     type CounterpartyBinding,
-} from "@/lib/shared/operatorProfileMetadata";
+} from "@/lib/shared/sellerProfileMetadata";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 
 export const ASSEMBLY_REGISTRY_ABI = parseAbi([
@@ -325,10 +325,10 @@ export function collectAssemblySchemas(manifest: AssemblyManifest): string[] {
     return Array.from(set).sort();
 }
 
-/** Process schemas the operator must populate with counterparty wallets
+/** Process schemas the seller must populate with counterparty wallets
  *  when they bind to this assembly. Emitted only for non-root orders
  *  whose parent's fulfilment coordination includes `seller-assigned` —
- *  the case where the buyer may pick a fulfiller from the operator's
+ *  the case where the buyer may pick a fulfiller from the seller's
  *  roster at checkout. When the parent's coordination is exclusively
  *  `dutch-auction` (the auction contract assigns the fulfiller at
  *  runtime) or `buyer-assigned` (the buyer picks freely at checkout),
@@ -336,11 +336,11 @@ export function collectAssemblySchemas(manifest: AssemblyManifest): string[] {
  *
  *  Identifies the sub-order's process schema (e.g.
  *  `figaro-courier-process-v1`) directly — schemaId is the structural
- *  marker for which kind of off-chain operator a sub-order needs.
+ *  marker for which kind of off-chain seller a sub-order needs.
  *  Returns the set of distinct schemaIds, sorted.
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
- *  checkout, not designated by the operator's profile. */
+ *  checkout, not designated by the seller's profile. */
 export function requiredCounterpartySchemas(manifest: AssemblyManifest): string[] {
     const COUNTERPARTY_PROCESS_SCHEMAS: ReadonlySet<string> = new Set([
         "figaro-courier-process-v1",
@@ -441,7 +441,7 @@ export interface AssemblyChoice {
  *
  * Composes `usePublishedAssemblies` (event log) with a lazy per-row
  * manifest fetch. Both `PublishedList` (designer index) and the
- * operator-profile assembly picker consume this — keeping one fetch
+ * seller-profile assembly picker consume this — keeping one fetch
  * strategy and one enriched shape means they can't drift apart.
  */
 export function useAssemblyChoices(
@@ -537,9 +537,9 @@ export interface BoundAssembly {
      *  selection when this assembly is picked. `null` when the root
      *  fulfilment clause is absent or malformed. */
     fulfilmentMethod: CanonicalFulfilmentMethod | null;
-    /** The operator's designated counterparty wallets for this assembly,
+    /** The seller's designated counterparty wallets for this assembly,
      *  keyed by sub-order process schema (e.g. figaro-courier-process-v1).
-     *  Sourced from the operator profile's AssemblyBindingRecord —
+     *  Sourced from the seller profile's AssemblyBindingRecord —
      *  checkout reads it to fill a delegated order's seller. */
     counterpartyBindings: CounterpartyBinding[];
 }
@@ -547,13 +547,13 @@ export interface BoundAssembly {
 export interface SellerBoundAssemblies {
     /** The merchant's on-chain bound assemblies, manifests resolved —
      *  the buyer-facing choice set at checkout. Each bound assembly is
-     *  one option the operator offers; the buyer picks one. */
+     *  one option the seller offers; the buyer picks one. */
     assemblies: BoundAssembly[];
     /** Union of root-order fulfilment modalities across the bound
      *  assemblies. Derived from `assemblies` — kept for callers that
      *  only need the flat modality set. */
     modalities: string[];
-    /** True while either the operator-profile or the manifest fetches are in flight. */
+    /** True while either the seller-profile or the manifest fetches are in flight. */
     isLoading: boolean;
     /** True when at least one of the merchant's bindings matched a published assembly. */
     hasOnChainBinding: boolean;
@@ -585,7 +585,7 @@ function extractRootFulfilment(
 
 /**
  * Resolves a merchant's on-chain bound assemblies into the buyer-facing
- * choice set. Reads the merchant's operator profile (OperatorRegistry →
+ * choice set. Reads the merchant's seller profile (SellerRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with
  * the published assembly events, and fetches each matched manifest.
  *
@@ -597,7 +597,7 @@ function extractRootFulfilment(
 export function useSellerBoundAssemblies(
     sellerAddress: `0x${string}` | undefined,
 ): SellerBoundAssemblies {
-    const { data: registryData, isLoading: registryLoading } = useOperatorProfile(sellerAddress);
+    const { data: registryData, isLoading: registryLoading } = useSellerProfile(sellerAddress);
     const { data: publishedEvents, isLoading: eventsLoading } = useAllPublishedAssemblies();
     const [result, setResult] = useState<SellerBoundAssemblies>({
         assemblies: [],
@@ -633,9 +633,9 @@ export function useSellerBoundAssemblies(
         (async () => {
             try {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error("operator profile fetch failed");
+                if (!response.ok) throw new Error("seller profile fetch failed");
                 const doc = await response.json();
-                const profile = tryParseOperatorProfileDocument(doc);
+                const profile = tryParseSellerProfileDocument(doc);
                 if (cancelled) return;
                 if (!profile?.assemblyBindings || profile.assemblyBindings.length === 0) {
                     setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });

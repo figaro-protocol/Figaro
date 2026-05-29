@@ -56,16 +56,16 @@ for file in "$@"; do
     esac
 
     # A. Route surface
-    hits=$(grep -nE '/m/\[|\[merchant\]|\[courier\]' "$file" || true)
-    [[ -n "$hits" ]] && report "party route (use /s/[seller])" "$file" "$hits"
+    hits=$(grep -nE '/m/\[|\[merchant\]|\[courier\]|\[operator\]|/operators' "$file" || true)
+    [[ -n "$hits" ]] && report "party route (use /s/[seller] or /sellers)" "$file" "$hits"
 
-    # B. Declaration / hook named Merchant*/Courier* (minus schema-bound surface)
-    hits=$(grep -nE '\b(function|const|let|var|interface|type|class)[[:space:]]+(Merchant|Courier)[A-Za-z0-9_]*|\buse(Merchant|Courier)[A-Za-z0-9_]*' "$file" \
+    # B. Declaration / hook named Merchant*/Courier*/Operator* (minus schema-bound surface)
+    hits=$(grep -nE '\b(function|const|let|var|interface|type|class)[[:space:]]+(Merchant|Courier|Operator)[A-Za-z0-9_]*|\buse(Merchant|Courier|Operator)[A-Za-z0-9_]*' "$file" \
         | grep -vE "$ALLOW" || true)
     [[ -n "$hits" ]] && report "party-named declaration/hook (rename to Seller*)" "$file" "$hits"
 
     # C. Test-id carrying a party term (minus schema-bound surface)
-    hits=$(grep -nE 'data-testid="[^"]*(merchant|courier)[^"]*"' "$file" \
+    hits=$(grep -nE 'data-testid="[^"]*(merchant|courier|operator)[^"]*"' "$file" \
         | grep -vE "$ALLOW" || true)
     [[ -n "$hits" ]] && report "party test-id (use seller-*)" "$file" "$hits"
 done

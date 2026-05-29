@@ -71,7 +71,7 @@ contract BatchGasBoundaryTest is Test {
             attestations: new FigaroBatchVerifier.AttestationData[](0),
             schemas: new FigaroBatchVerifier.SchemaData[](0),
             mechanismSchemas: new FigaroBatchVerifier.MechanismSchemaData[](0),
-            operatorEvents: new FigaroBatchVerifier.OperatorEventInput[](0)
+            sellerEvents: new FigaroBatchVerifier.SellerEventInput[](0)
         });
 
         bytes memory data = abi.encodeCall(bv.settleBatch, (hex"", pv, positions, events));

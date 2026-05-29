@@ -23,7 +23,7 @@ import { useFigaroActions, Commitment } from "@/lib/core/useFigaroActions";
 import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { getE2EModeFromSearchParams } from "@/lib/shared/e2e";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
-import { isValidAddress } from "@/components/operators/TokenAddressInput";
+import { isValidAddress } from "@/components/sellers/TokenAddressInput";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { saveCommitment, computeOrderHash } from "@/lib/core/commitmentStore";
 import type { Agreement } from "@/lib/core/agreementManifest";

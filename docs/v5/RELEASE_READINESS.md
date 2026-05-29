@@ -55,19 +55,19 @@ Required output:
 
 ### Task 3: Resolve Mainnet Registry Parameters
 
-`script/DeployMainnet.s.sol:184` instantiates `OperatorRegistry(0.001 ether, 365 days)` — the devnet defaults — with an explicit "PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW" comment at lines 168-183. The deposit + lock pair is the Sybil-resistance knob (see `src/OperatorRegistry.sol:38-46` NatSpec).
+`script/DeployMainnet.s.sol:184` instantiates `SellerRegistry(0.001 ether, 365 days)` — the devnet defaults — with an explicit "PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW" comment at lines 168-183. The deposit + lock pair is the Sybil-resistance knob (see `src/SellerRegistry.sol:38-46` NatSpec).
 
 Required output:
 
-1. mainnet `registrationDeposit` chosen against an explicit deploy-time ETH/USD anchor — bonded-participation cost is the floor of attacker discouragement; too low enables cheap Sybil farms, too high locks out small operators
+1. mainnet `registrationDeposit` chosen against an explicit deploy-time ETH/USD anchor — bonded-participation cost is the floor of attacker discouragement; too low enables cheap Sybil farms, too high locks out small sellers
 2. mainnet `depositLockPeriod` chosen against an explicit Sybil-recycling-cost reasoning — long enough that "1 ETH = N identities over time" recycling is uneconomic relative to honest participation, short enough that legitimate exit stays practical
 3. reasoning recorded inline in `DeployMainnet.s.sol` at the constructor call site
 4. PLACEHOLDER comment removed from the script
-5. same exercise repeated for `AssemblyRegistry` if Task 4 lands a mainnet deployment for it (the asymmetry — slug binding is permanent on `AssemblyRegistry`, dedup guard clears on `OperatorRegistry` withdraw — should be reflected in the lock-period choice)
+5. same exercise repeated for `AssemblyRegistry` if Task 4 lands a mainnet deployment for it (the asymmetry — slug binding is permanent on `AssemblyRegistry`, dedup guard clears on `SellerRegistry` withdraw — should be reflected in the lock-period choice)
 
 ### Task 4: AssemblyRegistry Mainnet-Parity Decision
 
-`src/AssemblyRegistry.sol` exists and is deployed by `script/Deploy.s.sol:167` (devnet), but `script/DeployMainnet.s.sol` does not import or deploy it. The CLAUDE.md doctrine and the separation-of-concerns rule treat `AssemblyRegistry` as a protocol-tier artifact-family anchor parallel to `SchemaRegistry` / `OperatorRegistry`. The devnet/mainnet asymmetry is currently undocumented.
+`src/AssemblyRegistry.sol` exists and is deployed by `script/Deploy.s.sol:167` (devnet), but `script/DeployMainnet.s.sol` does not import or deploy it. The CLAUDE.md doctrine and the separation-of-concerns rule treat `AssemblyRegistry` as a protocol-tier artifact-family anchor parallel to `SchemaRegistry` / `SellerRegistry`. The devnet/mainnet asymmetry is currently undocumented.
 
 Required output (one of):
 
@@ -187,13 +187,13 @@ external-audit gates above:
 - `FigToken.deployer` == the expected deployer EOA; `FigToken.deployerMintRenounced` == `true` after minter setup; `FigToken.totalSupply()` == the expected genesis allocation; every registered minter is an intended allocation contract.
 - `AttestationCoordinator.core` == the deployed `FigaroCore` address.
 - `FigaroBatchVerifier.verifier` == the real SP1 verifier gateway (never `MockSP1Verifier`); `FigaroBatchVerifier.stateRoot` == the expected genesis root; `FigaroBatchVerifier.programVKey` == the correct program verification key.
-- `OperatorRegistry.registrationDeposit` and `OperatorRegistry.depositLockPeriod` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `365 days` placeholders).
+- `SellerRegistry.registrationDeposit` and `SellerRegistry.depositLockPeriod` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `365 days` placeholders).
 - `AssemblyRegistry.registrationDeposit` and `AssemblyRegistry.depositLockPeriod` == the mainnet values picked per Task 3 — if Task 4 disposition (1) is taken. If disposition (2) is taken, `AssemblyRegistry` is not deployed and this check does not apply.
 - All settlement tokens are non-rebasing and non-fee-on-transfer.
 
 ## Freeze Notice — Solidity Surface Frozen for External Audit
 
-**Initial freeze**: 2026-04-20. Subsequent amendments landed a pre-audit findings batch (FIG allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `OperatorRegistry` surface (dropped `role` from `register` + `OperatorRegistered`, added `updateProfile`, removed `OperatorRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.OperatorEventInput`); expanded the frozen-scope declaration to add `ISchemaValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). Amendment history is in `git log`; current frozen scope is below.
+**Initial freeze**: 2026-04-20. Subsequent amendments landed a pre-audit findings batch (FIG allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `SellerRegistry` surface (dropped `role` from `register` + `SellerRegistered`, added `updateProfile`, removed `SellerRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.SellerEventInput`); expanded the frozen-scope declaration to add `ISchemaValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). Amendment history is in `git log`; current frozen scope is below.
 
 The following Solidity surface is declared frozen for external audit.
 No feature changes, refactors, or dependency upgrades will be made to
@@ -204,7 +204,7 @@ narrow follow-up review or a repeat audit decision.
 
 | Directory / file | Contents |
 |---|---|
-| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `ISchemaValidator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `DutchAuction.sol`, `OperatorRegistry.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`, `FigaroBatchVerifier.sol` |
+| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `ISchemaValidator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `DutchAuction.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`, `FigaroBatchVerifier.sol` |
 | `src/fig/` | `FigToken.sol`, `RpgfMinter.sol`, `IFigMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |

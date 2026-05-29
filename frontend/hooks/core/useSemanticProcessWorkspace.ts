@@ -14,7 +14,7 @@ import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import { useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { useGhgDisclosureActions } from "@/lib/mechanisms/useGHGDisclosure";
-import { useRegisterOperator, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/mechanisms/useOperatorRegistry";
+import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/mechanisms/useSellerRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
@@ -61,9 +61,9 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const merchantProcessActions = useMerchantProcessActions();
     const courierProcessActions = useCourierProcessActions();
     const dutchAuctionActions = useDutchAuctionActions();
-    const registerOperator = useRegisterOperator();
-    const updateOperatorProfile = useUpdateProfile();
-    const withdrawOperatorDeposit = useWithdrawDeposit();
+    const registerSeller = useRegisterSeller();
+    const updateSellerProfile = useUpdateProfile();
+    const withdrawSellerDeposit = useWithdrawDeposit();
     const registrationDeposit = useRegistrationDeposit();
     const ghgDisclosureActions = useGhgDisclosureActions();
     const {
@@ -82,26 +82,26 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         || merchantProcessActions.isPending
         || courierProcessActions.isPending
         || dutchAuctionActions.isPending
-        || registerOperator.isPending
-        || updateOperatorProfile.isPending
-        || withdrawOperatorDeposit.isPending
+        || registerSeller.isPending
+        || updateSellerProfile.isPending
+        || withdrawSellerDeposit.isPending
         || ghgDisclosureActions.isPending;
     const isActionConfirming = isConfirming
         || merchantProcessActions.isConfirming
         || courierProcessActions.isConfirming
         || dutchAuctionActions.isConfirming
-        || registerOperator.isConfirming
-        || updateOperatorProfile.isConfirming
-        || withdrawOperatorDeposit.isConfirming
+        || registerSeller.isConfirming
+        || updateSellerProfile.isConfirming
+        || withdrawSellerDeposit.isConfirming
         || ghgDisclosureActions.isConfirming;
     const isActionSuccess = isSuccess
         || mockIsSuccess
         || merchantProcessActions.isSuccess
         || courierProcessActions.isSuccess
         || dutchAuctionActions.isSuccess
-        || registerOperator.isSuccess
-        || updateOperatorProfile.isSuccess
-        || withdrawOperatorDeposit.isSuccess
+        || registerSeller.isSuccess
+        || updateSellerProfile.isSuccess
+        || withdrawSellerDeposit.isSuccess
         || ghgDisclosureActions.isSuccess;
 
     const selectedSummary = walletProcesses.find((summary) => summary.processId === effectiveProcessId) ?? null;
@@ -218,9 +218,9 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
             await executeTransactionCapabilityAction(action, {
                 waitForTransactionConfirmation,
                 resolveProcess: resolveActiveProcess,
-                registerOperator: (metadataURI) => registerOperator.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
-                updateOperatorProfile: (metadataURI) => updateOperatorProfile.updateProfile(metadataURI),
-                withdrawOperatorDeposit: () => withdrawOperatorDeposit.withdraw(),
+                registerSeller: (metadataURI) => registerSeller.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
+                updateSellerProfile: (metadataURI) => updateSellerProfile.updateProfile(metadataURI),
+                withdrawSellerDeposit: () => withdrawSellerDeposit.withdraw(),
                 submitDisclosureCommitment: ghgDisclosureActions.submitCommitmentForOrder,
                 submitDisclosureInventory: ghgDisclosureActions.submitActualForOrder,
                 submitMerchantProcessSignal: (orderHash, eventType, roleOrderHash) =>

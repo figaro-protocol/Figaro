@@ -4,20 +4,20 @@
  * SellerCataloguePicker — the delivery-seller selection step at checkout.
  *
  * A local-commerce delivery is a seller order (buyer↔seller) priced from
- * the seller's own operator catalogue. Two coordination modes, one
+ * the seller's own seller catalogue. Two coordination modes, one
  * mechanism — they differ only in how the seller's address is obtained:
  *
  *   - seller-assigned — the buyer picks from the merchant's partner list
  *     (`counterpartyBindings`).
- *   - buyer-assigned  — the buyer enters any operator's address.
+ *   - buyer-assigned  — the buyer enters any seller's address.
  *
- * Either way: the address resolves the operator's catalogue, the buyer
+ * Either way: the address resolves the seller's catalogue, the buyer
  * selects a delivery item from its price list, and a `buyer-set` item
  * (no fixed price) surfaces a token-amount input.
  *
- * Catalogues come from `useRegisteredCatalogues` — the discovered operator
- * set. Any operator that publishes a delivery service is a registered
- * operator, so an address outside that set has no catalogue to show.
+ * Catalogues come from `useRegisteredCatalogues` — the discovered seller
+ * set. Any seller that publishes a delivery service is a registered
+ * seller, so an address outside that set has no catalogue to show.
  *
  * Reports the completed selection up via `onSelect`; reports `null` while
  * the selection is incomplete.
@@ -26,14 +26,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { isAddress } from "viem";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
-import { resolveCatalogueItemPrice } from "@/lib/shared/operatorCatalogueMetadata";
+import { resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata";
 import type { CatalogueItem } from "@/lib/seller/types";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export interface SellerSelection {
     seller: `0x${string}`;
-    /** The chosen delivery item from the seller's operator catalogue. */
+    /** The chosen delivery item from the seller's seller catalogue. */
     item: CatalogueItem;
     /** The effective price — the resolved catalogue figure, or the
      *  buyer-entered amount for a `buyer-set` item. */
@@ -62,11 +62,11 @@ export function SellerCataloguePicker({ mode, partnerAddresses, sellerAddress, t
     const [buyerSetPrice, setBuyerSetPrice] = useState("");
 
     const validSeller = isAddress(selectedSellerAddress) ? (selectedSellerAddress as `0x${string}`) : undefined;
-    const { catalogues: operatorCatalogues, isLoading } = useRegisteredCatalogues();
+    const { catalogues: sellerCatalogues, isLoading } = useRegisteredCatalogues();
 
     const sellerCatalogue = useMemo(
-        () => (validSeller ? operatorCatalogues.find((c) => hexEqual(c.address, validSeller)) : undefined),
-        [validSeller, operatorCatalogues],
+        () => (validSeller ? sellerCatalogues.find((c) => hexEqual(c.address, validSeller)) : undefined),
+        [validSeller, sellerCatalogues],
     );
     const deliveryItems = useMemo(
         () => (sellerCatalogue?.menu ?? []).filter((i) => i.category === "delivery"),
@@ -95,7 +95,7 @@ export function SellerCataloguePicker({ mode, partnerAddresses, sellerAddress, t
     }, [validSeller, selectedItem, resolved, isBuyerSet, buyerSetPrice, onSelect]);
 
     const sellerLabel = (addr: string) =>
-        operatorCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
+        sellerCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
 
     const resetItem = () => { setSelectedItemId(""); setBuyerSetPrice(""); };
 
@@ -123,7 +123,7 @@ export function SellerCataloguePicker({ mode, partnerAddresses, sellerAddress, t
                     type="text"
                     value={selectedSellerAddress}
                     onChange={(e) => { setSelectedSellerAddress(e.target.value); resetItem(); }}
-                    placeholder="0x… — any operator's address"
+                    placeholder="0x… — any seller's address"
                     data-testid="input-seller-address"
                     className={FIELD}
                 />
@@ -135,7 +135,7 @@ export function SellerCataloguePicker({ mode, partnerAddresses, sellerAddress, t
             )}
             {validSeller && !isLoading && deliveryItems.length === 0 && (
                 <p className="text-xs text-neutral-500" data-testid="seller-no-delivery">
-                    This operator publishes no delivery service.
+                    This seller publishes no delivery service.
                 </p>
             )}
             {deliveryItems.length > 0 && (

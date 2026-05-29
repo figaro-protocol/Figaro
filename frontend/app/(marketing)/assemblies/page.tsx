@@ -20,7 +20,7 @@ export default function Assemblies() {
                         An assembly is a composition template &mdash; a manifest that
                         wires schemas into a multi-order process. Each one registers on{" "}
                         <code>AssemblyRegistry</code> with a permanent slug, a content
-                        hash, and an IPFS pointer to its manifest. Operators bind to
+                        hash, and an IPFS pointer to its manifest. Sellers bind to
                         assemblies in their profile; checkout reads those bindings to
                         surface the buyer-facing choice.
                     </>
@@ -33,7 +33,7 @@ export default function Assemblies() {
                     IPFS URI pointing at the off-chain manifest. The manifest carries the
                     topology &mdash; the orders and their parent-child links &mdash; plus
                     the per-order agreements (which schemas attach, and the field values
-                    that compose into each agreement hash). Anything an operator offers
+                    that compose into each agreement hash). Anything an seller offers
                     at checkout composes through assemblies.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed">

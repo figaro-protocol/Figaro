@@ -32,7 +32,7 @@ import {
     EV_AUCTION_CLAIMED,
 } from "@figaro/core";
 
-// ── OperatorRegistry events ──────────────────────────────────────────────────
+// ── SellerRegistry events ──────────────────────────────────────────────────
 
 /** Event signature for RpgfMinter.Claimed (same shape as the legacy
  *  StagedMerkleAirdrop.Claimed it replaced). */
@@ -40,20 +40,20 @@ const EV_RPGF_MINTER_CLAIMED = parseAbiItem(
     "event Claimed(uint8 indexed stageIndex, address indexed account, uint256 amount)",
 );
 
-// Three operator-registry events survive: registration, profile update, and
+// Three seller-registry events survive: registration, profile update, and
 // withdrawal. Lifecycle flags (deactivate/reactivate) and on-chain role
-// tracking remain stripped — operator availability is signal-by-availability,
+// tracking remain stripped — seller availability is signal-by-availability,
 // and there is no categorization field at any layer (no archetype, no role,
 // no serviceType). What an address does is reconstructed from the events
 // it has emitted (registrations, schema attestations, signed commitments).
-const EV_OPERATOR_REGISTERED = parseAbiItem(
-    "event OperatorRegistered(address indexed operator, string metadataURI)",
+const EV_SELLER_REGISTERED = parseAbiItem(
+    "event SellerRegistered(address indexed seller, string metadataURI)",
 );
-const EV_OPERATOR_PROFILE_UPDATED = parseAbiItem(
-    "event OperatorProfileUpdated(address indexed operator, string metadataURI)",
+const EV_SELLER_PROFILE_UPDATED = parseAbiItem(
+    "event SellerProfileUpdated(address indexed seller, string metadataURI)",
 );
-const EV_OPERATOR_WITHDRAWN = parseAbiItem(
-    "event OperatorWithdrawn(address indexed operator, uint256 deposit)",
+const EV_SELLER_WITHDRAWN = parseAbiItem(
+    "event SellerWithdrawn(address indexed seller, uint256 deposit)",
 );
 
 type IndexedLog = Awaited<ReturnType<typeof cachedGetLogs>>[number];
@@ -228,48 +228,48 @@ export async function getAttestationsByProcessAndSchema(
 }
 
 // ---------------------------------------------------------------------------
-// OperatorRegistry event fetchers
+// SellerRegistry event fetchers
 // ---------------------------------------------------------------------------
 
-export async function getAllOperatorRegistered(client: PublicClient, chainId: number) {
-    if (!MECHANISM_CONTRACTS.operatorRegistry && !CONTRACTS.batchVerifier) return [];
+export async function getAllSellerRegistered(client: PublicClient, chainId: number) {
+    if (!MECHANISM_CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
     return cachedGetLogsMulti(client, chainId,
-        [MECHANISM_CONTRACTS.operatorRegistry, CONTRACTS.batchVerifier],
-        { event: EV_OPERATOR_REGISTERED, eventName: "OperatorRegistered" },
+        [MECHANISM_CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
+        { event: EV_SELLER_REGISTERED, eventName: "SellerRegistered" },
     );
 }
 
-export async function getAllOperatorProfileUpdated(client: PublicClient, chainId: number) {
-    if (!MECHANISM_CONTRACTS.operatorRegistry && !CONTRACTS.batchVerifier) return [];
+export async function getAllSellerProfileUpdated(client: PublicClient, chainId: number) {
+    if (!MECHANISM_CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
     return cachedGetLogsMulti(client, chainId,
-        [MECHANISM_CONTRACTS.operatorRegistry, CONTRACTS.batchVerifier],
-        { event: EV_OPERATOR_PROFILE_UPDATED, eventName: "OperatorProfileUpdated" },
+        [MECHANISM_CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
+        { event: EV_SELLER_PROFILE_UPDATED, eventName: "SellerProfileUpdated" },
     );
 }
 
-export async function getAllOperatorWithdrawn(client: PublicClient, chainId: number) {
-    if (!MECHANISM_CONTRACTS.operatorRegistry && !CONTRACTS.batchVerifier) return [];
+export async function getAllSellerWithdrawn(client: PublicClient, chainId: number) {
+    if (!MECHANISM_CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
     return cachedGetLogsMulti(client, chainId,
-        [MECHANISM_CONTRACTS.operatorRegistry, CONTRACTS.batchVerifier],
-        { event: EV_OPERATOR_WITHDRAWN, eventName: "OperatorWithdrawn" },
+        [MECHANISM_CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
+        { event: EV_SELLER_WITHDRAWN, eventName: "SellerWithdrawn" },
     );
 }
 
 /**
- * Derive the current operator roster: latest metadataURI per address,
+ * Derive the current seller roster: latest metadataURI per address,
  * filtered to only those currently registered (Registered minus Withdrawn).
  *
- * "Current metadataURI" is the most recent OperatorRegistered or
- * OperatorProfileUpdated event for an address, provided no Withdrawn
+ * "Current metadataURI" is the most recent SellerRegistered or
+ * SellerProfileUpdated event for an address, provided no Withdrawn
  * event sits at or after the registration block (withdraw clears the
  * dedup guard, voiding any subsequent profile updates from a stale
  * registration).
  */
-export async function getActiveOperators(client: PublicClient, chainId: number) {
+export async function getActiveSellers(client: PublicClient, chainId: number) {
     const [registered, profileUpdated, withdrawn] = await Promise.all([
-        getAllOperatorRegistered(client, chainId),
-        getAllOperatorProfileUpdated(client, chainId),
-        getAllOperatorWithdrawn(client, chainId),
+        getAllSellerRegistered(client, chainId),
+        getAllSellerProfileUpdated(client, chainId),
+        getAllSellerWithdrawn(client, chainId),
     ]);
 
     function toBlockBigInt(log: IndexedLog): bigint {
@@ -282,7 +282,7 @@ export async function getActiveOperators(client: PublicClient, chainId: number) 
     // Latest withdraw block per address (re-registration after withdraw is allowed)
     const latestWithdraw = new Map<string, bigint>();
     for (const log of withdrawn) {
-        const addr = getStringArg(log, "operator")?.toLowerCase();
+        const addr = getStringArg(log, "seller")?.toLowerCase();
         if (!addr) continue;
         const block = toBlockBigInt(log);
         const prev = latestWithdraw.get(addr) ?? 0n;
@@ -290,16 +290,16 @@ export async function getActiveOperators(client: PublicClient, chainId: number) 
     }
 
     // Latest Registered event per address that survives Withdrawn.
-    const operators = new Map<string, { metadataURI: string; registeredBlock: bigint; latestBlock: bigint }>();
+    const sellers = new Map<string, { metadataURI: string; registeredBlock: bigint; latestBlock: bigint }>();
     for (const log of registered) {
-        const addr = getStringArg(log, "operator")?.toLowerCase();
+        const addr = getStringArg(log, "seller")?.toLowerCase();
         if (!addr) continue;
         const block = toBlockBigInt(log);
         const withdrawnAfter = (latestWithdraw.get(addr) ?? 0n) >= block;
         if (withdrawnAfter) continue;
-        const prev = operators.get(addr);
+        const prev = sellers.get(addr);
         if (!prev || block > prev.registeredBlock) {
-            operators.set(addr, {
+            sellers.set(addr, {
                 metadataURI: getStringArg(log, "metadataURI") ?? "",
                 registeredBlock: block,
                 latestBlock: block,
@@ -309,9 +309,9 @@ export async function getActiveOperators(client: PublicClient, chainId: number) 
 
     // Apply ProfileUpdated events that post-date the surviving Registered event.
     for (const log of profileUpdated) {
-        const addr = getStringArg(log, "operator")?.toLowerCase();
+        const addr = getStringArg(log, "seller")?.toLowerCase();
         if (!addr) continue;
-        const entry = operators.get(addr);
+        const entry = sellers.get(addr);
         if (!entry) continue;
         const block = toBlockBigInt(log);
         if (block < entry.registeredBlock) continue;
@@ -321,41 +321,41 @@ export async function getActiveOperators(client: PublicClient, chainId: number) 
         }
     }
 
-    return Array.from(operators.entries()).map(([address, op]) => ({
+    return Array.from(sellers.entries()).map(([address, op]) => ({
         address,
         metadataURI: op.metadataURI,
     }));
 }
 
 /**
- * Get the latest metadataURI for a specific operator address.
+ * Get the latest metadataURI for a specific seller address.
  * Returns null if not currently registered (never registered, or withdrawn
  * after most recent registration).
  */
-export async function getOperatorMetadataURI(client: PublicClient, chainId: number, operator: string) {
-    const active = await getActiveOperators(client, chainId);
-    const lc = operator.toLowerCase();
+export async function getSellerMetadataURI(client: PublicClient, chainId: number, seller: string) {
+    const active = await getActiveSellers(client, chainId);
+    const lc = seller.toLowerCase();
     const match = active.find((op) => op.address === lc);
     return match?.metadataURI ?? null;
 }
 
 /**
- * Full state for a single operator, derived from events.
- * Returns null if the operator has never registered or has withdrawn after
+ * Full state for a single seller, derived from events.
+ * Returns null if the seller has never registered or has withdrawn after
  * the most recent registration. `registeredBlock` backs the deposit lock-
  * expiry computation; `metadataURI` is the most recent value carried by
  * either the surviving Registered event or any subsequent ProfileUpdated.
  */
-export async function getOperatorState(
+export async function getSellerState(
     client: PublicClient,
     chainId: number,
-    operator: string,
+    seller: string,
 ): Promise<{ metadataURI: string; registeredBlock: bigint | null } | null> {
 
     const [registered, profileUpdated, withdrawn] = await Promise.all([
-        getAllOperatorRegistered(client, chainId),
-        getAllOperatorProfileUpdated(client, chainId),
-        getAllOperatorWithdrawn(client, chainId),
+        getAllSellerRegistered(client, chainId),
+        getAllSellerProfileUpdated(client, chainId),
+        getAllSellerWithdrawn(client, chainId),
     ]);
 
     function toBlockBigInt(log: IndexedLog): bigint {
@@ -372,7 +372,7 @@ export async function getOperatorState(
     let regLog: IndexedLog | undefined;
     let regBlock = 0n;
     for (const log of registered) {
-        if (!hexEqual(getStringArg(log, "operator"), operator)) continue;
+        if (!hexEqual(getStringArg(log, "seller"), seller)) continue;
         const b = toBlockBigInt(log);
         if (!regLog || b > regBlock) {
             regBlock = b;
@@ -382,14 +382,14 @@ export async function getOperatorState(
     if (!regLog) return null;
 
     // If a Withdrawn event exists at or after the most recent Registered,
-    // the operator has cleared the dedup guard and is no longer current.
+    // the seller has cleared the dedup guard and is no longer current.
     // Only enforce the comparison when at least one withdraw exists for this
-    // operator — otherwise a registration with blockNumber=null (regBlock=0n)
+    // seller — otherwise a registration with blockNumber=null (regBlock=0n)
     // would spuriously look "withdrawn" against a default lastWithdrawBlock.
-    const operatorWithdraws = withdrawn
-        .filter((log) => hexEqual(getStringArg(log, "operator"), operator));
-    if (operatorWithdraws.length > 0) {
-        const lastWithdrawBlock = operatorWithdraws
+    const sellerWithdraws = withdrawn
+        .filter((log) => hexEqual(getStringArg(log, "seller"), seller));
+    if (sellerWithdraws.length > 0) {
+        const lastWithdrawBlock = sellerWithdraws
             .map(toBlockBigInt)
             .reduce((max, b) => (b > max ? b : max), 0n);
         if (lastWithdrawBlock >= regBlock) return null;
@@ -400,7 +400,7 @@ export async function getOperatorState(
     let metadataURI = getStringArg(regLog, "metadataURI") ?? "";
     let metadataBlock = regBlock;
     for (const log of profileUpdated) {
-        if (!hexEqual(getStringArg(log, "operator"), operator)) continue;
+        if (!hexEqual(getStringArg(log, "seller"), seller)) continue;
         const b = toBlockBigInt(log);
         if (b < regBlock) continue;
         if (b > metadataBlock) {
@@ -447,49 +447,49 @@ export async function getRpgfMinterClaimStatus(
 }
 
 // ---------------------------------------------------------------------------
-// Operator track record — public-graph-derived activity
+// Seller track record — public-graph-derived activity
 // ---------------------------------------------------------------------------
 
-/** Value an operator transacted as a seller, summed per currency. */
+/** Value an seller transacted as a seller, summed per currency. */
 export interface TrackRecordValue {
     currency: string;
     total: bigint;
 }
 
-/** Attestations an operator emitted, grouped by schemaId. */
+/** Attestations an seller emitted, grouped by schemaId. */
 export interface TrackRecordAttestations {
     schemaId: string;
     count: number;
 }
 
 /**
- * An operator's public-graph track record — every indicator reconstructed
+ * An seller's public-graph track record — every indicator reconstructed
  * from on-chain events, recomputable by anyone. This is NOT a stored or
  * soulbound score; it is the raw settlement/coordination history the public
  * graph exposes (PUBLIC_GRAPH_MODEL.md §"Reputation derivation").
  */
-export interface OperatorTrackRecord {
-    /** Block of the operator's first OperatorRegistered; null if never registered. */
+export interface SellerTrackRecord {
+    /** Block of the seller's first SellerRegistered; null if never registered. */
     operatingSinceBlock: bigint | null;
     /** Unix-seconds timestamp of that block; null if unavailable. */
     operatingSinceTimestamp: bigint | null;
-    /** Processes the operator participated in that have resolved. */
+    /** Processes the seller participated in that have resolved. */
     completedProcesses: number;
-    /** Processes the operator participated in still open. */
+    /** Processes the seller participated in still open. */
     activeProcesses: number;
-    /** Orders committed with the operator as seller (merchant or courier). */
+    /** Orders committed with the seller as seller (merchant or courier). */
     ordersSold: number;
-    /** Orders committed with the operator as buyer. */
+    /** Orders committed with the seller as buyer. */
     ordersBought: number;
     /** Value transacted as seller — summed payment, per currency. */
     valueTransacted: TrackRecordValue[];
-    /** Distinct buyers the operator has sold to. */
+    /** Distinct buyers the seller has sold to. */
     buyersServed: number;
-    /** Distinct sellers the operator has bought from. */
+    /** Distinct sellers the seller has bought from. */
     sellersUsed: number;
-    /** Dutch-auction jobs the operator claimed (a courier signal). */
+    /** Dutch-auction jobs the seller claimed (a courier signal). */
     auctionJobsWon: number;
-    /** Total attestations the operator has emitted. */
+    /** Total attestations the seller has emitted. */
     attestationsEmitted: number;
     /** Attestations emitted, grouped by schemaId, most-frequent first. */
     attestationsBySchema: TrackRecordAttestations[];
@@ -501,23 +501,23 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
 }
 
 /**
- * Reconstruct an operator's full public-graph track record. Combines the
+ * Reconstruct an seller's full public-graph track record. Combines the
  * OrderCommitted / OrderResolved process graph, the DutchAuction capital
  * graph, and the AttestationCoordinator disclosure graph — all keyed to one
  * address. Every figure is recomputed from events; nothing is stored, so the
  * result is verifiable by anyone with chain access.
  */
-export async function getOperatorTrackRecord(
+export async function getSellerTrackRecord(
     client: PublicClient,
     chainId: number,
-    operator: string,
-): Promise<OperatorTrackRecord> {
+    seller: string,
+): Promise<SellerTrackRecord> {
     const [sellerOrders, buyerOrders, resolved, registrations, auctions, attestations] =
         await Promise.all([
-            getOrderCommittedBySeller(client, chainId, operator),
-            getOrderCommittedByBuyer(client, chainId, operator),
+            getOrderCommittedBySeller(client, chainId, seller),
+            getOrderCommittedByBuyer(client, chainId, seller),
             getAllOrderResolved(client, chainId),
-            getAllOperatorRegistered(client, chainId),
+            getAllSellerRegistered(client, chainId),
             getAllAuctionClaimed(client, chainId),
             getAllAttestations(client, chainId),
         ]);
@@ -527,14 +527,14 @@ export async function getOperatorTrackRecord(
         resolved.map((log) => getStringArg(log, "processId")).filter((p): p is string => !!p),
     );
 
-    // The operator's processes — distinct processIds across all its orders.
-    const operatorProcessIds = new Set<string>();
+    // The seller's processes — distinct processIds across all its orders.
+    const sellerProcessIds = new Set<string>();
     for (const log of [...sellerOrders, ...buyerOrders]) {
         const pid = getStringArg(log, "processId");
-        if (pid) operatorProcessIds.add(pid);
+        if (pid) sellerProcessIds.add(pid);
     }
     let completedProcesses = 0;
-    for (const pid of operatorProcessIds) {
+    for (const pid of sellerProcessIds) {
         if (resolvedProcessIds.has(pid)) completedProcesses++;
     }
 
@@ -554,9 +554,9 @@ export async function getOperatorTrackRecord(
         buyerOrders.map((log) => getStringArg(log, "seller")?.toLowerCase()).filter((s): s is string => !!s),
     );
 
-    // Operating since — earliest OperatorRegistered for this address.
+    // Operating since — earliest SellerRegistered for this address.
     const ownRegistrations = registrations
-        .filter((log) => hexEqual(getStringArg(log, "operator"), operator))
+        .filter((log) => hexEqual(getStringArg(log, "seller"), seller))
         .sort((a, b) => Number(a.blockNumber ?? 0n) - Number(b.blockNumber ?? 0n));
     const firstBlock = ownRegistrations[0]?.blockNumber;
     const operatingSinceBlock: bigint | null = firstBlock != null ? BigInt(firstBlock) : null;
@@ -569,15 +569,15 @@ export async function getOperatorTrackRecord(
         }
     }
 
-    // Auction jobs won — AuctionClaimed where the operator is the provider.
+    // Auction jobs won — AuctionClaimed where the seller is the provider.
     const auctionJobsWon = auctions.filter(
-        (log) => hexEqual(getStringArg(log, "provider"), operator),
+        (log) => hexEqual(getStringArg(log, "provider"), seller),
     ).length;
 
     // Attestations emitted — grouped by schemaId.
     const attestationsBySchemaMap = new Map<string, number>();
     for (const log of attestations) {
-        if (!hexEqual(getStringArg(log, "attester"), operator)) continue;
+        if (!hexEqual(getStringArg(log, "attester"), seller)) continue;
         const schemaId = getStringArg(log, "schemaId") ?? "unknown";
         attestationsBySchemaMap.set(schemaId, (attestationsBySchemaMap.get(schemaId) ?? 0) + 1);
     }
@@ -588,7 +588,7 @@ export async function getOperatorTrackRecord(
         operatingSinceBlock,
         operatingSinceTimestamp,
         completedProcesses,
-        activeProcesses: operatorProcessIds.size - completedProcesses,
+        activeProcesses: sellerProcessIds.size - completedProcesses,
         ordersSold: sellerOrders.length,
         ordersBought: buyerOrders.length,
         valueTransacted: [...valueByCurrency.entries()].map(([currency, total]) => ({ currency, total })),

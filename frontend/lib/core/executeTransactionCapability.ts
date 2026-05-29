@@ -14,13 +14,13 @@ type TransactionExecutionResult = Promise<Hex | undefined | void>;
 export interface TransactionCapabilityExecutors {
     waitForTransactionConfirmation?: (txHash?: Hex) => Promise<void>;
     resolveProcess?: (processId: string) => TransactionExecutionResult;
-    registerOperator?: (metadataURI: string, value?: bigint) => TransactionExecutionResult;
-    /** Replaces the registered operator's metadataURI in place; deposit and
-     *  lock period untouched. Maps to OperatorRegistry.updateProfile. */
-    updateOperatorProfile?: (metadataURI: string) => TransactionExecutionResult;
+    registerSeller?: (metadataURI: string, value?: bigint) => TransactionExecutionResult;
+    /** Replaces the registered seller's metadataURI in place; deposit and
+     *  lock period untouched. Maps to SellerRegistry.updateProfile. */
+    updateSellerProfile?: (metadataURI: string) => TransactionExecutionResult;
     /** Withdraws the deposit and clears the dedup guard, freeing the address
      *  to re-register. Subject to the deploy-time lock period. */
-    withdrawOperatorDeposit?: () => TransactionExecutionResult;
+    withdrawSellerDeposit?: () => TransactionExecutionResult;
     submitDisclosureCommitment?: (orderHash: string) => TransactionExecutionResult;
     submitDisclosureInventory?: (orderHash: string, grams: bigint) => TransactionExecutionResult;
     submitMerchantProcessSignal?: (orderHash: string, eventType: MerchantProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
@@ -62,31 +62,31 @@ export async function executeTransactionCapabilityAction(
                 "Resolve-process execution is unavailable.",
             )(action.processId);
             break;
-        case "register-operator": {
-            const metadataURI = input?.kind === "register-operator"
+        case "register-seller": {
+            const metadataURI = input?.kind === "register-seller"
                 ? (input.metadataURI ?? "")
                 : "";
             txHash = await ensureExecutor(
-                executors.registerOperator,
-                "Operator registration is unavailable.",
+                executors.registerSeller,
+                "Seller registration is unavailable.",
             )(metadataURI);
             break;
         }
-        case "update-operator-profile": {
-            const metadataURI = input?.kind === "update-operator-profile"
+        case "update-seller-profile": {
+            const metadataURI = input?.kind === "update-seller-profile"
                 ? (input.metadataURI ?? "")
                 : "";
             txHash = await ensureExecutor(
-                executors.updateOperatorProfile,
-                "Operator profile update is unavailable.",
+                executors.updateSellerProfile,
+                "Seller profile update is unavailable.",
             )(metadataURI);
             break;
         }
-        case "withdraw-operator-deposit": {
-            if (!globalThis.window?.confirm("Withdraw your operator deposit and clear the registry binding for this address? You'll need to re-register (with a fresh deposit and a new lock period) to operate again.")) return;
+        case "withdraw-seller-deposit": {
+            if (!globalThis.window?.confirm("Withdraw your seller deposit and clear the registry binding for this address? You'll need to re-register (with a fresh deposit and a new lock period) to operate again.")) return;
             txHash = await ensureExecutor(
-                executors.withdrawOperatorDeposit,
-                "Operator deposit withdrawal is unavailable.",
+                executors.withdrawSellerDeposit,
+                "Seller deposit withdrawal is unavailable.",
             )();
             break;
         }

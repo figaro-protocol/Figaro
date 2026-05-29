@@ -1,7 +1,7 @@
 /**
  * local-commerce-pickup-runtime.devnet.spec.ts
  *
- * End-to-end pickup runtime against the SEEDED Mercato General operator
+ * End-to-end pickup runtime against the SEEDED Mercato General seller
  * (anvil[8]), driving every schema in the local-commerce-pickup assembly
  * through the role that owns it.
  *
@@ -57,7 +57,7 @@ const LOCAL_ANVIL = defineChain({
 const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const BUYER_ADDR = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as const;
 
-// Mercato General — seeded operator (seed-devnet OPERATORS[3]) on anvil[8],
+// Mercato General — seeded seller (seed-devnet SELLERS[3]) on anvil[8],
 // bound to local-commerce-pickup (added 2026-05-27 alongside this spec).
 const MERCATO_ADDR = '0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f' as const;
 const MERCATO_KEY = '0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97' as const;
@@ -66,7 +66,7 @@ const MERCATO_KEY = '0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620
 // `seed-devnet.mjs` replays so re-capture moves spec + seed together.
 const catalogueFixture = JSON.parse(
     fs.readFileSync(
-        path.resolve(__dirname, '../../scripts/fixtures/operator-catalogue.json'),
+        path.resolve(__dirname, '../../scripts/fixtures/seller-catalogue.json'),
         'utf8',
     ),
 ) as { menu: Array<{ id: string; name: string }> };

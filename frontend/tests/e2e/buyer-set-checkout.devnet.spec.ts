@@ -53,7 +53,7 @@ const BUYER_SET_DELIVERY_FEE = '0.7';
 
 const catalogueFixture = JSON.parse(
     fs.readFileSync(
-        path.resolve(__dirname, '../../scripts/fixtures/operator-catalogue.json'),
+        path.resolve(__dirname, '../../scripts/fixtures/seller-catalogue.json'),
         'utf8',
     ),
 ) as { menu: Array<{ id: string }> };

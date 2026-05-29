@@ -17,7 +17,7 @@ contract SchemaRegistryTest is Test {
 
     bytes32 constant LIFECYCLE_SCHEMA_ID = keccak256("figaro-courier-process-v1");
     bytes32 constant LIFECYCLE_URI_HASH = keccak256("ipfs://figaro-courier-process/v1");
-    bytes32 constant LIFECYCLE_FAMILY = keccak256("operator-process");
+    bytes32 constant LIFECYCLE_FAMILY = keccak256("seller-process");
 
     address alice = address(0xA11CE);
     address bob = address(0xB0B);

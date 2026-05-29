@@ -19,13 +19,13 @@ const VALID_CID_V0 = "Qm" + "1".repeat(44);
 const VALID_CID_V0_DOC = "Qm" + "2".repeat(44);
 
 const VALID_CLAIM = (
-    "The Project Operator distributed an audit-bundle PDF carrying my " +
+    "The Project Seller distributed an audit-bundle PDF carrying my " +
     "watermarked access code to a third party outside the beta cohort, " +
     "in breach of §3.6 (artifact custody) and §3.4 (confidentiality of " +
     "access materials). On 2026-04-15 a screenshot of my financials " +
     "page surfaced in a public Discord channel, with the QR-code " +
     "watermark intact and matching the access code I received in my " +
-    "beta invitation. The Operator has acknowledged the disclosure but " +
+    "beta invitation. The Seller has acknowledged the disclosure but " +
     "has not provided a remediation plan; I am escalating to Kleros " +
     "per §10. Evidence: receipt CID, document CID, and the screenshot " +
     "URL are pinned alongside this claim."
@@ -115,14 +115,14 @@ describe("consentDisputeEvidence", () => {
                 buildInput({ submittingParty: "participant" }),
             );
             expect(ev.description).toContain("Participant");
-            expect(ev.description).not.toContain("Project Operator (");
+            expect(ev.description).not.toContain("Project Seller (");
         });
 
-        it("frames description by submitting party (operator)", () => {
+        it("frames description by submitting party (seller)", () => {
             const ev = buildConsentDisputeEvidence(
-                buildInput({ submittingParty: "operator" }),
+                buildInput({ submittingParty: "seller" }),
             );
-            expect(ev.description).toContain("Project Operator");
+            expect(ev.description).toContain("Project Seller");
         });
 
         it("carries documentHash, document CID, receipt CID, and both signers", () => {

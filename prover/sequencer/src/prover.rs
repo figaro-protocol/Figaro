@@ -138,6 +138,6 @@ fn encode_public_values(pv: &PublicValues) -> Vec<u8> {
     data.extend_from_slice(pv.token_ops_hash.as_slice());
     data.extend_from_slice(pv.attestation_events_hash.as_slice());
     data.extend_from_slice(pv.schema_events_hash.as_slice());
-    data.extend_from_slice(pv.operator_events_hash.as_slice());
+    data.extend_from_slice(pv.seller_events_hash.as_slice());
     data
 }

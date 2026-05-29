@@ -77,7 +77,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const [confirming, setConfirming] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
     // Receipt held in local state — persists until the user clicks
-    // Continue. Mirrors the operator wizard's post-publish pattern.
+    // Continue. Mirrors the seller wizard's post-publish pattern.
     // Replaces the prior window.alert(`Published. IPFS: … Tx: …`)
     // which got dismissed instantly and gave no persistent record.
     const [receipt, setReceipt] = useState<{
@@ -186,7 +186,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             // it's safe to delete the named draft + clear the session here.
             clearCurrentSession();
             deleteNamedDraft(resolved.snapshot.slug);
-            // Hold the receipt; the operator clicks Continue to leave.
+            // Hold the receipt; the seller clicks Continue to leave.
             setReceipt({
                 hash: outcome.hash,
                 ipfsURI: outcome.ipfsURI,
@@ -250,8 +250,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         );
     }
 
-    // Receipt state: publish succeeded, awaiting operator dismissal.
-    // Mirrors the operator wizard's post-publish receipt — replaces the
+    // Receipt state: publish succeeded, awaiting seller dismissal.
+    // Mirrors the seller wizard's post-publish receipt — replaces the
     // prior window.alert that the user dismissed instantly with no
     // persistent record of the tx hash + IPFS URI.
     if (receipt) {

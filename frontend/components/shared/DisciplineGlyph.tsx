@@ -6,13 +6,13 @@
  *
  * The cipher is each discipline's working notation, not a decorative icon:
  *   1  Σ*    Nash equilibrium / strategy-profile notation
- *   2  ⊢⊣    Sequent / boundary-composition operator
+ *   2  ⊢⊣    Sequent / boundary-composition seller
  *   3  0x    Hex prefix — universally legible as cryptographic surface
  *   4  §     Section sign — the law's own glyph
  *   5  Ω/    Hegemony over the slash the kernel refuses to take
  *   6  ≡⊕    Ledger close (≡, double-entry equality) + closing entry (⊕)
  *   7  ∇·    Gradient / control-loop notation
- *   8  E[·]  Expectation operator — behavioral game theory
+ *   8  E[·]  Expectation seller — behavioral game theory
  *
  * Decorative-by-default: the glyph sits beside a heading that already names
  * the discipline, so screen readers read the heading once. Pass

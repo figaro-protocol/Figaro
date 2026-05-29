@@ -4,7 +4,7 @@
  * Self-contained geohash encode / bounds / distance, class-of-service
  * labels, and the well-known manifest schema-id constants. Used by the
  * physical-handoff surfaces (delivery-location capture, courier proximity,
- * operator service areas).
+ * seller service areas).
  *
  * The legacy on-chain manifest codec — encode/decode/seal of a v1–v7
  * pipe-separated manifest blob — was removed. The kernel Commitment carries

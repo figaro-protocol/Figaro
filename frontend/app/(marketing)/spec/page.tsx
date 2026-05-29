@@ -145,11 +145,11 @@ export default function Specifications() {
                         desc="Descending-price coordination primitive. No token handling."
                     />
                     <ContractEntry
-                        id="OperatorRegistry"
-                        title="OperatorRegistry.sol"
-                        href={`${GH}/OperatorRegistry.sol`}
+                        id="SellerRegistry"
+                        title="SellerRegistry.sol"
+                        href={`${GH}/SellerRegistry.sol`}
                         meta="self-register · reclaimable deposit"
-                        desc="Permissionless operator self-registration with reclaimable ETH deposit. Two functions (register, withdraw); state is dedup-only. Operator availability is signal-by-availability off-chain, not registry state."
+                        desc="Permissionless seller self-registration with reclaimable ETH deposit. Two functions (register, withdraw); state is dedup-only. Seller availability is signal-by-availability off-chain, not registry state."
                     />
                 </ul>
             </MarketingSection>

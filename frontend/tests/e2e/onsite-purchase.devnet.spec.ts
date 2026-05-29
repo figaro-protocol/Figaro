@@ -1,7 +1,7 @@
 /**
  * onsite-purchase.devnet.spec.ts
  *
- * End-to-end on-site purchase against the SEEDED Counter & Co. operator —
+ * End-to-end on-site purchase against the SEEDED Counter & Co. seller —
  * the scenario `merchant-place-order.devnet.spec.ts` cannot reach because
  * it self-seeds a binding-less merchant.
  *
@@ -76,7 +76,7 @@ const LOCAL_ANVIL = defineChain({
 const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const BUYER_ADDR = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as const;
 
-// Counter & Co. — seeded operator (seed-devnet.mjs OPERATORS[0]) on
+// Counter & Co. — seeded seller (seed-devnet.mjs SELLERS[0]) on
 // anvil[5], bound to `direct-sale`. Holds 100k MOCK from the Deploy.s.sol
 // testAccounts mint. anvil[5..8] are disjoint from the test suite's
 // anvil[0..4] range, so transacting against it never collides.
@@ -88,7 +88,7 @@ const COUNTER_CO_KEY = '0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e87
 // together (the per-run item `id` is not otherwise stable).
 const catalogueFixture = JSON.parse(
     fs.readFileSync(
-        path.resolve(__dirname, '../../scripts/fixtures/operator-catalogue.json'),
+        path.resolve(__dirname, '../../scripts/fixtures/seller-catalogue.json'),
         'utf8',
     ),
 ) as { menu: Array<{ id: string; name: string }> };

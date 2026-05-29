@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { TokenAddressInput, isValidAddress, useTokenSymbol } from '@/components/operators/TokenAddressInput';
+import { TokenAddressInput, isValidAddress, useTokenSymbol } from '@/components/sellers/TokenAddressInput';
 
 // ── Override global wagmi mock for useReadContract ────────────────────────────
 

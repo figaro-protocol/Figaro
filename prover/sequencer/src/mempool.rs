@@ -196,23 +196,23 @@ impl Mempool {
                     .map_err(|e| format!("invalid set-mechanism-schema signature: {e}"))?;
                 Ok(())
             }
-            KernelOp::RegisterOperator {
+            KernelOp::RegisterSeller {
                 metadata_uri,
-                operator_sig,
+                seller_sig,
             } => {
-                let struct_hash = register_operator_struct_hash(metadata_uri);
+                let struct_hash = register_seller_struct_hash(metadata_uri);
                 let digest = typed_data_hash(&domain, &struct_hash);
-                recover_signer(&digest, operator_sig)
-                    .map_err(|e| format!("invalid register-operator signature: {e}"))?;
+                recover_signer(&digest, seller_sig)
+                    .map_err(|e| format!("invalid register-seller signature: {e}"))?;
                 Ok(())
             }
             KernelOp::UpdateProfile {
                 metadata_uri,
-                operator_sig,
+                seller_sig,
             } => {
                 let struct_hash = update_profile_struct_hash(metadata_uri);
                 let digest = typed_data_hash(&domain, &struct_hash);
-                recover_signer(&digest, operator_sig)
+                recover_signer(&digest, seller_sig)
                     .map_err(|e| format!("invalid update-profile signature: {e}"))?;
                 Ok(())
             }

@@ -8,7 +8,7 @@
  * mechanisms/ code may freely import from core/.
  */
 export {
-    OPERATOR_REGISTRY_ABI,
+    SELLER_REGISTRY_ABI,
     FIG_TOKEN_ABI,
     RPGF_MINTER_ABI,
 } from "@figaro/core";
@@ -79,7 +79,7 @@ export const MECHANISM_CONTRACTS = {
         process.env.NEXT_PUBLIC_GHG_REPORTING_MODULE ||
         ""
     ) as `0x${string}`,
-    operatorRegistry: (process.env.NEXT_PUBLIC_OPERATOR_REGISTRY || "") as `0x${string}`,
+    sellerRegistry: (process.env.NEXT_PUBLIC_SELLER_REGISTRY || "") as `0x${string}`,
     figToken: (process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS || "") as `0x${string}`,
     rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
 };
@@ -92,8 +92,8 @@ export function getDutchAuction(): `0x${string}` | null {
     return resolveAddress(MECHANISM_CONTRACTS.dutchAuction);
 }
 
-export function getOperatorRegistry(): `0x${string}` | null {
-    return resolveAddress(MECHANISM_CONTRACTS.operatorRegistry);
+export function getSellerRegistry(): `0x${string}` | null {
+    return resolveAddress(MECHANISM_CONTRACTS.sellerRegistry);
 }
 
 export function getFigToken(): `0x${string}` | null {

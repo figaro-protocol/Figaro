@@ -65,7 +65,7 @@ import { Button } from "@/components/ui/Button";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { ZERO_ADDRESS, bytesToHex } from "@/lib/shared/evm";
-import { isValidAddress } from "@/components/operators/TokenAddressInput";
+import { isValidAddress } from "@/components/sellers/TokenAddressInput";
 import {
     buildConsentDisputeEvidence,
     buildConsentDisputeMetaEvidence,
@@ -780,7 +780,7 @@ function ComposeStep({ state, onChange, onBack, onNext, error }: ComposeStepProp
                         Submitting party
                     </label>
                     <div className="flex gap-3 text-xs">
-                        {(["participant", "operator"] as const).map((p) => (
+                        {(["participant", "seller"] as const).map((p) => (
                             <label key={p} className="flex items-center gap-1.5 cursor-pointer">
                                 <input
                                     type="radio"
@@ -948,7 +948,7 @@ function ReviewStep({
 
                 <Section label="Claim">
                     <KV k="Submitting party">
-                        {compose.submittingParty === "operator" ? "Project Operator" : "Participant"}
+                        {compose.submittingParty === "seller" ? "Project Operator" : "Participant"}
                     </KV>
                     <KV k="Cited section">{compose.citedSection}</KV>
                     <KV k="Claim text">
