@@ -2,7 +2,7 @@
  * Content validator — validates a content value against a parsed ClauseSpec.
  *
  * Call sites: frontend form gates, SDK agent-action preflight, later mirrored
- * in the on-chain JSONClauseValidator contract and the SP1 prover.
+ * in the on-chain JSONSchemaValidator contract and the SP1 prover.
  */
 
 import type {

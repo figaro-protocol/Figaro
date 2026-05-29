@@ -1,5 +1,5 @@
 {
-    "$clause": "https://json-clause.org/draft/2020-12/clause",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Figaro Handoff Clause v1",
     "description": "Off-chain clause definition for the figaro-handoff-v1 agreement section clause. Defines the physical logistics parameters of a Figaro bonded commitment: pickup/dropoff locations (geohash-encoded), class of service, package dimensions, and the encrypted destination address for the fulfiller.",
     "version": 1,

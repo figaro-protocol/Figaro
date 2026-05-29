@@ -1,5 +1,5 @@
 {
-    "$clause": "https://json-clause.org/draft/2020-12/clause",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Figaro Commerce Clause v1",
     "description": "Off-chain clause definition for the figaro-commerce-v1 agreement section clause. Defines the standard basket-of-goods section used in Figaro bilateral agreement manifests. Describes what goods or services are covered by the bonded commitment.",
     "version": 1,

@@ -5,7 +5,7 @@
  *   2. On-chain per-clause validator contract (Solidity, future)
  *   3. SP1 prover (Rust mirror, future)
  *
- * The format is a closed subset of JSON Clause. Small, predictable, and
+ * The format is a closed subset of JSON Schema. Small, predictable, and
  * designed to be mirrored faithfully in Rust without ambiguity.
  *
  * Validators in all three layers MUST agree on interpretation. If you
