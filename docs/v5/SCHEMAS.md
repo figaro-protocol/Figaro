@@ -4,7 +4,7 @@ Figaro enforces schema-content correctness in three layers. All three layers
 parse the same canonical JSON spec format and apply the same validation
 rules. **A new schema is not "done" until all three layers ship in lockstep.**
 
-CLAUDE.md keeps the lockstep principle and the adding-a-schema checklist; this file is the full table + the architectural detail for each layer.
+CLAUDE.md keeps the lockstep principle; this file owns the full table, the architectural detail for each layer, and the adding-a-schema checklist below.
 
 ## Layer A — Client-side (TypeScript)
 
@@ -280,7 +280,7 @@ to undo once `schemaId` is bound on chain.
    needed when a downstream Rust consumer wants strongly-typed content
    (the SP1 prover guest, for instance, can pass through serde_json::Value).
 8. Register the schema in `frontend/lib/shared/schemaCategories.ts` — add its spec JSON to `ALL_SPECS` and assign its `SCHEMA_TIER_MAP` and `SCHEMA_FAMILY_MAP` entries; `assertTaxonomyComplete()` fails the build if the tier or family assignment is missing. This supplies the schema's title and family for the designer drawer and the `/schemas` inventory — the inventory reads its *set* live from on-chain `SchemaRegistry` events, so the schema also needs the step-9 on-chain registration to appear there.
-9. `registerSchema(schemaId, version, uriHash, family)` + `setValidator(schemaId, validator)` calls added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. The `family` is `keccak256(primaryCategory)` from the spec's `categories[0]` (Tier-1 boost goes to `keccak256("geo")` and `keccak256("fulfilment")`). (Bootstrap-time atomicity: the deploy scripts inline schema registration + validator binding within a single broadcast transaction. Post-deploy third-party schemas should use `SchemaRegistrationHelper.registerSchemaAndValidator(...)` instead — see "Third-party schema deployment" below.)
+9. `registerSchema(schemaId, version, uriHash, family)` + `setValidator(schemaId, validator)` calls added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. The `family` is `keccak256(primaryCategory)` from the spec's `categories[0]` (Tier-1 boost goes to `keccak256("geo")` and `keccak256("fulfilment")`); the same `family` keys the RPGF Tier-1 weighting in `prover/rpgf/src/formula.rs` — Tier-1 families are deploy-frozen, but a new schema joining an existing family inherits the weight permissionlessly. (Bootstrap-time atomicity: the deploy scripts inline schema registration + validator binding within a single broadcast transaction. Post-deploy third-party schemas should use `SchemaRegistrationHelper.registerSchemaAndValidator(...)` instead — see "Third-party schema deployment" below.)
 
 If any step is skipped the validator gate either rejects all attestations under that schemaId
 (missing on-chain validator) or silently accepts content the spec would have rejected (Layer A
