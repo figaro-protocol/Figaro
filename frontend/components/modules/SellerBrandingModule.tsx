@@ -1,13 +1,13 @@
 /**
  * components/modules/SellerBrandingModule.tsx
  *
- * Scoped CSS and branding injection for merchant-themed UI regions.
+ * Scoped CSS and branding injection for seller-themed UI regions.
  *
  * Three responsibilities:
- * 1. Set CSS custom properties from the merchant's accentColor
- * 2. Inject external CSS from the merchant's assets.cssURI, wrapped in
- *    @layer merchant {} so it cannot override protocol-critical styles
- * 3. Apply the merchant's themeClass to the container
+ * 1. Set CSS custom properties from the seller's accentColor
+ * 2. Inject external CSS from the seller's assets.cssURI, wrapped in
+ *    @layer seller {} so it cannot override protocol-critical styles
+ * 3. Apply the seller's themeClass to the container
  *
  * Usage:
  *   <SellerBrandingModule sellerAddress={address}>
@@ -47,13 +47,13 @@ export function SellerBrandingModule({
         if (!el) return;
 
         if (branding?.branding.accentColor) {
-            el.style.setProperty("--merchant-accent", branding.branding.accentColor);
+            el.style.setProperty("--seller-accent", branding.branding.accentColor);
         } else {
-            el.style.removeProperty("--merchant-accent");
+            el.style.removeProperty("--seller-accent");
         }
     }, [branding?.branding.accentColor]);
 
-    // Inject external CSS wrapped in @layer merchant {}
+    // Inject external CSS wrapped in @layer seller {}
     useEffect(() => {
         if (!branding?.cssURL) {
             // Clean up previous style element
@@ -75,7 +75,7 @@ export function SellerBrandingModule({
             .then((cssText) => {
                 if (cancelled) return;
 
-                // RA-1: Sanitise merchant CSS to prevent data exfiltration and injection.
+                // RA-1: Sanitise seller CSS to prevent data exfiltration and injection.
                 // Strip url(), @import, expression(), -moz-binding — these can load
                 // external resources or execute code.  The @layer wrapper only
                 // controls cascade priority, not what the CSS can do.
@@ -85,26 +85,26 @@ export function SellerBrandingModule({
                     .replace(/-moz-binding\s*:/gi, "/* -moz-binding removed */")
                     .replace(/url\s*\(/gi, "/* url( removed */");
 
-                // Wrap in cascade layer so merchant CSS cannot override protocol styles
-                const wrapped = `@layer merchant {\n${sanitized}\n}`;
+                // Wrap in cascade layer so seller CSS cannot override protocol styles
+                const wrapped = `@layer seller {\n${sanitized}\n}`;
 
                 // Reuse or create style element
                 if (styleElementRef.current) {
                     styleElementRef.current.setAttribute(
-                        "data-merchant-branding",
+                        "data-seller-branding",
                         dataSkinId ?? sellerAddress ?? "unknown",
                     );
                     styleElementRef.current.textContent = wrapped;
                 } else {
                     const style = document.createElement("style");
-                    style.setAttribute("data-merchant-branding", dataSkinId ?? sellerAddress ?? "unknown");
+                    style.setAttribute("data-seller-branding", dataSkinId ?? sellerAddress ?? "unknown");
                     style.textContent = wrapped;
                     document.head.appendChild(style);
                     styleElementRef.current = style;
                 }
             })
             .catch(() => {
-                // Silently fail — merchant CSS is cosmetic, not critical
+                // Silently fail — seller CSS is cosmetic, not critical
             });
 
         return () => {
@@ -133,9 +133,9 @@ export function SellerBrandingModule({
 }
 
 /**
- * SellerLogo — renders the merchant's logo from IPFS/HTTP, with two
+ * SellerLogo — renders the seller's logo from IPFS/HTTP, with two
  * possible fallbacks: an initials block (when `fallbackName` is supplied)
- * coloured by the merchant's accent, or a plain emoji (backward-compatible
+ * coloured by the seller's accent, or a plain emoji (backward-compatible
  * default for consumers that don't pass a name).
  */
 interface SellerLogoProps {
@@ -143,12 +143,12 @@ interface SellerLogoProps {
     /**
      * Emoji to render when no logo loads AND no `fallbackName` is supplied.
      * Backward-compatibility default; `fallbackName` is the preferred
-     * fallback path because it produces a per-merchant-distinct affordance.
+     * fallback path because it produces a per-seller-distinct affordance.
      */
     fallbackEmoji?: string;
     /**
-     * Merchant's display name. When provided, the fallback path renders a
-     * 2-letter initials block tinted with the merchant's accentColor (or
+     * Seller's display name. When provided, the fallback path renders a
+     * 2-letter initials block tinted with the seller's accentColor (or
      * neutral gray if no accent). Mirrors the discover-card InitialsAvatar.
      */
     fallbackName?: string;
