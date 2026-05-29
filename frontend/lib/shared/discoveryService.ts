@@ -2,7 +2,7 @@ import type { PublicClient } from 'viem';
 import { getActiveOperators } from '@/lib/core/indexer';
 import type { OperatorCatalogue } from '@/lib/seller/types';
 import { MECHANISM_CONTRACTS } from '@/lib/mechanisms/contracts';
-import { resolveContentURI } from '@/lib/shared/merchantBranding';
+import { resolveContentURI } from '@/lib/shared/sellerBranding';
 import type { OperatorCatalogueMetadata } from '@/lib/shared/operatorCatalogueMetadata';
 import {
     OperatorProfileMetadata,

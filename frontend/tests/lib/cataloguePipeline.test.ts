@@ -126,7 +126,7 @@ describe("catalogueFetcher", () => {
 // ── cataloguePublisher ────────────────────────────────────────────────────────
 
 // Partial override — preserve the original `IPFS_GATEWAY_URL` export so
-// `merchantBranding.resolveContentURI` can still build a gateway URL.
+// `sellerBranding.resolveContentURI` can still build a gateway URL.
 // Without `...actual` the named import becomes undefined and the throw
 // at `resolveContentURI` is swallowed by `uriFetcher`'s catch, masking
 // the real failure as "fetch never called".

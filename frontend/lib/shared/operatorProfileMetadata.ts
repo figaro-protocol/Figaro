@@ -102,7 +102,7 @@ export interface AssemblyBindingRecord {
  *
  * `name` is required; everything else is optional. The form's submit
  * path writes only the fields the operator filled in. Discovery URLs
- * are address-shaped (`/m/<address>`) — the wallet is the operator's
+ * are address-shaped (`/s/<address>`) — the wallet is the operator's
  * canonical identifier, not a human-readable handle.
  */
 export interface OperatorProfileMetadata {

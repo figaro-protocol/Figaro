@@ -11,7 +11,7 @@ const IPFS_API_URL =
     process.env.NEXT_PUBLIC_IPFS_API_URL ?? "http://127.0.0.1:5001";
 
 /** Canonical Kubo gateway base URL — the single source for IPFS gateway
- *  resolution. `merchantBranding.resolveContentURI` imports this rather
+ *  resolution. `sellerBranding.resolveContentURI` imports this rather
  *  than reading the env var a second time. */
 export const IPFS_GATEWAY_URL =
     process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";

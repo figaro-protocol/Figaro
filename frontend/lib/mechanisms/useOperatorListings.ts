@@ -18,7 +18,7 @@ import {
     type Listing,
 } from "@/lib/shared/operatorListing";
 import { getActiveOperators } from "@/lib/core/indexer";
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { resolveContentURI } from "@/lib/shared/sellerBranding";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 import type { PublicClient } from "viem";

@@ -101,9 +101,9 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
         // ── Browse the seeded merchant ───────────────────────────────
-        await page.goto(`/m/${MERCATO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/s/${MERCATO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
 
-        const detailView = page.getByTestId('merchant-detail-view');
+        const detailView = page.getByTestId('seller-detail-view');
         try {
             await detailView.waitFor({ state: 'visible', timeout: 30000 });
         } catch {
@@ -125,7 +125,7 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         await expect(page.getByTestId(`cart-line-${ITEM.id}`)).toBeVisible({ timeout: 10000 });
 
         // ── The array of assemblies ──────────────────────────────────
-        // Mercato General binds four assemblies; once useMerchantBoundAssemblies
+        // Mercato General binds four assemblies; once useSellerBoundAssemblies
         // resolves, the checkout surfaces each as a buyer option — including
         // direct-sale → consume-onsite and local-commerce → deliver:seller-assigned.
         // Their presence is the "frontend read the operator's array" check.

@@ -148,7 +148,7 @@ test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
         });
 
         await gotoAsWallet(page, SELLER_ADDR, '/inbox?e2e=devnet');
-        await page.getByTestId('merchant-inbox').waitFor({ timeout: 30000 });
+        await page.getByTestId('inbox').waitFor({ timeout: 30000 });
 
         // PendingOrderCard renders for the seeded payload.
         const pendingCard = page.getByTestId('inbox-pending-card');
@@ -166,7 +166,7 @@ test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
         await page.getByTestId('preview-confirm').click();
 
         // Post-broadcast: the pending card is removed from `pending`
-        // (handleAccept's filter at MerchantInbox.tsx:210). The empty
+        // (handleAccept's filter at Inbox.tsx:210). The empty
         // state returns OR the active row appears — both are valid
         // success signals.
         await expect(pendingCard).toHaveCount(0, { timeout: 60000 });

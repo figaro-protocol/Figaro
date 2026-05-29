@@ -123,8 +123,8 @@ test.describe('Kit-assembly runtime — four sellers, one transparent settlement
         };
 
         // ── Browse Mercato + add product 212 ─────────────────────────
-        await page.goto(`/m/${MERCATO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const detailView = page.getByTestId('merchant-detail-view');
+        await page.goto(`/s/${MERCATO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        const detailView = page.getByTestId('seller-detail-view');
         try {
             await detailView.waitFor({ state: 'visible', timeout: 30000 });
         } catch {

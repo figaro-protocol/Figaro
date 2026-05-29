@@ -124,7 +124,7 @@ describe("resolveSubOrderPayment", () => {
 
     it("sums to the displayed total with bigint arithmetic (regression: no string-concat)", () => {
         const plan = planSubOrderSellers(assembly);
-        const rootPayment = 1000000000000000000n; // merchantTotalAmount (product price)
+        const rootPayment = 1000000000000000000n; // sellerTotalAmount (product price)
         const total = plan.reduce(
             (sum, { node, seller }) => sum + resolveSubOrderPayment(payArgs(node, seller!)),
             rootPayment,

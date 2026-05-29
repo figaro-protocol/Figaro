@@ -24,7 +24,7 @@ import { useSearchParams } from "next/navigation";
 import { createPublicClient, isAddress } from "viem";
 import { mockAwareHttp } from "@/lib/shared/mockTransport";
 import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "@/lib/dispute";
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { resolveContentURI } from "@/lib/shared/sellerBranding";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";

@@ -2,7 +2,7 @@
  * merchant-place-order.devnet.spec.ts
  *
  * Phase 2 C2 of the e2e remediation plan: the full place-order flow
- * on `/m/[merchant]` (cart → btn-place-order → approval → commit →
+ * on `/s/[seller]` (cart → btn-place-order → approval → commit →
  * redirect to /orders/<processId>) had no devnet coverage. G11
  * (`merchant-page.devnet.spec.ts`) covers the browse + cart-add
  * surface but stops short of the commit; the merchant-page-specific
@@ -11,7 +11,7 @@
  * What this exercises:
  *   - Seller-side IPFS pin of catalogue + profile + OperatorRegistry.register
  *     (lifted from G11's seed).
- *   - Buyer (anvil[0]) navigates to /m/<merchantAddress>.
+ *   - Buyer (anvil[0]) navigates to /m/<sellerAddress>.
  *   - Click `btn-add-<itemId>` → cart line appears.
  *   - Select `consume-onsite` from `select-fulfilment-mode`.
  *   - Token approval if buyer doesn't yet have allowance.
@@ -132,7 +132,7 @@ let outerSnapshot: string;
 test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
 test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
-test.describe('/m/[merchant] full place-order flow (devnet)', () => {
+test.describe('/s/[seller] full place-order flow (devnet)', () => {
     let testSnapshot: string;
     test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
@@ -155,9 +155,9 @@ test.describe('/m/[merchant] full place-order flow (devnet)', () => {
 
         // Buyer (anvil[0]) is the default ?e2e=devnet account; no
         // wallet switch needed.
-        await page.goto(`/m/${seeded.address}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/s/${seeded.address}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
 
-        const detailView = page.getByTestId('merchant-detail-view');
+        const detailView = page.getByTestId('seller-detail-view');
         try {
             await detailView.waitFor({ state: 'visible', timeout: 30000 });
         } catch {

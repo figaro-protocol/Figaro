@@ -1367,8 +1367,8 @@ export async function placeLocalCommerceOrderUI(
     const geohash = opts.geohash ?? 'dr5regw3pg';
     const deliveryAddress = opts.deliveryAddress ?? '12 Market St, Apt 4B — ring bell';
 
-    await page.goto(`/m/${opts.merchant}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
-    const detailView = page.getByTestId('merchant-detail-view');
+    await page.goto(`/s/${opts.merchant}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+    const detailView = page.getByTestId('seller-detail-view');
     try {
         await detailView.waitFor({ state: 'visible', timeout: 30000 });
     } catch {

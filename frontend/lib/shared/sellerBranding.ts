@@ -1,7 +1,7 @@
 /**
- * lib/shared/merchantBranding.ts
+ * lib/shared/sellerBranding.ts
  *
- * Merchant branding metadata fetcher.
+ * Seller branding metadata fetcher.
  * Resolves IPFS/HTTP URIs from OperatorRegistry.metadataURI, fetches the
  * operator profile document, and extracts branding + asset fields.
  *
@@ -10,6 +10,11 @@
  * (name, branding, assets) is extracted here. The profile pins the
  * branding payload (logo, hero, CSS, image base URI) so buyer
  * frontends can skin against the seller's identity.
+ *
+ * NOTE (Phase-2): `resolveContentURI` is a neutral IPFS/HTTP URI resolver
+ * that duplicates `ipfsService.resolveFetchUrl`. It lives here only for
+ * historical reasons; relocating/merging it is tracked separately and is
+ * out of scope for the seller-naming pass.
  */
 
 import type {
@@ -21,23 +26,21 @@ import { IPFS_GATEWAY_URL } from "@/lib/shared/ipfsService";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type MerchantBranding = SellerBrandingMetadata;
-
-export interface MerchantAssets {
+export interface SellerAssets {
     cssURI?: string;
     imageBaseURI?: string;
 }
 
-export interface ResolvedMerchantBranding {
-    branding: MerchantBranding;
-    assets: MerchantAssets;
+export interface ResolvedSellerBranding {
+    branding: SellerBrandingMetadata;
+    assets: SellerAssets;
     /** Gateway-resolved logo URL (ready for <img src>) */
     logoURL?: string;
     /** Gateway-resolved hero image URL */
     heroImageURL?: string;
     /** Gateway-resolved CSS URL */
     cssURL?: string;
-    /** Raw merchant name (top-level, not branding.displayName) */
+    /** Raw seller name (top-level, not branding.displayName) */
     name?: string;
 }
 
@@ -65,17 +68,17 @@ export function resolveContentURI(uri: string): string {
 
 // ── Fetch + parse ─────────────────────────────────────────────────────────────
 
-const cache = new Map<string, ResolvedMerchantBranding>();
+const cache = new Map<string, ResolvedSellerBranding>();
 
-export function resolveMerchantBrandingDocument(input: {
+export function resolveSellerBrandingDocument(input: {
     name?: string;
-    branding?: Partial<MerchantBranding> | null;
-    assets?: Partial<MerchantAssets> | null;
-}): ResolvedMerchantBranding {
+    branding?: Partial<SellerBrandingMetadata> | null;
+    assets?: Partial<SellerAssets> | null;
+}): ResolvedSellerBranding {
     const branding = input.branding ?? {};
     const assets = input.assets ?? {};
 
-    const b: MerchantBranding = {
+    const b: SellerBrandingMetadata = {
         displayName: typeof branding.displayName === "string" ? branding.displayName : undefined,
         logoURI: typeof branding.logoURI === "string" ? branding.logoURI : undefined,
         heroImageURI: typeof branding.heroImageURI === "string" ? branding.heroImageURI : undefined,
@@ -83,7 +86,7 @@ export function resolveMerchantBrandingDocument(input: {
         themeClass: typeof branding.themeClass === "string" ? branding.themeClass : undefined,
     };
 
-    const a: MerchantAssets = {
+    const a: SellerAssets = {
         cssURI: typeof assets.cssURI === "string" ? assets.cssURI : undefined,
         imageBaseURI: typeof assets.imageBaseURI === "string" ? assets.imageBaseURI : undefined,
     };
@@ -98,9 +101,9 @@ export function resolveMerchantBrandingDocument(input: {
     };
 }
 
-export function resolveMerchantBrandingFromOperatorProfile(
+export function resolveSellerBrandingFromOperatorProfile(
     metadata: Pick<OperatorProfileMetadata, "name" | "branding" | "assets"> | null | undefined,
-): ResolvedMerchantBranding | null {
+): ResolvedSellerBranding | null {
     if (!metadata) {
         return null;
     }
@@ -119,25 +122,22 @@ export function resolveMerchantBrandingFromOperatorProfile(
         return null;
     }
 
-    return resolveMerchantBrandingDocument({
+    return resolveSellerBrandingDocument({
         name: metadata.name,
         branding: metadata.branding,
         assets: metadata.assets,
     });
 }
 
-/** @deprecated Renamed to `resolveMerchantBrandingFromOperatorProfile`. Branding lives on the profile, not the catalogue. */
-export const resolveMerchantBrandingFromOperatorCatalogue = resolveMerchantBrandingFromOperatorProfile;
-
 /**
- * Fetch merchant metadata from a content URI and extract branding fields.
+ * Fetch seller metadata from a content URI and extract branding fields.
  * Results are cached in-memory by URI.
  *
  * @returns Resolved branding, or null if the URI is empty or fetch fails.
  */
-export async function fetchMerchantBranding(
+export async function fetchSellerBranding(
     metadataURI: string
-): Promise<ResolvedMerchantBranding | null> {
+): Promise<ResolvedSellerBranding | null> {
     if (!metadataURI) return null;
 
     const cached = cache.get(metadataURI);
@@ -150,10 +150,10 @@ export async function fetchMerchantBranding(
         if (!doc || typeof doc !== "object" || Array.isArray(doc)) return null;
 
         const record = doc as Record<string, unknown>;
-        const resolved = resolveMerchantBrandingDocument({
+        const resolved = resolveSellerBrandingDocument({
             name: typeof record.name === "string" ? record.name : undefined,
-            branding: (record.branding ?? null) as Partial<MerchantBranding> | null,
-            assets: (record.assets ?? null) as Partial<MerchantAssets> | null,
+            branding: (record.branding ?? null) as Partial<SellerBrandingMetadata> | null,
+            assets: (record.assets ?? null) as Partial<SellerAssets> | null,
         });
         cache.set(metadataURI, resolved);
         return resolved;

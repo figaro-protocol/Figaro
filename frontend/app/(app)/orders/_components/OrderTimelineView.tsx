@@ -902,7 +902,7 @@ export function OrderTimelineView({ processId }: Props) {
                             </p>
                         )}
                         {merchantError && (
-                            <p className="text-sm text-red-600" data-testid="merchant-action-error">
+                            <p className="text-sm text-red-600" data-testid="seller-action-error">
                                 {merchantError}
                             </p>
                         )}

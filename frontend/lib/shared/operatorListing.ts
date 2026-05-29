@@ -9,7 +9,7 @@ import { hexEqual } from "@/lib/shared/evm";
  * a `Listing` is the projection of (subject + bindings + optional metadata)
  * into a shape the `OperatorCard` can render across any assembly. An
  * operator with zero bindings still produces a `Listing`; clicking any
- * listing routes to its `/m/<address>` detail page. An operator with
+ * listing routes to its `/s/<address>` detail page. An operator with
  * multiple bindings carries them all
  * so the card can display assembly badges and the click-through can pick
  * the primary.
@@ -157,5 +157,5 @@ export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): 
  * still has a /m page — it surfaces the catalogue without a fulfilment path.
  */
 export function listingClickThroughHref(listing: Listing): string {
-    return `/m/${listing.address}`;
+    return `/s/${listing.address}`;
 }

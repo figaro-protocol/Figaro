@@ -94,8 +94,8 @@ test.describe('Dutch-auction delivery — deferred courier edge (devnet)', () =>
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
         // ── 1. Buyer picks dutch-auction delivery ─────────────────────
-        await page.goto(`/m/${MERCATO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const detailView = page.getByTestId('merchant-detail-view');
+        await page.goto(`/s/${MERCATO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        const detailView = page.getByTestId('seller-detail-view');
         try {
             await detailView.waitFor({ state: 'visible', timeout: 30000 });
         } catch {

@@ -30,7 +30,7 @@ import {
     useWithdrawDeposit,
 } from "@/lib/mechanisms/useOperatorRegistry";
 import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "@/lib/mechanisms/contracts";
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { resolveContentURI } from "@/lib/shared/sellerBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
@@ -147,7 +147,7 @@ function RegisteredCard({
                     <p className="text-sm text-ink-body">{profile.specialty}</p>
                 )}
                 <Link
-                    href={`/m/${address}`}
+                    href={`/s/${address}`}
                     className="inline-block text-sm text-ink-faint hover:text-ink-heading underline"
                 >
                     View public profile →

@@ -37,7 +37,7 @@ import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { useOperatorProfile } from "./useOperatorRegistry";
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { resolveContentURI } from "@/lib/shared/sellerBranding";
 import {
     tryParseOperatorProfileDocument,
     type CounterpartyBinding,
@@ -544,7 +544,7 @@ export interface BoundAssembly {
     counterpartyBindings: CounterpartyBinding[];
 }
 
-export interface MerchantBoundAssemblies {
+export interface SellerBoundAssemblies {
     /** The merchant's on-chain bound assemblies, manifests resolved —
      *  the buyer-facing choice set at checkout. Each bound assembly is
      *  one option the operator offers; the buyer picks one. */
@@ -594,12 +594,12 @@ function extractRootFulfilment(
  * and `modalities` is the flat union of their root-order fulfilment
  * modalities. When false, the caller falls back to the catalogue.
  */
-export function useMerchantBoundAssemblies(
-    merchantAddress: `0x${string}` | undefined,
-): MerchantBoundAssemblies {
-    const { data: registryData, isLoading: registryLoading } = useOperatorProfile(merchantAddress);
+export function useSellerBoundAssemblies(
+    sellerAddress: `0x${string}` | undefined,
+): SellerBoundAssemblies {
+    const { data: registryData, isLoading: registryLoading } = useOperatorProfile(sellerAddress);
     const { data: publishedEvents, isLoading: eventsLoading } = useAllPublishedAssemblies();
-    const [result, setResult] = useState<MerchantBoundAssemblies>({
+    const [result, setResult] = useState<SellerBoundAssemblies>({
         assemblies: [],
         modalities: [],
         isLoading: false,
@@ -607,7 +607,7 @@ export function useMerchantBoundAssemblies(
     });
 
     useEffect(() => {
-        if (!merchantAddress) {
+        if (!sellerAddress) {
             setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
             return;
         }
@@ -642,8 +642,8 @@ export function useMerchantBoundAssemblies(
                     return;
                 }
 
-                const merchantSlugs = new Set(profile.assemblyBindings.map((b) => b.assemblySlug));
-                const matchedEvents = publishedEvents.filter((e) => merchantSlugs.has(e.slug));
+                const sellerSlugs = new Set(profile.assemblyBindings.map((b) => b.assemblySlug));
+                const matchedEvents = publishedEvents.filter((e) => sellerSlugs.has(e.slug));
                 if (matchedEvents.length === 0) {
                     setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
                     return;
@@ -692,7 +692,7 @@ export function useMerchantBoundAssemblies(
         return () => {
             cancelled = true;
         };
-    }, [merchantAddress, registryData, publishedEvents, registryLoading, eventsLoading]);
+    }, [sellerAddress, registryData, publishedEvents, registryLoading, eventsLoading]);
 
     return result;
 }

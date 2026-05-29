@@ -132,13 +132,13 @@ test.describe("operator wizard — devnet happy path", () => {
         await expect(page.getByRole("link", { name: /View public profile/ })).toBeVisible();
         await expect(page.getByRole("link", { name: /View public profile/ })).toHaveAttribute(
             "href",
-            `/m/${OPERATOR}`,
+            `/s/${OPERATOR}`,
         );
 
         // Capture the wizard-published catalogue as the seed fixture
         // (FIGARO_CAPTURE_FIXTURES), or drift-guard it against the committed
         // one. The seed script replays this fixture so the seeded operators
-        // have a catalogue and /m/[merchant] is transactable.
+        // have a catalogue and /s/[seller] is transactable.
         await captureOrGuardOperatorCatalogue(OPERATOR);
     });
 });

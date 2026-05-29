@@ -228,7 +228,7 @@ export function OnboardingReview() {
                 <div className="flex items-center justify-end gap-3">
                     {address && (
                         <Link
-                            href={`/m/${address}`}
+                            href={`/s/${address}`}
                             className="text-sm text-ink-faint hover:text-ink-heading underline"
                         >
                             View public profile →

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MerchantInbox } from "./_components/MerchantInbox";
+import { Inbox } from "./_components/Inbox";
 
 export const dynamic = "force-dynamic";
 
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function InboxPage() {
-    return <MerchantInbox />;
+    return <Inbox />;
 }

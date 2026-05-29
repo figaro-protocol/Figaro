@@ -2,7 +2,7 @@
  * lib/shared/uriFetcher.ts
  *
  * Generic fetch+parse+cache helper for IPFS / HTTP content-addressed
- * documents. Two lib modules (`catalogueFetcher`, `merchantBranding`)
+ * documents. Two lib modules (`catalogueFetcher`, `sellerBranding`)
  * previously each rolled their own copy of the same pipeline:
  *
  *   if (!uri) return null;
@@ -17,7 +17,7 @@
  * that supplies a `parse` function and (optionally) a TTL.
  */
 
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { resolveContentURI } from "@/lib/shared/sellerBranding";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 export interface UriFetcherConfig<T> {

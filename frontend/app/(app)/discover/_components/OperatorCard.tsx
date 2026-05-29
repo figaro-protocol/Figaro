@@ -105,7 +105,7 @@ export function OperatorCard({
             {/* Track record — public-graph-derived. Rendered only once the
                 operator has completed a process; the absence of the line is
                 itself the signal, matching the detail page's honest empty
-                state. The full breakdown lives on /m/[operator]. */}
+                state. The full breakdown lives on /s/[seller]. */}
             {trackRecord && trackRecord.completedProcesses > 0 && (
                 <p className="text-xs text-gray-600 mb-3" data-testid="card-track-record">
                     <span className="font-semibold text-black tabular-nums">

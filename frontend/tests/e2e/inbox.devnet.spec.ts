@@ -65,7 +65,7 @@ test.describe('/inbox (devnet)', () => {
         }, SELLER_ADDR);
 
         await page.goto('/inbox?e2e=devnet', { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('merchant-inbox').waitFor({ timeout: 30000 });
+        await page.getByTestId('inbox').waitFor({ timeout: 30000 });
 
         const activeRow = page.getByTestId(`inbox-active-row-${processId}`);
         await expect(activeRow).toBeVisible({ timeout: 30000 });

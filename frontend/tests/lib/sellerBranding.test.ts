@@ -1,16 +1,16 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { createElement } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { MerchantBrandingModule } from '@/components/modules/MerchantBrandingModule';
+import { SellerBrandingModule } from '@/components/modules/SellerBrandingModule';
 import {
     resolveContentURI,
-    fetchMerchantBranding,
+    fetchSellerBranding,
     clearBrandingCache,
-    resolveMerchantBrandingFromOperatorProfile,
-} from '@/lib/shared/merchantBranding';
+    resolveSellerBrandingFromOperatorProfile,
+} from '@/lib/shared/sellerBranding';
 import { OPERATOR_PROFILE_METADATA_EXAMPLE } from './__fixtures__/operatorMetadata';
 
-describe('merchantBranding', () => {
+describe('sellerBranding', () => {
     describe('resolveContentURI', () => {
         it('resolves ipfs:// URIs to gateway URLs', () => {
             const url = resolveContentURI('ipfs://QmXyz123/logo.png');
@@ -50,7 +50,7 @@ describe('merchantBranding', () => {
         });
     });
 
-    describe('fetchMerchantBranding', () => {
+    describe('fetchSellerBranding', () => {
         beforeEach(() => {
             clearBrandingCache();
         });
@@ -60,7 +60,7 @@ describe('merchantBranding', () => {
         });
 
         it('returns null for an empty URI', async () => {
-            const result = await fetchMerchantBranding('');
+            const result = await fetchSellerBranding('');
             expect(result).toBeNull();
         });
 
@@ -86,7 +86,7 @@ describe('merchantBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            const result = await fetchMerchantBranding('ipfs://QmMetadata');
+            const result = await fetchSellerBranding('ipfs://QmMetadata');
 
             expect(result).not.toBeNull();
             expect(result!.branding.displayName).toBe("Bob's Pizza");
@@ -112,7 +112,7 @@ describe('merchantBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            const result = await fetchMerchantBranding('http://example.com/metadata.json');
+            const result = await fetchSellerBranding('http://example.com/metadata.json');
 
             expect(result).not.toBeNull();
             expect(result!.branding.accentColor).toBe('#333');
@@ -128,14 +128,14 @@ describe('merchantBranding', () => {
                 statusText: 'Not Found',
             } as Response);
 
-            const result = await fetchMerchantBranding('ipfs://QmMissing');
+            const result = await fetchSellerBranding('ipfs://QmMissing');
             expect(result).toBeNull();
         });
 
         it('returns null when fetch throws', async () => {
             vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network error'));
 
-            const result = await fetchMerchantBranding('ipfs://QmUnreachable');
+            const result = await fetchSellerBranding('ipfs://QmUnreachable');
             expect(result).toBeNull();
         });
 
@@ -146,7 +146,7 @@ describe('merchantBranding', () => {
                 text: () => Promise.resolve(JSON.stringify('not an object')),
             } as Response);
 
-            const result = await fetchMerchantBranding('ipfs://QmNotJson');
+            const result = await fetchSellerBranding('ipfs://QmNotJson');
             expect(result).toBeNull();
         });
 
@@ -157,7 +157,7 @@ describe('merchantBranding', () => {
                 text: () => Promise.resolve(JSON.stringify([1, 2, 3])),
             } as Response);
 
-            const result = await fetchMerchantBranding('ipfs://QmArray');
+            const result = await fetchSellerBranding('ipfs://QmArray');
             expect(result).toBeNull();
         });
 
@@ -169,8 +169,8 @@ describe('merchantBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            await fetchMerchantBranding('ipfs://QmCached');
-            await fetchMerchantBranding('ipfs://QmCached');
+            await fetchSellerBranding('ipfs://QmCached');
+            await fetchSellerBranding('ipfs://QmCached');
 
             // Only one fetch despite two calls
             expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -184,9 +184,9 @@ describe('merchantBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            await fetchMerchantBranding('ipfs://QmClearTest');
+            await fetchSellerBranding('ipfs://QmClearTest');
             clearBrandingCache();
-            await fetchMerchantBranding('ipfs://QmClearTest');
+            await fetchSellerBranding('ipfs://QmClearTest');
 
             expect(fetchSpy).toHaveBeenCalledTimes(2);
         });
@@ -200,7 +200,7 @@ describe('merchantBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            const result = await fetchMerchantBranding('http://example.com/bare.json');
+            const result = await fetchSellerBranding('http://example.com/bare.json');
 
             expect(result).not.toBeNull();
             expect(result!.branding).toEqual({
@@ -218,7 +218,7 @@ describe('merchantBranding', () => {
         });
 
         it('resolves branding directly from seller catalogue metadata', () => {
-            const result = resolveMerchantBrandingFromOperatorProfile(OPERATOR_PROFILE_METADATA_EXAMPLE);
+            const result = resolveSellerBrandingFromOperatorProfile(OPERATOR_PROFILE_METADATA_EXAMPLE);
 
             expect(result).not.toBeNull();
             expect(result!.branding.displayName).toBe("Example Merchant");
@@ -228,14 +228,14 @@ describe('merchantBranding', () => {
         });
 
         it('applies a branding override without fetching operator metadata', async () => {
-            const brandingOverride = resolveMerchantBrandingFromOperatorProfile(OPERATOR_PROFILE_METADATA_EXAMPLE);
+            const brandingOverride = resolveSellerBrandingFromOperatorProfile(OPERATOR_PROFILE_METADATA_EXAMPLE);
             const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
                 ok: true,
                 text: () => Promise.resolve('.merchant-pizza { color: red; }'),
             } as Response);
 
             render(createElement(
-                MerchantBrandingModule,
+                SellerBrandingModule,
                 {
                     sellerAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
                     brandingOverride,

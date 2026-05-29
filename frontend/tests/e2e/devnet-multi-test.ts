@@ -171,8 +171,8 @@ async function pinCommitmentPayloadJsonToLocalIpfs(payloadJson: string): Promise
  * payload is pinned to the local Kubo daemon here so the seller-side
  * fetch resolves the same byte string back.
  *
- * The MerchantInbox subscriber filters by `payload.commitment.seller
- * === address` (MerchantInbox.tsx) — pass a `commitment` whose `seller`
+ * The Inbox subscriber filters by `payload.commitment.seller
+ * === address` (Inbox.tsx) — pass a `commitment` whose `seller`
  * matches the wallet the page is connected as.
  */
 export async function simulateXmtpCommitmentArrival(

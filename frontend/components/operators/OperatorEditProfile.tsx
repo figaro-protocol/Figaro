@@ -29,7 +29,7 @@ import { useMounted } from "@/lib/shared/useMounted";
 import { useOperatorProfile } from "@/lib/mechanisms/useOperatorRegistry";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import { useUpdateOperatorProfile } from "@/lib/operators/useUpdateOperatorProfile";
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { resolveContentURI } from "@/lib/shared/sellerBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 import type { OperatorProfileMetadata } from "@/lib/shared/operatorProfileMetadata";
 import { OnboardingProfileForm } from "@/components/operators/OnboardingProfileForm";

@@ -11,7 +11,7 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { resolveContentURI } from "@/lib/shared/sellerBranding";
 
 export function ContentImage({
     src,

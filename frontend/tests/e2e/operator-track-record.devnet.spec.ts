@@ -4,7 +4,7 @@
  * The operator track record reflects real on-chain history. Runs a full
  * local-commerce scenario (buyer commits → merchant + courier coordinate →
  * buyer resolves), then asserts the track record reflects it — on each
- * operator's /m/[operator] page and on the /discover card-level summary.
+ * operator's /s/[seller] page and on the /discover card-level summary.
  * Every figure is recomputed live from events, not a stored score.
  *
  * Requires Anvil + ./deploy-local.sh + Kubo + a seeded devnet.
@@ -50,7 +50,7 @@ function coreToken(): { core: Hex; token: Hex } {
 /** Load an operator's page and read one track-record stat tile. Reload-based
  *  so expect.poll can absorb any indexer lag after resolution. */
 async function loadAndStat(page: Page, operator: string, testId: string): Promise<number> {
-    await page.goto(`/m/${operator}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`/s/${operator}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
     await page.getByTestId('operator-track-record').waitFor({ state: 'visible', timeout: 30000 });
     const txt = await page.getByTestId(testId).textContent();
     return Number((txt ?? '').trim());

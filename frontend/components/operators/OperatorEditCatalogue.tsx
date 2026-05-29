@@ -33,7 +33,7 @@ import { useOperatorProfile } from "@/lib/mechanisms/useOperatorRegistry";
 import { useOnboardingState } from "@/lib/operators/onboardingState";
 import { useUpdateOperatorProfile } from "@/lib/operators/useUpdateOperatorProfile";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { resolveContentURI } from "@/lib/shared/sellerBranding";
 import { tryParseOperatorProfileDocument } from "@/lib/shared/operatorProfileMetadata";
 import type {
     OperatorCatalogueMetadata,

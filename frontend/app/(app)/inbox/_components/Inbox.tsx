@@ -1,8 +1,10 @@
 "use client";
 
 /**
- * MerchantInbox — landing page for the merchant surface, rendered at
- * `/inbox`. Two sections:
+ * Inbox — the per-wallet landing page rendered at `/inbox`. Actor-neutral
+ * shell: the protocol is symmetric, so a buyer inbox is a future section
+ * here, not a separate surface. Today it renders the seller-side sections;
+ * the name stays neutral so buyer content lands without a rename.
  *
  *  1. **Pending orders** — XMTP-listened commitment payloads where the
  *     connected wallet is the seller. Lifted from `IncomingOrdersModule`'s
@@ -139,7 +141,7 @@ function ActiveOrderRow({ row, listings }: { row: ProcessRow; listings: Readonly
 
 // ── Main inbox ──────────────────────────────────────────────────────
 
-export function MerchantInbox() {
+export function Inbox() {
     const { address, isConnected } = useAccount();
     const { data: walletClient } = useWalletClient();
     const services = useRuntimeServices();
@@ -230,7 +232,7 @@ export function MerchantInbox() {
     const completedRows = rows.filter((row) => row.isResolved);
 
     return (
-        <div data-testid="merchant-inbox" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
+        <div data-testid="inbox" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
             <header>
                 <p className="text-xs font-semibold text-neutral-500">Merchant inbox</p>
                 <h1 className="mt-1 text-3xl font-bold text-black">Inbox</h1>

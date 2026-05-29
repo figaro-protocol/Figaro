@@ -216,7 +216,7 @@ export async function waitForReactHydration(
  */
 export async function gotoInboxMock(page: Page) {
     await page.goto('/inbox?e2e=mock', { waitUntil: 'load' });
-    await page.getByTestId('merchant-inbox').waitFor({ timeout: 30000 });
+    await page.getByTestId('inbox').waitFor({ timeout: 30000 });
 }
 
 export async function clickByTestId(page: Page, testId: string) {

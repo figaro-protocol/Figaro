@@ -125,8 +125,8 @@ test.describe('Pickup runtime — buyer + merchant both witness the handoff (dev
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
         // ── Buyer browses Mercato + picks pickup ──────────────────────
-        await page.goto(`/m/${MERCATO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const detailView = page.getByTestId('merchant-detail-view');
+        await page.goto(`/s/${MERCATO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        const detailView = page.getByTestId('seller-detail-view');
         try {
             await detailView.waitFor({ state: 'visible', timeout: 30000 });
         } catch {
@@ -150,7 +150,7 @@ test.describe('Pickup runtime — buyer + merchant both witness the handoff (dev
         // local-commerce-pickup; the binding-driven path surfaces "Pickup"
         // alongside the other four. Selecting it loads the pickup
         // assembly's manifest, which carries proximity-policy on the root
-        // — and MerchantDetailView propagates that into manifestFields so
+        // — and SellerDetailView propagates that into manifestFields so
         // the committed root agreement also carries proximity-policy.
         await expect(page.getByTestId('option-fulfilment-pickup')).toHaveCount(1, { timeout: 20000 });
         await page.getByTestId('select-fulfilment-mode').selectOption('pickup');
@@ -175,7 +175,7 @@ test.describe('Pickup runtime — buyer + merchant both witness the handoff (dev
         expect(committed[3]).toBe(1); // single root order (pickup = 1-node)
 
         // The committed root agreement must carry proximity-policy
-        // (assembly-authored, MerchantDetailView-propagated). This is the
+        // (assembly-authored, SellerDetailView-propagated). This is the
         // gate the runtime btn-buyer-pickup-proof checks.
         const rootHasPolicy = await page.evaluate(() => {
             for (let i = 0; i < window.localStorage.length; i++) {

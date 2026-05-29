@@ -16,7 +16,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicCl
 import { getOperatorRegistry, OPERATOR_REGISTRY_ABI } from "./contracts";
 import { getOperatorState, getOperatorMetadataURI } from "@/lib/core/indexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-import { resolveContentURI } from "@/lib/shared/merchantBranding";
+import { resolveContentURI } from "@/lib/shared/sellerBranding";
 import {
     AgentServiceInfo,
     OperatorAgentServices,

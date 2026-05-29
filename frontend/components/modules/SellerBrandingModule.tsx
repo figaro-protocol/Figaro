@@ -1,5 +1,5 @@
 /**
- * components/modules/MerchantBrandingModule.tsx
+ * components/modules/SellerBrandingModule.tsx
  *
  * Scoped CSS and branding injection for merchant-themed UI regions.
  *
@@ -10,33 +10,33 @@
  * 3. Apply the merchant's themeClass to the container
  *
  * Usage:
- *   <MerchantBrandingModule sellerAddress={address}>
+ *   <SellerBrandingModule sellerAddress={address}>
  *     <RestaurantCard ... />
- *   </MerchantBrandingModule>
+ *   </SellerBrandingModule>
  */
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useMerchantBranding } from "@/lib/mechanisms/useMerchantBranding";
-import type { ResolvedMerchantBranding } from "@/lib/shared/merchantBranding";
+import { useSellerBranding } from "@/lib/mechanisms/useSellerBranding";
+import type { ResolvedSellerBranding } from "@/lib/shared/sellerBranding";
 
-interface MerchantBrandingModuleProps {
+interface SellerBrandingModuleProps {
     sellerAddress: `0x${string}` | undefined;
     children: ReactNode;
     /** Optional CSS class added to the wrapper div */
     className?: string;
-    brandingOverride?: ResolvedMerchantBranding | null;
+    brandingOverride?: ResolvedSellerBranding | null;
     dataSkinId?: string;
 }
 
-export function MerchantBrandingModule({
+export function SellerBrandingModule({
     sellerAddress,
     children,
     className,
     brandingOverride,
     dataSkinId,
-}: MerchantBrandingModuleProps) {
-    const { branding: resolvedBranding } = useMerchantBranding(brandingOverride ? undefined : sellerAddress);
+}: SellerBrandingModuleProps) {
+    const { branding: resolvedBranding } = useSellerBranding(brandingOverride ? undefined : sellerAddress);
     const branding = brandingOverride ?? resolvedBranding;
     const containerRef = useRef<HTMLDivElement>(null);
     const styleElementRef = useRef<HTMLStyleElement | null>(null);
@@ -133,12 +133,12 @@ export function MerchantBrandingModule({
 }
 
 /**
- * MerchantLogo — renders the merchant's logo from IPFS/HTTP, with two
+ * SellerLogo — renders the merchant's logo from IPFS/HTTP, with two
  * possible fallbacks: an initials block (when `fallbackName` is supplied)
  * coloured by the merchant's accent, or a plain emoji (backward-compatible
  * default for consumers that don't pass a name).
  */
-interface MerchantLogoProps {
+interface SellerLogoProps {
     sellerAddress: `0x${string}` | undefined;
     /**
      * Emoji to render when no logo loads AND no `fallbackName` is supplied.
@@ -154,18 +154,18 @@ interface MerchantLogoProps {
     fallbackName?: string;
     className?: string;
     size?: number;
-    brandingOverride?: ResolvedMerchantBranding | null;
+    brandingOverride?: ResolvedSellerBranding | null;
 }
 
-export function MerchantLogo({
+export function SellerLogo({
     sellerAddress,
     fallbackEmoji = "🍽️",
     fallbackName,
     className,
     size = 48,
     brandingOverride,
-}: MerchantLogoProps) {
-    const { branding: resolvedBranding, isLoading } = useMerchantBranding(brandingOverride ? undefined : sellerAddress);
+}: SellerLogoProps) {
+    const { branding: resolvedBranding, isLoading } = useSellerBranding(brandingOverride ? undefined : sellerAddress);
     const branding = brandingOverride ?? resolvedBranding;
     const logoURL = branding?.logoURL;
     const [imageFailed, setImageFailed] = useState(false);
@@ -188,10 +188,10 @@ export function MerchantLogo({
 
     if (logoURL && !imageFailed) {
         return (
-            // eslint-disable-next-line @next/next/no-img-element -- Merchant branding uses arbitrary IPFS/HTTP assets with runtime fallback handling.
+            // eslint-disable-next-line @next/next/no-img-element -- Seller branding uses arbitrary IPFS/HTTP assets with runtime fallback handling.
             <img
                 src={logoURL}
-                alt="Merchant logo"
+                alt="Seller logo"
                 width={size}
                 height={size}
                 className={className}

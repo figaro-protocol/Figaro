@@ -42,6 +42,8 @@ cd prover && cargo test -p figaro-kernel
 cd prover && cargo test -p figaro-sequencer
 
 # --- Deploy to local Anvil ---
+./scripts/devup.sh                       # ⭐ one-shot, idempotent: ensures Anvil + IPFS, deploys protocol + Kleros
+# …or the individual steps it wraps:
 ./scripts/deploy-local.sh
 ./scripts/deploy-mock-kleros.sh          # run AFTER deploy-local.sh for the Kleros mock flow
 ```

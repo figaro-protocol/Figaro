@@ -47,7 +47,7 @@ interface Props {
     /** Courier addresses the merchant designated — seller-assigned only. */
     partnerAddresses: string[];
     /** The merchant — negotiated prices are keyed to it. */
-    merchantAddress: string;
+    sellerAddress: string;
     /** Token symbol for price display. */
     tokenSymbol: string;
     /** Reports the completed selection, or `null` while incomplete. */
@@ -56,7 +56,7 @@ interface Props {
 
 const FIELD = "w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent";
 
-export function CourierCataloguePicker({ mode, partnerAddresses, merchantAddress, tokenSymbol, onSelect }: Props) {
+export function CourierCataloguePicker({ mode, partnerAddresses, sellerAddress, tokenSymbol, onSelect }: Props) {
     const [courierAddress, setCourierAddress] = useState("");
     const [selectedItemId, setSelectedItemId] = useState("");
     const [buyerSetPrice, setBuyerSetPrice] = useState("");
@@ -74,8 +74,8 @@ export function CourierCataloguePicker({ mode, partnerAddresses, merchantAddress
     );
     const selectedItem = deliveryItems.find((i) => i.id === selectedItemId);
     const resolved = useMemo(
-        () => (selectedItem ? resolveCatalogueItemPrice(selectedItem, merchantAddress) : undefined),
-        [selectedItem, merchantAddress],
+        () => (selectedItem ? resolveCatalogueItemPrice(selectedItem, sellerAddress) : undefined),
+        [selectedItem, sellerAddress],
     );
     const isBuyerSet = resolved?.policy === "buyer-set";
 
@@ -141,7 +141,7 @@ export function CourierCataloguePicker({ mode, partnerAddresses, merchantAddress
             {deliveryItems.length > 0 && (
                 <div className="space-y-1 rounded border border-neutral-200 p-2" data-testid="courier-delivery-list">
                     {deliveryItems.map((item) => {
-                        const r = resolveCatalogueItemPrice(item, merchantAddress);
+                        const r = resolveCatalogueItemPrice(item, sellerAddress);
                         return (
                             <label key={item.id} className="flex items-center gap-2 text-sm cursor-pointer">
                                 <input

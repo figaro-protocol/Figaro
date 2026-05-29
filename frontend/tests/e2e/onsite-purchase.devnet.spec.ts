@@ -7,9 +7,9 @@
  *
  * Counter & Co. (anvil[5]) is registered by `scripts/seed-devnet.mjs` and
  * bound on-chain to the `direct-sale` assembly. That binding drives the
- * fulfilment choice: `useMerchantBoundModalities` resolves the bound
+ * fulfilment choice: `useSellerBoundAssemblies` resolves the bound
  * assembly's `figaro-fulfilment-v2` clause (`modalities: [consume-onsite]`)
- * and `MerchantDetailView` narrows the dropdown to it — the binding-driven
+ * and `SellerDetailView` narrows the dropdown to it — the binding-driven
  * path a binding-less merchant never exercises (it falls back to all six
  * modes).
  *
@@ -149,9 +149,9 @@ test.describe('On-site purchase from seeded Counter & Co. (devnet)', () => {
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
         // ── Browse the seeded merchant ───────────────────────────────
-        await page.goto(`/m/${COUNTER_CO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/s/${COUNTER_CO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
 
-        const detailView = page.getByTestId('merchant-detail-view');
+        const detailView = page.getByTestId('seller-detail-view');
         try {
             await detailView.waitFor({ state: 'visible', timeout: 30000 });
         } catch {
@@ -175,8 +175,8 @@ test.describe('On-site purchase from seeded Counter & Co. (devnet)', () => {
 
         // ── Binding-driven fulfilment ────────────────────────────────
         // Counter & Co. is bound to `direct-sale`, whose figaro-fulfilment-v2
-        // clause declares modalities: [consume-onsite]. useMerchantBoundModalities
-        // resolves that binding off-chain and MerchantDetailView filters the
+        // clause declares modalities: [consume-onsite]. useSellerBoundAssemblies
+        // resolves that binding off-chain and SellerDetailView filters the
         // dropdown to it — `pickup` drops out once the binding resolves. A
         // binding-less merchant keeps all six modes, so the absence of
         // `pickup` is the binding-driven assertion.
@@ -238,8 +238,8 @@ test.describe('On-site purchase from seeded Counter & Co. (devnet)', () => {
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
         // ── Buyer browses Counter & Co. + picks consume-onsite ────────
-        await page.goto(`/m/${COUNTER_CO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const detailView = page.getByTestId('merchant-detail-view');
+        await page.goto(`/s/${COUNTER_CO_ADDR}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        const detailView = page.getByTestId('seller-detail-view');
         try {
             await detailView.waitFor({ state: 'visible', timeout: 30000 });
         } catch {
@@ -261,7 +261,7 @@ test.describe('On-site purchase from seeded Counter & Co. (devnet)', () => {
 
         // Counter & Co. binds only `direct-sale` → the dropdown narrows to
         // consume-onsite. Selecting it loads the assembly's manifest, which
-        // now carries proximity-policy on the root — MerchantDetailView
+        // now carries proximity-policy on the root — SellerDetailView
         // propagates that into manifestFields so the committed root agreement
         // carries proximity-policy too (the gate the handoff buttons check).
         await expect(page.getByTestId('option-fulfilment-pickup')).toHaveCount(0, { timeout: 20000 });
@@ -288,7 +288,7 @@ test.describe('On-site purchase from seeded Counter & Co. (devnet)', () => {
         expect(committed[3]).toBe(1); // single root order (consume-onsite = 1-node)
 
         // The committed root agreement must carry proximity-policy
-        // (assembly-authored, MerchantDetailView-propagated). This is the
+        // (assembly-authored, SellerDetailView-propagated). This is the
         // gate the runtime btn-buyer-pickup-proof / btn-merchant-proximity-proof
         // both check (isPickupHandoff = rootHasProximityPolicy && !courierSubOrder).
         const rootHasPolicy = await page.evaluate(() => {

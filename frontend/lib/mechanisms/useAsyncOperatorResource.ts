@@ -3,7 +3,7 @@
  *
  * Generic shape for "operator address → resolved metadataURI → fetched
  * resource" hooks. Two callers consolidate onto this:
- *   - useMerchantBranding   → resolved branding
+ *   - useSellerBranding   → resolved branding
  *   - useOperatorCatalogue  → seller catalogue
  *
  * Each caller wraps this with a typed result alias and a fixed fetcher.

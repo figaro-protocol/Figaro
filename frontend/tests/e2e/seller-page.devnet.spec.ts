@@ -1,7 +1,7 @@
 /**
  * merchant-page.devnet.spec.ts
  *
- * /m/[merchant] is the buyer-facing catalogue page — branding hero,
+ * /s/[seller] is the buyer-facing catalogue page — branding hero,
  * menu grid, cart, place-order CTA. The page reads the operator's
  * profile + catalogue from IPFS via useRegisteredCatalogues and
  * mounts the cart against useCheckout. No devnet coverage existed
@@ -12,15 +12,15 @@
  *   2. Pin an OperatorProfileMetadata JSON that points to the
  *      catalogue CID.
  *   3. Register the operator on-chain with the profile URI.
- *   4. Open /m/<merchantAddress>?e2e=devnet from a buyer wallet.
+ *   4. Open /m/<sellerAddress>?e2e=devnet from a buyer wallet.
  *
- * Assertions: the merchant-detail-view shell renders for the operator
+ * Assertions: the seller-detail-view shell renders for the operator
  * address, the menu item from the seeded catalogue appears, clicking
  * Add lands a cart line. The full place-order tx flow (approval +
  * commitment signing + redirect) is deferred — it's exercised by the
  * commit-side tests (commitment-share.devnet, lifecycle.devnet). What
  * this spec specifically protects is the merchant-page composition:
- * IPFS-pinned operator profile + catalogue → MerchantDetailView's
+ * IPFS-pinned operator profile + catalogue → SellerDetailView's
  * menu render → cart.
  *
  * Requires:
@@ -158,7 +158,7 @@ let outerSnapshot: string;
 test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
 test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
-test.describe('/m/[merchant] (devnet)', () => {
+test.describe('/s/[seller] (devnet)', () => {
     let testSnapshot: string;
     test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
@@ -170,13 +170,13 @@ test.describe('/m/[merchant] (devnet)', () => {
         const seeded = await seedRegisteredMerchant();
 
         // Buyer wallet is anvil[0] by default — connect via ?e2e=devnet.
-        await page.goto(`/m/${seeded.address}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/s/${seeded.address}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
 
-        // The page mounts MerchantDetailView and queries
+        // The page mounts SellerDetailView and queries
         // useRegisteredCatalogues, which iterates registered operators
         // and fetches profile+catalogue from IPFS. First-mount race
         // with discovery: reload once if the menu hasn't rendered.
-        const detailView = page.getByTestId('merchant-detail-view');
+        const detailView = page.getByTestId('seller-detail-view');
         try {
             await detailView.waitFor({ state: 'visible', timeout: 30000 });
         } catch {
@@ -184,7 +184,7 @@ test.describe('/m/[merchant] (devnet)', () => {
             await detailView.waitFor({ state: 'visible', timeout: 30000 });
         }
 
-        await expect(detailView).toHaveAttribute('data-merchant-address', seeded.address.toLowerCase());
+        await expect(detailView).toHaveAttribute('data-seller-address', seeded.address.toLowerCase());
 
         const menuItem = page.getByTestId(`menu-item-${seeded.itemId}`);
         try {

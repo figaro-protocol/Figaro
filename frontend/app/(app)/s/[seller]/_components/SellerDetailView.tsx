@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * MerchantDetailView — per-merchant landing page rendered at `/m/[merchant]`.
+ * SellerDetailView — per-seller landing page rendered at `/s/[seller]`.
  *
  * Replaces the prior `/i/<assembly>?operator=<addr>` UX where the buyer
- * landed in a generic assembly runtime that re-listed all merchants. This
- * page is merchant-shaped: hero with branding, full menu grid, inline cart
+ * landed in a generic assembly runtime that re-listed all sellers. This
+ * page is seller-shaped: hero with branding, full menu grid, inline cart
  * with explicit "Place order" CTA, and post-commit redirect to
  * `/orders/<processId>` (Increment 2).
  *
@@ -15,7 +15,7 @@
  *  - `useCheckout` — token balance, approval, commit flow.
  *  - `useCartStore` — global cart state (shared with CartModule).
  *
- * Keeps the existing `MerchantBrandingModule` wrapper so accent colour /
+ * Keeps the existing `SellerBrandingModule` wrapper so accent colour /
  * logo bleed-through still works under the same merchant-skin convention.
  */
 
@@ -26,7 +26,7 @@ import { useChainId, usePublicClient } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { ContentImage } from "@/components/shared/ContentImage";
-import { MerchantBrandingModule, MerchantLogo } from "@/components/modules/MerchantBrandingModule";
+import { SellerBrandingModule, SellerLogo } from "@/components/modules/SellerBrandingModule";
 import { useCommerce, useCheckout } from "@/lib/commerce";
 import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
@@ -63,7 +63,7 @@ import {
     isDeliveryFulfilment,
     mapFulfilmentToHandoff,
 } from "@/lib/seller/fulfilmentRouting";
-import { useMerchantBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
+import { useSellerBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
 import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
@@ -112,13 +112,13 @@ function assemblyJurisdictionFields(
 }
 
 interface Props {
-    merchantAddress: string;
+    sellerAddress: string;
 }
 
-export function MerchantDetailView({ merchantAddress }: Props) {
-    const merchantAddressLower = merchantAddress.toLowerCase();
-    const merchantAddressTyped = merchantAddressLower.startsWith("0x")
-        ? (merchantAddressLower as `0x${string}`)
+export function SellerDetailView({ sellerAddress }: Props) {
+    const sellerAddressLower = sellerAddress.toLowerCase();
+    const sellerAddressTyped = sellerAddressLower.startsWith("0x")
+        ? (sellerAddressLower as `0x${string}`)
         : undefined;
 
     const router = useRouter();
@@ -127,16 +127,16 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     const { catalogues: operatorCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
     const operatorCatalogue = useMemo(
-        () => operatorCatalogues.find((r) => hexEqual(r.address, merchantAddressLower)) ?? null,
-        [operatorCatalogues, merchantAddressLower],
+        () => operatorCatalogues.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
+        [operatorCatalogues, sellerAddressLower],
     );
 
     // Identity lookup is reserved for follow-on enrichment (operator
     // attestations, did:web profiles). The runtime fixture's accent colour
     // currently lives in the catalogue branding metadata, not the
-    // SubjectRecord — `MerchantBrandingModule` reads the catalogue path
+    // SubjectRecord — `SellerBrandingModule` reads the catalogue path
     // already. Surface accent here only when we can read it cheaply; default
-    // to undefined so MerchantBrandingModule's CSS variable wins.
+    // to undefined so SellerBrandingModule's CSS variable wins.
     const accentTone: string | undefined = undefined;
 
     const { address: buyer } = useCommerce();
@@ -181,7 +181,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // source of what this commerce class supports. When the merchant has
     // no on-chain bindings the catalogue still drives the choice set.
     const { assemblies: boundAssemblies, modalities: boundModalities, hasOnChainBinding } =
-        useMerchantBoundAssemblies(merchantAddressTyped);
+        useSellerBoundAssemblies(sellerAddressTyped);
 
     const supportedModes: FulfillmentMode[] = useMemo(() => {
         if (hasOnChainBinding && boundModalities.length > 0) {
@@ -236,14 +236,14 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     useEffect(() => {
         if (items.length === 0) return;
         const allMatchCurrent = items.every(
-            (item) => hexEqual(item.sellerAddress, merchantAddressLower),
+            (item) => hexEqual(item.sellerAddress, sellerAddressLower),
         );
-        const isSelfView = hexEqual(buyer, merchantAddressLower);
+        const isSelfView = hexEqual(buyer, sellerAddressLower);
         if (!allMatchCurrent || isSelfView) {
             clearCart();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [merchantAddressLower, buyer]);
+    }, [sellerAddressLower, buyer]);
 
     const balance = tokenBalance ?? 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
@@ -270,7 +270,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     }, [boundAssemblies, fulfillmentMode]);
     // The merchant's public-graph track record — settlement + coordination
     // history reconstructed from on-chain events.
-    const { trackRecord, isLoading: trackRecordLoading } = useOperatorTrackRecord(merchantAddressLower);
+    const { trackRecord, isLoading: trackRecordLoading } = useOperatorTrackRecord(sellerAddressLower);
 
     // Auto-chain: when approval confirms, proceed to commit signing.
     useEffect(() => {
@@ -306,7 +306,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             resetCommitment();
             router.push(`/orders/${processId}`);
         } catch (cause) {
-            console.error("MerchantDetailView: failed to compute processId", cause);
+            console.error("SellerDetailView: failed to compute processId", cause);
             clearCart();
             resetCommitment();
         }
@@ -316,7 +316,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     if (cataloguesLoading) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
-                <p className="text-xs font-semibold text-neutral-500 mb-3">Merchant</p>
+                <p className="text-xs font-semibold text-neutral-500 mb-3">Seller</p>
                 <h1 className="text-3xl font-bold text-black">Loading…</h1>
             </div>
         );
@@ -325,8 +325,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     if (!operatorCatalogue) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
-                <p className="text-xs font-semibold text-neutral-500 mb-3">Merchant not found</p>
-                <h1 className="text-3xl font-bold text-black">No merchant registered for {truncateHex(merchantAddressLower, { head: 10, tail: 0 })}</h1>
+                <p className="text-xs font-semibold text-neutral-500 mb-3">Seller not found</p>
+                <h1 className="text-3xl font-bold text-black">No seller registered for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
                 <p className="text-sm text-neutral-600">
                     This wallet hasn&apos;t registered itself in <code className="text-xs">OperatorRegistry</code> on the network
                     you&apos;re connected to, or hasn&apos;t pinned a catalogue. If this is your wallet, you can complete the registration through the onboarding flow.
@@ -370,25 +370,25 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // Filter cart to items from THIS merchant only — the inline cart on this
     // page is merchant-scoped. Items from other merchants live in the global
     // cart but aren't shown here.
-    const merchantCartItems = items.filter((it) => it.sellerId === operatorCatalogue.id);
+    const sellerCartItems = items.filter((it) => it.sellerId === operatorCatalogue.id);
     // Product-driven assembly selection — when a cart item names an assembly
     // (CatalogueItemMetadata.assemblySlug), the product picks the process and
     // the fulfilment-mode dropdown is bypassed.
-    const cartProductAssemblySlug = merchantCartItems
+    const cartProductAssemblySlug = sellerCartItems
         .map((it) => operatorCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
         .find((slug): slug is string => !!slug);
     // The pricing policy of a cart line's catalogue item — drives the
     // buyer-set price input in the cart aside below.
     const menuPolicyOf = (menuItemId: string) =>
         operatorCatalogue.menu.find((m) => m.id === menuItemId)?.pricingPolicy ?? "fixed";
-    const merchantTotalAmount = merchantCartItems.reduce(
+    const sellerTotalAmount = sellerCartItems.reduce(
         // `item.price` may be empty mid-edit on a buyer-set line — treat as 0;
         // the executeCheckout guard blocks an unpriced buyer-set commit.
         (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
         0n,
     );
-    const merchantBuyerBond = merchantTotalAmount > 0n
-        ? calculateBonds(merchantTotalAmount, merchantTotalAmount).buyerBond
+    const sellerBuyerBond = sellerTotalAmount > 0n
+        ? calculateBonds(sellerTotalAmount, sellerTotalAmount).buyerBond
         : 0n;
 
     // Product-driven assembly: the price the buyer pays is the sum of every
@@ -415,7 +415,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             return null;
         }
         const rows = [
-            { name: nameOf(lead), payment: merchantTotalAmount },
+            { name: nameOf(lead), payment: sellerTotalAmount },
             ...plan.map(({ node, seller }) => ({
                 name: seller ? nameOf(seller) : "(unbound)",
                 payment: seller
@@ -431,19 +431,19 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     // catalogue's unitSystem at render time; the commit-time manifest
     // sends the metric numbers directly.
     const cartUnitSystem = operatorCatalogue.unitSystem ?? "metric";
-    const merchantMassGrams = merchantCartItems.reduce((sum, cartItem) => {
+    const sellerMassGrams = sellerCartItems.reduce((sum, cartItem) => {
         const menuItem = operatorCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem?.massGrams) return sum;
         return sum + menuItem.massGrams * cartItem.quantity;
     }, 0);
-    const merchantVolumeMl = merchantCartItems.reduce((sum, cartItem) => {
+    const sellerVolumeMl = sellerCartItems.reduce((sum, cartItem) => {
         const menuItem = operatorCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem?.volumeMl) return sum;
         return sum + menuItem.volumeMl * cartItem.quantity;
     }, 0);
     // Highest-priority class across the cart. Default "standard" when
     // no item carries a class annotation.
-    const merchantClassOfService: CatalogueClassOfService = merchantCartItems.reduce<CatalogueClassOfService>(
+    const sellerClassOfService: CatalogueClassOfService = sellerCartItems.reduce<CatalogueClassOfService>(
         (highest, cartItem) => {
             const menuItem = operatorCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
             const itemClass = menuItem?.classOfService;
@@ -458,13 +458,13 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             setCheckoutError("Connect your wallet to place an order.");
             return;
         }
-        if (merchantCartItems.length === 0) return;
+        if (sellerCartItems.length === 0) return;
         // Product-driven selection: a catalogue item may name the assembly it
         // composes (e.g. a kit assembled by several sellers). When the cart
         // carries such an item the PRODUCT picks the assembly — the buyer
         // selects what they want, not how it's fulfilled. Falls back to the
         // fulfilment-mode dropdown for ordinary single-/two-party assemblies.
-        const productAssemblySlug = merchantCartItems
+        const productAssemblySlug = sellerCartItems
             .map((it) => operatorCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
             .find((slug): slug is string => !!slug);
         if (!fulfillmentMode && !productAssemblySlug) {
@@ -472,7 +472,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             return;
         }
         // A buyer-set item must carry a buyer-entered price before commit.
-        const unpricedBuyerSet = merchantCartItems.find(
+        const unpricedBuyerSet = sellerCartItems.find(
             (it) => menuPolicyOf(it.menuItemId) === "buyer-set" && !(parseFloat(it.price) > 0),
         );
         if (unpricedBuyerSet) {
@@ -494,8 +494,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 buyer,
                 seller: sellerAddress,
                 currency,
-                payment: merchantTotalAmount,
-                lineItems: merchantCartItems.map((item) => ({
+                payment: sellerTotalAmount,
+                lineItems: sellerCartItems.map((item) => ({
                     itemId: item.menuItemId,
                     name: item.name,
                     quantity: item.quantity,
@@ -574,9 +574,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     // mass / volume strings are parsed by `parseMassToGrams` /
                     // `parseVolumeToMl` in `manifestFieldsToGeoSection`; class_
                     // is the SDK short code consumed by `encodeGeoContent`.
-                    ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
-                    ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
-                    class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
+                    ...(sellerMassGrams > 0 ? { mass: `${sellerMassGrams} g` } : {}),
+                    ...(sellerVolumeMl > 0 ? { volume: `${sellerVolumeMl} ml` } : {}),
+                    class_: CLASS_TO_SHORT_CODE[sellerClassOfService],
                 },
             });
             const immediateCommit = isE2EMockSession() || isE2EDevnetSession();
@@ -613,7 +613,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             const realOrderHash = new Map<string, `0x${string}`>([
                 [rootOrder.id, computeOrderHash(prepared.commitment, chainId, CONTRACTS.core)],
             ]);
-            let cumulativeValue = merchantTotalAmount;
+            let cumulativeValue = sellerTotalAmount;
 
             // Topologically ordered non-root orders, each with its resolved
             // seller. Shared with the cart breakdown (planSubOrderSellers) so
@@ -644,9 +644,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                             courierProcessIncluded: true,
                             ...assemblyJurisdictionFields(manifest),
                             ...(daBands.length > 0 ? { proximityBands: daBands } : {}),
-                            ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
-                            ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
-                            class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
+                            ...(sellerMassGrams > 0 ? { mass: `${sellerMassGrams} g` } : {}),
+                            ...(sellerVolumeMl > 0 ? { volume: `${sellerVolumeMl} ml` } : {}),
+                            class_: CLASS_TO_SHORT_CODE[sellerClassOfService],
                         },
                         deliveryAddress: deliveryAddress.trim() || undefined,
                     });
@@ -689,9 +689,9 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                         ...assemblyJurisdictionFields(manifest),
                         ...(bands.length > 0 ? { proximityBands: bands } : {}),
                         ...(ghgStandards.length > 0 ? { ghgStandards } : {}),
-                        ...(merchantMassGrams > 0 ? { mass: `${merchantMassGrams} g` } : {}),
-                        ...(merchantVolumeMl > 0 ? { volume: `${merchantVolumeMl} ml` } : {}),
-                        class_: CLASS_TO_SHORT_CODE[merchantClassOfService],
+                        ...(sellerMassGrams > 0 ? { mass: `${sellerMassGrams} g` } : {}),
+                        ...(sellerVolumeMl > 0 ? { volume: `${sellerVolumeMl} ml` } : {}),
+                        class_: CLASS_TO_SHORT_CODE[sellerClassOfService],
                     };
                 } else {
                     // Generic sub-order: seller resolved upstream from the
@@ -767,18 +767,18 @@ export function MerchantDetailView({ merchantAddress }: Props) {
             openConnectModal?.();
             return;
         }
-        if (merchantCartItems.length === 0) return;
+        if (sellerCartItems.length === 0) return;
         if (hasInsufficientBalance) {
             setCheckoutError(
-                `Insufficient funds. Required: ${formatToken(merchantBuyerBond, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
+                `Insufficient funds. Required: ${formatToken(sellerBuyerBond, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
             );
             return;
         }
         setCheckoutError(null);
-        if (needsApproval(merchantBuyerBond)) {
+        if (needsApproval(sellerBuyerBond)) {
             try {
                 pendingCheckout.current = true;
-                approve(merchantBuyerBond * 10n);
+                approve(sellerBuyerBond * 10n);
             } catch {
                 pendingCheckout.current = false;
                 setCheckoutError("Payment authorization failed. Please try again.");
@@ -792,8 +792,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
     const placingOrder = commitStep === "signing" || commitStep === "broadcasting" || commitStep === "ready";
 
     return (
-        <MerchantBrandingModule sellerAddress={merchantAddressTyped}>
-            <div data-testid="merchant-detail-view" data-merchant-address={merchantAddressLower} className="container mx-auto px-6 py-10 max-w-5xl space-y-8">
+        <SellerBrandingModule sellerAddress={sellerAddressTyped}>
+            <div data-testid="seller-detail-view" data-seller-address={sellerAddressLower} className="container mx-auto px-6 py-10 max-w-5xl space-y-8">
                 <div>
                     <Link
                         href="/discover"
@@ -806,8 +806,8 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                 {/* Hero */}
                 <header className="rounded-3xl border border-neutral-200 bg-white p-8 space-y-4">
                     <div className="flex flex-wrap items-start gap-5">
-                        <MerchantLogo
-                            sellerAddress={merchantAddressTyped}
+                        <SellerLogo
+                            sellerAddress={sellerAddressTyped}
                             fallbackEmoji={operatorCatalogue.image}
                             fallbackName={operatorCatalogue.name}
                             size={88}
@@ -828,12 +828,12 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                             )}
                             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
                                 {operatorCatalogue.acceptedTokens && operatorCatalogue.acceptedTokens.length > 0 && (
-                                    <span data-testid="merchant-accepted-tokens">
+                                    <span data-testid="seller-accepted-tokens">
                                         Accepts: {operatorCatalogue.acceptedTokens.map((t) => t.symbol).join(", ")}
                                     </span>
                                 )}
                                 {tokenSymbol && (
-                                    <span data-testid="merchant-pricing-token">
+                                    <span data-testid="seller-pricing-token">
                                         Priced in: <span className="font-semibold text-neutral-700">{tokenSymbol}</span>
                                     </span>
                                 )}
@@ -848,7 +848,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
 
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-8 items-start">
                     {/* Menu */}
-                    <section className="space-y-8" data-testid="merchant-menu">
+                    <section className="space-y-8" data-testid="seller-menu">
                         <p className="text-xs font-semibold text-neutral-500">Menu</p>
                         {categories.map((category) => (
                             <div key={category}>
@@ -939,10 +939,10 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     {/* Inline cart */}
                     <aside
                         className="sticky top-6 rounded-lg border border-neutral-200 bg-white p-5 space-y-4"
-                        data-testid="merchant-cart"
+                        data-testid="seller-cart"
                     >
                         <p className="text-xs font-semibold text-neutral-500">Order</p>
-                        {merchantCartItems.length === 0 ? (
+                        {sellerCartItems.length === 0 ? (
                             <p className="text-sm text-neutral-500">
                                 Your cart is empty. Add items from the menu to start an order with{" "}
                                 <span className="font-semibold text-black">{operatorCatalogue.name}</span>.
@@ -950,7 +950,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                         ) : (
                             <>
                                 <ul className="space-y-3 text-sm">
-                                    {merchantCartItems.map((item) => (
+                                    {sellerCartItems.map((item) => (
                                         <li
                                             key={item.menuItemId}
                                             className="space-y-1"
@@ -1042,34 +1042,34 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                         </div>
                                     ) : (
                                         <div className="flex justify-between">
-                                            <span className="text-neutral-600">Payment to merchant</span>
+                                            <span className="text-neutral-600">Payment to seller</span>
                                             <span className="text-neutral-900 tabular-nums">
-                                                {formatToken(merchantTotalAmount, tokenDecimals)}
+                                                {formatToken(sellerTotalAmount, tokenDecimals)}
                                             </span>
                                         </div>
                                     )}
                                     <div className="flex justify-between">
                                         <span className="text-neutral-600">Your bond (refundable on resolve)</span>
                                         <span className="text-neutral-900 tabular-nums">
-                                            {formatToken(merchantTotalAmount, tokenDecimals)}
+                                            {formatToken(sellerTotalAmount, tokenDecimals)}
                                         </span>
                                     </div>
                                     <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-semibold">
                                         <span className="text-black">Locked at commit</span>
                                         <span className="text-black tabular-nums">
-                                            {formatToken(merchantBuyerBond, tokenDecimals)}
+                                            {formatToken(sellerBuyerBond, tokenDecimals)}
                                         </span>
                                     </div>
-                                    {(merchantMassGrams > 0 || merchantVolumeMl > 0) && (
+                                    {(sellerMassGrams > 0 || sellerVolumeMl > 0) && (
                                         <div
                                             className="flex justify-between text-[11px] text-neutral-500 pt-1.5 border-t border-neutral-200"
                                             data-testid="cart-logistics-total"
                                         >
                                             <span>Shipment</span>
                                             <span className="tabular-nums">
-                                                {merchantMassGrams > 0 ? formatMass(merchantMassGrams, cartUnitSystem) : ""}
-                                                {merchantMassGrams > 0 && merchantVolumeMl > 0 ? " · " : ""}
-                                                {merchantVolumeMl > 0 ? formatVolume(merchantVolumeMl, cartUnitSystem) : ""}
+                                                {sellerMassGrams > 0 ? formatMass(sellerMassGrams, cartUnitSystem) : ""}
+                                                {sellerMassGrams > 0 && sellerVolumeMl > 0 ? " · " : ""}
+                                                {sellerVolumeMl > 0 ? formatVolume(sellerVolumeMl, cartUnitSystem) : ""}
                                             </span>
                                         </div>
                                     )}
@@ -1163,7 +1163,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                                     key={fulfillmentMode}
                                                     mode={fulfillmentMode}
                                                     partnerAddresses={courierPartnerAddresses}
-                                                    merchantAddress={merchantAddressLower}
+                                                    sellerAddress={sellerAddressLower}
                                                     tokenSymbol={tokenSymbol}
                                                     onSelect={setCourierSelection}
                                                 />
@@ -1177,7 +1177,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                     disabled={
                                         isApproving
                                         || placingOrder
-                                        || merchantCartItems.length === 0
+                                        || sellerCartItems.length === 0
                                         || (!fulfillmentMode && !cartProductAssemblySlug)
                                         || (fulfillmentMode?.startsWith("deliver:") && !deliveryLocation.geohash)
                                         || ((fulfillmentMode === "deliver:seller-assigned" || fulfillmentMode === "deliver:buyer-assigned") && !courierSelection)
@@ -1197,7 +1197,7 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                                 </Button>
 
                                 {(checkoutError || commitError) && (
-                                    <p className="text-sm text-red-600" data-testid="merchant-checkout-error">
+                                    <p className="text-sm text-red-600" data-testid="seller-checkout-error">
                                         {checkoutError ?? commitError}
                                     </p>
                                 )}
@@ -1206,6 +1206,6 @@ export function MerchantDetailView({ merchantAddress }: Props) {
                     </aside>
                 </div>
             </div>
-        </MerchantBrandingModule>
+        </SellerBrandingModule>
     );
 }
