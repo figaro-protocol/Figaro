@@ -16,8 +16,8 @@ import type {
     SellerBrandingMetadata,
 } from "@/lib/shared/sellerCatalogueMetadata";
 import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
-import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
+import { createUriFetcher } from "@/lib/shared/uriFetcher";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -37,8 +37,6 @@ export interface ResolvedSellerBranding {
 }
 
 // ── Fetch + parse ─────────────────────────────────────────────────────────────
-
-const cache = new Map<string, ResolvedSellerBranding>();
 
 export function resolveSellerBrandingDocument(input: {
     name?: string;
@@ -102,37 +100,23 @@ export function resolveSellerBrandingFromSellerProfile(
  *
  * @returns Resolved branding, or null if the URI is empty or fetch fails.
  */
-export async function fetchSellerBranding(
-    metadataURI: string
-): Promise<ResolvedSellerBranding | null> {
-    if (!metadataURI) return null;
-
-    const cached = cache.get(metadataURI);
-    if (cached) return cached;
-
-    try {
-        const url = resolveContentUri(metadataURI);
-        if (!url) return null;
-        const res = await fetch(url);
-        const doc = await safeJsonFromResponse(res);
+const brandingFetcher = createUriFetcher<ResolvedSellerBranding>({
+    parse: (doc) => {
         if (!doc || typeof doc !== "object" || Array.isArray(doc)) return null;
-
         const record = doc as Record<string, unknown>;
-        const resolved = resolveSellerBrandingDocument({
+        return resolveSellerBrandingDocument({
             name: typeof record.name === "string" ? record.name : undefined,
             branding: (record.branding ?? null) as Partial<SellerBrandingMetadata> | null,
             assets: (record.assets ?? null) as Partial<SellerAssets> | null,
         });
-        cache.set(metadataURI, resolved);
-        return resolved;
-    } catch {
-        return null;
-    }
+    },
+});
+
+export function fetchSellerBranding(metadataURI: string): Promise<ResolvedSellerBranding | null> {
+    return brandingFetcher.fetch(metadataURI);
 }
 
-/**
- * Clear the branding cache (useful for tests).
- */
+/** Clear the branding cache (useful for tests). */
 export function clearBrandingCache(): void {
-    cache.clear();
+    brandingFetcher.clear();
 }

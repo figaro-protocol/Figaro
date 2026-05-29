@@ -18,8 +18,7 @@ import {
     type Listing,
 } from "@/lib/shared/sellerListing";
 import { getActiveSellers } from "@/lib/core/indexer";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
-import { safeJsonFromResponse } from "@/lib/shared/safeJson";
+import { createUriFetcher } from "@/lib/shared/uriFetcher";
 import { tryParseSellerProfileDocument } from "@/lib/shared/sellerProfileMetadata";
 import type { PublicClient } from "viem";
 import { MECHANISM_CONTRACTS } from "@/lib/mechanisms/contracts";
@@ -43,22 +42,16 @@ function isRegistryConfigured(): boolean {
         && MECHANISM_CONTRACTS.sellerRegistry.length === 42;
 }
 
+const profileFetcher = createUriFetcher({
+    parse: (doc) => tryParseSellerProfileDocument(doc),
+});
+
 async function fetchProfileAsListing(
     address: string,
     metadataURI: string,
 ): Promise<Listing | null> {
-    const url = resolveContentUri(metadataURI);
-    if (!url) return null;
-    try {
-        const res = await fetch(url);
-        const doc = await safeJsonFromResponse<unknown>(res);
-        if (!doc) return null;
-        const profile = tryParseSellerProfileDocument(doc);
-        if (!profile) return null;
-        return profileToListing(profile, address);
-    } catch {
-        return null;
-    }
+    const profile = await profileFetcher.fetch(metadataURI);
+    return profile ? profileToListing(profile, address) : null;
 }
 
 async function listFromRegistry(client: PublicClient, chainId: number): Promise<Listing[]> {
