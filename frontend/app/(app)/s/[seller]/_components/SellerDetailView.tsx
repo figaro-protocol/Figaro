@@ -387,7 +387,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
         (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
         0n,
     );
-    const sellerBuyerBond = sellerTotalAmount > 0n
+    const buyerBond = sellerTotalAmount > 0n
         ? calculateBonds(sellerTotalAmount, sellerTotalAmount).buyerBond
         : 0n;
 
@@ -770,15 +770,15 @@ export function SellerDetailView({ sellerAddress }: Props) {
         if (sellerCartItems.length === 0) return;
         if (hasInsufficientBalance) {
             setCheckoutError(
-                `Insufficient funds. Required: ${formatToken(sellerBuyerBond, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
+                `Insufficient funds. Required: ${formatToken(buyerBond, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
             );
             return;
         }
         setCheckoutError(null);
-        if (needsApproval(sellerBuyerBond)) {
+        if (needsApproval(buyerBond)) {
             try {
                 pendingCheckout.current = true;
-                approve(sellerBuyerBond * 10n);
+                approve(buyerBond * 10n);
             } catch {
                 pendingCheckout.current = false;
                 setCheckoutError("Payment authorization failed. Please try again.");
@@ -1057,7 +1057,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                     <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-semibold">
                                         <span className="text-black">Locked at commit</span>
                                         <span className="text-black tabular-nums">
-                                            {formatToken(sellerBuyerBond, tokenDecimals)}
+                                            {formatToken(buyerBond, tokenDecimals)}
                                         </span>
                                     </div>
                                     {(sellerMassGrams > 0 || sellerVolumeMl > 0) && (

@@ -140,7 +140,7 @@ test.describe('/s/[seller] full place-order flow (devnet)', () => {
     // IPFS round-trip + discovery + sign + commit pushes this past 60s.
     test.setTimeout(180_000);
 
-    test('buyer browses merchant, adds item, picks fulfilment, places order, redirects to /orders', async ({ page }) => {
+    test('buyer browses the seller catalogue, adds item, picks fulfilment, places the order, redirects to /orders', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
