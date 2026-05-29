@@ -11,7 +11,7 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 /// @notice Three-stage retroactive public-goods funding minter for FIG.
 ///         Per-tranche merkle roots are submitted at tranche time after
 ///         an SP1 proof attests they correctly aggregate the substrate-
-///         broadening formula over the population's per-schema state.
+///         broadening formula over the population's per-clause state.
 ///         Claims use `keccak256(abi.encodePacked(msg.sender, amount))`
 ///         leaves verified via OpenZeppelin's sorted-pair MerkleProof —
 ///         any wallet on the leaf list can mint its allocation.
@@ -81,7 +81,7 @@ contract RpgfMinter {
 
     // ── Events ──────────────────────────────────────────────────────
 
-    event RootSubmitted(uint8 indexed stageIndex, bytes32 indexed root, uint256 totalAllocated, uint32 schemaCount);
+    event RootSubmitted(uint8 indexed stageIndex, bytes32 indexed root, uint256 totalAllocated, uint32 clauseCount);
 
     event Claimed(uint8 indexed stageIndex, address indexed account, uint256 amount);
 
@@ -117,7 +117,7 @@ contract RpgfMinter {
 
     /// @notice Submit the merkle root for a tranche, attested by an SP1 proof.
     /// @param publicValues ABI-encoded:
-    ///         (uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 schemaCount).
+    ///         (uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 clauseCount).
     /// @param proof       The serialized SP1 proof bytes.
     /// @dev Submitter-only, one-shot per stage. The verifier MUST revert
     ///      if the proof does not verify against `programVKey` and these
@@ -128,7 +128,7 @@ contract RpgfMinter {
 
         verifier.verifyProof(programVKey, publicValues, proof);
 
-        (uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 schemaCount) =
+        (uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 clauseCount) =
             abi.decode(publicValues, (uint8, bytes32, uint256, uint32));
 
         if (stageIndex >= STAGE_COUNT) revert InvalidStage(stageIndex);
@@ -140,7 +140,7 @@ contract RpgfMinter {
         s.root = root;
         s.totalAllocated = totalAllocated;
 
-        emit RootSubmitted(stageIndex, root, totalAllocated, schemaCount);
+        emit RootSubmitted(stageIndex, root, totalAllocated, clauseCount);
     }
 
     // ── Claim ───────────────────────────────────────────────────────

@@ -19,7 +19,7 @@ pragma solidity 0.8.26;
 ///         registration timestamp (needed for the deposit lock).
 ///
 ///         The metadataURI JSON document is the seller's composability surface:
-///         it declares the seller's archetype, which schemas from SchemaRegistry
+///         it declares the seller's archetype, which clauses from ClauseRegistry
 ///         the seller operates under, and the seller's catalogue. Role is not
 ///         an on-chain field: a seller's role is whatever their catalogue
 ///         expresses through its archetype. Sellers compose their own capability

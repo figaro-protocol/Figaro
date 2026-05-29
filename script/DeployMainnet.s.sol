@@ -6,31 +6,31 @@ import "forge-std/console.sol";
 
 import "../src/FigaroCore.sol";
 import "../src/AttestationCoordinator.sol";
-import "../src/SchemaRegistry.sol";
+import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
 import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
 import "../src/fig/RpgfMinter.sol";
 import "../src/FigaroBatchVerifier.sol";
-import "../src/SchemaRegistrationHelper.sol";
+import "../src/ClauseRegistrationHelper.sol";
 import "../src/ProcessOffsetReceipt.sol";
-import "../src/schemaValidators/FigaroCommerceV1Validator.sol";
-import "../src/schemaValidators/FigaroGeoV2Validator.sol";
-import "../src/schemaValidators/FigaroFulfilmentV2Validator.sol";
-import "../src/schemaValidators/FigaroGHGProtocolV1Validator.sol";
-import "../src/schemaValidators/FigaroGHGISO14064V1Validator.sol";
-import "../src/schemaValidators/FigaroGHGPAS2050V1Validator.sol";
-import "../src/schemaValidators/FigaroGHGEN16258V1Validator.sol";
-import "../src/schemaValidators/FigaroGHGCustomV1Validator.sol";
-import "../src/schemaValidators/FigaroGHGMeasurementV1Validator.sol";
-import "../src/schemaValidators/FigaroProximityPolicyV1Validator.sol";
-import "../src/schemaValidators/FigaroProximityProofV1Validator.sol";
-import "../src/schemaValidators/FigaroOffsetPolicyV1Validator.sol";
-import "../src/schemaValidators/FigaroMerchantProcessV1Validator.sol";
-import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
-import "../src/schemaValidators/FigaroArbitrationKlerosV1Validator.sol";
-import "../src/schemaValidators/FigaroApplicableLawV1Validator.sol";
-import "../src/schemaValidators/FigaroConsentV1Validator.sol";
+import "../src/clauseValidators/FigaroCommerceV1Validator.sol";
+import "../src/clauseValidators/FigaroGeoV2Validator.sol";
+import "../src/clauseValidators/FigaroFulfilmentV2Validator.sol";
+import "../src/clauseValidators/FigaroGHGProtocolV1Validator.sol";
+import "../src/clauseValidators/FigaroGHGISO14064V1Validator.sol";
+import "../src/clauseValidators/FigaroGHGPAS2050V1Validator.sol";
+import "../src/clauseValidators/FigaroGHGEN16258V1Validator.sol";
+import "../src/clauseValidators/FigaroGHGCustomV1Validator.sol";
+import "../src/clauseValidators/FigaroGHGMeasurementV1Validator.sol";
+import "../src/clauseValidators/FigaroProximityPolicyV1Validator.sol";
+import "../src/clauseValidators/FigaroProximityProofV1Validator.sol";
+import "../src/clauseValidators/FigaroOffsetPolicyV1Validator.sol";
+import "../src/clauseValidators/FigaroMerchantProcessV1Validator.sol";
+import "../src/clauseValidators/FigaroCourierProcessV1Validator.sol";
+import "../src/clauseValidators/FigaroArbitrationKlerosV1Validator.sol";
+import "../src/clauseValidators/FigaroApplicableLawV1Validator.sol";
+import "../src/clauseValidators/FigaroConsentV1Validator.sol";
 
 /// @title DeployMainnet — Mainnet deployment of the full Figaro V5 protocol stack
 ///
@@ -62,8 +62,8 @@ import "../src/schemaValidators/FigaroConsentV1Validator.sol";
 ///                             stage 2 (year 9): up to 100M (10% of total)
 ///                           Per-tranche roots are submitted at tranche time by the
 ///                           sequencer after an SP1 proof verifies they correctly
-///                           aggregate the schema-author substrate-broadening
-///                           formula over chain-derived per-schema state. The
+///                           aggregate the clause-author substrate-broadening
+///                           formula over chain-derived per-clause state. The
 ///                           on-chain cap is the FigToken 600M minter cap; per-stage
 ///                           caps live in the off-chain aggregation budget.
 ///
@@ -80,13 +80,13 @@ contract DeployMainnet is Script {
     // Deployment output addresses — populated by run(), logged at the end.
     address internal _core;
     address internal _attestation;
-    address internal _schemas;
+    address internal _clauses;
     address internal _sellers;
     address internal _auction;
     address internal _fig;
     address internal _airdrop;
     address internal _batchVerifier;
-    address internal _schemaHelper;
+    address internal _clauseHelper;
     address internal _offsetReceipts;
 
     function run() external {
@@ -132,97 +132,97 @@ contract DeployMainnet is Script {
         _attestation = address(attestation);
         console.log("AttestationCoordinator: ", _attestation);
 
-        SchemaRegistry schemas = new SchemaRegistry();
-        _schemas = address(schemas);
-        console.log("SchemaRegistry:         ", _schemas);
+        ClauseRegistry clauses = new ClauseRegistry();
+        _clauses = address(clauses);
+        console.log("ClauseRegistry:         ", _clauses);
 
         // The 4th argument is the family — keccak256 of the primary category from each
-        // schema's Layer-A spec. The RPGF SP1 program reads `family` (not `schemaId`) to
+        // clause's Layer-A spec. The RPGF SP1 program reads `family` (not `clauseId`) to
         // decide Tier-1 weighting — see prover/rpgf/src/formula.rs. Tier-1 families are
-        // {keccak256("geo"), keccak256("fulfilment")}; future schemas registered under
+        // {keccak256("geo"), keccak256("fulfilment")}; future clauses registered under
         // those families inherit the Tier-1 boost without redeploying the FIG system.
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-topology-v1"), 1, keccak256("ipfs://figaro-topology/v1"), keccak256("topology")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"), keccak256("commerce")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-geo-v2"), 1, keccak256("ipfs://figaro-geo/v2"), keccak256("geo")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-fulfilment-v2"), 1, keccak256("ipfs://figaro-fulfilment/v2"), keccak256("fulfilment")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"), keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-iso-14064-v1"),
             1,
             keccak256("ipfs://figaro-ghg-iso-14064/v1"),
             keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-pas-2050-v1"), 1, keccak256("ipfs://figaro-ghg-pas-2050/v1"), keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-en-16258-v1"), 1, keccak256("ipfs://figaro-ghg-en-16258/v1"), keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-custom-v1"), 1, keccak256("ipfs://figaro-ghg-custom/v1"), keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-measurement-v1"),
             1,
             keccak256("ipfs://figaro-ghg-measurement/v1"),
             keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-proximity-policy-v1"),
             1,
             keccak256("ipfs://figaro-proximity-policy/v1"),
             keccak256("proximity")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-proximity-proof-v1"),
             1,
             keccak256("ipfs://figaro-proximity-proof/v1"),
             keccak256("proximity")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-merchant-process-v1"),
             1,
             keccak256("ipfs://figaro-merchant-process/v1"),
             keccak256("seller-process")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-courier-process-v1"),
             1,
             keccak256("ipfs://figaro-courier-process/v1"),
             keccak256("seller-process")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-arbitration-kleros-v1"),
             1,
             keccak256("ipfs://figaro-arbitration-kleros/v1"),
             keccak256("arbitration")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-applicable-law-v1"),
             1,
             keccak256("ipfs://figaro-applicable-law/v1"),
             keccak256("jurisdiction")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"), keccak256("consent")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-offset-policy-v1"),
             1,
             keccak256("ipfs://figaro-offset-policy/v1"),
             keccak256("emissions")
         );
-        console.log("SchemaRegistry: 18 reference schemas registered");
+        console.log("ClauseRegistry: 18 reference clauses registered");
 
         // ── SellerRegistry ────────────────────────────────────────
         // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
@@ -249,12 +249,12 @@ contract DeployMainnet is Script {
         _auction = address(auction);
         console.log("DutchAuction:           ", _auction);
 
-        // Atomic register-schema + bind-validator helper for post-deploy
-        // schema authors. Closes the M-1 front-running window between the
+        // Atomic register-clause + bind-validator helper for post-deploy
+        // clause authors. Closes the M-1 front-running window between the
         // two writes (DESIGN_DECISIONS.md #13). Stateless, no admin.
-        SchemaRegistrationHelper schemaHelper = new SchemaRegistrationHelper(_schemas, _attestation);
-        _schemaHelper = address(schemaHelper);
-        console.log("SchemaRegistrationHelper:", _schemaHelper);
+        ClauseRegistrationHelper clauseHelper = new ClauseRegistrationHelper(_clauses, _attestation);
+        _clauseHelper = address(clauseHelper);
+        console.log("ClauseRegistrationHelper:", _clauseHelper);
 
         // Permissionless on-chain anchor for Path A carbon-offset receipts.
         // Buyer calls record(processId, ...) after performing the off-protocol
@@ -270,17 +270,17 @@ contract DeployMainnet is Script {
         console.log("ProcessOffsetReceipt:   ", _offsetReceipts);
     }
 
-    // ── Schema validators ───────────────────────────────────────────
+    // ── Clause validators ───────────────────────────────────────────
 
-    /// @dev Deploy 17 per-schema runtime validators and register each with the
+    /// @dev Deploy 17 per-clause runtime validators and register each with the
     ///      AttestationCoordinator via permissionless setValidator. The
-    ///      coordinator enforces `validator.schemaId() == schemaId`, so any
+    ///      coordinator enforces `validator.clauseId() == clauseId`, so any
     ///      cross-wired validator reverts InvalidValidatorBinding. Without
     ///      this step every attest* call reverts with ValidatorNotSet.
     ///
     ///      Topology is a manifest-only clause (contract-time, not runtime-
     ///      attested), so no on-chain validator is wired for `figaro-topology-v1`.
-    ///      The schema itself remains registered in SchemaRegistry above for
+    ///      The clause itself remains registered in ClauseRegistry above for
     ///      off-chain vocabulary anchoring.
     function _deployAndRegisterValidators() internal {
         AttestationCoordinator attestation = AttestationCoordinator(_attestation);
@@ -329,10 +329,10 @@ contract DeployMainnet is Script {
     function _wireValidator(
         AttestationCoordinator attestation,
         string memory label,
-        bytes32 schemaId,
+        bytes32 clauseId,
         address validator
     ) internal {
-        attestation.setValidator(schemaId, validator);
+        attestation.setValidator(clauseId, validator);
         console.log(label, validator);
     }
 
@@ -401,8 +401,8 @@ contract DeployMainnet is Script {
         console.log("Set these in your .env:");
         console.log("  NEXT_PUBLIC_FIGARO_CORE=              ", _core);
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=  ", _attestation);
-        console.log("  NEXT_PUBLIC_SCHEMA_REGISTRY=          ", _schemas);
-        console.log("  NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=", _schemaHelper);
+        console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
+        console.log("  NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER=", _clauseHelper);
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=        ", _sellers);
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=            ", _auction);
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=        ", _fig);

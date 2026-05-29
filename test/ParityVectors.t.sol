@@ -287,7 +287,7 @@ contract ParityVectors is Test {
             orderHash: bytes32(uint256(0xAABB)),
             processId: bytes32(uint256(0xCCDD)),
             attester: address(0x1234567890123456789012345678901234567890),
-            schemaId: bytes32(uint256(0xEEFF)),
+            clauseId: bytes32(uint256(0xEEFF)),
             stage: 0,
             contentRef: bytes32(uint256(0x1122))
         });
@@ -295,7 +295,7 @@ contract ParityVectors is Test {
             orderHash: bytes32(type(uint256).max),
             processId: bytes32(type(uint256).max),
             attester: address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF),
-            schemaId: bytes32(type(uint256).max),
+            clauseId: bytes32(type(uint256).max),
             stage: 255,
             contentRef: bytes32(0)
         });
@@ -353,28 +353,28 @@ contract ParityVectors is Test {
         assertEq(computed, keccak256(packed), "seller events hash manual cross-check");
     }
 
-    /// @notice Schema + mechanism schema combined hash.
-    function test_parity_schemaHash() public {
+    /// @notice Clause + mechanism clause combined hash.
+    function test_parity_clauseHash() public {
         _deployBatchVerifier();
 
-        FigaroBatchVerifier.SchemaData[] memory schemas = new FigaroBatchVerifier.SchemaData[](1);
-        schemas[0] = FigaroBatchVerifier.SchemaData({
-            schemaId: keccak256("figaro-test-v1"),
+        FigaroBatchVerifier.ClauseData[] memory clauses = new FigaroBatchVerifier.ClauseData[](1);
+        clauses[0] = FigaroBatchVerifier.ClauseData({
+            clauseId: keccak256("figaro-test-v1"),
             version: 1,
             uriHash: keccak256("ipfs://test"),
             family: keccak256("test-family"),
             registrar: address(0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa)
         });
 
-        FigaroBatchVerifier.MechanismSchemaData[] memory mechs = new FigaroBatchVerifier.MechanismSchemaData[](1);
-        mechs[0] = FigaroBatchVerifier.MechanismSchemaData({
-            mechanism: address(0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB), schemaId: keccak256("figaro-test-v1")
+        FigaroBatchVerifier.MechanismClauseData[] memory mechs = new FigaroBatchVerifier.MechanismClauseData[](1);
+        mechs[0] = FigaroBatchVerifier.MechanismClauseData({
+            mechanism: address(0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB), clauseId: keccak256("figaro-test-v1")
         });
 
-        bytes32 computed = _hashSchemasHelper(schemas, mechs);
-        emit log_named_bytes32("PARITY:schemaHash", computed);
+        bytes32 computed = _hashClausesHelper(clauses, mechs);
+        emit log_named_bytes32("PARITY:clauseHash", computed);
 
-        // Manual cross-check: schema(32+8+32+32+20=124) + mechanism(20+32=52)
+        // Manual cross-check: clause(32+8+32+32+20=124) + mechanism(20+32=52)
         bytes memory packed = abi.encodePacked(
             keccak256("figaro-test-v1"),
             uint64(1),
@@ -384,7 +384,7 @@ contract ParityVectors is Test {
             address(0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB),
             keccak256("figaro-test-v1")
         );
-        assertEq(computed, keccak256(packed), "schema hash manual cross-check");
+        assertEq(computed, keccak256(packed), "clause hash manual cross-check");
     }
 
     // ── Hash helpers (mirror the internal assembly functions via settlement) ──
@@ -413,7 +413,7 @@ contract ParityVectors is Test {
                     atts[i].orderHash,
                     atts[i].processId,
                     atts[i].attester,
-                    atts[i].schemaId,
+                    atts[i].clauseId,
                     atts[i].stage,
                     atts[i].contentRef
                 )
@@ -437,25 +437,25 @@ contract ParityVectors is Test {
         return keccak256(packed);
     }
 
-    function _hashSchemasHelper(
-        FigaroBatchVerifier.SchemaData[] memory schemas,
-        FigaroBatchVerifier.MechanismSchemaData[] memory mechs
+    function _hashClausesHelper(
+        FigaroBatchVerifier.ClauseData[] memory clauses,
+        FigaroBatchVerifier.MechanismClauseData[] memory mechs
     ) internal pure returns (bytes32) {
         bytes memory packed;
-        for (uint256 i = 0; i < schemas.length; i++) {
+        for (uint256 i = 0; i < clauses.length; i++) {
             packed = bytes.concat(
                 packed,
                 abi.encodePacked(
-                    schemas[i].schemaId,
-                    schemas[i].version,
-                    schemas[i].uriHash,
-                    schemas[i].family,
-                    schemas[i].registrar
+                    clauses[i].clauseId,
+                    clauses[i].version,
+                    clauses[i].uriHash,
+                    clauses[i].family,
+                    clauses[i].registrar
                 )
             );
         }
         for (uint256 i = 0; i < mechs.length; i++) {
-            packed = bytes.concat(packed, abi.encodePacked(mechs[i].mechanism, mechs[i].schemaId));
+            packed = bytes.concat(packed, abi.encodePacked(mechs[i].mechanism, mechs[i].clauseId));
         }
         return keccak256(packed);
     }

@@ -6,7 +6,7 @@ import "forge-std/console.sol";
 
 import "../src/FigaroCore.sol";
 import "../src/AttestationCoordinator.sol";
-import "../src/SchemaRegistry.sol";
+import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
 import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
@@ -15,24 +15,24 @@ import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/mocks/MockOffsetAggregator.sol";
 import "../src/FigaroBatchVerifier.sol";
-import "../src/SchemaRegistrationHelper.sol";
-import "../src/schemaValidators/FigaroCommerceV1Validator.sol";
-import "../src/schemaValidators/FigaroGeoV2Validator.sol";
-import "../src/schemaValidators/FigaroFulfilmentV2Validator.sol";
-import "../src/schemaValidators/FigaroGHGProtocolV1Validator.sol";
-import "../src/schemaValidators/FigaroGHGISO14064V1Validator.sol";
-import "../src/schemaValidators/FigaroGHGPAS2050V1Validator.sol";
-import "../src/schemaValidators/FigaroGHGEN16258V1Validator.sol";
-import "../src/schemaValidators/FigaroGHGCustomV1Validator.sol";
-import "../src/schemaValidators/FigaroGHGMeasurementV1Validator.sol";
-import "../src/schemaValidators/FigaroProximityPolicyV1Validator.sol";
-import "../src/schemaValidators/FigaroOffsetPolicyV1Validator.sol";
-import "../src/schemaValidators/FigaroProximityProofV1Validator.sol";
-import "../src/schemaValidators/FigaroMerchantProcessV1Validator.sol";
-import "../src/schemaValidators/FigaroCourierProcessV1Validator.sol";
-import "../src/schemaValidators/FigaroArbitrationKlerosV1Validator.sol";
-import "../src/schemaValidators/FigaroApplicableLawV1Validator.sol";
-import "../src/schemaValidators/FigaroConsentV1Validator.sol";
+import "../src/ClauseRegistrationHelper.sol";
+import "../src/clauseValidators/FigaroCommerceV1Validator.sol";
+import "../src/clauseValidators/FigaroGeoV2Validator.sol";
+import "../src/clauseValidators/FigaroFulfilmentV2Validator.sol";
+import "../src/clauseValidators/FigaroGHGProtocolV1Validator.sol";
+import "../src/clauseValidators/FigaroGHGISO14064V1Validator.sol";
+import "../src/clauseValidators/FigaroGHGPAS2050V1Validator.sol";
+import "../src/clauseValidators/FigaroGHGEN16258V1Validator.sol";
+import "../src/clauseValidators/FigaroGHGCustomV1Validator.sol";
+import "../src/clauseValidators/FigaroGHGMeasurementV1Validator.sol";
+import "../src/clauseValidators/FigaroProximityPolicyV1Validator.sol";
+import "../src/clauseValidators/FigaroOffsetPolicyV1Validator.sol";
+import "../src/clauseValidators/FigaroProximityProofV1Validator.sol";
+import "../src/clauseValidators/FigaroMerchantProcessV1Validator.sol";
+import "../src/clauseValidators/FigaroCourierProcessV1Validator.sol";
+import "../src/clauseValidators/FigaroArbitrationKlerosV1Validator.sol";
+import "../src/clauseValidators/FigaroApplicableLawV1Validator.sol";
+import "../src/clauseValidators/FigaroConsentV1Validator.sol";
 import "../src/AssemblyRegistry.sol";
 import "../src/ProcessOffsetReceipt.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -50,9 +50,9 @@ contract MockToken is ERC20 {
 }
 
 /// @title Deploy — Full protocol stack to local Anvil
-/// @notice Deploys: FigaroCore, AttestationCoordinator, SchemaRegistry,
+/// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
 ///         SellerRegistry, DutchAuction, FigToken, MockToken, MockPermitToken.
-///         Registers reference schemas. Mints test tokens to Anvil accounts.
+///         Registers reference clauses. Mints test tokens to Anvil accounts.
 ///
 ///         Devnet FIG allocation (mirrors canonical 10/30/60 shape at token scale):
 ///           100M (10%) → deployer's wallet (stands in for founder + DAO + airdrop
@@ -92,123 +92,123 @@ contract Deploy is Script {
         AttestationCoordinator attestation = new AttestationCoordinator(address(core));
         console.log("AttestationCoordinator deployed at:", address(attestation));
 
-        // ── SchemaRegistry ──────────────────────────────────────────
-        SchemaRegistry schemas = new SchemaRegistry();
-        console.log("SchemaRegistry deployed at:", address(schemas));
+        // ── ClauseRegistry ──────────────────────────────────────────
+        ClauseRegistry clauses = new ClauseRegistry();
+        console.log("ClauseRegistry deployed at:", address(clauses));
 
-        // Register reference schemas (18 figaro-* schemas: 17 runtime-attestable + figaro-topology-v1 manifest-only).
-        // The 4th argument is the family — keccak256 of the primary category from each schema's
-        // Layer-A spec (categories[0] in frontend/lib/shared/schemas/*.json). The RPGF SP1 program
-        // reads `family` (not `schemaId`) to decide Tier-1 weighting — see prover/rpgf/src/formula.rs.
-        // Tier-1 families are {keccak256("geo"), keccak256("fulfilment")}; new schemas registering
+        // Register reference clauses (18 figaro-* clauses: 17 runtime-attestable + figaro-topology-v1 manifest-only).
+        // The 4th argument is the family — keccak256 of the primary category from each clause's
+        // Layer-A spec (categories[0] in frontend/lib/shared/clauses/*.json). The RPGF SP1 program
+        // reads `family` (not `clauseId`) to decide Tier-1 weighting — see prover/rpgf/src/formula.rs.
+        // Tier-1 families are {keccak256("geo"), keccak256("fulfilment")}; new clauses registering
         // under those families inherit the Tier-1 boost without redeploying the FIG system.
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-topology-v1"), 1, keccak256("ipfs://figaro-topology/v1"), keccak256("topology")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"), keccak256("commerce")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-geo-v2"), 1, keccak256("ipfs://figaro-geo/v2"), keccak256("geo")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-fulfilment-v2"), 1, keccak256("ipfs://figaro-fulfilment/v2"), keccak256("fulfilment")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"), keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-iso-14064-v1"),
             1,
             keccak256("ipfs://figaro-ghg-iso-14064/v1"),
             keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-pas-2050-v1"), 1, keccak256("ipfs://figaro-ghg-pas-2050/v1"), keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-en-16258-v1"), 1, keccak256("ipfs://figaro-ghg-en-16258/v1"), keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-custom-v1"), 1, keccak256("ipfs://figaro-ghg-custom/v1"), keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-ghg-measurement-v1"),
             1,
             keccak256("ipfs://figaro-ghg-measurement/v1"),
             keccak256("emissions")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-proximity-policy-v1"),
             1,
             keccak256("ipfs://figaro-proximity-policy/v1"),
             keccak256("proximity")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-proximity-proof-v1"),
             1,
             keccak256("ipfs://figaro-proximity-proof/v1"),
             keccak256("proximity")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-merchant-process-v1"),
             1,
             keccak256("ipfs://figaro-merchant-process/v1"),
             keccak256("seller-process")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-courier-process-v1"),
             1,
             keccak256("ipfs://figaro-courier-process/v1"),
             keccak256("seller-process")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-arbitration-kleros-v1"),
             1,
             keccak256("ipfs://figaro-arbitration-kleros/v1"),
             keccak256("arbitration")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-applicable-law-v1"),
             1,
             keccak256("ipfs://figaro-applicable-law/v1"),
             keccak256("jurisdiction")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"), keccak256("consent")
         );
-        schemas.registerSchema(
+        clauses.registerClause(
             keccak256("figaro-offset-policy-v1"),
             1,
             keccak256("ipfs://figaro-offset-policy/v1"),
             keccak256("emissions")
         );
-        console.log("Registered 18 reference schemas");
+        console.log("Registered 18 reference clauses");
 
-        // ── Schema validators ───────────────────────────────────────
-        // Deploy per-schema validator contracts and wire them into the
+        // ── Clause validators ───────────────────────────────────────
+        // Deploy per-clause validator contracts and wire them into the
         // AttestationCoordinator. Without this block every attest* call reverts
         // with ValidatorNotSet. First-write-wins — run only on a fresh coordinator.
         _deployAndRegisterValidators(attestation);
 
-        // ── SchemaRegistrationHelper ────────────────────────────────
-        // Atomic register-schema + bind-validator helper for post-deploy
-        // schema authors. Closes the M-1 front-running window between the
+        // ── ClauseRegistrationHelper ────────────────────────────────
+        // Atomic register-clause + bind-validator helper for post-deploy
+        // clause authors. Closes the M-1 front-running window between the
         // two writes (see DESIGN_DECISIONS.md #13). No state, no admin —
         // just a permissionless composer of the two underlying public calls.
-        SchemaRegistrationHelper schemaHelper = new SchemaRegistrationHelper(
-            address(schemas),
+        ClauseRegistrationHelper clauseHelper = new ClauseRegistrationHelper(
+            address(clauses),
             address(attestation)
         );
-        console.log("SchemaRegistrationHelper deployed at:", address(schemaHelper));
+        console.log("ClauseRegistrationHelper deployed at:", address(clauseHelper));
 
         // ── AssemblyRegistry ────────────────────────────────────────
         // Permissionless first-write-wins anchor for designer-built
-        // assemblies. Parallel to SchemaRegistry and SellerRegistry —
+        // assemblies. Parallel to ClauseRegistry and SellerRegistry —
         // each artifact family has its own registry per the
         // separation-of-concerns doctrine. The registry takes no on-chain
         // claims about manifest content (manifests live off-chain on
-        // IPFS); per-clause validation runs at the per-schema layer
+        // IPFS); per-clause validation runs at the per-clause layer
         // at attestation time.
         //
         // Spam protection via reclaimable deposit + lock — same pattern
@@ -310,7 +310,7 @@ contract Deploy is Script {
         // ── BatchVerifier (SP1 — mock verifier for devnet) ──────────
         // Genesis root = keccak256 of 5 concatenated keccak256("")
         // sub-hashes — empty processes, order_status, order_process_id,
-        // schemas, sellers maps. Matches the Rust kernel's
+        // clauses, sellers maps. Matches the Rust kernel's
         // KernelState::new().compute_root().
         //
         // Note: FigaroBatchVerifier is NOT a FIG minter and never will be.
@@ -349,8 +349,8 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_TOKEN_ADDRESS=", address(token));
         console.log("  NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=", address(permitToken));
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=", address(attestation));
-        console.log("  NEXT_PUBLIC_SCHEMA_REGISTRY=", address(schemas));
-        console.log("  NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=", address(schemaHelper));
+        console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(clauses));
+        console.log("  NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER=", address(clauseHelper));
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=", address(sellers));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
         console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=", address(offsetReceipts));
@@ -363,14 +363,14 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=", address(batchVerifier));
     }
 
-    /// @dev Deploy 10 per-schema validators and register each with the
+    /// @dev Deploy 10 per-clause validators and register each with the
     ///      AttestationCoordinator via permissionless setValidator. The
-    ///      coordinator enforces `validator.schemaId() == schemaId`, so any
+    ///      coordinator enforces `validator.clauseId() == clauseId`, so any
     ///      cross-wired validator reverts InvalidValidatorBinding.
     function _deployAndRegisterValidators(AttestationCoordinator attestation) internal {
         // Topology is a manifest-only clause (contract-time, not runtime-attested),
-        // so no on-chain validator is wired for `figaro-topology-v1`. The schema
-        // itself remains registered in SchemaRegistry above for off-chain
+        // so no on-chain validator is wired for `figaro-topology-v1`. The clause
+        // itself remains registered in ClauseRegistry above for off-chain
         // vocabulary anchoring.
         //
         // Each deploy+register is inlined into a single statement so no more
@@ -427,6 +427,6 @@ contract Deploy is Script {
         attestation.setValidator(
             keccak256("figaro-offset-policy-v1"), address(new FigaroOffsetPolicyV1Validator())
         );
-        console.log("Registered 17 schema validators with AttestationCoordinator");
+        console.log("Registered 17 clause validators with AttestationCoordinator");
     }
 }

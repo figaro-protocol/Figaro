@@ -5,16 +5,16 @@ pragma solidity ^0.8.24;
 /// @notice Pure-function merkle helpers for building test agreements and their
 ///         inclusion proofs. Mirrors the off-chain
 ///         `frontend*/lib/core/agreementManifest.ts` layout:
-///           leaf_i = keccak256(schemaId_i || keccak256(sectionData_i))
+///           leaf_i = keccak256(clauseId_i || keccak256(sectionData_i))
 ///           root   = OZ-style sorted-pair merkle root over sorted leaves
 ///           proof  = sibling hashes walking the leaf up to the root
 ///         Used by AttestationCoordinator tests so each commitment's
 ///         `agreementHash` is a real merkle root and attestations can carry
 ///         valid inclusion proofs.
 library AgreementTestHelper {
-    /// @dev Compute the merkle leaf for one schema clause.
-    function leafFor(bytes32 schemaId, bytes memory sectionData) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(schemaId, keccak256(sectionData)));
+    /// @dev Compute the merkle leaf for one clause clause.
+    function leafFor(bytes32 clauseId, bytes memory sectionData) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(clauseId, keccak256(sectionData)));
     }
 
     /// @dev Compute the agreement merkle root for an ordered list of leaves.
@@ -65,10 +65,10 @@ library AgreementTestHelper {
         }
     }
 
-    /// @dev Convenience: for a single-section agreement (one schema clause),
+    /// @dev Convenience: for a single-section agreement (one clause clause),
     ///      the merkle root equals the leaf and the proof is empty.
-    function singleSectionRoot(bytes32 schemaId, bytes memory sectionData) internal pure returns (bytes32) {
-        return leafFor(schemaId, sectionData);
+    function singleSectionRoot(bytes32 clauseId, bytes memory sectionData) internal pure returns (bytes32) {
+        return leafFor(clauseId, sectionData);
     }
 
     // ── internals ───────────────────────────────────────────────────────────

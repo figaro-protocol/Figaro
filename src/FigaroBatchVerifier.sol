@@ -10,7 +10,7 @@ import "./interfaces/ISP1Verifier.sol";
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Accepts a zero-knowledge proof that a batch of protocol operations
-///         (commits, resolves, attestations, schema registrations, seller
+///         (commits, resolves, attestations, clause registrations, seller
 ///         mutations) produces a valid state transition. The contract verifies
 ///         the proof, reconciles net token positions, re-emits protocol-
 ///         compatible events, and advances the state root.
@@ -26,7 +26,7 @@ import "./interfaces/ISP1Verifier.sol";
 ///           3: verifyingContract (address, left-padded to 32 bytes)
 ///           4: tokenOpsHash    (bytes32)
 ///           5: attestationEventsHash (bytes32)
-///           6: schemaEventsHash (bytes32)
+///           6: clauseEventsHash (bytes32)
 ///           7: sellerEventsHash (bytes32)
 contract FigaroBatchVerifier is ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -54,22 +54,22 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         bytes32 orderHash;
         bytes32 processId;
         address attester;
-        bytes32 schemaId;
+        bytes32 clauseId;
         uint8 stage;
         bytes32 contentRef;
     }
 
-    struct SchemaData {
-        bytes32 schemaId;
+    struct ClauseData {
+        bytes32 clauseId;
         uint64 version;
         bytes32 uriHash;
         bytes32 family;
         address registrar;
     }
 
-    struct MechanismSchemaData {
+    struct MechanismClauseData {
         address mechanism;
-        bytes32 schemaId;
+        bytes32 clauseId;
     }
 
     /// @dev Seller events are a tagged union in the prover.
@@ -88,15 +88,15 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     ///      and avoid stack-too-deep.
     struct BatchEventData {
         AttestationData[] attestations;
-        SchemaData[] schemas;
-        MechanismSchemaData[] mechanismSchemas;
+        ClauseData[] clauses;
+        MechanismClauseData[] mechanismClauses;
         SellerEventInput[] sellerEvents;
     }
 
     // ── Events (protocol-compatible re-emissions) ─────────────────
 
     /// @notice Summary event emitted per settled batch.
-    /// @dev WARNING: Batch events use the same topic hashes as direct-path events (AttestationCoordinator, SchemaRegistry, SellerRegistry).
+    /// @dev WARNING: Batch events use the same topic hashes as direct-path events (AttestationCoordinator, ClauseRegistry, SellerRegistry).
     ///      Indexers MUST filter by contract address to distinguish batch from direct events. See audit finding M-3.
     event BatchSettled(
         uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount
@@ -107,18 +107,18 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         bytes32 indexed orderHash,
         bytes32 indexed processId,
         address indexed attester,
-        bytes32 schemaId,
+        bytes32 clauseId,
         uint8 stage,
         bytes32 contentRef
     );
 
-    /// @dev WARNING: This event shares its topic hash with SchemaRegistry.SchemaRegistered. Indexers MUST filter by contract address.
-    event SchemaRegistered(
-        bytes32 indexed schemaId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar
+    /// @dev WARNING: This event shares its topic hash with ClauseRegistry.ClauseRegistered. Indexers MUST filter by contract address.
+    event ClauseRegistered(
+        bytes32 indexed clauseId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar
     );
 
-    /// @dev WARNING: This event shares its topic hash with SchemaRegistry.MechanismSchemaSet. Indexers MUST filter by contract address.
-    event MechanismSchemaSet(address indexed mechanism, bytes32 indexed schemaId);
+    /// @dev WARNING: This event shares its topic hash with ClauseRegistry.MechanismClauseSet. Indexers MUST filter by contract address.
+    event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId);
 
     /// @dev WARNING: This event shares its topic hash with SellerRegistry.SellerRegistered. Indexers MUST filter by contract address.
     event SellerRegistered(address indexed seller, string metadataURI);
@@ -133,7 +133,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     error VerifyingContractMismatch(address expected, address actual);
     error PositionHashMismatch();
     error AttestationHashMismatch();
-    error SchemaHashMismatch();
+    error ClauseHashMismatch();
     error SellerHashMismatch();
     error InvalidSellerTag(uint8 tag);
     error FeeOnTransferDetected();
@@ -172,7 +172,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     /// @param proof        The SP1 validity proof for the batch.
     /// @param publicValues ABI-encoded public values (8 × 32-byte words).
     /// @param positions    Net token positions to reconcile (hash-verified against proof).
-    /// @param events       Attestation, schema, and seller events to re-emit (hash-verified).
+    /// @param events       Attestation, clause, and seller events to re-emit (hash-verified).
     function settleBatch(
         bytes calldata proof,
         bytes calldata publicValues,
@@ -202,7 +202,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         if (_hashAttestations(events.attestations) != pv.attEventsHash) {
             revert AttestationHashMismatch();
         }
-        if (_hashSchemas(events.schemas, events.mechanismSchemas) != pv.schEventsHash) revert SchemaHashMismatch();
+        if (_hashClauses(events.clauses, events.mechanismClauses) != pv.schEventsHash) revert ClauseHashMismatch();
         if (_hashSellerEvents(events.sellerEvents) != pv.opEventsHash) {
             revert SellerHashMismatch();
         }
@@ -212,7 +212,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
 
         // ── 5. Re-emit protocol events ────────────────────────────
         _emitAttestations(events.attestations);
-        _emitSchemas(events.schemas, events.mechanismSchemas);
+        _emitClauses(events.clauses, events.mechanismClauses);
         _emitSellerEvents(events.sellerEvents);
 
         // ── 6. Advance state ──────────────────────────────────────
@@ -261,7 +261,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         return keccak256(packed);
     }
 
-    /// @dev Pack: orderHash(32) + processId(32) + attester(20) + schemaId(32) + stage(1) + contentRef(32)
+    /// @dev Pack: orderHash(32) + processId(32) + attester(20) + clauseId(32) + stage(1) + contentRef(32)
     ///      = 149 bytes per attestation.
     function _hashAttestations(AttestationData[] calldata attestations) internal pure returns (bytes32) {
         uint256 len = attestations.length;
@@ -271,7 +271,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
             bytes32 orderHash = attestations[i].orderHash;
             bytes32 processId = attestations[i].processId;
             address attester = attestations[i].attester;
-            bytes32 schemaId = attestations[i].schemaId;
+            bytes32 clauseId = attestations[i].clauseId;
             uint8 stage = attestations[i].stage;
             bytes32 contentRef = attestations[i].contentRef;
             assembly {
@@ -279,7 +279,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
                 mstore(dst, orderHash)
                 mstore(add(dst, 32), processId)
                 mstore(add(dst, 64), shl(96, attester))
-                mstore(add(dst, 84), schemaId)
+                mstore(add(dst, 84), clauseId)
                 // stage is 1 byte at offset 116
                 mstore8(add(dst, 116), stage)
                 mstore(add(dst, 117), contentRef)
@@ -289,27 +289,27 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         return keccak256(packed);
     }
 
-    /// @dev Schemas: schemaId(32) + version(8) + uriHash(32) + family(32) + registrar(20) = 124 bytes each.
-    ///      Mechanisms: mechanism(20) + schemaId(32) = 52 bytes each.
-    ///      Combined into one hash matching the Rust `compute_schema_events_hash`.
-    function _hashSchemas(SchemaData[] calldata schemas, MechanismSchemaData[] calldata mechanisms)
+    /// @dev Clauses: clauseId(32) + version(8) + uriHash(32) + family(32) + registrar(20) = 124 bytes each.
+    ///      Mechanisms: mechanism(20) + clauseId(32) = 52 bytes each.
+    ///      Combined into one hash matching the Rust `compute_clause_events_hash`.
+    function _hashClauses(ClauseData[] calldata clauses, MechanismClauseData[] calldata mechanisms)
         internal
         pure
         returns (bytes32)
     {
-        uint256 sLen = schemas.length;
+        uint256 sLen = clauses.length;
         uint256 mLen = mechanisms.length;
         bytes memory packed = new bytes(sLen * 124 + mLen * 52);
         uint256 offset;
         for (uint256 i = 0; i < sLen; i++) {
-            bytes32 schemaId = schemas[i].schemaId;
-            uint64 version = schemas[i].version;
-            bytes32 uriHash = schemas[i].uriHash;
-            bytes32 family = schemas[i].family;
-            address registrar = schemas[i].registrar;
+            bytes32 clauseId = clauses[i].clauseId;
+            uint64 version = clauses[i].version;
+            bytes32 uriHash = clauses[i].uriHash;
+            bytes32 family = clauses[i].family;
+            address registrar = clauses[i].registrar;
             assembly {
                 let dst := add(add(packed, 32), offset)
-                mstore(dst, schemaId)
+                mstore(dst, clauseId)
                 // version is uint64 = 8 bytes, big-endian at offset 32
                 mstore(add(dst, 32), shl(192, version))
                 mstore(add(dst, 40), uriHash)
@@ -320,11 +320,11 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         }
         for (uint256 i = 0; i < mLen; i++) {
             address mechanism = mechanisms[i].mechanism;
-            bytes32 schemaId = mechanisms[i].schemaId;
+            bytes32 clauseId = mechanisms[i].clauseId;
             assembly {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, shl(96, mechanism))
-                mstore(add(dst, 20), schemaId)
+                mstore(add(dst, 20), clauseId)
             }
             offset += 52;
         }
@@ -408,21 +408,21 @@ contract FigaroBatchVerifier is ReentrancyGuard {
                 attestations[i].orderHash,
                 attestations[i].processId,
                 attestations[i].attester,
-                attestations[i].schemaId,
+                attestations[i].clauseId,
                 attestations[i].stage,
                 attestations[i].contentRef
             );
         }
     }
 
-    function _emitSchemas(SchemaData[] calldata schemas, MechanismSchemaData[] calldata mechanisms) internal {
-        for (uint256 i = 0; i < schemas.length; i++) {
-            emit SchemaRegistered(
-                schemas[i].schemaId, schemas[i].version, schemas[i].uriHash, schemas[i].family, schemas[i].registrar
+    function _emitClauses(ClauseData[] calldata clauses, MechanismClauseData[] calldata mechanisms) internal {
+        for (uint256 i = 0; i < clauses.length; i++) {
+            emit ClauseRegistered(
+                clauses[i].clauseId, clauses[i].version, clauses[i].uriHash, clauses[i].family, clauses[i].registrar
             );
         }
         for (uint256 i = 0; i < mechanisms.length; i++) {
-            emit MechanismSchemaSet(mechanisms[i].mechanism, mechanisms[i].schemaId);
+            emit MechanismClauseSet(mechanisms[i].mechanism, mechanisms[i].clauseId);
         }
     }
 

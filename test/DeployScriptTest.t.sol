@@ -4,19 +4,19 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import {Deploy} from "../script/Deploy.s.sol";
 import {AttestationCoordinator} from "../src/AttestationCoordinator.sol";
-import {ISchemaValidator} from "../src/ISchemaValidator.sol";
+import {IClauseValidator} from "../src/IClauseValidator.sol";
 
-/// @notice Proves the devnet deploy script wires every canonical schemaId to a
+/// @notice Proves the devnet deploy script wires every canonical clauseId to a
 ///         registered validator. Regression guard for backlog item "Deploy script
 ///         setValidator wiring": without this, every attest* call reverts with
 ///         ValidatorNotSet on a fresh coordinator.
 ///
 ///         The expected validator set is DERIVED from the ValidatorSet events
 ///         emitted during the deploy run rather than hard-listed as a typed
-///         array. Pairs with scripts/lint-schema-counts.sh, which enforces
+///         array. Pairs with scripts/lint-clause-counts.sh, which enforces
 ///         that the deploy script's console.log counts match the on-disk
-///         schema source-of-truth — so a new schema added to Deploy.s.sol
-///         flows into this test automatically and a new schema NOT added
+///         clause source-of-truth — so a new clause added to Deploy.s.sol
+///         flows into this test automatically and a new clause NOT added
 ///         is caught by the lint script.
 contract DeployScriptTest is Test {
     function test_deployScript_wiresAllRuntimeValidators() public {
@@ -43,19 +43,19 @@ contract DeployScriptTest is Test {
         AttestationCoordinator ac = AttestationCoordinator(coordinator);
 
         // Walk every ValidatorSet emission: the live binding must still hold
-        // and the validator's declared schemaId must match the event topic.
+        // and the validator's declared clauseId must match the event topic.
         for (uint256 i = 0; i < logs.length; i++) {
             if (logs[i].topics.length == 3 && logs[i].topics[0] == validatorSetTopic) {
-                bytes32 schemaId = logs[i].topics[1];
+                bytes32 clauseId = logs[i].topics[1];
                 address validator = address(uint160(uint256(logs[i].topics[2])));
-                assertEq(ac.schemaValidator(schemaId), validator, "live binding diverges from emitted ValidatorSet");
-                assertEq(ISchemaValidator(validator).schemaId(), schemaId, "validator bound to wrong schema");
+                assertEq(ac.clauseValidator(clauseId), validator, "live binding diverges from emitted ValidatorSet");
+                assertEq(IClauseValidator(validator).clauseId(), clauseId, "validator bound to wrong clause");
             }
         }
 
         // Topology is manifest-only — no on-chain validator should be wired.
         assertEq(
-            ac.schemaValidator(keccak256("figaro-topology-v1")),
+            ac.clauseValidator(keccak256("figaro-topology-v1")),
             address(0),
             "figaro-topology-v1 must have no runtime validator (manifest-only clause)"
         );

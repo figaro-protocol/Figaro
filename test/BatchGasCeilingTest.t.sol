@@ -86,8 +86,8 @@ contract BatchGasCeilingTest is Test {
 
         events = FigaroBatchVerifier.BatchEventData({
             attestations: new FigaroBatchVerifier.AttestationData[](0),
-            schemas: new FigaroBatchVerifier.SchemaData[](0),
-            mechanismSchemas: new FigaroBatchVerifier.MechanismSchemaData[](0),
+            clauses: new FigaroBatchVerifier.ClauseData[](0),
+            mechanismClauses: new FigaroBatchVerifier.MechanismClauseData[](0),
             sellerEvents: new FigaroBatchVerifier.SellerEventInput[](0)
         });
     }

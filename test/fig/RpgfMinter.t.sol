@@ -79,17 +79,17 @@ contract RpgfMinterTest is Test {
         rootY9 = keccak256(abi.encodePacked(alice, AMOUNT));
     }
 
-    function _publicValues(uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 schemaCount)
+    function _publicValues(uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 clauseCount)
         internal
         pure
         returns (bytes memory)
     {
-        return abi.encode(stageIndex, root, totalAllocated, schemaCount);
+        return abi.encode(stageIndex, root, totalAllocated, clauseCount);
     }
 
-    function _submit(uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 schemaCount) internal {
+    function _submit(uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 clauseCount) internal {
         vm.prank(sequencer);
-        minter.submitRoot(_publicValues(stageIndex, root, totalAllocated, schemaCount), hex"");
+        minter.submitRoot(_publicValues(stageIndex, root, totalAllocated, clauseCount), hex"");
     }
 
     // ── Constructor validation ──────────────────────────────────────────
@@ -335,18 +335,18 @@ contract RpgfMinterTest is Test {
     ///           word 0: uint8 tranche_index = 2 (value at byte 31)
     ///           word 1: bytes32 merkle_root = 0x42 × 32
     ///           word 2: uint256 total_allocated = 1_000_000 = 0x0F4240
-    ///           word 3: uint32 schema_count = 17 = 0x11
+    ///           word 3: uint32 clause_count = 17 = 0x11
     function test_AbiPublicValuesConformance() public pure {
         bytes memory pv =
             hex"0000000000000000000000000000000000000000000000000000000000000002424242424242424242424242424242424242424242424242424242424242424200000000000000000000000000000000000000000000000000000000000F42400000000000000000000000000000000000000000000000000000000000000011";
 
-        (uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 schemaCount) =
+        (uint8 stageIndex, bytes32 root, uint256 totalAllocated, uint32 clauseCount) =
             abi.decode(pv, (uint8, bytes32, uint256, uint32));
 
         assertEq(uint256(stageIndex), 2);
         assertEq(root, bytes32(uint256(0x4242424242424242424242424242424242424242424242424242424242424242)));
         assertEq(totalAllocated, 1_000_000);
-        assertEq(uint256(schemaCount), 17);
+        assertEq(uint256(clauseCount), 17);
     }
 
     // ── Fuzz tests ──────────────────────────────────────────────────────

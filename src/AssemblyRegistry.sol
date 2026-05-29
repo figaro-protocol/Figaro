@@ -5,11 +5,11 @@ pragma solidity 0.8.26;
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice On-chain dedup guard + event emission for assembly registration.
-///         Parallel to `SchemaRegistry` (schemas) and `SellerRegistry`
+///         Parallel to `ClauseRegistry` (clauses) and `SellerRegistry`
 ///         (sellers) — each artifact family carries its own anchor per
 ///         the protocol's separation-of-concerns doctrine.
 ///
-///         An assembly is a composition template that USES schemas. The
+///         An assembly is a composition template that USES clauses. The
 ///         registry binds a slug to (contentHash, metadataURI): the slug
 ///         is the human-readable identifier; contentHash is keccak256 of
 ///         the canonical off-chain manifest; metadataURI points to that
@@ -18,7 +18,7 @@ pragma solidity 0.8.26;
 ///         The contract does NOT validate manifest content. It cannot —
 ///         the manifest lives off-chain; the contract only stores its
 ///         hash and URI. Per-clause content validation happens at the
-///         per-schema layer when each order's clauses are attested at
+///         per-clause layer when each order's clauses are attested at
 ///         commit time.
 ///
 ///         The per-process gas ceiling (2,145 orders, documented in
@@ -128,7 +128,7 @@ contract AssemblyRegistry {
     /// @notice Register an assembly. Requires `registrationDeposit` ETH.
     ///         The contract anchors identity (slug → contentHash + URI).
     ///         Content validity is the publisher's responsibility
-    ///         off-chain; per-clause validity is the per-schema
+    ///         off-chain; per-clause validity is the per-clause
     ///         validator's responsibility at commit time.
     /// @param slug         Human-readable slug. Bound permanently.
     /// @param contentHash  keccak256 of the canonical off-chain manifest.

@@ -16,10 +16,10 @@ import {MockSP1Verifier} from "src/mocks/MockSP1Verifier.sol";
 ///         exactly where the Rust aggregator says it should.
 ///
 /// @dev Canonical input:
-///        4 schemas, schema_ids = bytes32(1), bytes32(2), bytes32(3), bytes32(4)
+///        4 clauses, clause_ids = bytes32(1), bytes32(2), bytes32(3), bytes32(4)
 ///        (chosen so wCategory = 1.0 — none match the tier-1 set
 ///         {figaro-fulfilment-v2, figaro-geo-v2})
-///        Each schema: 100 processes, 50 pairs, chainPos = 1
+///        Each clause: 100 processes, 50 pairs, chainPos = 1
 ///                     (uniform parameters → equal scores → pre-cap
 ///                      share = 25% each)
 ///        Cap = 15% → cap binds for all four; each settles at 15%
@@ -39,17 +39,17 @@ contract RpgfMinterConformanceTest is Test {
     address internal authorC = 0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC;
     address internal authorD = 0xDDdDddDdDdddDDddDDddDDDDdDdDDdDDdDDDDDDd;
 
-    bytes32 internal constant SCHEMA_A = bytes32(uint256(1));
-    bytes32 internal constant SCHEMA_B = bytes32(uint256(2));
-    bytes32 internal constant SCHEMA_C = bytes32(uint256(3));
-    bytes32 internal constant SCHEMA_D = bytes32(uint256(4));
+    bytes32 internal constant CLAUSE_A = bytes32(uint256(1));
+    bytes32 internal constant CLAUSE_B = bytes32(uint256(2));
+    bytes32 internal constant CLAUSE_C = bytes32(uint256(3));
+    bytes32 internal constant CLAUSE_D = bytes32(uint256(4));
 
     bytes32 internal constant PROGRAM_VKEY = bytes32(uint256(0xDEAD));
 
     uint256 internal constant PER_AUTHOR_AMOUNT = 45_000_000 ether;
     uint256 internal constant TRANCHE_BUDGET = 300_000_000 ether;
     uint256 internal constant EXPECTED_TOTAL_ALLOCATED = 180_000_000 ether;
-    uint32 internal constant EXPECTED_SCHEMA_COUNT = 4;
+    uint32 internal constant EXPECTED_CLAUSE_COUNT = 4;
 
     /// @dev Canonical Merkle root. Same constant lives in
     ///      prover/rpgf/tests/conformance_test.rs. The two
@@ -75,7 +75,7 @@ contract RpgfMinterConformanceTest is Test {
         token.registerMinter(address(minter), 600_000_000 ether);
 
         // Build the canonical 4-leaf tree inline. Leaf order matches
-        // the Rust aggregator's schema_id-sorted snapshot order:
+        // the Rust aggregator's clause_id-sorted snapshot order:
         // bytes32(1) < bytes32(2) < bytes32(3) < bytes32(4).
         leafA = keccak256(abi.encodePacked(authorA, PER_AUTHOR_AMOUNT));
         leafB = keccak256(abi.encodePacked(authorB, PER_AUTHOR_AMOUNT));
@@ -99,7 +99,7 @@ contract RpgfMinterConformanceTest is Test {
 
     function _submitCanonicalRoot() internal {
         bytes memory publicValues = abi.encode(
-            uint8(0), EXPECTED_ROOT, EXPECTED_TOTAL_ALLOCATED, EXPECTED_SCHEMA_COUNT
+            uint8(0), EXPECTED_ROOT, EXPECTED_TOTAL_ALLOCATED, EXPECTED_CLAUSE_COUNT
         );
         vm.prank(sequencer);
         minter.submitRoot(publicValues, hex"");
