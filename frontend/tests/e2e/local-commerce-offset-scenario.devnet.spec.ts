@@ -16,9 +16,9 @@
  *      anchored on-chain by ProcessOffsetReceipt.
  *   5. Buyer confirms receipt → resolveProcess settles both orders.
  *
- * Exercises every schema the local-commerce-offset assembly composes —
+ * Exercises every clause the local-commerce-offset assembly composes —
  * including figaro-ghg-iso-14064-v1 and figaro-ghg-measurement-v1, each
- * through the role that drives it (feedback_assembly_e2e_schema_coverage).
+ * through the role that drives it (feedback_assembly_e2e_clause_coverage).
  *
  * Requires Anvil + ./deploy-local.sh + ./deploy-mock-kleros.sh-free,
  * Kubo + a seeded devnet.
@@ -74,12 +74,12 @@ const ORDER_COMMITTED_ABI = parseAbi([
     'event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 agreementHash, uint256 salt, uint256 deadline)',
 ]);
 const ATTESTATION_ABI = parseAbi([
-    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)',
+    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)',
 ]);
 const RECEIPT_ABI = parseAbi([
     'event ReceiptRecorded(bytes32 indexed processId, address indexed buyer, bytes32 indexed retirementTxHash, address aggregator, uint256 tonsRetired, address inputToken, uint256 inputAmount)',
 ]);
-const GHG_MEASUREMENT_SCHEMA_ID = keccak256(stringToHex('figaro-ghg-measurement-v1'));
+const GHG_MEASUREMENT_CLAUSE_ID = keccak256(stringToHex('figaro-ghg-measurement-v1'));
 
 function deployment() {
     const config = readLocalDeploymentConfig();

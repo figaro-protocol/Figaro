@@ -52,7 +52,7 @@ function parseOptionalUnitSystem(value: unknown, path: string): UnitSystem | und
     return asEnum(value, ALLOWED_UNIT_SYSTEMS, path);
 }
 
-function parseSchemaAttestations(value: unknown, path: string): Record<string, Record<string, unknown>> | undefined {
+function parseClauseAttestations(value: unknown, path: string): Record<string, Record<string, unknown>> | undefined {
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     const out: Record<string, Record<string, unknown>> = {};
@@ -110,7 +110,7 @@ function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
         classOfService: parseOptionalClassOfService(record.classOfService, `${path}.classOfService`),
         pricingPolicy: parseOptionalPricingPolicy(record.pricingPolicy, `${path}.pricingPolicy`),
         negotiatedPrices: parseOptionalNegotiatedPrices(record.negotiatedPrices, `${path}.negotiatedPrices`),
-        schemaAttestations: parseSchemaAttestations(record.schemaAttestations, `${path}.schemaAttestations`),
+        clauseAttestations: parseClauseAttestations(record.clauseAttestations, `${path}.clauseAttestations`),
     };
 }
 

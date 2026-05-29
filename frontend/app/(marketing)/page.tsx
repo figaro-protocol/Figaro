@@ -49,7 +49,7 @@ export default function Home() {
                     <div className="text-center flex flex-col">
                         <h2 className="text-heading-h3 text-ink-heading">Builders</h2>
                         <p className="text-sm text-ink-muted mt-2 mb-5 leading-relaxed">
-                            Schemas, assemblies, tokens, agents &mdash; what you can build on the substrate.
+                            Clauses, assemblies, tokens, agents &mdash; what you can build on the substrate.
                         </p>
                         <div className="mt-auto">
                             <BuildButton className="inline-flex min-w-[160px] justify-center" />

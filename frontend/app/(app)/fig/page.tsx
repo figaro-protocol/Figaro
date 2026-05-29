@@ -171,7 +171,7 @@ export default function FigPage() {
                     </div>
                     <div className="flex justify-between border-b border-gray-100 pb-2">
                         <dt className="text-black">Community airdrop</dt>
-                        <dd className="text-gray-600">600M · 60% · schema-author RPGF (yr 2 / 5 / 9)</dd>
+                        <dd className="text-gray-600">600M · 60% · clause-author RPGF (yr 2 / 5 / 9)</dd>
                     </div>
                 </dl>
             </section>
@@ -186,7 +186,7 @@ export default function FigPage() {
                 <p className="text-sm text-gray-600 mt-4">
                     Single <code>RpgfMinter</code> contract with three immutable unlock
                     timestamps. Per-tranche Merkle roots are submitted at tranche time
-                    by a sequencer after an SP1 proof verifies the schema-author
+                    by a sequencer after an SP1 proof verifies the clause-author
                     substrate-broadening aggregation. One-shot per (stage, address) on
                     the claim side.
                 </p>

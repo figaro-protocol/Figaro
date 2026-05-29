@@ -27,7 +27,7 @@
  * — the empirical measurement. `scripts/lint-chain-gas.sh` asserts the
  * Foundry constants and these TS constants match exactly; either side
  * moves, the other must move too (model: `scripts/lint-token-ops.sh`
- * and `scripts/lint-schema-counts.sh`).
+ * and `scripts/lint-clause-counts.sh`).
  *
  * Pairs with the P0 multi-tx checkout backlog item — single-tx checkout
  * doesn't scale, so the runtime needs a way to ask "how many orders

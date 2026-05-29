@@ -2,7 +2,7 @@
  * Figaro handoff geohash + logistics utilities.
  *
  * Self-contained geohash encode / bounds / distance, class-of-service
- * labels, and the well-known manifest schema-id constants. Used by the
+ * labels, and the well-known manifest clause-id constants. Used by the
  * physical-handoff surfaces (delivery-location capture, courier proximity,
  * seller service areas).
  *
@@ -125,17 +125,17 @@ export function cosLabel(cos: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Manifest schema IDs
+// Manifest clause IDs
 // ---------------------------------------------------------------------------
 
 /**
- * Well-known schema IDs. These are keccak256 of the schema key string,
- * matching what ManifestSchemaRegistry stores on-chain.
+ * Well-known clause IDs. These are keccak256 of the clause key string,
+ * matching what ManifestClauseRegistry stores on-chain.
  *
- * The schema ID identifies the manifest encoding format. The protocol core
- * treats manifest bytes as opaque — the schema tells the UI how to decode.
+ * The clause ID identifies the manifest encoding format. The protocol core
+ * treats manifest bytes as opaque — the clause tells the UI how to decode.
  */
-export const MANIFEST_SCHEMAS = {
+export const MANIFEST_CLAUSES = {
     /** Fulfilment-composition: modality + coordination + handoff point. */
     FULFILMENT_V2: "figaro-fulfilment-v2",
     /** Commerce manifest: handoff fields + itemized line items. */

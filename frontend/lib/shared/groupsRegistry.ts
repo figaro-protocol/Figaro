@@ -77,7 +77,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         ],
         references: [
             { label: "Protocol — two mechanisms", href: "/protocol", note: "two-mechanism + contract-law overview" },
-            { label: "RPGF", href: "/rpgf", note: "the schema-author reward formula" },
+            { label: "RPGF", href: "/rpgf", note: "the clause-author reward formula" },
         ],
     },
     {
@@ -96,7 +96,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         disciplineIndex: 3,
         name: "Computer Science and Cryptography",
         discipline: "Cryptographic primitives · adversarial review · formal verification · protocol extension · runtime architecture",
-        charter: "Two complementary lenses on the protocol's CS surface. Paper C reads the kernel adversarially: where does the invariant break, and what proves that it does not? EIP-712 dual-signed commitments, merkle-bound attestation receipts, SP1-proven batch execution, the formal-verification stack. Paper N reads what stands above the kernel as a research object: schema design as a CS discipline (four-layer verification stack, append-only identity, first-write-wins binding, atomic-bind pattern), the coordinator pattern with formal composition semantics and equilibrium-preservation conditions, and the seven-layer runtime composition pipeline. Implementation work (schema authoring, contract development, assembly composition, frontend) organizes separately at /builders.",
+        charter: "Two complementary lenses on the protocol's CS surface. Paper C reads the kernel adversarially: where does the invariant break, and what proves that it does not? EIP-712 dual-signed commitments, merkle-bound attestation receipts, SP1-proven batch execution, the formal-verification stack. Paper N reads what stands above the kernel as a research object: clause design as a CS discipline (four-layer verification stack, append-only identity, first-write-wins binding, atomic-bind pattern), the coordinator pattern with formal composition semantics and equilibrium-preservation conditions, and the seven-layer runtime composition pipeline. Implementation work (clause authoring, contract development, assembly composition, frontend) organizes separately at /builders.",
         papers: [
             { title: "Asymmetric Bonding and Buyer Dominance: A Verified Solidity Settlement Kernel", href: "/papers/verified-settlement-kernel" },
             { title: "Protocol Extension and Runtime Composition", href: "/papers/protocol-extension" },
@@ -111,7 +111,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
             { label: "Release readiness + freeze notice", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/RELEASE_READINESS.md" },
             { label: "Design decisions", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/DESIGN_DECISIONS.md", note: "fourteen patterns that look like bugs but are correct" },
             { label: "Audit report", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/AUDIT_REPORT.md" },
-            { label: "Builders", href: "/builders", note: "implementation work — schemas, contracts, assemblies, frontend" },
+            { label: "Builders", href: "/builders", note: "implementation work — clauses, contracts, assemblies, frontend" },
         ],
     },
     {
@@ -119,7 +119,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         disciplineIndex: 4,
         name: "Philosophy, Law and Ethics",
         discipline: "Contract theory · evidence law · labor law · stateless subjecthood · political philosophy",
-        charter: "A Figaro commitment is a signed contract: payment = consideration, schemas = terms and conditions, agreementHash = the contract document. Settlement happens on-chain by nature; adjudication happens off-chain by nature. The wallet collapses the Roman res/persona distinction, and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. The platform is not a fact of nature; it is a contingent answer to a coordination problem the bonded primitive answers differently. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
+        charter: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, agreementHash = the contract document. Settlement happens on-chain by nature; adjudication happens off-chain by nature. The wallet collapses the Roman res/persona distinction, and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. The platform is not a fact of nature; it is a contingent answer to a coordination problem the bonded primitive answers differently. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
         papers: [
             { title: "On-Chain Evidence, Off-Chain Adjudication", href: "/papers/on-chain-evidence" },
             { title: "The Wallet as Legal Subject", href: "/papers/wallet-legal-subject" },

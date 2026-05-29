@@ -60,10 +60,10 @@ export interface SellerLocation {
 
 /**
  * Designates the wallets the seller entrusts as counterparties on
- * this assembly's sub-orders, keyed by the sub-order's process schema.
+ * this assembly's sub-orders, keyed by the sub-order's process clause.
  *
  * Example: a seller bound to `local-commerce-merchant-delivery` has
- * a `counterpartyBindings[{ schemaId: "figaro-courier-process-v1",
+ * a `counterpartyBindings[{ clauseId: "figaro-courier-process-v1",
  * addresses: [0xA, 0xB] }]` entry. At checkout, the cart fills the
  * courier sub-order's seller field from this list. Without this field
  * the cart has nowhere to read the counterparty's wallet from — the
@@ -71,11 +71,11 @@ export interface SellerLocation {
  * to concrete wallets.
  */
 export interface CounterpartyBinding {
-    /** Process schema anchored on the sub-order this binding targets
-     *  (e.g. `figaro-courier-process-v1`). The schemaId is the
+    /** Process clause anchored on the sub-order this binding targets
+     *  (e.g. `figaro-courier-process-v1`). The clauseId is the
      *  structural marker for what kind of off-chain seller the
      *  sub-order needs. */
-    schemaId: string;
+    clauseId: string;
     /** Wallets the seller is willing to designate. Order is
      *  significant — checkout picks the first reachable one (or
      *  surfaces the list to the buyer). */
@@ -177,7 +177,7 @@ function parseCounterpartyBindingArray(value: unknown, path: string): Counterpar
             asAddress(addr, `${path}[${index}].addresses[${j}]`),
         );
         return {
-            schemaId: asString(record.schemaId, `${path}[${index}].schemaId`),
+            clauseId: asString(record.clauseId, `${path}[${index}].clauseId`),
             addresses,
         };
     });

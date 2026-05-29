@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DraftsList } from "./_components/DraftsList";
 import { PublishedList } from "./_components/PublishedList";
-import { SchemasList } from "./_components/SchemasList";
+import { ClausesList } from "./_components/ClausesList";
 
 export const metadata: Metadata = {
     title: "Designer — Figaro Protocol",
@@ -54,12 +54,12 @@ export default function DesignerLanding() {
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
-                    Your schemas
+                    Your clauses
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
-                    Schemas you&apos;ve registered on the on-chain <code>SchemaRegistry</code>. Reconstructed from <code>SchemaRegistered</code> events filtered by your connected wallet. Schemas are first-write-wins and immutable once bound to an <code>ISchemaValidator</code>.
+                    Clauses you&apos;ve registered on the on-chain <code>ClauseRegistry</code>. Reconstructed from <code>ClauseRegistered</code> events filtered by your connected wallet. Clauses are first-write-wins and immutable once bound to an <code>IClauseValidator</code>.
                 </p>
-                <SchemasList />
+                <ClausesList />
             </section>
 
         </div>

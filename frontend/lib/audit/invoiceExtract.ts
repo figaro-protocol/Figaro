@@ -18,7 +18,7 @@ import {
     type AgreementSection,
     type AnyAgreementSection,
     type RedactableAgreement,
-    COMMERCE_SCHEMA_KEY,
+    COMMERCE_CLAUSE_KEY,
     isRedactedSection,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
@@ -27,9 +27,9 @@ import type { ExtractedDocument } from "./types";
 
 function findAnySection(
     agreement: Agreement | RedactableAgreement,
-    schemaKey: string,
+    clauseKey: string,
 ): AnyAgreementSection | undefined {
-    return agreement.sections.find((s) => s.schema === schemaKey);
+    return agreement.sections.find((s) => s.clause === clauseKey);
 }
 
 export interface InvoiceLineItem {
@@ -80,7 +80,7 @@ export function extractInvoice(
     order: Order,
     agreement: Agreement | RedactableAgreement,
 ): InvoiceDocument {
-    const commerce = findAnySection(agreement, COMMERCE_SCHEMA_KEY);
+    const commerce = findAnySection(agreement, COMMERCE_CLAUSE_KEY);
     const sealed = commerce !== undefined && isRedactedSection(commerce);
     const commerceData = commerce !== undefined && !isRedactedSection(commerce)
         ? (commerce.data as { currency?: string; lineItems?: unknown[] })

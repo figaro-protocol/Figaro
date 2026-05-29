@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * AgreementDrawer — schema-composition editor for a single order's
+ * AgreementDrawer — clause-composition editor for a single order's
  * agreement.
  *
  * Each tab represents an article of the bonded commitment. The designer
- * chooses which schemas appear in the order's agreement by toggling
+ * chooses which clauses appear in the order's agreement by toggling
  * inclusion or by filling structured controls (checkboxes for multi-valued
  * fields; per-article custom widgets for Fulfilment, Emissions, and
  * Jurisdiction).
@@ -36,21 +36,21 @@ import {
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import {
-    COMMERCE_SCHEMA_KEY,
-    APPLICABLE_LAW_SCHEMA_KEY,
-    ARBITRATION_KLEROS_SCHEMA_KEY,
-    CONSENT_SCHEMA_KEY,
-    COURIER_PROCESS_SCHEMA_KEY,
-    FULFILMENT_V2_SCHEMA_KEY,
-    GEO_SCHEMA_KEY,
-    GHG_DISCLOSURE_SCHEMA_KEYS,
-    MERCHANT_PROCESS_SCHEMA_KEY,
+    COMMERCE_CLAUSE_KEY,
+    APPLICABLE_LAW_CLAUSE_KEY,
+    ARBITRATION_KLEROS_CLAUSE_KEY,
+    CONSENT_CLAUSE_KEY,
+    COURIER_PROCESS_CLAUSE_KEY,
+    FULFILMENT_V2_CLAUSE_KEY,
+    GEO_CLAUSE_KEY,
+    GHG_DISCLOSURE_CLAUSE_KEYS,
+    MERCHANT_PROCESS_CLAUSE_KEY,
 } from "@/lib/core/agreementManifest";
-import { getSchemaInfo } from "@/lib/shared/schemaCategories";
-import { useAllRegisteredSchemas } from "@/lib/mechanisms/useSchemaRegistry";
+import { getClauseInfo } from "@/lib/shared/clauseCategories";
+import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
-import type { FulfilmentModality } from "@figaro/core/schemas";
+import type { FulfilmentModality } from "@figaro/core/clauses";
 import { KLEROS_COURTS } from "@/lib/dispute";
 
 /**
@@ -78,29 +78,29 @@ const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
 ];
 
 /**
- * Per-schema sentinel manifest fields. Toggling a schema "Included"
+ * Per-clause sentinel manifest fields. Toggling a clause "Included"
  * applies these values; toggling "Not included" deletes them.
  *
- * Sentinels are chosen so the encoder (`@figaro/core/schemas`) emits a
+ * Sentinels are chosen so the encoder (`@figaro/core/clauses`) emits a
  * valid section: minimum-length geohash, enum-valid handoff mode, etc.
  * Real values come from the runtime — designer's job is composition.
  */
-const SCHEMA_SENTINELS: Record<string, Record<string, string>> = {
+const CLAUSE_SENTINELS: Record<string, Record<string, string>> = {
     // figaro-geo-v2 requires all five fields. Origin / destination get
     // minimum-length geohashes. Mass / volume default to 1 (the smallest
     // value the v2 validator accepts; 0 reverts). Class defaults to "S"
     // (Standard). `manifestFieldsToGeoSection` reads these manifest keys
     // and produces an encoder-valid section. Real values flow in at
     // commit-time from the buyer's runtime UI.
-    [GEO_SCHEMA_KEY]: { origin: "0", destination: "0", mass: "1g", volume: "1ml", class_: "S" },
+    [GEO_CLAUSE_KEY]: { origin: "0", destination: "0", mass: "1g", volume: "1ml", class_: "S" },
 };
 
 /**
- * Per-schema fields the toggle "Not included" clears. Must match the
+ * Per-clause fields the toggle "Not included" clears. Must match the
  * sentinel keys above so toggling off wipes every field toggling on set.
  */
-const SCHEMA_FIELDS: Record<string, readonly string[]> = {
-    [GEO_SCHEMA_KEY]: ["origin", "destination", "mass", "volume", "class_"],
+const CLAUSE_FIELDS: Record<string, readonly string[]> = {
+    [GEO_CLAUSE_KEY]: ["origin", "destination", "mass", "volume", "class_"],
 };
 
 function isFieldFilled(fields: ManifestFields, key: string): boolean {
@@ -113,9 +113,9 @@ function isFieldFilled(fields: ManifestFields, key: string): boolean {
     return true;
 }
 
-/** Geo schema is "included" when its required fields are set in the manifest. */
-function isSchemaIncluded(schemaId: string, fields: ManifestFields): boolean {
-    if (schemaId === GEO_SCHEMA_KEY) {
+/** Geo clause is "included" when its required fields are set in the manifest. */
+function isClauseIncluded(clauseId: string, fields: ManifestFields): boolean {
+    if (clauseId === GEO_CLAUSE_KEY) {
         return isFieldFilled(fields, "origin") && isFieldFilled(fields, "destination");
     }
     return false;
@@ -140,7 +140,7 @@ interface Props {
      *  root order (or any sub-order whose parent has no delivery). */
     parentDeliveryActive?: boolean;
     /** True when the currently-selected merchant order has at least one
-     *  child anchoring the courier-process schema. Drives the Attestations
+     *  child anchoring the courier-process clause. Drives the Attestations
      *  tab's cross-role hint copy so we only direct the designer to "edit
      *  on the courier sub-order" when one actually exists. */
     hasCourierChild?: boolean;
@@ -159,7 +159,7 @@ interface Props {
     embedded?: boolean;
     /** When true, the article tabs remain clickable for navigation, but
      *  every form control inside an article is disabled. Used by /view
-     *  to surface clause/schema detail without permitting edits. */
+     *  to surface clause/clause detail without permitting edits. */
     readOnly?: boolean;
     /** Every order in the design. Drives the per-node tab row so each
      *  graph node has its own authoring surface in the drawer — without
@@ -203,41 +203,41 @@ export function AgreementDrawer({
         return () => ro.disconnect();
     }, [embedded]);
 
-    // Which schemas are actually registered on this network — the SET is
-    // network state, read live from `SchemaRegistry.SchemaRegistered`. The
-    // bundled `schemaCategories.ts` supplies each schema's title/description;
+    // Which clauses are actually registered on this network — the SET is
+    // network state, read live from `ClauseRegistry.ClauseRegistered`. The
+    // bundled `clauseCategories.ts` supplies each clause's title/description;
     // the drawer offers a clause only when the chain confirms it exists.
     // While the read is in flight (`data === null`) the gate is permissive,
     // so the UI does not flash "unavailable" during initial paint.
-    const { data: registeredSchemas } = useAllRegisteredSchemas();
-    const onChainSchemas = useMemo<ReadonlySet<string> | null>(
+    const { data: registeredClauses } = useAllRegisteredClauses();
+    const onChainClauses = useMemo<ReadonlySet<string> | null>(
         () =>
-            registeredSchemas === null
+            registeredClauses === null
                 ? null
                 : new Set(
-                    registeredSchemas
-                        .map((e) => e.schemaName)
+                    registeredClauses
+                        .map((e) => e.clauseName)
                         .filter((n): n is string => n !== null),
                 ),
-        [registeredSchemas],
+        [registeredClauses],
     );
-    const isOnChain = (schemaId: string): boolean =>
-        onChainSchemas === null || onChainSchemas.has(schemaId);
-    const commerceAvailable = isOnChain(COMMERCE_SCHEMA_KEY);
-    const geoAvailable = isOnChain(GEO_SCHEMA_KEY);
-    const merchantProcessAvailable = isOnChain(MERCHANT_PROCESS_SCHEMA_KEY);
-    const courierProcessAvailable = isOnChain(COURIER_PROCESS_SCHEMA_KEY);
-    const fulfilmentAvailable = isOnChain(FULFILMENT_V2_SCHEMA_KEY);
-    const arbitrationKlerosAvailable = isOnChain(ARBITRATION_KLEROS_SCHEMA_KEY);
-    const applicableLawAvailable = isOnChain(APPLICABLE_LAW_SCHEMA_KEY);
+    const isOnChain = (clauseId: string): boolean =>
+        onChainClauses === null || onChainClauses.has(clauseId);
+    const commerceAvailable = isOnChain(COMMERCE_CLAUSE_KEY);
+    const geoAvailable = isOnChain(GEO_CLAUSE_KEY);
+    const merchantProcessAvailable = isOnChain(MERCHANT_PROCESS_CLAUSE_KEY);
+    const courierProcessAvailable = isOnChain(COURIER_PROCESS_CLAUSE_KEY);
+    const fulfilmentAvailable = isOnChain(FULFILMENT_V2_CLAUSE_KEY);
+    const arbitrationKlerosAvailable = isOnChain(ARBITRATION_KLEROS_CLAUSE_KEY);
+    const applicableLawAvailable = isOnChain(APPLICABLE_LAW_CLAUSE_KEY);
     const disputeResolutionAvailable = arbitrationKlerosAvailable && applicableLawAvailable;
-    const consentAvailable = isOnChain(CONSENT_SCHEMA_KEY);
+    const consentAvailable = isOnChain(CONSENT_CLAUSE_KEY);
     const availableGhgKeys = useMemo<readonly string[]>(
         () =>
-            onChainSchemas === null
-                ? GHG_DISCLOSURE_SCHEMA_KEYS
-                : GHG_DISCLOSURE_SCHEMA_KEYS.filter((k) => onChainSchemas.has(k)),
-        [onChainSchemas],
+            onChainClauses === null
+                ? GHG_DISCLOSURE_CLAUSE_KEYS
+                : GHG_DISCLOSURE_CLAUSE_KEYS.filter((k) => onChainClauses.has(k)),
+        [onChainClauses],
     );
 
     useEffect(() => {
@@ -264,7 +264,7 @@ export function AgreementDrawer({
                 </p>
                 <p className="text-xs text-neutral-500 leading-relaxed max-w-[260px]">
                     Click any node on the canvas to choose which clause
-                    schemas its agreement includes.
+                    clauses its agreement includes.
                 </p>
             </aside>
         );
@@ -274,7 +274,7 @@ export function AgreementDrawer({
     const isRootOrder = (topology?.parentOrderHashes?.length ?? 0) === 0;
     // Structural role booleans — derived from the order's actual content.
     // Root + (delivery in fulfilment OR merchant-process anchored) is the
-    // merchant order; the per-role process schemas distinguish courier and
+    // merchant order; the per-role process clauses distinguish courier and
     // offset sub-orders.
     const isMerchantOrder = isRootOrder;
     const isCourierOrder = !isRootOrder && fields.courierProcessIncluded === true;
@@ -288,17 +288,17 @@ export function AgreementDrawer({
         onChange({ manifestFields: next });
     }
 
-    /** Toggle inclusion for a single-schema article. Sets sentinel fields
-     *  on "Included", clears all schema-related fields on "Not included". */
-    function toggleSchema(schemaId: string, included: boolean) {
+    /** Toggle inclusion for a single-clause article. Sets sentinel fields
+     *  on "Included", clears all clause-related fields on "Not included". */
+    function toggleClause(clauseId: string, included: boolean) {
         const next: ManifestFields = { ...fields };
         if (included) {
-            const sentinel = SCHEMA_SENTINELS[schemaId];
+            const sentinel = CLAUSE_SENTINELS[clauseId];
             for (const [k, v] of Object.entries(sentinel)) {
                 (next as Record<string, unknown>)[k] = v;
             }
         } else {
-            for (const k of SCHEMA_FIELDS[schemaId] ?? []) {
+            for (const k of CLAUSE_FIELDS[clauseId] ?? []) {
                 delete (next as Record<string, unknown>)[k];
             }
         }
@@ -346,8 +346,8 @@ export function AgreementDrawer({
         else delete (out as Record<string, unknown>).fulfilmentCoordinations;
         if (next.handoffPoints.length > 0) out.fulfilmentHandoffPoints = next.handoffPoints;
         else delete (out as Record<string, unknown>).fulfilmentHandoffPoints;
-        if (becomingDelivery && !isSchemaIncluded(GEO_SCHEMA_KEY, out)) {
-            const sentinel = SCHEMA_SENTINELS[GEO_SCHEMA_KEY];
+        if (becomingDelivery && !isClauseIncluded(GEO_CLAUSE_KEY, out)) {
+            const sentinel = CLAUSE_SENTINELS[GEO_CLAUSE_KEY];
             for (const [k, v] of Object.entries(sentinel)) {
                 (out as Record<string, unknown>)[k] = v;
             }
@@ -662,13 +662,13 @@ export function AgreementDrawer({
                     {openSection === "order" && (
                         <section data-testid="drawer-section-order">
                             <p className="text-sm text-black mb-1">
-                                {getSchemaInfo(COMMERCE_SCHEMA_KEY)?.title ?? "Commerce"}
+                                {getClauseInfo(COMMERCE_CLAUSE_KEY)?.title ?? "Commerce"}
                             </p>
                             <p className="text-xs text-neutral-500 leading-relaxed">
                                 Order details (currency, payment, line items) are filled in at
                                 commit time and validated against{" "}
-                                <code className="font-mono text-[11px]">{COMMERCE_SCHEMA_KEY}</code>{" "}
-                                — the commerce schema. No composition decision lives here; this
+                                <code className="font-mono text-[11px]">{COMMERCE_CLAUSE_KEY}</code>{" "}
+                                — the commerce clause. No composition decision lives here; this
                                 clause is included in every agreement by default.
                             </p>
                             {!commerceAvailable && (
@@ -685,10 +685,10 @@ export function AgreementDrawer({
 
                     {openSection === "logistics" && (
                         <section data-testid="drawer-section-logistics">
-                            <SchemaToggleArticle
-                                schemaId={GEO_SCHEMA_KEY}
-                                included={isSchemaIncluded(GEO_SCHEMA_KEY, fields)}
-                                onToggle={(next) => toggleSchema(GEO_SCHEMA_KEY, next)}
+                            <ClauseToggleArticle
+                                clauseId={GEO_CLAUSE_KEY}
+                                included={isClauseIncluded(GEO_CLAUSE_KEY, fields)}
+                                onToggle={(next) => toggleClause(GEO_CLAUSE_KEY, next)}
                                 disabled={deliveryActive || !geoAvailable}
                                 disabledHint={
                                     !geoAvailable
@@ -738,7 +738,7 @@ export function AgreementDrawer({
                                     className="text-xs text-amber-700"
                                     data-testid="drawer-fulfilment-unavailable"
                                 >
-                                    <code className="font-mono text-[11px]">{FULFILMENT_V2_SCHEMA_KEY}</code>{" "}
+                                    <code className="font-mono text-[11px]">{FULFILMENT_V2_CLAUSE_KEY}</code>{" "}
                                     is not registered on the network this site is reading; this article is unavailable.
                                 </p>
                             )}
@@ -750,7 +750,7 @@ export function AgreementDrawer({
                             <EmissionsArticle
                                 checked={activeGhgStandards}
                                 onChange={updateGhgStandards}
-                                availableSchemas={availableGhgKeys}
+                                availableClauses={availableGhgKeys}
                             />
                         </section>
                     )}
@@ -777,12 +777,12 @@ export function AgreementDrawer({
                                 >
                                     {!arbitrationKlerosAvailable && (
                                         <>
-                                            <code className="font-mono text-[11px]">{ARBITRATION_KLEROS_SCHEMA_KEY}</code>{" "}
+                                            <code className="font-mono text-[11px]">{ARBITRATION_KLEROS_CLAUSE_KEY}</code>{" "}
                                         </>
                                     )}
                                     {!applicableLawAvailable && (
                                         <>
-                                            <code className="font-mono text-[11px]">{APPLICABLE_LAW_SCHEMA_KEY}</code>{" "}
+                                            <code className="font-mono text-[11px]">{APPLICABLE_LAW_CLAUSE_KEY}</code>{" "}
                                         </>
                                     )}
                                     is not registered on the network this site is reading; this article is unavailable.
@@ -805,7 +805,7 @@ export function AgreementDrawer({
                                     className="text-xs text-amber-700"
                                     data-testid="drawer-consent-unavailable"
                                 >
-                                    <code className="font-mono text-[11px]">{CONSENT_SCHEMA_KEY}</code>{" "}
+                                    <code className="font-mono text-[11px]">{CONSENT_CLAUSE_KEY}</code>{" "}
                                     is not registered on the network this site is reading; this article is unavailable.
                                 </p>
                             )}
@@ -821,18 +821,18 @@ export function AgreementDrawer({
 }
 
 /**
- * Single-schema article body — title + description (from the spec JSON)
+ * Single-clause article body — title + description (from the spec JSON)
  * + a binary inclusion toggle.
  */
-function SchemaToggleArticle({
-    schemaId,
+function ClauseToggleArticle({
+    clauseId,
     included,
     onToggle,
     disabled = false,
     disabledHint,
     lockedOn = false,
 }: {
-    schemaId: string;
+    clauseId: string;
     included: boolean;
     onToggle: (next: boolean) => void;
     /** When true, the toggle is locked at its current value. Used to express
@@ -849,12 +849,12 @@ function SchemaToggleArticle({
      *  Implies disabled. */
     lockedOn?: boolean;
 }) {
-    const info = getSchemaInfo(schemaId);
+    const info = getClauseInfo(clauseId);
     const hintId = useId();
     const showHint = disabled && !!disabledHint;
     return (
         <div>
-            <p className="text-sm text-black mb-1">{info?.title ?? schemaId}</p>
+            <p className="text-sm text-black mb-1">{info?.title ?? clauseId}</p>
             <p className="text-xs text-neutral-500 leading-relaxed mb-4">
                 {info?.description ?? ""}
             </p>
@@ -865,7 +865,7 @@ function SchemaToggleArticle({
                     onChange={(e) => onToggle(e.target.checked)}
                     disabled={disabled}
                     aria-describedby={showHint ? hintId : undefined}
-                    data-testid={`drawer-include-${schemaId}`}
+                    data-testid={`drawer-include-${clauseId}`}
                     className="accent-accent disabled:opacity-100"
                 />
                 <span className={`text-xs ${disabled && !lockedOn ? "text-neutral-400" : "text-neutral-700"}`}>
@@ -874,7 +874,7 @@ function SchemaToggleArticle({
                 {lockedOn && (
                     <span
                         aria-hidden
-                        data-testid={`drawer-include-${schemaId}-required-badge`}
+                        data-testid={`drawer-include-${clauseId}-required-badge`}
                         className="ml-auto inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700"
                     >
                         Required
@@ -936,7 +936,7 @@ function AttestationsArticle({
     /** Parent order has delivery in its fulfilment (courier sub-order case). */
     parentDeliveryActive: boolean;
     /** True when this merchant order has a child anchoring the courier-process
-     *  schema. Drives the cross-role hint copy so we only suggest "Edit on the
+     *  clause. Drives the cross-role hint copy so we only suggest "Edit on the
      *  courier sub-order" when one exists. */
     hasCourierChild: boolean;
     /** True when `figaro-merchant-process-v1` is registered on the network
@@ -947,9 +947,9 @@ function AttestationsArticle({
     courierProcessAvailable: boolean;
 }) {
 
-    // Merchant toggle: active iff editing the merchant order AND the schema
+    // Merchant toggle: active iff editing the merchant order AND the clause
     // is on-chain. Locked-on when delivery is in this order's fulfilment AND
-    // the schema is available (otherwise the lock has nothing to lock onto).
+    // the clause is available (otherwise the lock has nothing to lock onto).
     const merchantLockedOn = isMerchantOrder && deliveryActive && merchantProcessAvailable;
     const merchantDisabled = !isMerchantOrder || deliveryActive || !merchantProcessAvailable;
     const merchantEditable = isMerchantOrder && !deliveryActive && merchantProcessAvailable;
@@ -981,20 +981,20 @@ function AttestationsArticle({
         <div className="space-y-5">
             <p className="text-xs text-neutral-500 leading-relaxed">
                 Per-role sovereign event logs. Each seller (merchant, courier)
-                attests their own internal events under their own schema. Each
+                attests their own internal events under their own clause. Each
                 clause anchors the on-chain inclusion proof for that role&apos;s
                 runtime attestations.
             </p>
-            <SchemaToggleArticle
-                schemaId={MERCHANT_PROCESS_SCHEMA_KEY}
+            <ClauseToggleArticle
+                clauseId={MERCHANT_PROCESS_CLAUSE_KEY}
                 included={merchantLockedOn ? true : merchantProcessIncluded}
                 onToggle={merchantEditable ? onMerchantToggle : () => undefined}
                 disabled={merchantDisabled}
                 disabledHint={merchantHint}
                 lockedOn={merchantLockedOn}
             />
-            <SchemaToggleArticle
-                schemaId={COURIER_PROCESS_SCHEMA_KEY}
+            <ClauseToggleArticle
+                clauseId={COURIER_PROCESS_CLAUSE_KEY}
                 included={courierLockedOn ? true : courierProcessIncluded}
                 onToggle={courierEditable ? onCourierToggle : () => undefined}
                 disabled={courierDisabled}
@@ -1084,7 +1084,7 @@ function FulfilmentArticle({
      *  mandatory-when-applicable (no deselect); handoff and proximity
      *  are optional (the radio's Clear affordance maps to "no clause"
      *  on the agreement). All four sections still write `string[]`
-     *  (length 0 or 1) so the v2 schema serialization is unchanged. */
+     *  (length 0 or 1) so the v2 clause serialization is unchanged. */
     function selectModality(value: string) {
         if (modalities.length === 1 && modalities[0] === value) return;
         const nextModalities = [value];
@@ -1317,19 +1317,19 @@ function CheckboxGroup({
 function EmissionsArticle({
     checked,
     onChange,
-    availableSchemas,
+    availableClauses,
 }: {
     checked: string[];
     onChange: (next: string[]) => void;
-    /** GHG-disclosure schemaIds actually registered on the network this site
+    /** GHG-disclosure clauseIds actually registered on the network this site
      *  is reading. The set defines the offered options; standards whose
-     *  schema is unregistered are not selectable. While the read is in
+     *  clause is unregistered are not selectable. While the read is in
      *  flight, the parent passes the full bundled list (permissive). */
-    availableSchemas: readonly string[];
+    availableClauses: readonly string[];
 }) {
-    const standardOptions = availableSchemas.map((schemaId) => ({
-        value: schemaId,
-        label: getSchemaInfo(schemaId)?.title ?? schemaId,
+    const standardOptions = availableClauses.map((clauseId) => ({
+        value: clauseId,
+        label: getClauseInfo(clauseId)?.title ?? clauseId,
     }));
     return (
         <div className="space-y-5">
@@ -1338,7 +1338,7 @@ function EmissionsArticle({
                     className="text-xs text-amber-700"
                     data-testid="drawer-emissions-unavailable"
                 >
-                    No emission-disclosure schemas are registered on the network this
+                    No emission-disclosure clauses are registered on the network this
                     site is reading.
                 </p>
             ) : (
@@ -1366,7 +1366,7 @@ const KLEROS_COURT_OPTIONS: ReadonlyArray<{ value: string; label: string }> =
  *            Always active; not encoded in the agreement. Informational only.
  *
  *   Layer 2: Kleros — decentralized off-chain arbitration. On by default.
- *            Encoded via the `klerosCourt` + `klerosMinJurors` schema fields.
+ *            Encoded via the `klerosCourt` + `klerosMinJurors` clause fields.
  *
  *   Layer 3: State / ADR / traditional jurisdiction. Optional, on top of
  *            layers 1 + 2. Encoded via `applicableLaw` + `forum` + `language`.

@@ -61,11 +61,11 @@ const RESTAURANT_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f460
 const COURIER_KEY = '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a' as const;
 const COURIER_ADDR = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC' as const;
 
-const PROXIMITY_PROOF_SCHEMA_ID = keccak256(stringToHex('figaro-proximity-proof-v1'));
-const COURIER_PROCESS_SCHEMA_ID = keccak256(stringToHex('figaro-courier-process-v1'));
+const PROXIMITY_PROOF_CLAUSE_ID = keccak256(stringToHex('figaro-proximity-proof-v1'));
+const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex('figaro-courier-process-v1'));
 
 const ATTESTATION_COORDINATOR_EVENT_ABI = parseAbi([
-    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)',
+    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)',
 ]);
 
 let outerSnapshot: string;
@@ -147,7 +147,7 @@ test.describe('Courier proximity proof via UI (devnet)', () => {
         // figaro-proximity-proof-v1 one landed on the sub-order.
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const deadline = Date.now() + 90_000;
-        let events: Array<{ args: { stage: number; schemaId: Hex } }> = [];
+        let events: Array<{ args: { stage: number; clauseId: Hex } }> = [];
         while (Date.now() < deadline) {
             const all = await publicClient.getContractEvents({
                 address: coordinator,
@@ -156,7 +156,7 @@ test.describe('Courier proximity proof via UI (devnet)', () => {
                 args: { orderHash: deliveryOrderHash, attester: COURIER_ADDR as Hex },
                 fromBlock: blockBefore,
             });
-            events = (all as typeof events).filter((e) => e.args.schemaId === PROXIMITY_PROOF_SCHEMA_ID);
+            events = (all as typeof events).filter((e) => e.args.clauseId === PROXIMITY_PROOF_CLAUSE_ID);
             if (events.length >= 1) break;
             await new Promise((r) => setTimeout(r, 1000));
         }
@@ -185,8 +185,8 @@ test.describe('Courier proximity proof via UI (devnet)', () => {
                 args: { orderHash: deliveryOrderHash, attester: COURIER_ADDR as Hex },
                 fromBlock: blockBefore,
             });
-            courierStages = (all as Array<{ args: { stage: number; schemaId: Hex } }>)
-                .filter((e) => e.args.schemaId === COURIER_PROCESS_SCHEMA_ID)
+            courierStages = (all as Array<{ args: { stage: number; clauseId: Hex } }>)
+                .filter((e) => e.args.clauseId === COURIER_PROCESS_CLAUSE_ID)
                 .map((e) => Number(e.args.stage));
             if (courierStages.includes(5)) break;
             await new Promise((r) => setTimeout(r, 1000));

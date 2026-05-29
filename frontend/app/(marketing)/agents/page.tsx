@@ -50,7 +50,7 @@ export default function Agents() {
 
             <MarketingSection title="ERC-8004 interop, by metadata convention.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Autonomous agents that want cross-protocol discoverability declare ERC-8004-compatible service endpoints in their <code>SellerRegistry.metadataURI</code> JSON. The schema can be anchored as <code>erc8004-agent-services-v1</code> in <Link href="/schemas" className="underline">SchemaRegistry</Link> for reference integrity. No new contract is needed; the registry already supports arbitrary metadata.
+                    Autonomous agents that want cross-protocol discoverability declare ERC-8004-compatible service endpoints in their <code>SellerRegistry.metadataURI</code> JSON. The clause can be anchored as <code>erc8004-agent-services-v1</code> in <Link href="/clauses" className="underline">ClauseRegistry</Link> for reference integrity. No new contract is needed; the registry already supports arbitrary metadata.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     An agent&apos;s <code>did:web</code> identifier resolves to a DID Document whose verification methods bind the agent&apos;s on-chain Ethereum address in CAIP-10 form. The SDK ships <code>resolveDidWeb</code>, <code>didDocumentMatchesAddress</code>, and <code>buildSellerDidDocument</code> in <code>@figaro/core/extensions</code> for the round-trip.
@@ -87,15 +87,15 @@ export default function Agents() {
                 <ul className="space-y-3 text-base">
                     <li>
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, clause authors, assembly authors, token issuance, humans and agents.</span>
                     </li>
                     <li>
                         <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
                         <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
                     </li>
                     <li>
-                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
-                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
+                        <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference clauses, and the authoring checklist.</span>
                     </li>
                 </ul>
             </MarketingSection>

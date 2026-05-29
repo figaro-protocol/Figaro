@@ -612,7 +612,7 @@ fn parse_block_binding(
         None => None,
         Some(v) => Some(parse_string_array(v, &format!("{path}.routes"), errors)?),
     };
-    let sister_clause_id = match raw.get("sisterSchemaId") {
+    let sister_clause_id = match raw.get("sisterClauseId") {
         None => None,
         Some(v) => match v.as_str() {
             Some(s) if !s.is_empty() => Some(s.to_string()),
@@ -620,7 +620,7 @@ fn parse_block_binding(
                 err(
                     errors,
                     &format!("{path}.sisterClauseId"),
-                    "sisterSchemaId must be a non-empty string when present",
+                    "sisterClauseId must be a non-empty string when present",
                 );
                 return None;
             }
@@ -650,10 +650,10 @@ pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
         }
     };
 
-    let clause_id = match obj.get("schemaId").and_then(Value::as_str) {
+    let clause_id = match obj.get("clauseId").and_then(Value::as_str) {
         Some(s) if !s.is_empty() => s.to_string(),
         _ => {
-            err(&mut errors, "$.schemaId", "schemaId must be a non-empty string");
+            err(&mut errors, "$.clauseId", "clauseId must be a non-empty string");
             String::new()
         }
     };

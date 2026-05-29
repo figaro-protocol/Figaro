@@ -45,7 +45,7 @@ const EV_RPGF_MINTER_CLAIMED = parseAbiItem(
 // tracking remain stripped — seller availability is signal-by-availability,
 // and there is no categorization field at any layer (no archetype, no role,
 // no serviceType). What an address does is reconstructed from the events
-// it has emitted (registrations, schema attestations, signed commitments).
+// it has emitted (registrations, clause attestations, signed commitments).
 const EV_SELLER_REGISTERED = parseAbiItem(
     "event SellerRegistered(address indexed seller, string metadataURI)",
 );
@@ -61,7 +61,7 @@ type IndexedLogWithArgs = IndexedLog & { args?: Record<string, unknown> };
 
 /**
  * Typed view of an `AttestationRecorded` log row as returned by
- * `getAttestationsByOrder` / `getAttestationsByProcessAndSchema`. The
+ * `getAttestationsByOrder` / `getAttestationsByProcessAndClause`. The
  * `blockNumber` and `transactionHash` may be `null` for pending logs;
  * downstream consumers should guard accordingly.
  */
@@ -70,7 +70,7 @@ export type IndexedAttestationLog = {
         orderHash?: string;
         processId?: string;
         attester?: string;
-        schemaId?: string;
+        clauseId?: string;
         stage?: number | bigint;
         contentRef?: string;
     };
@@ -214,16 +214,16 @@ export async function getAttestationsByOrder(client: PublicClient, chainId: numb
     return all.filter((log) => getStringArg(log, "orderHash") === orderHash);
 }
 
-/** Attestation logs filtered by processId AND schemaId. */
-export async function getAttestationsByProcessAndSchema(
+/** Attestation logs filtered by processId AND clauseId. */
+export async function getAttestationsByProcessAndClause(
     client: PublicClient,
     chainId: number,
     processId: string,
-    schemaId: string,
+    clauseId: string,
 ) {
     const all = await getAllAttestations(client, chainId);
     return all.filter(
-        (log) => getStringArg(log, "processId") === processId && getStringArg(log, "schemaId") === schemaId,
+        (log) => getStringArg(log, "processId") === processId && getStringArg(log, "clauseId") === clauseId,
     );
 }
 
@@ -456,9 +456,9 @@ export interface TrackRecordValue {
     total: bigint;
 }
 
-/** Attestations an seller emitted, grouped by schemaId. */
+/** Attestations an seller emitted, grouped by clauseId. */
 export interface TrackRecordAttestations {
-    schemaId: string;
+    clauseId: string;
     count: number;
 }
 
@@ -491,8 +491,8 @@ export interface SellerTrackRecord {
     auctionJobsWon: number;
     /** Total attestations the seller has emitted. */
     attestationsEmitted: number;
-    /** Attestations emitted, grouped by schemaId, most-frequent first. */
-    attestationsBySchema: TrackRecordAttestations[];
+    /** Attestations emitted, grouped by clauseId, most-frequent first. */
+    attestationsByClause: TrackRecordAttestations[];
 }
 
 function getBigIntArg(log: IndexedLog, key: string): bigint {
@@ -574,15 +574,15 @@ export async function getSellerTrackRecord(
         (log) => hexEqual(getStringArg(log, "provider"), seller),
     ).length;
 
-    // Attestations emitted — grouped by schemaId.
-    const attestationsBySchemaMap = new Map<string, number>();
+    // Attestations emitted — grouped by clauseId.
+    const attestationsByClauseMap = new Map<string, number>();
     for (const log of attestations) {
         if (!hexEqual(getStringArg(log, "attester"), seller)) continue;
-        const schemaId = getStringArg(log, "schemaId") ?? "unknown";
-        attestationsBySchemaMap.set(schemaId, (attestationsBySchemaMap.get(schemaId) ?? 0) + 1);
+        const clauseId = getStringArg(log, "clauseId") ?? "unknown";
+        attestationsByClauseMap.set(clauseId, (attestationsByClauseMap.get(clauseId) ?? 0) + 1);
     }
     let attestationsEmitted = 0;
-    for (const count of attestationsBySchemaMap.values()) attestationsEmitted += count;
+    for (const count of attestationsByClauseMap.values()) attestationsEmitted += count;
 
     return {
         operatingSinceBlock,
@@ -596,8 +596,8 @@ export async function getSellerTrackRecord(
         sellersUsed: sellersUsed.size,
         auctionJobsWon,
         attestationsEmitted,
-        attestationsBySchema: [...attestationsBySchemaMap.entries()]
-            .map(([schemaId, count]) => ({ schemaId, count }))
+        attestationsByClause: [...attestationsByClauseMap.entries()]
+            .map(([clauseId, count]) => ({ clauseId, count }))
             .sort((a, b) => b.count - a.count),
     };
 }

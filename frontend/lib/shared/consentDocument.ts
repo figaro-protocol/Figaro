@@ -17,11 +17,11 @@
  * - The text below is replaced before launch. Any byte-level change rotates
  *   the hash and produces a new attestation domain. Bump
  *   `CONSENT_DOCUMENT_VERSION` in lockstep with content edits.
- * - The schema mirror in `frontend/lib/shared/schemas/figaro-consent-v1.json`
+ * - The clause mirror in `frontend/lib/shared/clauses/figaro-consent-v1.json`
  *   describes the on-chain content shape (documentHash, documentVersion,
  *   documentTitle). This module produces those three fields for the
  *   EIP-712 typed-data message; do NOT introduce drift with
- *   `encodeConsentContent` in `sdk/src/schemas/encode.ts`.
+ *   `encodeConsentContent` in `sdk/src/clauses/encode.ts`.
  */
 
 import { keccak256, toBytes, type Hex } from "viem";
@@ -118,7 +118,7 @@ disclose to any non-Participant: (a) their access code or any other
 authentication artifact issued by the Project Operator; (b) contract
 addresses on the beta testnet, where these are communicated to the
 Participant for purposes of interacting with the protocol; (c)
-architectural materials — schemas not yet anchored on a public chain,
+architectural materials — clauses not yet anchored on a public chain,
 design documents, internal diagrams, validator contract specifications,
 or non-public roadmaps — that the Participant encounters incidentally
 during the beta; (d) the identities of other Participants, where the

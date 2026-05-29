@@ -4,7 +4,7 @@
 //!
 //! Two test surfaces:
 //!   1. Spec parsing — every protocol clause JSON in
-//!      `frontend/lib/shared/schemas/` must parse without errors.
+//!      `frontend/lib/shared/clauses/` must parse without errors.
 //!   2. Content validation — happy + sad cases drawn from
 //!      `sdk/tests/clauses/validate.test.ts`. Layer B must agree with
 //!      Layer A on accept/reject for every case.
@@ -17,14 +17,14 @@ use std::path::PathBuf;
 
 fn shared_clauses_dir() -> PathBuf {
     // The crate lives at prover/clause; the canonical clause JSONs live at
-    // frontend/lib/shared/schemas/. Resolve via CARGO_MANIFEST_DIR.
+    // frontend/lib/shared/clauses/. Resolve via CARGO_MANIFEST_DIR.
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     p.pop(); // prover/
     p.pop(); // repo root
     p.push("frontend");
     p.push("lib");
     p.push("shared");
-    p.push("schemas");
+    p.push("clauses");
     p
 }
 
@@ -39,7 +39,7 @@ fn parse_or_panic(value: &Value) -> ClauseSpec {
 
 fn spec_of(fields: Value) -> ClauseSpec {
     parse_or_panic(&json!({
-        "schemaId": "t-v1",
+        "clauseId": "t-v1",
         "version": 1,
         "title": "T",
         "description": "D",
@@ -49,7 +49,7 @@ fn spec_of(fields: Value) -> ClauseSpec {
 
 fn spec_of_with_stages(fields: Value, stages: Value) -> ClauseSpec {
     parse_or_panic(&json!({
-        "schemaId": "t-v1",
+        "clauseId": "t-v1",
         "version": 1,
         "title": "T",
         "description": "D",
@@ -63,7 +63,7 @@ fn spec_of_with_stages(fields: Value, stages: Value) -> ClauseSpec {
 #[test]
 fn parses_every_shipped_protocol_clause() {
     let dir = shared_clauses_dir();
-    let entries = std::fs::read_dir(&dir).expect("read_dir frontend/lib/shared/schemas");
+    let entries = std::fs::read_dir(&dir).expect("read_dir frontend/lib/shared/clauses");
     let mut parsed = 0usize;
     for entry in entries {
         let entry = entry.unwrap();

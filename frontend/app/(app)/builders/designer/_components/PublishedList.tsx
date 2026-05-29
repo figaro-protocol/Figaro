@@ -5,7 +5,7 @@
  *
  * Reads from `useAssemblyChoices(address)` which combines the
  * `AssemblyRegistered` event log with lazy manifest enrichment (name,
- * order count, schema set). The same hook backs the seller-profile
+ * order count, clause set). The same hook backs the seller-profile
  * assembly picker, so the two surfaces can't drift on what they show
  * about an assembly.
  *
@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import {
     type AssemblyChoice,
-    formatAssemblySchemaList,
+    formatAssemblyClauseList,
     useAssemblyChoices,
 } from "@/lib/mechanisms/useAssemblyRegistry";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
@@ -106,16 +106,16 @@ export function PublishedList() {
                                 Manifest unavailable (IPFS gateway?). Identity is on-chain regardless.
                             </p>
                         )}
-                        {choice.state === "loaded" && choice.orderCount !== null && choice.schemas !== null && (
+                        {choice.state === "loaded" && choice.orderCount !== null && choice.clauses !== null && (
                             <p
                                 className="text-[11px] text-ink-muted mt-1"
                                 data-testid={`published-shape-${choice.slug}`}
-                                title={choice.schemas.join(", ")}
+                                title={choice.clauses.join(", ")}
                             >
                                 {choice.orderCount} order{choice.orderCount === 1 ? "" : "s"}
                                 {" · "}
-                                {choice.schemas.length} schema{choice.schemas.length === 1 ? "" : "s"}
-                                {choice.schemas.length > 0 && `: ${formatAssemblySchemaList(choice.schemas)}`}
+                                {choice.clauses.length} clause{choice.clauses.length === 1 ? "" : "s"}
+                                {choice.clauses.length > 0 && `: ${formatAssemblyClauseList(choice.clauses)}`}
                             </p>
                         )}
                         <p className="font-mono text-[11px] text-ink-muted mt-1">

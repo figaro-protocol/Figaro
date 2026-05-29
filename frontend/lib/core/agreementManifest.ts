@@ -1,12 +1,12 @@
 /**
  * lib/core/agreementManifest.ts
  *
- * Schema-composed agreement. The off-chain semantic layer whose merkle root
+ * Clause-composed agreement. The off-chain semantic layer whose merkle root
  * becomes the on-chain `agreementHash` in CoreV5's OrderCommitment.
  *
- * ## Schemas as standardized terms of sale
+ * ## Clauses as standardized terms of sale
  *
- * Each schema is a **standardized term** in the agreement between two parties.
+ * Each clause is a **standardized term** in the agreement between two parties.
  * The buyer composes their order by selecting terms:
  *
  * - What goods/services? → `figaro-commerce-v1` (basket of line items)
@@ -23,18 +23,18 @@
  * Agreement {
  *   version: "a1",
  *   sections: [
- *     { schema: "figaro-commerce-v1",        data: { lineItems, currency, payment } },
- *     { schema: "figaro-fulfilment-v2",      data: { modality: "delivery", coordination: "dutch-auction", handoffPoint: "face-to-face" } },
- *     { schema: "figaro-geo-v2",             data: { originGeohash, destinationGeohash, massGrams, volumeMl, classOfService } },
- *     { schema: "figaro-ghg-iso-14064-v1",  data: { standard: "iso-14064-1" } },
+ *     { clause: "figaro-commerce-v1",        data: { lineItems, currency, payment } },
+ *     { clause: "figaro-fulfilment-v2",      data: { modality: "delivery", coordination: "dutch-auction", handoffPoint: "face-to-face" } },
+ *     { clause: "figaro-geo-v2",             data: { originGeohash, destinationGeohash, massGrams, volumeMl, classOfService } },
+ *     { clause: "figaro-ghg-iso-14064-v1",  data: { standard: "iso-14064-1" } },
  *   ]
  * }
  * ```
  *
- * Sections are sorted by schema key for deterministic serialization.
+ * Sections are sorted by clause key for deterministic serialization.
  * `agreementHash = merkleRoot(sectionLeaves)` where each leaf is
- * `keccak256(schemaId || sectionDataHash)` with:
- *   - `schemaId` = `keccak256(schemaKey)` (matches the on-chain bytes32 id)
+ * `keccak256(clauseId || sectionDataHash)` with:
+ *   - `clauseId` = `keccak256(clauseKey)` (matches the on-chain bytes32 id)
  *   - `sectionDataHash` = `keccak256(canonicalJSON(section.data))`
  * The tree uses OpenZeppelin-style sorted-pair hashing so inclusion proofs
  * do not need direction bits and verify with OZ `MerkleProof.verify`.
@@ -47,7 +47,7 @@
  * bot, or any other entity. The mechanism doesn't care. It just works.
  *
  * This manifest layer is the **terms of sale** layer on top of that universal
- * mechanism. Schemas are infinitely extensible — new terms add new sections
+ * mechanism. Clauses are infinitely extensible — new terms add new sections
  * without changing existing types. The seller declares which terms they support;
  * the buyer selects from them; both sign the composition.
  *
@@ -64,17 +64,17 @@ import { classOfServiceToShortCode } from "@/lib/shared/sellerCatalogueMetadata"
 
 /**
  * A single term in the agreement. Each section is a standardized term of sale
- * whose schema key matches a registered schema in SchemaRegistry.
+ * whose clause key matches a registered clause in ClauseRegistry.
  */
 export interface AgreementSection {
-    /** Schema key from SchemaRegistry (e.g. "figaro-commerce-v1"). */
-    schema: string;
-    /** Schema-specific data. Structure is defined by the schema, not by this module. */
+    /** Clause key from ClauseRegistry (e.g. "figaro-commerce-v1"). */
+    clause: string;
+    /** Clause-specific data. Structure is defined by the clause, not by this module. */
     data: Record<string, unknown>;
 }
 
 /**
- * A redacted section in an agreement — the schema is named, the section's
+ * A redacted section in an agreement — the clause is named, the section's
  * pre-computed leaf hash is preserved, but the cleartext data is omitted.
  * The merkle root over the agreement's section leaves is unchanged whether
  * a section is in cleartext or redacted form, so verifiers can check the
@@ -88,11 +88,11 @@ export interface AgreementSection {
  * Granularity note: redaction is per-section. Redacting `figaro-commerce-v1`
  * hides currency + payment + lineItems together. Finer granularity (e.g.,
  * hide lineItems but keep totals visible) would require splitting the
- * schema into separate sections — a future schema-design conversation.
+ * clause into separate sections — a future clause-design conversation.
  */
 export interface RedactedAgreementSection {
-    /** Schema key from SchemaRegistry. */
-    schema: string;
+    /** Clause key from ClauseRegistry. */
+    clause: string;
     /** Pre-computed merkle leaf hash for this section, byte-equal to what
      *  `computeSectionLeaf` returns when called on the cleartext section. */
     leaf: `0x${string}`;
@@ -110,11 +110,11 @@ export function isRedactedSection(s: AnyAgreementSection): s is RedactedAgreemen
 }
 
 /**
- * The agreement: a versioned, schema-composed description of what both
+ * The agreement: a versioned, clause-composed description of what both
  * parties agree on. Both parties sign an EIP-712 struct whose
  * `agreementHash` field is `keccak256(canonicalJSON(Agreement))`.
  *
- * Sections are sorted by `schema` key for deterministic serialization.
+ * Sections are sorted by `clause` key for deterministic serialization.
  *
  * `Agreement.sections` is strictly cleartext. The redacted distribution
  * form lives in `RedactableAgreement` below, which accepts either
@@ -129,7 +129,7 @@ export interface Agreement {
     buyer: `0x${string}`;
     /** Seller address. */
     seller: `0x${string}`;
-    /** Schema sections, sorted by schema key. Cleartext only. */
+    /** Clause sections, sorted by clause key. Cleartext only. */
     sections: AgreementSection[];
 }
 
@@ -153,7 +153,7 @@ export interface RedactableAgreement {
 
 /**
  * Line item in a commerce section. Kept as a named type for convenience
- * since the commerce schema is near-universal.
+ * since the commerce clause is near-universal.
  */
 export interface AgreementLineItem {
     /** Item ID from the seller's catalogue. */
@@ -166,42 +166,42 @@ export interface AgreementLineItem {
     unitPrice: string;
 }
 
-export const COMMERCE_SCHEMA_KEY = "figaro-commerce-v1";
-export const GEO_SCHEMA_KEY = "figaro-geo-v2";
-export const TOPOLOGY_SCHEMA_KEY = "figaro-topology-v1";
-/** Fulfilment-composition schema. Three orthogonal fields (modality,
+export const COMMERCE_CLAUSE_KEY = "figaro-commerce-v1";
+export const GEO_CLAUSE_KEY = "figaro-geo-v2";
+export const TOPOLOGY_CLAUSE_KEY = "figaro-topology-v1";
+/** Fulfilment-composition clause. Three orthogonal fields (modality,
  *  coordination, handoffPoint) in one clause. */
-export const FULFILMENT_V2_SCHEMA_KEY = "figaro-fulfilment-v2";
-/** Decentralized off-chain arbitration via Kleros. Sister schemas would
+export const FULFILMENT_V2_CLAUSE_KEY = "figaro-fulfilment-v2";
+/** Decentralized off-chain arbitration via Kleros. Sister clauses would
  *  cover other ODR providers — `figaro-arbitration-<provider>-v1`. */
-export const ARBITRATION_KLEROS_SCHEMA_KEY = "figaro-arbitration-kleros-v1";
+export const ARBITRATION_KLEROS_CLAUSE_KEY = "figaro-arbitration-kleros-v1";
 /** State / ADR / traditional-jurisdiction recourse layer. Provider-agnostic
  *  by construction (free-form string fields). */
-export const APPLICABLE_LAW_SCHEMA_KEY = "figaro-applicable-law-v1";
+export const APPLICABLE_LAW_CLAUSE_KEY = "figaro-applicable-law-v1";
 /** Consent attestation: a wallet binds itself to an off-chain legal document
  *  by its keccak256 hash + version + title. Reusable as a designer-time clause
  *  on any assembly that needs cryptographic consent (beta participation,
  *  ToS acceptance, NDA, governance vote receipts, etc.). */
-export const CONSENT_SCHEMA_KEY = "figaro-consent-v1";
-/** Default GHG disclosure schema used by single-standard manifest flows. */
-export const GHG_SCHEMA_KEY: GHGDisclosureSchemaKey = "figaro-ghg-iso-14064-v1";
-export const GHG_SCHEMA_ID = keccak256(stringToHex(GHG_SCHEMA_KEY));
-/** All five GHG disclosure sister schemas (one per accounting standard). */
-export const GHG_DISCLOSURE_SCHEMA_KEYS = [
+export const CONSENT_CLAUSE_KEY = "figaro-consent-v1";
+/** Default GHG disclosure clause used by single-standard manifest flows. */
+export const GHG_CLAUSE_KEY: GHGDisclosureClauseKey = "figaro-ghg-iso-14064-v1";
+export const GHG_CLAUSE_ID = keccak256(stringToHex(GHG_CLAUSE_KEY));
+/** All five GHG disclosure sister clauses (one per accounting standard). */
+export const GHG_DISCLOSURE_CLAUSE_KEYS = [
     "figaro-ghg-protocol-v1",
     "figaro-ghg-iso-14064-v1",
     "figaro-ghg-pas-2050-v1",
     "figaro-ghg-en-16258-v1",
     "figaro-ghg-custom-v1",
 ] as const;
-export type GHGDisclosureSchemaKey = (typeof GHG_DISCLOSURE_SCHEMA_KEYS)[number];
-/** Map a UI standard string to its corresponding GHG sister schemaId. Each
- *  accounting standard is its own schema; standard identity lives in the
- *  schemaId, not in a content field. Unknown values fall through to the
- *  default GHG_SCHEMA_KEY. Canonical source of truth — the drawer's GHG
+export type GHGDisclosureClauseKey = (typeof GHG_DISCLOSURE_CLAUSE_KEYS)[number];
+/** Map a UI standard string to its corresponding GHG sister clauseId. Each
+ *  accounting standard is its own clause; standard identity lives in the
+ *  clauseId, not in a content field. Unknown values fall through to the
+ *  default GHG_CLAUSE_KEY. Canonical source of truth — the drawer's GHG
  *  picker, orderAgreement.ts builder, and any indexer that needs to derive
- *  a schemaId from a label all read this map. */
-export const GHG_STANDARD_TO_SCHEMA: Record<string, typeof GHG_DISCLOSURE_SCHEMA_KEYS[number]> = {
+ *  a clauseId from a label all read this map. */
+export const GHG_STANDARD_TO_CLAUSE: Record<string, typeof GHG_DISCLOSURE_CLAUSE_KEYS[number]> = {
     "iso-14064-1": "figaro-ghg-iso-14064-v1",
     "iso-14064-2": "figaro-ghg-iso-14064-v1",
     "iso-14064-3": "figaro-ghg-iso-14064-v1",
@@ -216,25 +216,25 @@ export const GHG_STANDARD_TO_SCHEMA: Record<string, typeof GHG_DISCLOSURE_SCHEMA
     "custom": "figaro-ghg-custom-v1",
     "Custom": "figaro-ghg-custom-v1",
 };
-/** Reverse lookup: schemaId → human-readable standard label (for summaries
+/** Reverse lookup: clauseId → human-readable standard label (for summaries
  *  and UI display). */
-export const GHG_SCHEMA_TO_STANDARD: Record<typeof GHG_DISCLOSURE_SCHEMA_KEYS[number], string> = {
+export const GHG_CLAUSE_TO_STANDARD: Record<typeof GHG_DISCLOSURE_CLAUSE_KEYS[number], string> = {
     "figaro-ghg-protocol-v1": "GHG-Protocol",
     "figaro-ghg-iso-14064-v1": "ISO-14064",
     "figaro-ghg-pas-2050-v1": "PAS-2050",
     "figaro-ghg-en-16258-v1": "EN-16258",
     "figaro-ghg-custom-v1": "Custom",
 };
-export const GHG_MEASUREMENT_SCHEMA_KEY = "figaro-ghg-measurement-v1";
-export const GHG_MEASUREMENT_SCHEMA_ID = keccak256(stringToHex(GHG_MEASUREMENT_SCHEMA_KEY));
+export const GHG_MEASUREMENT_CLAUSE_KEY = "figaro-ghg-measurement-v1";
+export const GHG_MEASUREMENT_CLAUSE_ID = keccak256(stringToHex(GHG_MEASUREMENT_CLAUSE_KEY));
 /** Committed proximity policy (Category-2 — band declared at agreement time). */
-export const PROXIMITY_POLICY_SCHEMA_KEY = "figaro-proximity-policy-v1";
+export const PROXIMITY_POLICY_CLAUSE_KEY = "figaro-proximity-policy-v1";
 /** Runtime proximity proof (Category-1 — per-handoff nonce + signed witness). */
-export const PROXIMITY_PROOF_SCHEMA_KEY = "figaro-proximity-proof-v1";
+export const PROXIMITY_PROOF_CLAUSE_KEY = "figaro-proximity-proof-v1";
 /** Sovereign event log for the merchant role (Category-1). */
-export const MERCHANT_PROCESS_SCHEMA_KEY = "figaro-merchant-process-v1";
+export const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process-v1";
 /** Sovereign event log for the courier role (Category-1). */
-export const COURIER_PROCESS_SCHEMA_KEY = "figaro-courier-process-v1";
+export const COURIER_PROCESS_CLAUSE_KEY = "figaro-courier-process-v1";
 
 export type TopologyMode = "root" | "explicit" | "linear-fallback";
 
@@ -255,7 +255,7 @@ export function buildCommerceSection(params: {
     lineItems?: AgreementLineItem[];
 }): AgreementSection {
     return {
-        schema: COMMERCE_SCHEMA_KEY,
+        clause: COMMERCE_CLAUSE_KEY,
         data: {
             currency: params.currency,
             payment: typeof params.payment === "bigint"
@@ -271,7 +271,7 @@ export function buildTopologySection(params: {
     parentOrderHashes?: string[];
 }): AgreementSection {
     return {
-        schema: TOPOLOGY_SCHEMA_KEY,
+        clause: TOPOLOGY_CLAUSE_KEY,
         data: {
             topologyMode: params.topologyMode,
             parentOrderHashes: [...new Set((params.parentOrderHashes ?? []).filter(Boolean))],
@@ -318,42 +318,42 @@ function canonicalizeSectionData(data: Record<string, unknown>): string {
 }
 
 /**
- * Canonical bytes32 schemaId for a schema key — matches Solidity's
+ * Canonical bytes32 clauseId for a clause key — matches Solidity's
  * `keccak256("figaro-…-v1")` pattern used by registered validators and the
- * SchemaRegistry.
+ * ClauseRegistry.
  */
-function schemaIdOf(schemaKey: string): `0x${string}` {
-    return keccak256(toHex(new TextEncoder().encode(schemaKey)));
+function clauseIdOf(clauseKey: string): `0x${string}` {
+    return keccak256(toHex(new TextEncoder().encode(clauseKey)));
 }
 
 /**
  * Return the on-chain sectionData bytes for an agreement section.
  *
- * Category-2 schemas (declarative clauses) encode their data via the
+ * Category-2 clauses (declarative clauses) encode their data via the
  * generic canonical encoder — the same path the runtime attestation's
  * `content` takes — so the on-chain byte-equality check
  * `keccak256(content) == keccak256(sectionData)` succeeds. Category-1
- * schemas (no committed clause: lifecycle events, proximity proofs,
- * ghg-measurement) and unknown schemas fall through to canonical JSON
+ * clauses (no committed clause: lifecycle events, proximity proofs,
+ * ghg-measurement) and unknown clauses fall through to canonical JSON
  * bytes.
  *
- * Post-Keystone there is no per-schema dispatch; the embedded spec
+ * Post-Keystone there is no per-clause dispatch; the embedded spec
  * drives both encoding and tier classification.
  *
  * One field-level adapter: `figaro-geo-v2.classOfService` is normalised
  * to the SDK short code before encoding — a section authored with the
  * catalogue long form (`"fragile"`) would otherwise surface as a cryptic
- * encoder error. The other 16 schemas pass their data through as-is.
+ * encoder error. The other 16 clauses pass their data through as-is.
  */
 export function getSectionDataBytes(section: AgreementSection): `0x${string}` {
     // Resolve the embedded spec via dynamic require so this module stays
     // loadable in test environments where the SDK is resolved via link /
     // pnpm / vitest.
     const { embeddedSpec, encodeContentFromSpec } =
-        require("@figaro/core/schemas") as typeof import("@figaro/core/schemas");
-    const spec = embeddedSpec(section.schema);
+        require("@figaro/core/clauses") as typeof import("@figaro/core/clauses");
+    const spec = embeddedSpec(section.clause);
     if (spec && spec.block?.tier === "category-2") {
-        const data = section.schema === "figaro-geo-v2"
+        const data = section.clause === "figaro-geo-v2"
             ? { ...section.data, classOfService: classOfServiceToShortCode(section.data.classOfService) }
             : section.data;
         return encodeContentFromSpec(spec, data);
@@ -362,12 +362,12 @@ export function getSectionDataBytes(section: AgreementSection): `0x${string}` {
 }
 
 /**
- * Compute one merkle leaf: `keccak256(schemaId || keccak256(sectionDataBytes))`.
+ * Compute one merkle leaf: `keccak256(clauseId || keccak256(sectionDataBytes))`.
  * Uses `getSectionDataBytes` so leaves computed off-chain match the coordinator's
  * reconstruction during inclusion-proof verification.
  */
 export function computeSectionLeaf(section: AgreementSection): `0x${string}` {
-    return keccak256(concat([schemaIdOf(section.schema), keccak256(getSectionDataBytes(section))]));
+    return keccak256(concat([clauseIdOf(section.clause), keccak256(getSectionDataBytes(section))]));
 }
 
 /**
@@ -429,7 +429,7 @@ function buildMerkleRoot(leaves: readonly `0x${string}`[]): `0x${string}` {
 export function computeAgreementHash(agreement: Agreement): `0x${string}` {
     const leaves = agreement.sections.map(computeSectionLeaf);
     // Sort leaves lexicographically so the root is order-insensitive; this
-    // complements the `sortSections` schema-key ordering used during manifest
+    // complements the `sortSections` clause-key ordering used during manifest
     // composition and guarantees the same root regardless of insertion order.
     leaves.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     return buildMerkleRoot(leaves);
@@ -451,7 +451,7 @@ export function computeRedactableAgreementHash(agreement: RedactableAgreement): 
 
 /**
  * Produce a redacted distribution form of an agreement. Each section whose
- * schema key is in `schemaKeysToRedact` is replaced with a
+ * clause key is in `clauseKeysToRedact` is replaced with a
  * `RedactedAgreementSection` carrying the section's pre-computed merkle
  * leaf. All other sections are passed through unchanged.
  *
@@ -462,20 +462,20 @@ export function computeRedactableAgreementHash(agreement: RedactableAgreement): 
  * recomputes the leaf from the revealed cleartext and checks it matches
  * the stored leaf in the redacted form.
  *
- * Schema keys that don't appear in the agreement are silently ignored.
+ * Clause keys that don't appear in the agreement are silently ignored.
  */
 export function redactSections(
     agreement: Agreement,
-    schemaKeysToRedact: readonly string[],
+    clauseKeysToRedact: readonly string[],
 ): RedactableAgreement {
-    const targets = new Set(schemaKeysToRedact);
+    const targets = new Set(clauseKeysToRedact);
     return {
         version: agreement.version,
         buyer: agreement.buyer,
         seller: agreement.seller,
         sections: agreement.sections.map((s): AnyAgreementSection =>
-            targets.has(s.schema)
-                ? { schema: s.schema, leaf: computeSectionLeaf(s), redacted: true }
+            targets.has(s.clause)
+                ? { clause: s.clause, leaf: computeSectionLeaf(s), redacted: true }
                 : s,
         ),
     };
@@ -485,15 +485,15 @@ export function redactSections(
  * Verify that a revealed cleartext section's leaf matches the redacted
  * leaf carried in a `RedactableAgreement`. The verifier checks:
  *
- *   1. A redacted section under `revealed.schema` exists in the agreement.
+ *   1. A redacted section under `revealed.clause` exists in the agreement.
  *   2. The leaf computed from `revealed` matches that redacted entry's
  *      stored leaf.
  *
  * If both hold, the verifier has cryptographic assurance that
  * `revealed` is the same byte-content the original parties signed under
- * that schema key — without trusting the holder's word for it.
+ * that clause key — without trusting the holder's word for it.
  *
- * Returns false if the schema isn't redacted in the agreement (cleartext
+ * Returns false if the clause isn't redacted in the agreement (cleartext
  * sections don't need reveal-verification — read them directly), or if
  * the leaf doesn't match.
  */
@@ -502,7 +502,7 @@ export function verifyRevealedSection(
     revealed: AgreementSection,
 ): boolean {
     const redacted = agreement.sections.find(
-        (s) => s.schema === revealed.schema && isRedactedSection(s),
+        (s) => s.clause === revealed.clause && isRedactedSection(s),
     );
     if (!redacted || !isRedactedSection(redacted)) return false;
     const recomputed = computeSectionLeaf(revealed);
@@ -519,11 +519,11 @@ export function verifyRevealedSection(
  */
 export function buildSectionInclusionProof(
     agreement: Agreement,
-    schemaKey: string,
+    clauseKey: string,
 ): { leaf: `0x${string}`; proof: `0x${string}`[] } {
-    const section = agreement.sections.find((s) => s.schema === schemaKey);
+    const section = agreement.sections.find((s) => s.clause === clauseKey);
     if (!section) {
-        throw new Error(`Section not found: ${schemaKey}`);
+        throw new Error(`Section not found: ${clauseKey}`);
     }
 
     const targetLeaf = computeSectionLeaf(section);
@@ -582,23 +582,23 @@ export function verifyInclusionProof(
 // ── Section helpers ──────────────────────────────────────────────────────────
 
 /**
- * Sort sections by schema key. This produces deterministic ordering
+ * Sort sections by clause key. This produces deterministic ordering
  * so both parties always compute the same hash.
  */
 function sortSections(sections: AgreementSection[]): AgreementSection[] {
-    return sections.slice().sort((a, b) => a.schema.localeCompare(b.schema));
+    return sections.slice().sort((a, b) => a.clause.localeCompare(b.clause));
 }
 
 /**
- * Get a section by schema key, or undefined.
+ * Get a section by clause key, or undefined.
  */
-export function getSection(agreement: Agreement, schema: string): AgreementSection | undefined {
-    return agreement.sections.find((s) => s.schema === schema);
+export function getSection(agreement: Agreement, clause: string): AgreementSection | undefined {
+    return agreement.sections.find((s) => s.clause === clause);
 }
 
 /**
  * Find the first section across an assembly manifest's inlined agreements
- * that matches `schema`. The manifest-shaped sibling of `getSection`, which
+ * that matches `clause`. The manifest-shaped sibling of `getSection`, which
  * scopes to a single agreement: a manifest inlines one `Agreement` per
  * order, and a clause an assembly authored — jurisdiction, proximity-policy
  * — may live on any of them. Returns `undefined` when no agreement carries
@@ -606,10 +606,10 @@ export function getSection(agreement: Agreement, schema: string): AgreementSecti
  */
 export function readAssemblyClause(
     manifest: { agreements: Record<string, Agreement> },
-    schema: string,
+    clause: string,
 ): AgreementSection | undefined {
     for (const agreement of Object.values(manifest.agreements)) {
-        const section = getSection(agreement, schema);
+        const section = getSection(agreement, clause);
         if (section) return section;
     }
     return undefined;
@@ -625,34 +625,34 @@ export function readAssemblyClause(
 export function readAssemblyOrderGhgStandards(
     manifest: { agreements: Record<string, Agreement> },
     agreementHash: string | undefined,
-): GHGDisclosureSchemaKey[] {
+): GHGDisclosureClauseKey[] {
     if (!agreementHash) return [];
     const agreement = manifest.agreements[agreementHash];
     if (!agreement) return [];
-    const allowed = GHG_DISCLOSURE_SCHEMA_KEYS as readonly string[];
+    const allowed = GHG_DISCLOSURE_CLAUSE_KEYS as readonly string[];
     return agreement.sections
-        .map((s) => s.schema)
-        .filter((s): s is GHGDisclosureSchemaKey => allowed.includes(s));
+        .map((s) => s.clause)
+        .filter((s): s is GHGDisclosureClauseKey => allowed.includes(s));
 }
 
 /**
- * Look up a section by its on-chain schemaId bytes32 (matches Solidity
- * `keccak256(schemaKey)`). Convenience for hook code that receives a schemaId
- * from a UI / selector rather than the human-readable schema key.
+ * Look up a section by its on-chain clauseId bytes32 (matches Solidity
+ * `keccak256(clauseKey)`). Convenience for hook code that receives a clauseId
+ * from a UI / selector rather than the human-readable clause key.
  */
 export function getSectionById(
     agreement: Agreement | null | undefined,
-    schemaId: `0x${string}`,
+    clauseId: `0x${string}`,
 ): AgreementSection | undefined {
     if (!agreement) return undefined;
-    return agreement.sections.find((s) => hexEqual(schemaIdOf(s.schema), schemaId));
+    return agreement.sections.find((s) => hexEqual(clauseIdOf(s.clause), clauseId));
 }
 
 /**
- * Check whether an agreement includes a given schema.
+ * Check whether an agreement includes a given clause.
  */
-export function hasSection(agreement: Agreement, schema: string): boolean {
-    return agreement.sections.some((s) => s.schema === schema);
+export function hasSection(agreement: Agreement, clause: string): boolean {
+    return agreement.sections.some((s) => s.clause === clause);
 }
 
 // ── Builder ──────────────────────────────────────────────────────────────────
@@ -660,9 +660,9 @@ export function hasSection(agreement: Agreement, schema: string): boolean {
 /**
  * Build an Agreement from checkout state.
  *
- * Takes buyer/seller addresses and an array of schema sections.
- * Sections are sorted by schema key for deterministic hashing.
- * Duplicate schema keys are rejected.
+ * Takes buyer/seller addresses and an array of clause sections.
+ * Sections are sorted by clause key for deterministic hashing.
+ * Duplicate clause keys are rejected.
  */
 export function buildAgreement(params: {
     buyer: `0x${string}`;
@@ -671,12 +671,12 @@ export function buildAgreement(params: {
 }): Agreement {
     const sorted = sortSections(params.sections);
 
-    // Guard: no duplicate schema keys
-    const keys = sorted.map((s) => s.schema);
+    // Guard: no duplicate clause keys
+    const keys = sorted.map((s) => s.clause);
     const unique = new Set(keys);
     if (unique.size !== keys.length) {
         const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
-        throw new Error(`Duplicate schema keys in agreement: ${dupes.join(", ")}`);
+        throw new Error(`Duplicate clause keys in agreement: ${dupes.join(", ")}`);
     }
 
     return {
@@ -737,7 +737,7 @@ export function manifestFieldsToGeoSection(
     const volumeMl = parseVolumeToMl(fields.volume);
     const classOfService = fields.class_?.trim() || "S";
     return {
-        schema: GEO_SCHEMA_KEY,
+        clause: GEO_CLAUSE_KEY,
         data: {
             originGeohash: fields.origin?.trim() ?? "",
             destinationGeohash: fields.destination?.trim() ?? "",

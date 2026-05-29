@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
  * `/financials/[processId]` and `/verify` were merged into `/audit/*`.)
  *
  * Routes that read like reference but live in `app/(marketing)/` —
- * `/integrate`, `/schemas`, `/groups`, `/local-commerce`, `/spec`,
+ * `/integrate`, `/clauses`, `/groups`, `/local-commerce`, `/spec`,
  * `/compliance`, `/builders` (publication) — are intentionally NOT here:
  * they're publication-shaped and don't pull the wallet provider. Don't
  * cross-list them in (app) navs (see `feedback_two_navs_allowed.md`).

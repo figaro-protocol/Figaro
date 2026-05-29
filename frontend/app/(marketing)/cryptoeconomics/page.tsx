@@ -31,13 +31,13 @@ const COMPOSITION_GROUPS: CompositionGroup[] = [
         ],
     },
     {
-        name: "Schema authoring",
+        name: "Clause authoring",
         tier: "Tier 2",
         charter:
-            "Authors new schemas — content-type design plus the validator-implementation work that ships in lockstep across TypeScript and on-chain Solidity (with an SP1 Rust mirror pending). Cross-cuts disciplines: validator implementation pulls from Computer Science and Cryptography; content definition pulls from whichever discipline the schema's domain belongs to.",
+            "Authors new clauses — content-type design plus the validator-implementation work that ships in lockstep across TypeScript and on-chain Solidity (with an SP1 Rust mirror pending). Cross-cuts disciplines: validator implementation pulls from Computer Science and Cryptography; content definition pulls from whichever discipline the clause's domain belongs to.",
         references: [
             { label: "Composability — Tier 2", href: "/builders/composability" },
-            { label: "Schemas — architecture and inventory", href: "/schemas" },
+            { label: "Clauses — architecture and inventory", href: "/clauses" },
             { label: "Builders — Tier 2 tools", href: "/builders" },
         ],
     },
@@ -57,7 +57,7 @@ export default function Cryptoeconomics() {
 
             <MarketingSection title="Eight disciplines, eight lenses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    The disciplinary list anchors to Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024) &mdash; eight disciplines, fixed. Each frames the substrate, carries its own papers &mdash; collected on the <Link href="/papers" className="underline">Papers</Link> page &mdash; and runs its own working group. Implementation work &mdash; schema authoring, contract development, assembly composition &mdash; organizes at <Link href="/builders" className="underline">/builders</Link>.
+                    The disciplinary list anchors to Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024) &mdash; eight disciplines, fixed. Each frames the substrate, carries its own papers &mdash; collected on the <Link href="/papers" className="underline">Papers</Link> page &mdash; and runs its own working group. Implementation work &mdash; clause authoring, contract development, assembly composition &mdash; organizes at <Link href="/builders" className="underline">/builders</Link>.
                 </p>
                 <div className="space-y-10">
                     {GROUPS_REGISTRY.map((g) => (
@@ -109,7 +109,7 @@ export default function Cryptoeconomics() {
 
             <MarketingSection title="Output-oriented; cross-cut the disciplines.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    Where the cryptoeconomic disciplines are reading lenses, the composability working groups are oriented around concrete builder outputs &mdash; assemblies and schemas. They cross-cut the disciplinary axis: a schema for GHG measurement pulls validator-implementation expertise from Computer Science and Cryptography while the content-definition expertise comes from Operations Research or Industrial Engineering. The tier framing comes from <Link href="/builders/composability" className="underline">composability</Link>.
+                    Where the cryptoeconomic disciplines are reading lenses, the composability working groups are oriented around concrete builder outputs &mdash; assemblies and clauses. They cross-cut the disciplinary axis: a clause for GHG measurement pulls validator-implementation expertise from Computer Science and Cryptography while the content-definition expertise comes from Operations Research or Industrial Engineering. The tier framing comes from <Link href="/builders/composability" className="underline">composability</Link>.
                 </p>
                 <div className="space-y-8">
                     {COMPOSITION_GROUPS.map((g) => (
@@ -142,7 +142,7 @@ export default function Cryptoeconomics() {
 
             <MarketingSection title="Grants &amp; capital sources">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Work on the Figaro substrate &mdash; research, review, verification, assembly design, schema authoring, documentation &mdash; is funded through permissionless channels. No application committee. No curated budget.
+                    Work on the Figaro substrate &mdash; research, review, verification, assembly design, clause authoring, documentation &mdash; is funded through permissionless channels. No application committee. No curated budget.
                 </p>
                 <dl className="space-y-4 text-sm">
                     <div className="border-l-2 border-default pl-4">
@@ -199,7 +199,7 @@ export default function Cryptoeconomics() {
                         <Link href="/spec" className="text-ink-heading font-medium hover:underline">
                             Specifications
                         </Link>
-                        <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, schema, mechanism modules, with source links and verification status.</span>
+                        <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, clause, mechanism modules, with source links and verification status.</span>
                     </li>
                 </ul>
             </MarketingSection>

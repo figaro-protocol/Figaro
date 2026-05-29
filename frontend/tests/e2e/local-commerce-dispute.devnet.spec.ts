@@ -82,7 +82,7 @@ const ARBITRABLE_PROXY_DISPUTES_ABI = parseAbi([
 
 // The local-commerce assembly's figaro-arbitration-kleros-v1 clause names Kleros
 // General Court (subcourt 1); with no klerosMinJurors authored the resolver
-// falls back to the court's schema default (3). arbitratorExtraData is
+// falls back to the court's clause default (3). arbitratorExtraData is
 // abi.encode(uint96 subcourtID, uint96 minJurors).
 const EXPECTED_EXTRA_DATA = encodeAbiParameters(
     [{ name: 'subcourtID', type: 'uint96' }, { name: 'minJurors', type: 'uint96' }],

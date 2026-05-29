@@ -24,10 +24,10 @@ export type ManifestOrder = BoundAssembly["manifest"]["orders"][number];
 
 /**
  * Topologically order an assembly's non-root orders and resolve each one's
- * seller from the seller's counterparty bindings. A schema shared by sibling
- * orders draws distinct wallets by commit order (the per-schema cursor), so the
+ * seller from the seller's counterparty bindings. A clause shared by sibling
+ * orders draws distinct wallets by commit order (the per-clause cursor), so the
  * ordering is significant and must match the checkout's commit order. `seller`
- * is `null` when the assembly binds no counterparty for that order's schema.
+ * is `null` when the assembly binds no counterparty for that order's clause.
  *
  * Throws when the topology is not a DAG (a sub-order's parents are
  * unresolvable) — the same guard the checkout relies on.
@@ -55,11 +55,11 @@ export function planSubOrderSellers(
     const cursor = new Map<string, number>();
     return ordered.map((node) => {
         const agreement = manifest.agreements[node.agreementHash!];
-        const nodeSchemas = (agreement?.sections ?? []).map((s) => s.schema);
-        const binding = assembly.counterpartyBindings.find((cb) => nodeSchemas.includes(cb.schemaId));
+        const nodeClauses = (agreement?.sections ?? []).map((s) => s.clause);
+        const binding = assembly.counterpartyBindings.find((cb) => nodeClauses.includes(cb.clauseId));
         if (!binding || binding.addresses.length === 0) return { node, seller: null };
-        const c = cursor.get(binding.schemaId) ?? 0;
-        cursor.set(binding.schemaId, c + 1);
+        const c = cursor.get(binding.clauseId) ?? 0;
+        cursor.set(binding.clauseId, c + 1);
         return { node, seller: binding.addresses[Math.min(c, binding.addresses.length - 1)] as `0x${string}` };
     });
 }

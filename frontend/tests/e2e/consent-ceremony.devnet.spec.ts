@@ -7,7 +7,7 @@
  * to IPFS, then redirects to /discover. No on-chain mutation — the
  * signature itself is the artifact.
  *
- * Closes the "every shipped schema has at least one e2e" gap for
+ * Closes the "every shipped clause has at least one e2e" gap for
  * figaro-consent-v1 at the beta-ceremony surface. A separate e2e
  * exercises consent-v1 as a commit-time clause inside an assembly.
  */

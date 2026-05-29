@@ -47,14 +47,14 @@ import {
 } from "@/lib/mechanisms/useGHGDisclosure";
 import { DISCLOSURE_KIND_LABELS } from "@/lib/mechanisms/contracts";
 import { truncateHex } from "@/lib/shared/formatHex";
-import type { LensId } from "@/lib/shared/schemaCategories";
+import type { LensId } from "@/lib/shared/clauseCategories";
 
 // ── Public types ────────────────────────────────────────────────────────────
 
 /**
- * `LensId` is owned by `@/lib/shared/schemaCategories` (the canonical
+ * `LensId` is owned by `@/lib/shared/clauseCategories` (the canonical
  * taxonomy module); `GraphLens` adds the `"default"` "no overlay" state on
- * top of it. Lenses are intentionally a different taxonomy from schema
+ * top of it. Lenses are intentionally a different taxonomy from clause
  * categories — see `LENS_TO_CATEGORIES` in that module for the explicit
  * map between them.
  */

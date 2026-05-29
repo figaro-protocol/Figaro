@@ -22,7 +22,7 @@
  * Per-attestation receipt — what landed on chain for one AttestationRecorded
  * event. Shape is uniform across attestation families (GHG measurement,
  * proximity proof, etc.); the original content payload lives in the
- * transaction calldata and is decoded by the schema-specific extractor.
+ * transaction calldata and is decoded by the clause-specific extractor.
  */
 export interface AttestationReceipt {
     /** keccak256 of the attestation content bytes. */

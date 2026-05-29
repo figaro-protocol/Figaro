@@ -104,15 +104,15 @@ export default function LocalCommercePage() {
                 <ul className="space-y-3 text-base">
                     <li>
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, clause authors, assembly authors, token issuance, humans and agents.</span>
                     </li>
                     <li>
                         <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>
-                        <span className="text-ink-body"> &mdash; composition templates wiring schemas into multi-order processes; anchored on AssemblyRegistry.</span>
+                        <span className="text-ink-body"> &mdash; composition templates wiring clauses into multi-order processes; anchored on AssemblyRegistry.</span>
                     </li>
                     <li>
-                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
-                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
+                        <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference clauses, and the authoring checklist.</span>
                     </li>
                     <li>
                         <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>

@@ -43,8 +43,8 @@ import {
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 import {
-    GHG_SCHEMA_KEY,
-    GHG_MEASUREMENT_SCHEMA_KEY,
+    GHG_CLAUSE_KEY,
+    GHG_MEASUREMENT_CLAUSE_KEY,
 } from '@/lib/core/agreementManifest';
 import {
     ATTESTATION_COORDINATOR_ABI,
@@ -64,7 +64,7 @@ const LOCAL_ANVIL = defineChain({
 const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const RESTAURANT_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
 
-const GHG_MEASUREMENT_SCHEMA_ID = keccak256(stringToHex(GHG_MEASUREMENT_SCHEMA_KEY));
+const GHG_MEASUREMENT_CLAUSE_ID = keccak256(stringToHex(GHG_MEASUREMENT_CLAUSE_KEY));
 
 const MEASUREMENT_STAGE_MEASURED = 0;
 
@@ -119,8 +119,8 @@ test.describe('Offset retirement UI (devnet)', () => {
             buyer: buyer.address as Hex,
             seller: restaurant.address as Hex,
             sections: [
-                { schema: GHG_SCHEMA_KEY, data: { standard: 'iso-14064-1', scope: 1 } },
-                { schema: GHG_MEASUREMENT_SCHEMA_KEY, data: {} },
+                { clause: GHG_CLAUSE_KEY, data: { standard: 'iso-14064-1', scope: 1 } },
+                { clause: GHG_MEASUREMENT_CLAUSE_KEY, data: {} },
             ],
         };
 
@@ -137,9 +137,9 @@ test.describe('Offset retirement UI (devnet)', () => {
         // PreResolveOffsetPanel sees `totalActualGrams > 0` and renders.
         // Cat-1: content is `abi.encode(uint256 grams)`; sectionData is
         // canonical-JSON of `{}` (the committed section.data).
-        const measurementSection = agreement.sections.find((s) => s.schema === GHG_MEASUREMENT_SCHEMA_KEY)!;
+        const measurementSection = agreement.sections.find((s) => s.clause === GHG_MEASUREMENT_CLAUSE_KEY)!;
         const sectionData = getSectionDataBytes(measurementSection);
-        const { proof } = buildSectionInclusionProof(agreement, GHG_MEASUREMENT_SCHEMA_KEY);
+        const { proof } = buildSectionInclusionProof(agreement, GHG_MEASUREMENT_CLAUSE_KEY);
         const gramsContent = encodeAbiParameters([{ type: 'uint256' }], [SEEDED_GRAMS]);
 
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
@@ -152,7 +152,7 @@ test.describe('Offset retirement UI (devnet)', () => {
             args: [
                 commitment,
                 commitment,
-                GHG_MEASUREMENT_SCHEMA_ID,
+                GHG_MEASUREMENT_CLAUSE_ID,
                 MEASUREMENT_STAGE_MEASURED,
                 sectionData,
                 proof,

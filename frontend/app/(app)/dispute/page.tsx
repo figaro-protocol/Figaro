@@ -43,7 +43,7 @@
  * and on-chain submission both need a wallet). The select step is
  * read-only and shows pre-connect guidance like /consent does.
  *
- * Architectural note: no new Figaro schema is needed. Kleros's own
+ * Architectural note: no new Figaro clause is needed. Kleros's own
  * chain is the on-chain record of the dispute. The PDF receipt + the
  * canonical document IPFS CID is sufficient evidence — every juror
  * has the EIP-712 typed-data message + signature in one

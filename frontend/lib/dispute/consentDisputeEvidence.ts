@@ -10,7 +10,7 @@
  *
  * The on-chain record of the consent attestation already exists as the
  * EIP-712 typed-data signature pinned in the consent receipt PDF. No new
- * Figaro schema is needed for the dispute itself — Kleros's own chain
+ * Figaro clause is needed for the dispute itself — Kleros's own chain
  * carries the dispute record, and the receipt CID + canonical document
  * CID are sufficient evidence.
  *
@@ -114,7 +114,7 @@ export interface DisputedConsentAttestation {
     /**
      * keccak256 hex digest of the canonical consent document. The
      * EIP-712 message field this hash anchors is `documentHash` per the
-     * `figaro-consent-v1` schema.
+     * `figaro-consent-v1` clause.
      */
     documentHash: Hex;
     /** Semver document version (`figaro-consent-v1` `documentVersion`). */

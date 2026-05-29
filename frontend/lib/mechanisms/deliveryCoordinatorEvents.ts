@@ -13,7 +13,7 @@
  * includes:
  *   - Merchant-role events (prep-started, ready-for-pickup, handed-off, …)
  *   - Courier-role events (en-route-pickup, arrived-pickup, completed, …)
- *   - Proximity proof attestations (separate schema; proof bytes in `content`)
+ *   - Proximity proof attestations (separate clause; proof bytes in `content`)
  *
  * This is a read-only module. No contract writes.
  */
@@ -21,8 +21,8 @@
 import { type PublicClient } from "viem";
 import type { CoordinatorEventSource, TimelineEvent } from "@/lib/dispute/evidenceTimeline";
 import { CONTRACTS, ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import { MERCHANT_PROCESS_SCHEMA_ID } from "@/lib/mechanisms/useMerchantProcess";
-import { COURIER_PROCESS_SCHEMA_ID, PROXIMITY_SCHEMA_ID } from "@/lib/mechanisms/useCourierProcess";
+import { MERCHANT_PROCESS_CLAUSE_ID } from "@/lib/mechanisms/useMerchantProcess";
+import { COURIER_PROCESS_CLAUSE_ID, PROXIMITY_CLAUSE_ID } from "@/lib/mechanisms/useCourierProcess";
 
 /** Merchant lifecycle event labels keyed by uint8 stage. */
 const MERCHANT_EVENT_LABELS: Record<number, string> = {
@@ -79,9 +79,9 @@ async function getBlockTimestamp(
  * Create a CoordinatorEventSource for per-role lifecycle attestations.
  *
  * All attestations (lifecycle, proximity, GHG) come through the unified
- * Attestation event. The per-role schemas surface as merchant and courier
+ * Attestation event. The per-role clauses surface as merchant and courier
  * events with role-specific labels. Proximity proofs are standard
- * attestations under the figaro-proximity-proof-v1 schema; proof bytes
+ * attestations under the figaro-proximity-proof-v1 clause; proof bytes
  * live in the on-chain `content` payload.
  */
 export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
@@ -106,17 +106,17 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
 
             for (const log of attestLogs) {
                 const a = log.args as Partial<{
-                    schemaId: string;
+                    clauseId: string;
                     stage: bigint | number;
                     orderHash: string;
                     attester: string;
                     contentRef: string;
                 }>;
-                const schemaId = a.schemaId;
+                const clauseId = a.clauseId;
                 const stage = Number(a.stage ?? 0);
                 const ts = await getBlockTimestamp(client, log.blockNumber!, blockCache);
 
-                if (schemaId === MERCHANT_PROCESS_SCHEMA_ID) {
+                if (clauseId === MERCHANT_PROCESS_CLAUSE_ID) {
                     events.push({
                         label: MERCHANT_EVENT_LABELS[stage] ?? `Merchant Event ${stage}`,
                         blockNumber: log.blockNumber!,
@@ -129,10 +129,10 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
                             attester: a.attester ?? "",
                             stage: String(stage),
                             contentRef: a.contentRef ?? "",
-                            schema: "merchant-process",
+                            clause: "merchant-process",
                         },
                     });
-                } else if (schemaId === COURIER_PROCESS_SCHEMA_ID) {
+                } else if (clauseId === COURIER_PROCESS_CLAUSE_ID) {
                     events.push({
                         label: COURIER_EVENT_LABELS[stage] ?? `Courier Event ${stage}`,
                         blockNumber: log.blockNumber!,
@@ -145,10 +145,10 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
                             attester: a.attester ?? "",
                             stage: String(stage),
                             contentRef: a.contentRef ?? "",
-                            schema: "courier-process",
+                            clause: "courier-process",
                         },
                     });
-                } else if (schemaId === PROXIMITY_SCHEMA_ID) {
+                } else if (clauseId === PROXIMITY_CLAUSE_ID) {
                     // ── Proximity proof attestation ──
                     // Stage encodes the band type: 1=Zone, 2=Nearby, 3=Contact, 4=Visual
                     events.push({
@@ -163,7 +163,7 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
                             attester: a.attester ?? "",
                             stage: String(stage),
                             contentRef: a.contentRef ?? "",
-                            schema: "proximity",
+                            clause: "proximity",
                         },
                     });
                 }

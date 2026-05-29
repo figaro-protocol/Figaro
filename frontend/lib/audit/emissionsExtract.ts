@@ -6,9 +6,9 @@
  *
  * Two layers:
  *
- *   • Committed disclosure — one of the 5 sister schemas
+ *   • Committed disclosure — one of the 5 sister clauses
  *     (figaro-ghg-{protocol,iso-14064,pas-2050,en-16258,custom}-v1) names
- *     the accounting standard via its schemaKey. The data field is
+ *     the accounting standard via its clauseKey. The data field is
  *     `(uint8 scope)` — 0=unset, 1=Scope 1, 2=Scope 2, 3=Scope 3.
  *
  *   • Runtime measurement — `figaro-ghg-measurement-v1` attestations carry
@@ -22,9 +22,9 @@
 import {
     type Agreement,
     type AgreementSection,
-    GHG_DISCLOSURE_SCHEMA_KEYS,
-    GHG_MEASUREMENT_SCHEMA_KEY,
-    GHG_SCHEMA_TO_STANDARD,
+    GHG_DISCLOSURE_CLAUSE_KEYS,
+    GHG_MEASUREMENT_CLAUSE_KEY,
+    GHG_CLAUSE_TO_STANDARD,
     isRedactedSection,
     type RedactableAgreement,
 } from "@/lib/core/agreementManifest";
@@ -32,26 +32,26 @@ import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import type { AttestationReceipt, ExtractedDocument } from "./types";
 
-const GHG_DISCLOSURE_SET = new Set<string>(GHG_DISCLOSURE_SCHEMA_KEYS);
+const GHG_DISCLOSURE_SET = new Set<string>(GHG_DISCLOSURE_CLAUSE_KEYS);
 
 function findGhgDisclosureSection(
     agreement: Agreement | RedactableAgreement,
 ): AgreementSection | undefined {
-    const s = agreement.sections.find((x) => GHG_DISCLOSURE_SET.has(x.schema));
+    const s = agreement.sections.find((x) => GHG_DISCLOSURE_SET.has(x.clause));
     if (!s) return undefined;
     return isRedactedSection(s) ? undefined : s;
 }
 
 
 export interface EmissionsDocument extends ExtractedDocument {
-    /** True when an agreement clause from one of the GHG sister schemas
+    /** True when an agreement clause from one of the GHG sister clauses
      *  is present. False when the parties did not commit to a GHG
      *  disclosure framework — the measurement attestations may still
      *  exist but they're untyped. */
     disclosed: boolean;
-    /** Schema key of the chosen disclosure standard, e.g.
+    /** Clause key of the chosen disclosure standard, e.g.
      *  "figaro-ghg-iso-14064-v1". */
-    standardSchemaKey?: string;
+    standardClauseKey?: string;
     /** Human-readable label, e.g. "ISO-14064". */
     standardLabel?: string;
     /** Committed scope: 0 (unset) | 1 (Scope 1) | 2 (Scope 2) | 3 (Scope 3). */
@@ -61,8 +61,8 @@ export interface EmissionsDocument extends ExtractedDocument {
     measurements: AttestationReceipt[];
 }
 
-function attestationMatchesMeasurementSchema(att: AttestationRecord): boolean {
-    return att.schemaId === GHG_MEASUREMENT_SCHEMA_KEY;
+function attestationMatchesMeasurementClause(att: AttestationRecord): boolean {
+    return att.clauseId === GHG_MEASUREMENT_CLAUSE_KEY;
 }
 
 export function extractEmissions(
@@ -75,17 +75,17 @@ export function extractEmissions(
     const scope = typeof data?.scope === "number" && data.scope >= 0 && data.scope <= 3
         ? data.scope
         : undefined;
-    const standardSchemaKey = disclosure?.schema as
-        | typeof GHG_DISCLOSURE_SCHEMA_KEYS[number]
+    const standardClauseKey = disclosure?.clause as
+        | typeof GHG_DISCLOSURE_CLAUSE_KEYS[number]
         | undefined;
-    const standardLabel = standardSchemaKey
-        ? GHG_SCHEMA_TO_STANDARD[standardSchemaKey]
+    const standardLabel = standardClauseKey
+        ? GHG_CLAUSE_TO_STANDARD[standardClauseKey]
         : undefined;
 
     const measurements: AttestationReceipt[] = [];
     for (const att of attestations) {
         if (att.orderHash !== order.id) continue;
-        if (!attestationMatchesMeasurementSchema(att)) continue;
+        if (!attestationMatchesMeasurementClause(att)) continue;
         measurements.push({
             contentRef: att.contentRef,
             attester: att.attester,
@@ -103,7 +103,7 @@ export function extractEmissions(
         buyer: order.buyer,
         seller: order.seller,
         disclosed: disclosure !== undefined,
-        standardSchemaKey,
+        standardClauseKey,
         standardLabel,
         scope,
         measurements,

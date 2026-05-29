@@ -15,10 +15,10 @@ import {
     type AgreementSection,
     type AnyAgreementSection,
     type RedactableAgreement,
-    APPLICABLE_LAW_SCHEMA_KEY,
-    COMMERCE_SCHEMA_KEY,
-    FULFILMENT_V2_SCHEMA_KEY,
-    TOPOLOGY_SCHEMA_KEY,
+    APPLICABLE_LAW_CLAUSE_KEY,
+    COMMERCE_CLAUSE_KEY,
+    FULFILMENT_V2_CLAUSE_KEY,
+    TOPOLOGY_CLAUSE_KEY,
     computeSectionLeaf,
     isRedactedSection,
 } from "@/lib/core/agreementManifest";
@@ -26,29 +26,29 @@ import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
 
-/** Match a section by schema key. Returns either form (cleartext or
+/** Match a section by clause key. Returns either form (cleartext or
  *  redacted); callers that need cleartext-only must check via
  *  `isRedactedSection`. */
 function findAnySection(
     agreement: Agreement | RedactableAgreement,
-    schemaKey: string,
+    clauseKey: string,
 ): AnyAgreementSection | undefined {
-    return agreement.sections.find((s) => s.schema === schemaKey);
+    return agreement.sections.find((s) => s.clause === clauseKey);
 }
 
-/** Match a section by schema key, returning only its cleartext form. If
+/** Match a section by clause key, returning only its cleartext form. If
  *  the section is redacted (or absent), returns undefined. */
 function findCleartextSection(
     agreement: Agreement | RedactableAgreement,
-    schemaKey: string,
+    clauseKey: string,
 ): AgreementSection | undefined {
-    const s = findAnySection(agreement, schemaKey);
+    const s = findAnySection(agreement, clauseKey);
     if (!s) return undefined;
     return isRedactedSection(s) ? undefined : s;
 }
 
-/** Human-readable title for each schema clause (best-effort display label). */
-const SCHEMA_TITLE: Record<string, string> = {
+/** Human-readable title for each clause clause (best-effort display label). */
+const CLAUSE_TITLE: Record<string, string> = {
     "figaro-commerce-v1": "Commerce — line items + payment",
     "figaro-geo-v2": "Geography — origin + destination + mass + volume + class",
     "figaro-fulfilment-v2": "Fulfilment — modality + coordination + handoffPoint",
@@ -68,11 +68,11 @@ const SCHEMA_TITLE: Record<string, string> = {
 };
 
 export interface ContractClause {
-    /** Schema key (e.g. "figaro-commerce-v1"). */
-    schemaKey: string;
+    /** Clause key (e.g. "figaro-commerce-v1"). */
+    clauseKey: string;
     /** Human-readable title. */
     title: string;
-    /** The clause's data payload — schema-specific structure. Empty
+    /** The clause's data payload — clause-specific structure. Empty
      *  object when the clause is sealed (see `sealed` flag). */
     body: Record<string, unknown>;
     /** Merkle leaf hash of this section under the agreementHash root.
@@ -100,7 +100,7 @@ export interface ContractDocument extends ExtractedDocument {
     /** EIP-712 commitment salt + deadline (for full reconstruction). */
     salt: bigint;
     deadline: bigint;
-    /** Each clause section in the agreement, in canonical (sorted-by-schema) order. */
+    /** Each clause section in the agreement, in canonical (sorted-by-clause) order. */
     clauses: ContractClause[];
     /** Optional jurisdiction summary if a jurisdiction clause is present. */
     jurisdiction?: {
@@ -135,23 +135,23 @@ export interface ContractDocument extends ExtractedDocument {
 function clauseFromSection(section: AnyAgreementSection): ContractClause {
     if (isRedactedSection(section)) {
         return {
-            schemaKey: section.schema,
-            title: SCHEMA_TITLE[section.schema] ?? section.schema,
+            clauseKey: section.clause,
+            title: CLAUSE_TITLE[section.clause] ?? section.clause,
             body: {},
             leafHash: section.leaf,
             sealed: true,
         };
     }
     return {
-        schemaKey: section.schema,
-        title: SCHEMA_TITLE[section.schema] ?? section.schema,
+        clauseKey: section.clause,
+        title: CLAUSE_TITLE[section.clause] ?? section.clause,
         body: section.data,
         leafHash: computeSectionLeaf(section),
     };
 }
 
 function extractJurisdictionSummary(agreement: Agreement | RedactableAgreement) {
-    const applicableLaw = findCleartextSection(agreement, APPLICABLE_LAW_SCHEMA_KEY);
+    const applicableLaw = findCleartextSection(agreement, APPLICABLE_LAW_CLAUSE_KEY);
     if (!applicableLaw) return undefined;
     const data = applicableLaw.data as { applicableLaw?: string; forum?: string; language?: string };
     if (!data.applicableLaw || typeof data.applicableLaw !== "string") return undefined;
@@ -163,7 +163,7 @@ function extractJurisdictionSummary(agreement: Agreement | RedactableAgreement) 
 }
 
 function extractLineage(agreement: Agreement | RedactableAgreement) {
-    const topology = findCleartextSection(agreement, TOPOLOGY_SCHEMA_KEY);
+    const topology = findCleartextSection(agreement, TOPOLOGY_CLAUSE_KEY);
     const data = topology?.data as
         | { parentOrderHashes?: unknown; topologyMode?: unknown }
         | undefined;
@@ -175,11 +175,11 @@ function extractLineage(agreement: Agreement | RedactableAgreement) {
 }
 
 function extractFulfilmentSummary(agreement: Agreement | RedactableAgreement) {
-    const fulfilment = findCleartextSection(agreement, FULFILMENT_V2_SCHEMA_KEY);
+    const fulfilment = findCleartextSection(agreement, FULFILMENT_V2_CLAUSE_KEY);
     const data = fulfilment?.data as
         | { modalities?: unknown; coordinations?: unknown }
         | undefined;
-    // Read the schema-correct plural arrays. Earlier this code read
+    // Read the clause-correct plural arrays. Earlier this code read
     // singular `modality`/`coordination` keys that never existed in
     // figaro-fulfilment-v2 — works only when the section's data
     // accidentally carried both shapes.
@@ -208,7 +208,7 @@ export function extractContract(
     // identical, but the commerce section is the authoritative party-signed
     // source). When commerce is redacted, fall back to order.currency — the
     // kernel records currency on the commitment regardless of redaction.
-    const commerce = findCleartextSection(agreement, COMMERCE_SCHEMA_KEY);
+    const commerce = findCleartextSection(agreement, COMMERCE_CLAUSE_KEY);
     const commerceCurrency = (commerce?.data as { currency?: string } | undefined)?.currency;
 
     return {

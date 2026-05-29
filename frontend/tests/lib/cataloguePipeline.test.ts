@@ -209,7 +209,7 @@ describe("cataloguePublisher", () => {
 // ── catalogue shape sanity ────────────────────────────────────────────────────
 
 describe("SellerCatalogueMetadata shape", () => {
-    it("carries only subjectAddress, items, and version after the schema split", () => {
+    it("carries only subjectAddress, items, and version after the clause split", () => {
         const cat = VALID_MERCHANT_DOC;
 
         expect(cat.subjectAddress).toBeDefined();

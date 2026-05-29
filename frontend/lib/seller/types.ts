@@ -45,7 +45,7 @@ export interface CatalogueItem {
  *
  * Carries no closed-taxonomy fields. Earlier revisions had
  * `cuisine`/`rating`/`deliveryTime`/`minimumOrder` — none of those
- * exist in the underlying schemas; they were rendered from
+ * exist in the underlying clauses; they were rendered from
  * hardcoded defaults and have been removed. `specialty` is the
  * free-form open-string self-description the seller authors
  * themselves.

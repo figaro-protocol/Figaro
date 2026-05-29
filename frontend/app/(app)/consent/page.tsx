@@ -12,14 +12,14 @@
  *      receipt) + "Continue to app" button. Sets `figaro-consent-complete`
  *      flag and redirects to `/discover`.
  *
- * The signature is the artifact. The Figaro consent schema (`figaro-consent-v1`)
+ * The signature is the artifact. The Figaro consent clause (`figaro-consent-v1`)
  * defines the typed-data shape the protocol uses for any future flow that
  * wants consent as a clause inside a bonded commitment; the beta ceremony
  * here exercises only the typed-data primitive — no `commit`, no
  * `attestAsBuyer`, no kernel state mutation.
  *
  * Field order in the `Consent` type below MUST match
- * `encodeConsentContent` in `sdk/src/schemas/encode.ts` exactly:
+ * `encodeConsentContent` in `sdk/src/clauses/encode.ts` exactly:
  *   [bytes32 documentHash, string documentVersion, string documentTitle].
  */
 

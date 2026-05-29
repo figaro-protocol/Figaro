@@ -4,7 +4,7 @@
 //! caller-supplied spec — so the constraint set every attestation is
 //! checked against is covered by the program verification key. The JSON
 //! is `include_str!`d straight from the Layer A source of truth
-//! (`frontend/lib/shared/schemas/`), so there is no second copy that
+//! (`frontend/lib/shared/clauses/`), so there is no second copy that
 //! could drift.
 //!
 //! `figaro-topology-v1` is intentionally absent: it is manifest-only,
@@ -27,7 +27,7 @@ macro_rules! embed {
         EmbeddedSpec {
             clause_key: $key,
             spec_json: include_str!(concat!(
-                "../../../frontend/lib/shared/schemas/",
+                "../../../frontend/lib/shared/clauses/",
                 $key,
                 ".json"
             )),

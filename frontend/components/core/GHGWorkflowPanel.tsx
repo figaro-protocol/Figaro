@@ -4,7 +4,7 @@
  *
  * Simplified from the V3 800+ line panel: V3 used nested contract storage reads
  * (boundaries → requirements → submissions). The live runtime uses flat attestation events filtered
- * by schemaId, with stage encoding the disclosure kind (0=Commitment, 1=Actual, etc.).
+ * by clauseId, with stage encoding the disclosure kind (0=Commitment, 1=Actual, etc.).
  */
 "use client";
 
@@ -18,7 +18,7 @@ import {
 } from "@/lib/mechanisms/useGHGDisclosure";
 import { CapabilityModel } from "@/lib/semantic/models";
 import { DISCLOSURE_KIND, DISCLOSURE_KIND_LABELS, DISCLOSURE_KIND_DESCRIPTIONS } from "@/lib/mechanisms/contracts";
-import { GHG_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { GHG_CLAUSE_KEY } from "@/lib/core/agreementManifest";
 import { truncateHex } from "@/lib/shared/formatHex";
 import type { Hex } from "viem";
 import { extractErrorMessage } from "@/lib/shared/errors";

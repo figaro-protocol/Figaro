@@ -2,22 +2,22 @@
 
 import { useCallback } from "react";
 import { keccak256, stringToHex, type Hex } from "viem";
-import { embeddedSpec, encodeContentFromSpec, type MerchantEvent } from "@figaro/core/schemas";
+import { embeddedSpec, encodeContentFromSpec, type MerchantEvent } from "@figaro/core/clauses";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
-import { MERCHANT_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { MERCHANT_PROCESS_CLAUSE_KEY } from "@/lib/core/agreementManifest";
 import {
     encodeProximityProofContent,
-    PROXIMITY_SCHEMA_ID,
+    PROXIMITY_CLAUSE_ID,
     type ProximityProof,
 } from "@/lib/mechanisms/useCourierProcess";
 
 /**
  * Sovereign merchant event log — `figaro-merchant-process-v1`. The merchant
  * (= seller of a buyer-merchant order) attests their internal lifecycle
- * events under this schema. The event log is the merchant's SSoT for "what
+ * events under this clause. The event log is the merchant's SSoT for "what
  * the merchant has done" — Class B (discretionary attestation) per Paper E.
  *
- * Mirror of `useCourierProcess.ts` for the courier role. Both schemas are
+ * Mirror of `useCourierProcess.ts` for the courier role. Both clauses are
  * Category-1 (no committed clause) — content is supplied at runtime as
  * `(uint8 eventType, string evidenceUri)`.
  *
@@ -26,7 +26,7 @@ import {
  * appends it by default whenever a fulfilment section is present (the
  * seller will be acting as a merchant).
  */
-export const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
+export const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex(MERCHANT_PROCESS_CLAUSE_KEY));
 
 /** uint8 stage values matching the `figaro-merchant-process-v1` enum. */
 const MERCHANT_EVENT_STAGE: Record<MerchantEvent, number> = {
@@ -79,7 +79,7 @@ export function useMerchantProcessActions() {
         return submitSellerAttestation({
             roleOrderHash: roleOrderHash as Hex | undefined,
             orderHash: orderHash as Hex,
-            schemaId: MERCHANT_PROCESS_SCHEMA_ID,
+            clauseId: MERCHANT_PROCESS_CLAUSE_ID,
             stage: MERCHANT_EVENT_STAGE[eventType],
             content: encodeContentFromSpec(
                 embeddedSpec("figaro-merchant-process-v1")!,
@@ -110,7 +110,7 @@ export function useMerchantProcessActions() {
         await submitSellerAttestation({
             roleOrderHash: merchantOrderHash as Hex,
             orderHash: proximityTargetOrderHash as Hex,
-            schemaId: PROXIMITY_SCHEMA_ID,
+            clauseId: PROXIMITY_CLAUSE_ID,
             stage: proof.band,
             content: encodeProximityProofContent(proof),
             failureMessage: "Merchant proximity proof submission failed",

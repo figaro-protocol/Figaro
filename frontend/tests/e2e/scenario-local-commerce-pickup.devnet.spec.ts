@@ -152,7 +152,7 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
             orders: Array<{ id: string; agreementHash: string }>;
             agreements: Record<string, {
                 version: string;
-                sections: Array<{ schema: string; data: Record<string, unknown> }>;
+                sections: Array<{ clause: string; data: Record<string, unknown> }>;
             }>;
         };
 
@@ -168,7 +168,7 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
         expect(manifest.orders).toHaveLength(1);
         const agreement = manifest.agreements[manifest.orders[0].agreementHash];
         expect(agreement?.version).toBe('a1');
-        expect(agreement.sections.map((s) => s.schema).sort()).toEqual([
+        expect(agreement.sections.map((s) => s.clause).sort()).toEqual([
             'figaro-arbitration-kleros-v1',
             'figaro-commerce-v1',
             'figaro-fulfilment-v2',
@@ -180,13 +180,13 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
         ]);
 
         // One node, pickup modality, face-to-face handoff, zone-wifi band.
-        const fulfilment = agreement.sections.find((s) => s.schema === 'figaro-fulfilment-v2');
+        const fulfilment = agreement.sections.find((s) => s.clause === 'figaro-fulfilment-v2');
         expect(fulfilment?.data.modalities).toEqual(['pickup']);
         expect(fulfilment?.data.coordinations).toBeUndefined();
         expect(fulfilment?.data.handoffPoints).toEqual(['face-to-face']);
-        const proximity = agreement.sections.find((s) => s.schema === 'figaro-proximity-policy-v1');
+        const proximity = agreement.sections.find((s) => s.clause === 'figaro-proximity-policy-v1');
         expect(proximity?.data.bands).toEqual(['zone-wifi']);
-        const topology = agreement.sections.find((s) => s.schema === 'figaro-topology-v1');
+        const topology = agreement.sections.find((s) => s.clause === 'figaro-topology-v1');
         expect(topology?.data.topologyMode).toBe('root');
 
         // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),

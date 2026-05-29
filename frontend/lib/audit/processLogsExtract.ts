@@ -3,14 +3,14 @@
  * `figaro-merchant-process-v1` and `figaro-courier-process-v1`
  * attestations into a per-role event timeline.
  *
- * Per CLAUDE.md "When to add a per-role process schema": these two
- * schemas exist because off-chain sellers (merchants, couriers) need
+ * Per CLAUDE.md "When to add a per-role process clause": these two
+ * clauses exist because off-chain sellers (merchants, couriers) need
  * a sovereign event log to make their physical-world state changes
  * tamper-proof evidence. The kernel records the buyer's actions
  * directly (commit / resolveProcess); the off-chain sellers record
- * theirs via these per-role process schemas.
+ * theirs via these per-role process clauses.
  *
- * Both schemas have the same content shape: `(uint8 eventType,
+ * Both clauses have the same content shape: `(uint8 eventType,
  * string evidenceUri)`. The eventType is an index into a role-specific
  * enum (merchant: 0-5; courier: 0-7 or whatever the validator
  * declares). The audit document records the receipt; recovering the
@@ -22,12 +22,12 @@ import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import type { ExtractedDocument } from "./types";
 import {
-    COURIER_PROCESS_SCHEMA_KEY,
-    MERCHANT_PROCESS_SCHEMA_KEY,
+    COURIER_PROCESS_CLAUSE_KEY,
+    MERCHANT_PROCESS_CLAUSE_KEY,
 } from "@/lib/core/agreementManifest";
 
 export interface ProcessLogEntry {
-    schemaKey: string;
+    clauseKey: string;
     /** Order whose buyer/seller emitted the event. */
     attester: string;
     /** Lifecycle stage the event was attested at (uint8). */
@@ -57,18 +57,18 @@ export function extractProcessLogs(
 
     for (const att of attestations) {
         if (att.orderHash !== order.id) continue;
-        if (att.schemaId === MERCHANT_PROCESS_SCHEMA_KEY) {
+        if (att.clauseId === MERCHANT_PROCESS_CLAUSE_KEY) {
             merchantEvents.push({
-                schemaKey: MERCHANT_PROCESS_SCHEMA_KEY,
+                clauseKey: MERCHANT_PROCESS_CLAUSE_KEY,
                 attester: att.attester,
                 stage: att.stage,
                 contentRef: att.contentRef,
                 blockNumber: att.blockNumber,
                 transactionHash: att.transactionHash ?? undefined,
             });
-        } else if (att.schemaId === COURIER_PROCESS_SCHEMA_KEY) {
+        } else if (att.clauseId === COURIER_PROCESS_CLAUSE_KEY) {
             courierEvents.push({
-                schemaKey: COURIER_PROCESS_SCHEMA_KEY,
+                clauseKey: COURIER_PROCESS_CLAUSE_KEY,
                 attester: att.attester,
                 stage: att.stage,
                 contentRef: att.contentRef,

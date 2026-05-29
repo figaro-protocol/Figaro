@@ -25,25 +25,25 @@ import {
     type Agreement,
     type AgreementSection,
     type RedactableAgreement,
-    COURIER_PROCESS_SCHEMA_KEY,
-    FULFILMENT_V2_SCHEMA_KEY,
-    GEO_SCHEMA_KEY,
-    MERCHANT_PROCESS_SCHEMA_KEY,
+    COURIER_PROCESS_CLAUSE_KEY,
+    FULFILMENT_V2_CLAUSE_KEY,
+    GEO_CLAUSE_KEY,
+    MERCHANT_PROCESS_CLAUSE_KEY,
     isRedactedSection,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { DELIVERY_LIFECYCLE_STAGES, type ExtractedDocument } from "./types";
 
-/** Match a section by schema key, returning its cleartext form only.
+/** Match a section by clause key, returning its cleartext form only.
  *  Redacted sections (or absent ones) yield undefined — handoff and geo
  *  are not redaction targets in the current Step-2 scope, so a redacted
  *  section here just means the BoL gracefully degrades. */
 function getSectionByKey(
     agreement: Agreement | RedactableAgreement,
-    schemaKey: string,
+    clauseKey: string,
 ): AgreementSection | undefined {
-    const s = agreement.sections.find((x) => x.schema === schemaKey);
+    const s = agreement.sections.find((x) => x.clause === clauseKey);
     if (!s) return undefined;
     return isRedactedSection(s) ? undefined : s;
 }
@@ -88,7 +88,7 @@ export interface BillOfLadingDocument extends ExtractedDocument {
 }
 
 /**
- * BoL stage → per-role schema + event uint8 mapping.
+ * BoL stage → per-role clause + event uint8 mapping.
  *
  *   stage 0 (PreparationStarted)  ← merchant.prep-started        (event 2)
  *   stage 1 (ReadyForPickup)      ← merchant.ready-for-pickup    (event 3)
@@ -102,12 +102,12 @@ export interface BillOfLadingDocument extends ExtractedDocument {
  * (en route, picked up, delivered). Each seller is the sovereign
  * authority over their own events.
  */
-const STAGE_SOURCE: Record<number, { schemaKey: string; eventStage: number }> = {
-    0: { schemaKey: MERCHANT_PROCESS_SCHEMA_KEY, eventStage: 2 },
-    1: { schemaKey: MERCHANT_PROCESS_SCHEMA_KEY, eventStage: 3 },
-    2: { schemaKey: COURIER_PROCESS_SCHEMA_KEY, eventStage: 2 },
-    3: { schemaKey: COURIER_PROCESS_SCHEMA_KEY, eventStage: 3 },
-    4: { schemaKey: COURIER_PROCESS_SCHEMA_KEY, eventStage: 6 },
+const STAGE_SOURCE: Record<number, { clauseKey: string; eventStage: number }> = {
+    0: { clauseKey: MERCHANT_PROCESS_CLAUSE_KEY, eventStage: 2 },
+    1: { clauseKey: MERCHANT_PROCESS_CLAUSE_KEY, eventStage: 3 },
+    2: { clauseKey: COURIER_PROCESS_CLAUSE_KEY, eventStage: 2 },
+    3: { clauseKey: COURIER_PROCESS_CLAUSE_KEY, eventStage: 3 },
+    4: { clauseKey: COURIER_PROCESS_CLAUSE_KEY, eventStage: 6 },
 };
 
 export function extractBillOfLading(
@@ -115,8 +115,8 @@ export function extractBillOfLading(
     agreement: Agreement | RedactableAgreement,
     attestations: readonly AttestationRecord[],
 ): BillOfLadingDocument {
-    const fulfilment = getSectionByKey(agreement, FULFILMENT_V2_SCHEMA_KEY);
-    const geo = getSectionByKey(agreement, GEO_SCHEMA_KEY);
+    const fulfilment = getSectionByKey(agreement, FULFILMENT_V2_CLAUSE_KEY);
+    const geo = getSectionByKey(agreement, GEO_CLAUSE_KEY);
     const fulfilmentData = fulfilment?.data as { handoffPoints?: unknown } | undefined;
     const handoffPointsArr = Array.isArray(fulfilmentData?.handoffPoints)
         ? fulfilmentData.handoffPoints
@@ -130,25 +130,25 @@ export function extractBillOfLading(
         classOfService?: string;
     } | undefined;
 
-    // Index per-role attestations for THIS order by (schemaKey, stage). The
+    // Index per-role attestations for THIS order by (clauseKey, stage). The
     // BoL only applies to the current order; cross-order attestations need
     // to be passed in scoped to the right orderHash by the caller.
     const byKey = new Map<string, AttestationRecord>();
     for (const att of attestations) {
         if (att.orderHash !== order.id) continue;
         if (
-            att.schemaId !== MERCHANT_PROCESS_SCHEMA_KEY
-            && att.schemaId !== COURIER_PROCESS_SCHEMA_KEY
+            att.clauseId !== MERCHANT_PROCESS_CLAUSE_KEY
+            && att.clauseId !== COURIER_PROCESS_CLAUSE_KEY
         ) continue;
-        // Last-write-wins for the same (schema, stage); live kernel typically
-        // only sees one attestation per (order, schema, stage) since validators
+        // Last-write-wins for the same (clause, stage); live kernel typically
+        // only sees one attestation per (order, clause, stage) since validators
         // reject re-attestation of the same envelope.
-        byKey.set(`${att.schemaId}:${att.stage}`, att);
+        byKey.set(`${att.clauseId}:${att.stage}`, att);
     }
 
     const stages: BolStageReceipt[] = DELIVERY_LIFECYCLE_STAGES.map(({ id, name }) => {
         const source = STAGE_SOURCE[id];
-        const att = source ? byKey.get(`${source.schemaKey}:${source.eventStage}`) : undefined;
+        const att = source ? byKey.get(`${source.clauseKey}:${source.eventStage}`) : undefined;
         if (!att) return { stageId: id, stageName: name, attested: false };
         return {
             stageId: id,

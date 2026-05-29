@@ -17,7 +17,7 @@ const WITH_HISTORY: TrackRecord = {
     sellersUsed: 4,
     auctionJobsWon: 3,
     attestationsEmitted: 25,
-    attestationsBySchema: [{ schemaId: "0xabc", count: 25 }],
+    attestationsByClause: [{ clauseId: "0xabc", count: 25 }],
 };
 
 const NO_HISTORY: TrackRecord = {
@@ -32,7 +32,7 @@ const NO_HISTORY: TrackRecord = {
     sellersUsed: 0,
     auctionJobsWon: 0,
     attestationsEmitted: 0,
-    attestationsBySchema: [],
+    attestationsByClause: [],
 };
 
 describe("SellerTrackRecord", () => {

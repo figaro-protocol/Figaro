@@ -28,10 +28,10 @@
  * Both helpers return `null` on failure (parse error, polluted-only object,
  * non-OK response) so consumers can branch cleanly without try/catch.
  *
- * Note: the helpers do NOT do schema validation. They only ensure the
+ * Note: the helpers do NOT do clause validation. They only ensure the
  * result is structurally safe to consume. Callers that need typed access
  * (specific fields with specific types) should still validate the shape
- * via Zod / parseSchemaSpec / hand-rolled checks.
+ * via Zod / parseClauseSpec / hand-rolled checks.
  */
 
 const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);

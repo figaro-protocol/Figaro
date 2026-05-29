@@ -84,7 +84,7 @@ export interface SubmitDisclosureInventoryCapabilityAction {
     orderHash: string;
 }
 
-/** Merchant-process event types — re-exported from the SDK schema enum to
+/** Merchant-process event types — re-exported from the SDK clause enum to
  *  keep the capability descriptor and the on-chain validator's enum in
  *  lockstep. */
 export type MerchantProcessEventKind =
@@ -95,7 +95,7 @@ export type MerchantProcessEventKind =
     | "handed-off"
     | "cancelled";
 
-/** Courier-process event types — re-exported from the SDK schema enum. */
+/** Courier-process event types — re-exported from the SDK clause enum. */
 export type CourierProcessEventKind =
     | "available"
     | "accepted"

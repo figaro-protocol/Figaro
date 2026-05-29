@@ -24,8 +24,8 @@ import {
     type Agreement,
     type AgreementSection,
     type RedactableAgreement,
-    PROXIMITY_POLICY_SCHEMA_KEY,
-    PROXIMITY_PROOF_SCHEMA_KEY,
+    PROXIMITY_POLICY_CLAUSE_KEY,
+    PROXIMITY_PROOF_CLAUSE_KEY,
     isRedactedSection,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
@@ -35,7 +35,7 @@ import type { AttestationReceipt, ExtractedDocument } from "./types";
 function findPolicySection(
     agreement: Agreement | RedactableAgreement,
 ): AgreementSection | undefined {
-    const s = agreement.sections.find((x) => x.schema === PROXIMITY_POLICY_SCHEMA_KEY);
+    const s = agreement.sections.find((x) => x.clause === PROXIMITY_POLICY_CLAUSE_KEY);
     if (!s) return undefined;
     return isRedactedSection(s) ? undefined : s;
 }
@@ -52,8 +52,8 @@ export interface ProximityDocument extends ExtractedDocument {
     proofs: AttestationReceipt[];
 }
 
-function attestationMatchesProofSchema(att: AttestationRecord): boolean {
-    return att.schemaId === PROXIMITY_PROOF_SCHEMA_KEY;
+function attestationMatchesProofClause(att: AttestationRecord): boolean {
+    return att.clauseId === PROXIMITY_PROOF_CLAUSE_KEY;
 }
 
 export function extractProximity(
@@ -70,7 +70,7 @@ export function extractProximity(
     const proofs: AttestationReceipt[] = [];
     for (const att of attestations) {
         if (att.orderHash !== order.id) continue;
-        if (!attestationMatchesProofSchema(att)) continue;
+        if (!attestationMatchesProofClause(att)) continue;
         proofs.push({
             contentRef: att.contentRef,
             attester: att.attester,

@@ -368,14 +368,14 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
             <Text style={styles.h2}>Clauses ({contract.clauses.length})</Text>
             <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
-                    <Text style={[styles.tCell, { flex: 2 }]}>Schema</Text>
+                    <Text style={[styles.tCell, { flex: 2 }]}>Clause</Text>
                     <Text style={[styles.tCell, { flex: 3 }]}>Title</Text>
                     <Text style={[styles.tCellMono, { flex: 4 }]}>Leaf hash</Text>
                 </View>
                 {contract.clauses.map((clause) => (
-                    <View key={clause.schemaKey} style={styles.tableRow}>
+                    <View key={clause.clauseKey} style={styles.tableRow}>
                         <Text style={[styles.tCellMono, { flex: 2 }]}>
-                            {clause.schemaKey}
+                            {clause.clauseKey}
                             {clause.sealed ? " 🔒" : ""}
                         </Text>
                         <Text style={[styles.tCell, { flex: 3 }]}>
@@ -623,10 +623,10 @@ function EmissionsPage({ doc }: { doc: AuditBundle["emissions"] }) {
                         <Text style={styles.metadataValue}>{doc.standardLabel}</Text>
                     </View>
                 )}
-                {doc.standardSchemaKey && (
+                {doc.standardClauseKey && (
                     <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>schemaId</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{doc.standardSchemaKey}</Text>
+                        <Text style={styles.metadataKey}>clauseId</Text>
+                        <Text style={[styles.metadataValue, styles.mono]}>{doc.standardClauseKey}</Text>
                     </View>
                 )}
                 {doc.scope !== undefined && (
@@ -665,8 +665,8 @@ function EmissionsPage({ doc }: { doc: AuditBundle["emissions"] }) {
             <Text style={styles.note}>
                 Each contentRef = keccak256(`(uint256 grams)`). Original
                 grams value recoverable from the transaction calldata.
-                Standard identity lives in the schemaId — there is one sister
-                schema per accounting framework.
+                Standard identity lives in the clauseId — there is one sister
+                clause per accounting framework.
             </Text>
             <PageFooter agreementHash={doc.agreementHash} processId={doc.processId} />
         </Page>
@@ -762,7 +762,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                 Sovereign event logs from off-chain sellers. Per CLAUDE.md, the
                 buyer&apos;s actions are the kernel events (commit / resolveProcess);
                 merchants and couriers record theirs via these per-role process
-                schemas to make their physical-world state changes tamper-proof.
+                clauses to make their physical-world state changes tamper-proof.
                 Each contentRef = keccak256(`(uint8 eventType, string evidenceUri)`);
                 eventType is an index into the role-specific event enum.
             </Text>

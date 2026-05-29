@@ -37,10 +37,10 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import {
     readAssemblyClause,
     readAssemblyOrderGhgStandards,
-    APPLICABLE_LAW_SCHEMA_KEY,
-    ARBITRATION_KLEROS_SCHEMA_KEY,
-    MERCHANT_PROCESS_SCHEMA_KEY,
-    PROXIMITY_POLICY_SCHEMA_KEY,
+    APPLICABLE_LAW_CLAUSE_KEY,
+    ARBITRATION_KLEROS_CLAUSE_KEY,
+    MERCHANT_PROCESS_CLAUSE_KEY,
+    PROXIMITY_POLICY_CLAUSE_KEY,
     type Agreement,
 } from "@/lib/core/agreementManifest";
 import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
@@ -93,7 +93,7 @@ function assemblyJurisdictionFields(
     manifest: { agreements: Record<string, Agreement> },
 ): Record<string, string> {
     const out: Record<string, string> = {};
-    const kleros = readAssemblyClause(manifest, ARBITRATION_KLEROS_SCHEMA_KEY);
+    const kleros = readAssemblyClause(manifest, ARBITRATION_KLEROS_CLAUSE_KEY);
     if (kleros) {
         for (const key of ["klerosCourt", "klerosMinJurors"]) {
             const v = kleros.data[key];
@@ -101,7 +101,7 @@ function assemblyJurisdictionFields(
             else if (typeof v === "number") out[key] = String(v);
         }
     }
-    const law = readAssemblyClause(manifest, APPLICABLE_LAW_SCHEMA_KEY);
+    const law = readAssemblyClause(manifest, APPLICABLE_LAW_CLAUSE_KEY);
     if (law) {
         for (const key of ["applicableLaw", "forum", "language"]) {
             const v = law.data[key];
@@ -143,7 +143,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
     // The seller's accepted-token identity declaration: pricing-token +
     // accepted-tokens come from THEIR profile, not from project-level
     // CONTRACTS.* env vars. The env-var fallback only kicks in for fixture /
-    // pre-schema-split catalogues that don't carry a defaultTokenAddress.
+    // pre-clause-split catalogues that don't carry a defaultTokenAddress.
     const currency = (sellerCatalogue?.defaultTokenAddress
         ?? CONTRACTS.mockToken
         ?? CONTRACTS.permitToken) as `0x${string}`;
@@ -266,7 +266,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
     const sellerPartnerAddresses = useMemo(() => {
         const picked = boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
         return picked?.counterpartyBindings
-            .find((cb) => cb.schemaId === "figaro-courier-process-v1")?.addresses ?? [];
+            .find((cb) => cb.clauseId === "figaro-courier-process-v1")?.addresses ?? [];
     }, [boundAssemblies, fulfillmentMode]);
     // The merchant's public-graph track record — settlement + coordination
     // history reconstructed from on-chain events.
@@ -529,7 +529,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                 pickedAssembly.manifest.orders[0].agreementHash
                             ] as Agreement | undefined;
                             const hasMerchantProcess = !!rootAgreement?.sections.find(
-                                (s) => s.schema === MERCHANT_PROCESS_SCHEMA_KEY,
+                                (s) => s.clause === MERCHANT_PROCESS_CLAUSE_KEY,
                             );
                             return hasMerchantProcess ? { merchantProcessIncluded: true } : {};
                         })()
@@ -564,7 +564,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                 pickedAssembly.manifest.orders[0].agreementHash
                             ] as Agreement | undefined;
                             const policy = rootAgreement?.sections.find(
-                                (s) => s.schema === PROXIMITY_POLICY_SCHEMA_KEY,
+                                (s) => s.clause === PROXIMITY_POLICY_CLAUSE_KEY,
                             );
                             const bands = (policy?.data as { bands?: string[] } | undefined)?.bands ?? [];
                             return bands.length > 0 ? { proximityBands: bands } : {};
@@ -597,7 +597,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             //    manifest's remaining orders in topological order ──────────
             // Generic over any topology (delivery's root→courier, the
             // kit-assembly diamond, …). Each non-root order's seller is read
-            // from the seller's counterpartyBindings by the schema that
+            // from the seller's counterpartyBindings by the clause that
             // order carries; its clauses come from the assembly manifest; its
             // synthetic parent ids are remapped to the real on-chain order
             // hashes as they commit; the global cumulative value accumulates
@@ -620,18 +620,18 @@ export function SellerDetailView({ sellerAddress }: Props) {
             // the price the buyer sees is the price that commits.
             for (const { node, seller: boundSeller } of planSubOrderSellers(pickedAssembly!)) {
                 const agreement = manifest.agreements[node.agreementHash!];
-                const nodeSchemas = (agreement?.sections ?? []).map((s) => s.schema);
+                const nodeClauses = (agreement?.sections ?? []).map((s) => s.clause);
                 const parentOrderHashes = (getTopologyParentOrderHashes(agreement) ?? [])
                     .map((pid) => realOrderHash.get(pid))
                     .filter((h): h is `0x${string}` => !!h);
-                const isCourierEdge = nodeSchemas.includes("figaro-courier-process-v1")
+                const isCourierEdge = nodeClauses.includes("figaro-courier-process-v1")
                     && fulfillmentMode?.startsWith("deliver:");
 
                 // ── Dutch-auction courier edge: deferred to an auction ──
                 // It joins the process when a courier claims it; the order
                 // page commits it post-claim from the stashed draft.
                 if (isCourierEdge && fulfillmentMode === "deliver:dutch-auction") {
-                    const daBands = (readAssemblyClause(manifest, PROXIMITY_POLICY_SCHEMA_KEY)
+                    const daBands = (readAssemblyClause(manifest, PROXIMITY_POLICY_CLAUSE_KEY)
                         ?.data as { bands?: string[] } | undefined)?.bands ?? [];
                     stashSellerDraft(processId, {
                         buyer,
@@ -679,7 +679,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     seller = sellerSelection.seller;
                     payment = parseToken(sellerSelection.price, tokenDecimals);
                     sellerToNotify = seller;
-                    const bands = (readAssemblyClause(manifest, PROXIMITY_POLICY_SCHEMA_KEY)
+                    const bands = (readAssemblyClause(manifest, PROXIMITY_POLICY_CLAUSE_KEY)
                         ?.data as { bands?: string[] } | undefined)?.bands ?? [];
                     const ghgStandards = readAssemblyOrderGhgStandards(manifest, node.agreementHash);
                     manifestFields = {

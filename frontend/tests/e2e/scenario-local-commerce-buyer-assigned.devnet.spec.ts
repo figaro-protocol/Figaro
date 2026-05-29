@@ -152,7 +152,7 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
             orders: Array<{ id: string; agreementHash: string }>;
             agreements: Record<string, {
                 version: string;
-                sections: Array<{ schema: string; data: Record<string, unknown> }>;
+                sections: Array<{ clause: string; data: Record<string, unknown> }>;
             }>;
         };
 
@@ -167,7 +167,7 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
 
         // Root order — delivery / buyer-assigned, plus the merchant
         // seller-process clause. Geo is default-on by RPGF design.
-        expect(rootAgreement.sections.map((s) => s.schema).sort()).toEqual([
+        expect(rootAgreement.sections.map((s) => s.clause).sort()).toEqual([
             'figaro-arbitration-kleros-v1',
             'figaro-commerce-v1',
             'figaro-fulfilment-v2',
@@ -175,17 +175,17 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
             'figaro-merchant-process-v1',
             'figaro-topology-v1',
         ]);
-        const fulfilment = rootAgreement.sections.find((s) => s.schema === 'figaro-fulfilment-v2');
+        const fulfilment = rootAgreement.sections.find((s) => s.clause === 'figaro-fulfilment-v2');
         expect(fulfilment?.data.modalities).toEqual(['delivery']);
         expect(fulfilment?.data.coordinations).toEqual(['buyer-assigned']);
         expect(fulfilment?.data.handoffPoints).toEqual(['face-to-face']);
-        const rootTopology = rootAgreement.sections.find((s) => s.schema === 'figaro-topology-v1');
+        const rootTopology = rootAgreement.sections.find((s) => s.clause === 'figaro-topology-v1');
         expect(rootTopology?.data.topologyMode).toBe('root');
 
         // Courier sub-order — the courier seller-process clause, the
         // authored proximity-policy handoff clause + its proximity-proof
         // placeholder leaf, and a topology section linking back to the root.
-        expect(courierAgreement.sections.map((s) => s.schema).sort()).toEqual([
+        expect(courierAgreement.sections.map((s) => s.clause).sort()).toEqual([
             'figaro-arbitration-kleros-v1',
             'figaro-commerce-v1',
             'figaro-courier-process-v1',
@@ -194,9 +194,9 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
             'figaro-proximity-proof-v1',
             'figaro-topology-v1',
         ]);
-        const courierProximity = courierAgreement.sections.find((s) => s.schema === 'figaro-proximity-policy-v1');
+        const courierProximity = courierAgreement.sections.find((s) => s.clause === 'figaro-proximity-policy-v1');
         expect(courierProximity?.data.bands).toEqual(['zone-wifi']);
-        const courierTopology = courierAgreement.sections.find((s) => s.schema === 'figaro-topology-v1');
+        const courierTopology = courierAgreement.sections.find((s) => s.clause === 'figaro-topology-v1');
         expect(courierTopology?.data.topologyMode).toBe('explicit');
         expect(courierTopology?.data.parentOrderHashes).toEqual([rootOrder.id]);
 

@@ -22,7 +22,7 @@ import {
     COMMITMENT_TYPES,
     CORE_ABI,
     ATTESTATION_COORDINATOR_ABI,
-    SCHEMA_REGISTRY_ABI,
+    CLAUSE_REGISTRY_ABI,
     buildSectionInclusionProof,
     computeAgreementHash,
     getSectionDataBytes,
@@ -32,9 +32,9 @@ import {
     embeddedSpec,
     encodeContentFromSpec,
     type ProximityBand,
-} from '@figaro/core/schemas';
+} from '@figaro/core/clauses';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
-import { GHG_SCHEMA_KEY, GHG_SCHEMA_ID } from '@/lib/core/agreementManifest';
+import { GHG_CLAUSE_KEY, GHG_CLAUSE_ID } from '@/lib/core/agreementManifest';
 import { ZERO_PROCESS_ID } from '@/lib/shared/evm';
 import { gotoAsWallet } from './devnet-multi-test';
 
@@ -62,7 +62,7 @@ const MERCHANT_PRE_HANDOFF_STEPS = ['order-received', 'accepted', 'prep-started'
  *  `btn-merchant-proximity-proof` click pairs with the proximity-proof. */
 const MERCHANT_HANDED_OFF_STAGE = 4;
 const ATTESTATION_EVENT_ABI = parseAbi([
-    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)',
+    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)',
 ]);
 
 const BUYER_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
@@ -75,17 +75,17 @@ const ERC20_TEST_ABI = parseAbi([
 
 const DISCLOSURE_KIND = { commitment: 0, inventory: 1, restatement: 2, verification: 3 } as const;
 
-const MERCHANT_PROCESS_SCHEMA_KEY = 'figaro-merchant-process-v1';
-const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex(MERCHANT_PROCESS_SCHEMA_KEY));
-const COURIER_PROCESS_SCHEMA_KEY = 'figaro-courier-process-v1';
-const COURIER_PROCESS_SCHEMA_ID = keccak256(stringToHex(COURIER_PROCESS_SCHEMA_KEY));
-const GHG_MEASUREMENT_SCHEMA_ID = keccak256(stringToHex('figaro-ghg-measurement-v1'));
-const PROXIMITY_POLICY_SCHEMA_KEY = 'figaro-proximity-policy-v1';
-const PROXIMITY_PROOF_SCHEMA_KEY = 'figaro-proximity-proof-v1';
-const PROXIMITY_PROOF_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_PROOF_SCHEMA_KEY));
+const MERCHANT_PROCESS_CLAUSE_KEY = 'figaro-merchant-process-v1';
+const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex(MERCHANT_PROCESS_CLAUSE_KEY));
+const COURIER_PROCESS_CLAUSE_KEY = 'figaro-courier-process-v1';
+const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex(COURIER_PROCESS_CLAUSE_KEY));
+const GHG_MEASUREMENT_CLAUSE_ID = keccak256(stringToHex('figaro-ghg-measurement-v1'));
+const PROXIMITY_POLICY_CLAUSE_KEY = 'figaro-proximity-policy-v1';
+const PROXIMITY_PROOF_CLAUSE_KEY = 'figaro-proximity-proof-v1';
+const PROXIMITY_PROOF_CLAUSE_ID = keccak256(stringToHex(PROXIMITY_PROOF_CLAUSE_KEY));
 
 /** uint8 band indices the on-chain validator accepts (matches
- *  PROXIMITY_BAND_INDEX in sdk/src/schemas/encode.ts and the validator's
+ *  PROXIMITY_BAND_INDEX in sdk/src/clauses/encode.ts and the validator's
  *  band guard at FigaroProximityProofV1Validator.sol). */
 const PROXIMITY_BAND_INDEX: Record<ProximityBand, number> = {
     'zone-wifi': 1,
@@ -145,7 +145,7 @@ function ghgDisclosureAgreement(buyer: `0x${string}`, seller: `0x${string}`): Ag
         buyer,
         seller,
         sections: [
-            { schema: GHG_SCHEMA_KEY, data: { scope: 1 } },
+            { clause: GHG_CLAUSE_KEY, data: { scope: 1 } },
         ],
     };
 }
@@ -156,7 +156,7 @@ export function merchantProcessAgreement(buyer: `0x${string}`, seller: `0x${stri
         buyer,
         seller,
         sections: [
-            { schema: MERCHANT_PROCESS_SCHEMA_KEY, data: { eventType: 'order-received', evidenceUri: '' } },
+            { clause: MERCHANT_PROCESS_CLAUSE_KEY, data: { eventType: 'order-received', evidenceUri: '' } },
         ],
     };
 }
@@ -167,18 +167,18 @@ function courierProcessAgreement(buyer: `0x${string}`, seller: `0x${string}`): A
         buyer,
         seller,
         sections: [
-            { schema: COURIER_PROCESS_SCHEMA_KEY, data: { eventType: 'available', evidenceUri: '' } },
+            { clause: COURIER_PROCESS_CLAUSE_KEY, data: { eventType: 'available', evidenceUri: '' } },
         ],
     };
 }
 
 /**
  * Courier handoff agreement carrying both halves of the proximity
- * sister-schema split:
+ * sister-clause split:
  *   - figaro-proximity-policy-v1 (Cat-2, committed): which bands the
  *     parties agree to verify against at handoff.
  *   - figaro-proximity-proof-v1 (Cat-1, runtime): placeholder for the
- *     per-handoff witness payload. Cat-1 schemas don't enforce
+ *     per-handoff witness payload. Cat-1 clauses don't enforce
  *     byte-equality against the committed sectionData, but the section
  *     must EXIST in the agreement for the merkle inclusion proof to
  *     open at attest time.
@@ -197,14 +197,14 @@ function proximityHandoffAgreement(
         buyer,
         seller,
         sections: [
-            { schema: COURIER_PROCESS_SCHEMA_KEY, data: { eventType: 'arrived-pickup', evidenceUri: '' } },
-            { schema: PROXIMITY_POLICY_SCHEMA_KEY, data: { bands: [band] } },
+            { clause: COURIER_PROCESS_CLAUSE_KEY, data: { eventType: 'arrived-pickup', evidenceUri: '' } },
+            { clause: PROXIMITY_POLICY_CLAUSE_KEY, data: { bands: [band] } },
             // Cat-1 placeholder: any valid shape. The runtime attestation
             // supplies the real (band, nonce, deviceSig) content; the
             // committed sectionData here is just the placeholder that
             // anchors the section's leaf in the agreement's merkle root.
             {
-                schema: PROXIMITY_PROOF_SCHEMA_KEY,
+                clause: PROXIMITY_PROOF_CLAUSE_KEY,
                 data: {
                     band,
                     nonce: '0x' + '00'.repeat(32),
@@ -215,29 +215,29 @@ function proximityHandoffAgreement(
     };
 }
 
-function agreementReceipt(commitment: CoreCommitment, schemaKey: string) {
+function agreementReceipt(commitment: CoreCommitment, clauseKey: string) {
     const agreement = agreementsByHash.get(commitment.agreementHash);
     if (!agreement) {
         throw new Error(`No agreement cached for ${commitment.agreementHash}`);
     }
-    const section = agreement.sections.find((s) => s.schema === schemaKey);
+    const section = agreement.sections.find((s) => s.clause === clauseKey);
     if (!section) {
-        throw new Error(`Agreement has no section for ${schemaKey}`);
+        throw new Error(`Agreement has no section for ${clauseKey}`);
     }
     const sectionData = getSectionDataBytes(section);
-    const { proof } = buildSectionInclusionProof(agreement, schemaKey);
+    const { proof } = buildSectionInclusionProof(agreement, clauseKey);
     return { sectionData, proof };
 }
 
 // ── Exported types ──────────────────────────────────────────────────────────
 // Grams and contentRef are not derivable from `figaro-ghg-iso-14064-v1` under
-// Phase-4a — that schema's content is `(uint8 scope)` and the validator
+// Phase-4a — that clause's content is `(uint8 scope)` and the validator
 // enforces content == sectionData. The grams channel lives in
 // `figaro-ghg-measurement-v1` (Category-1, runtime-only); specs assert on
 // attestation existence and associated order hash.
 
 export type SeededGhgScenario = {
-    schemaId: `0x${string}`;
+    clauseId: `0x${string}`;
     processId: `0x${string}`;
     rootOrderHash: `0x${string}`;
     supplierOrderHash: `0x${string}`;
@@ -262,7 +262,7 @@ type DeploymentConfig = {
     figaroCore?: `0x${string}`;
     tokenAddress?: `0x${string}`;
     attestationCoordinator?: `0x${string}`;
-    schemaRegistry?: `0x${string}`;
+    clauseRegistry?: `0x${string}`;
     dutchAuction?: `0x${string}`;
     sellerRegistry?: `0x${string}`;
     assemblyRegistry?: `0x${string}`;
@@ -285,7 +285,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_FIGARO_CORE') config.figaroCore = value;
             if (key === 'NEXT_PUBLIC_TOKEN_ADDRESS') config.tokenAddress = value;
             if (key === 'NEXT_PUBLIC_ATTESTATION_COORDINATOR') config.attestationCoordinator = value;
-            if (key === 'NEXT_PUBLIC_SCHEMA_REGISTRY') config.schemaRegistry = value;
+            if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRY') config.clauseRegistry = value;
             if (key === 'NEXT_PUBLIC_DUTCH_AUCTION') config.dutchAuction = value;
             if (key === 'NEXT_PUBLIC_SELLER_REGISTRY') config.sellerRegistry = value;
             if (key === 'NEXT_PUBLIC_ASSEMBLY_REGISTRY') config.assemblyRegistry = value;
@@ -297,7 +297,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
         config.figaroCore = config.figaroCore ?? contents.figaroCore;
         config.tokenAddress = config.tokenAddress ?? contents.tokenAddress;
         config.attestationCoordinator = config.attestationCoordinator ?? (contents as any).attestationCoordinator;
-        config.schemaRegistry = config.schemaRegistry ?? (contents as any).schemaRegistry;
+        config.clauseRegistry = config.clauseRegistry ?? (contents as any).clauseRegistry;
         config.dutchAuction = config.dutchAuction ?? (contents as any).dutchAuction;
         config.sellerRegistry = config.sellerRegistry ?? contents.sellerRegistry;
         config.assemblyRegistry = config.assemblyRegistry ?? (contents as any).assemblyRegistry;
@@ -515,36 +515,36 @@ export async function ensureTokenApprovals(coreAddress: `0x${string}`, tokenAddr
     }
 }
 
-async function ensureGhgSchema(schemaRegistryAddress: `0x${string}`, signerKey: `0x${string}`): Promise<`0x${string}`> {
+async function ensureGhgClause(clauseRegistryAddress: `0x${string}`, signerKey: `0x${string}`): Promise<`0x${string}`> {
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const signer = privateKeyToAccount(signerKey);
     const signerClient = createWalletClient({ account: signer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-    const schemaUriHash = keccak256(stringToHex('ipfs://figaro-ghg-iso-14064/v1'));
+    const clauseUriHash = keccak256(stringToHex('ipfs://figaro-ghg-iso-14064/v1'));
 
     // Check if already registered (idempotent)
     let alreadyRegistered = false;
     try {
         alreadyRegistered = await publicClient.readContract({
-            address: schemaRegistryAddress,
-            abi: SCHEMA_REGISTRY_ABI,
+            address: clauseRegistryAddress,
+            abi: CLAUSE_REGISTRY_ABI,
             functionName: 'registered',
-            args: [GHG_SCHEMA_ID],
+            args: [GHG_CLAUSE_ID],
         }) as boolean;
     } catch { /* not deployed or not registered */ }
 
     if (!alreadyRegistered) {
         const { request } = await publicClient.simulateContract({
             account: signer.address,
-            address: schemaRegistryAddress,
-            abi: SCHEMA_REGISTRY_ABI,
-            functionName: 'registerSchema',
-            args: [GHG_SCHEMA_ID, 1n, schemaUriHash, keccak256(stringToHex('emissions'))],
+            address: clauseRegistryAddress,
+            abi: CLAUSE_REGISTRY_ABI,
+            functionName: 'registerClause',
+            args: [GHG_CLAUSE_ID, 1n, clauseUriHash, keccak256(stringToHex('emissions'))],
         });
         await publicClient.waitForTransactionReceipt({ hash: await signerClient.writeContract(request) });
     }
 
-    return GHG_SCHEMA_ID;
+    return GHG_CLAUSE_ID;
 }
 
 export async function seedGhgDisclosureScenario(): Promise<SeededGhgScenario> {
@@ -552,9 +552,9 @@ export async function seedGhgDisclosureScenario(): Promise<SeededGhgScenario> {
     const coreAddress = resolve('NEXT_PUBLIC_FIGARO_CORE', localConfig.figaroCore)!;
     const tokenAddress = resolve('NEXT_PUBLIC_TOKEN_ADDRESS', localConfig.tokenAddress)!;
     const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator)!;
-    const schemaRegistryAddress = resolve('NEXT_PUBLIC_SCHEMA_REGISTRY', localConfig.schemaRegistry)!;
-    if (!coreAddress || !tokenAddress || !coordinatorAddress || !schemaRegistryAddress) {
-        throw new Error('Missing deployment env for GHG seed (need FIGARO_CORE, TOKEN, ATTESTATION_COORDINATOR, SCHEMA_REGISTRY)');
+    const clauseRegistryAddress = resolve('NEXT_PUBLIC_CLAUSE_REGISTRY', localConfig.clauseRegistry)!;
+    if (!coreAddress || !tokenAddress || !coordinatorAddress || !clauseRegistryAddress) {
+        throw new Error('Missing deployment env for GHG seed (need FIGARO_CORE, TOKEN, ATTESTATION_COORDINATOR, CLAUSE_REGISTRY)');
     }
 
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
@@ -563,7 +563,7 @@ export async function seedGhgDisclosureScenario(): Promise<SeededGhgScenario> {
     const supplier = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
     const supplierClient = createWalletClient({ account: supplier, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-    const schemaId = await ensureGhgSchema(schemaRegistryAddress, BUYER_PRIVATE_KEY);
+    const clauseId = await ensureGhgClause(clauseRegistryAddress, BUYER_PRIVATE_KEY);
     await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_PRIVATE_KEY, RESTAURANT_PRIVATE_KEY, SUPPLIER_PRIVATE_KEY);
 
     // Root order: buyer ↔ restaurant, GHG-disclosure clause committed.
@@ -579,17 +579,17 @@ export async function seedGhgDisclosureScenario(): Promise<SeededGhgScenario> {
         agreement: ghgDisclosureAgreement(buyer.address as `0x${string}`, supplier.address as `0x${string}`),
     });
 
-    // Inventory-stage attestation from supplier. Category-2 schema — content
+    // Inventory-stage attestation from supplier. Category-2 clause — content
     // must byte-equal the committed sectionData.
-    const { sectionData, proof } = agreementReceipt(supplierCommitment, GHG_SCHEMA_KEY);
+    const { sectionData, proof } = agreementReceipt(supplierCommitment, GHG_CLAUSE_KEY);
     const { request: attestReq } = await publicClient.simulateContract({
         account: supplier.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
         functionName: 'attestAsSeller',
-        args: [supplierCommitment, supplierCommitment, schemaId, DISCLOSURE_KIND.inventory, sectionData, proof, sectionData],
+        args: [supplierCommitment, supplierCommitment, clauseId, DISCLOSURE_KIND.inventory, sectionData, proof, sectionData],
     });
     await publicClient.waitForTransactionReceipt({ hash: await supplierClient.writeContract(attestReq) });
 
-    return { schemaId, processId, rootOrderHash, supplierOrderHash };
+    return { clauseId, processId, rootOrderHash, supplierOrderHash };
 }
 
 
@@ -682,7 +682,7 @@ export async function restaurantPrepSignals(foodOrderHash: `0x${string}`, _deliv
     const foodCommitment = seededCommitments.get(foodOrderHash);
     if (!foodCommitment) throw new Error(`Missing seeded commitment for ${foodOrderHash}`);
 
-    const { sectionData, proof } = agreementReceipt(foodCommitment, MERCHANT_PROCESS_SCHEMA_KEY);
+    const { sectionData, proof } = agreementReceipt(foodCommitment, MERCHANT_PROCESS_CLAUSE_KEY);
 
     // Preparing: restaurant attests prep-started on the food order
     const prepContent = encodeContentFromSpec(
@@ -692,7 +692,7 @@ export async function restaurantPrepSignals(foodOrderHash: `0x${string}`, _deliv
     const { request: prepReq } = await publicClient.simulateContract({
         account: restaurant.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
         functionName: 'attestAsSeller',
-        args: [foodCommitment, foodCommitment, MERCHANT_PROCESS_SCHEMA_ID, MERCHANT_EVENT.prepStarted, sectionData, proof, prepContent],
+        args: [foodCommitment, foodCommitment, MERCHANT_PROCESS_CLAUSE_ID, MERCHANT_EVENT.prepStarted, sectionData, proof, prepContent],
     });
     await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(prepReq) });
 
@@ -704,7 +704,7 @@ export async function restaurantPrepSignals(foodOrderHash: `0x${string}`, _deliv
     const { request: readyReq } = await publicClient.simulateContract({
         account: restaurant.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
         functionName: 'attestAsSeller',
-        args: [foodCommitment, foodCommitment, MERCHANT_PROCESS_SCHEMA_ID, MERCHANT_EVENT.readyForPickup, sectionData, proof, readyContent],
+        args: [foodCommitment, foodCommitment, MERCHANT_PROCESS_CLAUSE_ID, MERCHANT_EVENT.readyForPickup, sectionData, proof, readyContent],
     });
     await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(readyReq) });
 }
@@ -733,7 +733,7 @@ const PROXIMITY_VALIDATOR_ERROR_FRAGMENTS = parseAbi([
     'error ZeroNonce()',
     'error DeviceSigTooShort(uint256 length)',
     'error DeviceSigTooLong(uint256 length)',
-    'error SchemaIdMismatch(bytes32 expected, bytes32 actual)',
+    'error ClauseIdMismatch(bytes32 expected, bytes32 actual)',
 ]);
 
 const COORDINATOR_ABI_WITH_PROXIMITY_ERRORS = [
@@ -767,7 +767,7 @@ export async function attestProximityProofAsSeller(opts: {
     const commitment = seededCommitments.get(opts.orderHash);
     if (!commitment) throw new Error(`Missing seeded commitment for ${opts.orderHash}`);
 
-    const { sectionData, proof } = agreementReceipt(commitment, PROXIMITY_PROOF_SCHEMA_KEY);
+    const { sectionData, proof } = agreementReceipt(commitment, PROXIMITY_PROOF_CLAUSE_KEY);
     const content = encodeContentFromSpec(
         embeddedSpec('figaro-proximity-proof-v1')!,
         { band: opts.band, nonce: opts.nonce, deviceSig: opts.deviceSig },
@@ -786,7 +786,7 @@ export async function attestProximityProofAsSeller(opts: {
         args: [
             commitment,
             commitment,
-            PROXIMITY_PROOF_SCHEMA_ID,
+            PROXIMITY_PROOF_CLAUSE_ID,
             PROXIMITY_BAND_INDEX[opts.band],
             sectionData,
             proof,
@@ -828,7 +828,7 @@ export async function attestGhgAsBuyer(
     const commitment = seededCommitments.get(orderHash);
     if (!commitment) throw new Error(`Missing seeded commitment for ${orderHash} — call seedGhg*Scenario first`);
 
-    const { sectionData, proof } = agreementReceipt(commitment, GHG_SCHEMA_KEY);
+    const { sectionData, proof } = agreementReceipt(commitment, GHG_CLAUSE_KEY);
 
     const buyer = privateKeyToAccount(BUYER_PRIVATE_KEY);
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
@@ -839,7 +839,7 @@ export async function attestGhgAsBuyer(
         address: coordinatorAddress,
         abi: ATTESTATION_COORDINATOR_ABI,
         functionName: 'attestAsBuyer',
-        args: [commitment, GHG_SCHEMA_ID, stage, sectionData, proof, sectionData],
+        args: [commitment, GHG_CLAUSE_ID, stage, sectionData, proof, sectionData],
     });
     // Wait for the receipt before returning — callers query the
     // Attestation event right after, and an unmined tx makes that
@@ -1283,8 +1283,8 @@ export async function runDeliveryCoordination(
             address: coordinator, abi: ATTESTATION_EVENT_ABI, eventName: 'Attestation',
             args: { processId: opts.processId }, fromBlock: 0n,
         });
-        return (all as Array<{ args: { schemaId?: Hex; stage?: number } }>)
-            .filter((e) => e.args.schemaId === COURIER_PROCESS_SCHEMA_ID)
+        return (all as Array<{ args: { clauseId?: Hex; stage?: number } }>)
+            .filter((e) => e.args.clauseId === COURIER_PROCESS_CLAUSE_ID)
             .map((e) => Number(e.args.stage));
     };
 
@@ -1314,7 +1314,7 @@ export async function runDeliveryCoordination(
                 args: { orderHash, attester: seller },
                 fromBlock: 0n,
             });
-            if (events.some((e) => (e.args as { schemaId?: Hex }).schemaId === GHG_MEASUREMENT_SCHEMA_ID)) break;
+            if (events.some((e) => (e.args as { clauseId?: Hex }).clauseId === GHG_MEASUREMENT_CLAUSE_ID)) break;
             if (Date.now() > deadline) throw new Error(`emissions measurement for ${orderHash} timed out`);
             await new Promise((r) => setTimeout(r, 1000));
         }
@@ -1341,11 +1341,11 @@ export async function runDeliveryCoordination(
             args: { processId: opts.processId, attester: opts.merchant as Hex }, fromBlock: 0n,
         });
         const handedOff = events.some((e) => {
-            const args = (e as { args: { schemaId?: Hex; stage?: number } }).args;
-            return args.schemaId === MERCHANT_PROCESS_SCHEMA_ID && Number(args.stage) === MERCHANT_HANDED_OFF_STAGE;
+            const args = (e as { args: { clauseId?: Hex; stage?: number } }).args;
+            return args.clauseId === MERCHANT_PROCESS_CLAUSE_ID && Number(args.stage) === MERCHANT_HANDED_OFF_STAGE;
         });
         const proofWitness = events.some(
-            (e) => (e as { args: { schemaId?: Hex } }).args.schemaId === PROXIMITY_PROOF_SCHEMA_ID,
+            (e) => (e as { args: { clauseId?: Hex } }).args.clauseId === PROXIMITY_PROOF_CLAUSE_ID,
         );
         if (handedOff && proofWitness) break;
         if (Date.now() > merchantHandoffDeadline) {

@@ -7,7 +7,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = {
     title: "Integrate — Figaro Protocol",
     description:
-        "@figaro/core: ABIs, event parsers, deterministic state reconstruction, commitment builders, action queue, schema encoders. Four subpath exports. The chain is the primary record; no separate gateway, indexer, or subgraph required.",
+        "@figaro/core: ABIs, event parsers, deterministic state reconstruction, commitment builders, action queue, clause encoders. Four subpath exports. The chain is the primary record; no separate gateway, indexer, or subgraph required.",
 };
 
 export default function Integrate() {
@@ -17,12 +17,12 @@ export default function Integrate() {
                 title="SDK and composition surface."
                 lead={
                     <>
-                        <code>@figaro/core</code> ships ABIs, event parsers, deterministic state reconstruction, commitment builders, an action queue, and schema encoders. The chain is the primary record &mdash; no separate Figaro gateway, indexer, or subgraph required.
+                        <code>@figaro/core</code> ships ABIs, event parsers, deterministic state reconstruction, commitment builders, an action queue, and clause encoders. The chain is the primary record &mdash; no separate Figaro gateway, indexer, or subgraph required.
                     </>
                 }
             >
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
-                    Kernel context lives at <Link href="/protocol" className="underline">Protocol</Link>; contract catalogue at <Link href="/spec" className="underline">/spec</Link>; schema architecture at <Link href="/schemas" className="underline">/schemas</Link>; composition tools at <Link href="/builders" className="underline">/builders</Link>.
+                    Kernel context lives at <Link href="/protocol" className="underline">Protocol</Link>; contract catalogue at <Link href="/spec" className="underline">/spec</Link>; clause architecture at <Link href="/clauses" className="underline">/clauses</Link>; composition tools at <Link href="/builders" className="underline">/builders</Link>.
                 </p>
             </MarketingHero>
 
@@ -52,8 +52,8 @@ export default function Integrate() {
                     <LabelledListRow label="/extensions" labelWidth="narrow" uppercase>
                         <strong>Dutch auction, attestation/GHG encoding, geo/handoff utilities, did:web resolution.</strong> Everything at the protocol tier that isn&apos;t kernel-critical but is commonly needed.
                     </LabelledListRow>
-                    <LabelledListRow label="/schemas" labelWidth="narrow" uppercase>
-                        <strong>Meta-schema validator + per-schema content encoders.</strong> Canonical spec format that the SP1 prover and Solidity validators mirror. Layer-A of the three-layer validation pattern (see <Link href="/schemas" className="underline">/schemas</Link>).
+                    <LabelledListRow label="/clauses" labelWidth="narrow" uppercase>
+                        <strong>Meta-clause validator + per-clause content encoders.</strong> Canonical spec format that the SP1 prover and Solidity validators mirror. Layer-A of the three-layer validation pattern (see <Link href="/clauses" className="underline">/clauses</Link>).
                     </LabelledListRow>
                 </ul>
             </MarketingSection>
@@ -79,7 +79,7 @@ export default function Integrate() {
                         Per-process at resolution with order count.
                     </LabelledListRow>
                     <LabelledListRow label="Attestation" labelWidth="wide">
-                        Schema-typed attestation from the coordinator: orderHash, processId, attester, schemaId, stage, contentRef (= keccak256(content)).
+                        Clause-typed attestation from the coordinator: orderHash, processId, attester, clauseId, stage, contentRef (= keccak256(content)).
                     </LabelledListRow>
                     <LabelledListRow label="MinterRegistered" labelWidth="wide">
                         FIG token minter registry. Not relevant to settlement; relevant if you&apos;re indexing the token.
@@ -139,7 +139,7 @@ const state = reconstruct(events);
                         Architectural example &mdash; carbon offset before settlement
                     </h3>
                     <p className="text-sm text-ink-body leading-relaxed mb-4">
-                        A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the GHG schema has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset seller registered with the assembly, adding the offset purchase to the same process before closing. (The offset seller is whichever counterparty the assembly admits; integrators could register Klima DAO, Toucan, Moss, or any bonded seller.)
+                        A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the GHG clause has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset seller registered with the assembly, adding the offset purchase to the same process before closing. (The offset seller is whichever counterparty the assembly admits; integrators could register Klima DAO, Toucan, Moss, or any bonded seller.)
                     </p>
                     <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
                         <li><strong>UI surfaces the option.</strong> A live quote from a bonded offset seller registered against the assembly.</li>
@@ -193,7 +193,7 @@ const state = reconstruct(events);
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro</a>. SDK lives at <code>sdk/</code>.</li>
                     <li><strong>SDK README:</strong> <code>sdk/README.md</code> in the repo. Covers every subpath export and the test-harness conventions.</li>
-                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>DUTCH_AUCTION_ABI</code>, <code>SCHEMA_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>, <code>RPGF_MINTER_ABI</code>. All exported from <code>@figaro/core</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
+                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>DUTCH_AUCTION_ABI</code>, <code>CLAUSE_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>, <code>RPGF_MINTER_ABI</code>. All exported from <code>@figaro/core</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Tests as documentation:</strong> <code>sdk/tests/</code> includes round-trip tests of every exported primitive. If the README is ambiguous, read the tests.</li>
                 </ul>
                 <p className="mt-8 text-sm text-ink-muted leading-relaxed">
@@ -203,7 +203,7 @@ const state = reconstruct(events);
                     <Link href="/builders" className="underline">Builders</Link>{" "}(composition tools);&nbsp;
                     <Link href="/local-commerce" className="underline">Local Commerce</Link>{" "}(reference assembly);&nbsp;
                     <Link href="/discover" className="underline">Discover</Link>{" "}(seller catalogue);&nbsp;
-                    <Link href="/schemas" className="underline">Schemas</Link>{" "}(attestation content for indexers).
+                    <Link href="/clauses" className="underline">Clauses</Link>{" "}(attestation content for indexers).
                 </p>
             </MarketingSection>
 
@@ -211,11 +211,11 @@ const state = reconstruct(events);
                 <ul className="space-y-3 text-base">
                     <li>
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, clause authors, assembly authors, token issuance, humans and agents.</span>
                     </li>
                     <li>
-                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
-                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
+                        <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference clauses, and the authoring checklist.</span>
                     </li>
                     <li>
                         <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>

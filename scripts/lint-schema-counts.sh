@@ -1,9 +1,9 @@
 #!/bin/bash
 # lint-schema-counts.sh — Gate: every prose/test reference to the schema
-# count must match the on-disk count in `frontend/lib/shared/schemas/`.
+# count must match the on-disk count in `frontend/lib/shared/clauses/`.
 #
 # Source of truth (single):
-#   total   = `ls frontend/lib/shared/schemas/*.json | wc -l`
+#   total   = `ls frontend/lib/shared/clauses/*.json | wc -l`
 #   runtime = total - 1   (subtract figaro-topology-v1, manifest-only)
 #
 # Rationale: every schema add/remove silently desyncs ~10 downstream
@@ -35,7 +35,7 @@
 
 set -u
 
-SCHEMAS_DIR="frontend/lib/shared/schemas"
+SCHEMAS_DIR="frontend/lib/shared/clauses"
 
 if [ ! -d "$SCHEMAS_DIR" ]; then
     echo "[schema-counts] schemas dir not found: $SCHEMAS_DIR" >&2

@@ -11,7 +11,7 @@
  * Data sources:
  *  - `useSemanticProcessWorkspace` → process state, capabilities,
  *    `resolveProcess` execution path.
- *  - `getAttestationsByProcessAndSchema` → merchant-process events.
+ *  - `getAttestationsByProcessAndClause` → merchant-process events.
  *  - `getAttestationContent` + `decodeAbiParameters` → recover the
  *    original `(uint8 eventType, string evidenceUri)` from calldata.
  *  - `resolveRuntimeSubjectByAddress` → display names for buyer/seller.
@@ -31,27 +31,27 @@ import { SellerAuctionPanel } from "@/components/core/SellerAuctionPanel";
 import { GHGAnchorPanel } from "@/components/core/GHGAnchorPanel";
 import { GHGWorkflowPanel } from "@/components/core/GHGWorkflowPanel";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
-import { getAttestationsByProcessAndSchema } from "@/lib/core/indexer";
+import { getAttestationsByProcessAndClause } from "@/lib/core/indexer";
 import { getAttestationContent } from "@/lib/mechanisms/useGHGDisclosure";
 import { useSellerListings } from "@/lib/mechanisms/useSellerListings";
 import { findListingByAddress } from "@/lib/shared/sellerListing";
 import type { SemanticTone } from "@/lib/shared/tones";
-import { MERCHANT_PROCESS_SCHEMA_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
+import { MERCHANT_PROCESS_CLAUSE_ID, useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
 import {
-    COURIER_PROCESS_SCHEMA_ID,
-    PROXIMITY_SCHEMA_ID,
+    COURIER_PROCESS_CLAUSE_ID,
+    PROXIMITY_CLAUSE_ID,
     encodeProximityProofContent,
     useCourierProcessActions,
 } from "@/lib/mechanisms/useCourierProcess";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import {
     getSection,
-    COURIER_PROCESS_SCHEMA_KEY,
-    MERCHANT_PROCESS_SCHEMA_KEY,
-    PROXIMITY_POLICY_SCHEMA_KEY,
+    COURIER_PROCESS_CLAUSE_KEY,
+    MERCHANT_PROCESS_CLAUSE_KEY,
+    PROXIMITY_POLICY_CLAUSE_KEY,
 } from "@/lib/core/agreementManifest";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
-import type { CourierEvent, MerchantEvent } from "@figaro/core/schemas";
+import type { CourierEvent, MerchantEvent } from "@figaro/core/clauses";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -362,11 +362,11 @@ export function OrderTimelineView({ processId }: Props) {
         setEventsLoading(true);
         (async () => {
             try {
-                const logs = await getAttestationsByProcessAndSchema(
+                const logs = await getAttestationsByProcessAndClause(
                     publicClient,
                     chainId,
                     processId,
-                    MERCHANT_PROCESS_SCHEMA_ID,
+                    MERCHANT_PROCESS_CLAUSE_ID,
                 );
                 if (cancelled) return;
                 const decoded = await Promise.all(logs.map(async (log) => {
@@ -409,8 +409,8 @@ export function OrderTimelineView({ processId }: Props) {
         let cancelled = false;
         (async () => {
             try {
-                const logs = await getAttestationsByProcessAndSchema(
-                    publicClient, chainId, processId, PROXIMITY_SCHEMA_ID,
+                const logs = await getAttestationsByProcessAndClause(
+                    publicClient, chainId, processId, PROXIMITY_CLAUSE_ID,
                 );
                 if (cancelled) return;
                 const attesters = logs
@@ -432,8 +432,8 @@ export function OrderTimelineView({ processId }: Props) {
         let cancelled = false;
         (async () => {
             try {
-                const logs = await getAttestationsByProcessAndSchema(
-                    publicClient, chainId, processId, COURIER_PROCESS_SCHEMA_ID,
+                const logs = await getAttestationsByProcessAndClause(
+                    publicClient, chainId, processId, COURIER_PROCESS_CLAUSE_ID,
                 );
                 if (cancelled) return;
                 const stages = logs
@@ -466,7 +466,7 @@ export function OrderTimelineView({ processId }: Props) {
 
     const isBuyer = !!rootOrder && hexEqual(address, rootOrder.buyer);
     // The order the connected wallet sells — the root order or ANY sub-order.
-    // The seller-side surface is driven by the schemas THIS order carries, not
+    // The seller-side surface is driven by the clauses THIS order carries, not
     // by a fixed merchant-vs-courier role: figaro-merchant-process-v1 →
     // lifecycle events; figaro-courier-process-v1 → courier proximity proof;
     // figaro-proximity-policy-v1 → handoff witness. One surface, every
@@ -486,13 +486,13 @@ export function OrderTimelineView({ processId }: Props) {
     }, [sellerOrders, selectedSellerOrderId]);
     const isSeller = !!sellerOrder;
     const isSellerRoot = !!sellerOrder && !!rootOrder && sellerOrder.orderId === rootOrder.orderId;
-    const sellerOrderSchemas = useMemo(() => {
+    const sellerOrderClauses = useMemo(() => {
         if (!sellerOrder) return [] as string[];
         const agreement = workspace.processAgreements.get(sellerOrder.agreementHash) ?? null;
-        return agreement ? agreement.sections.map((section) => section.schema) : [];
+        return agreement ? agreement.sections.map((section) => section.clause) : [];
     }, [sellerOrder, workspace.processAgreements]);
-    const sellerHasMerchantProcess = sellerOrderSchemas.includes(MERCHANT_PROCESS_SCHEMA_KEY);
-    const sellerHasCourierProcess = sellerOrderSchemas.includes(COURIER_PROCESS_SCHEMA_KEY);
+    const sellerHasMerchantProcess = sellerOrderClauses.includes(MERCHANT_PROCESS_CLAUSE_KEY);
+    const sellerHasCourierProcess = sellerOrderClauses.includes(COURIER_PROCESS_CLAUSE_KEY);
     const role: "buyer" | "seller" | "spectator" =
         isBuyer ? "buyer" : isSeller ? "seller" : "spectator";
 
@@ -528,7 +528,7 @@ export function OrderTimelineView({ processId }: Props) {
     const rootHasProximityPolicy = useMemo(() => {
         if (!rootOrder) return false;
         const agreement = workspace.processAgreements.get(rootOrder.agreementHash) ?? null;
-        return !!agreement && !!getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
+        return !!agreement && !!getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY);
     }, [rootOrder, workspace.processAgreements]);
     // Buyer↔merchant handoff (no intermediary): the root carries proximity AND
     // the process is a single order — the buyer co-witnesses (pickup / on-site).
@@ -539,14 +539,14 @@ export function OrderTimelineView({ processId }: Props) {
     // edge the merchant cross-witnesses).
     const sellerProximityTargetOrder = useMemo(() => {
         if (!sellerOrder) return null;
-        if (sellerOrderSchemas.includes(PROXIMITY_POLICY_SCHEMA_KEY)) return sellerOrder;
+        if (sellerOrderClauses.includes(PROXIMITY_POLICY_CLAUSE_KEY)) return sellerOrder;
         if (!isSellerRoot || !processModel) return null;
         return processModel.orders.find((order) => {
             if (order.orderId === sellerOrder.orderId) return false;
             const agreement = workspace.processAgreements.get(order.agreementHash) ?? null;
-            return !!agreement && !!getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
+            return !!agreement && !!getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY);
         }) ?? null;
-    }, [sellerOrder, sellerOrderSchemas, isSellerRoot, processModel, workspace.processAgreements]);
+    }, [sellerOrder, sellerOrderClauses, isSellerRoot, processModel, workspace.processAgreements]);
     const buyerAlreadyAttestedProximity = useMemo(() => {
         if (!address) return false;
         return proximityAttesters.some((a) => hexEqual(a, address));
@@ -601,7 +601,7 @@ export function OrderTimelineView({ processId }: Props) {
     const readCommittedBand = (orderAgreementHash: string): number => {
         const agreement = workspace.processAgreements.get(orderAgreementHash) ?? null;
         const committedBand = agreement
-            ? ((getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY)
+            ? ((getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY)
                 ?.data as { bands?: string[] } | undefined)?.bands ?? [])[0]
             : undefined;
         return PROXIMITY_BAND_INDEX[committedBand ?? ""] ?? 1;
@@ -619,8 +619,8 @@ export function OrderTimelineView({ processId }: Props) {
             // Which handoff edge: the courier-process event log decides. Once
             // arrived-pickup is attested, this proof certifies the
             // courier→buyer dropoff; before it, the merchant→courier pickup.
-            const courierLogs = await getAttestationsByProcessAndSchema(
-                publicClient, chainId, processId, COURIER_PROCESS_SCHEMA_ID,
+            const courierLogs = await getAttestationsByProcessAndClause(
+                publicClient, chainId, processId, COURIER_PROCESS_CLAUSE_ID,
             );
             const pickupDone = courierLogs.some(
                 (log) => Number(((log.args ?? {}) as { stage?: unknown }).stage ?? 0)
@@ -672,7 +672,7 @@ export function OrderTimelineView({ processId }: Props) {
 
     // Buyer-side pickup witness — symmetric to the merchant path, but
     // through attestAsBuyer. The buyer attests proximity-proof against
-    // their own (= the merchant↔buyer root) order. No process schema for
+    // their own (= the merchant↔buyer root) order. No process clause for
     // buyers per kernel-participant principle — proximity-proof is the
     // one runtime witness the buyer co-signs.
     const handleBuyerPickupProof = async () => {
@@ -684,7 +684,7 @@ export function OrderTimelineView({ processId }: Props) {
             const band = readCommittedBand(rootOrder.agreementHash);
             await submitBuyerAttestation({
                 orderHash: rootOrder.orderId as Hex,
-                schemaId: PROXIMITY_SCHEMA_ID,
+                clauseId: PROXIMITY_CLAUSE_ID,
                 stage: band,
                 content: encodeProximityProofContent({
                     band, nonce, deviceSig: COURIER_DEVICE_SIG_PLACEHOLDER,

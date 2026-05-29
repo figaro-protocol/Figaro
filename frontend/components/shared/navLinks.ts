@@ -8,7 +8,7 @@
 //   item here.
 //
 // - `NAV_LINKS_APP_PRIMARY` is the (app) second row, desktop only. Each
-//   entry MUST be a protocol surface (a role-bound tool, schema family,
+//   entry MUST be a protocol surface (a role-bound tool, clause family,
 //   or registry), not a product feature. Adding ad-hoc product nav here
 //   regresses the protocol-publication discipline (see
 //   `feedback_protocol_not_product_ui.md`).

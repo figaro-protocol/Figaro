@@ -18,8 +18,8 @@
 import type { Address } from "viem";
 import type { Order } from "@/lib/core/store";
 import {
-    APPLICABLE_LAW_SCHEMA_KEY,
-    ARBITRATION_KLEROS_SCHEMA_KEY,
+    APPLICABLE_LAW_CLAUSE_KEY,
+    ARBITRATION_KLEROS_CLAUSE_KEY,
     getSection,
     type Agreement,
 } from "@/lib/core/agreementManifest";
@@ -88,7 +88,7 @@ export function resolveProcessRecourse(
             ? (agreements.get(order.agreementHash) ?? null)
             : null;
         if (!agreement) continue;
-        const klerosSection = getSection(agreement, ARBITRATION_KLEROS_SCHEMA_KEY);
+        const klerosSection = getSection(agreement, ARBITRATION_KLEROS_CLAUSE_KEY);
         if (klerosSection) {
             const recourse = parseArbitrationKlerosSection(klerosSection.data);
             if (recourse) {
@@ -99,7 +99,7 @@ export function resolveProcessRecourse(
                 }
             }
         }
-        const lawSection = getSection(agreement, APPLICABLE_LAW_SCHEMA_KEY);
+        const lawSection = getSection(agreement, APPLICABLE_LAW_CLAUSE_KEY);
         if (lawSection) {
             const recourse = parseApplicableLawSection(lawSection.data);
             if (recourse) {

@@ -6,7 +6,7 @@ export const ZERO_PROCESS_ID = ZERO_BYTES32;
 
 /**
  * Case-insensitive equality for any 0x-hex value: addresses (which
- * may carry EIP-55 mixed-case checksums), keccak hashes, schema IDs,
+ * may carry EIP-55 mixed-case checksums), keccak hashes, clause IDs,
  * merkle leaves. Returns `false` if either side is `null` or
  * `undefined` so call sites can drop their explicit guards.
  *

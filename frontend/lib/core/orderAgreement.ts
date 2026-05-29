@@ -4,23 +4,23 @@ import {
     buildAgreement,
     buildCommerceSection,
     buildTopologySection,
-    FULFILMENT_V2_SCHEMA_KEY,
-    GEO_SCHEMA_KEY,
-    GHG_SCHEMA_KEY,
-    GHG_DISCLOSURE_SCHEMA_KEYS,
-    GHG_MEASUREMENT_SCHEMA_KEY,
-    GHG_STANDARD_TO_SCHEMA,
-    GHG_SCHEMA_TO_STANDARD,
-    ARBITRATION_KLEROS_SCHEMA_KEY,
-    APPLICABLE_LAW_SCHEMA_KEY,
-    CONSENT_SCHEMA_KEY,
-    COURIER_PROCESS_SCHEMA_KEY,
-    MERCHANT_PROCESS_SCHEMA_KEY,
-    PROXIMITY_POLICY_SCHEMA_KEY,
-    PROXIMITY_PROOF_SCHEMA_KEY,
+    FULFILMENT_V2_CLAUSE_KEY,
+    GEO_CLAUSE_KEY,
+    GHG_CLAUSE_KEY,
+    GHG_DISCLOSURE_CLAUSE_KEYS,
+    GHG_MEASUREMENT_CLAUSE_KEY,
+    GHG_STANDARD_TO_CLAUSE,
+    GHG_CLAUSE_TO_STANDARD,
+    ARBITRATION_KLEROS_CLAUSE_KEY,
+    APPLICABLE_LAW_CLAUSE_KEY,
+    CONSENT_CLAUSE_KEY,
+    COURIER_PROCESS_CLAUSE_KEY,
+    MERCHANT_PROCESS_CLAUSE_KEY,
+    PROXIMITY_POLICY_CLAUSE_KEY,
+    PROXIMITY_PROOF_CLAUSE_KEY,
     getSection,
     manifestFieldsToGeoSection,
-    TOPOLOGY_SCHEMA_KEY,
+    TOPOLOGY_CLAUSE_KEY,
     type Agreement,
     type AgreementSection,
     type TopologyMode,
@@ -95,7 +95,7 @@ export function deriveCanonicalFulfilmentMethod(
         if (c === "buyer-assigned") return "deliver:buyer-assigned";
         if (c === "seller-assigned") return "deliver:seller-assigned";
         if (c === "dutch-auction") return "deliver:dutch-auction";
-        // Delivery without coordination is invalid at the schema level; the
+        // Delivery without coordination is invalid at the clause level; the
         // encoder will throw. Surface as null here so the caller knows.
         return null;
     }
@@ -167,9 +167,9 @@ export interface AgreementSummary {
         method: CanonicalFulfilmentMethod | null;
     };
     ghg?: {
-        /** Schema keys of each GHG disclosure clause in the agreement
+        /** Clause keys of each GHG disclosure clause in the agreement
          *  (e.g., "figaro-ghg-iso-14064-v1"). Multi-valued. */
-        schemaKeys: readonly string[];
+        clauseKeys: readonly string[];
         /** Human-readable label of the first declared standard (back-compat). */
         standard?: string;
         /** Scope from the first declared standard (back-compat). */
@@ -224,13 +224,13 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         // offered. Default to "seller-assigned" when delivery has no
         // coordination specified, and drop coordinations when delivery isn't
         // offered (template/runtime mistakes shouldn't break encoding here —
-        // the schema validator catches genuine drift downstream).
+        // the clause validator catches genuine drift downstream).
         if (modalities.includes("delivery")) {
             data.coordinations = coordinations.length > 0 ? coordinations : ["seller-assigned"];
         }
         if (handoffPoints.length > 0) data.handoffPoints = handoffPoints;
         sections.push({
-            schema: FULFILMENT_V2_SCHEMA_KEY,
+            clause: FULFILMENT_V2_CLAUSE_KEY,
             data,
         });
     }
@@ -243,59 +243,59 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     // auto-anchored at creation. Either flag may also be set explicitly by
     // the designer via the drawer for non-delivery flows.
     //
-    // Category-1 schemas: empty sectionData; the runtime attestation supplies
+    // Category-1 clauses: empty sectionData; the runtime attestation supplies
     // the eventType + evidenceUri content. Without these sections the on-chain
     // inclusion proof for the matching attestations cannot open.
     const merchantProcessFlag = params.manifestFields?.merchantProcessIncluded === true;
     const deliveryOffered = modalities.includes("delivery");
     if (merchantProcessFlag || deliveryOffered) {
         sections.push({
-            schema: MERCHANT_PROCESS_SCHEMA_KEY,
+            clause: MERCHANT_PROCESS_CLAUSE_KEY,
             data: {},
         });
     }
     if (params.manifestFields?.courierProcessIncluded === true) {
         sections.push({
-            schema: COURIER_PROCESS_SCHEMA_KEY,
+            clause: COURIER_PROCESS_CLAUSE_KEY,
             data: {},
         });
     }
 
     // Multi-valued: each declared GHG standard produces its own disclosure
-    // clause. `ghgStandards` (array of schemaIds OR legacy standard labels)
+    // clause. `ghgStandards` (array of clauseIds OR legacy standard labels)
     // is the new path; the legacy single `ghgStandard` + `ghgScope` is read
     // as a fallback for any caller that hasn't migrated.
     const ghgStandards = readManifestArray(
         params.manifestFields,
         "ghgStandards",
-        GHG_DISCLOSURE_SCHEMA_KEYS as ReadonlyArray<string>,
+        GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>,
     );
     const legacyStandard = readManifestExtra(params.manifestFields, ["ghgStandard", "ghgMethodology"]);
     const ghgScope = readManifestExtra(params.manifestFields, ["ghgScope"]);
-    const resolvedSchemaKeys: string[] = ghgStandards.length > 0
+    const resolvedClauseKeys: string[] = ghgStandards.length > 0
         ? ghgStandards
         : legacyStandard
-            ? [GHG_STANDARD_TO_SCHEMA[legacyStandard] ?? GHG_SCHEMA_KEY]
+            ? [GHG_STANDARD_TO_CLAUSE[legacyStandard] ?? GHG_CLAUSE_KEY]
             : [];
-    for (const schemaKey of resolvedSchemaKeys) {
+    for (const clauseKey of resolvedClauseKeys) {
         const data: Record<string, unknown> = {};
         const parsedScope = ghgScope ? Number(ghgScope) : 1;
         data.scope = Number.isFinite(parsedScope) ? parsedScope : 1;
-        sections.push({ schema: schemaKey, data });
+        sections.push({ clause: clauseKey, data });
     }
     // A GHG disclosure commitment needs its runtime measurement clause to
     // disclose against: pair figaro-ghg-measurement-v1 with any disclosure
     // standard so the seller can file grams measurements at runtime and the
     // buyer can size carbon offsets. The committed agreement must carry this
     // section for the measurement attestation's inclusion proof to open.
-    if (resolvedSchemaKeys.length > 0) {
-        sections.push({ schema: GHG_MEASUREMENT_SCHEMA_KEY, data: {} });
+    if (resolvedClauseKeys.length > 0) {
+        sections.push({ clause: GHG_MEASUREMENT_CLAUSE_KEY, data: {} });
     }
 
     const proximityBands = readManifestArray(params.manifestFields, "proximityBands", ALLOWED_PROXIMITY_BANDS);
     if (proximityBands.length > 0) {
         sections.push({
-            schema: PROXIMITY_POLICY_SCHEMA_KEY,
+            clause: PROXIMITY_POLICY_CLAUSE_KEY,
             data: { bands: proximityBands },
         });
         // Category-1 placeholder leaf for figaro-proximity-proof-v1. The
@@ -304,7 +304,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         // against a section committed in the agreement — without this leaf
         // the courier cannot attest the proximity handoff at all.
         sections.push({
-            schema: PROXIMITY_PROOF_SCHEMA_KEY,
+            clause: PROXIMITY_PROOF_CLAUSE_KEY,
             data: {
                 band: proximityBands[0],
                 nonce: `0x${"00".repeat(32)}`,
@@ -323,7 +323,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     if (klerosCourtValue) {
         const parsed = klerosMinJurorsRaw ? Number(klerosMinJurorsRaw) : 3;
         sections.push({
-            schema: ARBITRATION_KLEROS_SCHEMA_KEY,
+            clause: ARBITRATION_KLEROS_CLAUSE_KEY,
             data: {
                 klerosCourt: klerosCourtValue,
                 klerosMinJurors: Number.isFinite(parsed) && parsed >= 1 ? parsed : 3,
@@ -335,7 +335,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         if (forum) data.forum = forum;
         if (language) data.language = language;
         sections.push({
-            schema: APPLICABLE_LAW_SCHEMA_KEY,
+            clause: APPLICABLE_LAW_CLAUSE_KEY,
             data,
         });
     }
@@ -361,7 +361,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         : [];
     if (consentDocuments.length > 0) {
         sections.push({
-            schema: CONSENT_SCHEMA_KEY,
+            clause: CONSENT_CLAUSE_KEY,
             data: { documents: consentDocuments },
         });
     }
@@ -380,7 +380,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
 export function getTopologyParentOrderHashes(agreement: Agreement | null | undefined): string[] | null {
     if (!agreement) return null;
 
-    const section = getSection(agreement, TOPOLOGY_SCHEMA_KEY);
+    const section = getSection(agreement, TOPOLOGY_CLAUSE_KEY);
     if (!section) return null;
 
     const rawParentOrderHashes = (section.data as Record<string, unknown>).parentOrderHashes;
@@ -394,7 +394,7 @@ export function getTopologyParentOrderHashes(agreement: Agreement | null | undef
 export function getTopologyMode(agreement: Agreement | null | undefined): TopologyMode | null {
     if (!agreement) return null;
 
-    const section = getSection(agreement, TOPOLOGY_SCHEMA_KEY);
+    const section = getSection(agreement, TOPOLOGY_CLAUSE_KEY);
     if (!section) return null;
 
     const topologyMode = (section.data as Record<string, unknown>).topologyMode;
@@ -408,16 +408,16 @@ export function getTopologyMode(agreement: Agreement | null | undefined): Topolo
 export function summarizeAgreement(agreement: Agreement | null | undefined): AgreementSummary | null {
     if (!agreement) return null;
 
-    const geoSection = getSection(agreement, GEO_SCHEMA_KEY);
-    const topologySection = getSection(agreement, TOPOLOGY_SCHEMA_KEY);
-    const fulfilmentSection = getSection(agreement, FULFILMENT_V2_SCHEMA_KEY);
-    const proximitySection = getSection(agreement, PROXIMITY_POLICY_SCHEMA_KEY);
-    const arbitrationSection = getSection(agreement, ARBITRATION_KLEROS_SCHEMA_KEY);
-    const applicableLawSection = getSection(agreement, APPLICABLE_LAW_SCHEMA_KEY);
-    const consentSection = getSection(agreement, CONSENT_SCHEMA_KEY);
+    const geoSection = getSection(agreement, GEO_CLAUSE_KEY);
+    const topologySection = getSection(agreement, TOPOLOGY_CLAUSE_KEY);
+    const fulfilmentSection = getSection(agreement, FULFILMENT_V2_CLAUSE_KEY);
+    const proximitySection = getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY);
+    const arbitrationSection = getSection(agreement, ARBITRATION_KLEROS_CLAUSE_KEY);
+    const applicableLawSection = getSection(agreement, APPLICABLE_LAW_CLAUSE_KEY);
+    const consentSection = getSection(agreement, CONSENT_CLAUSE_KEY);
     // GHG disclosure is multi-valued: agreement may carry one section per
     // standard the merchant reports under.
-    const ghgDisclosures = GHG_DISCLOSURE_SCHEMA_KEYS
+    const ghgDisclosures = GHG_DISCLOSURE_CLAUSE_KEYS
         .map((key) => ({ key, section: getSection(agreement, key) }))
         .filter(({ section }) => section);
 
@@ -468,9 +468,9 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
             : undefined,
         ghg: ghgDisclosures.length > 0
             ? {
-                schemaKeys: ghgDisclosures.map((d) => d.key),
+                clauseKeys: ghgDisclosures.map((d) => d.key),
                 // Single-standard back-compat for callers that take one label.
-                standard: GHG_SCHEMA_TO_STANDARD[ghgDisclosures[0].key],
+                standard: GHG_CLAUSE_TO_STANDARD[ghgDisclosures[0].key],
                 scope: typeof ghgDisclosures[0].section!.data.scope === "number"
                     ? ghgDisclosures[0].section!.data.scope
                     : undefined,

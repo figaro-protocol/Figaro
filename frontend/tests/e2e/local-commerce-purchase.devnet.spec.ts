@@ -195,11 +195,11 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
                 if (!key?.startsWith('figaro:agreement:')) continue;
                 try {
                     const ag = JSON.parse(window.localStorage.getItem(key) ?? '') as {
-                        sections?: Array<{ schema?: string; data?: Record<string, unknown> }>;
+                        sections?: Array<{ clause?: string; data?: Record<string, unknown> }>;
                     };
                     const sections = ag.sections ?? [];
-                    if (!sections.some((s) => s.schema === 'figaro-proximity-policy-v1')) continue;
-                    const geo = sections.find((s) => s.schema === 'figaro-geo-v2');
+                    if (!sections.some((s) => s.clause === 'figaro-proximity-policy-v1')) continue;
+                    const geo = sections.find((s) => s.clause === 'figaro-geo-v2');
                     const geoData = geo?.data as
                         { originGeohash?: string; destinationGeohash?: string } | undefined;
                     return {

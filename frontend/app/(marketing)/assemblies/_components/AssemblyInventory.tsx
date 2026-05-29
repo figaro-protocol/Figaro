@@ -1,7 +1,7 @@
 "use client";
 
 import {
-    formatAssemblySchemaList,
+    formatAssemblyClauseList,
     useAssemblyChoices,
 } from "@/lib/mechanisms/useAssemblyRegistry";
 
@@ -15,7 +15,7 @@ function truncateAddress(addr: `0x${string}`): string {
  * Reuses `useAssemblyChoices` — the same composition the seller profile
  * and the designer's published-list consume. Each row's identity (slug,
  * author, content hash) is on-chain; the manifest (name, order count,
- * schemas) fetches lazily from IPFS per row.
+ * clauses) fetches lazily from IPFS per row.
  *
  * Client component because the marketing tier mounts no wallet provider.
  * The read hook reads through the standalone viem client now that
@@ -75,12 +75,12 @@ export function AssemblyInventory() {
                         )}
                         {choice.state === "loaded"
                             && choice.orderCount !== null
-                            && choice.schemas !== null && (
+                            && choice.clauses !== null && (
                                 <p className="text-xs text-ink-body">
                                     {choice.orderCount} order{choice.orderCount === 1 ? "" : "s"}
                                     {" · "}
-                                    {choice.schemas.length} schema{choice.schemas.length === 1 ? "" : "s"}
-                                    {choice.schemas.length > 0 && `: ${formatAssemblySchemaList(choice.schemas)}`}
+                                    {choice.clauses.length} clause{choice.clauses.length === 1 ? "" : "s"}
+                                    {choice.clauses.length > 0 && `: ${formatAssemblyClauseList(choice.clauses)}`}
                                 </p>
                             )}
                         <p className="text-xs text-ink-muted">

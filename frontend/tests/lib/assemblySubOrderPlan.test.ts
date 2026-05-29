@@ -10,7 +10,7 @@ import type { SellerCatalogue } from "@/lib/seller/types";
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
 // B carries proximity-policy, C carries ghg-measurement, D carries
 // proximity-policy (shared with B). Proximity is bound to [Swift, Mercato],
-// so the per-schema cursor hands B→Swift, D→Mercato by commit order.
+// so the per-clause cursor hands B→Swift, D→Mercato by commit order.
 const MERCATO = "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f" as const;
 const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955" as const;
 const ROSSO = "0x976EA74026E726554dB657fA54763abd0C3a0aa9" as const;
@@ -19,14 +19,14 @@ const PROX = "figaro-proximity-policy-v1";
 const GHG = "figaro-ghg-measurement-v1";
 const TOPO = "figaro-topology-v1";
 
-function agreement(parents: string[], roleSchema?: string) {
+function agreement(parents: string[], roleClause?: string) {
     return {
         version: "a1" as const,
         buyer: MERCATO,
         seller: MERCATO,
         sections: [
-            { schema: TOPO, data: { parentOrderHashes: parents } },
-            ...(roleSchema ? [{ schema: roleSchema, data: {} }] : []),
+            { clause: TOPO, data: { parentOrderHashes: parents } },
+            ...(roleClause ? [{ clause: roleClause, data: {} }] : []),
         ],
     };
 }
@@ -37,8 +37,8 @@ const assembly = {
     name: "Kit",
     fulfilmentMethod: null,
     counterpartyBindings: [
-        { schemaId: PROX, addresses: [SWIFT, MERCATO] },
-        { schemaId: GHG, addresses: [ROSSO] },
+        { clauseId: PROX, addresses: [SWIFT, MERCATO] },
+        { clauseId: GHG, addresses: [ROSSO] },
     ],
     manifest: {
         slug: "kit-assembly",
@@ -95,14 +95,14 @@ describe("planSubOrderSellers", () => {
         expect(planSubOrderSellers(assembly).map((p) => p.node.id)).toEqual(["B", "C", "D"]);
     });
 
-    it("assigns sellers by binding, drawing shared-schema siblings by commit order", () => {
+    it("assigns sellers by binding, drawing shared-clause siblings by commit order", () => {
         const plan = planSubOrderSellers(assembly);
         expect(plan.find((p) => p.node.id === "B")!.seller).toBe(SWIFT); // proximity cursor 0
         expect(plan.find((p) => p.node.id === "C")!.seller).toBe(ROSSO); // ghg
         expect(plan.find((p) => p.node.id === "D")!.seller).toBe(MERCATO); // proximity cursor 1
     });
 
-    it("returns a null seller when no binding covers the order's schema", () => {
+    it("returns a null seller when no binding covers the order's clause", () => {
         const unbound = { ...assembly, counterpartyBindings: [] } as unknown as BoundAssembly;
         expect(planSubOrderSellers(unbound).every((p) => p.seller === null)).toBe(true);
     });

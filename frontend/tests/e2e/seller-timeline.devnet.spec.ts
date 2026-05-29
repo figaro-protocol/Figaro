@@ -58,7 +58,7 @@ const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f
 const SELLER_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
 const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
-const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex('figaro-merchant-process-v1'));
+const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex('figaro-merchant-process-v1'));
 
 /** Happy-path merchant events the UI walks in order. Stage indices
  *  match the validator's uint8 enum (mockChannel.ts free of these;
@@ -158,7 +158,7 @@ test.describe('OrderTimelineView seller side (devnet)', () => {
                 fromBlock: 0n,
             });
             const matching = events.filter(
-                (e) => e.args.schemaId === MERCHANT_PROCESS_SCHEMA_ID && e.args.stage === step.stage,
+                (e) => e.args.clauseId === MERCHANT_PROCESS_CLAUSE_ID && e.args.stage === step.stage,
             );
             expect(matching.length, `expected one Attestation for stage ${step.stage} (${step.event})`).toBe(1);
         }

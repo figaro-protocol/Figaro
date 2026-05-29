@@ -47,7 +47,7 @@ export const DISCLOSURE_KIND = {
 // ── GHG Measurement — runtime grams CO2e, Category-1 ─────────────────────────
 //
 // Grams measurements live in `figaro-ghg-measurement-v1` because the
-// disclosure schema (above) is Category-2 and enforces content == sectionData
+// disclosure clause (above) is Category-2 and enforces content == sectionData
 // byte-equality, which is incompatible with freely-varying grams values.
 //
 // Stage envelope:

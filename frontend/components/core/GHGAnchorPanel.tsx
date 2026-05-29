@@ -1,6 +1,6 @@
 /**
- * GHGAnchorPanel — displays GHG schema-typed attestation anchors for a process.
- * V5: event-sourced from AttestationCoordinator Attestation events filtered by GHG schemaId.
+ * GHGAnchorPanel — displays GHG clause-typed attestation anchors for a process.
+ * V5: event-sourced from AttestationCoordinator Attestation events filtered by GHG clauseId.
  */
 "use client";
 
@@ -12,28 +12,28 @@ import {
     formatActualGrams,
 } from "@/lib/mechanisms/useGHGDisclosure";
 import { DISCLOSURE_KIND_LABELS } from "@/lib/mechanisms/contracts";
-import { GHG_SCHEMA_KEY } from "@/lib/core/agreementManifest";
-import { useAllRegisteredSchemas } from "@/lib/mechanisms/useSchemaRegistry";
-import { SCHEMAS_BY_FAMILY, SCHEMA_TIER_MAP } from "@/lib/shared/schemaCategories";
+import { GHG_CLAUSE_KEY } from "@/lib/core/agreementManifest";
+import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
+import { CLAUSES_BY_FAMILY, CLAUSE_TIER_MAP } from "@/lib/shared/clauseCategories";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function GHGAnchorPanel({ processId }: { processId: string }) {
     const { summary, loading } = useProcessDisclosureSummary(processId as Hex | undefined);
-    const { data: registered } = useAllRegisteredSchemas();
+    const { data: registered } = useAllRegisteredClauses();
 
-    // Live set of registered GHG disclosure schemas — intersection of the
-    // on-chain SchemaRegistry events with the bundled emissions family
+    // Live set of registered GHG disclosure clauses — intersection of the
+    // on-chain ClauseRegistry events with the bundled emissions family
     // (designer-time tier excludes figaro-ghg-measurement-v1, which is
-    // runtime). Mirrors SchemaInventory's read-live + intersect pattern.
+    // runtime). Mirrors ClauseInventory's read-live + intersect pattern.
     const applicableStandards = useMemo(() => {
         if (registered === null) return [];
-        const onChain = new Set(registered.map((e) => e.schemaIdHash.toLowerCase()));
-        const emissions = SCHEMAS_BY_FAMILY.find((g) => g.family === "emissions");
+        const onChain = new Set(registered.map((e) => e.clauseIdHash.toLowerCase()));
+        const emissions = CLAUSES_BY_FAMILY.find((g) => g.family === "emissions");
         if (!emissions) return [];
-        return emissions.schemas.filter(
+        return emissions.clauses.filter(
             (s) =>
-                SCHEMA_TIER_MAP[s.schemaId] === "designer-time" &&
-                onChain.has(keccak256(toBytes(s.schemaId)).toLowerCase()),
+                CLAUSE_TIER_MAP[s.clauseId] === "designer-time" &&
+                onChain.has(keccak256(toBytes(s.clauseId)).toLowerCase()),
         );
     }, [registered]);
 
@@ -41,8 +41,8 @@ export function GHGAnchorPanel({ processId }: { processId: string }) {
         return (
             <Card className="bg-white text-black border border-gray-200 shadow-sm" data-testid="ghg-anchor-panel">
                 <div className="p-6 space-y-3">
-                    <h3 className="text-sm font-semibold text-black">GHG Schema Anchors</h3>
-                    <p className="text-xs text-gray-500">Select a process to inspect its schema anchors.</p>
+                    <h3 className="text-sm font-semibold text-black">GHG Clause Anchors</h3>
+                    <p className="text-xs text-gray-500">Select a process to inspect its clause anchors.</p>
                 </div>
             </Card>
         );
@@ -51,14 +51,14 @@ export function GHGAnchorPanel({ processId }: { processId: string }) {
     return (
         <Card className="bg-white text-black border border-gray-200 shadow-sm" data-testid="ghg-anchor-panel">
             <div className="p-6 space-y-4">
-                <h3 className="text-sm font-semibold text-black">GHG Schema Anchors</h3>
-                <p className="text-xs text-gray-500 font-mono">{GHG_SCHEMA_KEY}</p>
+                <h3 className="text-sm font-semibold text-black">GHG Clause Anchors</h3>
+                <p className="text-xs text-gray-500 font-mono">{GHG_CLAUSE_KEY}</p>
 
-                {/* Applicable standards — live from SchemaRegistry */}
+                {/* Applicable standards — live from ClauseRegistry */}
                 <div className="flex flex-wrap gap-1">
                     {applicableStandards.map((s) => (
                         <span
-                            key={s.schemaId}
+                            key={s.clauseId}
                             title={s.description}
                             className="inline-block rounded border border-teal-200 bg-teal-50 px-1.5 py-0.5 text-xs font-medium text-teal-700"
                         >

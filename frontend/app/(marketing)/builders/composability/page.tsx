@@ -39,12 +39,12 @@ export default function Composability() {
                 <p className="text-sm text-ink-muted">
                     Full doctrine:{" "}
                     <a
-                        href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/SCHEMAS.md"
+                        href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/CLAUSES.md"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="underline"
                     >
-                        SCHEMAS.md
+                        CLAUSES.md
                     </a>.
                 </p>
             </MarketingSection>
@@ -54,13 +54,13 @@ export default function Composability() {
                     <div id="tier-1" className="border-l-2 border-default pl-6 scroll-mt-24">
                         <dt className="text-base font-semibold text-ink-heading mb-1">Tier 1 — Compose against existing primitives</dt>
                         <dd className="text-ink-body leading-relaxed">
-                            An assembly is a configuration artifact that binds the deployed kernel, attestation coordinator, schema registry, and validators in force. No new on-chain code; the assembly is the only authored artifact. The equilibrium is unchanged because nothing new is deployed.
+                            An assembly is a configuration artifact that binds the deployed kernel, attestation coordinator, clause registry, and validators in force. No new on-chain code; the assembly is the only authored artifact. The equilibrium is unchanged because nothing new is deployed.
                         </dd>
                     </div>
                     <div id="tier-2" className="border-l-2 border-default-strong pl-6 scroll-mt-24">
                         <dt className="text-base font-semibold text-ink-heading mb-1">Tier 2 — Add a typed clause</dt>
                         <dd className="text-ink-body leading-relaxed">
-                            Register a new <code>schemaId</code> and ship its validation layers in lockstep &mdash; TypeScript and Solidity today; SP1 Rust mirror pending. The settlement substrate is unchanged; the attestation surface extends. The kernel still gates every attestation through the validator; the new schema author owns the validator&apos;s correctness.
+                            Register a new <code>clauseId</code> and ship its validation layers in lockstep &mdash; TypeScript and Solidity today; SP1 Rust mirror pending. The settlement substrate is unchanged; the attestation surface extends. The kernel still gates every attestation through the validator; the new clause author owns the validator&apos;s correctness.
                         </dd>
                     </div>
                     <div id="tier-3" className="border-l-2 border-ink-heading pl-6 scroll-mt-24">
@@ -71,7 +71,7 @@ export default function Composability() {
                     </div>
                 </dl>
                 <p className="text-sm text-ink-muted mt-6">
-                    Operational tools at each tier &mdash; Designer, Schemas, Contracts, SDK, Console &mdash; are catalogued at <Link href="/builders" className="underline">/builders</Link>.
+                    Operational tools at each tier &mdash; Designer, Clauses, Contracts, SDK, Console &mdash; are catalogued at <Link href="/builders" className="underline">/builders</Link>.
                 </p>
             </MarketingSection>
 
@@ -96,7 +96,7 @@ export default function Composability() {
                         <ul className="space-y-2 text-sm text-ink-body leading-relaxed list-disc pl-5">
                             <li>Assembly correctness &mdash; the kernel records the declared structure; it does not verify the workflow is well-formed for its purpose.</li>
                             <li>Custom mechanism contracts &mdash; new failure modes belong to the contract, not the kernel.</li>
-                            <li>Custom schema content &mdash; the validator enforces the declared shape; semantic correctness is the schema author&apos;s.</li>
+                            <li>Custom clause content &mdash; the validator enforces the declared shape; semantic correctness is the clause author&apos;s.</li>
                             <li>Role filling and identity &mdash; the kernel has no KYC. Participation gating is an assembly concern.</li>
                             <li>UI claims &mdash; representing protocol-level guarantees for properties the assembly does not enforce.</li>
                         </ul>
@@ -114,17 +114,17 @@ export default function Composability() {
                     <li>
                         <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>
                         {" — "}
-                        the canonical on-chain surface: kernel, attestation coordinator, schema registry, validators in force, token, batch verifier.
+                        the canonical on-chain surface: kernel, attestation coordinator, clause registry, validators in force, token, batch verifier.
                     </li>
                     <li>
-                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
+                        <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
                         {" — "}
-                        the three-layer validation architecture and the reference schema set.
+                        the three-layer validation architecture and the reference clause set.
                     </li>
                     <li>
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
                         {" — "}
-                        the SDK surface: ABIs, event parsers, deterministic state reconstruction, schema encoders.
+                        the SDK surface: ABIs, event parsers, deterministic state reconstruction, clause encoders.
                     </li>
                 </ul>
             </MarketingSection>
@@ -133,11 +133,11 @@ export default function Composability() {
                 <ul className="space-y-3 text-base">
                     <li>
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, schema authors, assembly authors, token issuance, humans and agents.</span>
+                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, clause authors, assembly authors, token issuance, humans and agents.</span>
                     </li>
                     <li>
-                        <Link href="/schemas" className="text-ink-heading font-medium hover:underline">Schemas</Link>
-                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
+                        <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference clauses, and the authoring checklist.</span>
                     </li>
                     <li>
                         <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>

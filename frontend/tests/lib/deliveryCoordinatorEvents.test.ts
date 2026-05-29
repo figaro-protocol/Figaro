@@ -17,7 +17,7 @@ vi.mock("@/lib/core/contracts", () => ({
             inputs: [
                 { name: "processId", type: "bytes32", indexed: true },
                 { name: "orderHash", type: "bytes32", indexed: true },
-                { name: "schemaId", type: "bytes32", indexed: true },
+                { name: "clauseId", type: "bytes32", indexed: true },
                 { name: "attester", type: "address" },
                 { name: "stage", type: "uint8" },
                 { name: "contentRef", type: "bytes32" },
@@ -30,9 +30,9 @@ vi.mock("@/lib/core/contracts", () => ({
 // Test helpers
 // ---------------------------------------------------------------------------
 
-const MERCHANT_SCHEMA_ID = keccak256(stringToHex("figaro-merchant-process-v1"));
-const COURIER_SCHEMA_ID = keccak256(stringToHex("figaro-courier-process-v1"));
-const PROXIMITY_SCHEMA_ID = keccak256(stringToHex("figaro-proximity-proof-v1"));
+const MERCHANT_CLAUSE_ID = keccak256(stringToHex("figaro-merchant-process-v1"));
+const COURIER_CLAUSE_ID = keccak256(stringToHex("figaro-courier-process-v1"));
+const PROXIMITY_CLAUSE_ID = keccak256(stringToHex("figaro-proximity-proof-v1"));
 
 function makeMockLog(
     eventName: string,
@@ -78,7 +78,7 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toEqual([]);
-        // Single Attestation event query (proximity is now a schema, not a separate event)
+        // Single Attestation event query (proximity is now a clause, not a separate event)
         expect(client.getContractEvents).toHaveBeenCalledTimes(1);
     });
 
@@ -90,7 +90,7 @@ describe("createDeliveryCoordinatorSource", () => {
                     makeMockLog("Attestation", {
                         processId: "0xabc",
                         orderHash: "0xorder1",
-                        schemaId: MERCHANT_SCHEMA_ID,
+                        clauseId: MERCHANT_CLAUSE_ID,
                         attester: "0xRestaurant",
                         stage: 2,
                         contentRef: "0xcontent",
@@ -108,17 +108,17 @@ describe("createDeliveryCoordinatorSource", () => {
         expect(events[0].orderHash).toBe("0xorder1");
         expect(events[0].timestamp).toBe(1700000100);
         expect(events[0].details.attester).toBe("0xRestaurant");
-        expect(events[0].details.schema).toBe("merchant-process");
+        expect(events[0].details.clause).toBe("merchant-process");
     });
 
-    it("maps proximity schema attestation with band stage", async () => {
+    it("maps proximity clause attestation with band stage", async () => {
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient({
             Attestation: [
                 makeMockLog("Attestation", {
                     processId: "0xabc",
                     orderHash: "0xorder2",
-                    schemaId: PROXIMITY_SCHEMA_ID,
+                    clauseId: PROXIMITY_CLAUSE_ID,
                     attester: "0xDriver",
                     stage: 2, // Nearby (BLE ~10m)
                     contentRef: "0xproofhash",
@@ -132,17 +132,17 @@ describe("createDeliveryCoordinatorSource", () => {
         expect(events[0].label).toContain("Proximity Proof");
         expect(events[0].label).toContain("Nearby (BLE ~10m)");
         expect(events[0].eventName).toBe("Attestation");
-        expect(events[0].details.schema).toBe("proximity");
+        expect(events[0].details.clause).toBe("proximity");
     });
 
-    it("maps proximity schema attestation with NFC band", async () => {
+    it("maps proximity clause attestation with NFC band", async () => {
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient({
             Attestation: [
                 makeMockLog("Attestation", {
                     processId: "0xabc",
                     orderHash: "0xorder3",
-                    schemaId: PROXIMITY_SCHEMA_ID,
+                    clauseId: PROXIMITY_CLAUSE_ID,
                     attester: "0xDriver",
                     stage: 3, // Contact (NFC ~4cm)
                     contentRef: "0xproofhash",
@@ -163,7 +163,7 @@ describe("createDeliveryCoordinatorSource", () => {
                 makeMockLog("Attestation", {
                     processId: "0xabc",
                     orderHash: "0xorder4",
-                    schemaId: COURIER_SCHEMA_ID,
+                    clauseId: COURIER_CLAUSE_ID,
                     attester: "0xDriver",
                     stage: 6, // completed
                     contentRef: "0x",
@@ -176,18 +176,18 @@ describe("createDeliveryCoordinatorSource", () => {
         expect(events).toHaveLength(1);
         expect(events[0].label).toBe("Delivered");
         expect(events[0].eventName).toBe("Attestation");
-        expect(events[0].details.schema).toBe("courier-process");
+        expect(events[0].details.clause).toBe("courier-process");
     });
 
-    it("filters out events with non-process and non-proximity schemaId", async () => {
-        const otherSchema = keccak256(stringToHex("figaro-ghg-iso-14064-v1"));
+    it("filters out events with non-process and non-proximity clauseId", async () => {
+        const otherClause = keccak256(stringToHex("figaro-ghg-iso-14064-v1"));
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient({
             Attestation: [
                 makeMockLog("Attestation", {
                     processId: "0xabc",
                     orderHash: "0xorder5",
-                    schemaId: otherSchema,
+                    clauseId: otherClause,
                     attester: "0xSomeone",
                     stage: 0,
                     contentRef: "0x",
@@ -199,7 +199,7 @@ describe("createDeliveryCoordinatorSource", () => {
         expect(events).toHaveLength(0);
     });
 
-    it("collects events from merchant, courier, and proximity schemas", async () => {
+    it("collects events from merchant, courier, and proximity clauses", async () => {
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient(
             {
@@ -207,7 +207,7 @@ describe("createDeliveryCoordinatorSource", () => {
                     makeMockLog("Attestation", {
                         processId: "0xabc",
                         orderHash: "0xo1",
-                        schemaId: MERCHANT_SCHEMA_ID,
+                        clauseId: MERCHANT_CLAUSE_ID,
                         attester: "0xR",
                         stage: 2,
                         contentRef: "0x",
@@ -215,7 +215,7 @@ describe("createDeliveryCoordinatorSource", () => {
                     makeMockLog("Attestation", {
                         processId: "0xabc",
                         orderHash: "0xo2",
-                        schemaId: COURIER_SCHEMA_ID,
+                        clauseId: COURIER_CLAUSE_ID,
                         attester: "0xR",
                         stage: 2,
                         contentRef: "0x",
@@ -223,7 +223,7 @@ describe("createDeliveryCoordinatorSource", () => {
                     makeMockLog("Attestation", {
                         processId: "0xabc",
                         orderHash: "0xo3",
-                        schemaId: PROXIMITY_SCHEMA_ID,
+                        clauseId: PROXIMITY_CLAUSE_ID,
                         attester: "0xD",
                         stage: 2, // Nearby
                         contentRef: "0xproofhash",
@@ -250,7 +250,7 @@ describe("createDeliveryCoordinatorSource", () => {
                 makeMockLog("Attestation", {
                     processId: "0xabc",
                     orderHash: "0xo1",
-                    schemaId: MERCHANT_SCHEMA_ID,
+                    clauseId: MERCHANT_CLAUSE_ID,
                     attester: "0xR",
                     stage: 2,
                     contentRef: "0x",
@@ -258,7 +258,7 @@ describe("createDeliveryCoordinatorSource", () => {
                 makeMockLog("Attestation", {
                     processId: "0xabc",
                     orderHash: "0xo2",
-                    schemaId: MERCHANT_SCHEMA_ID,
+                    clauseId: MERCHANT_CLAUSE_ID,
                     attester: "0xR",
                     stage: 3,
                     contentRef: "0x",

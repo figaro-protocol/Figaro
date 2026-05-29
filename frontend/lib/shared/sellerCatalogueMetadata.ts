@@ -36,7 +36,7 @@ export const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F
  * ("standard"/"express"/"fragile"/"cold-chain"); this helper accepts
  * either and throws a typed error on anything else. Centralising the
  * normalisation here keeps callers — `agreementManifest`, test helpers,
- * future schema bridges — from each re-implementing the catalogue
+ * future clause bridges — from each re-implementing the catalogue
  * convention, and replaces the previous failure mode (a cryptic
  * `numberToHex(undefined)` from viem) with a clear message.
  */
@@ -125,8 +125,8 @@ export interface CatalogueItemMetadata {
     /** Shipping/handling class. Default at commit time: "standard". */
     classOfService?: CatalogueClassOfService;
     /**
-     * Schema-specific attestations attached to this item.
-     * Keyed by schemaKey (must match a key in the seller's supportedSchemas).
+     * Clause-specific attestations attached to this item.
+     * Keyed by clauseKey (must match a key in the seller's supportedClauses).
      * When the buyer selects this item, these attestations become part of
      * the corresponding AgreementSection and are hashed into agreementHash.
      *
@@ -136,7 +136,7 @@ export interface CatalogueItemMetadata {
      * Example — organic certification:
      *   { "figaro-certification-v1": { "certifier": "USDA", "type": "organic" } }
      */
-    schemaAttestations?: Record<string, Record<string, unknown>>;
+    clauseAttestations?: Record<string, Record<string, unknown>>;
 }
 
 /** The effective price + policy resolved for a catalogue item. */
@@ -197,8 +197,8 @@ export interface AcceptedTokenMetadata {
 }
 
 /**
- * A schema the seller declares support for. This is the seller's composability
- * surface — each entry binds the seller to a registered schema from SchemaRegistry.
+ * A clause the seller declares support for. This is the seller's composability
+ * surface — each entry binds the seller to a registered clause from ClauseRegistry.
  *
  * Examples:
  *   - "figaro-merchant-process-v1" → merchant attests their internal order-fulfilment events
@@ -206,17 +206,17 @@ export interface AcceptedTokenMetadata {
  *   - "figaro-ghg-iso-14064-v1" → seller reports GHG emissions per ISO 14064
  *   - "figaro-proximity-policy-v1" → seller commits a required proximity band at agreement time
  *     (paired runtime sister: "figaro-proximity-proof-v1" carrying band+nonce+sig per handoff)
- *   - "figaro-commerce-v1" → seller uses the commerce attestation schema
+ *   - "figaro-commerce-v1" → seller uses the commerce attestation clause
  *
  * This replaces V3's TemplateRegistry: instead of matching protocol-defined
  * templates, each seller composes their own capability set by declaring which
- * schemas they operate under. The buyer reads this to know what to expect.
+ * clauses they operate under. The buyer reads this to know what to expect.
  */
-export interface SupportedSchemaDeclaration {
-    /** Schema key — must match a registered schema in SchemaRegistry.
+export interface SupportedClauseDeclaration {
+    /** Clause key — must match a registered clause in ClauseRegistry.
      *  e.g. "figaro-ghg-iso-14064-v1" */
-    schemaKey: string;
-    /** Optional seller-specific configuration for this schema.
+    clauseKey: string;
+    /** Optional seller-specific configuration for this clause.
      *  e.g. for GHG: { methodology: "iso-14064-1", scopes: [1, 2, 3] } */
     config?: Record<string, unknown>;
 }

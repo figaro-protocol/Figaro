@@ -59,7 +59,7 @@ export default function Why() {
                     As a primitive, Figaro is the substrate for any economic system grounded in value-added. Supply chains. Manufacturing &mdash; physical or digital. Internal corporate processes. The substrate takes no position on where value flows or under what conditions; the participants in each process decide.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Above the kernel: schemas carrying the general terms-and-conditions that recur across processes, and a consent schema carrying the special terms that would otherwise sit in a written contract. Schemas compose into processes &mdash; what the protocol calls assemblies. Sellers index processes freely; buyers negotiate the terms directly, with no intermediary in the path.
+                    Above the kernel: clauses carrying the general terms-and-conditions that recur across processes, and a consent clause carrying the special terms that would otherwise sit in a written contract. Clauses compose into processes &mdash; what the protocol calls assemblies. Sellers index processes freely; buyers negotiate the terms directly, with no intermediary in the path.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Traditional negotiation rests on a belief &mdash; that the counterparties are acting in good faith. The assumption belongs to the cognitive era; it holds when the institutions ready to enforce it remain trusted, and weakens when they do not.
@@ -77,10 +77,10 @@ export default function Why() {
 
             <MarketingSection title="How Figaro grows.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Figaro is built to be extended. Anyone can author a new schema, register it on-chain, and be paid retroactively for schemas the network comes to rely on &mdash; sixty percent of the FIG supply is reserved for schema authors, distributed by a fixed formula that measures settled use. No application, no committee.
+                    Figaro is built to be extended. Anyone can author a new clause, register it on-chain, and be paid retroactively for clauses the network comes to rely on &mdash; sixty percent of the FIG supply is reserved for clause authors, distributed by a fixed formula that measures settled use. No application, no committee.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Schemas are one extension surface. Assemblies are another &mdash; communities compose schemas into the processes they need, with the sellers who run them indexing those processes freely. The protocol grows by what it actually carries. <Link href="/builders" className="text-ink-heading font-medium hover:underline">More on building on Figaro</Link>.
+                    Clauses are one extension surface. Assemblies are another &mdash; communities compose clauses into the processes they need, with the sellers who run them indexing those processes freely. The protocol grows by what it actually carries. <Link href="/builders" className="text-ink-heading font-medium hover:underline">More on building on Figaro</Link>.
                 </p>
             </MarketingSection>
 
@@ -108,7 +108,7 @@ export default function Why() {
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">
                             Builders
                         </Link>
-                        <span className="text-ink-body"> &mdash; how to extend the protocol: author a schema, register it on-chain, earn from settled use under the FIG schema-author allocation.</span>
+                        <span className="text-ink-body"> &mdash; how to extend the protocol: author a clause, register it on-chain, earn from settled use under the FIG clause-author allocation.</span>
                     </li>
                     <li>
                         <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
@@ -120,7 +120,7 @@ export default function Why() {
                         <Link href="/spec" className="text-ink-heading font-medium hover:underline">
                             Specifications
                         </Link>
-                        <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, schema, mechanism modules, with source links and verification status.</span>
+                        <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, clause, mechanism modules, with source links and verification status.</span>
                     </li>
                 </ul>
             </MarketingSection>

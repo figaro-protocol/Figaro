@@ -38,7 +38,7 @@ import {
     waitForWalletConnected,
 } from './devnet-helpers';
 import {
-    ARBITRATION_KLEROS_SCHEMA_KEY,
+    ARBITRATION_KLEROS_CLAUSE_KEY,
     canonicalizeAgreement,
     type Agreement,
 } from '../../lib/core/agreementManifest';
@@ -103,7 +103,7 @@ test.describe('Dispute create + evidence via the audit page (devnet)', () => {
             seller: ANVIL_ACCOUNTS[1] as `0x${string}`,
             sections: [
                 {
-                    schema: ARBITRATION_KLEROS_SCHEMA_KEY,
+                    clause: ARBITRATION_KLEROS_CLAUSE_KEY,
                     data: { klerosCourt: 'general', klerosMinJurors: 3 },
                 },
             ],

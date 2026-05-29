@@ -160,7 +160,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
             orders: Array<{ id: string; agreementHash: string }>;
             agreements: Record<string, {
                 version: string;
-                sections: Array<{ schema: string; data: Record<string, unknown> }>;
+                sections: Array<{ clause: string; data: Record<string, unknown> }>;
             }>;
         };
 
@@ -174,7 +174,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
 
         // Root order — delivery / seller-assigned + the merchant
         // seller-process clause + the GHG emissions-disclosure clause.
-        const rootSchemas = rootAgreement.sections.map((s) => s.schema);
+        const rootClauses = rootAgreement.sections.map((s) => s.clause);
         for (const clause of [
             'figaro-commerce-v1',
             'figaro-fulfilment-v2',
@@ -184,14 +184,14 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
             // clause so the seller can file grams and the buyer size offsets.
             'figaro-ghg-measurement-v1',
         ]) {
-            expect(rootSchemas).toContain(clause);
+            expect(rootClauses).toContain(clause);
         }
-        const fulfilment = rootAgreement.sections.find((s) => s.schema === 'figaro-fulfilment-v2');
+        const fulfilment = rootAgreement.sections.find((s) => s.clause === 'figaro-fulfilment-v2');
         expect(fulfilment?.data.coordinations).toEqual(['seller-assigned']);
 
         // Courier sub-order — the courier seller-process clause, the
         // proximity-policy handoff clause, and the GHG emissions clause.
-        const courierSchemas = courierAgreement.sections.map((s) => s.schema);
+        const courierClauses = courierAgreement.sections.map((s) => s.clause);
         for (const clause of [
             'figaro-commerce-v1',
             'figaro-courier-process-v1',
@@ -199,7 +199,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
             GHG_CLAUSE,
             'figaro-ghg-measurement-v1',
         ]) {
-            expect(courierSchemas).toContain(clause);
+            expect(courierClauses).toContain(clause);
         }
 
         // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),

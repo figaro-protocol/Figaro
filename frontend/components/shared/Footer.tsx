@@ -20,7 +20,7 @@ export function Footer() {
                         <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
                         <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
                         <Link href="/builders/composability" className={COL_LINK_CLS}>Composability</Link>
-                        <Link href="/schemas" className={COL_LINK_CLS}>Schemas</Link>
+                        <Link href="/clauses" className={COL_LINK_CLS}>Clauses</Link>
                         <Link href="/assemblies" className={COL_LINK_CLS}>Assemblies</Link>
                         <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
                         <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>

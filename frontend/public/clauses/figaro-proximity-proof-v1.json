@@ -1,0 +1,32 @@
+{
+    "clauseId": "figaro-proximity-proof-v1",
+    "version": 1,
+    "title": "Proximity proof (runtime)",
+    "description": "Runtime cryptographic proof of physical proximity between two parties at a handoff. Sister to figaro-proximity-policy-v1 (which commits the band at agreement signing). Category-1: content is fresh per attestation, no byte-equality cross-check against committed sectionData. Off-chain consumers should verify proof.band == policy.band when needed.",
+    "categories": ["proximity"],
+    "fields": [
+        {
+            "name": "band",
+            "type": "enum",
+            "values": ["none", "zone-wifi", "nearby-ble", "contact-nfc"],
+            "required": true,
+            "description": "Detection modality used for this proof. Off-chain consumers should cross-check this matches the committed policy band."
+        },
+        {
+            "name": "nonce",
+            "type": "string",
+            "format": "bytes32-hex",
+            "required": true,
+            "description": "Per-handoff nonce (bytes32) preventing replay."
+        },
+        {
+            "name": "deviceSig",
+            "type": "string",
+            "format": "bytes-hex",
+            "required": true,
+            "minLength": 132,
+            "maxLength": 1024,
+            "description": "Signed witness payload from a paired device (65 bytes raw → 132 hex chars min, padded; up to 512 bytes raw)."
+        }
+    ]
+}

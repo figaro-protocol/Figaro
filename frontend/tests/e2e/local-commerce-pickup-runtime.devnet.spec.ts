@@ -2,7 +2,7 @@
  * local-commerce-pickup-runtime.devnet.spec.ts
  *
  * End-to-end pickup runtime against the SEEDED Mercato General seller
- * (anvil[8]), driving every schema in the local-commerce-pickup assembly
+ * (anvil[8]), driving every clause in the local-commerce-pickup assembly
  * through the role that owns it.
  *
  * The pickup edge is the symmetric counterpart to delivery's
@@ -12,7 +12,7 @@
  * — using the existing primitives. Same composition, different
  * counterparty pair.
  *
- * Schema coverage (each surfaced through its driving role):
+ * Clause coverage (each surfaced through its driving role):
  *   figaro-arbitration-kleros-v1   — assembly-authored (off-chain dispute forum)
  *   figaro-commerce-v1             — line items + payment, buyer's checkout
  *   figaro-fulfilment-v2           — modalities:[pickup], handoffPoints:[face-to-face]
@@ -76,8 +76,8 @@ const PROCESSES_ABI = parseAbi([
     'function processes(bytes32) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
 ]);
 
-const MERCHANT_PROCESS_SCHEMA_ID = keccak256(stringToHex('figaro-merchant-process-v1'));
-const PROXIMITY_PROOF_SCHEMA_ID = keccak256(stringToHex('figaro-proximity-proof-v1'));
+const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex('figaro-merchant-process-v1'));
+const PROXIMITY_PROOF_CLAUSE_ID = keccak256(stringToHex('figaro-proximity-proof-v1'));
 
 /** Happy-path merchant events up to the handoff edge. The btn-merchant-next-*
  *  IDs match seller-timeline.devnet.spec.ts. The handoff edge is NOT a
@@ -183,10 +183,10 @@ test.describe('Pickup runtime — buyer + merchant both witness the handoff (dev
                 if (!key?.startsWith('figaro:agreement:')) continue;
                 try {
                     const ag = JSON.parse(window.localStorage.getItem(key) ?? '') as {
-                        sections?: Array<{ schema?: string; data?: { bands?: string[] } }>;
+                        sections?: Array<{ clause?: string; data?: { bands?: string[] } }>;
                     };
                     const policy = (ag.sections ?? []).find(
-                        (s) => s.schema === 'figaro-proximity-policy-v1',
+                        (s) => s.clause === 'figaro-proximity-policy-v1',
                     );
                     if (policy) return policy.data?.bands ?? null;
                 } catch { /* skip non-agreement entries */ }
@@ -232,11 +232,11 @@ test.describe('Pickup runtime — buyer + merchant both witness the handoff (dev
             fromBlock: 0n,
         });
         expect(
-            merchantProofs.filter((e) => e.args.schemaId === PROXIMITY_PROOF_SCHEMA_ID).length,
+            merchantProofs.filter((e) => e.args.clauseId === PROXIMITY_PROOF_CLAUSE_ID).length,
             'merchant submitted exactly one proximity-proof attestation',
         ).toBe(1);
         expect(
-            merchantProofs.filter((e) => e.args.schemaId === MERCHANT_PROCESS_SCHEMA_ID && e.args.stage === 4).length,
+            merchantProofs.filter((e) => e.args.clauseId === MERCHANT_PROCESS_CLAUSE_ID && e.args.stage === 4).length,
             'merchant submitted the paired handed-off lifecycle event',
         ).toBe(1);
 
@@ -259,7 +259,7 @@ test.describe('Pickup runtime — buyer + merchant both witness the handoff (dev
             fromBlock: 0n,
         });
         expect(
-            buyerProofs.filter((e) => e.args.schemaId === PROXIMITY_PROOF_SCHEMA_ID).length,
+            buyerProofs.filter((e) => e.args.clauseId === PROXIMITY_PROOF_CLAUSE_ID).length,
             'buyer submitted exactly one proximity-proof attestation',
         ).toBe(1);
 
@@ -285,7 +285,7 @@ test.describe('Pickup runtime — buyer + merchant both witness the handoff (dev
         });
         const attesters = new Set(
             allAttestations
-                .filter((e) => e.args.schemaId === PROXIMITY_PROOF_SCHEMA_ID)
+                .filter((e) => e.args.clauseId === PROXIMITY_PROOF_CLAUSE_ID)
                 .map((e) => (e.args.attester as string).toLowerCase()),
         );
         expect(attesters.has(BUYER_ADDR.toLowerCase()), 'buyer is among proximity attesters').toBe(true);

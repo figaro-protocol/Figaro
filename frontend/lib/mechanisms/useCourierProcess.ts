@@ -2,17 +2,17 @@
 
 import { useCallback } from "react";
 import { encodeAbiParameters, keccak256, stringToHex, type Hex } from "viem";
-import { embeddedSpec, encodeContentFromSpec, type CourierEvent } from "@figaro/core/schemas";
+import { embeddedSpec, encodeContentFromSpec, type CourierEvent } from "@figaro/core/clauses";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
-import { COURIER_PROCESS_SCHEMA_KEY, PROXIMITY_PROOF_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { COURIER_PROCESS_CLAUSE_KEY, PROXIMITY_PROOF_CLAUSE_KEY } from "@/lib/core/agreementManifest";
 
 /**
  * Sovereign courier event log — `figaro-courier-process-v1`. The courier
  * (= seller of a buyer-courier sub-order) attests their internal lifecycle
- * events under this schema. The event log is the courier's SSoT for "what
+ * events under this clause. The event log is the courier's SSoT for "what
  * the courier has done" — Class B (discretionary attestation) per Paper E.
  *
- * Mirror of `useMerchantProcess.ts` for the courier role. Both schemas are
+ * Mirror of `useMerchantProcess.ts` for the courier role. Both clauses are
  * Category-1 (no committed clause) — content is supplied at runtime as
  * `(uint8 eventType, string evidenceUri)`.
  *
@@ -21,11 +21,11 @@ import { COURIER_PROCESS_SCHEMA_KEY, PROXIMITY_PROOF_SCHEMA_KEY } from "@/lib/co
  * for courier sub-orders is the auto-anchor symmetry fix tracked separately
  * — `buildOrderAgreement` today anchors merchant-process unconditionally.)
  */
-export const COURIER_PROCESS_SCHEMA_ID = keccak256(stringToHex(COURIER_PROCESS_SCHEMA_KEY));
+export const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex(COURIER_PROCESS_CLAUSE_KEY));
 
-/** keccak256 of the runtime proximity-proof schemaId. Derived here for
+/** keccak256 of the runtime proximity-proof clauseId. Derived here for
  *  courier callers; the key itself lives canonically in agreementManifest. */
-export const PROXIMITY_SCHEMA_ID = keccak256(stringToHex(PROXIMITY_PROOF_SCHEMA_KEY));
+export const PROXIMITY_CLAUSE_ID = keccak256(stringToHex(PROXIMITY_PROOF_CLAUSE_KEY));
 
 /** uint8 stage values matching the `figaro-courier-process-v1` enum. */
 const COURIER_EVENT_STAGE: Record<CourierEvent, number> = {
@@ -92,7 +92,7 @@ export function useCourierProcessActions() {
         return submitSellerAttestation({
             roleOrderHash: roleOrderHash as Hex | undefined,
             orderHash: orderHash as Hex,
-            schemaId: COURIER_PROCESS_SCHEMA_ID,
+            clauseId: COURIER_PROCESS_CLAUSE_ID,
             stage: COURIER_EVENT_STAGE[eventType],
             content: encodeContentFromSpec(
                 embeddedSpec("figaro-courier-process-v1")!,
@@ -121,7 +121,7 @@ export function useCourierProcessActions() {
         await submitSellerAttestation({
             roleOrderHash: roleOrderHash as Hex | undefined,
             orderHash: orderHash as Hex,
-            schemaId: PROXIMITY_SCHEMA_ID,
+            clauseId: PROXIMITY_CLAUSE_ID,
             stage: proof.band,
             content: encodeProximityProofContent(proof),
             failureMessage: "Proximity proof submission failed",

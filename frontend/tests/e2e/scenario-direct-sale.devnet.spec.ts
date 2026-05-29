@@ -157,7 +157,7 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
             orders: Array<{ agreementHash: string }>;
             agreements: Record<string, {
                 version: string;
-                sections: Array<{ schema: string; data: Record<string, unknown> }>;
+                sections: Array<{ clause: string; data: Record<string, unknown> }>;
             }>;
         };
 
@@ -170,11 +170,11 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         // direct-sale's clause set — a consume-onsite root order with handoff
         // certification carries commerce + fulfilment + geo + jurisdiction +
         // proximity-policy + proximity-proof + merchant-process + topology.
-        // Geo is default-on by RPGF design (schemas feeding the analytics
+        // Geo is default-on by RPGF design (clauses feeding the analytics
         // graphs are incentivised — see memory reference_analytics_graph_rpgf).
         // Distinct from pickup only by modality: the handoff-cert stack is
         // identical (proximity-* + merchant-process on a 1-node graph).
-        expect(agreement.sections.map((s) => s.schema).sort()).toEqual([
+        expect(agreement.sections.map((s) => s.clause).sort()).toEqual([
             'figaro-arbitration-kleros-v1',
             'figaro-commerce-v1',
             'figaro-fulfilment-v2',
@@ -187,13 +187,13 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
 
         // One node, consume-onsite, face-to-face handoff, zone-wifi band —
         // no courier sub-order.
-        const fulfilment = agreement.sections.find((s) => s.schema === 'figaro-fulfilment-v2');
+        const fulfilment = agreement.sections.find((s) => s.clause === 'figaro-fulfilment-v2');
         expect(fulfilment?.data.modalities).toEqual(['consume-onsite']);
         expect(fulfilment?.data.coordinations).toBeUndefined();
         expect(fulfilment?.data.handoffPoints).toEqual(['face-to-face']);
-        const proximity = agreement.sections.find((s) => s.schema === 'figaro-proximity-policy-v1');
+        const proximity = agreement.sections.find((s) => s.clause === 'figaro-proximity-policy-v1');
         expect(proximity?.data.bands).toEqual(['zone-wifi']);
-        const topology = agreement.sections.find((s) => s.schema === 'figaro-topology-v1');
+        const topology = agreement.sections.find((s) => s.clause === 'figaro-topology-v1');
         expect(topology?.data.topologyMode).toBe('root');
 
         // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),

@@ -48,7 +48,7 @@ function commerceLineItems(agreement: Agreement | null): Array<{
     unitPrice: string;
 }> {
     if (!agreement) return [];
-    const commerce = agreement.sections.find((s) => s.schema === "figaro-commerce-v1");
+    const commerce = agreement.sections.find((s) => s.clause === "figaro-commerce-v1");
     if (!commerce) return [];
     const items = commerce.data?.lineItems;
     if (!Array.isArray(items)) return [];
@@ -65,7 +65,7 @@ function commerceLineItems(agreement: Agreement | null): Array<{
 
 function nonCommerceSections(agreement: Agreement | null): AgreementSection[] {
     if (!agreement) return [];
-    return agreement.sections.filter((s) => s.schema !== "figaro-commerce-v1");
+    return agreement.sections.filter((s) => s.clause !== "figaro-commerce-v1");
 }
 
 export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCancel }: Props) {
@@ -154,8 +154,8 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
                             <h3 className="text-xs font-semibold text-neutral-500 mb-2">Clauses</h3>
                             <ul className="space-y-2 text-xs" data-testid="preview-clauses">
                                 {otherSections.map((section) => (
-                                    <li key={section.schema} className="border border-neutral-200 rounded px-3 py-2">
-                                        <p className="font-mono text-neutral-500 mb-1">{section.schema}</p>
+                                    <li key={section.clause} className="border border-neutral-200 rounded px-3 py-2">
+                                        <p className="font-mono text-neutral-500 mb-1">{section.clause}</p>
                                         <pre className="text-black whitespace-pre-wrap break-words">
                                             {JSON.stringify(section.data, null, 2)}
                                         </pre>

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { encodeFunctionData, type PublicClient } from "viem";
-import { GHG_MEASUREMENT_SCHEMA_ID, GHG_SCHEMA_ID } from "@/lib/core/agreementManifest";
+import { GHG_MEASUREMENT_CLAUSE_ID, GHG_CLAUSE_ID } from "@/lib/core/agreementManifest";
 import {
     DISCLOSURE_KIND,
     MEASUREMENT_KIND,
@@ -67,11 +67,11 @@ describe("getAttestationContent", () => {
         const calldata = encodeFunctionData({
             abi: ATTESTATION_COORDINATOR_ABI,
             functionName: "attestAsSeller",
-            // New signature: (role, target, schemaId, stage, sectionData, proof, content)
+            // New signature: (role, target, clauseId, stage, sectionData, proof, content)
             args: [
                 COMMITMENT_ZERO,
                 COMMITMENT_ZERO,
-                GHG_SCHEMA_ID as `0x${string}`,
+                GHG_CLAUSE_ID as `0x${string}`,
                 DISCLOSURE_KIND.inventory,
                 "0x" as `0x${string}`,
                 [] as readonly `0x${string}`[],
@@ -100,10 +100,10 @@ describe("getAttestationContent", () => {
         const calldata = encodeFunctionData({
             abi: ATTESTATION_COORDINATOR_ABI,
             functionName: "attestAsBuyer",
-            // New signature: (target, schemaId, stage, sectionData, proof, content)
+            // New signature: (target, clauseId, stage, sectionData, proof, content)
             args: [
                 COMMITMENT_ZERO,
-                GHG_SCHEMA_ID as `0x${string}`,
+                GHG_CLAUSE_ID as `0x${string}`,
                 DISCLOSURE_KIND.inventory,
                 "0x" as `0x${string}`,
                 [] as readonly `0x${string}`[],
@@ -153,18 +153,18 @@ describe("useGhgDisclosureActions", () => {
         expect(result.current.error).toBe("coordinator error");
         expect(result.current.isAvailable).toBe(true);
 
-        // Commitment stage under the disclosure schema — content omitted so
+        // Commitment stage under the disclosure clause — content omitted so
         // coordinator-actions default it to the committed sectionData (the
         // {standard, scope} clause). Category-2 byte-equality thus passes.
         expect(submitSellerAttestationMock).toHaveBeenNthCalledWith(1, {
             orderHash,
-            schemaId: GHG_SCHEMA_ID,
+            clauseId: GHG_CLAUSE_ID,
             stage: DISCLOSURE_KIND.commitment,
         });
-        // Grams land under the measurement schema (Category-1, no byte-equality).
+        // Grams land under the measurement clause (Category-1, no byte-equality).
         expect(submitSellerAttestationMock).toHaveBeenNthCalledWith(2, {
             orderHash,
-            schemaId: GHG_MEASUREMENT_SCHEMA_ID,
+            clauseId: GHG_MEASUREMENT_CLAUSE_ID,
             stage: MEASUREMENT_KIND.measured,
             content: encodeMeasurementGramsContent(1250n),
         });

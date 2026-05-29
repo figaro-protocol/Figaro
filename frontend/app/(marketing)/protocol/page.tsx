@@ -54,7 +54,7 @@ export default function Protocol() {
                     <Link href="/spec" className="text-ink-heading font-medium hover:underline">
                         Specifications
                     </Link>
-                    <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, schema, mechanism modules, with source links and verification status.</span>
+                    <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, clause, mechanism modules, with source links and verification status.</span>
                 </li>
             </ul>
         </section>

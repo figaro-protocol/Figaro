@@ -23,7 +23,7 @@ const SELLER = ANVIL_ACCOUNTS[1];
 const BUYER = ANVIL_ACCOUNTS[0];
 const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 
-// Category-2 schemas (commerce, geo, fulfilment, ghg, handoff) use ABI-encoded
+// Category-2 clauses (commerce, geo, fulfilment, ghg, handoff) use ABI-encoded
 // sectionData, so clause values must be encoder-valid enum strings / integers.
 // Using the canonical SDK encoder types here.
 const LINE_ITEMS: AgreementLineItem[] = [
@@ -31,15 +31,15 @@ const LINE_ITEMS: AgreementLineItem[] = [
     { itemId: "drink1", name: "Soft Drink",       quantity: 1, unitPrice: "2000000000000000" },    // 0.002e18 wei
 ];
 
-// ── Schema sections as standardized terms of sale ────────────────────────────
+// ── Clause sections as standardized terms of sale ────────────────────────────
 
 const COMMERCE_SECTION: AgreementSection = {
-    schema: "figaro-commerce-v1",
+    clause: "figaro-commerce-v1",
     data: { currency: CURRENCY, payment: "22000000000000000", lineItems: LINE_ITEMS },
 };
 
 const GEO_SECTION: AgreementSection = {
-    schema: "figaro-geo-v2",
+    clause: "figaro-geo-v2",
     data: {
         originGeohash: "dr5reg",
         destinationGeohash: "dr5reh",
@@ -50,8 +50,8 @@ const GEO_SECTION: AgreementSection = {
 };
 
 const FULFILMENT_SECTION: AgreementSection = {
-    schema: "figaro-fulfilment-v2",
-    // Plural arrays per the schema spec — Keystone's strict encoder rejects
+    clause: "figaro-fulfilment-v2",
+    // Plural arrays per the clause spec — Keystone's strict encoder rejects
     // singular keys (which the pre-Keystone JSON fallback silently accepted).
     data: {
         modalities: ["delivery"],
@@ -61,12 +61,12 @@ const FULFILMENT_SECTION: AgreementSection = {
 };
 
 const GHG_SECTION: AgreementSection = {
-    schema: "figaro-ghg-iso-14064-v1",
+    clause: "figaro-ghg-iso-14064-v1",
     data: { scope: 1 },
 };
 
 const ALLERGEN_SECTION: AgreementSection = {
-    schema: "figaro-allergen-v1",
+    clause: "figaro-allergen-v1",
     data: { itemAttestations: { pizza1: { allergenFree: ["gluten"], contains: ["dairy"] } } },
 };
 
@@ -95,7 +95,7 @@ describe("canonicalizeAgreement", () => {
 
     it("sorts nested object keys within section data", () => {
         const agreement = makeAgreement({
-            sections: [{ schema: "test-v1", data: { z_field: 2, a_field: 1 } }],
+            sections: [{ clause: "test-v1", data: { z_field: 2, a_field: 1 } }],
         });
         const json = canonicalizeAgreement(agreement);
         const aIdx = json.indexOf('"a_field"');
@@ -126,7 +126,7 @@ describe("computeAgreementHash", () => {
     it("different section data produces different hashes", () => {
         const h1 = computeAgreementHash(makeAgreement({ sections: [GEO_SECTION] }));
         const h2 = computeAgreementHash(makeAgreement({
-            sections: [{ schema: "figaro-geo-v2", data: { ...GEO_SECTION.data, originGeohash: "u33dc0" } }],
+            sections: [{ clause: "figaro-geo-v2", data: { ...GEO_SECTION.data, originGeohash: "u33dc0" } }],
         }));
         expect(h1).not.toBe(h2);
     });
@@ -141,14 +141,14 @@ describe("computeAgreementHash", () => {
 // ── buildAgreement ───────────────────────────────────────────────────────────
 
 describe("buildAgreement", () => {
-    it("sorts sections by schema key", () => {
+    it("sorts sections by clause key", () => {
         // Pass in reverse order: geo before commerce alphabetically, but fulfilment/ghg too
         const a = buildAgreement({
             buyer: BUYER,
             seller: SELLER,
             sections: [GHG_SECTION, COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION],
         });
-        const keys = a.sections.map((s) => s.schema);
+        const keys = a.sections.map((s) => s.clause);
         expect(keys).toEqual([...keys].sort());
     });
 
@@ -157,14 +157,14 @@ describe("buildAgreement", () => {
         expect(a.version).toBe("a1");
     });
 
-    it("rejects duplicate schema keys", () => {
+    it("rejects duplicate clause keys", () => {
         expect(() =>
             buildAgreement({
                 buyer: BUYER,
                 seller: SELLER,
                 sections: [COMMERCE_SECTION, COMMERCE_SECTION],
             }),
-        ).toThrow(/Duplicate schema keys/);
+        ).toThrow(/Duplicate clause keys/);
     });
 
     it("section order in input does not affect hash", () => {
@@ -205,18 +205,18 @@ describe("computeSectionLeaf", () => {
     it("changes when section data changes", () => {
         const leafA = computeSectionLeaf(COMMERCE_SECTION);
         const leafB = computeSectionLeaf({
-            schema: "figaro-commerce-v1",
+            clause: "figaro-commerce-v1",
             data: { ...COMMERCE_SECTION.data, payment: "33000000000000000" },
         });
         expect(leafA).not.toBe(leafB);
     });
 
-    it("changes when schema key changes, even with identical data", () => {
-        // Use a schema-agnostic placeholder (no spec means JSON fallback)
-        // so the assertion is purely about schema-key salting the leaf.
+    it("changes when clause key changes, even with identical data", () => {
+        // Use a clause-agnostic placeholder (no spec means JSON fallback)
+        // so the assertion is purely about clause-key salting the leaf.
         const placeholder = { irrelevant: true };
-        const leafA = computeSectionLeaf({ schema: "third-party-foo-v1", data: placeholder });
-        const leafB = computeSectionLeaf({ schema: "third-party-bar-v1", data: placeholder });
+        const leafA = computeSectionLeaf({ clause: "third-party-foo-v1", data: placeholder });
+        const leafB = computeSectionLeaf({ clause: "third-party-bar-v1", data: placeholder });
         expect(leafA).not.toBe(leafB);
     });
 });
@@ -250,7 +250,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
         });
         const root = computeAgreementHash(a);
         for (const section of a.sections) {
-            const { leaf, proof } = buildSectionInclusionProof(a, section.schema);
+            const { leaf, proof } = buildSectionInclusionProof(a, section.clause);
             expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
         }
     });
@@ -284,11 +284,11 @@ describe("section accessors", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION, GHG_SECTION] });
         const ghg = getSection(a, "figaro-ghg-iso-14064-v1");
         expect(ghg).toBeDefined();
-        expect(ghg!.schema).toBe("figaro-ghg-iso-14064-v1");
+        expect(ghg!.clause).toBe("figaro-ghg-iso-14064-v1");
         expect(ghg!.data.scope).toBe(1);
     });
 
-    it("getSection returns undefined for missing schema", () => {
+    it("getSection returns undefined for missing clause", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION] });
         expect(getSection(a, "figaro-ghg-iso-14064-v1")).toBeUndefined();
     });
@@ -311,7 +311,7 @@ describe("manifestFieldsToGeoSection", () => {
             volume: "5 L",
             class_: "E",
         });
-        expect(section.schema).toBe("figaro-geo-v2");
+        expect(section.clause).toBe("figaro-geo-v2");
         expect(section.data.originGeohash).toBe("dr5reg");
         expect(section.data.massGrams).toBe(1000);
         expect(section.data.volumeMl).toBe(5000);
@@ -330,19 +330,19 @@ describe("manifestFieldsToGeoSection", () => {
 });
 
 // ── sellerCatalogueMetadata utilities (cross-module) ─────────────────────────
-// Schema-support / schema-config helpers were removed when supportedSchemas
+// Clause-support / clause-config helpers were removed when supportedClauses
 // moved off the catalogue (capability declarations live in per-assembly
 // bindings now). The only catalogue-level assertion that still applies is
-// that example items round-trip schemaAttestations.
+// that example items round-trip clauseAttestations.
 
 describe("sellerCatalogueMetadata example", () => {
-    it("example item carries schemaAttestations", async () => {
+    it("example item carries clauseAttestations", async () => {
         const { SELLER_CATALOGUE_METADATA_EXAMPLE } = await import(
             "./__fixtures__/sellerMetadata"
         );
         const pizza = SELLER_CATALOGUE_METADATA_EXAMPLE.menu.find((i) => i.id === "pizza1");
-        expect(pizza?.schemaAttestations).toBeDefined();
-        expect(pizza?.schemaAttestations?.["figaro-allergen-v1"]).toBeDefined();
+        expect(pizza?.clauseAttestations).toBeDefined();
+        expect(pizza?.clauseAttestations?.["figaro-allergen-v1"]).toBeDefined();
     });
 });
 
@@ -363,7 +363,7 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         const expected = computeSectionLeaf(COMMERCE_SECTION);
         const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
-        const commerceEntry = redacted.sections.find((s) => s.schema === "figaro-commerce-v1")!;
+        const commerceEntry = redacted.sections.find((s) => s.clause === "figaro-commerce-v1")!;
         expect(isRedactedSection(commerceEntry)).toBe(true);
         if (isRedactedSection(commerceEntry)) {
             expect(commerceEntry.leaf).toBe(expected);
@@ -373,7 +373,7 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
     it("non-targeted sections are passed through unchanged", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
-        const geoEntry = redacted.sections.find((s) => s.schema === "figaro-geo-v2")!;
+        const geoEntry = redacted.sections.find((s) => s.clause === "figaro-geo-v2")!;
         expect(isRedactedSection(geoEntry)).toBe(false);
         // Cleartext section: same data field as before redaction.
         expect((geoEntry as AgreementSection).data).toEqual(GEO_SECTION.data);
@@ -389,7 +389,7 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
         expect(computeRedactableAgreementHash(redacted)).toBe(computeAgreementHash(cleartext));
     });
 
-    it("redacting an absent schema key is a no-op (no error)", () => {
+    it("redacting an absent clause key is a no-op (no error)", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         const redacted = redactSections(cleartext, ["figaro-nonexistent-v1"]);
         const sealed = redacted.sections.filter(isRedactedSection);
@@ -407,7 +407,7 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
         const tampered: AgreementSection = {
-            schema: "figaro-commerce-v1",
+            clause: "figaro-commerce-v1",
             data: {
                 ...COMMERCE_SECTION.data,
                 lineItems: [
@@ -418,18 +418,18 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
         expect(verifyRevealedSection(redacted, tampered)).toBe(false);
     });
 
-    it("verifyRevealedSection returns false when the schema isn't redacted", () => {
+    it("verifyRevealedSection returns false when the clause isn't redacted", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         // No redaction at all
         const passthrough = redactSections(cleartext, []);
         expect(verifyRevealedSection(passthrough, COMMERCE_SECTION)).toBe(false);
     });
 
-    it("verifyRevealedSection returns false when the schema isn't in the agreement", () => {
+    it("verifyRevealedSection returns false when the clause isn't in the agreement", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
         const orphan: AgreementSection = {
-            schema: "figaro-not-in-agreement-v1",
+            clause: "figaro-not-in-agreement-v1",
             data: { whatever: 1 },
         };
         expect(verifyRevealedSection(redacted, orphan)).toBe(false);

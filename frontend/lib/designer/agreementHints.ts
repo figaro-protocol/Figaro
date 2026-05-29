@@ -4,7 +4,7 @@
  *
  *   - hasChildren            : has at least one descendant in the DAG.
  *   - parentDeliveryActive   : any parent's fulfilment includes "delivery".
- *   - hasCourierChild        : at least one child anchors the courier-process schema.
+ *   - hasCourierChild        : at least one child anchors the courier-process clause.
  *
  * Used by both the editor (DesignerCanvas) and the read-only review/inspect
  * view (ViewAssemblyClient). Lifting them to a shared helper avoids
@@ -16,7 +16,7 @@ import type { Order } from "@/lib/core/store";
 import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { COURIER_PROCESS_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { COURIER_PROCESS_CLAUSE_KEY } from "@/lib/core/agreementManifest";
 
 export interface AgreementHints {
     hasChildren: boolean;
@@ -44,7 +44,7 @@ export function computeAgreementHints(
         if (!info?.parentOrderIds.includes(selectedOrderId)) continue;
         hasChildren = true;
         const agreement = loadAgreement(order.agreementHash);
-        if (agreement?.sections.some((s) => s.schema === COURIER_PROCESS_SCHEMA_KEY)) {
+        if (agreement?.sections.some((s) => s.clause === COURIER_PROCESS_CLAUSE_KEY)) {
             hasCourierChild = true;
             break;
         }

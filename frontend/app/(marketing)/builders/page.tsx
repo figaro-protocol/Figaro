@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
     title: "Builders — Figaro Protocol",
     description:
-        "Figaro is a protocol you extend, not an app you can be locked out of. Adding a schema is permissionless, and 60% of the token supply rewards the authors of schemas that get used.",
+        "Figaro is a protocol you extend, not an app you can be locked out of. Adding a clause is permissionless, and 60% of the token supply rewards the authors of clauses that get used.",
     openGraph: {
         title: "Builders — Figaro Protocol",
         description:
@@ -48,15 +48,15 @@ export default function BuildersPage() {
                     </dd>
                 </div>
                 <div>
-                    <dt className="font-semibold text-ink-heading">Schema authors</dt>
+                    <dt className="font-semibold text-ink-heading">Clause authors</dt>
                     <dd className="text-ink-body leading-relaxed mt-1">
-                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each schema is registered permissionlessly: write it, bind a validator, it is live. Sixty percent of the FIG supply (600 million) is reserved for this group, distributed by a fixed formula that measures real adoption across distinct counterparty pairs.
+                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each clause is registered permissionlessly: write it, bind a validator, it is live. Sixty percent of the FIG supply (600 million) is reserved for this group, distributed by a fixed formula that measures real adoption across distinct counterparty pairs.
                     </dd>
                 </div>
                 <div>
                     <dt className="font-semibold text-ink-heading">Assembly authors</dt>
                     <dd className="text-ink-body leading-relaxed mt-1">
-                        Compose schemas and roles into multi-party bonded processes. The Designer tool produces drafts on a canvas; publishing anchors the manifest in the AssemblyRegistry, parallel to the schema registry. Assemblies are how new use cases &mdash; delivery, supply chain, freelance work &mdash; get expressed in the protocol&apos;s vocabulary.
+                        Compose clauses and roles into multi-party bonded processes. The Designer tool produces drafts on a canvas; publishing anchors the manifest in the AssemblyRegistry, parallel to the clause registry. Assemblies are how new use cases &mdash; delivery, supply chain, freelance work &mdash; get expressed in the protocol&apos;s vocabulary.
                     </dd>
                 </div>
                 <div>
@@ -73,7 +73,7 @@ export default function BuildersPage() {
                 </div>
             </dl>
             <p className="text-base text-ink-body leading-relaxed mb-12">
-                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; not yet on a public network, <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward tranches unlock at years two, five, and nine &mdash; built to reward durable contribution, not a quick flip. What you can do today is read the code, write a schema against the live validator stack, and watch the whole thing settle a deal end to end on a local network.
+                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; not yet on a public network, <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward tranches unlock at years two, five, and nine &mdash; built to reward durable contribution, not a quick flip. What you can do today is read the code, write a clause against the live validator stack, and watch the whole thing settle a deal end to end on a local network.
             </p>
             <h2 className="text-base font-semibold text-ink-heading mb-4">
                 Where to start
@@ -86,10 +86,10 @@ export default function BuildersPage() {
                     <span className="text-ink-body"> &mdash; compose a bonded process on a canvas and edit its agreement clauses.</span>
                 </li>
                 <li>
-                    <Link href="/schemas" className="text-ink-heading font-medium hover:underline">
-                        Schemas
+                    <Link href="/clauses" className="text-ink-heading font-medium hover:underline">
+                        Clauses
                     </Link>
-                    <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference schemas, and the authoring checklist.</span>
+                    <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference clauses, and the authoring checklist.</span>
                 </li>
                 <li>
                     <Link href="/integrate" className="text-ink-heading font-medium hover:underline">
@@ -125,7 +125,7 @@ export default function BuildersPage() {
                     <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">
                         The reward
                     </Link>
-                    <span className="text-ink-body"> &mdash; how schema authors get paid: 60% of the FIG supply, by a fixed formula, for schemas that get used.</span>
+                    <span className="text-ink-body"> &mdash; how clause authors get paid: 60% of the FIG supply, by a fixed formula, for clauses that get used.</span>
                 </li>
             </ul>
         </section>

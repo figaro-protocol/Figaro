@@ -17,7 +17,7 @@
  * designerMode (so per-node clauses/values surface via the lens
  * overlays), but with no edit handlers — drag-add, delete, drawer
  * mutations all absent. The `AgreementDrawer` mounts in read-only
- * mode so clicking a node surfaces its clauses/schemas without
+ * mode so clicking a node surfaces its clauses/clauses without
  * permitting edits. The action button at the right of the toolbar is
  * "Edit" for drafts and "Fork" for published assemblies.
  */

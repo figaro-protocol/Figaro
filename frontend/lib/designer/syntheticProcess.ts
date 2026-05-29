@@ -22,8 +22,8 @@ import {
 } from "@/lib/core/orderAgreement";
 import {
     computeAgreementHash,
-    COURIER_PROCESS_SCHEMA_KEY,
-    MERCHANT_PROCESS_SCHEMA_KEY,
+    COURIER_PROCESS_CLAUSE_KEY,
+    MERCHANT_PROCESS_CLAUSE_KEY,
 } from "@/lib/core/agreementManifest";
 import { loadAgreement, saveAgreement } from "@/lib/core/agreementStore";
 import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
@@ -95,7 +95,7 @@ const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
     // Every order has a fulfilment clause, but no modality is pre-selected
     // — the designer makes a deliberate choice, same as the buyer-side
     // picker (commit 2dcd6b5). An order with empty modalities fails the
-    // schema validator at attest time; the publish-side client surfaces
+    // clause validator at attest time; the publish-side client surfaces
     // this before letting the user register the assembly.
     fulfilmentModalities: [],
 };
@@ -449,7 +449,7 @@ export function readAgreementFields(
     const summary = summarizeAgreement(agreement);
     const fields: ManifestFields = { origin: summary?.geo?.origin ?? "—" };
 
-    // ── process schemas (Category-1, no section data) ──────────
+    // ── process clauses (Category-1, no section data) ──────────
     // `summarizeAgreement` only surfaces data-carrying sections, so the
     // merchant-process / courier-process inclusion anchors don't appear
     // in `summary`. Read them straight from the agreement's sections —
@@ -457,10 +457,10 @@ export function readAgreementFields(
     // section is silently destroyed on the next edit when
     // buildOrderAgreement rebuilds from the missing flag.
     const sections = agreement?.sections ?? [];
-    if (sections.some((s) => s.schema === MERCHANT_PROCESS_SCHEMA_KEY)) {
+    if (sections.some((s) => s.clause === MERCHANT_PROCESS_CLAUSE_KEY)) {
         fields.merchantProcessIncluded = true;
     }
-    if (sections.some((s) => s.schema === COURIER_PROCESS_SCHEMA_KEY)) {
+    if (sections.some((s) => s.clause === COURIER_PROCESS_CLAUSE_KEY)) {
         fields.courierProcessIncluded = true;
     }
 
@@ -475,8 +475,8 @@ export function readAgreementFields(
     if (summary?.geo?.classOfService) fields.class_ = summary.geo.classOfService;
 
     // ── ghg ────────────────────────────────────────────────────
-    if (summary?.ghg && summary.ghg.schemaKeys.length > 0) {
-        fields.ghgStandards = [...summary.ghg.schemaKeys];
+    if (summary?.ghg && summary.ghg.clauseKeys.length > 0) {
+        fields.ghgStandards = [...summary.ghg.clauseKeys];
     }
 
     // ── fulfilment ─────────────────────────────────────────────

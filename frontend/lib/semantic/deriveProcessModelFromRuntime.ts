@@ -1,7 +1,7 @@
 import { Order, OrderState } from "@/lib/core/store";
 import {
-    GHG_MEASUREMENT_SCHEMA_KEY,
-    GHG_SCHEMA_KEY,
+    GHG_MEASUREMENT_CLAUSE_KEY,
+    GHG_CLAUSE_KEY,
     getSection,
     type Agreement,
     type TopologyMode,
@@ -92,7 +92,7 @@ function roleCapabilities(
     if (isSeller && order.agreementHash) {
         const agreement = agreements.get(order.agreementHash);
         if (agreement) {
-            if (getSection(agreement, GHG_SCHEMA_KEY)) {
+            if (getSection(agreement, GHG_CLAUSE_KEY)) {
                 out.push({
                     id: `${order.processId}:${order.id.toString()}:submit-disclosure-commitment`,
                     label: "Record Disclosure Commitment",
@@ -114,7 +114,7 @@ function roleCapabilities(
                     ),
                 });
             }
-            if (getSection(agreement, GHG_MEASUREMENT_SCHEMA_KEY)) {
+            if (getSection(agreement, GHG_MEASUREMENT_CLAUSE_KEY)) {
                 out.push({
                     id: `${order.processId}:${order.id.toString()}:submit-disclosure-inventory`,
                     label: "Submit Emissions Inventory",

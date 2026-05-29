@@ -13,8 +13,8 @@ import { useOnboardingState } from "@/lib/seller/onboardingState";
 import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/shared/sellerProfileMetadata";
 import {
     type AssemblyChoice,
-    formatAssemblySchemaList,
-    requiredCounterpartySchemas,
+    formatAssemblyClauseList,
+    requiredCounterpartyClauses,
     useAssemblyChoices,
 } from "@/lib/mechanisms/useAssemblyRegistry";
 
@@ -24,7 +24,7 @@ import {
  * `AssemblyBindingRecord` on `state.assemblies`.
  *
  * Per-binding counterparty editing: assemblies whose manifest contains
- * a non-root order with a per-role process schema (e.g. a courier
+ * a non-root order with a per-role process clause (e.g. a courier
  * sub-order with `figaro-courier-process-v1`) require the seller to
  * designate at least one wallet for that role. The picker surfaces an
  * inline editor when those rows are checked. Without these addresses
@@ -129,12 +129,12 @@ export function OnboardingAssembliesForm({
     }
 
     const updateCounterparties = useCallback(
-        (slug: string, schemaId: string, addresses: `0x${string}`[]) => {
+        (slug: string, clauseId: string, addresses: `0x${string}`[]) => {
             setCounterpartiesBySlug((prev) => {
                 const next = new Map(prev);
-                const existing = (next.get(slug) ?? []).filter((cb) => cb.schemaId !== schemaId);
+                const existing = (next.get(slug) ?? []).filter((cb) => cb.clauseId !== clauseId);
                 if (addresses.length > 0) {
-                    existing.push({ schemaId, addresses });
+                    existing.push({ clauseId, addresses });
                 }
                 if (existing.length > 0) next.set(slug, existing);
                 else next.delete(slug);
@@ -194,9 +194,9 @@ export function OnboardingAssembliesForm({
             <div className="space-y-3">
                 {choices.map((choice) => {
                     const isSelected = selected.has(choice.slug);
-                    const requiredSchemas =
+                    const requiredClauses =
                         choice.state === "loaded" && choice.manifest
-                            ? requiredCounterpartySchemas(choice.manifest)
+                            ? requiredCounterpartyClauses(choice.manifest)
                             : [];
                     const counterparties = counterpartiesBySlug.get(choice.slug) ?? [];
                     return (
@@ -230,16 +230,16 @@ export function OnboardingAssembliesForm({
                                                 Manifest unavailable (IPFS gateway?). Identity is on-chain regardless.
                                             </p>
                                         )}
-                                        {choice.state === "loaded" && choice.orderCount !== null && choice.schemas !== null && (
+                                        {choice.state === "loaded" && choice.orderCount !== null && choice.clauses !== null && (
                                             <p
                                                 className="text-xs text-ink-body"
-                                                title={choice.schemas.join(", ")}
+                                                title={choice.clauses.join(", ")}
                                                 data-testid={`seller-assembly-shape-${choice.slug}`}
                                             >
                                                 {choice.orderCount} order{choice.orderCount === 1 ? "" : "s"}
                                                 {" · "}
-                                                {choice.schemas.length} schema{choice.schemas.length === 1 ? "" : "s"}
-                                                {choice.schemas.length > 0 && `: ${formatAssemblySchemaList(choice.schemas)}`}
+                                                {choice.clauses.length} clause{choice.clauses.length === 1 ? "" : "s"}
+                                                {choice.clauses.length > 0 && `: ${formatAssemblyClauseList(choice.clauses)}`}
                                             </p>
                                         )}
                                         <p className="text-xs text-ink-faint">
@@ -257,21 +257,21 @@ export function OnboardingAssembliesForm({
                                     Inspect ↗
                                 </Link>
                             </div>
-                            {isSelected && requiredSchemas.length > 0 && (
+                            {isSelected && requiredClauses.length > 0 && (
                                 <div
                                     className="mt-4 pt-4 border-t border-default space-y-4"
                                     data-testid={`seller-assembly-counterparties-${choice.slug}`}
                                 >
-                                    {requiredSchemas.map((schemaId) => {
-                                        const entry = counterparties.find((cb) => cb.schemaId === schemaId);
+                                    {requiredClauses.map((clauseId) => {
+                                        const entry = counterparties.find((cb) => cb.clauseId === clauseId);
                                         const addresses = entry?.addresses ?? [];
                                         return (
-                                            <CounterpartySchemaEditor
-                                                key={schemaId}
-                                                schemaId={schemaId}
+                                            <CounterpartyClauseEditor
+                                                key={clauseId}
+                                                clauseId={clauseId}
                                                 addresses={addresses}
                                                 onChange={(next) =>
-                                                    updateCounterparties(choice.slug, schemaId, next)
+                                                    updateCounterparties(choice.slug, clauseId, next)
                                                 }
                                             />
                                         );
@@ -302,21 +302,21 @@ export function OnboardingAssembliesForm({
     );
 }
 
-/** Per-schema address editor — list of address inputs with add /
+/** Per-clause address editor — list of address inputs with add /
  *  remove. Maintains local "rows in progress" so the user can type
  *  partial values; the parent only sees validated addresses. Basic
  *  shape validation (viem `isAddress`) only; SellerRegistry-membership
  *  lookup is deferred. */
-function CounterpartySchemaEditor({
-    schemaId,
+function CounterpartyClauseEditor({
+    clauseId,
     addresses,
     onChange,
 }: {
-    schemaId: string;
+    clauseId: string;
     addresses: `0x${string}`[];
     onChange: (next: `0x${string}`[]) => void;
 }) {
-    const heading = COUNTERPARTY_SCHEMA_HEADINGS[schemaId] ?? schemaId;
+    const heading = COUNTERPARTY_CLAUSE_HEADINGS[clauseId] ?? clauseId;
     // Local rows include in-progress (typed but not yet valid) entries.
     // Always pad with one trailing empty row so the user has somewhere
     // to add a new address.
@@ -391,7 +391,7 @@ function CounterpartySchemaEditor({
                                 className={`flex-1 text-xs font-mono px-2 py-1.5 rounded border min-h-9 ${
                                     valid ? "border-default" : "border-red-400"
                                 }`}
-                                data-testid={`counterparty-${schemaId}-input-${i}`}
+                                data-testid={`counterparty-${clauseId}-input-${i}`}
                             />
                             {rows.length > 1 && (
                                 <button
@@ -399,7 +399,7 @@ function CounterpartySchemaEditor({
                                     onClick={() => removeRow(i)}
                                     className="text-xs text-ink-faint hover:text-red-600 px-2"
                                     aria-label={`Remove address ${i + 1}`}
-                                    data-testid={`counterparty-${schemaId}-remove-${i}`}
+                                    data-testid={`counterparty-${clauseId}-remove-${i}`}
                                 >
                                     ×
                                 </button>
@@ -411,7 +411,7 @@ function CounterpartySchemaEditor({
                     type="button"
                     onClick={addRow}
                     className="text-xs text-ink-faint hover:text-ink-heading"
-                    data-testid={`counterparty-${schemaId}-add`}
+                    data-testid={`counterparty-${clauseId}-add`}
                 >
                     + Add another
                 </button>
@@ -420,9 +420,9 @@ function CounterpartySchemaEditor({
     );
 }
 
-/** Display headings for the per-schema editor. Maps each
- *  counterparty-process schemaId to a human-readable label. Schemas
- *  not in the map fall back to rendering the raw schemaId. */
-const COUNTERPARTY_SCHEMA_HEADINGS: Record<string, string> = {
+/** Display headings for the per-clause editor. Maps each
+ *  counterparty-process clauseId to a human-readable label. Clauses
+ *  not in the map fall back to rendering the raw clauseId. */
+const COUNTERPARTY_CLAUSE_HEADINGS: Record<string, string> = {
     "figaro-courier-process-v1": "Trusted couriers",
 };

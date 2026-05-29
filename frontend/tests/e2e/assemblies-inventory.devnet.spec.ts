@@ -6,7 +6,7 @@
  * viem `publicClient` via `useAssemblyChoices` — the same composition
  * the seller profile and the designer's PublishedList consume. Each
  * row's identity (slug, author, content hash) is on-chain; the manifest
- * (name, order count, schemas) fetches lazily from IPFS per row.
+ * (name, order count, clauses) fetches lazily from IPFS per row.
  *
  * The spec registers one fresh assembly via viem directly (faster than
  * the UI publish flow and self-contained) with a fake IPFS URI on

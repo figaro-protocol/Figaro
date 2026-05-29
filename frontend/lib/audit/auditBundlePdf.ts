@@ -12,7 +12,7 @@
 
 import type { PublicClient } from "viem";
 import type { Order } from "@/lib/core/store";
-import { COMMERCE_SCHEMA_KEY, redactSections, type Agreement } from "@/lib/core/agreementManifest";
+import { COMMERCE_CLAUSE_KEY, redactSections, type Agreement } from "@/lib/core/agreementManifest";
 import type { IndexedAttestationLog } from "@/lib/core/indexer";
 import {
     getAttestationsByOrder,
@@ -48,7 +48,7 @@ interface IndexedLog {
 
 function toAttestationRecord(log: IndexedAttestationLog): AttestationRecord | null {
     const args = log.args;
-    if (!args || !args.orderHash || !args.processId || !args.attester || !args.schemaId) {
+    if (!args || !args.orderHash || !args.processId || !args.attester || !args.clauseId) {
         return null;
     }
     const stage = args.stage === undefined ? 0 : Number(args.stage);
@@ -56,7 +56,7 @@ function toAttestationRecord(log: IndexedAttestationLog): AttestationRecord | nu
         orderHash: args.orderHash,
         processId: args.processId,
         attester: args.attester,
-        schemaId: args.schemaId,
+        clauseId: args.clauseId,
         stage,
         contentRef: args.contentRef ?? "0x",
         transactionHash: log.transactionHash ?? null,
@@ -177,7 +177,7 @@ export async function buildAuditBundlePdfBlob(
             continue;
         }
         const agreement = redactLineItems
-            ? redactSections(cleartextAgreement, [COMMERCE_SCHEMA_KEY])
+            ? redactSections(cleartextAgreement, [COMMERCE_CLAUSE_KEY])
             : cleartextAgreement;
 
         let attestations: readonly AttestationRecord[] = [];

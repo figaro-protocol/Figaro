@@ -1,7 +1,7 @@
 /**
  * GHG module — V5 event-sourced via AttestationCoordinator.
  *
- * Two schemas collaborate to represent a GHG disclosure arc:
+ * Two clauses collaborate to represent a GHG disclosure arc:
  *
  *   - `figaro-ghg-iso-14064-v1`  (Category-2, committed clause)
  *       Declares the *accounting standard + scope* at contract-signing time.
@@ -17,7 +17,7 @@
  *       the per-measurement value are deliberately decoupled.
  *
  * Read hooks reconstruct disclosure state from indexed Attestation events
- * under both schemas — no contract storage reads.
+ * under both clauses — no contract storage reads.
  */
 "use client";
 
@@ -31,7 +31,7 @@ import {
 import { isEmptyHex, ZERO_BYTES32 } from "@/lib/shared/evm";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import { GHG_MEASUREMENT_SCHEMA_ID, GHG_SCHEMA_ID } from "@/lib/core/agreementManifest";
+import { GHG_MEASUREMENT_CLAUSE_ID, GHG_CLAUSE_ID } from "@/lib/core/agreementManifest";
 import {
     DISCLOSURE_KIND,
     DISCLOSURE_KIND_LABELS,
@@ -39,17 +39,17 @@ import {
     MEASUREMENT_KIND_LABELS,
 } from "@/lib/mechanisms/contracts";
 import {
-    getAttestationsByProcessAndSchema,
+    getAttestationsByProcessAndClause,
     getAttestationsByOrder,
     type IndexedAttestationLog,
 } from "@/lib/core/indexer";
-import { embeddedSpec, encodeContentFromSpec } from "@figaro/core/schemas";
+import { embeddedSpec, encodeContentFromSpec } from "@figaro/core/clauses";
 
 export type AttestationRecord = {
     orderHash: string;
     processId: string;
     attester: string;
-    schemaId: string;
+    clauseId: string;
     stage: number;
     contentRef: string;
     transactionHash: string | null;
@@ -151,7 +151,7 @@ function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord {
         orderHash: log.args?.orderHash ?? "",
         processId: log.args?.processId ?? "",
         attester: log.args?.attester ?? "",
-        schemaId: log.args?.schemaId ?? "",
+        clauseId: log.args?.clauseId ?? "",
         stage: Number(log.args?.stage ?? 0),
         contentRef: log.args?.contentRef ?? ZERO_BYTES32,
         transactionHash: log.transactionHash ?? null,
@@ -181,7 +181,7 @@ export function useGhgDisclosureActions() {
         return submitSellerAttestation({
             roleOrderHash,
             orderHash,
-            schemaId: GHG_SCHEMA_ID as Hex,
+            clauseId: GHG_CLAUSE_ID as Hex,
             stage,
             content,
         });
@@ -194,7 +194,7 @@ export function useGhgDisclosureActions() {
     ) => {
         return submitBuyerAttestation({
             orderHash,
-            schemaId: GHG_SCHEMA_ID as Hex,
+            clauseId: GHG_CLAUSE_ID as Hex,
             stage,
             content,
         });
@@ -211,7 +211,7 @@ export function useGhgDisclosureActions() {
     ) => {
         return submitSellerAttestation({
             orderHash: orderHash as Hex,
-            schemaId: GHG_SCHEMA_ID as Hex,
+            clauseId: GHG_CLAUSE_ID as Hex,
             stage: DISCLOSURE_KIND.commitment,
             // content omitted — defaults to committed sectionData
         });
@@ -228,7 +228,7 @@ export function useGhgDisclosureActions() {
     ) => {
         return submitSellerAttestation({
             orderHash: orderHash as Hex,
-            schemaId: GHG_MEASUREMENT_SCHEMA_ID as Hex,
+            clauseId: GHG_MEASUREMENT_CLAUSE_ID as Hex,
             stage: MEASUREMENT_KIND.measured,
             content: encodeMeasurementGramsContent(grams),
         });
@@ -249,8 +249,8 @@ export function useGhgDisclosureActions() {
 
 // ── Read hooks — event-sourced via cached indexer ────────────────────────────
 
-function labelFor(schemaId: string, stage: number): string {
-    if (schemaId === GHG_MEASUREMENT_SCHEMA_ID) {
+function labelFor(clauseId: string, stage: number): string {
+    if (clauseId === GHG_MEASUREMENT_CLAUSE_ID) {
         return MEASUREMENT_KIND_LABELS[stage] ?? `Stage(${stage})`;
     }
     return DISCLOSURE_KIND_LABELS[stage] ?? `Stage(${stage})`;
@@ -273,8 +273,8 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
                 if (cancelled) return;
                 const ghgLogs = logs.filter(
                     (log): log is IndexedAttestationLog => (
-                        log.args?.schemaId === GHG_SCHEMA_ID
-                        || log.args?.schemaId === GHG_MEASUREMENT_SCHEMA_ID
+                        log.args?.clauseId === GHG_CLAUSE_ID
+                        || log.args?.clauseId === GHG_MEASUREMENT_CLAUSE_ID
                     ),
                 );
                 const result = await Promise.all(ghgLogs.map(async (log) => {
@@ -282,7 +282,7 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
                     const contentHex = rec.contentRef !== ZERO_BYTES32
                         ? rec.contentRef as Hex : null;
                     let actualGrams: bigint | null = null;
-                    if (rec.schemaId === GHG_MEASUREMENT_SCHEMA_ID && rec.transactionHash) {
+                    if (rec.clauseId === GHG_MEASUREMENT_CLAUSE_ID && rec.transactionHash) {
                         const content = await getAttestationContent(
                             publicClient,
                             rec.transactionHash as Hex,
@@ -292,7 +292,7 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
                     const task: DisclosureTask = {
                         orderHash: rec.orderHash,
                         stage: rec.stage,
-                        stageLabel: labelFor(rec.schemaId, rec.stage),
+                        stageLabel: labelFor(rec.clauseId, rec.stage),
                         contentRef: contentHex,
                         attester: rec.attester,
                         actualGrams,
@@ -327,11 +327,11 @@ export function useProcessDisclosureSummary(processId: Hex | undefined) {
         setLoading(true);
         (async () => {
             try {
-                // Query both schemas in parallel. Disclosure carries commitment /
+                // Query both clauses in parallel. Disclosure carries commitment /
                 // restatement / verification events; measurement carries grams.
                 const [disclosureLogs, measurementLogs] = await Promise.all([
-                    getAttestationsByProcessAndSchema(publicClient, chainId, processId, GHG_SCHEMA_ID),
-                    getAttestationsByProcessAndSchema(publicClient, chainId, processId, GHG_MEASUREMENT_SCHEMA_ID),
+                    getAttestationsByProcessAndClause(publicClient, chainId, processId, GHG_CLAUSE_ID),
+                    getAttestationsByProcessAndClause(publicClient, chainId, processId, GHG_MEASUREMENT_CLAUSE_ID),
                 ]);
                 if (cancelled) return;
                 const disclosureAttestations = disclosureLogs.map(

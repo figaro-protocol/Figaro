@@ -136,10 +136,10 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
         // No merge rejection (self-loop / cycle / duplicate).
         await expect(page.getByTestId('designer-merge-notice')).toHaveCount(0);
 
-        // ── Compose registry schemas across the four nodes via the drawer ──
+        // ── Compose registry clauses across the four nodes via the drawer ──
         // The drawer's node-tab row surfaces all four orders (the per-node
         // authoring surface, not just the canvas). Each sub-order also gets a
-        // DISTINCT counterparty-key schema so the checkout resolves its seller
+        // DISTINCT counterparty-key clause so the checkout resolves its seller
         // from the seller's counterpartyBindings; the root's seller is the
         // browsed seller. The spread exercises the registry across one
         // assembly: commerce / fulfilment / geo / topology / arbitration on
@@ -177,7 +177,7 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
         // D (join): a proximity handoff clause too. proximity-policy is the
         // counterparty key shared with B — the checkout's bindingCursor hands
         // B and D distinct wallets from the roster by commit order, so two
-        // siblings can share one schema key without a per-node schema.
+        // siblings can share one clause key without a per-node clause.
         await page.getByTestId(`drawer-node-tab-${d}`).click();
         await page.getByTestId('drawer-tab-fulfilment').click();
         await page.getByTestId('drawer-section-fulfilment').waitFor({ state: 'visible', timeout: 5000 });
@@ -227,7 +227,7 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
             orders: Array<{ id: string; agreementHash: string }>;
             agreements: Record<string, {
                 version: string;
-                sections: Array<{ schema: string; data: Record<string, unknown> }>;
+                sections: Array<{ clause: string; data: Record<string, unknown> }>;
             }>;
         };
 
@@ -238,7 +238,7 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
         const parentsByOrder = new Map<string, string[]>();
         for (const order of manifest.orders) {
             const ag = manifest.agreements[order.agreementHash];
-            const topo = ag.sections.find((s) => s.schema === 'figaro-topology-v1');
+            const topo = ag.sections.find((s) => s.clause === 'figaro-topology-v1');
             parentsByOrder.set(order.id, (topo?.data.parentOrderHashes as string[] | undefined) ?? []);
         }
         const parentCounts = [...parentsByOrder.values()].map((p) => p.length).sort();
@@ -255,11 +255,11 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
         // The join's two parents are exactly the two middles.
         expect([...join[1]].sort()).toEqual([...middles].sort());
 
-        // Schema spread composed across the nodes — each runtime-attestable /
-        // counterparty-key schema lands on exactly one node.
-        const countWith = (schema: string) =>
+        // Clause spread composed across the nodes — each runtime-attestable /
+        // counterparty-key clause lands on exactly one node.
+        const countWith = (clause: string) =>
             manifest.orders.filter((o) =>
-                manifest.agreements[o.agreementHash].sections.some((s) => s.schema === schema),
+                manifest.agreements[o.agreementHash].sections.some((s) => s.clause === clause),
             ).length;
         expect(countWith('figaro-merchant-process-v1')).toBe(1); // A — lifecycle
         expect(countWith('figaro-proximity-policy-v1')).toBe(2); // B + D — shared counterparty key

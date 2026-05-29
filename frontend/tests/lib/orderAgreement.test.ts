@@ -93,7 +93,7 @@ describe("buildOrderAgreement", () => {
         expect(summary?.fulfilment?.handoffPoints).toEqual(["face-to-face"]);
         expect(summary?.fulfilment?.method).toBe("deliver:dutch-auction");
         expect(summary?.ghg).toEqual({
-            schemaKeys: ["figaro-ghg-iso-14064-v1"],
+            clauseKeys: ["figaro-ghg-iso-14064-v1"],
             standard: "ISO-14064",
             scope: 1,
         });

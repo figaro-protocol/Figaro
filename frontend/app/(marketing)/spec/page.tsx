@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = {
     title: "Specifications — Figaro Protocol",
-    description: "Canonical on-chain surface: kernel, attestation coordinator, schema registry, validators in force, token, batch verifier, and optional protocol contracts.",
+    description: "Canonical on-chain surface: kernel, attestation coordinator, clause registry, validators in force, token, batch verifier, and optional protocol contracts.",
 };
 
 const GH = "https://github.com/figaro-protocol/Figaro/blob/main/src";
@@ -51,7 +51,7 @@ export default function Specifications() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="Attestation &amp; schema">
+            <MarketingSection title="Attestation &amp; clause">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="AttestationCoordinator"
@@ -61,32 +61,32 @@ export default function Specifications() {
                         desc="Three attest modes (seller / buyer / resolver). Merkle inclusion proof against the signed agreementHash before validator invocation. Attestations whose clause was not committed cannot land (InvalidInclusionProof revert)."
                     />
                     <ContractEntry
-                        id="SchemaRegistry"
-                        title="SchemaRegistry.sol"
-                        href={`${GH}/SchemaRegistry.sol`}
+                        id="ClauseRegistry"
+                        title="ClauseRegistry.sol"
+                        href={`${GH}/ClauseRegistry.sol`}
                         meta="permissionless · event-only"
-                        desc="Event-only schema anchoring. schemaId = keccak256(humanReadableName). uriHash points at off-chain JSON spec."
+                        desc="Event-only clause anchoring. clauseId = keccak256(humanReadableName). uriHash points at off-chain JSON spec."
                     />
                     <ContractEntry
-                        id="ISchemaValidator"
-                        title="ISchemaValidator.sol"
-                        href={`${GH}/ISchemaValidator.sol`}
-                        meta="per-schemaId · view"
-                        desc="Per-schema content validator interface. Reverts on invalid content; binds to one schemaId via schemaId(). No admin, no mutable state."
+                        id="IClauseValidator"
+                        title="IClauseValidator.sol"
+                        href={`${GH}/IClauseValidator.sol`}
+                        meta="per-clauseId · view"
+                        desc="Per-clause content validator interface. Reverts on invalid content; binds to one clauseId via clauseId(). No admin, no mutable state."
                     />
                     <ContractEntry
-                        id="SchemaRegistrationHelper"
-                        title="SchemaRegistrationHelper.sol"
-                        href={`${GH}/SchemaRegistrationHelper.sol`}
+                        id="ClauseRegistrationHelper"
+                        title="ClauseRegistrationHelper.sol"
+                        href={`${GH}/ClauseRegistrationHelper.sol`}
                         meta="atomic register+bind"
-                        desc="Stateless helper. registerSchemaAndValidator(schemaId, version, uriHash, validator) composes registry + setValidator in one transaction. Closes the front-running window for post-deploy third-party schema registration. No admin, no fee, no privilege over targets — just a permissionless composer."
+                        desc="Stateless helper. registerClauseAndValidator(clauseId, version, uriHash, validator) composes registry + setValidator in one transaction. Closes the front-running window for post-deploy third-party clause registration. No admin, no fee, no privilege over targets — just a permissionless composer."
                     />
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="Schema validators in force">
+            <MarketingSection title="Clause validators in force">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Every runtime-attestable schema binds to a deployed <code>ISchemaValidator</code> contract; <code>figaro-topology-v1</code> is manifest-only &mdash; committed at agreement signing, with no on-chain validator. The full inventory &mdash; every schemaId, what it carries, and the three-layer validation architecture &mdash; is on <Link href="/schemas" className="underline">Schemas</Link>.
+                    Every runtime-attestable clause binds to a deployed <code>IClauseValidator</code> contract; <code>figaro-topology-v1</code> is manifest-only &mdash; committed at agreement signing, with no on-chain validator. The full inventory &mdash; every clauseId, what it carries, and the three-layer validation architecture &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
                 </p>
             </MarketingSection>
 
@@ -179,9 +179,9 @@ export default function Specifications() {
 
             <MarketingSection title="Extension">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Mechanisms, schemas, and role models extend the protocol without altering the kernel. The kernel invariants the Extension doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>. See{" "}
-                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/SCHEMAS.md" target="_blank" rel="noopener noreferrer" className="underline">SCHEMAS.md</a>{" "}
-                    for the schema validation architecture and the anchoring doctrine, and the{" "}
+                    Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Extension doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>. See{" "}
+                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/CLAUSES.md" target="_blank" rel="noopener noreferrer" className="underline">CLAUSES.md</a>{" "}
+                    for the clause validation architecture and the anchoring doctrine, and the{" "}
                     <Link href="/builders" className="underline">Builders</Link> surface for composition tools.
                 </p>
             </MarketingSection>

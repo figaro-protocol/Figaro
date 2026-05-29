@@ -17,7 +17,7 @@
  * channel's key exchange and are not part of this public surface.
  */
 
-// Geohash + class-of-service + manifest schema IDs
+// Geohash + class-of-service + manifest clause IDs
 export {
     encodeGeohash,
     geohashBounds,
@@ -25,7 +25,7 @@ export {
     geohashDistance,
     COS_OPTIONS,
     cosLabel,
-    MANIFEST_SCHEMAS,
+    MANIFEST_CLAUSES,
 } from "./manifest";
 export type { CoS } from "./manifest";
 
@@ -66,7 +66,7 @@ export {
     removeFulfillerEcdhKeypair,
 } from "./ecdh";
 
-// Manifest schema registry hook
-export { useManifestSchema, useManifestSchemaCount } from "./useManifestSchema";
-export type { ManifestSchema } from "./useManifestSchema";
-export { FULFILMENT_V2_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+// Manifest clause registry hook
+export { useManifestClause, useManifestClauseCount } from "./useManifestClause";
+export type { ManifestClause } from "./useManifestClause";
+export { FULFILMENT_V2_CLAUSE_KEY } from "@/lib/core/agreementManifest";

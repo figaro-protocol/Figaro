@@ -13,8 +13,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-    GHG_MEASUREMENT_SCHEMA_KEY,
-    GHG_SCHEMA_KEY,
+    GHG_MEASUREMENT_CLAUSE_KEY,
+    GHG_CLAUSE_KEY,
     type Agreement,
     computeAgreementHash,
 } from "@/lib/core/agreementManifest";
@@ -29,19 +29,19 @@ const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 const PROCESS_ID = ("0x" + "ab".repeat(32)) as Hex;
 const ORDER_ID = ("0x" + "cd".repeat(32)) as Hex;
 
-function buildAgreement(schemas: string[]): Agreement {
+function buildAgreement(clauses: string[]): Agreement {
     return {
         version: "a1",
         buyer: BUYER as Hex,
         seller: SELLER as Hex,
-        sections: schemas.map((schema) => {
-            // GHG_SCHEMA_KEY (figaro-ghg-iso-14064-v1) is Cat-2 and needs a
+        sections: clauses.map((clause) => {
+            // GHG_CLAUSE_KEY (figaro-ghg-iso-14064-v1) is Cat-2 and needs a
             // typed payload that the SDK encoder accepts; measurement-v1 is
             // Cat-1 and accepts plain JSON.
-            if (schema === GHG_SCHEMA_KEY) {
-                return { schema, data: { standard: "iso-14064-1", scope: 1 } };
+            if (clause === GHG_CLAUSE_KEY) {
+                return { clause, data: { standard: "iso-14064-1", scope: 1 } };
             }
-            return { schema, data: {} };
+            return { clause, data: {} };
         }),
     };
 }
@@ -76,7 +76,7 @@ function buildSummary() {
 
 describe("deriveProcessModelFromRuntime — GHG disclosure capabilities", () => {
     it("emits submit-disclosure-commitment when agreement carries figaro-ghg-iso-14064-v1, for the seller only", () => {
-        const agreement = buildAgreement([GHG_SCHEMA_KEY]);
+        const agreement = buildAgreement([GHG_CLAUSE_KEY]);
         const agreementHash = computeAgreementHash(agreement);
         const agreements = new Map<string, Agreement>([[agreementHash, agreement]]);
 
@@ -95,7 +95,7 @@ describe("deriveProcessModelFromRuntime — GHG disclosure capabilities", () => 
     });
 
     it("emits submit-disclosure-inventory when agreement carries figaro-ghg-measurement-v1, for the seller only", () => {
-        const agreement = buildAgreement([GHG_MEASUREMENT_SCHEMA_KEY]);
+        const agreement = buildAgreement([GHG_MEASUREMENT_CLAUSE_KEY]);
         const agreementHash = computeAgreementHash(agreement);
         const agreements = new Map<string, Agreement>([[agreementHash, agreement]]);
 
@@ -108,7 +108,7 @@ describe("deriveProcessModelFromRuntime — GHG disclosure capabilities", () => 
     });
 
     it("emits BOTH capabilities when both clauses are committed", () => {
-        const agreement = buildAgreement([GHG_SCHEMA_KEY, GHG_MEASUREMENT_SCHEMA_KEY]);
+        const agreement = buildAgreement([GHG_CLAUSE_KEY, GHG_MEASUREMENT_CLAUSE_KEY]);
         const agreementHash = computeAgreementHash(agreement);
         const agreements = new Map<string, Agreement>([[agreementHash, agreement]]);
 
@@ -133,7 +133,7 @@ describe("deriveProcessModelFromRuntime — GHG disclosure capabilities", () => 
     });
 
     it("emits no GHG capabilities when the order is not Active", () => {
-        const agreement = buildAgreement([GHG_SCHEMA_KEY, GHG_MEASUREMENT_SCHEMA_KEY]);
+        const agreement = buildAgreement([GHG_CLAUSE_KEY, GHG_MEASUREMENT_CLAUSE_KEY]);
         const agreementHash = computeAgreementHash(agreement);
         const agreements = new Map<string, Agreement>([[agreementHash, agreement]]);
 

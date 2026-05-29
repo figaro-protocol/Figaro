@@ -13,7 +13,7 @@
 //! When the spec format is extended, all three layers must be updated in
 //! lockstep. The conformance tests in `tests/conformance.rs` lock Layer B's
 //! parse/validate behavior against the canonical clause JSONs in
-//! `frontend/lib/shared/schemas/` (the deploy-time source of truth that the
+//! `frontend/lib/shared/clauses/` (the deploy-time source of truth that the
 //! frontend preloads).
 
 pub mod embedded;

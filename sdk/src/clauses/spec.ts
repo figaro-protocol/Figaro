@@ -421,9 +421,9 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     if (!isObject(raw)) {
         return { ok: false, errors: [{ path: "$", message: "clause spec must be an object" }] };
     }
-    const { schemaId: clauseId, version, title, description, categories, fields, stages, block } = raw;
+    const { clauseId, version, title, description, categories, fields, stages, block } = raw;
     if (typeof clauseId !== "string" || clauseId.length === 0) {
-        errors.push({ path: "$.schemaId", message: "schemaId must be a non-empty string" });
+        errors.push({ path: "$.clauseId", message: "clauseId must be a non-empty string" });
     }
     if (typeof version !== "number" || !Number.isInteger(version) || version < 0) {
         errors.push({ path: "$.version", message: "version must be a non-negative integer" });

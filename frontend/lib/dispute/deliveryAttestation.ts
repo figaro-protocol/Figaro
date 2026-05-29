@@ -3,11 +3,11 @@
  *
  * Three attestation modes, composable per-delivery:
  *
- *   1. **Device co-signature** (proximity schema attestation)
+ *   1. **Device co-signature** (proximity clause attestation)
  *      Radio-range proof between fulfiller device and verifier device.
  *      Bands: WiFi (~30m), BLE (~10m), NFC (~4cm).
  *      Submitted as a standard attestation under figaro-proximity-proof-v1
- *      schema (Category-1 runtime witness), with proof data (band, nonce,
+ *      clause (Category-1 runtime witness), with proof data (band, nonce,
  *      deviceSig) in the off-chain contentRef. Off-chain consumers verify
  *      proof.band == policy.band against the committed figaro-proximity-policy-v1
  *      section in the agreement.

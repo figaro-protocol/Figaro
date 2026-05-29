@@ -20,7 +20,7 @@
  * `docs/v5/BOL_RESEARCH.md` for the full rationale.
  */
 
-import { COURIER_PROCESS_SCHEMA_KEY, type Agreement, type RedactableAgreement } from "@/lib/core/agreementManifest";
+import { COURIER_PROCESS_CLAUSE_KEY, type Agreement, type RedactableAgreement } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { extractContract, type ContractDocument } from "./contractExtract";
@@ -47,10 +47,10 @@ import { buildHashAppendix, type HashAppendixDocument } from "./hashAppendix";
  *  acting as a carrier on this order. Buyer↔merchant orders, pickup
  *  orders, and consume-onsite orders all return false; only carriage
  *  legs return true. Accepts both cleartext and redacted forms — the
- *  schema key is visible regardless of whether the section's data is
+ *  clause key is visible regardless of whether the section's data is
  *  redacted. */
 export function isCarriageOrder(agreement: Agreement | RedactableAgreement): boolean {
-    return agreement.sections.some((s) => s.schema === COURIER_PROCESS_SCHEMA_KEY);
+    return agreement.sections.some((s) => s.clause === COURIER_PROCESS_CLAUSE_KEY);
 }
 
 export interface AuditBundle {

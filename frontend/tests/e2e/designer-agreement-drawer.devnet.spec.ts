@@ -22,7 +22,7 @@
  */
 import { test, expect } from './devnet-multi-test';
 
-const GEO_SCHEMA_KEY = 'figaro-geo-v2';
+const GEO_CLAUSE_KEY = 'figaro-geo-v2';
 const DRAFT_NAME = 'devnet-drawer-geo';
 
 test.describe('Designer AgreementDrawer (devnet)', () => {
@@ -61,7 +61,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         // state survives the save+reload round-trip. The test value
         // is "user-driven clause edits persist", which a flip-off
         // exercises just as well as a flip-on.
-        const geoToggle = page.getByTestId(`drawer-include-${GEO_SCHEMA_KEY}`);
+        const geoToggle = page.getByTestId(`drawer-include-${GEO_CLAUSE_KEY}`);
         await expect(geoToggle).toBeChecked();
         await geoToggle.uncheck();
         await expect(geoToggle).not.toBeChecked();
@@ -81,16 +81,16 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
                 const raw = window.localStorage.getItem(`figaro:designer:drafts:${slug}`);
                 if (!raw) return { hasGeo: false, sectionCount: 0 };
                 const snap = JSON.parse(raw) as {
-                    orders: Array<{ agreement?: { sections?: Array<{ schema: string }> } }>;
+                    orders: Array<{ agreement?: { sections?: Array<{ clause: string }> } }>;
                 };
                 const root = snap.orders?.[0];
                 const sections = root?.agreement?.sections ?? [];
                 return {
-                    hasGeo: sections.some((s) => s.schema === geoKey),
+                    hasGeo: sections.some((s) => s.clause === geoKey),
                     sectionCount: sections.length,
                 };
             },
-            { slug: expectedSlug, geoKey: GEO_SCHEMA_KEY },
+            { slug: expectedSlug, geoKey: GEO_CLAUSE_KEY },
         );
         expect(hasGeo, `expected NO Geo section in saved snapshot (sections: ${sectionCount})`).toBe(false);
 
@@ -105,6 +105,6 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-logistics').click();
         await page.getByTestId('drawer-section-logistics').waitFor({ state: 'visible', timeout: 5000 });
-        await expect(page.getByTestId(`drawer-include-${GEO_SCHEMA_KEY}`)).not.toBeChecked({ timeout: 5000 });
+        await expect(page.getByTestId(`drawer-include-${GEO_CLAUSE_KEY}`)).not.toBeChecked({ timeout: 5000 });
     });
 });

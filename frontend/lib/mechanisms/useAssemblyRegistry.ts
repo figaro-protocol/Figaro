@@ -1,7 +1,7 @@
 /**
  * useAssemblyRegistry — hooks for publishing designer-built assemblies
  * to the on-chain `AssemblyRegistry`. Parallel to `useSellerRegistry`
- * (sellers) and the schema-registry wiring (schemas) per the
+ * (sellers) and the clause-registry wiring (clauses) per the
  * separation-of-concerns doctrine.
  *
  * Publish flow:
@@ -14,7 +14,7 @@
  *      nodeCount fits the per-process gas ceiling, derived at runtime
  *      from the active chain's block gas limit via
  *      `maxOrdersResolvablePerProcess` in `@/lib/shared/chainGasCeilings`.
- *      All other content validation lives at the per-schema layer
+ *      All other content validation lives at the per-clause layer
  *      and runs when each order's clauses are attested at commit time.
  *
  * No graceful retry, no optimistic UI — the publish is a single atomic
@@ -28,7 +28,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicCl
 import { publicClient, activeChain } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { FULFILMENT_V2_SCHEMA_KEY, TOPOLOGY_SCHEMA_KEY } from "@/lib/core/agreementManifest";
+import { FULFILMENT_V2_CLAUSE_KEY, TOPOLOGY_CLAUSE_KEY } from "@/lib/core/agreementManifest";
 import {
     deriveCanonicalFulfilmentMethod,
     type CanonicalFulfilmentMethod,
@@ -75,7 +75,7 @@ export interface AssemblyManifest {
     /** Topology — each order's id, parent connections live in its
      *  agreement's figaro-topology-v1 section. */
     orders: Order[];
-    /** Per-agreementHash, the full agreement document with all schema
+    /** Per-agreementHash, the full agreement document with all clause
      *  sections. Inlined so the manifest is self-contained — consumers
      *  don't need a separate agreement-store fetch. */
     agreements: Record<string, Agreement>;
@@ -313,36 +313,36 @@ export function chainIdToNetworkTarget(chainId: number): string {
 }
 
 /** Walk the manifest's inlined agreements and collect the unique set of
- *  schemas anchored across all orders. Sorted alphabetically for stable
+ *  clauses anchored across all orders. Sorted alphabetically for stable
  *  display order. */
-export function collectAssemblySchemas(manifest: AssemblyManifest): string[] {
+export function collectAssemblyClauses(manifest: AssemblyManifest): string[] {
     const set = new Set<string>();
     for (const agreement of Object.values(manifest.agreements)) {
         for (const section of agreement.sections) {
-            if (typeof section.schema === "string") set.add(section.schema);
+            if (typeof section.clause === "string") set.add(section.clause);
         }
     }
     return Array.from(set).sort();
 }
 
-/** Process schemas the seller must populate with counterparty wallets
+/** Process clauses the seller must populate with counterparty wallets
  *  when they bind to this assembly. Emitted only for non-root orders
  *  whose parent's fulfilment coordination includes `seller-assigned` —
  *  the case where the buyer may pick a fulfiller from the seller's
  *  roster at checkout. When the parent's coordination is exclusively
  *  `dutch-auction` (the auction contract assigns the fulfiller at
  *  runtime) or `buyer-assigned` (the buyer picks freely at checkout),
- *  no roster is needed and no schema is emitted.
+ *  no roster is needed and no clause is emitted.
  *
- *  Identifies the sub-order's process schema (e.g.
- *  `figaro-courier-process-v1`) directly — schemaId is the structural
+ *  Identifies the sub-order's process clause (e.g.
+ *  `figaro-courier-process-v1`) directly — clauseId is the structural
  *  marker for which kind of off-chain seller a sub-order needs.
- *  Returns the set of distinct schemaIds, sorted.
+ *  Returns the set of distinct clauseIds, sorted.
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the seller's profile. */
-export function requiredCounterpartySchemas(manifest: AssemblyManifest): string[] {
-    const COUNTERPARTY_PROCESS_SCHEMAS: ReadonlySet<string> = new Set([
+export function requiredCounterpartyClauses(manifest: AssemblyManifest): string[] {
+    const COUNTERPARTY_PROCESS_CLAUSES: ReadonlySet<string> = new Set([
         "figaro-courier-process-v1",
     ]);
 
@@ -355,7 +355,7 @@ export function requiredCounterpartySchemas(manifest: AssemblyManifest): string[
 
     function coordinationsOf(agreement: Agreement): string[] {
         const section = agreement.sections.find(
-            (s: { schema: string }) => s.schema === FULFILMENT_V2_SCHEMA_KEY,
+            (s: { clause: string }) => s.clause === FULFILMENT_V2_CLAUSE_KEY,
         ) as { data?: { coordinations?: unknown } } | undefined;
         const coords = section?.data?.coordinations;
         return Array.isArray(coords) ? coords.filter((c): c is string => typeof c === "string") : [];
@@ -363,13 +363,13 @@ export function requiredCounterpartySchemas(manifest: AssemblyManifest): string[
 
     function parentOrderIds(agreement: Agreement): string[] {
         const section = agreement.sections.find(
-            (s: { schema: string }) => s.schema === TOPOLOGY_SCHEMA_KEY,
+            (s: { clause: string }) => s.clause === TOPOLOGY_CLAUSE_KEY,
         ) as { data?: { parentOrderHashes?: unknown } } | undefined;
         const parents = section?.data?.parentOrderHashes;
         return Array.isArray(parents) ? parents.filter((p): p is string => typeof p === "string") : [];
     }
 
-    const schemas = new Set<string>();
+    const clauses = new Set<string>();
     for (const order of manifest.orders) {
         if (!order.agreementHash) continue;
         const agreement = manifest.agreements[order.agreementHash];
@@ -385,21 +385,21 @@ export function requiredCounterpartySchemas(manifest: AssemblyManifest): string[
         });
         if (!parentAllowsSellerAssigned) continue;
 
-        for (const section of agreement.sections as ReadonlyArray<{ schema: string }>) {
-            if (COUNTERPARTY_PROCESS_SCHEMAS.has(section.schema)) {
-                schemas.add(section.schema);
+        for (const section of agreement.sections as ReadonlyArray<{ clause: string }>) {
+            if (COUNTERPARTY_PROCESS_CLAUSES.has(section.clause)) {
+                clauses.add(section.clause);
             }
         }
     }
-    return Array.from(schemas).sort();
+    return Array.from(clauses).sort();
 }
 
-/** Compact display formatting for a schema list. Strips the `figaro-`
+/** Compact display formatting for a clause list. Strips the `figaro-`
  *  prefix and `-vN` version suffix. Shows the first three inline,
  *  summarizes the rest as `+N more`. Callers typically place the full
  *  set in the row's `title` tooltip. */
-export function formatAssemblySchemaList(schemas: readonly string[]): string {
-    const trimmed = schemas.map((s) => s.replace(/^figaro-/, "").replace(/-v\d+$/, ""));
+export function formatAssemblyClauseList(clauses: readonly string[]): string {
+    const trimmed = clauses.map((s) => s.replace(/^figaro-/, "").replace(/-v\d+$/, ""));
     if (trimmed.length <= 3) return trimmed.join(", ");
     return `${trimmed.slice(0, 3).join(", ")}, +${trimmed.length - 3} more`;
 }
@@ -428,8 +428,8 @@ export interface AssemblyChoice {
     name: string;
     /** Available when state === "loaded". */
     orderCount: number | null;
-    /** Available when state === "loaded". Sorted, deduped schemaIds. */
-    schemas: readonly string[] | null;
+    /** Available when state === "loaded". Sorted, deduped clauseIds. */
+    clauses: readonly string[] | null;
     /** The full manifest when state === "loaded". Avoids re-fetching from
      *  consumers that need it (e.g. fork). */
     manifest: AssemblyManifest | null;
@@ -437,7 +437,7 @@ export interface AssemblyChoice {
 
 /**
  * Lists every published assembly (optionally filtered to one author)
- * enriched with manifest data — name, order count, schema set.
+ * enriched with manifest data — name, order count, clause set.
  *
  * Composes `usePublishedAssemblies` (event log) with a lazy per-row
  * manifest fetch. Both `PublishedList` (designer index) and the
@@ -519,7 +519,7 @@ export function useAssemblyChoices(
                 state,
                 name: manifest?.name ?? event.slug,
                 orderCount: manifest ? manifest.orders.length : null,
-                schemas: manifest ? collectAssemblySchemas(manifest) : null,
+                clauses: manifest ? collectAssemblyClauses(manifest) : null,
                 manifest,
             };
         });
@@ -538,7 +538,7 @@ export interface BoundAssembly {
      *  fulfilment clause is absent or malformed. */
     fulfilmentMethod: CanonicalFulfilmentMethod | null;
     /** The seller's designated counterparty wallets for this assembly,
-     *  keyed by sub-order process schema (e.g. figaro-courier-process-v1).
+     *  keyed by sub-order process clause (e.g. figaro-courier-process-v1).
      *  Sourced from the seller profile's AssemblyBindingRecord —
      *  checkout reads it to fill a delegated order's seller. */
     counterpartyBindings: CounterpartyBinding[];
@@ -572,7 +572,7 @@ function extractRootFulfilment(
     const agreement = manifest.agreements[rootOrder.agreementHash];
     if (!agreement) return empty;
     const fulfilmentSection = agreement.sections.find(
-        (s: { schema: string }) => s.schema === FULFILMENT_V2_SCHEMA_KEY,
+        (s: { clause: string }) => s.clause === FULFILMENT_V2_CLAUSE_KEY,
     );
     const data = fulfilmentSection?.data as
         | { modalities?: unknown; coordinations?: unknown }

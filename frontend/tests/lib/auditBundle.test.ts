@@ -3,14 +3,14 @@ import { OrderState, type Order } from "@/lib/core/store";
 import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from "../anvilAccounts";
 import {
     type Agreement,
-    COMMERCE_SCHEMA_KEY,
-    FULFILMENT_V2_SCHEMA_KEY,
-    GEO_SCHEMA_KEY,
-    GHG_MEASUREMENT_SCHEMA_KEY,
-    APPLICABLE_LAW_SCHEMA_KEY,
-    PROXIMITY_POLICY_SCHEMA_KEY,
-    PROXIMITY_PROOF_SCHEMA_KEY,
-    TOPOLOGY_SCHEMA_KEY,
+    COMMERCE_CLAUSE_KEY,
+    FULFILMENT_V2_CLAUSE_KEY,
+    GEO_CLAUSE_KEY,
+    GHG_MEASUREMENT_CLAUSE_KEY,
+    APPLICABLE_LAW_CLAUSE_KEY,
+    PROXIMITY_POLICY_CLAUSE_KEY,
+    PROXIMITY_PROOF_CLAUSE_KEY,
+    TOPOLOGY_CLAUSE_KEY,
     computeSectionLeaf,
 } from "@/lib/core/agreementManifest";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
@@ -32,7 +32,7 @@ import {
 import { buildHashAppendix } from "@/lib/audit/hashAppendix";
 import { buildAuditBundle, isCarriageOrder } from "@/lib/audit/auditBundle";
 
-const COURIER_PROCESS_SCHEMA_KEY = "figaro-courier-process-v1";
+const COURIER_PROCESS_CLAUSE_KEY = "figaro-courier-process-v1";
 import { DELIVERY_LIFECYCLE_STAGES } from "@/lib/audit/types";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ function makeAgreement(extraSections: Agreement["sections"] = []): Agreement {
         seller: SELLER,
         sections: [
             {
-                schema: COMMERCE_SCHEMA_KEY,
+                clause: COMMERCE_CLAUSE_KEY,
                 data: {
                     currency: TOKEN,
                     payment: "100",
@@ -79,7 +79,7 @@ function makeAgreement(extraSections: Agreement["sections"] = []): Agreement {
                 },
             },
             ...extraSections,
-        ].sort((a, b) => a.schema.localeCompare(b.schema)),
+        ].sort((a, b) => a.clause.localeCompare(b.clause)),
     };
 }
 
@@ -89,11 +89,11 @@ describe("extractContract", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
         {
-            schema: FULFILMENT_V2_SCHEMA_KEY,
+            clause: FULFILMENT_V2_CLAUSE_KEY,
             data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] },
         },
         {
-            schema: GEO_SCHEMA_KEY,
+            clause: GEO_CLAUSE_KEY,
             data: {
                 originGeohash: "u4pruydqqvj",
                 destinationGeohash: "u4pruydqqvk",
@@ -103,7 +103,7 @@ describe("extractContract", () => {
             },
         },
         {
-            schema: APPLICABLE_LAW_SCHEMA_KEY,
+            clause: APPLICABLE_LAW_CLAUSE_KEY,
             data: { applicableLaw: "US-NY", forum: "JAMS-arbitration", language: "en" },
         },
     ]);
@@ -168,7 +168,7 @@ describe("extractContract — lineage (DAG / parentOrderHashes)", () => {
         const parents = ["0xPARENT_A", "0xPARENT_B"];
         const ag = makeAgreement([
             {
-                schema: TOPOLOGY_SCHEMA_KEY,
+                clause: TOPOLOGY_CLAUSE_KEY,
                 data: { topologyMode: "explicit", parentOrderHashes: parents },
             },
         ]);
@@ -180,7 +180,7 @@ describe("extractContract — lineage (DAG / parentOrderHashes)", () => {
     it("filters out non-string parent entries silently rather than throwing", () => {
         const ag = makeAgreement([
             {
-                schema: TOPOLOGY_SCHEMA_KEY,
+                clause: TOPOLOGY_CLAUSE_KEY,
                 data: { parentOrderHashes: ["0xVALID", 42, null, "0xVALID2"] },
             },
         ]);
@@ -193,7 +193,7 @@ describe("extractContract — fulfilment summary", () => {
     it("surfaces the canonical fulfilment method derived from v2 modality + coordination", () => {
         const ag = makeAgreement([
             {
-                schema: FULFILMENT_V2_SCHEMA_KEY,
+                clause: FULFILMENT_V2_CLAUSE_KEY,
                 data: { modalities: ["delivery"], coordinations: ["dutch-auction"], handoffPoints: [] },
             },
         ]);
@@ -245,7 +245,7 @@ describe("extractInvoice", () => {
 
     it("filters out malformed line items rather than throwing", () => {
         const bad = makeAgreement();
-        const commerce = bad.sections.find((s) => s.schema === COMMERCE_SCHEMA_KEY)!;
+        const commerce = bad.sections.find((s) => s.clause === COMMERCE_CLAUSE_KEY)!;
         (commerce.data as { lineItems: unknown[] }).lineItems.push({ itemId: 123, name: "missing-price" });
         const inv = extractInvoice(order, bad);
         // Only the 2 valid items survive; the malformed one is dropped silently.
@@ -258,8 +258,8 @@ describe("extractInvoice", () => {
 describe("extractBillOfLading", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
-        { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
+        { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
+        { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
     ]);
 
     function makeAttestation(overrides: Partial<AttestationRecord> = {}): AttestationRecord {
@@ -269,7 +269,7 @@ describe("extractBillOfLading", () => {
             attester: SELLER,
             // Default to a courier-process attestation at the "completed"
             // stage (event uint8 6), matching BoL stage 4 (Delivered).
-            schemaId: "figaro-courier-process-v1",
+            clauseId: "figaro-courier-process-v1",
             stage: 6,
             contentRef: "0xCONTENT0",
             transactionHash: "0xTX0",
@@ -298,7 +298,7 @@ describe("extractBillOfLading", () => {
     it("attaches attester + contentRef + tx hash for stages that have on-chain receipts", () => {
         // BoL stage 3 (PickedUp) ← courier-process event uint8 3 (arrived-pickup).
         const att = makeAttestation({
-            schemaId: "figaro-courier-process-v1",
+            clauseId: "figaro-courier-process-v1",
             stage: 3,
             contentRef: "0xPICKED",
             transactionHash: "0xTX_PICKED",
@@ -313,7 +313,7 @@ describe("extractBillOfLading", () => {
 
     it("derives BoL stage 0 from merchant.prep-started (event uint8 2)", () => {
         const att = makeAttestation({
-            schemaId: "figaro-merchant-process-v1",
+            clauseId: "figaro-merchant-process-v1",
             stage: 2,
             contentRef: "0xPREP",
         });
@@ -325,7 +325,7 @@ describe("extractBillOfLading", () => {
 
     it("derives BoL stage 4 from courier.completed (event uint8 6)", () => {
         const att = makeAttestation({
-            schemaId: "figaro-courier-process-v1",
+            clauseId: "figaro-courier-process-v1",
             stage: 6,
             contentRef: "0xDELIVERED",
         });
@@ -342,8 +342,8 @@ describe("extractBillOfLading", () => {
         expect(delivered.attested).toBe(false);
     });
 
-    it("ignores attestations for other schemas (e.g. GHG, proximity)", () => {
-        const att = makeAttestation({ schemaId: "figaro-ghg-measurement-v1", stage: 2 });
+    it("ignores attestations for other clauses (e.g. GHG, proximity)", () => {
+        const att = makeAttestation({ clauseId: "figaro-ghg-measurement-v1", stage: 2 });
         const bol = extractBillOfLading(order, agreement, [att]);
         const enRoute = bol.stages.find((s) => s.stageId === 2)!;
         expect(enRoute.attested).toBe(false);
@@ -369,14 +369,14 @@ describe("extractBillOfLading", () => {
 describe("buildHashAppendix", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
+        { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
     ]);
     const attestations: AttestationRecord[] = [
         {
             orderHash: order.id,
             processId: order.processId,
             attester: SELLER,
-            schemaId: "figaro-merchant-process-v1",
+            clauseId: "figaro-merchant-process-v1",
             stage: 2,
             contentRef: "0xCONTENT0",
             transactionHash: "0xTX0",
@@ -400,7 +400,7 @@ describe("buildHashAppendix", () => {
     it("section-leaf anchor hashes match computeSectionLeaf for each section", () => {
         const leafAnchors = appendix.anchors.filter((a) => a.kind === "agreement-section-leaf");
         for (const anchor of leafAnchors) {
-            const matchingSection = agreement.sections.find((s) => anchor.label.includes(s.schema));
+            const matchingSection = agreement.sections.find((s) => anchor.label.includes(s.clause));
             expect(matchingSection).toBeDefined();
             expect(anchor.hash).toBe(computeSectionLeaf(matchingSection!));
         }
@@ -428,17 +428,17 @@ describe("extractEmissions", () => {
     it("reports disclosed=false when no GHG clause is signed", () => {
         const doc = extractEmissions(order, makeAgreement(), []);
         expect(doc.disclosed).toBe(false);
-        expect(doc.standardSchemaKey).toBeUndefined();
+        expect(doc.standardClauseKey).toBeUndefined();
         expect(doc.scope).toBeUndefined();
     });
 
-    it("surfaces the chosen sister-schema standard + scope when committed", () => {
+    it("surfaces the chosen sister-clause standard + scope when committed", () => {
         const ag = makeAgreement([
-            { schema: "figaro-ghg-iso-14064-v1", data: { scope: 2 } },
+            { clause: "figaro-ghg-iso-14064-v1", data: { scope: 2 } },
         ]);
         const doc = extractEmissions(order, ag, []);
         expect(doc.disclosed).toBe(true);
-        expect(doc.standardSchemaKey).toBe("figaro-ghg-iso-14064-v1");
+        expect(doc.standardClauseKey).toBe("figaro-ghg-iso-14064-v1");
         expect(doc.standardLabel).toBe("ISO-14064");
         expect(doc.scope).toBe(2);
     });
@@ -446,7 +446,7 @@ describe("extractEmissions", () => {
     it("collects measurement attestation receipts in input order", () => {
         const att1: AttestationRecord = {
             orderHash: order.id, processId: order.processId, attester: SELLER,
-            schemaId: GHG_MEASUREMENT_SCHEMA_KEY, stage: 3, contentRef: "0xMEAS1",
+            clauseId: GHG_MEASUREMENT_CLAUSE_KEY, stage: 3, contentRef: "0xMEAS1",
             transactionHash: "0xTX1", blockNumber: 100,
         };
         const att2: AttestationRecord = { ...att1, stage: 4, contentRef: "0xMEAS2", transactionHash: "0xTX2", blockNumber: 110 };
@@ -459,12 +459,12 @@ describe("extractEmissions", () => {
     it("ignores non-measurement attestations + cross-order leakage", () => {
         const merchantAtt: AttestationRecord = {
             orderHash: order.id, processId: order.processId, attester: SELLER,
-            schemaId: "figaro-merchant-process-v1", stage: 2, contentRef: "0xMP",
+            clauseId: "figaro-merchant-process-v1", stage: 2, contentRef: "0xMP",
             transactionHash: "0xTXMP", blockNumber: 1,
         };
         const otherOrderAtt: AttestationRecord = {
             orderHash: "0xOTHER", processId: order.processId, attester: SELLER,
-            schemaId: GHG_MEASUREMENT_SCHEMA_KEY, stage: 3, contentRef: "0xMEAS",
+            clauseId: GHG_MEASUREMENT_CLAUSE_KEY, stage: 3, contentRef: "0xMEAS",
             transactionHash: "0xTX", blockNumber: 1,
         };
         const doc = extractEmissions(order, makeAgreement(), [merchantAtt, otherOrderAtt]);
@@ -485,7 +485,7 @@ describe("extractProximity", () => {
 
     it("surfaces the committed band from a policy clause", () => {
         const ag = makeAgreement([
-            { schema: PROXIMITY_POLICY_SCHEMA_KEY, data: { band: 2 } },
+            { clause: PROXIMITY_POLICY_CLAUSE_KEY, data: { band: 2 } },
         ]);
         const doc = extractProximity(order, ag, []);
         expect(doc.policyCommitted).toBe(true);
@@ -495,10 +495,10 @@ describe("extractProximity", () => {
     it("collects proof-attestation receipts and ignores non-proof attestations", () => {
         const proofAtt: AttestationRecord = {
             orderHash: order.id, processId: order.processId, attester: SELLER,
-            schemaId: PROXIMITY_PROOF_SCHEMA_KEY, stage: 3, contentRef: "0xPROOF",
+            clauseId: PROXIMITY_PROOF_CLAUSE_KEY, stage: 3, contentRef: "0xPROOF",
             transactionHash: "0xTX", blockNumber: 50,
         };
-        const courierAtt: AttestationRecord = { ...proofAtt, schemaId: "figaro-courier-process-v1", contentRef: "0xCP" };
+        const courierAtt: AttestationRecord = { ...proofAtt, clauseId: "figaro-courier-process-v1", contentRef: "0xCP" };
         const doc = extractProximity(order, makeAgreement(), [proofAtt, courierAtt]);
         expect(doc.proofs).toHaveLength(1);
         expect(doc.proofs[0].contentRef).toBe("0xPROOF");
@@ -510,29 +510,29 @@ describe("extractProximity", () => {
 describe("extractProcessLogs", () => {
     const order = makeOrder();
 
-    function logAtt(schemaId: string, stage: number, contentRef: string): AttestationRecord {
+    function logAtt(clauseId: string, stage: number, contentRef: string): AttestationRecord {
         return {
             orderHash: order.id, processId: order.processId, attester: SELLER,
-            schemaId, stage, contentRef, transactionHash: "0xTX", blockNumber: 50,
+            clauseId, stage, contentRef, transactionHash: "0xTX", blockNumber: 50,
         };
     }
 
-    it("partitions events by schemaId", () => {
+    it("partitions events by clauseId", () => {
         const merchantEv = logAtt("figaro-merchant-process-v1", 1, "0xM1");
         const courierEv1 = logAtt("figaro-courier-process-v1", 2, "0xC1");
         const courierEv2 = logAtt("figaro-courier-process-v1", 4, "0xC2");
         const doc = extractProcessLogs(order, [merchantEv, courierEv1, courierEv2]);
         expect(doc.merchantEvents).toHaveLength(1);
         expect(doc.courierEvents).toHaveLength(2);
-        expect(doc.merchantEvents[0].schemaKey).toBe("figaro-merchant-process-v1");
-        expect(doc.courierEvents[0].schemaKey).toBe("figaro-courier-process-v1");
+        expect(doc.merchantEvents[0].clauseKey).toBe("figaro-merchant-process-v1");
+        expect(doc.courierEvents[0].clauseKey).toBe("figaro-courier-process-v1");
     });
 
-    it("ignores attestations from other schemas + other orders", () => {
-        const ghgAtt = logAtt(GHG_MEASUREMENT_SCHEMA_KEY, 3, "0xGHG");
+    it("ignores attestations from other clauses + other orders", () => {
+        const ghgAtt = logAtt(GHG_MEASUREMENT_CLAUSE_KEY, 3, "0xGHG");
         const otherOrderMerchant: AttestationRecord = {
             orderHash: "0xOTHER", processId: order.processId, attester: SELLER,
-            schemaId: "figaro-merchant-process-v1", stage: 0, contentRef: "0xM",
+            clauseId: "figaro-merchant-process-v1", stage: 0, contentRef: "0xM",
             transactionHash: "0xTX", blockNumber: 1,
         };
         const doc = extractProcessLogs(order, [ghgAtt, otherOrderMerchant]);
@@ -658,7 +658,7 @@ describe("AuditBundle — every document carries buyer + seller addresses", () =
     // suppresses the BoL document and the buyer+seller cross-check has
     // nothing to assert against on that field.
     const agreement = makeAgreement([
-        { schema: COURIER_PROCESS_SCHEMA_KEY, data: {} },
+        { clause: COURIER_PROCESS_CLAUSE_KEY, data: {} },
     ]);
     const bundle = buildAuditBundle(order, agreement, []);
 
@@ -686,15 +686,15 @@ describe("AuditBundle — every document carries buyer + seller addresses", () =
 describe("isCarriageOrder", () => {
     it("returns true when the agreement carries figaro-courier-process-v1", () => {
         const agreement = makeAgreement([
-            { schema: COURIER_PROCESS_SCHEMA_KEY, data: {} },
+            { clause: COURIER_PROCESS_CLAUSE_KEY, data: {} },
         ]);
         expect(isCarriageOrder(agreement)).toBe(true);
     });
 
     it("returns false for buyer↔merchant orders (no courier-process clause)", () => {
         const agreement = makeAgreement([
-            { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
-            { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
+            { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
+            { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         ]);
         expect(isCarriageOrder(agreement)).toBe(false);
     });
@@ -713,9 +713,9 @@ describe("isCarriageOrder", () => {
 describe("buildAuditBundle", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
-        { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
-        { schema: COURIER_PROCESS_SCHEMA_KEY, data: {} },
+        { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
+        { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
+        { clause: COURIER_PROCESS_CLAUSE_KEY, data: {} },
     ]);
     const bundle = buildAuditBundle(order, agreement, []);
 
@@ -746,8 +746,8 @@ describe("buildAuditBundle", () => {
 
     it("omits billOfLading on a non-carriage order (e.g. buyer↔merchant goods sale)", () => {
         const merchantAgreement = makeAgreement([
-            { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
-            { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
+            { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
+            { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         ]);
         const merchantBundle = buildAuditBundle(order, merchantAgreement, []);
         expect(merchantBundle.billOfLading).toBeUndefined();
@@ -768,8 +768,8 @@ describe("buildAuditBundle", () => {
 describe("buildAuditBundle with redacted commerce section", () => {
     const order = makeOrder();
     const cleartextAgreement = makeAgreement([
-        { schema: FULFILMENT_V2_SCHEMA_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
-        { schema: GEO_SCHEMA_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
+        { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] } },
+        { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
     ]);
 
     it("invoice surfaces lineItemsSealed when commerce is redacted", async () => {
@@ -787,11 +787,11 @@ describe("buildAuditBundle with redacted commerce section", () => {
     it("contract clauses include a sealed commerce clause with the leaf hash preserved", async () => {
         const { redactSections, computeSectionLeaf } = await import("@/lib/core/agreementManifest");
         const commerceLeafBefore = computeSectionLeaf(
-            cleartextAgreement.sections.find((s) => s.schema === "figaro-commerce-v1")!,
+            cleartextAgreement.sections.find((s) => s.clause === "figaro-commerce-v1")!,
         );
         const redacted = redactSections(cleartextAgreement, ["figaro-commerce-v1"]);
         const bundle = buildAuditBundle(order, redacted, []);
-        const commerceClause = bundle.contract.clauses.find((c) => c.schemaKey === "figaro-commerce-v1")!;
+        const commerceClause = bundle.contract.clauses.find((c) => c.clauseKey === "figaro-commerce-v1")!;
         expect(commerceClause.sealed).toBe(true);
         expect(commerceClause.body).toEqual({});
         expect(commerceClause.leafHash).toBe(commerceLeafBefore);
@@ -800,7 +800,7 @@ describe("buildAuditBundle with redacted commerce section", () => {
     it("hash-appendix labels the sealed leaf and uses the stored leaf value", async () => {
         const { redactSections, computeSectionLeaf } = await import("@/lib/core/agreementManifest");
         const commerceLeaf = computeSectionLeaf(
-            cleartextAgreement.sections.find((s) => s.schema === "figaro-commerce-v1")!,
+            cleartextAgreement.sections.find((s) => s.clause === "figaro-commerce-v1")!,
         );
         const redacted = redactSections(cleartextAgreement, ["figaro-commerce-v1"]);
         const bundle = buildAuditBundle(order, redacted, []);
@@ -815,7 +815,7 @@ describe("buildAuditBundle with redacted commerce section", () => {
         const { redactSections } = await import("@/lib/core/agreementManifest");
         const redacted = redactSections(cleartextAgreement, ["figaro-commerce-v1"]);
         const bundle = buildAuditBundle(order, redacted, []);
-        const fulfilmentClause = bundle.contract.clauses.find((c) => c.schemaKey === "figaro-fulfilment-v2")!;
+        const fulfilmentClause = bundle.contract.clauses.find((c) => c.clauseKey === "figaro-fulfilment-v2")!;
         expect(fulfilmentClause.sealed).toBeUndefined();
         expect(fulfilmentClause.body).toEqual({ modalities: ["pickup"], coordinations: [], handoffPoints: ["face-to-face"] });
     });
@@ -823,7 +823,7 @@ describe("buildAuditBundle with redacted commerce section", () => {
     it("cleartext path is unchanged when no redaction is applied", () => {
         const bundle = buildAuditBundle(order, cleartextAgreement, []);
         expect(bundle.invoice.lineItemsSealed).toBeUndefined();
-        const commerceClause = bundle.contract.clauses.find((c) => c.schemaKey === "figaro-commerce-v1")!;
+        const commerceClause = bundle.contract.clauses.find((c) => c.clauseKey === "figaro-commerce-v1")!;
         expect(commerceClause.sealed).toBeUndefined();
     });
 });

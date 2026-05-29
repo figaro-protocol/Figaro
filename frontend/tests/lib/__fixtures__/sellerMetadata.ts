@@ -22,7 +22,7 @@ export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {
             category: "Pizza",
             image: "ipfs://example/margherita.png",
             available: true,
-            schemaAttestations: {
+            clauseAttestations: {
                 "figaro-allergen-v1": {
                     allergenFree: ["gluten-free-crust-option"],
                     contains: ["dairy", "gluten"],

@@ -13,7 +13,7 @@
  *      `OrderCommitted` event emitted at `transactionHash` for the order.
  *   4. Each lifecycle attestation's content hashes to its `contentRef`
  *      via `keccak256(content)`. The contentRef is logged by the
- *      `Attestation(orderHash, processId, attester, schemaId, stage,
+ *      `Attestation(orderHash, processId, attester, clauseId, stage,
  *      contentRef)` event on chain.
  *
  * The appendix lists every hash in this chain so a reader can perform
@@ -95,11 +95,11 @@ export function buildHashAppendix(
         const redacted = isRedactedSection(section);
         anchors.push({
             kind: "agreement-section-leaf",
-            label: `Section leaf — ${section.schema}${redacted ? " (sealed)" : ""}`,
+            label: `Section leaf — ${section.clause}${redacted ? " (sealed)" : ""}`,
             hash: redacted ? section.leaf : computeSectionLeaf(section),
             sourceLocation: redacted
                 ? `Merkle leaf under agreementHash root. Section is redacted in this distribution; cleartext is held by the original parties and can be revealed selectively. Reader recomputes from revealed cleartext via computeSectionLeaf(...) and checks it matches this leaf.`
-                : `Merkle leaf under agreementHash root. Reader recomputes via computeSectionLeaf({schema: "${section.schema}", data}) and verifies inclusion in the agreementHash tree.`,
+                : `Merkle leaf under agreementHash root. Reader recomputes via computeSectionLeaf({clause: "${section.clause}", data}) and verifies inclusion in the agreementHash tree.`,
         });
     }
 
@@ -108,9 +108,9 @@ export function buildHashAppendix(
         if (att.orderHash !== order.id) continue;
         anchors.push({
             kind: "attestation-content-ref",
-            label: `Attestation contentRef — ${att.schemaId} stage ${att.stage}`,
+            label: `Attestation contentRef — ${att.clauseId} stage ${att.stage}`,
             hash: att.contentRef,
-            sourceLocation: `Attestation(orderHash=${truncateHex(att.orderHash, { head: 8 })}, schemaId=${att.schemaId}, stage=${att.stage}).contentRef = keccak256(content). Original content recoverable from the transaction calldata.`,
+            sourceLocation: `Attestation(orderHash=${truncateHex(att.orderHash, { head: 8 })}, clauseId=${att.clauseId}, stage=${att.stage}).contentRef = keccak256(content). Original content recoverable from the transaction calldata.`,
             transactionHash: att.transactionHash ?? undefined,
         });
     }

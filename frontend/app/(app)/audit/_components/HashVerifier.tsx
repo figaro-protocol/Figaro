@@ -138,21 +138,21 @@ function AgreementMode() {
             if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.sections)) {
                 return { kind: "error" as const, message: "Parsed JSON is not an Agreement (missing sections array)." };
             }
-            // Validate each section: must be either cleartext ({ schema, data })
-            // or redacted ({ schema, leaf, redacted: true }). Mixing is allowed.
+            // Validate each section: must be either cleartext ({ clause, data })
+            // or redacted ({ clause, leaf, redacted: true }). Mixing is allowed.
             for (const s of parsed.sections as AnyAgreementSection[]) {
-                if (!s || typeof s !== "object" || typeof s.schema !== "string") {
-                    return { kind: "error" as const, message: "Each section must have a string `schema` field." };
+                if (!s || typeof s !== "object" || typeof s.clause !== "string") {
+                    return { kind: "error" as const, message: "Each section must have a string `clause` field." };
                 }
                 if (isRedactedSection(s)) {
                     if (typeof s.leaf !== "string" || !s.leaf.startsWith("0x")) {
-                        return { kind: "error" as const, message: `Redacted section "${s.schema}" missing valid 0x-prefixed leaf.` };
+                        return { kind: "error" as const, message: `Redacted section "${s.clause}" missing valid 0x-prefixed leaf.` };
                     }
                 } else {
                     if (typeof (s as AgreementSection).data !== "object") {
                         return {
                             kind: "error" as const,
-                            message: `Section "${s.schema}" missing data field (or use { leaf, redacted: true } for redacted form).`,
+                            message: `Section "${s.clause}" missing data field (or use { leaf, redacted: true } for redacted form).`,
                         };
                     }
                 }
@@ -161,10 +161,10 @@ function AgreementMode() {
             const hash = hasRedacted
                 ? computeRedactableAgreementHash(parsed as RedactableAgreement)
                 : computeAgreementHash(parsed as Agreement);
-            const redactedSchemas = (parsed.sections as AnyAgreementSection[])
+            const redactedClauses = (parsed.sections as AnyAgreementSection[])
                 .filter(isRedactedSection)
-                .map((s) => s.schema);
-            return { kind: "ok" as const, hash, redactedSchemas };
+                .map((s) => s.clause);
+            return { kind: "ok" as const, hash, redactedClauses };
         } catch (e) {
             return { kind: "error" as const, message: extractErrorMessage(e, "JSON parse failed.") };
         }
@@ -177,8 +177,8 @@ function AgreementMode() {
                 The recomputed merkle root is shown below — compare to the on-chain
                 `OrderCommitted.agreementHash` event field. Redacted forms are
                 accepted: any section can be{" "}
-                <code className="font-mono">{"{ schema, leaf, redacted: true }"}</code>{" "}
-                instead of <code className="font-mono">{"{ schema, data }"}</code>, and the
+                <code className="font-mono">{"{ clause, leaf, redacted: true }"}</code>{" "}
+                instead of <code className="font-mono">{"{ clause, data }"}</code>, and the
                 merkle root is the same value either way.
             </p>
             <label className="block text-xs font-semibold text-neutral-700">
@@ -206,13 +206,13 @@ function AgreementMode() {
             {result.kind === "ok" && (
                 <>
                     <HashResult computed={result.hash} expected={expected.trim()} label="Recomputed agreement merkle root" />
-                    {result.redactedSchemas.length > 0 && (
+                    {result.redactedClauses.length > 0 && (
                         <div
                             className="rounded border border-amber-200 bg-amber-50 p-4 space-y-2 text-xs text-amber-900"
                             data-testid="verify-agreement-redacted-notice"
                         >
                             <p className="font-semibold uppercase tracking-wider text-[11px]">
-                                {result.redactedSchemas.length} section{result.redactedSchemas.length > 1 ? "s" : ""} sealed
+                                {result.redactedClauses.length} section{result.redactedClauses.length > 1 ? "s" : ""} sealed
                             </p>
                             <p>
                                 The merkle root above is computed using the stored leaf
@@ -223,7 +223,7 @@ function AgreementMode() {
                                 leaf hash.
                             </p>
                             <ul className="list-disc list-inside font-mono text-[11px]">
-                                {result.redactedSchemas.map((s) => (
+                                {result.redactedClauses.map((s) => (
                                     <li key={s}>{s}</li>
                                 ))}
                             </ul>
@@ -245,10 +245,10 @@ function SectionMode() {
         if (!json.trim()) return { kind: "idle" as const };
         try {
             const parsed = JSON.parse(json) as AgreementSection;
-            if (!parsed || typeof parsed !== "object" || typeof parsed.schema !== "string" || typeof parsed.data !== "object") {
+            if (!parsed || typeof parsed !== "object" || typeof parsed.clause !== "string" || typeof parsed.data !== "object") {
                 return {
                     kind: "error" as const,
-                    message: "Parsed JSON is not a single AgreementSection ({ schema: string, data: object }).",
+                    message: "Parsed JSON is not a single AgreementSection ({ clause: string, data: object }).",
                 };
             }
             return { kind: "ok" as const, hash: computeSectionLeaf(parsed) };
@@ -271,7 +271,7 @@ function SectionMode() {
                     value={json}
                     onChange={(e) => setJson(e.target.value)}
                     rows={8}
-                    placeholder='{"schema":"figaro-commerce-v1","data":{"currency":"0x...","payment":"100","lineItems":[...]}}'
+                    placeholder='{"clause":"figaro-commerce-v1","data":{"currency":"0x...","payment":"100","lineItems":[...]}}'
                     data-testid="verify-section-input"
                     className="mt-1 w-full font-mono text-xs px-3 py-2 border border-neutral-300 rounded"
                 />
@@ -347,7 +347,7 @@ function SearchMode() {
                     if (hexEqual(computeSectionLeaf(section), target)) {
                         found.push({
                             kind: "section-leaf",
-                            label: `Section leaf — ${section.schema}`,
+                            label: `Section leaf — ${section.clause}`,
                             location: `Merkle leaf under agreementHash ${order.agreementHash} (order ${order.id})`,
                         });
                     }

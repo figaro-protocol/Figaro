@@ -4,7 +4,7 @@ import { parseClauseSpec } from "../../src/clauses/spec.js";
 describe("parseClauseSpec — meta-clause validation", () => {
     it("accepts a minimal valid spec", () => {
         const result = parseClauseSpec({
-            schemaId: "test-v1",
+            clauseId: "test-v1",
             version: 1,
             title: "Test",
             description: "A minimal test spec.",
@@ -26,12 +26,12 @@ describe("parseClauseSpec — meta-clause validation", () => {
             version: 1, title: "T", description: "D", fields: [],
         });
         expect(result.ok).toBe(false);
-        if (!result.ok) expect(result.errors.some(e => e.path === "$.schemaId")).toBe(true);
+        if (!result.ok) expect(result.errors.some(e => e.path === "$.clauseId")).toBe(true);
     });
 
     it("rejects unknown field type", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "wat", required: true }],
         });
         expect(result.ok).toBe(false);
@@ -40,13 +40,13 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("validates string format values", () => {
         const ok = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "addr", type: "string", required: true, format: "address-hex" }],
         });
         expect(ok.ok).toBe(true);
 
         const bad = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true, format: "ipv6" }],
         });
         expect(bad.ok).toBe(false);
@@ -54,7 +54,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("accepts spec with categories array", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             categories: ["emissions", "lifecycle"],
             fields: [{ name: "x", type: "string", required: true }],
         });
@@ -64,7 +64,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("omits categories when absent", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
         });
         expect(result.ok).toBe(true);
@@ -73,7 +73,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("rejects non-array categories", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             categories: "emissions",
             fields: [{ name: "x", type: "string", required: true }],
         });
@@ -83,7 +83,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("rejects empty-string category entries", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             categories: ["emissions", ""],
             fields: [{ name: "x", type: "string", required: true }],
         });
@@ -93,7 +93,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("recursively parses array.items", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{
                 name: "tags", type: "array", required: true,
                 items: { type: "string", name: "*", required: true },
@@ -104,7 +104,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("recursively parses object.fields", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{
                 name: "loc", type: "object", required: true,
                 fields: [
@@ -118,7 +118,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("validates enum requires non-empty values array", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "enum", required: true, values: [] }],
         });
         expect(result.ok).toBe(false);
@@ -126,7 +126,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("parses stage overrides", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
             stages: {
                 1: [{ name: "x", type: "string", required: true },
@@ -139,7 +139,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("rejects bigint min/max as a number (must be string)", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "amount", type: "bigint", required: true, min: 0 }],
         });
         expect(result.ok).toBe(false);
@@ -147,7 +147,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("rejects invalid regex pattern", () => {
         const result = parseClauseSpec({
-            schemaId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true, pattern: "(unclosed" }],
         });
         expect(result.ok).toBe(false);

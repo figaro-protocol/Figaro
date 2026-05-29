@@ -18,7 +18,7 @@ describe("getMechanismKindsForDesign", () => {
     it("returns 'core' for a default root order (figaro-commerce-v1 → core)", () => {
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
-        // The default root carries figaro-commerce-v1 (cart/order schema) and
+        // The default root carries figaro-commerce-v1 (cart/order clause) and
         // figaro-fulfilment-v2 (pickup modality). Each spec's `block`
         // binding declares commerce → core and fulfilment → coordinator.
         const kinds = getMechanismKindsForDesign([root.order]);
@@ -26,7 +26,7 @@ describe("getMechanismKindsForDesign", () => {
         expect(kinds).toContain("coordinator");
     });
 
-    it("dedups kinds across multiple orders that reference the same schema", () => {
+    it("dedups kinds across multiple orders that reference the same clause", () => {
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
         const sub = createSyntheticSubOrder(session, root.order);
