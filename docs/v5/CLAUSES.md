@@ -182,7 +182,7 @@ attestation, so there is no per-event content for a validator to gate. It is
 *not* off-chain-only, though. Like every agreement section, the topology
 section is a merkle leaf under the on-chain `agreementHash`, inclusion-provable
 via OpenZeppelin `MerkleProof` (`computeSectionLeaf` / `buildSectionInclusionProof`
-in `frontend/lib/core/agreementManifest.ts`). "No runtime validator" is not "no
+in `frontend/lib/core/agreement.ts`). "No runtime validator" is not "no
 on-chain verification" — topology is verified by inclusion proof against the
 signed agreement, not by an attestation validator. The DAG itself is
 reconstructed off-chain by indexers reading topology sections from the signed

@@ -386,7 +386,7 @@ The repo already has the foundation for this model:
 12. reusable modules in `frontend/components/modules/`
 13. authoring and prototype surfaces under `/builders`
 14. per-seller branding via `lib/shared/sellerBranding.ts` + `SellerBrandingModule` (the V4 ENS/IPFS skin-bundle wrapper was retired in the V4→V5 narrowing; see retired §5 below)
-15. clause-composed agreement and catalogue metadata in `frontend/lib/core/agreementManifest.ts` and `frontend/lib/shared/sellerCatalogueMetadata.ts`
+15. clause-composed agreement and catalogue metadata in `frontend/lib/core/agreement.ts` and `frontend/lib/shared/sellerCatalogueMetadata.ts`
 16. typed service bundle in `frontend/lib/shared/runtimeServices.ts`, consumed via `useRuntimeServices()` from `runtimeServicesContext`. The V4 per-binding-override resolver (`resolveRuntimeServices`) was retired in the V4→V5 narrowing along with the module-registry runtime — V5 pages consume `DEFAULT_RUNTIME_SERVICES` directly
 17. the V4 mechanism-package registry (`packages.ts`, `registerAllModules.ts`, `blockMetadata.ts`, `moduleRegistry.ts`, `builtInModuleDefaults.ts`) was retired in the V4→V5 narrowing — V5 renders pages directly with concrete React components (`/s/[seller]`, `/orders`, `/discover`, `/builders/designer/*`, `/audit`) rather than through a module-registry-driven runtime
 18. a consumer-facing commerce boundary in `frontend/lib/commerce/`: `CommerceProvider` supplies wallet identity via `useCommerce()`, `useCheckout(token)` composes token approval, balance checking, EIP-712 signing, and commitment broadcasting into one hook, and `types.ts` defines the `CheckoutHandle` surface shared by `CartModule`, `CreateOrderWithApproval`, and any future consumer-facing order flow
