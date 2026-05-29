@@ -43,8 +43,8 @@ import {
 } from "@/lib/mechanisms/useAssemblyRegistry";
 import {
     rehydrateOrder,
-    seedManifestAgreementsToStore,
-} from "@/lib/designer/manifestToDraft";
+    seedAssemblyDocumentAgreementsToStore,
+} from "@/lib/designer/assemblyDocumentToDraft";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import type { Order } from "@/lib/core/store";
@@ -154,7 +154,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         });
                         return;
                     }
-                    seedManifestAgreementsToStore(manifest);
+                    seedAssemblyDocumentAgreementsToStore(manifest);
                     const orders = manifest.orders.map(rehydrateOrder);
                     setResolved({ kind: "published", name: manifest.name, orders, manifest });
                     return;

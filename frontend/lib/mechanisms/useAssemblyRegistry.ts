@@ -133,7 +133,7 @@ export function buildAssemblyDocument(snapshot: DesignSnapshot): AssemblyDocumen
 }
 
 /** Canonicalize the manifest and compute (canonical bytes, content hash). */
-export function serializeManifest(manifest: AssemblyDocument): {
+export function serializeAssemblyDocument(manifest: AssemblyDocument): {
     json: string;
     contentHash: `0x${string}`;
 } {
@@ -453,7 +453,7 @@ export function useAssemblyChoices(
     // wallet's chain, which is irrelevant for a read against a fixed chain
     // — and undefined on the marketing tier where no provider is mounted.
     const chainId = activeChain.id;
-    const [manifestState, setManifestState] = useState<
+    const [assemblyDocumentState, setAssemblyDocumentState] = useState<
         Map<string, { state: AssemblyDocumentFetchState; manifest: AssemblyDocument | null }>
     >(new Map());
     /** Hashes whose fetch has already been kicked off. A ref (not state)
@@ -466,14 +466,14 @@ export function useAssemblyChoices(
         for (const event of events) {
             if (inFlightRef.current.has(event.contentHash)) continue;
             inFlightRef.current.add(event.contentHash);
-            setManifestState((prev) => {
+            setAssemblyDocumentState((prev) => {
                 const next = new Map(prev);
                 next.set(event.contentHash, { state: "loading", manifest: null });
                 return next;
             });
             fetchAssemblyDocument(event.metadataURI).then(
                 (manifest) => {
-                    setManifestState((prev) => {
+                    setAssemblyDocumentState((prev) => {
                         const next = new Map(prev);
                         next.set(
                             event.contentHash,
@@ -485,7 +485,7 @@ export function useAssemblyChoices(
                     });
                 },
                 () => {
-                    setManifestState((prev) => {
+                    setAssemblyDocumentState((prev) => {
                         const next = new Map(prev);
                         next.set(event.contentHash, { state: "error", manifest: null });
                         return next;
@@ -496,7 +496,7 @@ export function useAssemblyChoices(
     }, [events]);
 
     // Memoize the derived array so its reference is stable across renders
-    // when none of its inputs (events, manifestState, chainId) have changed.
+    // when none of its inputs (events, assemblyDocumentState, chainId) have changed.
     // Without this, the .map allocates a fresh array on every render, which
     // breaks every downstream useEffect that depends on `choices` — most
     // notably the OnboardingAssembliesForm's autosave effect, which would
@@ -506,7 +506,7 @@ export function useAssemblyChoices(
         if (!events) return null;
         const networkTarget = chainIdToNetworkTarget(chainId);
         return events.map((event) => {
-            const entry = manifestState.get(event.contentHash);
+            const entry = assemblyDocumentState.get(event.contentHash);
             const state = entry?.state ?? "loading";
             const manifest = entry?.manifest ?? null;
             return {
@@ -523,7 +523,7 @@ export function useAssemblyChoices(
                 manifest,
             };
         });
-    }, [events, manifestState, chainId]);
+    }, [events, assemblyDocumentState, chainId]);
     return { data, isLoading, refetch };
 }
 
@@ -738,7 +738,7 @@ export function usePublishAssembly() {
             functionName: "registrationDeposit",
         });
         const manifest = buildAssemblyDocument(snapshot);
-        const { json, contentHash } = serializeManifest(manifest);
+        const { json, contentHash } = serializeAssemblyDocument(manifest);
         const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
 
         // Simulate before opening the wallet — catches slug collision /

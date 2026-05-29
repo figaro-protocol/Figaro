@@ -103,9 +103,9 @@ const DEFAULT_NODE_MANIFEST_FIELDS: ClauseFields = {
 export function createSyntheticRootOrder(
     session: SyntheticProcessSession,
     /** Per-root manifest overrides. Merged onto DEFAULT_NODE_MANIFEST_FIELDS.
-     *  Used by `manifestToDraft` to seed an IPFS-pinned assembly's kleros +
+     *  Used by `assemblyDocumentToDraft` to seed an IPFS-pinned assembly's kleros +
      *  fulfilment fields into the new draft's root. */
-    manifestOverrides?: Partial<ClauseFields>,
+    assemblyDocumentOverrides?: Partial<ClauseFields>,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
@@ -121,7 +121,7 @@ export function createSyntheticRootOrder(
         seller,
         currency,
         payment,
-        clauseFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...manifestOverrides },
+        clauseFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...assemblyDocumentOverrides },
     });
     const agreementHash = computeAgreementHash(agreement);
     saveAgreement(agreement);
@@ -154,7 +154,7 @@ export function createSyntheticSubOrder(
      *  DEFAULT_NODE_MANIFEST_FIELDS — use this to mark role-specific
      *  flags at creation time (e.g., `courierProcessIncluded: true` for
      *  delivery-spawned courier sub-orders). */
-    manifestOverrides?: Partial<ClauseFields>,
+    assemblyDocumentOverrides?: Partial<ClauseFields>,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
@@ -170,7 +170,7 @@ export function createSyntheticSubOrder(
         seller,
         currency,
         payment,
-        clauseFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...manifestOverrides },
+        clauseFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...assemblyDocumentOverrides },
         parentOrderHashes: [parent.id],
     });
     const agreementHash = computeAgreementHash(agreement);

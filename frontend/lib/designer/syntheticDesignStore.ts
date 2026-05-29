@@ -81,7 +81,7 @@ function deserializeOrder(s: SerializedOrder): Order {
  *  - **AssemblyDocument** (`lib/mechanisms/useAssemblyRegistry`) — the
  *    IPFS-pinned, published version. Structurally a superset of
  *    `DesignSnapshot` (carries inlined agreement bodies; bigint fields
- *    serialized as decimal strings). `manifestToDraft` re-hydrates it
+ *    serialized as decimal strings). `assemblyDocumentToDraft` re-hydrates it
  *    back into a `DesignSnapshot` for the editor.
  *
  * No "snapshot vs draft vs manifest" type duality — same shape, three

@@ -148,7 +148,7 @@ describe("buildOrderAgreement", () => {
         }
     });
 
-    it("drops unknown handoffPoint values (v2 enum is closed; readManifestArray filters them out)", () => {
+    it("drops unknown handoffPoint values (v2 enum is closed; readAssemblyDocumentArray filters them out)", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,

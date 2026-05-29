@@ -53,7 +53,7 @@ const ALLOWED_HANDOFF_POINTS: ReadonlyArray<string> = ["face-to-face", "dead-dro
 const ALLOWED_PROXIMITY_BANDS: ReadonlyArray<string> = ["zone-wifi", "nearby-ble", "contact-nfc"];
 
 /** Filter a manifest-field array down to known enum values. */
-function readManifestArray(
+function readAssemblyDocumentArray(
     fields: ClauseFields | undefined,
     key: string,
     allowed: ReadonlyArray<string>,
@@ -64,7 +64,7 @@ function readManifestArray(
     return value.filter((v): v is string => typeof v === "string" && allowed.includes(v));
 }
 
-function readManifestExtra(fields: ClauseFields | undefined, keys: string[]): string | undefined {
+function readAssemblyDocumentExtra(fields: ClauseFields | undefined, keys: string[]): string | undefined {
     if (!fields) return undefined;
 
     for (const key of keys) {
@@ -215,9 +215,9 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         sections.push(clauseFieldsToGeoSection(params.clauseFields!));
     }
 
-    const modalities = readManifestArray(params.clauseFields, "fulfilmentModalities", ALLOWED_MODALITIES);
-    const coordinations = readManifestArray(params.clauseFields, "fulfilmentCoordinations", ALLOWED_COORDINATIONS);
-    const handoffPoints = readManifestArray(params.clauseFields, "fulfilmentHandoffPoints", ALLOWED_HANDOFF_POINTS);
+    const modalities = readAssemblyDocumentArray(params.clauseFields, "fulfilmentModalities", ALLOWED_MODALITIES);
+    const coordinations = readAssemblyDocumentArray(params.clauseFields, "fulfilmentCoordinations", ALLOWED_COORDINATIONS);
+    const handoffPoints = readAssemblyDocumentArray(params.clauseFields, "fulfilmentHandoffPoints", ALLOWED_HANDOFF_POINTS);
     if (modalities.length > 0) {
         const data: Record<string, unknown> = { modalities };
         // The validator requires coordinations non-empty IFF delivery is
@@ -265,13 +265,13 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     // clause. `ghgStandards` (array of clauseIds OR legacy standard labels)
     // is the new path; the legacy single `ghgStandard` + `ghgScope` is read
     // as a fallback for any caller that hasn't migrated.
-    const ghgStandards = readManifestArray(
+    const ghgStandards = readAssemblyDocumentArray(
         params.clauseFields,
         "ghgStandards",
         GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>,
     );
-    const legacyStandard = readManifestExtra(params.clauseFields, ["ghgStandard", "ghgMethodology"]);
-    const ghgScope = readManifestExtra(params.clauseFields, ["ghgScope"]);
+    const legacyStandard = readAssemblyDocumentExtra(params.clauseFields, ["ghgStandard", "ghgMethodology"]);
+    const ghgScope = readAssemblyDocumentExtra(params.clauseFields, ["ghgScope"]);
     const resolvedClauseKeys: string[] = ghgStandards.length > 0
         ? ghgStandards
         : legacyStandard
@@ -292,7 +292,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         sections.push({ clause: GHG_MEASUREMENT_CLAUSE_KEY, data: {} });
     }
 
-    const proximityBands = readManifestArray(params.clauseFields, "proximityBands", ALLOWED_PROXIMITY_BANDS);
+    const proximityBands = readAssemblyDocumentArray(params.clauseFields, "proximityBands", ALLOWED_PROXIMITY_BANDS);
     if (proximityBands.length > 0) {
         sections.push({
             clause: PROXIMITY_POLICY_CLAUSE_KEY,
@@ -313,11 +313,11 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         });
     }
 
-    const klerosCourt = readManifestExtra(params.clauseFields, ["klerosCourt"]);
-    const klerosMinJurorsRaw = readManifestExtra(params.clauseFields, ["klerosMinJurors"]);
-    const applicableLaw = readManifestExtra(params.clauseFields, ["applicableLaw"]);
-    const forum = readManifestExtra(params.clauseFields, ["forum"]);
-    const language = readManifestExtra(params.clauseFields, ["language"]);
+    const klerosCourt = readAssemblyDocumentExtra(params.clauseFields, ["klerosCourt"]);
+    const klerosMinJurorsRaw = readAssemblyDocumentExtra(params.clauseFields, ["klerosMinJurors"]);
+    const applicableLaw = readAssemblyDocumentExtra(params.clauseFields, ["applicableLaw"]);
+    const forum = readAssemblyDocumentExtra(params.clauseFields, ["forum"]);
+    const language = readAssemblyDocumentExtra(params.clauseFields, ["language"]);
     const ALLOWED_KLEROS_COURTS = ["general", "blockchain-nontechnical", "blockchain-technical", "english-language"];
     const klerosCourtValue = klerosCourt && ALLOWED_KLEROS_COURTS.includes(klerosCourt) ? klerosCourt : undefined;
     if (klerosCourtValue) {

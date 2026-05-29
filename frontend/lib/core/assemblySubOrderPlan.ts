@@ -20,7 +20,7 @@ import { resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata"
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";
 
-export type ManifestOrder = BoundAssembly["manifest"]["orders"][number];
+export type AssemblyDocumentOrder = BoundAssembly["manifest"]["orders"][number];
 
 /**
  * Topologically order an assembly's non-root orders and resolve each one's
@@ -34,12 +34,12 @@ export type ManifestOrder = BoundAssembly["manifest"]["orders"][number];
  */
 export function planSubOrderSellers(
     assembly: BoundAssembly,
-): Array<{ node: ManifestOrder; seller: `0x${string}` | null }> {
+): Array<{ node: AssemblyDocumentOrder; seller: `0x${string}` | null }> {
     const { manifest } = assembly;
     const rootId = manifest.orders[0]?.id;
     const settled = new Set<string>(rootId ? [rootId] : []);
     const pending = manifest.orders.filter((o) => o.id !== rootId);
-    const ordered: ManifestOrder[] = [];
+    const ordered: AssemblyDocumentOrder[] = [];
     while (pending.length > 0) {
         const idx = pending.findIndex((o) =>
             (getTopologyParentOrderHashes(manifest.agreements[o.agreementHash!]) ?? [])
@@ -79,7 +79,7 @@ export function planSubOrderSellers(
  * (bigint + string), corrupting the cumulative. Coercion happens here.
  */
 export function resolveSubOrderPayment(args: {
-    node: ManifestOrder;
+    node: AssemblyDocumentOrder;
     seller: `0x${string}`;
     leadAddress: `0x${string}`;
     sellerCatalogues: SellerCatalogue[];

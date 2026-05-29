@@ -168,7 +168,7 @@ export async function waitForReactHydration(
 
 
 
-function decodeMockManifestText(manifest: string | undefined): string | null {
+function decodeMockAssemblyDocumentText(manifest: string | undefined): string | null {
     if (!manifest || !manifest.startsWith('0x') || manifest.length <= 2) return null;
 
     try {
@@ -206,7 +206,7 @@ function parseMockClauseFields(manifest: string | undefined): {
     volumeMl?: number;
     classOfService?: string;
 } | null {
-    const decoded = decodeMockManifestText(manifest);
+    const decoded = decodeMockAssemblyDocumentText(manifest);
     if (!decoded) return null;
 
     if (!decoded.includes(':')) {

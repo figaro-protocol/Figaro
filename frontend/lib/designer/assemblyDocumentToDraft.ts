@@ -1,5 +1,5 @@
 /**
- * manifestToDraft — hydrates a `DesignSnapshot` from an IPFS-pinned
+ * assemblyDocumentToDraft — hydrates a `DesignSnapshot` from an IPFS-pinned
  * `AssemblyDocument`. Powers the "Fork" button on `PublishedList`:
  * a published assembly's manifest is fetched, this helper turns it
  * into a localStorage draft under a new slug, and the canvas opens
@@ -35,19 +35,19 @@ export function rehydrateOrder(raw: Order): Order {
 
 /** Re-save every inlined agreement into the local agreement store so
  *  downstream `loadAgreement(hash)` calls resolve to the bodies the
- *  manifest carried. Used by `manifestToDraft` (fork path) and by the
+ *  manifest carried. Used by `assemblyDocumentToDraft` (fork path) and by the
  *  `/view` on-chain resolver (read-only inspect / publish review). */
-export function seedManifestAgreementsToStore(manifest: AssemblyDocument): void {
+export function seedAssemblyDocumentAgreementsToStore(manifest: AssemblyDocument): void {
     for (const agreement of Object.values(manifest.agreements)) {
         saveAgreement(agreement);
     }
 }
 
-export function manifestToDraft(
+export function assemblyDocumentToDraft(
     manifest: AssemblyDocument,
     options: { slug: string; name?: string },
 ): DesignSnapshot {
-    seedManifestAgreementsToStore(manifest);
+    seedAssemblyDocumentAgreementsToStore(manifest);
     return {
         slug: options.slug,
         name: options.name ?? `Fork of ${manifest.name}`,

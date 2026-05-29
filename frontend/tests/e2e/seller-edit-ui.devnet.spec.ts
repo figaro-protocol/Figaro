@@ -258,15 +258,15 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         //    AssemblyDocument needs `name` + `orders[]`; orderless or
         //    fully empty manifests still render as a choice — what
         //    matters for this test is that the slug is selectable.
-        const manifestDoc = {
+        const assemblyDocument = {
             slug: `phase4-c4d-${Date.now()}`,
             name: 'Phase 4 Assembly',
             orders: [],
             agreements: {},
             version: '1.0.0',
         };
-        const { uri: manifestURI } = await pinJSONToIPFS(manifestDoc);
-        const contentHash = keccak256(toHex(JSON.stringify(manifestDoc)));
+        const { uri: assemblyDocumentURI } = await pinJSONToIPFS(assemblyDocument);
+        const contentHash = keccak256(toHex(JSON.stringify(assemblyDocument)));
 
         const assemblyRegistry = getAssemblyRegistry();
         const author = privateKeyToAccount(SELLER_KEY);
@@ -278,7 +278,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
             address: assemblyRegistry,
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: 'registerAssembly',
-            args: [manifestDoc.slug, contentHash, manifestURI],
+            args: [assemblyDocument.slug, contentHash, assemblyDocumentURI],
             value: ASSEMBLY_REGISTRATION_DEPOSIT,
         });
         await publicClient.waitForTransactionReceipt({ hash: await authorClient.writeContract(registerReq) });
@@ -297,7 +297,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await page.goto('/sellers/edit/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
         // The assembly row carries `seller-assembly-row-<slug>` testid.
-        const assemblyRow = page.getByTestId(`seller-assembly-row-${manifestDoc.slug}`);
+        const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblyDocument.slug}`);
         await expect(assemblyRow).toBeVisible({ timeout: 30000 });
         await assemblyRow.locator('input[type="checkbox"]').first().check();
 

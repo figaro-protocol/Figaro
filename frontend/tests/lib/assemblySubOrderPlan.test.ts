@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     planSubOrderSellers,
     resolveSubOrderPayment,
-    type ManifestOrder,
+    type AssemblyDocumentOrder,
 } from "@/lib/core/assemblySubOrderPlan";
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import type { SellerCatalogue } from "@/lib/seller/types";
@@ -84,9 +84,9 @@ const catalogues = [
     },
 ] as unknown as SellerCatalogue[];
 
-const orderById = (id: string): ManifestOrder =>
+const orderById = (id: string): AssemblyDocumentOrder =>
     assembly.manifest.orders.find((o) => o.id === id)!;
-const payArgs = (node: ManifestOrder, seller: `0x${string}`) => ({
+const payArgs = (node: AssemblyDocumentOrder, seller: `0x${string}`) => ({
     node, seller, leadAddress: MERCATO, sellerCatalogues: catalogues, tokenDecimals: 18,
 });
 

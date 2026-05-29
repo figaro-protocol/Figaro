@@ -78,7 +78,7 @@ test.describe('Fork a seeded assembly from /view/[slug] (devnet)', () => {
         await page.waitForURL(new RegExp(`/builders/designer/edit/${forkSlug}`), { timeout: 15000 });
 
         // The fork hydrated into an editable canvas — not just a URL change.
-        // direct-sale is the one-node scenario, so manifestToDraft carried
+        // direct-sale is the one-node scenario, so assemblyDocumentToDraft carried
         // the manifest's single root order through.
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');

@@ -7,7 +7,7 @@
  * What the helper owns:
  *   - The slug prompt (default = `${sourceSlug}-fork`).
  *   - Uniqueness handling (collisions get `-2`, `-3`, …).
- *   - Manifest → draft hydration via `manifestToDraft`.
+ *   - Manifest → draft hydration via `assemblyDocumentToDraft`.
  *   - Persisting the new draft to localStorage.
  *
  * What the helper does NOT own (caller's responsibility):
@@ -27,7 +27,7 @@ import {
     saveNamedDraft,
     uniqueDraftSlug,
 } from "./syntheticDesignStore";
-import { manifestToDraft } from "./manifestToDraft";
+import { assemblyDocumentToDraft } from "./assemblyDocumentToDraft";
 import type { AssemblyDocument } from "@/lib/mechanisms/useAssemblyRegistry";
 
 export function forkPublishedAssembly(
@@ -46,7 +46,7 @@ export function forkPublishedAssembly(
     const trimmed = proposed.trim();
     if (!trimmed) return null;
     const finalSlug = uniqueDraftSlug(trimmed);
-    const draft = manifestToDraft(manifest, { slug: finalSlug });
+    const draft = assemblyDocumentToDraft(manifest, { slug: finalSlug });
     saveNamedDraft(draft);
     return { finalSlug };
 }
