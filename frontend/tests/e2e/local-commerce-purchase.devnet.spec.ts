@@ -142,11 +142,11 @@ test.describe('Local-commerce purchase from seeded Mercato General (devnet)', ()
         await page.getByTestId('input-delivery-address').fill('12 Market St, Apt 4B — ring bell');
 
         // ── Pick the courier from the merchant's partner list ────────
-        // seller-assigned: CourierCataloguePicker surfaces the merchant's
+        // seller-assigned: SellerCataloguePicker surfaces the merchant's
         // designated couriers — pick Swift Courier, then Standard delivery
         // from the courier's catalogue price list.
-        await page.getByTestId('select-courier-partner').selectOption({ label: 'Swift Courier' });
-        const deliveryItem = page.getByTestId('courier-item-delivery-standard');
+        await page.getByTestId('select-seller-partner').selectOption({ label: 'Swift Courier' });
+        const deliveryItem = page.getByTestId('seller-item-delivery-standard');
         await deliveryItem.waitFor({ state: 'visible', timeout: 30000 });
         await deliveryItem.click();
 

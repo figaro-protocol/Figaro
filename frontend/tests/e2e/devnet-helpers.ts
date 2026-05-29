@@ -1349,14 +1349,14 @@ export async function placeLocalCommerceOrderUI(
         geohash?: string;
         deliveryAddress?: string;
         /** Courier selection for a delivery mode, driven through
-         *  CourierCataloguePicker after the fulfilment mode is set. */
+         *  SellerCataloguePicker after the fulfilment mode is set. */
         courier?: {
             /** seller-assigned: the courier to pick from the merchant's
              *  partner dropdown, by name. */
             partnerName?: string;
             /** buyer-assigned: the courier's address to enter. */
             address?: string;
-            /** The delivery item to select — `courier-item-<deliveryItemId>`. */
+            /** The delivery item to select — `seller-item-<deliveryItemId>`. */
             deliveryItemId: string;
             /** If the delivery item is buyer-set, the token amount to enter. */
             buyerSetPrice?: string;
@@ -1391,21 +1391,21 @@ export async function placeLocalCommerceOrderUI(
     await page.getByTestId('input-delivery-geohash').fill(geohash);
     await page.getByTestId('input-delivery-address').fill(deliveryAddress);
     if (opts.courier) {
-        // Drive CourierCataloguePicker — seller-assigned picks the courier
+        // Drive SellerCataloguePicker — seller-assigned picks the courier
         // from the merchant's partner dropdown, buyer-assigned enters an
         // address; both then choose a delivery item from the courier's
         // catalogue (and name the price for a buyer-set item).
         if (fulfilmentMode === 'deliver:seller-assigned') {
-            await page.getByTestId('select-courier-partner')
+            await page.getByTestId('select-seller-partner')
                 .selectOption({ label: opts.courier.partnerName! });
         } else {
-            await page.getByTestId('input-courier-address').fill(opts.courier.address!);
+            await page.getByTestId('input-seller-address').fill(opts.courier.address!);
         }
-        const deliveryItem = page.getByTestId(`courier-item-${opts.courier.deliveryItemId}`);
+        const deliveryItem = page.getByTestId(`seller-item-${opts.courier.deliveryItemId}`);
         await deliveryItem.waitFor({ state: 'visible', timeout: 30000 });
         await deliveryItem.click();
         if (opts.courier.buyerSetPrice) {
-            await page.getByTestId('input-courier-buyer-price').fill(opts.courier.buyerSetPrice);
+            await page.getByTestId('input-seller-buyer-price').fill(opts.courier.buyerSetPrice);
         }
     }
     await page.getByTestId('btn-place-order').click();

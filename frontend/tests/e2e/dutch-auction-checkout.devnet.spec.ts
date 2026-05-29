@@ -134,25 +134,25 @@ test.describe('Dutch-auction delivery — deferred courier edge (devnet)', () =>
             address: core, abi: PROCESSES_ABI, functionName: 'processes', args: [processId],
         });
         expect(opened[3]).toBe(1); // activeOrderCount — food order only
-        await expect(page.getByTestId('courier-auction-panel')).toBeVisible({ timeout: 30000 });
+        await expect(page.getByTestId('seller-auction-panel')).toBeVisible({ timeout: 30000 });
 
         // ── 3. The courier claims the auction at the decayed price ────
         await gotoAsWallet(page, SWIFT_COURIER_ADDR, `/orders/${processId}?e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-        const claimButton = page.getByTestId('btn-claim-courier-auction');
+        const claimButton = page.getByTestId('btn-claim-seller-auction');
         await claimButton.waitFor({ state: 'visible', timeout: 30000 });
         await claimButton.click();
-        await expect(page.getByTestId('courier-auction-claimed')).toBeVisible({ timeout: 60000 });
+        await expect(page.getByTestId('seller-auction-claimed')).toBeVisible({ timeout: 60000 });
 
         // ── 4. The courier commits the courier order at the cleared price ──
-        const commitButton = page.getByTestId('btn-commit-courier-order');
+        const commitButton = page.getByTestId('btn-commit-seller-order');
         await commitButton.waitFor({ state: 'visible', timeout: 30000 });
         await commitButton.click();
         // The courier-order commit gates on its own agreement-preview modal.
         const courierModal = page.getByTestId('agreement-preview-modal');
         await courierModal.waitFor({ state: 'visible', timeout: 45000 });
         await page.getByTestId('preview-confirm').click();
-        await expect(page.getByTestId('courier-auction-committed')).toBeVisible({ timeout: 90000 });
+        await expect(page.getByTestId('seller-auction-committed')).toBeVisible({ timeout: 90000 });
 
         // The courier edge joined the process — TWO orders now, and the
         // cumulative value grew by the cleared price.

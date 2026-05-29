@@ -3,7 +3,7 @@
  *
  * Buyer-set delivery pricing, end to end through the UI. A courier's
  * catalogue may carry a buyer-set delivery item — one with no fixed price.
- * When the buyer selects it, CourierCataloguePicker surfaces a token-amount
+ * When the buyer selects it, SellerCataloguePicker surfaces a token-amount
  * input; the buyer names the delivery fee, and that figure is what the
  * courier order commits at.
  *

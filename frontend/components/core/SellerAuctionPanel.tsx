@@ -1,21 +1,21 @@
 "use client";
 
 /**
- * CourierAuctionPanel — the deferred courier edge of a dutch-auction
+ * SellerAuctionPanel — the deferred seller edge of a dutch-auction
  * local-commerce process, surfaced on `/orders/[processId]`.
  *
  * Incremental process assembly: the buyer opened a descending-price auction
- * for the courier job at checkout (no courier order committed then). This
- * panel lets a courier claim the job at the decaying price, and — once
- * claimed — lets the claiming courier commit the courier order into the
- * open process at the cleared price. The courier drives that commit: the
+ * for the seller job at checkout (no seller order committed then). This
+ * panel lets a seller claim the job at the decaying price, and — once
+ * claimed — lets the claiming seller commit the seller order into the
+ * open process at the cleared price. The seller drives that commit: the
  * deferred edge commits when it resolves, by the party that resolved it.
  *
- * Renders null for any process with no courier auction — so it is inert on
+ * Renders null for any process with no seller auction — so it is inert on
  * seller-assigned / consume-onsite / pickup processes.
  *
- * Device-local draft: the courier order's build parameters were stashed at
- * checkout (`courierAuction.ts`). Cross-device transport (IPFS pin + XMTP
+ * Device-local draft: the seller order's build parameters were stashed at
+ * checkout (`sellerAuction.ts`). Cross-device transport (IPFS pin + XMTP
  * CID) is the documented follow-on for a production relay.
  */
 
@@ -25,7 +25,7 @@ import { useAccount, useChainId, usePublicClient, useReadContract } from "wagmi"
 import { Card } from "@/components/ui/Card";
 import { useDutchAuction } from "@/lib/mechanisms/useDutchAuction";
 import { useCommitmentFlow } from "@/lib/core/useCommitmentFlow";
-import { courierAuctionId, loadCourierDraft } from "@/lib/mechanisms/courierAuction";
+import { sellerAuctionId, loadSellerDraft } from "@/lib/mechanisms/sellerAuction";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { computeOrderHash } from "@/lib/core/commitmentStore";
@@ -45,7 +45,7 @@ interface Props {
     processId: string;
 }
 
-export function CourierAuctionPanel({ processId }: Props) {
+export function SellerAuctionPanel({ processId }: Props) {
     const pid = processId as Hex;
     const { address } = useAccount();
     const publicClient = usePublicClient();
@@ -63,9 +63,9 @@ export function CourierAuctionPanel({ processId }: Props) {
     const cumulativeValue = process?.[2] ?? 0n;
     const activeOrderCount = process?.[3] ?? 0;
 
-    // The courier auction is keyed deterministically off the processId, so
+    // The seller auction is keyed deterministically off the processId, so
     // this panel finds it without any state passed from checkout.
-    const auction = useDutchAuction({ id: courierAuctionId(pid), currency, payment: 0n });
+    const auction = useDutchAuction({ id: sellerAuctionId(pid), currency, payment: 0n });
     const { signAndBroadcast } = useCommitmentFlow();
     const { decimals } = useTokenDecimals(currency);
 
@@ -77,9 +77,9 @@ export function CourierAuctionPanel({ processId }: Props) {
     if (!auction.started) return null;
 
     const isBuyer = hexEqual(address, rootBuyer);
-    // The process opens with the root food order; the courier order is the
-    // second to join. activeOrderCount >= 2 ⇒ the courier order has landed.
-    const courierOrderCommitted = activeOrderCount >= 2;
+    // The process opens with the root food order; the seller order is the
+    // second to join. activeOrderCount >= 2 ⇒ the seller order has landed.
+    const sellerOrderCommitted = activeOrderCount >= 2;
     const fmt = (v: bigint | undefined) => formatUnits(v ?? 0n, decimals ?? 18);
 
     const handleCommit = async () => {
@@ -87,7 +87,7 @@ export function CourierAuctionPanel({ processId }: Props) {
             setError("Connect your wallet to commit the delivery order.");
             return;
         }
-        const draft = loadCourierDraft(processId);
+        const draft = loadSellerDraft(processId);
         if (!draft) {
             setError("Delivery-order draft not found on this device — it was stashed at checkout.");
             return;
@@ -99,24 +99,24 @@ export function CourierAuctionPanel({ processId }: Props) {
         setError("");
         setCommitting(true);
         try {
-            // Read the process's cumulative value fresh: the courier order's
+            // Read the process's cumulative value fresh: the seller order's
             // expectedCumulativeValue must equal cumulativeValue + payment
             // (FigaroCore.commit's sub-order chain check).
             const fresh = (await refetchProcess()).data as ProcessTuple | undefined;
             const cumulative = fresh?.[2] ?? cumulativeValue;
-            const courierPayment = auction.clearingPrice;
+            const sellerPayment = auction.clearingPrice;
 
             const prepared = await prepareOrderCommitment({
                 buyer: draft.buyer,
                 seller: address,
                 currency: draft.currency,
-                payment: courierPayment,
+                payment: sellerPayment,
                 processId: draft.processId,
                 parentOrderHashes: draft.parentOrderHashes,
-                expectedCumulativeValue: cumulative + courierPayment,
+                expectedCumulativeValue: cumulative + sellerPayment,
                 manifestFields: draft.manifestFields,
             });
-            // The courier is the seller of this order. In devnet the buyer's
+            // The seller is the seller of this order. In devnet the buyer's
             // counter-signature is auto-collected from Anvil; in production
             // this is where the IPFS/XMTP relay carries the partial
             // commitment to the buyer for a counter-signature.
@@ -129,12 +129,12 @@ export function CourierAuctionPanel({ processId }: Props) {
             }
             await refetchProcess();
 
-            // Send the buyer's physical delivery address to the courier over
-            // the coordination channel — best-effort: the courier order has
+            // Send the buyer's physical delivery address to the seller over
+            // the coordination channel — best-effort: the seller order has
             // already committed, so a channel failure must not surface as a
             // commit error. Mirrors executeCheckout's seller-/buyer-assigned
             // handoff-address send; in the dutch-auction flow the buyer
-            // stashed the address in the courier draft at checkout.
+            // stashed the address in the seller draft at checkout.
             if (draft.deliveryAddress) {
                 try {
                     await DEFAULT_COORDINATION_MESSAGING_SERVICE.sendHandoffAddress({
@@ -144,7 +144,7 @@ export function CourierAuctionPanel({ processId }: Props) {
                         deliveryAddress: draft.deliveryAddress,
                     });
                 } catch (cause) {
-                    console.warn("Handoff address send to courier failed", cause);
+                    console.warn("Handoff address send to seller failed", cause);
                 }
             }
         } catch (cause) {
@@ -155,32 +155,32 @@ export function CourierAuctionPanel({ processId }: Props) {
     };
 
     return (
-        <Card className="p-5 space-y-3 border-sky-200 bg-sky-50" data-testid="courier-auction-panel">
+        <Card className="p-5 space-y-3 border-sky-200 bg-sky-50" data-testid="seller-auction-panel">
             <div>
                 <h3 className="text-sm font-semibold text-sky-900">Delivery — Dutch auction</h3>
                 <p className="text-xs text-sky-800 mt-1 leading-relaxed">
-                    The delivery courier for this order is chosen by a descending-price auction.
-                    A courier claims the job at the current price; the delivery order then joins
+                    The delivery seller for this order is chosen by a descending-price auction.
+                    A seller claims the job at the current price; the delivery order then joins
                     this process at the cleared price.
                 </p>
             </div>
 
             {!auction.isClaimed && (
                 <div className="space-y-2">
-                    <p className="text-sm text-sky-900" data-testid="courier-auction-price">
+                    <p className="text-sm text-sky-900" data-testid="seller-auction-price">
                         Current price:{" "}
                         <span className="font-mono font-semibold">{fmt(auction.currentPrice)}</span>
                     </p>
                     {isBuyer ? (
                         <p className="text-xs text-sky-700">
-                            Auction open — waiting for a courier to claim.
+                            Auction open — waiting for a seller to claim.
                         </p>
                     ) : (
                         <button
                             type="button"
                             onClick={() => void auction.claimJob()}
                             disabled={auction.isPending || auction.isConfirming}
-                            data-testid="btn-claim-courier-auction"
+                            data-testid="btn-claim-seller-auction"
                             className="w-full text-sm px-4 py-2 rounded border border-sky-700 bg-sky-700 hover:bg-sky-800 text-white font-semibold disabled:opacity-50"
                         >
                             {auction.isPending || auction.isConfirming
@@ -193,14 +193,14 @@ export function CourierAuctionPanel({ processId }: Props) {
 
             {auction.isClaimed && (
                 <div className="space-y-2">
-                    <p className="text-sm text-sky-900" data-testid="courier-auction-claimed">
+                    <p className="text-sm text-sky-900" data-testid="seller-auction-claimed">
                         Claimed by{" "}
                         <span className="font-mono">{truncateHex(auction.assignedProvider ?? ZERO_ADDRESS)}</span>
                         {" at "}
                         <span className="font-mono font-semibold">{fmt(auction.clearingPrice)}</span>
                     </p>
-                    {courierOrderCommitted ? (
-                        <p className="text-xs text-sky-700" data-testid="courier-auction-committed">
+                    {sellerOrderCommitted ? (
+                        <p className="text-xs text-sky-700" data-testid="seller-auction-committed">
                             Delivery order committed — it is now a bonded order in this process.
                         </p>
                     ) : auction.isMyJob ? (
@@ -208,14 +208,14 @@ export function CourierAuctionPanel({ processId }: Props) {
                             type="button"
                             onClick={() => void handleCommit()}
                             disabled={committing}
-                            data-testid="btn-commit-courier-order"
+                            data-testid="btn-commit-seller-order"
                             className="w-full text-sm px-4 py-2 rounded border border-sky-700 bg-sky-700 hover:bg-sky-800 text-white font-semibold disabled:opacity-50"
                         >
                             {committing ? "Committing…" : "Commit delivery order"}
                         </button>
                     ) : (
                         <p className="text-xs text-sky-700">
-                            Awaiting the courier&apos;s delivery-order commit.
+                            Awaiting the seller&apos;s delivery-order commit.
                         </p>
                     )}
                 </div>
@@ -225,7 +225,7 @@ export function CourierAuctionPanel({ processId }: Props) {
                 <p
                     className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2"
                     role="alert"
-                    data-testid="courier-auction-error"
+                    data-testid="seller-auction-error"
                 >
                     {error || auction.actionError}
                 </p>

@@ -8,26 +8,26 @@
 # noun gets baked into routes, component/type/hook names, and test-ids —
 # the expensive-to-undo surfaces. This guard closes that loop.
 #
-# SCOPE — `merchant` only, and only where it is a permanent surface:
+# SCOPE — `merchant` and `courier` (both collapsed to `seller`), and only
+# where the term is a permanent surface:
 #
-#   A. ROUTE        — `/m/[` or `[merchant]` (the route is `/s/[seller]`).
-#   B. DECLARATION  — a component / type / interface / hook NAMED Merchant*
-#                     (`function|const|let|var|interface|type|class Merchant…`,
-#                     or `useMerchant…`).
-#   C. TEST-ID      — `data-testid="…merchant…"`.
+#   A. ROUTE        — `/m/[`, `[merchant]`, `[courier]` (the route is `/s/[seller]`).
+#   B. DECLARATION  — a component / type / interface / hook NAMED Merchant*/Courier*
+#                     (`function|const|let|var|interface|type|class …`, or `use…`).
+#   C. TEST-ID      — `data-testid="…merchant…"` / `…courier…`.
 #
-# ALLOWED (the schema-bound merchant-process surface — a distinct, frozen
-# artifact family, Phase-2 rename candidate, NOT a party name):
-#   Merchant{Process,Content,Signal}…, useMerchantProcess, merchant-process,
-#   merchant-proximity, figaro-merchant-*.
+# ALLOWED (the schema-bound merchant-process / courier-process surface — a
+# distinct, frozen artifact family, item-(c) rename candidate, NOT a party):
+#   {Merchant,Courier}{Process,Content,Signal,Event,Timeline,Proximity}…,
+#   use{Merchant,Courier}Process, {merchant,courier}-{process,proximity,
+#   action,handoff,transit,hint}, figaro-{merchant,courier}-*.
 #
-# Transient lowercase locals (`merchantActions`, `merchantEvents`, …) are NOT
+# Transient lowercase locals (`merchantActions`, `courierEvents`, …) are NOT
 # flagged: they are not permanent surfaces. The cost this guard prevents is
 # vocabulary entrenchment in names/routes/ids, not local readability.
 #
-# Phase 2 will extend this to `courier` / `driver` / `vendor` / `supplier`
-# once the delivery flow is collapsed; they are intentionally NOT enforced
-# yet (the courier flow still uses them legitimately).
+# `driver` / `vendor` / `supplier` are not yet enforced (stray, low-count;
+# fold in when next touched). `operator` is enforced separately once 2b lands.
 #
 # Wired into the root package.json lint-staged block under
 # `frontend/**/*.{ts,tsx}`. Run manually:
@@ -37,7 +37,7 @@
 
 set -euo pipefail
 
-ALLOW='Merchant(Process|Content|Signal|Event|Timeline)|useMerchantProcess|merchant-process|merchant-proximity|figaro-merchant'
+ALLOW='(Merchant|Courier)(Process|Content|Signal|Event|Timeline|Proximity)|use(Merchant|Courier)Process|(merchant|courier)-(process|proximity|action|handoff|transit|hint)|figaro-(merchant|courier)'
 
 violations=0
 
@@ -56,16 +56,16 @@ for file in "$@"; do
     esac
 
     # A. Route surface
-    hits=$(grep -nE '/m/\[|\[merchant\]' "$file" || true)
+    hits=$(grep -nE '/m/\[|\[merchant\]|\[courier\]' "$file" || true)
     [[ -n "$hits" ]] && report "party route (use /s/[seller])" "$file" "$hits"
 
-    # B. Declaration / hook named Merchant* (minus schema-bound surface)
-    hits=$(grep -nE '\b(function|const|let|var|interface|type|class)[[:space:]]+Merchant[A-Za-z0-9_]*|\buseMerchant[A-Za-z0-9_]*' "$file" \
+    # B. Declaration / hook named Merchant*/Courier* (minus schema-bound surface)
+    hits=$(grep -nE '\b(function|const|let|var|interface|type|class)[[:space:]]+(Merchant|Courier)[A-Za-z0-9_]*|\buse(Merchant|Courier)[A-Za-z0-9_]*' "$file" \
         | grep -vE "$ALLOW" || true)
     [[ -n "$hits" ]] && report "party-named declaration/hook (rename to Seller*)" "$file" "$hits"
 
     # C. Test-id carrying a party term (minus schema-bound surface)
-    hits=$(grep -nE 'data-testid="[^"]*merchant[^"]*"' "$file" \
+    hits=$(grep -nE 'data-testid="[^"]*(merchant|courier)[^"]*"' "$file" \
         | grep -vE "$ALLOW" || true)
     [[ -n "$hits" ]] && report "party test-id (use seller-*)" "$file" "$hits"
 done

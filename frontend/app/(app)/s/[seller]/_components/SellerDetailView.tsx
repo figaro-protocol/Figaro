@@ -47,8 +47,8 @@ import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
 import { readAgreementFields } from "@/lib/designer/syntheticProcess";
 import type { ManifestFields } from "@/lib/core/encoding";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
-import { courierAuctionId, stashCourierDraft } from "@/lib/mechanisms/courierAuction";
-import { CourierCataloguePicker, type CourierSelection } from "@/components/core/CourierCataloguePicker";
+import { sellerAuctionId, stashSellerDraft } from "@/lib/mechanisms/sellerAuction";
+import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
 import { OperatorTrackRecord } from "@/components/core/OperatorTrackRecord";
 import { useOperatorTrackRecord } from "@/lib/mechanisms/useOperatorTrackRecord";
 import { useTokenSymbol } from "@/components/operators/TokenAddressInput";
@@ -257,13 +257,13 @@ export function SellerDetailView({ sellerAddress }: Props) {
     // The human-readable street address — sent to the courier over the
     // coordination channel (off-agreement; the operational delivery detail).
     const [deliveryAddress, setDeliveryAddress] = useState("");
-    // The buyer's courier selection — chosen through CourierCataloguePicker
+    // The buyer's courier selection — chosen through SellerCataloguePicker
     // (the merchant's partner list for seller-assigned, any address for
     // buyer-assigned). null until a courier + delivery item are chosen.
-    const [courierSelection, setCourierSelection] = useState<CourierSelection | null>(null);
+    const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
     // Courier addresses the merchant designated for the picked delivery
     // assembly — the seller-assigned partner list.
-    const courierPartnerAddresses = useMemo(() => {
+    const sellerPartnerAddresses = useMemo(() => {
         const picked = boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
         return picked?.counterpartyBindings
             .find((cb) => cb.schemaId === "figaro-courier-process-v1")?.addresses ?? [];
@@ -601,7 +601,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             // order carries; its clauses come from the assembly manifest; its
             // synthetic parent ids are remapped to the real on-chain order
             // hashes as they commit; the global cumulative value accumulates
-            // in commit order. The Dutch-auction edge and CourierCataloguePicker
+            // in commit order. The Dutch-auction edge and SellerCataloguePicker
             // stay as the delivery-specific INPUT path, applied to the order
             // carrying figaro-courier-process-v1.
             multiOrderCheckout.current = true;
@@ -633,7 +633,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 if (isCourierEdge && fulfillmentMode === "deliver:dutch-auction") {
                     const daBands = (readAssemblyClause(manifest, PROXIMITY_POLICY_SCHEMA_KEY)
                         ?.data as { bands?: string[] } | undefined)?.bands ?? [];
-                    stashCourierDraft(processId, {
+                    stashSellerDraft(processId, {
                         buyer,
                         currency,
                         processId,
@@ -651,7 +651,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         deliveryAddress: deliveryAddress.trim() || undefined,
                     });
                     const auctionTxHash = await createAuction(
-                        courierAuctionId(processId),
+                        sellerAuctionId(processId),
                         parseToken(deliveryMaxPrice, tokenDecimals),
                         processId,
                         currency,
@@ -666,19 +666,19 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 let seller: `0x${string}`;
                 let payment: bigint;
                 let manifestFields: ManifestFields;
-                let courierToNotify: `0x${string}` | null = null;
+                let sellerToNotify: `0x${string}` | null = null;
 
                 if (isCourierEdge) {
                     // Delivery: the buyer chose the courier, the price, and the
-                    // destination through CourierCataloguePicker.
-                    if (!courierSelection) {
+                    // destination through SellerCataloguePicker.
+                    if (!sellerSelection) {
                         multiOrderCheckout.current = false;
-                        setCheckoutError("Choose a courier and a delivery service before placing the order.");
+                        setCheckoutError("Choose a seller and a delivery service before placing the order.");
                         return;
                     }
-                    seller = courierSelection.courier;
-                    payment = parseToken(courierSelection.price, tokenDecimals);
-                    courierToNotify = seller;
+                    seller = sellerSelection.seller;
+                    payment = parseToken(sellerSelection.price, tokenDecimals);
+                    sellerToNotify = seller;
                     const bands = (readAssemblyClause(manifest, PROXIMITY_POLICY_SCHEMA_KEY)
                         ?.data as { bands?: string[] } | undefined)?.bands ?? [];
                     const ghgStandards = readAssemblyOrderGhgStandards(manifest, node.agreementHash);
@@ -732,16 +732,16 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 );
 
                 // Delivery: hand the human-readable address to the courier.
-                if (courierToNotify && deliveryAddress.trim()) {
+                if (sellerToNotify && deliveryAddress.trim()) {
                     try {
                         await DEFAULT_COORDINATION_MESSAGING_SERVICE.sendHandoffAddress({
                             address: buyer,
-                            recipientAddress: courierToNotify,
+                            recipientAddress: sellerToNotify,
                             orderId: computeOrderHash(subPrepared.commitment, chainId, CONTRACTS.core),
                             deliveryAddress: deliveryAddress.trim(),
                         });
                     } catch (cause) {
-                        console.warn("Handoff address send to courier failed", cause);
+                        console.warn("Handoff address send to seller failed", cause);
                     }
                 }
             }
@@ -1145,12 +1145,12 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                             </button>
                                         </div>
                                         <p className="text-[11px] text-neutral-500">
-                                            Where the courier delivers — committed to the order as a geohash.
+                                            Where the seller delivers — committed to the order as a geohash.
                                         </p>
                                         <textarea
                                             value={deliveryAddress}
                                             onChange={(e) => setDeliveryAddress(e.target.value)}
-                                            placeholder="Street address, apt, entry notes — sent to the courier"
+                                            placeholder="Street address, apt, entry notes — sent to the seller"
                                             data-testid="input-delivery-address"
                                             rows={2}
                                             className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
@@ -1159,13 +1159,13 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                         {(fulfillmentMode === "deliver:seller-assigned"
                                             || fulfillmentMode === "deliver:buyer-assigned") && (
                                             <div className="pt-1">
-                                                <CourierCataloguePicker
+                                                <SellerCataloguePicker
                                                     key={fulfillmentMode}
                                                     mode={fulfillmentMode}
-                                                    partnerAddresses={courierPartnerAddresses}
+                                                    partnerAddresses={sellerPartnerAddresses}
                                                     sellerAddress={sellerAddressLower}
                                                     tokenSymbol={tokenSymbol}
-                                                    onSelect={setCourierSelection}
+                                                    onSelect={setSellerSelection}
                                                 />
                                             </div>
                                         )}
@@ -1180,7 +1180,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                         || sellerCartItems.length === 0
                                         || (!fulfillmentMode && !cartProductAssemblySlug)
                                         || (fulfillmentMode?.startsWith("deliver:") && !deliveryLocation.geohash)
-                                        || ((fulfillmentMode === "deliver:seller-assigned" || fulfillmentMode === "deliver:buyer-assigned") && !courierSelection)
+                                        || ((fulfillmentMode === "deliver:seller-assigned" || fulfillmentMode === "deliver:buyer-assigned") && !sellerSelection)
                                     }
                                     data-testid="btn-place-order"
                                     className="w-full"

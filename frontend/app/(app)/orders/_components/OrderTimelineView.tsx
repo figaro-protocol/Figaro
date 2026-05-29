@@ -27,7 +27,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { decodeAbiParameters, toHex, type Hex, type PublicClient } from "viem";
 import { Button } from "@/components/ui/Button";
 import { PreResolveOffsetPanel } from "@/components/core/PreResolveOffsetPanel";
-import { CourierAuctionPanel } from "@/components/core/CourierAuctionPanel";
+import { SellerAuctionPanel } from "@/components/core/SellerAuctionPanel";
 import { GHGAnchorPanel } from "@/components/core/GHGAnchorPanel";
 import { GHGWorkflowPanel } from "@/components/core/GHGWorkflowPanel";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
@@ -746,7 +746,7 @@ export function OrderTimelineView({ processId }: Props) {
 
             {/* Deferred courier edge — a Dutch auction, if this process has one.
                 Renders null for every non-auction process. */}
-            <CourierAuctionPanel processId={processId} />
+            <SellerAuctionPanel processId={processId} />
 
             {/* Emissions disclosure — sellers file figaro-ghg-measurement-v1
                 measurements here. The panels self-render their empty states

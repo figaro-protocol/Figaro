@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * CourierCataloguePicker — the delivery-courier selection step at checkout.
+ * SellerCataloguePicker — the delivery-seller selection step at checkout.
  *
- * A local-commerce delivery is a courier order (buyer↔courier) priced from
- * the courier's own operator catalogue. Two coordination modes, one
- * mechanism — they differ only in how the courier's address is obtained:
+ * A local-commerce delivery is a seller order (buyer↔seller) priced from
+ * the seller's own operator catalogue. Two coordination modes, one
+ * mechanism — they differ only in how the seller's address is obtained:
  *
  *   - seller-assigned — the buyer picks from the merchant's partner list
  *     (`counterpartyBindings`).
@@ -31,9 +31,9 @@ import type { CatalogueItem } from "@/lib/seller/types";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-export interface CourierSelection {
-    courier: `0x${string}`;
-    /** The chosen delivery item from the courier's operator catalogue. */
+export interface SellerSelection {
+    seller: `0x${string}`;
+    /** The chosen delivery item from the seller's operator catalogue. */
     item: CatalogueItem;
     /** The effective price — the resolved catalogue figure, or the
      *  buyer-entered amount for a `buyer-set` item. */
@@ -44,33 +44,33 @@ interface Props {
     /** Canonical fulfilment method — `deliver:seller-assigned` or
      *  `deliver:buyer-assigned`. Decides how the address is acquired. */
     mode: string;
-    /** Courier addresses the merchant designated — seller-assigned only. */
+    /** Seller addresses the lead seller designated — seller-assigned only. */
     partnerAddresses: string[];
-    /** The merchant — negotiated prices are keyed to it. */
+    /** The lead seller — negotiated prices are keyed to it. */
     sellerAddress: string;
     /** Token symbol for price display. */
     tokenSymbol: string;
     /** Reports the completed selection, or `null` while incomplete. */
-    onSelect: (selection: CourierSelection | null) => void;
+    onSelect: (selection: SellerSelection | null) => void;
 }
 
 const FIELD = "w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent";
 
-export function CourierCataloguePicker({ mode, partnerAddresses, sellerAddress, tokenSymbol, onSelect }: Props) {
-    const [courierAddress, setCourierAddress] = useState("");
+export function SellerCataloguePicker({ mode, partnerAddresses, sellerAddress, tokenSymbol, onSelect }: Props) {
+    const [selectedSellerAddress, setSelectedSellerAddress] = useState("");
     const [selectedItemId, setSelectedItemId] = useState("");
     const [buyerSetPrice, setBuyerSetPrice] = useState("");
 
-    const validCourier = isAddress(courierAddress) ? (courierAddress as `0x${string}`) : undefined;
+    const validSeller = isAddress(selectedSellerAddress) ? (selectedSellerAddress as `0x${string}`) : undefined;
     const { catalogues: operatorCatalogues, isLoading } = useRegisteredCatalogues();
 
-    const courierCatalogue = useMemo(
-        () => (validCourier ? operatorCatalogues.find((c) => hexEqual(c.address, validCourier)) : undefined),
-        [validCourier, operatorCatalogues],
+    const sellerCatalogue = useMemo(
+        () => (validSeller ? operatorCatalogues.find((c) => hexEqual(c.address, validSeller)) : undefined),
+        [validSeller, operatorCatalogues],
     );
     const deliveryItems = useMemo(
-        () => (courierCatalogue?.menu ?? []).filter((i) => i.category === "delivery"),
-        [courierCatalogue],
+        () => (sellerCatalogue?.menu ?? []).filter((i) => i.category === "delivery"),
+        [sellerCatalogue],
     );
     const selectedItem = deliveryItems.find((i) => i.id === selectedItemId);
     const resolved = useMemo(
@@ -82,7 +82,7 @@ export function CourierCataloguePicker({ mode, partnerAddresses, sellerAddress, 
     // Report the completed selection up. `onSelect` is expected to be a
     // stable setter; the deps are primitives + a stable item ref.
     useEffect(() => {
-        if (!validCourier || !selectedItem || !resolved) {
+        if (!validSeller || !selectedItem || !resolved) {
             onSelect(null);
             return;
         }
@@ -91,66 +91,66 @@ export function CourierCataloguePicker({ mode, partnerAddresses, sellerAddress, 
             onSelect(null);
             return;
         }
-        onSelect({ courier: validCourier, item: selectedItem, price });
-    }, [validCourier, selectedItem, resolved, isBuyerSet, buyerSetPrice, onSelect]);
+        onSelect({ seller: validSeller, item: selectedItem, price });
+    }, [validSeller, selectedItem, resolved, isBuyerSet, buyerSetPrice, onSelect]);
 
-    const courierLabel = (addr: string) =>
+    const sellerLabel = (addr: string) =>
         operatorCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
 
     const resetItem = () => { setSelectedItemId(""); setBuyerSetPrice(""); };
 
     return (
-        <div className="space-y-2" data-testid="courier-catalogue-picker">
+        <div className="space-y-2" data-testid="seller-catalogue-picker">
             <label className="text-xs font-semibold text-neutral-500 block">
-                {mode === "deliver:seller-assigned" ? "Choose a courier" : "Courier address"}
+                {mode === "deliver:seller-assigned" ? "Choose a seller" : "Seller address"}
             </label>
 
             {/* Address step — partner list (seller-assigned) or free input (buyer-assigned). */}
             {mode === "deliver:seller-assigned" ? (
                 <select
-                    value={courierAddress}
-                    onChange={(e) => { setCourierAddress(e.target.value); resetItem(); }}
-                    data-testid="select-courier-partner"
+                    value={selectedSellerAddress}
+                    onChange={(e) => { setSelectedSellerAddress(e.target.value); resetItem(); }}
+                    data-testid="select-seller-partner"
                     className={FIELD}
                 >
-                    <option value="">Select one of the merchant&apos;s couriers…</option>
+                    <option value="">Select a partner seller…</option>
                     {partnerAddresses.map((a) => (
-                        <option key={a} value={a}>{courierLabel(a)}</option>
+                        <option key={a} value={a}>{sellerLabel(a)}</option>
                     ))}
                 </select>
             ) : (
                 <input
                     type="text"
-                    value={courierAddress}
-                    onChange={(e) => { setCourierAddress(e.target.value); resetItem(); }}
+                    value={selectedSellerAddress}
+                    onChange={(e) => { setSelectedSellerAddress(e.target.value); resetItem(); }}
                     placeholder="0x… — any operator's address"
-                    data-testid="input-courier-address"
+                    data-testid="input-seller-address"
                     className={FIELD}
                 />
             )}
 
-            {/* Catalogue step — the courier's delivery price list. */}
-            {validCourier && isLoading && deliveryItems.length === 0 && (
-                <p className="text-xs text-neutral-500">Loading the courier&apos;s catalogue…</p>
+            {/* Catalogue step — the seller's delivery price list. */}
+            {validSeller && isLoading && deliveryItems.length === 0 && (
+                <p className="text-xs text-neutral-500">Loading the seller&apos;s catalogue…</p>
             )}
-            {validCourier && !isLoading && deliveryItems.length === 0 && (
-                <p className="text-xs text-neutral-500" data-testid="courier-no-delivery">
+            {validSeller && !isLoading && deliveryItems.length === 0 && (
+                <p className="text-xs text-neutral-500" data-testid="seller-no-delivery">
                     This operator publishes no delivery service.
                 </p>
             )}
             {deliveryItems.length > 0 && (
-                <div className="space-y-1 rounded border border-neutral-200 p-2" data-testid="courier-delivery-list">
+                <div className="space-y-1 rounded border border-neutral-200 p-2" data-testid="seller-delivery-list">
                     {deliveryItems.map((item) => {
                         const r = resolveCatalogueItemPrice(item, sellerAddress);
                         return (
                             <label key={item.id} className="flex items-center gap-2 text-sm cursor-pointer">
                                 <input
                                     type="radio"
-                                    name="courier-delivery-item"
+                                    name="seller-delivery-item"
                                     value={item.id}
                                     checked={selectedItemId === item.id}
                                     onChange={() => { setSelectedItemId(item.id); setBuyerSetPrice(""); }}
-                                    data-testid={`courier-item-${item.id}`}
+                                    data-testid={`seller-item-${item.id}`}
                                 />
                                 <span className="text-black">{item.name}</span>
                                 <span className="text-neutral-500 ml-auto tabular-nums">
@@ -173,7 +173,7 @@ export function CourierCataloguePicker({ mode, partnerAddresses, sellerAddress, 
                     onChange={(e) => setBuyerSetPrice(e.target.value)}
                     placeholder="Your delivery price"
                     aria-label="Your delivery price"
-                    data-testid="input-courier-buyer-price"
+                    data-testid="input-seller-buyer-price"
                     className={FIELD}
                 />
             )}
