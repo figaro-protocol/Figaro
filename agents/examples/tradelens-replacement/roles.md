@@ -116,7 +116,7 @@ Every autonomous policy in this assembly inherits the factotum's default refuse-
 
 ## Identity and discoverability
 
-Each factotum's wallet should register an `OperatorRegistry` entry with `services` keys per `docs/v5/AI_AGENT_COORDINATION.md` (ERC-8004 / `did:web` interop):
+Each factotum's wallet should register an `SellerRegistry` entry with `services` keys per `docs/v5/AI_AGENT_COORDINATION.md` (ERC-8004 / `did:web` interop):
 
 - Carriers should declare `services.mcp` and `services.a2a` for inbound bookings.
 - Ports should declare `capabilities: ["container-handling", "rail-connection", ...]`.

@@ -62,7 +62,7 @@ wrangler kv:key put --namespace-id=<ALLOWLIST_ID> \
   '{"name":"AttestationCoordinator","deployedAt":"2026-04-29"}'
 
 # Repeat for each protocol-tier contract: ClauseRegistry,
-# OperatorRegistry, DutchAuction, FigaroBatchVerifier, each
+# SellerRegistry, DutchAuction, FigaroBatchVerifier, each
 # clause validator, the FIG token, the RpgfMinter.
 
 # To revoke (e.g., after redeploying a contract):

@@ -111,7 +111,7 @@ This is the design intent: routine sub-procurement is autonomous, but performanc
 
 ## Identity
 
-Each factotum's wallet should register an `OperatorRegistry` entry per `docs/v5/AI_AGENT_COORDINATION.md`. Capabilities and service descriptors per role:
+Each factotum's wallet should register an `SellerRegistry` entry per `docs/v5/AI_AGENT_COORDINATION.md`. Capabilities and service descriptors per role:
 
 - **Airline**: `capabilities: ["scheduled-passenger-air"]`, `services.mcp` (for inbound bookings via MCP).
 - **Sub-suppliers**: `capabilities` describing the sub-service (`"fuel-jet-a"`, `"gate-ops-domestic"`, etc.) plus jurisdiction(s).

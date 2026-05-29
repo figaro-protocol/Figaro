@@ -112,7 +112,7 @@ NEXT_PUBLIC_KLEROS_MOCK_BANNER=true
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
 NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
 
-# IPFS — used by ipfsService.ts + merchantBranding.ts. Defaults target local Kubo; any IPFS-API/gateway endpoint works (Pinata, web3.storage, self-hosted).
+# IPFS — used by ipfsService.ts + sellerBranding.ts. Defaults target local Kubo; any IPFS-API/gateway endpoint works (Pinata, web3.storage, self-hosted).
 NEXT_PUBLIC_IPFS_API_URL=http://127.0.0.1:5001
 NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
 ```

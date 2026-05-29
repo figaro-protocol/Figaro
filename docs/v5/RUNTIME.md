@@ -183,7 +183,7 @@ The first-pass shared runtime implementation seeds now live under `frontend/lib/
 
 The workspace renderer now also consumes bound runtime context to constrain role selection when a connected address matches a bound institution subject, and it scopes the mechanism inspector to the selected role context instead of always showing the full assembly indiscriminately.
 
-Per-seller visual identity in V5 flows through `lib/shared/merchantBranding.ts` + `MerchantBrandingModule` directly from `useSellerProfile()`. The V4 ENS/IPFS skinning system (per-binding `assets.cssURI`, hydrated asset documents, `data-skin` attributes on 20+ component surfaces) was retired in the V4→V5 narrowing — it shipped in `archive-frontend` (untracked from the repo in `a6110c6`; not in fresh clones) but was never re-wired in V5, where the `SellerRegistry` metadata clause exposes only `logoURI`. See the retired §5 below and the commit chain N1–N5.
+Per-seller visual identity in V5 flows through `lib/shared/sellerBranding.ts` + `SellerBrandingModule` directly from `useSellerProfile()`. The V4 ENS/IPFS skinning system (per-binding `assets.cssURI`, hydrated asset documents, `data-skin` attributes on 20+ component surfaces) was retired in the V4→V5 narrowing — it shipped in `archive-frontend` (untracked from the repo in `a6110c6`; not in fresh clones) but was never re-wired in V5, where the `SellerRegistry` metadata clause exposes only `logoURI`. See the retired §5 below and the commit chain N1–N5.
 ---
 
 # Part 2 — Frontend Runtime Model
@@ -325,8 +325,8 @@ the repo in `a6110c6` and not in fresh clones) but was never re-wired in
 V5 — V5's `SellerRegistry` metadata surface exposes only `logoURI`, and
 no production code constructed a `ResolvedAssemblySkinBundle`.
 
-Per-seller visual identity in V5 flows through `lib/shared/merchantBranding.ts`
-+ `MerchantBrandingModule` directly from `useSellerProfile()`. The
+Per-seller visual identity in V5 flows through `lib/shared/sellerBranding.ts`
++ `SellerBrandingModule` directly from `useSellerProfile()`. The
 broader skinning vision is not part of the V5 product surface.
 
 ## Subject Binding and Seller-Address Mutation
@@ -385,10 +385,10 @@ The repo already has the foundation for this model:
 11. runtime identity seeds in `frontend/lib/shared/runtimeIdentity*.ts`
 12. reusable modules in `frontend/components/modules/`
 13. authoring and prototype surfaces under `/builders`
-14. per-seller branding via `lib/shared/merchantBranding.ts` + `MerchantBrandingModule` (the V4 ENS/IPFS skin-bundle wrapper was retired in the V4→V5 narrowing; see retired §5 below)
+14. per-seller branding via `lib/shared/sellerBranding.ts` + `SellerBrandingModule` (the V4 ENS/IPFS skin-bundle wrapper was retired in the V4→V5 narrowing; see retired §5 below)
 15. clause-composed agreement and catalogue metadata in `frontend/lib/core/agreementManifest.ts` and `frontend/lib/shared/sellerCatalogueMetadata.ts`
 16. typed service bundle in `frontend/lib/shared/runtimeServices.ts`, consumed via `useRuntimeServices()` from `runtimeServicesContext`. The V4 per-binding-override resolver (`resolveRuntimeServices`) was retired in the V4→V5 narrowing along with the module-registry runtime — V5 pages consume `DEFAULT_RUNTIME_SERVICES` directly
-17. the V4 mechanism-package registry (`packages.ts`, `registerAllModules.ts`, `blockMetadata.ts`, `moduleRegistry.ts`, `builtInModuleDefaults.ts`) was retired in the V4→V5 narrowing — V5 renders pages directly with concrete React components (`/m/[merchant]`, `/orders`, `/discover`, `/builders/designer/*`, `/audit`) rather than through a module-registry-driven runtime
+17. the V4 mechanism-package registry (`packages.ts`, `registerAllModules.ts`, `blockMetadata.ts`, `moduleRegistry.ts`, `builtInModuleDefaults.ts`) was retired in the V4→V5 narrowing — V5 renders pages directly with concrete React components (`/s/[seller]`, `/orders`, `/discover`, `/builders/designer/*`, `/audit`) rather than through a module-registry-driven runtime
 18. a consumer-facing commerce boundary in `frontend/lib/commerce/`: `CommerceProvider` supplies wallet identity via `useCommerce()`, `useCheckout(token)` composes token approval, balance checking, EIP-712 signing, and commitment broadcasting into one hook, and `types.ts` defines the `CheckoutHandle` surface shared by `CartModule`, `CreateOrderWithApproval`, and any future consumer-facing order flow
 19. a centralized user-facing terminology dictionary in `frontend/lib/shared/vocab.ts`, mapping protocol-internal terms to consumer-friendly language (bond→deposit, commit→place, resolve→complete, attestation→verification) with namespaced label exports (`vocab.buttons.*`, `vocab.status.*`, `vocab.headings.*`, `vocab.progress.*`, `vocab.errors.*`, `vocab.info.*`, `vocab.labels.*`) consumed by order-flow components
 
@@ -400,9 +400,9 @@ They are:
 
 1. action execution is still fragmented across modules beyond the current descriptor-backed semantic workspace slice for resolve, sub-order composition, auction claims, delivery coordinator signals, seller disclosure writes, delivery proof submissions, and seller profile writes; the console queue now shares action presentation semantics, resolve/attestation execution plumbing, a shared build executor for queued build mutations, the shared commitment flow for order creation, and the shared transaction-capability dispatcher now also covers the `/fig` route plus the live delivery-attestation mechanism module, while root-order, sub-order, console create-order, the legacy TokenApprovalFlow entry points, and the workbench GHG workflow helper share the current commitment/approval/disclosure execution seams, but broader mechanism execution still sits outside one fully converged descriptor-owned runtime layer
 2. service resolution is still fragmented across archetype-specific hooks, although runtime identity preview loading now has a shared service seam for bundled fallback, remote manifest fetch, and assembly-context resolution used by the builder prototype shells, the catalogue read/write surface now shares a catalogue service wrapper instead of reaching straight into fetcher and publisher helpers, the buyer discovery path now shares a discovery service wrapper for merchant roster lookup, restaurant mapping, and mock fallback behavior, IPFS-backed artifact transport now shares one service for JSON pinning, file upload, and gateway URI resolution across agreement, evidence, attestation, and catalogue-image flows, handoff messaging now shares one coordination-messaging service for wallet-based channel resolution plus typed send/listen operations across `useKeyExchange` and `HandoffKeyExchangeModule`, handoff artifact persistence now shares one service for key storage, pending intents, receipt-backed persistence, and cleanup scheduling instead of splitting that state across multiple handoff-local helpers, and the workspace now resolves one typed runtime service bundle from optional assembly binding keys for module consumers; registered provider keys can now resolve to real runtime service implementations rather than only warning and falling back to defaults, the catalogue and discovery hooks used by the live seller and buyer modules can now take those injected service objects, a shared runtime-services React context now makes the resolved bundle available to non-module consumers like dispute evidence and delivery-attestation flows, the shared catalogue/discovery service layer plus agreement artifact helpers can now be composed against injected dependencies instead of hardwiring default transport or catalogue singletons internally, the handoff key-exchange / cleanup hooks plus the plain handoff helper wrappers can now consume injected messaging or persistence services instead of reaching straight back into the default singletons, and the remaining IPFS compatibility wrappers now also accept injected transport, but broader service adoption still needs to move deeper into the remaining runtime surfaces and future mechanism packages
-3. subject binding: the V4 binding-asset/skin pipeline was retired (V5 reads seller profiles directly via `useSellerProfile()`; per-seller branding flows through `merchantBranding.ts` + `MerchantBrandingModule`). The remaining gap is seller-address-to-assembly resolution surfaces — `/m/[merchant]` is the primary path; broader per-assembly UI per binding is not yet built
+3. subject binding: the V4 binding-asset/skin pipeline was retired (V5 reads seller profiles directly via `useSellerProfile()`; per-seller branding flows through `sellerBranding.ts` + `SellerBrandingModule`). The remaining gap is seller-address-to-assembly resolution surfaces — `/s/[seller]` is the primary path; broader per-assembly UI per binding is not yet built
 4. mechanism packages: the V4 mechanism-package registry was retired in the V4→V5 narrowing. V5 mechanisms are exposed via hooks (`useDutchAuction`, `useGHGDisclosure`, `useAttestationCoordinatorActions`, `useMerchantProcess`, `useCourierProcess`, `useFigToken`, `useSellerRegistry`) consumed directly by pages
-5. skin bundles: retired in the V4→V5 narrowing (see retired §5). Per-seller branding flows through `MerchantBrandingModule` directly from `useSellerProfile()`
+5. skin bundles: retired in the V4→V5 narrowing (see retired §5). Per-seller branding flows through `SellerBrandingModule` directly from `useSellerProfile()`
 
 ## Decision Rules
 
@@ -411,7 +411,7 @@ Use these rules when deciding whether to add a new abstraction:
 1. if the problem is clause meaning, solve it in agreement or metadata, not view composition
 2. if the problem is repeated action logic, solve it in the action model, not by adding a new module type
 3. if the problem is provider variance, solve it in service bindings, not in page code
-4. if the problem is per-seller branding, solve it in `merchantBranding.ts` + `MerchantBrandingModule`, not in semantic derivation (the V4 skin-bundle wrapper layer is retired)
+4. if the problem is per-seller branding, solve it in `sellerBranding.ts` + `SellerBrandingModule`, not in semantic derivation (the V4 skin-bundle wrapper layer is retired)
 5. if the problem is mechanism structure, solve it as a mechanism package, not a bespoke route
 
 ## Relationship To Other Active Docs

@@ -180,7 +180,7 @@ If yes, adding on-chain state, role checks, or lifecycle flags is a web2 pattern
 
 ### Frontend = runtime infrastructure, not product code
 
-`frontend/lib/` is runtime infrastructure where the abstraction IS the deliverable. Catalogues (`shared/clauseCategories.ts`, `shared/clauseSpecSource.ts`, mechanism packages, service-binding interfaces, the semantic-model layer in `lib/semantic/`) exist to be composed by UI surfaces — some shipped (`AgreementDrawer`, `/m/[merchant]`, `/orders/[processId]`, `/inbox`, `/discover`), some not yet built. See `RUNTIME.md` Parts 1–3 for the composition model these catalogues are staging for.
+`frontend/lib/` is runtime infrastructure where the abstraction IS the deliverable. Catalogues (`shared/clauseCategories.ts`, `shared/clauseSpecSource.ts`, mechanism packages, service-binding interfaces, the semantic-model layer in `lib/semantic/`) exist to be composed by UI surfaces — some shipped (`AgreementDrawer`, `/s/[seller]`, `/orders/[processId]`, `/inbox`, `/discover`), some not yet built. See `RUNTIME.md` Parts 1–3 for the composition model these catalogues are staging for.
 
 **YAGNI does NOT apply here.** "This file has no readers today," "this interface has one implementation," and "this abstraction has no consumer" are NOT findings — they are the expected state of infrastructure code that lands ahead of its UI consumers, by design. Applying product-code YAGNI to runtime infrastructure is a category error.
 

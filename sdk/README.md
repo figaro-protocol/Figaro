@@ -84,7 +84,7 @@ queue.enqueueAll(actions.map((action) => ({
   action,
   approvalContext: {
     bindingId: "binding:bobs-pizza-palace:local-anvil",
-    roleKind: "merchant",
+    roleKind: "seller",
     runtimeSummary: "Bob's Pizza Palace · Figaro Local Commerce · Restaurant",
   },
 })));
@@ -133,7 +133,7 @@ const summary = buildProcessDisclosureSummary(attestations, processId, clauseId)
 // Indexer hygiene: filter raw event logs by source contract before processing.
 // Required when consuming events that FigaroBatchVerifier re-emits with the
 // same topic hash as the direct-path contract (Attestation, ClauseRegistered,
-// MechanismClauseSet, OperatorRegistered, etc.). Without this, batch and
+// MechanismClauseSet, SellerRegistered, etc.). Without this, batch and
 // direct emissions get conflated.
 const allLogs = await client.getLogs({ event: EV_ATTESTATION, fromBlock, toBlock });
 const direct  = filterLogsBySource(allLogs, attestationCoordinatorAddress);
@@ -145,10 +145,10 @@ const both    = filterLogsBySource(allLogs, [attestationCoordinatorAddress, batc
 const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix match)
 const km = haversineDistance(40.71, -74.00, 34.05, -118.24); // ~3944 km
 
-// did:web: resolve an operator's DID Document and verify on-chain address
-const { document, error } = await resolveDidWeb("did:web:operator.example.com");
+// did:web: resolve a seller's DID Document and verify on-chain address
+const { document, error } = await resolveDidWeb("did:web:seller.example.com");
 if (document) {
-  const match = didDocumentMatchesAddress(document, "0xOperator...", 1);
+  const match = didDocumentMatchesAddress(document, "0xSeller...", 1);
   // → true if the DID Document contains a verification method for this address
 }
 ```
