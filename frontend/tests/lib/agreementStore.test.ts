@@ -33,7 +33,7 @@ function makeAgreement() {
                 unitPrice: "5",
             },
         ],
-        manifestFields: {
+        clauseFields: {
             origin: "dr5reg",
             destination: "dr5reh",
             fulfilmentMethod: "delivery",

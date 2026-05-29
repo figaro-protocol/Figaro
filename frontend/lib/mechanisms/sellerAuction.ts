@@ -38,7 +38,7 @@ export interface SellerAuctionDraft {
     currency: Hex;
     processId: Hex;
     parentOrderHashes: Hex[];
-    manifestFields: BuildOrderAgreementParams["manifestFields"];
+    clauseFields: BuildOrderAgreementParams["clauseFields"];
     /** Human-readable street address, sent to the seller over the
      *  coordination channel after the delivery order commits. */
     deliveryAddress?: string;

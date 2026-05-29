@@ -45,7 +45,7 @@ import {
 } from "@/lib/core/agreementManifest";
 import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
 import { readAgreementFields } from "@/lib/designer/syntheticProcess";
-import type { ManifestFields } from "@/lib/core/encoding";
+import type { ClauseFields } from "@/lib/core/encoding";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { sellerAuctionId, stashSellerDraft } from "@/lib/mechanisms/sellerAuction";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
@@ -506,7 +506,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     // the cart-total computation already uses at line 273.
                     unitPrice: parseToken(item.price, tokenDecimals).toString(),
                 })),
-                manifestFields: {
+                clauseFields: {
                     origin: "",
                     destination: "",
                     // Product-driven assemblies carry no fulfilment modality on
@@ -572,7 +572,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         : {}),
                     // Geo fields aggregated from the cart's catalogue annotations.
                     // mass / volume strings are parsed by `parseMassToGrams` /
-                    // `parseVolumeToMl` in `manifestFieldsToGeoSection`; class_
+                    // `parseVolumeToMl` in `clauseFieldsToGeoSection`; class_
                     // is the SDK short code consumed by `encodeGeoContent`.
                     ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
                     ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
@@ -638,7 +638,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         currency,
                         processId,
                         parentOrderHashes,
-                        manifestFields: {
+                        clauseFields: {
                             origin: sellerCatalogue?.geohash ?? "",
                             destination: deliveryLocation.geohash ?? "",
                             courierProcessIncluded: true,
@@ -665,7 +665,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 // ── Resolve this order's seller, payment, and clauses ──
                 let seller: `0x${string}`;
                 let payment: bigint;
-                let manifestFields: ManifestFields;
+                let clauseFields: ClauseFields;
                 let sellerToNotify: `0x${string}` | null = null;
 
                 if (isCourierEdge) {
@@ -682,7 +682,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     const bands = (readAssemblyClause(manifest, PROXIMITY_POLICY_CLAUSE_KEY)
                         ?.data as { bands?: string[] } | undefined)?.bands ?? [];
                     const ghgStandards = readAssemblyOrderGhgStandards(manifest, node.agreementHash);
-                    manifestFields = {
+                    clauseFields = {
                         origin: sellerCatalogue?.geohash ?? "",
                         destination: deliveryLocation.geohash ?? "",
                         courierProcessIncluded: true,
@@ -711,7 +711,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         node, seller, leadAddress: sellerAddress,
                         sellerCatalogues, tokenDecimals,
                     });
-                    manifestFields = readAgreementFields(node, agreement);
+                    clauseFields = readAgreementFields(node, agreement);
                 }
 
                 cumulativeValue += payment;
@@ -723,7 +723,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     processId,
                     parentOrderHashes,
                     expectedCumulativeValue: cumulativeValue,
-                    manifestFields,
+                    clauseFields,
                 });
                 await signAndPlace(subPrepared.commitment, subPrepared.commitmentMeta, "buyer");
                 realOrderHash.set(

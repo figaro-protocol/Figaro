@@ -1,4 +1,4 @@
-import type { ManifestFields } from "@/lib/core/encoding";
+import type { ClauseFields } from "@/lib/core/encoding";
 import {
     type AgreementLineItem,
     buildAgreement,
@@ -19,7 +19,7 @@ import {
     PROXIMITY_POLICY_CLAUSE_KEY,
     PROXIMITY_PROOF_CLAUSE_KEY,
     getSection,
-    manifestFieldsToGeoSection,
+    clauseFieldsToGeoSection,
     TOPOLOGY_CLAUSE_KEY,
     type Agreement,
     type AgreementSection,
@@ -29,7 +29,7 @@ import {
 // ── Multi-valued fulfilment + proximity composition ────────────────────────
 //
 // The drawer composes a per-node agreement by toggling sets of options into
-// the manifestFields object. Two array fields drive fulfilment (modalities,
+// the clauseFields object. Two array fields drive fulfilment (modalities,
 // coordinations, handoffPoints) and one drives proximity (bands). Empty
 // (or absent) array = clause not in the agreement.
 
@@ -54,7 +54,7 @@ const ALLOWED_PROXIMITY_BANDS: ReadonlyArray<string> = ["zone-wifi", "nearby-ble
 
 /** Filter a manifest-field array down to known enum values. */
 function readManifestArray(
-    fields: ManifestFields | undefined,
+    fields: ClauseFields | undefined,
     key: string,
     allowed: ReadonlyArray<string>,
 ): string[] {
@@ -64,7 +64,7 @@ function readManifestArray(
     return value.filter((v): v is string => typeof v === "string" && allowed.includes(v));
 }
 
-function readManifestExtra(fields: ManifestFields | undefined, keys: string[]): string | undefined {
+function readManifestExtra(fields: ClauseFields | undefined, keys: string[]): string | undefined {
     if (!fields) return undefined;
 
     for (const key of keys) {
@@ -117,7 +117,7 @@ export function canonicalFulfilmentMethodToArrays(
     }
 }
 
-function hasGeoFields(fields: ManifestFields | undefined): boolean {
+function hasGeoFields(fields: ClauseFields | undefined): boolean {
     return !!(
         fields?.origin?.trim()
         || fields?.destination?.trim()
@@ -137,7 +137,7 @@ export interface BuildOrderAgreementParams {
     currency: `0x${string}`;
     payment: bigint;
     lineItems?: AgreementLineItem[];
-    manifestFields?: ManifestFields;
+    clauseFields?: ClauseFields;
     parentOrderHashes?: string[];
     fallbackParentOrderHashes?: string[];
     extraSections?: AgreementSection[];
@@ -211,13 +211,13 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         }),
     ];
 
-    if (hasGeoFields(params.manifestFields)) {
-        sections.push(manifestFieldsToGeoSection(params.manifestFields!));
+    if (hasGeoFields(params.clauseFields)) {
+        sections.push(clauseFieldsToGeoSection(params.clauseFields!));
     }
 
-    const modalities = readManifestArray(params.manifestFields, "fulfilmentModalities", ALLOWED_MODALITIES);
-    const coordinations = readManifestArray(params.manifestFields, "fulfilmentCoordinations", ALLOWED_COORDINATIONS);
-    const handoffPoints = readManifestArray(params.manifestFields, "fulfilmentHandoffPoints", ALLOWED_HANDOFF_POINTS);
+    const modalities = readManifestArray(params.clauseFields, "fulfilmentModalities", ALLOWED_MODALITIES);
+    const coordinations = readManifestArray(params.clauseFields, "fulfilmentCoordinations", ALLOWED_COORDINATIONS);
+    const handoffPoints = readManifestArray(params.clauseFields, "fulfilmentHandoffPoints", ALLOWED_HANDOFF_POINTS);
     if (modalities.length > 0) {
         const data: Record<string, unknown> = { modalities };
         // The validator requires coordinations non-empty IFF delivery is
@@ -246,7 +246,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     // Category-1 clauses: empty sectionData; the runtime attestation supplies
     // the eventType + evidenceUri content. Without these sections the on-chain
     // inclusion proof for the matching attestations cannot open.
-    const merchantProcessFlag = params.manifestFields?.merchantProcessIncluded === true;
+    const merchantProcessFlag = params.clauseFields?.merchantProcessIncluded === true;
     const deliveryOffered = modalities.includes("delivery");
     if (merchantProcessFlag || deliveryOffered) {
         sections.push({
@@ -254,7 +254,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
             data: {},
         });
     }
-    if (params.manifestFields?.courierProcessIncluded === true) {
+    if (params.clauseFields?.courierProcessIncluded === true) {
         sections.push({
             clause: COURIER_PROCESS_CLAUSE_KEY,
             data: {},
@@ -266,12 +266,12 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     // is the new path; the legacy single `ghgStandard` + `ghgScope` is read
     // as a fallback for any caller that hasn't migrated.
     const ghgStandards = readManifestArray(
-        params.manifestFields,
+        params.clauseFields,
         "ghgStandards",
         GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>,
     );
-    const legacyStandard = readManifestExtra(params.manifestFields, ["ghgStandard", "ghgMethodology"]);
-    const ghgScope = readManifestExtra(params.manifestFields, ["ghgScope"]);
+    const legacyStandard = readManifestExtra(params.clauseFields, ["ghgStandard", "ghgMethodology"]);
+    const ghgScope = readManifestExtra(params.clauseFields, ["ghgScope"]);
     const resolvedClauseKeys: string[] = ghgStandards.length > 0
         ? ghgStandards
         : legacyStandard
@@ -292,7 +292,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         sections.push({ clause: GHG_MEASUREMENT_CLAUSE_KEY, data: {} });
     }
 
-    const proximityBands = readManifestArray(params.manifestFields, "proximityBands", ALLOWED_PROXIMITY_BANDS);
+    const proximityBands = readManifestArray(params.clauseFields, "proximityBands", ALLOWED_PROXIMITY_BANDS);
     if (proximityBands.length > 0) {
         sections.push({
             clause: PROXIMITY_POLICY_CLAUSE_KEY,
@@ -313,11 +313,11 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         });
     }
 
-    const klerosCourt = readManifestExtra(params.manifestFields, ["klerosCourt"]);
-    const klerosMinJurorsRaw = readManifestExtra(params.manifestFields, ["klerosMinJurors"]);
-    const applicableLaw = readManifestExtra(params.manifestFields, ["applicableLaw"]);
-    const forum = readManifestExtra(params.manifestFields, ["forum"]);
-    const language = readManifestExtra(params.manifestFields, ["language"]);
+    const klerosCourt = readManifestExtra(params.clauseFields, ["klerosCourt"]);
+    const klerosMinJurorsRaw = readManifestExtra(params.clauseFields, ["klerosMinJurors"]);
+    const applicableLaw = readManifestExtra(params.clauseFields, ["applicableLaw"]);
+    const forum = readManifestExtra(params.clauseFields, ["forum"]);
+    const language = readManifestExtra(params.clauseFields, ["language"]);
     const ALLOWED_KLEROS_COURTS = ["general", "blockchain-nontechnical", "blockchain-technical", "english-language"];
     const klerosCourtValue = klerosCourt && ALLOWED_KLEROS_COURTS.includes(klerosCourt) ? klerosCourt : undefined;
     if (klerosCourtValue) {
@@ -343,7 +343,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     // Consent: multi-document array. Each row must have non-empty hash +
     // version + title; partial rows are silently dropped. The Layer-C
     // validator catches structural violations downstream.
-    const rawConsentDocuments = params.manifestFields?.consentDocuments;
+    const rawConsentDocuments = params.clauseFields?.consentDocuments;
     const consentDocuments = Array.isArray(rawConsentDocuments)
         ? rawConsentDocuments.filter((doc): doc is {
             documentHash: string;

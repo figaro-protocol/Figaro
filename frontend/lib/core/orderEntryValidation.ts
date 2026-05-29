@@ -1,6 +1,6 @@
 import { parseToken } from "@/lib/shared/utils";
 
-interface ManifestLocationFields {
+interface ClauseLocationFields {
     origin?: string;
     destination?: string;
 }
@@ -19,7 +19,7 @@ function hasExcessFractionalPrecision(value: string, tokenDecimals: number): boo
     return fractional.replace(/0+$/, "").length > tokenDecimals;
 }
 
-export function hasRequiredManifestLocations(fields: ManifestLocationFields): boolean {
+export function hasRequiredClauseLocations(fields: ClauseLocationFields): boolean {
     return !!fields.origin?.trim() && !!fields.destination?.trim();
 }
 

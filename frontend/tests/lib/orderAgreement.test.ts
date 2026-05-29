@@ -27,7 +27,7 @@ describe("buildOrderAgreement", () => {
                     unitPrice: "5",
                 },
             ],
-            manifestFields: {
+            clauseFields: {
                 origin: "dr5reg",
                 destination: "dr5reh",
                 mass: "1 kg",
@@ -76,7 +76,7 @@ describe("buildOrderAgreement", () => {
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            manifestFields: {
+            clauseFields: {
                 origin: "dr5reg",
                 destination: "dr5reh",
                 fulfilmentModalities: ["delivery"],
@@ -105,7 +105,7 @@ describe("buildOrderAgreement", () => {
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            manifestFields: { origin: "dr5reg", fulfilmentModalities: ["delivery"] },
+            clauseFields: { origin: "dr5reg", fulfilmentModalities: ["delivery"] },
         });
         expect(summarizeAgreement(agreement)?.fulfilment?.coordinations).toEqual(["seller-assigned"]);
     });
@@ -116,7 +116,7 @@ describe("buildOrderAgreement", () => {
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            manifestFields: {
+            clauseFields: {
                 origin: "dr5reg",
                 fulfilmentModalities: ["pickup", "delivery"],
                 fulfilmentCoordinations: ["buyer-assigned", "dutch-auction"],
@@ -142,7 +142,7 @@ describe("buildOrderAgreement", () => {
                 seller: SELLER,
                 currency: CURRENCY,
                 payment: 10n,
-                manifestFields: { origin: "dr5reg", ghgStandard: legacy },
+                clauseFields: { origin: "dr5reg", ghgStandard: legacy },
             });
             expect((summarizeAgreement(agreement)?.ghg as Record<string, unknown>).standard).toBe(canonical);
         }
@@ -154,7 +154,7 @@ describe("buildOrderAgreement", () => {
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            manifestFields: {
+            clauseFields: {
                 origin: "dr5reg",
                 fulfilmentModalities: ["pickup"],
                 fulfilmentHandoffPoints: ["teleport"],

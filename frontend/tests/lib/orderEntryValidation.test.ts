@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { hasRequiredManifestLocations, parsePositiveTokenInput } from "@/lib/core/orderEntryValidation";
+import { hasRequiredClauseLocations, parsePositiveTokenInput } from "@/lib/core/orderEntryValidation";
 
 describe("orderEntryValidation", () => {
     it("requires both origin and destination", () => {
-        expect(hasRequiredManifestLocations({ origin: "A", destination: "B" })).toBe(true);
-        expect(hasRequiredManifestLocations({ origin: "A", destination: "" })).toBe(false);
-        expect(hasRequiredManifestLocations({ origin: "", destination: "B" })).toBe(false);
+        expect(hasRequiredClauseLocations({ origin: "A", destination: "B" })).toBe(true);
+        expect(hasRequiredClauseLocations({ origin: "A", destination: "" })).toBe(false);
+        expect(hasRequiredClauseLocations({ origin: "", destination: "B" })).toBe(false);
     });
 
     it("parses positive token inputs and rejects non-positive values", () => {

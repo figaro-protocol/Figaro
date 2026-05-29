@@ -114,7 +114,7 @@ export function SellerAuctionPanel({ processId }: Props) {
                 processId: draft.processId,
                 parentOrderHashes: draft.parentOrderHashes,
                 expectedCumulativeValue: cumulative + sellerPayment,
-                manifestFields: draft.manifestFields,
+                clauseFields: draft.clauseFields,
             });
             // The seller is the seller of this order. In devnet the buyer's
             // counter-signature is auto-collected from Anvil; in production

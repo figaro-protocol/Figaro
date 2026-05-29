@@ -642,7 +642,7 @@ export function readAssemblyClause(
 /**
  * Read the GHG disclosure standards declared by a specific order's agreement
  * in an assembly manifest. The checkout pipeline reads these and propagates
- * them into the per-order commitment via `manifestFields.ghgStandards`, so
+ * them into the per-order commitment via `clauseFields.ghgStandards`, so
  * the committed agreement carries the same disclosure clauses (and their
  * paired measurement clause) the assembly author declared.
  */
@@ -711,7 +711,7 @@ export function buildAgreement(params: {
     };
 }
 
-// ── V3 ManifestFields bridge ─────────────────────────────────────────────────
+// ── V3 ClauseFields bridge ─────────────────────────────────────────────────
 
 /**
  * Parse a mass string like "5 kg", "500g", "2.5 lbs" into grams.
@@ -743,7 +743,7 @@ function parseVolumeToMl(volume: string | undefined): number {
 }
 
 /**
- * Convert V3-style ManifestFields into a figaro-geo-v2 section data object.
+ * Convert V3-style ClauseFields into a figaro-geo-v2 section data object.
  *
  * Default values match the v2 validator's minimum-valid 5-tuple so the
  * agreement-hash mechanism is consistent at designer time even when the
@@ -754,7 +754,7 @@ function parseVolumeToMl(volume: string | undefined): number {
  *
  * Real buyer-supplied values overwrite these at commit time.
  */
-export function manifestFieldsToGeoSection(
+export function clauseFieldsToGeoSection(
     fields: { origin?: string; destination?: string; mass?: string; volume?: string; class_?: string },
 ): AgreementSection {
     const massGrams = parseMassToGrams(fields.mass);

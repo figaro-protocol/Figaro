@@ -14,7 +14,7 @@
 import type { Hex } from "viem";
 import { Order, OrderState } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import type { ManifestFields } from "@/lib/core/encoding";
+import type { ClauseFields } from "@/lib/core/encoding";
 import {
     buildOrderAgreement,
     getTopologyParentOrderHashes,
@@ -73,7 +73,7 @@ export interface CreatedOrder {
  *   - `origin` / `destination` = "0" — single-character base32 geohashes
  *     that satisfy `figaro-geo-v2`'s pattern + minLength constraints. The
  *     v2 validator also requires non-zero mass/volume and a valid class
- *     of service; `manifestFieldsToGeoSection` supplies minimally-valid
+ *     of service; `clauseFieldsToGeoSection` supplies minimally-valid
  *     defaults (mass=1 g, volume=1 ml, class="S") when this section is
  *     emitted, which the buyer overwrites at commit time.
  *   - `klerosCourt` = "general" + `klerosMinJurors` = "3" — Kleros General
@@ -84,7 +84,7 @@ export interface CreatedOrder {
  *     in-person modalities that don't imply a courier sub-order; matches
  *     the legacy direct-sale reference shape.
  */
-const DEFAULT_NODE_MANIFEST_FIELDS: ManifestFields = {
+const DEFAULT_NODE_MANIFEST_FIELDS: ClauseFields = {
     origin: "0",
     destination: "0",
     // Layer 2 jurisdiction default: Kleros General Court with 3 jurors.
@@ -105,7 +105,7 @@ export function createSyntheticRootOrder(
     /** Per-root manifest overrides. Merged onto DEFAULT_NODE_MANIFEST_FIELDS.
      *  Used by `manifestToDraft` to seed an IPFS-pinned assembly's kleros +
      *  fulfilment fields into the new draft's root. */
-    manifestOverrides?: Partial<ManifestFields>,
+    manifestOverrides?: Partial<ClauseFields>,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
@@ -121,7 +121,7 @@ export function createSyntheticRootOrder(
         seller,
         currency,
         payment,
-        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...manifestOverrides },
+        clauseFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...manifestOverrides },
     });
     const agreementHash = computeAgreementHash(agreement);
     saveAgreement(agreement);
@@ -154,7 +154,7 @@ export function createSyntheticSubOrder(
      *  DEFAULT_NODE_MANIFEST_FIELDS — use this to mark role-specific
      *  flags at creation time (e.g., `courierProcessIncluded: true` for
      *  delivery-spawned courier sub-orders). */
-    manifestOverrides?: Partial<ManifestFields>,
+    manifestOverrides?: Partial<ClauseFields>,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
@@ -170,7 +170,7 @@ export function createSyntheticSubOrder(
         seller,
         currency,
         payment,
-        manifestFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...manifestOverrides },
+        clauseFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...manifestOverrides },
         parentOrderHashes: [parent.id],
     });
     const agreementHash = computeAgreementHash(agreement);
@@ -256,7 +256,7 @@ export function mergeSyntheticParent(
         seller: child.seller as `0x${string}`,
         currency: (child.currency ?? ZERO_ADDRESS) as `0x${string}`,
         payment: child.payment,
-        manifestFields: { origin: "—", destination: "—" },
+        clauseFields: { origin: "—", destination: "—" },
         parentOrderHashes: nextParents,
     });
     const newAgreementHash = computeAgreementHash(newAgreement);
@@ -293,7 +293,7 @@ export function deriveFulfilmentMethod(order: Order): CanonicalFulfilmentMethod 
     return DEFAULT_FULFILMENT_METHOD;
 }
 
-function manifestFieldsForFulfilmentMethod(method: CanonicalFulfilmentMethod): ManifestFields {
+function clauseFieldsForFulfilmentMethod(method: CanonicalFulfilmentMethod): ClauseFields {
     const { modalities, coordinations } = canonicalFulfilmentMethodToArrays(method);
     return {
         origin: "—",
@@ -322,7 +322,7 @@ export function swapSyntheticFulfilmentMethod(
         seller: child.seller as `0x${string}`,
         currency: (child.currency ?? ZERO_ADDRESS) as `0x${string}`,
         payment: child.payment,
-        manifestFields: manifestFieldsForFulfilmentMethod(method),
+        clauseFields: clauseFieldsForFulfilmentMethod(method),
         parentOrderHashes: existingParents,
     });
     const newAgreementHash = computeAgreementHash(newAgreement);
@@ -344,7 +344,7 @@ export function swapSyntheticFulfilmentMethod(
 export interface AgreementEdits {
     currency?: `0x${string}`;
     payment?: bigint;
-    manifestFields?: ManifestFields;
+    clauseFields?: ClauseFields;
 }
 
 /**
@@ -364,14 +364,14 @@ export function editSyntheticAgreement(
     // Fulfilment method is preserved across edits — the user changes it via
     // the edge pill, not the section editor. If the caller's manifest patch
     // already specifies fulfilmentMethod, that wins.
-    const baseFields: ManifestFields = edits.manifestFields ?? {
+    const baseFields: ClauseFields = edits.clauseFields ?? {
         origin: "—",
     };
-    const manifestFields: ManifestFields = { ...baseFields };
-    if (manifestFields.fulfilmentMethod === undefined) {
-        const inherited = manifestFieldsForFulfilmentMethod(existingMethod);
-        manifestFields.fulfilmentMethod = inherited.fulfilmentMethod;
-        if (inherited.auctionType) manifestFields.auctionType = inherited.auctionType;
+    const clauseFields: ClauseFields = { ...baseFields };
+    if (clauseFields.fulfilmentMethod === undefined) {
+        const inherited = clauseFieldsForFulfilmentMethod(existingMethod);
+        clauseFields.fulfilmentMethod = inherited.fulfilmentMethod;
+        if (inherited.auctionType) clauseFields.auctionType = inherited.auctionType;
     }
 
     const currency = (edits.currency ?? order.currency ?? ZERO_ADDRESS) as `0x${string}`;
@@ -382,7 +382,7 @@ export function editSyntheticAgreement(
         seller: order.seller as `0x${string}`,
         currency,
         payment,
-        manifestFields,
+        clauseFields,
         parentOrderHashes: existingParents,
     });
     const newAgreementHash = computeAgreementHash(newAgreement);
@@ -438,16 +438,16 @@ export function collectDescendants(rootId: string, orders: Order[]): Set<string>
     return collected;
 }
 
-/** Read the order's agreement back into a ManifestFields shape for the drawer's initial state. */
+/** Read the order's agreement back into a ClauseFields shape for the drawer's initial state. */
 export function readAgreementFields(
     order: Order,
     suppliedAgreement?: ReturnType<typeof loadAgreement>,
-): ManifestFields {
+): ClauseFields {
     // Checkout passes the assembly manifest's own inlined agreement so the
     // clauses are read from the assembly, not the browser's local store.
     const agreement = suppliedAgreement ?? loadAgreement(order.agreementHash);
     const summary = summarizeAgreement(agreement);
-    const fields: ManifestFields = { origin: summary?.geo?.origin ?? "—" };
+    const fields: ClauseFields = { origin: summary?.geo?.origin ?? "—" };
 
     // ── process clauses (Category-1, no section data) ──────────
     // `summarizeAgreement` only surfaces data-carrying sections, so the

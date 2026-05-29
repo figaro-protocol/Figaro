@@ -28,7 +28,7 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import type { Order } from "@/lib/core/store";
-import type { ManifestFields } from "@/lib/core/encoding";
+import type { ClauseFields } from "@/lib/core/encoding";
 import {
     readAgreementFields,
     type AgreementEdits,
@@ -89,7 +89,7 @@ const CLAUSE_SENTINELS: Record<string, Record<string, string>> = {
     // figaro-geo-v2 requires all five fields. Origin / destination get
     // minimum-length geohashes. Mass / volume default to 1 (the smallest
     // value the v2 validator accepts; 0 reverts). Class defaults to "S"
-    // (Standard). `manifestFieldsToGeoSection` reads these manifest keys
+    // (Standard). `clauseFieldsToGeoSection` reads these manifest keys
     // and produces an encoder-valid section. Real values flow in at
     // commit-time from the buyer's runtime UI.
     [GEO_CLAUSE_KEY]: { origin: "0", destination: "0", mass: "1g", volume: "1ml", class_: "S" },
@@ -103,7 +103,7 @@ const CLAUSE_FIELDS: Record<string, readonly string[]> = {
     [GEO_CLAUSE_KEY]: ["origin", "destination", "mass", "volume", "class_"],
 };
 
-function isFieldFilled(fields: ManifestFields, key: string): boolean {
+function isFieldFilled(fields: ClauseFields, key: string): boolean {
     const v = (fields as Record<string, unknown>)[key];
     if (v === undefined || v === null) return false;
     if (typeof v === "string") {
@@ -114,7 +114,7 @@ function isFieldFilled(fields: ManifestFields, key: string): boolean {
 }
 
 /** Geo clause is "included" when its required fields are set in the manifest. */
-function isClauseIncluded(clauseId: string, fields: ManifestFields): boolean {
+function isClauseIncluded(clauseId: string, fields: ClauseFields): boolean {
     if (clauseId === GEO_CLAUSE_KEY) {
         return isFieldFilled(fields, "origin") && isFieldFilled(fields, "destination");
     }
@@ -185,8 +185,8 @@ export function AgreementDrawer({
     orders,
     onSelectOrder,
 }: Props) {
-    const [fields, setFields] = useState<ManifestFields>(() =>
-        order ? readAgreementFields(order) : ({} as ManifestFields),
+    const [fields, setFields] = useState<ClauseFields>(() =>
+        order ? readAgreementFields(order) : ({} as ClauseFields),
     );
     const [openSection, setOpenSection] = useState<ArticleKey | null>(null);
     const [minimized, setMinimized] = useState(false);
@@ -283,15 +283,15 @@ export function AgreementDrawer({
         setOpenSection((prev) => (prev === section ? null : section));
     }
 
-    function commitFields(next: ManifestFields) {
+    function commitFields(next: ClauseFields) {
         setFields(next);
-        onChange({ manifestFields: next });
+        onChange({ clauseFields: next });
     }
 
     /** Toggle inclusion for a single-clause article. Sets sentinel fields
      *  on "Included", clears all clause-related fields on "Not included". */
     function toggleClause(clauseId: string, included: boolean) {
-        const next: ManifestFields = { ...fields };
+        const next: ClauseFields = { ...fields };
         if (included) {
             const sentinel = CLAUSE_SENTINELS[clauseId];
             for (const [k, v] of Object.entries(sentinel)) {
@@ -339,7 +339,7 @@ export function AgreementDrawer({
     }) {
         const becomingDelivery =
             next.modalities.includes("delivery") && !fulfilmentModalities.includes("delivery");
-        const out: ManifestFields = { ...fields };
+        const out: ClauseFields = { ...fields };
         if (next.modalities.length > 0) out.fulfilmentModalities = next.modalities;
         else delete (out as Record<string, unknown>).fulfilmentModalities;
         if (next.coordinations.length > 0) out.fulfilmentCoordinations = next.coordinations;
@@ -362,7 +362,7 @@ export function AgreementDrawer({
     }
 
     function updateProximityBands(next: string[]) {
-        const out: ManifestFields = { ...fields };
+        const out: ClauseFields = { ...fields };
         if (next.length > 0) out.proximityBands = next;
         else delete (out as Record<string, unknown>).proximityBands;
         commitFields(out);
@@ -377,7 +377,7 @@ export function AgreementDrawer({
     const courierProcessIncluded = fields.courierProcessIncluded === true;
 
     function setProcessFlag(key: "merchantProcessIncluded" | "courierProcessIncluded", on: boolean) {
-        const out: ManifestFields = { ...fields };
+        const out: ClauseFields = { ...fields };
         if (on) (out as Record<string, unknown>)[key] = true;
         else delete (out as Record<string, unknown>)[key];
         commitFields(out);
@@ -391,7 +391,7 @@ export function AgreementDrawer({
     const activeGhgStandards = readStringArray("ghgStandards");
 
     function updateGhgStandards(next: string[]) {
-        const out: ManifestFields = { ...fields };
+        const out: ClauseFields = { ...fields };
         if (next.length > 0) out.ghgStandards = next;
         else delete (out as Record<string, unknown>).ghgStandards;
         commitFields(out);
@@ -409,7 +409,7 @@ export function AgreementDrawer({
     const traditionalActive = applicableLawValue !== "" || forumValue !== "" || languageValue !== "";
 
     function setKlerosCourt(value: string) {
-        const out: ManifestFields = { ...fields };
+        const out: ClauseFields = { ...fields };
         if (value === "") {
             delete (out as Record<string, unknown>).klerosCourt;
             delete (out as Record<string, unknown>).klerosMinJurors;
@@ -421,20 +421,20 @@ export function AgreementDrawer({
     }
 
     function setKlerosMinJurors(value: string) {
-        const out: ManifestFields = { ...fields };
+        const out: ClauseFields = { ...fields };
         out.klerosMinJurors = value;
         commitFields(out);
     }
 
     function setTraditionalField(key: "applicableLaw" | "forum" | "language", value: string) {
-        const out: ManifestFields = { ...fields };
+        const out: ClauseFields = { ...fields };
         if (value === "") delete (out as Record<string, unknown>)[key];
         else (out as Record<string, unknown>)[key] = value;
         commitFields(out);
     }
 
     function clearTraditional() {
-        const out: ManifestFields = { ...fields };
+        const out: ClauseFields = { ...fields };
         delete (out as Record<string, unknown>).applicableLaw;
         delete (out as Record<string, unknown>).forum;
         delete (out as Record<string, unknown>).language;
@@ -449,7 +449,7 @@ export function AgreementDrawer({
         : [];
 
     function commitConsentDocuments(next: Array<Record<string, string>>) {
-        const out: ManifestFields = { ...fields };
+        const out: ClauseFields = { ...fields };
         if (next.length > 0) out.consentDocuments = next;
         else delete (out as Record<string, unknown>).consentDocuments;
         commitFields(out);

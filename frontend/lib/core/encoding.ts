@@ -7,7 +7,7 @@ import { ZERO_BYTES32, bytesToHex } from "@/lib/shared/evm";
  * survives as the contract between `buildOrderAgreement` and its callers,
  * who project it into the agreement object directly.
  */
-export interface ManifestFields {
+export interface ClauseFields {
     origin: string;
     destination?: string;
     mass?: string;         // e.g. "5 kg"

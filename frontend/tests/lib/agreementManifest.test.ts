@@ -8,7 +8,7 @@ import {
     buildAgreement,
     getSection,
     hasSection,
-    manifestFieldsToGeoSection,
+    clauseFieldsToGeoSection,
     redactSections,
     computeRedactableAgreementHash,
     verifyRevealedSection,
@@ -300,11 +300,11 @@ describe("section accessors", () => {
     });
 });
 
-// ── manifestFieldsToGeoSection ───────────────────────────────────────────────
+// ── clauseFieldsToGeoSection ───────────────────────────────────────────────
 
-describe("manifestFieldsToGeoSection", () => {
+describe("clauseFieldsToGeoSection", () => {
     it("returns a figaro-geo-v2 AgreementSection", () => {
-        const section = manifestFieldsToGeoSection({
+        const section = clauseFieldsToGeoSection({
             origin: "dr5reg",
             destination: "dr5reh",
             mass: "1 kg",
@@ -319,7 +319,7 @@ describe("manifestFieldsToGeoSection", () => {
     });
 
     it("defaults missing mass/volume to 1 (v2 validator's minimum-valid value)", () => {
-        const section = manifestFieldsToGeoSection({
+        const section = clauseFieldsToGeoSection({
             origin: "dr5reg",
             destination: "dr5reh",
         });

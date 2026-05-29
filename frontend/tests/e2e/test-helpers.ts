@@ -199,7 +199,7 @@ function parseVolumeToMl(value: string | undefined): number {
     return Math.round(numeric);
 }
 
-function parseMockManifestFields(manifest: string | undefined): {
+function parseMockClauseFields(manifest: string | undefined): {
     origin?: string;
     destination?: string;
     massGrams?: number;
