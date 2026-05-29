@@ -3,10 +3,8 @@ import path from 'path';
 import { Page, expect } from '@playwright/test';
 export {
     approveIfNeeded,
-    waitAndApproveIfNeeded,
     waitForApproved,
     waitForWalletConnected,
-    waitForWalletReady,
 } from './test-helpers';
 import {
     createPublicClient,
@@ -594,144 +592,13 @@ export async function seedGhgDisclosureScenario(): Promise<SeededGhgScenario> {
     return { schemaId, processId, rootOrderHash, supplierOrderHash };
 }
 
-export async function seedUnreportedProcessScenario(): Promise<SeededUnreportedProcessScenario> {
-    const localConfig = readLocalDeploymentConfig();
-    const coreAddress = resolve('NEXT_PUBLIC_FIGARO_CORE', localConfig.figaroCore)!;
-    const tokenAddress = resolve('NEXT_PUBLIC_TOKEN_ADDRESS', localConfig.tokenAddress)!;
-    const schemaRegistryAddress = resolve('NEXT_PUBLIC_SCHEMA_REGISTRY', localConfig.schemaRegistry)!;
-    if (!coreAddress || !tokenAddress || !schemaRegistryAddress) {
-        throw new Error('Missing deployment env for unreported process seed (need FIGARO_CORE, TOKEN, SCHEMA_REGISTRY)');
-    }
 
-    await ensureGhgSchema(schemaRegistryAddress, BUYER_PRIVATE_KEY);
-    await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_PRIVATE_KEY, RESTAURANT_PRIVATE_KEY, SUPPLIER_PRIVATE_KEY);
 
-    // Unreported = commit but never attest. No agreement needed since no proof
-    // will be produced; DEFAULT_AGREEMENT_HASH keeps the commitment shape valid.
-    const { processId, orderHash: rootOrderHash } = await createRootOrder({
-        buyerKey: BUYER_PRIVATE_KEY, sellerKey: RESTAURANT_PRIVATE_KEY, coreAddress, tokenAddress, payment: 2_000000000000000000n,
-    });
-    const { orderHash: supplierOrderHash } = await createSubOrder({
-        processId, buyerKey: BUYER_PRIVATE_KEY, sellerKey: SUPPLIER_PRIVATE_KEY, coreAddress, tokenAddress,
-        payment: 500000000000000000n, parentOrderHashes: [rootOrderHash],
-    });
 
-    return { schemaId: GHG_SCHEMA_ID, processId, rootOrderHash, supplierOrderHash };
-}
 
-export async function seedSupersededGhgDisclosureScenario(): Promise<SeededSupersededGhgScenario> {
-    const seeded = await seedGhgDisclosureScenario();
-    const localConfig = readLocalDeploymentConfig();
-    const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator)!;
-    if (!coordinatorAddress) throw new Error('Missing ATTESTATION_COORDINATOR env for superseded disclosure seed');
 
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const supplier = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
-    const supplierClient = createWalletClient({ account: supplier, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-    // Fire a second inventory attestation against the same order. The emitted
-    // event stream carries both; the UI treats the later one as superseding.
-    const supplierCommitment = seededCommitments.get(seeded.supplierOrderHash);
-    if (!supplierCommitment) throw new Error(`Missing seeded commitment for ${seeded.supplierOrderHash}`);
-    const { sectionData, proof } = agreementReceipt(supplierCommitment, GHG_SCHEMA_KEY);
-    const { request } = await publicClient.simulateContract({
-        account: supplier.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
-        functionName: 'attestAsSeller',
-        args: [supplierCommitment, supplierCommitment, seeded.schemaId, DISCLOSURE_KIND.inventory, sectionData, proof, sectionData],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: await supplierClient.writeContract(request) });
 
-    return seeded;
-}
-
-export async function seedClosedCompleteGhgDisclosureScenario(): Promise<SeededClosedCompleteGhgScenario> {
-    const seeded = await seedGhgDisclosureScenario();
-    const localConfig = readLocalDeploymentConfig();
-    const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator)!;
-    if (!coordinatorAddress) throw new Error('Missing ATTESTATION_COORDINATOR env for complete disclosure seed');
-
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const restaurant = privateKeyToAccount(RESTAURANT_PRIVATE_KEY);
-    const restaurantClient = createWalletClient({ account: restaurant, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    // Add a commitment-stage attestation from the restaurant against the root
-    // order so the full disclosure arc is represented (commitment + inventory).
-    const rootCommitment = seededCommitments.get(seeded.rootOrderHash);
-    if (!rootCommitment) throw new Error(`Missing seeded commitment for ${seeded.rootOrderHash}`);
-    const { sectionData, proof } = agreementReceipt(rootCommitment, GHG_SCHEMA_KEY);
-    const { request: commitReq } = await publicClient.simulateContract({
-        account: restaurant.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
-        functionName: 'attestAsSeller',
-        args: [rootCommitment, rootCommitment, seeded.schemaId, DISCLOSURE_KIND.commitment, sectionData, proof, sectionData],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(commitReq) });
-
-    return seeded;
-}
-
-export async function getNodeIds(page: Page): Promise<string[]> {
-    const handles = await page.locator('[data-testid^="order-node-"]').all();
-    const ids: string[] = [];
-    for (const handle of handles) {
-        const testId = await handle.getAttribute('data-testid');
-        if (testId) ids.push(testId.replace('order-node-', ''));
-    }
-    return ids;
-}
-
-export async function selectProcessForOrder(page: Page, orderHash: string): Promise<void> {
-    const processItem = page.locator('li').filter({
-        has: page.getByTestId(`process-order-item-${orderHash}`),
-    });
-    await processItem.waitFor({ timeout: 30000 });
-    await processItem.locator('[data-testid^="process-item-"]').click();
-}
-
-export async function clickSuborderCloseIfOpen(page: Page): Promise<void> {
-    const modal = page.getByTestId('suborder-modal');
-    if (!await modal.count()) return;
-    await page.evaluate(() => {
-        const btn = document.querySelector('[data-testid="suborder-modal"] button[aria-label="Close"]') as HTMLElement | null;
-        btn?.click();
-    });
-    await modal.waitFor({ state: 'detached', timeout: 5000 }).catch(() => { });
-}
-
-/** Orders are Active at commit time. Verify state attribute. */
-export async function assertOrderActive(page: Page, orderHash: string): Promise<void> {
-    await page.waitForFunction(
-        (hash) => document.querySelector(`[data-testid="order-node-${hash}"]`)?.getAttribute('data-order-state') === 'active',
-        orderHash, { timeout: 30000 }
-    );
-}
-
-export async function resolveVisibleProcess(page: Page): Promise<void> {
-    // btn-resolve-process lives on the Orders tab (semantic process workspace).
-    // Switch there if needed.
-    const ordersTab = page.getByRole('tab', { name: 'Create Order' });
-    const isSelected = await ordersTab.getAttribute('aria-selected').catch(() => null);
-    if (isSelected !== 'true') {
-        await ordersTab.click().catch(() => {});
-    }
-
-    // executeTransactionCapability calls window.confirm before the resolve tx;
-    // Playwright auto-dismisses unless we accept first.
-    page.once('dialog', (dialog) => { dialog.accept().catch(() => {}); });
-
-    const btn = page.getByTestId('btn-resolve-process');
-    await btn.waitFor({ timeout: 10000 });
-    await btn.click();
-
-    // After tx confirms, order-node testids only render on the Graph tab.
-    // Switch there to assert the resolved state.
-    const graphTab = page.getByRole('tab', { name: 'Graph' });
-    await graphTab.click().catch(() => {});
-
-    await page.waitForFunction(() => {
-        const nodes = Array.from(document.querySelectorAll('[data-testid^="order-node-"]'));
-        return nodes.length > 0 && nodes.every(n => n.getAttribute('data-order-state') === 'resolved');
-    }, null, { timeout: 60000 });
-}
 
 // ── Delivery lifecycle seed ─────────────────────────────────────────────────
 
@@ -793,21 +660,6 @@ export async function seedDeliveryScenario(): Promise<SeededDeliveryScenario> {
     };
 }
 
-export async function driverClaimJob(deliveryOrderHash: `0x${string}`): Promise<void> {
-    const localConfig = readLocalDeploymentConfig();
-    const auctionAddress = resolve('NEXT_PUBLIC_DUTCH_AUCTION', localConfig.dutchAuction)!;
-    if (!auctionAddress) throw new Error('Missing NEXT_PUBLIC_DUTCH_AUCTION');
-
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const driver = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
-    const driverClient = createWalletClient({ account: driver, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    const { request } = await publicClient.simulateContract({
-        account: driver.address, address: auctionAddress, abi: DUTCH_AUCTION_TEST_ABI,
-        functionName: 'claim', args: [deliveryOrderHash],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: await driverClient.writeContract(request) });
-}
 
 /** Courier-side lifecycle signals — fires `figaro-courier-process-v1`
  *  attestations on the delivery sub-order. Each signal maps to the
@@ -818,35 +670,6 @@ const COURIER_SIGNAL_TO_EVENT: Record<string, { stage: number; eventType: 'en-ro
     declareDelivered: { stage: COURIER_EVENT.completed, eventType: 'completed' },
 };
 
-export async function sendLifecycleSignal(
-    signal: 'declareEnRoute' | 'declarePickedUp' | 'declareDelivered',
-    deliveryOrderHash: `0x${string}`,
-): Promise<void> {
-    const localConfig = readLocalDeploymentConfig();
-    const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator)!;
-    if (!coordinatorAddress) throw new Error('Missing NEXT_PUBLIC_ATTESTATION_COORDINATOR');
-
-    const mapping = COURIER_SIGNAL_TO_EVENT[signal];
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const driver = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
-    const driverClient = createWalletClient({ account: driver, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const deliveryCommitment = seededCommitments.get(deliveryOrderHash);
-    if (!deliveryCommitment) throw new Error(`Missing seeded commitment for ${deliveryOrderHash}`);
-
-    const { sectionData, proof } = agreementReceipt(deliveryCommitment, COURIER_PROCESS_SCHEMA_KEY);
-    // Category-1 courier-process content: (uint8 eventType, string evidenceUri).
-    // No byte-equality cross-check with sectionData.
-    const content = encodeContentFromSpec(
-        embeddedSpec('figaro-courier-process-v1')!,
-        { eventType: mapping.eventType, evidenceUri: '' },
-    );
-    const { request } = await publicClient.simulateContract({
-        account: driver.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
-        functionName: 'attestAsSeller',
-        args: [deliveryCommitment, deliveryCommitment, COURIER_PROCESS_SCHEMA_ID, mapping.stage, sectionData, proof, content],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: await driverClient.writeContract(request) });
-}
 
 export async function restaurantPrepSignals(foodOrderHash: `0x${string}`, _deliveryOrderHash: `0x${string}`): Promise<void> {
     const localConfig = readLocalDeploymentConfig();

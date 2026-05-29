@@ -22,23 +22,6 @@ async function clickWithRetry(locator: Locator, attempts = 5): Promise<void> {
     throw lastError;
 }
 
-export async function fillWithRetry(locator: Locator, value: string, attempts = 5): Promise<void> {
-    let lastError: unknown;
-
-    for (let attempt = 0; attempt < attempts; attempt += 1) {
-        try {
-            await locator.waitFor({ state: 'visible', timeout: 15000 });
-            await locator.fill(value);
-            await expect(locator).toHaveValue(value, { timeout: 5000 });
-            return;
-        } catch (error) {
-            lastError = error;
-            await locator.page().waitForTimeout(250);
-        }
-    }
-
-    throw lastError;
-}
 
 function parseDisplayedBalance(text: string | null | undefined): number {
     if (!text) return 0;
@@ -79,7 +62,7 @@ export async function ensureWalletHasMockTokens(page: Page, minimumBalance = 1) 
  * every route regardless of what chrome the page renders.
  *
  * Pass `expectedAddress` to also assert wagmi connected as that specific
- * account — use it after `gotoAsWallet` / `switchAccount`.
+ * account — use it after `gotoAsWallet`.
  */
 export async function waitForWalletConnected(
     page: Page,
@@ -98,15 +81,7 @@ export async function waitForWalletConnected(
     );
 }
 
-/** @deprecated Thin alias for {@link waitForWalletConnected} — new specs should call that directly. */
-export async function waitForDevnetWalletReady(page: Page): Promise<void> {
-    await waitForWalletConnected(page);
-}
 
-/** @deprecated Thin alias for {@link waitForWalletConnected}. */
-export async function waitForWalletReady(page: Page): Promise<void> {
-    await waitForWalletConnected(page);
-}
 
 function selectorWithinScope(scopeTestId?: string, selector = '[data-testid="approval-status"]'): string {
     if (!scopeTestId) return selector;
@@ -136,32 +111,6 @@ export async function waitForApproved(page: Page, scopeTestId?: string, timeout 
     );
 }
 
-/**
- * Wait for at least `minCount` order-node-* nodes to render in the
- * process graph. Used after multi-order commits / injections where the
- * caller needs to know "all expected nodes have hydrated" before
- * asserting on their state.
- */
-export async function waitForOrderNodeCount(
-    page: Page,
-    minCount: number,
-    timeout = 10000,
-): Promise<void> {
-    await page.waitForFunction(
-        (count: number) =>
-            document.querySelectorAll('[data-testid^="order-node-"]').length >= count,
-        minCount,
-        { timeout },
-    );
-}
-
-/** Canonical mock-mode test addresses. The mock kernel doesn't care
- *  about these (no signature verification); they're just stable
- *  identifiers for assertions. `figaro-test.ts` re-exports MOCK_BUYER
- *  as `COUNTERPARTY.mock` so shared tests can use it via the
- *  figaroMode-aware dispatch. */
-export const MOCK_BUYER = '0x000000000000000000000000000000000000dEaD';
-export const MOCK_SELLER = '0x000000000000000000000000000000000000b00b';
 
 export async function approveIfNeeded(page: Page, scopeTestId?: string): Promise<void> {
     await waitForApprovalState(page, scopeTestId);
@@ -176,9 +125,6 @@ export async function approveIfNeeded(page: Page, scopeTestId?: string): Promise
     await waitForApproved(page, scopeTestId, 60000);
 }
 
-export async function waitAndApproveIfNeeded(page: Page): Promise<void> {
-    await approveIfNeeded(page);
-}
 
 /**
  * Wait for a React-rendered element to be hydrated. The signal is the
@@ -211,17 +157,7 @@ export async function waitForReactHydration(
     ).catch(() => {});
 }
 
-/**
- * Navigate to /inbox in mock mode (merchant entry point).
- */
-export async function gotoInboxMock(page: Page) {
-    await page.goto('/inbox?e2e=mock', { waitUntil: 'load' });
-    await page.getByTestId('inbox').waitFor({ timeout: 30000 });
-}
 
-export async function clickByTestId(page: Page, testId: string) {
-    await clickWithRetry(page.getByTestId(testId));
-}
 
 
 
@@ -230,118 +166,7 @@ export async function clickByTestId(page: Page, testId: string) {
 // Lifecycle helpers (acceptOffer / resolveProcess / withdraw — mock mode)
 // ---------------------------------------------------------------------------
 
-/**
- * Wait for the mock test harness (window.__FIGARO_MOCK__) to become available.
- * It is exposed by OrderGraph in a useEffect so it appears shortly after mount.
- */
-export async function waitForMockHarness(page: Page): Promise<void> {
-    await page.waitForFunction(
-        () => typeof (window as any).__FIGARO_MOCK__ !== 'undefined',
-        null,
-        { timeout: 15000 }
-    );
-}
 
-/**
- * Inject an Active order directly into the mock event store, bypassing the UI.
- * Orders are Active at commit time (dual-signed). No Pending state.
- *
- * Returns the order id string (stringified BigInt) so callers can reference the node.
- */
-export async function injectActiveOrder(
-    page: Page,
-    opts: {
-        processId: string;
-        id?: string;           // bigint as string, defaults to Date.now()
-        buyer?: string;
-        seller?: string;
-        payment?: string;      // bigint as string, defaults to '10000000000000000'
-        currency?: string;
-        manifest?: string;     // hex bytes, e.g. from encodeManifest
-    }
-): Promise<string> {
-    await waitForMockHarness(page);
-    const id = opts.id ?? String(Date.now() + Math.floor(Math.random() * 10000));
-    const buyer = (opts.buyer ?? '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266') as `0x${string}`;
-    const seller = (opts.seller ?? '0x70997970C51812dc3A010C7d01b50e0d17dc79C8') as `0x${string}`;
-    const payment = opts.payment ?? '10000000000000000';
-    const paymentBigInt = BigInt(payment);
-    const orderCurrency = opts.currency && opts.currency.trim().length > 0
-        ? opts.currency as `0x${string}`
-        : ZERO_ADDRESS;
-
-    let agreementHash = opts.manifest ?? '';
-    let serializedAgreement: string | null = null;
-
-    const manifestFields = parseMockManifestFields(opts.manifest);
-    if (manifestFields) {
-        const sections: AgreementSection[] = [
-            {
-                schema: 'figaro-commerce-v1',
-                data: {
-                    currency: orderCurrency,
-                    payment,
-                    lineItems: [],
-                },
-            },
-            {
-                schema: 'figaro-geo-v2',
-                data: {
-                    originGeohash: manifestFields.origin ?? '',
-                    destinationGeohash: manifestFields.destination ?? '',
-                    massGrams: manifestFields.massGrams,
-                    volumeMl: manifestFields.volumeMl,
-                    classOfService: manifestFields.classOfService ?? 'S',
-                },
-            },
-            {
-                schema: 'figaro-topology-v1',
-                data: {
-                    topologyMode: 'root',
-                    parentOrderHashes: [],
-                },
-            },
-        ].sort((left, right) => left.schema.localeCompare(right.schema));
-
-        const agreement: Agreement = {
-            version: 'a1',
-            buyer,
-            seller,
-            sections,
-        };
-
-        agreementHash = computeAgreementHash(agreement);
-        serializedAgreement = canonicalizeAgreement(agreement);
-    }
-
-    await page.evaluate(({ processId, id, buyer, seller, payment, currency, agreementHash, serializedAgreement }) => {
-        if (agreementHash && serializedAgreement) {
-            localStorage.setItem(`figaro:agreement:${agreementHash}`, serializedAgreement);
-        }
-
-        // OrderState.Active = 0. Note: `id` is stringified per the Order
-        // interface in lib/core/store (id: string). Earlier versions of
-        // this helper wrote BigInt, which works for testid coercion but
-        // breaks any consumer that calls .slice / string methods on it
-        // (e.g., the /financials page's shortHash helper).
-        (window as any).__FIGARO_MOCK__.emitOrder({
-            id: String(BigInt(id)),
-            processId,
-            buyer,
-            seller,
-            currency,
-            agreementHash,
-            cumulativeValue: BigInt(payment),
-            payment: BigInt(payment),
-            state: 0, // Active
-            sellerBond: BigInt(payment) * 2n,
-            buyerBond: BigInt(payment) * 2n,
-            parentOrderIds: [],
-            timestamp: Date.now(),
-        });
-    }, { processId: opts.processId, id, buyer, seller, payment, currency: orderCurrency, agreementHash, serializedAgreement });
-    return id;
-}
 
 function decodeMockManifestText(manifest: string | undefined): string | null {
     if (!manifest || !manifest.startsWith('0x') || manifest.length <= 2) return null;
@@ -417,28 +242,3 @@ function parseMockManifestFields(manifest: string | undefined): {
     };
 }
 
-/**
- * Click the "Resolve Process" button in mock mode.
- * Waits for all visible order nodes to transition to Resolved.
- */
-export async function resolveProcessMock(page: Page): Promise<void> {
-    const btn = page.getByTestId('btn-resolve-process');
-    await btn.waitFor({ timeout: 10000 });
-    // executeTransactionCapabilityAction guards resolve-process behind a
-    // window.confirm(). In Playwright, unhandled dialogs default to dismissed
-    // and the handler returns early — auto-accept once per click.
-    page.once('dialog', dialog => { void dialog.accept(); });
-    await btn.click();
-    // Wait until all order nodes report resolved state. If the Graph tab
-    // isn't active the nodes aren't in the DOM — mockResolveProcess is
-    // synchronous so the store is authoritative regardless.
-    await page.waitForFunction(
-        () => {
-            const nodes = Array.from(document.querySelectorAll('[data-testid^="order-node-"]'));
-            if (nodes.length === 0) return true;
-            return nodes.every(n => n.getAttribute('data-order-state') === 'resolved');
-        },
-        null,
-        { timeout: 10000 }
-    );
-}

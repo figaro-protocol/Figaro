@@ -5,11 +5,11 @@
  * exposes window.__FIGARO_SWITCH_ACCOUNT__(address) for wallet switching.
  *
  * Usage in tests:
- *   import { test, expect, ANVIL_ACCOUNTS, switchAccount } from './devnet-multi-test';
+ *   import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';
  *
- *   test('seller accepts offer', async ({ page, context }) => {
+ *   test('seller accepts offer', async ({ page }) => {
  *       // page starts as account[0] (buyer)
- *       const sellerPage = await openAsAccount(context, ANVIL_ACCOUNTS[1]);
+ *       await gotoAsWallet(page, ANVIL_ACCOUNTS[1].address, '/inbox');
  *       ...
  *   });
  */
@@ -41,28 +41,6 @@ export const test = base.extend<{ page: Page }>({
     },
 });
 
-/**
- * Open a NEW page in the given browser context pre-configured for a specific
- * Anvil account.  The page has the multi-wallet provider injected and the
- * active account set to `account` before any page scripts execute.
- *
- * Call `await page.goto(url)` after this to navigate.
- */
-export async function openAsAccount(context: BrowserContext, account: string): Promise<Page> {
-    const p = await context.newPage();
-    // 1. Inject the multi-wallet provider (sets account to default [0] first)
-    await p.addInitScript({ path: multiInjectPath });
-    // 2. Override to the desired account before page scripts run
-    await p.addInitScript((addr: string) => {
-        // __FIGARO_SWITCH_ACCOUNT__ is exposed by inject-ethereum-multi.js
-        // which runs first (scripts execute in registration order)
-        if (typeof (window as any).__FIGARO_SWITCH_ACCOUNT__ === 'function') {
-            (window as any).__FIGARO_SWITCH_ACCOUNT__(addr);
-        }
-    }, account);
-
-    return p;
-}
 
 /**
  * Pre-populate a page's localStorage with an agreement so the
@@ -215,21 +193,3 @@ export async function simulateXmtpCommitmentArrival(
     );
 }
 
-/**
- * Switch the active account on an already-loaded page.
- * wagmi picks up the change via the EIP-1193 `accountsChanged` event.
- *
- * After switching, the caller may need to wait for the UI to reflect the new
- * wallet (e.g. wait for connect button to disappear or address badge to update).
- */
-export async function switchAccount(page: Page, account: string): Promise<void> {
-    await page.evaluate((addr: string) => {
-        (window as any).__FIGARO_SWITCH_ACCOUNT__(addr);
-    }, account);
-
-    // wagmi processes the EIP-1193 `accountsChanged` event; wait until
-    // ClientInit's published state reflects the new account.
-    await waitForWalletConnected(page, account);
-
-    await ensureWalletHasMockTokens(page);
-}
