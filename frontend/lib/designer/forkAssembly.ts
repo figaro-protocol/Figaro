@@ -28,11 +28,11 @@ import {
     uniqueDraftSlug,
 } from "./syntheticDesignStore";
 import { manifestToDraft } from "./manifestToDraft";
-import type { AssemblyManifest } from "@/lib/mechanisms/useAssemblyRegistry";
+import type { AssemblyDocument } from "@/lib/mechanisms/useAssemblyRegistry";
 
 export function forkPublishedAssembly(
     sourceSlug: string,
-    manifest: AssemblyManifest,
+    manifest: AssemblyDocument,
 ): { finalSlug: string } | null {
     const defaultSlug = uniqueDraftSlug(`${sourceSlug}-fork`);
     const proposed =

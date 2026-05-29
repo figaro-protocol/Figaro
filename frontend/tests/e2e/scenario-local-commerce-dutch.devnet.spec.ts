@@ -12,7 +12,7 @@
  * the only difference is the courier coordination — `dutch-auction` (the
  * courier job is auctioned) rather than `seller-assigned`.
  *
- * Drives the 2-node shape, publishes, fetches the pinned AssemblyManifest
+ * Drives the 2-node shape, publishes, fetches the pinned AssemblyDocument
  * back, asserts both orders' clause sets, and captures / drift-guards the
  * `local-commerce-dutch` seed fixture.
  *
@@ -29,7 +29,7 @@ import {
     type Hex,
 } from 'viem';
 import {
-    captureOrGuardAssemblyManifest,
+    captureOrGuardAssemblyDocument,
     evmRevert,
     evmSnapshot,
     readLocalDeploymentConfig,
@@ -147,7 +147,7 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
         const metadataURI = events[0].args.metadataURI as string;
         expect(metadataURI).toMatch(/^ipfs:\/\//);
 
-        // ── Verify the published AssemblyManifest ─────────────────────────
+        // ── Verify the published AssemblyDocument ─────────────────────────
         const cid = metadataURI.slice('ipfs://'.length);
         const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
@@ -158,7 +158,7 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
             }>;
         };
 
-        // V5 AssemblyManifest — two orders: root (merchant) + courier sub-order.
+        // V5 AssemblyDocument — two orders: root (merchant) + courier sub-order.
         expect(manifest.slug).toBe(slug);
         expect(manifest.orders).toHaveLength(2);
         const [rootOrder, courierOrder] = manifest.orders;
@@ -204,7 +204,7 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
 
         // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyManifest(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
             slug: 'local-commerce-dutch',
             name: 'Local Commerce (Dutch auction)',
         });

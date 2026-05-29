@@ -38,7 +38,7 @@ import {
     type Hex,
 } from 'viem';
 import {
-    captureOrGuardAssemblyManifest,
+    captureOrGuardAssemblyDocument,
     evmRevert,
     evmSnapshot,
     readLocalDeploymentConfig,
@@ -145,7 +145,7 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
         const metadataURI = events[0].args.metadataURI as string;
         expect(metadataURI).toMatch(/^ipfs:\/\//);
 
-        // ── Verify the published AssemblyManifest ──────────────────────────
+        // ── Verify the published AssemblyDocument ──────────────────────────
         const cid = metadataURI.slice('ipfs://'.length);
         const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
@@ -156,7 +156,7 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
             }>;
         };
 
-        // V5 AssemblyManifest — one root order, one agreement. Shares the
+        // V5 AssemblyDocument — one root order, one agreement. Shares the
         // handoff-cert stack with direct-sale (consume-onsite) — proximity-
         // policy + proximity-proof + merchant-process on a 1-node graph; the
         // two differ only by fulfilment modality (pickup vs consume-onsite).
@@ -191,7 +191,7 @@ test.describe('Author + publish the local-commerce-pickup assembly (devnet)', ()
 
         // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyManifest(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
             slug: 'local-commerce-pickup',
             name: 'Local Commerce Pickup',
         });

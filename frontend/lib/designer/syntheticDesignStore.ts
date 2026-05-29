@@ -78,7 +78,7 @@ function deserializeOrder(s: SerializedOrder): Order {
  *    addressable by slug.
  *  - **named draft** — a snapshot the user explicitly "Save"d, stored by
  *    slug via `saveNamedDraft`. Survives across canvas resets.
- *  - **AssemblyManifest** (`lib/mechanisms/useAssemblyRegistry`) — the
+ *  - **AssemblyDocument** (`lib/mechanisms/useAssemblyRegistry`) — the
  *    IPFS-pinned, published version. Structurally a superset of
  *    `DesignSnapshot` (carries inlined agreement bodies; bigint fields
  *    serialized as decimal strings). `manifestToDraft` re-hydrates it

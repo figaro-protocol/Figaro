@@ -1,6 +1,6 @@
 /**
  * manifestToDraft — hydrates a `DesignSnapshot` from an IPFS-pinned
- * `AssemblyManifest`. Powers the "Fork" button on `PublishedList`:
+ * `AssemblyDocument`. Powers the "Fork" button on `PublishedList`:
  * a published assembly's manifest is fetched, this helper turns it
  * into a localStorage draft under a new slug, and the canvas opens
  * at /builders/designer/edit/<new-slug>.
@@ -13,7 +13,7 @@
  */
 
 import { saveAgreement } from "@/lib/core/agreementStore";
-import type { AssemblyManifest } from "@/lib/mechanisms/useAssemblyRegistry";
+import type { AssemblyDocument } from "@/lib/mechanisms/useAssemblyRegistry";
 import type { DesignSnapshot } from "./syntheticDesignStore";
 import type { Order } from "@/lib/core/store";
 
@@ -37,14 +37,14 @@ export function rehydrateOrder(raw: Order): Order {
  *  downstream `loadAgreement(hash)` calls resolve to the bodies the
  *  manifest carried. Used by `manifestToDraft` (fork path) and by the
  *  `/view` on-chain resolver (read-only inspect / publish review). */
-export function seedManifestAgreementsToStore(manifest: AssemblyManifest): void {
+export function seedManifestAgreementsToStore(manifest: AssemblyDocument): void {
     for (const agreement of Object.values(manifest.agreements)) {
         saveAgreement(agreement);
     }
 }
 
 export function manifestToDraft(
-    manifest: AssemblyManifest,
+    manifest: AssemblyDocument,
     options: { slug: string; name?: string },
 ): DesignSnapshot {
     seedManifestAgreementsToStore(manifest);

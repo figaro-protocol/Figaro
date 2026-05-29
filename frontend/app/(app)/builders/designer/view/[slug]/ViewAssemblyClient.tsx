@@ -36,10 +36,10 @@ import {
 } from "@/lib/designer/syntheticDesignStore";
 import {
     ASSEMBLY_REGISTRY_ABI,
-    fetchAssemblyManifest,
+    fetchAssemblyDocument,
     getAssemblyRegistry,
     usePublishAssembly,
-    type AssemblyManifest,
+    type AssemblyDocument,
 } from "@/lib/mechanisms/useAssemblyRegistry";
 import {
     rehydrateOrder,
@@ -57,7 +57,7 @@ type ResolvedSource =
         kind: "published";
         name: string;
         orders: Order[];
-        manifest: AssemblyManifest;
+        manifest: AssemblyDocument;
     }
     | { kind: "error"; message: string };
 
@@ -144,7 +144,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     }
                     const log = logs[0];
                     const metadataURI = (log.args.metadataURI ?? "") as string;
-                    const manifest = await fetchAssemblyManifest(metadataURI);
+                    const manifest = await fetchAssemblyDocument(metadataURI);
                     if (cancelled) return;
                     if (!manifest) {
                         setResolved({

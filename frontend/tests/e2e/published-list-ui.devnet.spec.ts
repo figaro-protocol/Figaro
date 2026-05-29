@@ -5,7 +5,7 @@
  * No devnet spec touched its two row actions before.
  *
  * The spec publishes a real assembly through the canvas (the only way
- * to get a genuinely valid manifest — `buildAssemblyManifest` derives
+ * to get a genuinely valid manifest — `buildAssemblyDocument` derives
  * it from a live design snapshot, so hand-rolling the manifest JSON
  * would test fork/inspect against a shape the designer never emits),
  * then exercises both `PublishedList` controls:

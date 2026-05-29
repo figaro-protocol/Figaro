@@ -64,7 +64,7 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
  *  of its canonical JSON serialization (`canonicalize` below). The
  *  on-chain binding stores only contentHash + metadataURI; this object
  *  carries the topology + per-order agreements. */
-export interface AssemblyManifest {
+export interface AssemblyDocument {
     slug: string;
     name: string;
     /** Synthetic-process metadata so the canvas can faithfully restore
@@ -104,7 +104,7 @@ export function getAssemblyRegistry(): `0x${string}` | null {
  *  order's agreement so the manifest doesn't depend on any external
  *  agreement-store state. Throws if any order's agreement is missing
  *  locally. */
-export function buildAssemblyManifest(snapshot: DesignSnapshot): AssemblyManifest {
+export function buildAssemblyDocument(snapshot: DesignSnapshot): AssemblyDocument {
     if (snapshot.orders.length === 0) {
         throw new Error("Assembly has no orders.");
     }
@@ -133,7 +133,7 @@ export function buildAssemblyManifest(snapshot: DesignSnapshot): AssemblyManifes
 }
 
 /** Canonicalize the manifest and compute (canonical bytes, content hash). */
-export function serializeManifest(manifest: AssemblyManifest): {
+export function serializeManifest(manifest: AssemblyDocument): {
     json: string;
     contentHash: `0x${string}`;
 } {
@@ -280,15 +280,15 @@ export function useAllPublishedAssemblies() {
  * `keccak256(canonicalize(manifest))` — callers that need integrity
  * can verify after fetch.
  */
-export async function fetchAssemblyManifest(
+export async function fetchAssemblyDocument(
     metadataURI: string,
-): Promise<AssemblyManifest | null> {
+): Promise<AssemblyDocument | null> {
     const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(metadataURI);
     if (!url) return null;
     try {
         const response = await fetch(url);
         if (!response.ok) return null;
-        return (await response.json()) as AssemblyManifest;
+        return (await response.json()) as AssemblyDocument;
     } catch {
         return null;
     }
@@ -315,7 +315,7 @@ export function chainIdToNetworkTarget(chainId: number): string {
 /** Walk the manifest's inlined agreements and collect the unique set of
  *  clauses anchored across all orders. Sorted alphabetically for stable
  *  display order. */
-export function collectAssemblyClauses(manifest: AssemblyManifest): string[] {
+export function collectAssemblyClauses(manifest: AssemblyDocument): string[] {
     const set = new Set<string>();
     for (const agreement of Object.values(manifest.agreements)) {
         for (const section of agreement.sections) {
@@ -341,7 +341,7 @@ export function collectAssemblyClauses(manifest: AssemblyManifest): string[] {
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the seller's profile. */
-export function requiredCounterpartyClauses(manifest: AssemblyManifest): string[] {
+export function requiredCounterpartyClauses(manifest: AssemblyDocument): string[] {
     const COUNTERPARTY_PROCESS_CLAUSES: ReadonlySet<string> = new Set([
         "figaro-courier-process-v1",
     ]);
@@ -414,7 +414,7 @@ export function formatAssemblyClauseList(clauses: readonly string[]): string {
  * manifest-derived fields are populated.
  */
 /** Per-assembly manifest fetch state: requested, succeeded, or failed. */
-export type AssemblyManifestFetchState = "loading" | "loaded" | "error";
+export type AssemblyDocumentFetchState = "loading" | "loaded" | "error";
 
 export interface AssemblyChoice {
     slug: string;
@@ -423,7 +423,7 @@ export interface AssemblyChoice {
     metadataURI: string;
     blockNumber: bigint;
     networkTargets: readonly string[];
-    state: AssemblyManifestFetchState;
+    state: AssemblyDocumentFetchState;
     /** Display name from the manifest; falls back to `slug` until loaded. */
     name: string;
     /** Available when state === "loaded". */
@@ -432,7 +432,7 @@ export interface AssemblyChoice {
     clauses: readonly string[] | null;
     /** The full manifest when state === "loaded". Avoids re-fetching from
      *  consumers that need it (e.g. fork). */
-    manifest: AssemblyManifest | null;
+    manifest: AssemblyDocument | null;
 }
 
 /**
@@ -454,7 +454,7 @@ export function useAssemblyChoices(
     // — and undefined on the marketing tier where no provider is mounted.
     const chainId = activeChain.id;
     const [manifestState, setManifestState] = useState<
-        Map<string, { state: AssemblyManifestFetchState; manifest: AssemblyManifest | null }>
+        Map<string, { state: AssemblyDocumentFetchState; manifest: AssemblyDocument | null }>
     >(new Map());
     /** Hashes whose fetch has already been kicked off. A ref (not state)
      *  because we want to guard against double-fetch without retriggering
@@ -471,7 +471,7 @@ export function useAssemblyChoices(
                 next.set(event.contentHash, { state: "loading", manifest: null });
                 return next;
             });
-            fetchAssemblyManifest(event.metadataURI).then(
+            fetchAssemblyDocument(event.metadataURI).then(
                 (manifest) => {
                     setManifestState((prev) => {
                         const next = new Map(prev);
@@ -532,7 +532,7 @@ export interface BoundAssembly {
     slug: string;
     /** Display name from the manifest; falls back to the slug. */
     name: string;
-    manifest: AssemblyManifest;
+    manifest: AssemblyDocument;
     /** Canonical fulfilment method of the root order — the buyer's
      *  selection when this assembly is picked. `null` when the root
      *  fulfilment clause is absent or malformed. */
@@ -564,7 +564,7 @@ export interface SellerBoundAssemblies {
  *  the topology — if a consumer needs sub-order fulfilment, they walk the
  *  orders array themselves. */
 function extractRootFulfilment(
-    manifest: AssemblyManifest,
+    manifest: AssemblyDocument,
 ): { modalities: string[]; coordinations: string[] } {
     const empty = { modalities: [], coordinations: [] };
     const rootOrder = manifest.orders[0];
@@ -650,7 +650,7 @@ export function useSellerBoundAssemblies(
                 }
 
                 const manifests = await Promise.all(
-                    matchedEvents.map((e) => fetchAssemblyManifest(e.metadataURI)),
+                    matchedEvents.map((e) => fetchAssemblyDocument(e.metadataURI)),
                 );
                 if (cancelled) return;
 
@@ -737,7 +737,7 @@ export function usePublishAssembly() {
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "registrationDeposit",
         });
-        const manifest = buildAssemblyManifest(snapshot);
+        const manifest = buildAssemblyDocument(snapshot);
         const { json, contentHash } = serializeManifest(manifest);
         const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
 

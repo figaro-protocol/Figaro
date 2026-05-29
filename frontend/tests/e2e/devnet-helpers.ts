@@ -1030,7 +1030,7 @@ export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: 
  * drift signal: if the designer's clause generation changes, the
  * committed fixture stops matching and must be re-captured.
  */
-export function captureOrGuardAssemblyManifest(
+export function captureOrGuardAssemblyDocument(
     manifest: Record<string, unknown> & { agreements: Record<string, unknown> },
     opts: { slug: string; name: string },
 ): Record<string, unknown> {
@@ -1073,7 +1073,7 @@ function resolveIpfsURI(uri: string): string {
  * replays. Without it, drift-guards the live catalogue's `menu` against the
  * committed fixture and throws on mismatch.
  *
- * Same capture-or-guard pattern as `captureOrGuardAssemblyManifest`: the
+ * Same capture-or-guard pattern as `captureOrGuardAssemblyDocument`: the
  * canonical authoring UI (here the seller-registration wizard) produces
  * the artifact; the seed replays it; the spec guards the two stay in sync.
  */

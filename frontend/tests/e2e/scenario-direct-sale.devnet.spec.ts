@@ -3,8 +3,8 @@
  *
  * Authors the `direct-sale` reference assembly through the real designer
  * canvas and publishes it on-chain — the canonical V5 authoring path
- * (designer DesignSnapshot -> buildAssemblyManifest -> AssemblyRegistry).
- * No hand-authored manifest: the canvas produces the AssemblyManifest, so
+ * (designer DesignSnapshot -> buildAssemblyDocument -> AssemblyRegistry).
+ * No hand-authored manifest: the canvas produces the AssemblyDocument, so
  * its shape is correct by construction.
  *
  * direct-sale is the one-node consume-onsite scenario — a single root
@@ -18,7 +18,7 @@
  * modality, not just pickup/delivery.
  *
  * Drives the canvas to that shape, publishes, then fetches the pinned
- * AssemblyManifest back and asserts its clause set: commerce, fulfilment
+ * AssemblyDocument back and asserts its clause set: commerce, fulfilment
  * (consume-onsite + face-to-face handoff), geo, jurisdiction, proximity-
  * policy + proximity-proof, merchant-process, topology.
  *
@@ -38,7 +38,7 @@ import {
     type Hex,
 } from 'viem';
 import {
-    captureOrGuardAssemblyManifest,
+    captureOrGuardAssemblyDocument,
     evmRevert,
     evmSnapshot,
     readLocalDeploymentConfig,
@@ -150,7 +150,7 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         const metadataURI = events[0].args.metadataURI as string;
         expect(metadataURI).toMatch(/^ipfs:\/\//);
 
-        // ── Verify the published AssemblyManifest ───────────────────────
+        // ── Verify the published AssemblyDocument ───────────────────────
         const cid = metadataURI.slice('ipfs://'.length);
         const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
@@ -161,7 +161,7 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
             }>;
         };
 
-        // V5 AssemblyManifest — one root order, one agreement.
+        // V5 AssemblyDocument — one root order, one agreement.
         expect(manifest.slug).toBe(slug);
         expect(manifest.orders).toHaveLength(1);
         const agreement = manifest.agreements[manifest.orders[0].agreementHash];
@@ -198,7 +198,7 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
 
         // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyManifest(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
             slug: 'direct-sale',
             name: 'Direct Sale',
         });

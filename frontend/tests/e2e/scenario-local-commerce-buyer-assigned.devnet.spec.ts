@@ -10,7 +10,7 @@
  * chooses the courier at checkout) rather than `seller-assigned` (the
  * merchant designates one) or `dutch-auction` (the courier job is auctioned).
  *
- * Drives the 2-node shape, publishes, fetches the pinned AssemblyManifest
+ * Drives the 2-node shape, publishes, fetches the pinned AssemblyDocument
  * back, asserts both orders' clause sets, and captures / drift-guards the
  * `local-commerce-buyer-assigned` seed fixture.
  *
@@ -27,7 +27,7 @@ import {
     type Hex,
 } from 'viem';
 import {
-    captureOrGuardAssemblyManifest,
+    captureOrGuardAssemblyDocument,
     evmRevert,
     evmSnapshot,
     readLocalDeploymentConfig,
@@ -145,7 +145,7 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
         const metadataURI = events[0].args.metadataURI as string;
         expect(metadataURI).toMatch(/^ipfs:\/\//);
 
-        // ── Verify the published AssemblyManifest ─────────────────────────
+        // ── Verify the published AssemblyDocument ─────────────────────────
         const cid = metadataURI.slice('ipfs://'.length);
         const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
@@ -156,7 +156,7 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
             }>;
         };
 
-        // V5 AssemblyManifest — two orders: root (merchant) + courier sub-order.
+        // V5 AssemblyDocument — two orders: root (merchant) + courier sub-order.
         expect(manifest.slug).toBe(slug);
         expect(manifest.orders).toHaveLength(2);
         const [rootOrder, courierOrder] = manifest.orders;
@@ -202,7 +202,7 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
 
         // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyManifest(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
             slug: 'local-commerce-buyer-assigned',
             name: 'Local Commerce (buyer-assigned courier)',
         });

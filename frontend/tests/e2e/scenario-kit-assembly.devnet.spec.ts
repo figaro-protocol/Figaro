@@ -43,7 +43,7 @@ import {
 } from 'viem';
 import type { Page } from '@playwright/test';
 import {
-    captureOrGuardAssemblyManifest,
+    captureOrGuardAssemblyDocument,
     evmRevert,
     evmSnapshot,
     readLocalDeploymentConfig,
@@ -220,7 +220,7 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
         const metadataURI = events[0].args.metadataURI as string;
         expect(metadataURI).toMatch(/^ipfs:\/\//);
 
-        // ── Verify the published AssemblyManifest topology ─────────────────
+        // ── Verify the published AssemblyDocument topology ─────────────────
         const cid = metadataURI.slice('ipfs://'.length);
         const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
@@ -267,7 +267,7 @@ test.describe('Author + publish the kit-assembly diamond (devnet)', () => {
 
         // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyManifest(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
             slug: 'kit-assembly',
             name: 'Kit Assembly',
         });

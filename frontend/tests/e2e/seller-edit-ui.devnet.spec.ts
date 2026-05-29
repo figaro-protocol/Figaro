@@ -255,7 +255,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         // 1. Register a minimal assembly. `useAssemblyChoices` reads
         //    AssemblyRegistered events + fetches the manifest JSON, so
         //    both must exist on-chain + IPFS for the row to render.
-        //    AssemblyManifest needs `name` + `orders[]`; orderless or
+        //    AssemblyDocument needs `name` + `orders[]`; orderless or
         //    fully empty manifests still render as a choice — what
         //    matters for this test is that the slug is selectable.
         const manifestDoc = {

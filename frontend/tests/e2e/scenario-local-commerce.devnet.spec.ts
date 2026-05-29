@@ -21,7 +21,7 @@
  * The handoff point is set on the root order's fulfilment clause.
  *
  * Drives the 2-node shape, publishes, then fetches the pinned
- * AssemblyManifest back and asserts both orders' clause sets — including
+ * AssemblyDocument back and asserts both orders' clause sets — including
  * the courier sub-order's topology clause linking back to the root.
  *
  * A unique slug per run keeps the spec repeatable against the
@@ -40,7 +40,7 @@ import {
     type Hex,
 } from 'viem';
 import {
-    captureOrGuardAssemblyManifest,
+    captureOrGuardAssemblyDocument,
     evmRevert,
     evmSnapshot,
     readLocalDeploymentConfig,
@@ -161,7 +161,7 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
         const metadataURI = events[0].args.metadataURI as string;
         expect(metadataURI).toMatch(/^ipfs:\/\//);
 
-        // ── Verify the published AssemblyManifest ─────────────────────────
+        // ── Verify the published AssemblyDocument ─────────────────────────
         const cid = metadataURI.slice('ipfs://'.length);
         const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
@@ -172,7 +172,7 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
             }>;
         };
 
-        // V5 AssemblyManifest — two orders: root (merchant) + courier sub-order.
+        // V5 AssemblyDocument — two orders: root (merchant) + courier sub-order.
         expect(manifest.slug).toBe(slug);
         expect(manifest.orders).toHaveLength(2);
         const [rootOrder, courierOrder] = manifest.orders;
@@ -219,7 +219,7 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
 
         // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyManifest(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
             slug: 'local-commerce',
             name: 'Local Commerce',
         });

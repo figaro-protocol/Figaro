@@ -17,7 +17,7 @@
  * carries the emissions-disclosure clause that makes a process measurable.
  *
  * Drives the 2-node shape + the emissions article on each node, publishes,
- * then fetches the pinned AssemblyManifest and asserts both orders carry
+ * then fetches the pinned AssemblyDocument and asserts both orders carry
  * the GHG clause.
  *
  * Requires Anvil + ./deploy-local.sh + Kubo.
@@ -33,7 +33,7 @@ import {
     type Hex,
 } from 'viem';
 import {
-    captureOrGuardAssemblyManifest,
+    captureOrGuardAssemblyDocument,
     evmRevert,
     evmSnapshot,
     readLocalDeploymentConfig,
@@ -153,7 +153,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
         const metadataURI = events[0].args.metadataURI as string;
         expect(metadataURI).toMatch(/^ipfs:\/\//);
 
-        // ── Verify the published AssemblyManifest ─────────────────────────
+        // ── Verify the published AssemblyDocument ─────────────────────────
         const cid = metadataURI.slice('ipfs://'.length);
         const manifest = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
@@ -204,7 +204,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
 
         // Capture this manifest as the seed fixture (FIGARO_CAPTURE_FIXTURES),
         // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyManifest(manifest, {
+        const fixtureAgreements = captureOrGuardAssemblyDocument(manifest, {
             slug: 'local-commerce-offset',
             name: 'Local Commerce Offset',
         });
