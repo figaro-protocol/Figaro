@@ -2267,12 +2267,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "figaro-clause"
+version = "0.1.0"
+dependencies = [
+ "alloy-dyn-abi",
+ "alloy-primitives",
+ "regex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "figaro-kernel"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "bincode",
- "figaro-schema",
+ "figaro-clause",
  "k256",
  "serde",
  "serde_json",
@@ -2284,8 +2295,8 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "bincode",
+ "figaro-clause",
  "figaro-kernel",
- "figaro-schema",
  "k256",
  "serde_json",
  "sp1-build",
@@ -2332,17 +2343,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "figaro-schema"
-version = "0.1.0"
-dependencies = [
- "alloy-dyn-abi",
- "alloy-primitives",
- "regex",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "figaro-sequencer"
 version = "0.1.0"
 dependencies = [
@@ -2350,8 +2350,8 @@ dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
  "axum",
+ "figaro-clause",
  "figaro-kernel",
- "figaro-schema",
  "k256",
  "serde",
  "serde_json",

@@ -49,7 +49,7 @@ fn bincode_roundtrip_batchinput_with_content_proof_none() {
             KernelOp::AttestAsSeller {
                 role_commitment: dummy_commitment(),
                 order_hash: B256::ZERO,
-                schema_id: B256::ZERO,
+                clause_id: B256::ZERO,
                 stage: 1,
                 content_ref: B256::ZERO,
                 seller_sig: dummy_sig(),
@@ -58,7 +58,7 @@ fn bincode_roundtrip_batchinput_with_content_proof_none() {
             KernelOp::AttestAsBuyer {
                 process_id: B256::ZERO,
                 order_hash: B256::ZERO,
-                schema_id: B256::ZERO,
+                clause_id: B256::ZERO,
                 stage: 0,
                 content_ref: B256::ZERO,
                 buyer_sig: dummy_sig(),
@@ -74,7 +74,7 @@ fn bincode_roundtrip_batchinput_with_content_proof_none() {
             processes: vec![],
             order_status: vec![],
             order_process_id: vec![],
-            schemas_registered: vec![],
+            clauses_registered: vec![],
             sellers_registered: vec![],        },    };
 
     let bytes = bincode::serialize(&input).expect("serialize");
@@ -114,7 +114,7 @@ fn bincode_roundtrip_single_attest_seller_with_none() {
         operations: vec![KernelOp::AttestAsSeller {
             role_commitment: dummy_commitment(),
             order_hash: B256::ZERO,
-            schema_id: B256::ZERO,
+            clause_id: B256::ZERO,
             stage: 0,
             content_ref: B256::ZERO,
             seller_sig: dummy_sig(),
@@ -122,7 +122,7 @@ fn bincode_roundtrip_single_attest_seller_with_none() {
         }],
         prev_state: KernelStateSnapshot {
             processes: vec![], order_status: vec![], order_process_id: vec![],
-            schemas_registered: vec![], sellers_registered: vec![],        },    };
+            clauses_registered: vec![], sellers_registered: vec![],        },    };
     let bytes = bincode::serialize(&input).expect("serialize");
     eprintln!("serialized {} bytes", bytes.len());
     let _decoded: BatchInput = bincode::deserialize(&bytes).expect("deserialize");
@@ -141,7 +141,7 @@ fn bincode_roundtrip_single_commit() {
         }],
         prev_state: KernelStateSnapshot {
             processes: vec![], order_status: vec![], order_process_id: vec![],
-            schemas_registered: vec![], sellers_registered: vec![],        },    };
+            clauses_registered: vec![], sellers_registered: vec![],        },    };
     let bytes = bincode::serialize(&input).expect("serialize");
     eprintln!("serialized {} bytes", bytes.len());
     let _decoded: BatchInput = bincode::deserialize(&bytes).expect("deserialize");
@@ -157,7 +157,7 @@ fn bincode_roundtrip_batchinput_with_content_proof_some() {
             KernelOp::AttestAsSeller {
                 role_commitment: dummy_commitment(),
                 order_hash: B256::ZERO,
-                schema_id: B256::ZERO,
+                clause_id: B256::ZERO,
                 stage: 0,
                 content_ref: B256::ZERO,
                 seller_sig: dummy_sig(),
@@ -172,7 +172,7 @@ fn bincode_roundtrip_batchinput_with_content_proof_some() {
             processes: vec![],
             order_status: vec![],
             order_process_id: vec![],
-            schemas_registered: vec![],
+            clauses_registered: vec![],
             sellers_registered: vec![],        },    };
 
     let bytes = bincode::serialize(&input).expect("serialize");

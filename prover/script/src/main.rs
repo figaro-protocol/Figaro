@@ -55,7 +55,7 @@ async fn main() {
     println!("Verifying contract:  {:?}", pv.verifying_contract);
     println!("Token ops hash:      {:?}", pv.token_ops_hash);
     println!("Attestation hash:    {:?}", pv.attestation_events_hash);
-    println!("Schema hash:         {:?}", pv.schema_events_hash);
+    println!("Clause hash:         {:?}", pv.clause_events_hash);
     println!("Seller hash:       {:?}", pv.seller_events_hash);
 
     assert_ne!(pv.prev_state_root, pv.new_state_root, "state should change");

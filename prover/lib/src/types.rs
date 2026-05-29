@@ -41,34 +41,34 @@ pub struct Signature {
 
 /// Optional content payload attached to an attestation op so the SP1
 /// prover can prove — inside the proof — that the on-chain `content_ref`
-/// hashes a content blob that satisfies the schema's spec.
+/// hashes a content blob that satisfies the clause's spec.
 ///
 /// When `content_proof: Some(_)` on an `AttestAsSeller` / `AttestAsBuyer`
 /// op, the kernel enforces:
 ///
-///   1. The op's `schema_id` is one of the runtime-attestable protocol
-///      schemas — its canonical spec is compiled into the prover binary
-///      (`figaro_schema::embedded_spec_json`), looked up by `schema_id`,
+///   1. The op's `clause_id` is one of the runtime-attestable protocol
+///      clauses — its canonical spec is compiled into the prover binary
+///      (`figaro_clause::embedded_spec_json`), looked up by `clause_id`,
 ///      never supplied by the caller.
 ///   2. `validate_content(content_json, embedded_spec, stage)` returns
 ///      Ok — the structured form passes the Layer B validator.
 ///   3. `encode_content_from_spec(spec, content_json)` produces ABI
 ///      bytes byte-for-byte identical to viem's encoders in
-///      `sdk/src/schemas/encode.ts`. The encoder is the cross-form
+///      `sdk/src/clauses/encode.ts`. The encoder is the cross-form
 ///      binding — it derives the canonical byte form *from* the JSON, so
 ///      no separate `content_bytes` field can disagree with `content_json`.
 ///   4. `keccak256(derived_bytes) == content_ref` — binds the derived
 ///      bytes (which Layer C will decode) to the on-chain commitment.
-///   5. For seller attestations, the schema's section is a clause of the
+///   5. For seller attestations, the clause's section is a clause of the
 ///      order's signed `agreement_hash`: a sorted-pair Merkle inclusion
 ///      proof (`inclusion_proof`) verifies the section leaf against the
 ///      `agreement_hash` carried in the role commitment. The leaf is
-///      `keccak256(schemaId ++ keccak256(sectionData))`; for a
-///      cross-checking schema `keccak256(sectionData) == content_ref`, so
-///      the leaf needs no extra input, while a non-cross-checking schema
+///      `keccak256(clauseId ++ keccak256(sectionData))`; for a
+///      cross-checking clause `keccak256(sectionData) == content_ref`, so
+///      the leaf needs no extra input, while a non-cross-checking clause
 ///      carries its canonical-JSON `section_data` explicitly.
 ///
-/// Because the spec is looked up by `schema_id` rather than carried on
+/// Because the spec is looked up by `clause_id` rather than carried on
 /// the wire, the constraint set every attestation is checked against is
 /// covered by the program verification key — a caller cannot weaken
 /// validation by supplying a permissive spec.
@@ -83,18 +83,18 @@ pub struct Signature {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AttestationContentProof {
     /// The structured JSON form Layer B validates against the embedded
-    /// schema spec and re-encodes to ABI bytes via the per-schema
+    /// clause spec and re-encodes to ABI bytes via the per-clause
     /// encoder. Carried as a JSON-serialized string for zkVM compatibility.
     pub content_json: String,
-    /// Sorted-pair Merkle proof binding the schema's section leaf to the
+    /// Sorted-pair Merkle proof binding the clause's section leaf to the
     /// order's signed `agreement_hash` (Gate 5). Empty for a single-section
     /// agreement, where `agreement_hash` is itself the leaf. Verified only
     /// for seller attestations; ignored for buyer attestations.
     pub inclusion_proof: Vec<B256>,
     /// Canonical-JSON `sectionData` bytes (as a UTF-8 string) for a
-    /// non-cross-checking (Category-1) schema, whose committed `sectionData`
+    /// non-cross-checking (Category-1) clause, whose committed `sectionData`
     /// is not the ABI content form. `None` for cross-checking (Category-2)
-    /// schemas, where the leaf is derived from `content_ref` directly.
+    /// clauses, where the leaf is derived from `content_ref` directly.
     pub section_data: Option<String>,
 }
 
@@ -125,13 +125,13 @@ pub enum KernelOp {
     AttestAsSeller {
         role_commitment: Commitment,
         order_hash: B256,
-        schema_id: B256,
+        clause_id: B256,
         stage: u8,
         content_ref: B256,
         /// Proves the caller is the seller of role_commitment.
         seller_sig: Signature,
         /// Optional Layer B content payload. When present, the kernel
-        /// runs the schema-validation gate before emitting the event.
+        /// runs the clause-validation gate before emitting the event.
         /// Note: no `skip_serializing_if` — bincode is non-self-
         /// describing, so skipping a field desyncs the deserializer.
         /// `None` always emits one byte (the Option discriminant).
@@ -143,37 +143,37 @@ pub enum KernelOp {
     AttestAsBuyer {
         process_id: B256,
         order_hash: B256,
-        schema_id: B256,
+        clause_id: B256,
         stage: u8,
         content_ref: B256,
         /// Proves the caller is the root buyer of the process.
         buyer_sig: Signature,
         /// Optional Layer B content payload. When present, the kernel
-        /// runs the schema-validation gate before emitting the event.
+        /// runs the clause-validation gate before emitting the event.
         /// Note: no `skip_serializing_if` — bincode is non-self-
         /// describing, so skipping a field desyncs the deserializer.
         /// `None` always emits one byte (the Option discriminant).
         content_proof: Option<AttestationContentProof>,
     },
 
-    // ── SchemaRegistry ────────────────────────────────────────────
+    // ── ClauseRegistry ────────────────────────────────────────────
 
-    /// Register a new schema. Batched equivalent of registerSchema().
-    RegisterSchema {
-        schema_id: B256,
+    /// Register a new clause. Batched equivalent of registerClause().
+    RegisterClause {
+        clause_id: B256,
         version: u64,
         uri_hash: B256,
         /// keccak256 of the family slug (e.g. keccak256("geo")). Permanently
-        /// bound to the schema; consumed by RPGF Tier-1 weighting.
+        /// bound to the clause; consumed by RPGF Tier-1 weighting.
         family: B256,
         /// EIP-712 authorization from the registrar.
         registrar_sig: Signature,
     },
 
-    /// Declare mechanism→schema binding. Batched equivalent of
-    /// setMechanismSchema().
-    SetMechanismSchema {
-        schema_id: B256,
+    /// Declare mechanism→clause binding. Batched equivalent of
+    /// setMechanismClause().
+    SetMechanismClause {
+        clause_id: B256,
         /// EIP-712 authorization from the mechanism contract.
         mechanism_sig: Signature,
     },
@@ -211,8 +211,8 @@ pub struct KernelStateSnapshot {
     pub processes: Vec<(B256, ProcessState)>,
     pub order_status: Vec<(B256, u8)>,
     pub order_process_id: Vec<(B256, B256)>,
-    /// SchemaRegistry: registered schemas (dedup guard).
-    pub schemas_registered: Vec<(B256, bool)>,
+    /// ClauseRegistry: registered clauses (dedup guard).
+    pub clauses_registered: Vec<(B256, bool)>,
     /// SellerRegistry: dedup guard per seller address. Lifecycle flags
     /// removed (web2-strip 2026-04-26) — seller availability is
     /// signal-by-availability, not registry state. Role + metadata travel
@@ -246,8 +246,8 @@ pub struct PublicValues {
     /// Hash of attestation events emitted in this batch.
     /// The on-chain verifier re-emits these events.
     pub attestation_events_hash: B256,
-    /// Hash of schema events emitted in this batch.
-    pub schema_events_hash: B256,
+    /// Hash of clause events emitted in this batch.
+    pub clause_events_hash: B256,
     /// Hash of seller events emitted in this batch.
     pub seller_events_hash: B256,
 }
@@ -259,26 +259,26 @@ pub struct AttestationEventData {
     pub order_hash: B256,
     pub process_id: B256,
     pub attester: Address,
-    pub schema_id: B256,
+    pub clause_id: B256,
     pub stage: u8,
     pub content_ref: B256,
 }
 
-/// A schema registration event proven by the batch.
+/// A clause registration event proven by the batch.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SchemaEventData {
-    pub schema_id: B256,
+pub struct ClauseEventData {
+    pub clause_id: B256,
     pub version: u64,
     pub uri_hash: B256,
     pub family: B256,
     pub registrar: Address,
 }
 
-/// A mechanism schema declaration event proven by the batch.
+/// A mechanism clause declaration event proven by the batch.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MechanismSchemaEventData {
+pub struct MechanismClauseEventData {
     pub mechanism: Address,
-    pub schema_id: B256,
+    pub clause_id: B256,
 }
 
 /// An seller registry event proven by the batch.
@@ -306,8 +306,8 @@ pub enum SellerEventData {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BatchEvents {
     pub attestations: Vec<AttestationEventData>,
-    pub schemas: Vec<SchemaEventData>,
-    pub mechanism_schemas: Vec<MechanismSchemaEventData>,
+    pub clauses: Vec<ClauseEventData>,
+    pub mechanism_clauses: Vec<MechanismClauseEventData>,
     pub sellers: Vec<SellerEventData>,
 }
 
@@ -348,35 +348,35 @@ pub enum KernelError {
     NotAuthorized,
     ProcessMismatch,
     UnknownOrder,
-    // SchemaRegistry errors
-    SchemaAlreadyRegistered(B256),
-    SchemaNotRegistered(B256),
+    // ClauseRegistry errors
+    ClauseAlreadyRegistered(B256),
+    ClauseNotRegistered(B256),
     // SellerRegistry errors
     SellerAlreadyRegistered,
     SellerNotRegistered,
-    // Layer B (figaro-schema) gates on AttestationContentProof
-    /// An attestation under a content-bearing protocol schema (one with an
+    // Layer B (figaro-clause) gates on AttestationContentProof
+    /// An attestation under a content-bearing protocol clause (one with an
     /// embedded spec) carried a non-zero `content_ref` but no
     /// `content_proof`. The batched path will not record content it cannot
-    /// validate, so the proof is mandatory for these schemas.
+    /// validate, so the proof is mandatory for these clauses.
     ContentProofRequired,
     ContentHashMismatch,
-    SchemaSpecParseFailed(String),
-    SchemaContentInvalid(String),
-    /// The schemaId has no Rust ABI encoder registered, so the kernel
-    /// cannot derive content_bytes from content_json. Either the schema
+    ClauseSpecParseFailed(String),
+    ClauseContentInvalid(String),
+    /// The clauseId has no Rust ABI encoder registered, so the kernel
+    /// cannot derive content_bytes from content_json. Either the clause
     /// is too new or the caller is attempting to attest under a
-    /// non-runtime schemaId (e.g. `figaro-topology-v1`).
-    SchemaEncoderMissing(String),
+    /// non-runtime clauseId (e.g. `figaro-topology-v1`).
+    ClauseEncoderMissing(String),
     /// `encode_content_from_spec` failed for a reason other than
-    /// missing schema (bad field type, unknown enum value, etc.).
+    /// missing clause (bad field type, unknown enum value, etc.).
     ContentEncodingFailed(String),
     /// Gate 5: the content proof's sorted-pair Merkle `inclusion_proof`
-    /// does not verify the schema's section leaf against the order's
+    /// does not verify the clause's section leaf against the order's
     /// signed `agreement_hash` — the attested clause was not part of the
     /// agreement both parties signed.
     InvalidInclusionProof,
-    /// Gate 5: a non-cross-checking (Category-1) schema's content proof
+    /// Gate 5: a non-cross-checking (Category-1) clause's content proof
     /// omitted `section_data`, so the agreement Merkle leaf cannot be
     /// derived (its `sectionData` is not the ABI content form).
     MissingSectionData,
@@ -392,8 +392,8 @@ impl core::fmt::Display for KernelError {
                 write!(f, "IncompleteOrderList(required={required}, provided={provided})")
             }
             Self::OrderNotCommitted(h) => write!(f, "OrderNotCommitted({h})"),
-            Self::SchemaAlreadyRegistered(h) => write!(f, "SchemaAlreadyRegistered({h})"),
-            Self::SchemaNotRegistered(h) => write!(f, "SchemaNotRegistered({h})"),
+            Self::ClauseAlreadyRegistered(h) => write!(f, "ClauseAlreadyRegistered({h})"),
+            Self::ClauseNotRegistered(h) => write!(f, "ClauseNotRegistered({h})"),
             other => write!(f, "{other:?}"),
         }
     }

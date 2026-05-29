@@ -1,6 +1,6 @@
-//! Figaro schema-spec format — closed subset of JSON Schema.
+//! Figaro clause-spec format — closed subset of JSON Schema.
 //!
-//! Mirrors `sdk/src/schemas/spec.ts` field-for-field. The semantics MUST
+//! Mirrors `sdk/src/clauses/spec.ts` field-for-field. The semantics MUST
 //! match Layer A exactly; conformance is locked in by
 //! `tests/conformance.rs`.
 
@@ -29,13 +29,13 @@ impl StringFormat {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SchemaTier {
+pub enum ClauseTier {
     Category1,
     Category2,
     ManifestOnly,
 }
 
-impl SchemaTier {
+impl ClauseTier {
     fn from_str(s: &str) -> Option<Self> {
         match s {
             "category-1" => Some(Self::Category1),
@@ -47,7 +47,7 @@ impl SchemaTier {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SchemaDrawerArticle {
+pub enum ClauseDrawerArticle {
     Identity,
     Order,
     Fulfilment,
@@ -58,7 +58,7 @@ pub enum SchemaDrawerArticle {
     Consent,
 }
 
-impl SchemaDrawerArticle {
+impl ClauseDrawerArticle {
     fn from_str(s: &str) -> Option<Self> {
         match s {
             "identity" => Some(Self::Identity),
@@ -158,34 +158,34 @@ impl FieldSpec {
 }
 
 #[derive(Clone, Debug)]
-pub struct SchemaBlockBinding {
-    pub tier: SchemaTier,
-    pub drawer_article: Option<SchemaDrawerArticle>,
+pub struct ClauseBlockBinding {
+    pub tier: ClauseTier,
+    pub drawer_article: Option<ClauseDrawerArticle>,
     pub mechanism_kinds: Vec<String>,
     pub module_ids: Vec<String>,
     pub routes: Option<Vec<String>>,
-    pub sister_schema_id: Option<String>,
+    pub sister_clause_id: Option<String>,
 }
 
 #[derive(Clone, Debug)]
-pub struct SchemaSpec {
-    pub schema_id: String,
+pub struct ClauseSpec {
+    pub clause_id: String,
     pub version: u32,
     pub title: String,
     pub description: String,
     pub categories: Option<Vec<String>>,
     pub fields: Vec<FieldSpec>,
     pub stages: Option<std::collections::BTreeMap<u8, Vec<FieldSpec>>>,
-    pub block: Option<SchemaBlockBinding>,
+    pub block: Option<ClauseBlockBinding>,
 }
 
-impl SchemaSpec {
-    /// Whether this schema's agreement-manifest `sectionData` is the
+impl ClauseSpec {
+    /// Whether this clause's agreement-manifest `sectionData` is the
     /// cross-checking ABI content form — true exactly when the block tier
     /// is `category-2`. For a Category-2 declarative clause the committed
     /// `sectionData` and the runtime attestation content are byte-identical,
-    /// so the agreement Merkle leaf collapses to `keccak256(schemaId ++
-    /// content_ref)`. Category-1 (runtime-only) schemas — and any spec with
+    /// so the agreement Merkle leaf collapses to `keccak256(clauseId ++
+    /// content_ref)`. Category-1 (runtime-only) clauses — and any spec with
     /// no block binding — are not cross-checking: their leaf is derived
     /// from the canonical-JSON `sectionData` carried in the content proof.
     ///
@@ -195,7 +195,7 @@ impl SchemaSpec {
     pub fn cross_checks(&self) -> bool {
         matches!(
             self.block.as_ref().map(|b| b.tier),
-            Some(SchemaTier::Category2)
+            Some(ClauseTier::Category2)
         )
     }
 }
@@ -206,8 +206,8 @@ pub struct SpecParseError {
     pub message: String,
 }
 
-pub enum ParseSchemaSpecResult {
-    Ok(SchemaSpec),
+pub enum ParseClauseSpecResult {
+    Ok(ClauseSpec),
     Err(Vec<SpecParseError>),
 }
 
@@ -564,12 +564,12 @@ fn parse_block_binding(
     raw: &Value,
     path: &str,
     errors: &mut Vec<SpecParseError>,
-) -> Option<SchemaBlockBinding> {
+) -> Option<ClauseBlockBinding> {
     if !is_object(raw) {
         err(errors, path, "block binding must be an object");
         return None;
     }
-    let tier = match raw.get("tier").and_then(Value::as_str).and_then(SchemaTier::from_str) {
+    let tier = match raw.get("tier").and_then(Value::as_str).and_then(ClauseTier::from_str) {
         Some(t) => t,
         None => {
             err(
@@ -582,7 +582,7 @@ fn parse_block_binding(
     };
     let drawer_article = match raw.get("drawerArticle") {
         None => None,
-        Some(v) => match v.as_str().and_then(SchemaDrawerArticle::from_str) {
+        Some(v) => match v.as_str().and_then(ClauseDrawerArticle::from_str) {
             Some(d) => Some(d),
             None => {
                 err(
@@ -612,45 +612,45 @@ fn parse_block_binding(
         None => None,
         Some(v) => Some(parse_string_array(v, &format!("{path}.routes"), errors)?),
     };
-    let sister_schema_id = match raw.get("sisterSchemaId") {
+    let sister_clause_id = match raw.get("sisterSchemaId") {
         None => None,
         Some(v) => match v.as_str() {
             Some(s) if !s.is_empty() => Some(s.to_string()),
             _ => {
                 err(
                     errors,
-                    &format!("{path}.sisterSchemaId"),
+                    &format!("{path}.sisterClauseId"),
                     "sisterSchemaId must be a non-empty string when present",
                 );
                 return None;
             }
         },
     };
-    Some(SchemaBlockBinding {
+    Some(ClauseBlockBinding {
         tier,
         drawer_article,
         mechanism_kinds,
         module_ids,
         routes,
-        sister_schema_id,
+        sister_clause_id,
     })
 }
 
-/// Parse and validate an unknown JSON value as a `SchemaSpec`. Validates
-/// the meta-schema (the structure of the spec itself, not any content).
-pub fn parse_schema_spec(raw: &Value) -> ParseSchemaSpecResult {
+/// Parse and validate an unknown JSON value as a `ClauseSpec`. Validates
+/// the meta-clause (the structure of the spec itself, not any content).
+pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
     let mut errors: Vec<SpecParseError> = Vec::new();
     let obj = match raw.as_object() {
         Some(o) => o,
         None => {
-            return ParseSchemaSpecResult::Err(vec![SpecParseError {
+            return ParseClauseSpecResult::Err(vec![SpecParseError {
                 path: "$".to_string(),
-                message: "schema spec must be an object".to_string(),
+                message: "clause spec must be an object".to_string(),
             }]);
         }
     };
 
-    let schema_id = match obj.get("schemaId").and_then(Value::as_str) {
+    let clause_id = match obj.get("schemaId").and_then(Value::as_str) {
         Some(s) if !s.is_empty() => s.to_string(),
         _ => {
             err(&mut errors, "$.schemaId", "schemaId must be a non-empty string");
@@ -793,11 +793,11 @@ pub fn parse_schema_spec(raw: &Value) -> ParseSchemaSpecResult {
     };
 
     if !errors.is_empty() {
-        return ParseSchemaSpecResult::Err(errors);
+        return ParseClauseSpecResult::Err(errors);
     }
 
-    ParseSchemaSpecResult::Ok(SchemaSpec {
-        schema_id,
+    ParseClauseSpecResult::Ok(ClauseSpec {
+        clause_id,
         version,
         title,
         description,

@@ -1,18 +1,18 @@
-//! Figaro schema validator — Rust mirror of the TypeScript Layer A
-//! (`@figaro/core/schemas`).
+//! Figaro clause validator — Rust mirror of the TypeScript Layer A
+//! (`@figaro/core/clauses`).
 //!
-//! The Figaro schema stack has three layers that MUST agree on
+//! The Figaro clause stack has three layers that MUST agree on
 //! interpretation:
 //!
-//!   Layer A — TypeScript, `sdk/src/schemas/{spec,validate}.ts`
+//!   Layer A — TypeScript, `sdk/src/clauses/{spec,validate}.ts`
 //!   Layer B — Rust (this crate), invoked from the SP1 zkVM prover and
 //!             from the off-chain sequencer
-//!   Layer C — Solidity, the per-schema `ISchemaValidator` contracts in
-//!             `src/schemaValidators/`
+//!   Layer C — Solidity, the per-clause `IClauseValidator` contracts in
+//!             `src/clauseValidators/`
 //!
 //! When the spec format is extended, all three layers must be updated in
 //! lockstep. The conformance tests in `tests/conformance.rs` lock Layer B's
-//! parse/validate behavior against the canonical schema JSONs in
+//! parse/validate behavior against the canonical clause JSONs in
 //! `frontend/lib/shared/schemas/` (the deploy-time source of truth that the
 //! frontend preloads).
 
@@ -24,9 +24,9 @@ pub mod validate;
 pub use embedded::{all_embedded_specs, embedded_spec_json, embedded_spec_json_by_key};
 pub use encode::{encode_content_from_spec, EncodeError};
 pub use spec::{
-    parse_schema_spec, ArrayFieldSpec, BaseFieldSpec, BigintFieldSpec, BooleanFieldSpec,
-    EnumFieldSpec, FieldSpec, IntegerFieldSpec, ObjectFieldSpec, ParseSchemaSpecResult,
-    SchemaBlockBinding, SchemaDrawerArticle, SchemaSpec, SchemaTier, SpecParseError,
+    parse_clause_spec, ArrayFieldSpec, BaseFieldSpec, BigintFieldSpec, BooleanFieldSpec,
+    EnumFieldSpec, FieldSpec, IntegerFieldSpec, ObjectFieldSpec, ParseClauseSpecResult,
+    ClauseBlockBinding, ClauseDrawerArticle, ClauseSpec, ClauseTier, SpecParseError,
     StringFieldSpec, StringFormat,
 };
 pub use validate::{validate_content, ValidateOptions, ValidationError, ValidationResult};

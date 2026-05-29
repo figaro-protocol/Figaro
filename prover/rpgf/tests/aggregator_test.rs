@@ -1,16 +1,16 @@
 use alloy_primitives::{address, Address, B256, U256};
-use figaro_rpgf::types::{SchemaSnapshot, TrancheInput, TrancheOutput};
+use figaro_rpgf::types::{ClauseSnapshot, TrancheInput, TrancheOutput};
 use figaro_rpgf::{aggregate, score, tier1_weight};
 use sha3::{Digest, Keccak256};
 
-fn schema_id(s: &[u8]) -> B256 {
+fn clause_id(s: &[u8]) -> B256 {
     B256::from_slice(&Keccak256::digest(s))
 }
 
-fn family_for(schema: &[u8]) -> B256 {
-    // Mirror script/Deploy.s.sol family assignments for the schemas
+fn family_for(clause: &[u8]) -> B256 {
+    // Mirror script/Deploy.s.sol family assignments for the clauses
     // referenced in these tests.
-    let slug: &[u8] = match schema {
+    let slug: &[u8] = match clause {
         b"figaro-commerce-v1" => b"commerce",
         b"figaro-geo-v2" => b"geo",
         b"figaro-fulfilment-v2" => b"fulfilment",
@@ -22,16 +22,16 @@ fn family_for(schema: &[u8]) -> B256 {
 }
 
 fn snap(
-    schema: &[u8],
+    clause: &[u8],
     author: Address,
     processes: u64,
     pairs: u64,
     chain_pos_x1e6: u64,
-) -> SchemaSnapshot {
-    SchemaSnapshot {
-        schema_id: schema_id(schema),
-        schema_author: author,
-        family: family_for(schema),
+) -> ClauseSnapshot {
+    ClauseSnapshot {
+        clause_id: clause_id(clause),
+        clause_author: author,
+        family: family_for(clause),
         resolved_attestation_count: processes * 2,
         distinct_processes: processes,
         distinct_attestation_stages: 1,
@@ -116,14 +116,14 @@ fn aggregate_produces_merkle_root_and_bounded_total() {
     };
     let out = aggregate(&input);
     assert_eq!(out.tranche_index, 0);
-    assert_eq!(out.schema_count, 3);
+    assert_eq!(out.clause_count, 3);
     assert!(out.total_allocated_wei <= input.tranche_budget_wei);
     assert_ne!(out.merkle_root, B256::ZERO);
 }
 
 #[test]
-fn cap_binds_when_one_schema_dominates() {
-    // Construct: one schema massively outweighs the rest.
+fn cap_binds_when_one_clause_dominates() {
+    // Construct: one clause massively outweighs the rest.
     let mut snapshots = vec![snap(
         b"figaro-geo-v2",
         address!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
@@ -131,7 +131,7 @@ fn cap_binds_when_one_schema_dominates() {
         500_000,
         3_000_000,
     )];
-    // Add some small schemas as ballast.
+    // Add some small clauses as ballast.
     for i in 1..=10 {
         let mut addr = [0u8; 20];
         addr[19] = i as u8;
@@ -155,13 +155,13 @@ fn cap_binds_when_one_schema_dominates() {
     };
 
     let out = aggregate(&input);
-    // Cap should bind on the dominant schema — its allocation cannot
+    // Cap should bind on the dominant clause — its allocation cannot
     // exceed 15% of budget (allowing for parts-per-million rounding).
     let cap_amount = input.tranche_budget_wei * U256::from(150_001u64) / U256::from(1_000_000u64);
     assert!(out.total_allocated_wei <= input.tranche_budget_wei);
     // sanity: total > 0
     assert!(out.total_allocated_wei > U256::ZERO);
-    // sanity: no schema's amount can exceed the cap (we'd need to
+    // sanity: no clause's amount can exceed the cap (we'd need to
     // reconstruct per-leaf amounts to assert exactly — for now check
     // that total ≤ budget which is the invariant)
     let _ = cap_amount;
@@ -176,7 +176,7 @@ fn abi_encoding_matches_solidity_layout() {
         tranche_index: 2,
         merkle_root: B256::from_slice(&[0x42u8; 32]),
         total_allocated_wei: U256::from(1_000_000u64),
-        schema_count: 17,
+        clause_count: 17,
     };
     let bytes = output.abi_encode_public_values();
 
@@ -200,11 +200,11 @@ fn abi_encoding_matches_solidity_layout() {
     assert_eq!(bytes[94], 0x42);
     assert_eq!(bytes[95], 0x40);
 
-    // Word 3: uint32 schema_count, zero-padded with value at bytes 124..128
+    // Word 3: uint32 clause_count, zero-padded with value at bytes 124..128
     for i in 96..127 {
         assert_eq!(bytes[i], 0, "byte {} of word 3 should be zero", i);
     }
-    assert_eq!(bytes[127], 17, "schema_count in last byte of word 3");
+    assert_eq!(bytes[127], 17, "clause_count in last byte of word 3");
 }
 
 #[test]
@@ -213,7 +213,7 @@ fn abi_encoding_handles_max_values() {
         tranche_index: 0xFF,
         merkle_root: B256::from_slice(&[0xFFu8; 32]),
         total_allocated_wei: U256::MAX,
-        schema_count: u32::MAX,
+        clause_count: u32::MAX,
     };
     let bytes = output.abi_encode_public_values();
     assert_eq!(bytes.len(), 128);

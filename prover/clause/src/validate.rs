@@ -1,7 +1,7 @@
 //! Content validator — validates a JSON content value against a parsed
-//! `SchemaSpec`. Rust mirror of `sdk/src/schemas/validate.ts`.
+//! `ClauseSpec`. Rust mirror of `sdk/src/clauses/validate.ts`.
 //!
-//! Call sites: SP1 zkVM prover (where the schema validator runs inside the
+//! Call sites: SP1 zkVM prover (where the clause validator runs inside the
 //! proof), off-chain sequencer (where it runs before submitting a batch),
 //! and any Rust SDK consumer.
 
@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use crate::spec::{
     looks_like_decimal_integer, ArrayFieldSpec, BigintFieldSpec, EnumFieldSpec, FieldSpec,
-    IntegerFieldSpec, ObjectFieldSpec, SchemaSpec, StringFieldSpec, StringFormat,
+    IntegerFieldSpec, ObjectFieldSpec, ClauseSpec, StringFieldSpec, StringFormat,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -417,7 +417,7 @@ fn validate_object(
             }
         }
     }
-    // Reject unknown fields — schema is a closed contract.
+    // Reject unknown fields — clause is a closed contract.
     for key in obj.keys() {
         if !known.contains(key.as_str()) {
             let child_path = if path == "$" {
@@ -427,7 +427,7 @@ fn validate_object(
             };
             errors.push(ValidationError {
                 path: child_path,
-                message: format!("unknown field \"{key}\" not declared in schema"),
+                message: format!("unknown field \"{key}\" not declared in clause"),
             });
         }
     }
@@ -484,7 +484,7 @@ fn format_name(f: StringFormat) -> &'static str {
 /// otherwise the spec's default `fields` apply.
 pub fn validate_content(
     content: &Value,
-    spec: &SchemaSpec,
+    spec: &ClauseSpec,
     options: ValidateOptions,
 ) -> ValidationResult {
     let fields: &[FieldSpec] = match options.stage {

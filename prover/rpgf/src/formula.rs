@@ -1,7 +1,7 @@
 use alloy_primitives::B256;
 use sha3::{Digest, Keccak256};
 
-use crate::types::SchemaSnapshot;
+use crate::types::ClauseSnapshot;
 
 // ─── Tier-1 graph weighting ──────────────────────────────────────────
 //
@@ -22,8 +22,8 @@ const TOPOLOGY_WEIGHT_MAX: f64 = 3.0;
 /// Tier-1 families. Hard-coded at deploy. Reversible only by a new FIG-
 /// system deployment (since the minter is sealed via
 /// `FigToken.renounceDeployerMint`). The *set of Tier-1 families* is
-/// deploy-frozen; the *set of schemas inside each family* grows
-/// permissionlessly — any third-party schema registered with
+/// deploy-frozen; the *set of clauses inside each family* grows
+/// permissionlessly — any third-party clause registered with
 /// `family = keccak256("geo")` or `keccak256("fulfilment")` inherits the
 /// Tier-1 weight at the next tranche without touching the kernel.
 fn is_tier1_family(family: &B256) -> bool {
@@ -44,7 +44,7 @@ pub struct WeightBreakdown {
     pub total: f64,
 }
 
-pub fn tier1_weight(s: &SchemaSnapshot) -> WeightBreakdown {
+pub fn tier1_weight(s: &ClauseSnapshot) -> WeightBreakdown {
     let w_category = if is_tier1_family(&s.family) {
         CATEGORY_WEIGHT_TIER1
     } else {
@@ -65,7 +65,7 @@ pub fn tier1_weight(s: &SchemaSnapshot) -> WeightBreakdown {
 /// rpgf-simulator. Other variants explored in the simulator are not
 /// implemented here — the SP1 program commits to one formula at
 /// deploy and lives with it for the 2/5/9-year tranche window.
-pub fn score(s: &SchemaSnapshot, alpha_num: u32, alpha_den: u32) -> f64 {
+pub fn score(s: &ClauseSnapshot, alpha_num: u32, alpha_den: u32) -> f64 {
     let c = s.distinct_processes as f64;
     let d = s.distinct_buyer_seller_pairs as f64;
     if c <= 0.0 || d <= 0.0 {

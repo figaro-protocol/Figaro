@@ -25,21 +25,21 @@ sol! {
             bytes32 orderHash;
             bytes32 processId;
             address attester;
-            bytes32 schemaId;
+            bytes32 clauseId;
             uint8 stage;
             bytes32 contentRef;
         }
 
-        struct SchemaDataCall {
-            bytes32 schemaId;
+        struct ClauseDataCall {
+            bytes32 clauseId;
             uint64 version;
             bytes32 uriHash;
             address registrar;
         }
 
-        struct MechanismSchemaDataCall {
+        struct MechanismClauseDataCall {
             address mechanism;
-            bytes32 schemaId;
+            bytes32 clauseId;
         }
 
         struct SellerEventInputCall {
@@ -50,8 +50,8 @@ sol! {
 
         struct BatchEventDataCall {
             AttestationDataCall[] attestations;
-            SchemaDataCall[] schemas;
-            MechanismSchemaDataCall[] mechanismSchemas;
+            ClauseDataCall[] clauses;
+            MechanismClauseDataCall[] mechanismClauses;
             SellerEventInputCall[] sellerEvents;
         }
 
@@ -112,31 +112,31 @@ pub async fn submit_batch(
             orderHash: a.order_hash,
             processId: a.process_id,
             attester: a.attester,
-            schemaId: a.schema_id,
+            clauseId: a.clause_id,
             stage: a.stage,
             contentRef: a.content_ref,
         })
         .collect();
 
-    let schemas: Vec<IFigaroBatchVerifier::SchemaDataCall> = result
+    let clauses: Vec<IFigaroBatchVerifier::ClauseDataCall> = result
         .events
-        .schemas
+        .clauses
         .iter()
-        .map(|s| IFigaroBatchVerifier::SchemaDataCall {
-            schemaId: s.schema_id,
+        .map(|s| IFigaroBatchVerifier::ClauseDataCall {
+            clauseId: s.clause_id,
             version: s.version,
             uriHash: s.uri_hash,
             registrar: s.registrar,
         })
         .collect();
 
-    let mechanism_schemas: Vec<IFigaroBatchVerifier::MechanismSchemaDataCall> = result
+    let mechanism_clauses: Vec<IFigaroBatchVerifier::MechanismClauseDataCall> = result
         .events
-        .mechanism_schemas
+        .mechanism_clauses
         .iter()
-        .map(|m| IFigaroBatchVerifier::MechanismSchemaDataCall {
+        .map(|m| IFigaroBatchVerifier::MechanismClauseDataCall {
             mechanism: m.mechanism,
-            schemaId: m.schema_id,
+            clauseId: m.clause_id,
         })
         .collect();
 
@@ -164,8 +164,8 @@ pub async fn submit_batch(
 
     let events_call = IFigaroBatchVerifier::BatchEventDataCall {
         attestations,
-        schemas,
-        mechanismSchemas: mechanism_schemas,
+        clauses,
+        mechanismClauses: mechanism_clauses,
         sellerEvents: seller_events,
     };
 

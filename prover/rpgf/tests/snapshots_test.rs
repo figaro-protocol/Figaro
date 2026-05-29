@@ -1,19 +1,19 @@
 use alloy_primitives::{address, Address, B256, U256};
 use figaro_rpgf::events::{
-    AttestationEvent, EventStream, OrderCreatedEvent, ProcessResolvedEvent, SchemaRegisteredEvent,
+    AttestationEvent, EventStream, OrderCreatedEvent, ProcessResolvedEvent, ClauseRegisteredEvent,
 };
 use figaro_rpgf::{aggregate, build_tranche_input};
 use sha3::{Digest, Keccak256};
 
-fn schema_id(s: &[u8]) -> B256 {
+fn clause_id(s: &[u8]) -> B256 {
     B256::from_slice(&Keccak256::digest(s))
 }
 
-fn family_for(schema: &[u8]) -> B256 {
-    // Mirror script/Deploy.s.sol family assignments for the schemas
+fn family_for(clause: &[u8]) -> B256 {
+    // Mirror script/Deploy.s.sol family assignments for the clauses
     // referenced in these tests. Open namespace — any keccak slug works
     // on-chain; the test fixtures pick canonical ones.
-    let slug: &[u8] = match schema {
+    let slug: &[u8] = match clause {
         b"figaro-commerce-v1" => b"commerce",
         b"figaro-geo-v2" => b"geo",
         b"figaro-fulfilment-v2" => b"fulfilment",
@@ -23,12 +23,12 @@ fn family_for(schema: &[u8]) -> B256 {
     B256::from_slice(&Keccak256::digest(slug))
 }
 
-fn schema_reg(schema: &[u8], registrar: Address) -> SchemaRegisteredEvent {
-    SchemaRegisteredEvent {
-        schema_id: schema_id(schema),
+fn clause_reg(clause: &[u8], registrar: Address) -> ClauseRegisteredEvent {
+    ClauseRegisteredEvent {
+        clause_id: clause_id(clause),
         version: 1,
         uri_hash: B256::ZERO,
-        family: family_for(schema),
+        family: family_for(clause),
         registrar,
     }
 }
@@ -60,14 +60,14 @@ fn proc(seed: u8) -> B256 {
     B256::from(h)
 }
 
-fn att(order_hash_seed: u8, process_id: B256, attester: Address, schema: &[u8], stage: u8) -> AttestationEvent {
+fn att(order_hash_seed: u8, process_id: B256, attester: Address, clause: &[u8], stage: u8) -> AttestationEvent {
     let mut h = [0u8; 32];
     h[31] = order_hash_seed;
     AttestationEvent {
         order_hash: B256::from(h),
         process_id,
         attester,
-        schema_id: schema_id(schema),
+        clause_id: clause_id(clause),
         stage,
         content_ref: B256::ZERO,
     }
@@ -97,7 +97,7 @@ fn unresolved_attestations_are_filtered_out() {
     let p = proc(1);
 
     let stream = EventStream {
-        schemas_registered: vec![schema_reg(b"figaro-commerce-v1", alice)],
+        clauses_registered: vec![clause_reg(b"figaro-commerce-v1", alice)],
         orders_created: vec![order(1, p, alice, bob, 1)],
         processes_resolved: vec![], // ← process never resolved
         attestations: vec![att(1, p, alice, b"figaro-commerce-v1", 1)],
@@ -113,7 +113,7 @@ fn unknown_order_hash_is_filtered_out() {
     let p = proc(1);
 
     let stream = EventStream {
-        schemas_registered: vec![schema_reg(b"figaro-commerce-v1", alice)],
+        clauses_registered: vec![clause_reg(b"figaro-commerce-v1", alice)],
         orders_created: vec![], // ← no orders
         processes_resolved: vec![ProcessResolvedEvent { process_id: p }],
         attestations: vec![att(1, p, alice, b"figaro-commerce-v1", 1)],
@@ -131,7 +131,7 @@ fn single_resolved_attestation_produces_correct_snapshot() {
     let author = address!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
     let stream = EventStream {
-        schemas_registered: vec![schema_reg(b"figaro-commerce-v1", author)],
+        clauses_registered: vec![clause_reg(b"figaro-commerce-v1", author)],
         orders_created: vec![order(1, p, alice, bob, 1)],
         processes_resolved: vec![ProcessResolvedEvent { process_id: p }],
         attestations: vec![att(1, p, alice, b"figaro-commerce-v1", 1)],
@@ -140,8 +140,8 @@ fn single_resolved_attestation_produces_correct_snapshot() {
     let input = default_tranche(&stream);
     assert_eq!(input.snapshots.len(), 1);
     let s = &input.snapshots[0];
-    assert_eq!(s.schema_id, schema_id(b"figaro-commerce-v1"));
-    assert_eq!(s.schema_author, author);
+    assert_eq!(s.clause_id, clause_id(b"figaro-commerce-v1"));
+    assert_eq!(s.clause_author, author);
     assert_eq!(s.resolved_attestation_count, 1);
     assert_eq!(s.distinct_processes, 1);
     assert_eq!(s.distinct_buyers, 1);
@@ -152,7 +152,7 @@ fn single_resolved_attestation_produces_correct_snapshot() {
 
 #[test]
 fn distinct_pairs_counted_correctly() {
-    // One schema, three orders with three distinct buyer-seller pairs.
+    // One clause, three orders with three distinct buyer-seller pairs.
     let alice = address!("1111111111111111111111111111111111111111");
     let bob = address!("2222222222222222222222222222222222222222");
     let carol = address!("3333333333333333333333333333333333333333");
@@ -161,7 +161,7 @@ fn distinct_pairs_counted_correctly() {
     let author = address!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
     let stream = EventStream {
-        schemas_registered: vec![schema_reg(b"figaro-fulfilment-v2", author)],
+        clauses_registered: vec![clause_reg(b"figaro-fulfilment-v2", author)],
         orders_created: vec![
             order(1, p, alice, bob, 1),
             order(2, p, alice, carol, 1),
@@ -189,7 +189,7 @@ fn distinct_pairs_counted_correctly() {
 
 #[test]
 fn sybil_repeat_pair_counts_only_once_for_diversity() {
-    // Same buyer-seller pair attesting 5 times under one schema —
+    // Same buyer-seller pair attesting 5 times under one clause —
     // pairs should remain 1 regardless of attestation count.
     let alice = address!("1111111111111111111111111111111111111111");
     let bob = address!("2222222222222222222222222222222222222222");
@@ -204,7 +204,7 @@ fn sybil_repeat_pair_counts_only_once_for_diversity() {
     }
 
     let stream = EventStream {
-        schemas_registered: vec![schema_reg(b"hypothetical-wash-v1", author)],
+        clauses_registered: vec![clause_reg(b"hypothetical-wash-v1", author)],
         orders_created: orders,
         processes_resolved: vec![ProcessResolvedEvent { process_id: p }],
         attestations: atts,
@@ -218,7 +218,7 @@ fn sybil_repeat_pair_counts_only_once_for_diversity() {
 }
 
 #[test]
-fn multi_schema_produces_multi_snapshots() {
+fn multi_clause_produces_multi_snapshots() {
     let alice = address!("1111111111111111111111111111111111111111");
     let bob = address!("2222222222222222222222222222222222222222");
     let p = proc(1);
@@ -226,9 +226,9 @@ fn multi_schema_produces_multi_snapshots() {
     let author_b = address!("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
 
     let stream = EventStream {
-        schemas_registered: vec![
-            schema_reg(b"figaro-commerce-v1", author_a),
-            schema_reg(b"figaro-geo-v2", author_b),
+        clauses_registered: vec![
+            clause_reg(b"figaro-commerce-v1", author_a),
+            clause_reg(b"figaro-geo-v2", author_b),
         ],
         orders_created: vec![order(1, p, alice, bob, 3)],
         processes_resolved: vec![ProcessResolvedEvent { process_id: p }],
@@ -244,28 +244,28 @@ fn multi_schema_produces_multi_snapshots() {
     let commerce = input
         .snapshots
         .iter()
-        .find(|s| s.schema_id == schema_id(b"figaro-commerce-v1"))
+        .find(|s| s.clause_id == clause_id(b"figaro-commerce-v1"))
         .unwrap();
     let geo = input
         .snapshots
         .iter()
-        .find(|s| s.schema_id == schema_id(b"figaro-geo-v2"))
+        .find(|s| s.clause_id == clause_id(b"figaro-geo-v2"))
         .unwrap();
 
-    assert_eq!(commerce.schema_author, author_a);
-    assert_eq!(geo.schema_author, author_b);
+    assert_eq!(commerce.clause_author, author_a);
+    assert_eq!(geo.clause_author, author_b);
     assert_eq!(commerce.mean_chain_position_x1e6, 3_000_000);
     assert_eq!(geo.mean_chain_position_x1e6, 3_000_000);
 }
 
 #[test]
-fn missing_schema_registration_falls_back_to_zero_address() {
+fn missing_clause_registration_falls_back_to_zero_address() {
     let alice = address!("1111111111111111111111111111111111111111");
     let bob = address!("2222222222222222222222222222222222222222");
     let p = proc(1);
 
     let stream = EventStream {
-        schemas_registered: vec![], // ← author unknown
+        clauses_registered: vec![], // ← author unknown
         orders_created: vec![order(1, p, alice, bob, 1)],
         processes_resolved: vec![ProcessResolvedEvent { process_id: p }],
         attestations: vec![att(1, p, alice, b"figaro-commerce-v1", 1)],
@@ -273,21 +273,21 @@ fn missing_schema_registration_falls_back_to_zero_address() {
 
     let input = default_tranche(&stream);
     assert_eq!(input.snapshots.len(), 1);
-    assert_eq!(input.snapshots[0].schema_author, Address::ZERO);
+    assert_eq!(input.snapshots[0].clause_author, Address::ZERO);
 }
 
 #[test]
-fn snapshots_sorted_by_schema_id_for_determinism() {
+fn snapshots_sorted_by_clause_id_for_determinism() {
     let alice = address!("1111111111111111111111111111111111111111");
     let bob = address!("2222222222222222222222222222222222222222");
     let p = proc(1);
     let author = address!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
     let stream = EventStream {
-        schemas_registered: vec![
-            schema_reg(b"figaro-commerce-v1", author),
-            schema_reg(b"figaro-geo-v2", author),
-            schema_reg(b"figaro-fulfilment-v2", author),
+        clauses_registered: vec![
+            clause_reg(b"figaro-commerce-v1", author),
+            clause_reg(b"figaro-geo-v2", author),
+            clause_reg(b"figaro-fulfilment-v2", author),
         ],
         orders_created: vec![order(1, p, alice, bob, 1)],
         processes_resolved: vec![ProcessResolvedEvent { process_id: p }],
@@ -299,12 +299,12 @@ fn snapshots_sorted_by_schema_id_for_determinism() {
     };
 
     // Two runs should produce identical TrancheInput (modulo allocations
-    // of references). We verify ordering by checking schema_id is sorted.
+    // of references). We verify ordering by checking clause_id is sorted.
     let input = default_tranche(&stream);
     for i in 1..input.snapshots.len() {
         assert!(
-            input.snapshots[i - 1].schema_id < input.snapshots[i].schema_id,
-            "snapshots must be sorted by schema_id"
+            input.snapshots[i - 1].clause_id < input.snapshots[i].clause_id,
+            "snapshots must be sorted by clause_id"
         );
     }
 }
@@ -318,7 +318,7 @@ fn end_to_end_aggregate_consumes_built_input() {
     let author = address!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
     let stream = EventStream {
-        schemas_registered: vec![schema_reg(b"figaro-geo-v2", author)],
+        clauses_registered: vec![clause_reg(b"figaro-geo-v2", author)],
         orders_created: vec![order(1, p, alice, bob, 3)],
         processes_resolved: vec![ProcessResolvedEvent { process_id: p }],
         attestations: vec![att(1, p, alice, b"figaro-geo-v2", 1)],
@@ -328,8 +328,8 @@ fn end_to_end_aggregate_consumes_built_input() {
     let output = aggregate(&input);
 
     assert_eq!(output.tranche_index, 0);
-    assert_eq!(output.schema_count, 1);
-    // Single-schema population → pre-cap share is 100%; the 15% cap
+    assert_eq!(output.clause_count, 1);
+    // Single-clause population → pre-cap share is 100%; the 15% cap
     // binds and total allocated = 15% of the budget. The remaining
     // 85% goes unallocated (cap is meant to bound concentration, not
     // to ensure full budget consumption).

@@ -11,23 +11,23 @@ use figaro_kernel::kernel::apply_batch;
 use figaro_kernel::types::*;
 
 /// Encode `content` under the canonical Layer B encoder for the given
-/// schema key. Post-Keystone there is no per-schema dispatch — every
+/// clause key. Post-Keystone there is no per-clause dispatch — every
 /// caller looks up the embedded spec, parses it, and runs
 /// `encode_content_from_spec`. This three-step pattern lives here so
 /// the test bodies stay one-liners.
-fn encode_for_schema_key(schema_id_str: &str, content: &serde_json::Value) -> Vec<u8> {
-    let json = figaro_schema::embedded_spec_json_by_key(schema_id_str)
-        .unwrap_or_else(|| panic!("no embedded spec for {schema_id_str}"));
+fn encode_for_clause_key(clause_id_str: &str, content: &serde_json::Value) -> Vec<u8> {
+    let json = figaro_clause::embedded_spec_json_by_key(clause_id_str)
+        .unwrap_or_else(|| panic!("no embedded spec for {clause_id_str}"));
     let parsed: serde_json::Value = serde_json::from_str(json)
-        .unwrap_or_else(|e| panic!("embedded spec for {schema_id_str} is not valid JSON: {e}"));
-    let spec = match figaro_schema::parse_schema_spec(&parsed) {
-        figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
-        figaro_schema::ParseSchemaSpecResult::Err(errors) => {
-            panic!("embedded spec for {schema_id_str} failed to parse: {errors:?}")
+        .unwrap_or_else(|e| panic!("embedded spec for {clause_id_str} is not valid JSON: {e}"));
+    let spec = match figaro_clause::parse_clause_spec(&parsed) {
+        figaro_clause::ParseClauseSpecResult::Ok(s) => s,
+        figaro_clause::ParseClauseSpecResult::Err(errors) => {
+            panic!("embedded spec for {clause_id_str} failed to parse: {errors:?}")
         }
     };
-    figaro_schema::encode_content_from_spec(&spec, content)
-        .unwrap_or_else(|e| panic!("canonical encoder must succeed for {schema_id_str}: {e}"))
+    figaro_clause::encode_content_from_spec(&spec, content)
+        .unwrap_or_else(|e| panic!("canonical encoder must succeed for {clause_id_str}: {e}"))
 }
 
 // ── Test keys (match Foundry's constants) ─────────────────────────
@@ -203,7 +203,7 @@ fn test_full_batch_commit_and_state() {
             processes: vec![],
             order_status: vec![],
             order_process_id: vec![],
-            schemas_registered: vec![],
+            clauses_registered: vec![],
             sellers_registered: vec![],
         },
     };
@@ -274,7 +274,7 @@ fn test_full_batch_commit_resolve_payouts() {
             processes: vec![],
             order_status: vec![],
             order_process_id: vec![],
-            schemas_registered: vec![],
+            clauses_registered: vec![],
             sellers_registered: vec![],
         },
     };
@@ -336,21 +336,21 @@ fn empty_snapshot() -> KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
         order_process_id: vec![],
-        schemas_registered: vec![],
+        clauses_registered: vec![],
         sellers_registered: vec![],    }
 }
 
-// ── Schema Registry tests ─────────────────────────────────────────
+// ── Clause Registry tests ─────────────────────────────────────────
 
 #[test]
-fn test_register_schema() {
+fn test_register_clause() {
     let registrar_key = make_signing_key(BUYER_KEY); // any key works
     let domain = domain_separator(CHAIN_ID, CORE);
-    let schema_id = keccak256(b"figaro-courier-process-v1");
+    let clause_id = keccak256(b"figaro-courier-process-v1");
     let uri_hash = keccak256(b"ipfs://Qm...");
     let family = keccak256(b"seller-process");
 
-    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
+    let struct_hash = register_clause_struct_hash(&clause_id, 1, &uri_hash, &family);
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&registrar_key, &digest);
 
@@ -358,8 +358,8 @@ fn test_register_schema() {
         chain_id: CHAIN_ID,
         verifying_contract: CORE,
         block_timestamp: 1000,
-        operations: vec![KernelOp::RegisterSchema {
-            schema_id,
+        operations: vec![KernelOp::RegisterClause {
+            clause_id,
             version: 1,
             uri_hash,
             family,
@@ -370,21 +370,21 @@ fn test_register_schema() {
 
     let (pv, _positions, events) = apply_batch(&input).unwrap();
     assert_ne!(pv.prev_state_root, pv.new_state_root);
-    assert_eq!(events.schemas.len(), 1);
-    assert_eq!(events.schemas[0].schema_id, schema_id);
-    assert_eq!(events.schemas[0].version, 1);
-    assert_eq!(events.schemas[0].registrar, BUYER);
+    assert_eq!(events.clauses.len(), 1);
+    assert_eq!(events.clauses[0].clause_id, clause_id);
+    assert_eq!(events.clauses[0].version, 1);
+    assert_eq!(events.clauses[0].registrar, BUYER);
 }
 
 #[test]
-fn test_register_schema_duplicate_fails() {
+fn test_register_clause_duplicate_fails() {
     let registrar_key = make_signing_key(BUYER_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
-    let schema_id = keccak256(b"figaro-test-v1");
+    let clause_id = keccak256(b"figaro-test-v1");
     let uri_hash = keccak256(b"ipfs://test");
     let family = keccak256(b"test-family");
 
-    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
+    let struct_hash = register_clause_struct_hash(&clause_id, 1, &uri_hash, &family);
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&registrar_key, &digest);
 
@@ -393,15 +393,15 @@ fn test_register_schema_duplicate_fails() {
         verifying_contract: CORE,
         block_timestamp: 1000,
         operations: vec![
-            KernelOp::RegisterSchema {
-                schema_id,
+            KernelOp::RegisterClause {
+                clause_id,
                 version: 1,
                 uri_hash,
                 family,
                 registrar_sig: sig.clone(),
             },
-            KernelOp::RegisterSchema {
-                schema_id,
+            KernelOp::RegisterClause {
+                clause_id,
                 version: 2,
                 uri_hash,
                 family,
@@ -412,25 +412,25 @@ fn test_register_schema_duplicate_fails() {
     };
 
     let err = apply_batch(&input).unwrap_err();
-    assert!(matches!(err, KernelError::SchemaAlreadyRegistered(_)));
+    assert!(matches!(err, KernelError::ClauseAlreadyRegistered(_)));
 }
 
 #[test]
-fn test_set_mechanism_schema() {
+fn test_set_mechanism_clause() {
     let registrar_key = make_signing_key(BUYER_KEY);
     let mechanism_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
-    let schema_id = keccak256(b"figaro-ghg-v1");
+    let clause_id = keccak256(b"figaro-ghg-v1");
     let uri_hash = keccak256(b"ipfs://ghg");
     let family = keccak256(b"emissions");
 
-    // First register the schema
-    let reg_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
+    // First register the clause
+    let reg_struct = register_clause_struct_hash(&clause_id, 1, &uri_hash, &family);
     let reg_digest = typed_data_hash(&domain, &reg_struct);
     let reg_sig = sign_digest(&registrar_key, &reg_digest);
 
     // Then declare mechanism binding
-    let mech_struct = set_mechanism_schema_struct_hash(&schema_id);
+    let mech_struct = set_mechanism_clause_struct_hash(&clause_id);
     let mech_digest = typed_data_hash(&domain, &mech_struct);
     let mech_sig = sign_digest(&mechanism_key, &mech_digest);
 
@@ -439,15 +439,15 @@ fn test_set_mechanism_schema() {
         verifying_contract: CORE,
         block_timestamp: 1000,
         operations: vec![
-            KernelOp::RegisterSchema {
-                schema_id,
+            KernelOp::RegisterClause {
+                clause_id,
                 version: 1,
                 uri_hash,
                 family,
                 registrar_sig: reg_sig,
             },
-            KernelOp::SetMechanismSchema {
-                schema_id,
+            KernelOp::SetMechanismClause {
+                clause_id,
                 mechanism_sig: mech_sig,
             },
         ],
@@ -455,18 +455,18 @@ fn test_set_mechanism_schema() {
     };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
-    assert_eq!(events.mechanism_schemas.len(), 1);
-    assert_eq!(events.mechanism_schemas[0].mechanism, SELLER1);
-    assert_eq!(events.mechanism_schemas[0].schema_id, schema_id);
+    assert_eq!(events.mechanism_clauses.len(), 1);
+    assert_eq!(events.mechanism_clauses[0].mechanism, SELLER1);
+    assert_eq!(events.mechanism_clauses[0].clause_id, clause_id);
 }
 
 #[test]
-fn test_set_mechanism_schema_unregistered_fails() {
+fn test_set_mechanism_clause_unregistered_fails() {
     let mechanism_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
-    let schema_id = keccak256(b"figaro-nonexistent-v1");
+    let clause_id = keccak256(b"figaro-nonexistent-v1");
 
-    let mech_struct = set_mechanism_schema_struct_hash(&schema_id);
+    let mech_struct = set_mechanism_clause_struct_hash(&clause_id);
     let mech_digest = typed_data_hash(&domain, &mech_struct);
     let mech_sig = sign_digest(&mechanism_key, &mech_digest);
 
@@ -474,15 +474,15 @@ fn test_set_mechanism_schema_unregistered_fails() {
         chain_id: CHAIN_ID,
         verifying_contract: CORE,
         block_timestamp: 1000,
-        operations: vec![KernelOp::SetMechanismSchema {
-            schema_id,
+        operations: vec![KernelOp::SetMechanismClause {
+            clause_id,
             mechanism_sig: mech_sig,
         }],
         prev_state: empty_snapshot(),
     };
 
     let err = apply_batch(&input).unwrap_err();
-    assert!(matches!(err, KernelError::SchemaNotRegistered(_)));
+    assert!(matches!(err, KernelError::ClauseNotRegistered(_)));
 }
 
 // ── Seller Registry tests ───────────────────────────────────────
@@ -631,15 +631,15 @@ fn test_attest_as_seller() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    // A non-protocol schemaId — the attestation is content-opaque, so no
+    // A non-protocol clauseId — the attestation is content-opaque, so no
     // content_proof is required even with a non-zero content_ref.
-    let schema_id = keccak256(b"figaro-test-v1");
+    let clause_id = keccak256(b"figaro-test-v1");
     let content_ref = keccak256(b"evidence-data");
 
     // Build attestation signature
     let root_struct = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
-    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 1, &content_ref);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &clause_id, 1, &content_ref);
     let attest_digest = typed_data_hash(&domain, &attest_struct);
     let attest_sig = sign_digest(&seller1_key, &attest_digest);
 
@@ -656,7 +656,7 @@ fn test_attest_as_seller() {
             KernelOp::AttestAsSeller {
                 role_commitment: root,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage: 1,
                 content_ref,
                 seller_sig: attest_sig,
@@ -671,7 +671,7 @@ fn test_attest_as_seller() {
     assert_eq!(events.attestations[0].order_hash, order_hash);
     assert_eq!(events.attestations[0].process_id, PROCESS_ID);
     assert_eq!(events.attestations[0].attester, SELLER1);
-    assert_eq!(events.attestations[0].schema_id, schema_id);
+    assert_eq!(events.attestations[0].clause_id, clause_id);
     assert_eq!(events.attestations[0].stage, 1);
     assert_eq!(events.attestations[0].content_ref, content_ref);
 }
@@ -686,14 +686,14 @@ fn test_attest_as_buyer() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let schema_id = keccak256(b"figaro-quality-v1");
+    let clause_id = keccak256(b"figaro-quality-v1");
     let content_ref = keccak256(b"buyer-evidence");
 
     let root_struct = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
 
     let attest_struct =
-        attest_buyer_struct_hash(&PROCESS_ID, &order_hash, &schema_id, 0, &content_ref);
+        attest_buyer_struct_hash(&PROCESS_ID, &order_hash, &clause_id, 0, &content_ref);
     let attest_digest = typed_data_hash(&domain, &attest_struct);
     let attest_sig = sign_digest(&buyer_key, &attest_digest);
 
@@ -710,7 +710,7 @@ fn test_attest_as_buyer() {
             KernelOp::AttestAsBuyer {
                 process_id: PROCESS_ID,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage: 0,
                 content_ref,
                 buyer_sig: attest_sig,
@@ -723,7 +723,7 @@ fn test_attest_as_buyer() {
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.attestations.len(), 1);
     assert_eq!(events.attestations[0].attester, BUYER);
-    assert_eq!(events.attestations[0].schema_id, schema_id);
+    assert_eq!(events.attestations[0].clause_id, clause_id);
 }
 
 #[test]
@@ -737,14 +737,14 @@ fn test_attest_as_seller_wrong_signer_fails() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let schema_id = keccak256(b"figaro-test-v1");
+    let clause_id = keccak256(b"figaro-test-v1");
     let content_ref = B256::ZERO;
 
     let root_struct = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
 
     // Sign with seller2 but root's seller is seller1
-    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &clause_id, 0, &content_ref);
     let attest_digest = typed_data_hash(&domain, &attest_struct);
     let attest_sig = sign_digest(&seller2_key, &attest_digest);
 
@@ -761,7 +761,7 @@ fn test_attest_as_seller_wrong_signer_fails() {
             KernelOp::AttestAsSeller {
                 role_commitment: root,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage: 0,
                 content_ref,
                 seller_sig: attest_sig,
@@ -807,7 +807,7 @@ fn test_attest_as_buyer_wrong_signer_fails() {
             KernelOp::AttestAsBuyer {
                 process_id: PROCESS_ID,
                 order_hash,
-                schema_id: keccak256(b"s"),
+                clause_id: keccak256(b"s"),
                 stage: 0,
                 content_ref: B256::ZERO,
                 buyer_sig: attest_sig,
@@ -836,19 +836,19 @@ fn test_mixed_batch_all_operations() {
     let root_struct = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
 
-    // Schema registration
-    let schema_id = keccak256(b"figaro-mixed-test-v1");
+    // Clause registration
+    let clause_id = keccak256(b"figaro-mixed-test-v1");
     let uri_hash = keccak256(b"ipfs://mixed");
     let family = keccak256(b"test-family");
-    let schema_struct = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
-    let schema_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &schema_struct));
+    let clause_struct = register_clause_struct_hash(&clause_id, 1, &uri_hash, &family);
+    let clause_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &clause_struct));
 
     // Seller registration
     let op_struct = register_seller_struct_hash("ipfs://op");
     let op_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &op_struct));
 
     // Seller attestation
-    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &B256::ZERO);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &clause_id, 0, &B256::ZERO);
     let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
 
     // Resolve
@@ -866,13 +866,13 @@ fn test_mixed_batch_all_operations() {
                 buyer_sig: root_buyer_sig,
                 seller_sig: root_seller_sig,
             },
-            // 2. Register schema
-            KernelOp::RegisterSchema {
-                schema_id,
+            // 2. Register clause
+            KernelOp::RegisterClause {
+                clause_id,
                 version: 1,
                 uri_hash,
                 family,
-                registrar_sig: schema_sig,
+                registrar_sig: clause_sig,
             },
             // 3. Register seller
             KernelOp::RegisterSeller {
@@ -883,7 +883,7 @@ fn test_mixed_batch_all_operations() {
             KernelOp::AttestAsSeller {
                 role_commitment: root.clone(),
                 order_hash,
-                schema_id,
+                clause_id,
                 stage: 0,
                 content_ref: B256::ZERO,
                 seller_sig: attest_sig,
@@ -901,15 +901,15 @@ fn test_mixed_batch_all_operations() {
 
     let (pv, positions, events) = apply_batch(&input).unwrap();
 
-    // State changed (commit + resolve + schema + seller)
+    // State changed (commit + resolve + clause + seller)
     assert_ne!(pv.prev_state_root, pv.new_state_root);
     // Event hashes are non-zero (events were emitted)
     assert_ne!(pv.attestation_events_hash, B256::ZERO);
-    assert_ne!(pv.schema_events_hash, B256::ZERO);
+    assert_ne!(pv.clause_events_hash, B256::ZERO);
     assert_ne!(pv.seller_events_hash, B256::ZERO);
     // Events collected
     assert_eq!(events.attestations.len(), 1);
-    assert_eq!(events.schemas.len(), 1);
+    assert_eq!(events.clauses.len(), 1);
     assert_eq!(events.sellers.len(), 1);
     // Token flows exist (from commit + resolve)
     assert!(!positions.is_empty());
@@ -919,17 +919,17 @@ fn test_mixed_batch_all_operations() {
 //
 // These tests cover the AttestationContentProof gate in apply_batch:
 // when a seller attestation carries a content_proof, the kernel looks
-// up the canonical embedded spec for the op's schemaId and runs the
+// up the canonical embedded spec for the op's clauseId and runs the
 // gates (content validates, canonical bytes derived, derived bytes hash
 // to content_ref) — emitting the event only if every gate passes.
 
 /// Build `[Commit, AttestAsSeller]` for a seller attestation carrying a
-/// Layer B content_proof under a cross-checking schema.
+/// Layer B content_proof under a cross-checking clause.
 ///
 /// The committed role commitment's `agreement_hash` is the single-section
-/// agreement tree whose lone clause is this schema, so Gate 5 (agreement
+/// agreement tree whose lone clause is this clause, so Gate 5 (agreement
 /// inclusion) verifies with an empty proof — `agreement_hash` IS the leaf.
-/// `content_ref` is `keccak256(encode_for_schema_key(...))`, so Gates
+/// `content_ref` is `keccak256(encode_for_clause_key(...))`, so Gates
 /// 3–4 also pass for valid content. The caller must commit the returned
 /// pair together: `agreement_hash` is part of the commitment struct hash,
 /// so the Commit and the AttestAsSeller must reference the same commitment.
@@ -937,17 +937,17 @@ fn build_commit_and_canonical_attest(
     domain: &B256,
     buyer_key: &SigningKey,
     seller_key: &SigningKey,
-    schema_id_str: &str,
+    clause_id_str: &str,
     content_json: serde_json::Value,
 ) -> Vec<KernelOp> {
-    let schema_id = keccak256(schema_id_str.as_bytes());
-    let canonical_bytes = encode_for_schema_key(schema_id_str, &content_json);
+    let clause_id = keccak256(clause_id_str.as_bytes());
+    let canonical_bytes = encode_for_clause_key(clause_id_str, &content_json);
     let content_ref = keccak256(canonical_bytes.as_slice());
 
     // Single-section agreement: the lone section leaf IS the agreement_hash.
-    // Cross-checking schema → leaf = keccak256(schemaId ++ content_ref).
+    // Cross-checking clause → leaf = keccak256(clauseId ++ content_ref).
     let mut leaf_preimage = [0u8; 64];
-    leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+    leaf_preimage[..32].copy_from_slice(clause_id.as_slice());
     leaf_preimage[32..].copy_from_slice(content_ref.as_slice());
     let agreement_hash = keccak256(leaf_preimage);
 
@@ -961,7 +961,7 @@ fn build_commit_and_canonical_attest(
     let role_struct = commitment_struct_hash(&role);
     let process_id = typed_data_hash(domain, &role_struct);
     let order_hash = compute_order_hash(&process_id, &role_struct);
-    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &clause_id, 0, &content_ref);
     let attest_sig = sign_digest(seller_key, &typed_data_hash(domain, &attest_struct));
 
     vec![
@@ -973,7 +973,7 @@ fn build_commit_and_canonical_attest(
         KernelOp::AttestAsSeller {
             role_commitment: role,
             order_hash,
-            schema_id,
+            clause_id,
             stage: 0,
             content_ref,
             seller_sig: attest_sig,
@@ -1008,7 +1008,7 @@ fn attest_as_seller_with_valid_content_proof_passes() {
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
     assert_eq!(events.attestations.len(), 1);
-    assert_eq!(events.attestations[0].schema_id, keccak256(b"figaro-ghg-protocol-v1"));
+    assert_eq!(events.attestations[0].clause_id, keccak256(b"figaro-ghg-protocol-v1"));
     assert_eq!(events.attestations[0].stage, 0);
 }
 
@@ -1022,7 +1022,7 @@ fn attest_as_seller_with_content_hash_mismatch_fails() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
+    let clause_id = keccak256(b"figaro-ghg-protocol-v1");
     let content_json = serde_json::json!({ "scope": 1 });
 
     let root_struct = commitment_struct_hash(&root);
@@ -1031,7 +1031,7 @@ fn attest_as_seller_with_content_hash_mismatch_fails() {
     // of any content_json. The attestation signature is computed over
     // this hash to isolate the failure to Gate 4 (keccak mismatch).
     let wrong_content_ref = keccak256(b"completely different bytes");
-    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &wrong_content_ref);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &clause_id, 0, &wrong_content_ref);
     let attest_digest = typed_data_hash(&domain, &attest_struct);
     let attest_sig = sign_digest(&seller1_key, &attest_digest);
 
@@ -1048,7 +1048,7 @@ fn attest_as_seller_with_content_hash_mismatch_fails() {
             KernelOp::AttestAsSeller {
                 role_commitment: root,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage: 0,
                 content_ref: wrong_content_ref,
                 seller_sig: attest_sig,
@@ -1094,15 +1094,15 @@ fn attest_as_seller_with_invalid_content_fails() {
 
     let err = apply_batch(&input).unwrap_err();
     assert!(
-        matches!(err, KernelError::SchemaContentInvalid(_)),
-        "expected SchemaContentInvalid, got {err:?}",
+        matches!(err, KernelError::ClauseContentInvalid(_)),
+        "expected ClauseContentInvalid, got {err:?}",
     );
 }
 
 #[test]
-fn attest_as_seller_with_unsupported_schema_encoder_fails() {
-    // Attest under a schemaId that is not one of the runtime-attestable
-    // protocol schemas — the kernel has no embedded spec for it, so the
+fn attest_as_seller_with_unsupported_clause_encoder_fails() {
+    // Attest under a clauseId that is not one of the runtime-attestable
+    // protocol clauses — the kernel has no embedded spec for it, so the
     // content gate rejects at the spec-lookup step.
     let buyer_key = make_signing_key(BUYER_KEY);
     let seller1_key = make_signing_key(SELLER1_KEY);
@@ -1112,8 +1112,8 @@ fn attest_as_seller_with_unsupported_schema_encoder_fails() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let unknown_schema_id_str = "figaro-bogus-v99";
-    let schema_id = keccak256(unknown_schema_id_str.as_bytes());
+    let unknown_clause_id_str = "figaro-bogus-v99";
+    let clause_id = keccak256(unknown_clause_id_str.as_bytes());
     let content_json = serde_json::json!({ "x": "ok" });
 
     // content_ref is arbitrary — the kernel rejects at the embedded-spec
@@ -1121,7 +1121,7 @@ fn attest_as_seller_with_unsupported_schema_encoder_fails() {
     let root_struct = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
     let placeholder_ref = keccak256(b"placeholder");
-    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &placeholder_ref);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &clause_id, 0, &placeholder_ref);
     let attest_digest = typed_data_hash(&domain, &attest_struct);
     let attest_sig = sign_digest(&seller1_key, &attest_digest);
 
@@ -1138,7 +1138,7 @@ fn attest_as_seller_with_unsupported_schema_encoder_fails() {
             KernelOp::AttestAsSeller {
                 role_commitment: root,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage: 0,
                 content_ref: placeholder_ref,
                 seller_sig: attest_sig,
@@ -1155,14 +1155,14 @@ fn attest_as_seller_with_unsupported_schema_encoder_fails() {
 
     let err = apply_batch(&input).unwrap_err();
     assert!(
-        matches!(err, KernelError::SchemaEncoderMissing(_)),
-        "expected SchemaEncoderMissing, got {err:?}",
+        matches!(err, KernelError::ClauseEncoderMissing(_)),
+        "expected ClauseEncoderMissing, got {err:?}",
     );
 }
 
 #[test]
-fn attest_as_seller_under_protocol_schema_requires_content_proof() {
-    // A seller attestation under a content-bearing protocol schema with a
+fn attest_as_seller_under_protocol_clause_requires_content_proof() {
+    // A seller attestation under a content-bearing protocol clause with a
     // non-zero content_ref but no content_proof must be rejected — the
     // batched path will not record content it cannot validate.
     let buyer_key = make_signing_key(BUYER_KEY);
@@ -1173,11 +1173,11 @@ fn attest_as_seller_under_protocol_schema_requires_content_proof() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
+    let clause_id = keccak256(b"figaro-ghg-protocol-v1");
     let content_ref = keccak256(b"some-content");
     let root_struct = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
-    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &clause_id, 0, &content_ref);
     let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
 
     let input = BatchInput {
@@ -1193,7 +1193,7 @@ fn attest_as_seller_under_protocol_schema_requires_content_proof() {
             KernelOp::AttestAsSeller {
                 role_commitment: root,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage: 0,
                 content_ref,
                 seller_sig: attest_sig,
@@ -1221,16 +1221,16 @@ fn attest_as_seller_with_wrong_inclusion_proof_fails() {
     let seller1_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
 
-    let schema_id_str = "figaro-ghg-protocol-v1";
-    let schema_id = keccak256(schema_id_str.as_bytes());
+    let clause_id_str = "figaro-ghg-protocol-v1";
+    let clause_id = keccak256(clause_id_str.as_bytes());
     let content_json = serde_json::json!({ "scope": 1 });
     let canonical_bytes =
-        encode_for_schema_key(schema_id_str, &content_json);
+        encode_for_clause_key(clause_id_str, &content_json);
     let content_ref = keccak256(canonical_bytes.as_slice());
 
     // Single-section agreement: agreement_hash IS the lone section leaf.
     let mut leaf_preimage = [0u8; 64];
-    leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+    leaf_preimage[..32].copy_from_slice(clause_id.as_slice());
     leaf_preimage[32..].copy_from_slice(content_ref.as_slice());
     let agreement_hash = keccak256(leaf_preimage);
 
@@ -1242,7 +1242,7 @@ fn attest_as_seller_with_wrong_inclusion_proof_fails() {
     let role_struct = commitment_struct_hash(&role);
     let process_id = typed_data_hash(&domain, &role_struct);
     let order_hash = compute_order_hash(&process_id, &role_struct);
-    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &clause_id, 0, &content_ref);
     let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
 
     let input = BatchInput {
@@ -1258,7 +1258,7 @@ fn attest_as_seller_with_wrong_inclusion_proof_fails() {
             KernelOp::AttestAsSeller {
                 role_commitment: role,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage: 0,
                 content_ref,
                 seller_sig: attest_sig,
@@ -1281,7 +1281,7 @@ fn attest_as_seller_with_wrong_inclusion_proof_fails() {
 }
 
 #[test]
-fn attest_as_seller_non_cross_checking_schema_requires_section_data() {
+fn attest_as_seller_non_cross_checking_clause_requires_section_data() {
     // figaro-ghg-measurement-v1 is Category-1 (non-cross-checking): its
     // committed sectionData is canonical JSON, not the ABI content form, so
     // the agreement Merkle leaf cannot be derived from content_ref alone. A
@@ -1294,16 +1294,16 @@ fn attest_as_seller_non_cross_checking_schema_requires_section_data() {
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
     let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let schema_id_str = "figaro-ghg-measurement-v1";
-    let schema_id = keccak256(schema_id_str.as_bytes());
+    let clause_id_str = "figaro-ghg-measurement-v1";
+    let clause_id = keccak256(clause_id_str.as_bytes());
     let content_json = serde_json::json!({ "grams": "1000" });
     let canonical_bytes =
-        encode_for_schema_key(schema_id_str, &content_json);
+        encode_for_clause_key(clause_id_str, &content_json);
     let content_ref = keccak256(canonical_bytes.as_slice());
 
     let root_struct = commitment_struct_hash(&root);
     let order_hash = compute_order_hash(&PROCESS_ID, &root_struct);
-    let attest_struct = attest_seller_struct_hash(&order_hash, &schema_id, 1, &content_ref);
+    let attest_struct = attest_seller_struct_hash(&order_hash, &clause_id, 1, &content_ref);
     let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
 
     let input = BatchInput {
@@ -1319,7 +1319,7 @@ fn attest_as_seller_non_cross_checking_schema_requires_section_data() {
             KernelOp::AttestAsSeller {
                 role_commitment: root,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage: 1,
                 content_ref,
                 seller_sig: attest_sig,
@@ -1348,7 +1348,7 @@ fn test_genesis_root_print() {
     let root_hex = format!("0x{}", alloy_primitives::hex::encode(root.as_slice()));
     eprintln!("GENESIS ROOT: {}", root_hex);
     // Genesis root = keccak256 of 5 concatenated keccak256("") sub-hashes
-    // (empty processes, order_status, order_process_id, schemas, sellers
+    // (empty processes, order_status, order_process_id, clauses, sellers
     // maps). Changed when settlement-anchored FIG emission was removed from
     // the kernel — devnet only, no mainnet impact. Source of truth going
     // forward; deploy scripts must use this value.

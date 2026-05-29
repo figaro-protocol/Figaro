@@ -23,24 +23,24 @@ const TOKEN: Address = address!("5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f");
 const CORE: Address = address!("2e234DAe75C793f67A35089C9d99245E1C58470b");
 const CHAIN_ID: u64 = 31337;
 
-// ── Schema-encoder helper (post-Keystone: no per-schema dispatch) ─
+// ── Clause-encoder helper (post-Keystone: no per-clause dispatch) ─
 //
 // Look up the embedded spec, parse, encode through the generic encoder.
 // Mirrors the helper in prover/lib/tests/parity.rs.
 
-fn encode_for_schema_key(schema_id_str: &str, content: &serde_json::Value) -> Vec<u8> {
-    let json = figaro_schema::embedded_spec_json_by_key(schema_id_str)
-        .unwrap_or_else(|| panic!("no embedded spec for {schema_id_str}"));
+fn encode_for_clause_key(clause_id_str: &str, content: &serde_json::Value) -> Vec<u8> {
+    let json = figaro_clause::embedded_spec_json_by_key(clause_id_str)
+        .unwrap_or_else(|| panic!("no embedded spec for {clause_id_str}"));
     let parsed: serde_json::Value = serde_json::from_str(json)
-        .unwrap_or_else(|e| panic!("embedded spec for {schema_id_str} is not valid JSON: {e}"));
-    let spec = match figaro_schema::parse_schema_spec(&parsed) {
-        figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
-        figaro_schema::ParseSchemaSpecResult::Err(errors) => {
-            panic!("embedded spec for {schema_id_str} failed to parse: {errors:?}")
+        .unwrap_or_else(|e| panic!("embedded spec for {clause_id_str} is not valid JSON: {e}"));
+    let spec = match figaro_clause::parse_clause_spec(&parsed) {
+        figaro_clause::ParseClauseSpecResult::Ok(s) => s,
+        figaro_clause::ParseClauseSpecResult::Err(errors) => {
+            panic!("embedded spec for {clause_id_str} failed to parse: {errors:?}")
         }
     };
-    figaro_schema::encode_content_from_spec(&spec, content)
-        .unwrap_or_else(|e| panic!("canonical encoder must succeed for {schema_id_str}: {e}"))
+    figaro_clause::encode_content_from_spec(&spec, content)
+        .unwrap_or_else(|e| panic!("canonical encoder must succeed for {clause_id_str}: {e}"))
 }
 
 // ── Signing helpers (same as kernel parity tests) ─────────────────
@@ -88,7 +88,7 @@ fn empty_snapshot() -> KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
         order_process_id: vec![],
-        schemas_registered: vec![],
+        clauses_registered: vec![],
         sellers_registered: vec![],
     }
 }
@@ -206,20 +206,20 @@ async fn mempool_sequential_ids() {
 }
 
 #[tokio::test]
-async fn mempool_accepts_register_schema() {
+async fn mempool_accepts_register_clause() {
     let pool = Mempool::new(CHAIN_ID, CORE);
     let domain = domain_separator(CHAIN_ID, CORE);
     let key = make_signing_key(BUYER_KEY);
-    let schema_id = keccak256(b"test-schema-v1");
+    let clause_id = keccak256(b"test-clause-v1");
     let uri_hash = keccak256(b"ipfs://Qm...");
     let family = keccak256(b"test-family");
 
-    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
+    let struct_hash = register_clause_struct_hash(&clause_id, 1, &uri_hash, &family);
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&key, &digest);
 
-    let op = KernelOp::RegisterSchema {
-        schema_id,
+    let op = KernelOp::RegisterClause {
+        clause_id,
         version: 1,
         uri_hash,
         family,
@@ -278,39 +278,39 @@ async fn mempool_accepts_resolve() {
 // ──────────────────────────────────────────────────────────────────
 
 /// Build a seller attestation op whose content_ref is the keccak of the
-/// canonical per-schema encoding of `content_json`. The op's signature
+/// canonical per-clause encoding of `content_json`. The op's signature
 /// covers the same content_ref so signature-pre-check passes and the
 /// content gate is what determines accept/reject.
 fn build_attest_seller_with_proof(
-    schema_id_str: &str,
+    clause_id_str: &str,
     content_json: serde_json::Value,
     override_content_ref: Option<B256>,
 ) -> KernelOp {
     let domain = domain_separator(CHAIN_ID, CORE);
     let seller_key = make_signing_key(SELLER1_KEY);
-    let schema_id = keccak256(schema_id_str.as_bytes());
+    let clause_id = keccak256(clause_id_str.as_bytes());
 
-    let canonical_bytes = encode_for_schema_key(schema_id_str, &content_json);
+    let canonical_bytes = encode_for_clause_key(clause_id_str, &content_json);
     let content_ref = override_content_ref.unwrap_or_else(|| keccak256(canonical_bytes.as_slice()));
 
     // Single-section agreement: agreement_hash IS the lone section leaf, so
     // Gate 5 verifies with an empty inclusion proof. For a cross-checking
-    // schema the leaf is keccak256(schemaId ++ content_ref).
+    // clause the leaf is keccak256(clauseId ++ content_ref).
     let mut role = root_commitment();
     let mut leaf_preimage = [0u8; 64];
-    leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+    leaf_preimage[..32].copy_from_slice(clause_id.as_slice());
     leaf_preimage[32..].copy_from_slice(content_ref.as_slice());
     role.agreement_hash = keccak256(leaf_preimage);
 
     let order_hash = compute_order_hash(&B256::ZERO, &commitment_struct_hash(&role));
-    let struct_hash = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let struct_hash = attest_seller_struct_hash(&order_hash, &clause_id, 0, &content_ref);
     let digest = typed_data_hash(&domain, &struct_hash);
     let seller_sig = sign_digest(&seller_key, &digest);
 
     KernelOp::AttestAsSeller {
         role_commitment: role,
         order_hash,
-        schema_id,
+        clause_id,
         stage: 0,
         content_ref,
         seller_sig,
@@ -369,24 +369,24 @@ async fn mempool_rejects_invalid_content() {
 }
 
 #[tokio::test]
-async fn mempool_rejects_unsupported_schema_encoder() {
+async fn mempool_rejects_unsupported_clause_encoder() {
     let pool = Mempool::new(CHAIN_ID, CORE);
-    let schema_id = keccak256(b"figaro-bogus-v99");
+    let clause_id = keccak256(b"figaro-bogus-v99");
 
-    // Hand-construct the op: schema_id is not a runtime-attestable
-    // protocol schema, so the content gate has no embedded spec for it.
+    // Hand-construct the op: clause_id is not a runtime-attestable
+    // protocol clause, so the content gate has no embedded spec for it.
     let domain = domain_separator(CHAIN_ID, CORE);
     let seller_key = make_signing_key(SELLER1_KEY);
     let root = root_commitment();
     let placeholder_ref = keccak256(b"placeholder");
     let order_hash = compute_order_hash(&B256::ZERO, &commitment_struct_hash(&root));
-    let struct_hash = attest_seller_struct_hash(&order_hash, &schema_id, 0, &placeholder_ref);
+    let struct_hash = attest_seller_struct_hash(&order_hash, &clause_id, 0, &placeholder_ref);
     let digest = typed_data_hash(&domain, &struct_hash);
     let seller_sig = sign_digest(&seller_key, &digest);
     let op = KernelOp::AttestAsSeller {
         role_commitment: root,
         order_hash,
-        schema_id,
+        clause_id,
         stage: 0,
         content_ref: placeholder_ref,
         seller_sig,
@@ -399,14 +399,14 @@ async fn mempool_rejects_unsupported_schema_encoder() {
 
     let err = pool.submit(op).await.unwrap_err();
     assert!(
-        err.contains("not a runtime-attestable protocol schema"),
-        "expected unknown-schema rejection, got: {err}",
+        err.contains("not a runtime-attestable protocol clause"),
+        "expected unknown-clause rejection, got: {err}",
     );
     assert_eq!(pool.len().await, 0);
 }
 
 #[tokio::test]
-async fn mempool_rejects_missing_content_proof_for_protocol_schema() {
+async fn mempool_rejects_missing_content_proof_for_protocol_clause() {
     let pool = Mempool::new(CHAIN_ID, CORE);
 
     // Seller attestation under figaro-ghg-protocol-v1 with a non-zero
@@ -414,16 +414,16 @@ async fn mempool_rejects_missing_content_proof_for_protocol_schema() {
     let domain = domain_separator(CHAIN_ID, CORE);
     let seller_key = make_signing_key(SELLER1_KEY);
     let root = root_commitment();
-    let schema_id = keccak256(b"figaro-ghg-protocol-v1");
+    let clause_id = keccak256(b"figaro-ghg-protocol-v1");
     let content_ref = keccak256(b"some-content");
     let order_hash = compute_order_hash(&B256::ZERO, &commitment_struct_hash(&root));
-    let struct_hash = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let struct_hash = attest_seller_struct_hash(&order_hash, &clause_id, 0, &content_ref);
     let digest = typed_data_hash(&domain, &struct_hash);
     let seller_sig = sign_digest(&seller_key, &digest);
     let op = KernelOp::AttestAsSeller {
         role_commitment: root,
         order_hash,
-        schema_id,
+        clause_id,
         stage: 0,
         content_ref,
         seller_sig,
@@ -442,31 +442,31 @@ async fn mempool_rejects_missing_content_proof_for_protocol_schema() {
 async fn mempool_rejects_wrong_inclusion_proof() {
     let pool = Mempool::new(CHAIN_ID, CORE);
 
-    // Valid content under a cross-checking schema, but a non-empty inclusion
+    // Valid content under a cross-checking clause, but a non-empty inclusion
     // proof against a single-leaf agreement — Gate 5 (agreement inclusion)
     // rejects it before it reaches the prover.
     let domain = domain_separator(CHAIN_ID, CORE);
     let seller_key = make_signing_key(SELLER1_KEY);
-    let schema_id_str = "figaro-ghg-protocol-v1";
-    let schema_id = keccak256(schema_id_str.as_bytes());
+    let clause_id_str = "figaro-ghg-protocol-v1";
+    let clause_id = keccak256(clause_id_str.as_bytes());
     let content_json = serde_json::json!({ "scope": 1 });
-    let canonical_bytes = encode_for_schema_key(schema_id_str, &content_json);
+    let canonical_bytes = encode_for_clause_key(clause_id_str, &content_json);
     let content_ref = keccak256(canonical_bytes.as_slice());
 
     let mut role = root_commitment();
     let mut leaf_preimage = [0u8; 64];
-    leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+    leaf_preimage[..32].copy_from_slice(clause_id.as_slice());
     leaf_preimage[32..].copy_from_slice(content_ref.as_slice());
     role.agreement_hash = keccak256(leaf_preimage);
 
     let order_hash = compute_order_hash(&B256::ZERO, &commitment_struct_hash(&role));
-    let struct_hash = attest_seller_struct_hash(&order_hash, &schema_id, 0, &content_ref);
+    let struct_hash = attest_seller_struct_hash(&order_hash, &clause_id, 0, &content_ref);
     let seller_sig = sign_digest(&seller_key, &typed_data_hash(&domain, &struct_hash));
 
     let op = KernelOp::AttestAsSeller {
         role_commitment: role,
         order_hash,
-        schema_id,
+        clause_id,
         stage: 0,
         content_ref,
         seller_sig,
@@ -489,7 +489,7 @@ async fn mempool_rejects_wrong_inclusion_proof() {
 async fn mempool_rejects_missing_section_data() {
     let pool = Mempool::new(CHAIN_ID, CORE);
 
-    // figaro-ghg-measurement-v1 is a non-cross-checking (Category-1) schema:
+    // figaro-ghg-measurement-v1 is a non-cross-checking (Category-1) clause:
     // its content_proof must carry section_data for Gate 5. The fixture
     // builder leaves section_data None, so the gate rejects it.
     let op = build_attest_seller_with_proof(
@@ -539,7 +539,7 @@ async fn state_mirror_advance_changes_root() {
 
     // Create a state with some data
     let mut state = KernelState::default();
-    state.schemas_registered.insert(keccak256(b"test"), true);
+    state.clauses_registered.insert(keccak256(b"test"), true);
 
     mirror.advance(state).await;
     let new_root = mirror.state_root().await;
@@ -552,8 +552,8 @@ async fn state_mirror_advance_snapshot_consistent() {
     let mirror = StateMirror::genesis();
 
     let mut state = KernelState::default();
-    state.schemas_registered.insert(keccak256(b"schema-1"), true);
-    state.schemas_registered.insert(keccak256(b"schema-2"), true);
+    state.clauses_registered.insert(keccak256(b"clause-1"), true);
+    state.clauses_registered.insert(keccak256(b"clause-2"), true);
 
     mirror.advance(state).await;
     let root_after_advance = mirror.state_root().await;
@@ -789,24 +789,24 @@ async fn e2e_two_sequential_batches() {
     assert_ne!(genesis_root, mirror.state_root().await);
     assert_eq!(mirror.state_root().await, pv1.new_state_root);
 
-    // Batch 2: register a schema (using the state from batch 1)
+    // Batch 2: register a clause (using the state from batch 1)
     let domain = domain_separator(CHAIN_ID, CORE);
     let key = make_signing_key(BUYER_KEY);
-    let schema_id = keccak256(b"test-schema");
+    let clause_id = keccak256(b"test-clause");
     let uri_hash = keccak256(b"ipfs://test");
     let family = keccak256(b"test-family");
-    let struct_hash = register_schema_struct_hash(&schema_id, 1, &uri_hash, &family);
+    let struct_hash = register_clause_struct_hash(&clause_id, 1, &uri_hash, &family);
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&key, &digest);
 
-    let schema_op = KernelOp::RegisterSchema {
-        schema_id,
+    let clause_op = KernelOp::RegisterClause {
+        clause_id,
         version: 1,
         uri_hash,
         family,
         registrar_sig: sig,
     };
-    pool.submit(schema_op).await.unwrap();
+    pool.submit(clause_op).await.unwrap();
     let ops2: Vec<_> = pool.drain().await.into_iter().map(|p| p.op).collect();
     let batch2 = assembler::assemble_batch(
         CHAIN_ID, CORE, 2000, ops2, mirror.snapshot().await,

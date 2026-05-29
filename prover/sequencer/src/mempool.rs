@@ -125,14 +125,14 @@ impl Mempool {
             KernelOp::AttestAsSeller {
                 role_commitment,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage,
                 content_ref,
                 seller_sig,
                 content_proof,
             } => {
                 let struct_hash = attest_seller_struct_hash(
-                    order_hash, schema_id, *stage, content_ref,
+                    order_hash, clause_id, *stage, content_ref,
                 );
                 let digest = typed_data_hash(&domain, &struct_hash);
                 let recovered = recover_signer(&digest, seller_sig)
@@ -143,7 +143,7 @@ impl Mempool {
                 pre_check_attest_content(
                     content_proof.as_ref(),
                     content_ref,
-                    schema_id,
+                    clause_id,
                     *stage,
                     Some(&role_commitment.agreement_hash),
                 )?;
@@ -152,14 +152,14 @@ impl Mempool {
             KernelOp::AttestAsBuyer {
                 process_id,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage,
                 content_ref,
                 buyer_sig,
                 content_proof,
             } => {
                 let struct_hash = attest_buyer_struct_hash(
-                    process_id, order_hash, schema_id, *stage, content_ref,
+                    process_id, order_hash, clause_id, *stage, content_ref,
                 );
                 let digest = typed_data_hash(&domain, &struct_hash);
                 recover_signer(&digest, buyer_sig)
@@ -167,33 +167,33 @@ impl Mempool {
                 pre_check_attest_content(
                     content_proof.as_ref(),
                     content_ref,
-                    schema_id,
+                    clause_id,
                     *stage,
                     None,
                 )?;
                 Ok(())
             }
-            KernelOp::RegisterSchema {
-                schema_id,
+            KernelOp::RegisterClause {
+                clause_id,
                 version,
                 uri_hash,
                 family,
                 registrar_sig,
             } => {
-                let struct_hash = register_schema_struct_hash(schema_id, *version, uri_hash, family);
+                let struct_hash = register_clause_struct_hash(clause_id, *version, uri_hash, family);
                 let digest = typed_data_hash(&domain, &struct_hash);
                 recover_signer(&digest, registrar_sig)
-                    .map_err(|e| format!("invalid register-schema signature: {e}"))?;
+                    .map_err(|e| format!("invalid register-clause signature: {e}"))?;
                 Ok(())
             }
-            KernelOp::SetMechanismSchema {
-                schema_id,
+            KernelOp::SetMechanismClause {
+                clause_id,
                 mechanism_sig,
             } => {
-                let struct_hash = set_mechanism_schema_struct_hash(schema_id);
+                let struct_hash = set_mechanism_clause_struct_hash(clause_id);
                 let digest = typed_data_hash(&domain, &struct_hash);
                 recover_signer(&digest, mechanism_sig)
-                    .map_err(|e| format!("invalid set-mechanism-schema signature: {e}"))?;
+                    .map_err(|e| format!("invalid set-mechanism-clause signature: {e}"))?;
                 Ok(())
             }
             KernelOp::RegisterSeller {
@@ -231,19 +231,19 @@ impl Mempool {
 fn pre_check_attest_content(
     proof: Option<&AttestationContentProof>,
     content_ref: &B256,
-    schema_id: &B256,
+    clause_id: &B256,
     stage: u8,
     agreement_hash: Option<&B256>,
 ) -> Result<(), String> {
     let Some(proof) = proof else {
         // Mirror the kernel: a content-bearing attestation (non-zero
-        // content_ref) under a protocol schema the kernel can validate
+        // content_ref) under a protocol clause the kernel can validate
         // must carry a content_proof.
         if *content_ref != B256::ZERO
-            && figaro_schema::embedded_spec_json(schema_id).is_some()
+            && figaro_clause::embedded_spec_json(clause_id).is_some()
         {
             return Err(format!(
-                "attestation under content-bearing schema {schema_id} requires a content_proof"
+                "attestation under content-bearing clause {clause_id} requires a content_proof"
             ));
         }
         return Ok(());
@@ -253,27 +253,27 @@ fn pre_check_attest_content(
     let content_json_value: serde_json::Value = serde_json::from_str(&proof.content_json)
         .map_err(|e| format!("content_proof content_json is not valid JSON: {e}"))?;
 
-    // ── Gate 1: look up the canonical embedded spec for this schemaId ──
-    let spec_json = figaro_schema::embedded_spec_json(schema_id).ok_or_else(|| {
-        format!("schema_id {schema_id} is not a runtime-attestable protocol schema")
+    // ── Gate 1: look up the canonical embedded spec for this clauseId ──
+    let spec_json = figaro_clause::embedded_spec_json(clause_id).ok_or_else(|| {
+        format!("clause_id {clause_id} is not a runtime-attestable protocol clause")
     })?;
     let spec_value: serde_json::Value = serde_json::from_str(spec_json)
-        .map_err(|e| format!("embedded schema spec is not valid JSON: {e}"))?;
-    let parsed = match figaro_schema::parse_schema_spec(&spec_value) {
-        figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
-        figaro_schema::ParseSchemaSpecResult::Err(errors) => {
+        .map_err(|e| format!("embedded clause spec is not valid JSON: {e}"))?;
+    let parsed = match figaro_clause::parse_clause_spec(&spec_value) {
+        figaro_clause::ParseClauseSpecResult::Ok(s) => s,
+        figaro_clause::ParseClauseSpecResult::Err(errors) => {
             let first = errors
                 .first()
                 .map(|e| format!("{}: {}", e.path, e.message))
                 .unwrap_or_else(|| "unknown parse error".to_string());
-            return Err(format!("embedded schema spec failed to parse: {first}"));
+            return Err(format!("embedded clause spec failed to parse: {first}"));
         }
     };
 
     // ── Gate 2: content satisfies the spec at the given stage ──
-    let options = figaro_schema::ValidateOptions { stage: Some(stage) };
-    if let figaro_schema::ValidationResult::Err(errors) =
-        figaro_schema::validate_content(&content_json_value, &parsed, options)
+    let options = figaro_clause::ValidateOptions { stage: Some(stage) };
+    if let figaro_clause::ValidationResult::Err(errors) =
+        figaro_clause::validate_content(&content_json_value, &parsed, options)
     {
         let first = errors
             .first()
@@ -284,8 +284,8 @@ fn pre_check_attest_content(
 
     // ── Gate 3: re-derive canonical ABI bytes from the JSON ──
     // Post-Keystone: one generic encoder reads the parsed spec directly;
-    // schemaId-string lookup was the kernel's Gate 1 above. No second dispatch.
-    let derived = figaro_schema::encode_content_from_spec(&parsed, &content_json_value)
+    // clauseId-string lookup was the kernel's Gate 1 above. No second dispatch.
+    let derived = figaro_clause::encode_content_from_spec(&parsed, &content_json_value)
         .map_err(|e| format!("content_proof canonical encoding failed: {e}"))?;
 
     // ── Gate 4: derived bytes hash to the on-chain content_ref ──
@@ -295,7 +295,7 @@ fn pre_check_attest_content(
         );
     }
 
-    // ── Gate 5: the schema clause is in the order's signed agreement ──
+    // ── Gate 5: the clause clause is in the order's signed agreement ──
     // Mirrors the kernel: seller attestations bind to the role commitment's
     // agreement_hash; buyer attestations pass None and skip this gate.
     if let Some(agreement_hash) = agreement_hash {
@@ -307,13 +307,13 @@ fn pre_check_attest_content(
         } else {
             let section_data = proof.section_data.as_ref().ok_or_else(|| {
                 format!(
-                    "content_proof for non-cross-checking schema {schema_id} omits section_data"
+                    "content_proof for non-cross-checking clause {clause_id} omits section_data"
                 )
             })?;
             keccak256(section_data.as_bytes())
         };
         let mut leaf_preimage = [0u8; 64];
-        leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+        leaf_preimage[..32].copy_from_slice(clause_id.as_slice());
         leaf_preimage[32..].copy_from_slice(section_data_hash.as_slice());
         let leaf = keccak256(leaf_preimage);
         if !figaro_kernel::merkle::verify_inclusion(&proof.inclusion_proof, *agreement_hash, leaf) {

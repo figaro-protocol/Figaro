@@ -1,17 +1,17 @@
 use alloy_primitives::{Address, B256, U256};
 use serde::{Deserialize, Serialize};
 
-/// Mirrors `SchemaRegistry.SchemaRegistered` (also re-emitted by
-/// `FigaroBatchVerifier`). The `registrar` field is the `schemaAuthor` —
-/// the first-write-wins wallet that called `registerSchema`, and the
-/// recipient of any RPGF allocation for this schemaId. `family` is the
-/// permanent family tag bound to the schema at registration; the RPGF
-/// formula reads `family` (not `schema_id`) to decide Tier-1 weighting,
-/// so a new schema joining an existing Tier-1 family inherits the boost
+/// Mirrors `ClauseRegistry.ClauseRegistered` (also re-emitted by
+/// `FigaroBatchVerifier`). The `registrar` field is the `clauseAuthor` —
+/// the first-write-wins wallet that called `registerClause`, and the
+/// recipient of any RPGF allocation for this clauseId. `family` is the
+/// permanent family tag bound to the clause at registration; the RPGF
+/// formula reads `family` (not `clause_id`) to decide Tier-1 weighting,
+/// so a new clause joining an existing Tier-1 family inherits the boost
 /// without redeploying the FIG system.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SchemaRegisteredEvent {
-    pub schema_id: B256,
+pub struct ClauseRegisteredEvent {
+    pub clause_id: B256,
     pub version: u64,
     pub uri_hash: B256,
     pub family: B256,
@@ -49,7 +49,7 @@ pub struct AttestationEvent {
     pub order_hash: B256,
     pub process_id: B256,
     pub attester: Address,
-    pub schema_id: B256,
+    pub clause_id: B256,
     pub stage: u8,
     pub content_ref: B256,
 }
@@ -59,7 +59,7 @@ pub struct AttestationEvent {
 /// window, populates this struct, and feeds it to `build_tranche_input`.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct EventStream {
-    pub schemas_registered: Vec<SchemaRegisteredEvent>,
+    pub clauses_registered: Vec<ClauseRegisteredEvent>,
     pub orders_created: Vec<OrderCreatedEvent>,
     pub processes_resolved: Vec<ProcessResolvedEvent>,
     pub attestations: Vec<AttestationEvent>,

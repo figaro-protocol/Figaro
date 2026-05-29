@@ -4,8 +4,8 @@ use crate::formula::score;
 use crate::merkle::build_merkle_root;
 use crate::types::{TrancheInput, TrancheOutput};
 
-/// Aggregate a per-tranche batch of schema snapshots into a Merkle
-/// root over (schemaAuthor, amount) leaves. Implements the V5 formula
+/// Aggregate a per-tranche batch of clause snapshots into a Merkle
+/// root over (clauseAuthor, amount) leaves. Implements the V5 formula
 /// + 15% iterative water-filling cap, matching the TypeScript
 /// reference in `sdk/scripts/rpgf-simulator/`.
 pub fn aggregate(input: &TrancheInput) -> TrancheOutput {
@@ -39,12 +39,12 @@ pub fn aggregate(input: &TrancheInput) -> TrancheOutput {
         })
         .collect();
 
-    // 5. Build Merkle root over (schemaAuthor, amount) leaves.
+    // 5. Build Merkle root over (clauseAuthor, amount) leaves.
     let leaves: Vec<_> = input
         .snapshots
         .iter()
         .zip(amounts.iter())
-        .map(|(s, a)| (s.schema_author, *a))
+        .map(|(s, a)| (s.clause_author, *a))
         .collect();
     let merkle_root = build_merkle_root(&leaves);
 
@@ -54,7 +54,7 @@ pub fn aggregate(input: &TrancheInput) -> TrancheOutput {
         tranche_index: input.tranche_index,
         merkle_root,
         total_allocated_wei,
-        schema_count: input.snapshots.len() as u32,
+        clause_count: input.snapshots.len() as u32,
     }
 }
 

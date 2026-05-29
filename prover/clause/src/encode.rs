@@ -1,5 +1,5 @@
 //! Generic spec-driven content encoder — Rust mirror of
-//! `sdk/src/schemas/encode.ts`. Given a parsed `SchemaSpec` and a JSON
+//! `sdk/src/clauses/encode.ts`. Given a parsed `ClauseSpec` and a JSON
 //! content object, derives the canonical ABI bytes deterministically.
 //! Output is byte-for-byte identical to viem's `encodeAbiParameters`.
 //!
@@ -29,17 +29,17 @@
 //! (`0`, `""`, `false`, empty array, zero-bytes). A required absent
 //! field is a validation error, surfaced here as `FieldError`.
 //!
-//! The 17 protocol schemas all encode through this single path; there
-//! is no per-schema dispatch. The previous per-schema encoder family
-//! (`encode_content_for_schema` + 12 `encode_xxx` functions) was deleted
-//! in the keystone cutover — see `git log -- prover/schema/src/encode.rs`
+//! The 17 protocol clauses all encode through this single path; there
+//! is no per-clause dispatch. The previous per-clause encoder family
+//! (`encode_content_for_clause` + 12 `encode_xxx` functions) was deleted
+//! in the keystone cutover — see `git log -- prover/clause/src/encode.rs`
 //! for the prior shape.
 
 use alloy_dyn_abi::DynSolValue;
 use alloy_primitives::{Address, B256, U256};
 use serde_json::Value;
 
-use crate::spec::{FieldSpec, SchemaSpec, StringFieldSpec, StringFormat};
+use crate::spec::{FieldSpec, ClauseSpec, StringFieldSpec, StringFormat};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum EncodeError {
@@ -88,12 +88,12 @@ fn parse_numeric(name: &str, v: &Value) -> Result<U256, EncodeError> {
 }
 
 /// Encode a JSON content payload to canonical ABI bytes from a parsed
-/// `SchemaSpec`. This is the only encoder; callers that have the
-/// schemaId string but not the parsed spec should look up the embedded
+/// `ClauseSpec`. This is the only encoder; callers that have the
+/// clauseId string but not the parsed spec should look up the embedded
 /// JSON via `embedded_spec_json_by_key` (or `embedded_spec_json` by
-/// hash) and parse with `crate::spec::parse_schema_spec`.
+/// hash) and parse with `crate::spec::parse_clause_spec`.
 pub fn encode_content_from_spec(
-    spec: &SchemaSpec,
+    spec: &ClauseSpec,
     content: &Value,
 ) -> Result<Vec<u8>, EncodeError> {
     let mut values = Vec::with_capacity(spec.fields.len());

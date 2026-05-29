@@ -1,22 +1,22 @@
-//! Conformance tests for the Rust schema validator (Layer B) against the
+//! Conformance tests for the Rust clause validator (Layer B) against the
 //! TypeScript reference implementation (Layer A,
-//! `sdk/src/schemas/{spec,validate}.ts`).
+//! `sdk/src/clauses/{spec,validate}.ts`).
 //!
 //! Two test surfaces:
-//!   1. Spec parsing — every protocol schema JSON in
+//!   1. Spec parsing — every protocol clause JSON in
 //!      `frontend/lib/shared/schemas/` must parse without errors.
 //!   2. Content validation — happy + sad cases drawn from
-//!      `sdk/tests/schemas/validate.test.ts`. Layer B must agree with
+//!      `sdk/tests/clauses/validate.test.ts`. Layer B must agree with
 //!      Layer A on accept/reject for every case.
 
-use figaro_schema::{
-    parse_schema_spec, validate_content, ParseSchemaSpecResult, SchemaSpec, ValidateOptions,
+use figaro_clause::{
+    parse_clause_spec, validate_content, ParseClauseSpecResult, ClauseSpec, ValidateOptions,
 };
 use serde_json::{json, Value};
 use std::path::PathBuf;
 
-fn shared_schemas_dir() -> PathBuf {
-    // The crate lives at prover/schema; the canonical schema JSONs live at
+fn shared_clauses_dir() -> PathBuf {
+    // The crate lives at prover/clause; the canonical clause JSONs live at
     // frontend/lib/shared/schemas/. Resolve via CARGO_MANIFEST_DIR.
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     p.pop(); // prover/
@@ -28,16 +28,16 @@ fn shared_schemas_dir() -> PathBuf {
     p
 }
 
-fn parse_or_panic(value: &Value) -> SchemaSpec {
-    match parse_schema_spec(value) {
-        ParseSchemaSpecResult::Ok(spec) => spec,
-        ParseSchemaSpecResult::Err(errors) => {
+fn parse_or_panic(value: &Value) -> ClauseSpec {
+    match parse_clause_spec(value) {
+        ParseClauseSpecResult::Ok(spec) => spec,
+        ParseClauseSpecResult::Err(errors) => {
             panic!("parse failed: {errors:#?}");
         }
     }
 }
 
-fn spec_of(fields: Value) -> SchemaSpec {
+fn spec_of(fields: Value) -> ClauseSpec {
     parse_or_panic(&json!({
         "schemaId": "t-v1",
         "version": 1,
@@ -47,7 +47,7 @@ fn spec_of(fields: Value) -> SchemaSpec {
     }))
 }
 
-fn spec_of_with_stages(fields: Value, stages: Value) -> SchemaSpec {
+fn spec_of_with_stages(fields: Value, stages: Value) -> ClauseSpec {
     parse_or_panic(&json!({
         "schemaId": "t-v1",
         "version": 1,
@@ -58,11 +58,11 @@ fn spec_of_with_stages(fields: Value, stages: Value) -> SchemaSpec {
     }))
 }
 
-// ── Protocol-schema parse conformance ────────────────────────────────
+// ── Protocol-clause parse conformance ────────────────────────────────
 
 #[test]
-fn parses_every_shipped_protocol_schema() {
-    let dir = shared_schemas_dir();
+fn parses_every_shipped_protocol_clause() {
+    let dir = shared_clauses_dir();
     let entries = std::fs::read_dir(&dir).expect("read_dir frontend/lib/shared/schemas");
     let mut parsed = 0usize;
     for entry in entries {
@@ -71,21 +71,21 @@ fn parses_every_shipped_protocol_schema() {
         if path.extension().and_then(|s| s.to_str()) != Some("json") {
             continue;
         }
-        let bytes = std::fs::read(&path).expect("read schema json");
-        let value: Value = serde_json::from_slice(&bytes).expect("parse schema json");
-        match parse_schema_spec(&value) {
-            ParseSchemaSpecResult::Ok(_) => parsed += 1,
-            ParseSchemaSpecResult::Err(errors) => {
-                panic!("schema {} failed to parse: {errors:#?}", path.display());
+        let bytes = std::fs::read(&path).expect("read clause json");
+        let value: Value = serde_json::from_slice(&bytes).expect("parse clause json");
+        match parse_clause_spec(&value) {
+            ParseClauseSpecResult::Ok(_) => parsed += 1,
+            ParseClauseSpecResult::Err(errors) => {
+                panic!("clause {} failed to parse: {errors:#?}", path.display());
             }
         }
     }
-    // We expect every shipped schema to parse; the precise count is
+    // We expect every shipped clause to parse; the precise count is
     // asserted to detect future drift.
-    assert!(parsed >= 17, "expected at least 17 shipped schemas, got {parsed}");
+    assert!(parsed >= 17, "expected at least 17 shipped clauses, got {parsed}");
 }
 
-// ── Happy paths (mirror sdk/tests/schemas/validate.test.ts) ──────────
+// ── Happy paths (mirror sdk/tests/clauses/validate.test.ts) ──────────
 
 #[test]
 fn accepts_valid_object_with_required_fields() {
@@ -258,13 +258,13 @@ fn falls_back_to_default_when_stage_has_no_override() {
     );
 }
 
-// ── Per-shipped-schema content checks ────────────────────────────────
+// ── Per-shipped-clause content checks ────────────────────────────────
 
 /// `figaro-ghg-protocol-v1` carries a single optional integer field
 /// `scope` constrained to 1..=3.
 #[test]
 fn ghg_protocol_v1_accepts_valid_scope_and_rejects_out_of_range() {
-    let bytes = std::fs::read(shared_schemas_dir().join("figaro-ghg-protocol-v1.json"))
+    let bytes = std::fs::read(shared_clauses_dir().join("figaro-ghg-protocol-v1.json"))
         .expect("read ghg protocol json");
     let value: Value = serde_json::from_slice(&bytes).unwrap();
     let spec = parse_or_panic(&value);
@@ -280,7 +280,7 @@ fn ghg_protocol_v1_accepts_valid_scope_and_rejects_out_of_range() {
 /// `figaro-geo-v2` exercises the regex `pattern` field on geohash strings.
 #[test]
 fn geo_v2_accepts_valid_geohash_and_rejects_garbage() {
-    let bytes = std::fs::read(shared_schemas_dir().join("figaro-geo-v2.json"))
+    let bytes = std::fs::read(shared_clauses_dir().join("figaro-geo-v2.json"))
         .expect("read geo v2 json");
     let value: Value = serde_json::from_slice(&bytes).unwrap();
     let spec = parse_or_panic(&value);
@@ -314,46 +314,46 @@ fn geo_v2_accepts_valid_geohash_and_rejects_garbage() {
 // ── Embedded canonical specs (Layer B content gate) ──────────────────
 
 #[test]
-fn every_embedded_spec_parses_and_matches_its_schema_id() {
+fn every_embedded_spec_parses_and_matches_its_clause_id() {
     use alloy_primitives::keccak256;
     let mut count = 0;
-    for (key, json) in figaro_schema::all_embedded_specs() {
+    for (key, json) in figaro_clause::all_embedded_specs() {
         let value: Value = serde_json::from_str(json)
             .unwrap_or_else(|e| panic!("embedded spec {key} is not valid JSON: {e}"));
         let spec = parse_or_panic(&value);
         assert_eq!(
-            spec.schema_id, key,
-            "embedded spec for {key} declares a different schemaId",
+            spec.clause_id, key,
+            "embedded spec for {key} declares a different clauseId",
         );
         // Lookup by keccak hash returns the same JSON back.
         assert_eq!(
-            figaro_schema::embedded_spec_json(&keccak256(key.as_bytes())),
+            figaro_clause::embedded_spec_json(&keccak256(key.as_bytes())),
             Some(json),
             "embedded_spec_json lookup mismatch for {key}",
         );
         count += 1;
     }
-    assert_eq!(count, 17, "expected 17 embedded protocol schemas");
+    assert_eq!(count, 17, "expected 17 embedded protocol clauses");
 }
 
 #[test]
-fn embedded_spec_json_is_none_for_non_protocol_schemas() {
+fn embedded_spec_json_is_none_for_non_protocol_clauses() {
     use alloy_primitives::keccak256;
     // figaro-topology-v1 is manifest-only; figaro-bogus-v99 is unknown.
-    assert!(figaro_schema::embedded_spec_json(&keccak256(b"figaro-topology-v1")).is_none());
-    assert!(figaro_schema::embedded_spec_json(&keccak256(b"figaro-bogus-v99")).is_none());
+    assert!(figaro_clause::embedded_spec_json(&keccak256(b"figaro-topology-v1")).is_none());
+    assert!(figaro_clause::embedded_spec_json(&keccak256(b"figaro-bogus-v99")).is_none());
 }
 
 #[test]
 fn embedded_spec_tiers_partition_cross_checking_13_and_4() {
     // The kernel's Gate 5 derives `cross_checks` from each spec's block
-    // tier (`SchemaSpec::cross_checks`). Every runtime-attestable schema
+    // tier (`ClauseSpec::cross_checks`). Every runtime-attestable clause
     // must declare a category-1 or category-2 tier — never manifest-only —
     // and the split must stay 13 cross-checking (Category-2 declarative
-    // clauses) / 4 not (Category-1 runtime-only schemas).
+    // clauses) / 4 not (Category-1 runtime-only clauses).
     let mut cross = 0;
     let mut plain = 0;
-    for (key, json) in figaro_schema::all_embedded_specs() {
+    for (key, json) in figaro_clause::all_embedded_specs() {
         let value: Value = serde_json::from_str(json).unwrap();
         let spec = parse_or_panic(&value);
         let block = spec
@@ -361,7 +361,7 @@ fn embedded_spec_tiers_partition_cross_checking_13_and_4() {
             .as_ref()
             .unwrap_or_else(|| panic!("embedded spec {key} has no block binding"));
         assert!(
-            !matches!(block.tier, figaro_schema::SchemaTier::ManifestOnly),
+            !matches!(block.tier, figaro_clause::ClauseTier::ManifestOnly),
             "embedded spec {key} is manifest-only — not runtime-attestable",
         );
         if spec.cross_checks() {
@@ -370,6 +370,6 @@ fn embedded_spec_tiers_partition_cross_checking_13_and_4() {
             plain += 1;
         }
     }
-    assert_eq!(cross, 13, "13 Category-2 cross-checking schemas");
-    assert_eq!(plain, 4, "4 Category-1 runtime-only schemas");
+    assert_eq!(cross, 13, "13 Category-2 cross-checking clauses");
+    assert_eq!(plain, 4, "4 Category-1 runtime-only clauses");
 }

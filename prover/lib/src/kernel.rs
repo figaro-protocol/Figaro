@@ -5,7 +5,7 @@ use crate::eip712::{
     attest_buyer_struct_hash, attest_seller_struct_hash, commitment_struct_hash,
     compute_order_hash, domain_separator,
     recover_signer, register_seller_struct_hash,
-    register_schema_struct_hash, resolve_struct_hash, set_mechanism_schema_struct_hash,
+    register_clause_struct_hash, resolve_struct_hash, set_mechanism_clause_struct_hash,
     typed_data_hash, update_profile_struct_hash,
 };
 use crate::state::KernelState;
@@ -271,35 +271,35 @@ fn apply_resolve(
     Ok(())
 }
 
-// ── Layer B content-proof gate (figaro-schema) ────────────────────
+// ── Layer B content-proof gate (figaro-clause) ────────────────────
 
 /// Verify an optional `AttestationContentProof` against the on-chain
-/// `content_ref` and the schema declared in the op's `schema_id`.
+/// `content_ref` and the clause declared in the op's `clause_id`.
 ///
 /// When `proof` is `None` this is a no-op (content-opaque attestation).
 /// When `Some`, the kernel asserts:
 ///
-///   1. `schema_id` is one of the runtime-attestable protocol schemas —
+///   1. `clause_id` is one of the runtime-attestable protocol clauses —
 ///      its canonical spec is compiled into the prover binary
-///      (`figaro_schema::embedded_spec_json`). The spec is looked up by
-///      `schema_id`, never supplied by the caller, so the constraint set
+///      (`figaro_clause::embedded_spec_json`). The spec is looked up by
+///      `clause_id`, never supplied by the caller, so the constraint set
 ///      is covered by the program verification key.
 ///   2. `validate_content(content_json, embedded_spec, stage)` succeeds.
 ///   3. `encode_content_from_spec(parsed_spec, content_json)` derives the
 ///      canonical ABI byte form from the JSON — the cross-form binding:
 ///      the bytes Layer C decodes are derived from the JSON Layer B
 ///      validates, so they describe the same content by construction.
-///      Post-Keystone there is no per-schema dispatch; one generic encoder
-///      drives all 17 runtime-attestable schemas.
+///      Post-Keystone there is no per-clause dispatch; one generic encoder
+///      drives all 17 runtime-attestable clauses.
 ///   4. `keccak256(derived_bytes) == content_ref` — binds the derived
 ///      bytes to the on-chain commitment value.
 ///   5. When `agreement_hash` is `Some` (seller attestations), the
-///      schema's section is a clause of the order's signed agreement: the
+///      clause's section is a clause of the order's signed agreement: the
 ///      sorted-pair Merkle `inclusion_proof` verifies the section leaf
-///      against `agreement_hash`. The leaf is `keccak256(schemaId ++
-///      keccak256(sectionData))`; a cross-checking schema's `sectionData`
+///      against `agreement_hash`. The leaf is `keccak256(clauseId ++
+///      keccak256(sectionData))`; a cross-checking clause's `sectionData`
 ///      is the ABI content form, so `keccak256(sectionData) == content_ref`
-///      and the leaf needs no extra input. A non-cross-checking schema
+///      and the leaf needs no extra input. A non-cross-checking clause
 ///      carries its canonical-JSON `section_data` in the proof.
 ///      Buyer attestations pass `agreement_hash: None` and skip this gate —
 ///      a buyer's evidence is the kernel event log, not an agreement clause.
@@ -308,18 +308,18 @@ fn apply_resolve(
 fn validate_attestation_content(
     proof: Option<&crate::types::AttestationContentProof>,
     content_ref: &B256,
-    schema_id: &B256,
+    clause_id: &B256,
     stage: u8,
     agreement_hash: Option<&B256>,
 ) -> Result<(), KernelError> {
     let Some(proof) = proof else {
         // A content-opaque attestation (content_ref == 0) needs no proof.
         // A content-bearing attestation (content_ref != 0) under a
-        // protocol schema the kernel can validate MUST carry one — else
+        // protocol clause the kernel can validate MUST carry one — else
         // the batched path would record unvalidated content that the
         // direct path's validator gate would have rejected.
         if *content_ref != B256::ZERO
-            && figaro_schema::embedded_spec_json(schema_id).is_some()
+            && figaro_clause::embedded_spec_json(clause_id).is_some()
         {
             return Err(KernelError::ContentProofRequired);
         }
@@ -330,44 +330,44 @@ fn validate_attestation_content(
     let content_json_value: serde_json::Value = serde_json::from_str(&proof.content_json)
         .map_err(|e| KernelError::ContentEncodingFailed(format!("content_json not valid JSON: {e}")))?;
 
-    // ── Gate 1: look up the canonical embedded spec for this schemaId ──
+    // ── Gate 1: look up the canonical embedded spec for this clauseId ──
     // The spec is compiled into the binary, not carried on the wire, so a
-    // caller cannot weaken validation with a permissive spec. A schemaId
-    // with no embedded spec is not a runtime-attestable protocol schema.
-    let spec_json = figaro_schema::embedded_spec_json(schema_id)
-        .ok_or_else(|| KernelError::SchemaEncoderMissing(format!("{schema_id}")))?;
+    // caller cannot weaken validation with a permissive spec. A clauseId
+    // with no embedded spec is not a runtime-attestable protocol clause.
+    let spec_json = figaro_clause::embedded_spec_json(clause_id)
+        .ok_or_else(|| KernelError::ClauseEncoderMissing(format!("{clause_id}")))?;
     let spec_value: serde_json::Value = serde_json::from_str(spec_json)
-        .map_err(|e| KernelError::SchemaSpecParseFailed(format!("embedded spec not valid JSON: {e}")))?;
-    let parsed = match figaro_schema::parse_schema_spec(&spec_value) {
-        figaro_schema::ParseSchemaSpecResult::Ok(s) => s,
-        figaro_schema::ParseSchemaSpecResult::Err(errors) => {
+        .map_err(|e| KernelError::ClauseSpecParseFailed(format!("embedded spec not valid JSON: {e}")))?;
+    let parsed = match figaro_clause::parse_clause_spec(&spec_value) {
+        figaro_clause::ParseClauseSpecResult::Ok(s) => s,
+        figaro_clause::ParseClauseSpecResult::Err(errors) => {
             let first = errors
                 .first()
                 .map(|e| format!("{}: {}", e.path, e.message))
                 .unwrap_or_else(|| "unknown parse error".to_string());
-            return Err(KernelError::SchemaSpecParseFailed(first));
+            return Err(KernelError::ClauseSpecParseFailed(first));
         }
     };
 
     // ── Gate 2: content satisfies the spec at the given stage ──
-    let options = figaro_schema::ValidateOptions { stage: Some(stage) };
-    match figaro_schema::validate_content(&content_json_value, &parsed, options) {
-        figaro_schema::ValidationResult::Ok => (),
-        figaro_schema::ValidationResult::Err(errors) => {
+    let options = figaro_clause::ValidateOptions { stage: Some(stage) };
+    match figaro_clause::validate_content(&content_json_value, &parsed, options) {
+        figaro_clause::ValidationResult::Ok => (),
+        figaro_clause::ValidationResult::Err(errors) => {
             let first = errors
                 .first()
                 .map(|e| format!("{}: {}", e.path, e.message))
                 .unwrap_or_else(|| "unknown validation error".to_string());
-            return Err(KernelError::SchemaContentInvalid(first));
+            return Err(KernelError::ClauseContentInvalid(first));
         }
     }
 
     // ── Gate 3: re-derive canonical ABI bytes from the JSON ──
-    // Generic encoder reads the parsed spec directly — the schemaId
+    // Generic encoder reads the parsed spec directly — the clauseId
     // lookup happened at Gate 1, so any failure here is a content
     // encoding error (field type mismatch, malformed hex, etc.),
     // never a missing encoder.
-    let derived_bytes = figaro_schema::encode_content_from_spec(&parsed, &content_json_value)
+    let derived_bytes = figaro_clause::encode_content_from_spec(&parsed, &content_json_value)
         .map_err(|e| KernelError::ContentEncodingFailed(e.to_string()))?;
 
     // ── Gate 4: derived bytes hash to the on-chain content_ref ──
@@ -376,14 +376,14 @@ fn validate_attestation_content(
         return Err(KernelError::ContentHashMismatch);
     }
 
-    // ── Gate 5: the schema clause is in the order's signed agreement ──
+    // ── Gate 5: the clause clause is in the order's signed agreement ──
     // Seller attestations bind to the role commitment's agreement_hash;
     // buyer attestations pass None and skip this gate.
     if let Some(agreement_hash) = agreement_hash {
-        // The agreement Merkle leaf is keccak256(schemaId ++ sectionDataHash).
-        // For a cross-checking (Category-2) schema the committed sectionData
+        // The agreement Merkle leaf is keccak256(clauseId ++ sectionDataHash).
+        // For a cross-checking (Category-2) clause the committed sectionData
         // is the ABI content form, so sectionDataHash == content_ref. A
-        // non-cross-checking schema carries its canonical-JSON section_data.
+        // non-cross-checking clause carries its canonical-JSON section_data.
         // `cross_checks` is read off the already-parsed embedded spec (its
         // block tier) — no parallel table to drift from the JSON.
         let cross_checks = parsed.cross_checks();
@@ -397,7 +397,7 @@ fn validate_attestation_content(
             keccak256(section_data.as_bytes())
         };
         let mut leaf_preimage = [0u8; 64];
-        leaf_preimage[..32].copy_from_slice(schema_id.as_slice());
+        leaf_preimage[..32].copy_from_slice(clause_id.as_slice());
         leaf_preimage[32..].copy_from_slice(section_data_hash.as_slice());
         let leaf = keccak256(leaf_preimage);
         if !crate::merkle::verify_inclusion(&proof.inclusion_proof, *agreement_hash, leaf) {
@@ -418,25 +418,25 @@ fn apply_attest_as_seller(
     domain: &B256,
     role_commitment: &Commitment,
     order_hash: &B256,
-    schema_id: &B256,
+    clause_id: &B256,
     stage: u8,
     content_ref: &B256,
     seller_sig: &Signature,
     content_proof: Option<&crate::types::AttestationContentProof>,
     events: &mut Vec<AttestationEventData>,
 ) -> Result<(), KernelError> {
-    // ── Layer B gate: validate content against schema (no-op if absent) ──
-    // Gate 5 binds the schema clause to the role commitment's agreement.
+    // ── Layer B gate: validate content against clause (no-op if absent) ──
+    // Gate 5 binds the clause clause to the role commitment's agreement.
     validate_attestation_content(
         content_proof,
         content_ref,
-        schema_id,
+        clause_id,
         stage,
         Some(&role_commitment.agreement_hash),
     )?;
 
     // ── Recover signer (replaces msg.sender) ──
-    let struct_hash = attest_seller_struct_hash(order_hash, schema_id, stage, content_ref);
+    let struct_hash = attest_seller_struct_hash(order_hash, clause_id, stage, content_ref);
     let digest = typed_data_hash(domain, &struct_hash);
     let attester = recover_signer(&digest, seller_sig)?;
 
@@ -484,7 +484,7 @@ fn apply_attest_as_seller(
         order_hash: *order_hash,
         process_id,
         attester,
-        schema_id: *schema_id,
+        clause_id: *clause_id,
         stage,
         content_ref: *content_ref,
     });
@@ -501,21 +501,21 @@ fn apply_attest_as_buyer(
     domain: &B256,
     process_id: &B256,
     order_hash: &B256,
-    schema_id: &B256,
+    clause_id: &B256,
     stage: u8,
     content_ref: &B256,
     buyer_sig: &Signature,
     content_proof: Option<&crate::types::AttestationContentProof>,
     events: &mut Vec<AttestationEventData>,
 ) -> Result<(), KernelError> {
-    // ── Layer B gate: validate content against schema (no-op if absent) ──
+    // ── Layer B gate: validate content against clause (no-op if absent) ──
     // A buyer's evidence is the kernel event log, not an agreement clause —
     // pass agreement_hash: None so Gate 5 (agreement inclusion) is skipped.
-    validate_attestation_content(content_proof, content_ref, schema_id, stage, None)?;
+    validate_attestation_content(content_proof, content_ref, clause_id, stage, None)?;
 
     // ── Recover signer ──
     let struct_hash =
-        attest_buyer_struct_hash(process_id, order_hash, schema_id, stage, content_ref);
+        attest_buyer_struct_hash(process_id, order_hash, clause_id, stage, content_ref);
     let digest = typed_data_hash(domain, &struct_hash);
     let attester = recover_signer(&digest, buyer_sig)?;
 
@@ -548,7 +548,7 @@ fn apply_attest_as_buyer(
         order_hash: *order_hash,
         process_id: *process_id,
         attester,
-        schema_id: *schema_id,
+        clause_id: *clause_id,
         stage,
         content_ref: *content_ref,
     });
@@ -556,32 +556,32 @@ fn apply_attest_as_buyer(
     Ok(())
 }
 
-// ── registerSchema ────────────────────────────────────────────────
+// ── registerClause ────────────────────────────────────────────────
 
-fn apply_register_schema(
+fn apply_register_clause(
     state: &mut KernelState,
     domain: &B256,
-    schema_id: &B256,
+    clause_id: &B256,
     version: u64,
     uri_hash: &B256,
     family: &B256,
     registrar_sig: &Signature,
-    events: &mut Vec<SchemaEventData>,
+    events: &mut Vec<ClauseEventData>,
 ) -> Result<(), KernelError> {
     // ── Dedup guard ──
-    if state.schemas_registered.get(schema_id).copied().unwrap_or(false) {
-        return Err(KernelError::SchemaAlreadyRegistered(*schema_id));
+    if state.clauses_registered.get(clause_id).copied().unwrap_or(false) {
+        return Err(KernelError::ClauseAlreadyRegistered(*clause_id));
     }
 
     // ── Recover registrar address ──
-    let struct_hash = register_schema_struct_hash(schema_id, version, uri_hash, family);
+    let struct_hash = register_clause_struct_hash(clause_id, version, uri_hash, family);
     let digest = typed_data_hash(domain, &struct_hash);
     let registrar = recover_signer(&digest, registrar_sig)?;
 
-    state.schemas_registered.insert(*schema_id, true);
+    state.clauses_registered.insert(*clause_id, true);
 
-    events.push(SchemaEventData {
-        schema_id: *schema_id,
+    events.push(ClauseEventData {
+        clause_id: *clause_id,
         version,
         uri_hash: *uri_hash,
         family: *family,
@@ -591,28 +591,28 @@ fn apply_register_schema(
     Ok(())
 }
 
-// ── setMechanismSchema ────────────────────────────────────────────
+// ── setMechanismClause ────────────────────────────────────────────
 
-fn apply_set_mechanism_schema(
+fn apply_set_mechanism_clause(
     state: &KernelState,
     domain: &B256,
-    schema_id: &B256,
+    clause_id: &B256,
     mechanism_sig: &Signature,
-    events: &mut Vec<MechanismSchemaEventData>,
+    events: &mut Vec<MechanismClauseEventData>,
 ) -> Result<(), KernelError> {
-    // ── Schema must be registered ──
-    if !state.schemas_registered.get(schema_id).copied().unwrap_or(false) {
-        return Err(KernelError::SchemaNotRegistered(*schema_id));
+    // ── Clause must be registered ──
+    if !state.clauses_registered.get(clause_id).copied().unwrap_or(false) {
+        return Err(KernelError::ClauseNotRegistered(*clause_id));
     }
 
     // ── Recover mechanism address ──
-    let struct_hash = set_mechanism_schema_struct_hash(schema_id);
+    let struct_hash = set_mechanism_clause_struct_hash(clause_id);
     let digest = typed_data_hash(domain, &struct_hash);
     let mechanism = recover_signer(&digest, mechanism_sig)?;
 
-    events.push(MechanismSchemaEventData {
+    events.push(MechanismClauseEventData {
         mechanism,
-        schema_id: *schema_id,
+        clause_id: *clause_id,
     });
 
     Ok(())
@@ -702,23 +702,23 @@ pub fn compute_attestation_events_hash(events: &[AttestationEventData]) -> B256 
         data.extend_from_slice(e.order_hash.as_slice());
         data.extend_from_slice(e.process_id.as_slice());
         data.extend_from_slice(e.attester.as_slice());
-        data.extend_from_slice(e.schema_id.as_slice());
+        data.extend_from_slice(e.clause_id.as_slice());
         data.push(e.stage);
         data.extend_from_slice(e.content_ref.as_slice());
     }
     keccak256(&data)
 }
 
-/// Deterministic hash of schema events for inclusion in public values.
-/// Per-schema record (matches Solidity `_hashSchemas`):
-///   schemaId(32) + version(8) + uriHash(32) + family(32) + registrar(20) = 124 bytes
-pub fn compute_schema_events_hash(
-    schemas: &[SchemaEventData],
-    mechanisms: &[MechanismSchemaEventData],
+/// Deterministic hash of clause events for inclusion in public values.
+/// Per-clause record (matches Solidity `_hashClauses`):
+///   clauseId(32) + version(8) + uriHash(32) + family(32) + registrar(20) = 124 bytes
+pub fn compute_clause_events_hash(
+    clauses: &[ClauseEventData],
+    mechanisms: &[MechanismClauseEventData],
 ) -> B256 {
     let mut data = Vec::new();
-    for e in schemas {
-        data.extend_from_slice(e.schema_id.as_slice());
+    for e in clauses {
+        data.extend_from_slice(e.clause_id.as_slice());
         data.extend_from_slice(&e.version.to_be_bytes());
         data.extend_from_slice(e.uri_hash.as_slice());
         data.extend_from_slice(e.family.as_slice());
@@ -726,7 +726,7 @@ pub fn compute_schema_events_hash(
     }
     for e in mechanisms {
         data.extend_from_slice(e.mechanism.as_slice());
-        data.extend_from_slice(e.schema_id.as_slice());
+        data.extend_from_slice(e.clause_id.as_slice());
     }
     keccak256(&data)
 }
@@ -780,8 +780,8 @@ fn apply_batch_inner(
 
     let mut tracker = TokenTracker::new();
     let mut attestation_events = Vec::new();
-    let mut schema_events = Vec::new();
-    let mut mechanism_schema_events = Vec::new();
+    let mut clause_events = Vec::new();
+    let mut mechanism_clause_events = Vec::new();
     let mut seller_events = Vec::new();
 
     for op in &input.operations {
@@ -820,7 +820,7 @@ fn apply_batch_inner(
             KernelOp::AttestAsSeller {
                 role_commitment,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage,
                 content_ref,
                 seller_sig,
@@ -831,7 +831,7 @@ fn apply_batch_inner(
                     &domain,
                     role_commitment,
                     order_hash,
-                    schema_id,
+                    clause_id,
                     *stage,
                     content_ref,
                     seller_sig,
@@ -842,7 +842,7 @@ fn apply_batch_inner(
             KernelOp::AttestAsBuyer {
                 process_id,
                 order_hash,
-                schema_id,
+                clause_id,
                 stage,
                 content_ref,
                 buyer_sig,
@@ -853,7 +853,7 @@ fn apply_batch_inner(
                     &domain,
                     process_id,
                     order_hash,
-                    schema_id,
+                    clause_id,
                     *stage,
                     content_ref,
                     buyer_sig,
@@ -862,35 +862,35 @@ fn apply_batch_inner(
                 )?;
             }
 
-            // ── Schema ──
-            KernelOp::RegisterSchema {
-                schema_id,
+            // ── Clause ──
+            KernelOp::RegisterClause {
+                clause_id,
                 version,
                 uri_hash,
                 family,
                 registrar_sig,
             } => {
-                apply_register_schema(
+                apply_register_clause(
                     &mut state,
                     &domain,
-                    schema_id,
+                    clause_id,
                     *version,
                     uri_hash,
                     family,
                     registrar_sig,
-                    &mut schema_events,
+                    &mut clause_events,
                 )?;
             }
-            KernelOp::SetMechanismSchema {
-                schema_id,
+            KernelOp::SetMechanismClause {
+                clause_id,
                 mechanism_sig,
             } => {
-                apply_set_mechanism_schema(
+                apply_set_mechanism_clause(
                     &state,
                     &domain,
-                    schema_id,
+                    clause_id,
                     mechanism_sig,
-                    &mut mechanism_schema_events,
+                    &mut mechanism_clause_events,
                 )?;
             }
 
@@ -926,13 +926,13 @@ fn apply_batch_inner(
     let positions = tracker.net_positions();
     let ops_hash = compute_positions_hash(&positions);
     let att_hash = compute_attestation_events_hash(&attestation_events);
-    let sch_hash = compute_schema_events_hash(&schema_events, &mechanism_schema_events);
+    let sch_hash = compute_clause_events_hash(&clause_events, &mechanism_clause_events);
     let op_hash = compute_seller_events_hash(&seller_events);
 
     let batch_events = BatchEvents {
         attestations: attestation_events,
-        schemas: schema_events,
-        mechanism_schemas: mechanism_schema_events,
+        clauses: clause_events,
+        mechanism_clauses: mechanism_clause_events,
         sellers: seller_events,
     };
 
@@ -944,7 +944,7 @@ fn apply_batch_inner(
             verifying_contract: input.verifying_contract,
             token_ops_hash: ops_hash,
             attestation_events_hash: att_hash,
-            schema_events_hash: sch_hash,
+            clause_events_hash: sch_hash,
             seller_events_hash: op_hash,
         },
         positions,

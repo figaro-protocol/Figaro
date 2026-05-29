@@ -2,23 +2,23 @@
 //! `encode_content_from_spec` against an embedded spec + content payload
 //! and asserts the bytes match the byte-for-byte canonical output of
 //! viem's `encodeAbiParameters`. Vectors here lock Layer B's encoder to
-//! Layer A's TypeScript (`sdk/src/schemas/encode.ts`); the kernel's
+//! Layer A's TypeScript (`sdk/src/clauses/encode.ts`); the kernel's
 //! cross-form-binding gate depends on this equivalence.
 //!
-//! After the Keystone cutover (single spec-driven encoder, no per-schema
+//! After the Keystone cutover (single spec-driven encoder, no per-clause
 //! dispatch), the canonical encoding rule is:
 //!   - top-level fields encode as `abi_encode_params` in declaration order
 //!   - enums map to `uint8` = 0-based position in `EnumFieldSpec::values`
 //!   - absent optional fields encode as the ABI zero-value of their type
 //!   - object-arrays encode as `tuple[]`
 //!
-//! Whenever a schema's spec changes (field added/removed, enum values
+//! Whenever a clause's spec changes (field added/removed, enum values
 //! reordered, type changed), regenerate the corresponding vector and
 //! update the assertion. The matching TS vector in
-//! `sdk/tests/schemas/encode.test.ts` must change in the same commit.
+//! `sdk/tests/clauses/encode.test.ts` must change in the same commit.
 
-use figaro_schema::{
-    embedded_spec_json_by_key, encode_content_from_spec, parse_schema_spec, ParseSchemaSpecResult,
+use figaro_clause::{
+    embedded_spec_json_by_key, encode_content_from_spec, parse_clause_spec, ParseClauseSpecResult,
 };
 use serde_json::{json, Value};
 
@@ -26,27 +26,27 @@ fn to_hex(bytes: &[u8]) -> String {
     format!("0x{}", alloy_primitives::hex::encode(bytes))
 }
 
-fn assert_encode(schema_id: &str, content: Value, expected_hex: &str) {
-    let json_str = embedded_spec_json_by_key(schema_id)
-        .unwrap_or_else(|| panic!("no embedded spec for {schema_id}"));
+fn assert_encode(clause_id: &str, content: Value, expected_hex: &str) {
+    let json_str = embedded_spec_json_by_key(clause_id)
+        .unwrap_or_else(|| panic!("no embedded spec for {clause_id}"));
     let parsed: Value = serde_json::from_str(json_str)
-        .unwrap_or_else(|e| panic!("embedded spec for {schema_id} is not valid JSON: {e}"));
-    let spec = match parse_schema_spec(&parsed) {
-        ParseSchemaSpecResult::Ok(s) => s,
-        ParseSchemaSpecResult::Err(errors) => {
-            panic!("embedded spec for {schema_id} failed to parse: {errors:?}")
+        .unwrap_or_else(|e| panic!("embedded spec for {clause_id} is not valid JSON: {e}"));
+    let spec = match parse_clause_spec(&parsed) {
+        ParseClauseSpecResult::Ok(s) => s,
+        ParseClauseSpecResult::Err(errors) => {
+            panic!("embedded spec for {clause_id} failed to parse: {errors:?}")
         }
     };
     let bytes = encode_content_from_spec(&spec, &content)
-        .unwrap_or_else(|e| panic!("encode failed for {schema_id}: {e}"));
+        .unwrap_or_else(|e| panic!("encode failed for {clause_id}: {e}"));
     assert_eq!(
         to_hex(&bytes),
         expected_hex,
-        "schemaId {schema_id} bytes diverged from TypeScript canonical encoding",
+        "clauseId {clause_id} bytes diverged from TypeScript canonical encoding",
     );
 }
 
-// ── Non-byte-changing schemas: vectors unchanged from pre-cutover ────
+// ── Non-byte-changing clauses: vectors unchanged from pre-cutover ────
 
 #[test]
 fn ghg_protocol_scope_1() {
@@ -177,12 +177,12 @@ fn arbitration_kleros_blockchain_technical_no_jurors() {
     );
 }
 
-// ── Byte-changing schemas: vectors regenerated under the canonical rule
+// ── Byte-changing clauses: vectors regenerated under the canonical rule
 
 #[test]
 fn geo_v2_basic() {
     // classOfService "S" → position 0 in [S, E, F, C]
-    // (previous per-schema encoder used 1-based; bytes shift accordingly)
+    // (previous per-clause encoder used 1-based; bytes shift accordingly)
     assert_encode(
         "figaro-geo-v2",
         json!({
@@ -263,13 +263,13 @@ fn consent_one_doc() {
     );
 }
 
-// ── Unsupported-schema path ─────────────────────────────────────────
+// ── Unsupported-clause path ─────────────────────────────────────────
 
 #[test]
-fn unknown_schema_has_no_embedded_spec() {
+fn unknown_clause_has_no_embedded_spec() {
     assert!(
         embedded_spec_json_by_key("figaro-bogus-v99").is_none(),
-        "third-party schemaIds should not be found in the embedded set",
+        "third-party clauseIds should not be found in the embedded set",
     );
 }
 

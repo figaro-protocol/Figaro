@@ -13,7 +13,7 @@ figaro-kernel = { path = "../lib" }
 # to mirror the kernel's content gate (see pre_check_attest_content in
 # mempool.rs). Rejecting bad attestations here means the prover never
 # spends cycles on batches the kernel would reject.
-figaro-schema = { path = "../schema" }
+figaro-clause = { path = "../clause" }
 sp1-sdk = "6.0"
 alloy-primitives = { version = "0.8", features = ["serde"] }
 alloy-sol-types = "0.8"

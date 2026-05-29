@@ -10,8 +10,8 @@ pub struct KernelState {
     pub processes: BTreeMap<B256, ProcessState>,
     pub order_status: BTreeMap<B256, u8>,
     pub order_process_id: BTreeMap<B256, B256>,
-    // SchemaRegistry
-    pub schemas_registered: BTreeMap<B256, bool>,
+    // ClauseRegistry
+    pub clauses_registered: BTreeMap<B256, bool>,
     // SellerRegistry — dedup guard only (web2-strip 2026-04-26).
     // Lifecycle flags + role storage removed; role + metadata travel only
     // in the SellerRegistered event.
@@ -24,7 +24,7 @@ impl KernelState {
             processes: BTreeMap::new(),
             order_status: BTreeMap::new(),
             order_process_id: BTreeMap::new(),
-            schemas_registered: BTreeMap::new(),
+            clauses_registered: BTreeMap::new(),
             sellers_registered: BTreeMap::new(),
         }
     }
@@ -35,7 +35,7 @@ impl KernelState {
             processes: self.processes.iter().map(|(k, v)| (*k, v.clone())).collect(),
             order_status: self.order_status.iter().map(|(k, v)| (*k, *v)).collect(),
             order_process_id: self.order_process_id.iter().map(|(k, v)| (*k, *v)).collect(),
-            schemas_registered: self.schemas_registered.iter().map(|(k, v)| (*k, *v)).collect(),
+            clauses_registered: self.clauses_registered.iter().map(|(k, v)| (*k, *v)).collect(),
             sellers_registered: self
                 .sellers_registered
                 .iter()
@@ -50,7 +50,7 @@ impl KernelState {
             processes: snap.processes.iter().cloned().collect(),
             order_status: snap.order_status.iter().cloned().collect(),
             order_process_id: snap.order_process_id.iter().cloned().collect(),
-            schemas_registered: snap.schemas_registered.iter().cloned().collect(),
+            clauses_registered: snap.clauses_registered.iter().cloned().collect(),
             sellers_registered: snap.sellers_registered.iter().cloned().collect(),
         }
     }
@@ -58,12 +58,12 @@ impl KernelState {
     /// Compute deterministic state root.
     ///
     /// `root = keccak256(processes_hash || status_hash || process_id_hash
-    ///                    || schemas_hash || sellers_hash)`
+    ///                    || clauses_hash || sellers_hash)`
     pub fn compute_root(&self) -> B256 {
         let ph = self.hash_processes();
         let sh = self.hash_order_status();
         let oh = self.hash_order_process_id();
-        let sch = self.hash_schemas();
+        let sch = self.hash_clauses();
         let oph = self.hash_sellers_registered();
 
         let mut data = Vec::with_capacity(160);
@@ -112,9 +112,9 @@ impl KernelState {
         keccak256(&data)
     }
 
-    fn hash_schemas(&self) -> B256 {
+    fn hash_clauses(&self) -> B256 {
         let mut data = Vec::new();
-        for (k, v) in &self.schemas_registered {
+        for (k, v) in &self.clauses_registered {
             data.extend_from_slice(k.as_slice());
             data.push(if *v { 1 } else { 0 });
         }

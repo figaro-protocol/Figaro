@@ -1,5 +1,5 @@
 [workspace]
-members = ["lib", "program", "rpgf", "rpgf-program", "rpgf-script", "schema", "script", "sequencer"]
+members = ["lib", "program", "rpgf", "rpgf-program", "rpgf-script", "clause", "script", "sequencer"]
 resolver = "2"
 
 # SP1 accelerates secp256k1 via a precompile. The kernel ELF verifies ~7

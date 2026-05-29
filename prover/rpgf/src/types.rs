@@ -1,24 +1,24 @@
 use alloy_primitives::{Address, B256, U256};
 use serde::{Deserialize, Serialize};
 
-/// Cumulative state of attestations under a single schemaId at a tranche
-/// timestamp. The aggregator receives one of these per schema in the
+/// Cumulative state of attestations under a single clauseId at a tranche
+/// timestamp. The aggregator receives one of these per clause in the
 /// population for a given tranche. Values are pre-aggregated by an
 /// off-chain sequencer / indexer; the SP1 proof attests to the V5-formula
 /// computation over these inputs, not to the inputs themselves.
 ///
-/// Mirrors the TypeScript `SchemaSnapshot` in
+/// Mirrors the TypeScript `ClauseSnapshot` in
 /// `sdk/scripts/rpgf-simulator/types.ts`. Value-related fields are
 /// deliberately omitted — the coordination protocol is value-agnostic.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SchemaSnapshot {
-    pub schema_id: B256,
-    /// First-write-wins binder from SchemaRegistry — receives the FIG.
-    pub schema_author: Address,
-    /// Family tag from SchemaRegistry — the unit the Tier-1 boost reads.
+pub struct ClauseSnapshot {
+    pub clause_id: B256,
+    /// First-write-wins binder from ClauseRegistry — receives the FIG.
+    pub clause_author: Address,
+    /// Family tag from ClauseRegistry — the unit the Tier-1 boost reads.
     /// `B256::ZERO` signals the registration event was missing from the
     /// upstream decoder stream (same documented-incomplete signal as
-    /// `schema_author == Address::ZERO`).
+    /// `clause_author == Address::ZERO`).
     pub family: B256,
 
     pub resolved_attestation_count: u64,
@@ -34,7 +34,7 @@ pub struct SchemaSnapshot {
     pub mean_chain_position_x1e6: u64,
 }
 
-/// Input to the aggregator: a per-tranche batch of schema snapshots
+/// Input to the aggregator: a per-tranche batch of clause snapshots
 /// plus the deploy-frozen formula parameters.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TrancheInput {
@@ -46,7 +46,7 @@ pub struct TrancheInput {
     /// Per-author cap as a fraction. Default V5: 15 / 100.
     pub cap_numerator: u32,
     pub cap_denominator: u32,
-    pub snapshots: Vec<SchemaSnapshot>,
+    pub snapshots: Vec<ClauseSnapshot>,
 }
 
 /// Public values committed by the SP1 program. The new minter contract
@@ -57,7 +57,7 @@ pub struct TrancheOutput {
     pub tranche_index: u8,
     pub merkle_root: B256,
     pub total_allocated_wei: U256,
-    pub schema_count: u32,
+    pub clause_count: u32,
 }
 
 impl TrancheOutput {
@@ -71,13 +71,13 @@ impl TrancheOutput {
     ///   [0..32]   — uint8  tranche_index    (zero-padded, value at byte 31)
     ///   [32..64]  — bytes32 merkle_root     (32 raw bytes)
     ///   [64..96]  — uint256 total_allocated (32 big-endian bytes)
-    ///   [96..128] — uint32 schema_count     (zero-padded, value at bytes 124..128)
+    ///   [96..128] — uint32 clause_count     (zero-padded, value at bytes 124..128)
     pub fn abi_encode_public_values(&self) -> Vec<u8> {
         let mut out = vec![0u8; 128];
         out[31] = self.tranche_index;
         out[32..64].copy_from_slice(self.merkle_root.as_slice());
         out[64..96].copy_from_slice(&self.total_allocated_wei.to_be_bytes::<32>());
-        out[124..128].copy_from_slice(&self.schema_count.to_be_bytes());
+        out[124..128].copy_from_slice(&self.clause_count.to_be_bytes());
         out
     }
 }

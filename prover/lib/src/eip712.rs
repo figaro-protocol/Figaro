@@ -82,20 +82,20 @@ pub fn resolve_struct_hash(process_id: &B256) -> B256 {
 // transitions, so replaying is harmless (same event re-emitted).
 
 /// Struct hash for seller attestation authorization.
-/// `AttestSeller(bytes32 orderHash,bytes32 schemaId,uint8 stage,bytes32 contentRef)`
+/// `AttestSeller(bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)`
 pub fn attest_seller_struct_hash(
     order_hash: &B256,
-    schema_id: &B256,
+    clause_id: &B256,
     stage: u8,
     content_ref: &B256,
 ) -> B256 {
     let type_hash = keccak256(
-        b"AttestSeller(bytes32 orderHash,bytes32 schemaId,uint8 stage,bytes32 contentRef)",
+        b"AttestSeller(bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)",
     );
     let mut data = Vec::with_capacity(160);
     data.extend_from_slice(type_hash.as_slice());
     data.extend_from_slice(order_hash.as_slice());
-    data.extend_from_slice(schema_id.as_slice());
+    data.extend_from_slice(clause_id.as_slice());
     // uint8 is ABI-encoded as uint256 in EIP-712 struct hashing
     data.extend_from_slice(&alloy_primitives::U256::from(stage).to_be_bytes::<32>());
     data.extend_from_slice(content_ref.as_slice());
@@ -103,56 +103,56 @@ pub fn attest_seller_struct_hash(
 }
 
 /// Struct hash for buyer attestation authorization.
-/// `AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 schemaId,uint8 stage,bytes32 contentRef)`
+/// `AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)`
 pub fn attest_buyer_struct_hash(
     process_id: &B256,
     order_hash: &B256,
-    schema_id: &B256,
+    clause_id: &B256,
     stage: u8,
     content_ref: &B256,
 ) -> B256 {
     let type_hash = keccak256(
-        b"AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 schemaId,uint8 stage,bytes32 contentRef)",
+        b"AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)",
     );
     let mut data = Vec::with_capacity(192);
     data.extend_from_slice(type_hash.as_slice());
     data.extend_from_slice(process_id.as_slice());
     data.extend_from_slice(order_hash.as_slice());
-    data.extend_from_slice(schema_id.as_slice());
+    data.extend_from_slice(clause_id.as_slice());
     data.extend_from_slice(&alloy_primitives::U256::from(stage).to_be_bytes::<32>());
     data.extend_from_slice(content_ref.as_slice());
     keccak256(&data)
 }
 
-// ── Schema authorization ──────────────────────────────────────────
+// ── Clause authorization ──────────────────────────────────────────
 
-/// Struct hash for schema registration authorization.
-/// `RegisterSchema(bytes32 schemaId,uint64 version,bytes32 uriHash,bytes32 family)`
-pub fn register_schema_struct_hash(
-    schema_id: &B256,
+/// Struct hash for clause registration authorization.
+/// `RegisterClause(bytes32 clauseId,uint64 version,bytes32 uriHash,bytes32 family)`
+pub fn register_clause_struct_hash(
+    clause_id: &B256,
     version: u64,
     uri_hash: &B256,
     family: &B256,
 ) -> B256 {
     let type_hash = keccak256(
-        b"RegisterSchema(bytes32 schemaId,uint64 version,bytes32 uriHash,bytes32 family)",
+        b"RegisterClause(bytes32 clauseId,uint64 version,bytes32 uriHash,bytes32 family)",
     );
     let mut data = Vec::with_capacity(160);
     data.extend_from_slice(type_hash.as_slice());
-    data.extend_from_slice(schema_id.as_slice());
+    data.extend_from_slice(clause_id.as_slice());
     data.extend_from_slice(&alloy_primitives::U256::from(version).to_be_bytes::<32>());
     data.extend_from_slice(uri_hash.as_slice());
     data.extend_from_slice(family.as_slice());
     keccak256(&data)
 }
 
-/// Struct hash for mechanism schema declaration authorization.
-/// `SetMechanismSchema(bytes32 schemaId)`
-pub fn set_mechanism_schema_struct_hash(schema_id: &B256) -> B256 {
-    let type_hash = keccak256(b"SetMechanismSchema(bytes32 schemaId)");
+/// Struct hash for mechanism clause declaration authorization.
+/// `SetMechanismClause(bytes32 clauseId)`
+pub fn set_mechanism_clause_struct_hash(clause_id: &B256) -> B256 {
+    let type_hash = keccak256(b"SetMechanismClause(bytes32 clauseId)");
     let mut data = Vec::with_capacity(64);
     data.extend_from_slice(type_hash.as_slice());
-    data.extend_from_slice(schema_id.as_slice());
+    data.extend_from_slice(clause_id.as_slice());
     keccak256(&data)
 }
 
