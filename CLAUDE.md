@@ -29,6 +29,8 @@ Agents — human-driven or autonomous — have bounded write scope. These are ha
 - **Existing registered schemas.** Once a `schemaId` is bound to its `ISchemaValidator`, the binding is permanent. To change behavior, register a new schemaId (e.g., `figaro-foo-v1` → `figaro-foo-v2`); never mutate the v1 contract or its Layer A spec in `frontend/lib/shared/schemas/`. (Carve-out: cosmetic metadata fields the validator never reads — `categories`, docstrings — are overridable; content-shape is not.)
 - **Reference assemblies** in the runtime that are shared infrastructure. New assemblies go in new files; treat existing reference assemblies as immutable for any agent.
 
+**Nothing is frozen but the kernel.** The only truly immutable artifacts are the two kernel files above (`FigaroCore.sol`, `CommitmentTypes.sol`). The "deployed contract" and "registered schema" bullets are **live-chain** rules — this repo is **device-only**, redeployed fresh every `devup`, with no persistent on-chain state to be incompatible with. So contracts, registries, **and schema IDs** (`figaro-*-v1` names, incl. `merchant-process`/`courier-process`) are **renamable**: superseding a name is a fresh deploy + lockstep update across all layers — which the schema doctrine already sanctions ("register a new schemaId"). Do **not** invoke "frozen / registered / item-c-deferred / for safety" to stop short of finishing a rename. Only the kernel is sacrosanct.
+
 ### Edit only what belongs to the user the agent is acting for
 
 The protocol is actor-neutral: any wallet can hold the same role any other wallet can hold. An agent acts for whoever holds its private key — and only for that wallet.
@@ -161,6 +163,10 @@ Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which 
 **Surgical changes.** Touch only what the request requires. Don't "improve" adjacent code, comments, or formatting; don't refactor what isn't broken; match existing style even where you'd do it differently. If you spot unrelated dead code, mention it — don't delete it. Remove only the imports/variables/functions that your own change orphaned. Every changed line should trace to the request. The one deliberate exception is the documentation-discipline rule below: a code change that makes a whitelisted doc stale must fix that doc in the same session.
 
 **Goal-driven execution.** Convert vague tasks into verifiable success criteria before starting — "fix the bug" becomes "write a failing test that reproduces it, then make it pass". For multi-step work, state a brief plan with a verify step per item; the harnesses in `TESTING.md` are the verification layer.
+
+**Finish a concept across every surface.** A rename or collapse is done only when the old term is gone from **all** of: code identifiers, comments, doc files (`docs/v5/`, CLAUDE.md), tests (incl. describe/it strings + fixtures), CSS (class names, `@layer` names, custom properties), user-facing copy, and **schema IDs** — verified by an *exhaustive* grep that returns empty (minus an enumerated, stated allowlist), shown before the word "done." "It compiles / tests pass" is the compiler's bar, not the finish line. Phasing a concept into "identifiers now, the rest later" is how the same files get re-touched five times — don't.
+
+**Delete dead code; never rename it.** When a feature was removed, its orphaned remnants (consumers with no producer, vestigial plumbing) get **deleted**, not swept into the new vocabulary. Renaming dead code makes it look intentional and deepens the confusion a clarity pass is meant to remove. Before renaming a thing, confirm it's live (has a producer/caller); if it's a corpse, bury it.
 
 ### Before Raising Any Finding
 
