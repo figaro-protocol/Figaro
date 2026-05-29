@@ -370,25 +370,25 @@ export function SellerDetailView({ sellerAddress }: Props) {
     // Filter cart to items from THIS merchant only — the inline cart on this
     // page is merchant-scoped. Items from other merchants live in the global
     // cart but aren't shown here.
-    const sellerCartItems = items.filter((it) => it.sellerId === sellerCatalogue.id);
+    const cartItems = items.filter((it) => it.sellerId === sellerCatalogue.id);
     // Product-driven assembly selection — when a cart item names an assembly
     // (CatalogueItemMetadata.assemblySlug), the product picks the process and
     // the fulfilment-mode dropdown is bypassed.
-    const cartProductAssemblySlug = sellerCartItems
+    const cartProductAssemblySlug = cartItems
         .map((it) => sellerCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
         .find((slug): slug is string => !!slug);
     // The pricing policy of a cart line's catalogue item — drives the
     // buyer-set price input in the cart aside below.
     const menuPolicyOf = (menuItemId: string) =>
         sellerCatalogue.menu.find((m) => m.id === menuItemId)?.pricingPolicy ?? "fixed";
-    const sellerTotalAmount = sellerCartItems.reduce(
+    const cartTotal = cartItems.reduce(
         // `item.price` may be empty mid-edit on a buyer-set line — treat as 0;
         // the executeCheckout guard blocks an unpriced buyer-set commit.
         (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
         0n,
     );
-    const buyerBond = sellerTotalAmount > 0n
-        ? calculateBonds(sellerTotalAmount, sellerTotalAmount).buyerBond
+    const buyerBond = cartTotal > 0n
+        ? calculateBonds(cartTotal, cartTotal).buyerBond
         : 0n;
 
     // Product-driven assembly: the price the buyer pays is the sum of every
@@ -415,7 +415,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             return null;
         }
         const rows = [
-            { name: nameOf(lead), payment: sellerTotalAmount },
+            { name: nameOf(lead), payment: cartTotal },
             ...plan.map(({ node, seller }) => ({
                 name: seller ? nameOf(seller) : "(unbound)",
                 payment: seller
@@ -431,19 +431,19 @@ export function SellerDetailView({ sellerAddress }: Props) {
     // catalogue's unitSystem at render time; the commit-time manifest
     // sends the metric numbers directly.
     const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
-    const sellerMassGrams = sellerCartItems.reduce((sum, cartItem) => {
+    const cartMassGrams = cartItems.reduce((sum, cartItem) => {
         const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem?.massGrams) return sum;
         return sum + menuItem.massGrams * cartItem.quantity;
     }, 0);
-    const sellerVolumeMl = sellerCartItems.reduce((sum, cartItem) => {
+    const cartVolumeMl = cartItems.reduce((sum, cartItem) => {
         const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem?.volumeMl) return sum;
         return sum + menuItem.volumeMl * cartItem.quantity;
     }, 0);
     // Highest-priority class across the cart. Default "standard" when
     // no item carries a class annotation.
-    const sellerClassOfService: CatalogueClassOfService = sellerCartItems.reduce<CatalogueClassOfService>(
+    const cartClassOfService: CatalogueClassOfService = cartItems.reduce<CatalogueClassOfService>(
         (highest, cartItem) => {
             const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
             const itemClass = menuItem?.classOfService;
@@ -458,13 +458,13 @@ export function SellerDetailView({ sellerAddress }: Props) {
             setCheckoutError("Connect your wallet to place an order.");
             return;
         }
-        if (sellerCartItems.length === 0) return;
+        if (cartItems.length === 0) return;
         // Product-driven selection: a catalogue item may name the assembly it
         // composes (e.g. a kit assembled by several sellers). When the cart
         // carries such an item the PRODUCT picks the assembly — the buyer
         // selects what they want, not how it's fulfilled. Falls back to the
         // fulfilment-mode dropdown for ordinary single-/two-party assemblies.
-        const productAssemblySlug = sellerCartItems
+        const productAssemblySlug = cartItems
             .map((it) => sellerCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
             .find((slug): slug is string => !!slug);
         if (!fulfillmentMode && !productAssemblySlug) {
@@ -472,7 +472,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             return;
         }
         // A buyer-set item must carry a buyer-entered price before commit.
-        const unpricedBuyerSet = sellerCartItems.find(
+        const unpricedBuyerSet = cartItems.find(
             (it) => menuPolicyOf(it.menuItemId) === "buyer-set" && !(parseFloat(it.price) > 0),
         );
         if (unpricedBuyerSet) {
@@ -494,8 +494,8 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 buyer,
                 seller: sellerAddress,
                 currency,
-                payment: sellerTotalAmount,
-                lineItems: sellerCartItems.map((item) => ({
+                payment: cartTotal,
+                lineItems: cartItems.map((item) => ({
                     itemId: item.menuItemId,
                     name: item.name,
                     quantity: item.quantity,
@@ -574,9 +574,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     // mass / volume strings are parsed by `parseMassToGrams` /
                     // `parseVolumeToMl` in `manifestFieldsToGeoSection`; class_
                     // is the SDK short code consumed by `encodeGeoContent`.
-                    ...(sellerMassGrams > 0 ? { mass: `${sellerMassGrams} g` } : {}),
-                    ...(sellerVolumeMl > 0 ? { volume: `${sellerVolumeMl} ml` } : {}),
-                    class_: CLASS_TO_SHORT_CODE[sellerClassOfService],
+                    ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
+                    ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
+                    class_: CLASS_TO_SHORT_CODE[cartClassOfService],
                 },
             });
             const immediateCommit = isE2EMockSession() || isE2EDevnetSession();
@@ -613,7 +613,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             const realOrderHash = new Map<string, `0x${string}`>([
                 [rootOrder.id, computeOrderHash(prepared.commitment, chainId, CONTRACTS.core)],
             ]);
-            let cumulativeValue = sellerTotalAmount;
+            let cumulativeValue = cartTotal;
 
             // Topologically ordered non-root orders, each with its resolved
             // seller. Shared with the cart breakdown (planSubOrderSellers) so
@@ -644,9 +644,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
                             courierProcessIncluded: true,
                             ...assemblyJurisdictionFields(manifest),
                             ...(daBands.length > 0 ? { proximityBands: daBands } : {}),
-                            ...(sellerMassGrams > 0 ? { mass: `${sellerMassGrams} g` } : {}),
-                            ...(sellerVolumeMl > 0 ? { volume: `${sellerVolumeMl} ml` } : {}),
-                            class_: CLASS_TO_SHORT_CODE[sellerClassOfService],
+                            ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
+                            ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
+                            class_: CLASS_TO_SHORT_CODE[cartClassOfService],
                         },
                         deliveryAddress: deliveryAddress.trim() || undefined,
                     });
@@ -689,9 +689,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         ...assemblyJurisdictionFields(manifest),
                         ...(bands.length > 0 ? { proximityBands: bands } : {}),
                         ...(ghgStandards.length > 0 ? { ghgStandards } : {}),
-                        ...(sellerMassGrams > 0 ? { mass: `${sellerMassGrams} g` } : {}),
-                        ...(sellerVolumeMl > 0 ? { volume: `${sellerVolumeMl} ml` } : {}),
-                        class_: CLASS_TO_SHORT_CODE[sellerClassOfService],
+                        ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
+                        ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
+                        class_: CLASS_TO_SHORT_CODE[cartClassOfService],
                     };
                 } else {
                     // Generic sub-order: seller resolved upstream from the
@@ -767,7 +767,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             openConnectModal?.();
             return;
         }
-        if (sellerCartItems.length === 0) return;
+        if (cartItems.length === 0) return;
         if (hasInsufficientBalance) {
             setCheckoutError(
                 `Insufficient funds. Required: ${formatToken(buyerBond, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
@@ -942,7 +942,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         data-testid="seller-cart"
                     >
                         <p className="text-xs font-semibold text-neutral-500">Order</p>
-                        {sellerCartItems.length === 0 ? (
+                        {cartItems.length === 0 ? (
                             <p className="text-sm text-neutral-500">
                                 Your cart is empty. Add items from the menu to start an order with{" "}
                                 <span className="font-semibold text-black">{sellerCatalogue.name}</span>.
@@ -950,7 +950,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         ) : (
                             <>
                                 <ul className="space-y-3 text-sm">
-                                    {sellerCartItems.map((item) => (
+                                    {cartItems.map((item) => (
                                         <li
                                             key={item.menuItemId}
                                             className="space-y-1"
@@ -1044,14 +1044,14 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                         <div className="flex justify-between">
                                             <span className="text-neutral-600">Payment to seller</span>
                                             <span className="text-neutral-900 tabular-nums">
-                                                {formatToken(sellerTotalAmount, tokenDecimals)}
+                                                {formatToken(cartTotal, tokenDecimals)}
                                             </span>
                                         </div>
                                     )}
                                     <div className="flex justify-between">
                                         <span className="text-neutral-600">Your bond (refundable on resolve)</span>
                                         <span className="text-neutral-900 tabular-nums">
-                                            {formatToken(sellerTotalAmount, tokenDecimals)}
+                                            {formatToken(cartTotal, tokenDecimals)}
                                         </span>
                                     </div>
                                     <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-semibold">
@@ -1060,16 +1060,16 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                             {formatToken(buyerBond, tokenDecimals)}
                                         </span>
                                     </div>
-                                    {(sellerMassGrams > 0 || sellerVolumeMl > 0) && (
+                                    {(cartMassGrams > 0 || cartVolumeMl > 0) && (
                                         <div
                                             className="flex justify-between text-[11px] text-neutral-500 pt-1.5 border-t border-neutral-200"
                                             data-testid="cart-logistics-total"
                                         >
                                             <span>Shipment</span>
                                             <span className="tabular-nums">
-                                                {sellerMassGrams > 0 ? formatMass(sellerMassGrams, cartUnitSystem) : ""}
-                                                {sellerMassGrams > 0 && sellerVolumeMl > 0 ? " · " : ""}
-                                                {sellerVolumeMl > 0 ? formatVolume(sellerVolumeMl, cartUnitSystem) : ""}
+                                                {cartMassGrams > 0 ? formatMass(cartMassGrams, cartUnitSystem) : ""}
+                                                {cartMassGrams > 0 && cartVolumeMl > 0 ? " · " : ""}
+                                                {cartVolumeMl > 0 ? formatVolume(cartVolumeMl, cartUnitSystem) : ""}
                                             </span>
                                         </div>
                                     )}
@@ -1177,7 +1177,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                     disabled={
                                         isApproving
                                         || placingOrder
-                                        || sellerCartItems.length === 0
+                                        || cartItems.length === 0
                                         || (!fulfillmentMode && !cartProductAssemblySlug)
                                         || (fulfillmentMode?.startsWith("deliver:") && !deliveryLocation.geohash)
                                         || ((fulfillmentMode === "deliver:seller-assigned" || fulfillmentMode === "deliver:buyer-assigned") && !sellerSelection)

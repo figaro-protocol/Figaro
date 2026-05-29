@@ -1,7 +1,7 @@
 /**
  * seller-auction glue — the deferred seller edge of a local-commerce
  * process is filled by a Dutch auction. The buyer opens the auction at
- * checkout; the seller order joins the process only when a seller claims
+ * checkout; the delivery order joins the process only when a seller claims
  * it. This is incremental process assembly: a process is opened by the root
  * commit and extended over time as each edge's parties and price resolve.
  *
@@ -9,7 +9,7 @@
  * processId, so checkout (which opens the auction) and the order page
  * (which reads it and lets a seller claim) agree without passing state.
  *
- * `stashSellerDraft` / `loadSellerDraft` carry the seller order's build
+ * `stashSellerDraft` / `loadSellerDraft` carry the delivery order's build
  * parameters — everything known at checkout EXCEPT the seller address and
  * the cleared price — from checkout to the post-claim commit. The stash is
  * device-local for now (the project runs on-device); cross-device transport
@@ -29,7 +29,7 @@ export function sellerAuctionId(processId: Hex): Hex {
 }
 
 /**
- * The seller order's build parameters, captured at checkout. The seller
+ * The delivery order's build parameters, captured at checkout. The seller
  * address (the auction's claimer) and the payment (the cleared price) are
  * NOT here — they are known only post-claim and supplied then.
  */
@@ -40,7 +40,7 @@ export interface SellerAuctionDraft {
     parentOrderHashes: Hex[];
     manifestFields: BuildOrderAgreementParams["manifestFields"];
     /** Human-readable street address, sent to the seller over the
-     *  coordination channel after the seller order commits. */
+     *  coordination channel after the delivery order commits. */
     deliveryAddress?: string;
 }
 

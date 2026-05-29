@@ -3,11 +3,11 @@
 /**
  * SellerCataloguePicker — the delivery-seller selection step at checkout.
  *
- * A local-commerce delivery is a seller order (buyer↔seller) priced from
- * the seller's own seller catalogue. Two coordination modes, one
- * mechanism — they differ only in how the seller's address is obtained:
+ * A local-commerce delivery is its own buyer↔seller order, priced from the
+ * delivery seller's own catalogue. Two coordination modes, one mechanism —
+ * they differ only in how the delivery seller's address is obtained:
  *
- *   - seller-assigned — the buyer picks from the merchant's partner list
+ *   - seller-assigned — the buyer picks from the lead seller's partner list
  *     (`counterpartyBindings`).
  *   - buyer-assigned  — the buyer enters any seller's address.
  *
@@ -33,7 +33,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 
 export interface SellerSelection {
     seller: `0x${string}`;
-    /** The chosen delivery item from the seller's seller catalogue. */
+    /** The chosen delivery item from the seller's catalogue. */
     item: CatalogueItem;
     /** The effective price — the resolved catalogue figure, or the
      *  buyer-entered amount for a `buyer-set` item. */

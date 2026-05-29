@@ -5,16 +5,16 @@
  * local-commerce process, surfaced on `/orders/[processId]`.
  *
  * Incremental process assembly: the buyer opened a descending-price auction
- * for the seller job at checkout (no seller order committed then). This
+ * for the seller job at checkout (no delivery order committed then). This
  * panel lets a seller claim the job at the decaying price, and — once
- * claimed — lets the claiming seller commit the seller order into the
+ * claimed — lets the claiming seller commit the delivery order into the
  * open process at the cleared price. The seller drives that commit: the
  * deferred edge commits when it resolves, by the party that resolved it.
  *
  * Renders null for any process with no seller auction — so it is inert on
  * seller-assigned / consume-onsite / pickup processes.
  *
- * Device-local draft: the seller order's build parameters were stashed at
+ * Device-local draft: the delivery order's build parameters were stashed at
  * checkout (`sellerAuction.ts`). Cross-device transport (IPFS pin + XMTP
  * CID) is the documented follow-on for a production relay.
  */
@@ -77,8 +77,8 @@ export function SellerAuctionPanel({ processId }: Props) {
     if (!auction.started) return null;
 
     const isBuyer = hexEqual(address, rootBuyer);
-    // The process opens with the root food order; the seller order is the
-    // second to join. activeOrderCount >= 2 ⇒ the seller order has landed.
+    // The process opens with the root food order; the delivery order is the
+    // second to join. activeOrderCount >= 2 ⇒ the delivery order has landed.
     const sellerOrderCommitted = activeOrderCount >= 2;
     const fmt = (v: bigint | undefined) => formatUnits(v ?? 0n, decimals ?? 18);
 
@@ -99,7 +99,7 @@ export function SellerAuctionPanel({ processId }: Props) {
         setError("");
         setCommitting(true);
         try {
-            // Read the process's cumulative value fresh: the seller order's
+            // Read the process's cumulative value fresh: the delivery order's
             // expectedCumulativeValue must equal cumulativeValue + payment
             // (FigaroCore.commit's sub-order chain check).
             const fresh = (await refetchProcess()).data as ProcessTuple | undefined;
@@ -130,7 +130,7 @@ export function SellerAuctionPanel({ processId }: Props) {
             await refetchProcess();
 
             // Send the buyer's physical delivery address to the seller over
-            // the coordination channel — best-effort: the seller order has
+            // the coordination channel — best-effort: the delivery order has
             // already committed, so a channel failure must not surface as a
             // commit error. Mirrors executeCheckout's seller-/buyer-assigned
             // handoff-address send; in the dutch-auction flow the buyer
