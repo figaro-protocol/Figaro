@@ -4,7 +4,7 @@ import type {
   Hex,
   OrderCreatedEvent,
   ProcessResolvedEvent,
-  SchemaRegisteredEvent,
+  ClauseRegisteredEvent,
 } from "./types.js";
 import { bigintToHex } from "./types.js";
 import { computeChainPositions, type CommittedLogWithPosition } from "./chainPosition.js";
@@ -19,7 +19,7 @@ import { computeChainPositions, type CommittedLogWithPosition } from "./chainPos
  * mirrors that "swap point" design.
  */
 export interface EventFetcher {
-  fetchSchemasRegistered(): Promise<SchemaRegisteredEvent[]>;
+  fetchClausesRegistered(): Promise<ClauseRegisteredEvent[]>;
   fetchOrdersCreated(): Promise<OrderCreatedEvent[]>;
   fetchProcessesResolved(): Promise<ProcessResolvedEvent[]>;
   fetchAttestations(): Promise<AttestationEvent[]>;
@@ -29,13 +29,13 @@ export interface RpcEventFetcherConfig {
   client: PublicClient;
   figaroCore: Hex;
   attestationCoordinator: Hex;
-  schemaRegistry: Hex;
+  clauseRegistry: Hex;
   fromBlock?: bigint;
   toBlock?: bigint;
 }
 
-const EV_SCHEMA_REGISTERED = parseAbiItem(
-  "event SchemaRegistered(bytes32 indexed schemaId, uint64 version, bytes32 uriHash, address indexed registrar)",
+const EV_CLAUSE_REGISTERED = parseAbiItem(
+  "event ClauseRegistered(bytes32 indexed clauseId, uint64 version, bytes32 uriHash, address indexed registrar)",
 );
 
 const EV_ORDER_COMMITTED = parseAbiItem(
@@ -47,7 +47,7 @@ const EV_PROCESS_RESOLVED = parseAbiItem(
 );
 
 const EV_ATTESTATION = parseAbiItem(
-  "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 schemaId, uint8 stage, bytes32 contentRef)",
+  "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
 );
 
 export class RpcEventFetcher implements EventFetcher {
@@ -60,21 +60,21 @@ export class RpcEventFetcher implements EventFetcher {
     };
   }
 
-  async fetchSchemasRegistered(): Promise<SchemaRegisteredEvent[]> {
+  async fetchClausesRegistered(): Promise<ClauseRegisteredEvent[]> {
     const logs = await this.cfg.client.getLogs({
-      address: this.cfg.schemaRegistry,
-      event: EV_SCHEMA_REGISTERED,
+      address: this.cfg.clauseRegistry,
+      event: EV_CLAUSE_REGISTERED,
       ...this.range(),
     });
     return logs.map((log) => {
       const args = log.args as {
-        schemaId: Hex;
+        clauseId: Hex;
         version: bigint;
         uriHash: Hex;
         registrar: Hex;
       };
       return {
-        schema_id: args.schemaId,
+        clause_id: args.clauseId,
         version: Number(args.version),
         uri_hash: args.uriHash,
         registrar: args.registrar,
@@ -148,7 +148,7 @@ export class RpcEventFetcher implements EventFetcher {
         orderHash: Hex;
         processId: Hex;
         attester: Hex;
-        schemaId: Hex;
+        clauseId: Hex;
         stage: number;
         contentRef: Hex;
       };
@@ -156,7 +156,7 @@ export class RpcEventFetcher implements EventFetcher {
         order_hash: args.orderHash,
         process_id: args.processId,
         attester: args.attester,
-        schema_id: args.schemaId,
+        clause_id: args.clauseId,
         stage: Number(args.stage),
         content_ref: args.contentRef,
       };

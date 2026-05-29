@@ -3,7 +3,7 @@ import type {
   AuthorAllocation,
   CountVariant,
   DiversityVariant,
-  SchemaSnapshot,
+  ClauseSnapshot,
   TrancheIndex,
   TrancheRanking,
 } from "./types.js";
@@ -12,14 +12,14 @@ import { TRANCHE_BUDGETS_FIG } from "./types.js";
 // ─── Tier-1 graph weighting ──────────────────────────────────────────
 // Deploy-frozen weights expressing the protocol's prior about which
 // public graphs are load-bearing for the substrate. Two dimensions:
-//   1. Family — schemas whose family is in {fulfilment, geo} carry the
+//   1. Family — clauses whose family is in {fulfilment, geo} carry the
 //      tier-1 category boost. The *set of Tier-1 families* is deploy-
-//      frozen; the *set of schemas inside each family* grows
-//      permissionlessly via SchemaRegistry.registerSchema(..., family).
+//      frozen; the *set of clauses inside each family* grows
+//      permissionlessly via ClauseRegistry.registerClause(..., family).
 //      topology participates via the chain-depth signal, not as a
 //      family (it has no runtime attestations of its own).
-//   2. Topology — every schema's attestations are embedded in orders
-//      with a chain position. Schemas attested in multi-party (deeper)
+//   2. Topology — every clause's attestations are embedded in orders
+//      with a chain position. Clauses attested in multi-party (deeper)
 //      orders contribute more to the topology graph.
 //
 // Composition is ADDITIVE: w = 1 + (wCat-1) + (wTopo-1). Range 1–5.
@@ -47,7 +47,7 @@ export interface WeightBreakdown {
   total: number;
 }
 
-export function tier1Weight(s: SchemaSnapshot): WeightBreakdown {
+export function tier1Weight(s: ClauseSnapshot): WeightBreakdown {
   const wCategory = TIER1_FAMILIES.has(s.family)
     ? CATEGORY_WEIGHT_TIER1
     : CATEGORY_WEIGHT_DEFAULT;
@@ -61,7 +61,7 @@ export function tier1Weight(s: SchemaSnapshot): WeightBreakdown {
   return { wCategory, wTopology, total };
 }
 
-function countValue(s: SchemaSnapshot, variant: CountVariant): number {
+function countValue(s: ClauseSnapshot, variant: CountVariant): number {
   switch (variant) {
     case "raw":
       return s.resolvedAttestationCount;
@@ -72,7 +72,7 @@ function countValue(s: SchemaSnapshot, variant: CountVariant): number {
   }
 }
 
-function diversityValue(s: SchemaSnapshot, variant: DiversityVariant): number {
+function diversityValue(s: ClauseSnapshot, variant: DiversityVariant): number {
   switch (variant) {
     case "pairs":
       return s.distinctBuyerSellerPairs;
@@ -84,7 +84,7 @@ function diversityValue(s: SchemaSnapshot, variant: DiversityVariant): number {
 }
 
 export function score(
-  s: SchemaSnapshot,
+  s: ClauseSnapshot,
   alpha: number,
   countVariant: CountVariant,
   diversityVariant: DiversityVariant,
@@ -118,8 +118,8 @@ export function rankTranche(
     const shareScaled = BigInt(Math.round(share * 1_000_000));
     const allocatedFig = (budgetFig * shareScaled) / 1_000_000n;
     return {
-      schemaName: archetype.name,
-      schemaId: snapshot.schemaId,
+      clauseName: archetype.name,
+      clauseId: snapshot.clauseId,
       category: snapshot.category,
       score: s,
       share,
@@ -139,9 +139,9 @@ export function rankTranche(
   };
 }
 
-// Iterative water-filling: any schema whose share exceeds capShare is
+// Iterative water-filling: any clause whose share exceeds capShare is
 // truncated to capShare; the excess is redistributed pro-rata across
-// under-cap schemas. Iterates to fixpoint.
+// under-cap clauses. Iterates to fixpoint.
 export function applyCap(ranking: TrancheRanking, capShare: number): TrancheRanking {
   if (capShare <= 0 || capShare >= 1) return ranking;
   if (ranking.allocations.length === 0) return ranking;

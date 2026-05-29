@@ -3,8 +3,8 @@
  * regen-manifest-hashes.mjs — recompute baked agreementHash fields in
  * the captured fixture manifests under frontend/scripts/fixtures/ using
  * the current SDK encoder. Run once after a Keystone-style byte-shape
- * change to the schema encoder (e.g. an enum reordering or a struct
- * change in a Category-2 schema).
+ * change to the clause encoder (e.g. an enum reordering or a struct
+ * change in a Category-2 clause).
  *
  * Reads each manifest, walks every cached Agreement in `agreements[]`,
  * recomputes its hash via `computeAgreementHash`, re-keys the map under

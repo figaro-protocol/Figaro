@@ -107,7 +107,7 @@ did:web identity resolution.
 import {
   computeCurrentPrice,
   evaluateClaim,
-  computeSchemaId,
+  computeClauseId,
   buildProcessDisclosureSummary,
   haversineDistance,
   geohashesMatch,
@@ -123,17 +123,17 @@ const price = computeCurrentPrice(maxPrice, floorBps, duration, startTime, now);
 const eval = evaluateClaim(maxPrice, floorBps, duration, startTime, now, false);
 // → { currentPrice, floorPrice, savingsVsMax, discountPct, secondsToFloor, claimable }
 
-// GHG disclosure: derive schema ID, build process summary
-// Standard identity is the schemaId — pick a sister schema (figaro-ghg-protocol-v1,
+// GHG disclosure: derive clause ID, build process summary
+// Standard identity is the clauseId — pick a sister clause (figaro-ghg-protocol-v1,
 // figaro-ghg-iso-14064-v1, figaro-ghg-pas-2050-v1, figaro-ghg-en-16258-v1, figaro-ghg-custom-v1).
-const schemaId = computeSchemaId("figaro-ghg-iso-14064-v1");
-const summary = buildProcessDisclosureSummary(attestations, processId, schemaId);
+const clauseId = computeClauseId("figaro-ghg-iso-14064-v1");
+const summary = buildProcessDisclosureSummary(attestations, processId, clauseId);
 // → { attestationCount, commitmentCount, inventoryCount, totalActualGrams }
 
 // Indexer hygiene: filter raw event logs by source contract before processing.
 // Required when consuming events that FigaroBatchVerifier re-emits with the
-// same topic hash as the direct-path contract (Attestation, SchemaRegistered,
-// MechanismSchemaSet, OperatorRegistered, etc.). Without this, batch and
+// same topic hash as the direct-path contract (Attestation, ClauseRegistered,
+// MechanismClauseSet, OperatorRegistered, etc.). Without this, batch and
 // direct emissions get conflated.
 const allLogs = await client.getLogs({ event: EV_ATTESTATION, fromBlock, toBlock });
 const direct  = filterLogsBySource(allLogs, attestationCoordinatorAddress);
@@ -153,27 +153,27 @@ if (document) {
 }
 ```
 
-### `@figaro/core/schemas` — Schema-Spec Format + Content Validation
+### `@figaro/core/clauses` — Clause-Spec Format + Content Validation
 
 Single source of truth that all three Figaro validation layers parse
 identically: client (this module), SP1 prover (Rust mirror, pending),
-on-chain `ISchemaValidator` contracts.
+on-chain `IClauseValidator` contracts.
 
 ```ts
 import {
-  parseSchemaSpec,
+  parseClauseSpec,
   validateContent,
   encodeHandoffContent,
   encodeCommerceContent,
-  // ... encoders for the 9 runtime-attestable local-commerce schemas
+  // ... encoders for the 9 runtime-attestable local-commerce clauses
   // (topology is manifest-only and has no ABI encoder)
-} from "@figaro/core/schemas";
+} from "@figaro/core/clauses";
 
-// 1. Parse a schema spec (typically fetched from IPFS)
-const parsed = parseSchemaSpec(specJson);
+// 1. Parse a clause spec (typically fetched from IPFS)
+const parsed = parseClauseSpec(specJson);
 if (!parsed.ok) throw new Error(parsed.errors[0].message);
 
-// 2. Validate content against the spec (closed schemas: unknown fields rejected)
+// 2. Validate content against the spec (closed clauses: unknown fields rejected)
 const result = validateContent(
   { mode: "face-to-face" },
   parsed.spec,

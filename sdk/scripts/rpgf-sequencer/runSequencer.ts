@@ -9,7 +9,7 @@ interface Env {
   rpcUrl: string;
   figaroCore: Hex;
   attestationCoordinator: Hex;
-  schemaRegistry: Hex;
+  clauseRegistry: Hex;
   rpgfMinter: Hex;
   submitterPrivateKey: Hex;
   trancheIndex: number;
@@ -48,7 +48,7 @@ function readEnv(): Env {
     rpcUrl: need("RPC_URL"),
     figaroCore: hex("FIGARO_CORE"),
     attestationCoordinator: hex("ATTESTATION_COORDINATOR"),
-    schemaRegistry: hex("SCHEMA_REGISTRY"),
+    clauseRegistry: hex("CLAUSE_REGISTRY"),
     rpgfMinter: hex("RPGF_MINTER"),
     submitterPrivateKey: hex("RPGF_SUBMITTER_PRIVATE_KEY"),
     trancheIndex: intOrDefault("TRANCHE_INDEX", 0),
@@ -73,7 +73,7 @@ async function main() {
     client: publicClient,
     figaroCore: env.figaroCore,
     attestationCoordinator: env.attestationCoordinator,
-    schemaRegistry: env.schemaRegistry,
+    clauseRegistry: env.clauseRegistry,
     fromBlock: env.fromBlock,
     toBlock: env.toBlock,
   });
@@ -81,7 +81,7 @@ async function main() {
   console.error("[sequencer] fetching events …");
   const events = await buildEventStream(fetcher);
   console.error(
-    `[sequencer] events: ${events.schemas_registered.length} schemas, ${events.orders_created.length} orders, ${events.processes_resolved.length} resolved processes, ${events.attestations.length} attestations`,
+    `[sequencer] events: ${events.clauses_registered.length} clauses, ${events.orders_created.length} orders, ${events.processes_resolved.length} resolved processes, ${events.attestations.length} attestations`,
   );
 
   const request: ProveRequest = {

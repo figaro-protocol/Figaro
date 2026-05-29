@@ -35,7 +35,7 @@ These are the bytecode / state leakers, blocked even if added to the allowlist b
 
 For `eth_call` and `eth_estimateGas`, the Worker checks that the `to` address is in the `CONTRACT_ALLOWLIST` KV namespace. Calls to arbitrary addresses are rejected.
 
-### Schema
+### Clause
 
 - **Key:** lowercased `0x...` 40-hex address
 - **Value:** JSON metadata (operator-only — clients never see this)
@@ -61,9 +61,9 @@ wrangler kv:key put --namespace-id=<ALLOWLIST_ID> \
   "0x<coordinator-address-lowercased>" \
   '{"name":"AttestationCoordinator","deployedAt":"2026-04-29"}'
 
-# Repeat for each protocol-tier contract: SchemaRegistry,
+# Repeat for each protocol-tier contract: ClauseRegistry,
 # OperatorRegistry, DutchAuction, FigaroBatchVerifier, each
-# schema validator, the FIG token, the RpgfMinter.
+# clause validator, the FIG token, the RpgfMinter.
 
 # To revoke (e.g., after redeploying a contract):
 wrangler kv:key delete --namespace-id=<ALLOWLIST_ID> "0x<old-address>"

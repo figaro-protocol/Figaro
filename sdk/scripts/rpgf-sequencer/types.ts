@@ -5,8 +5,8 @@
 
 export type Hex = `0x${string}`;
 
-export interface SchemaRegisteredEvent {
-  schema_id: Hex;
+export interface ClauseRegisteredEvent {
+  clause_id: Hex;
   version: number;
   uri_hash: Hex;
   registrar: Hex;
@@ -31,13 +31,13 @@ export interface AttestationEvent {
   order_hash: Hex;
   process_id: Hex;
   attester: Hex;
-  schema_id: Hex;
+  clause_id: Hex;
   stage: number;
   content_ref: Hex;
 }
 
 export interface EventStream {
-  schemas_registered: SchemaRegisteredEvent[];
+  clauses_registered: ClauseRegisteredEvent[];
   orders_created: OrderCreatedEvent[];
   processes_resolved: ProcessResolvedEvent[];
   attestations: AttestationEvent[];

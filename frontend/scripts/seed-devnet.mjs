@@ -148,7 +148,7 @@ const SELLERS = [
         // kit-assembly (a 4-node diamond): Mercato is the lead/coordinator (A,
         // the root — and the assembler D it doubles as, so it sells two orders).
         // `kitCounterparties` names the wallet behind each sub-order keyed by
-        // that order's counterparty schema; proximity-policy is shared by B and
+        // that order's counterparty clause; proximity-policy is shared by B and
         // D, so the checkout's bindingCursor hands B→Swift(7), D→Mercato(8) by
         // commit order. The buyer reaches the kit by selecting `kitProduct`
         // (product-driven), not a fulfilment mode.
@@ -408,21 +408,21 @@ async function main() {
                 ...((assemblySlug === 'local-commerce' || assemblySlug === 'local-commerce-offset') && op.couriers
                     ? {
                         counterpartyBindings: [{
-                            schemaId: 'figaro-courier-process-v1',
+                            clauseId: 'figaro-courier-process-v1',
                             addresses: op.couriers.map(
                                 (i) => mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: i }).address,
                             ),
                         }],
                     }
                     : {}),
-                // kit-assembly: one counterparty binding per sub-order schema,
+                // kit-assembly: one counterparty binding per sub-order clause,
                 // each pointing at the wallet(s) that fill that node. Order in
                 // the address list is significant for a shared key (B then D
                 // for proximity-policy), matching the checkout's commit order.
                 ...(assemblySlug === 'kit-assembly' && op.kitCounterparties
                     ? {
-                        counterpartyBindings: Object.entries(op.kitCounterparties).map(([schemaId, indices]) => ({
-                            schemaId,
+                        counterpartyBindings: Object.entries(op.kitCounterparties).map(([clauseId, indices]) => ({
+                            clauseId,
                             addresses: indices.map(
                                 (i) => mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: i }).address,
                             ),

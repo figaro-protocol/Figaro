@@ -25,7 +25,7 @@ incoming request
                 └─ no  ─► serve access-code form
 ```
 
-## KV schema
+## KV clause
 
 ### `CODES` namespace
 

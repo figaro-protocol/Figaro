@@ -1,15 +1,15 @@
 import type {
   Archetype,
-  SchemaCategory,
-  SchemaPopulationSource,
-  SchemaSnapshot,
+  ClauseCategory,
+  ClausePopulationSource,
+  ClauseSnapshot,
 } from "../types.js";
 
 export interface RandomFillerOptions {
   count: number;
   seed: number;
   // Per-category weighting (must sum to 1.0). Default mirrors the real
-  // schema mix: ~70% committed-policy, ~12% sovereign-log,
+  // clause mix: ~70% committed-policy, ~12% sovereign-log,
   // ~12% runtime-measurement, ~6% zero (manifest-only / never-launched).
   categoryWeights: {
     "committed-policy": number;
@@ -42,7 +42,7 @@ function uniform(rng: () => number, min: number, max: number): number {
   return min + rng() * (max - min);
 }
 
-function pickCategory(rng: () => number, w: RandomFillerOptions["categoryWeights"]): SchemaCategory | "zero" {
+function pickCategory(rng: () => number, w: RandomFillerOptions["categoryWeights"]): ClauseCategory | "zero" {
   const r = rng();
   let acc = w["committed-policy"];
   if (r < acc) return "committed-policy";
@@ -53,9 +53,9 @@ function pickCategory(rng: () => number, w: RandomFillerOptions["categoryWeights
   return "zero";
 }
 
-function zeroSnap(schemaId: string): SchemaSnapshot {
+function zeroSnap(clauseId: string): ClauseSnapshot {
   return {
-    schemaId,
+    clauseId,
     family: "unknown",
     category: "committed-policy",
     resolvedAttestationCount: 0,
@@ -74,12 +74,12 @@ function generate(options: RandomFillerOptions): Archetype[] {
   const archetypes: Archetype[] = [];
   for (let i = 0; i < options.count; i++) {
     const cat = pickCategory(rng, options.categoryWeights);
-    const schemaId = `random-${i.toString().padStart(3, "0")}`;
+    const clauseId = `random-${i.toString().padStart(3, "0")}`;
     if (cat === "zero") {
       archetypes.push({
-        name: schemaId,
+        name: clauseId,
         description: `random — zero-attestation archetype (manifest-only or never-launched)`,
-        snapshotsAtTranches: [zeroSnap(schemaId), zeroSnap(schemaId), zeroSnap(schemaId)],
+        snapshotsAtTranches: [zeroSnap(clauseId), zeroSnap(clauseId), zeroSnap(clauseId)],
       });
       continue;
     }
@@ -100,7 +100,7 @@ function generate(options: RandomFillerOptions): Archetype[] {
         ? Math.min(4, Math.max(1, Math.floor(rng() * 4) + 1))
         : 1;
 
-    const makeSnap = (countMul: number, divMul: number): SchemaSnapshot => {
+    const makeSnap = (countMul: number, divMul: number): ClauseSnapshot => {
       const orderCount = Math.round(baseOrderCount * countMul);
       const attestationCount = Math.round(orderCount * attsPerOrder);
       const distinctProcesses = Math.max(1, Math.round(orderCount * 0.85));
@@ -110,7 +110,7 @@ function generate(options: RandomFillerOptions): Archetype[] {
       const distinctSellers = Math.min(orderCount, Math.max(1, Math.round(baseDiv * divMul * sellerDiversity)));
       const distinctBuyerSellerPairs = Math.min(orderCount, Math.max(1, Math.round(distinctBuyers * sellerDiversity)));
       return {
-        schemaId,
+        clauseId,
         family: "random",
         category: cat,
         resolvedAttestationCount: attestationCount,
@@ -125,7 +125,7 @@ function generate(options: RandomFillerOptions): Archetype[] {
     };
 
     archetypes.push({
-      name: schemaId,
+      name: clauseId,
       description: `random — cat=${cat}, baseOrderCount=${baseOrderCount}, divRatio=${diversityRatio.toFixed(2)}, attsPerOrder=${attsPerOrder.toFixed(1)}, chainPos=${meanChainPos}`,
       snapshotsAtTranches: [makeSnap(1.0, 1.0), makeSnap(4.0, 3.0), makeSnap(10.0, 5.0)],
     });
@@ -135,7 +135,7 @@ function generate(options: RandomFillerOptions): Archetype[] {
 
 export function randomFillerPopulation(
   partial: Partial<RandomFillerOptions> = {},
-): SchemaPopulationSource {
+): ClausePopulationSource {
   const options: RandomFillerOptions = {
     count: 50,
     seed: 42,
@@ -152,15 +152,15 @@ export function randomFillerPopulation(
   const archetypes = generate(options);
   return {
     label: `random fillers (n=${options.count}, seed=${options.seed})`,
-    schemas: () => archetypes,
+    clauses: () => archetypes,
   };
 }
 
 export function combinePopulations(
-  ...sources: SchemaPopulationSource[]
-): SchemaPopulationSource {
+  ...sources: ClausePopulationSource[]
+): ClausePopulationSource {
   return {
     label: sources.map((s) => s.label).join(" + "),
-    schemas: () => sources.flatMap((s) => s.schemas()),
+    clauses: () => sources.flatMap((s) => s.clauses()),
   };
 }

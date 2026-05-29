@@ -6,11 +6,11 @@ export const TRANCHE_BUDGETS_FIG: readonly [bigint, bigint, bigint] = [
   100_000_000n * 10n ** 18n,
 ];
 
-// Per the audit (sdk/scripts/rpgf-simulator/audit), the 17 protocol schemas
+// Per the audit (sdk/scripts/rpgf-simulator/audit), the 17 protocol clauses
 // cluster into three populations with different natural attestation cadence.
 // The category is a modeling input; ranking math is category-blind unless
 // the count variant is processCount (which equalizes A vs B vs C).
-export type SchemaCategory = "committed-policy" | "sovereign-log" | "runtime-measurement";
+export type ClauseCategory = "committed-policy" | "sovereign-log" | "runtime-measurement";
 
 export type CountVariant =
   | "raw" //          resolvedAttestationCount — total attest events
@@ -22,11 +22,11 @@ export type DiversityVariant =
   | "buyers" // distinctBuyers — buyer-side breadth
   | "sellers"; // distinctSellers — seller-side breadth
 
-export interface SchemaSnapshot {
-  schemaId: string;
+export interface ClauseSnapshot {
+  clauseId: string;
   /** Family slug — keys Tier-1 boost. e.g. "geo", "fulfilment", "commerce". */
   family: string;
-  category: SchemaCategory;
+  category: ClauseCategory;
 
   resolvedAttestationCount: number;
   distinctProcesses: number;
@@ -43,18 +43,18 @@ export interface SchemaSnapshot {
 export interface Archetype {
   name: string;
   description: string;
-  snapshotsAtTranches: readonly [SchemaSnapshot, SchemaSnapshot, SchemaSnapshot];
+  snapshotsAtTranches: readonly [ClauseSnapshot, ClauseSnapshot, ClauseSnapshot];
 }
 
-export interface SchemaPopulationSource {
+export interface ClausePopulationSource {
   label: string;
-  schemas(): readonly Archetype[];
+  clauses(): readonly Archetype[];
 }
 
 export interface AuthorAllocation {
-  schemaName: string;
-  schemaId: string;
-  category: SchemaCategory;
+  clauseName: string;
+  clauseId: string;
+  category: ClauseCategory;
   score: number;
   share: number;
   allocatedFig: bigint;

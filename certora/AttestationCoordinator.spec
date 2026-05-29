@@ -2,7 +2,7 @@
 // Certora CVL specification for AttestationCoordinator
 // (validator-gated + agreement-receipt binding).
 //
-// The coordinator owns one storage mapping (`schemaValidator`). All role checks
+// The coordinator owns one storage mapping (`clauseValidator`). All role checks
 // are reads from the linked FigaroCore instance (no new kernel state). Every
 // runtime attestation carries a merkle inclusion proof against the signed
 // `agreementHash` — the call reverts unless the caller's sectionData and proof
@@ -35,20 +35,20 @@ methods {
     function core.processes(bytes32) external returns (address, address, uint256, uint256) envfree;
 
     // AttestationCoordinator's own validator-registry getter.
-    function schemaValidator(bytes32) external returns (address) envfree;
+    function clauseValidator(bytes32) external returns (address) envfree;
 
     // IRoleResolver.isAuthorized — wildcard external call from attestViaResolver.
     // NONDET havocs the return value: AC rules verify that no call path mutates
     // FigaroCore state, which holds regardless of what isAuthorized returns.
     function _.isAuthorized(bytes32, address) external => NONDET;
 
-    // ISchemaValidator hooks. `validate` is view and called by _validateContent
+    // IClauseValidator hooks. `validate` is view and called by _validateContent
     // for every attest* path; NONDET models "validator accepts" (non-reverting)
     // since the rules here assert properties orthogonal to content semantics.
-    // `schemaId` is called only by setValidator and its correctness is
+    // `clauseId` is called only by setValidator and its correctness is
     // Foundry-covered (see file header).
     function _.validate(bytes32, uint8, bytes, bytes) external => NONDET;
-    function _.schemaId() external => NONDET;
+    function _.clauseId() external => NONDET;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -66,7 +66,7 @@ methods {
 
 rule nonBuyerCannotAttestAsBuyer(
     CommitmentTypes.Commitment c,
-    bytes32 schemaId,
+    bytes32 clauseId,
     uint8   stage,
     bytes   sectionData,
     bytes32[] proof,
@@ -76,7 +76,7 @@ rule nonBuyerCannotAttestAsBuyer(
 
     require e.msg.sender != c.buyer;
 
-    attestAsBuyer@withrevert(e, c, schemaId, stage, sectionData, proof, content);
+    attestAsBuyer@withrevert(e, c, clauseId, stage, sectionData, proof, content);
 
     assert lastReverted,
         "attestAsBuyer must revert when caller is not the commitment's buyer";
@@ -90,7 +90,7 @@ rule nonBuyerCannotAttestAsBuyer(
 
 rule successfulBuyerAttestationImpliesBuyer(
     CommitmentTypes.Commitment c,
-    bytes32 schemaId,
+    bytes32 clauseId,
     uint8   stage,
     bytes   sectionData,
     bytes32[] proof,
@@ -98,7 +98,7 @@ rule successfulBuyerAttestationImpliesBuyer(
 ) {
     env e;
 
-    attestAsBuyer@withrevert(e, c, schemaId, stage, sectionData, proof, content);
+    attestAsBuyer@withrevert(e, c, clauseId, stage, sectionData, proof, content);
     bool reverted = lastReverted;
 
     assert !reverted => e.msg.sender == c.buyer,
@@ -167,17 +167,17 @@ rule attestationCannotChangeProcessState(bytes32 watchedProcess, method f)
 // ═══════════════════════════════════════════════════════════════════
 // RULE 5: Validator-mandatory-on-attest (buyer path)
 //
-// A schema with no registered validator cannot be attested under: if
-// schemaValidator[schemaId] == 0 pre-call, attestAsBuyer must revert.
-// This is the "no silent attestation" guarantee — an unknown schema cannot
+// A clause with no registered validator cannot be attested under: if
+// clauseValidator[clauseId] == 0 pre-call, attestAsBuyer must revert.
+// This is the "no silent attestation" guarantee — an unknown clause cannot
 // emit an Attestation event. Paired with the merkle-proof gate in
-// `_validateContent`, it closes both the unknown-schema and unsigned-clause
+// `_validateContent`, it closes both the unknown-clause and unsigned-clause
 // attack surfaces.
 // ═══════════════════════════════════════════════════════════════════
 
 rule noValidatorBlocksBuyerAttestation(
     CommitmentTypes.Commitment c,
-    bytes32 schemaId,
+    bytes32 clauseId,
     uint8   stage,
     bytes   sectionData,
     bytes32[] proof,
@@ -185,55 +185,55 @@ rule noValidatorBlocksBuyerAttestation(
 ) {
     env e;
 
-    require schemaValidator(schemaId) == 0;
+    require clauseValidator(clauseId) == 0;
 
-    attestAsBuyer@withrevert(e, c, schemaId, stage, sectionData, proof, content);
+    attestAsBuyer@withrevert(e, c, clauseId, stage, sectionData, proof, content);
 
     assert lastReverted,
-        "attestAsBuyer must revert when no validator is registered for schemaId";
+        "attestAsBuyer must revert when no validator is registered for clauseId";
 }
 
 // ═══════════════════════════════════════════════════════════════════
 // RULE 6: First-write-wins — cannot overwrite an existing validator
 //
-// setValidator(s, v) must revert whenever schemaValidator[s] != 0.
+// setValidator(s, v) must revert whenever clauseValidator[s] != 0.
 // Makes the validator binding immutable post-registration and prevents a
 // validator-swap rug-pull.
 // ═══════════════════════════════════════════════════════════════════
 
-rule setValidatorIsFirstWriteWins(bytes32 schemaId, address newValidator) {
+rule setValidatorIsFirstWriteWins(bytes32 clauseId, address newValidator) {
     env e;
 
-    require schemaValidator(schemaId) != 0;
+    require clauseValidator(clauseId) != 0;
 
-    setValidator@withrevert(e, schemaId, newValidator);
+    setValidator@withrevert(e, clauseId, newValidator);
 
     assert lastReverted,
-        "setValidator must revert when a validator is already registered for schemaId";
+        "setValidator must revert when a validator is already registered for clauseId";
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 7: setValidator cannot alter bindings for other schemas
+// RULE 7: setValidator cannot alter bindings for other clauses
 //
-// Storage isolation: setValidator(s1, v) touches only schemaValidator[s1];
-// schemaValidator[s2] for any s2 != s1 is preserved. Combined with rule 6,
-// every (schemaId → validator) binding is stable for life once set.
+// Storage isolation: setValidator(s1, v) touches only clauseValidator[s1];
+// clauseValidator[s2] for any s2 != s1 is preserved. Combined with rule 6,
+// every (clauseId → validator) binding is stable for life once set.
 // ═══════════════════════════════════════════════════════════════════
 
 rule setValidatorPreservesOtherBindings(
-    bytes32 touchedSchema,
-    bytes32 otherSchema,
+    bytes32 touchedClause,
+    bytes32 otherClause,
     address newValidator
 ) {
     env e;
 
-    require touchedSchema != otherSchema;
-    address otherBefore = schemaValidator(otherSchema);
+    require touchedClause != otherClause;
+    address otherBefore = clauseValidator(otherClause);
 
-    setValidator@withrevert(e, touchedSchema, newValidator);
+    setValidator@withrevert(e, touchedClause, newValidator);
 
-    address otherAfter = schemaValidator(otherSchema);
+    address otherAfter = clauseValidator(otherClause);
 
     assert otherBefore == otherAfter,
-        "setValidator must not modify the validator binding of any other schema";
+        "setValidator must not modify the validator binding of any other clause";
 }

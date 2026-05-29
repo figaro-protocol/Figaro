@@ -13,7 +13,7 @@ on:
 
 # Tests the two pure-Rust workspace members: figaro-kernel (33 tests —
 # EIP-712 parity with Solidity, batch execution, state transitions, ECDSA
-# recovery, schema/operator/attestation operations, genesis root) and
+# recovery, clause/operator/attestation operations, genesis root) and
 # figaro-sequencer (22 tests — mempool pre-checks, state mirror, assembler,
 # HTTP API, end-to-end batch chaining).
 #

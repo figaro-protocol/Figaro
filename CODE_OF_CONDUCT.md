@@ -6,7 +6,7 @@ of personal hostility.
 
 ## Expected
 
-- **Engage with the substance.** A claim about the kernel, a schema, or a
+- **Engage with the substance.** A claim about the kernel, a clause, or a
   proof is judged on whether it holds — not on who made it.
 - **Disagree on the merits.** "This breaks invariant X, here is the trace" is
   a contribution. "This is stupid" is not.

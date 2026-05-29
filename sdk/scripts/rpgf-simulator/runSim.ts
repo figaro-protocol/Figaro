@@ -7,8 +7,8 @@ import { combinePopulations, randomFillerPopulation } from "./populations/random
 import type {
   CountVariant,
   DiversityVariant,
-  SchemaCategory,
-  SchemaPopulationSource,
+  ClauseCategory,
+  ClausePopulationSource,
   TrancheIndex,
   TrancheRanking,
 } from "./types.js";
@@ -50,11 +50,11 @@ function printRanking(r: TrancheRanking, topN = 12) {
     `\n=== ${TRANCHE_LABELS[r.trancheIndex]} | α=${r.alpha} | ${comboLabel(r.countVariant, r.diversityVariant)} | cap=${(CAP_SHARE * 100).toFixed(0)}% ===`,
   );
   console.log(
-    "Rank  Schema                          Cat  Score          Share   Allocation",
+    "Rank  Clause                          Cat  Score          Share   Allocation",
   );
   top.forEach((a, i) => {
     const rank = String(i + 1).padStart(4);
-    const name = a.schemaName.padEnd(30);
+    const name = a.clauseName.padEnd(30);
     const cat = a.category === "committed-policy" ? "A " : a.category === "sovereign-log" ? "B " : "C ";
     const sc = a.score.toExponential(3).padStart(11);
     const share = `${(a.share * 100).toFixed(2)}%`.padStart(7);
@@ -70,11 +70,11 @@ function printCapComparison(r: TrancheRanking, capShare: number, topN = 12) {
     `\n--- Cap effect | ${TRANCHE_LABELS[r.trancheIndex]} | α=${r.alpha} | ${comboLabel(r.countVariant, r.diversityVariant)} | cap=${(capShare * 100).toFixed(0)}% ---`,
   );
   console.log(
-    "Rank  Schema                       uncapped share   capped share   uncap FIG   capped FIG",
+    "Rank  Clause                       uncapped share   capped share   uncap FIG   capped FIG",
   );
   top.forEach((a, i) => {
     const rank = String(i + 1).padStart(4);
-    const name = a.schemaName.padEnd(28);
+    const name = a.clauseName.padEnd(28);
     const usShare = `${(a.share * 100).toFixed(2)}%`.padStart(15);
     const cShare = `${(capped.allocations[i]!.share * 100).toFixed(2)}%`.padStart(13);
     const uAlloc = formatFig(a.allocatedFig).padStart(9);
@@ -84,7 +84,7 @@ function printCapComparison(r: TrancheRanking, capShare: number, topN = 12) {
 }
 
 function printSensitivityTable(
-  pop: SchemaPopulationSource,
+  pop: ClausePopulationSource,
   countVariant: CountVariant,
   diversityVariant: DiversityVariant,
   trancheIndex: TrancheIndex,
@@ -93,18 +93,18 @@ function printSensitivityTable(
   console.log(
     `\n--- Sensitivity: rank vs α | ${TRANCHE_LABELS[trancheIndex]} | ${comboLabel(countVariant, diversityVariant)} ---`,
   );
-  const schemas = pop.schemas();
+  const clauses = pop.clauses();
   const rankAt = ALPHA_GRID.map((alpha) => {
-    const r = rankTranche(schemas, trancheIndex, alpha, countVariant, diversityVariant);
+    const r = rankTranche(clauses, trancheIndex, alpha, countVariant, diversityVariant);
     const m = new Map<string, number>();
-    r.allocations.forEach((a, i) => m.set(a.schemaName, i + 1));
+    r.allocations.forEach((a, i) => m.set(a.clauseName, i + 1));
     return { alpha, map: m };
   });
 
-  const rows = filterNames ? schemas.filter((s) => filterNames.has(s.name)) : schemas;
+  const rows = filterNames ? clauses.filter((s) => filterNames.has(s.name)) : clauses;
 
   const header =
-    "Schema                          " +
+    "Clause                          " +
     ALPHA_GRID.map((a) => `α=${a.toFixed(2)}`.padStart(7)).join(" ");
   console.log(header);
 
@@ -116,14 +116,14 @@ function printSensitivityTable(
   });
 }
 
-function printWeightBreakdown(pop: SchemaPopulationSource, trancheIndex: TrancheIndex) {
+function printWeightBreakdown(pop: ClausePopulationSource, trancheIndex: TrancheIndex) {
   console.log(
     `\n--- Tier-1 weight breakdown (${TRANCHE_LABELS[trancheIndex]} snapshot) ---`,
   );
   console.log(
-    "Schema                          wCat   wTopo  total",
+    "Clause                          wCat   wTopo  total",
   );
-  for (const a of pop.schemas()) {
+  for (const a of pop.clauses()) {
     const s = a.snapshotsAtTranches[trancheIndex];
     const w = tier1Weight(s);
     const wc = w.wCategory.toFixed(2).padStart(6);
@@ -137,7 +137,7 @@ function printClusterSummary(r: TrancheRanking) {
   console.log(
     `\n--- Cluster allocation share | ${TRANCHE_LABELS[r.trancheIndex]} | α=${r.alpha} | ${comboLabel(r.countVariant, r.diversityVariant)} ---`,
   );
-  const totals: Record<SchemaCategory, { share: number; count: number }> = {
+  const totals: Record<ClauseCategory, { share: number; count: number }> = {
     "committed-policy": { share: 0, count: 0 },
     "sovereign-log": { share: 0, count: 0 },
     "runtime-measurement": { share: 0, count: 0 },
@@ -146,7 +146,7 @@ function printClusterSummary(r: TrancheRanking) {
     totals[a.category].share += a.share;
     totals[a.category].count += 1;
   }
-  console.log("Cluster                         schemas   total share");
+  console.log("Cluster                         clauses   total share");
   for (const cat of ["committed-policy", "sovereign-log", "runtime-measurement"] as const) {
     const t = totals[cat];
     const label = cat === "committed-policy" ? "A (committed-policy)" : cat === "sovereign-log" ? "B (sovereign-log)" : "C (runtime-measurement)";
@@ -162,9 +162,9 @@ function main() {
   const combined = combinePopulations(archetypes, fillers);
 
   console.log(`# RPGF simulator V4 — audit-derived variables + tier-1 graph weighting`);
-  console.log(`Archetypes: ${archetypes.schemas().length} (17 real + 3 hypothetical)`);
-  console.log(`Random fillers: ${fillers.schemas().length}`);
-  console.log(`Combined: ${combined.schemas().length}`);
+  console.log(`Archetypes: ${archetypes.clauses().length} (17 real + 3 hypothetical)`);
+  console.log(`Random fillers: ${fillers.clauses().length}`);
+  console.log(`Combined: ${combined.clauses().length}`);
   console.log(`Default α: ${ALPHA_DEFAULT}`);
   console.log(`Per-author cap: ${(CAP_SHARE * 100).toFixed(0)}%`);
   console.log(`Default combo: ${comboLabel(...DEFAULT_COMBO)} (audit's recommendation)`);
@@ -178,7 +178,7 @@ function main() {
   console.log(`\n## Default combo (${comboLabel(dCount, dDiv)}) — all tranches, capped`);
   const cappedRankings: TrancheRanking[] = [];
   for (const t of TRANCHES) {
-    const raw = rankTranche(combined.schemas(), t, ALPHA_DEFAULT, dCount, dDiv);
+    const raw = rankTranche(combined.clauses(), t, ALPHA_DEFAULT, dCount, dDiv);
     const capped = applyCap(raw, CAP_SHARE);
     cappedRankings.push(capped);
     printRanking(capped);
@@ -187,31 +187,31 @@ function main() {
   console.log(`\n## Comparison combos at Y2 (α=${ALPHA_DEFAULT}, capped)`);
   for (const [cv, dv, label] of COMPARISON_COMBOS) {
     console.log(`\n# ${label}`);
-    const raw = rankTranche(combined.schemas(), 0, ALPHA_DEFAULT, cv, dv);
+    const raw = rankTranche(combined.clauses(), 0, ALPHA_DEFAULT, cv, dv);
     const capped = applyCap(raw, CAP_SHARE);
     printRanking(capped);
   }
 
   console.log(`\n## Cluster allocation share (Y2, α=${ALPHA_DEFAULT}, all combos)`);
   const defaultY2 = applyCap(
-    rankTranche(combined.schemas(), 0, ALPHA_DEFAULT, dCount, dDiv),
+    rankTranche(combined.clauses(), 0, ALPHA_DEFAULT, dCount, dDiv),
     CAP_SHARE,
   );
   printClusterSummary(defaultY2);
   for (const [cv, dv] of COMPARISON_COMBOS) {
     const r = applyCap(
-      rankTranche(combined.schemas(), 0, ALPHA_DEFAULT, cv, dv),
+      rankTranche(combined.clauses(), 0, ALPHA_DEFAULT, cv, dv),
       CAP_SHARE,
     );
     printClusterSummary(r);
   }
 
   console.log(`\n## Cap effect at Y2 (default combo)`);
-  const rawDefault = rankTranche(combined.schemas(), 0, ALPHA_DEFAULT, dCount, dDiv);
+  const rawDefault = rankTranche(combined.clauses(), 0, ALPHA_DEFAULT, dCount, dDiv);
   printCapComparison(rawDefault, CAP_SHARE);
 
   console.log(`\n## Sensitivity vs α — archetype subset only (Y2)`);
-  const archetypeNames = new Set(archetypes.schemas().map((s) => s.name));
+  const archetypeNames = new Set(archetypes.clauses().map((s) => s.name));
   printSensitivityTable(combined, dCount, dDiv, 0, archetypeNames);
   for (const [cv, dv] of COMPARISON_COMBOS.slice(0, 3)) {
     printSensitivityTable(combined, cv, dv, 0, archetypeNames);
@@ -225,8 +225,8 @@ function main() {
         meta: {
           version: "V4",
           population: combined.label,
-          archetypeCount: archetypes.schemas().length,
-          fillerCount: fillers.schemas().length,
+          archetypeCount: archetypes.clauses().length,
+          fillerCount: fillers.clauses().length,
           defaultAlpha: ALPHA_DEFAULT,
           capShare: CAP_SHARE,
           alphaGrid: ALPHA_GRID,
@@ -239,8 +239,8 @@ function main() {
           diversityVariant: r.diversityVariant,
           budgetFigWei: r.budgetFig.toString(),
           allocations: r.allocations.map((a) => ({
-            schema: a.schemaName,
-            schemaId: a.schemaId,
+            clause: a.clauseName,
+            clauseId: a.clauseId,
             category: a.category,
             score: a.score,
             share: a.share,

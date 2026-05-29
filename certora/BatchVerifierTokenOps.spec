@@ -14,9 +14,9 @@
 //
 // Summarized away (balance-irrelevant):
 //   _decodePV       — returns NONDET DecodedPV
-//   _hashPositions, _hashAttestations, _hashSchemas, _hashOperatorEvents
+//   _hashPositions, _hashAttestations, _hashClauses, _hashOperatorEvents
 //                   — uninterpreted bytes32 return
-//   _emitAttestations, _emitSchemas, _emitOperatorEvents
+//   _emitAttestations, _emitClauses, _emitOperatorEvents
 //                   — no-op (events don't affect ghost balance)
 //
 // Additionally we pin all 4 event arrays to length 0 in rule preconditions
@@ -59,7 +59,7 @@
 //   3. Conclude: loop iteration is balance-neutral; multi-position
 //      settlement preserves token conservation.
 //
-// The same holds for the event arrays (attestations, schemas, operator
+// The same holds for the event arrays (attestations, clauses, operator
 // events): they are summarized to NONDET and never touch the ghost, so
 // their length is irrelevant to balance-flow correctness.
 
@@ -84,10 +84,10 @@ methods {
     // pick satisfying values.
     function FigaroBatchVerifier._hashPositions(FigaroBatchVerifier.NetPosition[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._hashAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal returns (bytes32) => NONDET;
-    function FigaroBatchVerifier._hashSchemas(FigaroBatchVerifier.SchemaData[] calldata, FigaroBatchVerifier.MechanismSchemaData[] calldata) internal returns (bytes32) => NONDET;
+    function FigaroBatchVerifier._hashClauses(FigaroBatchVerifier.ClauseData[] calldata, FigaroBatchVerifier.MechanismClauseData[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._hashOperatorEvents(FigaroBatchVerifier.OperatorEventInput[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._emitAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal => NONDET;
-    function FigaroBatchVerifier._emitSchemas(FigaroBatchVerifier.SchemaData[] calldata, FigaroBatchVerifier.MechanismSchemaData[] calldata) internal => NONDET;
+    function FigaroBatchVerifier._emitClauses(FigaroBatchVerifier.ClauseData[] calldata, FigaroBatchVerifier.MechanismClauseData[] calldata) internal => NONDET;
     function FigaroBatchVerifier._emitOperatorEvents(FigaroBatchVerifier.OperatorEventInput[] calldata) internal => NONDET;
 }
 
@@ -127,8 +127,8 @@ function validSinglePositionBatch(
         // Collapse the event loops to zero iterations — we're not proving
         // any event-re-emission property here.
         batchEvents.attestations.length     == 0 &&
-        batchEvents.schemas.length          == 0 &&
-        batchEvents.mechanismSchemas.length == 0 &&
+        batchEvents.clauses.length          == 0 &&
+        batchEvents.mechanismClauses.length == 0 &&
         batchEvents.operatorEvents.length   == 0;
 }
 

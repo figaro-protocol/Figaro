@@ -8,7 +8,7 @@
             "klerosCourt": "general",
             "klerosMinJurors": 3
           },
-          "schema": "figaro-arbitration-kleros-v1"
+          "clause": "figaro-arbitration-kleros-v1"
         },
         {
           "data": {
@@ -16,7 +16,7 @@
             "lineItems": [],
             "payment": "1000000000000000000"
           },
-          "schema": "figaro-commerce-v1"
+          "clause": "figaro-commerce-v1"
         },
         {
           "data": {
@@ -30,7 +30,7 @@
               "delivery"
             ]
           },
-          "schema": "figaro-fulfilment-v2"
+          "clause": "figaro-fulfilment-v2"
         },
         {
           "data": {
@@ -40,18 +40,18 @@
             "originGeohash": "0",
             "volumeMl": 1
           },
-          "schema": "figaro-geo-v2"
+          "clause": "figaro-geo-v2"
         },
         {
           "data": {},
-          "schema": "figaro-merchant-process-v1"
+          "clause": "figaro-merchant-process-v1"
         },
         {
           "data": {
             "parentOrderHashes": [],
             "topologyMode": "root"
           },
-          "schema": "figaro-topology-v1"
+          "clause": "figaro-topology-v1"
         }
       ],
       "seller": "0xde51000000000000000000000000000000000001",
@@ -65,7 +65,7 @@
             "klerosCourt": "general",
             "klerosMinJurors": 3
           },
-          "schema": "figaro-arbitration-kleros-v1"
+          "clause": "figaro-arbitration-kleros-v1"
         },
         {
           "data": {
@@ -73,11 +73,11 @@
             "lineItems": [],
             "payment": "500000000000000000"
           },
-          "schema": "figaro-commerce-v1"
+          "clause": "figaro-commerce-v1"
         },
         {
           "data": {},
-          "schema": "figaro-courier-process-v1"
+          "clause": "figaro-courier-process-v1"
         },
         {
           "data": {
@@ -87,7 +87,7 @@
             "originGeohash": "0",
             "volumeMl": 1
           },
-          "schema": "figaro-geo-v2"
+          "clause": "figaro-geo-v2"
         },
         {
           "data": {
@@ -95,7 +95,7 @@
               "zone-wifi"
             ]
           },
-          "schema": "figaro-proximity-policy-v1"
+          "clause": "figaro-proximity-policy-v1"
         },
         {
           "data": {
@@ -103,7 +103,7 @@
             "deviceSig": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             "nonce": "0x0000000000000000000000000000000000000000000000000000000000000000"
           },
-          "schema": "figaro-proximity-proof-v1"
+          "clause": "figaro-proximity-proof-v1"
         },
         {
           "data": {
@@ -112,7 +112,7 @@
             ],
             "topologyMode": "explicit"
           },
-          "schema": "figaro-topology-v1"
+          "clause": "figaro-topology-v1"
         }
       ],
       "seller": "0xde51000000000000000000000000000000000003",

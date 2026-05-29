@@ -47,7 +47,7 @@ Anvil's `--state /data/state.json` flag handles serialization. The container:
 
 ### Wiping state for a new cohort
 
-When you want to reset the testnet (e.g., between cohorts, after schema changes that aren't backward-compatible, etc.):
+When you want to reset the testnet (e.g., between cohorts, after clause changes that aren't backward-compatible, etc.):
 
 ```bash
 # Connect to the container's persistent volume.

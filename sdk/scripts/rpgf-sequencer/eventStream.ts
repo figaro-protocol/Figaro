@@ -8,12 +8,12 @@ import type { EventStream } from "./types.js";
  * (resolved-only, known-order) inside the SP1 program.
  */
 export async function buildEventStream(fetcher: EventFetcher): Promise<EventStream> {
-  const [schemas_registered, orders_created, processes_resolved, attestations] =
+  const [clauses_registered, orders_created, processes_resolved, attestations] =
     await Promise.all([
-      fetcher.fetchSchemasRegistered(),
+      fetcher.fetchClausesRegistered(),
       fetcher.fetchOrdersCreated(),
       fetcher.fetchProcessesResolved(),
       fetcher.fetchAttestations(),
     ]);
-  return { schemas_registered, orders_created, processes_resolved, attestations };
+  return { clauses_registered, orders_created, processes_resolved, attestations };
 }
