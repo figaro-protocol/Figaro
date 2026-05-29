@@ -29,24 +29,11 @@ import {
     FULFILMENT_V2_CLAUSE_KEY,
     GEO_CLAUSE_KEY,
     MERCHANT_PROCESS_CLAUSE_KEY,
-    isRedactedSection,
+    findCleartextSection,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { DELIVERY_LIFECYCLE_STAGES, type ExtractedDocument } from "./types";
-
-/** Match a section by clause key, returning its cleartext form only.
- *  Redacted sections (or absent ones) yield undefined — handoff and geo
- *  are not redaction targets in the current Step-2 scope, so a redacted
- *  section here just means the BoL gracefully degrades. */
-function getSectionByKey(
-    agreement: Agreement | RedactableAgreement,
-    clauseKey: string,
-): AgreementSection | undefined {
-    const s = agreement.sections.find((x) => x.clause === clauseKey);
-    if (!s) return undefined;
-    return isRedactedSection(s) ? undefined : s;
-}
 
 export interface BolStageReceipt {
     stageId: number;
@@ -115,8 +102,8 @@ export function extractBillOfLading(
     agreement: Agreement | RedactableAgreement,
     attestations: readonly AttestationRecord[],
 ): BillOfLadingDocument {
-    const fulfilment = getSectionByKey(agreement, FULFILMENT_V2_CLAUSE_KEY);
-    const geo = getSectionByKey(agreement, GEO_CLAUSE_KEY);
+    const fulfilment = findCleartextSection(agreement, FULFILMENT_V2_CLAUSE_KEY);
+    const geo = findCleartextSection(agreement, GEO_CLAUSE_KEY);
     const fulfilmentData = fulfilment?.data as { handoffPoints?: unknown } | undefined;
     const handoffPointsArr = Array.isArray(fulfilmentData?.handoffPoints)
         ? fulfilmentData.handoffPoints

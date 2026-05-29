@@ -21,31 +21,12 @@ import {
     TOPOLOGY_CLAUSE_KEY,
     computeSectionLeaf,
     isRedactedSection,
+    findAnySection,
+    findCleartextSection,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
-
-/** Match a section by clause key. Returns either form (cleartext or
- *  redacted); callers that need cleartext-only must check via
- *  `isRedactedSection`. */
-function findAnySection(
-    agreement: Agreement | RedactableAgreement,
-    clauseKey: string,
-): AnyAgreementSection | undefined {
-    return agreement.sections.find((s) => s.clause === clauseKey);
-}
-
-/** Match a section by clause key, returning only its cleartext form. If
- *  the section is redacted (or absent), returns undefined. */
-function findCleartextSection(
-    agreement: Agreement | RedactableAgreement,
-    clauseKey: string,
-): AgreementSection | undefined {
-    const s = findAnySection(agreement, clauseKey);
-    if (!s) return undefined;
-    return isRedactedSection(s) ? undefined : s;
-}
 
 /** Human-readable title for each clause clause (best-effort display label). */
 const CLAUSE_TITLE: Record<string, string> = {

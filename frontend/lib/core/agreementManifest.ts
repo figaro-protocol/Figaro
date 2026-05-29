@@ -597,6 +597,30 @@ export function getSection(agreement: Agreement, clause: string): AgreementSecti
 }
 
 /**
+ * Get a section by clause key from a redactable agreement, in either form
+ * (cleartext or redacted). The redactable-typed sibling of `getSection`.
+ */
+export function findAnySection(
+    agreement: Agreement | RedactableAgreement,
+    clause: string,
+): AnyAgreementSection | undefined {
+    return agreement.sections.find((s) => s.clause === clause);
+}
+
+/**
+ * Get a section by clause key, returning only its cleartext form; a redacted
+ * or absent section yields undefined.
+ */
+export function findCleartextSection(
+    agreement: Agreement | RedactableAgreement,
+    clause: string,
+): AgreementSection | undefined {
+    const s = findAnySection(agreement, clause);
+    if (!s) return undefined;
+    return isRedactedSection(s) ? undefined : s;
+}
+
+/**
  * Find the first section across an assembly manifest's inlined agreements
  * that matches `clause`. The manifest-shaped sibling of `getSection`, which
  * scopes to a single agreement: a manifest inlines one `Agreement` per

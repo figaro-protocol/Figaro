@@ -16,21 +16,14 @@ import {
     type Agreement,
     type AgreementLineItem,
     type AgreementSection,
-    type AnyAgreementSection,
     type RedactableAgreement,
     COMMERCE_CLAUSE_KEY,
     isRedactedSection,
+    findAnySection,
 } from "@/lib/core/agreementManifest";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
-
-function findAnySection(
-    agreement: Agreement | RedactableAgreement,
-    clauseKey: string,
-): AnyAgreementSection | undefined {
-    return agreement.sections.find((s) => s.clause === clauseKey);
-}
 
 export interface InvoiceLineItem {
     itemId: string;
