@@ -64,7 +64,7 @@ For each flagged framing, gather evidence from at least three of these axes:
 
 1. **Reference artifacts.** What examples already exist in the codebase?
    - `frontend/lib/shared/assemblies/*.reference.json` — what shape do the 6 references have?
-   - `frontend/lib/shared/schemas/*.json` — what shape do the 18 schemas have?
+   - `frontend/lib/shared/clauses/*.json` — what shape do the 18 clauses have?
    - Any other directory of canonical examples relevant to the framing.
 
 2. **Recent commit history.** Where is the trajectory pointed?

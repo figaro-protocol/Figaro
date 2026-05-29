@@ -67,7 +67,7 @@ Required output:
 
 ### Task 4: AssemblyRegistry Mainnet-Parity Decision
 
-`src/AssemblyRegistry.sol` exists and is deployed by `script/Deploy.s.sol:167` (devnet), but `script/DeployMainnet.s.sol` does not import or deploy it. The CLAUDE.md doctrine and the separation-of-concerns rule treat `AssemblyRegistry` as a protocol-tier artifact-family anchor parallel to `SchemaRegistry` / `SellerRegistry`. The devnet/mainnet asymmetry is currently undocumented.
+`src/AssemblyRegistry.sol` exists and is deployed by `script/Deploy.s.sol:167` (devnet), but `script/DeployMainnet.s.sol` does not import or deploy it. The CLAUDE.md doctrine and the separation-of-concerns rule treat `AssemblyRegistry` as a protocol-tier artifact-family anchor parallel to `ClauseRegistry` / `SellerRegistry`. The devnet/mainnet asymmetry is currently undocumented.
 
 Required output (one of):
 
@@ -193,7 +193,7 @@ external-audit gates above:
 
 ## Freeze Notice — Solidity Surface Frozen for External Audit
 
-**Initial freeze**: 2026-04-20. Subsequent amendments landed a pre-audit findings batch (FIG allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `SellerRegistry` surface (dropped `role` from `register` + `SellerRegistered`, added `updateProfile`, removed `SellerRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.SellerEventInput`); expanded the frozen-scope declaration to add `ISchemaValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). Amendment history is in `git log`; current frozen scope is below.
+**Initial freeze**: 2026-04-20. Subsequent amendments landed a pre-audit findings batch (FIG allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `SellerRegistry` surface (dropped `role` from `register` + `SellerRegistered`, added `updateProfile`, removed `SellerRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.SellerEventInput`); expanded the frozen-scope declaration to add `IClauseValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). Amendment history is in `git log`; current frozen scope is below.
 
 The following Solidity surface is declared frozen for external audit.
 No feature changes, refactors, or dependency upgrades will be made to
@@ -204,7 +204,7 @@ narrow follow-up review or a repeat audit decision.
 
 | Directory / file | Contents |
 |---|---|
-| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `ISchemaValidator.sol`, `SchemaRegistry.sol`, `SchemaRegistrationHelper.sol`, `DutchAuction.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`, `FigaroBatchVerifier.sol` |
+| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `IClauseValidator.sol`, `ClauseRegistry.sol`, `ClauseRegistrationHelper.sol`, `DutchAuction.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`, `FigaroBatchVerifier.sol` |
 | `src/fig/` | `FigToken.sol`, `RpgfMinter.sol`, `IFigMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |

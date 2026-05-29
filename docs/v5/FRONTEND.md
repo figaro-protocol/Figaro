@@ -12,7 +12,7 @@ CLAUDE.md keeps the active-frontend declaration and indexes this file; the per-r
 
 Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory listing, not this paragraph.
 
-**`(marketing)/` (no wallet provider):** `/` (root), `/agents`, `/assemblies`, `/builders` (hub), `/builders/composability`, `/cryptoeconomics`, `/integrate`, `/local-commerce` (worked example), `/protocol`, `/rpgf`, `/schemas`, `/spec`, `/users`, `/why`. The `/schemas` and `/assemblies` inventories read on-chain state event-driven through the standalone `publicClient` — marketing-tier reads do not require the wallet provider.
+**`(marketing)/` (no wallet provider):** `/` (root), `/agents`, `/assemblies`, `/builders` (hub), `/builders/composability`, `/cryptoeconomics`, `/integrate`, `/local-commerce` (worked example), `/protocol`, `/rpgf`, `/clauses`, `/spec`, `/users`, `/why`. The `/clauses` and `/assemblies` inventories read on-chain state event-driven through the standalone `publicClient` — marketing-tier reads do not require the wallet provider.
 
 **`(app)/` (wallet provider mounted):** `/audit` + `/audit/[processId]`, `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/builders/designer/view/[slug]`, `/consent` (beta-only ceremony), `/discover` (seller catalogue), `/dispute` (beta-consent dispute), `/evidence-display` (Kleros juror iframe target), `/fig` (transactional surface, with `/fig/claim`), `/inbox` (incoming-orders inbox), `/s/[seller]` (seller detail + cart), `/sellers` (enrolment) + its sub-routes `/sellers/{agents,assemblies,catalogue,identity,review}` and `/sellers/edit/{agents,assemblies,catalogue,identity}`, `/orders` (buyer order list), `/orders/[processId]` (per-order live timeline), `/sign`. (`/builders` and `/builders/composability` are `(marketing)/` pages, not `(app)/`.)
 
@@ -37,14 +37,14 @@ The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `Agreement
 - **`sellers/`** — Seller-profile / onboarding state helpers
 - **`seller/`** — Seller-side catalogue / seller helpers
 - **`semantic/`** — Runtime-process model derivation: `deriveProcessModelFromRuntime.ts`, `financialsProjection.ts`, `models.ts`
-- **`shared/`** — Wagmi config (`chains.ts`, `connectors.ts`, `rpc.ts`), IPFS (`ipfsService.ts`), schema specs (`schemaSpecSource.ts` + `schemas/`), seller + catalogue metadata (`sellerProfileMetadata.ts`, `sellerCatalogueMetadata.ts`, `discoveryService.ts`), slug↔label tables (`assemblyLabels.ts`)
+- **`shared/`** — Wagmi config (`chains.ts`, `connectors.ts`, `rpc.ts`), IPFS (`ipfsService.ts`), clause specs (`clauseSpecSource.ts` + `clauses/`), seller + catalogue metadata (`sellerProfileMetadata.ts`, `sellerCatalogueMetadata.ts`, `discoveryService.ts`), slug↔label tables (`assemblyLabels.ts`)
 
 ## Designer tool surface (`frontend/`)
 
 The Designer is a DAG editor — assembly designers start blank or fork an existing published assembly, modify the bonded-process DAG on the canvas, edit per-node clauses in a side drawer, save drafts to local storage, and publish to the on-chain `AssemblyRegistry` when ready. The canvas DAG is an assembly-tier composition; the kernel itself only ever sees the linear `commit` chains that result at runtime. The three-column palette/canvas/inspector shape was rejected during this project's evolution.
 
 **Routes:**
-- `/builders/designer` — landing. Three sections: drafts (`<DraftsList>`, localStorage), the wallet's published assemblies (`<PublishedList>`, reconstructed from `AssemblyRegistered` events), and the schemas catalogue (`<SchemasList>`, read from `SchemaRegistry`).
+- `/builders/designer` — landing. Three sections: drafts (`<DraftsList>`, localStorage), the wallet's published assemblies (`<PublishedList>`, reconstructed from `AssemblyRegistered` events), and the clauses catalogue (`<ClausesList>`, read from `ClauseRegistry`).
 - `/builders/designer/new` — blank DAG editor. Three init paths: `?draft=slug` query, autosaved current session, or fresh blank.
 - `/builders/designer/edit/[slug]` — fork an existing published assembly into the editor.
 - `/builders/designer/view/[slug]` — read-only view of a published assembly.
@@ -54,18 +54,18 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `AgreementDrawer.tsx` — per-node clause editor (Geo / GHG / Topology baseline-graph clauses + the rest of the agreement surface).
 - `DraftsList.tsx` — saved-drafts list on the landing.
 - `PublishedList.tsx` — published-assemblies list for the connected wallet.
-- `SchemasList.tsx` — schemas catalogue on the landing.
+- `ClausesList.tsx` — clauses catalogue on the landing.
 - Shared DAG canvas: `components/core/ProcessGraphCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in; click edge pill to swap fulfilment method).
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `swapSyntheticFulfilmentMethod`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/manifestToDraft.ts` (fork a published assembly's manifest into an editable draft).
 
-## Schema validation in the frontend
+## Clause validation in the frontend
 
-- `useSchemaValidator(schemaId)` hook (`hooks/core/`) — binds `validateContent`
+- `useClauseValidator(clauseId)` hook (`hooks/core/`) — binds `validateContent`
   to a form value. `{ isReady, validate, loadError }`.
-- `schemaSpecSource.ts` — preloads built-in specs at module load (18 schemas in
-  `lib/shared/schemas/` — 17 runtime-attestable + the manifest-only
-  `figaro-topology-v1`); supports async `loadSchemaSpec(id, uri)` for
+- `clauseSpecSource.ts` — preloads built-in specs at module load (18 clauses in
+  `lib/shared/clauses/` — 17 runtime-attestable + the manifest-only
+  `figaro-topology-v1`); supports async `loadClauseSpec(id, uri)` for
   IPFS-resolved specs.
 
 ## Components (`components/`)
@@ -80,7 +80,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 Every route in `frontend/app/` is classified into one of three tiers
 governing wallet-provider load:
 
-- **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current routes: `/`, `/agents`, `/assemblies`, `/builders`, `/builders/composability`, `/cryptoeconomics`, `/integrate`, `/local-commerce`, `/protocol`, `/rpgf`, `/schemas`, `/security`, `/spec`, `/users`, `/why`.
+- **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current routes: `/`, `/agents`, `/assemblies`, `/builders`, `/builders/composability`, `/cryptoeconomics`, `/integrate`, `/local-commerce`, `/protocol`, `/rpgf`, `/clauses`, `/security`, `/spec`, `/users`, `/why`.
 - **Reference / read-only (in `(app)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. Current: `/builders/designer*` (drafts in localStorage), `/discover` (seller catalogue), `/audit` + `/audit/[processId]` (audit / forensics), `/s/[seller]` (read-mode catalogue with WalletGate-protected place-order CTA). The `/builders` hub and `/builders/composability` are publication pages and live in `(marketing)/`.
 - **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/sign`, `/sellers`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` + `/orders/[processId]` (buyer order list + per-order timeline; resolveProcess fires here), `/inbox` (incoming-orders inbox; counter-sign + merchant-process attestations fire here).
 
@@ -88,4 +88,4 @@ governing wallet-provider load:
 
 1. Do NOT gate read-only pages behind `useAccount` / `isConnected`. Wallet-connect is a signing prerequisite, not a login. A user who has never connected must be able to read every Reference / read-only and Marketing route.
 2. For inline write affordances on Reference pages, use `WalletGate` (the canonical inline-gate wrapper).
-3. The `(marketing)` / `(app)` route-group split is in place: `app/(marketing)/layout.tsx` does NOT mount `<Providers>`; only `app/(app)/layout.tsx` does. Marketing pages still read on-chain state via the standalone `publicClient` exported from `lib/shared/wagmi.ts` — `/schemas` and `/assemblies` are the canonical event-driven marketing inventory pages.
+3. The `(marketing)` / `(app)` route-group split is in place: `app/(marketing)/layout.tsx` does NOT mount `<Providers>`; only `app/(app)/layout.tsx` does. Marketing pages still read on-chain state via the standalone `publicClient` exported from `lib/shared/wagmi.ts` — `/clauses` and `/assemblies` are the canonical event-driven marketing inventory pages.

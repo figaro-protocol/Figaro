@@ -12,7 +12,7 @@ patterns established by CargoX, TradeTrust, the UNCITRAL Model Law on
 Electronic Transferable Records (MLETR), and the TradeLens consortium. It
 does not propose code changes; it settles the conceptual question so that
 subsequent code changes (a focused BoL extractor and view, possibly a new
-schema) can be made on solid ground.
+clause) can be made on solid ground.
 
 > **Status note (2026-04-28, post-publication)**: §5 ("The transferability
 > question") and §6 ("What this leaves expressible — and what is closed
@@ -398,10 +398,10 @@ positioning Bitcoin took relative to fiat clearing, or that TCP/IP took
 relative to circuit-switched telephony: a substrate that does less,
 on purpose, so that the less it does is unconditional.
 
-## 7. Field-level comparison: traditional BoL vs Figaro schemas
+## 7. Field-level comparison: traditional BoL vs Figaro clauses
 
 For the non-negotiable BoL case (the one Figaro can express), the
-extractable view assembles fields from the schemas attached to the
+extractable view assembles fields from the clauses attached to the
 buyer↔courier order's agreement.
 
 | Traditional BoL field | Figaro source | Notes |
@@ -416,7 +416,7 @@ buyer↔courier order's agreement.
 | Mode of carriage | `figaro-fulfilment-v2.handoffPoints` | Four handoff points: face-to-face / dead-drop / parking-area / locker; local-commerce focused. |
 | Service class (modality + organizer) | `figaro-fulfilment-v2.modalities` + `.coordinations` | Modalities: consume-onsite / pickup / delivery / virtual. Coordinations (set when delivery is offered): buyer-assigned / seller-assigned / dutch-auction. |
 | Stage progression (loaded / in-transit / delivered) | `figaro-courier-process-v1` | 5 stages: preparationStarted / readyForPickup / courierEnRoute / pickedUp / delivered; per-stage attestations. |
-| Custody-change verification at handoff | `figaro-proximity-policy-v1` (committed band) + `figaro-proximity-proof-v1` (runtime nonce + sig) | Sister-schema split mirrors GHG. Off-chain consumers verify proof.band == policy.band. |
+| Custody-change verification at handoff | `figaro-proximity-policy-v1` (committed band) + `figaro-proximity-proof-v1` (runtime nonce + sig) | Sister-clause split mirrors GHG. Off-chain consumers verify proof.band == policy.band. |
 | Cargo description (line items) | `figaro-commerce-v1.lineItems` | itemId / name / quantity / unitPrice. Cleartext today; encryption is a separate backlog item ("line-item privacy"). |
 | Freight (carriage payment) | `figaro-commerce-v1.payment` + `currency` (on the buyer↔courier order, not the buyer↔merchant order) | The carriage is its own commerce clause on its own order. |
 | Liability for non-performance | The bond mechanism (asymmetric bonding + atomic resolution) | Figaro's bond *is* the liability mechanism; Hague-Visby tonnage-based caps are incommensurable with this bond structure. |
@@ -427,13 +427,13 @@ buyer↔courier order's agreement.
 ### 7.1 Fields that are *not* covered today
 
 These appear on traditional BoLs and in the supply-chain BoL conventions
-TradeTrust documents but have no current schema in Figaro:
+TradeTrust documents but have no current clause in Figaro:
 
 - **Cargo-type / class-of-service for hazardous goods.** Hazmat / dangerous-goods declarations (UN numbers, packing groups, transport categories) are not expressible. `figaro-fulfilment-v2.coordinations` carries a courier-coordination enum but it is about *who organizes* the carriage, not about *what kind of cargo* is being carried.
-- **Special-handling instructions.** Temperature-controlled / fragile / orientation-sensitive / live-animal — none of these have a schema slot.
+- **Special-handling instructions.** Temperature-controlled / fragile / orientation-sensitive / live-animal — none of these have a clause slot.
 - **Notify party.** A third party who is to be notified at arrival, distinct from the consignee. Figaro's data model does not currently carry a notify address separate from the consignee address.
 - **Cargo-detail beyond SKU.** Weight, volume, marks, numbers, packaging type per shipment. `figaro-commerce-v1.lineItems` carries `quantity` and `name` but not packed-shipment dimensions.
-- **Liability terms / freight-paid status / freight-collect.** Whether the freight is prepaid by the shipper or collect-from-consignee. In Figaro this is implicit (the buyer pays the seller in the bonded payment); making it explicit is a labelling concern, not a schema concern.
+- **Liability terms / freight-paid status / freight-collect.** Whether the freight is prepaid by the shipper or collect-from-consignee. In Figaro this is implicit (the buyer pays the seller in the bonded payment); making it explicit is a labelling concern, not a clause concern.
 
 The decision on each of these — extend `figaro-fulfilment-v2`, fork
 `figaro-cargo-description-v1`, defer to a future supply-chain assembly,
@@ -454,12 +454,12 @@ when the seller's role is courier as expressed on the order). Orders that
 have handoff data but no carrier role get their handoff/proximity data
 surfaced as a different document genre — a "Proof of Handoff" page, name
 TBD — not as a "Bill of Lading". This is a small code change against
-existing extractors; no new schema is required.
+existing extractors; no new clause is required.
 
-**8.2 No `figaro-bol-v1` schema for now.** The non-negotiable BoL view is
-fully assemblable from the existing schemas. Adding a new schema would be
+**8.2 No `figaro-bol-v1` clause for now.** The non-negotiable BoL view is
+fully assemblable from the existing clauses. Adding a new clause would be
 ceremonial. Defer this decision until a real supply-chain customer
-demands a feature the existing schemas can't express.
+demands a feature the existing clauses can't express.
 
 **8.3 Document the negotiability limitation explicitly.** ✅ Shipped as
 entry #14 in `docs/v5/DESIGN_DECISIONS.md`: "No MLETR-style transferable
@@ -472,7 +472,7 @@ it as a gap.
 **8.4 Defer the cargo-description / hazmat / notify-party decisions.**
 None of these block local commerce. They become live questions when the
 supply-chain assembly enters build phase. At that point the question is
-per-field: extend an existing schema, fork a new one, or document an
+per-field: extend an existing clause, fork a new one, or document an
 out-of-scope decision. A pre-emptive `figaro-cargo-description-v1` would
 be premature design.
 
@@ -515,10 +515,10 @@ consortium structure, any permissioned visibility tier, or any commercial
 leader. Each participant is bonded independently; the protocol takes no
 position on the commercial relationship between them.
 
-**Cargo-detail schemas may be the deliverable.** When the assembly is
+**Cargo-detail clauses may be the deliverable.** When the assembly is
 built, the live design questions are: hazmat declarations? notify party?
-packed-shipment dimensions? Each is a schema-design call following the
-procedure in `CLAUDE.md` § "Adding a new schema — checklist". The
+packed-shipment dimensions? Each is a clause-design call following the
+procedure in `CLAUDE.md` § "Adding a new clause — checklist". The
 research above lists the candidates without prejudging them.
 
 **The TradeTrust document model is a useful reference, not a target.**
@@ -546,7 +546,7 @@ backlog item.
   field.** In supply-chain assemblies the merchant-as-tenderer is
   conceptually distinct from the carrier-as-tenderee; surfacing both on
   the handoff record may matter for evidentiary completeness.
-- **Hazmat / dangerous-goods schema decision.** Defer until the
+- **Hazmat / dangerous-goods clause decision.** Defer until the
   supply-chain assembly demands it; revisit then.
 - ~~**`docs/v5/DESIGN_DECISIONS.md` entry for the negotiability
   limitation.**~~ ✅ Shipped as entry #14 in the same session as this
@@ -582,7 +582,7 @@ backlog item.
 - `CLAUDE.md` § "What Figaro Is", § "What Figaro Is Not", § "Common Misframings — Do Not Propose"
 - `docs/v5/THEORY.md` — game-theoretic derivation of the kernel invariants
 - `docs/v5/DESIGN_DECISIONS.md` — 14 intentional patterns that look like vulnerabilities but are correct by design (entry #14 captures the MLETR-non-implementability finding from this research)
-- `docs/v5/SCHEMAS.md` — the schema validation architecture and anchoring doctrine governing any future schema additions
+- `docs/v5/CLAUSES.md` — the clause validation architecture and anchoring doctrine governing any future clause additions
 - `frontend/lib/audit/billOfLadingExtract.ts` — the extractor that needs the discriminator
 - `frontend/lib/audit/auditBundle.ts` — where the discriminator gates the BoL emission
-- `frontend/lib/shared/schemas/figaro-fulfilment-v2.json` and the other schemas referenced in §7
+- `frontend/lib/shared/clauses/figaro-fulfilment-v2.json` and the other clauses referenced in §7

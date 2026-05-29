@@ -137,7 +137,7 @@ that constitute the information layer of the public coordination economy:
 
 1. **Process graph** (protocol-enforced) — orders, bonds, settlement, DAG
 2. **Spatial graph** (institution-declared) — geohashes, routing signals, zones
-3. **Disclosure graph** (protocol-derived) — schemas, requirements, submissions
+3. **Disclosure graph** (protocol-derived) — clauses, requirements, submissions
 4. **Capital graph** (protocol-enforced) — bond flows, vault positions, auction clearing
 5. **Cross-process graph** (protocol-derived) — template provenance, settlement links
 
@@ -177,7 +177,7 @@ value-adders:
   unilateral performance bond issued by a third party; Figaro is a
   bilateral performance bond where the counterparty is the surety.
 - **Anonymous collaboration**: two pseudonymous developers co-building
-  software without legal identities. The schema-typed agreement hash
+  software without legal identities. The clause-typed agreement hash
   defines deliverables; the bond enforces completion. No platform
   mediation, no KYC, no escrow service fee.
 - **Jurisdiction-free exchange**: high-stakes coordination in environments
@@ -313,8 +313,8 @@ confuse tiers (e.g., "add yield to locked bonds") misidentify what they touch.
 | Tier | What it is | Boundary |
 |---|---|---|
 | **Kernel** | `FigaroCore`. The irreducible settlement primitive: 2 external functions, 3 mappings, no owner, no fee, no escape hatches. Secures the process graph via asymmetric bonding. | Nothing modifies the kernel's payoff matrix. |
-| **Protocol** | Kernel + extension doctrine + public graphs. Attestation, schema registry, mechanism modules (auctions, lifecycle coordinators, seller registry), five semantic graphs. | Extensions read kernel state but never weaken its guarantees. |
-| **Runtime** | Protocol + semantic derivation layer + institution assembly schema + builder surfaces + UI. The complete operational environment. | Institutions grow on top; they can wither or be replaced without shaking the kernel. |
+| **Protocol** | Kernel + extension doctrine + public graphs. Attestation, clause registry, mechanism modules (auctions, lifecycle coordinators, seller registry), five semantic graphs. | Extensions read kernel state but never weaken its guarantees. |
+| **Runtime** | Protocol + semantic derivation layer + institution assembly clause + builder surfaces + UI. The complete operational environment. | Institutions grow on top; they can wither or be replaced without shaking the kernel. |
 
 The kernel is bedrock; the protocol is law; the runtime is the shared workshop;
 institutions are the structures built on top.
@@ -330,7 +330,7 @@ FIG has a fixed supply of one billion tokens, set at genesis and never
 inflated. There is no settlement-anchored emission: FIG is not minted on
 `resolveProcess`, and there is no per-settlement reward path. The allocation
 is 100M (10%) to founders and 300M (30%) to the DAO — both minted at genesis,
-no vesting — and 600M (60%) reserved for schema-author retroactive
+no vesting — and 600M (60%) reserved for clause-author retroactive
 public-goods funding, released in three staged tranches at years 2, 5, and 9
 through a single `RpgfMinter` contract whose per-tranche Merkle roots are
 proven correct by an SP1 proof before each release. Every contract in the FIG
@@ -355,16 +355,16 @@ key, no platform-held decryption capability, no data silo.
 The protocol core (`FigaroCore`) treats the manifest field as opaque bytes —
 it stores nothing, interprets nothing, and only emits the raw bytes and their
 hash in the `OrderCreated` event. What goes into the manifest, how it is
-encrypted, and what schema it conforms to are **dapp-level policy decisions**.
+encrypted, and what clause it conforms to are **dapp-level policy decisions**.
 A delivery archetype might use geohash-6 + AES-sealed street address. A
 procurement archetype might use H3 hexagons + cleartext warehouse codes. A
 repair archetype might use lat/long + sealed unit number. The protocol remains
 constant; the dapp layer varies.
 
-Manifest schemas follow the same anchoring pattern as GHG disclosures:
-off-chain semantics, on-chain reference integrity (schema ID, version, content
-hash). Mechanisms declare which schema(s) they require; order creators declare
-which schema their manifest conforms to. This makes manifest interpretation
+Manifest clauses follow the same anchoring pattern as GHG disclosures:
+off-chain semantics, on-chain reference integrity (clause ID, version, content
+hash). Mechanisms declare which clause(s) they require; order creators declare
+which clause their manifest conforms to. This makes manifest interpretation
 verifiable without making the protocol opinionated about content.
 
 ### What This Means For Development

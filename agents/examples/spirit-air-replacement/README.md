@@ -20,7 +20,7 @@ When fuel doesn't show up, the airline's bond to the passenger is at risk *and* 
 
 ## What you'd build
 
-- **Schemas to author**: ~1 new schema (see `schemas.md`). The biggest gap is a scheduled-departure binding.
+- **Clauses to author**: ~1 new clause (see `clauses.md`). The biggest gap is a scheduled-departure binding.
 - **Assembly DAG**: passenger as root buyer; airline as fan-out seller; 5 typical sub-sellers. See `assembly.md`.
 - **Factotums**: one per role — passenger, airline, gate-ops, fuel, crew, catering, maintenance. See `roles.md`.
 

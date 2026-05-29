@@ -1,6 +1,6 @@
 # @figaro/agent-sdk
 
-Programmatic access to the Figaro contributor agents (`figaro-kernel-reviewer`, `figaro-schema-lockstep`, `figaro-schema-author`) for non-Claude-Code runtimes.
+Programmatic access to the Figaro contributor agents (`figaro-kernel-reviewer`, `figaro-clause-lockstep`, `figaro-clause-author`) for non-Claude-Code runtimes.
 
 The canonical agent definitions live in `.claude/agents/*.md` — Claude Code reads them directly. This package reads the same files at runtime, parses the frontmatter + body, and exposes structured `AgentDefinition` objects so any agent runtime (the Anthropic SDK, the Claude Agent SDK, OpenAI's tool calling, your own loop) can use the same security-first prompts.
 
@@ -51,7 +51,7 @@ Pure parser. Takes the raw content of a `.md` file and returns the structured de
 
 ### `loadAgent(repoRoot: string, name: FigaroAgentName): AgentDefinition`
 
-Reads `.claude/agents/<name>.md` from `repoRoot` and parses it. `name` is a typed enum: `"figaro-kernel-reviewer" | "figaro-schema-lockstep" | "figaro-schema-author"`.
+Reads `.claude/agents/<name>.md` from `repoRoot` and parses it. `name` is a typed enum: `"figaro-kernel-reviewer" | "figaro-clause-lockstep" | "figaro-clause-author"`.
 
 ### `loadAllAgents(repoRoot: string): Record<FigaroAgentName, AgentDefinition>`
 
@@ -103,7 +103,7 @@ The kernel-reviewer's system prompt is ~7KB. After the first call within a 5-min
 
 ## Example: tool loop (full agent execution)
 
-The `.md` files declare which tools the agent expects — `tools: Read, Grep, Glob, Bash` for read-only agents, plus `Edit, Write` for the schema-author. To run the agent end-to-end (not just a single response), you need to provide tool implementations and run a multi-turn loop.
+The `.md` files declare which tools the agent expects — `tools: Read, Grep, Glob, Bash` for read-only agents, plus `Edit, Write` for the clause-author. To run the agent end-to-end (not just a single response), you need to provide tool implementations and run a multi-turn loop.
 
 The Claude Agent SDK ([anthropic-ai/claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python), and the TypeScript equivalent) is the recommended runner — it handles tool dispatching for you. Pass the `agent.systemPrompt` and `agent.tools` into its agent constructor.
 
@@ -119,7 +119,7 @@ async function runAgent(agent: AgentDefinition, prompt: string) {
       model: resolveModelId(agent.model),
       max_tokens: 8192,
       system: agent.systemPrompt,
-      tools: buildToolSchemas(agent.tools), // your job
+      tools: buildToolClauses(agent.tools), // your job
       messages,
     });
 
@@ -146,10 +146,10 @@ The agent expects the *Claude Code* tool semantics (Read returns file contents w
 `tests/parseAgent.test.ts` runs against the real `.claude/agents/*.md` files. The tests assert:
 
 - `figaro-kernel-reviewer` has `Read` but not `Edit`/`Write` (read-only enforcement).
-- `figaro-schema-lockstep` has no `Edit`/`Write` (read-only verifier).
-- `figaro-schema-author` has both `Edit` and `Write` (writer agent).
+- `figaro-clause-lockstep` has no `Edit`/`Write` (read-only verifier).
+- `figaro-clause-author` has both `Edit` and `Write` (writer agent).
 - All three carry their expected model alias.
-- System prompts are non-empty and contain canonical phrases ("kernel", "lockstep", "SCHEMAS.md").
+- System prompts are non-empty and contain canonical phrases ("kernel", "lockstep", "CLAUSES.md").
 
 If anyone edits the `.md` files in a way that breaks the contract — e.g., handing `Write` access to the kernel-reviewer — these tests fail. They are the lockstep verifier *for the agent definitions themselves*.
 
@@ -161,7 +161,7 @@ cd agents/sdk && npm test
 
 ## See also
 
-- `agents/examples/` — worked scenarios showing verbatim runnable prompts for the schema-author against real assembly designs.
+- `agents/examples/` — worked scenarios showing verbatim runnable prompts for the clause-author against real assembly designs.
 
 ## What this package is not
 

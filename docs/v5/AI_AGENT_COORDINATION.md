@@ -152,7 +152,7 @@ No new contracts are needed:
 ### Agent Service JSON Convention
 
 An autonomous agent includes a `services` section in its seller metadata.
-The schema can be anchored in `SchemaRegistry` as
+The clause can be anchored in `ClauseRegistry` as
 `erc8004-agent-services-v1` for reference integrity.
 
 ```json

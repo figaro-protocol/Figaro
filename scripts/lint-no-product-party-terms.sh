@@ -16,7 +16,7 @@
 #                     (`function|const|let|var|interface|type|class …`, or `use…`).
 #   C. TEST-ID      — `data-testid="…merchant…"` / `…courier…`.
 #
-# ALLOWED (the schema-bound merchant-process / courier-process surface — a
+# ALLOWED (the clause-bound merchant-process / courier-process surface — a
 # distinct, frozen artifact family, item-(c) rename candidate, NOT a party):
 #   {Merchant,Courier}{Process,Content,Signal,Event,Timeline,Proximity}…,
 #   use{Merchant,Courier}Process, {merchant,courier}-{process,proximity,
@@ -61,12 +61,12 @@ for file in "$@"; do
     hits=$(grep -nE '/m/\[|\[merchant\]|\[courier\]|\[operator\]|/operators' "$file" || true)
     [[ -n "$hits" ]] && report "party route (use /s/[seller] or /sellers)" "$file" "$hits"
 
-    # B. Declaration / hook named Merchant*/Courier*/Operator* (minus schema-bound surface)
+    # B. Declaration / hook named Merchant*/Courier*/Operator* (minus clause-bound surface)
     hits=$(grep -nE '\b(function|const|let|var|interface|type|class)[[:space:]]+(Merchant|Courier|Operator)[A-Za-z0-9_]*|\buse(Merchant|Courier|Operator)[A-Za-z0-9_]*' "$file" \
         | grep -vE "$ALLOW" || true)
     [[ -n "$hits" ]] && report "party-named declaration/hook (rename to Seller*)" "$file" "$hits"
 
-    # C. Test-id carrying a party term (minus schema-bound surface)
+    # C. Test-id carrying a party term (minus clause-bound surface)
     hits=$(grep -nE 'data-testid="[^"]*(merchant|courier|operator)[^"]*"' "$file" \
         | grep -vE "$ALLOW" || true)
     [[ -n "$hits" ]] && report "party test-id (use seller-*)" "$file" "$hits"

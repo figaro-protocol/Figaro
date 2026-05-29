@@ -9,8 +9,8 @@ owning doc, not here.
 **Do not reference any contract or file not listed here or in the indexed
 `docs/v5/` files** (full Document Index at the bottom). Primary inventories:
 
-- **`docs/v5/CONTRACTS.md`** — smart-contract inventory: kernel, attestation, schema, mechanism modules, FIG token, batch verifier, mocks, "what does NOT exist".
-- **`docs/v5/SCHEMAS.md`** — schema validation architecture (Layer A/B/C), the 18-schema table, the adding-a-schema checklist, third-party deployment discipline.
+- **`docs/v5/CONTRACTS.md`** — smart-contract inventory: kernel, attestation, clause, mechanism modules, FIG token, batch verifier, mocks, "what does NOT exist".
+- **`docs/v5/CLAUSES.md`** — clause validation architecture (Layer A/B/C), the 18-clause table, the adding-a-clause checklist, third-party deployment discipline.
 - **`docs/v5/FRONTEND.md`** — frontend route catalogue, lib map, designer surface, wallet-provider scope rules.
 - **`docs/v5/TESTING.md`** — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright / Rust prover harness inventory.
 - **`docs/v5/LOCAL_DEV.md`** — commands, env vars, Docker-hosted services, deployment scripts.
@@ -25,11 +25,11 @@ Agents — human-driven or autonomous — have bounded write scope. These are ha
 
 - **`src/FigaroCore.sol`** — the kernel is frozen. The `.claude/hooks/kernel-warn.sh` hook surfaces this at edit time; do not bypass.
 - **`src/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
-- **Any deployed contract on a chain anyone is using.** First-write-wins binding in `SellerRegistry`, `SchemaRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
-- **Existing registered schemas.** Once a `schemaId` is bound to its `ISchemaValidator`, the binding is permanent. To change behavior, register a new schemaId (e.g., `figaro-foo-v1` → `figaro-foo-v2`); never mutate the v1 contract or its Layer A spec in `frontend/lib/shared/schemas/`. (Carve-out: cosmetic metadata fields the validator never reads — `categories`, docstrings — are overridable; content-shape is not.)
+- **Any deployed contract on a chain anyone is using.** First-write-wins binding in `SellerRegistry`, `ClauseRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
+- **Existing registered clauses.** Once a `clauseId` is bound to its `IClauseValidator`, the binding is permanent. To change behavior, register a new clauseId (e.g., `figaro-foo-v1` → `figaro-foo-v2`); never mutate the v1 contract or its Layer A spec in `frontend/lib/shared/clauses/`. (Carve-out: cosmetic metadata fields the validator never reads — `categories`, docstrings — are overridable; content-shape is not.)
 - **Reference assemblies** in the runtime that are shared infrastructure. New assemblies go in new files; treat existing reference assemblies as immutable for any agent.
 
-**Nothing is frozen but the kernel.** The only truly immutable artifacts are the two kernel files above (`FigaroCore.sol`, `CommitmentTypes.sol`). The "deployed contract" and "registered schema" bullets are **live-chain** rules — this repo is **device-only**, redeployed fresh every `devup`, with no persistent on-chain state to be incompatible with. So contracts, registries, **and schema IDs** (`figaro-*-v1` names, incl. `merchant-process`/`courier-process`) are **renamable**: superseding a name is a fresh deploy + lockstep update across all layers — which the schema doctrine already sanctions ("register a new schemaId"). Do **not** invoke "frozen / registered / item-c-deferred / for safety" to stop short of finishing a rename. Only the kernel is sacrosanct.
+**Nothing is frozen but the kernel.** The only truly immutable artifacts are the two kernel files above (`FigaroCore.sol`, `CommitmentTypes.sol`). The "deployed contract" and "registered clause" bullets are **live-chain** rules — this repo is **device-only**, redeployed fresh every `devup`, with no persistent on-chain state to be incompatible with. So contracts, registries, **and clause IDs** (`figaro-*-v1` names, incl. `merchant-process`/`courier-process`) are **renamable**: superseding a name is a fresh deploy + lockstep update across all layers — which the clause doctrine already sanctions ("register a new clauseId"). Do **not** invoke "frozen / registered / item-c-deferred / for safety" to stop short of finishing a rename. Only the kernel is sacrosanct.
 
 ### Edit only what belongs to the user the agent is acting for
 
@@ -39,7 +39,7 @@ An agent acting for wallet `W` may write:
 
 - W's own off-chain metadata (seller-registry entries, ENS/`did:web` documents, agent service descriptions).
 - Assemblies where W is `rootBuyer` or seller-of-record.
-- New artifacts W is authoring — new schemas, new validator contracts, new factotum forks, new frontend pages.
+- New artifacts W is authoring — new clauses, new validator contracts, new factotum forks, new frontend pages.
 
 An agent may NOT:
 
@@ -128,15 +128,15 @@ Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new
 
 Each protocol artifact family has its own anchoring primitive. Families are parallel, not nested.
 
-- **Schemas** — anchored via `SchemaRegistry` + per-schema `ISchemaValidator`.
+- **Clauses** — anchored via `ClauseRegistry` + per-clause `IClauseValidator`.
 - **Sellers** — anchored via `SellerRegistry` (event-emitting, metadataURI-pointing).
-- **Assemblies** — composition templates that USE schemas. Anchored via `AssemblyRegistry` — parallel to schemas/sellers, not subordinate to either.
+- **Assemblies** — composition templates that USE clauses. Anchored via `AssemblyRegistry` — parallel to clauses/sellers, not subordinate to either.
 
 **The rule.** Each family gets its own registry/anchor, identity scheme, evolution path, and indexer event stream. Do not nest one inside another, even when an existing primitive could be made to host the new one.
 
-**The test.** Does the proposed reuse make Layer A reference Layer B's existence? The dependency arrows between families point one way: assemblies use schemas; schemas do not know assemblies exist. Sellers declare assemblies in their metadata JSON; `SellerRegistry` does not reference assemblyIds on-chain. If a proposal inverts an arrow, it is wrong, regardless of how much Solidity it saves.
+**The test.** Does the proposed reuse make Layer A reference Layer B's existence? The dependency arrows between families point one way: assemblies use clauses; clauses do not know assemblies exist. Sellers declare assemblies in their metadata JSON; `SellerRegistry` does not reference assemblyIds on-chain. If a proposal inverts an arrow, it is wrong, regardless of how much Solidity it saves.
 
-**The temptation to refuse.** "We already have `SchemaRegistry` — can we register this new artifact under it?" When the test answer is yes, refuse the reuse. "Avoiding a new contract" / "minimum new surface" is NOT a valid optimization criterion when it costs a layer boundary. Conceptual cleanliness is the protocol-scale optimization; code reuse is not.
+**The temptation to refuse.** "We already have `ClauseRegistry` — can we register this new artifact under it?" When the test answer is yes, refuse the reuse. "Avoiding a new contract" / "minimum new surface" is NOT a valid optimization criterion when it costs a layer boundary. Conceptual cleanliness is the protocol-scale optimization; code reuse is not.
 
 When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE recommending an anchoring or registry-reuse choice. This applies to every agent operating in this repo.
 
@@ -164,7 +164,7 @@ Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which 
 
 **Goal-driven execution.** Convert vague tasks into verifiable success criteria before starting — "fix the bug" becomes "write a failing test that reproduces it, then make it pass". For multi-step work, state a brief plan with a verify step per item; the harnesses in `TESTING.md` are the verification layer.
 
-**Finish a concept across every surface.** A rename or collapse is done only when the old term is gone from **all** of: code identifiers, comments, doc files (`docs/v5/`, CLAUDE.md), tests (incl. describe/it strings + fixtures), CSS (class names, `@layer` names, custom properties), user-facing copy, and **schema IDs** — verified by an *exhaustive* grep that returns empty (minus an enumerated, stated allowlist), shown before the word "done." "It compiles / tests pass" is the compiler's bar, not the finish line. Phasing a concept into "identifiers now, the rest later" is how the same files get re-touched five times — don't.
+**Finish a concept across every surface.** A rename or collapse is done only when the old term is gone from **all** of: code identifiers, comments, doc files (`docs/v5/`, CLAUDE.md), tests (incl. describe/it strings + fixtures), CSS (class names, `@layer` names, custom properties), user-facing copy, and **clause IDs** — verified by an *exhaustive* grep that returns empty (minus an enumerated, stated allowlist), shown before the word "done." "It compiles / tests pass" is the compiler's bar, not the finish line. Phasing a concept into "identifiers now, the rest later" is how the same files get re-touched five times — don't.
 
 **Delete dead code; never rename it.** When a feature was removed, its orphaned remnants (consumers with no producer, vestigial plumbing) get **deleted**, not swept into the new vocabulary. Renaming dead code makes it look intentional and deepens the confusion a clarity pass is meant to remove. Before renaming a thing, confirm it's live (has a producer/caller); if it's a corpse, bury it.
 
@@ -180,7 +180,7 @@ If yes, adding on-chain state, role checks, or lifecycle flags is a web2 pattern
 
 ### Frontend = runtime infrastructure, not product code
 
-`frontend/lib/` is runtime infrastructure where the abstraction IS the deliverable. Catalogues (`shared/schemaCategories.ts`, `shared/schemaSpecSource.ts`, mechanism packages, service-binding interfaces, the semantic-model layer in `lib/semantic/`) exist to be composed by UI surfaces — some shipped (`AgreementDrawer`, `/m/[merchant]`, `/orders/[processId]`, `/inbox`, `/discover`), some not yet built. See `RUNTIME.md` Parts 1–3 for the composition model these catalogues are staging for.
+`frontend/lib/` is runtime infrastructure where the abstraction IS the deliverable. Catalogues (`shared/clauseCategories.ts`, `shared/clauseSpecSource.ts`, mechanism packages, service-binding interfaces, the semantic-model layer in `lib/semantic/`) exist to be composed by UI surfaces — some shipped (`AgreementDrawer`, `/m/[merchant]`, `/orders/[processId]`, `/inbox`, `/discover`), some not yet built. See `RUNTIME.md` Parts 1–3 for the composition model these catalogues are staging for.
 
 **YAGNI does NOT apply here.** "This file has no readers today," "this interface has one implementation," and "this abstraction has no consumer" are NOT findings — they are the expected state of infrastructure code that lands ahead of its UI consumers, by design. Applying product-code YAGNI to runtime infrastructure is a category error.
 
@@ -195,10 +195,10 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 **Authoritative docs that must stay in sync** (when code changes, update these):
 
 - `CLAUDE.md` — this file
-- `docs/v5/CONTRACTS.md`, `SCHEMAS.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the inventories CLAUDE.md indexes
+- `docs/v5/CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the inventories CLAUDE.md indexes
 - `sdk/README.md` — SDK entry points
 - `docs/v5/VERIFICATION_MAP.md` — invariant → test → formal layer map
-- User-facing schema surfaces in `frontend/app/`. The `/schemas` inventory renders from the `schemaCategories.ts` registry, so a newly registered schema appears there automatically. Pages that name schemas in prose still need a manual pass when a new schema lands — `grep -rl "<schemaId>" frontend/app/` finds them.
+- User-facing clause surfaces in `frontend/app/`. The `/clauses` inventory renders from the `clauseCategories.ts` registry, so a newly registered clause appears there automatically. Pages that name clauses in prose still need a manual pass when a new clause lands — `grep -rl "<clauseId>" frontend/app/` finds them.
 
 **`docs/v5/` whitelist (exhaustive).** Files not on this list are deletion candidates at every audit. Do not treat absence-from-whitelist as "ambiguous" — treat it as "delete unless restored by explicit user approval." See the Document Index at the bottom for the categorized list.
 
@@ -241,11 +241,11 @@ One test layer per concern. These boundaries are hard; respect them when writing
 
 All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No contract belongs to a dapp; every one is a permissionless primitive. The kernel — `FigaroCore.sol` + `CommitmentTypes.sol` — is frozen (see Agent Permissions). Full per-contract surfaces, ABI, the mock inventory, and "what does NOT exist" → `CONTRACTS.md`. **If `CONTRACTS.md` does not list a contract, treat it as not existing in this repo.**
 
-### Schema Validation
+### Clause Validation
 
-A new schema is **not done until all three layers ship in lockstep**: Layer A (TypeScript, `@figaro/core/schemas`), Layer B (Rust SP1 prover, `prover/schema/` — generic, parses any spec at runtime), Layer C (per-schema `ISchemaValidator` in `src/schemaValidators/`, bound via `AttestationCoordinator.setValidator` — permissionless, first-write-wins, immutable; no validator → `ValidatorNotSet`). Skip a layer and the gate either rejects all attestations under that schemaId or silently accepts content the spec would reject.
+A new clause is **not done until all three layers ship in lockstep**: Layer A (TypeScript, `@figaro/core/clauses`), Layer B (Rust SP1 prover, `prover/clause/` — generic, parses any spec at runtime), Layer C (per-clause `IClauseValidator` in `src/clauseValidators/`, bound via `AttestationCoordinator.setValidator` — permissionless, first-write-wins, immutable; no validator → `ValidatorNotSet`). Skip a layer and the gate either rejects all attestations under that clauseId or silently accepts content the spec would reject.
 
-18 protocol schemas total: 17 runtime-attestable (each with a validator) + `figaro-topology-v1` (manifest-only, no validator, DAG reconstructed off-chain by indexers from the signed manifest). Layer detail, the full schema table, the **adding-a-new-schema checklist** (the 9 lockstep steps), and third-party atomic register+bind discipline → `SCHEMAS.md`. Count source of truth: `ls frontend/lib/shared/schemas/*.json | wc -l` (runtime-attestable = files minus `figaro-topology-v1`).
+18 protocol clauses total: 17 runtime-attestable (each with a validator) + `figaro-topology-v1` (manifest-only, no validator, DAG reconstructed off-chain by indexers from the signed manifest). Layer detail, the full clause table, the **adding-a-new-clause checklist** (the 9 lockstep steps), and third-party atomic register+bind discipline → `CLAUSES.md`. Count source of truth: `ls frontend/lib/shared/clauses/*.json | wc -l` (runtime-attestable = files minus `figaro-topology-v1`).
 
 ### Frontend
 
@@ -253,7 +253,7 @@ A new schema is **not done until all three layers ship in lockstep**: Layer A (T
 
 ### Agent SDK
 
-`@figaro/core` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM, four subpath exports: `@figaro/core` (root: ABIs, events, state reconstruction, commitment/bond utilities, merkle airdrop builder), `@figaro/core/agent` (HITL action queue + autonomous tx), `@figaro/core/extensions` (Dutch auction price, GHG/geo/handoff utilities, DID:web), `@figaro/core/schemas` (the lockstep source-of-truth for schema spec + validation + content encoders). Full entry-point map + build/test commands → `sdk/README.md`.
+`@figaro/core` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM, four subpath exports: `@figaro/core` (root: ABIs, events, state reconstruction, commitment/bond utilities, merkle airdrop builder), `@figaro/core/agent` (HITL action queue + autonomous tx), `@figaro/core/extensions` (Dutch auction price, GHG/geo/handoff utilities, DID:web), `@figaro/core/clauses` (the lockstep source-of-truth for clause spec + validation + content encoders). Full entry-point map + build/test commands → `sdk/README.md`.
 
 ### Local Development
 
@@ -267,7 +267,7 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Entry points:** `README.md`, `CURRENT_STATE.md` (active reading path and archive boundaries).
 
-**Inventories (CLAUDE.md indexes these):** `CONTRACTS.md`, `SCHEMAS.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md`.
+**Inventories (CLAUDE.md indexes these):** `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md`.
 
 **Core theory:** `VISION.md` (post-firm economy, Coasean collapse, token denomination), `THEORY.md` (game-theoretic derivation of the six protocol properties).
 

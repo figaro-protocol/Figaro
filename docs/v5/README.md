@@ -16,7 +16,7 @@ load-bearing for the protocol have been moved to local-only archives
 
 - **Protocol and framing**: `VISION.md`, `THEORY.md`, `FIG_TOKEN.md`
 - **Runtime and frontend**: `RUNTIME.md` (thesis + frontend model + semantic layer, consolidated), `FRONTEND.md` (route + lib catalogue), `DESIGN_TOKENS.md` (MUJI theme spec), `AI_AGENT_COORDINATION.md`
-- **Inventories**: `CONTRACTS.md`, `SCHEMAS.md`, `FRONTEND.md`, `TESTING.md` — the four split-out inventory docs (contracts / schemas / frontend / tests; `SCHEMAS.md` also carries the anchoring doctrine)
+- **Inventories**: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md` — the four split-out inventory docs (contracts / clauses / frontend / tests; `CLAUSES.md` also carries the anchoring doctrine)
 - **Extension and disclosure**: `PUBLIC_GRAPH_MODEL.md`, `GHG_PROTOCOL_SPEC.md`
 - **Scaling**: `SCALING_STRATEGY.md` (carries the batch-sequencer architecture + sequencer trust model)
 - **Status and readiness**: `CURRENT_STATE.md`, `RELEASE_READINESS.md` (carries the hardening-completion record + the freeze notice for the audited Solidity surface)

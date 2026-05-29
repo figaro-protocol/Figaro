@@ -5,15 +5,15 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 ## Foundry (`test/`)
 
 `FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
-`AttestationCoordinatorTest`, `SchemaRegistryTest`, `SchemaRegistrationHelperTest`,
+`AttestationCoordinatorTest`, `ClauseRegistryTest`, `ClauseRegistrationHelperTest`,
 `AssemblyRegistryTest`, `DutchAuctionTest`, `SellerRegistryTest`,
 `ProcessOffsetReceiptTest`, `FigaroBatchVerifierTest`, `DeployScriptTest`,
 `ParityVectors`, `fig/FigToken.t.sol`, `fig/RpgfMinter.t.sol`,
 `fig/RpgfMinterConformance.t.sol`, `BatchGasCeilingTest`, `BatchGasBoundaryTest`,
 `GasCeilingTest`, `SwapAndCommitCoordinatorTest`, `MockKlerosArbitratorTest`.
 
-`test/schemaValidators/` — one test file per `ISchemaValidator` implementation
-(currently 16: commerce, consent, geo, fulfilment, the 5 GHG sister schemas
+`test/clauseValidators/` — one test file per `IClauseValidator` implementation
+(currently 16: commerce, consent, geo, fulfilment, the 5 GHG sister clauses
 (protocol / iso-14064 / pas-2050 / en-16258 / custom), GHG measurement,
 jurisdiction, merchant-process, courier-process, offset-policy,
 proximity policy, proximity proof). Each suite covers happy paths + every
@@ -31,7 +31,7 @@ typed-error revert. (Topology has no validator — manifest-only clause.)
 | Spec | Rules | Covers |
 |---|---|---|
 | `FigaroCore.spec` | 8 | Status monotonicity, transitions, active count, buyer dominance, no double-commit, cumulative monotonicity, rootBuyer immutable, currency immutable |
-| `AttestationCoordinator.spec` | 7 → 8 sub-rules | Role-gate on `attestAsBuyer` (non-buyer reverts; success ⟹ caller is buyer) + parametric Core-immutability (AC cannot change orderStatus or processes[]) + validator-gate (schemaId with no registered validator reverts) + setValidator invariants (first-write-wins, per-schema storage isolation). Re-authored + cloud-verified 2026-04-23 for the new commitment-arg ABI — 8/8 green. |
+| `AttestationCoordinator.spec` | 7 → 8 sub-rules | Role-gate on `attestAsBuyer` (non-buyer reverts; success ⟹ caller is buyer) + parametric Core-immutability (AC cannot change orderStatus or processes[]) + validator-gate (clauseId with no registered validator reverts) + setValidator invariants (first-write-wins, per-clause storage isolation). Re-authored + cloud-verified 2026-04-23 for the new commitment-arg ABI — 8/8 green. |
 | `TokenOpsVerification.spec` | 7 → 8 sub-rules | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `BatchVerifierTokenOps.spec` | 4 | Single-position `settleBatch`: user balance delta = payout − deposit, contract delta = deposit − payout, allowance-drain safety, conservation. |
 | `FigToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
@@ -73,7 +73,7 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
   `SellerTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
   `TokenDecimalDisplayFlows`.
 - **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
-  preparation + stores, agreement manifest, schema-spec source, discovery +
+  preparation + stores, agreement manifest, clause-spec source, discovery +
   catalogue pipeline, GHG disclosure, delivery/handoff attestation, dispute
   evidence, IPFS service, token conversion, geocode, and per-hook tests
   (`useCommitmentFlow`, `useOffsetRetirement`, `useTokenApproval`, …).
@@ -103,7 +103,7 @@ against Anvil + deployed contracts (action in the UI, reaction in the UI). By ar
   → merchant lifecycle → both parties witness proximity-proof at handoff →
   resolve), `kit-assembly-runtime` (4-node diamond: buyer commits all four
   orders with live per-contributor pricing → one atomic resolve pays every
-  seller; per-party schema-exercise is open — see backlog).
+  seller; per-party clause-exercise is open — see backlog).
 - Attestation + delivery: `proximity-proof-ui`.
 - GHG / offsets: `offset-retirement-ui`. (GHG panel-level coverage also
   lives end-to-end in `local-commerce-offset-scenario`.)
@@ -119,14 +119,14 @@ behavior lives in Foundry): `assembly-registry` (AssemblyRegistryTest),
 **mobile (`*.mobile.spec.ts`, 1 spec)** — responsive/viewport chrome jsdom
 can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
 
-## Rust prover — figaro-kernel + figaro-sequencer + figaro-schema + figaro-rpgf
+## Rust prover — figaro-kernel + figaro-sequencer + figaro-clause + figaro-rpgf
 
 - `figaro-kernel` (`prover/lib/`): kernel logic mirror — types, EIP-712 hashing, apply_batch state machine.
 - `figaro-sequencer` (`prover/sequencer/`): batch mempool, state mirror, assembler, submitter, API.
-- `figaro-schema` (`prover/schema/`): Layer B schema validator. Conformance tests against the
-  TypeScript Layer A reference (`sdk/tests/schemas/validate.test.ts`) — every shipped protocol
-  schema's parse, per-schema content checks for `figaro-ghg-protocol-v1` and `figaro-geo-v2`, and
-  a check that all 17 embedded canonical specs the content gate uses parse and resolve by schemaId.
+- `figaro-clause` (`prover/clause/`): Layer B clause validator. Conformance tests against the
+  TypeScript Layer A reference (`sdk/tests/clauses/validate.test.ts`) — every shipped protocol
+  clause's parse, per-clause content checks for `figaro-ghg-protocol-v1` and `figaro-geo-v2`, and
+  a check that all 17 embedded canonical specs the content gate uses parse and resolve by clauseId.
 - `figaro-rpgf` (`prover/rpgf/`): substrate-broadening aggregator + conformance to TypeScript simulator.
 
 ## Opportunistic — Mythril

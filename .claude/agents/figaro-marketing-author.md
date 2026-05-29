@@ -40,7 +40,7 @@ State what you read and what conventions you extracted.
 Before drafting any copy, apply the 200-year extrapolation lens (per `project_extrapolation_method.md`):
 
 1. What does FigaroCore secure? (Bilateral commitment via asymmetric bonding, buyer dominance, atomic resolution.)
-2. What does the ecosystem build on top? (Schemas, assemblies, templates, composable protections.)
+2. What does the ecosystem build on top? (Clauses, assemblies, templates, composable protections.)
 3. What does that picture look like in 30–200 years? (Firm dissolves in coordination-heavy sectors, banking disintermediates, etc.)
 4. What is THIS PIECE OF COPY seeding in that picture?
 

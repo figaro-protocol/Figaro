@@ -1,6 +1,6 @@
 ---
 name: figaro-paper-reviewer
-description: Read-only review agent for Figaro's academic papers. The corpus is web-native — each paper is a `frontend/app/(marketing)/papers/<slug>/page.tsx` page (server-rendered KaTeX). Verifies that load-bearing claims on those pages still hold against the canonical code (`src/FigaroCore.sol`, `src/CommitmentTypes.sol`, `formal/FigaroCore.tla`, schema validators). Invoke when reviewing paper edits, when the kernel changes (to verify papers haven't drifted), or before publication. Returns a findings list cited to specific page passages (by section/theorem name) and source-code line numbers. Does not edit papers or code.
+description: Read-only review agent for Figaro's academic papers. The corpus is web-native — each paper is a `frontend/app/(marketing)/papers/<slug>/page.tsx` page (server-rendered KaTeX). Verifies that load-bearing claims on those pages still hold against the canonical code (`src/FigaroCore.sol`, `src/CommitmentTypes.sol`, `formal/FigaroCore.tla`, clause validators). Invoke when reviewing paper edits, when the kernel changes (to verify papers haven't drifted), or before publication. Returns a findings list cited to specific page passages (by section/theorem name) and source-code line numbers. Does not edit papers or code.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -21,8 +21,8 @@ Read these directly. Cite line numbers from them in your findings.
 - **`src/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
 - **`formal/FigaroCore.tla`** — the invariants in TLA+ form.
 - **`src/AttestationCoordinator.sol`** — protocol-tier attestation pipeline.
-- **`src/SchemaRegistry.sol`** — schema admission.
-- Any schema validator (`src/schemaValidators/Figaro<Name>V1Validator.sol`) referenced by the paper.
+- **`src/ClauseRegistry.sol`** — clause admission.
+- Any clause validator (`src/clauseValidators/Figaro<Name>V1Validator.sol`) referenced by the paper.
 - **`docs/v5/DESIGN_DECISIONS.md`** — documented intentional patterns; helps disambiguate "does the paper claim X because the code does X, or because we wanted X?"
 - **`.claude/skills/figaro-kernel-discipline/SKILL.md`** — the canonical six invariants and 12 anti-patterns the papers reference.
 
@@ -41,7 +41,7 @@ Walk the paper. Surface every claim that touches code. Categories to look for:
 | **Storage / mapping** | "Three mappings: processes, orderStatus, orderProcessId" | Verify against `FigaroCore.sol` storage section |
 | **Invariant name** | "TokenConservation, ContractSolvency, …" | Verify against `formal/FigaroCore.tla` |
 | **Theorem name** | "Theorem (Two-Party Nash Equilibrium)" | Verify the theorem text matches what the code enforces |
-| **Schema claim** | "16 runtime-attestable schemas" | Count `src/schemaValidators/*.sol` |
+| **Clause claim** | "16 runtime-attestable clauses" | Count `src/clauseValidators/*.sol` |
 | **Mechanism claim** | "Kernel runs two mechanisms: asymmetric bonding + buyer dominance" | Verify against the actual mechanism implementation |
 | **Anti-pattern claim** | "No admin, no escape hatch" | Verify by grep — no admin functions, no upgradeability |
 | **Token allocation** | "10% founder, 30% DAO, 60% airdrop" | Match against `src/fig/FigToken.sol` minter caps + airdrop |
@@ -105,11 +105,11 @@ If atomic resolution is claimed across the parties but the structure is multi-pr
 
 ---
 
-## Step 5 — Schema and inventory checks
+## Step 5 — Clause and inventory checks
 
-Several papers reference schema counts, invariant counts, validator counts. These drift quietly when new schemas land. Check:
+Several papers reference clause counts, invariant counts, validator counts. These drift quietly when new clauses land. Check:
 
-- "N runtime-attestable schemas" — count `src/schemaValidators/*.sol` (excluding manifest-only). The current canonical count is in `CLAUDE.md`'s "The N protocol schemas" table; keep them in lockstep.
+- "N runtime-attestable clauses" — count `src/clauseValidators/*.sol` (excluding manifest-only). The current canonical count is in `CLAUDE.md`'s "The N protocol clauses" table; keep them in lockstep.
 - "N invariants in TLA+" — count properties in `formal/FigaroCore.tla`.
 - "N theorems in the paper" — count the `FormalBlock` theorem statements on the page.
 

@@ -75,22 +75,22 @@ The proof-based kernel is implemented and tested:
 
 **Rust kernel** (`prover/lib/`): Full protocol surface translated to Rust.
 8 `KernelOp` variants covering commit, resolve, attestation (seller/buyer),
-schema registration, mechanism-schema binding, and seller register +
+clause registration, mechanism-clause binding, and seller register +
 update-profile. 5-mapping Merkle state (processes, orderStatus,
-orderProcessId, schemasRegistered, sellersRegistered). 30 unit tests.
+orderProcessId, clausesRegistered, sellersRegistered). 30 unit tests.
 EIP-712 signature verification with byte-exact parity to the Solidity kernel.
 
 **SP1 guest program** (`prover/program/`): Executes `apply_batch()` in
 the SP1 zkVM and commits `PublicValues` (8 fields: prev/new state roots,
 chain binding, 4 event hashes). Verified execution: ~1.0M cycles for a
-6-operation mixed batch (commit + schema + seller + attest-seller +
+6-operation mixed batch (commit + clause + seller + attest-seller +
 attest-buyer + resolve) with the k256 SP1 precompile patched in
 (`prover/Cargo.toml`); a real Core proof of that batch generates and
 verifies locally.
 
 **On-chain verifier** (`src/FigaroBatchVerifier.sol`): Accepts SP1 proofs,
 verifies state root continuity and chain binding, hash-verifies auxiliary
-data (positions, attestation events, schema events, seller events),
+data (positions, attestation events, clause events, seller events),
 executes net token transfers, and re-emits protocol-compatible events.
 The legacy FIG-mint path has been removed along with the `figToken`
 constructor argument; the batch verifier does not and will not mint FIG.
@@ -109,7 +109,7 @@ the Succinct SP1 verifier gateway ABI.
    single-currency invariant
 2. each `resolveProcess` in the batch preserved buyer dominance,
    atomic resolution, conservation, and direct transfer semantics
-3. each attestation, schema registration, and seller mutation
+3. each attestation, clause registration, and seller mutation
    preserved the corresponding authorization gates
 4. the resulting state root follows from the prior state root under
    the V5 kernel rules — no transition was skipped, reordered, or
@@ -121,7 +121,7 @@ the Succinct SP1 verifier gateway ABI.
   block gas limits
 - the on-chain footprint per settlement batch collapses to a single
   proof verification, state-root update, and net token reconciliation
-- mechanism events (attestation, schema, seller) are hash-verified
+- mechanism events (attestation, clause, seller) are hash-verified
   against the proof and re-emitted for frontend/indexer compatibility
 - the kernel invariants are preserved exactly — the proof enforces
   the same rules the Solidity kernel enforces, just at batch scale
@@ -176,7 +176,7 @@ ceiling is misleading. The 2,400 figure measures only the resolve step
 — the cheapest part of the direct lifecycle. The 224k-gas `commit()`
 calls that preceded those resolves consumed ~537M gas across 2,400
 separate transactions. The batch path eliminates all of that: every
-commit, resolve, attestation, and schema registration runs off-chain
+commit, resolve, attestation, and clause registration runs off-chain
 inside the SP1 prover, and only the net financial effects land on-chain.
 
 **Empirical gas ceilings at 30M gas limit:**
@@ -243,7 +243,7 @@ by submitting directly to `FigaroCore` on-chain.
    settlement model.
 
 5. **Event reconstruction**: The verifier contract re-emits all mechanism
-   events (attestation, schema, seller) with protocol-compatible
+   events (attestation, clause, seller) with protocol-compatible
    signatures. Events are hash-verified against proof commitments.
    The SDK's event-sourced architecture (`eventCache.ts` single swap
    point, 4s poll) consumes verifier events identically to `FigaroCore`
@@ -305,54 +305,54 @@ If a Cairo/StarkNet path becomes strategically justified:
 
 Do not resume StarkNet implementation until V5 parity gates are cleared.
 
-## Prover Schema Architecture — Generic Engine, Not Compiled-In Specs
+## Prover Clause Architecture — Generic Engine, Not Compiled-In Specs
 
-Permissionless schema extension is an axiom of the protocol, not a
-forecast. `SchemaRegistrationHelper` makes registration permissionless
-on-chain; the schema-author RPGF funds authors across years 2/5/9; the
-extension doctrine assumes third-party schema families forever. An
+Permissionless clause extension is an axiom of the protocol, not a
+forecast. `ClauseRegistrationHelper` makes registration permissionless
+on-chain; the clause-author RPGF funds authors across years 2/5/9; the
+extension doctrine assumes third-party clause families forever. An
 architecture is correct only if it serves an unbounded, ever-growing
-schema population. "Is there enough demand to justify it" is a product
+clause population. "Is there enough demand to justify it" is a product
 question and has no place here.
 
 The SP1 guest currently compiles in the 16 canonical specs
-(`prover/schema/src/embedded.rs` — `include_str!` of the Layer A JSONs)
-and per-schema ABI encoders (`encode.rs` — a `match schemaId` dispatch).
-Adding a schema changes the guest ELF → the program verification key → a
+(`prover/clause/src/embedded.rs` — `include_str!` of the Layer A JSONs)
+and per-clause ABI encoders (`encode.rs` — a `match clauseId` dispatch).
+Adding a clause changes the guest ELF → the program verification key → a
 `FigaroBatchVerifier` redeploy. **Measured against the axiom, that is
-broken**: it makes registering a schema a protocol-side migration event,
-and it makes the prover a gatekeeper of the schema namespace — a
-component with opinions about which schemas exist. The kernel owns
-nothing; a prover that knows the schema list owns something.
+broken**: it makes registering a clause a protocol-side migration event,
+and it makes the prover a gatekeeper of the clause namespace — a
+component with opinions about which clauses exist. The kernel owns
+nothing; a prover that knows the clause list owns something.
 
 **The asymmetry that names the bug.** Layer C already scales
-permissionlessly — a schema author deploys their own `ISchemaValidator`
-and binds it via `SchemaRegistrationHelper`, no protocol redeploy. Layer
+permissionlessly — a clause author deploys their own `IClauseValidator`
+and binds it via `ClauseRegistrationHelper`, no protocol redeploy. Layer
 B (the prover) does not. Layer C got the infrastructure design; Layer B
-got the shortcut — "bake in the schemas we have." Today a third-party
-schema in the proven path can only be attested content-opaque (no
-in-proof validation) or is rejected outright (`SchemaEncoderMissing`).
+got the shortcut — "bake in the clauses we have." Today a third-party
+clause in the proven path can only be attested content-opaque (no
+in-proof validation) or is rejected outright (`ClauseEncoderMissing`).
 The scaling path structurally cannot validate the population the
 protocol exists to serve.
 
-**Required end-state.** The guest holds a generic schema *engine* —
-parse + validate + encode — and no schemas. The spec is a witness input,
-bound to its `schemaId` by content hash; `SchemaRegistry` is the trust
-anchor. Adding a schema is a `SchemaRegistry` transaction and nothing
+**Required end-state.** The guest holds a generic clause *engine* —
+parse + validate + encode — and no clauses. The spec is a witness input,
+bound to its `clauseId` by content hash; `ClauseRegistry` is the trust
+anchor. Adding a clause is a `ClauseRegistry` transaction and nothing
 else: no guest rebuild, no vkey change, no verifier redeploy. The vkey
 then covers *the engine* — "content validated against whatever spec the
 registry says is canonical for this id" — which is the soundness
 property of the current compiled-in design, generalized rather than
 enumerated. (Compiling specs in was a real hardening — Phase 1 removed a
-caller-supplied `schema_spec` field for exactly this reason — but
+caller-supplied `clause_spec` field for exactly this reason — but
 enumeration is a bootstrap, not the architecture.)
 
-The validator engine (`parse_schema_spec` + `validate_content`) is
+The validator engine (`parse_clause_spec` + `validate_content`) is
 already generic. The sequence to the rest is a dependency order — every
 step committed, none demand-gated:
 
 1. **Keystone — the spec format must totally determine the ABI layout.**
-   The per-schema encoders embed shape decisions (e.g. consent transposes
+   The per-clause encoders embed shape decisions (e.g. consent transposes
    its document array into three parallel arrays to suit a hand-written
    validator). For encoding to be generic the spec must declare the
    canonical layout completely. This is the load-bearing change: it also
@@ -360,11 +360,11 @@ step committed, none demand-gated:
    rather than hand-written.
 2. **Generic encoder.** Once the spec is the total source, `encode.rs`
    collapses to one spec-driven encoder (`alloy-dyn-abi` already does
-   runtime-typed encoding inside the per-schema functions).
+   runtime-typed encoding inside the per-clause functions).
 3. **Content-binding.** The guest must verify a witness spec against an
-   on-chain anchor. `SchemaRegistry` commits to a `uriHash`, not a
-   spec-content hash; the schema family's identity scheme should be
-   content-binding — a content-derived `schemaId`, or a registry that
+   on-chain anchor. `ClauseRegistry` commits to a `uriHash`, not a
+   spec-content hash; the clause family's identity scheme should be
+   content-binding — a content-derived `clauseId`, or a registry that
    exposes `keccak256(spec)`. The deployed registry is immutable, so this
    is a registry v2 / parallel anchor — a protocol-extension-doctrine
    decision.
@@ -373,15 +373,15 @@ step committed, none demand-gated:
 
 ### Keystone Design — Canonical ABI Mapping
 
-The keystone makes the canonical ABI encoding of a schema's content a
-total function of its `SchemaSpec` — no per-schema code. This is the
+The keystone makes the canonical ABI encoding of a clause's content a
+total function of its `ClauseSpec` — no per-clause code. This is the
 design to implement against; an audit of all 16 current encoders grounds
 every decision below — 15 are pure structural transforms, one is not.
 
-**Objective.** One generic `encode_content(&SchemaSpec, content)` — Rust
-(`prover/schema/src/encode.rs`) and TS (`sdk/src/schemas/encode.ts`),
-byte-identical — replaces the per-schema dispatch (12 encoder functions
-over 16 schemaIds). Done-criterion: the dispatch is gone and the
+**Objective.** One generic `encode_content(&ClauseSpec, content)` — Rust
+(`prover/clause/src/encode.rs`) and TS (`sdk/src/clauses/encode.ts`),
+byte-identical — replaces the per-clause dispatch (12 encoder functions
+over 16 clauseIds). Done-criterion: the dispatch is gone and the
 encode-conformance suite passes.
 
 **Encoding algorithm.** Content encodes as `abi_encode_params` of the
@@ -416,7 +416,7 @@ encoder encodes every `integer` and `bigint` as `uint256`; width is a
 carries `max`.)
 
 1. *Enum index.* `EnumFieldSpec` carries only `values`; today's
-   per-schema index tables are inconsistent (merchant/courier 0-based,
+   per-clause index tables are inconsistent (merchant/courier 0-based,
    geo/fulfilment/proximity/offset/kleros 1-based). Canonical rule: index
    = 0-based position in `values`. Enum *arrays* need no sentinel — an
    absent optional array is the empty array.
@@ -429,7 +429,7 @@ split.** The split of legacy `figaro-jurisdiction-v1` into
 `figaro-arbitration-kleros-v1` (required `klerosCourt` + optional
 `klerosMinJurors`) and `figaro-applicable-law-v1` (required
 `applicableLaw` + optional `forum` + `language`) eliminates the prior
-non-structural carve-out: both new schemas encode their fields literally.
+non-structural carve-out: both new clauses encode their fields literally.
 The "suggest 3 jurors" default lives in the authoring UI, not the
 encoder.
 
@@ -439,12 +439,12 @@ string[]`); the canonical rule is `tuple[]`. Consent's encoder and Layer
 C validator are rewritten to `tuple[]`.
 
 **Migration verdict — timing decides it.** Under the canonical rule the
-1-based enum schemas and consent's transpose change their bytes. Done
+1-based enum clauses and consent's transpose change their bytes. Done
 **before any persistent public registration** — today the 16 are
-devnet-only — that is a free rewrite: no `-v2` schemaIds, just
+devnet-only — that is a free rewrite: no `-v2` clauseIds, just
 regenerated Layer C validators and conformance vectors. Done **after**
-mainnet/testnet registration, the off-convention schemas plus consent
-need `-v2` schemaIds. The post-mainnet fallback is the explicit path:
+mainnet/testnet registration, the off-convention clauses plus consent
+need `-v2` clauseIds. The post-mainnet fallback is the explicit path:
 declare per-value enum indices and integer widths in the spec, so the
 generic encoder reproduces today's bytes exactly (verbose spec, zero
 migration). The clean canonical design is free only while the window is
@@ -458,8 +458,8 @@ per-value index, mirrored Rust ↔ TS ↔ JSON.
 **Scope boundary.** This task is the encoder only — the generic Layer C
 validator, content-binding, and witness-supplied specs are later steps.
 It rewrites `encode.rs` / `encode.ts`, the affected spec JSONs, and the
-rewritten schemas' Layer C validators; it does not touch the kernel or
-its invariants. Changing the schema family — even a free pre-mainnet
+rewritten clauses' Layer C validators; it does not touch the kernel or
+its invariants. Changing the clause family — even a free pre-mainnet
 rewrite — is a protocol-extension-doctrine event and runs past that
 review.
 
@@ -467,24 +467,24 @@ review.
 spec-parser changes, only if the explicit path is chosen; (3) the
 generic encoder in Rust and TS, in lockstep, behind the
 encode-conformance suite; (4) rewrite consent's and the off-convention
-schemas' Layer C validators, regenerate conformance vectors; (5) delete
-the per-schema dispatch. Once the rule holds, a generic — or
+clauses' Layer C validators, regenerate conformance vectors; (5) delete
+the per-clause dispatch. Once the rule holds, a generic — or
 mechanically generated — Layer C validator follows from the same spec.
 
 **Costs — one-time bootstrap costs, not recurring.** Generic JSON
 parsing in-circuit is heavier than the specialized path (mitigable: a
 compact binary spec form, per-batch spec amortization since a batch's
-attestations share schemas). Making the spec the total ABI source is a
-shape change, so the existing 16 migrate to `-v2` schemaIds with
+attestations share clauses). Making the spec the total ABI source is a
+shape change, so the existing 16 migrate to `-v2` clauseIds with
 regenerated Layer C validators — a coordinated one-time migration. The
 point of paying these once is to delete the *recurring* cost the current
-design imposes: a verifier redeploy per schema, forever.
+design imposes: a verifier redeploy per clause, forever.
 
-**Status.** Compiling in the 16 frozen protocol schemas is an acceptable
+**Status.** Compiling in the 16 frozen protocol clauses is an acceptable
 *bootstrap* for initial mainnet — they freeze with the kernel, and launch
-does not block on the engine. But the generic schema engine is a
+does not block on the engine. But the generic clause engine is a
 committed prover-roadmap milestone with a definite expiry: the first
-third-party schema that needs the proven path. It is not conditional on
+third-party clause that needs the proven path. It is not conditional on
 demand — the demand is the design. None of this touches the kernel or
 its invariants; it is `prover/` and `FigaroBatchVerifier`'s deployment
 story.
@@ -493,7 +493,7 @@ story.
 
 Figaro already uses Succinct's SP1 zkVM (`prover/`). Two further Succinct
 surfaces matter for mainnet; they are proving infrastructure, separate
-from the schema-engine work above and sequenced independently of it.
+from the clause-engine work above and sequenced independently of it.
 
 **On-chain verification — `SP1VerifierGateway`.** `FigaroBatchVerifier`
 verifies a batch proof through `ISP1Verifier.verifyProof`;
@@ -518,11 +518,11 @@ against the program vkey, so a faulty or adversarial prover cannot forge
 a settling proof — the same liveness-not-safety boundary the sequencer
 trust model already draws.
 
-**Connection to the schema engine.** The generic schema engine raises
+**Connection to the clause engine.** The generic clause engine raises
 in-circuit cost (generic spec parsing is heavier than the specialised
 path). That makes offloading proof generation to the Prover Network the
 natural answer rather than scaling a self-hosted prover. The two land
-independently — the schema engine is the architectural blocker, the
+independently — the clause engine is the architectural blocker, the
 Prover Network lands whenever production proving is stood up — but the
 engine's cost increase is what makes the network worth adopting.
 
@@ -584,7 +584,7 @@ path). It cannot extract value (the kernel has no fee, no MEV surface).
 Participants submit signed protocol operations to the sequencer via a
 JSON-RPC or REST endpoint. Each operation is a typed message containing:
 
-- The operation type (commit, resolve, attest, register-schema,
+- The operation type (commit, resolve, attest, register-clause,
   register-seller, etc.)
 - The operation payload (commitment struct, process ID, attestation data, etc.)
 - EIP-712 signatures from the required parties
@@ -636,7 +636,7 @@ the Figaro kernel program in the zkVM and produces:
 - A validity proof
 - `PublicValues` (8 fields: prev/new state roots, chain binding, 4 event hashes)
 - `NetPosition[]` (aggregated token movements)
-- `BatchEvents` (attestation, schema, seller events)
+- `BatchEvents` (attestation, clause, seller events)
 
 For devnet, the MockProver is used (no real proof generation).
 For testnet and mainnet, the sequencer runs the open-source SP1 prover
@@ -654,7 +654,7 @@ settleBatch(
   proof,           // SP1 proof bytes
   publicValues,    // ABI-encoded 8 × 32-byte words
   positions,       // NetPosition[] for token reconciliation
-  events           // BatchEventData (attestations, schemas, sellers)
+  events           // BatchEventData (attestations, clauses, sellers)
 )
 ```
 
@@ -759,7 +759,7 @@ Rust crate in `prover/sequencer/`. 6 modules, 22 tests.
 - MockSP1Verifier (no real proof generation)
 - Time-based batch trigger (configurable, default 10s)
 - 22 tests: mempool pre-checks (valid/invalid signatures, wrong chain,
-  drain, sequential IDs, schema/seller/resolve ops), state mirror
+  drain, sequential IDs, clause/seller/resolve ops), state mirror
   (genesis determinism, snapshot roundtrip, advance), assembler,
   API (status, submit valid/invalid, pending count), end-to-end
   (mempool → assemble → kernel → advance, sequential batch chaining)
@@ -815,7 +815,7 @@ The SP1 program is the single source of truth for valid state transitions
 - `prevStateRoot == currentStateRoot` (chain continuity)
 - `chainId` matches the chain where the verifier contract is deployed
 - `verifyingContract` matches the FigaroBatchVerifier address
-- Hashes of positions, attestations, schemas, and seller events match the
+- Hashes of positions, attestations, clauses, and seller events match the
   proof public inputs
 
 These checks mean that **no invalid state transition can be applied**, even if
@@ -824,7 +824,7 @@ the sequencer is compromised. A malicious sequencer cannot:
 - Fabricate positions (amounts, addresses)
 - Double-apply a batch (chain continuity check rejects it)
 - Apply a batch from a different chain or contract
-- Skip or alter attestation or schema events
+- Skip or alter attestation or clause events
 
 Security (correctness of what gets settled) does **not** require trusting the sequencer.
 

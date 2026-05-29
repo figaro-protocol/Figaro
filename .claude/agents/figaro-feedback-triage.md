@@ -20,7 +20,7 @@ Every piece of feedback falls into exactly one primary category. If a submission
 | Category | Definition | Routing |
 |---|---|---|
 | **Bug** | Unexpected behavior, error, broken UI, type mismatch, broken state. The "I clicked X and Y didn't happen" class. | Linear issue, project's bug board. |
-| **Composable-protection gap** | "I expected an insurance/dispute/floor-price/escalation pattern and it wasn't there." Per `docs/archive/v5/ETHICS.md`, these are the most valuable feedback type. | Architecture discussion. May spawn a new schema or template work item. |
+| **Composable-protection gap** | "I expected an insurance/dispute/floor-price/escalation pattern and it wasn't there." Per `docs/archive/v5/ETHICS.md`, these are the most valuable feedback type. | Architecture discussion. May spawn a new clause or template work item. |
 | **Framing observation** | Participant reached for or observed framing language that didn't match the project's intent ("this feels like DeFi," "I described it as a startup to a friend"). Per the "constructive engagement" clause of the consent agreement (§3.2). | Framing review with the operator; may inform marketing copy or onboarding modal. |
 | **General / question / suggestion** | Anything that doesn't fit the above three. Includes feature requests, UX preferences, "have you considered…" | Acknowledge; route to discussion if substantive, archive if cosmetic. |
 

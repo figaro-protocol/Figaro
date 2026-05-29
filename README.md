@@ -17,14 +17,14 @@ The organizational consequence: each process assembles a temporary institution o
 `Figaro` is the canonical runtime. It owns:
 
 - **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
-- **Mechanism modules** — attestation, schema registry, Dutch auction, seller registry
-- **FIG token** — 1B fixed supply, 10/30/60 split (founders / DAO / schema-author RPGF), time-locks, SP1-proved per-tranche minting
+- **Mechanism modules** — attestation, clause registry, Dutch auction, seller registry
+- **FIG token** — 1B fixed supply, 10/30/60 split (founders / DAO / clause-author RPGF), time-locks, SP1-proved per-tranche minting
 - **SDK** — `@figaro/core`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **SP1 prover** — Rust workspace: kernel library, guest program, batch sequencer
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
 - **Paper** — Academic paper in `paper/`
-- **Contributor agents** — `.claude/agents/` ships sixteen Claude Code subagents covering protocol authoring (kernel-reviewer, schema-lockstep, schema-author, runtime-ui-author, assembly-author, paper-reviewer), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor), operations (memory-hygiene, deploy-runner, feedback-triage), and communications (marketing-author, site-ia, visual-design). `agents/factotum/` is a runnable participation-agent reference with a policy library, `agents/sdk/` packages the subagents as `@figaro/agent-sdk` for non-Claude-Code runtimes, and `agents/examples/` walks through two end-to-end scenarios (TradeLens replacement, Spirit Air replacement). See [CONTRIBUTING.md](CONTRIBUTING.md#contributor-agents).
+- **Contributor agents** — `.claude/agents/` ships sixteen Claude Code subagents covering protocol authoring (kernel-reviewer, clause-lockstep, clause-author, runtime-ui-author, assembly-author, paper-reviewer), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor), operations (memory-hygiene, deploy-runner, feedback-triage), and communications (marketing-author, site-ia, visual-design). `agents/factotum/` is a runnable participation-agent reference with a policy library, `agents/sdk/` packages the subagents as `@figaro/agent-sdk` for non-Claude-Code runtimes, and `agents/examples/` walks through two end-to-end scenarios (TradeLens replacement, Spirit Air replacement). See [CONTRIBUTING.md](CONTRIBUTING.md#contributor-agents).
 
 Start with [docs/v5/CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) for the reading path.
 
@@ -41,7 +41,7 @@ src/                        Solidity contracts (0.8.26, Foundry)
   FigaroCore.sol            Protocol kernel
   CommitmentTypes.sol       EIP-712 commitment structs + hashing
   AttestationCoordinator.sol  Zero-storage role-gated attestation
-  SchemaRegistry.sol        Permissionless schema anchoring
+  ClauseRegistry.sol        Permissionless clause anchoring
   DutchAuction.sol          Descending-price allocation
   SellerRegistry.sol      On-chain seller registration
   FigaroBatchVerifier.sol   SP1 batch proof verifier
@@ -68,15 +68,15 @@ prover/                     Rust SP1 workspace
   rpgf/                     RPGF aggregation library (figaro-rpgf)
   rpgf-program/             SP1 RPGF guest program
   rpgf-script/              SP1 RPGF prove script
-  schema/                   Generic schema validator (mirrors Layer A)
+  clause/                   Generic clause validator (mirrors Layer A)
 
 agents/                     Reference agent implementations
   factotum/                 Runnable participation-agent (uses @figaro/core/agent)
   sdk/                      @figaro/agent-sdk — subagent definitions for non-Claude-Code runtimes
 .claude/                    Claude Code contributor tooling
-  agents/                   Subagents (kernel-reviewer, schema-lockstep, schema-author)
+  agents/                   Subagents (kernel-reviewer, clause-lockstep, clause-author)
   skills/                   figaro-kernel-discipline (canonical kernel rules)
-  hooks/                    kernel-warn.sh + schema-lockstep-warn.sh (edit-time guards)
+  hooks/                    kernel-warn.sh + clause-lockstep-warn.sh (edit-time guards)
   settings.json             Project-level permissions + hook registration
 
 test/                       Foundry tests
@@ -173,7 +173,7 @@ All active docs live in `docs/v5/`. Start with [CURRENT_STATE.md](docs/v5/CURREN
 Inventories indexed by CLAUDE.md:
 
 - [CONTRACTS.md](docs/v5/CONTRACTS.md) — Smart-contract inventory
-- [SCHEMAS.md](docs/v5/SCHEMAS.md) — Schema validation architecture + per-schema table
+- [CLAUSES.md](docs/v5/CLAUSES.md) — Clause validation architecture + per-clause table
 - [FRONTEND.md](docs/v5/FRONTEND.md) — Route catalogue, lib map, designer surface
 - [TESTING.md](docs/v5/TESTING.md) — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright / Rust harness inventory
 

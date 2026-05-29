@@ -81,21 +81,21 @@ describe("loadAgent (canonical .md files)", () => {
     expect(a.systemPrompt).toMatch(/six invariants?|kernel/i);
   });
 
-  it("loads figaro-schema-lockstep as a read-only verifier", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-schema-lockstep");
-    expect(a.name).toBe("figaro-schema-lockstep");
+  it("loads figaro-clause-lockstep as a read-only verifier", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-clause-lockstep");
+    expect(a.name).toBe("figaro-clause-lockstep");
     expect(a.tools).not.toContain("Edit");
     expect(a.tools).not.toContain("Write");
     expect(a.systemPrompt).toMatch(/lockstep|surface/i);
   });
 
-  it("loads figaro-schema-author with write capability and opus", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-schema-author");
-    expect(a.name).toBe("figaro-schema-author");
+  it("loads figaro-clause-author with write capability and opus", () => {
+    const a = loadAgent(REPO_ROOT, "figaro-clause-author");
+    expect(a.name).toBe("figaro-clause-author");
     expect(a.tools).toContain("Edit");
     expect(a.tools).toContain("Write");
     expect(a.model).toBe("opus");
-    expect(a.systemPrompt).toMatch(/SCHEMAS\.md|validator-contract/);
+    expect(a.systemPrompt).toMatch(/CLAUSES\.md|validator-contract/);
   });
 
   it("loads figaro-runtime-ui-author as a writer agent for the runtime tier", () => {
@@ -107,14 +107,14 @@ describe("loadAgent (canonical .md files)", () => {
     expect(a.systemPrompt).toMatch(/lens|frontend|runtime/i);
   });
 
-  it("loads figaro-assembly-author as a writer agent that defers schema work", () => {
+  it("loads figaro-assembly-author as a writer agent that defers clause work", () => {
     const a = loadAgent(REPO_ROOT, "figaro-assembly-author");
     expect(a.name).toBe("figaro-assembly-author");
     expect(a.tools).toContain("Edit");
     expect(a.tools).toContain("Write");
     expect(a.model).toBe("opus");
     expect(a.systemPrompt).toMatch(/DesignDraft|assembly|DAG/i);
-    expect(a.systemPrompt).toMatch(/SCHEMAS\.md/);
+    expect(a.systemPrompt).toMatch(/CLAUSES\.md/);
   });
 
   it("loads figaro-paper-reviewer as a read-only verifier", () => {
@@ -184,16 +184,17 @@ describe("loadAgent (canonical .md files)", () => {
     const all = loadAllAgents(REPO_ROOT);
     expect(Object.keys(all).sort()).toEqual([
       "figaro-assembly-author",
+
+      "figaro-clause-author",
+
+      "figaro-clause-lockstep",
       "figaro-deploy-runner",
       "figaro-feedback-triage",
       "figaro-kernel-reviewer",
       "figaro-marketing-author",
       "figaro-memory-hygiene",
       "figaro-paper-reviewer",
-      "figaro-runtime-ui-author",
-      "figaro-schema-author",
-      "figaro-schema-lockstep",
-      "figaro-site-ia",
+      "figaro-runtime-ui-author",      "figaro-site-ia",
       "figaro-visual-design",
     ]);
   });
@@ -201,16 +202,17 @@ describe("loadAgent (canonical .md files)", () => {
   it("FIGARO_AGENT_FILES map has stable keys", () => {
     expect(Object.keys(FIGARO_AGENT_FILES).sort()).toEqual([
       "figaro-assembly-author",
+
+      "figaro-clause-author",
+
+      "figaro-clause-lockstep",
       "figaro-deploy-runner",
       "figaro-feedback-triage",
       "figaro-kernel-reviewer",
       "figaro-marketing-author",
       "figaro-memory-hygiene",
       "figaro-paper-reviewer",
-      "figaro-runtime-ui-author",
-      "figaro-schema-author",
-      "figaro-schema-lockstep",
-      "figaro-site-ia",
+      "figaro-runtime-ui-author",      "figaro-site-ia",
       "figaro-visual-design",
     ]);
   });

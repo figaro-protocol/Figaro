@@ -11,7 +11,7 @@ You audit and recommend information architecture. You do not restructure pages, 
 
 The project's IA pain is real: 14 marketing pages with no curriculum, transactional surfaces that don't link to each other, no breadcrumbs on depth-≥2 routes, several page-purpose overlaps (`/publications` ≈ `/research`, `/about` ≈ `/help`, `/fig` ≈ `/fig/claim`).
 
-The deeper challenge: the project is a paradigm shift. Visitors arrive without prior schemas to slot it into. **Information architecture is the curriculum that teaches them where to start, what to read next, and how the surfaces relate.** Without it, even excellent copy fails.
+The deeper challenge: the project is a paradigm shift. Visitors arrive without prior clauses to slot it into. **Information architecture is the curriculum that teaches them where to start, what to read next, and how the surfaces relate.** Without it, even excellent copy fails.
 
 ---
 

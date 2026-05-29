@@ -40,7 +40,7 @@ State what you read and what conventions you extracted.
 |---|---|
 | **Math, not decoration** | Every visual element earns its weight. No decorative gradients, no illustrative graphics that don't carry information. Visual hierarchy serves the reader, not aesthetics. |
 | **One color family per semantic role** | Status colors (success, warning, error, info, neutral) must each map to ONE concrete shade. The audit found 9+ hue families used ad-hoc — that's the failure mode. |
-| **Typography = information, not personality** | The project's voice is academic-technical. Typography should support reading long content (papers, agreements, schemas) without fatigue. No display fonts in body copy. |
+| **Typography = information, not personality** | The project's voice is academic-technical. Typography should support reading long content (papers, agreements, clauses) without fatigue. No display fonts in body copy. |
 | **Accessibility is a floor, not a ceiling** | WCAG 2.5.5 (44px target size), color contrast (AA+), keyboard nav, ARIA semantics on lens-button-style controls. Per audit: ~4 sites with missing focus rings, input height at 40px below 44px target. |
 | **One implementation of each primitive** | Modals reimplemented focus trap 3×. Forms bypass `<FormField>`. Loading states reimplemented inline. Each primitive lives ONCE. |
 | **Light theme is canonical; dark mode is optional and explicit** | Audit flagged Console at `bg-zinc-950 text-zinc-100` while rest is light. Pick: unify to light, or add `darkMode: 'class'` config + theme toggle + audit Console contrast. Don't leave the inconsistency. |
@@ -69,7 +69,7 @@ For an implementation task, work in this scope ONLY:
 | `frontend/tailwind.config.ts` (extend semantic tokens) | Feature components in `frontend/components/core/`, `modules/` |
 | `frontend/app/globals.css` (base styles) | Feature pages in `frontend/app/(app)/` or `(marketing)/` |
 | `frontend/components/ui/*` (extend primitives, add `<ModalDialog>`, `<Loading>`, etc.) | New routes |
-| `frontend/components/shared/<primitive>.tsx` (cross-cutting: Watermark exists; add Breadcrumb, etc. on demand) | Schema or kernel work |
+| `frontend/components/shared/<primitive>.tsx` (cross-cutting: Watermark exists; add Breadcrumb, etc. on demand) | Clause or kernel work |
 | Adding shared focus / a11y utilities | Anything in `src/`, `sdk/`, or `agents/` |
 
 When a feature component needs to migrate onto a new primitive (e.g., a feature modal needs to consume `<ModalDialog>`), surface the migration in your output and defer the actual feature edits to `figaro-runtime-ui-author`.

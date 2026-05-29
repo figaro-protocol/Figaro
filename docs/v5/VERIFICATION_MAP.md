@@ -23,7 +23,7 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 ### In-scope (this document)
 
 - **Kernel**: `src/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
-- **Protocol extensions**: `AttestationCoordinator`, `SchemaRegistry`, `DutchAuction`, `SellerRegistry`, `FigaroBatchVerifier`
+- **Protocol extensions**: `AttestationCoordinator`, `ClauseRegistry`, `DutchAuction`, `SellerRegistry`, `FigaroBatchVerifier`
 - **FIG token ecosystem**: `FigToken`, `RpgfMinter` (replaced `StagedMerkleAirdrop` 2026-05; formal-verification status reset — see "Retired properties" below)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
 - **Tests**: the Foundry, Halmos, Certora, Echidna, and TLA+ harnesses, plus the SDK suite — suite, file, property, and rule counts are in `TESTING.md` (the single source)
@@ -65,7 +65,7 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 ### Extension invariants
 
 - `E-1` **Attestation role gating**: only verified role-holder (buyer/seller/resolver) can attest
-- `E-2` **Schema immutability**: registered schemas cannot be overwritten
+- `E-2` **Clause immutability**: registered clauses cannot be overwritten
 - `E-3` **Auction price monotonicity**: Dutch auction price only decreases over time
 - `E-4` **Seller deposit lock**: withdrawal only after deactivation + lock period
 - `E-5` **Batch state root continuity**: each batch must chain from previous state root
@@ -110,8 +110,8 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 
 | ID | Statement | Code enforcement | Tests | UI presentation |
 |---|---|---|---|---|
-| E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: 20 tests covering all 3 paths + cross-order same-process | `/legal` → Six evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Schema validators in force |
-| E-2 | Registered schemas cannot be overwritten | `registerSchema`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `SchemaRegistryTest`: 12 tests including dedup | `/builders` → Schema validators in force; `/local-commerce` → schema-typed events |
+| E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: 20 tests covering all 3 paths + cross-order same-process | `/legal` → Six evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Clause validators in force |
+| E-2 | Registered clauses cannot be overwritten | `registerClause`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `ClauseRegistryTest`: 12 tests including dedup | `/builders` → Clause validators in force; `/local-commerce` → clause-typed events |
 | E-3 | Dutch auction price only decreases over time | `getCurrentPrice`: linear decay from `maxPrice` to floor, time-based | `DutchAuctionTest`: 35 tests covering price decay, floor BPS, claim, cancel, expire | `/local-commerce` → Dutch auction description; `/verification` → Coordinator pattern (Dutch auction reference instance); `/builders` → Three levels |
 | E-4 | Seller deposit lock — withdraw only after `registeredAt + lockPeriod` | `withdraw()`: requires `_registered[msg.sender]` + `block.timestamp >= registeredAt + lockPeriod`; clears the dedup guard so the same address can re-register with the lock restarting. `updateProfile()` is a separate caller-only path that emits a new `SellerProfileUpdated` event without touching the deposit or restarting the lock | `SellerRegistryTest`: 18 tests covering register, deposit-bound match, dedup, withdraw flow, lock-period gate, re-registration restarts the lock, plus updateProfile (only-self, no deposit movement, no lock reset) | `/local-commerce` → Seller Registry; `/sellers`; `/builders` → Seller identity |
 | E-5 | Batch state root continuity | `settleBatch()`: `require(prevStateRoot == currentStateRoot)` + `currentStateRoot = newStateRoot` | `FigaroBatchVerifierTest`: 22 tests covering state root chain, re-emission | `/builders` → Batch verification (state root, SP1, net positions, event re-emission) |
@@ -130,7 +130,7 @@ This section tracks features that are not protocol invariants but are significan
 |---|---|---|---|---|---|
 | **Handoff encryption (ECDH)** | `frontend/lib/handoff/` (13 files) | — | `/local-commerce` → Handoff Encryption | `HandoffKeyExchangeModule`, `HandoffTrackerModule`, `HandoffDetailsModule` | — |
 | **Delivery attestation (4 modes)** | `frontend/lib/dispute/deliveryAttestation.ts` | `@figaro/core/extensions`: `geohashesMatch`, `haversineDistance` | `/local-commerce` → Proximity Proofs; `/builders` → attestation modes | `DeliveryAttestationPanel`, `/evidence-display` | — |
-| **GHG disclosure** | `frontend/lib/mechanisms/useGHGDisclosure.ts` | `@figaro/core/extensions`: `encodeGramsRef`, `decodeGramsRef`, `buildProcessDisclosureSummary` | `/local-commerce` → GHG two-stage; `/builders` → Schema validators in force | `GHGAnchorPanel`, `GHGWorkflowPanel`, `DisclosureModule` | — |
+| **GHG disclosure** | `frontend/lib/mechanisms/useGHGDisclosure.ts` | `@figaro/core/extensions`: `encodeGramsRef`, `decodeGramsRef`, `buildProcessDisclosureSummary` | `/local-commerce` → GHG two-stage; `/builders` → Clause validators in force | `GHGAnchorPanel`, `GHGWorkflowPanel`, `DisclosureModule` | — |
 | **DID:web identity** | `frontend/lib/mechanisms/useDidWeb.ts` | `@figaro/core/extensions`: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `buildSellerDidDocument` | `/builders` → Seller identity | `DidVerificationBadge` (component) | — |
 | **Kleros dispute / evidence** | `frontend/lib/dispute/` (6 files) | `@figaro/core/extensions`: Kleros evidence envelope | `/builders` → Kleros integration | `/evidence-display` (full rendering for jurors) | — |
 | **Agent SDK** | `sdk/` (3 subpath exports) | Self-referential (166 tests) | `/builders` → Agent SDK section | — | — |
@@ -311,14 +311,14 @@ that complement the Halmos token-conservation proofs.
 | `successfulBuyerAttestationImpliesBuyer` | E-1 | Contrapositive — successful call ⟹ `msg.sender == c.buyer` |
 | `attestationCannotChangeOrderStatus` | K-4 | Parametric (`filtered { f -> f.contract == currentContract }`) |
 | `attestationCannotChangeProcessState` | K-4, K-7 | Same filter |
-| `noValidatorBlocksBuyerAttestation` | E-1 | Validator-mandatory: `schemaValidator[id] == 0` ⟹ `attestAsBuyer` reverts |
+| `noValidatorBlocksBuyerAttestation` | E-1 | Validator-mandatory: `clauseValidator[id] == 0` ⟹ `attestAsBuyer` reverts |
 | `setValidatorIsFirstWriteWins` | E-1 | Storage-mapping immutability |
-| `setValidatorPreservesOtherBindings` | E-1 | Storage isolation across schemas |
+| `setValidatorPreservesOtherBindings` | E-1 | Storage isolation across clauses |
 
 Dropped (subsumed by the new commitment-arg design): `unknownProcessRevertsAsBuyer` and `buyerAttestationEnforcesProcessBoundary` — the target commitment now carries its own processId and orderHash, so "wrong process" is no longer a distinct failure mode. `_requireKnownCommitment` reverts `UnknownOrder` if the caller's Commitment struct isn't backed by a committed order.
 
 Foundry-covered companions (scene would need a mock-validator contract for universal CVL coverage):
-- `testFuzz_setValidator_rejectsMismatchedBinding` — validator-binding-check under random (schemaId, boundId) pairs
+- `testFuzz_setValidator_rejectsMismatchedBinding` — validator-binding-check under random (clauseId, boundId) pairs
 - `testFuzz_contentRefIsKeccakOfContent` — emitted `contentRef` equals `keccak256(content)` for arbitrary bytes
 
 **FigToken (7 sub-rules from 6 declared) — `rule_sanity: none` (vacuity heuristic not meaningful for these state-invariant claims)**
@@ -390,7 +390,7 @@ export CERTORAKEY=<your-key>
 | `state.test.ts` | Event reconstruction, ProcessGraph (incremental), active/seller/buyer queries | A-4, A-5 |
 | `proposer.test.ts` | Agent proposer: proposeActions, typed action generation | K-2 (buyer action routing) |
 | `hitl.test.ts` | ActionQueue HITL — approve/reject/execute lifecycle | Agent coordination |
-| `attestation.test.ts` | Schema IDs, GHG constants, grams encoding, event filtering, disclosure summaries | E-1, E-2 |
+| `attestation.test.ts` | Clause IDs, GHG constants, grams encoding, event filtering, disclosure summaries | E-1, E-2 |
 | `auction.test.ts` | Price curves, floor BPS, claim evaluation, auction state derivation | E-3 |
 | `did.test.ts` | did:web validation, resolution, address extraction, seller DID docs | DID:web identity |
 | `geo.test.ts` | Geohash matching, haversine distance, photo+GPS evidence | Delivery attestation |

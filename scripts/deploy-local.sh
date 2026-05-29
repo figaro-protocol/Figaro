@@ -6,8 +6,8 @@ set -e
 #   frontend/.env.local            (frontend)
 #   .deployments/local.json         (downstream/manual consumption)
 #
-# Stack: FigaroCore, AttestationCoordinator, SchemaRegistry,
-#        SchemaRegistrationHelper, SellerRegistry, DutchAuction, FigToken,
+# Stack: FigaroCore, AttestationCoordinator, ClauseRegistry,
+#        ClauseRegistrationHelper, SellerRegistry, DutchAuction, FigToken,
 #        MockToken, MockPermitToken, FigaroBatchVerifier.
 #
 # Usage:
@@ -53,8 +53,8 @@ CORE_ADDR=$(echo "$FORGE_OUT"        | grep 'FigaroCore deployed at:'           
 TOKEN_ADDR=$(echo "$FORGE_OUT"       | grep 'MockToken deployed at:'              | grep -oE '0x[0-9a-fA-F]+')
 PERMIT_ADDR=$(echo "$FORGE_OUT"      | grep 'MockPermitToken deployed at:'        | grep -oE '0x[0-9a-fA-F]+')
 ATTESTATION_ADDR=$(echo "$FORGE_OUT" | grep 'AttestationCoordinator deployed at:' | grep -oE '0x[0-9a-fA-F]+')
-SCHEMA_ADDR=$(echo "$FORGE_OUT"      | grep 'SchemaRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
-SCHEMA_HELPER_ADDR=$(echo "$FORGE_OUT" | grep 'SchemaRegistrationHelper deployed at:' | grep -oE '0x[0-9a-fA-F]+')
+CLAUSE_ADDR=$(echo "$FORGE_OUT"      | grep 'ClauseRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
+CLAUSE_HELPER_ADDR=$(echo "$FORGE_OUT" | grep 'ClauseRegistrationHelper deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 SELLER_ADDR=$(echo "$FORGE_OUT"    | grep 'SellerRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 AUCTION_ADDR=$(echo "$FORGE_OUT"     | grep 'DutchAuction deployed at:'           | grep -oE '0x[0-9a-fA-F]+')
@@ -100,8 +100,8 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_FIGARO_CORE"              "$CORE_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_TOKEN_ADDRESS"             "$TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS"      "$PERMIT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ATTESTATION_COORDINATOR"   "$ATTESTATION_ADDR"
-update_env "$CORE_ENV" "NEXT_PUBLIC_SCHEMA_REGISTRY"           "$SCHEMA_ADDR"
-update_env "$CORE_ENV" "NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER" "$SCHEMA_HELPER_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_CLAUSE_REGISTRY"           "$CLAUSE_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER" "$CLAUSE_HELPER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_SELLER_REGISTRY"         "$SELLER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_DUTCH_AUCTION"             "$AUCTION_ADDR"
@@ -127,8 +127,8 @@ cat > "$CORE_MANIFEST" <<EOF
   "tokenAddress": "$TOKEN_ADDR",
   "permitTokenAddress": "$PERMIT_ADDR",
   "attestationCoordinator": "$ATTESTATION_ADDR",
-  "schemaRegistry": "$SCHEMA_ADDR",
-  "schemaRegistrationHelper": "$SCHEMA_HELPER_ADDR",
+  "clauseRegistry": "$CLAUSE_ADDR",
+  "clauseRegistrationHelper": "$CLAUSE_HELPER_ADDR",
   "sellerRegistry": "$SELLER_ADDR",
   "assemblyRegistry": "$ASSEMBLY_ADDR",
   "dutchAuction": "$AUCTION_ADDR",
@@ -147,8 +147,8 @@ echo "   NEXT_PUBLIC_FIGARO_CORE=$CORE_ADDR"
 echo "   NEXT_PUBLIC_TOKEN_ADDRESS=$TOKEN_ADDR"
 echo "   NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=$PERMIT_ADDR"
 echo "   NEXT_PUBLIC_ATTESTATION_COORDINATOR=$ATTESTATION_ADDR"
-echo "   NEXT_PUBLIC_SCHEMA_REGISTRY=$SCHEMA_ADDR"
-echo "   NEXT_PUBLIC_SCHEMA_REGISTRATION_HELPER=$SCHEMA_HELPER_ADDR"
+echo "   NEXT_PUBLIC_CLAUSE_REGISTRY=$CLAUSE_ADDR"
+echo "   NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER=$CLAUSE_HELPER_ADDR"
 echo "   NEXT_PUBLIC_SELLER_REGISTRY=$SELLER_ADDR"
 echo "   NEXT_PUBLIC_ASSEMBLY_REGISTRY=$ASSEMBLY_ADDR"
 echo "   NEXT_PUBLIC_DUTCH_AUCTION=$AUCTION_ADDR"

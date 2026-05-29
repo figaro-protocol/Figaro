@@ -104,7 +104,7 @@
           },
           {
             "type": "command",
-            "command": ".claude/hooks/schema-lockstep-warn.sh"
+            "command": ".claude/hooks/clause-lockstep-warn.sh"
           },
           {
             "type": "command",

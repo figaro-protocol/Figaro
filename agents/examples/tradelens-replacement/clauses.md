@@ -1,10 +1,10 @@
-# Schemas: TradeLens replacement
+# Clauses: TradeLens replacement
 
-This file walks through which schemas the assembly needs, which already exist, and which would be authored by the `figaro-schema-author` agent. Verbatim prompts are runnable against the current agent set.
+This file walks through which clauses the assembly needs, which already exist, and which would be authored by the `figaro-clause-author` agent. Verbatim prompts are runnable against the current agent set.
 
-## Existing schemas (no agent work needed)
+## Existing clauses (no agent work needed)
 
-| Schema | Use in this assembly |
+| Clause | Use in this assembly |
 |---|---|
 | `figaro-commerce-v1` | Per-leg payment commitment (shipper→forwarder, forwarder→carrier, etc.) |
 | `figaro-geo-v2` | Pickup / drop-off geohash on every leg + cargo mass + volume + class; vessel position updates |
@@ -15,11 +15,11 @@ This file walks through which schemas the assembly needs, which already exist, a
 | `figaro-ghg-protocol-v1` (or PAS-2050, ISO-14064) | Per-leg emissions disclosure on every transport edge |
 | `figaro-proximity-policy-v1` + `figaro-proximity-proof-v1` | Geofence enforcement at port handoffs |
 
-The assembly composes these. No agent work needed for the schemas above — they're already on chain.
+The assembly composes these. No agent work needed for the clauses above — they're already on chain.
 
-## New schemas to author
+## New clauses to author
 
-Two candidates. The schema-author would refuse to author either if it didn't satisfy the decision rule in `docs/v5/SCHEMAS.md` ("does the protocol need this fact to preserve shared reference integrity across counterparties and over time?").
+Two candidates. The clause-author would refuse to author either if it didn't satisfy the decision rule in `docs/v5/CLAUSES.md` ("does the protocol need this fact to preserve shared reference integrity across counterparties and over time?").
 
 ### 1. `figaro-container-seal-v1`
 
@@ -27,17 +27,17 @@ Container seals are the integrity mechanism for ocean shipping: a uniquely-numbe
 
 This satisfies the decision rule: cross-party shared interpretation, stable over time, settlement-relevant (a broken seal en route is grounds for cargo rejection).
 
-**Prompt to give the schema-author:**
+**Prompt to give the clause-author:**
 
 ```
-Use the figaro-schema-author agent to draft figaro-container-seal-v1.
+Use the figaro-clause-author agent to draft figaro-container-seal-v1.
 
 Purpose: attest container-seal state at every transfer point. Multiple
 counterparties (carrier, port-of-loading, port-of-discharge, customs broker,
 consignee) need to agree on a single canonical record of seal application,
 inspection events, and breach events.
 
-Fields (Layer A spec, closed schema):
+Fields (Layer A spec, closed clause):
 - containerNumber: string (ISO 6346, e.g. "MSCU1234567")
 - sealNumber: string
 - event: enum {applied, inspected_intact, transferred, breached, removed_by_customs}
@@ -53,35 +53,35 @@ modes (rail, air freight).
 
 Verify before declaring done:
 - No kernel changes.
-- Validator-contract pattern: 1:1 schemaId↔contract, ABI-encoded content,
+- Validator-contract pattern: 1:1 clauseId↔contract, ABI-encoded content,
   first-write-wins.
 - Forge tests cover well-formed input, every field-level revert, gas bound.
-- Schema-lockstep coverage matrix shows all required surfaces present.
+- Clause-lockstep coverage matrix shows all required surfaces present.
 - Kernel-reviewer reports zero kernel-tier touches.
 ```
 
-What you'd see the schema-author do:
-1. Read `SCHEMAS.md` and the kernel-discipline skill in full.
-2. Argue out loud whether the schema satisfies the decision rule (yes, in this case).
-3. Write `frontend/lib/shared/schemas/figaro-container-seal-v1.json`, `sdk/src/schemas/encode.ts` additions, `src/schemaValidators/FigaroContainerSealV1Validator.sol`, Foundry tests, registration script entry, and listing-page references.
+What you'd see the clause-author do:
+1. Read `CLAUSES.md` and the kernel-discipline skill in full.
+2. Argue out loud whether the clause satisfies the decision rule (yes, in this case).
+3. Write `frontend/lib/shared/clauses/figaro-container-seal-v1.json`, `sdk/src/clauses/encode.ts` additions, `src/clauseValidators/FigaroContainerSealV1Validator.sol`, Foundry tests, registration script entry, and listing-page references.
 4. Run forge / halmos / vitest / type-check.
 5. Print a verification report and **not** commit. Return control to the main session.
 
 ### 2. `figaro-bol-issuance-v1` — bounded scope
 
-A bill of lading (BoL) is the carrier's receipt of cargo. It functions as a contract of carriage and as a document of title (transferable in the negotiable case). The transferability question is parked per `project_bol_transferability_parked.md` — current working hypothesis is that BoL transferability lives at the application layer via `CancellableSeller` wrappers and counter-processes, not as a kernel-layer schema.
+A bill of lading (BoL) is the carrier's receipt of cargo. It functions as a contract of carriage and as a document of title (transferable in the negotiable case). The transferability question is parked per `project_bol_transferability_parked.md` — current working hypothesis is that BoL transferability lives at the application layer via `CancellableSeller` wrappers and counter-processes, not as a kernel-layer clause.
 
-So the schema-author should be asked for a *non-transferable* BoL anchor — just an immutable record of issuance, not a transferable document of title.
+So the clause-author should be asked for a *non-transferable* BoL anchor — just an immutable record of issuance, not a transferable document of title.
 
 **Prompt:**
 
 ```
-Use the figaro-schema-author agent to draft figaro-bol-issuance-v1.
+Use the figaro-clause-author agent to draft figaro-bol-issuance-v1.
 
-CRITICAL: this schema must NOT support transferability. Read
+CRITICAL: this clause must NOT support transferability. Read
 project_bol_transferability_parked.md before proposing. Transferability is
 parked as application-layer composition (CancellableSeller + counter-process);
-do not encode transfer logic into the schema. If the proposal naturally drifts
+do not encode transfer logic into the clause. If the proposal naturally drifts
 toward transferability fields (bearer flag, endorsee, etc.), refuse and
 explain.
 
@@ -118,14 +118,14 @@ INCO Terms (Incoterms® 2020 from the ICC) are the international trade vocabular
 2. **INCO Terms separate "who pays for transport" from "who bears risk during transport."** In Figaro, both follow from process structure: a party who bonds for a sub-process is the buyer of that sub-process. Risk and cost are not independent variables.
 3. **Buyer dominance changes the resolution model.** INCO Terms assume good-faith resolution between parties; Figaro encodes buyer-dominance + MAD as the equilibrium that produces good-faith resolution. Some terms' implicit dispute-resolution paths may not transfer.
 
-The right schema is therefore **not "INCO term as a traditional contract clause" but "INCO term as a reference to a Figaro-native delivery-clause specification."** The schema anchors the term + named place; the term-to-delivery-clause mapping is verified against the kernel code, *per term*, and lives in the validator contract + an off-chain reference document.
+The right clause is therefore **not "INCO term as a traditional contract clause" but "INCO term as a reference to a Figaro-native delivery-clause specification."** The clause anchors the term + named place; the term-to-delivery-clause mapping is verified against the kernel code, *per term*, and lives in the validator contract + an off-chain reference document.
 
-**This is also the canonical worked example for the agent's code-canonical discipline.** Before drafting fields, the schema-author MUST read `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, and `formal/FigaroCore.tla` — and verify each of the 11 Incoterms 2020 codes against the actual kernel mechanics. State which terms map cleanly, which require composition (e.g., CIF/CIP's insurance feature → separate insurance process), and which do not transfer.
+**This is also the canonical worked example for the agent's code-canonical discipline.** Before drafting fields, the clause-author MUST read `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, and `formal/FigaroCore.tla` — and verify each of the 11 Incoterms 2020 codes against the actual kernel mechanics. State which terms map cleanly, which require composition (e.g., CIF/CIP's insurance feature → separate insurance process), and which do not transfer.
 
 **Prompt:**
 
 ```
-Use the figaro-schema-author agent to draft figaro-incoterms-2020-v1.
+Use the figaro-clause-author agent to draft figaro-incoterms-2020-v1.
 
 CRITICAL: do not assume INCO Terms map cleanly to Figaro. Standardization
 in the traditional system is not a proxy for compatibility with Figaro's
@@ -153,48 +153,48 @@ DPU, DDP, FAS, FOB, CFR, CIF), verify against the kernel code:
 Include this per-term verification as a structured table in your output
 report. The reviewer will audit it against the kernel code.
 
-Schema fields (Layer A spec):
+Clause fields (Layer A spec):
 - term:         enum {EXW, FCA, CPT, CIP, DAP, DPU, DDP, FAS, FOB, CFR, CIF}
 - namedPlace:   string (every Incoterm requires a named place)
 - placeGeohash: string (8-char) — for cross-reference with geo-v1
 
-The schema anchors the term + place. The validator contract MUST NOT
+The clause anchors the term + place. The validator contract MUST NOT
 encode per-term semantics in Solidity; those live in:
 - the off-chain ICC publication (canonical text)
-- a runtime term-to-delivery-clause table in frontend/public/schemas/
+- a runtime term-to-delivery-clause table in frontend/public/clauses/
 
-This split lets future Incoterms revisions ship as new schemaIds
+This split lets future Incoterms revisions ship as new clauseIds
 (figaro-incoterms-2030-v1, etc.) without mutating prior anchors.
 
 Verify before declaring done:
 - No kernel changes.
-- Validator-contract pattern: 1:1 schemaId↔contract, ABI-encoded
+- Validator-contract pattern: 1:1 clauseId↔contract, ABI-encoded
   content, first-write-wins.
 - Forge tests cover well-formed input, every field-level revert, gas
   bound. Per-term mapping verification report attached to PR.
-- Schema-lockstep coverage matrix shows all required surfaces present.
+- Clause-lockstep coverage matrix shows all required surfaces present.
 - Kernel-reviewer reports zero kernel-tier touches.
 ```
 
-What the schema-author would do (and what the verification report would surface):
+What the clause-author would do (and what the verification report would surface):
 
 1. Read `src/FigaroCore.sol` IN FULL. State explicitly: "kernel has X external functions at lines Y…Z; commit() takes parameters …; resolveProcess() takes parameters …."
 2. Walk through each of the 11 codes against this. Likely outcomes (subject to actual verification — which is the point):
    - **EXW, FCA, DAP, DPU, DDP, FAS, FOB**: probably map directly. Each becomes a delivery-clause spec — handoff-v1 attestation at named place, possibly with auxiliary clauses (customs for DDP, unloading for DPU).
    - **CPT, CFR**: map structurally. The "seller pays carriage" feature becomes a separate sub-process where the seller is buyer of carriage. The "risk transfers at first carrier" feature becomes the goods-commit's delivery-clause spec.
-   - **CIP, CIF**: same as CPT/CFR + the "seller insures for buyer's benefit" feature. Insurance assignment may not transfer directly — likely requires composition with a parallel insurance process. The schema-author should flag this and propose the composition.
+   - **CIP, CIF**: same as CPT/CFR + the "seller insures for buyer's benefit" feature. Insurance assignment may not transfer directly — likely requires composition with a parallel insurance process. The clause-author should flag this and propose the composition.
    - Anything that implies discretionary fault recovery or split resolution authority: refuse.
-3. Produce the schema only after the per-term verification table is in the report.
+3. Produce the clause only after the per-term verification table is in the report.
 
 The point of the verification step: traditional commercial vocabulary smuggles in assumptions. The agent exists specifically to catch this. Anchor the reference; don't import the assumptions.
 
-## What the schema-author would refuse
+## What the clause-author would refuse
 
-For this assembly, the schema-author would refuse:
+For this assembly, the clause-author would refuse:
 
 - Any change to `src/FigaroCore.sol` or `src/CommitmentTypes.sol` (e.g., "add a multi-currency-process feature so we can bond shipper-side in USD and consignee-side in EUR"). Multi-currency-within-one-process is a kernel anti-pattern (per `CLAUDE.md`), and the agent would cite it.
-- Any in-place edit of an existing schema (e.g., "extend `commerce-v1` with maritime-specific fields"). Append-only identity rules: a new version means a new schemaId.
-- A schema with mutable freeform text or large on-chain payloads (>~1KB).
-- A schema with admin / pause / upgrade hooks.
+- Any in-place edit of an existing clause (e.g., "extend `commerce-v1` with maritime-specific fields"). Append-only identity rules: a new version means a new clauseId.
+- A clause with mutable freeform text or large on-chain payloads (>~1KB).
+- A clause with admin / pause / upgrade hooks.
 
-These refusals are the value-add. Without them, you'd write a working schema that quietly weakens the equilibrium.
+These refusals are the value-add. Without them, you'd write a working clause that quietly weakens the equilibrium.

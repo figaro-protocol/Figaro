@@ -7,7 +7,7 @@ Implemented. Three contracts:
 - `src/fig/FigToken.sol` — ERC-20 + EIP-2612 permit, 1B hard cap, minter registry
   with `totalRegisteredCap` enforcement.
 - `src/fig/RpgfMinter.sol` — three-stage SP1-gated minter for the
-  schema-author RPGF (year 2 / year 5 / year 9). Per-tranche Merkle
+  clause-author RPGF (year 2 / year 5 / year 9). Per-tranche Merkle
   root submitted at tranche time; the SP1 proof attests that the
   aggregation formula was applied correctly to the event stream the
   submitter supplied — it does not attest that that stream mirrors
@@ -69,16 +69,16 @@ the full name is the protocol.
 |---|---|---|---|
 | **Founders** | **10%** | **100,000,000** | Genesis mint to founder wallet — **no vesting, no unlock** |
 | **DAO**      | **30%** | **300,000,000** | Genesis mint to DAO wallet — **no vesting, no unlock** |
-| **RPGF — Year 2** | 30% | 300,000,000 | Schema-author RPGF, unlocks at year 2 |
-| **RPGF — Year 5** | 20% | 200,000,000 | Schema-author RPGF, unlocks at year 5 |
-| **RPGF — Year 9** | 10% | 100,000,000 | Schema-author RPGF, unlocks at year 9 |
+| **RPGF — Year 2** | 30% | 300,000,000 | Clause-author RPGF, unlocks at year 2 |
+| **RPGF — Year 5** | 20% | 200,000,000 | Clause-author RPGF, unlocks at year 5 |
+| **RPGF — Year 9** | 10% | 100,000,000 | Clause-author RPGF, unlocks at year 9 |
 | **Total** | **100%** | **1,000,000,000** | |
 
 Founders and DAO receive tokens directly to their wallets at deploy time.
 The community airdrop is a single `RpgfMinter` contract with three immutable
 unlock timestamps. Per-tranche Merkle roots are NOT baked at deploy — they
 are submitted at tranche time by a sequencer. The accompanying SP1 proof
-attests that the schema-author substrate-broadening aggregation formula
+attests that the clause-author substrate-broadening aggregation formula
 was applied correctly to the event stream the sequencer supplied; it does
 not attest that that stream faithfully mirrors chain history — the
 sequencer is trusted for input provenance. See `prover/rpgf/` (Rust
@@ -112,7 +112,7 @@ off-chain pieces.
 
 ## The Substrate-Broadening Formula
 
-The three RPGF tranches reserve FIG for schema authors — but the allocation
+The three RPGF tranches reserve FIG for clause authors — but the allocation
 table does not say *which* authors, or *how much* each receives. That is decided
 by the **substrate-broadening formula**, implemented canonically in
 `prover/rpgf/` (Rust, compiled into the SP1 program) and mirrored by
@@ -121,37 +121,37 @@ gates `RpgfMinter.submitRoot` attests this formula was applied correctly to the
 event window the sequencer supplied — not that the window mirrors chain history
 (see the trusted-submitter note above).
 
-**Recipient.** A schema's allocation goes to its `schemaAuthor` — the
-first-write-wins wallet that registered the schema on `SchemaRegistry`. One
-schema, one recipient. There is no per-attestation, per-seller, or
+**Recipient.** A clause's allocation goes to its `clauseAuthor` — the
+first-write-wins wallet that registered the clause on `ClauseRegistry`. One
+clause, one recipient. There is no per-attestation, per-seller, or
 per-settlement reward path anywhere in the system.
 
-**What is measured.** Per tranche, the aggregator builds one snapshot per schema
+**What is measured.** Per tranche, the aggregator builds one snapshot per clause
 from a window of on-chain events, under a **resolved-only filter**: an
 attestation counts only if its order belongs to a process that has resolved.
-Work that never settles earns nothing; a schema with no resolved attestations in
+Work that never settles earns nothing; a clause with no resolved attestations in
 the window receives zero by absence.
 
-**The score.** Each schema is scored:
+**The score.** Each clause is scored:
 
 ```
 score = w_tier1 × processCount^α × pairs^(1 − α)        α = 33/100
 ```
 
-- `processCount` — distinct resolved processes the schema appeared in.
+- `processCount` — distinct resolved processes the clause appeared in.
 - `pairs` — distinct buyer↔seller pairs that used it.
 - The exponent split (α = 0.33) weights **counterparty diversity** (`pairs`)
-  above raw `processCount`: a schema adopted across many distinct relationships
+  above raw `processCount`: a clause adopted across many distinct relationships
   broadens the protocol's substrate more than one used heavily between the same
-  two parties. A schema with zero processes or zero pairs scores zero.
+  two parties. A clause with zero processes or zero pairs scores zero.
 
 **The tier-1 weight** (`w_tier1`, range 1.0–5.0) adds two dimensions —
 `w = 1 + (w_category − 1) + (w_topology − 1)`:
 
-- `w_category` — `3.0` for tier-1 category schemas (`figaro-fulfilment-v2` and
+- `w_category` — `3.0` for tier-1 category clauses (`figaro-fulfilment-v2` and
   `figaro-geo-v2`, hard-coded at deploy), `1.0` otherwise.
-- `w_topology` — the schema's mean chain position over the window, clamped to
-  `[1.0, 3.0]`; schemas used deeper in process chains weigh more.
+- `w_topology` — the clause's mean chain position over the window, clamped to
+  `[1.0, 3.0]`; clauses used deeper in process chains weigh more.
 
 **Value is deliberately excluded.** Payment and bond size do not enter the
 formula. The protocol's cost to move one unit equals its cost to move a
@@ -163,7 +163,7 @@ coordination layer rejects.
 above the cap is truncated and its excess redistributed pro-rata across
 under-cap shares, iterated to a fixpoint — so no author can take more than 15%
 of a single tranche. Capped shares scale to FIG amounts; the
-`(schemaAuthor, amount)` pairs form the Merkle tree whose root `submitRoot`
+`(clauseAuthor, amount)` pairs form the Merkle tree whose root `submitRoot`
 records.
 
 **The formula is frozen.** `α = 33/100`, the `15/100` cap, and the tier-1

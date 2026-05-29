@@ -53,7 +53,7 @@ at 6 chars), not a doorstep.
 
 ### 3. GHG / Disclosure Graph (Protocol-Derived)
 
-**Source:** `SchemaRegistry`, `AttestationCoordinator`, and content-addressed
+**Source:** `ClauseRegistry`, `AttestationCoordinator`, and content-addressed
 off-chain disclosure artifacts.
 
 The GHG graph overlays environmental disclosure onto the process graph.
@@ -61,13 +61,13 @@ Reporting entities open boundaries, buyers create per-order requirements,
 and sellers submit disclosure references — all anchored to the same process
 tree that enforces economic coordination.
 
-**Contents:** Schema registrations, reporting boundaries, order-level
+**Contents:** Clause registrations, reporting boundaries, order-level
 requirements, seller disclosure submissions.
 
 **Truth boundary:** Protocol-derived. The anchoring is on-chain (immutable
-schema references, timestamped submissions), but the disclosure content
+clause references, timestamped submissions), but the disclosure content
 itself lives off-chain. The protocol ensures *referential integrity*, not
-*substantive accuracy*. See `SCHEMAS.md` §"When something deserves a schema — payload vs anchor".
+*substantive accuracy*. See `CLAUSES.md` §"When something deserves a clause — payload vs anchor".
 
 ### 4. Capital Graph (Protocol-Enforced)
 

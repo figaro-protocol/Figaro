@@ -20,7 +20,7 @@ const config = {
   privateKey: requireEnv("PRIVATE_KEY") as `0x${string}`,
   addresses: {
     core: requireEnv("FIGARO_CORE_ADDRESS") as `0x${string}`,
-    schemaRegistry: requireEnv("SCHEMA_REGISTRY_ADDRESS") as `0x${string}`,
+    clauseRegistry: requireEnv("CLAUSE_REGISTRY_ADDRESS") as `0x${string}`,
     attestationCoordinator: requireEnv("ATTESTATION_COORDINATOR_ADDRESS") as `0x${string}`,
     sellerRegistry: requireEnv("SELLER_REGISTRY_ADDRESS") as `0x${string}`,
   },

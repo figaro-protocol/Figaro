@@ -53,7 +53,7 @@ Every claim the input makes about the current codebase must be verified against 
 - "Page X is in `(marketing)/`" — `ls frontend/app/(marketing)/` and confirm.
 - "Route Y exists" — `find frontend/app -type d -name <Y>` and confirm.
 - "File Z carries P" — read the file.
-- "Schema/contract/assembly W" — grep the `src/` tree.
+- "Clause/contract/assembly W" — grep the `src/` tree.
 
 Any unverifiable claim is a BLOCKER. The fix is "verify before asserting".
 
@@ -64,10 +64,10 @@ Any unverifiable claim is a BLOCKER. The fix is "verify before asserting".
 Audit the input for these recurring patterns:
 
 1. **Tier inflation** — invented hierarchies ("Tier 1/2/3", "primary/secondary surface", "foundations index", "discipline cluster") for what is structurally one page or one decision. Figaro has no such tiers; pages stand alone.
-2. **Tangling** — marketing copy on `(app)/` surfaces; `(app)/` catalogues (schemas, mechanisms, assemblies) on marketing pages; merging audiences the project has separated (readers + contributors on one page).
+2. **Tangling** — marketing copy on `(app)/` surfaces; `(app)/` catalogues (clauses, mechanisms, assemblies) on marketing pages; merging audiences the project has separated (readers + contributors on one page).
 3. **Decorative claims** — "the paradigm-shift bridge", "the foundations index", "the canonical Zargham-aware index". Every claim must trace to a theorem, proposition, or spec. Cut the rest.
 4. **CTA stacking** — more than one CTA per page; per-discipline CTAs instead of one site-wide CTA.
-5. **Catalogue-on-marketing** — listing 18 schemas, the Dutch auction, or the 5 reference assemblies on a marketing page. Marketing communicates; it does not catalogue. The catalogue lives on `(app)/`.
+5. **Catalogue-on-marketing** — listing 18 clauses, the Dutch auction, or the 5 reference assemblies on a marketing page. Marketing communicates; it does not catalogue. The catalogue lives on `(app)/`.
 6. **Web2 vocabulary** — "remove the middleman", "kill X", "the Uber of …", "platform", "DeFi", "TradFi", "yield", "liquidity", "users" (vs "participants" / "readers" / "contributors"), "value prop", "go-to-market", "funnel", "segment routing".
 7. **Per-paper companion pages** — proposals that add a page summarizing a paper. The PDF is the depth. Companion pages are forbidden.
 8. **Vertical-stack page shape** — long single-page scroll with hero / sections / CTA. Figaro marketing is many short single-concept pages.

@@ -47,7 +47,7 @@ The defining feature of this assembly is the airline as a *fan-out seller-of-rec
 **Airline sub-procurements (one per sub-seller):**
 - commerce-v1 commitment per sub-process
 - handoff-v1 at each operational stage
-- Plus sub-supplier-specific schemas (e.g., crew-certification-v1 if you choose to author it)
+- Plus sub-supplier-specific clauses (e.g., crew-certification-v1 if you choose to author it)
 
 ## Cascading-delay mechanics
 

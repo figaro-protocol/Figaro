@@ -111,14 +111,14 @@ If a root-level file clearly says it is archived or historical, do not treat it 
 2. `RUNTIME.md` carries the runtime/frontend layer — Part 1 thesis,
    Part 2 the bounded-mutation frontend model, Part 3 the semantic
    derivation reference.
-3. `SCHEMAS.md` carries the schema validation architecture and the
+3. `CLAUSES.md` carries the clause validation architecture and the
    anchoring doctrine (payload vs anchor, the decision rule).
 
 If two docs appear to overlap, prefer the one above that matches the layer you are reasoning about.
 
 ## GHG Note
 
-The current live GHG-style disclosure surface is schema-typed attestation through `AttestationCoordinator` plus `SchemaRegistry`.
+The current live GHG-style disclosure surface is clause-typed attestation through `AttestationCoordinator` plus `ClauseRegistry`.
 
 Some older GHG docs still preserve richer product vocabulary such as boundaries, requirements, and submissions. Treat those as conceptual workflow language, not as the current contract inventory.
 

@@ -63,15 +63,15 @@ When adding new tooling, pick the folder that matches the file type. Update `REA
 
 ## Contributor agents
 
-The project ships agent-shaped tooling — usable by humans, AI assistants, or autonomous protocol participants — to make the security-first posture transferable. Every agent traces back to canonical sources (the six invariants, `docs/v5/DESIGN_DECISIONS.md`, `docs/v5/SCHEMAS.md`); they are the executable form of what the publications already prove.
+The project ships agent-shaped tooling — usable by humans, AI assistants, or autonomous protocol participants — to make the security-first posture transferable. Every agent traces back to canonical sources (the six invariants, `docs/v5/DESIGN_DECISIONS.md`, `docs/v5/CLAUSES.md`); they are the executable form of what the publications already prove.
 
 ### Claude Code subagents — `.claude/agents/`
 
 - **`figaro-kernel-reviewer`** — read-only review of any diff that touches `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, or kernel storage. Returns findings cited to the six invariants and the canonical anti-pattern list. Invoke before merging anything kernel-adjacent.
-- **`figaro-schema-lockstep`** — verifies a new or changed schema is in sync across all required surfaces (Layer A spec, TS encoder, on-chain validator contract, `SchemaRegistry` registration, listing pages). Invoke after authoring a schema.
-- **`figaro-schema-author`** — authors new schemas + their `ISchemaValidator` contracts with the protocol-extension doctrine and validator-contract pattern baked in. Never auto-commits; always shows the diff and waits for human approval. Invoke when proposing a new artifact family.
-- **`figaro-runtime-ui-author`** — authors runtime-tier UI for new schemas and assemblies (lens panels, attestation forms, per-role routes). Stays strictly within `frontend/`. Halts for marketing-expert review on user-facing pages. Invoke when a new schema or assembly needs a UI surface.
-- **`figaro-assembly-author`** — composes assembly DAGs as `DesignDraft` JSON with per-edge mechanism, per-node clauses, and bond posture. Refuses kernel-changing compositions. Defers schema authoring to `figaro-schema-author`. Invoke when scaffolding an end-to-end scenario.
+- **`figaro-clause-lockstep`** — verifies a new or changed clause is in sync across all required surfaces (Layer A spec, TS encoder, on-chain validator contract, `ClauseRegistry` registration, listing pages). Invoke after authoring a clause.
+- **`figaro-clause-author`** — authors new clauses + their `IClauseValidator` contracts with the protocol-extension doctrine and validator-contract pattern baked in. Never auto-commits; always shows the diff and waits for human approval. Invoke when proposing a new artifact family.
+- **`figaro-runtime-ui-author`** — authors runtime-tier UI for new clauses and assemblies (lens panels, attestation forms, per-role routes). Stays strictly within `frontend/`. Halts for marketing-expert review on user-facing pages. Invoke when a new clause or assembly needs a UI surface.
+- **`figaro-assembly-author`** — composes assembly DAGs as `DesignDraft` JSON with per-edge mechanism, per-node clauses, and bond posture. Refuses kernel-changing compositions. Defers clause authoring to `figaro-clause-author`. Invoke when scaffolding an end-to-end scenario.
 - **`figaro-paper-reviewer`** — read-only verifier for academic-paper claims against the canonical code. Catches drift between `paper/*.tex` and `src/` / `formal/`. Cites both paper passages and source line numbers. Invoke when reviewing paper edits, when the kernel changes, or before publication.
 - **`figaro-memory-hygiene`** — periodic audit of memory files (`~/.claude/projects/<project>/memory/`). Flags oversized files, drift, orphans. Output is a table — explicitly resists narrative. Invoke monthly or when memory bloat is suspected.
 - **`figaro-deploy-runner`** — walks through `cloudflare/README.md`'s deployment runbook with confirmation gates before destructive actions (KV creation, container push, Worker deploy, contract deployment). Coordinator, not authority. Invoke when deploying or making infra changes.
@@ -89,10 +89,10 @@ These rely on the canonical `figaro-kernel-discipline` skill at `.claude/skills/
 **How to invoke a subagent.** In Claude Code, three paths work:
 
 1. *Auto-invocation* — the main agent dispatches a subagent automatically when your prompt matches its `description`. Saying "review this diff for kernel discipline" should pick up `figaro-kernel-reviewer` without ceremony.
-2. *Naming* — explicitly delegate by name: "use the `figaro-schema-lockstep` agent to verify the figaro-foo-v1 surfaces."
+2. *Naming* — explicitly delegate by name: "use the `figaro-clause-lockstep` agent to verify the figaro-foo-v1 surfaces."
 3. *`/agents`* — slash command to list, view, or manage available subagents in the current session.
 
-Subagents do not chain directly. The schema-author returns to the main session, which then dispatches the kernel-reviewer and schema-lockstep in turn — review the verification report each subagent produces before merging.
+Subagents do not chain directly. The clause-author returns to the main session, which then dispatches the kernel-reviewer and clause-lockstep in turn — review the verification report each subagent produces before merging.
 
 ### Reference participation agent — `agents/factotum/`
 
@@ -142,7 +142,7 @@ Both surface the same structural gap: there is no `figaro-assembly-author` subag
 Per repository policy, when a code change makes an existing doc statement stale, update the affected docs in the same change. Key files to keep in sync include:
 
 - `CLAUDE.md`
-- `docs/v5/CONTRACTS.md`, `docs/v5/SCHEMAS.md`, `docs/v5/FRONTEND.md`, `docs/v5/TESTING.md` — the inventories CLAUDE.md indexes
+- `docs/v5/CONTRACTS.md`, `docs/v5/CLAUSES.md`, `docs/v5/FRONTEND.md`, `docs/v5/TESTING.md` — the inventories CLAUDE.md indexes
 - `sdk/README.md`
 - `docs/v5/` design docs referenced by the code you change
 

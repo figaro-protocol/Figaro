@@ -1,6 +1,6 @@
 # Assembly: TradeLens replacement
 
-The DAG of bonded commitments that makes this a shipping protocol rather than a generic Figaro deployment. **This is the human work.** The schema-author handles individual schemas; no agent today produces this DAG. See the gap statement at the end.
+The DAG of bonded commitments that makes this a shipping protocol rather than a generic Figaro deployment. **This is the human work.** The clause-author handles individual clauses; no agent today produces this DAG. See the gap statement at the end.
 
 ## DAG
 
@@ -46,7 +46,7 @@ ASCII sketch of the canonical export-import flow:
 
 | Edge | Mechanism | Notes |
 |---|---|---|
-| shipper → forwarder | bilateral commit (commerce-v1) + incoterms-2020-v1 clause | INCO term encodes the delivery-clause spec; per-term mapping verified against kernel code (see `schemas.md` § 3) |
+| shipper → forwarder | bilateral commit (commerce-v1) + incoterms-2020-v1 clause | INCO term encodes the delivery-clause spec; per-term mapping verified against kernel code (see `clauses.md` § 3) |
 | forwarder → carrier | bilateral commit (commerce-v1) + incoterms-2020-v1 clause | Often a different INCO term than shipper-leg (forwarder may use FCA upstream, CPT downstream) |
 | carrier → port-of-loading | Dutch auction (the existing Component) | Carrier procures terminal services; descending price |
 | carrier ↔ port-of-discharge | Dutch auction | Discharge-side procurement |
@@ -56,11 +56,11 @@ ASCII sketch of the canonical export-import flow:
 | customs broker → customs authority | jurisdiction-v1 attestation | Customs is sovereign — *not* a Figaro counterparty, only an attestation source |
 | trucking → consignee | bilateral commit + fulfilment-v1 | Last mile |
 
-**Note on INCO Terms.** Each `commerce-v1` commit on a transport leg carries a `figaro-incoterms-2020-v1` clause specifying the term and named place. The term is a reference, not a behavior — the schema's validator anchors the (term, namedPlace) pair, and the runtime maps each term to a Figaro-native delivery-clause specification (handoff-v1 attestation at the named place, plus auxiliary clauses for customs / insurance / unloading where the term requires them). Some term features (e.g., CIP/CIF insurance assignment) may require composition with a parallel insurance process rather than direct encoding. See `schemas.md` § 3 for the agent's code-canonical verification posture.
+**Note on INCO Terms.** Each `commerce-v1` commit on a transport leg carries a `figaro-incoterms-2020-v1` clause specifying the term and named place. The term is a reference, not a behavior — the clause's validator anchors the (term, namedPlace) pair, and the runtime maps each term to a Figaro-native delivery-clause specification (handoff-v1 attestation at the named place, plus auxiliary clauses for customs / insurance / unloading where the term requires them). Some term features (e.g., CIP/CIF insurance assignment) may require composition with a parallel insurance process rather than direct encoding. See `clauses.md` § 3 for the agent's code-canonical verification posture.
 
 ## Per-node clauses
 
-Order nodes carry clauses — schema-typed obligations that must be discharged for the order to be resolvable.
+Order nodes carry clauses — clause-typed obligations that must be discharged for the order to be resolvable.
 
 **Shipper-side (origin order):**
 - handoff-v1: forwarder must attest receipt before resolution
@@ -101,10 +101,10 @@ This DAG is currently **human work on the designer canvas at `/builders/designer
 
 A future agent would need to:
 
-1. Read the protocol's existing schemas and propose composition.
+1. Read the protocol's existing clauses and propose composition.
 2. Emit a DAG with typed edges and clauses.
 3. Produce sample bond budgets given a parameterized shipment value.
 4. Refuse to compose anything that requires a kernel change (no multi-currency cross-leg, no centralized resolution).
-5. Cite `SCHEMAS.md` for any new schemas it identifies as needed; defer their authorship to `figaro-schema-author`.
+5. Cite `CLAUSES.md` for any new clauses it identifies as needed; defer their authorship to `figaro-clause-author`.
 
 Treat this `assembly.md` file as the spec for that agent.

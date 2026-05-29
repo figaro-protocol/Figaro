@@ -18,15 +18,15 @@ Three failure modes, each structural:
 
 ## What Figaro fixes structurally
 
-Figaro is *ownerless*: no IBM, no Maersk, no foundation. The kernel has no admin function (per `CLAUDE.md`'s six invariants — "no escape hatches"). Joining is permissionless: any wallet can hold any role. Public schemas are content-addressable specs anyone can integrate against without an API key.
+Figaro is *ownerless*: no IBM, no Maersk, no foundation. The kernel has no admin function (per `CLAUDE.md`'s six invariants — "no escape hatches"). Joining is permissionless: any wallet can hold any role. Public clauses are content-addressable specs anyone can integrate against without an API key.
 
 The replacement isn't a "shared ledger" framing — it's a *bonded coordination protocol*. Each leg of a shipment is a bilateral commitment with asymmetric bonds. Progressive collateralization scales the bilateral primitive across the multi-party process tree (Paper A). Cooperation is the dominant strategy at every leg because cheating costs more than cooperating.
 
-The schemas largely already exist. The assembly DAG (this scenario's main artifact) is what makes it a shipping protocol rather than a generic Figaro deployment. See `assembly.md`.
+The clauses largely already exist. The assembly DAG (this scenario's main artifact) is what makes it a shipping protocol rather than a generic Figaro deployment. See `assembly.md`.
 
 ## What you'd build
 
-- **Schemas to author**: roughly 1–2 new schemas (see `schemas.md`). Most existing schemas (`geo-v1`, `handoff-v1`, `jurisdiction-v1`, `commerce-v1`, GHG family) cover the primitives.
+- **Clauses to author**: roughly 1–2 new clauses (see `clauses.md`). Most existing clauses (`geo-v1`, `handoff-v1`, `jurisdiction-v1`, `commerce-v1`, GHG family) cover the primitives.
 - **Assembly DAG**: 6–8 process nodes from origin to consignee, currently human work on the designer canvas. See `assembly.md`.
 - **Factotums**: one per role-bound wallet — shipper, forwarder, carrier, ports (origin + destination), customs broker, last-mile trucking, consignee. See `roles.md`.
 

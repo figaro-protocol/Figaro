@@ -17,18 +17,18 @@ This file is the canonical inventory. CLAUDE.md indexes it; agents must not refe
 **`src/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
 Single `Commitment` struct for both root and sub-orders; `processId` zero for root.
 
-## Attestation & Schema
+## Attestation & Clause
 
 **`src/AttestationCoordinator.sol`** — Unified zero-storage attestation,
 validator-gated, receipt-bound to the signed `agreementHash`. Three modes:
-- `attestAsSeller(Commitment role, Commitment target, bytes32 schemaId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — role + target commitments; pass the same commitment twice for same-order attestation, or distinct commitments for cross-order within a process.
-- `attestAsBuyer(Commitment target, bytes32 schemaId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — caller must equal `target.buyer` (which equals rootBuyer by commit invariant).
+- `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — role + target commitments; pass the same commitment twice for same-order attestation, or distinct commitments for cross-order within a process.
+- `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — caller must equal `target.buyer` (which equals rootBuyer by commit invariant).
 - `attestViaResolver(Commitment target, ...)` — caller authorized by `IRoleResolver(target.seller).isAuthorized`.
 
 For every call, the coordinator verifies an OZ-style merkle inclusion proof of
-`leaf = keccak256(schemaId || keccak256(sectionData))` against
+`leaf = keccak256(clauseId || keccak256(sectionData))` against
 `target.agreementHash` before invoking the registered validator, then emits
-`Attestation(orderHash, processId, attester, schemaId, stage, contentRef)`
+`Attestation(orderHash, processId, attester, clauseId, stage, contentRef)`
 where `contentRef = keccak256(content)`. An attestation whose clause was not
 committed at contract-signing time cannot land — the proof won't open
 (`InvalidInclusionProof` revert).
@@ -44,28 +44,28 @@ inclusion-proof revert path are covered by Foundry tests.
 
 `attestViaResolver` is a latent Level-3 path — no current production caller.
 A mechanism contract adopting it must (a) have its seller address implement
-`IRoleResolver.isAuthorized(orderHash, caller)` and (b) use a schemaId with
+`IRoleResolver.isAuthorized(orderHash, caller)` and (b) use a clauseId with
 a registered validator. Validator gate and inclusion-proof gate both fire
 before the resolver check.
 
-**`src/SchemaRegistry.sol`** — Permissionless event-only schema anchoring.
-`schemaId = keccak256(humanReadableName)`. `uriHash` points at off-chain JSON spec.
+**`src/ClauseRegistry.sol`** — Permissionless event-only clause anchoring.
+`clauseId = keccak256(humanReadableName)`. `uriHash` points at off-chain JSON spec.
 
-**`src/SchemaRegistrationHelper.sol`** — Stateless atomic-bind helper.
-Composes `SchemaRegistry.registerSchema` + `AttestationCoordinator.setValidator`
+**`src/ClauseRegistrationHelper.sol`** — Stateless atomic-bind helper.
+Composes `ClauseRegistry.registerClause` + `AttestationCoordinator.setValidator`
 in a single transaction. Closes the M-1 front-running window for non-bootstrap
-schemas. No admin, no fee, no privilege over targets — just a permissionless
-composer. Use for any post-deploy third-party schema registration.
+clauses. No admin, no fee, no privilege over targets — just a permissionless
+composer. Use for any post-deploy third-party clause registration.
 
-**`src/ISchemaValidator.sol`** — Per-schema content validator interface.
-`validate(bytes32 schemaId, uint8 stage, bytes calldata content) view` reverts on
-invalid content; binds to one schemaId via `schemaId() view returns (bytes32)`.
+**`src/IClauseValidator.sol`** — Per-clause content validator interface.
+`validate(bytes32 clauseId, uint8 stage, bytes calldata content) view` reverts on
+invalid content; binds to one clauseId via `clauseId() view returns (bytes32)`.
 Validators are pure / view, no admin, no mutable state.
 
-**`src/schemaValidators/`** — 17 production validator contracts, one per
-*runtime-attestable* schemaId (local-commerce use case + jurisdiction baseline + consent):
+**`src/clauseValidators/`** — 17 production validator contracts, one per
+*runtime-attestable* clauseId (local-commerce use case + jurisdiction baseline + consent):
 `FigaroCommerceV1Validator`, `FigaroGeoV2Validator`,
-`FigaroFulfilmentV2Validator`, plus the 5 GHG sister schemas
+`FigaroFulfilmentV2Validator`, plus the 5 GHG sister clauses
 `FigaroGHGProtocolV1Validator`, `FigaroGHGISO14064V1Validator`,
 `FigaroGHGPAS2050V1Validator`, `FigaroGHGEN16258V1Validator`,
 `FigaroGHGCustomV1Validator` (one per accounting standard),
@@ -77,8 +77,8 @@ Validators are pure / view, no admin, no mutable state.
 `FigaroArbitrationKlerosV1Validator`, `FigaroApplicableLawV1Validator`,
 `FigaroConsentV1Validator`,
 `FigaroOffsetPolicyV1Validator` (Category-2, committed providers).
-Each ABI-decodes per-schema content (no on-chain JSON parsing) and reverts with
-typed custom errors. Foundry tests in `test/schemaValidators/`.
+Each ABI-decodes per-clause content (no on-chain JSON parsing) and reverts with
+typed custom errors. Foundry tests in `test/clauseValidators/`.
 
 Note: `figaro-topology-v1` is a **manifest-only clause** — parties commit to
 it at contract-signing time inside the off-chain agreement manifest, and it's
@@ -86,8 +86,8 @@ never fired as a runtime attestation. It has no on-chain validator and no SP1
 encoder. It is *not* off-chain-only, though: the topology section is a merkle
 leaf under the on-chain `agreementHash`, inclusion-provable via OpenZeppelin
 `MerkleProof` (`buildSectionInclusionProof` in `agreementManifest.ts`) — "no
-runtime validator" is not "no on-chain verification". Its `SchemaRegistry`
-entry anchors the schemaId as off-chain vocabulary; the DAG itself is
+runtime validator" is not "no on-chain verification". Its `ClauseRegistry`
+entry anchors the clauseId as off-chain vocabulary; the DAG itself is
 reconstructed by indexers/frontend reading topology sections from the signed
 manifest.
 
@@ -150,8 +150,8 @@ advisory metadata for off-chain discovery surfaces.
 
 **`src/AssemblyRegistry.sol`** — Permissionless assembly anchoring with a
 reclaimable ETH deposit. An assembly is a composition template that USES
-schemas; this registry is the assembly artifact family's anchor, parallel to
-`SchemaRegistry` (schemas) and `SellerRegistry` (sellers) per the
+clauses; this registry is the assembly artifact family's anchor, parallel to
+`ClauseRegistry` (clauses) and `SellerRegistry` (sellers) per the
 separation-of-concerns doctrine. Two external functions: `registerAssembly(slug,
 contentHash, metadataURI)` (first-write-wins, requires the immutable
 `registrationDeposit`, emits `AssemblyRegistered`) and `withdrawDeposit(slug)`
@@ -163,7 +163,7 @@ the binding, because buyers and sellers that reference the slug rely on its
 content staying stable; the deposit is an upfront Sybil-resistance tax with a
 refund path, not a fee. No owner, no admin, no fee, no `transferAssembly`, no
 `removeAssembly`. The contract does not validate manifest content — per-clause
-validity is the per-schema validator's job at commit time. Foundry tests in
+validity is the per-clause validator's job at commit time. Foundry tests in
 `test/AssemblyRegistryTest.t.sol`.
 
 ## FIG Token (`src/fig/`)
@@ -185,7 +185,7 @@ orchestrator in `sdk/scripts/rpgf-sequencer/`.
 **FIG allocation (canonical, 1B total):**
 - **100M (10%) founders** — genesis mint, no vesting, no unlock
 - **300M (30%) DAO**       — genesis mint, no vesting, no unlock
-- **600M (60%) schema-author RPGF** — one `RpgfMinter` contract, staged:
+- **600M (60%) clause-author RPGF** — one `RpgfMinter` contract, staged:
   - stage 0 (year 2): up to 300M (30% of total)
   - stage 1 (year 5): up to 200M (20% of total)
   - stage 2 (year 9): up to 100M (10% of total)
@@ -235,7 +235,7 @@ No `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance/`,
 (this last replaced by `RpgfMinter.sol` in 2026-05),
 `TrancheVesting.sol` (removed — founder and DAO receive tokens at genesis with no vesting),
 `ProximityTypes.sol` (removed), `IRoleResolverV4.sol` (renamed to `IRoleResolver.sol`),
-generic `JSONSchemaValidator.sol` (per-schema validators instead — see `docs/v5/SCHEMAS.md`),
+generic `JSONSchemaValidator.sol` (per-clause validators instead — see `docs/v5/CLAUSES.md`),
 upgradeable proxy, protocol fee, owner, or admin surface.
 FIG is not a governance token. `FigTokenModule` (UI) does not exist —
 `/fig` and `/fig/claim` use `useFigToken` hooks directly.

@@ -145,7 +145,7 @@ Figaro should own:
 
 1. protocol kernel and generic extensions
 2. semantic model layer
-3. institution assembly schema and registry
+3. institution assembly clause and registry
 4. builder, authoring, prototype shell, and reusable mechanism-aware modules
 5. runtime doctrine for how institutions are rendered and operated
 
@@ -179,11 +179,11 @@ covered in three places:
 3. [PUBLIC_GRAPH_MODEL.md](PUBLIC_GRAPH_MODEL.md) — the protocol-level
    graph model that the runtime renders against.
 
-The first-pass shared runtime implementation seeds now live under `frontend/lib/shared/`, including typed identity resolution records and an Local Commerce merchant metadata schema.
+The first-pass shared runtime implementation seeds now live under `frontend/lib/shared/`, including typed identity resolution records and an Local Commerce merchant metadata clause.
 
 The workspace renderer now also consumes bound runtime context to constrain role selection when a connected address matches a bound institution subject, and it scopes the mechanism inspector to the selected role context instead of always showing the full assembly indiscriminately.
 
-Per-seller visual identity in V5 flows through `lib/shared/merchantBranding.ts` + `MerchantBrandingModule` directly from `useSellerProfile()`. The V4 ENS/IPFS skinning system (per-binding `assets.cssURI`, hydrated asset documents, `data-skin` attributes on 20+ component surfaces) was retired in the V4→V5 narrowing — it shipped in `archive-frontend` (untracked from the repo in `a6110c6`; not in fresh clones) but was never re-wired in V5, where the `SellerRegistry` metadata schema exposes only `logoURI`. See the retired §5 below and the commit chain N1–N5.
+Per-seller visual identity in V5 flows through `lib/shared/merchantBranding.ts` + `MerchantBrandingModule` directly from `useSellerProfile()`. The V4 ENS/IPFS skinning system (per-binding `assets.cssURI`, hydrated asset documents, `data-skin` attributes on 20+ component surfaces) was retired in the V4→V5 narrowing — it shipped in `archive-frontend` (untracked from the repo in `a6110c6`; not in fresh clones) but was never re-wired in V5, where the `SellerRegistry` metadata clause exposes only `logoURI`. See the retired §5 below and the commit chain N1–N5.
 ---
 
 # Part 2 — Frontend Runtime Model
@@ -342,19 +342,19 @@ The binding model is:
 
 This is how an address should become "my institution surface" without the repo collapsing back into one vertical app per seller.
 
-## Schema Terms Are Not View Types
+## Clause Terms Are Not View Types
 
-Schema-backed content such as allergens, GHG disclosure, manifests, safety declarations, or handoff evidence belongs in the agreement and metadata layer.
+Clause-backed content such as allergens, GHG disclosure, manifests, safety declarations, or handoff evidence belongs in the agreement and metadata layer.
 
 Those terms may influence which panels appear in a surface, but they do not justify a separate UI composition primitive.
 
 In practical terms:
 
 1. allergens are agreement or catalogue data
-2. GHG is a disclosure schema and attestation flow
+2. GHG is a disclosure clause and attestation flow
 3. neither one requires a special "view recipe" concept
 
-The runtime should render schema-backed content through the existing view and module system.
+The runtime should render clause-backed content through the existing view and module system.
 
 ## Human and Agent Parity
 
@@ -386,7 +386,7 @@ The repo already has the foundation for this model:
 12. reusable modules in `frontend/components/modules/`
 13. authoring and prototype surfaces under `/builders`
 14. per-seller branding via `lib/shared/merchantBranding.ts` + `MerchantBrandingModule` (the V4 ENS/IPFS skin-bundle wrapper was retired in the V4→V5 narrowing; see retired §5 below)
-15. schema-composed agreement and catalogue metadata in `frontend/lib/core/agreementManifest.ts` and `frontend/lib/shared/sellerCatalogueMetadata.ts`
+15. clause-composed agreement and catalogue metadata in `frontend/lib/core/agreementManifest.ts` and `frontend/lib/shared/sellerCatalogueMetadata.ts`
 16. typed service bundle in `frontend/lib/shared/runtimeServices.ts`, consumed via `useRuntimeServices()` from `runtimeServicesContext`. The V4 per-binding-override resolver (`resolveRuntimeServices`) was retired in the V4→V5 narrowing along with the module-registry runtime — V5 pages consume `DEFAULT_RUNTIME_SERVICES` directly
 17. the V4 mechanism-package registry (`packages.ts`, `registerAllModules.ts`, `blockMetadata.ts`, `moduleRegistry.ts`, `builtInModuleDefaults.ts`) was retired in the V4→V5 narrowing — V5 renders pages directly with concrete React components (`/m/[merchant]`, `/orders`, `/discover`, `/builders/designer/*`, `/audit`) rather than through a module-registry-driven runtime
 18. a consumer-facing commerce boundary in `frontend/lib/commerce/`: `CommerceProvider` supplies wallet identity via `useCommerce()`, `useCheckout(token)` composes token approval, balance checking, EIP-712 signing, and commitment broadcasting into one hook, and `types.ts` defines the `CheckoutHandle` surface shared by `CartModule`, `CreateOrderWithApproval`, and any future consumer-facing order flow
@@ -408,7 +408,7 @@ They are:
 
 Use these rules when deciding whether to add a new abstraction:
 
-1. if the problem is schema meaning, solve it in agreement or metadata, not view composition
+1. if the problem is clause meaning, solve it in agreement or metadata, not view composition
 2. if the problem is repeated action logic, solve it in the action model, not by adding a new module type
 3. if the problem is provider variance, solve it in service bindings, not in page code
 4. if the problem is per-seller branding, solve it in `merchantBranding.ts` + `MerchantBrandingModule`, not in semantic derivation (the V4 skin-bundle wrapper layer is retired)

@@ -2,7 +2,7 @@
   "name": "@figaro/agent-sdk",
   "version": "0.1.0",
   "private": true,
-  "description": "Programmatic access to the Figaro contributor agents (kernel-reviewer, schema-lockstep, schema-author) for non-Claude-Code runtimes. Parses .claude/agents/*.md (canonical source) and exposes structured AgentDefinition objects.",
+  "description": "Programmatic access to the Figaro contributor agents (kernel-reviewer, clause-lockstep, clause-author) for non-Claude-Code runtimes. Parses .claude/agents/*.md (canonical source) and exposes structured AgentDefinition objects.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -4,8 +4,8 @@ import { parseAgent, type AgentDefinition } from "./parseAgent.js";
 
 export const FIGARO_AGENT_FILES = {
   "figaro-kernel-reviewer": ".claude/agents/figaro-kernel-reviewer.md",
-  "figaro-schema-lockstep": ".claude/agents/figaro-schema-lockstep.md",
-  "figaro-schema-author": ".claude/agents/figaro-schema-author.md",
+  "figaro-clause-lockstep": ".claude/agents/figaro-clause-lockstep.md",
+  "figaro-clause-author": ".claude/agents/figaro-clause-author.md",
   "figaro-runtime-ui-author": ".claude/agents/figaro-runtime-ui-author.md",
   "figaro-assembly-author": ".claude/agents/figaro-assembly-author.md",
   "figaro-paper-reviewer": ".claude/agents/figaro-paper-reviewer.md",

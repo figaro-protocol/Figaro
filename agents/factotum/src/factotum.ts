@@ -13,7 +13,7 @@ import type { Policy, PolicyEntry } from "./policy.js";
 
 export interface FactotumAddresses {
   core: `0x${string}`;
-  schemaRegistry: `0x${string}`;
+  clauseRegistry: `0x${string}`;
   attestationCoordinator: `0x${string}`;
   sellerRegistry: `0x${string}`;
 }

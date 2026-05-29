@@ -33,7 +33,7 @@ If the user pointed you at a diff, run it (`git diff <range>`). If a file, read 
 State the tier explicitly. Rules differ across tiers:
 
 - **Kernel** = `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, kernel storage mappings (`processes`, `orderStatus`, `orderProcessId`), bonding math. Frozen. Verify 3× before approving any change.
-- **Protocol** = extension contracts (`SchemaRegistry.sol`, `AttestationCoordinator.sol`, `SellerRegistry.sol`, `DutchAuction.sol`, `schemaValidators/*`, `FigaroBatchVerifier.sol`). Extension doctrine in `docs/v5/SCHEMAS.md` applies.
+- **Protocol** = extension contracts (`ClauseRegistry.sol`, `AttestationCoordinator.sol`, `SellerRegistry.sol`, `DutchAuction.sol`, `clauseValidators/*`, `FigaroBatchVerifier.sol`). Extension doctrine in `docs/v5/CLAUSES.md` applies.
 - **Runtime** = `frontend/`, semantic layer, builder surfaces, UI. Most patterns are fine here.
 
 A pattern that is an anti-pattern at the kernel tier may be acceptable at runtime. **Always state the tier in your findings.**
@@ -48,7 +48,7 @@ The kernel preserves six invariants. For each hunk in the diff, identify which i
 2. **Progressive collateralization** — bonds scale via the asymmetric bilateral primitive across the process tree (mesh). Any change that weakens or short-circuits propagation across N parties breaks composition.
 3. **Buyer dominance** — buyer holds the resolution key. Any timeout, recovery path, governance vote, oracle, or admin override that lets a non-buyer force resolution breaks MAD.
 4. **Atomic resolution** — a process resolves wholly or not at all. Partial resolution breaks the weakest-link coordination pressure among sellers in the mesh.
-5. **Immutable evidence** — commitments and resolutions are tamper-proof on-chain attestations. Mutable schema content, in-place rewrites of registered identities, or post-hoc state edits break this.
+5. **Immutable evidence** — commitments and resolutions are tamper-proof on-chain attestations. Mutable clause content, in-place rewrites of registered identities, or post-hoc state edits break this.
 6. **No escape hatches** — no admin, no owner, no pause, no upgrade path, no stuck-fund recovery. Stuck funds *are* the deterrent. This is the most commonly violated invariant; the most tempting and most lethal web2 pattern to import is "recover stuck funds."
 
 If a change touches none of the six, it is likely a runtime concern. Say so.

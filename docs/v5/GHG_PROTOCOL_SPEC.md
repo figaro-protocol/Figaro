@@ -1,12 +1,12 @@
 # Figaro GHG Protocol Specification
 
-Status: active conceptual specification for the generic GHG model in Figaro. The current on-chain implementation is narrower than the full target model described below: today the live primitives are `SchemaRegistry` for schema anchoring and `AttestationCoordinator` for schema-typed attestations.
+Status: active conceptual specification for the generic GHG model in Figaro. The current on-chain implementation is narrower than the full target model described below: today the live primitives are `ClauseRegistry` for clause anchoring and `AttestationCoordinator` for clause-typed attestations.
 
 This document defines what the generic GHG feature is for, what objects exist in the protocol, what each object means, and which invariants downstream apps must preserve.
 
 Related design notes:
 
-1. [SCHEMAS.md](SCHEMAS.md) — the schema validation architecture and the anchoring doctrine (payload vs anchor, the decision rule)
+1. [CLAUSES.md](CLAUSES.md) — the clause validation architecture and the anchoring doctrine (payload vs anchor, the decision rule)
 
 ## Purpose
 
@@ -35,7 +35,7 @@ The phrase `scope 4` is not part of the canonical scope 1, 2, 3 taxonomy.
 
 In practice, `scope 4` is often used as shorthand for avoided emissions or comparative product-impact claims. Those claims are real, but they should not be modeled in this protocol as if they were a fourth standard inventory scope.
 
-If a schema needs to support avoided-emissions reporting, it should say so explicitly as comparative or avoided-emissions disclosure rather than relying on the label `scope 4`.
+If a clause needs to support avoided-emissions reporting, it should say so explicitly as comparative or avoided-emissions disclosure rather than relying on the label `scope 4`.
 
 ## Current Contract Posture
 
@@ -43,14 +43,14 @@ The current generic contract surface is intentionally narrow.
 
 Today, the live implementation supports:
 
-1. permissionless on-chain schema anchoring via `SchemaRegistry`
-2. schema-typed, role-scoped attestations via `AttestationCoordinator`
+1. permissionless on-chain clause anchoring via `ClauseRegistry`
+2. clause-typed, role-scoped attestations via `AttestationCoordinator`
 3. content-addressed off-chain disclosure artifacts referenced from attestations
 
 Today, the live implementation does not yet encode:
 
 1. the fuller boundary / requirement / submission model described later in this document as first-class storage objects
-2. on-chain schema update or deletion
+2. on-chain clause update or deletion
 
 Read the sections below as the target disclosure vocabulary and workflow semantics, not as a claim that every object already exists on-chain in the live V5 runtime.
 
@@ -69,37 +69,37 @@ The GHG disclosure graph answers:
 1. Which disclosures are required for that process?
 2. Which order node does each disclosure attach to?
 3. Which party is responsible for making it?
-4. Which schema governs the disclosure?
+4. Which clause governs the disclosure?
 5. Which submission is currently active?
 
 ## Core Definitions
 
-### Schema
+### Clause
 
-A schema defines the disclosure format and interpretation rules.
+A clause defines the disclosure format and interpretation rules.
 
-In protocol terms, a schema is identified by:
+In protocol terms, a clause is identified by:
 
-1. `schemaId`
+1. `clauseId`
 2. version
 3. `uriHash`
 
-The schema is the contract between reporting participants about what the submitted content reference means.
+The clause is the contract between reporting participants about what the submitted content reference means.
 
 The important design split is:
 
-1. schema meaning and field definitions are primarily off-chain artifacts
-2. schema identity, admissibility, and protocol reference points may be anchored on-chain
+1. clause meaning and field definitions are primarily off-chain artifacts
+2. clause identity, admissibility, and protocol reference points may be anchored on-chain
 
 That split is deliberate. The protocol should not try to reproduce the full reporting standard, field catalog, or legal guidance on-chain.
 
-### Schema Location
+### Clause Location
 
 The default recommendation is:
 
-1. keep the schema document off-chain
+1. keep the clause document off-chain
 2. make that document content-addressable or otherwise immutable-by-reference
-3. anchor only the minimum shared protocol facts on-chain, such as schema identifier, version, and content hash
+3. anchor only the minimum shared protocol facts on-chain, such as clause identifier, version, and content hash
 
 This avoids a common web2-web3 mixup.
 
@@ -109,47 +109,47 @@ The web3 mistake is to force the entire reporting specification and business sem
 
 Figaro should choose the narrow middle path:
 
-1. off-chain schema semantics
-2. on-chain schema anchoring where interoperability and auditability require it
+1. off-chain clause semantics
+2. on-chain clause anchoring where interoperability and auditability require it
 
-### Schema Governance
+### Clause Governance
 
-Schema governance should be treated as a separate concern from disclosure submission.
+Clause governance should be treated as a separate concern from disclosure submission.
 
-Schema governance itself has two layers:
+Clause governance itself has two layers:
 
-1. governance of the off-chain schema document and its meaning
-2. governance of whether a schema anchor is admitted as valid protocol reference material
+1. governance of the off-chain clause document and its meaning
+2. governance of whether a clause anchor is admitted as valid protocol reference material
 
 In the current implementation, the on-chain layer is:
 
 1. registered once by the module owner
-2. identified by `schemaId`
-3. versioned by the schema payload itself
-4. soft-switchable only through the `active` flag already stored in the schema record
+2. identified by `clauseId`
+3. versioned by the clause payload itself
+4. soft-switchable only through the `active` flag already stored in the clause record
 
-The current contract therefore does not provide full schema governance. What it provides today is a minimal anchor registry.
+The current contract therefore does not provide full clause governance. What it provides today is a minimal anchor registry.
 
 If we need production-grade governance, the next generic step should be:
 
-1. preserve append-only schema identity
+1. preserve append-only clause identity
 2. add explicit activate and deactivate operations
 3. prefer new-version registration over in-place mutation
-4. keep historical submissions bound to the schema version they were filed under
+4. keep historical submissions bound to the clause version they were filed under
 5. avoid putting mutable business semantics directly on-chain
 
-That is the correct direction for governance. In-place overwriting of schema meaning would damage auditability.
+That is the correct direction for governance. In-place overwriting of clause meaning would damage auditability.
 
 ### Reporting Boundary
 
-A reporting boundary is a buyer-opened reporting envelope for one economically secured process under one schema.
+A reporting boundary is a buyer-opened reporting envelope for one economically secured process under one clause.
 
 It identifies:
 
 1. the process being reported
 2. the root order anchoring that process
 3. the reporting entity who opened the boundary
-4. the schema under which disclosure is required
+4. the clause under which disclosure is required
 5. the completion state of the required disclosures inside that envelope
 
 In the current contract design, one boundary is unique per:
@@ -157,7 +157,7 @@ In the current contract design, one boundary is unique per:
 1. process
 2. root order
 3. reporting entity
-4. schema
+4. clause
 
 That uniqueness follows from the boundary identifier derivation.
 
@@ -182,7 +182,7 @@ A requirement is defined by:
 2. process
 3. order
 4. responsible party
-5. schema
+5. clause
 6. disclosure kind
 7. due stage
 8. whether it is required or optional
@@ -196,7 +196,7 @@ A submission records:
 1. requirement
 2. order
 3. submitter
-4. schema
+4. clause
 5. content reference
 6. whether it supersedes a prior submission
 7. status
@@ -237,7 +237,7 @@ These are semantic timing labels, not autonomous execution triggers. The protoco
 
 The generic protocol lifecycle is:
 
-1. A schema is registered.
+1. A clause is registered.
 2. The buyer opens a reporting boundary for a process.
 3. The buyer creates order-level disclosure requirements inside that boundary.
 4. The responsible counterparty submits a commitment disclosure when it economically accepts the relevant work, if the application uses commitments.
@@ -251,7 +251,7 @@ The protocol source of truth is the set of active submissions, not an off-chain 
 
 Carbon offset retirement is implemented as a process extension, separate from
 the disclosure graph itself: `ProcessOffsetReceipt.sol` anchors it on-chain, and
-the `figaro-offset-policy-v1` schema carries the committed offset-provider set.
+the `figaro-offset-policy-v1` clause carries the committed offset-provider set.
 
 The shipped mechanism (Path A) is:
 
@@ -348,7 +348,7 @@ The correct middle layer is:
 
 GHG is the first concrete artifact family in this model, not the last.
 
-Manifest schema, quality records, provenance documents, safety declarations, assurance artifacts, and other process-linked references may later fit the same pattern where shared reference integrity matters.
+Manifest clause, quality records, provenance documents, safety declarations, assurance artifacts, and other process-linked references may later fit the same pattern where shared reference integrity matters.
 
 ## Implementation Direction
 
@@ -374,7 +374,7 @@ That gives Figaro the right kind of generality:
 
 Downstream apps may specialize the generic model, but they must preserve these meanings:
 
-1. boundary remains the reporting envelope for a process under a schema
+1. boundary remains the reporting envelope for a process under a clause
 2. requirement remains the accountable disclosure duty for an order node
 3. active submission remains the current protocol truth for that requirement
 4. supersession remains the mechanism for correction and replacement
