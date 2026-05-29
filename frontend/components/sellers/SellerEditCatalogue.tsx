@@ -33,7 +33,7 @@ import { useSellerProfile } from "@/lib/mechanisms/useSellerRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { resolveContentURI } from "@/lib/shared/sellerBranding";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 import { tryParseSellerProfileDocument } from "@/lib/shared/sellerProfileMetadata";
 import type {
     SellerCatalogueMetadata,
@@ -79,7 +79,7 @@ export function SellerEditCatalogue() {
     useEffect(() => {
         if (!registryData) return;
         const [profileURI] = registryData;
-        const url = resolveContentURI(profileURI);
+        const url = resolveContentUri(profileURI);
         if (!url) {
             setFetchError("Profile URI couldn't be resolved.");
             return;
@@ -107,7 +107,7 @@ export function SellerEditCatalogue() {
                     return;
                 }
 
-                const catUrl = resolveContentURI(profile.catalogueURI);
+                const catUrl = resolveContentUri(profile.catalogueURI);
                 if (!catUrl) {
                     setFetchError("Catalogue URI couldn't be resolved.");
                     return;

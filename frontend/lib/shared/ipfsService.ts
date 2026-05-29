@@ -11,10 +11,27 @@ const IPFS_API_URL =
     process.env.NEXT_PUBLIC_IPFS_API_URL ?? "http://127.0.0.1:5001";
 
 /** Canonical Kubo gateway base URL — the single source for IPFS gateway
- *  resolution. `sellerBranding.resolveContentURI` imports this rather
- *  than reading the env var a second time. */
+ *  resolution. */
 export const IPFS_GATEWAY_URL =
     process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
+
+/**
+ * The single resolver from a content URI to a gateway HTTP URL. Handles
+ * `ipfs://CID`, `/ipfs/path`, `http(s)://` passthrough, and bare CIDv0/CIDv1.
+ * Returns `null` for empty or unrecognised/unsafe schemes (javascript:, data:,
+ * blob:, …). The `IpfsService.resolveFetchUrl` method delegates here; free
+ * callers import this directly.
+ */
+export function resolveContentUri(uri: string, gatewayUrl: string = IPFS_GATEWAY_URL): string | null {
+    if (!uri) return null;
+    if (uri.startsWith("ipfs://")) return `${gatewayUrl}/ipfs/${uri.slice("ipfs://".length)}`;
+    if (uri.startsWith("/ipfs/")) return `${gatewayUrl}${uri}`;
+    if (uri.startsWith("http://") || uri.startsWith("https://")) return uri;
+    // Bare CIDv0 (Qm…) / CIDv1 (bafy…) fallback.
+    if (/^Qm[1-9A-HJ-NP-Za-km-z]{44}/.test(uri) || /^bafy/.test(uri)) return `${gatewayUrl}/ipfs/${uri}`;
+    // RA-2: reject unrecognised schemes.
+    return null;
+}
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -112,23 +129,7 @@ class DefaultIpfsService implements IpfsService {
     }
 
     resolveFetchUrl(uri: string): string | null {
-        if (!uri) {
-            return null;
-        }
-
-        if (uri.startsWith("ipfs://")) {
-            return this.buildGatewayUrl(uri.slice("ipfs://".length));
-        }
-
-        if (uri.startsWith("/ipfs/")) {
-            return `${this.gatewayUrl}${uri}`;
-        }
-
-        if (uri.startsWith("http://") || uri.startsWith("https://")) {
-            return uri;
-        }
-
-        return null;
+        return resolveContentUri(uri, this.gatewayUrl);
     }
 
     private async add(

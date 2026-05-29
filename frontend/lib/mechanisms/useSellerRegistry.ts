@@ -16,7 +16,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicCl
 import { getSellerRegistry, SELLER_REGISTRY_ABI } from "./contracts";
 import { getSellerState, getSellerMetadataURI } from "@/lib/core/indexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-import { resolveContentURI } from "@/lib/shared/sellerBranding";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 import {
     AgentServiceInfo,
     SellerAgentServices,
@@ -273,9 +273,9 @@ export function useAgentServices(address: `0x${string}` | undefined) {
             .then((uri) => {
                 // The on-chain metadataURI is an `ipfs://` URI; the browser
                 // cannot fetch that scheme directly — resolve it to the
-                // gateway URL first. `resolveContentURI` returns "" for an
+                // gateway URL first. `resolveContentUri` returns null for an
                 // unrecognised scheme, handled here like a missing URI.
-                const url = uri ? resolveContentURI(uri) : "";
+                const url = uri ? resolveContentUri(uri) : null;
                 if (cancelled || !url) {
                     if (!cancelled) {
                         setData({ services: {}, capabilities: [], isAgent: false });

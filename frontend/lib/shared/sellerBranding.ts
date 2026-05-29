@@ -10,11 +10,6 @@
  * (name, branding, assets) is extracted here. The profile pins the
  * branding payload (logo, hero, image base URI) so buyer
  * frontends can render the seller's identity.
- *
- * NOTE (Phase-2): `resolveContentURI` is a neutral IPFS/HTTP URI resolver
- * that duplicates `ipfsService.resolveFetchUrl`. It lives here only for
- * historical reasons; relocating/merging it is tracked separately and is
- * out of scope for the seller-naming pass.
  */
 
 import type {
@@ -22,7 +17,7 @@ import type {
 } from "@/lib/shared/sellerCatalogueMetadata";
 import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-import { IPFS_GATEWAY_URL } from "@/lib/shared/ipfsService";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -39,28 +34,6 @@ export interface ResolvedSellerBranding {
     heroImageURL?: string;
     /** Raw seller name (top-level, not branding.displayName) */
     name?: string;
-}
-
-// ── URI resolution ────────────────────────────────────────────────────────────
-
-/**
- * Resolve a content URI to an HTTP URL.
- * Supports `ipfs://CID`, `ipfs://CID/path`, and passthrough for `http(s)://`.
- */
-export function resolveContentURI(uri: string): string {
-    if (uri.startsWith("ipfs://")) {
-        const path = uri.slice("ipfs://".length);
-        return `${IPFS_GATEWAY_URL}/ipfs/${path}`;
-    }
-    if (uri.startsWith("http://") || uri.startsWith("https://")) {
-        return uri;
-    }
-    // Bare CID fallback
-    if (/^Qm[1-9A-HJ-NP-Za-km-z]{44}/.test(uri) || /^bafy/.test(uri)) {
-        return `${IPFS_GATEWAY_URL}/ipfs/${uri}`;
-    }
-    // RA-2: Reject unrecognised schemes (javascript:, data:, blob:, etc.)
-    return "";
 }
 
 // ── Fetch + parse ─────────────────────────────────────────────────────────────
@@ -90,8 +63,8 @@ export function resolveSellerBrandingDocument(input: {
     return {
         branding: b,
         assets: a,
-        logoURL: b.logoURI ? resolveContentURI(b.logoURI) : undefined,
-        heroImageURL: b.heroImageURI ? resolveContentURI(b.heroImageURI) : undefined,
+        logoURL: b.logoURI ? (resolveContentUri(b.logoURI) ?? undefined) : undefined,
+        heroImageURL: b.heroImageURI ? (resolveContentUri(b.heroImageURI) ?? undefined) : undefined,
         name: typeof input.name === "string" ? input.name : undefined,
     };
 }
@@ -138,7 +111,8 @@ export async function fetchSellerBranding(
     if (cached) return cached;
 
     try {
-        const url = resolveContentURI(metadataURI);
+        const url = resolveContentUri(metadataURI);
+        if (!url) return null;
         const res = await fetch(url);
         const doc = await safeJsonFromResponse(res);
         if (!doc || typeof doc !== "object" || Array.isArray(doc)) return null;

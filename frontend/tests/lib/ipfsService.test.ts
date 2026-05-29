@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, resolveContentUri } from "@/lib/shared/ipfsService";
 
 describe("ipfsService", () => {
     const originalFetch = globalThis.fetch;
@@ -81,6 +81,30 @@ describe("ipfsService", () => {
             "https://example.com/file.json",
         );
         expect(DEFAULT_IPFS_SERVICE.resolveFetchUrl("not-a-uri")).toBeNull();
+    });
+
+    describe("resolveContentUri (the canonical resolver)", () => {
+        it("resolves ipfs://, /ipfs/, and http(s):// the same as the service method", () => {
+            expect(resolveContentUri("ipfs://QmXyz123/logo.png")).toBe("http://127.0.0.1:8080/ipfs/QmXyz123/logo.png");
+            expect(resolveContentUri("/ipfs/bafy123")).toBe("http://127.0.0.1:8080/ipfs/bafy123");
+            expect(resolveContentUri("http://example.com/logo.png")).toBe("http://example.com/logo.png");
+            expect(resolveContentUri("https://cdn.example.com/logo.png")).toBe("https://cdn.example.com/logo.png");
+        });
+
+        it("resolves bare CIDv0 / CIDv1 strings", () => {
+            const cid = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
+            expect(resolveContentUri(cid)).toBe(`http://127.0.0.1:8080/ipfs/${cid}`);
+            expect(resolveContentUri("bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi")).toMatch(
+                /^http:\/\/127\.0\.0\.1:8080\/ipfs\/bafy/,
+            );
+        });
+
+        it("returns null for empty and unknown/dangerous schemes (RA-2)", () => {
+            expect(resolveContentUri("")).toBeNull();
+            expect(resolveContentUri("data:image/png;base64,abc")).toBeNull();
+            expect(resolveContentUri("javascript:alert(1)")).toBeNull();
+            expect(resolveContentUri("blob:http://evil.com/abc")).toBeNull();
+        });
     });
 
     it("rejects uploads over the 5 MB size limit", async () => {

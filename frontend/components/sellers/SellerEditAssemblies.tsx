@@ -24,7 +24,7 @@ import { useMounted } from "@/lib/shared/useMounted";
 import { useSellerProfile } from "@/lib/mechanisms/useSellerRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
-import { resolveContentURI } from "@/lib/shared/sellerBranding";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 import { tryParseSellerProfileDocument } from "@/lib/shared/sellerProfileMetadata";
 import type { AssemblyBindingRecord, SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
 import { OnboardingAssembliesForm } from "@/components/sellers/OnboardingAssembliesForm";
@@ -54,7 +54,7 @@ export function SellerEditAssemblies() {
     useEffect(() => {
         if (!registryData) return;
         const [metadataURI] = registryData;
-        const url = resolveContentURI(metadataURI);
+        const url = resolveContentUri(metadataURI);
         if (!url) {
             setFetchError("Profile URI couldn't be resolved.");
             return;

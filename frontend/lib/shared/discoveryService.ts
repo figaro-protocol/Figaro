@@ -2,7 +2,7 @@ import type { PublicClient } from 'viem';
 import { getActiveSellers } from '@/lib/core/indexer';
 import type { SellerCatalogue } from '@/lib/seller/types';
 import { MECHANISM_CONTRACTS } from '@/lib/mechanisms/contracts';
-import { resolveContentURI } from '@/lib/shared/sellerBranding';
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 import type { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
 import {
     SellerProfileMetadata,
@@ -67,7 +67,7 @@ async function fetchSellerAsCatalogue(
     index: number,
     fetchFn: (url: string) => Promise<Response>,
 ): Promise<SellerCatalogue | null> {
-    const url = resolveContentURI(metadataURI);
+    const url = resolveContentUri(metadataURI);
     if (!url) return null;
 
     const res = await fetchFn(url);
@@ -93,7 +93,7 @@ async function fetchSellerAsCatalogue(
     // First-class items live in the catalogue document at profile.catalogueURI.
     if (profile.catalogueURI) {
         try {
-            const catUrl = resolveContentURI(profile.catalogueURI);
+            const catUrl = resolveContentUri(profile.catalogueURI);
             if (catUrl) {
                 const catRes = await fetchFn(catUrl);
                 const catDoc = await safeJsonFromResponse<unknown>(catRes);

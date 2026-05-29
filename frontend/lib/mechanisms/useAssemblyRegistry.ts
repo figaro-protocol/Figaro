@@ -37,7 +37,7 @@ import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { useSellerProfile } from "./useSellerRegistry";
-import { resolveContentURI } from "@/lib/shared/sellerBranding";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 import {
     tryParseSellerProfileDocument,
     type CounterpartyBinding,
@@ -621,7 +621,7 @@ export function useSellerBoundAssemblies(
         }
 
         const [metadataURI] = registryData;
-        const url = resolveContentURI(metadataURI);
+        const url = resolveContentUri(metadataURI);
         if (!url) {
             setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
             return;

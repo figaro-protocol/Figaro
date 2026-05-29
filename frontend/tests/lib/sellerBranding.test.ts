@@ -3,7 +3,6 @@ import { createElement } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { SellerBrandingModule } from '@/components/modules/SellerBrandingModule';
 import {
-    resolveContentURI,
     fetchSellerBranding,
     clearBrandingCache,
     resolveSellerBrandingFromSellerProfile,
@@ -11,44 +10,6 @@ import {
 import { SELLER_PROFILE_METADATA_EXAMPLE } from './__fixtures__/sellerMetadata';
 
 describe('sellerBranding', () => {
-    describe('resolveContentURI', () => {
-        it('resolves ipfs:// URIs to gateway URLs', () => {
-            const url = resolveContentURI('ipfs://QmXyz123/logo.png');
-            expect(url).toBe('http://127.0.0.1:8080/ipfs/QmXyz123/logo.png');
-        });
-
-        it('resolves ipfs:// CID-only URIs', () => {
-            const url = resolveContentURI('ipfs://QmXyz123');
-            expect(url).toBe('http://127.0.0.1:8080/ipfs/QmXyz123');
-        });
-
-        it('passes through http:// URIs', () => {
-            const url = resolveContentURI('http://example.com/logo.png');
-            expect(url).toBe('http://example.com/logo.png');
-        });
-
-        it('passes through https:// URIs', () => {
-            const url = resolveContentURI('https://cdn.example.com/logo.png');
-            expect(url).toBe('https://cdn.example.com/logo.png');
-        });
-
-        it('resolves bare CIDv0 strings', () => {
-            const cid = 'QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG';
-            const url = resolveContentURI(cid);
-            expect(url).toBe(`http://127.0.0.1:8080/ipfs/${cid}`);
-        });
-
-        it('resolves bare CIDv1 strings', () => {
-            const url = resolveContentURI('bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi');
-            expect(url).toMatch(/^http:\/\/127\.0\.0\.1:8080\/ipfs\/bafy/);
-        });
-
-        it('rejects unknown/dangerous schemes (RA-2)', () => {
-            expect(resolveContentURI('data:image/png;base64,abc')).toBe('');
-            expect(resolveContentURI('javascript:alert(1)')).toBe('');
-            expect(resolveContentURI('blob:http://evil.com/abc')).toBe('');
-        });
-    });
 
     describe('fetchSellerBranding', () => {
         beforeEach(() => {

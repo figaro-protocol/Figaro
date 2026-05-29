@@ -30,7 +30,7 @@ import {
     useWithdrawDeposit,
 } from "@/lib/mechanisms/useSellerRegistry";
 import { getSellerRegistry, SELLER_REGISTRY_ABI } from "@/lib/mechanisms/contracts";
-import { resolveContentURI } from "@/lib/shared/sellerBranding";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 import { tryParseSellerProfileDocument } from "@/lib/shared/sellerProfileMetadata";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
@@ -113,7 +113,7 @@ function RegisteredCard({
         let cancelled = false;
         setProfile(null);
         setProfileError(null);
-        const url = resolveContentURI(metadataURI);
+        const url = resolveContentUri(metadataURI);
         if (!url) {
             setProfileError("Profile URI couldn't be resolved.");
             return;

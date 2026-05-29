@@ -125,10 +125,10 @@ describe("catalogueFetcher", () => {
 
 // ── cataloguePublisher ────────────────────────────────────────────────────────
 
-// Partial override — preserve the original `IPFS_GATEWAY_URL` export so
-// `sellerBranding.resolveContentURI` can still build a gateway URL.
+// Partial override — preserve the original `IPFS_GATEWAY_URL` + the real
+// `resolveContentUri` so `uriFetcher` can still build a gateway URL.
 // Without `...actual` the named import becomes undefined and the throw
-// at `resolveContentURI` is swallowed by `uriFetcher`'s catch, masking
+// at `resolveContentUri` is swallowed by `uriFetcher`'s catch, masking
 // the real failure as "fetch never called".
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/shared/ipfsService")>()),

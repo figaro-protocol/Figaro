@@ -11,7 +11,7 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { resolveContentURI } from "@/lib/shared/sellerBranding";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 
 export function ContentImage({
     src,
@@ -35,7 +35,8 @@ export function ContentImage({
         if (hasFailed && fallback !== undefined) {
             return <>{fallback}</>;
         }
-        const resolved = resolveContentURI(src);
+        const resolved = resolveContentUri(src);
+        if (!resolved) return fallback !== undefined ? <>{fallback}</> : null;
         // eslint-disable-next-line @next/next/no-img-element -- This renderer intentionally supports arbitrary IPFS/HTTP content URIs at runtime.
         return (
             <img

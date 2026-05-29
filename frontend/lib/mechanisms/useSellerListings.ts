@@ -18,7 +18,7 @@ import {
     type Listing,
 } from "@/lib/shared/sellerListing";
 import { getActiveSellers } from "@/lib/core/indexer";
-import { resolveContentURI } from "@/lib/shared/sellerBranding";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { tryParseSellerProfileDocument } from "@/lib/shared/sellerProfileMetadata";
 import type { PublicClient } from "viem";
@@ -47,7 +47,7 @@ async function fetchProfileAsListing(
     address: string,
     metadataURI: string,
 ): Promise<Listing | null> {
-    const url = resolveContentURI(metadataURI);
+    const url = resolveContentUri(metadataURI);
     if (!url) return null;
     try {
         const res = await fetch(url);

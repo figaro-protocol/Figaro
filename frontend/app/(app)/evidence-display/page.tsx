@@ -24,7 +24,7 @@ import { useSearchParams } from "next/navigation";
 import { createPublicClient, isAddress } from "viem";
 import { mockAwareHttp } from "@/lib/shared/mockTransport";
 import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "@/lib/dispute";
-import { resolveContentURI } from "@/lib/shared/sellerBranding";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -80,7 +80,7 @@ function isValidCID(cid: string): boolean {
 
 function IpfsPhotoViewer({ cid, caption }: { cid: string; caption: string }) {
     if (!isValidCID(cid)) return null;
-    const url = resolveContentURI(`ipfs://${cid}`);
+    const url = resolveContentUri(`ipfs://${cid}`) ?? undefined;
     return (
         <div className="mt-2 border border-gray-200 rounded overflow-hidden" data-testid="ipfs-photo">
             {/* eslint-disable-next-line @next/next/no-img-element -- Evidence media comes from dynamic IPFS gateways and uses runtime load-failure hiding. */}
@@ -105,7 +105,8 @@ function AttestationViewer({ cid }: { cid: string }) {
 
     useEffect(() => {
         if (!isValidCID(cid)) return;
-        const url = resolveContentURI(`ipfs://${cid}`);
+        const url = resolveContentUri(`ipfs://${cid}`);
+        if (!url) return;
         fetch(url)
             .then((r) => safeJsonFromResponse<Record<string, unknown>>(r))
             .then((data) => setAttestation(data))

@@ -7,7 +7,7 @@
  *
  *   if (!uri) return null;
  *   if (cache.hit) return cache.value;
- *   url = resolveContentURI(uri);
+ *   url = resolveContentUri(uri);
  *   doc = await safeJsonFromResponse(await fetch(url));
  *   parsed = parse(doc);
  *   cache.set(uri, parsed);
@@ -17,7 +17,7 @@
  * that supplies a `parse` function and (optionally) a TTL.
  */
 
-import { resolveContentURI } from "@/lib/shared/sellerBranding";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 export interface UriFetcherConfig<T> {
@@ -73,7 +73,7 @@ export function createUriFetcher<T>(config: UriFetcherConfig<T>): UriFetcher<T> 
             }
 
             try {
-                const url = resolveContentURI(uri);
+                const url = resolveContentUri(uri);
                 if (!url) return null;
                 const res = await fetcher(url);
                 const doc = await safeJsonFromResponse(res);
