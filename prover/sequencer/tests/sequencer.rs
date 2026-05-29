@@ -236,12 +236,12 @@ async fn mempool_accepts_register_seller() {
     let domain = domain_separator(CHAIN_ID, CORE);
     let key = make_signing_key(SELLER1_KEY);
 
-    let struct_hash = register_seller_struct_hash("ipfs://merchant-meta");
+    let struct_hash = register_seller_struct_hash("ipfs://seller-meta");
     let digest = typed_data_hash(&domain, &struct_hash);
     let sig = sign_digest(&key, &digest);
 
     let op = KernelOp::RegisterSeller {
-        metadata_uri: "ipfs://merchant-meta".to_string(),
+        metadata_uri: "ipfs://seller-meta".to_string(),
         seller_sig: sig,
     };
 

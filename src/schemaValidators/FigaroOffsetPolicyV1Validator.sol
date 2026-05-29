@@ -6,7 +6,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 /// @title FigaroOffsetPolicyV1Validator
 /// @notice Validates `figaro-offset-policy-v1` content — carbon-offset
 ///         providers an assembly accepts for emissions compensation.
-///         Multi-valued: the merchant declares (or the buyer commits to)
+///         Multi-valued: the seller declares (or the buyer commits to)
 ///         the set of providers on offer. The actual offset purchase is a
 ///         separate sub-order against the chosen provider; this clause
 ///         anchors the policy, not the purchase.

@@ -127,7 +127,7 @@ contract AttestationCoordinator {
 
     /// @notice Attest as the seller of `role`, against the order in `target`.
     /// @dev For same-order attestation pass the same commitment twice. For
-    ///      cross-order attestation within the same process (e.g. a courier
+    ///      cross-order attestation within the same process (e.g. a seller
     ///      attesting a lifecycle stage against the root order using their
     ///      sub-order commitment as role), pass distinct `role` and `target`
     ///      commitments — the coordinator verifies both are committed and in

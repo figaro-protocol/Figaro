@@ -12,8 +12,8 @@ pragma solidity 0.8.26;
 ///         provider (the address that called claim) becomes the seller in
 ///         the kernel commitment and receives payment directly at
 ///         resolution. No financial intermediation. The auction is generic:
-///         the provider could be a courier, a merchant in pickup mode, or
-///         any other service-providing actor — the contract has no opinion.
+///         the provider could be any service-providing seller — a delivery
+///         leg, a pickup leg, a port call — the contract has no opinion.
 ///
 /// @dev Architectural shape:
 ///      - 1 struct per auction (4 storage slots)

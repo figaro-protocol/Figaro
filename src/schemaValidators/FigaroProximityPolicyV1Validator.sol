@@ -6,7 +6,7 @@ import {ISchemaValidator} from "../ISchemaValidator.sol";
 /// @title FigaroProximityPolicyV1Validator
 /// @notice Validates `figaro-proximity-policy-v1` content — committed
 ///         proximity-verification options. Multi-valued: the set of detection
-///         bands a merchant offers (or a buyer's commitment selects) for this
+///         bands a seller offers (or a buyer's commitment selects) for this
 ///         order. Per-handoff nonce + signed witness travel in the sister
 ///         schema `figaro-proximity-proof-v1` at runtime.
 ///
