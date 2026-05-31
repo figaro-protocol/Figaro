@@ -11,6 +11,7 @@ export function Footer() {
                     <div className="space-y-2">
                         <Link href="/protocol" className={COL_LINK_CLS}>Protocol mechanisms</Link>
                         <Link href="/why" className={COL_LINK_CLS}>Why</Link>
+                        <Link href="/physics" className={COL_LINK_CLS}>Physics</Link>
                         <Link href="/cryptoeconomics" className={COL_LINK_CLS}>Cryptoeconomics</Link>
                         <Link href="/papers" className={COL_LINK_CLS}>Papers</Link>
                         <Link href="/security" className={COL_LINK_CLS}>Security</Link>

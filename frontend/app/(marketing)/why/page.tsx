@@ -105,6 +105,12 @@ export default function Why() {
                         <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
                     </li>
                     <li>
+                        <Link href="/physics" className="text-ink-heading font-medium hover:underline">
+                            Physics
+                        </Link>
+                        <span className="text-ink-body"> &mdash; the same mechanism read as physics: the few facts the core obeys, why its state can leave the chain, and why trust moves from the keeper in the middle to the boundary at the edge.</span>
+                    </li>
+                    <li>
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">
                             Builders
                         </Link>
