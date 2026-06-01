@@ -1,9 +1,7 @@
 "use client";
 
-import {
-    formatAssemblyClauseList,
-    useAssemblyChoices,
-} from "@/lib/mechanisms/useAssemblyRegistry";
+import { useAssemblyChoices } from "@/lib/mechanisms/useAssemblyRegistry";
+import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 
 function truncateAddress(addr: `0x${string}`): string {
     return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -14,7 +12,7 @@ function truncateAddress(addr: `0x${string}`): string {
  *
  * Reuses `useAssemblyChoices` — the same composition the seller profile
  * and the designer's published-list consume. Each row's identity (slug,
- * author, content hash) is on-chain; the assemblyDoc (name, order count,
+ * author, content hash) is on-chain; the assembly document (name, order count,
  * clauses) fetches lazily from IPFS per row.
  *
  * Client component because the marketing tier mounts no wallet provider.
@@ -47,8 +45,8 @@ export function AssemblyInventory() {
                 {data.length === 1 ? "assembly is" : "assemblies are"} registered on{" "}
                 <code>AssemblyRegistry</code>, read live from{" "}
                 <code>AssemblyRegistered</code> events &mdash; the on-chain set, sorted
-                most-recent first. Each slug is permanent and first-write-wins; assemblyDoc
-                content fetches lazily from IPFS.
+                most-recent first. Each slug is permanent and first-write-wins;
+                assembly-document content fetches lazily from IPFS.
             </p>
             <ul className="space-y-5">
                 {data.map((choice) => (
@@ -65,24 +63,7 @@ export function AssemblyInventory() {
                                 {choice.slug}
                             </code>
                         </div>
-                        {choice.state === "loading" && (
-                            <p className="text-xs text-ink-muted">Loading assemblyDoc&hellip;</p>
-                        )}
-                        {choice.state === "error" && (
-                            <p className="text-xs text-amber-700">
-                                Manifest unavailable (IPFS gateway?); on-chain identity is recorded regardless.
-                            </p>
-                        )}
-                        {choice.state === "loaded"
-                            && choice.orderCount !== null
-                            && choice.clauses !== null && (
-                                <p className="text-xs text-ink-body">
-                                    {choice.orderCount} order{choice.orderCount === 1 ? "" : "s"}
-                                    {" · "}
-                                    {choice.clauses.length} clause{choice.clauses.length === 1 ? "" : "s"}
-                                    {choice.clauses.length > 0 && `: ${formatAssemblyClauseList(choice.clauses)}`}
-                                </p>
-                            )}
+                        <AssemblyShapeLine choice={choice} />
                         <p className="text-xs text-ink-muted">
                             Author <code className="font-mono">{truncateAddress(choice.author)}</code>
                         </p>

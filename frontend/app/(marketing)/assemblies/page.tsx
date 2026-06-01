@@ -17,24 +17,24 @@ export default function Assemblies() {
                 title="Composition templates."
                 lead={
                     <>
-                        An assembly is a composition template &mdash; a assemblyDoc that
-                        wires clauses into a multi-order process. Each one registers on{" "}
-                        <code>AssemblyRegistry</code> with a permanent slug, a content
-                        hash, and an IPFS pointer to its assemblyDoc. Sellers bind to
+                        An assembly is a composition template &mdash; an assembly
+                        document that wires clauses into a multi-order process. Each one
+                        registers on <code>AssemblyRegistry</code> with a permanent slug, a
+                        content hash, and an IPFS pointer to its document. Sellers bind to
                         assemblies in their profile; checkout reads those bindings to
                         surface the buyer-facing choice.
                     </>
                 }
             />
 
-            <MarketingSection title="Manifest-anchored, not catalogue-listed.">
+            <MarketingSection title="Document-anchored, not catalogue-listed.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     The registry stores the slug, the author, the content hash, and an
-                    IPFS URI pointing at the off-chain assemblyDoc. The assemblyDoc carries the
-                    topology &mdash; the orders and their parent-child links &mdash; plus
-                    the per-order agreements (which clauses attach, and the field values
-                    that compose into each agreement hash). Anything an seller offers
-                    at checkout composes through assemblies.
+                    IPFS URI pointing at the off-chain assembly document. The document
+                    carries the topology &mdash; the orders and their parent-child links
+                    &mdash; plus the per-order agreements (which clauses attach, and the
+                    field values that compose into each agreement hash). Anything a seller
+                    offers at checkout composes through assemblies.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed">
                     Registration is permissionless. The slug binding is first-write-wins
@@ -47,15 +47,15 @@ export default function Assemblies() {
             <MarketingSection title="Registered assemblies.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Each row is one assembly, sorted by registration block (most recent
-                    first). Manifests fetch lazily from IPFS &mdash; the on-chain identity
-                    (slug, author, content hash) renders regardless.
+                    first). Assembly documents fetch lazily from IPFS &mdash; the on-chain
+                    identity (slug, author, content hash) renders regardless.
                 </p>
                 <AssemblyInventory />
             </MarketingSection>
 
             <MarketingSection title="Where to publish">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
-                    <li><strong>Designer:</strong> compose an assembly on the canvas at <Link href="/builders/designer" className="underline">/builders/designer</Link>, then publish to <code>AssemblyRegistry</code> in one transaction. The publish flow pins the assemblyDoc to IPFS, simulates the registration, and confirms the receipt before declaring success.</li>
+                    <li><strong>Designer:</strong> compose an assembly on the canvas at <Link href="/builders/designer" className="underline">/builders/designer</Link>, then publish to <code>AssemblyRegistry</code> in one transaction. The publish flow pins the assembly document to IPFS, simulates the registration, and confirms the receipt before declaring success.</li>
                     <li><strong>Worked reference:</strong> the local-commerce assembly at <Link href="/local-commerce" className="underline">/local-commerce</Link> &mdash; merchant root order, courier sub-order, handoff certifications, GHG disclosures, jurisdiction anchoring.</li>
                     <li><strong>Clause set:</strong> the clauses an assembly may compose are listed at <Link href="/clauses" className="underline">/clauses</Link>.</li>
                     <li><strong>Contract:</strong> <code>src/AssemblyRegistry.sol</code> &mdash; permissionless, first-write-wins, immutable. See <Link href="/spec" className="underline">/spec</Link>.</li>

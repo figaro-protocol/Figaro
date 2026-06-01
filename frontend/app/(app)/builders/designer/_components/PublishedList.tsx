@@ -20,9 +20,9 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import {
     type AssemblyChoice,
-    formatAssemblyClauseList,
     useAssemblyChoices,
 } from "@/lib/mechanisms/useAssemblyRegistry";
+import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { truncateHex } from "@/lib/shared/formatHex";
 
@@ -98,26 +98,11 @@ export function PublishedList() {
                         <p className="font-mono text-[11px] text-ink-muted mt-0.5">
                             /{choice.slug}
                         </p>
-                        {choice.state === "loading" && (
-                            <p className="text-[11px] text-ink-muted mt-1">Loading assemblyDoc…</p>
-                        )}
-                        {choice.state === "error" && (
-                            <p className="text-[11px] text-amber-700 mt-1">
-                                Manifest unavailable (IPFS gateway?). Identity is on-chain regardless.
-                            </p>
-                        )}
-                        {choice.state === "loaded" && choice.orderCount !== null && choice.clauses !== null && (
-                            <p
-                                className="text-[11px] text-ink-muted mt-1"
-                                data-testid={`published-shape-${choice.slug}`}
-                                title={choice.clauses.join(", ")}
-                            >
-                                {choice.orderCount} order{choice.orderCount === 1 ? "" : "s"}
-                                {" · "}
-                                {choice.clauses.length} clause{choice.clauses.length === 1 ? "" : "s"}
-                                {choice.clauses.length > 0 && `: ${formatAssemblyClauseList(choice.clauses)}`}
-                            </p>
-                        )}
+                        <AssemblyShapeLine
+                            choice={choice}
+                            className="text-[11px] mt-1"
+                            testId={`published-shape-${choice.slug}`}
+                        />
                         <p className="font-mono text-[11px] text-ink-muted mt-1">
                             content <span title={choice.contentHash}>{truncateHex(choice.contentHash, { head: 10, tail: 6 })}</span>
                             {" · block "}

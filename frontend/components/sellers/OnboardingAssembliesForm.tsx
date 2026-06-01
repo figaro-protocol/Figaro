@@ -13,10 +13,10 @@ import { useOnboardingState } from "@/lib/seller/onboardingState";
 import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/shared/sellerProfileMetadata";
 import {
     type AssemblyChoice,
-    formatAssemblyClauseList,
     requiredCounterpartyClauses,
     useAssemblyChoices,
 } from "@/lib/mechanisms/useAssemblyRegistry";
+import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 
 /**
  * Step 5 of the onboarding wizard. Seller picks which published
@@ -222,26 +222,11 @@ export function OnboardingAssembliesForm({
                                                 {choice.slug}
                                             </code>
                                         </div>
-                                        {choice.state === "loading" && (
-                                            <p className="text-[11px] text-ink-faint">Loading assemblyDoc…</p>
-                                        )}
-                                        {choice.state === "error" && (
-                                            <p className="text-[11px] text-amber-700">
-                                                Manifest unavailable (IPFS gateway?). Identity is on-chain regardless.
-                                            </p>
-                                        )}
-                                        {choice.state === "loaded" && choice.orderCount !== null && choice.clauses !== null && (
-                                            <p
-                                                className="text-xs text-ink-body"
-                                                title={choice.clauses.join(", ")}
-                                                data-testid={`seller-assembly-shape-${choice.slug}`}
-                                            >
-                                                {choice.orderCount} order{choice.orderCount === 1 ? "" : "s"}
-                                                {" · "}
-                                                {choice.clauses.length} clause{choice.clauses.length === 1 ? "" : "s"}
-                                                {choice.clauses.length > 0 && `: ${formatAssemblyClauseList(choice.clauses)}`}
-                                            </p>
-                                        )}
+                                        <AssemblyShapeLine
+                                            choice={choice}
+                                            className="text-[11px]"
+                                            testId={`seller-assembly-shape-${choice.slug}`}
+                                        />
                                         <p className="text-xs text-ink-faint">
                                             Networks: {choice.networkTargets.join(", ")}
                                         </p>
