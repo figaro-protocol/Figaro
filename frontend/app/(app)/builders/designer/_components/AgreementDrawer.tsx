@@ -46,20 +46,22 @@ import {
     GHG_DISCLOSURE_CLAUSE_KEYS,
     MERCHANT_PROCESS_CLAUSE_KEY,
 } from "@/lib/core/agreement";
-import { getClauseInfo, getDesignerCategories, type ClauseCategory } from "@/lib/shared/clauseCategories";
+import { getClauseInfo } from "@/lib/shared/clauseCategories";
 import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import type { FulfilmentModality } from "@figaro/core/clauses";
 import { KLEROS_COURTS } from "@/lib/dispute";
 
 /**
- * Drawer sections, in canonical contract-paper order. Each section OWNS one or
- * more clause categories (clauseCategories.ts) — the drawer is a reader of the
- * clause taxonomy, not a parallel hand-list. Secondary categories that ride on
- * a clause already homed elsewhere (`payment` on commerce; `evidence-law` on
- * consent/law/arbitration; `lifecycle` on the process logs) are properties, not
- * sections. Fulfilment folds in logistics (geo) + proximity, which lock to it;
- * Consent precedes Dispute resolution, as in a paper contract.
+ * Drawer sections (articles), in canonical contract-paper order. Fulfilment
+ * folds in logistics (geo) + proximity; Consent precedes Dispute resolution,
+ * as in a paper contract.
+ *
+ * NOTE (2026-06-01): "article" and "category" are synonyms for the group a
+ * clause is read under, and each clause already declares its section in its
+ * spec's `block.drawerArticle`. This hand-list duplicates that; collapsing the
+ * two onto one spec-driven source is open work — do NOT add a parallel
+ * `categories` field here again.
  */
 type ArticleKey =
     | "identity"
@@ -70,35 +72,15 @@ type ArticleKey =
     | "consent"
     | "dispute-resolution";
 
-const ARTICLES: readonly { key: ArticleKey; label: string; categories: readonly ClauseCategory[] }[] = [
-    { key: "identity", label: "Parties", categories: ["topology"] },
-    { key: "order", label: "Order", categories: ["commerce"] },
-    { key: "fulfilment", label: "Fulfilment", categories: ["fulfilment", "geo", "proximity"] },
-    { key: "attestations", label: "Attestations", categories: ["seller-process"] },
-    { key: "emissions", label: "Emissions", categories: ["emissions"] },
-    { key: "consent", label: "Consent", categories: ["consent"] },
-    { key: "dispute-resolution", label: "Dispute resolution", categories: ["jurisdiction", "arbitration"] },
+const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
+    { key: "identity", label: "Parties" },
+    { key: "order", label: "Order" },
+    { key: "fulfilment", label: "Fulfilment" },
+    { key: "attestations", label: "Attestations" },
+    { key: "emissions", label: "Emissions" },
+    { key: "consent", label: "Consent" },
+    { key: "dispute-resolution", label: "Dispute resolution" },
 ];
-
-/**
- * Categories intentionally without their own section — each rides on a clause
- * already homed by another category. The drift guard below allows these to be
- * unsectioned; everything else must have a home.
- */
-const SECONDARY_CATEGORIES: readonly ClauseCategory[] = ["payment", "evidence-law", "lifecycle"];
-
-// Drift guard (mirrors clauseCategories.ts `assertTaxonomyComplete`): every
-// designer-time clause category must map to a section or be marked secondary,
-// so a newly registered clause cannot silently lack a drawer home.
-const SECTIONED_CATEGORIES = new Set<ClauseCategory>(ARTICLES.flatMap((a) => a.categories));
-const ORPHAN_CATEGORIES = getDesignerCategories().filter(
-    (c) => !SECTIONED_CATEGORIES.has(c) && !SECONDARY_CATEGORIES.includes(c),
-);
-if (ORPHAN_CATEGORIES.length > 0) {
-    throw new Error(
-        `AgreementDrawer: designer-time categories with no section: ${ORPHAN_CATEGORIES.join(", ")}. Add a section to ARTICLES or mark it secondary in SECONDARY_CATEGORIES.`,
-    );
-}
 
 /**
  * Per-clause sentinel assemblyDoc fields. Toggling a clause "Included"
