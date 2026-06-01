@@ -1,193 +1,103 @@
 "use client";
 
 /**
- * AgreementDrawer — clause-composition editor for a single order's
- * agreement.
+ * AgreementDrawer — order inspector + live clause registry.
  *
- * Each tab represents an article of the bonded commitment. The designer
- * chooses which clauses appear in the order's agreement by toggling
- * inclusion or by filling structured controls (checkboxes for multi-valued
- * fields; per-article custom widgets for Fulfilment, Emissions, and
- * Jurisdiction).
+ * Two panels:
+ *   - identity (Parties) — buyer / seller / DAG position, read from the order
+ *     + topology.
+ *   - registry — every clause registered on `ClauseRegistry`, read live from
+ *     the chain, grouped by each clause's `block.drawerArticle` (sorted into
+ *     ARTICLE_ORDER, unknown keys appended), a checkbox per clause.
  *
- * The actual values are filled in by the merchant or buyer at commit time
- * — the designer's job here is composition, not data entry. Rendering of
- * populated agreement sections lives in `AgreementPreviewModal.tsx` and
- * `lib/audit/`.
- *
- * Persistence: every assemblyDoc-field change rebuilds the agreement
- * (`editSyntheticAgreement` → `buildOrderAgreement`) and updates the
- * order's `agreementHash`. Inclusion is therefore cryptographically real.
+ * The legacy per-article clause-editing tabs (and their hardcoded option
+ * enums / sentinels / spec-card field controls) were removed; clause
+ * composition is being migrated onto the registry surface.
  *
  * Rendering modes:
- *   - `embedded` (default false): legacy fixed-overlay positioning used
- *     by /edit.
- *   - `embedded: true`: inline flex-column block. The page handles
- *     positioning. Used by /new where the drawer is part of the layout.
+ *   - `embedded` (default false): fixed-overlay positioning used by /edit.
+ *   - `embedded: true`: inline flex-column block; the page handles placement.
  */
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/core/store";
-import type { ClauseFields } from "@/lib/core/encoding";
-import {
-    readAgreementFields,
-    type AgreementEdits,
-} from "@/lib/designer/syntheticProcess";
+import type { AgreementEdits } from "@/lib/designer/syntheticProcess";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
-import {
-    COMMERCE_CLAUSE_KEY,
-    APPLICABLE_LAW_CLAUSE_KEY,
-    ARBITRATION_KLEROS_CLAUSE_KEY,
-    CONSENT_CLAUSE_KEY,
-    COURIER_PROCESS_CLAUSE_KEY,
-    FULFILMENT_V2_CLAUSE_KEY,
-    GEO_CLAUSE_KEY,
-    GHG_DISCLOSURE_CLAUSE_KEYS,
-    MERCHANT_PROCESS_CLAUSE_KEY,
-} from "@/lib/core/agreement";
-import { getClauseInfo } from "@/lib/shared/clauseCategories";
-import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
-import { ZERO_BYTES32 } from "@/lib/shared/evm";
-import type { FulfilmentModality } from "@figaro/core/clauses";
-import { KLEROS_COURTS } from "@/lib/dispute";
+import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/mechanisms/useClauseRegistry";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import type { FieldSpec } from "@figaro/core/clauses";
 
 /**
- * Drawer sections (articles), in canonical contract-paper order. Fulfilment
- * folds in logistics (geo) + proximity; Consent precedes Dispute resolution,
- * as in a paper contract.
- *
- * NOTE (2026-06-01): "article" and "category" are synonyms for the group a
- * clause is read under, and each clause already declares its section in its
- * spec's `block.drawerArticle`. This hand-list duplicates that; collapsing the
- * two onto one spec-driven source is open work — do NOT add a parallel
- * `categories` field here again.
+ * Sort order for the registry article groups. Unknown article keys are
+ * appended alphabetically. This orders the groups; it does not relabel them —
+ * each group renders its `drawerArticle` key verbatim.
  */
-type ArticleKey =
-    | "identity"
-    | "order"
-    | "fulfilment"
-    | "attestations"
-    | "emissions"
-    | "consent"
-    | "dispute-resolution";
-
-const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
-    { key: "identity", label: "Parties" },
-    { key: "order", label: "Order" },
-    { key: "fulfilment", label: "Fulfilment" },
-    { key: "attestations", label: "Attestations" },
-    { key: "emissions", label: "Emissions" },
-    { key: "consent", label: "Consent" },
-    { key: "dispute-resolution", label: "Dispute resolution" },
+const ARTICLE_ORDER: readonly string[] = [
+    "identity",
+    "order",
+    "fulfilment",
+    "logistics",
+    "attestations",
+    "emissions",
+    "consent",
+    "dispute-resolution",
 ];
 
-/**
- * Per-clause sentinel assemblyDoc fields. Toggling a clause "Included"
- * applies these values; toggling "Not included" deletes them.
- *
- * Sentinels are chosen so the encoder (`@figaro/core/clauses`) emits a
- * valid section: minimum-length geohash, enum-valid handoff mode, etc.
- * Real values come from the runtime — designer's job is composition.
- */
-const CLAUSE_SENTINELS: Record<string, Record<string, string>> = {
-    // figaro-geo-v2 requires all five fields. Origin / destination get
-    // minimum-length geohashes. Mass / volume default to 1 (the smallest
-    // value the v2 validator accepts; 0 reverts). Class defaults to "S"
-    // (Standard). `clauseFieldsToGeoSection` reads these assemblyDoc keys
-    // and produces an encoder-valid section. Real values flow in at
-    // commit-time from the buyer's runtime UI.
-    [GEO_CLAUSE_KEY]: { origin: "0", destination: "0", mass: "1g", volume: "1ml", class_: "S" },
-};
-
-/**
- * Per-clause fields the toggle "Not included" clears. Must match the
- * sentinel keys above so toggling off wipes every field toggling on set.
- */
-const CLAUSE_FIELDS: Record<string, readonly string[]> = {
-    [GEO_CLAUSE_KEY]: ["origin", "destination", "mass", "volume", "class_"],
-};
-
-function isFieldFilled(fields: ClauseFields, key: string): boolean {
-    const v = (fields as Record<string, unknown>)[key];
-    if (v === undefined || v === null) return false;
-    if (typeof v === "string") {
-        const trimmed = v.trim();
-        return trimmed !== "" && trimmed !== "—";
-    }
-    return true;
-}
-
-/** Geo clause is "included" when its required fields are set in the assemblyDoc. */
-function isClauseIncluded(clauseId: string, fields: ClauseFields): boolean {
-    if (clauseId === GEO_CLAUSE_KEY) {
-        return isFieldFilled(fields, "origin") && isFieldFilled(fields, "destination");
-    }
-    return false;
-}
-
 interface Props {
-    /** Currently-selected order. May be null in `embedded` mode (renders
-        an empty state). */
+    /** Currently-selected order. May be null in `embedded` mode (renders an
+        empty state). */
     order: Order | null;
     onClose: () => void;
+    /** Retained for caller compatibility; the drawer no longer composes the
+     *  agreement (clause editing moved off the legacy tabs). */
     onChange: (edits: AgreementEdits) => void;
-    /** True when the current order already has at least one child sub-order.
-     *  Surfaced to the Fulfilment article so its hint copy reflects the
-     *  canvas state ("a sub-order was added" vs. "set coordination on the
-     *  existing sub-order"). */
     hasChildren?: boolean;
-    /** True when the parent of the currently-selected sub-order has Delivery
-     *  in its Fulfilment article. Drives the Attestations tab's
-     *  courier-process lock-on rule when editing a courier sub-order — the
-     *  drawer cannot see the parent's assemblyDoc directly, so the page is
-     *  expected to compute and pass this. False / undefined when editing a
-     *  root order (or any sub-order whose parent has no delivery). */
     parentDeliveryActive?: boolean;
-    /** Fired when the user picks Delivery in the Fulfilment article. The
-     *  page is responsible for adding a courier sub-order if none exists
-     *  and tracking it so a subsequent `onDeliveryUnselected` can remove
-     *  the same one. */
     onDeliverySelected?: (parentOrderId: string) => void;
-    /** Fired when the user picks a non-delivery modality (or Not included)
-     *  after previously having Delivery selected. The page should remove
-     *  any sub-order it auto-added in response to the matching
-     *  `onDeliverySelected`, leaving manually-added sub-orders alone. */
     onDeliveryUnselected?: (parentOrderId: string) => void;
-    /** When true, render as an inline flex-column block without fixed
-        positioning. The page layout becomes responsible for placement. */
+    /** Inline flex-column block (no fixed positioning) when true. */
     embedded?: boolean;
-    /** When true, the article tabs remain clickable for navigation, but
-     *  every form control inside an article is disabled. Used by /view
-     *  to surface clause/clause detail without permitting edits. */
+    /** Tabs stay navigable but every control is disabled — used by /view. */
     readOnly?: boolean;
-    /** Every order in the design. Drives the per-node tab row so each
-     *  graph node has its own authoring surface in the drawer — without
-     *  this, a spawned sub-order is reachable only by clicking its canvas
-     *  node. Omitted, or single-order, → no tab row. */
+    /** Every order in the design — drives the per-node tab row. */
     orders?: Order[];
-    /** Switch the drawer to another node's agreement. Paired with
-     *  `orders`; the canvas owns the selected-order state. */
+    /** Switch to another node's agreement. Paired with `orders`. */
     onSelectOrder?: (orderId: string) => void;
+    /** clauseId → design-time field values for the current order. A clause's
+     *  presence as a key = selected; the values are what the designer filled. */
+    selectedClauseValues?: Record<string, Record<string, unknown>>;
+    /** Toggle a clause on/off for the current order. */
+    onToggleClause?: (clauseId: string, next: boolean) => void;
+    /** Set one design-time field on a selected clause for the current order. */
+    onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
+    /** Assembly-level privileged ERC-20 ("" = agnostic). Surfaced in the
+     *  Registry tab as an assembly-wide choice. */
+    privilegedToken?: string;
+    onPrivilegedTokenChange?: (value: string) => void;
+    /** Per-chain common-token list that populates the privileged-token choice. */
+    commonTokens?: ReadonlyArray<{ address: string; symbol: string; name: string }>;
+    /** The live assembly template (stringified) for the in-drawer preview. */
+    templateJson?: string;
 }
 
 export function AgreementDrawer({
     order,
     onClose,
-    onChange,
-    hasChildren = false,
-    parentDeliveryActive = false,
-    onDeliverySelected,
-    onDeliveryUnselected,
     embedded = false,
     readOnly = false,
     orders,
     onSelectOrder,
+    selectedClauseValues,
+    onToggleClause,
+    onSetClauseField,
+    privilegedToken,
+    onPrivilegedTokenChange,
+    commonTokens,
+    templateJson,
 }: Props) {
-    const [fields, setFields] = useState<ClauseFields>(() =>
-        order ? readAgreementFields(order) : ({} as ClauseFields),
-    );
-    const [openSection, setOpenSection] = useState<ArticleKey | null>(null);
+    const [openSection, setOpenSection] = useState<string | null>(null);
+    const [tokenChecked, setTokenChecked] = useState(false);
     const [minimized, setMinimized] = useState(false);
     const [headerHeight, setHeaderHeight] = useState(108);
 
@@ -202,53 +112,46 @@ export function AgreementDrawer({
         return () => ro.disconnect();
     }, [embedded]);
 
-    // Which clauses are actually registered on this network — the SET is
-    // network state, read live from `ClauseRegistry.ClauseRegistered`. The
-    // bundled `clauseCategories.ts` supplies each clause's title/description;
-    // the drawer offers a clause only when the chain confirms it exists.
-    // While the read is in flight (`data === null`) the gate is permissive,
-    // so the UI does not flash "unavailable" during initial paint.
+    // The clause set is network state — read live from
+    // `ClauseRegistry.ClauseRegistered`.
     const { data: registeredClauses } = useAllRegisteredClauses();
-    const onChainClauses = useMemo<ReadonlySet<string> | null>(
-        () =>
-            registeredClauses === null
-                ? null
-                : new Set(
-                    registeredClauses
-                        .map((e) => e.clauseName)
-                        .filter((n): n is string => n !== null),
-                ),
-        [registeredClauses],
-    );
-    const isOnChain = (clauseId: string): boolean =>
-        onChainClauses === null || onChainClauses.has(clauseId);
-    const commerceAvailable = isOnChain(COMMERCE_CLAUSE_KEY);
-    const geoAvailable = isOnChain(GEO_CLAUSE_KEY);
-    const merchantProcessAvailable = isOnChain(MERCHANT_PROCESS_CLAUSE_KEY);
-    const courierProcessAvailable = isOnChain(COURIER_PROCESS_CLAUSE_KEY);
-    const fulfilmentAvailable = isOnChain(FULFILMENT_V2_CLAUSE_KEY);
-    const arbitrationKlerosAvailable = isOnChain(ARBITRATION_KLEROS_CLAUSE_KEY);
-    const applicableLawAvailable = isOnChain(APPLICABLE_LAW_CLAUSE_KEY);
-    const disputeResolutionAvailable = arbitrationKlerosAvailable && applicableLawAvailable;
-    const consentAvailable = isOnChain(CONSENT_CLAUSE_KEY);
-    const availableGhgKeys = useMemo<readonly string[]>(
-        () =>
-            onChainClauses === null
-                ? GHG_DISCLOSURE_CLAUSE_KEYS
-                : GHG_DISCLOSURE_CLAUSE_KEYS.filter((k) => onChainClauses.has(k)),
-        [onChainClauses],
-    );
 
-    useEffect(() => {
-        if (order) setFields(readAgreementFields(order));
-    }, [order?.id, order?.agreementHash]);
+    // The raw registry list, grouped by each clause's `block.drawerArticle`
+    // and sorted into ARTICLE_ORDER (unknown article keys appended). Clauses
+    // whose name doesn't resolve, or that declare no article, fall under the
+    // "(unclassified)" bucket. `null` while the first read is in flight.
+    const registryGroups = useMemo<{ article: string; entries: RegisteredClauseEvent[] }[] | null>(() => {
+        if (registeredClauses === null) return null;
+        const byArticle = new Map<string, RegisteredClauseEvent[]>();
+        for (const entry of registeredClauses) {
+            const spec = entry.clauseName ? getClauseSpec(entry.clauseName) : undefined;
+            const article = spec?.block?.drawerArticle ?? "(unclassified)";
+            const list = byArticle.get(article) ?? [];
+            list.push(entry);
+            byArticle.set(article, list);
+        }
+        // The assembly-level privileged-token choice lives in the consent
+        // section but is NOT a clause — it must be available regardless of
+        // whether any consent clause is registered. So when the token picker
+        // is in play, ensure a consent group exists to host it.
+        if (onPrivilegedTokenChange && !byArticle.has("consent")) {
+            byArticle.set("consent", []);
+        }
+        const ordered = ARTICLE_ORDER.filter((a) => byArticle.has(a));
+        const extras = [...byArticle.keys()]
+            .filter((a) => !ARTICLE_ORDER.includes(a))
+            .sort();
+        return [...ordered, ...extras].map((article) => ({
+            article,
+            entries: byArticle.get(article)!,
+        }));
+    }, [registeredClauses, onPrivilegedTokenChange]);
 
-    // Auto-open Identity on each new order — contracts open with who is bound + where in the DAG.
+    // Auto-open Parties on each new order.
     useEffect(() => {
         if (order) setOpenSection("identity");
     }, [order?.id]);
 
-    // Empty state — only valid in embedded mode.
     if (!order) {
         if (!embedded) return null;
         return (
@@ -262,219 +165,21 @@ export function AgreementDrawer({
                     Select a node to edit
                 </p>
                 <p className="text-xs text-neutral-500 leading-relaxed max-w-[260px]">
-                    Click any node on the canvas to choose which clause
-                    clauses its agreement includes.
+                    Click any node on the canvas to inspect its parties and the
+                    clauses available on the network.
                 </p>
             </aside>
         );
     }
 
-    // Single human-facing order number — the 1-based position in the design,
-    // matched by the canvas node label and the node-tab row. The hash is the
-    // tooltip, not the headline.
     const orderIndex = orders ? orders.findIndex((o) => o.id === order.id) : -1;
     const orderNumber = orderIndex >= 0 ? orderIndex + 1 : 1;
     const topology = summarizeAgreement(loadAgreement(order.agreementHash))?.topology;
-    const isRootOrder = (topology?.parentOrderHashes?.length ?? 0) === 0;
-    // Structural role booleans — derived from the order's actual content.
-    // Root + (delivery in fulfilment OR merchant-process anchored) is the
-    // merchant order; the per-role process clauses distinguish courier and
-    // offset sub-orders.
-    const isMerchantOrder = isRootOrder;
-    const isCourierOrder = !isRootOrder && fields.courierProcessIncluded === true;
 
-    function selectSection(section: ArticleKey) {
+    const presentArticles: readonly string[] = ["identity", "registry"];
+
+    function selectSection(section: string) {
         setOpenSection((prev) => (prev === section ? null : section));
-    }
-
-    function commitFields(next: ClauseFields) {
-        setFields(next);
-        onChange({ clauseFields: next });
-    }
-
-    /** Toggle inclusion for a single-clause article. Sets sentinel fields
-     *  on "Included", clears all clause-related fields on "Not included". */
-    function toggleClause(clauseId: string, included: boolean) {
-        const next: ClauseFields = { ...fields };
-        if (included) {
-            const sentinel = CLAUSE_SENTINELS[clauseId];
-            for (const [k, v] of Object.entries(sentinel)) {
-                (next as Record<string, unknown>)[k] = v;
-            }
-        } else {
-            for (const k of CLAUSE_FIELDS[clauseId] ?? []) {
-                delete (next as Record<string, unknown>)[k];
-            }
-        }
-        commitFields(next);
-    }
-
-    function readStringArray(key: string): string[] {
-        const v = fields[key];
-        return Array.isArray(v) ? v.filter((s): s is string => typeof s === "string") : [];
-    }
-
-    const fulfilmentModalities = readStringArray("fulfilmentModalities");
-    const fulfilmentCoordinations = readStringArray("fulfilmentCoordinations");
-    const fulfilmentHandoffPoints = readStringArray("fulfilmentHandoffPoints");
-    const proximityBands = readStringArray("proximityBands");
-
-    /** Cross-article dependency: when fulfilment offers delivery, the
-     *  Logistics clause is required (delivery is physical handoff and must
-     *  carry origin/destination/mass/volume/class). Drives the Logistics
-     *  tab's locked-on state. */
-    const deliveryActive = fulfilmentModalities.includes("delivery");
-
-    /** Fulfilment article: multi-select across modalities, coordinations,
-     *  and handoffPoints. The article emits whole-shape updates; the drawer
-     *  routes side-effects (auto-add / auto-remove courier sub-order) via
-     *  the onDeliveryAdded / onDeliveryRemoved callbacks the article fires
-     *  when delivery is toggled on or off.
-     *
-     *  Delivery → Logistics dependency: when delivery transitions off→on,
-     *  this function also writes the Logistics sentinel into the same
-     *  commitFields call, so the auto-include is atomic with the modality
-     *  update. Transition on→off leaves Logistics where it is — the
-     *  designer may want to keep it for non-delivery flows. */
-    function updateFulfilment(next: {
-        modalities: string[];
-        coordinations: string[];
-        handoffPoints: string[];
-    }) {
-        const becomingDelivery =
-            next.modalities.includes("delivery") && !fulfilmentModalities.includes("delivery");
-        const out: ClauseFields = { ...fields };
-        if (next.modalities.length > 0) out.fulfilmentModalities = next.modalities;
-        else delete (out as Record<string, unknown>).fulfilmentModalities;
-        if (next.coordinations.length > 0) out.fulfilmentCoordinations = next.coordinations;
-        else delete (out as Record<string, unknown>).fulfilmentCoordinations;
-        if (next.handoffPoints.length > 0) out.fulfilmentHandoffPoints = next.handoffPoints;
-        else delete (out as Record<string, unknown>).fulfilmentHandoffPoints;
-        if (becomingDelivery && !isClauseIncluded(GEO_CLAUSE_KEY, out)) {
-            const sentinel = CLAUSE_SENTINELS[GEO_CLAUSE_KEY];
-            for (const [k, v] of Object.entries(sentinel)) {
-                (out as Record<string, unknown>)[k] = v;
-            }
-        }
-        // Delivery → merchant-process auto-included on this (merchant) order.
-        // The courier sub-order is spawned by the page handler with
-        // courierProcessIncluded already set on its assemblyDoc.
-        if (becomingDelivery) {
-            out.merchantProcessIncluded = true;
-        }
-        commitFields(out);
-    }
-
-    function updateProximityBands(next: string[]) {
-        const out: ClauseFields = { ...fields };
-        if (next.length > 0) out.proximityBands = next;
-        else delete (out as Record<string, unknown>).proximityBands;
-        commitFields(out);
-    }
-
-    /** Per-role process-log toggles. Each writes a boolean assemblyDoc field
-     *  that buildOrderAgreement reads to decide whether to anchor the
-     *  matching figaro-merchant-process-v1 / figaro-courier-process-v1
-     *  clause in this order's agreement. Sentinel-style — written when on,
-     *  cleared when off. */
-    const merchantProcessIncluded = fields.merchantProcessIncluded === true;
-    const courierProcessIncluded = fields.courierProcessIncluded === true;
-
-    function setProcessFlag(key: "merchantProcessIncluded" | "courierProcessIncluded", on: boolean) {
-        const out: ClauseFields = { ...fields };
-        if (on) (out as Record<string, unknown>)[key] = true;
-        else delete (out as Record<string, unknown>)[key];
-        commitFields(out);
-    }
-
-    /** Emissions article: multi-select across the GHG accounting standards.
-     *  Each checked standard produces an independent disclosure clause in
-     *  the agreement (one section per standard, scope defaults to 1).
-     *  Carbon-offset retirement is handled at the process level (off-protocol,
-     *  via aggregator contracts) — not here in the per-order drawer. */
-    const activeGhgStandards = readStringArray("ghgStandards");
-
-    function updateGhgStandards(next: string[]) {
-        const out: ClauseFields = { ...fields };
-        if (next.length > 0) out.ghgStandards = next;
-        else delete (out as Record<string, unknown>).ghgStandards;
-        commitFields(out);
-    }
-
-    /** Jurisdiction article state — three layers; layer 1 always active
-     *  (kernel mechanisms, not encoded), layer 2 = Kleros, layer 3 =
-     *  traditional state/ADR. */
-    const klerosCourtValue = typeof fields.klerosCourt === "string" ? fields.klerosCourt : "";
-    const klerosOptedIn = klerosCourtValue !== "";
-    const klerosMinJurorsValue = typeof fields.klerosMinJurors === "string" ? fields.klerosMinJurors : "3";
-    const applicableLawValue = typeof fields.applicableLaw === "string" ? fields.applicableLaw : "";
-    const forumValue = typeof fields.forum === "string" ? fields.forum : "";
-    const languageValue = typeof fields.language === "string" ? fields.language : "";
-    const traditionalActive = applicableLawValue !== "" || forumValue !== "" || languageValue !== "";
-
-    function setKlerosCourt(value: string) {
-        const out: ClauseFields = { ...fields };
-        if (value === "") {
-            delete (out as Record<string, unknown>).klerosCourt;
-            delete (out as Record<string, unknown>).klerosMinJurors;
-        } else {
-            out.klerosCourt = value;
-            if (!out.klerosMinJurors) out.klerosMinJurors = "3";
-        }
-        commitFields(out);
-    }
-
-    function setKlerosMinJurors(value: string) {
-        const out: ClauseFields = { ...fields };
-        out.klerosMinJurors = value;
-        commitFields(out);
-    }
-
-    function setTraditionalField(key: "applicableLaw" | "forum" | "language", value: string) {
-        const out: ClauseFields = { ...fields };
-        if (value === "") delete (out as Record<string, unknown>)[key];
-        else (out as Record<string, unknown>)[key] = value;
-        commitFields(out);
-    }
-
-    function clearTraditional() {
-        const out: ClauseFields = { ...fields };
-        delete (out as Record<string, unknown>).applicableLaw;
-        delete (out as Record<string, unknown>).forum;
-        delete (out as Record<string, unknown>).language;
-        commitFields(out);
-    }
-
-    /** Consent article state — array of {documentHash, documentVersion,
-     *  documentTitle} rows. Each row is independently editable; partial
-     *  rows are silently dropped by buildOrderAgreement. */
-    const consentDocuments: Array<Record<string, string>> = Array.isArray(fields.consentDocuments)
-        ? (fields.consentDocuments as Array<Record<string, string>>)
-        : [];
-
-    function commitConsentDocuments(next: Array<Record<string, string>>) {
-        const out: ClauseFields = { ...fields };
-        if (next.length > 0) out.consentDocuments = next;
-        else delete (out as Record<string, unknown>).consentDocuments;
-        commitFields(out);
-    }
-
-    function addConsentDocument() {
-        commitConsentDocuments([
-            ...consentDocuments,
-            { documentTitle: "", documentVersion: "", documentHash: "" },
-        ]);
-    }
-
-    function updateConsentDocument(index: number, key: string, value: string) {
-        const next = consentDocuments.map((row, i) =>
-            i === index ? { ...row, [key]: value } : row,
-        );
-        commitConsentDocuments(next);
-    }
-
-    function removeConsentDocument(index: number) {
-        commitConsentDocuments(consentDocuments.filter((_, i) => i !== index));
     }
 
     return (
@@ -515,16 +220,16 @@ export function AgreementDrawer({
                         ✕
                     </button>
                     <div className="border-t border-neutral-200 w-6 my-1" />
-                    {ARTICLES.map((article) => (
+                    {presentArticles.map((article) => (
                         <button
-                            key={article.key}
+                            key={article}
                             type="button"
-                            onClick={() => { setMinimized(false); setOpenSection(article.key); }}
-                            title={article.label}
-                            data-testid={`drawer-rail-${article.key}`}
+                            onClick={() => { setMinimized(false); setOpenSection(article); }}
+                            title={article}
+                            data-testid={`drawer-rail-${article}`}
                             className="w-full text-[10px] text-neutral-500 hover:text-black px-1 py-1"
                         >
-                            {article.label.slice(0, 3)}
+                            {article.slice(0, 3)}
                         </button>
                     ))}
                 </div>
@@ -597,14 +302,14 @@ export function AgreementDrawer({
                     data-testid="drawer-articles-nav"
                     className="w-[112px] shrink-0 border-r border-neutral-200 overflow-y-auto"
                 >
-                    {ARTICLES.map((article) => {
-                        const isOpen = openSection === article.key;
+                    {presentArticles.map((article) => {
+                        const isOpen = openSection === article;
                         return (
                             <button
-                                key={article.key}
+                                key={article}
                                 type="button"
-                                onClick={() => selectSection(article.key)}
-                                data-testid={`drawer-tab-${article.key}`}
+                                onClick={() => selectSection(article)}
+                                data-testid={`drawer-tab-${article}`}
                                 aria-pressed={isOpen}
                                 className={`w-full text-left text-xs px-4 py-2.5 ${
                                     isOpen
@@ -612,7 +317,7 @@ export function AgreementDrawer({
                                         : "text-neutral-600 hover:bg-neutral-50"
                                 }`}
                             >
-                                {article.label}
+                                {article}
                             </button>
                         );
                     })}
@@ -663,153 +368,128 @@ export function AgreementDrawer({
                         </section>
                     )}
 
-                    {openSection === "order" && (
-                        <section data-testid="drawer-section-order">
-                            <p className="text-sm text-black mb-1">
-                                {getClauseInfo(COMMERCE_CLAUSE_KEY)?.title ?? "Commerce"}
+                    {openSection === "registry" && (
+                        <section data-testid="drawer-section-registry">
+                            <p className="text-[11px] text-neutral-500 mb-3">
+                                Clauses registered on{" "}
+                                <code className="font-mono">ClauseRegistry</code>, read live
+                                from the network.
                             </p>
-                            <p className="text-xs text-neutral-500 leading-relaxed">
-                                Order details (currency, payment, line items) are filled in at
-                                commit time and validated against{" "}
-                                <code className="font-mono text-[11px]">{COMMERCE_CLAUSE_KEY}</code>{" "}
-                                — the commerce clause. No composition decision lives here; this
-                                clause is included in every agreement by default.
-                            </p>
-                            {!commerceAvailable && (
+                            {registeredClauses === null ? (
                                 <p
-                                    className="text-xs text-amber-700 mt-2"
-                                    data-testid="drawer-order-unavailable"
+                                    className="text-xs text-neutral-500"
+                                    data-testid="drawer-registry-loading"
                                 >
-                                    Not registered on the network this site is reading; agreements
-                                    composed here cannot be attested.
+                                    Reading the registry&hellip;
                                 </p>
-                            )}
-                        </section>
-                    )}
-
-                    {openSection === "attestations" && (
-                        <section data-testid="drawer-section-attestations" className="space-y-5">
-                            <AttestationsArticle
-                                isMerchantOrder={isMerchantOrder}
-                                isCourierOrder={isCourierOrder}
-                                merchantProcessIncluded={merchantProcessIncluded}
-                                courierProcessIncluded={courierProcessIncluded}
-                                onMerchantToggle={(next) => setProcessFlag("merchantProcessIncluded", next)}
-                                onCourierToggle={(next) => setProcessFlag("courierProcessIncluded", next)}
-                                deliveryActive={deliveryActive}
-                                parentDeliveryActive={parentDeliveryActive}
-                                merchantProcessAvailable={merchantProcessAvailable}
-                                courierProcessAvailable={courierProcessAvailable}
-                            />
-                        </section>
-                    )}
-
-                    {openSection === "fulfilment" && (
-                        <section data-testid="drawer-section-fulfilment" className="space-y-6">
-                            {fulfilmentAvailable ? (
-                                <FulfilmentArticle
-                                    isCourierOrder={isCourierOrder}
-                                    modalities={fulfilmentModalities}
-                                    coordinations={fulfilmentCoordinations}
-                                    handoffPoints={fulfilmentHandoffPoints}
-                                    proximityBands={proximityBands}
-                                    onChange={updateFulfilment}
-                                    onProximityChange={updateProximityBands}
-                                    hasChildren={hasChildren}
-                                    onDeliveryAdded={() => order && onDeliverySelected?.(order.id)}
-                                    onDeliveryRemoved={() => order && onDeliveryUnselected?.(order.id)}
-                                />
+                            ) : !registryGroups || registryGroups.length === 0 ? (
+                                <p
+                                    className="text-xs text-neutral-500"
+                                    data-testid="drawer-registry-empty"
+                                >
+                                    No clauses registered on the network this site is reading.
+                                </p>
                             ) : (
-                                <p
-                                    className="text-xs text-amber-700"
-                                    data-testid="drawer-fulfilment-unavailable"
-                                >
-                                    <code className="font-mono text-[11px]">{FULFILMENT_V2_CLAUSE_KEY}</code>{" "}
-                                    is not registered on the network this site is reading; this article is unavailable.
-                                </p>
+                                <div className="space-y-5" data-testid="drawer-registry-list">
+                                    {(registryGroups ?? []).map((group) => (
+                                        <div key={group.article} data-testid={`drawer-registry-group-${group.article}`}>
+                                            <p className="text-[11px] font-semibold text-neutral-700 mb-2">
+                                                {group.article}
+                                            </p>
+                                            <ul className="space-y-2">
+                                                {group.entries.map((clause, i) => {
+                                                    const clauseKey = clause.clauseName ?? clause.clauseIdHash;
+                                                    const selected = selectedClauseValues
+                                                        ? clauseKey in selectedClauseValues
+                                                        : false;
+                                                    const values = selectedClauseValues?.[clauseKey] ?? {};
+                                                    const spec = clause.clauseName ? getClauseSpec(clause.clauseName) : undefined;
+                                                    return (
+                                                        <li key={`${clause.clauseIdHash}-${i}`}>
+                                                            <label className="flex items-center gap-2 text-xs text-neutral-700">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="h-3.5 w-3.5"
+                                                                    checked={selected}
+                                                                    onChange={(e) => onToggleClause?.(clauseKey, e.target.checked)}
+                                                                    data-testid={`drawer-registry-clause-${clauseKey}`}
+                                                                />
+                                                                <span className="font-mono text-[11px]">
+                                                                    {clause.clauseName ??
+                                                                        `${clause.clauseIdHash.slice(0, 10)}…`}
+                                                                </span>
+                                                            </label>
+                                                            {selected && spec && spec.fields.length > 0 && (
+                                                                <div className="ml-6 mt-2 space-y-3">
+                                                                    {spec.fields.map((field) => (
+                                                                        <ClauseFieldControl
+                                                                            key={field.name}
+                                                                            field={field}
+                                                                            value={values[field.name]}
+                                                                            onChange={(v) => onSetClauseField?.(clauseKey, field.name, v)}
+                                                                            testId={`drawer-field-${clauseKey}-${field.name}`}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </li>
+                                                    );
+                                                })}
+                                                {group.article === "consent" && onPrivilegedTokenChange && (
+                                                    <li>
+                                                        <label className="flex items-center gap-2 text-xs text-neutral-700">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="h-3.5 w-3.5"
+                                                                checked={tokenChecked || !!privilegedToken}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setTokenChecked(true);
+                                                                    } else {
+                                                                        setTokenChecked(false);
+                                                                        onPrivilegedTokenChange("");
+                                                                    }
+                                                                }}
+                                                                data-testid="drawer-registry-clause-privileged-token"
+                                                            />
+                                                            <span className="font-mono text-[11px]">privileged-token</span>
+                                                        </label>
+                                                        {(tokenChecked || !!privilegedToken) && (
+                                                            <div className="ml-6 mt-2" data-testid="drawer-privileged-token-group">
+                                                                <select
+                                                                    value={privilegedToken ?? ""}
+                                                                    onChange={(e) => onPrivilegedTokenChange(e.target.value)}
+                                                                    data-testid="drawer-privileged-token"
+                                                                    className="text-xs bg-white border border-neutral-300 rounded px-2 py-1.5 min-h-11 w-full hover:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                >
+                                                                    <option value="" disabled>Select a token…</option>
+                                                                    {(commonTokens ?? []).map((t) => (
+                                                                        <option key={t.address} value={t.address}>
+                                                                            {t.symbol}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        )}
+                                                    </li>
+                                                )}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
-                            {/* Route details (geo) — folded in from the former Logistics
-                                section; locked on when fulfilment includes delivery. */}
-                            <div className="border-t border-neutral-100 pt-5">
-                                <ClauseToggleArticle
-                                    clauseId={GEO_CLAUSE_KEY}
-                                    included={isClauseIncluded(GEO_CLAUSE_KEY, fields)}
-                                    onToggle={(next) => toggleClause(GEO_CLAUSE_KEY, next)}
-                                    disabled={deliveryActive || !geoAvailable}
-                                    disabledHint={
-                                        !geoAvailable
-                                            ? "Not registered on the network this site is reading."
-                                            : "Required when fulfilment includes delivery."
-                                    }
-                                    lockedOn={deliveryActive && geoAvailable}
-                                />
-                            </div>
-                        </section>
-                    )}
-
-                    {openSection === "emissions" && (
-                        <section data-testid="drawer-section-emissions">
-                            <EmissionsArticle
-                                checked={activeGhgStandards}
-                                onChange={updateGhgStandards}
-                                availableClauses={availableGhgKeys}
-                            />
-                        </section>
-                    )}
-
-                    {openSection === "dispute-resolution" && (
-                        <section data-testid="drawer-section-dispute-resolution">
-                            {disputeResolutionAvailable ? (
-                                <JurisdictionArticle
-                                    klerosCourt={klerosCourtValue}
-                                    klerosMinJurors={klerosMinJurorsValue}
-                                    applicableLaw={applicableLawValue}
-                                    forum={forumValue}
-                                    language={languageValue}
-                                    klerosOptedIn={klerosOptedIn}
-                                    onKlerosCourtChange={setKlerosCourt}
-                                    onKlerosMinJurorsChange={setKlerosMinJurors}
-                                    onTraditionalFieldChange={setTraditionalField}
-                                    onClearTraditional={clearTraditional}
-                                />
-                            ) : (
-                                <p
-                                    className="text-xs text-amber-700"
-                                    data-testid="drawer-dispute-resolution-unavailable"
-                                >
-                                    {!arbitrationKlerosAvailable && (
-                                        <>
-                                            <code className="font-mono text-[11px]">{ARBITRATION_KLEROS_CLAUSE_KEY}</code>{" "}
-                                        </>
-                                    )}
-                                    {!applicableLawAvailable && (
-                                        <>
-                                            <code className="font-mono text-[11px]">{APPLICABLE_LAW_CLAUSE_KEY}</code>{" "}
-                                        </>
-                                    )}
-                                    is not registered on the network this site is reading; this article is unavailable.
-                                </p>
-                            )}
-                        </section>
-                    )}
-
-                    {openSection === "consent" && (
-                        <section data-testid="drawer-section-consent">
-                            {consentAvailable ? (
-                                <ConsentArticle
-                                    documents={consentDocuments}
-                                    onAdd={addConsentDocument}
-                                    onUpdate={updateConsentDocument}
-                                    onRemove={removeConsentDocument}
-                                />
-                            ) : (
-                                <p
-                                    className="text-xs text-amber-700"
-                                    data-testid="drawer-consent-unavailable"
-                                >
-                                    <code className="font-mono text-[11px]">{CONSENT_CLAUSE_KEY}</code>{" "}
-                                    is not registered on the network this site is reading; this article is unavailable.
-                                </p>
+                            {templateJson && (
+                                <div className="mt-6 border-t border-neutral-200 pt-4">
+                                    <p className="text-[11px] font-semibold text-neutral-700 mb-2">
+                                        Assembly template (live)
+                                    </p>
+                                    <pre
+                                        data-testid="drawer-registry-template-json"
+                                        className="text-[10px] font-mono text-neutral-600 bg-neutral-50 border border-neutral-200 rounded p-2 overflow-x-auto whitespace-pre"
+                                    >
+                                        {templateJson}
+                                    </pre>
+                                </div>
                             )}
                         </section>
                     )}
@@ -823,790 +503,99 @@ export function AgreementDrawer({
 }
 
 /**
- * Single-clause article body — title + description (from the spec JSON)
- * + a binary inclusion toggle.
+ * One clause field, captured at design time — single-select per the
+ * one-choice-per-article rule. enum / array-of-enum render as radios; scalar
+ * fields render as inputs; structured fields (object / array-of-object) are
+ * left blank here and filled downstream at checkout.
  */
-function ClauseToggleArticle({
-    clauseId,
-    included,
-    onToggle,
-    disabled = false,
-    disabledHint,
-    lockedOn = false,
+function ClauseFieldControl({
+    field,
+    value,
+    onChange,
+    testId,
 }: {
-    clauseId: string;
-    included: boolean;
-    onToggle: (next: boolean) => void;
-    /** When true, the toggle is locked at its current value. Used to express
-     *  cross-article dependencies — e.g., Logistics is locked-on while
-     *  Fulfilment offers delivery. */
-    disabled?: boolean;
-    /** One-line hint rendered beneath the locked toggle explaining why. */
-    disabledHint?: string;
-    /** Distinguishes "this clause is mandated by another decision and
-     *  forced-included" from plain disabled ("you can't edit this here"
-     *  / "doesn't apply to this role"). When true, surfaces a "Required"
-     *  badge inline with the toggle label so the user reads
-     *  required-and-on vs not-applicable as visually distinct states.
-     *  Implies disabled. */
-    lockedOn?: boolean;
+    field: FieldSpec;
+    value: unknown;
+    onChange: (next: unknown) => void;
+    testId: string;
 }) {
-    const info = getClauseInfo(clauseId);
-    const hintId = useId();
-    const showHint = disabled && !!disabledHint;
-    return (
-        <div>
-            <p className="text-sm text-black mb-1">{info?.title ?? clauseId}</p>
-            <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-                {info?.description ?? ""}
-            </p>
-            <label className={`flex items-center gap-2 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
+    const label = <span className="text-[11px] text-neutral-500">{field.name}</span>;
+
+    if (field.type === "enum") {
+        const selected = typeof value === "string" ? value : undefined;
+        return (
+            <div data-testid={`${testId}-group`}>
+                <div className="mb-1">{label}</div>
+                <div className="space-y-1">
+                    {field.values.map((opt) => (
+                        <label key={opt} className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
+                            <input
+                                type="radio"
+                                name={testId}
+                                checked={selected === opt}
+                                onChange={() => onChange(opt)}
+                                data-testid={`${testId}-${opt}`}
+                                className="accent-accent"
+                            />
+                            <span>{opt}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // array-of-enum → single-select (one choice per article), stored as a
+    // 1-element array to match the clause's array field shape.
+    if (field.type === "array" && field.items.type === "enum") {
+        const arr = Array.isArray(value) ? (value as string[]) : [];
+        const selected = arr[0];
+        const options = field.items.values;
+        return (
+            <div data-testid={`${testId}-group`}>
+                <div className="mb-1">{label}</div>
+                <div className="space-y-1">
+                    {options.map((opt) => (
+                        <label key={opt} className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
+                            <input
+                                type="radio"
+                                name={testId}
+                                checked={selected === opt}
+                                onChange={() => onChange([opt])}
+                                data-testid={`${testId}-${opt}`}
+                                className="accent-accent"
+                            />
+                            <span>{opt}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    if (field.type === "boolean") {
+        return (
+            <label className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
                 <input
                     type="checkbox"
-                    checked={included}
-                    onChange={(e) => onToggle(e.target.checked)}
-                    disabled={disabled}
-                    aria-describedby={showHint ? hintId : undefined}
-                    data-testid={`drawer-include-${clauseId}`}
-                    className="accent-accent disabled:opacity-100"
+                    checked={value === true}
+                    onChange={(e) => onChange(e.target.checked ? true : undefined)}
+                    data-testid={testId}
+                    className="accent-accent"
                 />
-                <span className={`text-xs ${disabled && !lockedOn ? "text-neutral-400" : "text-neutral-700"}`}>
-                    Included in this order&apos;s agreement
-                </span>
-                {lockedOn && (
-                    <span
-                        aria-hidden
-                        data-testid={`drawer-include-${clauseId}-required-badge`}
-                        className="ml-auto inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700"
-                    >
-                        Required
-                    </span>
-                )}
+                <span>{field.name}</span>
             </label>
-            {showHint && (
-                <p id={hintId} className="text-[10px] text-neutral-400 italic mt-1 ml-6">
-                    {disabledHint}
-                </p>
-            )}
-        </div>
-    );
-}
-
-/**
- * Attestations article — the sovereign process-log clause for THIS order's
- * role. Role-scoped: only the relevant toggle renders, never both-with-one-
- * disabled.
- *
- *   - Merchant root → the merchant-process toggle (figaro-merchant-process-v1),
- *     forced on + locked when this order offers delivery.
- *   - Delivery courier sub-order → the courier-process toggle
- *     (figaro-courier-process-v1), forced on + locked when the parent offers
- *     delivery.
- *   - Any other (generic) sub-order → neither; process logs are role-bound, so
- *     the section states that plainly rather than showing dead toggles.
- */
-function AttestationsArticle({
-    isMerchantOrder,
-    isCourierOrder,
-    merchantProcessIncluded,
-    courierProcessIncluded,
-    onMerchantToggle,
-    onCourierToggle,
-    deliveryActive,
-    parentDeliveryActive,
-    merchantProcessAvailable,
-    courierProcessAvailable,
-}: {
-    isMerchantOrder: boolean;
-    isCourierOrder: boolean;
-    merchantProcessIncluded: boolean;
-    courierProcessIncluded: boolean;
-    onMerchantToggle: (next: boolean) => void;
-    onCourierToggle: (next: boolean) => void;
-    /** Delivery is in this order's fulfilment modalities (merchant order case). */
-    deliveryActive: boolean;
-    /** Parent order has delivery in its fulfilment (courier sub-order case). */
-    parentDeliveryActive: boolean;
-    /** True when `figaro-merchant-process-v1` is registered on the network. */
-    merchantProcessAvailable: boolean;
-    /** True when `figaro-courier-process-v1` is registered on the network. */
-    courierProcessAvailable: boolean;
-}) {
-    const intro = (
-        <p className="text-xs text-neutral-500 leading-relaxed">
-            A sovereign event log: the seller attests its own internal events
-            under its own clause, which anchors the on-chain inclusion proof for
-            those runtime attestations.
-        </p>
-    );
-
-    // Courier sub-order → courier-process only.
-    if (isCourierOrder) {
-        const lockedOn = parentDeliveryActive && courierProcessAvailable;
-        return (
-            <div className="space-y-5">
-                {intro}
-                <ClauseToggleArticle
-                    clauseId={COURIER_PROCESS_CLAUSE_KEY}
-                    included={lockedOn ? true : courierProcessIncluded}
-                    onToggle={courierProcessAvailable && !lockedOn ? onCourierToggle : () => undefined}
-                    disabled={!courierProcessAvailable || lockedOn}
-                    disabledHint={
-                        !courierProcessAvailable
-                            ? "Not registered on the network this site is reading."
-                            : lockedOn
-                                ? "Required when the parent order offers delivery."
-                                : undefined
-                    }
-                    lockedOn={lockedOn}
-                />
-            </div>
         );
     }
 
-    // Merchant root → merchant-process only.
-    if (isMerchantOrder) {
-        const lockedOn = deliveryActive && merchantProcessAvailable;
-        return (
-            <div className="space-y-5">
-                {intro}
-                <ClauseToggleArticle
-                    clauseId={MERCHANT_PROCESS_CLAUSE_KEY}
-                    included={lockedOn ? true : merchantProcessIncluded}
-                    onToggle={merchantProcessAvailable && !lockedOn ? onMerchantToggle : () => undefined}
-                    disabled={!merchantProcessAvailable || lockedOn}
-                    disabledHint={
-                        !merchantProcessAvailable
-                            ? "Not registered on the network this site is reading."
-                            : lockedOn
-                                ? "Required when fulfilment includes delivery."
-                                : undefined
-                    }
-                    lockedOn={lockedOn}
-                />
-            </div>
-        );
-    }
-
-    // Generic sub-order → neither process log applies.
+    // Everything else is a free-form / structured value, not a bounded design
+    // choice. The designer does NOT type it here — a fill-in field is exactly
+    // what turns the template into a checkout hash. It's captured downstream by
+    // a mounted component at checkout/runtime. Surface it as deferred, not
+    // fillable.
     return (
-        <p className="text-xs text-neutral-500 leading-relaxed" data-testid="drawer-attestations-none">
-            Process logs are role-bound — the merchant root carries the merchant
-            log, a delivery courier carries the courier log. This order carries
-            neither.
-        </p>
-    );
-}
-
-const MODALITY_OPTIONS: ReadonlyArray<{ value: FulfilmentModality; label: string }> = [
-    { value: "consume-onsite", label: "Consume on-site" },
-    { value: "pickup", label: "Pickup" },
-    { value: "delivery", label: "Delivery" },
-    { value: "virtual", label: "Virtual" },
-];
-
-const COORDINATION_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-    { value: "buyer-assigned", label: "Buyer chooses courier" },
-    { value: "seller-assigned", label: "Merchant arranges courier" },
-    { value: "dutch-auction", label: "Dutch-auction courier" },
-];
-
-const HANDOFF_POINT_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-    { value: "face-to-face", label: "Face-to-face" },
-    { value: "dead-drop", label: "Dead-drop" },
-    { value: "parking-area", label: "Parking / curbside" },
-    { value: "locker", label: "Locker" },
-];
-
-const PROXIMITY_BAND_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-    { value: "zone-wifi", label: "Zone — same WiFi" },
-    { value: "nearby-ble", label: "Nearby — BLE" },
-    { value: "contact-nfc", label: "Contact — NFC" },
-];
-
-function toggleInList<T>(list: readonly T[], value: T): T[] {
-    return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
-}
-
-/**
- * Fulfilment article — modalities + (conditional) courier coordination +
- * handoff points + (conditional) proximity bands. All four subsections are
- * always rendered; coordination is gated on "delivery" in modalities and
- * proximity is gated on at least one physical modality. Gated subsections
- * show their options disabled with an inline hint so users see what the
- * decision space is even before unlocking it.
- *
- * Picking Delivery triggers `onDeliveryAdded` (the page auto-adds a courier
- * sub-order); unchecking triggers `onDeliveryRemoved`.
- */
-function FulfilmentArticle({
-    modalities,
-    coordinations,
-    handoffPoints,
-    proximityBands,
-    onChange,
-    onProximityChange,
-    hasChildren,
-    onDeliveryAdded,
-    onDeliveryRemoved,
-    isCourierOrder,
-}: {
-    modalities: string[];
-    coordinations: string[];
-    handoffPoints: string[];
-    proximityBands: string[];
-    onChange: (next: { modalities: string[]; coordinations: string[]; handoffPoints: string[] }) => void;
-    onProximityChange: (next: string[]) => void;
-    hasChildren: boolean;
-    onDeliveryAdded: () => void;
-    onDeliveryRemoved: () => void;
-    /** True when this order is a courier sub-order — a courier order
-     *  involves a physical handoff inherently, so proximity verification
-     *  is authorable on it even though it carries no fulfilment modality. */
-    isCourierOrder: boolean;
-}) {
-    const deliveryOffered = modalities.includes("delivery");
-    const hasPhysicalModality = modalities.some((m) => m !== "virtual");
-    // Proximity verification gates on a physical handoff. A delivery-offering
-    // order signals that via its modality; a courier sub-order signals it
-    // structurally (it IS the delivery leg) — enable proximity for both.
-    const proximityApplicable = hasPhysicalModality || isCourierOrder;
-
-    /** Single-select per section per the assembly-uniqueness model: one
-     *  assembly = one fulfilment shape. Modalities and coordination are
-     *  mandatory-when-applicable (no deselect); handoff and proximity
-     *  are optional (the radio's Clear affordance maps to "no clause"
-     *  on the agreement). All four sections still write `string[]`
-     *  (length 0 or 1) so the v2 clause serialization is unchanged. */
-    function selectModality(value: string) {
-        if (modalities.length === 1 && modalities[0] === value) return;
-        const nextModalities = [value];
-        const wasDelivery = deliveryOffered;
-        const isDelivery = value === "delivery";
-        const becomingDelivery = isDelivery && !wasDelivery;
-        const removingDelivery = !isDelivery && wasDelivery;
-        const nextCoordinations = isDelivery
-            ? (coordinations.length > 0 ? coordinations : ["seller-assigned"])
-            : [];
-        onChange({ modalities: nextModalities, coordinations: nextCoordinations, handoffPoints });
-        if (becomingDelivery) onDeliveryAdded();
-        if (removingDelivery) onDeliveryRemoved();
-    }
-
-    function selectCoordination(value: string) {
-        if (coordinations.length === 1 && coordinations[0] === value) return;
-        onChange({ modalities, coordinations: [value], handoffPoints });
-    }
-
-    function selectHandoffPoint(value: string) {
-        if (handoffPoints.length === 1 && handoffPoints[0] === value) return;
-        onChange({ modalities, coordinations, handoffPoints: [value] });
-    }
-
-    function clearHandoffPoint() {
-        if (handoffPoints.length === 0) return;
-        onChange({ modalities, coordinations, handoffPoints: [] });
-    }
-
-    function selectProximityBand(value: string) {
-        if (proximityBands.length === 1 && proximityBands[0] === value) return;
-        onProximityChange([value]);
-    }
-
-    function clearProximityBand() {
-        if (proximityBands.length === 0) return;
-        onProximityChange([]);
-    }
-
-    return (
-        <div className="space-y-5">
-            <RadioGroup
-                label="Modality"
-                options={MODALITY_OPTIONS}
-                selected={modalities[0]}
-                onSelect={selectModality}
-                testIdPrefix="drawer-fulfilment-modality"
-            />
-
-            <RadioGroup
-                label="Courier coordination"
-                hint={deliveryOffered ? undefined : "Pick Delivery to enable."}
-                options={COORDINATION_OPTIONS}
-                selected={coordinations[0]}
-                onSelect={selectCoordination}
-                disabled={!deliveryOffered}
-                testIdPrefix="drawer-fulfilment-coordination"
-            />
-
-            <RadioGroup
-                label="Handoff point"
-                options={HANDOFF_POINT_OPTIONS}
-                selected={handoffPoints[0]}
-                onSelect={selectHandoffPoint}
-                onClear={clearHandoffPoint}
-                testIdPrefix="drawer-fulfilment-handoff"
-            />
-
-            <RadioGroup
-                label="Proximity verification"
-                hint={proximityApplicable ? undefined : "Pick a physical modality to enable."}
-                options={PROXIMITY_BAND_OPTIONS}
-                selected={proximityBands[0]}
-                onSelect={selectProximityBand}
-                onClear={clearProximityBand}
-                disabled={!proximityApplicable}
-                testIdPrefix="drawer-proximity-band"
-            />
-
-            {deliveryOffered && (
-                <p
-                    className="text-[11px] text-neutral-500 leading-relaxed"
-                    data-testid="drawer-fulfilment-courier-hint"
-                >
-                    Delivery adds: route details (required, below), courier
-                    coordination, a courier sub-order
-                    {hasChildren ? " (on the canvas)" : " (added to the canvas)"},
-                    and the merchant process log.
-                </p>
-            )}
-        </div>
-    );
-}
-
-/**
- * Single-select radio group. When `onClear` is supplied, a small "Clear"
- * affordance appears in the header whenever a value is selected — that's
- * the only path back to "no selection" since HTML radios don't deselect
- * on second click. Sections that are mandatory-when-applicable (modality,
- * coordination) omit `onClear`; optional sections (handoff, proximity)
- * supply it.
- */
-function RadioGroup({
-    label,
-    hint,
-    options,
-    selected,
-    onSelect,
-    onClear,
-    disabled = false,
-    testIdPrefix,
-}: {
-    label: string;
-    hint?: string;
-    options: ReadonlyArray<{ value: string; label: string }>;
-    selected: string | undefined;
-    onSelect: (value: string) => void;
-    onClear?: () => void;
-    disabled?: boolean;
-    testIdPrefix: string;
-}) {
-    const hintId = useId();
-    const showClear = !!onClear && !disabled && selected !== undefined;
-    return (
-        <div data-testid={`${testIdPrefix}-group`}>
-            <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-[11px] text-neutral-500">{label}</span>
-                {hint && (
-                    <span id={hintId} className="text-[10px] text-neutral-400 italic">
-                        {hint}
-                    </span>
-                )}
-                {showClear && (
-                    <button
-                        type="button"
-                        onClick={() => onClear!()}
-                        className="ml-auto text-[10px] text-neutral-400 hover:text-neutral-700 underline"
-                        data-testid={`${testIdPrefix}-clear`}
-                    >
-                        Clear
-                    </button>
-                )}
-            </div>
-            <div className="space-y-1">
-                {options.map((opt) => (
-                    <label
-                        key={opt.value}
-                        className={`flex items-center gap-2 text-xs ${disabled ? "text-neutral-400 cursor-not-allowed" : "text-neutral-700 cursor-pointer"}`}
-                    >
-                        <input
-                            type="radio"
-                            name={testIdPrefix}
-                            checked={selected === opt.value}
-                            onChange={() => !disabled && onSelect(opt.value)}
-                            disabled={disabled}
-                            aria-describedby={hint ? hintId : undefined}
-                            data-testid={`${testIdPrefix}-${opt.value}`}
-                            className="accent-accent disabled:opacity-100"
-                        />
-                        <span>{opt.label}</span>
-                    </label>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-function CheckboxGroup({
-    label,
-    hint,
-    options,
-    checked,
-    onToggle,
-    disabled = false,
-    testIdPrefix,
-}: {
-    label: string;
-    hint?: string;
-    options: ReadonlyArray<{ value: string; label: string }>;
-    checked: string[];
-    onToggle: (value: string) => void;
-    disabled?: boolean;
-    testIdPrefix: string;
-}) {
-    const hintId = useId();
-    return (
-        <div data-testid={`${testIdPrefix}-group`}>
-            <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-[11px] text-neutral-500">{label}</span>
-                {hint && (
-                    <span id={hintId} className="text-[10px] text-neutral-400 italic">
-                        {hint}
-                    </span>
-                )}
-            </div>
-            <div className="space-y-1">
-                {options.map((opt) => (
-                    <label
-                        key={opt.value}
-                        className={`flex items-center gap-2 text-xs ${disabled ? "text-neutral-400 cursor-not-allowed" : "text-neutral-700 cursor-pointer"}`}
-                    >
-                        <input
-                            type="checkbox"
-                            checked={checked.includes(opt.value)}
-                            onChange={() => !disabled && onToggle(opt.value)}
-                            disabled={disabled}
-                            aria-describedby={hint ? hintId : undefined}
-                            data-testid={`${testIdPrefix}-${opt.value}`}
-                            className="accent-accent disabled:opacity-100"
-                        />
-                        <span>{opt.label}</span>
-                    </label>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-/**
- * Emissions article — multi-select across the GHG accounting standards.
- * Each checked standard produces an independent disclosure clause in the
- * agreement (one section per standard, scope defaults to 1).
- *
- * Carbon-offset retirement is process-level (off-protocol via aggregator
- * contracts), not order-level. The buyer retires offsets from the
- * pre-resolve panel on the process page, sized to the aggregated
- * `totalActualGrams` across all measurement attestations in the process.
- * No offset selection lives in this drawer.
- */
-function EmissionsArticle({
-    checked,
-    onChange,
-    availableClauses,
-}: {
-    checked: string[];
-    onChange: (next: string[]) => void;
-    /** GHG-disclosure clauseIds actually registered on the network this site
-     *  is reading. The set defines the offered options; standards whose
-     *  clause is unregistered are not selectable. While the read is in
-     *  flight, the parent passes the full bundled list (permissive). */
-    availableClauses: readonly string[];
-}) {
-    const standardOptions = availableClauses.map((clauseId) => ({
-        value: clauseId,
-        label: getClauseInfo(clauseId)?.title ?? clauseId,
-    }));
-    return (
-        <div className="space-y-5">
-            {standardOptions.length === 0 ? (
-                <p
-                    className="text-xs text-amber-700"
-                    data-testid="drawer-emissions-unavailable"
-                >
-                    No emission-disclosure clauses are registered on the network this
-                    site is reading.
-                </p>
-            ) : (
-                <CheckboxGroup
-                    label="Emission disclosures"
-                    options={standardOptions}
-                    checked={checked}
-                    onToggle={(value) => onChange(toggleInList(checked, value))}
-                    testIdPrefix="drawer-emissions-standard"
-                />
-            )}
-        </div>
-    );
-}
-
-// Derived from the canonical KLEROS_COURTS catalogue (lib/dispute) so the
-// designer's subcourt picker cannot drift from the /dispute court list.
-const KLEROS_COURT_OPTIONS: ReadonlyArray<{ value: string; label: string }> =
-    KLEROS_COURTS.map((court) => ({ value: court.key, label: court.name }));
-
-/**
- * Jurisdiction article — three layers of dispute resolution.
- *
- *   Layer 1: Kernel mechanisms (asymmetric bonding + buyer dominance).
- *            Always active; not encoded in the agreement. Informational only.
- *
- *   Layer 2: Kleros — decentralized off-chain arbitration. On by default.
- *            Encoded via the `klerosCourt` + `klerosMinJurors` clause fields.
- *
- *   Layer 3: State / ADR / traditional jurisdiction. Optional, on top of
- *            layers 1 + 2. Encoded via `applicableLaw` + `forum` + `language`.
- */
-function JurisdictionArticle({
-    klerosCourt,
-    klerosMinJurors,
-    applicableLaw,
-    forum,
-    language,
-    klerosOptedIn,
-    onKlerosCourtChange,
-    onKlerosMinJurorsChange,
-    onTraditionalFieldChange,
-    onClearTraditional,
-}: {
-    klerosCourt: string;
-    klerosMinJurors: string;
-    applicableLaw: string;
-    forum: string;
-    language: string;
-    klerosOptedIn: boolean;
-    onKlerosCourtChange: (value: string) => void;
-    onKlerosMinJurorsChange: (value: string) => void;
-    onTraditionalFieldChange: (key: "applicableLaw" | "forum" | "language", value: string) => void;
-    onClearTraditional: () => void;
-}) {
-    // Toggle reflects intent. Initialized from any persisted field value
-    // so that reopening a node with state/ADR already filled keeps the
-    // toggle in the right state.
-    const hasPersistedTraditional = applicableLaw !== "" || forum !== "" || language !== "";
-    const [stateAdrOpen, setStateAdrOpen] = useState(hasPersistedTraditional);
-    useEffect(() => {
-        if (hasPersistedTraditional) setStateAdrOpen(true);
-    }, [hasPersistedTraditional]);
-    return (
-        <div className="space-y-5">
-            <div data-testid="drawer-jurisdiction-layer1">
-                <p className="text-[11px] text-neutral-500 mb-1">Bonded settlement</p>
-                <p className="text-xs text-neutral-700 leading-relaxed">
-                    Always active. Cooperation is the dominant strategy under
-                    asymmetric bonding and buyer dominance — the protocol&apos;s
-                    primary jurisdictional layer.
-                </p>
-            </div>
-
-            <div data-testid="drawer-jurisdiction-layer2">
-                <label className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer mb-2">
-                    <input
-                        type="checkbox"
-                        checked={klerosOptedIn}
-                        onChange={(e) => onKlerosCourtChange(e.target.checked ? "general" : "")}
-                        data-testid="drawer-jurisdiction-kleros-toggle"
-                        className="accent-accent disabled:opacity-100"
-                    />
-                    <span className="font-medium">Kleros — off-chain arbitration</span>
-                </label>
-                {klerosOptedIn && (
-                    <div className="ml-6 space-y-2">
-                        <div>
-                            <label className="block text-[11px] text-neutral-500 mb-1">Subcourt</label>
-                            <select
-                                value={klerosCourt}
-                                onChange={(e) => onKlerosCourtChange(e.target.value)}
-                                data-testid="drawer-jurisdiction-kleros-court"
-                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full bg-white"
-                            >
-                                {KLEROS_COURT_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-[11px] text-neutral-500 mb-1">Minimum jurors</label>
-                            <input
-                                type="number"
-                                min={1}
-                                max={99}
-                                value={klerosMinJurors}
-                                onChange={(e) => onKlerosMinJurorsChange(e.target.value)}
-                                data-testid="drawer-jurisdiction-kleros-min-jurors"
-                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-20 bg-white"
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <div data-testid="drawer-jurisdiction-layer3">
-                <label className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer mb-2">
-                    <input
-                        type="checkbox"
-                        checked={stateAdrOpen}
-                        onChange={(e) => {
-                            if (e.target.checked) {
-                                setStateAdrOpen(true);
-                            } else {
-                                setStateAdrOpen(false);
-                                onClearTraditional();
-                            }
-                        }}
-                        data-testid="drawer-jurisdiction-traditional-toggle"
-                        className="accent-accent disabled:opacity-100"
-                    />
-                    <span className="font-medium">State / ADR jurisdiction</span>
-                </label>
-                {stateAdrOpen && (
-                    <div className="ml-6 space-y-2">
-                        <div>
-                            <label className="block text-[11px] text-neutral-500 mb-1">Applicable law</label>
-                            <input
-                                type="text"
-                                placeholder="US-CA · EU · INTL · Sharia"
-                                maxLength={16}
-                                value={applicableLaw}
-                                onChange={(e) => onTraditionalFieldChange("applicableLaw", e.target.value)}
-                                data-testid="drawer-jurisdiction-applicable-law"
-                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full bg-white"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-[11px] text-neutral-500 mb-1">Forum</label>
-                            <input
-                                type="text"
-                                placeholder="JAMS-arbitration · AAA-arbitration · ICC-arbitration"
-                                maxLength={64}
-                                value={forum}
-                                onChange={(e) => onTraditionalFieldChange("forum", e.target.value)}
-                                data-testid="drawer-jurisdiction-forum"
-                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full bg-white"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-[11px] text-neutral-500 mb-1">Language</label>
-                            <input
-                                type="text"
-                                placeholder="en · fr · zh · ar"
-                                maxLength={16}
-                                value={language}
-                                onChange={(e) => onTraditionalFieldChange("language", e.target.value)}
-                                data-testid="drawer-jurisdiction-language"
-                                className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-32 bg-white"
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
-
-/**
- * Consent article — multi-document list. Each row carries a (title,
- * version, hash) tuple. Empty rows are silently dropped by
- * `buildOrderAgreement`; the on-chain validator enforces non-empty hash
- * + 1-32 char version + 1-200 char title per row. The drawer offers free
- * editing without inline validation (the validator is authoritative).
- */
-function ConsentArticle({
-    documents,
-    onAdd,
-    onUpdate,
-    onRemove,
-}: {
-    documents: Array<Record<string, string>>;
-    onAdd: () => void;
-    onUpdate: (index: number, key: string, value: string) => void;
-    onRemove: (index: number) => void;
-}) {
-    return (
-        <div className="space-y-4">
-            <p className="text-[11px] text-neutral-500">
-                Off-chain documents this agreement binds to (ToS, NDA, privacy
-                policy, custom terms). Each document is referenced by its
-                keccak256 hash.
-            </p>
-            {documents.length === 0 && (
-                <p className="text-xs text-neutral-500" data-testid="drawer-consent-empty">
-                    No documents bound.
-                </p>
-            )}
-            {documents.map((doc, i) => (
-                <div
-                    key={i}
-                    className="border border-neutral-200 rounded p-3 space-y-2"
-                    data-testid={`drawer-consent-row-${i}`}
-                >
-                    <div className="flex items-baseline justify-between">
-                        <span className="text-[11px] text-neutral-500">Document {i + 1}</span>
-                        <button
-                            type="button"
-                            onClick={() => onRemove(i)}
-                            className="text-[11px] text-red-600 hover:text-red-800"
-                            data-testid={`drawer-consent-remove-${i}`}
-                        >
-                            Remove
-                        </button>
-                    </div>
-                    <div>
-                        <label className="block text-[11px] text-neutral-500 mb-1">Title</label>
-                        <input
-                            type="text"
-                            placeholder="Terms of Service · Privacy Policy · NDA"
-                            maxLength={200}
-                            value={doc.documentTitle ?? ""}
-                            onChange={(e) => onUpdate(i, "documentTitle", e.target.value)}
-                            data-testid={`drawer-consent-title-${i}`}
-                            className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full bg-white"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-[11px] text-neutral-500 mb-1">Version</label>
-                        <input
-                            type="text"
-                            placeholder="1.0.0 · 2025-04-29"
-                            maxLength={32}
-                            value={doc.documentVersion ?? ""}
-                            onChange={(e) => onUpdate(i, "documentVersion", e.target.value)}
-                            data-testid={`drawer-consent-version-${i}`}
-                            className="text-xs border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-40 bg-white"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-[11px] text-neutral-500 mb-1">
-                            Hash (keccak256, 0x… 64-char hex)
-                        </label>
-                        <input
-                            type="text"
-                            placeholder="0x…"
-                            maxLength={66}
-                            value={doc.documentHash ?? ""}
-                            onChange={(e) => onUpdate(i, "documentHash", e.target.value)}
-                            data-testid={`drawer-consent-hash-${i}`}
-                            className="text-xs font-mono border border-neutral-300 rounded px-2 py-1.5 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full bg-white"
-                        />
-                    </div>
-                </div>
-            ))}
-            <button
-                type="button"
-                onClick={onAdd}
-                data-testid="drawer-consent-add"
-                className="text-xs px-3 py-1.5 rounded border border-neutral-300 hover:border-neutral-500 bg-white text-neutral-700"
-            >
-                + Add document
-            </button>
+        <div className="text-[11px] text-neutral-400 italic" data-testid={`${testId}-deferred`}>
+            {field.name} — provided at checkout
         </div>
     );
 }

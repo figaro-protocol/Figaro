@@ -7,20 +7,18 @@ import { ZERO_BYTES32, bytesToHex } from "@/lib/shared/evm";
  * survives as the contract between `buildOrderAgreement` and its callers,
  * who project it into the agreement object directly.
  */
-export interface ClauseFields {
-    origin: string;
-    destination?: string;
-    mass?: string;         // e.g. "5 kg"
-    volume?: string;       // e.g. "10 L"
-    class_?: string;       // freight/hazmat class, e.g. "Perishables", "Hazmat A"
-    /** Attestations-tab per-role process-log flags. When true, buildOrderAgreement
-     *  anchors the matching figaro-merchant-process-v1 / figaro-courier-process-v1
-     *  clause in this order's agreement so the per-role attestation flow has an
-     *  inclusion-proof anchor at runtime. */
-    merchantProcessIncluded?: boolean;
-    courierProcessIncluded?: boolean;
-    [extra: string]: string | string[] | boolean | Array<Record<string, string>> | undefined; // extensible
-}
+/**
+ * Per-order clause content — the SINGLE shape shared by the assembly template,
+ * the designer, and the commit path. Keyed by clauseId; each value is that
+ * clause's spec-named field values. An agreement section is a near-identity
+ * projection of an entry: `{ clause: clauseId, data: values }`. Geo is the one
+ * exception — its raw checkout strings (`origin`, `"5 kg"`) are encoded into the
+ * section by `clauseFieldsToGeoSection`.
+ *
+ * Structurally identical to `@figaro/core`'s template `ClauseValues`, so a
+ * template order's `clauses` feeds checkout with zero translation.
+ */
+export type ClauseFields = Record<string, Record<string, unknown>>;
 
 function encodeToBytes32(s: string): `0x${string}` {
     const str = (s || "").toString();

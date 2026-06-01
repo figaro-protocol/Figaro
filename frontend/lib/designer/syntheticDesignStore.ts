@@ -92,6 +92,9 @@ export interface DesignSnapshot {
     slug: string;
     /** Human-readable name. */
     name: string;
+    /** ERC-20 the assembly privileges (absent = ERC-20-agnostic). Chosen from
+     *  the per-chain common-token list; carried into the assembly template. */
+    privilegedToken?: string;
     /** Synthetic process id this design lives under. */
     processId: string;
     /** Counter for generating new order ids — preserved across saves. */
@@ -100,6 +103,10 @@ export interface DesignSnapshot {
     nextSellerIndex: number;
     /** All orders in the design. */
     orders: Order[];
+    /** Per-order clause selection — keyed by order id, then clauseId → the
+     *  design-time field values the designer filled. Drives the assembly
+     *  template's per-order `clauses`. */
+    clausesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
     /** Unix ms. */
     createdAt: number;
     /** Unix ms. */

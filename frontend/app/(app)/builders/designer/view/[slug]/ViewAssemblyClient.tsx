@@ -39,12 +39,9 @@ import {
     fetchAssemblyDocument,
     getAssemblyRegistry,
     usePublishAssembly,
-    type AssemblyDocument,
 } from "@/lib/mechanisms/useAssemblyRegistry";
-import {
-    rehydrateOrder,
-    seedAssemblyDocumentAgreementsToStore,
-} from "@/lib/designer/assemblyDocumentToDraft";
+import { templateToOrders } from "@/lib/designer/assemblyDocumentToDraft";
+import type { AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import type { Order } from "@/lib/core/store";
@@ -57,7 +54,7 @@ type ResolvedSource =
         kind: "published";
         name: string;
         orders: Order[];
-        assemblyDoc: AssemblyDocument;
+        assemblyDoc: AssemblyTemplate;
     }
     | { kind: "error"; message: string };
 
@@ -154,8 +151,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         });
                         return;
                     }
-                    seedAssemblyDocumentAgreementsToStore(assemblyDoc);
-                    const orders = assemblyDoc.orders.map(rehydrateOrder);
+                    const orders = templateToOrders(assemblyDoc);
                     setResolved({ kind: "published", name: assemblyDoc.name, orders, assemblyDoc });
                     return;
                 } catch (err) {

@@ -7,6 +7,7 @@ import {
     summarizeAgreement,
 } from "@/lib/core/orderAgreement";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
+import { cf } from "./__fixtures__/clauseFields";
 
 const BUYER = ANVIL_ACCOUNTS[0];
 const SELLER = ANVIL_ACCOUNTS[1];
@@ -19,33 +20,21 @@ describe("buildOrderAgreement", () => {
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            lineItems: [
-                {
-                    itemId: "meal-1",
-                    name: "Lunch",
-                    quantity: 2,
-                    unitPrice: "5",
-                },
-            ],
-            clauseFields: {
+            lineItems: [{ itemId: "meal-1", name: "Lunch", quantity: 2, unitPrice: "5" }],
+            clauseFields: cf({
                 origin: "dr5reg",
                 destination: "dr5reh",
                 mass: "1 kg",
                 volume: "5 L",
                 class_: "Express",
-            },
+            }),
         });
 
         expect(getSection(agreement, "figaro-commerce-v1")).toBeDefined();
         expect(getSection(agreement, "figaro-geo-v2")).toBeDefined();
         expect(getSection(agreement, "figaro-topology-v1")).toBeDefined();
         expect(getSection(agreement, "figaro-commerce-v1")?.data.lineItems).toEqual([
-            {
-                itemId: "meal-1",
-                name: "Lunch",
-                quantity: 2,
-                unitPrice: "5",
-            },
+            { itemId: "meal-1", name: "Lunch", quantity: 2, unitPrice: "5" },
         ]);
         expect(getTopologyMode(agreement)).toBe("root");
         expect(getTopologyParentOrderHashes(agreement)).toEqual([]);
@@ -70,21 +59,20 @@ describe("buildOrderAgreement", () => {
         ]);
     });
 
-    it("adds a fulfilment-v2 section and ghg from multi-valued assemblyDoc arrays", () => {
+    it("adds a fulfilment-v2 section and a ghg disclosure from the clause set", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            clauseFields: {
+            clauseFields: cf({
                 origin: "dr5reg",
                 destination: "dr5reh",
                 fulfilmentModalities: ["delivery"],
                 fulfilmentCoordinations: ["dutch-auction"],
                 fulfilmentHandoffPoints: ["face-to-face"],
-                ghgStandard: "iso-14064-1",
-                ghgScope: "1",
-            },
+                ghgStandards: ["figaro-ghg-iso-14064-v1"],
+            }),
         });
 
         const summary = summarizeAgreement(agreement);
@@ -105,7 +93,7 @@ describe("buildOrderAgreement", () => {
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            clauseFields: { origin: "dr5reg", fulfilmentModalities: ["delivery"] },
+            clauseFields: cf({ origin: "dr5reg", fulfilmentModalities: ["delivery"] }),
         });
         expect(summarizeAgreement(agreement)?.fulfilment?.coordinations).toEqual(["seller-assigned"]);
     });
@@ -116,12 +104,12 @@ describe("buildOrderAgreement", () => {
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            clauseFields: {
+            clauseFields: cf({
                 origin: "dr5reg",
                 fulfilmentModalities: ["pickup", "delivery"],
                 fulfilmentCoordinations: ["buyer-assigned", "dutch-auction"],
                 fulfilmentHandoffPoints: ["face-to-face", "locker"],
-            },
+            }),
         });
         const fulfilment = summarizeAgreement(agreement)?.fulfilment;
         expect(fulfilment?.modalities).toEqual(["pickup", "delivery"]);
@@ -129,36 +117,17 @@ describe("buildOrderAgreement", () => {
         expect(fulfilment?.handoffPoints).toEqual(["face-to-face", "locker"]);
     });
 
-    it("normalizes legacy GHG methodology ids to encoder standards", () => {
-        for (const [legacy, canonical] of [
-            ["iso-14064-1", "ISO-14064"],
-            ["iso-14064-3", "ISO-14064"],
-            ["ghg-protocol-corporate", "GHG-Protocol"],
-            ["pas-2050", "PAS-2050"],
-            ["custom", "Custom"],
-        ] as const) {
-            const agreement = buildOrderAgreement({
-                buyer: BUYER,
-                seller: SELLER,
-                currency: CURRENCY,
-                payment: 10n,
-                clauseFields: { origin: "dr5reg", ghgStandard: legacy },
-            });
-            expect((summarizeAgreement(agreement)?.ghg as Record<string, unknown>).standard).toBe(canonical);
-        }
-    });
-
-    it("drops unknown handoffPoint values (v2 enum is closed; readAssemblyDocumentArray filters them out)", () => {
+    it("drops unknown handoffPoint values (the v2 enum is closed)", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            clauseFields: {
+            clauseFields: cf({
                 origin: "dr5reg",
                 fulfilmentModalities: ["pickup"],
                 fulfilmentHandoffPoints: ["teleport"],
-            },
+            }),
         });
         expect(summarizeAgreement(agreement)?.fulfilment?.handoffPoints).toEqual([]);
     });

@@ -24,6 +24,9 @@ import {
     computeAgreementHash,
     COURIER_PROCESS_CLAUSE_KEY,
     MERCHANT_PROCESS_CLAUSE_KEY,
+    GEO_CLAUSE_KEY,
+    ARBITRATION_KLEROS_CLAUSE_KEY,
+    FULFILMENT_V2_CLAUSE_KEY,
 } from "@/lib/core/agreement";
 import { loadAgreement, saveAgreement } from "@/lib/core/agreementStore";
 import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
@@ -85,19 +88,13 @@ export interface CreatedOrder {
  *     the legacy direct-sale reference shape.
  */
 const DEFAULT_NODE_MANIFEST_FIELDS: ClauseFields = {
-    origin: "0",
-    destination: "0",
-    // Layer 2 jurisdiction default: Kleros General Court with 3 jurors.
-    // Layer 1 (kernel mechanisms) is always active and not encoded;
-    // layer 3 (state / ADR) is opt-in via the Jurisdiction tab.
-    klerosCourt: "general",
-    klerosMinJurors: "3",
-    // Every order has a fulfilment clause, but no modality is pre-selected
-    // — the designer makes a deliberate choice, same as the buyer-side
-    // picker (commit 2dcd6b5). An order with empty modalities fails the
-    // clause validator at attest time; the publish-side client surfaces
-    // this before letting the user register the assembly.
-    fulfilmentModalities: [],
+    // Nested, spec-named (the unified ClauseFields shape). The geo entry
+    // carries sentinel origin/destination; jurisdiction defaults to Kleros
+    // General Court with 3 jurors (Layer 1 is always active and not encoded;
+    // Layer 3 state/ADR is opt-in). No fulfilment entry is pre-seeded — the
+    // designer's modality choice flows through the per-order clause selection.
+    [GEO_CLAUSE_KEY]: { origin: "0", destination: "0" },
+    [ARBITRATION_KLEROS_CLAUSE_KEY]: { klerosCourt: "general", klerosMinJurors: "3" },
 };
 
 export function createSyntheticRootOrder(
@@ -105,7 +102,7 @@ export function createSyntheticRootOrder(
     /** Per-root assemblyDoc overrides. Merged onto DEFAULT_NODE_MANIFEST_FIELDS.
      *  Used by `assemblyDocumentToDraft` to seed an IPFS-pinned assembly's kleros +
      *  fulfilment fields into the new draft's root. */
-    assemblyDocumentOverrides?: Partial<ClauseFields>,
+    assemblyDocumentOverrides?: ClauseFields,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
@@ -154,7 +151,7 @@ export function createSyntheticSubOrder(
      *  DEFAULT_NODE_MANIFEST_FIELDS — use this to mark role-specific
      *  flags at creation time (e.g., `courierProcessIncluded: true` for
      *  delivery-spawned courier sub-orders). */
-    assemblyDocumentOverrides?: Partial<ClauseFields>,
+    assemblyDocumentOverrides?: ClauseFields,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
@@ -256,7 +253,7 @@ export function mergeSyntheticParent(
         seller: child.seller as `0x${string}`,
         currency: (child.currency ?? ZERO_ADDRESS) as `0x${string}`,
         payment: child.payment,
-        clauseFields: { origin: "—", destination: "—" },
+        clauseFields: { [GEO_CLAUSE_KEY]: { origin: "—", destination: "—" } },
         parentOrderHashes: nextParents,
     });
     const newAgreementHash = computeAgreementHash(newAgreement);
@@ -296,10 +293,11 @@ export function deriveFulfilmentMethod(order: Order): CanonicalFulfilmentMethod 
 function clauseFieldsForFulfilmentMethod(method: CanonicalFulfilmentMethod): ClauseFields {
     const { modalities, coordinations } = canonicalFulfilmentMethodToArrays(method);
     return {
-        origin: "—",
-        destination: "—",
-        fulfilmentModalities: modalities,
-        ...(coordinations.length > 0 ? { fulfilmentCoordinations: coordinations } : {}),
+        [GEO_CLAUSE_KEY]: { origin: "—", destination: "—" },
+        [FULFILMENT_V2_CLAUSE_KEY]: {
+            modalities,
+            ...(coordinations.length > 0 ? { coordinations } : {}),
+        },
     };
 }
 
@@ -364,14 +362,13 @@ export function editSyntheticAgreement(
     // Fulfilment method is preserved across edits — the user changes it via
     // the edge pill, not the section editor. If the caller's assemblyDoc patch
     // already specifies fulfilmentMethod, that wins.
-    const baseFields: ClauseFields = edits.clauseFields ?? {
-        origin: "—",
-    };
+    const baseFields: ClauseFields = edits.clauseFields ?? { [GEO_CLAUSE_KEY]: { origin: "—" } };
     const clauseFields: ClauseFields = { ...baseFields };
-    if (clauseFields.fulfilmentMethod === undefined) {
+    // Preserve the fulfilment method across edits unless the patch sets one
+    // (the user changes it via the edge pill, not the section editor).
+    if (!clauseFields[FULFILMENT_V2_CLAUSE_KEY]) {
         const inherited = clauseFieldsForFulfilmentMethod(existingMethod);
-        clauseFields.fulfilmentMethod = inherited.fulfilmentMethod;
-        if (inherited.auctionType) clauseFields.auctionType = inherited.auctionType;
+        clauseFields[FULFILMENT_V2_CLAUSE_KEY] = inherited[FULFILMENT_V2_CLAUSE_KEY];
     }
 
     const currency = (edits.currency ?? order.currency ?? ZERO_ADDRESS) as `0x${string}`;
@@ -438,90 +435,3 @@ export function collectDescendants(rootId: string, orders: Order[]): Set<string>
     return collected;
 }
 
-/** Read the order's agreement back into a ClauseFields shape for the drawer's initial state. */
-export function readAgreementFields(
-    order: Order,
-    suppliedAgreement?: ReturnType<typeof loadAgreement>,
-): ClauseFields {
-    // Checkout passes the assembly assemblyDoc's own inlined agreement so the
-    // clauses are read from the assembly, not the browser's local store.
-    const agreement = suppliedAgreement ?? loadAgreement(order.agreementHash);
-    const summary = summarizeAgreement(agreement);
-    const fields: ClauseFields = { origin: summary?.geo?.origin ?? "—" };
-
-    // ── process clauses (Category-1, no section data) ──────────
-    // `summarizeAgreement` only surfaces data-carrying sections, so the
-    // merchant-process / courier-process inclusion anchors don't appear
-    // in `summary`. Read them straight from the agreement's sections —
-    // without this the drawer toggle round-trips as "unticked" and the
-    // section is silently destroyed on the next edit when
-    // buildOrderAgreement rebuilds from the missing flag.
-    const sections = agreement?.sections ?? [];
-    if (sections.some((s) => s.clause === MERCHANT_PROCESS_CLAUSE_KEY)) {
-        fields.merchantProcessIncluded = true;
-    }
-    if (sections.some((s) => s.clause === COURIER_PROCESS_CLAUSE_KEY)) {
-        fields.courierProcessIncluded = true;
-    }
-
-    // ── geo ────────────────────────────────────────────────────
-    if (summary?.geo?.destination) fields.destination = summary.geo.destination;
-    if (summary?.geo?.mass !== undefined) {
-        fields.mass = typeof summary.geo.mass === "number" ? String(summary.geo.mass) : summary.geo.mass;
-    }
-    if (summary?.geo?.volume !== undefined) {
-        fields.volume = typeof summary.geo.volume === "number" ? String(summary.geo.volume) : summary.geo.volume;
-    }
-    if (summary?.geo?.classOfService) fields.class_ = summary.geo.classOfService;
-
-    // ── ghg ────────────────────────────────────────────────────
-    if (summary?.ghg && summary.ghg.clauseKeys.length > 0) {
-        fields.ghgStandards = [...summary.ghg.clauseKeys];
-    }
-
-    // ── fulfilment ─────────────────────────────────────────────
-    if (summary?.fulfilment) {
-        if (summary.fulfilment.modalities.length > 0) {
-            fields.fulfilmentModalities = [...summary.fulfilment.modalities];
-        }
-        if (summary.fulfilment.coordinations.length > 0) {
-            fields.fulfilmentCoordinations = [...summary.fulfilment.coordinations];
-        }
-        if (summary.fulfilment.handoffPoints.length > 0) {
-            fields.fulfilmentHandoffPoints = [...summary.fulfilment.handoffPoints];
-        }
-    }
-
-    // ── proximity ──────────────────────────────────────────────
-    if (summary?.proximity && summary.proximity.bands.length > 0) {
-        fields.proximityBands = [...summary.proximity.bands];
-    }
-
-    // ── arbitration (Kleros) ───────────────────────────────────
-    const rawKlerosCourt = summary?.arbitration?.klerosCourt;
-    if (typeof rawKlerosCourt === "string") fields.klerosCourt = rawKlerosCourt;
-    const klerosMinJurors = summary?.arbitration?.klerosMinJurors;
-    if (typeof klerosMinJurors === "number") fields.klerosMinJurors = String(klerosMinJurors);
-
-    // ── applicable law (state / ADR) ───────────────────────────
-    const rawApplicableLaw = summary?.jurisdiction?.applicableLaw;
-    if (typeof rawApplicableLaw === "string") fields.applicableLaw = rawApplicableLaw;
-    const forum = summary?.jurisdiction?.forum;
-    if (typeof forum === "string") fields.forum = forum;
-    const language = summary?.jurisdiction?.language;
-    if (typeof language === "string") fields.language = language;
-
-    // ── consent ────────────────────────────────────────────────
-    const rawDocuments = summary?.consent?.documents;
-    if (Array.isArray(rawDocuments) && rawDocuments.length > 0) {
-        const cleaned = rawDocuments.filter((doc): doc is Record<string, string> =>
-            typeof doc === "object" && doc !== null
-            && typeof (doc as Record<string, unknown>).documentHash === "string"
-            && typeof (doc as Record<string, unknown>).documentVersion === "string"
-            && typeof (doc as Record<string, unknown>).documentTitle === "string",
-        );
-        if (cleaned.length > 0) fields.consentDocuments = cleaned;
-    }
-
-    return fields;
-}

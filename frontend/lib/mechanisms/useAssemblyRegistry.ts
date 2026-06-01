@@ -36,6 +36,7 @@ import {
 import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
+import { buildAssemblyTemplate, serializeAssemblyTemplate, type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { useSellerProfile } from "./useSellerRegistry";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
 import {
@@ -282,13 +283,13 @@ export function useAllPublishedAssemblies() {
  */
 export async function fetchAssemblyDocument(
     metadataURI: string,
-): Promise<AssemblyDocument | null> {
+): Promise<AssemblyTemplate | null> {
     const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(metadataURI);
     if (!url) return null;
     try {
         const response = await fetch(url);
         if (!response.ok) return null;
-        return (await response.json()) as AssemblyDocument;
+        return (await response.json()) as AssemblyTemplate;
     } catch {
         return null;
     }
@@ -315,12 +316,10 @@ export function chainIdToNetworkTarget(chainId: number): string {
 /** Walk the assemblyDoc's inlined agreements and collect the unique set of
  *  clauses anchored across all orders. Sorted alphabetically for stable
  *  display order. */
-export function collectAssemblyClauses(assemblyDoc: AssemblyDocument): string[] {
+export function collectAssemblyClauses(template: AssemblyTemplate): string[] {
     const set = new Set<string>();
-    for (const agreement of Object.values(assemblyDoc.agreements)) {
-        for (const section of agreement.sections) {
-            if (typeof section.clause === "string") set.add(section.clause);
-        }
+    for (const order of template.orders) {
+        for (const clauseId of Object.keys(order.clauses)) set.add(clauseId);
     }
     return Array.from(set).sort();
 }
@@ -341,54 +340,32 @@ export function collectAssemblyClauses(assemblyDoc: AssemblyDocument): string[] 
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the seller's profile. */
-export function requiredCounterpartyClauses(assemblyDoc: AssemblyDocument): string[] {
+export function requiredCounterpartyClauses(template: AssemblyTemplate): string[] {
     const COUNTERPARTY_PROCESS_CLAUSES: ReadonlySet<string> = new Set([
         "figaro-courier-process-v1",
     ]);
 
-    const agreementByOrderId = new Map<string, Agreement>();
-    for (const order of assemblyDoc.orders) {
-        if (!order.agreementHash) continue;
-        const agreement = assemblyDoc.agreements[order.agreementHash];
-        if (agreement) agreementByOrderId.set(order.id, agreement);
-    }
+    const byId = new Map(template.orders.map((o) => [o.id, o]));
 
-    function coordinationsOf(agreement: Agreement): string[] {
-        const section = agreement.sections.find(
-            (s: { clause: string }) => s.clause === FULFILMENT_V2_CLAUSE_KEY,
-        ) as { data?: { coordinations?: unknown } } | undefined;
-        const coords = section?.data?.coordinations;
+    function coordinationsOf(order: AssemblyTemplate["orders"][number] | undefined): string[] {
+        const fulfilment = order?.clauses[FULFILMENT_V2_CLAUSE_KEY] as
+            | { coordinations?: unknown }
+            | undefined;
+        const coords = fulfilment?.coordinations;
         return Array.isArray(coords) ? coords.filter((c): c is string => typeof c === "string") : [];
     }
 
-    function parentOrderIds(agreement: Agreement): string[] {
-        const section = agreement.sections.find(
-            (s: { clause: string }) => s.clause === TOPOLOGY_CLAUSE_KEY,
-        ) as { data?: { parentOrderHashes?: unknown } } | undefined;
-        const parents = section?.data?.parentOrderHashes;
-        return Array.isArray(parents) ? parents.filter((p): p is string => typeof p === "string") : [];
-    }
-
     const clauses = new Set<string>();
-    for (const order of assemblyDoc.orders) {
-        if (!order.agreementHash) continue;
-        const agreement = assemblyDoc.agreements[order.agreementHash];
-        if (!agreement) continue;
+    for (const order of template.orders) {
+        if (order.parentOrderIds.length === 0) continue;
 
-        const parents = parentOrderIds(agreement);
-        if (parents.length === 0) continue;
-
-        const parentAllowsSellerAssigned = parents.some((parentId) => {
-            const parentAgreement = agreementByOrderId.get(parentId);
-            if (!parentAgreement) return false;
-            return coordinationsOf(parentAgreement).includes("seller-assigned");
-        });
+        const parentAllowsSellerAssigned = order.parentOrderIds.some((parentId) =>
+            coordinationsOf(byId.get(parentId)).includes("seller-assigned"),
+        );
         if (!parentAllowsSellerAssigned) continue;
 
-        for (const section of agreement.sections as ReadonlyArray<{ clause: string }>) {
-            if (COUNTERPARTY_PROCESS_CLAUSES.has(section.clause)) {
-                clauses.add(section.clause);
-            }
+        for (const clauseId of Object.keys(order.clauses)) {
+            if (COUNTERPARTY_PROCESS_CLAUSES.has(clauseId)) clauses.add(clauseId);
         }
     }
     return Array.from(clauses).sort();
@@ -430,9 +407,9 @@ export interface AssemblyChoice {
     orderCount: number | null;
     /** Available when state === "loaded". Sorted, deduped clauseIds. */
     clauses: readonly string[] | null;
-    /** The full assemblyDoc when state === "loaded". Avoids re-fetching from
-     *  consumers that need it (e.g. fork). */
-    assemblyDoc: AssemblyDocument | null;
+    /** The full assembly template when state === "loaded". Avoids re-fetching
+     *  from consumers that need it (e.g. fork). */
+    assemblyDoc: AssemblyTemplate | null;
 }
 
 /**
@@ -454,7 +431,7 @@ export function useAssemblyChoices(
     // — and undefined on the marketing tier where no provider is mounted.
     const chainId = activeChain.id;
     const [assemblyDocumentState, setAssemblyDocumentState] = useState<
-        Map<string, { state: AssemblyDocumentFetchState; assemblyDoc: AssemblyDocument | null }>
+        Map<string, { state: AssemblyDocumentFetchState; assemblyDoc: AssemblyTemplate | null }>
     >(new Map());
     /** Hashes whose fetch has already been kicked off. A ref (not state)
      *  because we want to guard against double-fetch without retriggering
@@ -530,9 +507,9 @@ export function useAssemblyChoices(
 /** A seller's on-chain bound assembly, assemblyDoc resolved. */
 export interface BoundAssembly {
     slug: string;
-    /** Display name from the assemblyDoc; falls back to the slug. */
+    /** Display name from the assembly template; falls back to the slug. */
     name: string;
-    assemblyDoc: AssemblyDocument;
+    assemblyDoc: AssemblyTemplate;
     /** Canonical fulfilment method of the root order — the buyer's
      *  selection when this assembly is picked. `null` when the root
      *  fulfilment clause is absent or malformed. */
@@ -564,17 +541,11 @@ export interface SellerBoundAssemblies {
  *  the topology — if a consumer needs sub-order fulfilment, they walk the
  *  orders array themselves. */
 function extractRootFulfilment(
-    assemblyDoc: AssemblyDocument,
+    template: AssemblyTemplate,
 ): { modalities: string[]; coordinations: string[] } {
-    const empty = { modalities: [], coordinations: [] };
-    const rootOrder = assemblyDoc.orders[0];
-    if (!rootOrder?.agreementHash) return empty;
-    const agreement = assemblyDoc.agreements[rootOrder.agreementHash];
-    if (!agreement) return empty;
-    const fulfilmentSection = agreement.sections.find(
-        (s: { clause: string }) => s.clause === FULFILMENT_V2_CLAUSE_KEY,
-    );
-    const data = fulfilmentSection?.data as
+    const rootOrder =
+        template.orders.find((o) => o.parentOrderIds.length === 0) ?? template.orders[0];
+    const data = rootOrder?.clauses[FULFILMENT_V2_CLAUSE_KEY] as
         | { modalities?: unknown; coordinations?: unknown }
         | undefined;
     return {
@@ -737,8 +708,16 @@ export function usePublishAssembly() {
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "registrationDeposit",
         });
-        const assemblyDoc = buildAssemblyDocument(snapshot);
-        const { json, contentHash } = serializeAssemblyDocument(assemblyDoc);
+        // Publish the no-hash assembly template: per order, who's bound, its
+        // DAG parents, and the selected clauses. The fingerprint forms later
+        // at checkout when the parties fill the clause fields.
+        const template = buildAssemblyTemplate({
+            slug: snapshot.slug,
+            name: snapshot.name,
+            orders: snapshot.orders,
+            clausesByOrderId: snapshot.clausesByOrderId ?? {},
+        });
+        const { json, contentHash } = serializeAssemblyTemplate(template);
         const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
 
         // Simulate before opening the wallet — catches slug collision /
@@ -749,19 +728,19 @@ export function usePublishAssembly() {
                 address: registry,
                 abi: ASSEMBLY_REGISTRY_ABI,
                 functionName: "registerAssembly",
-                args: [assemblyDoc.slug, contentHash, ipfs.uri],
+                args: [template.slug, contentHash, ipfs.uri],
                 value: deposit,
                 account: address,
             });
         } catch (err) {
-            throw translatePublishRevert(err, assemblyDoc.slug);
+            throw translatePublishRevert(err, template.slug);
         }
 
         const txHash = await writeContractAsync({
             address: registry,
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "registerAssembly",
-            args: [assemblyDoc.slug, contentHash, ipfs.uri],
+            args: [template.slug, contentHash, ipfs.uri],
             value: deposit,
         });
 

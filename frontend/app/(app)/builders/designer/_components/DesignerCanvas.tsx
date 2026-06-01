@@ -52,8 +52,12 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
+import { buildAssemblyTemplate } from "@/lib/designer/assemblyTemplate";
+import { getCommonTokens } from "@/lib/shared/commonTokens";
+import { useChainId } from "wagmi";
 import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
+import { COURIER_PROCESS_CLAUSE_KEY } from "@/lib/core/agreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
 
 export type DesignerSeed =
@@ -73,6 +77,8 @@ interface InitialState {
     orders: Order[];
     name: string;
     slug: string | null;
+    privilegedToken: string;
+    clausesByOrderId: Record<string, Record<string, Record<string, unknown>>>;
 }
 
 function buildBlankInitial(): InitialState {
@@ -84,6 +90,8 @@ function buildBlankInitial(): InitialState {
         // Empty so the placeholder shows; user must name before save/publish.
         name: "",
         slug: null,
+        privilegedToken: "",
+        clausesByOrderId: {},
     };
 }
 
@@ -98,6 +106,8 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
         orders: snap.orders,
         name: snap.name,
         slug: snap.slug || null,
+        privilegedToken: snap.privilegedToken ?? "",
+        clausesByOrderId: snap.clausesByOrderId ?? {},
     };
 }
 
@@ -115,7 +125,18 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
 
     const [session] = useState<SyntheticProcessSession>(() => initial.session);
     const [orders, setOrders] = useState<Order[]>(() => initial.orders);
+    // Per-order clause selection (the Registry checkboxes). Keyed by order id;
+    // values are the clauseIds picked on that order. Feeds the assembly
+    // template's per-order `clauses`, and persists into the draft snapshot.
+    const [clausesByOrderId, setClausesByOrderId] = useState<
+        Record<string, Record<string, Record<string, unknown>>>
+    >(() => initial.clausesByOrderId);
     const [name, setName] = useState<string>(initial.name);
+    // ERC-20 the assembly privileges ("" = agnostic). Chosen from the per-chain
+    // common-token list; carried into the template + persisted in the draft.
+    const [privilegedToken, setPrivilegedToken] = useState<string>(() => initial.privilegedToken);
+    const chainId = useChainId();
+    const commonTokens = getCommonTokens(chainId);
     const [slug, setSlug] = useState<string | null>(initial.slug);
 
     const [mergeNotice, setMergeNotice] = useState<string | null>(null);
@@ -173,6 +194,8 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             setOrders(restored.orders);
             setName(restored.name);
             setSlug(restored.slug);
+            setPrivilegedToken(restored.privilegedToken);
+            setClausesByOrderId(restored.clausesByOrderId);
             setHydrated(true);
             return;
         }
@@ -184,6 +207,8 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             setOrders(init.orders);
             setName(init.name);
             setSlug(init.slug);
+            setPrivilegedToken(init.privilegedToken);
+            setClausesByOrderId(init.clausesByOrderId);
         }
         setHydrated(true);
         // Mount-only; subsequent seed changes are ignored.
@@ -197,18 +222,51 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         const snap: DesignSnapshot = {
             slug: slug ?? "",
             name,
+            privilegedToken: privilegedToken || undefined,
             processId: session.processId,
             nextOrderIndex: session.nextOrderIndex,
             nextSellerIndex: session.nextSellerIndex,
             orders,
+            clausesByOrderId,
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [hydrated, seedError, orders, name, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, seedError, orders, clausesByOrderId, name, slug, privilegedToken, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
+    const toggleClause = useCallback((orderId: string, clauseId: string, next: boolean) => {
+        setClausesByOrderId((prev) => {
+            const order = { ...(prev[orderId] ?? {}) };
+            if (next) {
+                if (!(clauseId in order)) order[clauseId] = {};
+            } else {
+                delete order[clauseId];
+            }
+            return { ...prev, [orderId]: order };
+        });
+    }, []);
+
+    const setClauseField = useCallback(
+        (orderId: string, clauseId: string, field: string, value: unknown) => {
+            setClausesByOrderId((prev) => {
+                const order = { ...(prev[orderId] ?? {}) };
+                const clause = { ...(order[clauseId] ?? {}) };
+                const isEmpty =
+                    value === undefined ||
+                    value === null ||
+                    value === "" ||
+                    (Array.isArray(value) && value.length === 0);
+                if (isEmpty) delete clause[field];
+                else clause[field] = value;
+                order[clauseId] = clause;
+                return { ...prev, [orderId]: order };
+            });
+        },
+        [],
+    );
 
     const handleAddSubOrder = useCallback(
         (parentOrderId: string) => {
@@ -235,7 +293,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 });
                 if (hasAnyChild) return prev;
                 const sub = createSyntheticSubOrder(session, parent, {
-                    courierProcessIncluded: true,
+                    [COURIER_PROCESS_CLAUSE_KEY]: {},
                 });
                 autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
                 return [...prev, sub.order];
@@ -368,15 +426,17 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             snapshot: {
                 slug: proposedSlug,
                 name: trimmed,
+                privilegedToken: privilegedToken || undefined,
                 processId: session.processId,
                 nextOrderIndex: session.nextOrderIndex,
                 nextSellerIndex: session.nextSellerIndex,
                 orders,
+                clausesByOrderId,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             },
         };
-    }, [name, slug, orders, session]);
+    }, [name, slug, privilegedToken, orders, clausesByOrderId, session]);
 
     function explainSnapshotReason(reason: "empty" | "too-short" | "no-slug"): string {
         if (reason === "empty") {
@@ -494,6 +554,20 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
 
     const agreementHints = computeAgreementHints(orders, selectedOrderId);
 
+    // The live no-hash assembly template emitted from the design — per order:
+    // who's bound, its DAG parents, and the selected clauses.
+    const assemblyTemplate = useMemo(
+        () =>
+            buildAssemblyTemplate({
+                slug: slug ?? "",
+                name,
+                privilegedToken: privilegedToken || undefined,
+                orders,
+                clausesByOrderId,
+            }),
+        [slug, name, privilegedToken, orders, clausesByOrderId],
+    );
+
     return (
         <div style={{ top: headerHeight }} className="fixed left-0 right-0 bottom-0 z-20 bg-canvas flex flex-col overflow-hidden">
             <div
@@ -596,6 +670,19 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     parentDeliveryActive={agreementHints.parentDeliveryActive}
                     onDeliverySelected={handleDeliverySelected}
                     onDeliveryUnselected={handleDeliveryUnselected}
+                    selectedClauseValues={
+                        selectedOrderId ? (clausesByOrderId[selectedOrderId] ?? {}) : undefined
+                    }
+                    onToggleClause={(clauseId, next) => {
+                        if (selectedOrderId) toggleClause(selectedOrderId, clauseId, next);
+                    }}
+                    onSetClauseField={(clauseId, field, value) => {
+                        if (selectedOrderId) setClauseField(selectedOrderId, clauseId, field, value);
+                    }}
+                    privilegedToken={privilegedToken}
+                    onPrivilegedTokenChange={setPrivilegedToken}
+                    commonTokens={commonTokens}
+                    templateJson={JSON.stringify(assemblyTemplate, null, 2)}
                     embedded
                 />
             </div>

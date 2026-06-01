@@ -28,11 +28,11 @@ import {
     uniqueDraftSlug,
 } from "./syntheticDesignStore";
 import { assemblyDocumentToDraft } from "./assemblyDocumentToDraft";
-import type { AssemblyDocument } from "@/lib/mechanisms/useAssemblyRegistry";
+import type { AssemblyTemplate } from "./assemblyTemplate";
 
 export function forkPublishedAssembly(
     sourceSlug: string,
-    assemblyDoc: AssemblyDocument,
+    template: AssemblyTemplate,
 ): { finalSlug: string } | null {
     const defaultSlug = uniqueDraftSlug(`${sourceSlug}-fork`);
     const proposed =
@@ -46,7 +46,7 @@ export function forkPublishedAssembly(
     const trimmed = proposed.trim();
     if (!trimmed) return null;
     const finalSlug = uniqueDraftSlug(trimmed);
-    const draft = assemblyDocumentToDraft(assemblyDoc, { slug: finalSlug });
+    const draft = assemblyDocumentToDraft(template, { slug: finalSlug });
     saveNamedDraft(draft);
     return { finalSlug };
 }

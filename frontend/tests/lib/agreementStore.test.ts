@@ -12,6 +12,7 @@ import {
 } from "@/lib/core/agreementStore";
 import { computeAgreementHash } from "@/lib/core/agreement";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
+import { cf } from "./__fixtures__/clauseFields";
 
 const BUYER = ANVIL_ACCOUNTS[0];
 const SELLER = ANVIL_ACCOUNTS[1];
@@ -33,12 +34,12 @@ function makeAgreement() {
                 unitPrice: "5",
             },
         ],
-        clauseFields: {
+        clauseFields: cf({
             origin: "dr5reg",
             destination: "dr5reh",
-            fulfilmentMethod: "delivery",
-            handoffMode: "face-to-face",
-        },
+            fulfilmentModalities: ["delivery"],
+            fulfilmentHandoffPoints: ["face-to-face"],
+        }),
     });
 }
 

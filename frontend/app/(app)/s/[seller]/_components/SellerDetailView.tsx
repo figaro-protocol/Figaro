@@ -35,16 +35,11 @@ import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/core/assemblySubOrderPlan";
 import { CONTRACTS } from "@/lib/core/contracts";
 import {
-    readAssemblyClause,
-    readAssemblyOrderGhgStandards,
     APPLICABLE_LAW_CLAUSE_KEY,
     ARBITRATION_KLEROS_CLAUSE_KEY,
     MERCHANT_PROCESS_CLAUSE_KEY,
-    PROXIMITY_POLICY_CLAUSE_KEY,
-    type Agreement,
+    GEO_CLAUSE_KEY,
 } from "@/lib/core/agreement";
-import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
-import { readAgreementFields } from "@/lib/designer/syntheticProcess";
 import type { ClauseFields } from "@/lib/core/encoding";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { sellerAuctionId, stashSellerDraft } from "@/lib/mechanisms/sellerAuction";
@@ -61,7 +56,6 @@ import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
 import {
     FULFILMENT_MODE_LABELS,
     isDeliveryFulfilment,
-    mapFulfilmentToHandoff,
 } from "@/lib/seller/fulfilmentRouting";
 import { useSellerBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
 import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
@@ -80,36 +74,6 @@ const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
     "deliver:dutch-auction",
 ];
 
-/**
- * Extract the dispute-resolution clauses an assembly authored —
- * `figaro-arbitration-kleros-v1` (decentralized ODR layer) and/or
- * `figaro-applicable-law-v1` (state / ADR recourse layer) — as the
- * assemblyDoc fields `buildOrderAgreement` re-emits into the committed order's
- * agreement. Without these the committed order names no off-chain forum and
- * the dispute surface has nothing to drive. Returns `{}` for an assembly
- * with no dispute-resolution clauses.
- */
-function assemblyJurisdictionFields(
-    assemblyDoc: { agreements: Record<string, Agreement> },
-): Record<string, string> {
-    const out: Record<string, string> = {};
-    const kleros = readAssemblyClause(assemblyDoc, ARBITRATION_KLEROS_CLAUSE_KEY);
-    if (kleros) {
-        for (const key of ["klerosCourt", "klerosMinJurors"]) {
-            const v = kleros.data[key];
-            if (typeof v === "string" && v) out[key] = v;
-            else if (typeof v === "number") out[key] = String(v);
-        }
-    }
-    const law = readAssemblyClause(assemblyDoc, APPLICABLE_LAW_CLAUSE_KEY);
-    if (law) {
-        for (const key of ["applicableLaw", "forum", "language"]) {
-            const v = law.data[key];
-            if (typeof v === "string" && v) out[key] = v;
-        }
-    }
-    return out;
-}
 
 interface Props {
     sellerAddress: string;
@@ -488,6 +452,12 @@ export function SellerDetailView({ sellerAddress }: Props) {
             ? boundAssemblies.find((a) => a.assemblyDoc.slug === productAssemblySlug)
             : boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
         const isMultiOrder = !!pickedAssembly && pickedAssembly.assemblyDoc.orders.length > 1;
+        // The template's root order carries the design-time clause choices
+        // (fulfilment / merchant-process / jurisdiction / ghg / proximity);
+        // checkout spreads them and overlays the buyer's runtime geo.
+        const pickedRoot =
+            pickedAssembly?.assemblyDoc.orders.find((o) => o.parentOrderIds.length === 0) ??
+            pickedAssembly?.assemblyDoc.orders[0];
         try {
             setCheckoutError(null);
             const prepared = await prepareOrderCommitment({
@@ -507,76 +477,26 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     unitPrice: parseToken(item.price, tokenDecimals).toString(),
                 })),
                 clauseFields: {
-                    origin: "",
-                    destination: "",
-                    // Product-driven assemblies carry no fulfilment modality on
-                    // the lead/root order — the empty method adds no fulfilment
-                    // clause there (the handoffs live on the sub-orders).
-                    fulfilmentMethod: fulfillmentMode ?? "",
-                    handoffMode: fulfillmentMode ? mapFulfilmentToHandoff(fulfillmentMode) : "",
-                    // The committed root order anchors figaro-merchant-process-v1
-                    // whenever the merchant runs a lifecycle (order-received →
-                    // … → handed-off). Delivery always needs it (the
-                    // merchant→courier handoff is a merchant-process event);
-                    // pickup needs it too (the buyer↔merchant handoff is the
-                    // same lifecycle). Read from the assembly's root order's
-                    // agreement — same shape as the proximityBands per-order
-                    // IIFE below — so any assembly that authors the clause
-                    // gets it propagated, not just delivery-modality ones.
-                    ...(pickedAssembly?.assemblyDoc.orders[0]?.agreementHash
-                        ? (() => {
-                            const rootAgreement = pickedAssembly.assemblyDoc.agreements[
-                                pickedAssembly.assemblyDoc.orders[0].agreementHash
-                            ] as Agreement | undefined;
-                            const hasMerchantProcess = !!rootAgreement?.sections.find(
-                                (s) => s.clause === MERCHANT_PROCESS_CLAUSE_KEY,
-                            );
-                            return hasMerchantProcess ? { merchantProcessIncluded: true } : {};
-                        })()
-                        : (fulfillmentMode?.startsWith("deliver:") ? { merchantProcessIncluded: true } : {})),
-                    // The off-chain dispute forum the assembly authored — the
-                    // committed order carries the jurisdiction clause so the
-                    // dispute surface can read its Layer-3 recourse.
-                    ...(pickedAssembly ? assemblyJurisdictionFields(pickedAssembly.assemblyDoc) : {}),
-                    // Propagate any GHG disclosure clauses the assembly's root
-                    // order declared — the committed agreement must carry them
-                    // (with their paired figaro-ghg-measurement-v1 clause) so
-                    // the seller can file grams measurements and the buyer can
-                    // size carbon offsets at runtime.
-                    ...(pickedAssembly && pickedAssembly.assemblyDoc.orders[0]
-                        ? (() => {
-                            const ghgStandards = readAssemblyOrderGhgStandards(
-                                pickedAssembly.assemblyDoc,
-                                pickedAssembly.assemblyDoc.orders[0].agreementHash,
-                            );
-                            return ghgStandards.length > 0 ? { ghgStandards } : {};
-                        })()
+                    // Spread the template root's design-time clause choices —
+                    // fulfilment, merchant-process, jurisdiction, ghg, proximity
+                    // all ride along verbatim (single shape, no extraction).
+                    ...(pickedRoot?.clauses ?? {}),
+                    // Product-driven (no assembly): a delivery mode still anchors
+                    // the merchant lifecycle on the root (the merchant→courier
+                    // handoff is a merchant-process event).
+                    ...(!pickedRoot && fulfillmentMode?.startsWith("deliver:")
+                        ? { [MERCHANT_PROCESS_CLAUSE_KEY]: {} }
                         : {}),
-                    // Propagate a proximity-policy clause when the assembly's
-                    // ROOT order carries one — the pickup-handoff case, where
-                    // the merchant↔buyer order itself is the handoff edge.
-                    // Per-order scope (not multi-order readAssemblyClause): a
-                    // delivery assembly has its proximity clause on the courier
-                    // sub-order, which must NOT leak onto the root.
-                    ...(pickedAssembly?.assemblyDoc.orders[0]?.agreementHash
-                        ? (() => {
-                            const rootAgreement = pickedAssembly.assemblyDoc.agreements[
-                                pickedAssembly.assemblyDoc.orders[0].agreementHash
-                            ] as Agreement | undefined;
-                            const policy = rootAgreement?.sections.find(
-                                (s) => s.clause === PROXIMITY_POLICY_CLAUSE_KEY,
-                            );
-                            const bands = (policy?.data as { bands?: string[] } | undefined)?.bands ?? [];
-                            return bands.length > 0 ? { proximityBands: bands } : {};
-                        })()
-                        : {}),
-                    // Geo fields aggregated from the cart's catalogue annotations.
-                    // mass / volume strings are parsed by `parseMassToGrams` /
-                    // `parseVolumeToMl` in `clauseFieldsToGeoSection`; class_
-                    // is the SDK short code consumed by `encodeGeoContent`.
-                    ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
-                    ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
-                    class_: CLASS_TO_SHORT_CODE[cartClassOfService],
+                    // Buyer's runtime geo, overlaid on whatever the design carried.
+                    // mass / volume strings are parsed by `clauseFieldsToGeoSection`;
+                    // class_ is the SDK short code.
+                    [GEO_CLAUSE_KEY]: {
+                        origin: "",
+                        destination: "",
+                        ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
+                        ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
+                        class_: CLASS_TO_SHORT_CODE[cartClassOfService],
+                    },
                 },
             });
             const immediateCommit = isE2EMockSession() || isE2EDevnetSession();
@@ -615,13 +535,20 @@ export function SellerDetailView({ sellerAddress }: Props) {
             ]);
             let cumulativeValue = cartTotal;
 
+            // Jurisdiction is authored on the root and inherited by every
+            // sub-order's committed agreement.
+            const inheritedJurisdiction: ClauseFields = {};
+            for (const k of [ARBITRATION_KLEROS_CLAUSE_KEY, APPLICABLE_LAW_CLAUSE_KEY]) {
+                const v = (pickedRoot?.clauses ?? {})[k];
+                if (v) inheritedJurisdiction[k] = v;
+            }
+
             // Topologically ordered non-root orders, each with its resolved
             // seller. Shared with the cart breakdown (planSubOrderSellers) so
             // the price the buyer sees is the price that commits.
             for (const { node, seller: boundSeller } of planSubOrderSellers(pickedAssembly!)) {
-                const agreement = assemblyDoc.agreements[node.agreementHash!];
-                const nodeClauses = (agreement?.sections ?? []).map((s) => s.clause);
-                const parentOrderHashes = (getTopologyParentOrderHashes(agreement) ?? [])
+                const nodeClauses = Object.keys(node.clauses);
+                const parentOrderHashes = node.parentOrderIds
                     .map((pid) => realOrderHash.get(pid))
                     .filter((h): h is `0x${string}` => !!h);
                 const isCourierEdge = nodeClauses.includes("figaro-courier-process-v1")
@@ -631,22 +558,21 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 // It joins the process when a courier claims it; the order
                 // page commits it post-claim from the stashed draft.
                 if (isCourierEdge && fulfillmentMode === "deliver:dutch-auction") {
-                    const daBands = (readAssemblyClause(assemblyDoc, PROXIMITY_POLICY_CLAUSE_KEY)
-                        ?.data as { bands?: string[] } | undefined)?.bands ?? [];
                     stashSellerDraft(processId, {
                         buyer,
                         currency,
                         processId,
                         parentOrderHashes,
                         clauseFields: {
-                            origin: sellerCatalogue?.geohash ?? "",
-                            destination: deliveryLocation.geohash ?? "",
-                            courierProcessIncluded: true,
-                            ...assemblyJurisdictionFields(assemblyDoc),
-                            ...(daBands.length > 0 ? { proximityBands: daBands } : {}),
-                            ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
-                            ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
-                            class_: CLASS_TO_SHORT_CODE[cartClassOfService],
+                            ...node.clauses,
+                            ...inheritedJurisdiction,
+                            [GEO_CLAUSE_KEY]: {
+                                origin: sellerCatalogue?.geohash ?? "",
+                                destination: deliveryLocation.geohash ?? "",
+                                ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
+                                ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
+                                class_: CLASS_TO_SHORT_CODE[cartClassOfService],
+                            },
                         },
                         deliveryAddress: deliveryAddress.trim() || undefined,
                     });
@@ -679,19 +605,16 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     seller = sellerSelection.seller;
                     payment = parseToken(sellerSelection.price, tokenDecimals);
                     sellerToNotify = seller;
-                    const bands = (readAssemblyClause(assemblyDoc, PROXIMITY_POLICY_CLAUSE_KEY)
-                        ?.data as { bands?: string[] } | undefined)?.bands ?? [];
-                    const ghgStandards = readAssemblyOrderGhgStandards(assemblyDoc, node.agreementHash);
                     clauseFields = {
-                        origin: sellerCatalogue?.geohash ?? "",
-                        destination: deliveryLocation.geohash ?? "",
-                        courierProcessIncluded: true,
-                        ...assemblyJurisdictionFields(assemblyDoc),
-                        ...(bands.length > 0 ? { proximityBands: bands } : {}),
-                        ...(ghgStandards.length > 0 ? { ghgStandards } : {}),
-                        ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
-                        ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
-                        class_: CLASS_TO_SHORT_CODE[cartClassOfService],
+                        ...node.clauses,
+                        ...inheritedJurisdiction,
+                        [GEO_CLAUSE_KEY]: {
+                            origin: sellerCatalogue?.geohash ?? "",
+                            destination: deliveryLocation.geohash ?? "",
+                            ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
+                            ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
+                            class_: CLASS_TO_SHORT_CODE[cartClassOfService],
+                        },
                     };
                 } else {
                     // Generic sub-order: seller resolved upstream from the
@@ -711,7 +634,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         node, seller, leadAddress: sellerAddress,
                         sellerCatalogues, tokenDecimals,
                     });
-                    clauseFields = readAgreementFields(node, agreement);
+                    clauseFields = { ...node.clauses };
                 }
 
                 cumulativeValue += payment;

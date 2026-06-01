@@ -52,31 +52,6 @@ const ALLOWED_COORDINATIONS: ReadonlyArray<string> = ["buyer-assigned", "seller-
 const ALLOWED_HANDOFF_POINTS: ReadonlyArray<string> = ["face-to-face", "dead-drop", "parking-area", "locker"];
 const ALLOWED_PROXIMITY_BANDS: ReadonlyArray<string> = ["zone-wifi", "nearby-ble", "contact-nfc"];
 
-/** Filter a assemblyDoc-field array down to known enum values. */
-function readAssemblyDocumentArray(
-    fields: ClauseFields | undefined,
-    key: string,
-    allowed: ReadonlyArray<string>,
-): string[] {
-    if (!fields) return [];
-    const value = fields[key];
-    if (!Array.isArray(value)) return [];
-    return value.filter((v): v is string => typeof v === "string" && allowed.includes(v));
-}
-
-function readAssemblyDocumentExtra(fields: ClauseFields | undefined, keys: string[]): string | undefined {
-    if (!fields) return undefined;
-
-    for (const key of keys) {
-        const value = fields[key];
-        if (typeof value === "string" && value.trim()) {
-            return value.trim();
-        }
-    }
-
-    return undefined;
-}
-
 /** Pull a canonical fulfilment method out of the v2 section's first
  *  (modality, coordination) pair. Returns null when the section's modalities
  *  array is empty or contains only unrecognized values. Used by downstream
@@ -115,16 +90,6 @@ export function canonicalFulfilmentMethodToArrays(
         case "deliver:seller-assigned": return { modalities: ["delivery"], coordinations: ["seller-assigned"] };
         case "deliver:dutch-auction": return { modalities: ["delivery"], coordinations: ["dutch-auction"] };
     }
-}
-
-function hasGeoFields(fields: ClauseFields | undefined): boolean {
-    return !!(
-        fields?.origin?.trim()
-        || fields?.destination?.trim()
-        || fields?.mass?.trim()
-        || fields?.volume?.trim()
-        || fields?.class_?.trim()
-    );
 }
 
 function dedupeOrderHashes(orderHashes?: string[]): string[] {
@@ -211,139 +176,109 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         }),
     ];
 
-    if (hasGeoFields(params.clauseFields)) {
-        sections.push(clauseFieldsToGeoSection(params.clauseFields!));
+    // clauseFields is now the template's nested, spec-named shape:
+    // clauseId → its field values. Most clauses project straight to a section
+    // (data === the values); geo is the one that needs encoding; a few add
+    // their auto-paired Category-1 leaves.
+    const cf: ClauseFields = params.clauseFields ?? {};
+    const arrOf = (v: unknown): string[] =>
+        Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+
+    // Geo — raw checkout strings (origin / "5 kg") → encoded section.
+    const geo = cf[GEO_CLAUSE_KEY];
+    if (
+        geo &&
+        (typeof geo.origin === "string" ||
+            typeof geo.destination === "string" ||
+            typeof geo.mass === "string" ||
+            typeof geo.volume === "string")
+    ) {
+        sections.push(
+            clauseFieldsToGeoSection(
+                geo as { origin?: string; destination?: string; mass?: string; volume?: string; class_?: string },
+            ),
+        );
     }
 
-    const modalities = readAssemblyDocumentArray(params.clauseFields, "fulfilmentModalities", ALLOWED_MODALITIES);
-    const coordinations = readAssemblyDocumentArray(params.clauseFields, "fulfilmentCoordinations", ALLOWED_COORDINATIONS);
-    const handoffPoints = readAssemblyDocumentArray(params.clauseFields, "fulfilmentHandoffPoints", ALLOWED_HANDOFF_POINTS);
+    // Fulfilment — spec-named already; project with the coordination default.
+    const fulfilment = cf[FULFILMENT_V2_CLAUSE_KEY];
+    const modalities = arrOf(fulfilment?.modalities).filter((m) => ALLOWED_MODALITIES.includes(m));
     if (modalities.length > 0) {
         const data: Record<string, unknown> = { modalities };
         // The validator requires coordinations non-empty IFF delivery is
-        // offered. Default to "seller-assigned" when delivery has no
-        // coordination specified, and drop coordinations when delivery isn't
-        // offered (template/runtime mistakes shouldn't break encoding here —
-        // the clause validator catches genuine drift downstream).
+        // offered; default to "seller-assigned" when unset.
         if (modalities.includes("delivery")) {
-            data.coordinations = coordinations.length > 0 ? coordinations : ["seller-assigned"];
+            const coords = arrOf(fulfilment?.coordinations).filter((c) => ALLOWED_COORDINATIONS.includes(c));
+            data.coordinations = coords.length > 0 ? coords : ["seller-assigned"];
         }
-        if (handoffPoints.length > 0) data.handoffPoints = handoffPoints;
-        sections.push({
-            clause: FULFILMENT_V2_CLAUSE_KEY,
-            data,
-        });
+        const handoffs = arrOf(fulfilment?.handoffPoints).filter((h) => ALLOWED_HANDOFF_POINTS.includes(h));
+        if (handoffs.length > 0) data.handoffPoints = handoffs;
+        sections.push({ clause: FULFILMENT_V2_CLAUSE_KEY, data });
     }
 
-    // Per-role sovereign event-log anchoring. Driven by the Attestations-tab
-    // assemblyDoc flags (merchantProcessIncluded / courierProcessIncluded). When
-    // delivery is offered in this order's fulfilment, merchant-process is
-    // auto-anchored (the drawer enforces the locked-on rule too); when this
-    // order is a delivery-spawned courier sub-order, courier-process is
-    // auto-anchored at creation. Either flag may also be set explicitly by
-    // the designer via the drawer for non-delivery flows.
-    //
-    // Category-1 clauses: empty sectionData; the runtime attestation supplies
-    // the eventType + evidenceUri content. Without these sections the on-chain
-    // inclusion proof for the matching attestations cannot open.
-    const merchantProcessFlag = params.clauseFields?.merchantProcessIncluded === true;
+    // Per-role sovereign event-log anchors (Category-1, empty data). Presence
+    // of the clause key includes it; delivery auto-anchors merchant-process.
     const deliveryOffered = modalities.includes("delivery");
-    if (merchantProcessFlag || deliveryOffered) {
-        sections.push({
-            clause: MERCHANT_PROCESS_CLAUSE_KEY,
-            data: {},
-        });
+    if (cf[MERCHANT_PROCESS_CLAUSE_KEY] || deliveryOffered) {
+        sections.push({ clause: MERCHANT_PROCESS_CLAUSE_KEY, data: {} });
     }
-    if (params.clauseFields?.courierProcessIncluded === true) {
-        sections.push({
-            clause: COURIER_PROCESS_CLAUSE_KEY,
-            data: {},
-        });
+    if (cf[COURIER_PROCESS_CLAUSE_KEY]) {
+        sections.push({ clause: COURIER_PROCESS_CLAUSE_KEY, data: {} });
     }
 
-    // Multi-valued: each declared GHG standard produces its own disclosure
-    // clause. `ghgStandards` (array of clauseIds OR legacy standard labels)
-    // is the new path; the legacy single `ghgStandard` + `ghgScope` is read
-    // as a fallback for any caller that hasn't migrated.
-    const ghgStandards = readAssemblyDocumentArray(
-        params.clauseFields,
-        "ghgStandards",
-        GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>,
-    );
-    const legacyStandard = readAssemblyDocumentExtra(params.clauseFields, ["ghgStandard", "ghgMethodology"]);
-    const ghgScope = readAssemblyDocumentExtra(params.clauseFields, ["ghgScope"]);
-    const resolvedClauseKeys: string[] = ghgStandards.length > 0
-        ? ghgStandards
-        : legacyStandard
-            ? [GHG_STANDARD_TO_CLAUSE[legacyStandard] ?? GHG_CLAUSE_KEY]
-            : [];
-    for (const clauseKey of resolvedClauseKeys) {
-        const data: Record<string, unknown> = {};
-        const parsedScope = ghgScope ? Number(ghgScope) : 1;
-        data.scope = Number.isFinite(parsedScope) ? parsedScope : 1;
-        sections.push({ clause: clauseKey, data });
+    // GHG disclosures — each selected disclosure clause is its own key.
+    const ghgKeys = (GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>).filter((k) => !!cf[k]);
+    for (const clauseKey of ghgKeys) {
+        const rawScope = (cf[clauseKey] as { scope?: unknown }).scope;
+        const parsedScope = typeof rawScope === "number" ? rawScope : Number(rawScope);
+        sections.push({
+            clause: clauseKey,
+            data: { scope: Number.isFinite(parsedScope) && parsedScope ? parsedScope : 1 },
+        });
     }
-    // A GHG disclosure commitment needs its runtime measurement clause to
-    // disclose against: pair figaro-ghg-measurement-v1 with any disclosure
-    // standard so the seller can file grams measurements at runtime and the
-    // buyer can size carbon offsets. The committed agreement must carry this
-    // section for the measurement attestation's inclusion proof to open.
-    if (resolvedClauseKeys.length > 0) {
+    // Pair the runtime measurement clause with any disclosure so grams can be
+    // filed and offsets sized at runtime.
+    if (ghgKeys.length > 0) {
         sections.push({ clause: GHG_MEASUREMENT_CLAUSE_KEY, data: {} });
     }
 
-    const proximityBands = readAssemblyDocumentArray(params.clauseFields, "proximityBands", ALLOWED_PROXIMITY_BANDS);
-    if (proximityBands.length > 0) {
-        sections.push({
-            clause: PROXIMITY_POLICY_CLAUSE_KEY,
-            data: { bands: proximityBands },
-        });
-        // Category-1 placeholder leaf for figaro-proximity-proof-v1. The
-        // runtime handoff attestation supplies the real (band, nonce,
-        // deviceSig) content, but its merkle inclusion proof must open
-        // against a section committed in the agreement — without this leaf
-        // the courier cannot attest the proximity handoff at all.
+    // Proximity policy + the Category-1 proof leaf its handoff attestation
+    // opens against.
+    const bands = arrOf(cf[PROXIMITY_POLICY_CLAUSE_KEY]?.bands).filter((b) =>
+        ALLOWED_PROXIMITY_BANDS.includes(b),
+    );
+    if (bands.length > 0) {
+        sections.push({ clause: PROXIMITY_POLICY_CLAUSE_KEY, data: { bands } });
         sections.push({
             clause: PROXIMITY_PROOF_CLAUSE_KEY,
-            data: {
-                band: proximityBands[0],
-                nonce: `0x${"00".repeat(32)}`,
-                deviceSig: `0x${"00".repeat(65)}`,
-            },
+            data: { band: bands[0], nonce: `0x${"00".repeat(32)}`, deviceSig: `0x${"00".repeat(65)}` },
         });
     }
 
-    const klerosCourt = readAssemblyDocumentExtra(params.clauseFields, ["klerosCourt"]);
-    const klerosMinJurorsRaw = readAssemblyDocumentExtra(params.clauseFields, ["klerosMinJurors"]);
-    const applicableLaw = readAssemblyDocumentExtra(params.clauseFields, ["applicableLaw"]);
-    const forum = readAssemblyDocumentExtra(params.clauseFields, ["forum"]);
-    const language = readAssemblyDocumentExtra(params.clauseFields, ["language"]);
+    // Jurisdiction — Kleros + applicable law.
+    const kleros = cf[ARBITRATION_KLEROS_CLAUSE_KEY];
+    const klerosCourt = typeof kleros?.klerosCourt === "string" ? kleros.klerosCourt : undefined;
     const ALLOWED_KLEROS_COURTS = ["general", "blockchain-nontechnical", "blockchain-technical", "english-language"];
-    const klerosCourtValue = klerosCourt && ALLOWED_KLEROS_COURTS.includes(klerosCourt) ? klerosCourt : undefined;
-    if (klerosCourtValue) {
-        const parsed = klerosMinJurorsRaw ? Number(klerosMinJurorsRaw) : 3;
+    if (klerosCourt && ALLOWED_KLEROS_COURTS.includes(klerosCourt)) {
+        const rawJurors = (kleros as { klerosMinJurors?: unknown }).klerosMinJurors;
+        const parsed = rawJurors != null && rawJurors !== "" ? Number(rawJurors) : 3;
         sections.push({
             clause: ARBITRATION_KLEROS_CLAUSE_KEY,
-            data: {
-                klerosCourt: klerosCourtValue,
-                klerosMinJurors: Number.isFinite(parsed) && parsed >= 1 ? parsed : 3,
-            },
+            data: { klerosCourt, klerosMinJurors: Number.isFinite(parsed) && parsed >= 1 ? parsed : 3 },
         });
     }
+    const law = cf[APPLICABLE_LAW_CLAUSE_KEY];
+    const applicableLaw = typeof law?.applicableLaw === "string" && law.applicableLaw ? law.applicableLaw : undefined;
     if (applicableLaw) {
         const data: Record<string, unknown> = { applicableLaw };
-        if (forum) data.forum = forum;
-        if (language) data.language = language;
-        sections.push({
-            clause: APPLICABLE_LAW_CLAUSE_KEY,
-            data,
-        });
+        if (typeof law?.forum === "string" && law.forum) data.forum = law.forum;
+        if (typeof law?.language === "string" && law.language) data.language = law.language;
+        sections.push({ clause: APPLICABLE_LAW_CLAUSE_KEY, data });
     }
 
     // Consent: multi-document array. Each row must have non-empty hash +
-    // version + title; partial rows are silently dropped. The Layer-C
-    // validator catches structural violations downstream.
-    const rawConsentDocuments = params.clauseFields?.consentDocuments;
+    // version + title; partial rows are silently dropped.
+    const rawConsentDocuments = cf[CONSENT_CLAUSE_KEY]?.documents;
     const consentDocuments = Array.isArray(rawConsentDocuments)
         ? rawConsentDocuments.filter((doc): doc is {
             documentHash: string;
@@ -360,10 +295,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         )
         : [];
     if (consentDocuments.length > 0) {
-        sections.push({
-            clause: CONSENT_CLAUSE_KEY,
-            data: { documents: consentDocuments },
-        });
+        sections.push({ clause: CONSENT_CLAUSE_KEY, data: { documents: consentDocuments } });
     }
 
     if (params.extraSections?.length) {

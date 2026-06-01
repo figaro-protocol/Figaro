@@ -15,7 +15,6 @@
 
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import type { SellerCatalogue } from "@/lib/seller/types";
-import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
 import { resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";
@@ -36,15 +35,14 @@ export function planSubOrderSellers(
     assembly: BoundAssembly,
 ): Array<{ node: AssemblyDocumentOrder; seller: `0x${string}` | null }> {
     const { assemblyDoc } = assembly;
-    const rootId = assemblyDoc.orders[0]?.id;
+    const rootId =
+        assemblyDoc.orders.find((o) => o.parentOrderIds.length === 0)?.id ??
+        assemblyDoc.orders[0]?.id;
     const settled = new Set<string>(rootId ? [rootId] : []);
     const pending = assemblyDoc.orders.filter((o) => o.id !== rootId);
     const ordered: AssemblyDocumentOrder[] = [];
     while (pending.length > 0) {
-        const idx = pending.findIndex((o) =>
-            (getTopologyParentOrderHashes(assemblyDoc.agreements[o.agreementHash!]) ?? [])
-                .every((p) => settled.has(p)),
-        );
+        const idx = pending.findIndex((o) => o.parentOrderIds.every((p) => settled.has(p)));
         if (idx === -1) {
             throw new Error("Assembly topology is not a DAG — a sub-order's parents are unresolvable.");
         }
@@ -54,8 +52,7 @@ export function planSubOrderSellers(
     }
     const cursor = new Map<string, number>();
     return ordered.map((node) => {
-        const agreement = assemblyDoc.agreements[node.agreementHash!];
-        const nodeClauses = (agreement?.sections ?? []).map((s) => s.clause);
+        const nodeClauses = Object.keys(node.clauses);
         const binding = assembly.counterpartyBindings.find((cb) => nodeClauses.includes(cb.clauseId));
         if (!binding || binding.addresses.length === 0) return { node, seller: null };
         const c = cursor.get(binding.clauseId) ?? 0;
@@ -67,16 +64,16 @@ export function planSubOrderSellers(
 /**
  * Resolve a sub-order's payment as a bigint.
  *
- * The lead's OWN nodes are priced from the assembly the lead authored (the
- * assemblyDoc figure). A contributor's node is priced LIVE from the contributor's
- * own catalogue — the rate negotiated with the lead if one exists, else the
- * public price — the same `resolveCatalogueItemPrice` path the delivery leg
- * uses, minus the picker. Falls back to the assemblyDoc figure only if the
- * contributor publishes no component item.
+ * Every seller prices from its OWN catalogue — the lead included. The template
+ * carries no payment (it's a runtime value), so the figure is resolved LIVE
+ * from the pricing seller's catalogue via `resolveCatalogueItemPrice` (the rate
+ * negotiated with the lead if one exists, else the public price) — the same
+ * path the delivery leg uses, minus the picker. Returns 0n when the seller
+ * publishes no matching item.
  *
- * Returns a bigint: the assemblyDoc stores payments as decimal-wei strings (JSON
- * has no bigint), so a bare `cumulative += node.payment` would string-concat
- * (bigint + string), corrupting the cumulative. Coercion happens here.
+ * Open refinement (kit-assembly): the node→catalogue-item mapping is currently
+ * the seller's "component" item; a richer rule (itemId on the binding, or a
+ * per-node category) is the remaining decision.
  */
 export function resolveSubOrderPayment(args: {
     node: AssemblyDocumentOrder;
@@ -85,10 +82,9 @@ export function resolveSubOrderPayment(args: {
     sellerCatalogues: SellerCatalogue[];
     tokenDecimals: number;
 }): bigint {
-    const { node, seller, leadAddress, sellerCatalogues, tokenDecimals } = args;
-    if (hexEqual(seller, leadAddress)) return BigInt(node.payment ?? 0n);
+    const { seller, leadAddress, sellerCatalogues, tokenDecimals } = args;
     const catalogue = sellerCatalogues.find((c) => hexEqual(c.address, seller));
     const item = catalogue?.menu.find((i) => i.category === "component");
-    if (!item) return BigInt(node.payment ?? 0n);
+    if (!item) return 0n;
     return parseToken(resolveCatalogueItemPrice(item, leadAddress).price, tokenDecimals);
 }

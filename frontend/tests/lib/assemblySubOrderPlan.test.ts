@@ -8,30 +8,17 @@ import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import type { SellerCatalogue } from "@/lib/seller/types";
 
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
-// B carries proximity-policy, C carries ghg-measurement, D carries
-// proximity-policy (shared with B). Proximity is bound to [Swift, Mercato],
-// so the per-clause cursor hands B→Swift, D→Mercato by commit order.
+// B + D carry proximity-policy, C carries ghg-measurement. Proximity is bound
+// to [Swift, Mercato], so the per-clause cursor hands B→Swift, D→Mercato by
+// commit order. Structure + clauses come straight off the template orders —
+// no agreements, no baked payment.
 const MERCATO = "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f" as const;
 const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955" as const;
 const ROSSO = "0x976EA74026E726554dB657fA54763abd0C3a0aa9" as const;
 
 const PROX = "figaro-proximity-policy-v1";
 const GHG = "figaro-ghg-measurement-v1";
-const TOPO = "figaro-topology-v1";
 
-function agreement(parents: string[], roleClause?: string) {
-    return {
-        version: "a1" as const,
-        buyer: MERCATO,
-        seller: MERCATO,
-        sections: [
-            { clause: TOPO, data: { parentOrderHashes: parents } },
-            ...(roleClause ? [{ clause: roleClause, data: {} }] : []),
-        ],
-    };
-}
-
-// payment as decimal-wei STRINGS — the assemblyDoc's JSON shape (no bigint).
 const assembly = {
     slug: "kit-assembly",
     name: "Kit",
@@ -43,26 +30,17 @@ const assembly = {
     assemblyDoc: {
         slug: "kit-assembly",
         name: "Kit",
-        processId: "0x0",
-        nextOrderIndex: 4,
-        nextSellerIndex: 4,
         orders: [
-            { id: "A", agreementHash: "0xA", payment: "1000000000000000000" },
-            { id: "B", agreementHash: "0xB", payment: "500000000000000000" },
-            { id: "C", agreementHash: "0xC", payment: "500000000000000000" },
-            { id: "D", agreementHash: "0xD", payment: "250000000000000000" },
+            { id: "A", buyer: MERCATO, seller: MERCATO, parentOrderIds: [], clauses: {} },
+            { id: "B", buyer: MERCATO, seller: SWIFT, parentOrderIds: ["A"], clauses: { [PROX]: {} } },
+            { id: "C", buyer: MERCATO, seller: ROSSO, parentOrderIds: ["A"], clauses: { [GHG]: {} } },
+            { id: "D", buyer: MERCATO, seller: MERCATO, parentOrderIds: ["B", "C"], clauses: { [PROX]: {} } },
         ],
-        agreements: {
-            "0xA": agreement([]),
-            "0xB": agreement(["A"], PROX),
-            "0xC": agreement(["A"], GHG),
-            "0xD": agreement(["B", "C"], PROX),
-        },
     },
 } as unknown as BoundAssembly;
 
-// Each contributor's component lives in its OWN catalogue, with a rate
-// negotiated for Mercato (0.5) below its public price.
+// Every seller — the lead included — prices from its OWN catalogue's component
+// item; contributors carry a rate negotiated for Mercato below their public one.
 const catalogues = [
     {
         address: SWIFT,
@@ -80,6 +58,14 @@ const catalogues = [
             id: "kit-housing", name: "Housing", category: "component",
             price: "0.55", pricingPolicy: "fixed",
             negotiatedPrices: [{ counterparty: MERCATO, price: "0.5" }], available: true,
+        }],
+    },
+    {
+        address: MERCATO,
+        name: "Mercato",
+        menu: [{
+            id: "kit-assemble", name: "Assemble", category: "component",
+            price: "0.25", pricingPolicy: "fixed", available: true,
         }],
     },
 ] as unknown as SellerCatalogue[];
@@ -113,24 +99,24 @@ describe("resolveSubOrderPayment", () => {
         expect(resolveSubOrderPayment(payArgs(orderById("B"), SWIFT))).toBe(500000000000000000n);
     });
 
-    it("prices the lead's own node from the assemblyDoc figure", () => {
+    it("prices the lead's own node from the lead's own catalogue", () => {
         expect(resolveSubOrderPayment(payArgs(orderById("D"), MERCATO))).toBe(250000000000000000n);
     });
 
-    it("falls back to the assemblyDoc figure when the contributor has no component item", () => {
+    it("returns 0 when the seller publishes no component item", () => {
         expect(resolveSubOrderPayment({ ...payArgs(orderById("B"), SWIFT), sellerCatalogues: [] }))
-            .toBe(500000000000000000n);
+            .toBe(0n);
     });
 
     it("sums to the displayed total with bigint arithmetic (regression: no string-concat)", () => {
         const plan = planSubOrderSellers(assembly);
-        const rootPayment = 1000000000000000000n; // sellerTotalAmount (product price)
+        const rootPayment = 1000000000000000000n; // product price on the lead/root
         const total = plan.reduce(
             (sum, { node, seller }) => sum + resolveSubOrderPayment(payArgs(node, seller!)),
             rootPayment,
         );
-        // 1 + 0.5 + 0.5 + 0.25 = 2.25. A `bigint + string` regression would
-        // make this a concatenated string, not this bigint.
+        // 1 + 0.5 (B/Swift) + 0.5 (C/Rosso) + 0.25 (D/Mercato) = 2.25. A
+        // `bigint + string` regression would concatenate, not sum to this.
         expect(total).toBe(2250000000000000000n);
     });
 });
