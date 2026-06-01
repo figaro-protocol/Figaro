@@ -1,30 +1,25 @@
 /**
- * Clause taxonomy — canonical categories, tiers, families, and lens map.
+ * Clause taxonomy — tiers, families, info, and the canvas lens id.
  *
- * Four parallel taxonomies organize Figaro clauses. This module is the single
- * source of truth for all four:
+ *   TIER — `CLAUSE_TIER_MAP`: "designer-time" (set at design, in the agreement
+ *   hash, shown in the drawer) vs "runtime" (attested during/after the process).
+ *   Read by `GHGAnchorPanel`. NOTE: each spec already carries this in
+ *   `block.tier` ("category-1" ⇒ runtime, else designer-time); collapsing the
+ *   hand map onto `block.tier` is open work — do not add a parallel.
  *
- *   CATEGORY — drawer organization. ~13 narrow slices. Read from the
- *   `categories` array in each clause's Layer-A spec JSON. Used by the
- *   designer's `AgreementDrawer` to group clauses into sections.
+ *   FAMILY — `CLAUSE_FAMILY_MAP`: the coarse editorial grouping the `/clauses`
+ *   inventory renders.
  *
- *   TIER — lifecycle phase the clause attaches to. Hand-maintained
- *   (the spec JSON shape does not carry a `tier` field today):
- *     - "designer-time": clause set at agreement-creation time; lives in
- *       the agreement hash; surfaced in the designer drawer.
- *     - "runtime": attestation emitted during/after order processing;
- *       NOT surfaced in the designer drawer; lives on attestation feeds.
+ *   INFO — `getClauseInfo`: title + description, read from the spec JSON.
  *
- *   FAMILY — the coarse editorial grouping the `/clauses` inventory
- *   renders. Six families, hand-maintained (the spec JSON shape carries
- *   no `family` field); `CLAUSE_FAMILY_MAP` is the assignment.
+ *   LENS — `LensId`: the four canvas overlays in `ProcessGraphCanvas`.
  *
- *   LENS — canvas overlay. 4 stable broad slices that highlight visual
- *   aspects of an order in `ProcessGraphCanvas`. Lenses are NOT
- *   category-derived — they are an independent UX surface that can bundle
- *   multiple categories under one visual filter. `LENS_TO_CATEGORIES` is
- *   the explicit map between the two taxonomies; without it the
- *   relationship is implicit and drifts.
+ * The "category" grouping (`CLAUSES_BY_CATEGORY`, the designer/runtime indexes,
+ * `getPrimaryCategory`, `getLensForCategory`, `LENS_TO_CATEGORIES`) was deleted
+ * 2026-06-01 — it was a dead parallel of the drawer's `block.drawerArticle`
+ * grouping with zero consumers. "category" and "article" are synonyms for the
+ * group a clause is read under; the spec-resident source is `block.drawerArticle`.
+ * Do not reintroduce a `categories`-based grouping here.
  */
 
 import commerceSpec from "@/lib/shared/clauses/figaro-commerce-v1.json";
@@ -48,58 +43,10 @@ import topologySpec from "@/lib/shared/clauses/figaro-topology-v1.json";
 
 // ── Taxonomy types ──────────────────────────────────────────────────────────
 
-export type ClauseCategory =
-    | "commerce"
-    | "payment"
-    | "consent"
-    | "evidence-law"
-    | "lifecycle"
-    | "seller-process"
-    | "fulfilment"
-    | "geo"
-    | "emissions"
-    | "jurisdiction"
-    | "arbitration"
-    | "proximity"
-    | "topology";
-
 export type ClauseTier = "designer-time" | "runtime";
 
+/** Canvas lens identifiers (ProcessGraphCanvas overlay). */
 export type LensId = "value" | "geo" | "capital" | "ghg";
-
-// ── Category labels and descriptions ────────────────────────────────────────
-
-export const CATEGORY_LABELS: Record<ClauseCategory, string> = {
-    commerce: "Commerce",
-    payment: "Payment",
-    consent: "Consent",
-    "evidence-law": "Evidence & law",
-    lifecycle: "Lifecycle",
-    "seller-process": "Seller process",
-    fulfilment: "Fulfilment",
-    geo: "Geo",
-    emissions: "Emissions",
-    jurisdiction: "Jurisdiction",
-    arbitration: "Arbitration",
-    proximity: "Proximity",
-    topology: "Topology",
-};
-
-export const CATEGORY_DESCRIPTIONS: Record<ClauseCategory, string> = {
-    commerce: "Currency, payment amount, and itemized line items.",
-    payment: "Capital-flow commitments at order-commit time.",
-    consent: "Cryptographic attestation to off-chain legal documents.",
-    "evidence-law": "Legal evidence anchoring for off-chain forums.",
-    lifecycle: "Stage progression and event streams over time.",
-    "seller-process": "Sovereign event logs for off-chain sellers.",
-    fulfilment: "Modality, coordination, and handoff point in one clause.",
-    geo: "Geographic origin and destination, plus shipment mass, volume, and class of service.",
-    emissions: "GHG accounting (per industry standard or custom).",
-    jurisdiction: "State / ADR / traditional-jurisdiction recourse layer.",
-    arbitration: "Decentralized off-chain arbitration via Kleros or another provider.",
-    proximity: "Proximity verification policy and proof.",
-    topology: "DAG lineage and parent-order relationships.",
-};
 
 // ── Per-clause tier assignment ──────────────────────────────────────────────
 
@@ -186,24 +133,9 @@ export const CLAUSE_FAMILY_MAP: Readonly<Record<string, ClauseFamily>> = {
     "figaro-consent-v1": "legal",
 };
 
-// ── Lens map ────────────────────────────────────────────────────────────────
-
-/**
- * Explicit lens → category map. Lenses can bundle multiple categories under
- * one visual filter; categories can be drawer-only (no lens). `capital` has
- * no clause-driven content — it overlays on-chain bond state from the kernel,
- * not from agreement clauses.
- */
-export const LENS_TO_CATEGORIES: Readonly<Record<LensId, readonly ClauseCategory[]>> = {
-    value: ["commerce", "payment"],
-    geo: ["geo", "fulfilment"],
-    capital: [],
-    ghg: ["emissions"],
-};
-
 // ── Clause-index derivation from Layer-A spec JSONs ─────────────────────────
 
-type ClauseSpecMeta = { readonly clauseId: string; readonly categories: readonly string[] };
+type ClauseSpecMeta = { readonly clauseId: string };
 
 const ALL_SPECS: readonly ClauseSpecMeta[] = [
     commerceSpec,
@@ -226,60 +158,7 @@ const ALL_SPECS: readonly ClauseSpecMeta[] = [
     topologySpec,
 ] as readonly ClauseSpecMeta[];
 
-const ALL_CATEGORIES: readonly ClauseCategory[] = Object.keys(CATEGORY_LABELS) as ClauseCategory[];
-
-function buildIndex(filter?: (spec: ClauseSpecMeta) => boolean): Readonly<Record<ClauseCategory, readonly string[]>> {
-    const index = Object.fromEntries(ALL_CATEGORIES.map((c) => [c, [] as string[]])) as Record<ClauseCategory, string[]>;
-    for (const spec of ALL_SPECS) {
-        if (filter && !filter(spec)) continue;
-        for (const cat of spec.categories) {
-            if (cat in index) {
-                index[cat as ClauseCategory].push(spec.clauseId);
-            }
-        }
-    }
-    return index;
-}
-
-/** Every clause, grouped by category. Includes both designer-time and runtime. */
-export const CLAUSES_BY_CATEGORY: Readonly<Record<ClauseCategory, readonly string[]>> = buildIndex();
-
-/** Only designer-time clauses, grouped by category. Drives the AgreementDrawer sections. */
-export const DESIGNER_CLAUSES_BY_CATEGORY: Readonly<Record<ClauseCategory, readonly string[]>> = buildIndex(
-    (spec) => CLAUSE_TIER_MAP[spec.clauseId] === "designer-time",
-);
-
-/** Only runtime clauses, grouped by category. */
-export const RUNTIME_CLAUSES_BY_CATEGORY: Readonly<Record<ClauseCategory, readonly string[]>> = buildIndex(
-    (spec) => CLAUSE_TIER_MAP[spec.clauseId] === "runtime",
-);
-
 // ── Lookup helpers ──────────────────────────────────────────────────────────
-
-/** Primary category for a clause — the first entry in its `categories` array. */
-export function getPrimaryCategory(clauseId: string): ClauseCategory | undefined {
-    const spec = ALL_SPECS.find((s) => s.clauseId === clauseId);
-    if (!spec || spec.categories.length === 0) return undefined;
-    const first = spec.categories[0];
-    return first in CATEGORY_LABELS ? (first as ClauseCategory) : undefined;
-}
-
-/** Tier for a clause; throws if the clause isn't in the tier map. */
-export function getClauseTier(clauseId: string): ClauseTier {
-    const tier = CLAUSE_TIER_MAP[clauseId];
-    if (!tier) {
-        throw new Error(`Clause "${clauseId}" has no tier assignment in CLAUSE_TIER_MAP. Add it to clauseCategories.ts.`);
-    }
-    return tier;
-}
-
-/** Lens that surfaces a given category, or undefined if the category is drawer-only. */
-export function getLensForCategory(category: ClauseCategory): LensId | undefined {
-    for (const lens of Object.keys(LENS_TO_CATEGORIES) as LensId[]) {
-        if (LENS_TO_CATEGORIES[lens].includes(category)) return lens;
-    }
-    return undefined;
-}
 
 /**
  * `title` and `description` for a clause, read directly from its Layer-A
@@ -296,11 +175,6 @@ export function getClauseInfo(clauseId: string): { title: string; description: s
         title: spec.title ?? clauseId,
         description: spec.description ?? "",
     };
-}
-
-/** Categories that have at least one designer-time clause (drawer-renderable). */
-export function getDesignerCategories(): readonly ClauseCategory[] {
-    return ALL_CATEGORIES.filter((c) => DESIGNER_CLAUSES_BY_CATEGORY[c].length > 0);
 }
 
 // ── Inventory derivation (by family) ────────────────────────────────────────
@@ -343,26 +217,19 @@ export const CLAUSE_COUNT: number = ALL_SPECS.length;
 // ── Drift detection ─────────────────────────────────────────────────────────
 
 /**
- * Validates that every clause in the registry has a tier assignment and that
- * its `categories` field declares at least one recognized category. Runs at
- * module load so drift surfaces as a build/dev-server error, not as a silent
- * UI gap.
+ * Validates that every clause in the registry has a tier and a family
+ * assignment. Runs at module load so drift surfaces as a build/dev-server
+ * error, not as a silent UI gap.
  */
 function assertTaxonomyComplete(): void {
     const missingTier: string[] = [];
     const missingFamily: string[] = [];
-    const unknownCategories: Array<{ clauseId: string; category: string }> = [];
     for (const spec of ALL_SPECS) {
         if (!(spec.clauseId in CLAUSE_TIER_MAP)) {
             missingTier.push(spec.clauseId);
         }
         if (!(spec.clauseId in CLAUSE_FAMILY_MAP)) {
             missingFamily.push(spec.clauseId);
-        }
-        for (const cat of spec.categories) {
-            if (!(cat in CATEGORY_LABELS)) {
-                unknownCategories.push({ clauseId: spec.clauseId, category: cat });
-            }
         }
     }
     if (missingTier.length > 0) {
@@ -373,12 +240,6 @@ function assertTaxonomyComplete(): void {
     if (missingFamily.length > 0) {
         throw new Error(
             `clauseCategories.ts: missing family assignment for ${missingFamily.join(", ")}. Add to CLAUSE_FAMILY_MAP.`,
-        );
-    }
-    if (unknownCategories.length > 0) {
-        const detail = unknownCategories.map((u) => `${u.clauseId}:${u.category}`).join(", ");
-        throw new Error(
-            `clauseCategories.ts: unrecognized category in spec JSON: ${detail}. Add to ClauseCategory union and CATEGORY_LABELS.`,
         );
     }
 }
