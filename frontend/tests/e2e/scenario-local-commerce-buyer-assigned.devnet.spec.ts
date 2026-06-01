@@ -112,8 +112,8 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
 
         // ── Name + publish ────────────────────────────────────────────────
         await page.getByTestId('designer-name-input').fill(draftName);
-        await expect(page.getByTestId('designer-publish')).toBeEnabled({ timeout: 5000 });
-        await page.getByTestId('designer-publish').click();
+        await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
+        await page.getByTestId('designer-review').click();
 
         await page.waitForURL(new RegExp(`/builders/designer/view/${slug}`), { timeout: 15000 });
         await page.goto(

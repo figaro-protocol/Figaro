@@ -6,10 +6,10 @@
  * drawer's clause-toggle interactions — open drawer, expand
  * article, toggle inclusion, save, reload, verify persistence.
  *
- * This spec walks the simplest article (logistics → Geo) end-to-end:
+ * This spec walks the simplest article (fulfilment → Geo route details) end-to-end:
  *   1. /builders/designer/new?fresh=1 — wait for canvas hydration.
  *   2. Click the root order node → drawer opens.
- *   3. Click drawer-tab-logistics → logistics section renders.
+ *   3. Click drawer-tab-fulfilment → fulfilment section renders (route details fold in here).
  *   4. Click drawer-include-figaro-geo-v2 → toggle on.
  *   5. Fill name + click Save.
  *   6. Verify the saved snapshot in localStorage has the Geo
@@ -51,9 +51,9 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         const drawer = page.getByTestId('agreement-drawer');
         await drawer.waitFor({ state: 'visible', timeout: 10000 });
 
-        // Open the logistics section, then toggle Geo on.
-        await page.getByTestId('drawer-tab-logistics').click();
-        await page.getByTestId('drawer-section-logistics').waitFor({ state: 'visible', timeout: 5000 });
+        // Open the fulfilment section (route details fold in here), then toggle Geo on.
+        await page.getByTestId('drawer-tab-fulfilment').click();
+        await page.getByTestId('drawer-section-fulfilment').waitFor({ state: 'visible', timeout: 5000 });
 
         // The Geo article is default-included on a fresh root order
         // (the blank seed always carries it because every order needs
@@ -103,8 +103,8 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         const rootNodeAfter = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
         await rootNodeAfter.click();
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
-        await page.getByTestId('drawer-tab-logistics').click();
-        await page.getByTestId('drawer-section-logistics').waitFor({ state: 'visible', timeout: 5000 });
+        await page.getByTestId('drawer-tab-fulfilment').click();
+        await page.getByTestId('drawer-section-fulfilment').waitFor({ state: 'visible', timeout: 5000 });
         await expect(page.getByTestId(`drawer-include-${GEO_CLAUSE_KEY}`)).not.toBeChecked({ timeout: 5000 });
     });
 });

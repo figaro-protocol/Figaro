@@ -46,36 +46,59 @@ import {
     GHG_DISCLOSURE_CLAUSE_KEYS,
     MERCHANT_PROCESS_CLAUSE_KEY,
 } from "@/lib/core/agreement";
-import { getClauseInfo } from "@/lib/shared/clauseCategories";
+import { getClauseInfo, getDesignerCategories, type ClauseCategory } from "@/lib/shared/clauseCategories";
 import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
-import { truncateHex } from "@/lib/shared/formatHex";
 import type { FulfilmentModality } from "@figaro/core/clauses";
 import { KLEROS_COURTS } from "@/lib/dispute";
 
 /**
- * Articles of the agreement, in canonical contract-paper order.
+ * Drawer sections, in canonical contract-paper order. Each section OWNS one or
+ * more clause categories (clauseCategories.ts) — the drawer is a reader of the
+ * clause taxonomy, not a parallel hand-list. Secondary categories that ride on
+ * a clause already homed elsewhere (`payment` on commerce; `evidence-law` on
+ * consent/law/arbitration; `lifecycle` on the process logs) are properties, not
+ * sections. Fulfilment folds in logistics (geo) + proximity, which lock to it;
+ * Consent precedes Dispute resolution, as in a paper contract.
  */
 type ArticleKey =
     | "identity"
     | "order"
     | "fulfilment"
-    | "logistics"
     | "attestations"
     | "emissions"
-    | "dispute-resolution"
-    | "consent";
+    | "consent"
+    | "dispute-resolution";
 
-const ARTICLES: readonly { key: ArticleKey; label: string }[] = [
-    { key: "identity", label: "Identity" },
-    { key: "order", label: "Order" },
-    { key: "fulfilment", label: "Fulfilment" },
-    { key: "logistics", label: "Logistics" },
-    { key: "attestations", label: "Attestations" },
-    { key: "emissions", label: "Emissions" },
-    { key: "dispute-resolution", label: "Dispute resolution" },
-    { key: "consent", label: "Consent" },
+const ARTICLES: readonly { key: ArticleKey; label: string; categories: readonly ClauseCategory[] }[] = [
+    { key: "identity", label: "Parties", categories: ["topology"] },
+    { key: "order", label: "Order", categories: ["commerce"] },
+    { key: "fulfilment", label: "Fulfilment", categories: ["fulfilment", "geo", "proximity"] },
+    { key: "attestations", label: "Attestations", categories: ["seller-process"] },
+    { key: "emissions", label: "Emissions", categories: ["emissions"] },
+    { key: "consent", label: "Consent", categories: ["consent"] },
+    { key: "dispute-resolution", label: "Dispute resolution", categories: ["jurisdiction", "arbitration"] },
 ];
+
+/**
+ * Categories intentionally without their own section — each rides on a clause
+ * already homed by another category. The drift guard below allows these to be
+ * unsectioned; everything else must have a home.
+ */
+const SECONDARY_CATEGORIES: readonly ClauseCategory[] = ["payment", "evidence-law", "lifecycle"];
+
+// Drift guard (mirrors clauseCategories.ts `assertTaxonomyComplete`): every
+// designer-time clause category must map to a section or be marked secondary,
+// so a newly registered clause cannot silently lack a drawer home.
+const SECTIONED_CATEGORIES = new Set<ClauseCategory>(ARTICLES.flatMap((a) => a.categories));
+const ORPHAN_CATEGORIES = getDesignerCategories().filter(
+    (c) => !SECTIONED_CATEGORIES.has(c) && !SECONDARY_CATEGORIES.includes(c),
+);
+if (ORPHAN_CATEGORIES.length > 0) {
+    throw new Error(
+        `AgreementDrawer: designer-time categories with no section: ${ORPHAN_CATEGORIES.join(", ")}. Add a section to ARTICLES or mark it secondary in SECONDARY_CATEGORIES.`,
+    );
+}
 
 /**
  * Per-clause sentinel assemblyDoc fields. Toggling a clause "Included"
@@ -139,11 +162,6 @@ interface Props {
      *  expected to compute and pass this. False / undefined when editing a
      *  root order (or any sub-order whose parent has no delivery). */
     parentDeliveryActive?: boolean;
-    /** True when the currently-selected merchant order has at least one
-     *  child anchoring the courier-process clause. Drives the Attestations
-     *  tab's cross-role hint copy so we only direct the designer to "edit
-     *  on the courier sub-order" when one actually exists. */
-    hasCourierChild?: boolean;
     /** Fired when the user picks Delivery in the Fulfilment article. The
      *  page is responsible for adding a courier sub-order if none exists
      *  and tracking it so a subsequent `onDeliveryUnselected` can remove
@@ -177,7 +195,6 @@ export function AgreementDrawer({
     onChange,
     hasChildren = false,
     parentDeliveryActive = false,
-    hasCourierChild = false,
     onDeliverySelected,
     onDeliveryUnselected,
     embedded = false,
@@ -270,6 +287,11 @@ export function AgreementDrawer({
         );
     }
 
+    // Single human-facing order number — the 1-based position in the design,
+    // matched by the canvas node label and the node-tab row. The hash is the
+    // tooltip, not the headline.
+    const orderIndex = orders ? orders.findIndex((o) => o.id === order.id) : -1;
+    const orderNumber = orderIndex >= 0 ? orderIndex + 1 : 1;
     const topology = summarizeAgreement(loadAgreement(order.agreementHash))?.topology;
     const isRootOrder = (topology?.parentOrderHashes?.length ?? 0) === 0;
     // Structural role booleans — derived from the order's actual content.
@@ -530,11 +552,11 @@ export function AgreementDrawer({
                 <div className="min-w-0">
                     <p className="text-[11px] text-neutral-500">Agreement</p>
                     <p
-                        className="text-sm font-mono font-semibold text-black mt-0.5 truncate"
+                        className="text-sm font-semibold text-black mt-0.5 truncate"
                         data-testid="drawer-selected-order-id"
                         title={order.id}
                     >
-                        Order #{truncateHex(order.id, { head: 10, tail: 0 })}
+                        Order {orderNumber}
                     </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -683,23 +705,6 @@ export function AgreementDrawer({
                         </section>
                     )}
 
-                    {openSection === "logistics" && (
-                        <section data-testid="drawer-section-logistics">
-                            <ClauseToggleArticle
-                                clauseId={GEO_CLAUSE_KEY}
-                                included={isClauseIncluded(GEO_CLAUSE_KEY, fields)}
-                                onToggle={(next) => toggleClause(GEO_CLAUSE_KEY, next)}
-                                disabled={deliveryActive || !geoAvailable}
-                                disabledHint={
-                                    !geoAvailable
-                                        ? "Not registered on the network this site is reading."
-                                        : "Required when fulfilment includes delivery."
-                                }
-                                lockedOn={deliveryActive && geoAvailable}
-                            />
-                        </section>
-                    )}
-
                     {openSection === "attestations" && (
                         <section data-testid="drawer-section-attestations" className="space-y-5">
                             <AttestationsArticle
@@ -711,7 +716,6 @@ export function AgreementDrawer({
                                 onCourierToggle={(next) => setProcessFlag("courierProcessIncluded", next)}
                                 deliveryActive={deliveryActive}
                                 parentDeliveryActive={parentDeliveryActive}
-                                hasCourierChild={hasCourierChild}
                                 merchantProcessAvailable={merchantProcessAvailable}
                                 courierProcessAvailable={courierProcessAvailable}
                             />
@@ -719,7 +723,7 @@ export function AgreementDrawer({
                     )}
 
                     {openSection === "fulfilment" && (
-                        <section data-testid="drawer-section-fulfilment">
+                        <section data-testid="drawer-section-fulfilment" className="space-y-6">
                             {fulfilmentAvailable ? (
                                 <FulfilmentArticle
                                     isCourierOrder={isCourierOrder}
@@ -742,6 +746,22 @@ export function AgreementDrawer({
                                     is not registered on the network this site is reading; this article is unavailable.
                                 </p>
                             )}
+                            {/* Route details (geo) — folded in from the former Logistics
+                                section; locked on when fulfilment includes delivery. */}
+                            <div className="border-t border-neutral-100 pt-5">
+                                <ClauseToggleArticle
+                                    clauseId={GEO_CLAUSE_KEY}
+                                    included={isClauseIncluded(GEO_CLAUSE_KEY, fields)}
+                                    onToggle={(next) => toggleClause(GEO_CLAUSE_KEY, next)}
+                                    disabled={deliveryActive || !geoAvailable}
+                                    disabledHint={
+                                        !geoAvailable
+                                            ? "Not registered on the network this site is reading."
+                                            : "Required when fulfilment includes delivery."
+                                    }
+                                    lockedOn={deliveryActive && geoAvailable}
+                                />
+                            </div>
                         </section>
                     )}
 
@@ -891,26 +911,17 @@ function ClauseToggleArticle({
 }
 
 /**
- * Attestations article — two per-role sovereign event-log toggles. Each is
- * shown on every order's drawer (consistent UI), but only the
- * role-appropriate toggle is editable on a given drawer.
+ * Attestations article — the sovereign process-log clause for THIS order's
+ * role. Role-scoped: only the relevant toggle renders, never both-with-one-
+ * disabled.
  *
- *   - Editing the merchant order (root): merchant-process toggle is the
- *     active control; courier-process is disabled with a context hint.
- *   - Editing a courier sub-order: courier-process toggle is the active
- *     control; merchant-process is disabled with a "edit on the merchant
- *     order" hint.
- *
- * Locking rules:
- *   - Delivery selected on this merchant order → merchant-process forced
- *     on + locked. (The courier sub-order's drawer will lock its own
- *     courier-process via `parentDeliveryActive`.)
- *   - This is a courier sub-order whose parent has delivery selected →
- *     courier-process forced on + locked.
- *
- * Single-node hint: when editing a root with no children and no delivery,
- * the courier-process toggle's hint nudges the designer toward adding a
- * courier sub-order (typically via Delivery in Fulfilment).
+ *   - Merchant root → the merchant-process toggle (figaro-merchant-process-v1),
+ *     forced on + locked when this order offers delivery.
+ *   - Delivery courier sub-order → the courier-process toggle
+ *     (figaro-courier-process-v1), forced on + locked when the parent offers
+ *     delivery.
+ *   - Any other (generic) sub-order → neither; process logs are role-bound, so
+ *     the section states that plainly rather than showing dead toggles.
  */
 function AttestationsArticle({
     isMerchantOrder,
@@ -921,7 +932,6 @@ function AttestationsArticle({
     onCourierToggle,
     deliveryActive,
     parentDeliveryActive,
-    hasCourierChild,
     merchantProcessAvailable,
     courierProcessAvailable,
 }: {
@@ -935,73 +945,74 @@ function AttestationsArticle({
     deliveryActive: boolean;
     /** Parent order has delivery in its fulfilment (courier sub-order case). */
     parentDeliveryActive: boolean;
-    /** True when this merchant order has a child anchoring the courier-process
-     *  clause. Drives the cross-role hint copy so we only suggest "Edit on the
-     *  courier sub-order" when one exists. */
-    hasCourierChild: boolean;
-    /** True when `figaro-merchant-process-v1` is registered on the network
-     *  this site is reading. False forces the toggle disabled with an
-     *  unavailability hint that overrides every other reason. */
+    /** True when `figaro-merchant-process-v1` is registered on the network. */
     merchantProcessAvailable: boolean;
     /** True when `figaro-courier-process-v1` is registered on the network. */
     courierProcessAvailable: boolean;
 }) {
+    const intro = (
+        <p className="text-xs text-neutral-500 leading-relaxed">
+            A sovereign event log: the seller attests its own internal events
+            under its own clause, which anchors the on-chain inclusion proof for
+            those runtime attestations.
+        </p>
+    );
 
-    // Merchant toggle: active iff editing the merchant order AND the clause
-    // is on-chain. Locked-on when delivery is in this order's fulfilment AND
-    // the clause is available (otherwise the lock has nothing to lock onto).
-    const merchantLockedOn = isMerchantOrder && deliveryActive && merchantProcessAvailable;
-    const merchantDisabled = !isMerchantOrder || deliveryActive || !merchantProcessAvailable;
-    const merchantEditable = isMerchantOrder && !deliveryActive && merchantProcessAvailable;
-    const merchantHint = !merchantProcessAvailable
-        ? "Not registered on the network this site is reading."
-        : isMerchantOrder
-            ? (deliveryActive ? "Required when fulfilment includes delivery." : undefined)
-            : isCourierOrder
-                ? "Edit on the parent merchant order."
-                : "Not applicable for this role — edit on the merchant order.";
+    // Courier sub-order → courier-process only.
+    if (isCourierOrder) {
+        const lockedOn = parentDeliveryActive && courierProcessAvailable;
+        return (
+            <div className="space-y-5">
+                {intro}
+                <ClauseToggleArticle
+                    clauseId={COURIER_PROCESS_CLAUSE_KEY}
+                    included={lockedOn ? true : courierProcessIncluded}
+                    onToggle={courierProcessAvailable && !lockedOn ? onCourierToggle : () => undefined}
+                    disabled={!courierProcessAvailable || lockedOn}
+                    disabledHint={
+                        !courierProcessAvailable
+                            ? "Not registered on the network this site is reading."
+                            : lockedOn
+                                ? "Required when the parent order offers delivery."
+                                : undefined
+                    }
+                    lockedOn={lockedOn}
+                />
+            </div>
+        );
+    }
 
-    // Courier toggle: same shape, gated by courier-process availability.
-    const courierLockedOn = isCourierOrder && parentDeliveryActive && courierProcessAvailable;
-    const courierDisabled = !isCourierOrder || parentDeliveryActive || !courierProcessAvailable;
-    const courierEditable = isCourierOrder && !parentDeliveryActive && courierProcessAvailable;
-    const courierHint = !courierProcessAvailable
-        ? "Not registered on the network this site is reading."
-        : isCourierOrder
-            ? (parentDeliveryActive ? "Required when fulfilment includes delivery." : undefined)
-            : isMerchantOrder
-                ? (deliveryActive
-                    ? "Auto-included on the courier sub-order (required when delivery is offered)."
-                    : hasCourierChild
-                        ? "Edit on the courier sub-order."
-                        : "Requires delivery in Fulfilment or a courier sub-order on the canvas.")
-                : "Not applicable for this role.";
+    // Merchant root → merchant-process only.
+    if (isMerchantOrder) {
+        const lockedOn = deliveryActive && merchantProcessAvailable;
+        return (
+            <div className="space-y-5">
+                {intro}
+                <ClauseToggleArticle
+                    clauseId={MERCHANT_PROCESS_CLAUSE_KEY}
+                    included={lockedOn ? true : merchantProcessIncluded}
+                    onToggle={merchantProcessAvailable && !lockedOn ? onMerchantToggle : () => undefined}
+                    disabled={!merchantProcessAvailable || lockedOn}
+                    disabledHint={
+                        !merchantProcessAvailable
+                            ? "Not registered on the network this site is reading."
+                            : lockedOn
+                                ? "Required when fulfilment includes delivery."
+                                : undefined
+                    }
+                    lockedOn={lockedOn}
+                />
+            </div>
+        );
+    }
 
+    // Generic sub-order → neither process log applies.
     return (
-        <div className="space-y-5">
-            <p className="text-xs text-neutral-500 leading-relaxed">
-                Per-role sovereign event logs. Each seller (merchant, courier)
-                attests their own internal events under their own clause. Each
-                clause anchors the on-chain inclusion proof for that role&apos;s
-                runtime attestations.
-            </p>
-            <ClauseToggleArticle
-                clauseId={MERCHANT_PROCESS_CLAUSE_KEY}
-                included={merchantLockedOn ? true : merchantProcessIncluded}
-                onToggle={merchantEditable ? onMerchantToggle : () => undefined}
-                disabled={merchantDisabled}
-                disabledHint={merchantHint}
-                lockedOn={merchantLockedOn}
-            />
-            <ClauseToggleArticle
-                clauseId={COURIER_PROCESS_CLAUSE_KEY}
-                included={courierLockedOn ? true : courierProcessIncluded}
-                onToggle={courierEditable ? onCourierToggle : () => undefined}
-                disabled={courierDisabled}
-                disabledHint={courierHint}
-                lockedOn={courierLockedOn}
-            />
-        </div>
+        <p className="text-xs text-neutral-500 leading-relaxed" data-testid="drawer-attestations-none">
+            Process logs are role-bound — the merchant root carries the merchant
+            log, a delivery courier carries the courier log. This order carries
+            neither.
+        </p>
     );
 }
 
@@ -1167,12 +1178,13 @@ function FulfilmentArticle({
 
             {deliveryOffered && (
                 <p
-                    className="text-[11px] text-neutral-500"
+                    className="text-[11px] text-neutral-500 leading-relaxed"
                     data-testid="drawer-fulfilment-courier-hint"
                 >
-                    {hasChildren
-                        ? "Courier sub-order on the canvas."
-                        : "Courier sub-order added to the canvas."}
+                    Delivery adds: route details (required, below), courier
+                    coordination, a courier sub-order
+                    {hasChildren ? " (on the canvas)" : " (added to the canvas)"},
+                    and the merchant process log.
                 </p>
             )}
         </div>

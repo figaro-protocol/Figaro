@@ -58,7 +58,7 @@ test.describe('Designer publish (devnet)', () => {
     // Multi-route nav + IPFS pin + on-chain tx pushes this past 60s.
     test.setTimeout(180_000);
 
-    test('full publish flow — canvas → review → IPFS pin → AssemblyRegistered event', async ({ page }) => {
+    test('full publish round-trip — canvas → review → IPFS pin → AssemblyRegistered → visible on /assemblies', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const assemblyRegistry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY
             ?? config.assemblyRegistry) as Hex;
@@ -79,8 +79,8 @@ test.describe('Designer publish (devnet)', () => {
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
         await page.getByTestId('designer-name-input').fill(draftName);
-        await expect(page.getByTestId('designer-publish')).toBeEnabled({ timeout: 5000 });
-        await page.getByTestId('designer-publish').click();
+        await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
+        await page.getByTestId('designer-review').click();
 
         // Canvas navigates to /view/<slug>?intent=publish. Re-goto with
         // ?e2e=devnet appended — the canvas drops the query param.
@@ -122,5 +122,13 @@ test.describe('Designer publish (devnet)', () => {
         expect(events[0].args.slug).toBe(expectedSlug);
         // metadataURI is whatever the canvas pinned to IPFS — non-empty.
         expect(events[0].args.metadataURI).toMatch(/^ipfs:\/\/[A-Za-z0-9]+/);
+
+        // ── Read-back: the freshly-published assembly is visible on the public
+        //    /assemblies inventory (on-chain event → standalone indexer → render),
+        //    i.e. discoverable + adoptable by any reader exactly as on mainnet.
+        //    This closes the round-trip the authoring flow exists to produce:
+        //    author → IPFS pin → AssemblyRegistered on chain → visible on /assemblies.
+        await page.goto('/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await expect(page.locator(`#assembly-${expectedSlug}`)).toBeVisible({ timeout: 30000 });
     });
 });

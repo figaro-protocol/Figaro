@@ -115,8 +115,8 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
 
         // Name + publish.
         await page.getByTestId('designer-name-input').fill(draftName);
-        await expect(page.getByTestId('designer-publish')).toBeEnabled({ timeout: 5000 });
-        await page.getByTestId('designer-publish').click();
+        await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
+        await page.getByTestId('designer-review').click();
 
         // Canvas navigates to /view/<slug>?intent=publish but drops the
         // ?e2e= param — re-goto with it appended (per designer-publish.devnet).

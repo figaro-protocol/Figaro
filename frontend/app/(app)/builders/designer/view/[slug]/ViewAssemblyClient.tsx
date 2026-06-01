@@ -420,7 +420,6 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     }}
                     hasChildren={agreementHints.hasChildren}
                     parentDeliveryActive={agreementHints.parentDeliveryActive}
-                    hasCourierChild={agreementHints.hasCourierChild}
                     embedded
                     readOnly
                 />

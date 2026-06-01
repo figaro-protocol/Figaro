@@ -52,7 +52,6 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
-import { usePublishAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
@@ -128,7 +127,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
      *  session. The redirect that fires on success removes the user from
      *  the canvas anyway, but if the redirect is interrupted the flag
      *  keeps the Publish button disabled. */
-    const [hasPublished, setHasPublished] = useState(false);
 
     // Lock body scroll: the canvas is an app-route, not a document route.
     useEffect(() => {
@@ -340,7 +338,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         // must name the assembly before save/publish succeeds.
         setName("");
         setSlug(null);
-        setHasPublished(false);
         clearCurrentSession();
     }, [session]);
 
@@ -405,18 +402,17 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         saveNamedDraft(result.snapshot);
         setName(result.snapshot.name);
         setSlug(result.snapshot.slug);
-        // Same post-action navigation as Publish — land on the assemblies
+        // Same post-action navigation as Review — land on the assemblies
         // list where the newly-saved draft appears under "Your drafts".
         // Preserve a ?e2e= mode flag so a test run stays in devnet/mock mode.
         const e2e = searchParams.get("e2e");
         router.push(e2e ? `/builders/designer?e2e=${encodeURIComponent(e2e)}` : "/builders/designer");
     }, [buildSnapshot, router, searchParams, slug]);
 
-    const { isPending: publishPending, isConfirming: publishConfirming } =
-        usePublishAssembly();
-    const publishInFlight = publishPending || publishConfirming;
-
-    const handlePublish = useCallback(() => {
+    // The designer "Review" button only NAVIGATES to the review page; the
+    // actual publish (IPFS pin + wallet deposit + registerAssembly) happens
+    // there via `review-confirm-publish`. No publish state lives here.
+    const handleReview = useCallback(() => {
         // Pre-review validation: the review page resolves by slug, so the
         // snapshot must be a valid named draft. Surface the specific reason
         // before navigation if not.
@@ -542,7 +538,7 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 <button
                     type="button"
                     onClick={handleSaveDraft}
-                    disabled={publishInFlight || hasPublished || !nameValid}
+                    disabled={!nameValid}
                     data-testid="designer-save"
                     className={`text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${savedHint ? "" : "ml-auto"}`}
                     title={nameDisabledTitle ?? (slug ? "Update the saved draft" : "Save this canvas as a named draft")}
@@ -551,18 +547,17 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                 </button>
                 <button
                     type="button"
-                    onClick={handlePublish}
-                    disabled={publishInFlight || hasPublished || !nameValid}
-                    data-testid="designer-publish"
+                    onClick={handleReview}
+                    disabled={!nameValid}
+                    data-testid="designer-review"
                     className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title={nameDisabledTitle ?? "Pin the assembly document to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."}
+                    title={nameDisabledTitle ?? "Review the assembly, then publish from the review page (where the deposit is locked and the slug is anchored on-chain)."}
                 >
-                    {publishInFlight ? "Publishing…" : hasPublished ? "Published" : "Publish"}
+                    Review
                 </button>
                 <button
                     type="button"
                     onClick={handleReset}
-                    disabled={publishInFlight || hasPublished}
                     data-testid="designer-reset"
                     className="text-[11px] px-2 py-1.5 rounded text-ink-muted hover:text-ink-heading hover:bg-subtle shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Clear the canvas and start over"
@@ -599,7 +594,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     }}
                     hasChildren={agreementHints.hasChildren}
                     parentDeliveryActive={agreementHints.parentDeliveryActive}
-                    hasCourierChild={agreementHints.hasCourierChild}
                     onDeliverySelected={handleDeliverySelected}
                     onDeliveryUnselected={handleDeliveryUnselected}
                     embedded

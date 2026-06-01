@@ -98,6 +98,10 @@ type OrderNodeData = Order & {
     isSeller: boolean;
     activeLens: GraphLens;
     agreementSummary: AgreementSummary | null;
+    /** 1-based position in the design's order list — the single human-facing
+     *  order number, shown in designer mode and matched by the drawer's
+     *  header, node tabs, and add-parent picker. */
+    orderNumber: number;
     /** Designer mode: when set, the node renders an × delete affordance. */
     onDelete?: (orderId: string) => void;
     /** True when the node has no parents in the topology — root orders are
@@ -106,12 +110,8 @@ type OrderNodeData = Order & {
     /** Designer-mode flag. When true the node renders the click-to-edit
      *  affordance (cursor:pointer + tooltip). */
     designerMode: boolean;
-    /** True when the canvas accepts drag-to-add-child / drag-to-add-parent.
-     *  Read-only views (e.g. /view) leave this false so the bottom handle
-     *  renders as a plain dot without the "+" affordance. */
-    canAddNodes: boolean;
-    /** Designer click-authoring: spawn a sub-order child of this node. The
-     *  keyboard-accessible companion to the drag-from-handle path. */
+    /** Designer click-authoring: spawn a sub-order child of this node — the
+     *  single add affordance (the card "+" button). */
     onAddSubOrderClick?: (parentOrderId: string) => void;
     /** Designer click-authoring: add an existing order as an additional
      *  parent of this node (the many-to-one merge / join). */
@@ -203,8 +203,10 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
             />
             <div className="flex items-center justify-between mb-1.5">
                 <span className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-black">
-                        Order #{data.id.toString().slice(0, 8)}
+                    <span className="text-xs font-semibold text-black" title={data.id}>
+                        {data.designerMode
+                            ? `Order ${data.orderNumber}`
+                            : `Order #${data.id.toString().slice(0, 8)}`}
                     </span>
                     {!data.designerMode && (data.isBuyer || data.isSeller) && (
                         <span
@@ -233,7 +235,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             data-testid={`btn-add-suborder-${data.id}`}
                             aria-label={`Add a sub-order under order ${data.id.slice(0, 8)}`}
                             title="Add a sub-order (child) of this order"
-                            className="nodrag w-5 h-5 rounded-full border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 hover:border-neutral-500 text-xs leading-none flex items-center justify-center"
+                            className="nodrag w-4 h-4 rounded-full border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 hover:border-neutral-500 text-[11px] leading-none flex items-center justify-center"
                         >
                             +
                         </button>
@@ -248,7 +250,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             data-testid={`order-node-${data.id}-delete`}
                             aria-label={`Delete order ${data.id.slice(0, 8)}`}
                             title="Delete this order (and any descendants)"
-                            className="nodrag w-5 h-5 rounded-full border border-red-300 bg-white text-red-600 hover:bg-red-50 hover:border-red-500 text-xs leading-none flex items-center justify-center"
+                            className="nodrag w-4 h-4 rounded-full border border-red-300 bg-white text-red-600 hover:bg-red-50 hover:border-red-500 text-[11px] leading-none flex items-center justify-center"
                         >
                             ×
                         </button>
@@ -372,28 +374,8 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
             <Handle
                 type="source"
                 position={Position.Bottom}
-                style={
-                    data.state === OrderState.Active && data.canAddNodes
-                        ? {
-                            background: "white",
-                            border: "1px solid #999",
-                            color: "#666",
-                            width: 16,
-                            height: 16,
-                            fontSize: 12,
-                            lineHeight: "14px",
-                            fontWeight: "bold",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "crosshair",
-                        }
-                        : { background: "transparent", border: "1px solid #ccc", width: 8, height: 8 }
-                }
-                title={data.state === OrderState.Active && data.canAddNodes ? "Drag to add a sub-order or another parent" : undefined}
-            >
-                {data.state === OrderState.Active && data.canAddNodes && <span style={{ pointerEvents: "none" }}>+</span>}
-            </Handle>
+                style={{ background: "transparent", border: "1px solid #ccc", width: 8, height: 8 }}
+            />
         </div>
     );
 };
@@ -522,7 +504,6 @@ export function ProcessGraphCanvas({
     const [dblClick, setDblClick] = useState<DblClickTrigger>(null);
     const dblClickSeq = useRef(0);
     const [activeLens, setActiveLens] = useState<GraphLens>("default");
-    const connectStartIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
@@ -548,7 +529,7 @@ export function ProcessGraphCanvas({
 
         const knownOrderIds = new Set(orders.map((o) => o.id));
 
-        const newNodes: Node[] = orders.map((order) => {
+        const newNodes: Node[] = orders.map((order, orderIndex) => {
             const isBuyer = walletAddress ? hexEqual(walletAddress, order.buyer) : false;
             const isSeller = walletAddress ? hexEqual(walletAddress, order.seller) : false;
 
@@ -569,7 +550,7 @@ export function ProcessGraphCanvas({
                 id: order.id,
                 type: "order",
                 position: posMap.get(order.id) ?? { x: 0, y: 0 },
-                data: { ...order, decimals, isBuyer, isSeller, activeLens, agreementSummary, onDelete: onDeleteNode, isRoot, designerMode, canAddNodes: onAddSubOrder !== undefined || onAddParent !== undefined, onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
+                data: { ...order, decimals, isBuyer, isSeller, activeLens, agreementSummary, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
             };
         });
 
@@ -680,30 +661,6 @@ export function ProcessGraphCanvas({
                             onNodeDoubleClick={(_e, node) =>
                                 setDblClick({ node, seq: ++dblClickSeq.current })
                             }
-                            onConnectStart={(onAddSubOrder || onAddParent) ? (_event, params) => {
-                                connectStartIdRef.current = params.nodeId ?? null;
-                            } : undefined}
-                            onConnectEnd={(onAddSubOrder || onAddParent) ? (event) => {
-                                const sourceId = connectStartIdRef.current;
-                                connectStartIdRef.current = null;
-                                if (!sourceId) return;
-                                const target = event.target as HTMLElement | null;
-                                // Released over the canvas pane (not over another node) → spawn sub-order.
-                                if (target?.classList.contains("react-flow__pane")) {
-                                    onAddSubOrder?.(sourceId);
-                                    return;
-                                }
-                                // Released on or inside an existing node → many-to-one merge.
-                                // Walk up the DOM looking for the nearest node element with [data-id] (set by ReactFlow).
-                                if (onAddParent) {
-                                    let el: HTMLElement | null = target;
-                                    while (el && !el.dataset?.id) el = el.parentElement;
-                                    const targetId = el?.dataset?.id ?? null;
-                                    if (targetId && targetId !== sourceId) {
-                                        onAddParent(targetId, sourceId);
-                                    }
-                                }
-                            } : undefined}
                             defaultEdgeOptions={{
                                 style: { stroke: "#555", strokeWidth: 2 },
                                 markerEnd: { type: MarkerType.ArrowClosed, color: "#555" },
