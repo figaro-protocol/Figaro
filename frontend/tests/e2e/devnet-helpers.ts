@@ -1102,6 +1102,47 @@ export async function assertAssemblyOnInventory(page: Page, slug: string): Promi
     await expect(row).toContainText(slug);
 }
 
+// ── Seller-adoption verification (the same standard as the assembly, applied to
+// a seller): a registered seller must be anchored on SellerRegistry, its profile
+// PINNED in IPFS (assertPinnedInIpfs, above), and SURFACED where a buyer finds it
+// — its public page and /discover. Reusable across every seller-onboarding spec.
+
+/**
+ * Assert a registered seller surfaces on its public page `/s/[seller]` — its
+ * name and (optionally) a listed product. Navigates the page.
+ */
+export async function assertSellerProfileSurfaces(
+    page: Page,
+    seller: string,
+    opts: { name: string; product?: string },
+): Promise<void> {
+    await page.goto(`/s/${seller}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+    const detail = page.getByTestId('seller-detail-view');
+    try {
+        await detail.waitFor({ state: 'visible', timeout: 30000 });
+    } catch {
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await detail.waitFor({ state: 'visible', timeout: 30000 });
+    }
+    await expect(detail).toContainText(opts.name);
+    if (opts.product) await expect(detail).toContainText(opts.product);
+}
+
+/**
+ * Assert a registered seller surfaces on the `/discover` inventory. /discover
+ * lists all sellers when the buyer's location isn't granted (the Playwright
+ * default), so the seller's card is matchable by name. Navigates the page.
+ */
+export async function assertSellerOnDiscovery(page: Page, name: string): Promise<void> {
+    await page.goto('/discover?e2e=devnet', { waitUntil: 'domcontentloaded' });
+    const cards = page.getByTestId('seller-card');
+    await expect(cards.first()).toBeVisible({ timeout: 30000 });
+    await expect(
+        cards.filter({ hasText: name }).first(),
+        `seller "${name}" should surface on /discover`,
+    ).toBeVisible({ timeout: 15000 });
+}
+
 /** SellerRegistry registration event — carries the profile metadataURI. */
 const SELLER_REGISTERED_EVENT_ABI = parseAbi([
     'event SellerRegistered(address indexed seller, string metadataURI)',

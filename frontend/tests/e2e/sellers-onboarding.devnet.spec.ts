@@ -1,33 +1,55 @@
 /**
  * sellers-onboarding.devnet.spec.ts
  *
- * Devnet happy-path walkthrough of the seller-registration wizard
- * against deployed contracts on local Anvil. Anvil account[0] walks
- * the wizard 1→6, pins to IPFS, dispatches register, and lands on
- * the registered dashboard at /sellers.
+ * SELLER ADOPTION (lifecycle Phase 2) — onboards every seller in the SELLER
+ * ROSTER (`./seller-roster`) through the REAL registration wizard: each adopts
+ * its assemblies, lists its products, and is pinned to IPFS + anchored on
+ * `SellerRegistry`. Registration PERSISTS (no snapshot/revert) — exactly as a
+ * seller onboards on testnet/mainnet — so the runtime specs (buyer-side) consume
+ * these real sellers from chain→IPFS. No seed-replay; this REPLACES
+ * `seed-devnet.mjs`'s direct-call seller seeding.
  *
- * Requires:
- *   - Anvil up on http://127.0.0.1:8545
- *   - `./deploy-local.sh` complete (NEXT_PUBLIC_* in frontend/.env.local)
- *   - IPFS (Kubo) up on http://127.0.0.1:5001 with CORS allowing
- *     http://localhost:3100 (Playwright origin)
+ * This is step 2 of the full pipeline (see seller-roster.ts):
+ *   authoring (publish assemblies) → onboarding (THIS) → runtime (buyer buys).
+ *
+ * Each seller is a distinct wallet (anvil index ≥5), disjoint from the buyer
+ * (anvil[0]). Prerequisite: each adopted assembly is already anchored.
+ *
+ * Mainnet semantics: a seller registers ONCE and persists; the spec is idempotent
+ * — if the wallet is already registered it skips the wizard and re-verifies.
+ * Every seller is verified anchored + pinned + surfacing on /s and /discover.
+ *
+ * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the adopted assemblies published.
  */
 import { expect } from "@playwright/test";
-import { test, ANVIL_ACCOUNTS } from "./devnet-multi-test";
-import { captureOrGuardSellerCatalogue, evmRevert, evmSnapshot } from "./devnet-helpers";
+import { test, gotoAsWallet } from "./devnet-multi-test";
+import {
+    createPublicClient,
+    defineChain,
+    http,
+    parseAbi,
+    type Hex,
+} from "viem";
+import {
+    assertPinnedInIpfs,
+    assertSellerOnDiscovery,
+    assertSellerProfileSurfaces,
+    readLocalDeploymentConfig,
+} from "./devnet-helpers";
+import { SELLER_ROSTER, type SellerSpec } from "./seller-roster";
 
-const SELLER = ANVIL_ACCOUNTS[0];
-
-let chainSnapshot: string;
-test.beforeAll(async () => {
-    chainSnapshot = await evmSnapshot();
+const RPC_URL = "http://127.0.0.1:8545";
+const LOCAL_ANVIL = defineChain({
+    id: 31337,
+    name: "Localhost",
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: { default: { http: [RPC_URL] } },
 });
-test.afterAll(async () => {
-    await evmRevert(chainSnapshot);
-});
 
-// Wait until SellerLanding's `mounted` is true and the welcome view
-// has rendered. The Loading… card disappears once `mounted` flips.
+const SELLER_REGISTRY_ABI = parseAbi([
+    "event SellerRegistered(address indexed seller, string metadataURI)",
+]);
+
 async function waitForSellersReady(page: import("@playwright/test").Page) {
     await page.waitForFunction(
         () => {
@@ -41,104 +63,97 @@ async function waitForSellersReady(page: import("@playwright/test").Page) {
     );
 }
 
-// Dev-mode Next.js compiles routes on first hit; the whole flow plus
-// IPFS pin + register tx easily exceeds Playwright's 60s default. Give
-// it room.
-test.setTimeout(180_000);
+/** Walk the registration wizard 1→6 as `spec`'s wallet and register on-chain. */
+async function onboardViaWizard(page: import("@playwright/test").Page, spec: SellerSpec) {
+    await gotoAsWallet(page, spec.address, "/sellers");
+    await waitForSellersReady(page);
+    await page.goto("/sellers/identity", { waitUntil: "domcontentloaded" });
 
-test.describe("seller wizard — devnet happy path", () => {
-    test("walks 1→6 and registers the wallet on-chain", async ({ page }) => {
-        // Step 0: entry. /sellers conditionally renders welcome
-        // (unregistered) or dashboard (registered). Fresh Anvil = welcome.
-        // Dev-mode compile of /sellers on first hit can be slow (10-20s).
-        await page.goto("/sellers", { waitUntil: "domcontentloaded" });
-        await waitForSellersReady(page);
+    // Step 2 — Identity
+    await expect(page.locator("#profile-name")).toBeVisible({ timeout: 30_000 });
+    await page.locator("#profile-name").fill(spec.name);
+    await page.locator("#profile-specialty").fill(spec.specialty);
+    await page.getByRole("button", { name: /\+ MOCK$/ }).click();
+    await page.locator('input[name="defaultTokenAddress"]').first().check();
+    await page.getByRole("button", { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/sellers\/catalogue/);
 
-        // Navigate to /sellers/identity directly. Click-the-Begin-button
-        // is flaky because <Link><Button> renders <a><button>, which is
-        // invalid HTML; click bubbling doesn't navigate consistently. The
-        // goto exercises the same client-side route.
-        await page.goto("/sellers/identity", { waitUntil: "domcontentloaded" });
+    // Step 3 — Catalogue: the first product (the wizard starts with one empty
+    // row; roster sellers currently list a single product).
+    await page.locator('[id^="item-"][id$="-name"]').first().fill(spec.products[0].name);
+    await page.locator('[id^="item-"][id$="-price"]').first().fill(spec.products[0].price);
+    await page.getByRole("button", { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/sellers\/assemblies/);
 
-        // ── Step 2: Identity ──
-        // The form renders #profile-name only when isConnected. Waiting
-        // for the input doubles as the wallet-ready check for this page.
-        await expect(page.locator("#profile-name")).toBeVisible({ timeout: 30_000 });
+    // Step 4 — Assemblies: adopt each roster assembly (each row is a Card keyed
+    // `seller-assembly-row-<slug>` wrapping a checkbox).
+    for (const slug of spec.assemblies) {
+        const row = page.getByTestId(`seller-assembly-row-${slug}`);
+        await row.waitFor({ state: "visible", timeout: 20_000 });
+        await row.locator('input[type="checkbox"]').check();
+    }
+    await page.getByRole("button", { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/sellers\/agents/);
 
-        const name = `Test Seller ${Date.now()}`;
-        await page.locator("#profile-name").fill(name);
+    // Step 5 — Agents: skip
+    await page.getByRole("button", { name: /^Next/ }).click();
+    await page.waitForURL(/\/sellers\/review/, { timeout: 30_000 });
 
-        // Description (optional but helpful)
-        await page.locator("#profile-description").fill("Devnet wizard happy-path test");
+    // Step 6 — Review + publish (pin catalogue + profile → register tx)
+    await expect(page.getByText(spec.name)).toBeVisible();
+    await page.getByTestId("review-confirm-publish").click();
+    await expect(page.getByRole("heading", { name: /Registered\.|Profile updated/i }))
+        .toBeVisible({ timeout: 60_000 });
+    await page.getByRole("button", { name: /Continue to dashboard/ }).click();
+    await page.waitForURL(/\/sellers$/, { timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: spec.name })).toBeVisible({ timeout: 15_000 });
+}
 
-        // Specialty (optional)
-        await page.locator("#profile-specialty").fill("e2e");
+// Wizard + IPFS pins + register tx + multi-page reads.
+test.setTimeout(240_000);
 
-        // Add the deployed MOCK token via quick-add chip
-        await page.getByRole("button", { name: /\+ MOCK$/ }).click();
+for (const spec of SELLER_ROSTER) {
+    test.describe(`seller adoption — ${spec.name} (devnet)`, () => {
+        test(`onboards, adopts [${spec.assemblies.join(", ")}] + a product, persists, surfaces on /s and /discover`, async ({ page }) => {
+            const config = readLocalDeploymentConfig();
+            const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
+                ?? config.sellerRegistry) as Hex;
+            const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        // Select the freshly-added MOCK token as the default pricing token.
-        // Default-token radio buttons appear once at least one valid token
-        // is on the form. The radio has name="defaultTokenAddress".
-        await page.locator('input[name="defaultTokenAddress"]').first().check();
+            const already = await publicClient.getContractEvents({
+                address: sellerRegistry,
+                abi: SELLER_REGISTRY_ABI,
+                eventName: "SellerRegistered",
+                args: { seller: spec.address },
+                fromBlock: 0n,
+            });
 
-        // Next → /sellers/catalogue
-        await page.getByRole("button", { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/sellers\/catalogue/);
+            // Mainnet: register ONCE and persist. Onboard only if absent.
+            if (already.length === 0) {
+                await onboardViaWizard(page, spec);
+            }
 
-        // ── Step 3: Catalogue ──
-        // The form starts with one empty item row. Fill name + price.
-        await page.locator('[id^="item-"][id$="-name"]').first().fill("Test item");
-        await page.locator('[id^="item-"][id$="-price"]').first().fill("1");
+            // ── Anchored on SellerRegistry, persisted ──────────────────────
+            const events = await publicClient.getContractEvents({
+                address: sellerRegistry,
+                abi: SELLER_REGISTRY_ABI,
+                eventName: "SellerRegistered",
+                args: { seller: spec.address },
+                fromBlock: 0n,
+            });
+            expect(events.length).toBeGreaterThanOrEqual(1);
+            const profileURI = events[events.length - 1].args.metadataURI as string;
+            expect(profileURI).toMatch(/^ipfs:\/\//);
 
-        await page.getByRole("button", { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/sellers\/assemblies/);
+            // ── Pinned in IPFS — proof of persistence (same check the assembly runs) ─
+            await assertPinnedInIpfs(profileURI.slice("ipfs://".length));
 
-        // ── Step 4: Assemblies (optional, no published assemblies on a
-        // fresh devnet) — proceed without selecting anything
-        await page.getByRole("button", { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/sellers\/agents/);
-
-        // ── Step 5: Agents (optional, skip for human-driven wallet) ──
-        await page.getByRole("button", { name: /^Next/ }).click();
-        // /sellers/review compiles on first hit — give dev server time.
-        await page.waitForURL(/\/sellers\/review/, { timeout: 30_000 });
-
-        // ── Step 6: Review ──
-        // Preview should show the seller name + accepted-token entry
-        await expect(page.getByText("Preview · pending publish")).toBeVisible();
-        await expect(page.getByText(name)).toBeVisible();
-        await expect(page.getByText("MOCK")).toBeVisible();
-
-        // Publish chain: pin catalogue → pin profile → simulate →
-        // register tx → wait for receipt → render the receipt card.
-        // The simulate step (see usePublishSellerProfile) is what
-        // makes a wrong-deposit failure surface as a typed error
-        // instead of an indefinite hang on a silent on-chain revert.
-        await page.getByTestId("review-confirm-publish").click();
-
-        // Receipt card appears with the tx hash. The receipt persists
-        // until the seller clicks Continue (no auto-redirect — the
-        // seller needs to see the receipt before the page transitions).
-        await expect(page.getByRole("heading", { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60_000 });
-        await expect(page.getByText("Transaction")).toBeVisible();
-
-        // Continue → dashboard
-        await page.getByRole("button", { name: /Continue to dashboard/ }).click();
-        await page.waitForURL(/\/sellers$/, { timeout: 15_000 });
-
-        // Dashboard shows the registered seller's name + "View public profile" link.
-        await expect(page.getByRole("heading", { level: 1, name })).toBeVisible({ timeout: 15000 });
-        await expect(page.getByRole("link", { name: /View public profile/ })).toBeVisible();
-        await expect(page.getByRole("link", { name: /View public profile/ })).toHaveAttribute(
-            "href",
-            `/s/${SELLER}`,
-        );
-
-        // Capture the wizard-published catalogue as the seed fixture
-        // (FIGARO_CAPTURE_FIXTURES), or drift-guard it against the committed
-        // one. The seed script replays this fixture so the seeded sellers
-        // have a catalogue and /s/[seller] is transactable.
-        await captureOrGuardSellerCatalogue(SELLER);
+            // ── Surfaces where a buyer finds it: its page + /discover ──────
+            await assertSellerProfileSurfaces(page, spec.address, {
+                name: spec.name,
+                product: spec.products[0].name,
+            });
+            await assertSellerOnDiscovery(page, spec.name);
+        });
     });
-});
+}
