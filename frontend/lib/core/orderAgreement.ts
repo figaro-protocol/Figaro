@@ -216,10 +216,12 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         sections.push({ clause: FULFILMENT_V2_CLAUSE_KEY, data });
     }
 
-    // Per-role sovereign event-log anchors (Category-1, empty data). Presence
-    // of the clause key includes it; delivery auto-anchors merchant-process.
-    const deliveryOffered = modalities.includes("delivery");
-    if (cf[MERCHANT_PROCESS_CLAUSE_KEY] || deliveryOffered) {
+    // Per-role sovereign event-log anchors (Category-1, empty data). Pure
+    // projection: a clause is included iff the template carries it. The designer
+    // materializes merchant-process / courier-process into the template at design
+    // time (selecting delivery activates them on the canvas) — they are NOT
+    // re-derived here.
+    if (cf[MERCHANT_PROCESS_CLAUSE_KEY]) {
         sections.push({ clause: MERCHANT_PROCESS_CLAUSE_KEY, data: {} });
     }
     if (cf[COURIER_PROCESS_CLAUSE_KEY]) {

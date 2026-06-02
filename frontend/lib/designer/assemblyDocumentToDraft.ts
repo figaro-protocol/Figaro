@@ -21,6 +21,7 @@ import type { AssemblyTemplate } from "./assemblyTemplate";
 import type { ClauseFields } from "@/lib/core/encoding";
 import type { DesignSnapshot } from "./syntheticDesignStore";
 import { Order, OrderState } from "@/lib/core/store";
+import { syntheticAddress } from "./syntheticProcess";
 
 /** 1.0 — display-only payment; the template itself carries none. */
 const DISPLAY_PAYMENT = 1_000_000_000_000_000_000n;
@@ -34,9 +35,15 @@ const SYNTHETIC_PROCESS_ID = `0x${"00".repeat(32)}`;
  */
 export function templateToOrders(template: AssemblyTemplate): Order[] {
     return template.orders.map((to, i) => {
+        // The template is party-agnostic. For DISPLAY (fork / read-only /view)
+        // we reconstruct synthetic parties — one shared synthetic buyer
+        // (rootBuyer) + a distinct synthetic seller per order. Real parties bind
+        // at adoption/checkout, never from the template.
+        const buyer = syntheticAddress(0);
+        const seller = syntheticAddress(i + 1);
         const agreement = buildOrderAgreement({
-            buyer: to.buyer as `0x${string}`,
-            seller: to.seller as `0x${string}`,
+            buyer,
+            seller,
             currency: ZERO_ADDRESS,
             payment: DISPLAY_PAYMENT,
             clauseFields: to.clauses as ClauseFields,
@@ -48,8 +55,8 @@ export function templateToOrders(template: AssemblyTemplate): Order[] {
         return {
             id: to.id,
             processId: SYNTHETIC_PROCESS_ID,
-            buyer: to.buyer,
-            seller: to.seller,
+            buyer,
+            seller,
             currency: ZERO_ADDRESS,
             agreementHash,
             cumulativeValue,

@@ -1,11 +1,12 @@
 /**
  * Assembly template — the no-hash JSON the designer emits.
  *
- * Per order it carries who is bound (buyer / seller), the order's place in the
- * DAG (`parentOrderIds` — the order in which the process unfurls), and the
- * clauses selected on it (the buyer↔seller relationship). It carries NO
- * agreement hashes, NO clause field values, NO sentinels: the fingerprint
- * forms later, at checkout, when the parties fill the clause fields.
+ * Per order it carries the order's place in the DAG (`parentOrderIds` — the
+ * order in which the process unfurls) and the clauses selected on it (the
+ * buyer↔seller relationship's MEANING). It carries NO party addresses (the
+ * template is PARTY-AGNOSTIC — parties bind at adoption/checkout), NO agreement
+ * hashes, NO clause field values, NO sentinels: the fingerprint forms later, at
+ * checkout, when the real parties fill the clause fields.
  *
  * `parentOrderIds` is read from each order's existing topology section; clause
  * selection comes from the designer's per-order pick (the Registry checkboxes).
@@ -22,14 +23,15 @@ import { summarizeAgreement } from "@/lib/core/orderAgreement";
 export type ClauseValues = Record<string, Record<string, unknown>>;
 
 export interface AssemblyTemplateOrder {
-    /** Synthetic order id — stable within the design. */
+    /** Local order label — `order-<index>`, stable within the template; the
+     *  reference target for other orders' `parentOrderIds`. NOT a chain id, and
+     *  NOT a party — the template is party-agnostic. */
     id: string;
-    buyer: string;
-    seller: string;
     /** Parent order ids — the DAG edges defining unfurl order. Root = []. */
     parentOrderIds: string[];
     /** clauseId → the design-time field values the designer filled (the
-     *  buyer↔seller relationship). Whatever's absent is filled downstream. */
+     *  buyer↔seller relationship's MEANING). Whatever's absent is filled
+     *  downstream. */
     clauses: ClauseValues;
 }
 
@@ -63,15 +65,17 @@ export function buildAssemblyTemplate(args: {
     clausesByOrderId: Readonly<Record<string, ClauseValues>>;
 }): AssemblyTemplate {
     const { slug, name, privilegedToken, orders, clausesByOrderId } = args;
+    // Re-label each design-time (synthetic) order id to a clean local label.
+    // The template carries no chain ids and no party addresses — only topology
+    // (these labels + parentOrderIds) and clauses.
+    const idToLocal = new Map(orders.map((o, i) => [o.id, `order-${i}`]));
     return {
         slug,
         name,
         ...(privilegedToken ? { privilegedToken } : {}),
-        orders: orders.map((order) => ({
-            id: order.id,
-            buyer: order.buyer,
-            seller: order.seller,
-            parentOrderIds: parentOrderIdsOf(order),
+        orders: orders.map((order, i) => ({
+            id: `order-${i}`,
+            parentOrderIds: parentOrderIdsOf(order).map((p) => idToLocal.get(p) ?? p),
             clauses: { ...(clausesByOrderId[order.id] ?? {}) },
         })),
     };

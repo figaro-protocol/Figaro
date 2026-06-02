@@ -53,11 +53,12 @@ import {
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
 import { buildAssemblyTemplate } from "@/lib/designer/assemblyTemplate";
+import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { getCommonTokens } from "@/lib/shared/commonTokens";
-import { useChainId } from "wagmi";
+import { useChainId, usePublicClient } from "wagmi";
 import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
-import { COURIER_PROCESS_CLAUSE_KEY } from "@/lib/core/agreement";
+import { COURIER_PROCESS_CLAUSE_KEY, MERCHANT_PROCESS_CLAUSE_KEY } from "@/lib/core/agreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
 
 export type DesignerSeed =
@@ -136,7 +137,20 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
     // common-token list; carried into the template + persisted in the draft.
     const [privilegedToken, setPrivilegedToken] = useState<string>(() => initial.privilegedToken);
     const chainId = useChainId();
+    const publicClient = usePublicClient();
     const commonTokens = getCommonTokens(chainId);
+    // Chain-aware cap on assembly node count. The hard cap is the RESOLVE
+    // ceiling — every order must settle in one atomic resolveProcess within a
+    // block (~2,145 on a 30M-gas chain), the same ceiling the publish-time guard
+    // enforces. The COMMIT ceiling is NOT a size limit but a landing rate:
+    // committing N orders takes ~ceil(N / commits-per-block) blocks (multi-tx
+    // checkout), surfaced as a soft signal, never a gate. null = ceilings not
+    // read yet (no client cap; the publish-time guard still applies).
+    const [orderCaps, setOrderCaps] = useState<{ commit: number; resolve: number } | null>(null);
+    const maxOrders = orderCaps ? orderCaps.resolve : null;
+    const commitBlocks = orderCaps && orderCaps.commit > 0
+        ? Math.ceil(orders.length / orderCaps.commit)
+        : null;
     const [slug, setSlug] = useState<string | null>(initial.slug);
 
     const [mergeNotice, setMergeNotice] = useState<string | null>(null);
@@ -235,6 +249,20 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         setSavedAt(Date.now());
     }, [hydrated, seedError, orders, clausesByOrderId, name, slug, privilegedToken, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
+    // Read both chain gas ceilings (each depends on the live block gas limit, so
+    // it's a runtime read; recompute when the chain changes).
+    useEffect(() => {
+        if (!publicClient) return;
+        let cancelled = false;
+        Promise.all([
+            maxCommitsLandableInOneBlock(publicClient),
+            maxOrdersResolvablePerProcess(publicClient),
+        ])
+            .then(([commit, resolve]) => { if (!cancelled) setOrderCaps({ commit, resolve }); })
+            .catch(() => { /* leave null → no client cap; publish-time guard still applies */ });
+        return () => { cancelled = true; };
+    }, [publicClient, chainId]);
+
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
     const toggleClause = useCallback((orderId: string, clauseId: string, next: boolean) => {
@@ -268,65 +296,102 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         [],
     );
 
+    // True when the assembly already holds the most orders this chain can
+    // resolve atomically in one block. null maxOrders (ceiling not yet read, or
+    // read failed) means no client-side cap — the publish-time guard still bites.
+    const atOrderCapacity = maxOrders !== null && orders.length >= maxOrders;
+
     const handleAddSubOrder = useCallback(
         (parentOrderId: string) => {
-            setOrders((prev) => {
-                const parent = prev.find((o) => o.id === parentOrderId);
-                if (!parent) return prev;
-                const sub = createSyntheticSubOrder(session, parent);
-                return [...prev, sub.order];
-            });
+            if (atOrderCapacity) {
+                setMergeNotice(
+                    `This chain settles at most ${maxOrders} orders in one atomic resolveProcess — remove a node to add another, or compose multiple processes.`,
+                );
+                setTimeout(() => setMergeNotice(null), 5000);
+                return;
+            }
+            const parent = orders.find((o) => o.id === parentOrderId);
+            if (!parent) return;
+            const sub = createSyntheticSubOrder(session, parent);
+            setOrders((prev) => [...prev, sub.order]);
         },
-        [session],
+        [atOrderCapacity, maxOrders, orders, session],
     );
 
     const autoAddedCourierByParentRef = useRef<Map<string, string>>(new Map());
 
     const handleDeliverySelected = useCallback(
         (parentOrderId: string) => {
-            setOrders((prev) => {
-                const parent = prev.find((o) => o.id === parentOrderId);
-                if (!parent) return prev;
-                const hasAnyChild = prev.some((o) => {
-                    const summary = summarizeAgreement(loadAgreement(o.agreementHash));
-                    return summary?.topology?.parentOrderHashes.includes(parentOrderId) ?? false;
-                });
-                if (hasAnyChild) return prev;
-                const sub = createSyntheticSubOrder(session, parent, {
-                    [COURIER_PROCESS_CLAUSE_KEY]: {},
-                });
-                autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
-                return [...prev, sub.order];
+            const parent = orders.find((o) => o.id === parentOrderId);
+            if (!parent) return;
+            if (atOrderCapacity) {
+                setMergeNotice(
+                    `This chain settles at most ${maxOrders} orders in one atomic resolveProcess — remove a node before adding a delivery courier.`,
+                );
+                setTimeout(() => setMergeNotice(null), 5000);
+                return;
+            }
+            const hasAnyChild = orders.some((o) => {
+                const summary = summarizeAgreement(loadAgreement(o.agreementHash));
+                return summary?.topology?.parentOrderHashes.includes(parentOrderId) ?? false;
             });
+            if (hasAnyChild) return;
+            const sub = createSyntheticSubOrder(session, parent, {
+                [COURIER_PROCESS_CLAUSE_KEY]: {},
+            });
+            autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
+            setOrders((prev) => [...prev, sub.order]);
+            // Materialize the delivery activations into the template
+            // (clausesByOrderId is the template source): merchant-process on the
+            // root order, courier-process on the courier order. buildOrderAgreement
+            // is a pure projection — these must live in the template, not be
+            // re-derived at checkout.
+            setClausesByOrderId((prev) => ({
+                ...prev,
+                [parentOrderId]: {
+                    ...(prev[parentOrderId] ?? {}),
+                    [MERCHANT_PROCESS_CLAUSE_KEY]: {},
+                },
+                [sub.order.id]: {
+                    ...(prev[sub.order.id] ?? {}),
+                    [COURIER_PROCESS_CLAUSE_KEY]: {},
+                },
+            }));
         },
-        [session],
+        [atOrderCapacity, maxOrders, orders, session],
     );
 
     const handleDeliveryUnselected = useCallback(
         (parentOrderId: string) => {
             const trackedId = autoAddedCourierByParentRef.current.get(parentOrderId);
             if (!trackedId) return;
-            setOrders((prev) => {
-                const tracked = prev.find((o) => o.id === trackedId);
-                if (!tracked) {
-                    autoAddedCourierByParentRef.current.delete(parentOrderId);
-                    return prev;
-                }
-                const hasDescendant = prev.some((o) => {
-                    if (o.id === trackedId) return false;
-                    const summary = summarizeAgreement(loadAgreement(o.agreementHash));
-                    return summary?.topology?.parentOrderHashes.includes(trackedId) ?? false;
-                });
-                if (hasDescendant) {
-                    autoAddedCourierByParentRef.current.delete(parentOrderId);
-                    return prev;
-                }
+            const tracked = orders.find((o) => o.id === trackedId);
+            if (!tracked) {
                 autoAddedCourierByParentRef.current.delete(parentOrderId);
-                if (selectedOrderId === trackedId) setSelectedOrderId(null);
-                return prev.filter((o) => o.id !== trackedId);
+                return;
+            }
+            const hasDescendant = orders.some((o) => {
+                if (o.id === trackedId) return false;
+                const summary = summarizeAgreement(loadAgreement(o.agreementHash));
+                return summary?.topology?.parentOrderHashes.includes(trackedId) ?? false;
+            });
+            autoAddedCourierByParentRef.current.delete(parentOrderId);
+            // The courier has its own descendants — keep it and its clauses.
+            if (hasDescendant) return;
+            if (selectedOrderId === trackedId) setSelectedOrderId(null);
+            setOrders((prev) => prev.filter((o) => o.id !== trackedId));
+            // Reverse the activation: drop the courier order's clauses and the
+            // merchant-process anchor delivery added to the root.
+            setClausesByOrderId((prev) => {
+                const next = { ...prev };
+                delete next[trackedId];
+                const root = { ...(next[parentOrderId] ?? {}) };
+                delete root[MERCHANT_PROCESS_CLAUSE_KEY];
+                next[parentOrderId] = root;
+                return next;
             });
         },
-        [selectedOrderId],
+        [orders, selectedOrderId],
     );
 
     const handleEditAgreement = useCallback((orderId: string, edits: AgreementEdits) => {
@@ -604,6 +669,15 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                         </span>
                     )}
                 </div>
+                {maxOrders !== null && (
+                    <span
+                        data-testid="designer-node-capacity"
+                        className={`text-[11px] shrink-0 ${atOrderCapacity ? "text-red-600 font-semibold" : "text-ink-muted"}`}
+                        title={orderCaps ? `Hard cap ${maxOrders} orders — the most one atomic resolveProcess settles in a block on this chain. Committing them lands ~${orderCaps.commit}/block ≈ ${commitBlocks} block(s) at checkout.` : undefined}
+                    >
+                        {orders.length} / {maxOrders} nodes{commitBlocks && commitBlocks > 1 ? ` · ~${commitBlocks} blocks to commit` : ""}
+                    </span>
+                )}
                 {savedHint && (
                     <span className="ml-auto text-[11px] text-ink-muted truncate" data-testid="designer-saved-hint">
                         {savedHint}

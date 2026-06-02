@@ -23,7 +23,6 @@ import {
 import {
     computeAgreementHash,
     COURIER_PROCESS_CLAUSE_KEY,
-    MERCHANT_PROCESS_CLAUSE_KEY,
     GEO_CLAUSE_KEY,
     ARBITRATION_KLEROS_CLAUSE_KEY,
     FULFILMENT_V2_CLAUSE_KEY,
@@ -32,7 +31,7 @@ import { loadAgreement, saveAgreement } from "@/lib/core/agreementStore";
 import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
 
 /** Address space for synthetic actors. Distinct prefix avoids visual confusion with live wallets. */
-function syntheticAddress(slot: number): `0x${string}` {
+export function syntheticAddress(slot: number): `0x${string}` {
     return ("0x" + "de51" + slot.toString(16).padStart(36, "0")) as `0x${string}`;
 }
 
