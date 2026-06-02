@@ -1,0 +1,17 @@
+{
+  "name": "Kiosk Sale",
+  "orders": [
+    {
+      "clauses": {
+        "figaro-fulfilment-v2": {
+          "modalities": [
+            "pickup"
+          ]
+        }
+      },
+      "id": "order-0",
+      "parentOrderIds": []
+    }
+  ],
+  "slug": "kiosk-sale"
+}

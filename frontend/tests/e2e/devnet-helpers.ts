@@ -1030,10 +1030,26 @@ export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: 
  * drift signal: if the designer's clause generation changes, the
  * committed fixture stops matching and must be re-captured.
  */
+/** Template orders carry per-run ids (derived from a per-run processId), so
+ *  they aren't a stable drift signal verbatim. Normalize away the ids: index
+ *  each order, express parents as parent indices, keep the clause values.
+ *  Clauses + DAG structure are the deterministic part the fixture guards. */
+export function normalizeAssemblyTemplateOrders(
+    orders: Array<{ id: string; parentOrderIds: string[]; clauses: Record<string, unknown> }>,
+): Array<{ parents: number[]; clauses: Record<string, unknown> }> {
+    const idToIndex = new Map(orders.map((o, i) => [o.id, i]));
+    return orders.map((o) => ({
+        parents: o.parentOrderIds.map((p) => idToIndex.get(p) ?? -1).sort((a, b) => a - b),
+        clauses: o.clauses,
+    }));
+}
+
 export function captureOrGuardAssemblyDocument(
-    assemblyDoc: Record<string, unknown> & { agreements: Record<string, unknown> },
+    assemblyDoc: Record<string, unknown> & {
+        orders: Array<{ id: string; parentOrderIds: string[]; clauses: Record<string, unknown> }>;
+    },
     opts: { slug: string; name: string },
-): Record<string, unknown> {
+): unknown {
     const fixturePath = path.resolve(
         __dirname,
         `../../scripts/fixtures/${opts.slug}.assembly-document.json`,
@@ -1042,12 +1058,48 @@ export function captureOrGuardAssemblyDocument(
         const normalized = { ...assemblyDoc, slug: opts.slug, name: opts.name };
         fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
         fs.writeFileSync(fixturePath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
-        return assemblyDoc.agreements;
+        return normalizeAssemblyTemplateOrders(assemblyDoc.orders);
     }
     const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as {
-        agreements: Record<string, unknown>;
+        orders: Array<{ id: string; parentOrderIds: string[]; clauses: Record<string, unknown> }>;
     };
-    return fixture.agreements;
+    return normalizeAssemblyTemplateOrders(fixture.orders);
+}
+
+// ── Standard scenario-authoring verification ────────────────────────────────
+// After a scenario test publishes an assembly, mainnet-compliance means it must
+// be (1) anchored on-chain, (2) PINNED in IPFS, and (3) SURFACED on /assemblies.
+// (1) is a getContractEvents check in the spec; (2) and (3) are these helpers,
+// meant to be called by every scenario-<slug> authoring spec.
+
+/**
+ * Assert a CID is PINNED in the local Kubo node — proof the publish actually
+ * persisted to IPFS, not that a CID was merely computed or a gateway served it
+ * from cache. Mirrors `ipfs pin ls <cid>` against the Kubo HTTP API.
+ */
+export async function assertPinnedInIpfs(cid: string): Promise<void> {
+    const apiUrl = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+    const res = await fetch(`${apiUrl}/api/v0/pin/ls?arg=${encodeURIComponent(cid)}`, { method: 'POST' });
+    if (!res.ok) {
+        throw new Error(
+            `IPFS pin/ls failed for ${cid}: ${res.status} ${res.statusText} — not pinned in the local Kubo node`,
+        );
+    }
+    const body = await res.json() as { Keys?: Record<string, { Type?: string }> };
+    expect(body.Keys?.[cid], `CID ${cid} must be pinned in the local Kubo node`).toBeTruthy();
+}
+
+/**
+ * Assert a published assembly SURFACES on the marketing `/assemblies` inventory.
+ * The page reads `AssemblyRegistry` on-chain and lazy-fetches each assemblyDoc
+ * from IPFS; rows are keyed `#assembly-<slug>` (per AssemblyInventory). Navigates
+ * the page, so call it after the on-chain / IPFS assertions.
+ */
+export async function assertAssemblyOnInventory(page: Page, slug: string): Promise<void> {
+    await page.goto('/assemblies', { waitUntil: 'domcontentloaded' });
+    const row = page.locator(`#assembly-${slug}`);
+    await expect(row).toBeVisible({ timeout: 20000 });
+    await expect(row).toContainText(slug);
 }
 
 /** SellerRegistry registration event — carries the profile metadataURI. */

@@ -39,6 +39,7 @@ import {
 } from 'viem';
 import {
     captureOrGuardAssemblyDocument,
+    normalizeAssemblyTemplateOrders,
     evmRevert,
     evmSnapshot,
     readLocalDeploymentConfig,
@@ -93,25 +94,25 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         await orderNodes.first().click();
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
 
-        // ── Consume-onsite modality + face-to-face handoff + proximity band ─
-        // consume-onsite is a physical modality, so proximity-applicable
-        // (AgreementDrawer gates proximity on `modality !== "virtual"`);
-        // selecting it does NOT spawn a courier sub-order (only delivery
-        // does). The proximity band on the root order is the buyer↔merchant
-        // handoff edge — the same block pickup carries.
-        await page.getByTestId('drawer-tab-fulfilment').click();
-        await page.getByTestId('drawer-section-fulfilment').waitFor({ state: 'visible', timeout: 5000 });
-        await page.getByTestId('drawer-fulfilment-modality-consume-onsite').click();
-        await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
-        await page.getByTestId('drawer-fulfilment-handoff-face-to-face').click();
-        await page.getByTestId('drawer-proximity-band-zone-wifi').click();
+        // ── Compose clauses in the Registry tab ────────────────────────────
+        // The drawer is network-driven: every registered clause is a checkbox
+        // grouped by its article; checking one reveals its single-select
+        // design-time fields. consume-onsite is a physical modality (no courier
+        // sub-order — only delivery spawns one); the proximity band on the root
+        // is the buyer↔merchant handoff edge; merchant-process anchors the
+        // consume-onsite lifecycle (order-received → … → handed-off).
+        await page.getByTestId('drawer-tab-registry').click();
+        await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
 
-        // ── Anchor the merchant-process clause ─────────────────────────────
-        // consume-onsite carries a merchant lifecycle (order-received → … →
-        // handed-off) just as pickup does. Delivery auto-locks the
-        // merchant-process toggle; consume-onsite does not, so toggle it.
-        await page.getByTestId('drawer-tab-attestations').click();
-        await page.getByTestId('drawer-include-figaro-merchant-process-v1').click();
+        await page.getByTestId('drawer-registry-clause-figaro-fulfilment-v2').check();
+        await page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-consume-onsite').check();
+        await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
+        await page.getByTestId('drawer-field-figaro-fulfilment-v2-handoffPoints-face-to-face').check();
+
+        await page.getByTestId('drawer-registry-clause-figaro-proximity-policy-v1').check();
+        await page.getByTestId('drawer-field-figaro-proximity-policy-v1-bands-zone-wifi').check();
+
+        await page.getByTestId('drawer-registry-clause-figaro-merchant-process-v1').check();
 
         // Name + publish.
         await page.getByTestId('designer-name-input').fill(draftName);
@@ -154,54 +155,45 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         const cid = metadataURI.slice('ipfs://'.length);
         const assemblyDoc = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
-            orders: Array<{ agreementHash: string }>;
-            agreements: Record<string, {
-                version: string;
-                sections: Array<{ clause: string; data: Record<string, unknown> }>;
+            name: string;
+            orders: Array<{
+                id: string;
+                buyer: string;
+                seller: string;
+                parentOrderIds: string[];
+                clauses: Record<string, Record<string, unknown>>;
             }>;
         };
 
-        // V5 AssemblyDocument — one root order, one agreement.
+        // The published artifact is the no-hash TEMPLATE — one root order, no
+        // agreements/hashes. It carries ONLY the designer's explicit clause
+        // selections; commerce / topology / geo / proximity-proof are added at
+        // commit time by the buildOrderAgreement projection, not baked here.
         expect(assemblyDoc.slug).toBe(slug);
         expect(assemblyDoc.orders).toHaveLength(1);
-        const agreement = assemblyDoc.agreements[assemblyDoc.orders[0].agreementHash];
-        expect(agreement?.version).toBe('a1');
+        const root = assemblyDoc.orders[0];
+        expect(root.parentOrderIds).toEqual([]);
 
-        // direct-sale's clause set — a consume-onsite root order with handoff
-        // certification carries commerce + fulfilment + geo + jurisdiction +
-        // proximity-policy + proximity-proof + merchant-process + topology.
-        // Geo is default-on by RPGF design (clauses feeding the analytics
-        // graphs are incentivised — see memory reference_analytics_graph_rpgf).
-        // Distinct from pickup only by modality: the handoff-cert stack is
-        // identical (proximity-* + merchant-process on a 1-node graph).
-        expect(agreement.sections.map((s) => s.clause).sort()).toEqual([
-            'figaro-arbitration-kleros-v1',
-            'figaro-commerce-v1',
+        // The three clauses composed in the Registry tab: consume-onsite
+        // fulfilment + face-to-face handoff, the proximity-policy handoff edge,
+        // and the merchant-process lifecycle anchor.
+        expect(Object.keys(root.clauses).sort()).toEqual([
             'figaro-fulfilment-v2',
-            'figaro-geo-v2',
             'figaro-merchant-process-v1',
             'figaro-proximity-policy-v1',
-            'figaro-proximity-proof-v1',
-            'figaro-topology-v1',
         ]);
+        expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['consume-onsite']);
+        expect(root.clauses['figaro-fulfilment-v2'].coordinations).toBeUndefined();
+        expect(root.clauses['figaro-fulfilment-v2'].handoffPoints).toEqual(['face-to-face']);
+        expect(root.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
 
-        // One node, consume-onsite, face-to-face handoff, zone-wifi band —
-        // no courier sub-order.
-        const fulfilment = agreement.sections.find((s) => s.clause === 'figaro-fulfilment-v2');
-        expect(fulfilment?.data.modalities).toEqual(['consume-onsite']);
-        expect(fulfilment?.data.coordinations).toBeUndefined();
-        expect(fulfilment?.data.handoffPoints).toEqual(['face-to-face']);
-        const proximity = agreement.sections.find((s) => s.clause === 'figaro-proximity-policy-v1');
-        expect(proximity?.data.bands).toEqual(['zone-wifi']);
-        const topology = agreement.sections.find((s) => s.clause === 'figaro-topology-v1');
-        expect(topology?.data.topologyMode).toBe('root');
-
-        // Capture this assemblyDoc as the seed fixture (FIGARO_CAPTURE_FIXTURES),
-        // or drift-guard the live designer output against the committed one.
-        const fixtureAgreements = captureOrGuardAssemblyDocument(assemblyDoc, {
+        // Capture this template as the seed fixture (FIGARO_CAPTURE_FIXTURES),
+        // or drift-guard the live designer output against the committed one
+        // (normalized so per-run order ids don't register as drift).
+        const fixtureOrders = captureOrGuardAssemblyDocument(assemblyDoc, {
             slug: 'direct-sale',
             name: 'Direct Sale',
         });
-        expect(assemblyDoc.agreements).toEqual(fixtureAgreements);
+        expect(normalizeAssemblyTemplateOrders(assemblyDoc.orders)).toEqual(fixtureOrders);
     });
 });
