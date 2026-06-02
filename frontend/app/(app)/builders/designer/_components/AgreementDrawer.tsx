@@ -125,6 +125,16 @@ export function AgreementDrawer({
         const byArticle = new Map<string, RegisteredClauseEvent[]>();
         for (const entry of registeredClauses) {
             const spec = entry.clauseName ? getClauseSpec(entry.clauseName) : undefined;
+            // Activation-only clauses (category-1 with no drawerArticle — e.g.
+            // figaro-proximity-proof-v1, figaro-ghg-measurement-v1) are surfaced
+            // by their activating sibling at commit, never selected directly.
+            // Keep them out of the selectable list rather than dumping them in a
+            // "(unclassified)" bucket. (Clauses with no spec still show — a
+            // third-party clause we don't bundle a spec for is legitimately on
+            // the network and selectable.)
+            if (spec && spec.block?.tier === "category-1" && !spec.block.drawerArticle) {
+                continue;
+            }
             const article = spec?.block?.drawerArticle ?? "(unclassified)";
             const list = byArticle.get(article) ?? [];
             list.push(entry);
@@ -414,8 +424,12 @@ export function AgreementDrawer({
                                                                     onChange={(e) => onToggleClause?.(clauseKey, e.target.checked)}
                                                                     data-testid={`drawer-registry-clause-${clauseKey}`}
                                                                 />
-                                                                <span className="font-mono text-[11px]">
-                                                                    {clause.clauseName ??
+                                                                <span
+                                                                    className={`text-xs text-neutral-800${spec?.description ? " cursor-help" : ""}`}
+                                                                    title={spec?.description}
+                                                                >
+                                                                    {spec?.title ??
+                                                                        clause.clauseName ??
                                                                         `${clause.clauseIdHash.slice(0, 10)}…`}
                                                                 </span>
                                                             </label>
@@ -519,7 +533,14 @@ function ClauseFieldControl({
     onChange: (next: unknown) => void;
     testId: string;
 }) {
-    const label = <span className="text-[11px] text-neutral-500">{field.name}</span>;
+    const label = (
+        <span
+            className={`text-[11px] text-neutral-500${field.description ? " cursor-help" : ""}`}
+            title={field.description}
+        >
+            {field.name}
+        </span>
+    );
 
     if (field.type === "enum") {
         const selected = typeof value === "string" ? value : undefined;

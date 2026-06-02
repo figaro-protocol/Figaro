@@ -29,6 +29,7 @@ import ghgProtocolSpecRaw from "@/lib/shared/clauses/figaro-ghg-protocol-v1.json
 import applicableLawSpecRaw from "@/lib/shared/clauses/figaro-applicable-law-v1.json";
 import arbitrationKlerosSpecRaw from "@/lib/shared/clauses/figaro-arbitration-kleros-v1.json";
 import merchantProcessSpecRaw from "@/lib/shared/clauses/figaro-merchant-process-v1.json";
+import offsetPolicySpecRaw from "@/lib/shared/clauses/figaro-offset-policy-v1.json";
 import proximityPolicySpecRaw from "@/lib/shared/clauses/figaro-proximity-policy-v1.json";
 import proximityProofSpecRaw from "@/lib/shared/clauses/figaro-proximity-proof-v1.json";
 import topologySpecRaw from "@/lib/shared/clauses/figaro-topology-v1.json";
@@ -53,6 +54,7 @@ const BUILT_IN_SPECS: ReadonlyArray<[unknown, string]> = [
     [applicableLawSpecRaw, "figaro-applicable-law-v1"],
     [arbitrationKlerosSpecRaw, "figaro-arbitration-kleros-v1"],
     [merchantProcessSpecRaw, "figaro-merchant-process-v1"],
+    [offsetPolicySpecRaw, "figaro-offset-policy-v1"],
     [proximityPolicySpecRaw, "figaro-proximity-policy-v1"],
     [proximityProofSpecRaw, "figaro-proximity-proof-v1"],
     [topologySpecRaw, "figaro-topology-v1"],

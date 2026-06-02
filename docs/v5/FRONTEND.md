@@ -51,7 +51,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 **Components (`app/(app)/builders/designer/_components/`):**
 - `DesignerCanvas.tsx` — the shared editor surface used by `/new` and `/edit/[slug]`. Hosts the toolbar (← Assemblies | name | saved hint | Save | Publish | Reset), the DAG canvas, the agreement drawer, and the autosave loop.
-- `AgreementDrawer.tsx` — per-node clause editor (Geo / GHG / Topology baseline-graph clauses + the rest of the agreement surface).
+- `AgreementDrawer.tsx` — per-node clause composer. Two tabs: Parties (buyer / seller / DAG position) and a network-driven **Registry** tab listing every clause registered on `ClauseRegistry` (grouped by `block.drawerArticle`), each a checkbox that expands to single-select design-time field choices. Checked clauses + their values are captured into the no-hash assembly template (`clausesByOrderId` → `buildAssemblyTemplate`); the assembly-level privileged-token choice lives in the consent group. No hardcoded clause roster.
 - `DraftsList.tsx` — saved-drafts list on the landing.
 - `PublishedList.tsx` — published-assemblies list for the connected wallet.
 - `ClausesList.tsx` — clauses catalogue on the landing.
