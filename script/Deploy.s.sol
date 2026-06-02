@@ -324,7 +324,11 @@ contract Deploy is Script {
         console.log("FigaroBatchVerifier deployed at:", address(batchVerifier));
 
         // ── Mint test tokens to Anvil accounts ──────────────────────
-        address[9] memory testAccounts = [
+        // anvil[1..19] (anvil[0] is the deployer, already minted MOCK above) —
+        // 20 funded accounts total. anvil must launch with `--accounts 20` so
+        // these indices also hold ETH for gas (see scripts/devup.sh). Headroom
+        // for per-scenario dedicated sellers beyond the original anvil[5..9].
+        address[19] memory testAccounts = [
             0x70997970C51812dc3A010C7d01b50e0d17dc79C8,
             0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC,
             0x90F79bf6EB2c4f870365E785982E1f101E93b906,
@@ -333,7 +337,17 @@ contract Deploy is Script {
             0x976EA74026E726554dB657fA54763abd0C3a0aa9,
             0x14dC79964da2C08b23698B3D3cc7Ca32193d9955,
             0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f,
-            0xa0Ee7A142d267C1f36714E4a8F75612F20a79720
+            0xa0Ee7A142d267C1f36714E4a8F75612F20a79720,
+            0xBcd4042DE499D14e55001CcbB24a551F3b954096,
+            0x71bE63f3384f5fb98995898A86B02Fb2426c5788,
+            0xFABB0ac9d68B0B445fB7357272Ff202C5651694a,
+            0x1CBd3b2770909D4e10f157cABC84C7264073C9Ec,
+            0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097,
+            0xcd3B766CCDd6AE721141F452C550Ca635964ce71,
+            0x2546BcD3c84621e976D8185a91A922aE77ECEc30,
+            0xbDA5747bFD65F08deb54cb465eB87D40e51B197E,
+            0xdD2FD4581271e230360230F9337D5c0430Bf44C0,
+            0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199
         ];
         for (uint256 i = 0; i < testAccounts.length; i++) {
             token.mint(testAccounts[i], 100_000 ether);
