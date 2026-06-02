@@ -22,7 +22,7 @@
  *
  * Requires Anvil + ./deploy-local.sh + Kubo for the catalogue/profile pin.
  */
-import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
+import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';
 import {
     createPublicClient,
     createWalletClient,
@@ -34,10 +34,12 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
+    acceptOrderInInboxUI,
     ensureTokenApprovals,
     evmRevert,
     evmSnapshot,
     pinJSONToIPFS,
+    placeBilateralOrderUI,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 
@@ -140,7 +142,7 @@ test.describe('/s/[seller] full place-order flow (devnet)', () => {
     // IPFS round-trip + discovery + sign + commit pushes this past 60s.
     test.setTimeout(180_000);
 
-    test('buyer browses the seller catalogue, adds item, picks fulfilment, places the order, redirects to /orders', async ({ page }) => {
+    test('buyer browses the seller catalogue, adds item, picks fulfilment, places the order via the bilateral relay', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
@@ -148,69 +150,30 @@ test.describe('/s/[seller] full place-order flow (devnet)', () => {
         // Pre-approve so the place-order flow doesn't have to walk a
         // separate token-approval step in the UI — keeps the spec
         // focused on the commit path (permit.devnet covers the
-        // approval-via-permit branch).
+        // approval-via-permit branch). Both parties: the seller's bond is
+        // pulled when it counter-signs in the inbox.
         await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, SELLER_KEY);
 
         const seeded = await seedRegisteredSellerWithCatalogue();
 
-        // Buyer (anvil[0]) is the default ?e2e=devnet account; no
-        // wallet switch needed.
-        await page.goto(`/s/${seeded.address}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        // Buyer (anvil[0]) places + relays the order through the UI; the
+        // seller counter-signs in its inbox. A single-order buyer≠seller sale
+        // is the real bilateral relay — no RPC auto-signing of the seller.
+        await placeBilateralOrderUI(page, {
+            seller: seeded.address,
+            itemId: seeded.itemId,
+            fulfilmentMode: 'consume-onsite',
+        });
+        const processId = await acceptOrderInInboxUI(page, seeded.address);
+        expect(processId).toMatch(/^0x[0-9a-fA-F]{64}$/);
 
-        const detailView = page.getByTestId('seller-detail-view');
-        try {
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-        } catch {
-            // Catalogue discovery sometimes lags the first mount (same
-            // pattern as G11's first reload).
-            await page.reload({ waitUntil: 'domcontentloaded' });
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-        }
-
-        // Add the seeded item to cart.
-        const menuItem = page.getByTestId(`menu-item-${seeded.itemId}`);
-        try {
-            await menuItem.waitFor({ state: 'visible', timeout: 15000 });
-        } catch {
-            await page.reload({ waitUntil: 'domcontentloaded' });
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-            await menuItem.waitFor({ state: 'visible', timeout: 30000 });
-        }
-        await page.getByTestId(`btn-add-${seeded.itemId}`).click();
-        await expect(page.getByTestId(`cart-line-${seeded.itemId}`)).toBeVisible({ timeout: 10000 });
-
-        // Pick a fulfilment mode. Seller has no on-chain assembly
-        // bindings and the catalogue has no fulfillmentModes field, so
-        // supportedModes falls back to ALL_FULFILMENT_MODES — every
-        // option renders. consume-onsite is the simplest.
-        await page.getByTestId('select-fulfilment-mode').selectOption('consume-onsite');
-
-        // Place the order. Accept any window.confirm the commit flow
-        // may surface (defensive — none currently expected here).
-        page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
-        await page.getByTestId('btn-place-order').click();
-
-        // AgreementPreviewModal gates the signature — signCommitment always
-        // posts the preview; confirm it to proceed to the wallet prompt.
-        await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 15000 });
-        await page.getByTestId('preview-confirm').click();
-
-        // After commit, the page redirects to /orders/<processId>. Wait
-        // for the URL to change and the timeline view to mount.
-        await page.waitForURL(/\/orders\/0x[0-9a-fA-F]+/, { timeout: 60000 });
+        // The order is the buyer's; navigate there and confirm the role.
+        await gotoAsWallet(page, ANVIL_ACCOUNTS[0], `/orders/${processId}?e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-
-        // The order is the buyer's; the role-discriminator should
-        // resolve to "buyer".
         await expect(page.getByTestId('order-timeline-view')).toContainText(/You are the buyer/);
 
-        // Extract the processId from the URL and cross-check the
-        // on-chain process state — payment landed, activeOrderCount=1.
-        const url = page.url();
-        const match = url.match(/\/orders\/(0x[0-9a-fA-F]+)/);
-        expect(match, `expected /orders/<hex> in URL: ${url}`).toBeTruthy();
-        const processId = match![1] as Hex;
-
+        // Cross-check the on-chain process state — payment landed,
+        // activeOrderCount=1.
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const processState = await publicClient.readContract({
             address: coreAddress,

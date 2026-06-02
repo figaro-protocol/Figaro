@@ -40,6 +40,8 @@ export function AssemblyProcessWorkspace({
                     sourceOrderId={rootOrder.orderId}
                     currency={rootOrder.currency ?? ("0x0" as `0x${string}`)}
                     isSeller={hexEqual(rootOrder.seller, address)}
+                    payment={rootOrder.payment}
+                    bondReturned={rootOrder.settlementBreakdown?.lockedBond?.amount ?? rootOrder.payment * 2n}
                 />
             )}
             {process.economicSummary && (

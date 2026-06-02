@@ -27,6 +27,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { decodeAbiParameters, toHex, type Hex, type PublicClient } from "viem";
 import { Button } from "@/components/ui/Button";
 import { PreResolveOffsetPanel } from "@/components/core/PreResolveOffsetPanel";
+import { SettlementProceedsPanel } from "@/components/core/SettlementProceedsPanel";
 import { SellerAuctionPanel } from "@/components/core/SellerAuctionPanel";
 import { GHGAnchorPanel } from "@/components/core/GHGAnchorPanel";
 import { GHGWorkflowPanel } from "@/components/core/GHGWorkflowPanel";
@@ -49,13 +50,15 @@ import {
     COURIER_PROCESS_CLAUSE_KEY,
     MERCHANT_PROCESS_CLAUSE_KEY,
     PROXIMITY_POLICY_CLAUSE_KEY,
+    FULFILMENT_V2_CLAUSE_KEY,
 } from "@/lib/core/agreement";
+import { fulfilmentLabel } from "@/lib/shared/assemblyLabels";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import type { CourierEvent, MerchantEvent } from "@figaro/core/clauses";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { hexEqual } from "@/lib/shared/evm";
+import { hexEqual, ZERO_ADDRESS } from "@/lib/shared/evm";
 
 const MERCHANT_EVENT_BY_STAGE: Record<number, MerchantEvent> = {
     0: "order-received",
@@ -530,6 +533,16 @@ export function OrderTimelineView({ processId }: Props) {
         const agreement = workspace.processAgreements.get(rootOrder.agreementHash) ?? null;
         return !!agreement && !!getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY);
     }, [rootOrder, workspace.processAgreements]);
+    // The committed fulfilment modality on the root order (pickup / on-site /
+    // delivery / virtual) — surfaced in the header so the human sees how this
+    // order is fulfilled, even for a bare modality with no handoff lifecycle.
+    const rootFulfilmentModality = useMemo(() => {
+        if (!rootOrder) return null;
+        const agreement = workspace.processAgreements.get(rootOrder.agreementHash) ?? null;
+        const data = agreement ? getSection(agreement, FULFILMENT_V2_CLAUSE_KEY)?.data : null;
+        const modalities = (data as { modalities?: string[] } | undefined)?.modalities;
+        return modalities?.[0] ?? null;
+    }, [rootOrder, workspace.processAgreements]);
     // Buyer↔merchant handoff (no intermediary): the root carries proximity AND
     // the process is a single order — the buyer co-witnesses (pickup / on-site).
     const isPickupHandoff = rootHasProximityPolicy && allOrders.length <= 1;
@@ -731,6 +744,11 @@ export function OrderTimelineView({ processId }: Props) {
                     </span>
                 </div>
                 <p className="text-sm text-neutral-700">{status.subhead}</p>
+                {rootFulfilmentModality && (
+                    <p className="text-xs text-neutral-600" data-testid="order-fulfilment-modality">
+                        Fulfilment: <span className="font-medium text-black">{fulfilmentLabel(rootFulfilmentModality)}</span>
+                    </p>
+                )}
                 <p className="text-xs text-neutral-500 font-mono">
                     Process <span data-testid="order-process-id">{truncateHex(processId, { head: 10, tail: 6 })}</span>
                     {" · "}
@@ -743,6 +761,23 @@ export function OrderTimelineView({ processId }: Props) {
                     {role === "spectator" && <>Read-only — your wallet is neither buyer nor seller on this order</>}
                 </p>
             </header>
+
+            {/* Settlement confirmation — once the process resolves, tell the
+                human what moved: the payment (sent/received) and their bond,
+                returned in full. Shown to whichever party is viewing. */}
+            {isResolved && (isBuyer || isSeller) && (() => {
+                const myOrder = isSeller && sellerOrder ? sellerOrder : rootOrder;
+                if (!myOrder) return null;
+                return (
+                    <SettlementProceedsPanel
+                        sourceOrderId={myOrder.orderId}
+                        currency={(myOrder.currency ?? ZERO_ADDRESS) as `0x${string}`}
+                        isSeller={isSeller}
+                        payment={myOrder.payment}
+                        bondReturned={myOrder.settlementBreakdown?.lockedBond?.amount ?? myOrder.payment * 2n}
+                    />
+                );
+            })()}
 
             {/* Deferred courier edge — a Dutch auction, if this process has one.
                 Renders null for every non-auction process. */}

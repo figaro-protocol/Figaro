@@ -1339,6 +1339,121 @@ export async function placeLocalCommerceOrderUI(
 }
 
 /**
+ * Buyer side of the REAL bilateral relay for a single-order sale.
+ *
+ * Drives the buyer entirely through the UI: browse the seller, add the
+ * product to the cart, place the order, confirm the pre-sign agreement
+ * preview (the buyer signs as buyer — never for the seller), and relay the
+ * pinned commitment payload to the seller's inbox via `send-commitment-xmtp`.
+ * Leaves the order awaiting the seller's counter-signature — pair with
+ * `acceptOrderInInboxUI` to land the on-chain commit.
+ *
+ * This is the mainnet path: there is no RPC auto-signing of the counterparty
+ * and no seeded payload. The payload itself is pinned to real IPFS; only the
+ * XMTP notification hop is the e2e coordination channel (localStorage-backed,
+ * same posture as real-IPFS / no-real-XMTP).
+ *
+ * `page` is the buyer wallet (the default account[0]). Pass `itemId` to target
+ * a specific catalogue item; omit it for a single-product seller (the first
+ * "add" button is used).
+ */
+export async function placeBilateralOrderUI(
+    page: Page,
+    opts: { seller: string; itemId?: string; fulfilmentMode?: string; geohash?: string; expectFulfilmentLabel?: string },
+): Promise<void> {
+    await page.goto(`/s/${opts.seller}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+    const detailView = page.getByTestId('seller-detail-view');
+    try {
+        await detailView.waitFor({ state: 'visible', timeout: 30000 });
+    } catch {
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await detailView.waitFor({ state: 'visible', timeout: 30000 });
+    }
+
+    const addButton = opts.itemId
+        ? page.getByTestId(`btn-add-${opts.itemId}`)
+        : page.locator('[data-testid^="btn-add-"]').first();
+    try {
+        await addButton.waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await detailView.waitFor({ state: 'visible', timeout: 30000 });
+        await addButton.waitFor({ state: 'visible', timeout: 30000 });
+    }
+    await addButton.click();
+    await expect(page.locator('[data-testid^="cart-line-"]').first()).toBeVisible({ timeout: 10000 });
+
+    // The buyer must pick a fulfilment option — the seller's bound assemblies
+    // surface here by their MODALITY (e.g. "Pickup", "Delivery …"), as do plain
+    // modes. Select the explicit one if given, otherwise the first real
+    // (non-"Select one") option.
+    const fulfilmentSelect = page.getByTestId('select-fulfilment-mode');
+    await fulfilmentSelect.waitFor({ state: 'visible', timeout: 20000 });
+    if (opts.expectFulfilmentLabel) {
+        // The buyer can SEE the fulfilment modality they're choosing.
+        await expect(fulfilmentSelect.locator('option', { hasText: opts.expectFulfilmentLabel }))
+            .toHaveCount(1, { timeout: 20000 });
+    }
+    if (opts.fulfilmentMode) {
+        await expect(page.getByTestId(`option-fulfilment-${opts.fulfilmentMode}`)).toHaveCount(1, { timeout: 20000 });
+        await fulfilmentSelect.selectOption(opts.fulfilmentMode);
+    } else {
+        const optionValues = await fulfilmentSelect.locator('option').evaluateAll(
+            (opts2) => opts2.map((o) => (o as HTMLOptionElement).value).filter((v) => v !== ''),
+        );
+        expect(optionValues.length, 'seller offers at least one fulfilment option').toBeGreaterThan(0);
+        await fulfilmentSelect.selectOption(optionValues[0]);
+    }
+    // Delivery modes need a geohash; pickup/onsite/assembly modes do not.
+    const geohashInput = page.getByTestId('input-delivery-geohash');
+    if (opts.geohash && await geohashInput.isVisible().catch(() => false)) {
+        await geohashInput.fill(opts.geohash);
+    }
+
+    await page.getByTestId('btn-place-order').click();
+
+    // Pre-sign agreement preview (buyer verifies the hash matches the terms).
+    const previewModal = page.getByTestId('agreement-preview-modal');
+    await previewModal.waitFor({ state: 'visible', timeout: 45000 });
+    await page.getByTestId('preview-confirm').click();
+    await previewModal.waitFor({ state: 'hidden', timeout: 45000 });
+
+    // Relay the buyer-signed payload to the seller's inbox.
+    await page.getByTestId('buyer-share-panel').waitFor({ state: 'visible', timeout: 45000 });
+    await page.getByTestId('send-commitment-xmtp').click();
+    await expect(page.getByTestId('commitment-xmtp-status')).toContainText(/sent over XMTP/i, { timeout: 45000 });
+}
+
+/**
+ * Seller side of the REAL bilateral relay: open the seller's inbox, accept the
+ * pending order (confirm the pre-sign preview → counter-sign → broadcast), and
+ * return the on-chain `processId` from the resulting active row.
+ *
+ * Switches `page` to the seller wallet via `gotoAsWallet`. The pending card is
+ * delivered by the live coordination subscription (no seeding); the active row
+ * appears only once the seller's `commit` lands on-chain.
+ */
+export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): Promise<Hex> {
+    await gotoAsWallet(page, sellerAddress, '/inbox?e2e=devnet');
+
+    const pendingCard = page.getByTestId('inbox-pending-card');
+    await pendingCard.first().waitFor({ state: 'visible', timeout: 60000 });
+    await page.getByTestId('btn-accept-order').first().click();
+
+    // Pre-sign agreement preview (seller).
+    const previewModal = page.getByTestId('agreement-preview-modal');
+    await previewModal.waitFor({ state: 'visible', timeout: 45000 });
+    await page.getByTestId('preview-confirm').click();
+    await previewModal.waitFor({ state: 'hidden', timeout: 45000 });
+
+    // The active row is keyed by the committed processId.
+    const activeRow = page.locator('[data-testid^="inbox-active-row-0x"]');
+    await activeRow.first().waitFor({ state: 'visible', timeout: 90000 });
+    const testId = await activeRow.first().getAttribute('data-testid');
+    return testId!.replace('inbox-active-row-', '') as Hex;
+}
+
+/**
  * Drive the merchant coordination walk + the courier's two handoff
  * proximity proofs for a committed local-commerce process — the shared
  * runtime steps between the buyer's commit and the buyer's resolve. The

@@ -43,6 +43,7 @@ import {
 import type { ClauseFields } from "@/lib/core/encoding";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { sellerAuctionId, stashSellerDraft } from "@/lib/mechanisms/sellerAuction";
+import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
 import { SellerTrackRecord } from "@/components/core/SellerTrackRecord";
 import { useSellerTrackRecord } from "@/lib/mechanisms/useSellerTrackRecord";
@@ -164,7 +165,11 @@ export function SellerDetailView({ sellerAddress }: Props) {
     const assemblyOptions = useMemo(
         () => boundAssemblies.flatMap((a) =>
             a.fulfilmentMethod
-                ? [{ method: a.fulfilmentMethod as FulfillmentMode, name: a.name }]
+                // Label by the fulfilment MODALITY the buyer is choosing
+                // ("Pickup", "Delivery …"), not the internal assembly name —
+                // the dropdown is a fulfilment selector, so the modality is the
+                // meaningful, buyer-facing choice.
+                ? [{ method: a.fulfilmentMethod as FulfillmentMode, name: FULFILMENT_MODE_LABELS[a.fulfilmentMethod] ?? a.name }]
                 : [],
         ),
         [boundAssemblies],
@@ -499,15 +504,27 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     },
                 },
             });
+            // Single-order, distinct parties → the real bilateral relay: the
+            // buyer signs, the CommitmentSharePanel (rendered below at
+            // `awaiting-counter`) relays the pinned payload to the seller's
+            // inbox, and the seller counter-signs + broadcasts. This is the
+            // mainnet path, and it now runs in devnet too — no auto-signing the
+            // counterparty over RPC. A self-commit has no counterparty and the
+            // multi-order relay is follow-on work, so both fall through to the
+            // direct-commit path below.
+            const isSelfCommit = hexEqual(buyer, sellerAddressLower);
+            if (!isMultiOrder && !isSelfCommit) {
+                await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta);
+                return;
+            }
             const immediateCommit = isE2EMockSession() || isE2EDevnetSession();
             if (!immediateCommit) {
-                // Production two-party relay — root order only. Multi-order
-                // (courier) checkout via the relay is follow-on work.
+                // Production two-party relay for the self / multi-order cases.
                 await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta);
                 return;
             }
             if (!isMultiOrder) {
-                // Single-order assembly — commit; the redirect effect routes
+                // Single-order self-commit — commit; the redirect effect routes
                 // to /orders/<processId>.
                 await signAndPlace(prepared.commitment, prepared.commitmentMeta, "buyer");
                 return;
@@ -1123,6 +1140,19 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                     <p className="text-sm text-red-600" data-testid="seller-checkout-error">
                                         {checkoutError ?? commitError}
                                     </p>
+                                )}
+
+                                {/* Bilateral relay: once the buyer has signed,
+                                    surface the signed commitment so they can send
+                                    it to the seller's inbox for counter-signing. */}
+                                {commitStep === "awaiting-counter" && payload && (
+                                    <div className="pt-2" data-testid="buyer-share-panel">
+                                        <CommitmentSharePanel
+                                            payload={payload}
+                                            step={commitStep}
+                                            tokenDecimals={tokenDecimals}
+                                        />
+                                    </div>
                                 )}
                             </>
                         )}
