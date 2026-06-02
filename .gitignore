@@ -34,6 +34,10 @@ frontend/.figaro/
 !.claude/skills/
 !.claude/hooks/
 !.claude/settings.json
+# ...except personal/machine-specific hooks: the grievance hook hardcodes a
+# per-user path and reads a personal memory file, so it stays out of the repo
+# (registered in the gitignored settings.local.json instead).
+.claude/hooks/grievance-startup.sh
 
 # Environment variables
 .env
