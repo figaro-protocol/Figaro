@@ -1,5 +1,32 @@
 # Figaro Protocol — CLAUDE.md
 
+## Read this first — the premise that has cost the most
+
+Before Agent Permissions, before the spine, weigh the one base-model default you
+will carry in unexamined and that is **wrong here**:
+
+> **"Figaro is a product app."** It is not. It is **protocol infrastructure** — the
+> TCP/IP of trade (see "What Figaro Is"). The frontend is a *protocol surface that
+> composes catalogues*, never a product application.
+
+This is the master invisible assumption — so deep in base training it never surfaces
+as a question, so it ships as a skinning system, a module/slot runtime, a role
+taxonomy, an onboarding funnel, an admin console, or persona-mapped journeys *before
+anyone asks "wait — is this a product?"* The git history is its body count: an entire
+product-app frontend (V4) was built and excised, ~80K net lines deleted across one
+month of V5, and it **recurs every time an agent starts building** (`roleKind`,
+`archetypeId`, onboarding funnels all came back and had to be deleted again). A
+one-time cleanup cannot kill it; only weighing it at generation time can.
+
+**The test, before building any surface:** *"Am I about to build a product feature?"*
+If yes, stop — you have almost certainly mistaken infrastructure for a product.
+Compose from the `lib/` catalogues; do not build an app shell. Fuller treatment in
+"What Figaro Is" / "What Figaro Is Not" and "Frontend = runtime infrastructure, not
+product code" below. This is grievance #0 applied to the single premise that costs
+the most.
+
+---
+
 This file is the authoritative reference for AI-assisted work in this repo. It
 holds the **discipline**; the indexed `docs/v5/` files hold the **lists** (the
 inventories, tables, and command catalogues). Keep it that way: when a section
