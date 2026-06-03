@@ -58,7 +58,7 @@ import { getCommonTokens } from "@/lib/shared/commonTokens";
 import { useChainId, usePublicClient } from "wagmi";
 import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
-import { COURIER_PROCESS_CLAUSE_KEY, MERCHANT_PROCESS_CLAUSE_KEY } from "@/lib/core/agreement";
+import { COURIER_PROCESS_CLAUSE_KEY, FULFILMENT_V2_CLAUSE_KEY, MERCHANT_PROCESS_CLAUSE_KEY } from "@/lib/core/agreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
 
 export type DesignerSeed =
@@ -742,8 +742,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     }}
                     hasChildren={agreementHints.hasChildren}
                     parentDeliveryActive={agreementHints.parentDeliveryActive}
-                    onDeliverySelected={handleDeliverySelected}
-                    onDeliveryUnselected={handleDeliveryUnselected}
                     selectedClauseValues={
                         selectedOrderId ? (clausesByOrderId[selectedOrderId] ?? {}) : undefined
                     }
@@ -751,7 +749,24 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                         if (selectedOrderId) toggleClause(selectedOrderId, clauseId, next);
                     }}
                     onSetClauseField={(clauseId, field, value) => {
-                        if (selectedOrderId) setClauseField(selectedOrderId, clauseId, field, value);
+                        if (!selectedOrderId) return;
+                        // Delivery activation is a CANVAS (topology) concern, not a
+                        // drawer one — the drawer stays clause-agnostic. When this
+                        // order's fulfilment modality becomes "delivery" it spawns the
+                        // courier sub-order (+ materializes merchant-process on the root
+                        // and courier-process on the courier into the template);
+                        // switching away reverses it. (This reconnects the previously
+                        // dead onDeliverySelected callback path.)
+                        const fulfil = clausesByOrderId[selectedOrderId]?.[FULFILMENT_V2_CLAUSE_KEY] as
+                            | { modalities?: string[] }
+                            | undefined;
+                        const wasDelivery = (fulfil?.modalities ?? []).includes("delivery");
+                        setClauseField(selectedOrderId, clauseId, field, value);
+                        if (clauseId === FULFILMENT_V2_CLAUSE_KEY && field === "modalities") {
+                            const isDelivery = Array.isArray(value) && (value as string[]).includes("delivery");
+                            if (isDelivery && !wasDelivery) handleDeliverySelected(selectedOrderId);
+                            else if (wasDelivery && !isDelivery) handleDeliveryUnselected(selectedOrderId);
+                        }
                     }}
                     privilegedToken={privilegedToken}
                     onPrivilegedTokenChange={setPrivilegedToken}

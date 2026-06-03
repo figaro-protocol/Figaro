@@ -54,8 +54,6 @@ interface Props {
     onChange: (edits: AgreementEdits) => void;
     hasChildren?: boolean;
     parentDeliveryActive?: boolean;
-    onDeliverySelected?: (parentOrderId: string) => void;
-    onDeliveryUnselected?: (parentOrderId: string) => void;
     /** Inline flex-column block (no fixed positioning) when true. */
     embedded?: boolean;
     /** Tabs stay navigable but every control is disabled — used by /view. */

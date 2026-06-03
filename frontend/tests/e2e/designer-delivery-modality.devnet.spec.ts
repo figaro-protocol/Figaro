@@ -41,21 +41,21 @@ test.describe('Designer delivery modality side-effect (devnet)', () => {
         await orderNodes.first().click();
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
 
-        // Open the Fulfilment article. Geo's already default-on, but
-        // the modality is initially unset; selecting Delivery should
-        // both write the clause AND trigger `onDeliverySelected` which
-        // spawns a courier sub-order node.
-        await page.getByTestId('drawer-tab-fulfilment').click();
-        await page.getByTestId('drawer-section-fulfilment').waitFor({ state: 'visible', timeout: 5000 });
+        // Compose in the Registry tab (the drawer's clause-agnostic model). Check
+        // the fulfilment clause, then select the Delivery modality. Selecting
+        // delivery must both write the clause AND spawn a courier sub-order node
+        // (the canvas's delivery activation, reconnected via setClauseField).
+        await page.getByTestId('drawer-tab-registry').click();
+        await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
 
-        await page.getByTestId('drawer-fulfilment-modality-delivery').click();
+        await page.getByTestId('drawer-registry-clause-figaro-fulfilment-v2').check();
+        await page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-delivery').check();
 
         // Side-effect: courier sub-order node appears.
         await expect(orderNodes).toHaveCount(2, { timeout: 10000 });
 
-        // Switch back to a non-delivery modality. The courier sub-order
-        // should be removed.
-        await page.getByTestId('drawer-fulfilment-modality-consume-onsite').click();
+        // Switch to a non-delivery modality. The courier sub-order is removed.
+        await page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-consume-onsite').check();
         await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
     });
 });
