@@ -52,6 +52,13 @@ export interface SellerSpec {
      *  published (anchored) by its scenario authoring spec — adoption references
      *  the slug; it does not re-pin the assembly. */
     assemblies: string[];
+    /** Per-assembly courier designations — the counterparty bindings the wizard's
+     *  OnboardingAssembliesForm captures when an adopted assembly has a courier
+     *  sub-order (figaro-courier-process-v1). Keyed by assembly slug → the courier
+     *  wallet addresses this seller (a merchant) trusts to fill the delivery
+     *  sub-order. The checkout reads them to resolve the courier order's seller.
+     *  Omit for sellers that designate no couriers (e.g. the courier itself). */
+    courierAddresses?: Record<string, `0x${string}`[]>;
     /** Catalogue products (at least one). */
     products: SellerProductSpec[];
 }
@@ -74,5 +81,30 @@ export const SELLER_ROSTER: readonly SellerSpec[] = [
         geohash: "9q8yyk8yt",
         assemblies: ["direct-sale"],
         products: [{ name: "Espresso", price: "1" }],
+    },
+    // local-commerce (2-node seller-assigned delivery): a merchant that arranges
+    // its own courier. Rosa's Kitchen (anvil[7]) sells the goods and designates
+    // Cardinal Couriers (anvil[8]) as its trusted courier for the delivery
+    // sub-order; the courier prices the delivery from its own catalogue. Both
+    // bind local-commerce — the merchant fills the root order, the courier the
+    // figaro-courier-process-v1 sub-order. One neighbourhood (9q8yyk8y* cells).
+    {
+        addressIndex: 7,
+        address: "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
+        name: "Rosa's Kitchen",
+        specialty: "prepared food, own delivery",
+        geohash: "9q8yyk8yv",
+        assemblies: ["local-commerce"],
+        courierAddresses: { "local-commerce": ["0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f"] },
+        products: [{ name: "Margherita pizza", price: "1" }],
+    },
+    {
+        addressIndex: 8,
+        address: "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
+        name: "Cardinal Couriers",
+        specialty: "last-mile delivery",
+        geohash: "9q8yyk8yw",
+        assemblies: ["local-commerce"],
+        products: [{ name: "Standard delivery", price: "1" }],
     },
 ];

@@ -94,6 +94,22 @@ async function onboardViaWizard(page: import("@playwright/test").Page, spec: Sel
         const row = page.getByTestId(`seller-assembly-row-${slug}`);
         await row.waitFor({ state: "visible", timeout: 20_000 });
         await row.locator('input[type="checkbox"]').check();
+
+        // Courier designation: assemblies with a courier sub-order
+        // (figaro-courier-process-v1) surface a "Trusted couriers" editor when
+        // checked. A merchant designates the wallets it trusts to fill that
+        // sub-order at checkout; sellers that designate none leave it empty.
+        const couriers = spec.courierAddresses?.[slug] ?? [];
+        if (couriers.length > 0) {
+            const panel = page.getByTestId(`seller-assembly-counterparties-${slug}`);
+            await panel.waitFor({ state: "visible", timeout: 10_000 });
+            for (let i = 0; i < couriers.length; i++) {
+                if (i > 0) {
+                    await panel.getByTestId("counterparty-figaro-courier-process-v1-add").click();
+                }
+                await panel.getByTestId(`counterparty-figaro-courier-process-v1-input-${i}`).fill(couriers[i]);
+            }
+        }
     }
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/sellers\/agents/);
