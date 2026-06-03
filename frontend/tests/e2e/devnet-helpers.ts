@@ -49,6 +49,54 @@ const LOCAL_ANVIL = defineChain({
     },
 });
 
+// ── Shared devnet preamble ───────────────────────────────────────────────────
+// The chain, a read client, the common ABI fragments, and the per-test snapshot
+// wiring that every spec was re-declaring (the bulk of the e2e clone %). Import
+// these instead of restamping a LOCAL_ANVIL / createPublicClient / parseAbi block
+// at the top of each spec.
+
+/** A read-only viem client on the local Anvil chain. */
+export function localPublicClient() {
+    return createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+}
+
+/** FigaroCore `processes(processId)` view — rootBuyer / currency / cumulativeValue
+ *  / activeOrderCount. The canonical post-commit / post-resolve assertion source. */
+export const CORE_PROCESS_VIEW_ABI = parseAbi([
+    'function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
+]);
+
+/** ERC-20 `balanceOf` — bond-debit / settlement assertions read it at each stage.
+ *  (`SELLER_REGISTERED_EVENT_ABI`, the onboarding-assertion event, is exported
+ *  from its existing definition further down.) */
+export const ERC20_BALANCE_ABI = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+]);
+
+/** Minimal Playwright hook surface — structural, so this file needs no import of
+ *  the test object (avoids a cycle with devnet-multi-test). */
+interface PlaywrightLifecycleHooks {
+    beforeAll(fn: () => void | Promise<void>): void;
+    afterAll(fn: () => void | Promise<void>): void;
+    beforeEach(fn: () => void | Promise<void>): void;
+    afterEach(fn: () => void | Promise<void>): void;
+}
+
+/** Per-test chain isolation: snapshot the chain before the suite and before each
+ *  test, revert after each test and after the suite. The real txs run + are
+ *  asserted (in the UI and on-chain) BEFORE the revert — the rollback is teardown
+ *  for re-runnability against the persisted authoring + onboarding stages, never a
+ *  substitute for executing. (Mainnet has no evm_revert; there each run persists.)
+ *  Call once at the top of a `test.describe`: `useChainSnapshot(test)`. */
+export function useChainSnapshot(test: PlaywrightLifecycleHooks): void {
+    let outerSnapshot: string;
+    let testSnapshot: string;
+    test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
+    test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
+    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
+    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
+}
+
 /** Merchant-process `handed-off` event stage — the attestation the
  *  `btn-merchant-proximity-proof` click pairs with the proximity-proof. */
 const MERCHANT_HANDED_OFF_STAGE = 4;
@@ -1134,8 +1182,9 @@ export async function assertSellerOnDiscovery(page: Page, name: string): Promise
     ).toBeVisible({ timeout: 15000 });
 }
 
-/** SellerRegistry registration event — carries the profile metadataURI. */
-const SELLER_REGISTERED_EVENT_ABI = parseAbi([
+/** SellerRegistry registration event — carries the profile metadataURI. Also the
+ *  onboarding-assertion ABI imported by runtime specs (see shared preamble above). */
+export const SELLER_REGISTERED_EVENT_ABI = parseAbi([
     'event SellerRegistered(address indexed seller, string metadataURI)',
 ]);
 

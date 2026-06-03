@@ -27,34 +27,23 @@
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
 import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';
-import {
-    createPublicClient,
-    defineChain,
-    http,
-    parseAbi,
-    type Hex,
-} from 'viem';
+import { type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
+    CORE_PROCESS_VIEW_ABI,
+    ERC20_BALANCE_ABI,
+    SELLER_REGISTERED_EVENT_ABI,
     acceptOrderInInboxUI,
     assertPinnedInIpfs,
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
+    localPublicClient,
     placeBilateralOrderUI,
     readLocalDeploymentConfig,
+    useChainSnapshot,
     walkMerchantToHandoff,
 } from './devnet-helpers';
 import { SELLER_ROSTER } from './seller-roster';
 import { formatToken } from '../../lib/shared/utils';
-
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 
 // Buyer = anvil[0]; seller = the direct-sale roster seller (anvil[6]).
 const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
@@ -63,23 +52,9 @@ const BUYER_ADDR = ANVIL_ACCOUNTS[0];
 
 const cafe = SELLER_ROSTER.find((s) => s.assemblies.includes('direct-sale'));
 
-const CORE_VIEW_ABI = parseAbi([
-    'function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
-]);
-const SELLER_REGISTRY_ABI = parseAbi([
-    'event SellerRegistered(address indexed seller, string metadataURI)',
-]);
-const ERC20_BAL_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
-
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
+useChainSnapshot(test);
 
 test.describe('direct-sale runtime — on-site commit, handoff certification, resolve (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
-
     // Two UI signatures, an IPFS pin, a commit, a 4-step merchant walk + two
     // proximity proofs, an indexer poll, and a resolve.
     test.setTimeout(300_000);
@@ -96,12 +71,12 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
         const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as Hex;
-        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        const publicClient = localPublicClient();
 
         // Prerequisite: the café must already be onboarded (consumed from chain).
         const registered = await publicClient.getContractEvents({
             address: sellerRegistry,
-            abi: SELLER_REGISTRY_ABI,
+            abi: SELLER_REGISTERED_EVENT_ABI,
             eventName: 'SellerRegistered',
             args: { seller: cafe!.address },
             fromBlock: 0n,
@@ -114,7 +89,7 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, CAFE_SELLER_KEY);
 
         const balanceOf = (who: `0x${string}`) => publicClient.readContract({
-            address: tokenAddress, abi: ERC20_BAL_ABI, functionName: 'balanceOf', args: [who],
+            address: tokenAddress, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [who],
         }) as Promise<bigint>;
         const sellerAddr = cafe!.address as `0x${string}`;
         const buyerAddr = BUYER_ADDR as `0x${string}`;
@@ -161,7 +136,7 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         expect(processId).toMatch(/^0x[0-9a-fA-F]{64}$/);
 
         const committed = await publicClient.readContract({
-            address: coreAddress, abi: CORE_VIEW_ABI, functionName: 'processes', args: [processId],
+            address: coreAddress, abi: CORE_PROCESS_VIEW_ABI, functionName: 'processes', args: [processId],
         });
         expect(committed[0].toLowerCase()).toBe(BUYER_ADDR.toLowerCase()); // rootBuyer
         expect(committed[3]).toBe(1); // activeOrderCount
@@ -207,7 +182,7 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         await expect.poll(
             async () => {
                 const p = await publicClient.readContract({
-                    address: coreAddress, abi: CORE_VIEW_ABI, functionName: 'processes', args: [processId],
+                    address: coreAddress, abi: CORE_PROCESS_VIEW_ABI, functionName: 'processes', args: [processId],
                 });
                 return Number(p[3]);
             },
