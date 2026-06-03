@@ -73,6 +73,9 @@ async function onboardViaWizard(page: import("@playwright/test").Page, spec: Sel
     await expect(page.locator("#profile-name")).toBeVisible({ timeout: 30_000 });
     await page.locator("#profile-name").fill(spec.name);
     await page.locator("#profile-specialty").fill(spec.specialty);
+    // Seller's home location → profile.location.geohash → the on-site checkout
+    // reads it to locate the figaro-geo-v2 origin/destination on the flow graph.
+    await page.locator("#profile-geohash").fill(spec.geohash);
     await page.getByRole("button", { name: /\+ MOCK$/ }).click();
     await page.locator('input[name="defaultTokenAddress"]').first().check();
     await page.getByRole("button", { name: /^Next/ }).click();

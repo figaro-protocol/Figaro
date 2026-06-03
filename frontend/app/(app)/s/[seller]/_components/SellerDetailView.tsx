@@ -32,6 +32,7 @@ import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
 import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitmentStore";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
+import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/core/assemblySubOrderPlan";
 import { CONTRACTS } from "@/lib/core/contracts";
 import {
@@ -492,18 +493,39 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     ...(!pickedRoot && fulfillmentMode?.startsWith("deliver:")
                         ? { [MERCHANT_PROCESS_CLAUSE_KEY]: {} }
                         : {}),
-                    // Buyer's runtime geo, overlaid on whatever the design carried.
-                    // mass / volume strings are parsed by `clauseFieldsToGeoSection`;
-                    // class_ is the SDK short code.
+                    // Runtime geo, overlaid on whatever the design carried — this
+                    // locates the exchange on the flow graph. Origin is always the
+                    // seller's home location (its profile geohash). Destination is
+                    // where the goods/value land: the buyer's device location for a
+                    // delivery, or the seller's location for an on-site / pickup
+                    // exchange (consumed/collected at the seller — be it a counter,
+                    // a factory cell, or a process on one machine). mass / volume
+                    // strings are parsed by `clauseFieldsToGeoSection`; class_ is the
+                    // SDK short code.
                     [GEO_CLAUSE_KEY]: {
-                        origin: "",
-                        destination: "",
+                        origin: sellerCatalogue?.geohash ?? "",
+                        destination: fulfillmentMode?.startsWith("deliver:")
+                            ? (deliveryLocation.geohash ?? "")
+                            : (sellerCatalogue?.geohash ?? ""),
                         ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
                         ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
                         class_: CLASS_TO_SHORT_CODE[cartClassOfService],
                     },
                 },
             });
+            // Layer A — the buyer does not sign an invalid agreement. Validate
+            // the merkle root + every present clause's content before signing;
+            // block with an inline error if anything is off. The seller runs the
+            // same check before counter-signing (Inbox).
+            const buyerCheck = validateCommitmentAgreement(prepared.agreement, prepared.agreementHash);
+            if (!buyerCheck.ok) {
+                setCheckoutError(
+                    `This order isn't valid to sign yet: ${buyerCheck.issues
+                        .map((i) => `${i.clause} ${i.path}: ${i.message}`)
+                        .join("; ")}`,
+                );
+                return;
+            }
             // Single-order, distinct parties → the real bilateral relay: the
             // buyer signs, the CommitmentSharePanel (rendered below at
             // `awaiting-counter`) relays the pinned payload to the seller's

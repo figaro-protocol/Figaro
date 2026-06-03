@@ -136,6 +136,26 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         expect(payloadCid, 'buyer relayed a commitment payload CID').toBeTruthy();
         await assertPinnedInIpfs(payloadCid as string);
 
+        // GEO IS TESTED: direct-sale composes figaro-geo-v2, so the on-site
+        // exchange must be LOCATED on the flow graph. The buyer's Layer-A gate
+        // already blocked place-order if geo were empty (so reaching here proves
+        // it's captured + valid); confirm it out-of-band too — follow the relayed
+        // payload to the committed agreement and assert geo origin = the café's
+        // profile geohash (on-site origin == destination == the venue/cell/process).
+        const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
+        const relayedPayload = await (await fetch(`${gateway}/ipfs/${payloadCid}`)).json() as {
+            agreement?: { sections: Array<{ clause: string; data: Record<string, unknown> }> };
+            agreementUri?: string;
+        };
+        const committedAgreement = relayedPayload.agreement
+            ?? await (await fetch(`${gateway}/ipfs/${(relayedPayload.agreementUri ?? '').replace('ipfs://', '')}`)).json() as {
+                sections: Array<{ clause: string; data: Record<string, unknown> }>;
+            };
+        const geoSection = committedAgreement.sections.find((s) => s.clause === 'figaro-geo-v2');
+        expect(geoSection, 'on-site agreement carries a figaro-geo-v2 section').toBeTruthy();
+        expect((geoSection!.data as { originGeohash?: string }).originGeohash,
+            'geo origin = the café profile geohash (on-site exchange located)').toBe(cafe!.geohash);
+
         // ── 2. Café accepts in the inbox UI → on-chain bilateral commit ─────
         const processId = await acceptOrderInInboxUI(page, cafe!.address);
         expect(processId).toMatch(/^0x[0-9a-fA-F]{64}$/);

@@ -20,11 +20,14 @@ import {
     PROXIMITY_PROOF_CLAUSE_KEY,
     getSection,
     clauseFieldsToGeoSection,
+    computeAgreementHash,
     TOPOLOGY_CLAUSE_KEY,
     type Agreement,
     type AgreementSection,
     type TopologyMode,
 } from "@/lib/core/agreement";
+import { validateContent } from "@figaro/core/clauses";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 // ── Multi-valued fulfilment + proximity composition ────────────────────────
 //
@@ -421,4 +424,80 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
         arbitration: arbitrationSection?.data,
         consent: consentSection?.data,
     };
+}
+
+/** A single Layer-A issue found before signing: which clause, which field path
+ *  (or "(merkle)"), and what's wrong. */
+export interface CommitmentAgreementIssue {
+    clause: string;
+    path: string;
+    message: string;
+}
+
+/**
+ * Layer A of the verification stack, run on BOTH sides of the bilateral commit
+ * (buyer before initiating, seller before counter-signing) so neither party
+ * signs an invalid agreement. Two checks:
+ *
+ *   1. MERKLE INTEGRITY — the `agreementHash` about to be signed equals the
+ *      merkle root computed from the agreement's sections. (Load-bearing
+ *      seller-side: the seller receives the agreement over the relay and must
+ *      confirm it matches the hash in the commitment before counter-signing.)
+ *   2. CONTENT VALIDITY — every PRESENT section conforms to its clause spec,
+ *      via the same `validateContent` the sequencer mempool (Layer B) and the
+ *      on-chain `IClauseValidator` (Layer C) enforce. `category-1` runtime
+ *      clauses are skipped: they are presence-markers here whose content is
+ *      attested (and validated on-chain) later, not at commit. Sections are NOT
+ *      skipped for being empty — if a clause is in the agreement, its content
+ *      must be valid (geo included; opting out of geo means not composing it).
+ *
+ * Catches a malformed agreement client-side, before it costs a mempool/chain
+ * round-trip.
+ */
+export function validateCommitmentAgreement(
+    agreement: Agreement,
+    expectedHash: `0x${string}`,
+): { ok: boolean; issues: CommitmentAgreementIssue[] } {
+    const issues: CommitmentAgreementIssue[] = [];
+
+    // Content validity FIRST — `validateContent` reports errors gracefully. The
+    // merkle hash below *encodes* every section's content and would THROW on
+    // malformed input (e.g. an out-of-range enum can't be ABI-encoded), so a
+    // bad section must be caught here before we attempt the hash.
+    for (const section of agreement.sections) {
+        const spec = getClauseSpec(section.clause);
+        if (!spec) continue;
+        if (spec.block?.tier === "category-1") continue;
+        const result = validateContent(section.data, spec);
+        if (!result.ok) {
+            for (const e of result.errors) {
+                issues.push({ clause: section.clause, path: e.path, message: e.message });
+            }
+        }
+    }
+
+    // Merkle integrity — only meaningful (and only computable without throwing)
+    // when the content is well-formed. The signed hash must equal the agreement's
+    // computed root, so a party signs exactly what it sees.
+    if (issues.length === 0) {
+        let computed: `0x${string}` | null = null;
+        try {
+            computed = computeAgreementHash(agreement);
+        } catch (cause) {
+            issues.push({
+                clause: "(merkle)",
+                path: "agreementHash",
+                message: `agreement content failed to encode: ${cause instanceof Error ? cause.message : String(cause)}`,
+            });
+        }
+        if (computed && computed.toLowerCase() !== expectedHash.toLowerCase()) {
+            issues.push({
+                clause: "(merkle)",
+                path: "agreementHash",
+                message: `signed hash ${expectedHash} does not match the agreement's computed root ${computed}`,
+            });
+        }
+    }
+
+    return { ok: issues.length === 0, issues };
 }

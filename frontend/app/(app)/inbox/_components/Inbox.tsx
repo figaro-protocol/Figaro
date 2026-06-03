@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/core/WalletGate";
 import { deserializePayload } from "@/components/core/CommitmentSharePanel";
 import { useCommitmentFlow, type CommitmentPayload } from "@/lib/core/useCommitmentFlow";
+import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
@@ -210,6 +211,24 @@ export function Inbox() {
     const handleAccept = useCallback(async (index: number) => {
         const payload = pending[index];
         if (!payload) return;
+        // Layer A — the seller does not counter-sign an invalid agreement. The
+        // agreement arrived over the relay; confirm its merkle root matches the
+        // hash in the commitment AND every present clause's content is valid
+        // before committing. (The buyer ran the same check before signing.)
+        if (payload.agreement) {
+            const sellerCheck = validateCommitmentAgreement(
+                payload.agreement,
+                payload.commitment.agreementHash as `0x${string}`,
+            );
+            if (!sellerCheck.ok) {
+                setAcceptError(
+                    `This order isn't valid to commit: ${sellerCheck.issues
+                        .map((i) => `${i.clause} ${i.path}: ${i.message}`)
+                        .join("; ")}`,
+                );
+                return;
+            }
+        }
         setAcceptingIndex(index);
         setAcceptError(null);
         try {

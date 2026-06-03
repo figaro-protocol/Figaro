@@ -42,6 +42,12 @@ export interface SellerSpec {
     address: `0x${string}`;
     name: string;
     specialty: string;
+    /** Seller's home location as a precision-9 geohash. Written to the profile
+     *  at onboarding (profile.location.geohash); the on-site checkout reads it
+     *  to populate the figaro-geo-v2 origin/destination so the exchange is
+     *  located on the flow graph. Required for any seller adopting a geo-bearing
+     *  assembly. */
+    geohash: string;
     /** Assembly slugs this seller adopts at onboarding. Each must already be
      *  published (anchored) by its scenario authoring spec — adoption references
      *  the slug; it does not re-pin the assembly. */
@@ -56,6 +62,7 @@ export const SELLER_ROSTER: readonly SellerSpec[] = [
         address: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
         name: "Kiosk Corner",
         specialty: "kiosk",
+        geohash: "9q8yyk8yu",
         assemblies: ["kiosk-sale"],
         products: [{ name: "Newspaper", price: "1" }],
     },
@@ -64,6 +71,7 @@ export const SELLER_ROSTER: readonly SellerSpec[] = [
         address: "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
         name: "Aurora Café",
         specialty: "café",
+        geohash: "9q8yyk8yt",
         assemblies: ["direct-sale"],
         products: [{ name: "Espresso", price: "1" }],
     },
