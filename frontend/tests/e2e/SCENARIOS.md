@@ -69,7 +69,7 @@ like commerce/topology are surfaced at checkout and not shown here).
 
 ### `direct-sale` — 1 node, consume-onsite, tracked + verified
 
-*Models:* a café/restaurant counter — on-premise consumption, a **tracked** prep-and-handover lifecycle, and a **proximity-verified** handoff (order-received → ready → handed-off, buyer confirmed present). The tracked counterpart of `kiosk-sale`.
+*Models:* a café/restaurant counter — on-premise consumption, a **tracked** prep-and-handover lifecycle, and a **proximity-verified** handoff (prep-started → ready → handed-off, buyer confirmed present; arrival + acceptance are the bilateral commit, not lifecycle events). The tracked counterpart of `kiosk-sale`.
 *Catalogues:* the café (1).
 ```
 order[0]  buyer ↔ seller  parents: []

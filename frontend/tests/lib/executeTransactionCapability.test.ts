@@ -51,7 +51,7 @@ describe("executeTransactionCapabilityAction", () => {
         expect(claimVesting).toHaveBeenCalledWith("founder");
     });
 
-    it("dispatches courier-process proof submissions with proof input", async () => {
+    it("dispatches courier-process proof submissions with the committed band", async () => {
         const submitCourierProcessSignalWithProof = vi.fn(async () => undefined);
 
         await executeTransactionCapabilityAction(
@@ -59,43 +59,36 @@ describe("executeTransactionCapabilityAction", () => {
                 executionType: "transaction",
                 kind: "submit-courier-process-signal-with-proof",
                 orderHash: "delivery-order",
-                eventType: "completed",
+                eventType: "arrived-dropoff",
+                band: 1,
                 roleOrderHash: "driver-order",
             },
             { submitCourierProcessSignalWithProof },
-            {
-                kind: "submit-courier-process-signal-with-proof",
-                proof: {
-                    band: 4,
-                    nonce: "0xdeadbeef",
-                    deviceSig: "0xcafebabe",
-                },
-            },
         );
 
+        // The proof is minted at the integration seam from the band the builder
+        // read off the agreement — the action carries the band, no proof input.
         expect(submitCourierProcessSignalWithProof).toHaveBeenCalledWith(
             "delivery-order",
-            "completed",
-            {
-                band: 4,
-                nonce: "0xdeadbeef",
-                deviceSig: "0xcafebabe",
-            },
+            "arrived-dropoff",
+            1,
             "driver-order",
         );
     });
 
-    it("rejects courier-process proof execution without proof input", async () => {
-        await expect(executeTransactionCapabilityAction(
+    it("dispatches buyer proximity-proof submissions with the committed band", async () => {
+        const submitBuyerProximityProof = vi.fn(async () => undefined);
+
+        await executeTransactionCapabilityAction(
             {
                 executionType: "transaction",
-                kind: "submit-courier-process-signal-with-proof",
-                orderHash: "delivery-order",
-                eventType: "arrived-pickup",
+                kind: "submit-buyer-proximity-proof",
+                orderHash: "root-order",
+                band: 2,
             },
-            {
-                submitCourierProcessSignalWithProof: vi.fn(async () => undefined),
-            },
-        )).rejects.toThrow("Courier-process proof input is required.");
+            { submitBuyerProximityProof },
+        );
+
+        expect(submitBuyerProximityProof).toHaveBeenCalledWith("root-order", 2);
     });
 });

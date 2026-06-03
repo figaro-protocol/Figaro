@@ -59,4 +59,12 @@ export const SELLER_ROSTER: readonly SellerSpec[] = [
         assemblies: ["kiosk-sale"],
         products: [{ name: "Newspaper", price: "1" }],
     },
+    {
+        addressIndex: 6,
+        address: "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
+        name: "Aurora Café",
+        specialty: "café",
+        assemblies: ["direct-sale"],
+        products: [{ name: "Espresso", price: "1" }],
+    },
 ];

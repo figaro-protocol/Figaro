@@ -19,7 +19,7 @@ export function CapabilityRail({
     const sorted = capabilities.slice().sort((left, right) => (right.uiPriority ?? 0) - (left.uiPriority ?? 0));
 
     return (
-        <div className="rounded-lg border border-neutral-200 bg-white p-4">
+        <div className="rounded-lg border border-neutral-200 bg-white p-4" data-testid="capability-rail">
             <p className="text-xs font-semibold text-neutral-500 mb-1">
                 What You Can Do
             </p>
@@ -31,6 +31,7 @@ export function CapabilityRail({
                     <div
                         key={capability.id}
                         className="rounded border border-neutral-200 p-3"
+                        data-testid={`capability-${capability.actionKind}`}
                     >
                         <div className="flex items-center justify-between gap-3">
                             <p className="font-semibold text-black text-sm">{capability.label}</p>
@@ -44,6 +45,7 @@ export function CapabilityRail({
                                     type="button"
                                     size="sm"
                                     variant="outline"
+                                    data-testid={`capability-execute-${capability.actionKind}`}
                                     disabled={!executableCapabilityIds?.has(capability.id) || !!executingCapabilityId}
                                     onClick={() => onExecute(capability)}
                                 >
@@ -53,7 +55,7 @@ export function CapabilityRail({
                         </div>
                     </div>
                 ))}
-                {sorted.length === 0 && <p className="text-sm text-neutral-500">No capabilities derived.</p>}
+                {sorted.length === 0 && <p className="text-sm text-neutral-500" data-testid="capability-rail-empty">No capabilities derived.</p>}
             </div>
         </div>
     );

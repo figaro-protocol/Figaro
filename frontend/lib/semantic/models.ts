@@ -1,6 +1,5 @@
 /** Semantic-model union types — the runtime semantic layer's canonical
  *  taxonomy for truth class, mechanism risk, scope, and roles. */
-import type { ProximityProof } from "@/lib/mechanisms/useCourierProcess";
 
 export type TruthClass =
     | "protocol-enforced"
@@ -110,7 +109,7 @@ export type CourierProcessEventKind =
  *  the two handoff edges (pickup, dropoff). */
 export type CourierProximityProofEventKind = Extract<
     CourierProcessEventKind,
-    "arrived-pickup" | "completed"
+    "arrived-pickup" | "arrived-dropoff"
 >;
 
 export interface SubmitMerchantProcessSignalCapabilityAction {
@@ -131,13 +130,41 @@ export interface SubmitCourierProcessSignalCapabilityAction {
 
 /** Courier-process attestation paired with a proximity-proof attestation —
  *  used at the two handoff edges where on-chain proximity evidence
- *  accompanies the role-event log entry. */
+ *  accompanies the role-event log entry. The committed proximity band is
+ *  carried on the descriptor (read from the agreement by the builder) so the
+ *  generic renderer needs no per-action input; the executor mints the
+ *  nonce + device-signature placeholder and assembles the proof. */
 export interface SubmitCourierProcessSignalWithProofCapabilityAction {
     executionType: "transaction";
     kind: "submit-courier-process-signal-with-proof";
     orderHash: string;
     eventType: CourierProximityProofEventKind;
+    band: number;
     roleOrderHash?: string;
+}
+
+/** Merchant-process `handed-off` paired with a proximity-proof cross-witness
+ *  against whichever order carries the proximity policy (the seller's own
+ *  order on a pickup/on-site handoff, or a downstream sub-order the merchant
+ *  cross-witnesses). Band carried on the descriptor, as above. */
+export interface SubmitMerchantProcessSignalWithProofCapabilityAction {
+    executionType: "transaction";
+    kind: "submit-merchant-process-signal-with-proof";
+    orderHash: string;
+    proximityTargetOrderHash: string;
+    eventType: Extract<MerchantProcessEventKind, "handed-off">;
+    band: number;
+}
+
+/** Buyer's symmetric proximity-proof witness at a buyer↔seller handoff (no
+ *  intermediary). The buyer co-signs `figaro-proximity-proof-v1` against the
+ *  root order; there is no buyer process clause per the kernel-participant
+ *  principle, so this is the one runtime witness the buyer attests. */
+export interface SubmitBuyerProximityProofCapabilityAction {
+    executionType: "transaction";
+    kind: "submit-buyer-proximity-proof";
+    orderHash: string;
+    band: number;
 }
 
 export interface ClaimAuctionCapabilityAction {
@@ -177,8 +204,10 @@ export type CapabilityActionDescriptor =
     | SubmitDisclosureCommitmentCapabilityAction
     | SubmitDisclosureInventoryCapabilityAction
     | SubmitMerchantProcessSignalCapabilityAction
+    | SubmitMerchantProcessSignalWithProofCapabilityAction
     | SubmitCourierProcessSignalCapabilityAction
     | SubmitCourierProcessSignalWithProofCapabilityAction
+    | SubmitBuyerProximityProofCapabilityAction
     | ClaimAuctionCapabilityAction
     | ClaimAirdropCapabilityAction
     | ClaimVestingCapabilityAction
@@ -245,18 +274,12 @@ export interface SubmitDisclosureInventoryCapabilityInput {
     grams: bigint;
 }
 
-export interface SubmitCourierProcessSignalWithProofCapabilityInput {
-    kind: "submit-courier-process-signal-with-proof";
-    proof: ProximityProof;
-}
-
 export type CapabilityExecutionInput =
     | RegisterSellerCapabilityInput
     | UpdateSellerProfileCapabilityInput
     | WithdrawSellerDepositCapabilityInput
     | SubmitDisclosureCommitmentCapabilityInput
-    | SubmitDisclosureInventoryCapabilityInput
-    | SubmitCourierProcessSignalWithProofCapabilityInput;
+    | SubmitDisclosureInventoryCapabilityInput;
 
 export interface CapabilityModel {
     id: string;
@@ -349,6 +372,10 @@ export interface ProcessModel {
     processId: string;
     rootOrderId: string;
     currency?: `0x${string}`;
+    /** The root order's committed fulfilment modality code (figaro-fulfilment-v2
+     *  `modalities[0]`), surfaced by the builder so the order page can show it
+     *  without reading a clause section itself. Null when uncommitted. */
+    rootFulfilmentModality?: string | null;
     orders: OrderNodeModel[];
     relations: ProcessRelationModel[];
     stateSummary: string;

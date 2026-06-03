@@ -2,23 +2,98 @@ import { Order, OrderState } from "@/lib/core/store";
 import {
     GHG_MEASUREMENT_CLAUSE_KEY,
     GHG_CLAUSE_KEY,
+    MERCHANT_PROCESS_CLAUSE_KEY,
+    COURIER_PROCESS_CLAUSE_KEY,
+    PROXIMITY_POLICY_CLAUSE_KEY,
+    PROXIMITY_PROOF_CLAUSE_KEY,
+    FULFILMENT_V2_CLAUSE_KEY,
     getSection,
     type Agreement,
     type TopologyMode,
 } from "@/lib/core/agreement";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
+import type { RuntimeAttestation } from "@/lib/core/indexer";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import {
     AttachmentModel,
     CapabilityModel,
     EconomicBreakdownModel,
     EconomicBreakdownValue,
+    MerchantProcessEventKind,
     OrderNodeModel,
     ProcessModel,
     ProcessRelationModel,
 } from "@/lib/semantic/models";
-import type { Hex } from "viem";
+import { keccak256, stringToHex, type Hex } from "viem";
+
+// Clause ids the runtime attestation log keys on (keccak256 of the clause key,
+// exactly as the on-chain Attestation event carries it). Computed from the
+// agreement clause keys — the builder is the one place that holds this mapping.
+const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex(MERCHANT_PROCESS_CLAUSE_KEY)).toLowerCase();
+const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex(COURIER_PROCESS_CLAUSE_KEY)).toLowerCase();
+const PROXIMITY_PROOF_CLAUSE_ID = keccak256(stringToHex(PROXIMITY_PROOF_CLAUSE_KEY)).toLowerCase();
+
+/** Merchant-process happy-path stages SURFACED at runtime. order-received(0)
+ *  and accepted(1) are core — the bilateral commit IS the arrival + approval —
+ *  so the runtime ladder begins at prep-started. Stage indices match the
+ *  on-chain validator enum. */
+const MERCHANT_STAGE_BY_EVENT: Record<"prep-started" | "ready-for-pickup" | "handed-off", number> = {
+    "prep-started": 2,
+    "ready-for-pickup": 3,
+    "handed-off": 4,
+};
+const MERCHANT_HAPPY_PATH: ReadonlyArray<keyof typeof MERCHANT_STAGE_BY_EVENT> = [
+    "prep-started",
+    "ready-for-pickup",
+    "handed-off",
+];
+
+/** figaro-proximity-policy-v1 band name → on-chain ProximityProof band index
+ *  (validator rejects band 0). */
+const PROXIMITY_BAND_INDEX: Record<string, number> = {
+    "zone-wifi": 1,
+    "nearby-ble": 2,
+    "contact-nfc": 3,
+};
+const COURIER_ARRIVED_PICKUP_STAGE = 3;
+const COURIER_ARRIVED_DROPOFF_STAGE = 5;
+
+/** Next merchant-process event the seller can fire, from the stages already
+ *  attested. Null once handed-off(4) or cancelled(5) is reached. */
+function nextMerchantEvent(seenStages: Set<number>): keyof typeof MERCHANT_STAGE_BY_EVENT | null {
+    if (seenStages.has(4) || seenStages.has(5)) return null;
+    for (const event of MERCHANT_HAPPY_PATH) {
+        if (!seenStages.has(MERCHANT_STAGE_BY_EVENT[event])) return event;
+    }
+    return null;
+}
+
+/** The committed proximity band index, read off an order's agreement
+ *  figaro-proximity-policy-v1 section. Defaults to 1 (Zone/WiFi). */
+function committedBand(agreement: Agreement | undefined): number {
+    if (!agreement) return 1;
+    const bands = (getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY)?.data as { bands?: string[] } | undefined)?.bands ?? [];
+    return PROXIMITY_BAND_INDEX[bands[0] ?? ""] ?? 1;
+}
+
+/** The order whose committed figaro-proximity-policy-v1 a seller witnesses at
+ *  the handoff: its own order when that carries the policy (pickup / on-site /
+ *  a kit node), otherwise a downstream sub-order carrying it (the courier edge
+ *  the root merchant cross-witnesses). Null when no order carries the policy. */
+function proximityTargetOrder(
+    order: Order,
+    allOrders: Order[],
+    agreements: Map<string, Agreement>,
+): Order | null {
+    const own = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
+    if (own && getSection(own, PROXIMITY_POLICY_CLAUSE_KEY)) return order;
+    return allOrders.find((sibling) => {
+        if (sibling.id === order.id || !sibling.agreementHash) return false;
+        const agreement = agreements.get(sibling.agreementHash);
+        return !!agreement && !!getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY);
+    }) ?? null;
+}
 
 /** Root orders anchor a process at cumulativeValue === payment. */
 function isRootOrder(order: Order): boolean {
@@ -43,7 +118,9 @@ function ledgerSource(sourceLabel: string, referenceId?: string) {
 
 function roleCapabilities(
     _order: Order,
+    allOrders: Order[],
     agreements: Map<string, Agreement>,
+    attestations: RuntimeAttestation[],
     _address?: string,
     _isE2EMock = false,
 ): CapabilityModel[] {
@@ -137,6 +214,126 @@ function roleCapabilities(
                 });
             }
         }
+    }
+
+    // Lifecycle / handoff capabilities, gated on the clauses the agreement
+    // carries AND the attestation state. Labels are the clause's own event
+    // codes (one source — the clause), never frontend copy.
+    const orderIdStr = order.id.toString();
+    const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
+    const merchantStages = new Set(
+        attestations
+            .filter((a) => a.clauseId.toLowerCase() === MERCHANT_PROCESS_CLAUSE_ID && a.orderHash === orderIdStr)
+            .map((a) => a.stage),
+    );
+    const courierStages = attestations
+        .filter((a) => a.clauseId.toLowerCase() === COURIER_PROCESS_CLAUSE_ID && a.orderHash === orderIdStr)
+        .map((a) => a.stage);
+    const iAttestedProximity = !!normalized && attestations.some(
+        (a) => a.clauseId.toLowerCase() === PROXIMITY_PROOF_CLAUSE_ID && hexEqual(a.attester, normalized),
+    );
+
+    // Seller — figaro-merchant-process-v1 lifecycle (prep-started →
+    // ready-for-pickup → handed-off). The handoff pairs with a proximity-proof
+    // cross-witness when the order (or a downstream sub-order) carries the
+    // proximity policy.
+    if (isSeller && agreement && getSection(agreement, MERCHANT_PROCESS_CLAUSE_KEY)) {
+        const next = nextMerchantEvent(merchantStages);
+        if (next === "prep-started" || next === "ready-for-pickup") {
+            out.push({
+                id: `${order.processId}:${orderIdStr}:merchant-${next}`,
+                label: next,
+                actionKind: "submit-merchant-process-signal",
+                action: { executionType: "transaction", kind: "submit-merchant-process-signal", orderHash: orderIdStr, eventType: next },
+                mechanismId: "attestation-coordinator",
+                scopeType: "order",
+                scopeId: orderIdStr,
+                preconditions: ["seller-of-active-order", "merchant-process-clause-committed"],
+                riskLabel: "standard",
+                uiPriority: 75,
+                source: runtimeSource("seller advances the merchant-process lifecycle", `${order.processId}:${orderIdStr}:merchant-${next}`),
+            });
+        } else if (next === "handed-off") {
+            const target = proximityTargetOrder(order, allOrders, agreements);
+            if (target && !iAttestedProximity) {
+                out.push({
+                    id: `${order.processId}:${orderIdStr}:merchant-handed-off-proof`,
+                    label: "handed-off",
+                    actionKind: "submit-merchant-process-signal-with-proof",
+                    action: {
+                        executionType: "transaction",
+                        kind: "submit-merchant-process-signal-with-proof",
+                        orderHash: orderIdStr,
+                        proximityTargetOrderHash: target.id.toString(),
+                        eventType: "handed-off",
+                        band: committedBand(target.agreementHash ? agreements.get(target.agreementHash) : undefined),
+                    },
+                    mechanismId: "attestation-coordinator",
+                    scopeType: "order",
+                    scopeId: orderIdStr,
+                    preconditions: ["seller-of-active-order", "merchant-process-clause-committed", "proximity-policy-committed"],
+                    riskLabel: "standard",
+                    uiPriority: 75,
+                    source: runtimeSource("seller certifies the handoff with a proximity-proof cross-witness", `${order.processId}:${orderIdStr}:merchant-handed-off-proof`),
+                });
+            } else {
+                out.push({
+                    id: `${order.processId}:${orderIdStr}:merchant-handed-off`,
+                    label: "handed-off",
+                    actionKind: "submit-merchant-process-signal",
+                    action: { executionType: "transaction", kind: "submit-merchant-process-signal", orderHash: orderIdStr, eventType: "handed-off" satisfies MerchantProcessEventKind },
+                    mechanismId: "attestation-coordinator",
+                    scopeType: "order",
+                    scopeId: orderIdStr,
+                    preconditions: ["seller-of-active-order", "merchant-process-clause-committed"],
+                    riskLabel: "standard",
+                    uiPriority: 75,
+                    source: runtimeSource("seller marks the order handed off", `${order.processId}:${orderIdStr}:merchant-handed-off`),
+                });
+            }
+        }
+    }
+
+    // Seller — figaro-courier-process-v1 handoff proximity proofs. The edge
+    // (arrived-pickup → arrived-dropoff) advances with the courier stages
+    // already attested; the capability retires once the dropoff is witnessed.
+    if (isSeller && agreement && getSection(agreement, COURIER_PROCESS_CLAUSE_KEY)) {
+        const hasDropoff = courierStages.some((s) => s >= COURIER_ARRIVED_DROPOFF_STAGE);
+        if (!hasDropoff) {
+            const eventType = courierStages.some((s) => s >= COURIER_ARRIVED_PICKUP_STAGE) ? "arrived-dropoff" : "arrived-pickup";
+            out.push({
+                id: `${order.processId}:${orderIdStr}:courier-${eventType}`,
+                label: eventType,
+                actionKind: "submit-courier-process-signal-with-proof",
+                action: { executionType: "transaction", kind: "submit-courier-process-signal-with-proof", orderHash: orderIdStr, eventType, band: committedBand(agreement) },
+                mechanismId: "attestation-coordinator",
+                scopeType: "order",
+                scopeId: orderIdStr,
+                preconditions: ["seller-of-active-order", "courier-process-clause-committed"],
+                riskLabel: "standard",
+                uiPriority: 75,
+                source: runtimeSource("courier certifies a delivery handoff with a proximity proof", `${order.processId}:${orderIdStr}:courier-${eventType}`),
+            });
+        }
+    }
+
+    // Buyer — symmetric proximity-proof witness at a buyer↔seller handoff with
+    // no intermediary (the root carries the policy and the process is a single
+    // order: pickup / on-site).
+    if (isBuyer && agreement && getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY) && allOrders.length <= 1 && !iAttestedProximity) {
+        out.push({
+            id: `${order.processId}:${orderIdStr}:buyer-proximity-proof`,
+            label: "proximity-proof",
+            actionKind: "submit-buyer-proximity-proof",
+            action: { executionType: "transaction", kind: "submit-buyer-proximity-proof", orderHash: orderIdStr, band: committedBand(agreement) },
+            mechanismId: "attestation-coordinator",
+            scopeType: "order",
+            scopeId: orderIdStr,
+            preconditions: ["buyer-of-active-order", "proximity-policy-committed"],
+            riskLabel: "standard",
+            uiPriority: 76,
+            source: runtimeSource("buyer co-witnesses the handoff with a proximity proof", `${order.processId}:${orderIdStr}:buyer-proximity-proof`),
+        });
     }
 
     return out;
@@ -527,8 +724,10 @@ function deriveProcessAttachments(
 
 function deriveOrderNodeModelFromOrder(
     order: Order,
+    allOrders: Order[],
     topology: Map<string, { parentOrderIds: string[] }>,
     agreements: Map<string, Agreement>,
+    attestations: RuntimeAttestation[],
     address?: string,
     isE2EMock = false,
 ): OrderNodeModel {
@@ -546,7 +745,7 @@ function deriveOrderNodeModelFromOrder(
         parentOrderIds,
         agreementHash: (order.agreementHash ?? ZERO_BYTES32) as `0x${string}`,
         attachments,
-        capabilities: roleCapabilities(order, agreements, address, isE2EMock),
+        capabilities: roleCapabilities(order, allOrders, agreements, attestations, address, isE2EMock),
         settlementBreakdown: deriveSettlementBreakdown(order, address),
     };
 }
@@ -605,14 +804,20 @@ export function deriveProcessModelFromRuntime(
     address?: string,
     currencyAddress?: string,
     isE2EMock = false,
+    attestations: RuntimeAttestation[] = [],
 ): ProcessModel {
     const processOrders = orders
         .filter((order) => order.processId === summary.processId)
         .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
     const topology = deriveOrderTopology(processOrders, agreements);
-    const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, address, isE2EMock));
+    const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, processOrders, topology, agreements, attestations, address, isE2EMock));
     const relations = deriveProcessRelations(summary.processId, processOrders, topology);
     const rootOrderId = semanticOrders.find((order) => order.parentOrderIds.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
+    const rootOrder = processOrders.find((order) => order.id.toString() === rootOrderId);
+    const rootAgreement = rootOrder?.agreementHash ? agreements.get(rootOrder.agreementHash) : undefined;
+    const rootFulfilmentModality = rootAgreement
+        ? ((getSection(rootAgreement, FULFILMENT_V2_CLAUSE_KEY)?.data as { modalities?: string[] } | undefined)?.modalities?.[0] ?? null)
+        : null;
     const stateCounts = {
         active: processOrders.filter((order) => order.state === OrderState.Active).length,
         closed: processOrders.filter((order) => order.state === OrderState.Resolved).length,
@@ -624,6 +829,7 @@ export function deriveProcessModelFromRuntime(
         processId: summary.processId,
         rootOrderId,
         currency: processOrders[0]?.currency as `0x${string}` | undefined,
+        rootFulfilmentModality,
         orders: semanticOrders,
         relations,
         stateSummary: stateCounts.active > 0

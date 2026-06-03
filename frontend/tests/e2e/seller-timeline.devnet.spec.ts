@@ -13,11 +13,13 @@
  *   - Seller wallet (anvil[1]) navigates to /orders/<processId>.
  *   - Header renders "You are the seller" (role-discriminator
  *     branch in OrderTimelineView.tsx:437).
- *   - Click through the happy-path sequence: order-received →
- *     accepted → prep-started → ready-for-pickup → handed-off. Each
- *     click → `handleMerchantNext` → `useMerchantProcessActions.signal`
- *     → AttestationCoordinator.attestAsSeller. After each, assert the
- *     on-chain Attestation event for that stage exists.
+ *   - Click through the post-commit merchant-process sequence:
+ *     prep-started → ready-for-pickup → handed-off. Each click →
+ *     `handleMerchantNext` → `useMerchantProcessActions.signal` →
+ *     AttestationCoordinator.attestAsSeller. After each, assert the
+ *     on-chain Attestation event for that stage exists. Arrival and
+ *     acceptance are core (the commit), not merchant-process events, so
+ *     the seeded committed order opens directly on the "Accepted" status.
  *
  * Doesn't try to fire from the buyer's wallet (different role
  * branch — covered by delivery-lifecycle / lifecycle.devnet) or
@@ -60,15 +62,14 @@ const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
 const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex('figaro-merchant-process-v1'));
 
-/** Happy-path merchant events the UI walks in order. Stage indices
- *  match the validator's uint8 enum (mockChannel.ts free of these;
- *  see useMerchantProcess.ts and OrderTimelineView's HAPPY_PATH_EVENTS). */
-const HAPPY_PATH: Array<{ event: string; stage: number; button: string; pillLabel: string }> = [
-    { event: 'order-received', stage: 0, button: 'btn-merchant-next-order-received', pillLabel: 'Received' },
-    { event: 'accepted', stage: 1, button: 'btn-merchant-next-accepted', pillLabel: 'Accepted' },
-    { event: 'prep-started', stage: 2, button: 'btn-merchant-next-prep-started', pillLabel: 'Preparing' },
-    { event: 'ready-for-pickup', stage: 3, button: 'btn-merchant-next-ready-for-pickup', pillLabel: 'Ready' },
-    { event: 'handed-off', stage: 4, button: 'btn-merchant-next-handed-off', pillLabel: 'Handed off' },
+/** Post-commit merchant-process events the UI walks in order. Stage indices
+ *  match the validator's uint8 enum (the core-owned order-received=0 /
+ *  accepted=1 stages are NOT surfaced as CTAs; see useMerchantProcess.ts and
+ *  OrderTimelineView's HAPPY_PATH_EVENTS). */
+const HAPPY_PATH: Array<{ event: string; stage: number }> = [
+    { event: 'prep-started', stage: 2 },
+    { event: 'ready-for-pickup', stage: 3 },
+    { event: 'handed-off', stage: 4 },
 ];
 
 let outerSnapshot: string;
@@ -80,10 +81,10 @@ test.describe('OrderTimelineView seller side (devnet)', () => {
     test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
-    // Five sequential signs + tx confirms; 60s isn't enough.
+    // Three sequential signs + tx confirms; 60s isn't enough.
     test.setTimeout(180_000);
 
-    test('seller walks the happy path through all four btn-merchant-next-* buttons', async ({ page }) => {
+    test('seller walks the post-commit merchant-process path through the btn-merchant-next-* buttons', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
@@ -131,39 +132,35 @@ test.describe('OrderTimelineView seller side (devnet)', () => {
         // handler is defensive — see reference_e2e_flake_patterns #8).
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
+        // The seller advances the lifecycle through the ONE capability rail.
+        // The plain merchant-process-signal capability rotates prep-started →
+        // ready-for-pickup → handed-off (this seed carries no proximity policy,
+        // so the handoff is a plain signal too) under one testid.
+        const signalBtn = page.getByTestId('capability-execute-submit-merchant-process-signal');
         for (const step of HAPPY_PATH) {
-            const btn = page.getByTestId(step.button);
-            await btn.waitFor({ state: 'visible', timeout: 30000 });
-            await btn.click();
+            await expect(signalBtn).toBeEnabled({ timeout: 30000 });
+            await signalBtn.click();
 
-            // After the on-chain attestation lands, setTick re-fetches
-            // events and the next button rotates in. Use the pill label
-            // transition as the "tx landed" signal — it's the
-            // canonical consumer signal the component renders from
-            // event-derived state.
-            await expect(page.getByTestId('order-status-pill')).toHaveText(step.pillLabel, {
-                timeout: 30000,
-            });
+            // The on-chain Attestation for this stage is the "tx landed" signal.
+            await expect.poll(async () => {
+                const events = await publicClient.getContractEvents({
+                    address: coordinatorAddress,
+                    abi: ATTESTATION_COORDINATOR_ABI,
+                    eventName: 'Attestation',
+                    args: { orderHash, attester: seller.address as Hex },
+                    fromBlock: 0n,
+                });
+                return events.filter(
+                    (e) => e.args.clauseId === MERCHANT_PROCESS_CLAUSE_ID && e.args.stage === step.stage,
+                ).length;
+            }, { timeout: 30000, message: `expected one Attestation for stage ${step.stage} (${step.event})` }).toBe(1);
 
-            // And: assert the on-chain Attestation event for this stage
-            // emitted with the seller as attester.
-            const events = await publicClient.getContractEvents({
-                address: coordinatorAddress,
-                abi: ATTESTATION_COORDINATOR_ABI,
-                eventName: 'Attestation',
-                args: {
-                    orderHash,
-                    attester: seller.address as Hex,
-                },
-                fromBlock: 0n,
-            });
-            const matching = events.filter(
-                (e) => e.args.clauseId === MERCHANT_PROCESS_CLAUSE_ID && e.args.stage === step.stage,
-            );
-            expect(matching.length, `expected one Attestation for stage ${step.stage} (${step.event})`).toBe(1);
+            // The event surfaces on the generic timeline (labelled from the
+            // clause spec) — proof the page re-derived and the capability advanced.
+            await expect(page.getByTestId(`timeline-event-${step.event}`)).toBeVisible({ timeout: 30000 });
         }
 
-        // After all five steps, no further merchant-next button exists.
-        await expect(page.locator('[data-testid^="btn-merchant-next-"]')).toHaveCount(0);
+        // After handed-off, no merchant capability remains.
+        await expect(page.locator('[data-testid^="capability-execute-submit-merchant-process-signal"]')).toHaveCount(0);
     });
 });

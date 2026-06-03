@@ -227,6 +227,41 @@ export async function getAttestationsByProcessAndClause(
     );
 }
 
+/** A process attestation flattened to the fields the runtime model needs:
+ *  which clause, which order, which stage, who attested. The clauseId is
+ *  DATA off the event — no caller hardcodes it. */
+export interface RuntimeAttestation {
+    clauseId: string;
+    orderHash: string;
+    stage: number;
+    attester: string;
+    blockNumber: number;
+}
+
+/** All attestations on a process, clause-agnostic. The single read the
+ *  semantic builder buckets by clause to gate capabilities, and the order
+ *  page renders as a generic timeline (clause + stage straight from data). */
+export async function getAttestationsByProcess(
+    client: PublicClient,
+    chainId: number,
+    processId: string,
+): Promise<RuntimeAttestation[]> {
+    const all = await getAllAttestations(client, chainId);
+    return all
+        .filter((log) => getStringArg(log, "processId") === processId)
+        .map((log) => {
+            const args = (log as { args?: Record<string, unknown> }).args ?? {};
+            return {
+                clauseId: getStringArg(log, "clauseId") ?? "",
+                orderHash: getStringArg(log, "orderHash") ?? "",
+                stage: Number(args.stage ?? 0),
+                attester: getStringArg(log, "attester") ?? "",
+                blockNumber: Number((log as { blockNumber?: unknown }).blockNumber ?? 0),
+            };
+        })
+        .sort((a, b) => a.blockNumber - b.blockNumber);
+}
+
 // ---------------------------------------------------------------------------
 // SellerRegistry event fetchers
 // ---------------------------------------------------------------------------

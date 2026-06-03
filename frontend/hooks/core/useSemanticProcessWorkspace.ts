@@ -11,16 +11,34 @@ import { OrderState, useOrderStore } from "@/lib/core/store";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
-import { useCourierProcessActions } from "@/lib/mechanisms/useCourierProcess";
+import { useCourierProcessActions, encodeProximityProofContent, PROXIMITY_CLAUSE_ID, type ProximityProof } from "@/lib/mechanisms/useCourierProcess";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { useGhgDisclosureActions } from "@/lib/mechanisms/useGHGDisclosure";
+import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/mechanisms/useSellerRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
+import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/core/indexer";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { buildResolutionCommitments } from "@/lib/core/commitmentStore";
 import { executeTransactionCapabilityAction } from "@/lib/core/executeTransactionCapability";
-import type { Hex } from "viem";
+import { toHex, type Hex } from "viem";
+
+/** Structural device-signature placeholder for proximity proofs. The
+ *  figaro-proximity-proof-v1 validator checks only deviceSig length ∈ [65,512];
+ *  the real per-handoff witness comes from a device sensor (BLE/NFC/Wi-Fi)
+ *  whose capture SDK is not built yet. (Moved out of the order page — the page
+ *  names no clause; the integration seam mints the proof from the band the
+ *  builder read off the agreement.) */
+const PROXIMITY_DEVICE_SIG_PLACEHOLDER: Hex = `0x${"01".repeat(65)}`;
+
+function buildProximityProof(band: number): ProximityProof {
+    return {
+        band,
+        nonce: toHex(crypto.getRandomValues(new Uint8Array(32))),
+        deviceSig: PROXIMITY_DEVICE_SIG_PLACEHOLDER,
+    };
+}
 
 function collectRuntimeCapabilities(capabilities: CapabilityModel[]): CapabilityModel[] {
     const seen = new Set<string>();
@@ -57,9 +75,11 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const lastFailedActionRef = useRef<{ capability: CapabilityModel; input?: CapabilityExecutionInput } | null>(null);
     const [selectedParentOrderIds, setSelectedParentOrderIds] = useState<Set<string>>(new Set());
     const [subOrderParent, setSubOrderParent] = useState<{ orderIds: string[]; currency?: `0x${string}` } | null>(null);
+    const processReloadKey = useOrderStore((state) => state.processReloadKey);
     const { resolveProcess, hash, isPending, mockIsSuccess } = useFigaroActions();
     const merchantProcessActions = useMerchantProcessActions();
     const courierProcessActions = useCourierProcessActions();
+    const attestationActions = useAttestationCoordinatorActions();
     const dutchAuctionActions = useDutchAuctionActions();
     const registerSeller = useRegisterSeller();
     const updateSellerProfile = useUpdateProfile();
@@ -81,6 +101,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const isActionPending = isPending
         || merchantProcessActions.isPending
         || courierProcessActions.isPending
+        || attestationActions.isPending
         || dutchAuctionActions.isPending
         || registerSeller.isPending
         || updateSellerProfile.isPending
@@ -89,6 +110,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const isActionConfirming = isConfirming
         || merchantProcessActions.isConfirming
         || courierProcessActions.isConfirming
+        || attestationActions.isConfirming
         || dutchAuctionActions.isConfirming
         || registerSeller.isConfirming
         || updateSellerProfile.isConfirming
@@ -98,6 +120,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         || mockIsSuccess
         || merchantProcessActions.isSuccess
         || courierProcessActions.isSuccess
+        || attestationActions.isSuccess
         || dutchAuctionActions.isSuccess
         || registerSeller.isSuccess
         || updateSellerProfile.isSuccess
@@ -129,6 +152,24 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         : null;
     const effectiveSummary = selectedSummary ?? fallbackSummary;
 
+    // The process's attestation log, read clause-agnostically (one read; the
+    // builder buckets it by clause to gate lifecycle/handoff capabilities, and
+    // the order page renders it as a generic timeline). Re-fetched whenever an
+    // action lands (processReloadKey bumps).
+    const [processAttestations, setProcessAttestations] = useState<RuntimeAttestation[]>([]);
+    useEffect(() => {
+        if (!publicClient || !effectiveProcessId) {
+            setProcessAttestations([]);
+            return;
+        }
+        let cancelled = false;
+        const chainId = publicClient.chain?.id ?? 0;
+        getAttestationsByProcess(publicClient, chainId, effectiveProcessId)
+            .then((logs) => { if (!cancelled) setProcessAttestations(logs); })
+            .catch(() => { if (!cancelled) setProcessAttestations([]); });
+        return () => { cancelled = true; };
+    }, [publicClient, effectiveProcessId, processReloadKey]);
+
     const processModel = effectiveSummary
         ? deriveProcessModelFromRuntime(
             effectiveSummary,
@@ -136,7 +177,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
             processAgreements,
             address,
             selectedCurrency,
-            isE2EMock
+            isE2EMock,
+            processAttestations,
         )
         : null;
 
@@ -151,13 +193,14 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
 
     useEffect(() => {
         if (isActionSuccess) {
-            if (isSuccess || mockIsSuccess) {
-                bumpProcessReload();
-            }
+            // Any landed action re-reads process state + the attestation log so
+            // the next capability surfaces (a merchant signal advances the
+            // ladder, a proximity proof retires the handoff capability).
+            bumpProcessReload();
             setExecutingCapabilityId(null);
             setActionError(null);
         }
-    }, [isActionSuccess, isSuccess, mockIsSuccess, bumpProcessReload]);
+    }, [isActionSuccess, bumpProcessReload]);
 
     useEffect(() => {
         setSelectedParentOrderIds(new Set());
@@ -225,10 +268,27 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                 submitDisclosureInventory: ghgDisclosureActions.submitActualForOrder,
                 submitMerchantProcessSignal: (orderHash, eventType, roleOrderHash) =>
                     merchantProcessActions.signal({ orderHash, eventType, roleOrderHash }),
+                submitMerchantProcessSignalWithProof: (orderHash, proximityTargetOrderHash, band) =>
+                    merchantProcessActions.signalWithProof({
+                        merchantOrderHash: orderHash,
+                        proximityTargetOrderHash,
+                        eventType: "handed-off",
+                        proof: buildProximityProof(band),
+                    }),
                 submitCourierProcessSignal: (orderHash, eventType, roleOrderHash) =>
                     courierProcessActions.signal({ orderHash, eventType, roleOrderHash }),
-                submitCourierProcessSignalWithProof: (orderHash, eventType, proof, roleOrderHash) =>
-                    courierProcessActions.signalWithProof({ orderHash, eventType, proof, roleOrderHash }),
+                submitCourierProcessSignalWithProof: (orderHash, eventType, band, roleOrderHash) =>
+                    courierProcessActions.signalWithProof({ orderHash, eventType, proof: buildProximityProof(band), roleOrderHash }),
+                submitBuyerProximityProof: (orderHash, band) => {
+                    const proof = buildProximityProof(band);
+                    return attestationActions.submitBuyerAttestation({
+                        orderHash: orderHash as Hex,
+                        clauseId: PROXIMITY_CLAUSE_ID,
+                        stage: band,
+                        content: encodeProximityProofContent(proof),
+                        failureMessage: "Buyer proximity proof failed",
+                    });
+                },
                 claimAuction: dutchAuctionActions.claim,
             }, input);
         } catch (error) {
@@ -298,6 +358,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         effectiveProcessId,
         processModel,
         processAgreements,
+        processAttestations,
         runtimeCapabilities,
         executableCapabilityIds,
         executingCapabilityId,

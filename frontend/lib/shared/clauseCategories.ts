@@ -22,6 +22,7 @@
  * Do not reintroduce a `categories`-based grouping here.
  */
 
+import { keccak256, stringToHex } from "viem";
 import commerceSpec from "@/lib/shared/clauses/figaro-commerce-v1.json";
 import consentSpec from "@/lib/shared/clauses/figaro-consent-v1.json";
 import courierProcessSpec from "@/lib/shared/clauses/figaro-courier-process-v1.json";
@@ -174,6 +175,38 @@ export function getClauseInfo(clauseId: string): { title: string; description: s
     return {
         title: spec.title ?? clauseId,
         description: spec.description ?? "",
+    };
+}
+
+type ClauseSpecFull = ClauseSpecMeta & {
+    title?: string;
+    fields?: ReadonlyArray<{ name: string; type: string; values?: readonly string[] }>;
+};
+
+/** clauseId HASH (keccak256 of the spec's clauseId string, as the on-chain
+ *  Attestation event carries it) → spec. The runtime attestation log keys on
+ *  the hash; this is the one place that bridges hash → Layer-A spec. */
+const SPEC_BY_HASH: ReadonlyMap<string, ClauseSpecFull> = new Map(
+    ALL_SPECS.map((s) => [keccak256(stringToHex(s.clauseId)).toLowerCase(), s as ClauseSpecFull]),
+);
+
+/**
+ * Display text for a runtime attestation, read STRAIGHT from the clause's
+ * Layer-A spec: the clause title and the enum value at `stage`. Callers pass
+ * DATA (the event's clauseId hash + uint8 stage), so the order-page timeline
+ * surfaces every event's own code from the clause — no surface names a clause,
+ * no frontend label map. Falls back to the short hash + stage when unknown.
+ */
+export function describeAttestation(
+    clauseIdHash: string,
+    stage: number,
+): { clauseTitle: string; eventLabel: string } {
+    const spec = SPEC_BY_HASH.get(clauseIdHash.toLowerCase());
+    if (!spec) return { clauseTitle: `${clauseIdHash.slice(0, 10)}…`, eventLabel: `stage ${stage}` };
+    const enumField = spec.fields?.find((f) => f.type === "enum");
+    return {
+        clauseTitle: spec.title ?? clauseIdHash,
+        eventLabel: enumField?.values?.[stage] ?? `stage ${stage}`,
     };
 }
 

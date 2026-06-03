@@ -49,15 +49,6 @@ const LOCAL_ANVIL = defineChain({
     },
 });
 
-// figaro-merchant-process-v1 happy-path stages — order-received through
-// handed-off — the merchant walks these in the coordination step.
-/** The merchant's pre-handoff lifecycle stages, driven by sequential
- *  `btn-merchant-next-<step>` clicks. The final `handed-off` stage is fired
- *  by `btn-merchant-proximity-proof` instead — it's paired with the
- *  merchant's cross-witness proximity-proof attestation against the courier
- *  order (`OrderTimelineView.tsx` swaps the button when a courier sub-order
- *  exists). */
-const MERCHANT_PRE_HANDOFF_STEPS = ['order-received', 'accepted', 'prep-started', 'ready-for-pickup'] as const;
 /** Merchant-process `handed-off` event stage — the attestation the
  *  `btn-merchant-proximity-proof` click pairs with the proximity-proof. */
 const MERCHANT_HANDED_OFF_STAGE = 4;
@@ -1454,6 +1445,87 @@ export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): P
 }
 
 /**
+ * Merchant side of a tracked handoff: walk figaro-merchant-process-v1
+ * (prep-started → ready-for-pickup) then fire the handed-off event +
+ * cross-witness proximity-proof via `btn-merchant-proximity-proof`. Waits for
+ * BOTH the handed-off stage and the proximity-proof attestation to land
+ * on-chain. Shared by delivery coordination (merchant→courier handoff) and the
+ * onsite/pickup flows (merchant→buyer handoff) — the merchant lifecycle is
+ * identical; only the counter-witness (courier vs buyer) differs.
+ *
+ * Arrival and acceptance are NOT in this walk: the order's existence and the
+ * seller's acceptance are core (the bilateral commit / inbox counter-sign),
+ * not merchant-process events. The merchant ladder begins at prep-started.
+ */
+export async function walkMerchantToHandoff(
+    page: Page,
+    opts: { processId: Hex; merchant: string },
+): Promise<void> {
+    const config = readLocalDeploymentConfig();
+    const coordinator = (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR
+        ?? config.attestationCoordinator) as Hex;
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    await gotoAsWallet(page, opts.merchant, `/orders/${opts.processId}?e2e=devnet`);
+    await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+
+    // The seller advances the merchant lifecycle entirely through the capability
+    // rail — ONE flow, no clause-specific buttons. The builder derives a plain
+    // merchant-process-signal capability for prep-started/ready-for-pickup, then
+    // a merchant-process-signal-with-proof capability for the handed-off
+    // cross-witness (both rotate under one testid family). Click whichever is
+    // enabled until the merchant has attested handed-off AND a proximity-proof
+    // cross-witness on-chain.
+    const merchantAttestations = () => publicClient.getContractEvents({
+        address: coordinator, abi: ATTESTATION_EVENT_ABI, eventName: 'Attestation',
+        args: { processId: opts.processId, attester: opts.merchant as Hex }, fromBlock: 0n,
+    });
+    const handoffComplete = (events: Awaited<ReturnType<typeof merchantAttestations>>) => {
+        const handedOff = events.some((e) => {
+            const args = (e as { args: { clauseId?: Hex; stage?: number } }).args;
+            return args.clauseId === MERCHANT_PROCESS_CLAUSE_ID && Number(args.stage) === MERCHANT_HANDED_OFF_STAGE;
+        });
+        const proofWitness = events.some(
+            (e) => (e as { args: { clauseId?: Hex } }).args.clauseId === PROXIMITY_PROOF_CLAUSE_ID,
+        );
+        return handedOff && proofWitness;
+    };
+
+    const handoffBtn = page.getByTestId('capability-execute-submit-merchant-process-signal-with-proof');
+    const signalBtn = page.getByTestId('capability-execute-submit-merchant-process-signal');
+    const deadline = Date.now() + 180_000;
+    for (;;) {
+        const events = await merchantAttestations();
+        if (handoffComplete(events)) break;
+        if (Date.now() > deadline) throw new Error('merchant lifecycle (handed-off + proximity cross-witness) timed out');
+        const countBefore = events.length;
+
+        // Prefer the handoff (with-proof) capability when present; else the plain
+        // signal. Gate on isVisible() — it returns immediately for an absent
+        // element; isEnabled() auto-waits up to the test timeout. click() then
+        // auto-waits for the button to be enabled (the rail disables it while
+        // its tx is in flight).
+        if (await handoffBtn.isVisible().catch(() => false)) {
+            await handoffBtn.click();
+        } else if (await signalBtn.isVisible().catch(() => false)) {
+            await signalBtn.click();
+        } else {
+            await new Promise((r) => setTimeout(r, 800));
+            continue;
+        }
+
+        // Wait for the attestation to land (the page re-derives the next capability).
+        const advanceDeadline = Date.now() + 60_000;
+        for (;;) {
+            if ((await merchantAttestations()).length > countBefore) break;
+            if (Date.now() > advanceDeadline) break;
+            await new Promise((r) => setTimeout(r, 1000));
+        }
+    }
+    await expect(page.locator('[data-testid^="capability-execute-submit-merchant-process-signal"]')).toHaveCount(0, { timeout: 60000 });
+}
+
+/**
  * Drive the merchant coordination walk + the courier's two handoff
  * proximity proofs for a committed local-commerce process — the shared
  * runtime steps between the buyer's commit and the buyer's resolve. The
@@ -1461,8 +1533,8 @@ export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): P
  * (seller-assigned, buyer-assigned, dutch-auction); only how the courier
  * order is created differs.
  *
- *   - Merchant walks figaro-merchant-process-v1: order-received → accepted
- *     → prep-started → ready-for-pickup → handed-off.
+ *   - Merchant walks figaro-merchant-process-v1: prep-started →
+ *     ready-for-pickup → handed-off (arrival/acceptance are core, not here).
  *   - Courier submits both handoff proximity proofs — arrived-pickup
  *     (stage 3) then arrived-dropoff (stage 5); each must land on-chain
  *     before the next click, so the button targets the right edge.
@@ -1528,40 +1600,9 @@ export async function runDeliveryCoordination(
         }
     };
 
-    // ── Merchant walks the figaro-merchant-process-v1 coordination ──
-    await gotoAsWallet(page, opts.merchant, `/orders/${opts.processId}?e2e=devnet`);
-    await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-    for (const step of MERCHANT_PRE_HANDOFF_STEPS) {
-        const btn = page.getByTestId(`btn-merchant-next-${step}`);
-        await btn.waitFor({ state: 'visible', timeout: 60000 });
-        await btn.click();
-    }
-    // Final handoff: the merchant's `handed-off` event is paired with a
-    // cross-witness proximity-proof against the courier's order. Wait for
-    // both attestations to land before moving on.
-    const merchantHandoffBtn = page.getByTestId('btn-merchant-proximity-proof');
-    await expect(merchantHandoffBtn).toBeEnabled({ timeout: 60000 });
-    await merchantHandoffBtn.click();
-    const merchantHandoffDeadline = Date.now() + 90_000;
-    for (;;) {
-        const events = await publicClient.getContractEvents({
-            address: coordinator, abi: ATTESTATION_EVENT_ABI, eventName: 'Attestation',
-            args: { processId: opts.processId, attester: opts.merchant as Hex }, fromBlock: 0n,
-        });
-        const handedOff = events.some((e) => {
-            const args = (e as { args: { clauseId?: Hex; stage?: number } }).args;
-            return args.clauseId === MERCHANT_PROCESS_CLAUSE_ID && Number(args.stage) === MERCHANT_HANDED_OFF_STAGE;
-        });
-        const proofWitness = events.some(
-            (e) => (e as { args: { clauseId?: Hex } }).args.clauseId === PROXIMITY_PROOF_CLAUSE_ID,
-        );
-        if (handedOff && proofWitness) break;
-        if (Date.now() > merchantHandoffDeadline) {
-            throw new Error('merchant handoff (handed-off + proximity-proof cross-witness) timed out');
-        }
-        await new Promise((r) => setTimeout(r, 1000));
-    }
-    await expect(page.locator('[data-testid^="btn-merchant-next-"]')).toHaveCount(0, { timeout: 60000 });
+    // ── Merchant walks figaro-merchant-process-v1 to the handed-off +
+    //    cross-witness proximity-proof (shared with the onsite/pickup flows) ──
+    await walkMerchantToHandoff(page, { processId: opts.processId, merchant: opts.merchant });
     if (opts.emissions?.merchant) {
         await submitEmissionsAsCurrentSeller(
             opts.merchant as Hex,
@@ -1571,10 +1612,12 @@ export async function runDeliveryCoordination(
     }
 
     // ── Courier submits both handoff proximity proofs ──
+    // Driven through the capability rail (one flow). The courier-process
+    // with-proof capability rotates arrived-pickup → arrived-dropoff under the
+    // same testid; click it for each handoff edge.
     await gotoAsWallet(page, opts.courier, `/orders/${opts.processId}?e2e=devnet`);
     await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-    await expect(page.getByTestId('courier-handoff-address')).toBeVisible({ timeout: 30000 });
-    const proofBtn = page.getByTestId('btn-courier-proximity-proof');
+    const proofBtn = page.getByTestId('capability-execute-submit-courier-process-signal-with-proof');
     for (let handoff = 0; handoff < 2; handoff++) {
         await expect(proofBtn).toBeEnabled({ timeout: 45000 });
         await proofBtn.click();

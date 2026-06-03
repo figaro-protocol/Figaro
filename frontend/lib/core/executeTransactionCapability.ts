@@ -7,7 +7,6 @@ import type {
     MerchantProcessEventKind,
     VestingVariant,
 } from "@/lib/semantic/models";
-import type { ProximityProof } from "@/lib/mechanisms/useCourierProcess";
 
 type TransactionExecutionResult = Promise<Hex | undefined | void>;
 
@@ -24,8 +23,10 @@ export interface TransactionCapabilityExecutors {
     submitDisclosureCommitment?: (orderHash: string) => TransactionExecutionResult;
     submitDisclosureInventory?: (orderHash: string, grams: bigint) => TransactionExecutionResult;
     submitMerchantProcessSignal?: (orderHash: string, eventType: MerchantProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
+    submitMerchantProcessSignalWithProof?: (orderHash: string, proximityTargetOrderHash: string, band: number) => TransactionExecutionResult;
     submitCourierProcessSignal?: (orderHash: string, eventType: CourierProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
-    submitCourierProcessSignalWithProof?: (orderHash: string, eventType: CourierProximityProofEventKind, proof: ProximityProof, roleOrderHash?: string) => TransactionExecutionResult;
+    submitCourierProcessSignalWithProof?: (orderHash: string, eventType: CourierProximityProofEventKind, band: number, roleOrderHash?: string) => TransactionExecutionResult;
+    submitBuyerProximityProof?: (orderHash: string, band: number) => TransactionExecutionResult;
     claimAuction?: (auctionId: string) => TransactionExecutionResult;
     claimAirdrop?: (amount: bigint, proof: `0x${string}`[]) => TransactionExecutionResult;
     claimVesting?: (variant: VestingVariant) => TransactionExecutionResult;
@@ -114,25 +115,30 @@ export async function executeTransactionCapabilityAction(
                 "Merchant-process execution is unavailable.",
             )(action.orderHash, action.eventType, action.roleOrderHash);
             break;
+        case "submit-merchant-process-signal-with-proof":
+            txHash = await ensureExecutor(
+                executors.submitMerchantProcessSignalWithProof,
+                "Merchant-process handoff execution is unavailable.",
+            )(action.orderHash, action.proximityTargetOrderHash, action.band);
+            break;
         case "submit-courier-process-signal":
             txHash = await ensureExecutor(
                 executors.submitCourierProcessSignal,
                 "Courier-process execution is unavailable.",
             )(action.orderHash, action.eventType, action.roleOrderHash);
             break;
-        case "submit-courier-process-signal-with-proof": {
-            const proof = input?.kind === "submit-courier-process-signal-with-proof"
-                ? input.proof
-                : undefined;
-            if (!proof) {
-                throw new Error("Courier-process proof input is required.");
-            }
+        case "submit-courier-process-signal-with-proof":
             txHash = await ensureExecutor(
                 executors.submitCourierProcessSignalWithProof,
                 "Courier-process proof execution is unavailable.",
-            )(action.orderHash, action.eventType, proof, action.roleOrderHash);
+            )(action.orderHash, action.eventType, action.band, action.roleOrderHash);
             break;
-        }
+        case "submit-buyer-proximity-proof":
+            txHash = await ensureExecutor(
+                executors.submitBuyerProximityProof,
+                "Buyer proximity-proof execution is unavailable.",
+            )(action.orderHash, action.band);
+            break;
         case "claim-auction":
             txHash = await ensureExecutor(
                 executors.claimAuction,
