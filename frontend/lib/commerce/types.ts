@@ -20,14 +20,14 @@ export interface CommerceIdentity {
 
 // ── Token state ─────────────────────────────────────────────────
 
-export interface TokenState {
+interface TokenState {
     balance: bigint | undefined;
     decimals: number;
 }
 
 // ── Authorization (ERC-20 approve) ──────────────────────────────
 
-export interface AuthorizationState {
+interface AuthorizationState {
     isPending: boolean;
     isConfirming: boolean;
     isSuccess: boolean;
@@ -35,7 +35,7 @@ export interface AuthorizationState {
 
 // ── Order flow ──────────────────────────────────────────────────
 
-export interface OrderFlowState {
+interface OrderFlowState {
     step: CommitmentFlowStep;
     error: string | null;
     payload: CommitmentPayload | null;

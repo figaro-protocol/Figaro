@@ -60,7 +60,7 @@ export function encodeGeohash(lat: number, lon: number, precision = 6): string {
 }
 
 /** Returns [minLat, maxLat, minLon, maxLon] bounding box for a geohash. */
-export function geohashBounds(hash: string): [number, number, number, number] {
+function geohashBounds(hash: string): [number, number, number, number] {
     let evenBit = true;
     let minLat = -90,
         maxLat = 90,
@@ -87,7 +87,7 @@ export function geohashBounds(hash: string): [number, number, number, number] {
 }
 
 /** Centre point of a geohash cell. */
-export function geohashCenter(hash: string): { lat: number; lon: number } {
+function geohashCenter(hash: string): { lat: number; lon: number } {
     const [minLat, maxLat, minLon, maxLon] = geohashBounds(hash);
     return { lat: (minLat + maxLat) / 2, lon: (minLon + maxLon) / 2 };
 }
@@ -95,7 +95,7 @@ export function geohashCenter(hash: string): { lat: number; lon: number } {
 // ---------------------------------------------------------------------------
 // Approximate distance (km) between two geohash centres (Haversine)
 // ---------------------------------------------------------------------------
-export function geohashDistance(a: string, b: string): number {
+function geohashDistance(a: string, b: string): number {
     const ca = geohashCenter(a);
     const cb = geohashCenter(b);
     const R = 6371;
@@ -112,15 +112,15 @@ export function geohashDistance(a: string, b: string): number {
 // ---------------------------------------------------------------------------
 // Class of service
 // ---------------------------------------------------------------------------
-export const COS_OPTIONS = [
+const COS_OPTIONS = [
     { value: "S", label: "Standard", description: "Room temperature, not fragile" },
     { value: "E", label: "Express", description: "Priority – 30 min window" },
     { value: "F", label: "Fragile", description: "Handle with care" },
     { value: "C", label: "Cold Chain", description: "Refrigerated transport required" },
 ] as const;
-export type CoS = "S" | "E" | "F" | "C";
+type CoS = "S" | "E" | "F" | "C";
 
-export function cosLabel(cos: string): string {
+function cosLabel(cos: string): string {
     return COS_OPTIONS.find((o) => o.value === cos)?.label ?? cos;
 }
 
@@ -135,7 +135,7 @@ export function cosLabel(cos: string): string {
  * The clause ID identifies the manifest encoding format. The protocol core
  * treats manifest bytes as opaque — the clause tells the UI how to decode.
  */
-export const MANIFEST_CLAUSES = {
+const MANIFEST_CLAUSES = {
     /** Fulfilment-composition: modality + coordination + handoff point. */
     FULFILMENT_V2: "figaro-fulfilment-v2",
     /** Commerce manifest: handoff fields + itemized line items. */

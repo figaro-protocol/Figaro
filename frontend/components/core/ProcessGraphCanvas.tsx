@@ -52,7 +52,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 
 /** The canvas overlay identifiers. Owned here — the lens is a canvas concept,
  *  not a clause grouping (the clause grouping is the article, in the spec). */
-export type LensId = "value" | "geo" | "capital" | "ghg";
+type LensId = "value" | "geo" | "capital" | "ghg";
 
 /** `GraphLens` adds the `"default"` "no overlay" state on top of `LensId`. */
 export type GraphLens = LensId | "default";

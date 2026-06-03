@@ -4,7 +4,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 /**
  * Show a success toast with optional transaction hash.
  */
-export function showSuccess(message: string, txHash?: string) {
+function showSuccess(message: string, txHash?: string) {
     if (txHash) {
         toast.success(message, {
             description: `Transaction: ${txHash.slice(0, 10)}...${txHash.slice(-8)}`,
@@ -20,7 +20,7 @@ export function showSuccess(message: string, txHash?: string) {
  * mempool/RPC failures via `extractErrorMessage` — same logic any inline
  * error display uses.
  */
-export function showError(error: unknown, fallbackMessage?: string) {
+function showError(error: unknown, fallbackMessage?: string) {
     const title = fallbackMessage ?? "Transaction Failed";
     toast.error(title, {
         description: extractErrorMessage(error, title),

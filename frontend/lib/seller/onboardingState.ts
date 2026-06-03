@@ -51,14 +51,14 @@ export interface OnboardingProfileDraft {
     defaultTokenAddress?: `0x${string}`;
 }
 
-export interface OnboardingCatalogueDraft {
+interface OnboardingCatalogueDraft {
     items?: CatalogueItemMetadata[];
     /** Seller's preferred unit system for editor + display. Storage of
      *  per-item mass / volume is always metric; this is a UI preference. */
     unitSystem?: UnitSystem;
 }
 
-export interface OnboardingState {
+interface OnboardingState {
     /** Wallet that owns this draft. Stamped on first write so reads can detect wallet-switch. */
     walletAddress?: `0x${string}`;
     profile?: OnboardingProfileDraft;

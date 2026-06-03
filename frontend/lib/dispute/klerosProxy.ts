@@ -19,7 +19,7 @@ import { parseAbi, type PublicClient, type WalletClient, type Address } from "vi
 // ABI (subset of Kleros ArbitrableProxy + KlerosLiquid)
 // ---------------------------------------------------------------------------
 
-export const ARBITRABLE_PROXY_ABI = parseAbi([
+const ARBITRABLE_PROXY_ABI = parseAbi([
     "function createDispute(bytes calldata _arbitratorExtraData, string calldata _metaevidenceURI, uint256 _numberOfRulingOptions) external payable returns (uint256 disputeID)",
     "function submitEvidence(uint256 _localDisputeID, string calldata _evidenceURI) external",
     "function disputes(uint256 _localID) view returns (bytes extraData, bool isRuled, uint256 ruling, uint256 disputeIDOnArbitratorSide)",
@@ -27,7 +27,7 @@ export const ARBITRABLE_PROXY_ABI = parseAbi([
     "function externalIDtoLocalID(uint256 _externalID) view returns (uint256 localID)",
 ]);
 
-export const ARBITRATOR_ABI = parseAbi([
+const ARBITRATOR_ABI = parseAbi([
     "function arbitrationCost(bytes calldata _extraData) view returns (uint256 cost)",
 ]);
 

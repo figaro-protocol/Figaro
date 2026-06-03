@@ -65,7 +65,7 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
  *  of its canonical JSON serialization (`canonicalize` below). The
  *  on-chain binding stores only contentHash + metadataURI; this object
  *  carries the topology + per-order agreements. */
-export interface AssemblyDocument {
+interface AssemblyDocument {
     slug: string;
     name: string;
     /** Synthetic-process metadata so the canvas can faithfully restore
@@ -105,7 +105,7 @@ export function getAssemblyRegistry(): `0x${string}` | null {
  *  order's agreement so the assemblyDoc doesn't depend on any external
  *  agreement-store state. Throws if any order's agreement is missing
  *  locally. */
-export function buildAssemblyDocument(snapshot: DesignSnapshot): AssemblyDocument {
+function buildAssemblyDocument(snapshot: DesignSnapshot): AssemblyDocument {
     if (snapshot.orders.length === 0) {
         throw new Error("Assembly has no orders.");
     }
@@ -134,7 +134,7 @@ export function buildAssemblyDocument(snapshot: DesignSnapshot): AssemblyDocumen
 }
 
 /** Canonicalize the assemblyDoc and compute (canonical bytes, content hash). */
-export function serializeAssemblyDocument(assemblyDoc: AssemblyDocument): {
+function serializeAssemblyDocument(assemblyDoc: AssemblyDocument): {
     json: string;
     contentHash: `0x${string}`;
 } {
@@ -155,7 +155,7 @@ export interface PublishOutcome {
  * event. The slug + metadataURI are non-indexed event-data fields;
  * slugHash and author come from indexed topics.
  */
-export interface PublishedAssembly {
+interface PublishedAssembly {
     slug: string;
     slugHash: `0x${string}`;
     author: `0x${string}`;
@@ -206,7 +206,7 @@ function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
  * No caching, no auto-refresh. To pick up a newly published assembly
  * after mount, call `refetch`.
  */
-export function usePublishedAssemblies(author: `0x${string}` | undefined) {
+function usePublishedAssemblies(author: `0x${string}` | undefined) {
     const [data, setData] = useState<PublishedAssembly[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [generation, setGeneration] = useState(0);
@@ -270,7 +270,7 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
  * Used by surfaces like the onboarding assembly-picker that need every
  * registered assembly regardless of author.
  */
-export function useAllPublishedAssemblies() {
+function useAllPublishedAssemblies() {
     return usePublishedAssemblies(undefined);
 }
 
@@ -300,7 +300,7 @@ export async function fetchAssemblyDocument(
  * based on the chain its registry lives on. Derived rather than stored —
  * the AssemblyRegistry is per-chain, so the chain IS the network target.
  */
-export function chainIdToNetworkTarget(chainId: number): string {
+function chainIdToNetworkTarget(chainId: number): string {
     switch (chainId) {
         case 31337:
             return "local-anvil";
@@ -316,7 +316,7 @@ export function chainIdToNetworkTarget(chainId: number): string {
 /** Walk the assemblyDoc's inlined agreements and collect the unique set of
  *  clauses anchored across all orders. Sorted alphabetically for stable
  *  display order. */
-export function collectAssemblyClauses(template: AssemblyTemplate): string[] {
+function collectAssemblyClauses(template: AssemblyTemplate): string[] {
     const set = new Set<string>();
     for (const order of template.orders) {
         for (const clauseId of Object.keys(order.clauses)) set.add(clauseId);
@@ -391,7 +391,7 @@ export function formatAssemblyClauseList(clauses: readonly string[]): string {
  * assemblyDoc-derived fields are populated.
  */
 /** Per-assembly assemblyDoc fetch state: requested, succeeded, or failed. */
-export type AssemblyDocumentFetchState = "loading" | "loaded" | "error";
+type AssemblyDocumentFetchState = "loading" | "loaded" | "error";
 
 export interface AssemblyChoice {
     slug: string;

@@ -152,7 +152,7 @@ export interface DisputedConsentAttestation {
  * `CONSENT_DISPUTE_CLAIM_TYPES` in that page for the canonical
  * EIP-712 shape.
  */
-export interface SubmitterClaimSignature {
+interface SubmitterClaimSignature {
     /** ISO-8601 timestamp the submitter signed the claim digest. */
     submittedAt: string;
     /** EIP-712 signature over the claim digest. */

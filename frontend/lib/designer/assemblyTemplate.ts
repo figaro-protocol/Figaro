@@ -22,7 +22,7 @@ import { summarizeAgreement } from "@/lib/core/orderAgreement";
  *  rest is filled downstream — seller at first-use, buyer at checkout). */
 export type ClauseValues = Record<string, Record<string, unknown>>;
 
-export interface AssemblyTemplateOrder {
+interface AssemblyTemplateOrder {
     /** Local order label — `order-<index>`, stable within the template; the
      *  reference target for other orders' `parentOrderIds`. NOT a chain id, and
      *  NOT a party — the template is party-agnostic. */

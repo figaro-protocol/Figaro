@@ -20,7 +20,7 @@ import type { DisciplineIndex } from "@/components/shared/DisciplineGlyph";
  * the merge process.
  */
 
-export interface PaperRef {
+interface PaperRef {
     /** Full title. */
     title: string;
     /** Page route (`/papers/<slug>`) for a migrated paper, or path to the
@@ -28,7 +28,7 @@ export interface PaperRef {
     href: string;
 }
 
-export interface ReferenceLink {
+interface ReferenceLink {
     label: string;
     href: string;
     note?: string;

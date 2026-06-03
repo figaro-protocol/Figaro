@@ -25,7 +25,7 @@ import {
 const multiInjectPath = path.resolve(__dirname, './fixtures/inject-ethereum-multi.js');
 
 export { ANVIL_ACCOUNTS };
-export type AnvilAccount = typeof ANVIL_ACCOUNTS[number];
+type AnvilAccount = typeof ANVIL_ACCOUNTS[number];
 
 // Re-export expect for convenience
 export { expect };

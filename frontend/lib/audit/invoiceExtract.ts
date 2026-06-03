@@ -25,7 +25,7 @@ import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
 
-export interface InvoiceLineItem {
+interface InvoiceLineItem {
     itemId: string;
     name: string;
     quantity: number;

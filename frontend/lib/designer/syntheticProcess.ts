@@ -197,7 +197,7 @@ export function createSyntheticSubOrder(
  * Reason a `mergeSyntheticParent` call was rejected. Callers can surface
  * these to the UI; cycles must always be rejected to keep the DAG valid.
  */
-export type MergeRejectionReason = "self-loop" | "duplicate-parent" | "would-create-cycle";
+type MergeRejectionReason = "self-loop" | "duplicate-parent" | "would-create-cycle";
 
 export type MergeResult =
     | { ok: true; child: Order }
@@ -269,7 +269,7 @@ export function mergeSyntheticParent(
 import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 import { canonicalFulfilmentMethodToArrays } from "@/lib/core/orderAgreement";
 import { FULFILMENT_MODE_LABELS } from "@/lib/seller/fulfilmentRouting";
-export type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
+;
 
 /**
  * Default fulfilment method when an order's agreement carries no fulfilment
@@ -280,7 +280,7 @@ export type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 const DEFAULT_FULFILMENT_METHOD: CanonicalFulfilmentMethod = "deliver:seller-assigned";
 
 /** Read the child's current fulfilment method from its committed agreement. */
-export function deriveFulfilmentMethod(order: Order): CanonicalFulfilmentMethod {
+function deriveFulfilmentMethod(order: Order): CanonicalFulfilmentMethod {
     const summary = summarizeAgreement(loadAgreement(order.agreementHash));
     const method = summary?.fulfilment?.method;
     if (typeof method === "string" && (FULFILMENT_MODE_LABELS as Record<string, string>)[method]) {
@@ -307,7 +307,7 @@ function clauseFieldsForFulfilmentMethod(method: CanonicalFulfilmentMethod): Cla
  *
  * The order id stays stable in synthetic mode — see mergeSyntheticParent.
  */
-export function swapSyntheticFulfilmentMethod(
+function swapSyntheticFulfilmentMethod(
     child: Order,
     method: CanonicalFulfilmentMethod,
 ): Order {

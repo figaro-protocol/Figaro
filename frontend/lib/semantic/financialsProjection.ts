@@ -41,7 +41,7 @@ import { ZERO_ADDRESS } from "@/lib/shared/evm";
  * Currency address normalised to lowercase. Multi-currency arithmetic is
  * unsafe, so every aggregate is keyed per-currency.
  */
-export type CurrencyKey = string;
+type CurrencyKey = string;
 
 export interface BalanceSheetEntry {
     /** Sum of 2P across active (committed-but-not-resolved) orders. */
@@ -56,7 +56,7 @@ export interface BalanceSheetEntry {
     retainedEarnings: bigint;
 }
 
-export interface IncomeStatementEntry {
+interface IncomeStatementEntry {
     /** Sum of P across all orders in scope (committed at any time). */
     sales: bigint;
     /** Sum of P across resolved orders in scope. */
@@ -65,13 +65,13 @@ export interface IncomeStatementEntry {
     netIncome: bigint;
 }
 
-export type CashFlowKind =
+type CashFlowKind =
     | "commit-buyer-deposit"   // 2P pulled from buyer at commit
     | "commit-seller-deposit"  // 2G pulled from seller at commit
     | "resolve-buyer-refund"   // P returned to buyer at resolve
     | "resolve-seller-payout"; // 2G + P transferred to seller at resolve
 
-export interface CashFlowEntry {
+interface CashFlowEntry {
     kind: CashFlowKind;
     orderId: string;
     currency: string;

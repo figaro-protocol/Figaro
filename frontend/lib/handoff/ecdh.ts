@@ -46,7 +46,7 @@ function hexToBytes(hex: string): Uint8Array {
  * Internally uses eciesjs encapsulate/decapsulate which applies HKDF-SHA256
  * over the raw ECDH point, producing a uniformly random 256-bit key.
  */
-export function deriveSharedSecret(
+function deriveSharedSecret(
     myPrivateKeyHex: string,
     theirPublicKeyHex: string,
 ): string {
@@ -85,7 +85,7 @@ function b64UrlDecode(b64: string): Uint8Array {
  * Produces a base64url blob: 12-byte IV || AES-256-GCM ciphertext.
  * Safe to transmit over any public channel.
  */
-export async function wrapHandoffKey(
+async function wrapHandoffKey(
     keyB64: string,
     sharedSecretHex: string,
 ): Promise<string> {
@@ -115,7 +115,7 @@ export async function wrapHandoffKey(
  * Input is the base64url blob produced by `wrapHandoffKey`.
  * Returns the original base64url AES key.
  */
-export async function unwrapHandoffKey(
+async function unwrapHandoffKey(
     wrappedB64: string,
     sharedSecretHex: string,
 ): Promise<string> {
@@ -164,7 +164,7 @@ function ecdhStoreKey(address: string, orderId: string): string {
  * Idempotent: if a keypair already exists for this address+order, it is
  * returned. Otherwise a fresh keypair is generated and persisted.
  */
-export function getOrCreateFulfillerEcdhKeypair(
+function getOrCreateFulfillerEcdhKeypair(
     address: string,
     orderId: string,
 ): EphemeralKeypair {
@@ -179,7 +179,7 @@ export function getOrCreateFulfillerEcdhKeypair(
 }
 
 /** Retrieve a previously stored fulfiller ECDH keypair (null if missing). */
-export function getFulfillerEcdhKeypair(
+function getFulfillerEcdhKeypair(
     address: string,
     orderId: string,
 ): EphemeralKeypair | null {

@@ -31,7 +31,7 @@ import { hexEqual } from "@/lib/shared/evm";
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
-export interface TokenConversionQuoteRequest {
+interface TokenConversionQuoteRequest {
     fromTokenAddress: `0x${string}`;
     toTokenAddress: `0x${string}`;
     /** Amount in `fromTokenAddress`'s smallest unit. */
@@ -111,7 +111,7 @@ const QUOTER_V2_ABI = [
  * support 100, 500, 3000, 10000. The conventional defaults for stable
  * pairs / mid-volatility / exotic pairs are 100/500, 3000, 10000.
  */
-export type UniswapV3FeeTier = 100 | 500 | 3000 | 10000;
+type UniswapV3FeeTier = 100 | 500 | 3000 | 10000;
 
 export interface UniswapV3QuoterConfig {
     /** Viem public client connected to the chain whose Uniswap deployment is used. */

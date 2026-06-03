@@ -5,7 +5,7 @@ import { hexEqual } from "@/lib/shared/evm";
 import { submitPermitTransaction, type SignedPermitPayload } from "@/lib/core/permitExecution";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
-export interface PreparedCommitmentArtifact {
+interface PreparedCommitmentArtifact {
     commitment: Commitment;
     commitmentMeta?: CommitmentPayloadMeta;
 }

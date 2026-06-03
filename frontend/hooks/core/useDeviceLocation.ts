@@ -3,9 +3,9 @@
 import { useCallback, useState } from "react";
 import { encodeGeohash } from "@/lib/handoff/manifest";
 
-export type DeviceLocationStatus = "idle" | "requesting" | "granted" | "denied" | "unsupported" | "error";
+type DeviceLocationStatus = "idle" | "requesting" | "granted" | "denied" | "unsupported" | "error";
 
-export interface DeviceLocationState {
+interface DeviceLocationState {
     status: DeviceLocationStatus;
     geohash: string | null;
     latitude: number | null;

@@ -238,13 +238,13 @@ export const COURIER_PROCESS_CLAUSE_KEY = "figaro-courier-process-v1";
 
 export type TopologyMode = "root" | "explicit" | "linear-fallback";
 
-export interface CommerceSectionData {
+interface CommerceSectionData {
     currency: `0x${string}`;
     payment: string;
     lineItems: AgreementLineItem[];
 }
 
-export interface TopologySectionData {
+interface TopologySectionData {
     topologyMode: TopologyMode;
     parentOrderHashes: string[];
 }
@@ -628,7 +628,7 @@ export function findCleartextSection(
  * — may live on any of them. Returns `undefined` when no agreement carries
  * the clause.
  */
-export function readAssemblyClause(
+function readAssemblyClause(
     assemblyDoc: { agreements: Record<string, Agreement> },
     clause: string,
 ): AgreementSection | undefined {
@@ -646,7 +646,7 @@ export function readAssemblyClause(
  * the committed agreement carries the same disclosure clauses (and their
  * paired measurement clause) the assembly author declared.
  */
-export function readAssemblyOrderGhgStandards(
+function readAssemblyOrderGhgStandards(
     assemblyDoc: { agreements: Record<string, Agreement> },
     agreementHash: string | undefined,
 ): GHGDisclosureClauseKey[] {

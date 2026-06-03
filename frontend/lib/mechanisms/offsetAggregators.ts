@@ -40,7 +40,7 @@ export interface AggregatorQuote {
     source: string;
 }
 
-export interface AggregatorRetireArgs {
+interface AggregatorRetireArgs {
     /** Tonnes to retire, expressed in 1e18 fixed-point (1e18 = 1 tonne). */
     tonsToRetire: bigint;
     /** Beneficiary recorded in the aggregator's retirement event — typically
@@ -247,7 +247,7 @@ export function getOffsetAggregators(chainId: number | undefined): ChainAggregat
 
 /** Aggregator content fields the hook builds for the
  *  ProcessOffsetReceipt.record(...) call after retirement succeeds. */
-export interface RetirementReceiptContent {
+interface RetirementReceiptContent {
     processId: Hex;
     retirementTxHash: Hex;
     aggregator: Address;

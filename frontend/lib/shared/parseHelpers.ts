@@ -51,7 +51,7 @@ export function asNumber(value: unknown, path: string): number {
     return value;
 }
 
-export function asArray(value: unknown, path: string): unknown[] {
+function asArray(value: unknown, path: string): unknown[] {
     if (!Array.isArray(value)) {
         throw new Error(`${path} must be an array.`);
     }

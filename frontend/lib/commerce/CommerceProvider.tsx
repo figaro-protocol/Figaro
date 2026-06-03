@@ -39,7 +39,7 @@ export function useCommerce(): CommerceIdentity {
 
 // ── Test helper ────────────────────────────────────────────────
 
-export interface MockCommerceProps {
+interface MockCommerceProps {
     address?: `0x${string}`;
     isConnected?: boolean;
     chainId?: number;
@@ -49,7 +49,7 @@ export interface MockCommerceProps {
 /**
  * Drop-in replacement for tests — no wagmi provider required.
  */
-export function MockCommerceProvider({
+function MockCommerceProvider({
     address = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as `0x${string}`,
     isConnected = true,
     chainId = 31337,
@@ -68,4 +68,4 @@ export function MockCommerceProvider({
 }
 
 // Re-export the context for advanced use cases (e.g. custom providers)
-export { CommerceContext };
+;

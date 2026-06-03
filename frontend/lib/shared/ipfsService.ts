@@ -12,7 +12,7 @@ const IPFS_API_URL =
 
 /** Canonical Kubo gateway base URL — the single source for IPFS gateway
  *  resolution. */
-export const IPFS_GATEWAY_URL =
+const IPFS_GATEWAY_URL =
     process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
 
 /**
@@ -50,7 +50,7 @@ const ALLOWED_FILE_TYPES = new Set([
     "image/svg+xml",
 ]);
 
-export interface IpfsPublishResult {
+interface IpfsPublishResult {
     cid: string;
     uri: string;
     path: string;

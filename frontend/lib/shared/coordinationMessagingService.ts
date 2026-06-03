@@ -4,11 +4,11 @@ import {
 } from "@/lib/handoff/channel";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 
-export interface WalletMessageSignerSource {
+interface WalletMessageSignerSource {
     signMessage(params: { message: string }): Promise<`0x${string}`>;
 }
 
-export interface CoordinationMessagingContext {
+interface CoordinationMessagingContext {
     address: string;
     walletClient?: WalletMessageSignerSource | null;
 }

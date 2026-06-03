@@ -20,7 +20,7 @@ import {
     getAllOrderResolved,
 } from "@/lib/core/indexer";
 
-export interface OrderStub {
+interface OrderStub {
     id: string;
     state: OrderState;
 }

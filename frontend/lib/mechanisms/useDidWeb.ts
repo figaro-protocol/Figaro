@@ -12,7 +12,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 // ── SDK Types (inline to avoid ESM/CJS import issues with SDK) ──────────────
 
 /** A single verification method within a DID Document. */
-export interface VerificationMethod {
+interface VerificationMethod {
     id: string;
     type: string;
     controller: string;
@@ -22,7 +22,7 @@ export interface VerificationMethod {
 }
 
 /** A service endpoint declared in a DID Document. */
-export interface DIDService {
+interface DIDService {
     id: string;
     type: string;
     serviceEndpoint: string | string[] | Record<string, unknown>;
@@ -44,7 +44,7 @@ export interface DIDDocument {
 }
 
 /** Result of resolving a did:web identifier. */
-export interface DIDResolutionResult {
+interface DIDResolutionResult {
     document: DIDDocument | null;
     error: string | null;
 }
@@ -187,7 +187,7 @@ function useDidDocument(did: string | undefined) {
  *
  * Returns { document, verified, error, isLoading }.
  */
-export function useDidVerification(
+function useDidVerification(
     did: string | undefined,
     address: string | undefined,
 ) {

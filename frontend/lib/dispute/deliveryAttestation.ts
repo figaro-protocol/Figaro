@@ -36,7 +36,7 @@ import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService
 // ---------------------------------------------------------------------------
 
 /** Which custody-transfer step this attestation proves. */
-export type HandoffStep = "pickup" | "delivery";
+type HandoffStep = "pickup" | "delivery";
 
 // ---------------------------------------------------------------------------
 // Attestation Mode enum

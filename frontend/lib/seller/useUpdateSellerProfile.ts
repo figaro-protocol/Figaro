@@ -32,9 +32,9 @@ import {
 } from "@/lib/shared/sellerProfileMetadata";
 import { useUpdateProfile } from "@/lib/mechanisms/useSellerRegistry";
 
-export type SellerProfilePatch = Partial<SellerProfileMetadata>;
+type SellerProfilePatch = Partial<SellerProfileMetadata>;
 
-export interface SaveOptions {
+interface SaveOptions {
     /**
      * Fields to explicitly clear in the merged profile. Useful for
      * destructive actions that remove a pointer (e.g. clearing

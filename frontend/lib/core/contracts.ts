@@ -10,7 +10,7 @@ export {
     ATTESTATION_COORDINATOR_ABI,
     DUTCH_AUCTION_ABI,
     CLAUSE_REGISTRY_ABI,
-    BATCH_VERIFIER_ABI,
+    
     ERC20_ABI,
 } from "@figaro/core";
 

@@ -1,7 +1,7 @@
 import { TextareaHTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/shared/utils";
 
-export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
     hasError?: boolean;
     errorId?: string;
 }

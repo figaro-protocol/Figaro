@@ -6,7 +6,7 @@ import {
 } from "@/lib/shared/handoffPersistenceService";
 
 export type { HandoffKeyRecord };
-export { HANDOFF_KEY_STORAGE_KEY };
+;
 
 function resolveHandoffPersistenceService(options?: { service?: HandoffPersistenceService }) {
     return options?.service ?? DEFAULT_HANDOFF_PERSISTENCE_SERVICE;

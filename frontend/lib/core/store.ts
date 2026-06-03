@@ -35,7 +35,7 @@ export interface Order {
     resolvedAt?: number;
 }
 
-export interface ProcessInfo {
+interface ProcessInfo {
     id: string; // bytes32
     orderHashes: string[];
     buyer: string;

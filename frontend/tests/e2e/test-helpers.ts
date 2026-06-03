@@ -3,7 +3,7 @@ import { canonicalizeAgreement, computeAgreementHash, type Agreement, type Agree
 import { ZERO_ADDRESS } from '../../lib/shared/evm';
 import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from '../anvilAccounts';
 
-export { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN };
+export { ANVIL_ACCOUNTS,  };
 
 async function clickWithRetry(locator: Locator, attempts = 5): Promise<void> {
     let lastError: unknown;
@@ -102,7 +102,7 @@ async function waitForApprovalState(page: Page, scopeTestId?: string, timeout = 
     }
 }
 
-export async function waitForApproved(page: Page, scopeTestId?: string, timeout = 30000): Promise<void> {
+async function waitForApproved(page: Page, scopeTestId?: string, timeout = 30000): Promise<void> {
     const statusSelector = selectorWithinScope(scopeTestId);
     await page.waitForFunction(
         (selector: string) => document.querySelector(selector)?.textContent?.includes('Authorized') ?? false,
@@ -112,7 +112,7 @@ export async function waitForApproved(page: Page, scopeTestId?: string, timeout 
 }
 
 
-export async function approveIfNeeded(page: Page, scopeTestId?: string): Promise<void> {
+async function approveIfNeeded(page: Page, scopeTestId?: string): Promise<void> {
     await waitForApprovalState(page, scopeTestId);
     const scope = scopeTestId ? page.getByTestId(scopeTestId) : page;
     const approvalStatus = scope.getByTestId('approval-status');

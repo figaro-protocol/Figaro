@@ -48,7 +48,7 @@ import type { PublicClient } from "viem";
  * Linted against the matching `RESOLVE_GAS_PER_ORDER` constant in
  * the Foundry test; either side moves, the other must move too.
  */
-export const RESOLVE_GAS_PER_ORDER = 14_000n;
+const RESOLVE_GAS_PER_ORDER = 14_000n;
 
 /**
  * Per-order cost of one `commit()` call. Empirical from
@@ -59,7 +59,7 @@ export const RESOLVE_GAS_PER_ORDER = 14_000n;
  * Linted against the matching `COMMIT_GAS_PER_ORDER` constant in the
  * Foundry test.
  */
-export const COMMIT_GAS_PER_ORDER = 224_000n;
+const COMMIT_GAS_PER_ORDER = 224_000n;
 
 /**
  * Fixed per-call overhead of `resolveProcess` independent of order count:
@@ -68,7 +68,7 @@ export const COMMIT_GAS_PER_ORDER = 224_000n;
  * value is closer to 30k on a fresh process; 50k absorbs cold-state cost
  * variance + per-token state-overwrite overhead.
  */
-export const RESOLVE_FIXED_OVERHEAD = 50_000n;
+const RESOLVE_FIXED_OVERHEAD = 50_000n;
 
 /**
  * Headroom factor (×100, integer) applied to ceiling computations. 95
@@ -78,7 +78,7 @@ export const RESOLVE_FIXED_OVERHEAD = 50_000n;
  * purpose: paying off-by-one is cheap; an unsubmittable transaction is
  * expensive in user trust.
  */
-export const GAS_HEADROOM_PCT = 95n;
+const GAS_HEADROOM_PCT = 95n;
 
 // ── Public API ────────────────────────────────────────────────────────
 

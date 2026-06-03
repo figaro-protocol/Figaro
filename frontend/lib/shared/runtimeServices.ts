@@ -12,7 +12,7 @@ import type { TokenConversionService } from "@/lib/shared/tokenConversion";
 import { DEFAULT_TOKEN_CONVERSION_SERVICE } from "@/lib/shared/tokenConversion";
 
 /** The 6 service slots a runtime carries. */
-export type RuntimeServiceKey =
+type RuntimeServiceKey =
     | "catalogue"
     | "discovery"
     | "evidenceTransport"
@@ -29,9 +29,9 @@ export interface RuntimeServices {
     tokenConversion: TokenConversionService;
 }
 
-export type RuntimeServiceProviderKeys = Record<RuntimeServiceKey, string>;
+type RuntimeServiceProviderKeys = Record<RuntimeServiceKey, string>;
 
-export const DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS: Record<RuntimeServiceKey, string> = {
+const DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS: Record<RuntimeServiceKey, string> = {
     catalogue: "default-catalogue",
     discovery: "default-discovery",
     evidenceTransport: "default-ipfs",
@@ -66,7 +66,7 @@ function createRuntimeServiceProviderRegistry(): RuntimeServiceProviderRegistry 
 
 const runtimeServiceProviderRegistry = createRuntimeServiceProviderRegistry();
 
-export function registerRuntimeServiceProvider<K extends RuntimeServiceKey>(
+function registerRuntimeServiceProvider<K extends RuntimeServiceKey>(
     serviceKey: K,
     providerKey: string,
     service: RuntimeServices[K],

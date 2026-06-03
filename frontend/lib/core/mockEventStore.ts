@@ -70,7 +70,7 @@ export function mockGetOrders(): Order[] {
 }
 
 /** Reset all state. */
-export function mockClear(): void {
+function mockClear(): void {
     _orders = [];
     notify();
 }

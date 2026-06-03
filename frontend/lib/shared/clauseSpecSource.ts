@@ -203,7 +203,7 @@ export function clauseTier(clauseId: string): ClauseTier {
     return getClauseSpec(clauseId)?.block?.tier === "category-1" ? "runtime" : "designer-time";
 }
 
-export interface ClauseArticleEntry {
+interface ClauseArticleEntry {
     clauseId: string;
     title: string;
     description: string;

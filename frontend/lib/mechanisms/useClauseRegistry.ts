@@ -62,7 +62,7 @@ function getHashToNameMap(): Map<string, string> {
 
 /** Lookup the human-readable clauseId for a given on-chain hash, or null
  *  if the hash isn't one of the bundled specs. */
-export function resolveClauseName(clauseIdHash: `0x${string}`): string | null {
+function resolveClauseName(clauseIdHash: `0x${string}`): string | null {
     return getHashToNameMap().get(clauseIdHash.toLowerCase()) ?? null;
 }
 
@@ -204,6 +204,6 @@ export function useAllRegisteredClauses() {
 }
 
 /** Test-only — reset the lazy hash→name cache. Not exported from the index. */
-export function _resetClauseNameCache_TESTING_ONLY(): void {
+function _resetClauseNameCache_TESTING_ONLY(): void {
     HASH_TO_NAME = null;
 }

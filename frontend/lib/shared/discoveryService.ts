@@ -16,7 +16,7 @@ function isSafeImageURI(uri: string): boolean {
     return /^(https?:\/\/|ipfs:\/\/|\/ipfs\/)/i.test(uri);
 }
 
-export interface DiscoveryResult {
+interface DiscoveryResult {
     catalogues: SellerCatalogue[];
     source: { ipfs: number; mock: number };
 }
@@ -197,4 +197,4 @@ export function createDiscoveryService(
 
 export const DEFAULT_DISCOVERY_SERVICE: DiscoveryService = createDiscoveryService();
 
-export { profileToCatalogue };
+;

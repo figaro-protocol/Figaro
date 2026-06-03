@@ -7,7 +7,7 @@ import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 
 
 
-export interface AgreementCommitmentMeta {
+interface AgreementCommitmentMeta {
     agreement?: Agreement;
     agreementUri?: string;
 }

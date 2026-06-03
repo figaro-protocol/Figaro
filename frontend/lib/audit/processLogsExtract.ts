@@ -26,7 +26,7 @@ import {
     MERCHANT_PROCESS_CLAUSE_KEY,
 } from "@/lib/core/agreement";
 
-export interface ProcessLogEntry {
+interface ProcessLogEntry {
     clauseKey: string;
     /** Order whose buyer/seller emitted the event. */
     attester: string;

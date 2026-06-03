@@ -274,7 +274,7 @@ export async function getAllSellerRegistered(client: PublicClient, chainId: numb
     );
 }
 
-export async function getAllSellerProfileUpdated(client: PublicClient, chainId: number) {
+async function getAllSellerProfileUpdated(client: PublicClient, chainId: number) {
     if (!MECHANISM_CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
     return cachedGetLogsMulti(client, chainId,
         [MECHANISM_CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
@@ -282,7 +282,7 @@ export async function getAllSellerProfileUpdated(client: PublicClient, chainId: 
     );
 }
 
-export async function getAllSellerWithdrawn(client: PublicClient, chainId: number) {
+async function getAllSellerWithdrawn(client: PublicClient, chainId: number) {
     if (!MECHANISM_CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
     return cachedGetLogsMulti(client, chainId,
         [MECHANISM_CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
@@ -486,13 +486,13 @@ export async function getRpgfMinterClaimStatus(
 // ---------------------------------------------------------------------------
 
 /** Value an seller transacted as a seller, summed per currency. */
-export interface TrackRecordValue {
+interface TrackRecordValue {
     currency: string;
     total: bigint;
 }
 
 /** Attestations an seller emitted, grouped by clauseId. */
-export interface TrackRecordAttestations {
+interface TrackRecordAttestations {
     clauseId: string;
     count: number;
 }

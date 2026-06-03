@@ -14,7 +14,7 @@ import { hexEqual } from "@/lib/shared/evm";
  * so the card can display assembly badges and the click-through can pick
  * the primary.
  */
-export type FulfillmentMode =
+type FulfillmentMode =
     | "consume-onsite"
     | "pickup"
     | "virtual"
@@ -22,12 +22,12 @@ export type FulfillmentMode =
     | "deliver:seller-assigned"
     | "deliver:dutch-auction";
 
-export interface ListingBinding {
+interface ListingBinding {
     /** Slug of the assembly this binding targets (e.g. "local-commerce"). */
     assemblySlug: string;
 }
 
-export interface ListingServiceArea {
+interface ListingServiceArea {
     geohashPrefix: string;
     label?: string;
 }

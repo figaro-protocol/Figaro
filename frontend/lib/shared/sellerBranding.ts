@@ -21,7 +21,7 @@ import { createUriFetcher } from "@/lib/shared/uriFetcher";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface SellerAssets {
+interface SellerAssets {
     imageBaseURI?: string;
 }
 
@@ -38,7 +38,7 @@ export interface ResolvedSellerBranding {
 
 // ── Fetch + parse ─────────────────────────────────────────────────────────────
 
-export function resolveSellerBrandingDocument(input: {
+function resolveSellerBrandingDocument(input: {
     name?: string;
     branding?: Partial<SellerBrandingMetadata> | null;
     assets?: Partial<SellerAssets> | null;

@@ -31,7 +31,7 @@ import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import type { ExtractedDocument } from "./types";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-export type HashAnchorKind =
+type HashAnchorKind =
     | "agreement-root"
     | "agreement-section-leaf"
     | "attestation-content-ref"
@@ -39,7 +39,7 @@ export type HashAnchorKind =
     | "order-hash"
     | "process-id";
 
-export interface HashAnchor {
+interface HashAnchor {
     kind: HashAnchorKind;
     /** Display label for the appendix table row. */
     label: string;

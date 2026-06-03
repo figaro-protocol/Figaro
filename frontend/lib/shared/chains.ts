@@ -22,7 +22,7 @@ export const localAnvil = defineChain({
 
 // Re-export wagmi's built-in hardhat chain unchanged.
 export const hardhat = _hardhat;
-export { baseSepolia };
+;
 
 /**
  * Active chain selection — controlled by NEXT_PUBLIC_CHAIN env var.

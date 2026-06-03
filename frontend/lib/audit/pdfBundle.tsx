@@ -1242,7 +1242,7 @@ function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] 
 
 // ── Top-level Document ──────────────────────────────────────────────────────
 
-export interface AuditBundlePdfData {
+interface AuditBundlePdfData {
     /** Process id this bundle covers. */
     processId: string;
     /** Buyer address (root buyer of the process), if known. */
@@ -1261,6 +1261,9 @@ export interface AuditBundlePdfData {
     generatedAt: Date;
 }
 
+/** @public — consumed via namespace access (`import * as pdfBundle` →
+ *  `pdfBundle.AuditBundlePdf` in auditBundlePdf.ts), which knip can't resolve
+ *  statically. Real consumer; do not remove. */
 export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
     return (
         <Document

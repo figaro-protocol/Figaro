@@ -223,7 +223,7 @@ export async function getCoordinationChannel(
 }
 
 /** Remove a cached channel (e.g. on wallet disconnect). */
-export function destroyCoordinationChannel(address: string): void {
+function destroyCoordinationChannel(address: string): void {
     const key = address.toLowerCase();
     const ch = channelCache.get(key);
     if (ch) {

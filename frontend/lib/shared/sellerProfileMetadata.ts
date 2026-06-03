@@ -53,7 +53,7 @@ export interface SellerAssetReferences {
 }
 
 /** Geographic anchor for the seller. */
-export interface SellerLocation {
+interface SellerLocation {
     geohash: string;
     addressText?: string;
 }
@@ -183,7 +183,7 @@ function parseCounterpartyBindingArray(value: unknown, path: string): Counterpar
     });
 }
 
-export function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution binding"): AssemblyBindingRecord {
+function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution binding"): AssemblyBindingRecord {
     const record = asRecord(value, sourceLabel);
     return {
         bindingId: asString(record.bindingId, `${sourceLabel}.bindingId`),

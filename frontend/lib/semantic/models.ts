@@ -1,28 +1,28 @@
 /** Semantic-model union types — the runtime semantic layer's canonical
  *  taxonomy for truth class, mechanism risk, scope, and roles. */
 
-export type TruthClass =
+type TruthClass =
     | "protocol-enforced"
     | "protocol-derived"
     | "assembly-declared"
     | "indexer-derived"
     | "ui-local";
 
-export type MechanismRiskClass =
+type MechanismRiskClass =
     | "read-only-inherited"
     | "low-risk-coordinator"
     | "medium-risk-extension"
     | "high-risk-economic";
 
-export type ScopeType = "assembly" | "process" | "order" | "mechanism";
+type ScopeType = "assembly" | "process" | "order" | "mechanism";
 
-export interface SemanticSource {
+interface SemanticSource {
     truthClass: TruthClass;
     sourceLabel: string;
     referenceId?: string;
 }
 
-export interface GuaranteeModel {
+interface GuaranteeModel {
     id: string;
     mechanismId: string;
     label: string;
@@ -31,7 +31,7 @@ export interface GuaranteeModel {
     source: SemanticSource;
 }
 
-export interface RiskBoundaryModel {
+interface RiskBoundaryModel {
     id: string;
     mechanismId: string;
     riskClass: MechanismRiskClass;
@@ -43,41 +43,41 @@ export interface RiskBoundaryModel {
     failureModes: string[];
 }
 
-export interface ResolveProcessCapabilityAction {
+interface ResolveProcessCapabilityAction {
     executionType: "transaction";
     kind: "resolve-process";
     processId: string;
 }
 
-export interface OpenSubOrderComposerCapabilityAction {
+interface OpenSubOrderComposerCapabilityAction {
     executionType: "runtime";
     kind: "open-sub-order-composer";
     parentOrderIds: string[];
     currency?: `0x${string}`;
 }
 
-export interface RegisterSellerCapabilityAction {
+interface RegisterSellerCapabilityAction {
     executionType: "transaction";
     kind: "register-seller";
 }
 
-export interface UpdateSellerProfileCapabilityAction {
+interface UpdateSellerProfileCapabilityAction {
     executionType: "transaction";
     kind: "update-seller-profile";
 }
 
-export interface WithdrawSellerDepositCapabilityAction {
+interface WithdrawSellerDepositCapabilityAction {
     executionType: "transaction";
     kind: "withdraw-seller-deposit";
 }
 
-export interface SubmitDisclosureCommitmentCapabilityAction {
+interface SubmitDisclosureCommitmentCapabilityAction {
     executionType: "transaction";
     kind: "submit-disclosure-commitment";
     orderHash: string;
 }
 
-export interface SubmitDisclosureInventoryCapabilityAction {
+interface SubmitDisclosureInventoryCapabilityAction {
     executionType: "transaction";
     kind: "submit-disclosure-inventory";
     orderHash: string;
@@ -112,7 +112,7 @@ export type CourierProximityProofEventKind = Extract<
     "arrived-pickup" | "arrived-dropoff"
 >;
 
-export interface SubmitMerchantProcessSignalCapabilityAction {
+interface SubmitMerchantProcessSignalCapabilityAction {
     executionType: "transaction";
     kind: "submit-merchant-process-signal";
     orderHash: string;
@@ -120,7 +120,7 @@ export interface SubmitMerchantProcessSignalCapabilityAction {
     roleOrderHash?: string;
 }
 
-export interface SubmitCourierProcessSignalCapabilityAction {
+interface SubmitCourierProcessSignalCapabilityAction {
     executionType: "transaction";
     kind: "submit-courier-process-signal";
     orderHash: string;
@@ -134,7 +134,7 @@ export interface SubmitCourierProcessSignalCapabilityAction {
  *  carried on the descriptor (read from the agreement by the builder) so the
  *  generic renderer needs no per-action input; the executor mints the
  *  nonce + device-signature placeholder and assembles the proof. */
-export interface SubmitCourierProcessSignalWithProofCapabilityAction {
+interface SubmitCourierProcessSignalWithProofCapabilityAction {
     executionType: "transaction";
     kind: "submit-courier-process-signal-with-proof";
     orderHash: string;
@@ -147,7 +147,7 @@ export interface SubmitCourierProcessSignalWithProofCapabilityAction {
  *  against whichever order carries the proximity policy (the seller's own
  *  order on a pickup/on-site handoff, or a downstream sub-order the merchant
  *  cross-witnesses). Band carried on the descriptor, as above. */
-export interface SubmitMerchantProcessSignalWithProofCapabilityAction {
+interface SubmitMerchantProcessSignalWithProofCapabilityAction {
     executionType: "transaction";
     kind: "submit-merchant-process-signal-with-proof";
     orderHash: string;
@@ -160,21 +160,21 @@ export interface SubmitMerchantProcessSignalWithProofCapabilityAction {
  *  intermediary). The buyer co-signs `figaro-proximity-proof-v1` against the
  *  root order; there is no buyer process clause per the kernel-participant
  *  principle, so this is the one runtime witness the buyer attests. */
-export interface SubmitBuyerProximityProofCapabilityAction {
+interface SubmitBuyerProximityProofCapabilityAction {
     executionType: "transaction";
     kind: "submit-buyer-proximity-proof";
     orderHash: string;
     band: number;
 }
 
-export interface ClaimAuctionCapabilityAction {
+interface ClaimAuctionCapabilityAction {
     executionType: "transaction";
     kind: "claim-auction";
     auctionId: string;
 }
 
 
-export interface ClaimAirdropCapabilityAction {
+interface ClaimAirdropCapabilityAction {
     executionType: "transaction";
     kind: "claim-airdrop";
     amount: bigint;
@@ -184,13 +184,13 @@ export interface ClaimAirdropCapabilityAction {
 /** FIG-token vesting tranches with separate claim curves. */
 export type VestingVariant = "founder" | "ecosystem";
 
-export interface ClaimVestingCapabilityAction {
+interface ClaimVestingCapabilityAction {
     executionType: "transaction";
     kind: "claim-vesting";
     variant: VestingVariant;
 }
 
-export interface PrototypeCapabilityAction {
+interface PrototypeCapabilityAction {
     executionType: "prototype";
     kind: string;
 }
@@ -213,63 +213,63 @@ export type CapabilityActionDescriptor =
     | ClaimVestingCapabilityAction
     | PrototypeCapabilityAction;
 
-export type CapabilityModelWithAction<T extends CapabilityActionDescriptor> = CapabilityModel & {
+type CapabilityModelWithAction<T extends CapabilityActionDescriptor> = CapabilityModel & {
     action: T;
 };
 
-export function isClaimAuctionCapability(
+function isClaimAuctionCapability(
     capability: CapabilityModel,
 ): capability is CapabilityModelWithAction<ClaimAuctionCapabilityAction> {
     return capability.action.executionType === "transaction" && capability.action.kind === "claim-auction";
 }
 
-export function isMerchantProcessSignalCapability(
+function isMerchantProcessSignalCapability(
     capability: CapabilityModel,
 ): capability is CapabilityModelWithAction<SubmitMerchantProcessSignalCapabilityAction> {
     return capability.action.executionType === "transaction"
         && capability.action.kind === "submit-merchant-process-signal";
 }
 
-export function isCourierProcessSignalCapability(
+function isCourierProcessSignalCapability(
     capability: CapabilityModel,
 ): capability is CapabilityModelWithAction<SubmitCourierProcessSignalCapabilityAction> {
     return capability.action.executionType === "transaction"
         && capability.action.kind === "submit-courier-process-signal";
 }
 
-export function isDisclosureCommitmentCapability(
+function isDisclosureCommitmentCapability(
     capability: CapabilityModel,
 ): capability is CapabilityModelWithAction<SubmitDisclosureCommitmentCapabilityAction> {
     return capability.action.executionType === "transaction"
         && capability.action.kind === "submit-disclosure-commitment";
 }
 
-export function isDisclosureInventoryCapability(
+function isDisclosureInventoryCapability(
     capability: CapabilityModel,
 ): capability is CapabilityModelWithAction<SubmitDisclosureInventoryCapabilityAction> {
     return capability.action.executionType === "transaction"
         && capability.action.kind === "submit-disclosure-inventory";
 }
 
-export interface RegisterSellerCapabilityInput {
+interface RegisterSellerCapabilityInput {
     kind: "register-seller";
     metadataURI?: string;
 }
 
-export interface UpdateSellerProfileCapabilityInput {
+interface UpdateSellerProfileCapabilityInput {
     kind: "update-seller-profile";
     metadataURI?: string;
 }
 
-export interface WithdrawSellerDepositCapabilityInput {
+interface WithdrawSellerDepositCapabilityInput {
     kind: "withdraw-seller-deposit";
 }
 
-export interface SubmitDisclosureCommitmentCapabilityInput {
+interface SubmitDisclosureCommitmentCapabilityInput {
     kind: "submit-disclosure-commitment";
 }
 
-export interface SubmitDisclosureInventoryCapabilityInput {
+interface SubmitDisclosureInventoryCapabilityInput {
     kind: "submit-disclosure-inventory";
     grams: bigint;
 }
@@ -325,7 +325,7 @@ export interface EconomicBreakdownModel {
     downstreamReferencedAmount?: EconomicBreakdownValue;
 }
 
-export interface MechanismModel {
+interface MechanismModel {
     id: string;
     kind: string;
     name: string;
@@ -386,7 +386,7 @@ export interface ProcessModel {
     downstreamLinks: string[];
 }
 
-export interface AssemblyModel {
+interface AssemblyModel {
     id: string;
     name: string;
     slug: string;

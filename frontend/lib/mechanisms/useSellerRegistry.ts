@@ -32,7 +32,7 @@ const registry = getSellerRegistry();
  * JSON. Re-exported under the historical name; new code should import
  * `SellerAgentServices` from `sellerProfileMetadata`.
  */
-export type AgentServices = SellerAgentServices;
+type AgentServices = SellerAgentServices;
 
 export type { AgentServiceInfo };
 
@@ -254,7 +254,7 @@ export function useDepositLockPeriod() {
  * agent service endpoints if present. Returns { isAgent: false } for
  * human-operated participants (no services key in metadata).
  */
-export function useAgentServices(address: `0x${string}` | undefined) {
+function useAgentServices(address: `0x${string}` | undefined) {
     const client = usePublicClient();
     const chainId = useChainId();
     const [data, setData] = useState<AgentServiceInfo | undefined>(undefined);

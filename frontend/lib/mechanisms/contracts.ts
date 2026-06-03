@@ -88,7 +88,7 @@ function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
     return addr && addr.length === 42 ? addr : null;
 }
 
-export function getDutchAuction(): `0x${string}` | null {
+function getDutchAuction(): `0x${string}` | null {
     return resolveAddress(MECHANISM_CONTRACTS.dutchAuction);
 }
 

@@ -48,7 +48,7 @@ const CLAUSE_TITLE: Record<string, string> = {
     "figaro-courier-process-v1": "Courier process — sovereign event log",
 };
 
-export interface ContractClause {
+interface ContractClause {
     /** Clause key (e.g. "figaro-commerce-v1"). */
     clauseKey: string;
     /** Human-readable title. */

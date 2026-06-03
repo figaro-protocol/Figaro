@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { Page, expect } from '@playwright/test';
 export {
-    approveIfNeeded,
-    waitForApproved,
+    
+    
     waitForWalletConnected,
 } from './test-helpers';
 import {
@@ -227,20 +227,20 @@ function agreementReceipt(commitment: CoreCommitment, clauseKey: string) {
 // `figaro-ghg-measurement-v1` (Category-1, runtime-only); specs assert on
 // attestation existence and associated order hash.
 
-export type SeededGhgScenario = {
+type SeededGhgScenario = {
     clauseId: `0x${string}`;
     processId: `0x${string}`;
     rootOrderHash: `0x${string}`;
     supplierOrderHash: `0x${string}`;
 };
 
-export type SeededSupersededGhgScenario = SeededGhgScenario;
+type SeededSupersededGhgScenario = SeededGhgScenario;
 
-export type SeededClosedCompleteGhgScenario = SeededGhgScenario;
+type SeededClosedCompleteGhgScenario = SeededGhgScenario;
 
-export type SeededUnreportedProcessScenario = SeededGhgScenario;
+type SeededUnreportedProcessScenario = SeededGhgScenario;
 
-export type SeededDeliveryScenario = {
+type SeededDeliveryScenario = {
     processId: `0x${string}`;
     foodOrderHash: `0x${string}`;
     deliveryOrderHash: `0x${string}`;
@@ -538,7 +538,7 @@ async function ensureGhgClause(clauseRegistryAddress: `0x${string}`, signerKey: 
     return GHG_CLAUSE_ID;
 }
 
-export async function seedGhgDisclosureScenario(): Promise<SeededGhgScenario> {
+async function seedGhgDisclosureScenario(): Promise<SeededGhgScenario> {
     const localConfig = readLocalDeploymentConfig();
     const coreAddress = resolve('NEXT_PUBLIC_FIGARO_CORE', localConfig.figaroCore)!;
     const tokenAddress = resolve('NEXT_PUBLIC_TOKEN_ADDRESS', localConfig.tokenAddress)!;
@@ -604,7 +604,7 @@ const DUTCH_AUCTION_TEST_ABI = parseAbi([
     'event AuctionClaimed(bytes32 indexed auctionId, address indexed driver, uint256 clearingPrice)',
 ]);
 
-export async function seedDeliveryScenario(): Promise<SeededDeliveryScenario> {
+async function seedDeliveryScenario(): Promise<SeededDeliveryScenario> {
     const localConfig = readLocalDeploymentConfig();
     const coreAddress = resolve('NEXT_PUBLIC_FIGARO_CORE', localConfig.figaroCore)!;
     const tokenAddress = resolve('NEXT_PUBLIC_TOKEN_ADDRESS', localConfig.tokenAddress)!;
@@ -662,7 +662,7 @@ const COURIER_SIGNAL_TO_EVENT: Record<string, { stage: number; eventType: 'en-ro
 };
 
 
-export async function restaurantPrepSignals(foodOrderHash: `0x${string}`, _deliveryOrderHash: `0x${string}`): Promise<void> {
+async function restaurantPrepSignals(foodOrderHash: `0x${string}`, _deliveryOrderHash: `0x${string}`): Promise<void> {
     const localConfig = readLocalDeploymentConfig();
     const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator)!;
     if (!coordinatorAddress) throw new Error('Missing NEXT_PUBLIC_ATTESTATION_COORDINATOR');
@@ -744,7 +744,7 @@ const COORDINATOR_ABI_WITH_PROXIMITY_ERRORS = [
  *
  * Returns the AttestationCoordinator tx hash.
  */
-export async function attestProximityProofAsSeller(opts: {
+async function attestProximityProofAsSeller(opts: {
     orderHash: `0x${string}`;
     sellerKey: `0x${string}`;
     band: ProximityBand;
@@ -808,7 +808,7 @@ export { proximityHandoffAgreement };
  * The order's committed agreement must contain a `figaro-ghg-iso-14064-v1`
  * section — true for every order seeded via `ghgDisclosureAgreement(...)`.
  */
-export async function attestGhgAsBuyer(
+async function attestGhgAsBuyer(
     orderHash: `0x${string}`,
     stage: 0 | 1 | 2 | 3 = DISCLOSURE_KIND.verification,
 ): Promise<`0x${string}`> {
@@ -1161,7 +1161,7 @@ function resolveIpfsURI(uri: string): string {
  * canonical authoring UI (here the seller-registration wizard) produces
  * the artifact; the seed replays it; the spec guards the two stay in sync.
  */
-export async function captureOrGuardSellerCatalogue(sellerAddress: string): Promise<void> {
+async function captureOrGuardSellerCatalogue(sellerAddress: string): Promise<void> {
     const config = readLocalDeploymentConfig();
     const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
         ?? config.sellerRegistry) as `0x${string}` | undefined;

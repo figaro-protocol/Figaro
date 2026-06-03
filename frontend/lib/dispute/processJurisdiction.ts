@@ -34,7 +34,7 @@ export interface KlerosRecourse {
 }
 
 /** A traditional (state / ADR) recourse path authored in a clause. */
-export interface TraditionalRecourse {
+interface TraditionalRecourse {
     kind: "traditional";
     applicableLaw: string;
     forum?: string;

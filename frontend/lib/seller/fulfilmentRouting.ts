@@ -22,7 +22,7 @@ const FULFILMENT_TO_HANDOFF: Record<CanonicalFulfilmentMethod, string> = {
     "deliver:dutch-auction": "face-to-face",
 };
 
-export function mapFulfilmentToHandoff(method: CanonicalFulfilmentMethod): string {
+function mapFulfilmentToHandoff(method: CanonicalFulfilmentMethod): string {
     return FULFILMENT_TO_HANDOFF[method];
 }
 
@@ -35,7 +35,7 @@ export function mapFulfilmentToHandoff(method: CanonicalFulfilmentMethod): strin
  * Returning a string-literal union keeps callers honest if a new
  * topology assembly is added later.
  */
-export function mapFulfilmentToAssemblySlug(
+function mapFulfilmentToAssemblySlug(
     method: CanonicalFulfilmentMethod,
 ): "direct-sale" | "local-commerce" {
     if (method === "consume-onsite" || method === "pickup" || method === "virtual") return "direct-sale";

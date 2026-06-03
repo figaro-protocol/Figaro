@@ -12,7 +12,7 @@ export interface PermitSignature {
     data: `0x${string}`;
 }
 
-export function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress: `0x${string}`; owner?: `0x${string}` | undefined; spender: `0x${string}` }) {
+function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress: `0x${string}`; owner?: `0x${string}` | undefined; spender: `0x${string}` }) {
     const chainId = useChainId();
 
     const { data: allowance, refetch: refetchAllowance } = useReadContract({

@@ -212,7 +212,7 @@ export interface AcceptedTokenMetadata {
  * templates, each seller composes their own capability set by declaring which
  * clauses they operate under. The buyer reads this to know what to expect.
  */
-export interface SupportedClauseDeclaration {
+interface SupportedClauseDeclaration {
     /** Clause key — must match a registered clause in ClauseRegistry.
      *  e.g. "figaro-ghg-iso-14064-v1" */
     clauseKey: string;

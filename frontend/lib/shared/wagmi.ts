@@ -17,7 +17,7 @@ import {
 } from "./devShims";
 
 // Re-export chain primitives so existing imports from this module keep working.
-export { localAnvil, hardhat, activeChain, chains };
+export {   activeChain,  };
 // localAnvil (id=31337) supersedes the standalone hardhat export for local dev.
 
 // ---------------------------------------------------------------------------
@@ -57,7 +57,6 @@ export const config = createConfig({
     multiInjectedProviderDiscovery: true,
 });
 
-export default config;
 
 // ---------------------------------------------------------------------------
 // Browser-only dev/test shims — call as side effects on module load.

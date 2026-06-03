@@ -35,7 +35,7 @@ import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { DELIVERY_LIFECYCLE_STAGES, type ExtractedDocument } from "./types";
 
-export interface BolStageReceipt {
+interface BolStageReceipt {
     stageId: number;
     stageName: string;
     /** True when an attestation that maps to this BoL stage has landed. */

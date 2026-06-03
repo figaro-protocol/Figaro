@@ -40,7 +40,7 @@ import {
 } from "@/lib/mechanisms/offsetAggregators";
 import { useProcessDisclosureSummary } from "@/lib/mechanisms/useGHGDisclosure";
 
-export type OffsetRetirementStatus =
+type OffsetRetirementStatus =
     | "idle"
     | "no-measurements"
     | "wrong-chain"

@@ -39,7 +39,7 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 /** Canonical method strings used by single-selection consumers (canvas edge
  *  pill, cart, swap-mechanism flow). Each value collapses a v2 (modality,
  *  coordination) pair to a single string. */
-export const CANONICAL_FULFILMENT_METHODS_LIST = [
+const CANONICAL_FULFILMENT_METHODS_LIST = [
     "consume-onsite",
     "pickup",
     "virtual",

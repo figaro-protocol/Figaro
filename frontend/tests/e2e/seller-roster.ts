@@ -29,7 +29,7 @@
  * See memory: project_mainnet_test_pipeline, feedback_all_tests_mainnet_compliant.
  */
 
-export interface SellerProductSpec {
+interface SellerProductSpec {
     name: string;
     /** Decimal-string price in the default token. */
     price: string;

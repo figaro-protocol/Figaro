@@ -29,7 +29,7 @@ export const TEST_HELPERS_ENABLED = ((): boolean => {
     return false;
 })();
 
-export interface PendingPermitState {
+interface PendingPermitState {
     target: string;
     data: string;
 }
@@ -55,4 +55,3 @@ export function getMockFn<T = (...args: unknown[]) => unknown>(name: string): T 
     }
 }
 
-export default TEST_HELPERS_ENABLED;
