@@ -11,7 +11,6 @@
         "knip": "knip",
         "knip:files": "knip --include files",
         "ipfs:scaffold": "node scripts/pin-operator-fixtures.mjs",
-        "seed:devnet": "node scripts/seed-devnet.mjs",
         "test": "vitest",
         "test:ui": "vitest --ui",
         "test:coverage": "vitest --coverage",
@@ -19,7 +18,7 @@
         "test:e2e:ui": "playwright test --ui",
         "test:e2e:report": "playwright show-report",
         "test:e2e:mobile": "playwright test --project=mobile",
-        "test:e2e:devnet": "node scripts/verify-devnet-deployment.mjs && node scripts/seed-devnet.mjs && playwright test --project=devnet --workers=1",
+        "test:e2e:devnet": "node scripts/verify-devnet-deployment.mjs && playwright test --project=devnet --workers=1",
         "test:e2e:metamask": "cross-env METAMASK_EXTENSION_PATH=./playwright/extensions/metamask ANVIL_PRIVATE_KEY=$ANVIL_PRIVATE_KEY npx playwright test playwright/tests/connect-with-metamask.spec.ts --project=chromium"
     },
     "dependencies": {

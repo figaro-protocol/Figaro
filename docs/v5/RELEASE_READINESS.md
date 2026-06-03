@@ -78,13 +78,20 @@ Either way: reflect the chosen disposition in `docs/v5/CONTRACTS.md` and `CLAUDE
 
 ### Task 5: Launch Scenario — Assembly Seeding Decision
 
-`frontend/scripts/seed-devnet.mjs` currently registers all 6 captured manifests in `frontend/scripts/fixtures/`: `direct-sale`, `local-commerce`, `local-commerce-buyer-assigned`, `local-commerce-dutch`, `local-commerce-offset`, and `local-commerce-pickup`. `script/DeployMainnet.s.sol` currently seeds no assemblies. Assemblies are permissionless, so no-seed is a valid choice for either surface.
+**Decided (2026-06-03): no pre-seeding on either surface.** The devnet seeder
+`frontend/scripts/seed-devnet.mjs` was **deleted** — the devnet no longer
+direct-call-registers assemblies or sellers. Both devnet and mainnet now rely on
+permissionless on-chain publication: assemblies are authored through the designer
+UI (the `scenario-*` specs) and sellers onboarded through the registration wizard
+(`sellers-onboarding`, driven by `SELLER_ROSTER`), exactly as a real participant
+would — no seed path diverges from the mainnet path. `script/DeployMainnet.s.sol`
+seeds no assemblies. Assemblies are permissionless, so no-seed is the chosen
+disposition for both surfaces. The per-scenario migration off the old seeded
+fixtures is tracked in `frontend/tests/e2e/SCENARIOS.md`.
 
-Required output:
+Remaining output:
 
-1. devnet seed list — confirmed: all 6 captured manifests ship with `seed-devnet.mjs`; remaining decision is whether any should be dropped (none flagged)
-2. mainnet seed list — decide whether `DeployMainnet.s.sol` seeds any assemblies at launch; record the disposition. If Task 4 disposition (2) is taken, the mainnet half collapses to n/a (no `AssemblyRegistry` deployed)
-3. reasoning recorded inline at the seed-call site (devnet) and in `DeployMainnet.s.sol` (mainnet) — why these and not others
+1. mainnet seed list — `DeployMainnet.s.sol` seeds no assemblies at launch (recorded). If Task 4 disposition (2) is taken, the mainnet half collapses to n/a (no `AssemblyRegistry` deployed)
 
 ## Validation Commands
 

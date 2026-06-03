@@ -179,11 +179,16 @@ The walk is identical for every scenario — only the topology + design-time
 
 | Scenario | Phase 1 (authoring) spec | Phase 4 (runtime) spec |
 |---|---|---|
-| `direct-sale` | `scenario-direct-sale` | `onsite-purchase` |
-| `kiosk-sale` | (to author) | (to author) |
+| `direct-sale` | `scenario-direct-sale` | `direct-sale-runtime` |
+| `kiosk-sale` | `scenario-kiosk-sale` | `kiosk-sale-runtime` |
 | `local-commerce` | (to re-author) | `local-commerce-scenario` |
 | `local-commerce-buyer-assigned` | (to re-author) | `buyer-assigned-checkout` |
 | `local-commerce-dutch` | (to re-author) | `dutch-auction-checkout` |
 | `local-commerce-offset` | (to re-author) | `local-commerce-offset-scenario` |
 | `local-commerce-pickup` | (to re-author) | `local-commerce-pickup-runtime` |
 | `local-food-basket` | (to author) | (to author) |
+
+`onsite-purchase` is the **legacy** direct-sale runtime, run against the *seeded*
+Counter & Co. (anvil[5], `scripts/seed-devnet.mjs`); `direct-sale-runtime` is its
+mainnet-compliant replacement, run against the roster-onboarded Aurora Café
+(anvil[6]). `onsite-purchase` retires when `seed-devnet.mjs` does.
