@@ -2,3 +2,7 @@ npx lint-staged
 bash scripts/lint-claude-md.sh
 bash scripts/lint-clause-counts.sh
 bash scripts/lint-chain-gas.sh
+# Dead-code guard: knip fails the commit on any orphaned frontend file (no
+# importer). The tool is the source of truth for what's dead — not prose, not
+# memory. ~5s; ignores in frontend/knip.json. Expand to exports after Tier-2.
+( cd frontend && npx knip --include files --no-progress )

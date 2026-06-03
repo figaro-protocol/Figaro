@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [
+    "scripts/regen-assembly-document-hashes.mjs",
+    "tests/e2e/fixtures/inject-ethereum-multi.js",
+    "hooks/core/useClauseValidator.ts"
+  ]
+}
