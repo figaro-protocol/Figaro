@@ -58,7 +58,6 @@ import { getCommonTokens } from "@/lib/shared/commonTokens";
 import { useChainId, usePublicClient } from "wagmi";
 import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
-import { COURIER_PROCESS_CLAUSE_KEY, FULFILMENT_V2_CLAUSE_KEY, MERCHANT_PROCESS_CLAUSE_KEY } from "@/lib/core/agreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
 
 export type DesignerSeed =
@@ -316,82 +315,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             setOrders((prev) => [...prev, sub.order]);
         },
         [atOrderCapacity, maxOrders, orders, session],
-    );
-
-    const autoAddedCourierByParentRef = useRef<Map<string, string>>(new Map());
-
-    const handleDeliverySelected = useCallback(
-        (parentOrderId: string) => {
-            const parent = orders.find((o) => o.id === parentOrderId);
-            if (!parent) return;
-            if (atOrderCapacity) {
-                setMergeNotice(
-                    `This chain settles at most ${maxOrders} orders in one atomic resolveProcess — remove a node before adding a delivery courier.`,
-                );
-                setTimeout(() => setMergeNotice(null), 5000);
-                return;
-            }
-            const hasAnyChild = orders.some((o) => {
-                const summary = summarizeAgreement(loadAgreement(o.agreementHash));
-                return summary?.topology?.parentOrderHashes.includes(parentOrderId) ?? false;
-            });
-            if (hasAnyChild) return;
-            const sub = createSyntheticSubOrder(session, parent, {
-                [COURIER_PROCESS_CLAUSE_KEY]: {},
-            });
-            autoAddedCourierByParentRef.current.set(parentOrderId, sub.order.id);
-            setOrders((prev) => [...prev, sub.order]);
-            // Materialize the delivery activations into the template
-            // (clausesByOrderId is the template source): merchant-process on the
-            // root order, courier-process on the courier order. buildOrderAgreement
-            // is a pure projection — these must live in the template, not be
-            // re-derived at checkout.
-            setClausesByOrderId((prev) => ({
-                ...prev,
-                [parentOrderId]: {
-                    ...(prev[parentOrderId] ?? {}),
-                    [MERCHANT_PROCESS_CLAUSE_KEY]: {},
-                },
-                [sub.order.id]: {
-                    ...(prev[sub.order.id] ?? {}),
-                    [COURIER_PROCESS_CLAUSE_KEY]: {},
-                },
-            }));
-        },
-        [atOrderCapacity, maxOrders, orders, session],
-    );
-
-    const handleDeliveryUnselected = useCallback(
-        (parentOrderId: string) => {
-            const trackedId = autoAddedCourierByParentRef.current.get(parentOrderId);
-            if (!trackedId) return;
-            const tracked = orders.find((o) => o.id === trackedId);
-            if (!tracked) {
-                autoAddedCourierByParentRef.current.delete(parentOrderId);
-                return;
-            }
-            const hasDescendant = orders.some((o) => {
-                if (o.id === trackedId) return false;
-                const summary = summarizeAgreement(loadAgreement(o.agreementHash));
-                return summary?.topology?.parentOrderHashes.includes(trackedId) ?? false;
-            });
-            autoAddedCourierByParentRef.current.delete(parentOrderId);
-            // The courier has its own descendants — keep it and its clauses.
-            if (hasDescendant) return;
-            if (selectedOrderId === trackedId) setSelectedOrderId(null);
-            setOrders((prev) => prev.filter((o) => o.id !== trackedId));
-            // Reverse the activation: drop the courier order's clauses and the
-            // merchant-process anchor delivery added to the root.
-            setClausesByOrderId((prev) => {
-                const next = { ...prev };
-                delete next[trackedId];
-                const root = { ...(next[parentOrderId] ?? {}) };
-                delete root[MERCHANT_PROCESS_CLAUSE_KEY];
-                next[parentOrderId] = root;
-                return next;
-            });
-        },
-        [orders, selectedOrderId],
     );
 
     const handleEditAgreement = useCallback((orderId: string, edits: AgreementEdits) => {
@@ -749,24 +672,10 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                         if (selectedOrderId) toggleClause(selectedOrderId, clauseId, next);
                     }}
                     onSetClauseField={(clauseId, field, value) => {
-                        if (!selectedOrderId) return;
-                        // Delivery activation is a CANVAS (topology) concern, not a
-                        // drawer one — the drawer stays clause-agnostic. When this
-                        // order's fulfilment modality becomes "delivery" it spawns the
-                        // courier sub-order (+ materializes merchant-process on the root
-                        // and courier-process on the courier into the template);
-                        // switching away reverses it. (This reconnects the previously
-                        // dead onDeliverySelected callback path.)
-                        const fulfil = clausesByOrderId[selectedOrderId]?.[FULFILMENT_V2_CLAUSE_KEY] as
-                            | { modalities?: string[] }
-                            | undefined;
-                        const wasDelivery = (fulfil?.modalities ?? []).includes("delivery");
-                        setClauseField(selectedOrderId, clauseId, field, value);
-                        if (clauseId === FULFILMENT_V2_CLAUSE_KEY && field === "modalities") {
-                            const isDelivery = Array.isArray(value) && (value as string[]).includes("delivery");
-                            if (isDelivery && !wasDelivery) handleDeliverySelected(selectedOrderId);
-                            else if (wasDelivery && !isDelivery) handleDeliveryUnselected(selectedOrderId);
-                        }
+                        // No clause selection spawns a node — the designer draws nodes
+                        // (grievance #3). There is no "delivery" activation; delivery is
+                        // a second order the designer draws, not a modality side-effect.
+                        if (selectedOrderId) setClauseField(selectedOrderId, clauseId, field, value);
                     }}
                     privilegedToken={privilegedToken}
                     onPrivilegedTokenChange={setPrivilegedToken}

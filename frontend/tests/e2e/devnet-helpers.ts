@@ -73,12 +73,6 @@ export const ERC20_BALANCE_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
 ]);
 
-/** AssemblyRegistry `AssemblyRegistered` event — authoring specs assert the
- *  published assembly is anchored on-chain (exactly once, by slugHash). */
-export const ASSEMBLY_REGISTERED_EVENT_ABI = parseAbi([
-    'event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)',
-]);
-
 /** Minimal Playwright hook surface — structural, so this file needs no import of
  *  the test object (avoids a cycle with devnet-multi-test). */
 interface PlaywrightLifecycleHooks {
