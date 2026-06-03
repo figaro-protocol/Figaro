@@ -14,6 +14,7 @@ import {
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import type { RuntimeAttestation } from "@/lib/core/indexer";
+import { clauseEnumOrdinal } from "@/lib/shared/clauseSpecSource";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import {
     AttachmentModel,
@@ -34,47 +35,42 @@ const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex(MERCHANT_PROCESS_CLAUSE
 const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex(COURIER_PROCESS_CLAUSE_KEY)).toLowerCase();
 const PROXIMITY_PROOF_CLAUSE_ID = keccak256(stringToHex(PROXIMITY_PROOF_CLAUSE_KEY)).toLowerCase();
 
-/** Merchant-process happy-path stages SURFACED at runtime. order-received(0)
- *  and accepted(1) are core — the bilateral commit IS the arrival + approval —
- *  so the runtime ladder begins at prep-started. Stage indices match the
- *  on-chain validator enum. */
-const MERCHANT_STAGE_BY_EVENT: Record<"prep-started" | "ready-for-pickup" | "handed-off", number> = {
-    "prep-started": 2,
-    "ready-for-pickup": 3,
-    "handed-off": 4,
-};
-const MERCHANT_HAPPY_PATH: ReadonlyArray<keyof typeof MERCHANT_STAGE_BY_EVENT> = [
+/** Merchant-process events SURFACED at runtime. order-received and accepted
+ *  are core — the bilateral commit IS the arrival + approval — so the runtime
+ *  ladder begins at prep-started. The on-chain stage of each is the clause's
+ *  own enum ordinal (read from the spec, never hardcoded). */
+type MerchantHappyEvent = "prep-started" | "ready-for-pickup" | "handed-off";
+const MERCHANT_HAPPY_PATH: ReadonlyArray<MerchantHappyEvent> = [
     "prep-started",
     "ready-for-pickup",
     "handed-off",
 ];
 
-/** figaro-proximity-policy-v1 band name → on-chain ProximityProof band index
- *  (validator rejects band 0). */
-const PROXIMITY_BAND_INDEX: Record<string, number> = {
-    "zone-wifi": 1,
-    "nearby-ble": 2,
-    "contact-nfc": 3,
-};
-const COURIER_ARRIVED_PICKUP_STAGE = 3;
-const COURIER_ARRIVED_DROPOFF_STAGE = 5;
+// Terminal merchant stages + the two courier handoff edges, as enum ordinals
+// read from the clause specs (the single source for on-chain enum indices).
+const MERCHANT_HANDED_OFF_STAGE = clauseEnumOrdinal(MERCHANT_PROCESS_CLAUSE_KEY, "handed-off");
+const MERCHANT_CANCELLED_STAGE = clauseEnumOrdinal(MERCHANT_PROCESS_CLAUSE_KEY, "cancelled");
+const COURIER_ARRIVED_PICKUP_STAGE = clauseEnumOrdinal(COURIER_PROCESS_CLAUSE_KEY, "arrived-pickup");
+const COURIER_ARRIVED_DROPOFF_STAGE = clauseEnumOrdinal(COURIER_PROCESS_CLAUSE_KEY, "arrived-dropoff");
 
 /** Next merchant-process event the seller can fire, from the stages already
- *  attested. Null once handed-off(4) or cancelled(5) is reached. */
-function nextMerchantEvent(seenStages: Set<number>): keyof typeof MERCHANT_STAGE_BY_EVENT | null {
-    if (seenStages.has(4) || seenStages.has(5)) return null;
+ *  attested. Null once handed-off or cancelled is reached. */
+function nextMerchantEvent(seenStages: Set<number>): MerchantHappyEvent | null {
+    if (seenStages.has(MERCHANT_HANDED_OFF_STAGE) || seenStages.has(MERCHANT_CANCELLED_STAGE)) return null;
     for (const event of MERCHANT_HAPPY_PATH) {
-        if (!seenStages.has(MERCHANT_STAGE_BY_EVENT[event])) return event;
+        if (!seenStages.has(clauseEnumOrdinal(MERCHANT_PROCESS_CLAUSE_KEY, event))) return event;
     }
     return null;
 }
 
 /** The committed proximity band index, read off an order's agreement
- *  figaro-proximity-policy-v1 section. Defaults to 1 (Zone/WiFi). */
+ *  figaro-proximity-policy-v1 section. The on-chain band is the proof clause's
+ *  enum ordinal + 1 (the validator rejects band 0 / "None"). Defaults to 1. */
 function committedBand(agreement: Agreement | undefined): number {
     if (!agreement) return 1;
     const bands = (getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY)?.data as { bands?: string[] } | undefined)?.bands ?? [];
-    return PROXIMITY_BAND_INDEX[bands[0] ?? ""] ?? 1;
+    const ordinal = clauseEnumOrdinal(PROXIMITY_PROOF_CLAUSE_KEY, bands[0] ?? "");
+    return ordinal >= 0 ? ordinal + 1 : 1;
 }
 
 /** The order whose committed figaro-proximity-policy-v1 a seller witnesses at

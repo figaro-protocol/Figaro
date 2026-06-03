@@ -45,7 +45,7 @@ export default function Clauses() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Registered clauses, by family.">
+            <MarketingSection title="Registered clauses, by article.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     The reference set spans assemblyDoc topology, commerce primitives, emissions accounting and offsets, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology-v1</code> &mdash; is assemblyDoc-only: committed at agreement signing, with no on-chain validator.
                 </p>
@@ -61,7 +61,7 @@ export default function Clauses() {
                     <li>Write the Solidity validator at <code>src/clauseValidators/Foo&lt;Clause&gt;V1Validator.sol</code> &mdash; ABI-decode content, revert with typed custom errors.</li>
                     <li>Write Foundry tests at <code>test/clauseValidators/</code> covering happy paths and every typed revert.</li>
                     <li>Mirror the validator in the Rust prover when Layer B is live (deferred).</li>
-                    <li>Register the clause in <code>clauseCategories.ts</code> &mdash; add it to <code>ALL_SPECS</code>, <code>CLAUSE_TIER_MAP</code>, and <code>CLAUSE_FAMILY_MAP</code>; the build fails if any assignment is missing. The designer drawer renders from that registry; the inventory above reads its set live from on-chain <code>ClauseRegistered</code> events and draws each title and family from it.</li>
+                    <li>Add the spec to <code>BUILT_IN_SPECS</code> in <code>clauseSpecSource.ts</code> (the import + <code>[raw, clauseId]</code> tuple) so the UI preloads it. Its tier and its article are read from the spec&apos;s <code>block.tier</code> and <code>block.drawerArticle</code> &mdash; no separate maps. The designer drawer groups by article; the inventory above reads its set live from on-chain <code>ClauseRegistered</code> events and draws each title and article from the spec.</li>
                     <li>
                         Wire <code>setValidator(clauseId, validator)</code> into <code>script/Deploy.s.sol</code> and <code>script/DeployMainnet.s.sol</code>; add a regression test in <code>test/DeployScriptTest.t.sol</code>. <strong>For third-party clauses registered post-deploy, use{" "}
                         <code>ClauseRegistrationHelper.registerClauseAndValidator(...)</code></strong>{" "}

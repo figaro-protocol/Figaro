@@ -14,6 +14,7 @@
  */
 
 import { parseClauseSpec, type ClauseSpec } from "@figaro/core/clauses";
+import { keccak256, stringToHex } from "viem";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import commerceSpecRaw from "@/lib/shared/clauses/figaro-commerce-v1.json";
 import consentSpecRaw from "@/lib/shared/clauses/figaro-consent-v1.json";
@@ -148,3 +149,97 @@ export function _resetClauseSpecCache_TESTING_ONLY(): void {
     SPEC_LOAD_ERRORS.clear();
     preloadAllBuiltIns();
 }
+
+// ── Spec-derived reads ───────────────────────────────────────────────────────
+// Everything a surface needs to know about a clause is READ FROM ITS SPEC here
+// — title, the article it's grouped under (block.drawerArticle), when it's
+// attested (block.tier), and its enum vocabulary. One spec source, no
+// hand-maintained parallel maps, no second taxonomy module.
+
+/** When a clause is attested. Derived from block.tier: category-1 ⇒ runtime
+ *  (attested during/after the process), everything else ⇒ designer-time. */
+export type ClauseTier = "designer-time" | "runtime";
+
+/** clauseId HASH (keccak256 of the clauseId string, as the on-chain Attestation
+ *  event carries it) → clauseId. The runtime attestation log keys on the hash. */
+const HASH_TO_ID: ReadonlyMap<string, string> = new Map(
+    BUILT_IN_SPECS.map(([, id]) => [keccak256(stringToHex(id)).toLowerCase(), id]),
+);
+
+/** The first enum vocabulary on a spec — the eventType ladder (merchant /
+ *  courier) or the band set (proximity). Looks through enum and enum-typed
+ *  array fields. */
+function firstEnumValues(spec: ClauseSpec | undefined): readonly string[] | undefined {
+    for (const field of spec?.fields ?? []) {
+        if (field.type === "enum") return field.values;
+        if (field.type === "array" && field.items.type === "enum") return field.items.values;
+    }
+    return undefined;
+}
+
+/** Display text for a runtime attestation, read STRAIGHT from the clause spec:
+ *  the title and the enum value at `stage`. Callers pass DATA (the event's
+ *  clauseId hash + uint8 stage) — no surface names a clause, no frontend label
+ *  map. Falls back to the short hash + stage when the clause is unknown. */
+export function describeAttestation(
+    clauseIdHash: string,
+    stage: number,
+): { clauseTitle: string; eventLabel: string } {
+    const id = HASH_TO_ID.get(clauseIdHash.toLowerCase());
+    const spec = id ? getClauseSpec(id) : undefined;
+    if (!spec) return { clauseTitle: `${clauseIdHash.slice(0, 10)}…`, eventLabel: `stage ${stage}` };
+    return { clauseTitle: spec.title, eventLabel: firstEnumValues(spec)?.[stage] ?? `stage ${stage}` };
+}
+
+/** The uint8 ordinal of an enum CODE in a clause's enum vocabulary — the
+ *  inverse of describeAttestation. The single source for on-chain enum indices,
+ *  so the frontend never hardcodes them. -1 if the code is unknown. */
+export function clauseEnumOrdinal(clauseId: string, code: string): number {
+    return firstEnumValues(getClauseSpec(clauseId))?.indexOf(code) ?? -1;
+}
+
+/** When a clause is attested, from block.tier. */
+export function clauseTier(clauseId: string): ClauseTier {
+    return getClauseSpec(clauseId)?.block?.tier === "category-1" ? "runtime" : "designer-time";
+}
+
+/** The clause's article — the ONE grouping axis — from block.drawerArticle.
+ *  Undefined for activation/runtime clauses with no drawer presence. */
+export function clauseArticle(clauseId: string): string | undefined {
+    return getClauseSpec(clauseId)?.block?.drawerArticle;
+}
+
+export interface ClauseArticleEntry {
+    clauseId: string;
+    title: string;
+    description: string;
+}
+
+export interface ClauseArticleGroup {
+    article: string;
+    label: string;
+    clauses: readonly ClauseArticleEntry[];
+}
+
+/** Every built-in clause grouped by its article, articles in stable
+ *  (alphabetical) order — derived entirely from the specs. Drives the
+ *  /clauses inventory and the GHG panel. A new clause JSON appears
+ *  automatically; clauses with no drawer article fall to "(unclassified)". */
+export const CLAUSES_BY_ARTICLE: readonly ClauseArticleGroup[] = (() => {
+    const byArticle = new Map<string, ClauseArticleEntry[]>();
+    for (const [, clauseId] of BUILT_IN_SPECS) {
+        const spec = getClauseSpec(clauseId);
+        if (!spec) continue;
+        const article = spec.block?.drawerArticle ?? "(unclassified)";
+        const entry = { clauseId, title: spec.title, description: spec.description };
+        const bucket = byArticle.get(article);
+        if (bucket) bucket.push(entry);
+        else byArticle.set(article, [entry]);
+    }
+    return Array.from(byArticle.keys())
+        .sort()
+        .map((article) => ({ article, label: article, clauses: byArticle.get(article)! }));
+})();
+
+/** Total built-in clause count. */
+export const CLAUSE_COUNT: number = BUILT_IN_SPECS.length;

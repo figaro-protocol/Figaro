@@ -33,7 +33,7 @@ import { CapabilityRail } from "@/components/core/CapabilityRail";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
 import { useSellerListings } from "@/lib/mechanisms/useSellerListings";
 import { findListingByAddress } from "@/lib/shared/sellerListing";
-import { describeAttestation } from "@/lib/shared/clauseCategories";
+import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { hexEqual, ZERO_ADDRESS } from "@/lib/shared/evm";
 

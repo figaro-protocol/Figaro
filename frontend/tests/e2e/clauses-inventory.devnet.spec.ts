@@ -4,9 +4,9 @@
  * Smoke for the marketing `/clauses` inventory. The page reads
  * `ClauseRegistry.ClauseRegistered` events through the standalone viem
  * `publicClient` and pairs each on-chain hash with its bundled content
- * (`clauseCategories.ts`) by `keccak256(clauseId)`. Render passes
- * through `ClauseInventory` (a client component embedded in the server
- * page).
+ * (`clauseSpecSource.ts`, grouped by article) by `keccak256(clauseId)`.
+ * Render passes through `ClauseInventory` (a client component embedded in
+ * the server page).
  *
  * Smoke, not a scenario: the navigation is the action, the rendered
  * inventory is the reaction. The failure mode it catches is the
@@ -20,7 +20,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Clauses marketing inventory (devnet)', () => {
-    test('renders the on-chain registered clause set, grouped by family', async ({ page }) => {
+    test('renders the on-chain registered clause set, grouped by article', async ({ page }) => {
         await page.goto('/clauses');
 
         // The count line is ClauseInventory's resolved-state proof.

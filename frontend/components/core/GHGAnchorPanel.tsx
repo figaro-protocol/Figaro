@@ -14,7 +14,7 @@ import {
 import { DISCLOSURE_KIND_LABELS } from "@/lib/mechanisms/contracts";
 import { GHG_CLAUSE_KEY } from "@/lib/core/agreement";
 import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
-import { CLAUSES_BY_FAMILY, CLAUSE_TIER_MAP } from "@/lib/shared/clauseCategories";
+import { CLAUSES_BY_ARTICLE, clauseTier } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function GHGAnchorPanel({ processId }: { processId: string }) {
@@ -22,17 +22,17 @@ export function GHGAnchorPanel({ processId }: { processId: string }) {
     const { data: registered } = useAllRegisteredClauses();
 
     // Live set of registered GHG disclosure clauses — intersection of the
-    // on-chain ClauseRegistry events with the bundled emissions family
-    // (designer-time tier excludes figaro-ghg-measurement-v1, which is
-    // runtime). Mirrors ClauseInventory's read-live + intersect pattern.
+    // on-chain ClauseRegistry events with the emissions article (designer-time
+    // tier excludes figaro-ghg-measurement-v1, which is runtime). Article +
+    // tier both read from the spec. Mirrors ClauseInventory's read-live pattern.
     const applicableStandards = useMemo(() => {
         if (registered === null) return [];
         const onChain = new Set(registered.map((e) => e.clauseIdHash.toLowerCase()));
-        const emissions = CLAUSES_BY_FAMILY.find((g) => g.family === "emissions");
+        const emissions = CLAUSES_BY_ARTICLE.find((g) => g.article === "emissions");
         if (!emissions) return [];
         return emissions.clauses.filter(
             (s) =>
-                CLAUSE_TIER_MAP[s.clauseId] === "designer-time" &&
+                clauseTier(s.clauseId) === "designer-time" &&
                 onChain.has(keccak256(toBytes(s.clauseId)).toLowerCase()),
         );
     }, [registered]);
