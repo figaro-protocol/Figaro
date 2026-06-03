@@ -169,6 +169,18 @@ Each protocol artifact family has its own anchoring primitive. Families are para
 
 When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE recommending an anchoring or registry-reuse choice. This applies to every agent operating in this repo.
 
+### Meaning lives in clauses + topology — never in a flat catch-all field
+
+The recurring, weeks-costly failure is modeling a concern as a stored value when it is **derived** from the graph. The canonical case: **there is no "fulfilment" field and no "delivery" checkbox.**
+
+- **Fulfilment modality is DERIVED, never stored.** on-site / pickup / delivery is read from topology + which clauses are present: a second, co-equal **buyer↔courier order** carrying `figaro-courier-process-v1` (+ proximity) IS delivery; a single node is on-site/pickup (tracked when it carries `merchant-process` + `proximity-policy`, bare when it does not). Do not add a modality field; do not add a checkbox that "spawns" a node.
+- **Coordination lives in the process clauses** — `merchant-process` on the merchant order, `courier-process` on the courier order — not in a fulfilment field.
+- **Coordination variants are separate assemblies.** seller-assigned / buyer-assigned / dutch-auction are distinct assemblies (composed at the assembly level, like proximity), not a stored field.
+- **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order). The courier order is not a sub-order *owned* by the merchant; the DAG parent edge is value-topology, not dominance.
+- **Clauses are a nestable hierarchy: article → clause → sub-clause → …** Articles = `block.drawerArticle` in the clause JSON (surfaced by the existing grouping component — do not rebuild it). Sub-clauses are logically placed (e.g. the proximity bands `zone-wifi`/`nearby-ble`/`contact-nfc` nest under `figaro-proximity-policy-v1`; the process clauses have none). **Add sub-clauses to the clause JSON spec, emit the event, and reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
+
+Full treatment + migration blast radius (retiring `figaro-fulfilment-v2` changes every scenario, incl. `direct-sale`/`kiosk-sale`) → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/v5/CLAUSES.md`.
+
 ### Dispute Resolution — Three Layers
 
 1. **MAD via asymmetric bonding** — economic self-enforcement
