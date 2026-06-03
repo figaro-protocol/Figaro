@@ -13,19 +13,16 @@
  * `clausesByOrderId` so re-opening the fork shows them.
  */
 
-import { saveAgreement } from "@/lib/core/agreementStore";
-import { buildOrderAgreement } from "@/lib/core/orderAgreement";
-import { computeAgreementHash } from "@/lib/core/agreement";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { AssemblyTemplate } from "./assemblyTemplate";
 import type { ClauseFields } from "@/lib/core/encoding";
 import type { DesignSnapshot } from "./syntheticDesignStore";
-import { Order, OrderState } from "@/lib/core/store";
-import { syntheticAddress } from "./syntheticProcess";
+import { Order } from "@/lib/core/store";
+import { buildSyntheticOrder, syntheticAddress } from "./syntheticProcess";
 
 /** 1.0 — display-only payment; the template itself carries none. */
 const DISPLAY_PAYMENT = 1_000_000_000_000_000_000n;
-const SYNTHETIC_PROCESS_ID = `0x${"00".repeat(32)}`;
+const SYNTHETIC_PROCESS_ID = `0x${"00".repeat(32)}` as `0x${string}`;
 
 /**
  * Reconstruct displayable orders from a template: each template order → a
@@ -34,40 +31,25 @@ const SYNTHETIC_PROCESS_ID = `0x${"00".repeat(32)}`;
  * `/view` resolver.
  */
 export function templateToOrders(template: AssemblyTemplate): Order[] {
-    return template.orders.map((to, i) => {
-        // The template is party-agnostic. For DISPLAY (fork / read-only /view)
-        // we reconstruct synthetic parties — one shared synthetic buyer
-        // (rootBuyer) + a distinct synthetic seller per order. Real parties bind
-        // at adoption/checkout, never from the template.
-        const buyer = syntheticAddress(0);
-        const seller = syntheticAddress(i + 1);
-        const agreement = buildOrderAgreement({
-            buyer,
-            seller,
+    // The template is party-agnostic. For DISPLAY (fork / read-only /view) we
+    // reconstruct synthetic parties — one shared synthetic buyer (rootBuyer) +
+    // a distinct synthetic seller per order. Real parties bind at
+    // adoption/checkout, never from the template. Per-order build→hash→save→
+    // assemble is the shared `buildSyntheticOrder`.
+    return template.orders.map((to, i) =>
+        buildSyntheticOrder({
+            orderId: to.id as `0x${string}`,
+            processId: SYNTHETIC_PROCESS_ID,
+            buyer: syntheticAddress(0),
+            seller: syntheticAddress(i + 1),
             currency: ZERO_ADDRESS,
             payment: DISPLAY_PAYMENT,
+            cumulativeValue: DISPLAY_PAYMENT * BigInt(i + 1),
+            salt: BigInt(i + 1),
             clauseFields: to.clauses as ClauseFields,
             parentOrderHashes: to.parentOrderIds,
-        });
-        const agreementHash = computeAgreementHash(agreement);
-        saveAgreement(agreement);
-        const cumulativeValue = DISPLAY_PAYMENT * BigInt(i + 1);
-        return {
-            id: to.id,
-            processId: SYNTHETIC_PROCESS_ID,
-            buyer,
-            seller,
-            currency: ZERO_ADDRESS,
-            agreementHash,
-            cumulativeValue,
-            payment: DISPLAY_PAYMENT,
-            state: OrderState.Active,
-            sellerBond: cumulativeValue * 2n,
-            buyerBond: DISPLAY_PAYMENT * 2n,
-            salt: BigInt(i + 1),
-            deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
-        };
-    });
+        }).order,
+    );
 }
 
 export function assemblyDocumentToDraft(

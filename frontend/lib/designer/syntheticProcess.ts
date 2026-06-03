@@ -96,6 +96,60 @@ const DEFAULT_NODE_MANIFEST_FIELDS: ClauseFields = {
     [ARBITRATION_KLEROS_CLAUSE_KEY]: { klerosCourt: "general", klerosMinJurors: "3" },
 };
 
+/**
+ * The single synthetic display-Order choreography: build the agreement from the
+ * order's clauses + DAG parents, hash it, persist it to the agreement store (so
+ * the canvas + topology derivation resolve it by hash), and assemble the display
+ * `Order` with the standard 2× bond derivations. Every synthetic-Order producer
+ * — the canvas node-spawn paths here and the template fork/`/view`
+ * reconstruction in `assemblyDocumentToDraft` — routes through this one builder.
+ *
+ * Deliberately NOT the real checkout path: `prepareOrderCommitment` produces a
+ * signed-able `Commitment` + IPFS pin from real parties and constructs no
+ * display `Order`. That is a different concern and stays separate.
+ */
+export function buildSyntheticOrder(params: {
+    orderId: `0x${string}`;
+    processId: `0x${string}`;
+    buyer: `0x${string}`;
+    seller: `0x${string}`;
+    currency: `0x${string}`;
+    payment: bigint;
+    cumulativeValue: bigint;
+    salt: bigint;
+    clauseFields: ClauseFields;
+    parentOrderHashes?: string[];
+}): CreatedOrder {
+    const agreement = buildOrderAgreement({
+        buyer: params.buyer,
+        seller: params.seller,
+        currency: params.currency,
+        payment: params.payment,
+        clauseFields: params.clauseFields,
+        ...(params.parentOrderHashes ? { parentOrderHashes: params.parentOrderHashes } : {}),
+    });
+    const agreementHash = computeAgreementHash(agreement);
+    saveAgreement(agreement);
+
+    const order: Order = {
+        id: params.orderId,
+        processId: params.processId,
+        buyer: params.buyer,
+        seller: params.seller,
+        currency: params.currency,
+        agreementHash,
+        cumulativeValue: params.cumulativeValue,
+        payment: params.payment,
+        state: OrderState.Active,
+        sellerBond: params.cumulativeValue * 2n,
+        buyerBond: params.payment * 2n,
+        salt: params.salt,
+        deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+    };
+
+    return { order, agreementHash };
+}
+
 export function createSyntheticRootOrder(
     session: SyntheticProcessSession,
     /** Per-root assemblyDoc overrides. Merged onto DEFAULT_NODE_MANIFEST_FIELDS.
@@ -105,42 +159,19 @@ export function createSyntheticRootOrder(
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
-
-    const buyer = session.buyerAddress;
-    const seller = syntheticAddress(sellerIndex);
-    const currency = ZERO_ADDRESS;
     const payment = 1_000_000_000_000_000_000n; // 1.0
-    const cumulativeValue = payment;
 
-    const agreement = buildOrderAgreement({
-        buyer,
-        seller,
-        currency,
+    return buildSyntheticOrder({
+        orderId: syntheticBytes32(`order${orderIndex}${session.processId.slice(2, 8)}`),
+        processId: session.processId,
+        buyer: session.buyerAddress,
+        seller: syntheticAddress(sellerIndex),
+        currency: ZERO_ADDRESS,
         payment,
+        cumulativeValue: payment,
+        salt: BigInt(orderIndex + 1),
         clauseFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...assemblyDocumentOverrides },
     });
-    const agreementHash = computeAgreementHash(agreement);
-    saveAgreement(agreement);
-
-    const orderId = syntheticBytes32(`order${orderIndex}${session.processId.slice(2, 8)}`);
-
-    const order: Order = {
-        id: orderId,
-        processId: session.processId,
-        buyer,
-        seller,
-        currency,
-        agreementHash,
-        cumulativeValue,
-        payment,
-        state: OrderState.Active,
-        sellerBond: cumulativeValue * 2n,
-        buyerBond: payment * 2n,
-        salt: BigInt(orderIndex + 1),
-        deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
-    };
-
-    return { order, agreementHash };
 }
 
 export function createSyntheticSubOrder(
@@ -154,43 +185,21 @@ export function createSyntheticSubOrder(
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
-
-    const buyer = session.buyerAddress;
-    const seller = syntheticAddress(sellerIndex);
     const currency = (parent.currency ?? ZERO_ADDRESS) as `0x${string}`;
     const payment = parent.payment / 2n > 0n ? parent.payment / 2n : 1n;
-    const cumulativeValue = parent.cumulativeValue + payment;
 
-    const agreement = buildOrderAgreement({
-        buyer,
-        seller,
+    return buildSyntheticOrder({
+        orderId: syntheticBytes32(`order${orderIndex}${session.processId.slice(2, 8)}`),
+        processId: session.processId,
+        buyer: session.buyerAddress,
+        seller: syntheticAddress(sellerIndex),
         currency,
         payment,
+        cumulativeValue: parent.cumulativeValue + payment,
+        salt: BigInt(orderIndex + 1),
         clauseFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...assemblyDocumentOverrides },
         parentOrderHashes: [parent.id],
     });
-    const agreementHash = computeAgreementHash(agreement);
-    saveAgreement(agreement);
-
-    const orderId = syntheticBytes32(`order${orderIndex}${session.processId.slice(2, 8)}`);
-
-    const order: Order = {
-        id: orderId,
-        processId: session.processId,
-        buyer,
-        seller,
-        currency,
-        agreementHash,
-        cumulativeValue,
-        payment,
-        state: OrderState.Active,
-        sellerBond: cumulativeValue * 2n,
-        buyerBond: payment * 2n,
-        salt: BigInt(orderIndex + 1),
-        deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
-    };
-
-    return { order, agreementHash };
 }
 
 /**
