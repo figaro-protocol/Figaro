@@ -203,12 +203,6 @@ export function clauseTier(clauseId: string): ClauseTier {
     return getClauseSpec(clauseId)?.block?.tier === "category-1" ? "runtime" : "designer-time";
 }
 
-/** The clause's article — the ONE grouping axis — from block.drawerArticle.
- *  Undefined for activation/runtime clauses with no drawer presence. */
-export function clauseArticle(clauseId: string): string | undefined {
-    return getClauseSpec(clauseId)?.block?.drawerArticle;
-}
-
 export interface ClauseArticleEntry {
     clauseId: string;
     title: string;
@@ -240,6 +234,3 @@ export const CLAUSES_BY_ARTICLE: readonly ClauseArticleGroup[] = (() => {
         .sort()
         .map((article) => ({ article, label: article, clauses: byArticle.get(article)! }));
 })();
-
-/** Total built-in clause count. */
-export const CLAUSE_COUNT: number = BUILT_IN_SPECS.length;
