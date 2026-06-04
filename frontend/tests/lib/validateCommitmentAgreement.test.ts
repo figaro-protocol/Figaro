@@ -24,7 +24,7 @@ function agreement(sections: AgreementSection[]): Agreement {
 describe("validateCommitmentAgreement (Layer A, pre-commit)", () => {
     it("passes a valid agreement when the hash matches the content", () => {
         const a = agreement([
-            { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["consume-onsite"], handoffPoints: ["face-to-face"] } },
+            { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["delivery"], delivery: { coordination: ["seller-assigned"] }, handoff: ["face-to-face"] } },
         ]);
         const result = validateCommitmentAgreement(a, computeAgreementHash(a));
         expect(result.ok).toBe(true);

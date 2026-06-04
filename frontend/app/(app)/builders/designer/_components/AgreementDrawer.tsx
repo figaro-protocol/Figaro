@@ -25,7 +25,7 @@ import type { AgreementEdits } from "@/lib/designer/syntheticProcess";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/mechanisms/useClauseRegistry";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, clauseNestsUnder } from "@/lib/shared/clauseSpecSource";
 import type { FieldSpec } from "@figaro/core/clauses";
 
 /**
@@ -43,6 +43,11 @@ const ARTICLE_ORDER: readonly string[] = [
     "consent",
     "dispute-resolution",
 ];
+
+// Articles NOT surfaced as toggles on the registry tab: identity (topology)
+// and order (commerce) are defaults — always present, never toggled; logistics
+// (geo) is captured at runtime, not chosen here.
+const HIDDEN_ARTICLES: ReadonlySet<string> = new Set(["identity", "order", "logistics"]);
 
 interface Props {
     /** Currently-selected order. May be null in `embedded` mode (renders an
@@ -92,7 +97,6 @@ export function AgreementDrawer({
     privilegedToken,
     onPrivilegedTokenChange,
     commonTokens,
-    templateJson,
 }: Props) {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [tokenChecked, setTokenChecked] = useState(false);
@@ -149,10 +153,12 @@ export function AgreementDrawer({
         const extras = [...byArticle.keys()]
             .filter((a) => !ARTICLE_ORDER.includes(a))
             .sort();
-        return [...ordered, ...extras].map((article) => ({
-            article,
-            entries: byArticle.get(article)!,
-        }));
+        return [...ordered, ...extras]
+            .filter((article) => !HIDDEN_ARTICLES.has(article))
+            .map((article) => ({
+                article,
+                entries: byArticle.get(article)!,
+            }));
     }, [registeredClauses, onPrivilegedTokenChange]);
 
     // Auto-open Parties on each new order.
@@ -379,9 +385,11 @@ export function AgreementDrawer({
                     {openSection === "registry" && (
                         <section data-testid="drawer-section-registry">
                             <p className="text-[11px] text-neutral-500 mb-3">
-                                Clauses registered on{" "}
-                                <code className="font-mono">ClauseRegistry</code>, read live
-                                from the network.
+                                Compose this order&rsquo;s terms. Check a clause to add it &mdash;
+                                the list is read live from the on-chain{" "}
+                                <code className="font-mono">ClauseRegistry</code>. Process clauses
+                                (like, Merchant, Courier) activate as a whole; their events are
+                                attested at runtime as the work happens for coordination.
                             </p>
                             {registeredClauses === null ? (
                                 <p
@@ -405,49 +413,20 @@ export function AgreementDrawer({
                                                 {group.article}
                                             </p>
                                             <ul className="space-y-2">
-                                                {group.entries.map((clause, i) => {
-                                                    const clauseKey = clause.clauseName ?? clause.clauseIdHash;
-                                                    const selected = selectedClauseValues
-                                                        ? clauseKey in selectedClauseValues
-                                                        : false;
-                                                    const values = selectedClauseValues?.[clauseKey] ?? {};
-                                                    const spec = clause.clauseName ? getClauseSpec(clause.clauseName) : undefined;
-                                                    return (
+                                                {group.entries
+                                                    .filter((clause) => !(clause.clauseName && clauseNestsUnder(clause.clauseName)))
+                                                    .map((clause, i) => (
                                                         <li key={`${clause.clauseIdHash}-${i}`}>
-                                                            <label className="flex items-center gap-2 text-xs text-neutral-700">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="h-3.5 w-3.5"
-                                                                    checked={selected}
-                                                                    onChange={(e) => onToggleClause?.(clauseKey, e.target.checked)}
-                                                                    data-testid={`drawer-registry-clause-${clauseKey}`}
-                                                                />
-                                                                <span
-                                                                    className={`text-xs text-neutral-800${spec?.description ? " cursor-help" : ""}`}
-                                                                    title={spec?.description}
-                                                                >
-                                                                    {spec?.title ??
-                                                                        clause.clauseName ??
-                                                                        `${clause.clauseIdHash.slice(0, 10)}…`}
-                                                                </span>
-                                                            </label>
-                                                            {selected && spec && spec.fields.length > 0 && (
-                                                                <div className="ml-6 mt-2 space-y-3">
-                                                                    {spec.fields.map((field) => (
-                                                                        <ClauseFieldControl
-                                                                            key={field.name}
-                                                                            field={field}
-                                                                            value={values[field.name]}
-                                                                            onChange={(v) => onSetClauseField?.(clauseKey, field.name, v)}
-                                                                            testId={`drawer-field-${clauseKey}-${field.name}`}
-                                                                        />
-                                                                    ))}
-                                                                </div>
-                                                            )}
+                                                            <ClauseControl
+                                                                clause={clause}
+                                                                registeredClauses={registeredClauses}
+                                                                selectedClauseValues={selectedClauseValues}
+                                                                onToggleClause={onToggleClause}
+                                                                onSetClauseField={onSetClauseField}
+                                                            />
                                                         </li>
-                                                    );
-                                                })}
-                                                {group.article === "consent" && onPrivilegedTokenChange && (
+                                                    ))}
+                                                {group.article === "consent" && onPrivilegedTokenChange && (commonTokens?.length ?? 0) > 0 && (
                                                     <li>
                                                         <label className="flex items-center gap-2 text-xs text-neutral-700">
                                                             <input
@@ -490,19 +469,6 @@ export function AgreementDrawer({
                                     ))}
                                 </div>
                             )}
-                            {templateJson && (
-                                <div className="mt-6 border-t border-neutral-200 pt-4">
-                                    <p className="text-[11px] font-semibold text-neutral-700 mb-2">
-                                        Assembly template (live)
-                                    </p>
-                                    <pre
-                                        data-testid="drawer-registry-template-json"
-                                        className="text-[10px] font-mono text-neutral-600 bg-neutral-50 border border-neutral-200 rounded p-2 overflow-x-auto whitespace-pre"
-                                    >
-                                        {templateJson}
-                                    </pre>
-                                </div>
-                            )}
                         </section>
                     )}
 
@@ -511,6 +477,104 @@ export function AgreementDrawer({
             </div>
             </>)}
         </aside>
+    );
+}
+
+/**
+ * One registered clause on the registry tab: a checkbox to compose it onto the
+ * order, plus its design-time fields when selected (category-1 process clauses
+ * toggle whole — no fields). Under any field, renders the clauses that declare
+ * `block.nestsUnder === <that field's name>` (read from the spec, never
+ * hardcoded) — e.g. proximity-policy nested under the fulfilment clause's
+ * `handoff` field. Recurses, so a nested clause can host deeper nesting.
+ */
+function ClauseControl({
+    clause,
+    registeredClauses,
+    selectedClauseValues,
+    onToggleClause,
+    onSetClauseField,
+}: {
+    clause: RegisteredClauseEvent;
+    registeredClauses: ReadonlyArray<RegisteredClauseEvent> | null | undefined;
+    selectedClauseValues?: Record<string, Record<string, unknown>>;
+    onToggleClause?: (clauseKey: string, next: boolean) => void;
+    onSetClauseField?: (clauseKey: string, field: string, value: unknown) => void;
+}) {
+    const clauseKey = clause.clauseName ?? clause.clauseIdHash;
+    const selected = selectedClauseValues ? clauseKey in selectedClauseValues : false;
+    const values = selectedClauseValues?.[clauseKey] ?? {};
+    const spec = clause.clauseName ? getClauseSpec(clause.clauseName) : undefined;
+    return (
+        <div>
+            <label className="flex items-center gap-2 text-xs text-neutral-700">
+                <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5"
+                    checked={selected}
+                    onChange={(e) => onToggleClause?.(clauseKey, e.target.checked)}
+                    data-testid={`drawer-registry-clause-${clauseKey}`}
+                />
+                <span
+                    className={`text-xs text-neutral-800${spec?.description ? " cursor-help" : ""}`}
+                    title={spec?.description}
+                >
+                    {spec?.title ?? clause.clauseName ?? `${clause.clauseIdHash.slice(0, 10)}…`}
+                </span>
+            </label>
+            {selected && spec && spec.fields.length > 0 && spec.block?.tier !== "category-1" && (
+                <div className="ml-6 mt-2 space-y-3">
+                    {spec.fields
+                        .filter((field) => {
+                            // Gate an object sub-clause on a sibling enum field
+                            // that offers its name as a value (e.g. `delivery`
+                            // shows only when `modalities` has "delivery"
+                            // selected). Read from the spec — never hardcoded.
+                            if (field.type !== "object") return true;
+                            const gate = spec.fields.find(
+                                (f) =>
+                                    f.type === "array"
+                                    && f.items.type === "enum"
+                                    && f.items.values.includes(field.name),
+                            );
+                            if (!gate) return true;
+                            const picked = values[gate.name];
+                            return Array.isArray(picked) && picked.includes(field.name);
+                        })
+                        .map((field) => {
+                            const nested = (registeredClauses ?? []).filter(
+                                (c) => c.clauseName != null && clauseNestsUnder(c.clauseName) === field.name,
+                            );
+                            return (
+                                <div key={field.name}>
+                                    <ClauseFieldControl
+                                        field={field}
+                                        value={values[field.name]}
+                                        onChange={(v) => onSetClauseField?.(clauseKey, field.name, v)}
+                                        testId={`drawer-field-${clauseKey}-${field.name}`}
+                                        hideLabel={field.name.toLowerCase() === (spec.title ?? "").toLowerCase()}
+                                    />
+                                    {nested.map((nc) => (
+                                        <div
+                                            key={nc.clauseIdHash}
+                                            className="mt-2 ml-3 border-l border-neutral-200 pl-3"
+                                            data-testid={`drawer-nested-${field.name}-${nc.clauseName ?? nc.clauseIdHash}`}
+                                        >
+                                            <ClauseControl
+                                                clause={nc}
+                                                registeredClauses={registeredClauses}
+                                                selectedClauseValues={selectedClauseValues}
+                                                onToggleClause={onToggleClause}
+                                                onSetClauseField={onSetClauseField}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -525,13 +589,17 @@ function ClauseFieldControl({
     value,
     onChange,
     testId,
+    hideLabel = false,
 }: {
     field: FieldSpec;
     value: unknown;
     onChange: (next: unknown) => void;
     testId: string;
+    /** Suppress the field's own name label when it duplicates the clause title
+     *  (e.g. the `modalities` field inside the "Modalities" clause). */
+    hideLabel?: boolean;
 }) {
-    const label = (
+    const label = hideLabel ? null : (
         <span
             className={`text-[11px] text-neutral-500${field.description ? " cursor-help" : ""}`}
             title={field.description}
@@ -544,7 +612,7 @@ function ClauseFieldControl({
         const selected = typeof value === "string" ? value : undefined;
         return (
             <div data-testid={`${testId}-group`}>
-                <div className="mb-1">{label}</div>
+                {label && <div className="mb-1">{label}</div>}
                 <div className="space-y-1">
                     {field.values.map((opt) => (
                         <label key={opt} className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
@@ -572,7 +640,7 @@ function ClauseFieldControl({
         const options = field.items.values;
         return (
             <div data-testid={`${testId}-group`}>
-                <div className="mb-1">{label}</div>
+                {label && <div className="mb-1">{label}</div>}
                 <div className="space-y-1">
                     {options.map((opt) => (
                         <label key={opt} className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
@@ -607,11 +675,42 @@ function ClauseFieldControl({
         );
     }
 
+    // An object field is a sub-clause: render its child fields recursively,
+    // reading the tree from the spec (never hardcoded). This is how delivery's
+    // coordination + handoff sub-clauses, and handoff's proximity, surface.
+    if (field.type === "object") {
+        const obj =
+            value && typeof value === "object" && !Array.isArray(value)
+                ? (value as Record<string, unknown>)
+                : {};
+        return (
+            <div data-testid={`${testId}-object`}>
+                {label && <div className="mb-1">{label}</div>}
+                <div className="space-y-2 border-l border-neutral-200 pl-3">
+                    {field.fields.map((child) => (
+                        <ClauseFieldControl
+                            key={child.name}
+                            field={child}
+                            value={obj[child.name]}
+                            onChange={(next) => {
+                                const nextObj = { ...obj };
+                                if (next === undefined) delete nextObj[child.name];
+                                else nextObj[child.name] = next;
+                                onChange(Object.keys(nextObj).length ? nextObj : undefined);
+                            }}
+                            testId={`${testId}-${child.name}`}
+                        />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     // Everything else is a free-form / structured value, not a bounded design
-    // choice. The designer does NOT type it here — a fill-in field is exactly
-    // what turns the template into a checkout hash. It's captured downstream by
-    // a mounted component at checkout/runtime. Surface it as deferred, not
-    // fillable.
+    // choice (e.g. array-of-object commerce line-items). The designer does NOT
+    // type it here — a fill-in field is exactly what turns the template into a
+    // checkout hash. It's captured downstream by a mounted component at
+    // checkout/runtime. Surface it as deferred, not fillable.
     return (
         <div className="text-[11px] text-neutral-400 italic" data-testid={`${testId}-deferred`}>
             {field.name} — provided at checkout

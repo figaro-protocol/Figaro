@@ -349,9 +349,9 @@ export function requiredCounterpartyClauses(template: AssemblyTemplate): string[
 
     function coordinationsOf(order: AssemblyTemplate["orders"][number] | undefined): string[] {
         const fulfilment = order?.clauses[FULFILMENT_V2_CLAUSE_KEY] as
-            | { coordinations?: unknown }
+            | { delivery?: { coordination?: unknown } }
             | undefined;
-        const coords = fulfilment?.coordinations;
+        const coords = fulfilment?.delivery?.coordination;
         return Array.isArray(coords) ? coords.filter((c): c is string => typeof c === "string") : [];
     }
 
@@ -546,11 +546,13 @@ function extractRootFulfilment(
     const rootOrder =
         template.orders.find((o) => o.parentOrderIds.length === 0) ?? template.orders[0];
     const data = rootOrder?.clauses[FULFILMENT_V2_CLAUSE_KEY] as
-        | { modalities?: unknown; coordinations?: unknown }
+        | { modalities?: unknown; delivery?: { coordination?: unknown } }
         | undefined;
+    // coordination is a sub-clause under delivery (the clause JSON).
+    const coordination = data?.delivery?.coordination;
     return {
         modalities: Array.isArray(data?.modalities) ? (data!.modalities as string[]) : [],
-        coordinations: Array.isArray(data?.coordinations) ? (data!.coordinations as string[]) : [],
+        coordinations: Array.isArray(coordination) ? (coordination as string[]) : [],
     };
 }
 

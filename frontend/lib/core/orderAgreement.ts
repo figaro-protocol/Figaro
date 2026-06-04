@@ -203,19 +203,26 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         );
     }
 
-    // Fulfilment — spec-named already; project with the coordination default.
+    // Fulfilment — the buyer's request. Coordination + handoff are sub-clauses
+    // under delivery, matching the clause JSON. Handoff's next sub-clause,
+    // proximity, is the separate figaro-proximity-policy-v1 section below.
     const fulfilment = cf[FULFILMENT_V2_CLAUSE_KEY];
     const modalities = arrOf(fulfilment?.modalities).filter((m) => ALLOWED_MODALITIES.includes(m));
     if (modalities.length > 0) {
         const data: Record<string, unknown> = { modalities };
-        // The validator requires coordinations non-empty IFF delivery is
-        // offered; default to "seller-assigned" when unset.
+        // The validator requires coordination non-empty IFF delivery is the
+        // request; default to "seller-assigned" when unset.
         if (modalities.includes("delivery")) {
-            const coords = arrOf(fulfilment?.coordinations).filter((c) => ALLOWED_COORDINATIONS.includes(c));
-            data.coordinations = coords.length > 0 ? coords : ["seller-assigned"];
+            const deliveryIn = (fulfilment?.delivery ?? {}) as Record<string, unknown>;
+            const coords = arrOf(deliveryIn.coordination).filter((c) => ALLOWED_COORDINATIONS.includes(c));
+            data.delivery = {
+                coordination: coords.length > 0 ? coords : ["seller-assigned"],
+            };
         }
-        const handoffs = arrOf(fulfilment?.handoffPoints).filter((h) => ALLOWED_HANDOFF_POINTS.includes(h));
-        if (handoffs.length > 0) data.handoffPoints = handoffs;
+        // Handoff applies to any physical exchange (on-site / pickup / delivery).
+        // Flat array-of-enum (the clause JSON), single-select in the drawer.
+        const handoff = arrOf(fulfilment?.handoff).filter((h) => ALLOWED_HANDOFF_POINTS.includes(h));
+        if (handoff.length > 0) data.handoff = handoff;
         sections.push({ clause: FULFILMENT_V2_CLAUSE_KEY, data });
     }
 
@@ -382,23 +389,27 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
             : undefined,
         fulfilment: fulfilmentSection
             ? (() => {
-                const modalities = Array.isArray(fulfilmentSection.data.modalities)
-                    ? fulfilmentSection.data.modalities as readonly string[]
+                const data = fulfilmentSection.data as Record<string, unknown>;
+                const modalities = Array.isArray(data.modalities)
+                    ? data.modalities as readonly string[]
                     : [];
-                const coordinations = Array.isArray(fulfilmentSection.data.coordinations)
-                    ? fulfilmentSection.data.coordinations as readonly string[]
+                // coordination is a sub-clause under delivery; handoff is a
+                // top-level sub-clause (any physical exchange).
+                const delivery = (data.delivery ?? {}) as Record<string, unknown>;
+                const coordinations = Array.isArray(delivery.coordination)
+                    ? delivery.coordination as readonly string[]
                     : [];
-                const handoffPoints = Array.isArray(fulfilmentSection.data.handoffPoints)
-                    ? fulfilmentSection.data.handoffPoints as readonly string[]
+                const handoffPoints = Array.isArray(data.handoff)
+                    ? data.handoff as readonly string[]
                     : [];
                 const method = deriveCanonicalFulfilmentMethod(modalities, coordinations);
                 return {
+                    // Summary output stays flat so downstream lenses (canvas
+                    // pill, cart, audit) don't change; only the section + builder
+                    // moved to the nested shape under delivery.
                     modalities,
                     coordinations,
                     handoffPoints,
-                    // Single-method back-compat for downstream consumers
-                    // (canvas edge pill, cart). null when modalities is empty
-                    // or coordinations are missing for a delivery offer.
                     method,
                 };
             })()

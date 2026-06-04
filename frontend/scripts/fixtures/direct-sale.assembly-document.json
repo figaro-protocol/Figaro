@@ -2,12 +2,13 @@
   "name": "Direct Sale",
   "orders": [
     {
-      "buyer": "0xde51000000000000000000000000000000000000",
       "clauses": {
         "figaro-fulfilment-v2": {
-          "handoffPoints": [
-            "face-to-face"
-          ],
+          "handoff": {
+            "points": [
+              "face-to-face"
+            ]
+          },
           "modalities": [
             "consume-onsite"
           ]
@@ -19,9 +20,8 @@
           ]
         }
       },
-      "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
-      "parentOrderIds": [],
-      "seller": "0xde51000000000000000000000000000000000001"
+      "id": "order-0",
+      "parentOrderIds": []
     }
   ],
   "slug": "direct-sale"

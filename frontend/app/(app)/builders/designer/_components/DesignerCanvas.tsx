@@ -641,7 +641,13 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     <div className="h-full px-6 py-4 flex flex-col">
                         <ProcessGraphCanvas
                             orders={orders}
-                            title="Bonded commitment"
+                            title={
+                                <span className="font-normal">
+                                    Compose an assembly — a group of bonded orders that represents one scenario.
+                                    <br />
+                                    Each order is a buyer↔seller relationship; draw the orders and their connections, then click one to compose its terms. Keep each assembly specific — offer variety with more assemblies, not more options.
+                                </span>
+                            }
                             designerMode
                             onAddSubOrder={handleAddSubOrder}
                             onAddParent={handleAddParent}

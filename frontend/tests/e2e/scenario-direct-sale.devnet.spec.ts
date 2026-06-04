@@ -17,7 +17,7 @@
  *   commit by the projection, not stored here):
  *
  *     order[0]  buyer ↔ seller  parents: []
- *       figaro-fulfilment-v2       { modalities: [consume-onsite], handoffPoints: [face-to-face] }
+ *       figaro-fulfilment-v2       { modalities: [consume-onsite], handoff: { points: [face-to-face] } }
  *       figaro-merchant-process-v1 { }
  *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
  *
@@ -120,7 +120,7 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
 
             await page.getByTestId('drawer-registry-clause-figaro-fulfilment-v2').check();
             await page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-consume-onsite').check();
-            await page.getByTestId('drawer-field-figaro-fulfilment-v2-handoffPoints-face-to-face').check();
+            await page.getByTestId('drawer-field-figaro-fulfilment-v2-handoff-face-to-face').check();
 
             await page.getByTestId('drawer-registry-clause-figaro-proximity-policy-v1').check();
             await page.getByTestId('drawer-field-figaro-proximity-policy-v1-bands-zone-wifi').check();
@@ -187,8 +187,8 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
             'figaro-proximity-policy-v1',
         ]);
         expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['consume-onsite']);
-        expect(root.clauses['figaro-fulfilment-v2'].coordinations).toBeUndefined();
-        expect(root.clauses['figaro-fulfilment-v2'].handoffPoints).toEqual(['face-to-face']);
+        expect(root.clauses['figaro-fulfilment-v2'].delivery).toBeUndefined();
+        expect(root.clauses['figaro-fulfilment-v2'].handoff).toEqual(['face-to-face']);
         expect(root.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
 
         // Drift-guard on the published template's SHAPE (an output check — NOT the

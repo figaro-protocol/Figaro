@@ -53,8 +53,10 @@ export function cf(flat: FlatClauseFields): ClauseFields {
 
     const ful: Record<string, unknown> = {};
     if (flat.fulfilmentModalities) ful.modalities = flat.fulfilmentModalities;
-    if (flat.fulfilmentCoordinations) ful.coordinations = flat.fulfilmentCoordinations;
-    if (flat.fulfilmentHandoffPoints) ful.handoffPoints = flat.fulfilmentHandoffPoints;
+    // coordination is a sub-clause under delivery; handoff is a top-level
+    // sub-clause (any physical exchange) — the clause JSON.
+    if (flat.fulfilmentCoordinations) ful.delivery = { coordination: flat.fulfilmentCoordinations };
+    if (flat.fulfilmentHandoffPoints) ful.handoff = flat.fulfilmentHandoffPoints;
     if (Object.keys(ful).length > 0) out[FULFILMENT_V2_CLAUSE_KEY] = ful;
 
     if (flat.proximityBands) out[PROXIMITY_POLICY_CLAUSE_KEY] = { bands: flat.proximityBands };

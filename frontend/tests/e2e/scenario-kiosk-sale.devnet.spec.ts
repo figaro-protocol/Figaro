@@ -170,8 +170,8 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
         expect(root.parentOrderIds).toEqual([]);
         expect(Object.keys(root.clauses)).toEqual(['figaro-fulfilment-v2']);
         expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['pickup']);
-        expect(root.clauses['figaro-fulfilment-v2'].coordinations).toBeUndefined();
-        expect(root.clauses['figaro-fulfilment-v2'].handoffPoints).toBeUndefined();
+        expect(root.clauses['figaro-fulfilment-v2'].delivery).toBeUndefined();
+        expect(root.clauses['figaro-fulfilment-v2'].handoff).toBeUndefined();
 
         // Drift-guard on the published template's SHAPE (an output check — NOT the
         // runtime's data source; the runtime reads this assembly from chain→IPFS).

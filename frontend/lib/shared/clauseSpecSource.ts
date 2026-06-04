@@ -61,6 +61,23 @@ const BUILT_IN_SPECS: ReadonlyArray<[unknown, string]> = [
     [topologySpecRaw, "figaro-topology-v1"],
 ];
 
+/** clauseId → the parent FIELD name it nests under in the drawer, read from the
+ *  raw spec's `block.nestsUnder` (the parser doesn't surface unknown block
+ *  fields, so we read it from the raw JSON). Drives the drawer's cross-clause
+ *  nesting — e.g. figaro-proximity-policy-v1 renders nested under the fulfilment
+ *  clause's `handoff` field, NOT as a sibling. Read from the spec; never a
+ *  hardcoded tree. */
+const NESTS_UNDER = new Map<string, string>();
+for (const [raw, clauseId] of BUILT_IN_SPECS) {
+    const u = (raw as { block?: { nestsUnder?: unknown } } | null)?.block?.nestsUnder;
+    if (typeof u === "string" && u.length > 0) NESTS_UNDER.set(clauseId, u);
+}
+
+/** The field name a clause nests under in the drawer, or null if it is top-level. */
+export function clauseNestsUnder(clauseId: string): string | null {
+    return NESTS_UNDER.get(clauseId) ?? null;
+}
+
 function preload(raw: unknown, expectedClauseId: string): void {
     const parsed = parseClauseSpec(raw);
     if (!parsed.ok) {

@@ -304,7 +304,8 @@ function clauseFieldsForFulfilmentMethod(method: CanonicalFulfilmentMethod): Cla
         [GEO_CLAUSE_KEY]: { origin: "—", destination: "—" },
         [FULFILMENT_V2_CLAUSE_KEY]: {
             modalities,
-            ...(coordinations.length > 0 ? { coordinations } : {}),
+            // coordination is a sub-clause under delivery (the clause JSON).
+            ...(coordinations.length > 0 ? { delivery: { coordination: coordinations } } : {}),
         },
     };
 }

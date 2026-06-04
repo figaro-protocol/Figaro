@@ -104,9 +104,10 @@ export function extractBillOfLading(
 ): BillOfLadingDocument {
     const fulfilment = findCleartextSection(agreement, FULFILMENT_V2_CLAUSE_KEY);
     const geo = findCleartextSection(agreement, GEO_CLAUSE_KEY);
-    const fulfilmentData = fulfilment?.data as { handoffPoints?: unknown } | undefined;
-    const handoffPointsArr = Array.isArray(fulfilmentData?.handoffPoints)
-        ? fulfilmentData.handoffPoints
+    // handoff is a top-level sub-clause (any physical exchange), array-of-enum.
+    const fulfilmentData = fulfilment?.data as { handoff?: unknown } | undefined;
+    const handoffPointsArr = Array.isArray(fulfilmentData?.handoff)
+        ? fulfilmentData.handoff
         : [];
     const handoffMode = typeof handoffPointsArr[0] === "string" ? handoffPointsArr[0] : undefined;
     const geoData = geo?.data as {

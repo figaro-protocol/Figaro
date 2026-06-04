@@ -158,16 +158,14 @@ function extractLineage(agreement: Agreement | RedactableAgreement) {
 function extractFulfilmentSummary(agreement: Agreement | RedactableAgreement) {
     const fulfilment = findCleartextSection(agreement, FULFILMENT_V2_CLAUSE_KEY);
     const data = fulfilment?.data as
-        | { modalities?: unknown; coordinations?: unknown }
+        | { modalities?: unknown; delivery?: { coordination?: unknown } }
         | undefined;
-    // Read the clause-correct plural arrays. Earlier this code read
-    // singular `modality`/`coordination` keys that never existed in
-    // figaro-fulfilment-v2 — works only when the section's data
-    // accidentally carried both shapes.
+    // modalities is the buyer's request; coordination is a sub-clause under
+    // delivery (the clause JSON). The canonical method collapses the first of each.
     const modalitiesArr = Array.isArray(data?.modalities) ? data.modalities : [];
     const modality = typeof modalitiesArr[0] === "string" ? modalitiesArr[0] : undefined;
     if (!modality) return undefined;
-    const coordinationsArr = Array.isArray(data?.coordinations) ? data.coordinations : [];
+    const coordinationsArr = Array.isArray(data?.delivery?.coordination) ? data.delivery!.coordination : [];
     const coordination = typeof coordinationsArr[0] === "string" ? coordinationsArr[0] : undefined;
     // Reconstruct the legacy canonical method string for backward-compat
     // consumers. v2 stores modalities + coordinations as independent

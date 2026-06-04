@@ -85,8 +85,8 @@ const PROXIMITY_PROOF_CLAUSE_ID = keccak256(stringToHex('figaro-proximity-proof-
  *  it is btn-merchant-proximity-proof (the same primitive delivery uses on
  *  the courier sub-order — applied here to the merchant's own order). */
 const PRE_HANDOFF_STEPS: Array<{ event: string; button: string; pillLabel: string }> = [
-    { event: 'order-received', button: 'btn-merchant-next-order-received', pillLabel: 'Received' },
-    { event: 'accepted', button: 'btn-merchant-next-accepted', pillLabel: 'Accepted' },
+    // order-received + accepted are core-owned (the commit + bilateral signature),
+    // NOT merchant-process events. The merchant's own lifecycle starts at prep-started.
     { event: 'prep-started', button: 'btn-merchant-next-prep-started', pillLabel: 'Preparing' },
     { event: 'ready-for-pickup', button: 'btn-merchant-next-ready-for-pickup', pillLabel: 'Ready' },
 ];

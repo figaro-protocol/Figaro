@@ -441,7 +441,7 @@ export interface ProcessGraphCanvasProps {
      *  can render lens-aware content (e.g. process-level GHG summary). */
     headerExtras?: (activeLens: GraphLens) => React.ReactNode;
     /** Title text in the header. Defaults to "Process Graph". */
-    title?: string;
+    title?: React.ReactNode;
     /** Subtitle when no orders are loaded. Defaults to a generic line. */
     emptySubtitle?: string;
     /**
