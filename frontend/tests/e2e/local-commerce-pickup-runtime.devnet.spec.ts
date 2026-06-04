@@ -17,7 +17,7 @@
  *   figaro-commerce-v1             — line items + payment, buyer's checkout
  *   figaro-fulfilment-v2           — modalities:[pickup], handoffPoints:[face-to-face]
  *   figaro-geo-v2                  — origin geohash on commit
- *   figaro-merchant-process-v1     — merchant lifecycle (order-received → handed-off)
+ *   figaro-merchant-process-v1     — merchant lifecycle (prep-started → handed-off)
  *   figaro-proximity-policy-v1     — bands:[zone-wifi], committed at signing
  *   figaro-proximity-proof-v1      — buyer + merchant both attest at handoff
  *   figaro-topology-v1             — root (1-node graph)

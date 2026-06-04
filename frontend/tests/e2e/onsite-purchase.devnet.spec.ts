@@ -35,7 +35,7 @@
  *    merchant dispute-evidence the bare walk omits. Each clause in the
  *    enriched direct-sale assembly is surfaced through its driving role.
  *      - buyer commits consume-onsite; the committed root carries proximity-policy
- *      - merchant (anvil[5]) walks order-received -> ... -> ready-for-pickup,
+ *      - merchant (anvil[5]) walks prep-started -> ready-for-pickup,
  *        then submits the handoff proximity proof (handed-off)
  *      - buyer submits the symmetric proximity proof, then resolves
  *      - both proximity-proof witnesses sit on chain against the root order
