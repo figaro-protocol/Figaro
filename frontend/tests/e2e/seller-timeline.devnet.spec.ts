@@ -63,9 +63,10 @@ const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex('figaro-merchant-process-v1'));
 
 /** Post-commit merchant-process events the UI walks in order. Stage indices
- *  match the validator's uint8 enum (the core-owned order-received=0 /
- *  accepted=1 stages are NOT surfaced as CTAs; see useMerchantProcess.ts and
- *  OrderTimelineView's HAPPY_PATH_EVENTS). */
+ *  match the validator's uint8 enum, which begins at prep-started=0 — arrival +
+ *  acceptance are core-owned (the bilateral commit), so they are not clause
+ *  events at all; see useMerchantProcess.ts and OrderTimelineView's
+ *  HAPPY_PATH_EVENTS). */
 const HAPPY_PATH: Array<{ event: string; stage: number }> = [
     { event: 'prep-started', stage: 2 },
     { event: 'ready-for-pickup', stage: 3 },

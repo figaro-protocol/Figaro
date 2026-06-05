@@ -1,8 +1,8 @@
 {
     "clauseId": "figaro-fulfilment-v2",
     "version": 1,
-    "title": "Fulfilment composition",
-    "description": "Offered fulfilment options for this order. Multi-valued across three orthogonal dimensions: modalities (consume-onsite / pickup / delivery / virtual), courier coordinations (meaningful only when delivery is among the modalities), and handoff points (where physical exchange occurs). A merchant declares the set of options on offer at template time; at runtime a buyer's commitment carries the same shape with single-element arrays reflecting their choice. Every order has a fulfilment clause \u2014 even fully-virtual products carry modalities: ['virtual']. Proximity verification of the handoff event lives in figaro-proximity-policy-v1, not here.",
+    "title": "Modalities",
+    "description": "The buyer's fulfilment request to the seller: consume-onsite, pickup, delivery, or virtual. Coordination (how a courier order is arranged across the DAG) is a sub-clause under delivery. Handoff (where the physical exchange happens) is a sub-clause that applies to any physical exchange — on-site, pickup, or delivery. Proximity verification of the handoff is the next sub-clause after handoff, carried by figaro-proximity-policy-v1, reconstructed under handoff in the drawer.",
     "categories": [
         "fulfilment"
     ],
@@ -21,25 +21,34 @@
             },
             "minItems": 1,
             "required": true,
-            "description": "Top-level fulfilment modalities on offer. consume-onsite = on-premise consumption. pickup = buyer collects from seller's premises. delivery = transported to the buyer. virtual = digital / online / no physical fulfilment. At least one must be set."
+            "description": "The buyer's request. A template offers one or more; a commitment carries the single chosen one. consume-onsite = consumed at the seller's premises. pickup = the buyer collects. delivery = a courier order carries it to the buyer. virtual = digital, no physical handoff."
         },
         {
-            "name": "coordinations",
-            "type": "array",
-            "items": {
-                "type": "enum",
-                "values": [
-                    "buyer-assigned",
-                    "seller-assigned",
-                    "dutch-auction"
-                ]
-            },
+            "name": "delivery",
+            "type": "object",
             "required": false,
-            "description": "Courier-coordination options on offer. Meaningful only when 'delivery' is among the modalities; the validator rejects non-empty coordinations when delivery is not offered, and requires non-empty coordinations when delivery is offered."
+            "description": "Sub-clauses that apply only when the request is delivery. Surfaced under the delivery modality in the drawer.",
+            "fields": [
+                {
+                    "name": "coordination",
+                    "type": "array",
+                    "required": false,
+                    "items": {
+                        "type": "enum",
+                        "values": [
+                            "seller-assigned",
+                            "buyer-assigned",
+                            "dutch-auction"
+                        ]
+                    },
+                    "description": "How the courier order is coordinated across the DAG. seller-assigned = the seller's regular courier. buyer-assigned = the buyer picks the courier. dutch-auction = an open auction with no prior relationship."
+                }
+            ]
         },
         {
-            "name": "handoffPoints",
+            "name": "handoff",
             "type": "array",
+            "required": false,
             "items": {
                 "type": "enum",
                 "values": [
@@ -49,8 +58,7 @@
                     "locker"
                 ]
             },
-            "required": false,
-            "description": "Handoff points on offer. Cryptographic proof of proximity at the handoff event belongs in figaro-proximity-policy-v1, not here."
+            "description": "Where the physical exchange happens — for on-site, pickup, or delivery."
         }
     ],
     "block": {
@@ -59,9 +67,6 @@
         "mechanismKinds": [
             "coordinator"
         ],
-        "moduleIds": [
-            "coordinator-actions",
-            "handoff-details"
-        ]
+        "moduleIds": []
     }
 }

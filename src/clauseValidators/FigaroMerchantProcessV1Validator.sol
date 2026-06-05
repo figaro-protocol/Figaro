@@ -25,19 +25,18 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///
 /// @dev Content ABI encoding: `abi.encode(uint8 eventTypeIndex, string evidenceUri)`.
 ///
-///      eventTypeIndex:
-///        0 = order-received
-///        1 = accepted
-///        2 = prep-started
-///        3 = ready-for-pickup
-///        4 = handed-off
-///        5 = cancelled
+///      eventTypeIndex (order-received + accepted are core-owned — the commit IS
+///      arrival + acceptance — so the merchant ladder begins at prep-started):
+///        0 = prep-started
+///        1 = ready-for-pickup
+///        2 = handed-off
+///        3 = cancelled
 ///
 ///      evidenceUri is optional (max 512 bytes when present).
 contract FigaroMerchantProcessV1Validator is IClauseValidator {
     bytes32 public constant override clauseId = keccak256("figaro-merchant-process-v1");
 
-    uint8 internal constant MAX_EVENT_INDEX = 5;
+    uint8 internal constant MAX_EVENT_INDEX = 3;
     uint256 internal constant MAX_URI_LEN = 512;
 
     error ClauseIdMismatch(bytes32 got, bytes32 expected);

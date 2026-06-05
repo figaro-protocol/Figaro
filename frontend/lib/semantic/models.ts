@@ -87,8 +87,6 @@ interface SubmitDisclosureInventoryCapabilityAction {
  *  keep the capability descriptor and the on-chain validator's enum in
  *  lockstep. */
 export type MerchantProcessEventKind =
-    | "order-received"
-    | "accepted"
     | "prep-started"
     | "ready-for-pickup"
     | "handed-off"
@@ -96,8 +94,6 @@ export type MerchantProcessEventKind =
 
 /** Courier-process event types — re-exported from the SDK clause enum. */
 export type CourierProcessEventKind =
-    | "available"
-    | "accepted"
     | "en-route-pickup"
     | "arrived-pickup"
     | "in-transit"

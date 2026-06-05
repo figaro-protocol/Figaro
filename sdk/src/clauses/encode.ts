@@ -131,8 +131,6 @@ export interface OffsetPolicyContent {
 }
 
 export type MerchantEvent =
-    | "order-received"
-    | "accepted"
     | "prep-started"
     | "ready-for-pickup"
     | "handed-off"
@@ -154,8 +152,6 @@ export interface ConsentContent {
 }
 
 export type CourierEvent =
-    | "available"
-    | "accepted"
     | "en-route-pickup"
     | "arrived-pickup"
     | "in-transit"

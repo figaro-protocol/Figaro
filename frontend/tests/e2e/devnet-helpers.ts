@@ -132,26 +132,26 @@ const PROXIMITY_BAND_INDEX: Record<ProximityBand, number> = {
     'contact-nfc': 3,
 };
 
-/** Merchant event types — uint8 stage per the validator's enum. */
+/** Merchant event types — uint8 stage per the validator's enum. order-received +
+ *  accepted are core-owned (commit + bilateral signature), so the ladder begins
+ *  at prep-started. */
 const MERCHANT_EVENT = {
-    orderReceived: 0,
-    accepted: 1,
-    prepStarted: 2,
-    readyForPickup: 3,
-    handedOff: 4,
-    cancelled: 5,
+    prepStarted: 0,
+    readyForPickup: 1,
+    handedOff: 2,
+    cancelled: 3,
 } as const;
 
-/** Courier event types — uint8 stage per the validator's enum. */
+/** Courier event types — uint8 stage per the validator's enum. available +
+ *  accepted are core-owned (commit + bilateral signature), so the ladder begins
+ *  at en-route-pickup. */
 const COURIER_EVENT = {
-    available: 0,
-    accepted: 1,
-    enRoutePickup: 2,
-    arrivedPickup: 3,
-    inTransit: 4,
-    arrivedDropoff: 5,
-    completed: 6,
-    cancelled: 7,
+    enRoutePickup: 0,
+    arrivedPickup: 1,
+    inTransit: 2,
+    arrivedDropoff: 3,
+    completed: 4,
+    cancelled: 5,
 } as const;
 
 // ── EIP-712 Types (imported from @figaro/core) ──────────────────────────────
@@ -195,7 +195,7 @@ export function merchantProcessAgreement(buyer: `0x${string}`, seller: `0x${stri
         buyer,
         seller,
         sections: [
-            { clause: MERCHANT_PROCESS_CLAUSE_KEY, data: { eventType: 'order-received', evidenceUri: '' } },
+            { clause: MERCHANT_PROCESS_CLAUSE_KEY, data: {} },
         ],
     };
 }
@@ -206,7 +206,7 @@ function courierProcessAgreement(buyer: `0x${string}`, seller: `0x${string}`): A
         buyer,
         seller,
         sections: [
-            { clause: COURIER_PROCESS_CLAUSE_KEY, data: { eventType: 'available', evidenceUri: '' } },
+            { clause: COURIER_PROCESS_CLAUSE_KEY, data: {} },
         ],
     };
 }

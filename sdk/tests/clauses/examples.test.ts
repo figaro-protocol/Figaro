@@ -430,7 +430,7 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-merchant-process-v1 accepts each known eventType", () => {
         const parsed = parseClauseSpec(merchantSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const e of ["order-received", "accepted", "prep-started", "ready-for-pickup", "handed-off", "cancelled"]) {
+        for (const e of ["prep-started", "ready-for-pickup", "handed-off", "cancelled"]) {
             expect(validateContent({ eventType: e }, parsed.spec).ok).toBe(true);
         }
     });
@@ -446,7 +446,7 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-courier-process-v1 accepts each known eventType", () => {
         const parsed = parseClauseSpec(courierSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const e of ["available", "accepted", "en-route-pickup", "arrived-pickup", "in-transit", "arrived-dropoff", "completed", "cancelled"]) {
+        for (const e of ["en-route-pickup", "arrived-pickup", "in-transit", "arrived-dropoff", "completed", "cancelled"]) {
             expect(validateContent({ eventType: e }, parsed.spec).ok).toBe(true);
         }
     });

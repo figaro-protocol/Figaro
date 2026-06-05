@@ -25,21 +25,20 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///
 /// @dev Content ABI encoding: `abi.encode(uint8 eventTypeIndex, string evidenceUri)`.
 ///
-///      eventTypeIndex:
-///        0 = available
-///        1 = accepted
-///        2 = en-route-pickup
-///        3 = arrived-pickup
-///        4 = in-transit
-///        5 = arrived-dropoff
-///        6 = completed
-///        7 = cancelled
+///      eventTypeIndex (available + accepted are core-owned — the commit IS
+///      arrival + acceptance — so the courier ladder begins at en-route-pickup):
+///        0 = en-route-pickup
+///        1 = arrived-pickup
+///        2 = in-transit
+///        3 = arrived-dropoff
+///        4 = completed
+///        5 = cancelled
 ///
 ///      evidenceUri is optional (max 512 bytes when present).
 contract FigaroCourierProcessV1Validator is IClauseValidator {
     bytes32 public constant override clauseId = keccak256("figaro-courier-process-v1");
 
-    uint8 internal constant MAX_EVENT_INDEX = 7;
+    uint8 internal constant MAX_EVENT_INDEX = 5;
     uint256 internal constant MAX_URI_LEN = 512;
 
     error ClauseIdMismatch(bytes32 got, bytes32 expected);

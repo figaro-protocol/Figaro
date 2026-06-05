@@ -12,8 +12,6 @@
             "name": "eventType",
             "type": "enum",
             "values": [
-                "available",
-                "accepted",
                 "en-route-pickup",
                 "arrived-pickup",
                 "in-transit",

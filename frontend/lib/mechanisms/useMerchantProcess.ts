@@ -5,6 +5,7 @@ import { keccak256, stringToHex, type Hex } from "viem";
 import { embeddedSpec, encodeContentFromSpec, type MerchantEvent } from "@figaro/core/clauses";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { MERCHANT_PROCESS_CLAUSE_KEY } from "@/lib/core/agreement";
+import { clauseEnumOrdinal } from "@/lib/shared/clauseSpecSource";
 import {
     encodeProximityProofContent,
     PROXIMITY_CLAUSE_ID,
@@ -28,15 +29,6 @@ import {
  */
 export const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex(MERCHANT_PROCESS_CLAUSE_KEY));
 
-/** uint8 stage values matching the `figaro-merchant-process-v1` enum. */
-const MERCHANT_EVENT_STAGE: Record<MerchantEvent, number> = {
-    "order-received": 0,
-    "accepted": 1,
-    "prep-started": 2,
-    "ready-for-pickup": 3,
-    "handed-off": 4,
-    "cancelled": 5,
-};
 
 export interface MerchantSignalInput {
     orderHash: string;
@@ -80,7 +72,7 @@ export function useMerchantProcessActions() {
             roleOrderHash: roleOrderHash as Hex | undefined,
             orderHash: orderHash as Hex,
             clauseId: MERCHANT_PROCESS_CLAUSE_ID,
-            stage: MERCHANT_EVENT_STAGE[eventType],
+            stage: clauseEnumOrdinal(MERCHANT_PROCESS_CLAUSE_KEY, eventType),
             content: encodeContentFromSpec(
                 embeddedSpec("figaro-merchant-process-v1")!,
                 { eventType, evidenceUri },

@@ -5,6 +5,7 @@ import { encodeAbiParameters, keccak256, stringToHex, type Hex } from "viem";
 import { embeddedSpec, encodeContentFromSpec, type CourierEvent } from "@figaro/core/clauses";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { COURIER_PROCESS_CLAUSE_KEY, PROXIMITY_PROOF_CLAUSE_KEY } from "@/lib/core/agreement";
+import { clauseEnumOrdinal } from "@/lib/shared/clauseSpecSource";
 
 /**
  * Sovereign courier event log — `figaro-courier-process-v1`. The courier
@@ -26,18 +27,6 @@ export const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex(COURIER_PROCESS_C
 /** keccak256 of the runtime proximity-proof clauseId. Derived here for
  *  courier callers; the key itself lives canonically in agreement module. */
 export const PROXIMITY_CLAUSE_ID = keccak256(stringToHex(PROXIMITY_PROOF_CLAUSE_KEY));
-
-/** uint8 stage values matching the `figaro-courier-process-v1` enum. */
-const COURIER_EVENT_STAGE: Record<CourierEvent, number> = {
-    "available": 0,
-    "accepted": 1,
-    "en-route-pickup": 2,
-    "arrived-pickup": 3,
-    "in-transit": 4,
-    "arrived-dropoff": 5,
-    "completed": 6,
-    "cancelled": 7,
-};
 
 /** ProximityTypes.Proof struct matching the Solidity ABI. Re-exported here so
  *  callers can use the courier hook without depending on the legacy
@@ -93,7 +82,7 @@ export function useCourierProcessActions() {
             roleOrderHash: roleOrderHash as Hex | undefined,
             orderHash: orderHash as Hex,
             clauseId: COURIER_PROCESS_CLAUSE_ID,
-            stage: COURIER_EVENT_STAGE[eventType],
+            stage: clauseEnumOrdinal(COURIER_PROCESS_CLAUSE_KEY, eventType),
             content: encodeContentFromSpec(
                 embeddedSpec("figaro-courier-process-v1")!,
                 { eventType, evidenceUri },
