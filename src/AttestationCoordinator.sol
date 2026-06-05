@@ -203,7 +203,7 @@ contract AttestationCoordinator {
     /// @dev Verify the clause is a committed leaf of the order's signed
     ///      agreement, validate the runtime content, and return its hash.
     ///      Leaf = `keccak256(clauseId || keccak256(sectionData))`, sorted-pair
-    ///      merkle tree as produced by the off-chain manifest helpers.
+    ///      merkle tree as produced by the off-chain agreement helpers.
     function _validateContent(
         bytes32 agreementHash,
         bytes32 clauseId,

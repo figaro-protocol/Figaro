@@ -12,11 +12,11 @@ pragma solidity 0.8.26;
 ///         An assembly is a composition template that USES clauses. The
 ///         registry binds a slug to (contentHash, metadataURI): the slug
 ///         is the human-readable identifier; contentHash is keccak256 of
-///         the canonical off-chain manifest; metadataURI points to that
-///         manifest (typically IPFS).
+///         the canonical off-chain assembly document; metadataURI points to
+///         that document (typically IPFS).
 ///
-///         The contract does NOT validate manifest content. It cannot —
-///         the manifest lives off-chain; the contract only stores its
+///         The contract does NOT validate assembly-document content. It cannot —
+///         the document lives off-chain; the contract only stores its
 ///         hash and URI. Per-clause content validation happens at the
 ///         per-clause layer when each order's clauses are attested at
 ///         commit time.
@@ -87,8 +87,8 @@ contract AssemblyRegistry {
     /// @param slugHash     keccak256 of the slug.
     /// @param author       Address that registered the assembly.
     /// @param slug         Human-readable slug (full string).
-    /// @param contentHash  keccak256 of the canonical off-chain manifest.
-    /// @param metadataURI  Off-chain manifest URI (typically IPFS).
+    /// @param contentHash  keccak256 of the canonical off-chain assembly document.
+    /// @param metadataURI  Off-chain assembly-document URI (typically IPFS).
     event AssemblyRegistered(
         bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI
     );
@@ -131,8 +131,8 @@ contract AssemblyRegistry {
     ///         off-chain; per-clause validity is the per-clause
     ///         validator's responsibility at commit time.
     /// @param slug         Human-readable slug. Bound permanently.
-    /// @param contentHash  keccak256 of the canonical off-chain manifest.
-    /// @param metadataURI  Off-chain manifest pointer (typically IPFS).
+    /// @param contentHash  keccak256 of the canonical off-chain assembly document.
+    /// @param metadataURI  Off-chain assembly-document pointer (typically IPFS).
     function registerAssembly(string calldata slug, bytes32 contentHash, string calldata metadataURI) external payable {
         if (msg.value != registrationDeposit) revert WrongDeposit(msg.value, registrationDeposit);
         if (bytes(slug).length == 0) revert EmptySlug();
