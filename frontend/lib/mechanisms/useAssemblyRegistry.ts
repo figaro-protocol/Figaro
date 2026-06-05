@@ -9,17 +9,18 @@
  *      (orders array), per-order agreement bodies (inlined), and prose.
  *   2. Compute the canonical content hash (keccak256 of stable JSON).
  *   3. Pin the assemblyDoc to IPFS via DEFAULT_IPFS_SERVICE.
- *   4. Call AssemblyRegistry.registerAssembly(slug, nodeCount,
- *      contentHash, metadataURI). The publish-side check is that
- *      nodeCount fits the per-process gas ceiling, derived at runtime
- *      from the active chain's block gas limit via
- *      `maxOrdersResolvablePerProcess` in `@/lib/shared/chainGasCeilings`.
- *      All other content validation lives at the per-clause layer
- *      and runs when each order's clauses are attested at commit time.
+ *   4. Call AssemblyRegistry.registerAssembly(slug, contentHash,
+ *      metadataURI). Before the call, a CLIENT-SIDE publish guard checks
+ *      that the node count (orders.length) fits the per-process gas
+ *      ceiling, derived at runtime from the active chain's block gas limit
+ *      via `maxOrdersResolvablePerProcess` in `@/lib/shared/chainGasCeilings`.
+ *      The count is not a contract parameter and is never stored on-chain.
+ *      All other content validation lives at the per-clause layer and runs
+ *      when each order's clauses are attested at commit time.
  *
  * No graceful retry, no optimistic UI — the publish is a single atomic
  * step from the user's POV: success means the slug is permanently bound
- * to (msg.sender, nodeCount, contentHash, ipfs URI).
+ * to (msg.sender, contentHash, ipfs URI).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
