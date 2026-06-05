@@ -373,7 +373,9 @@ broken (the rest is tracked in the backlog):
 
 ### Phase 3 — Checkout (verified call-graph)
 
-**Surface:** `/s/[seller]` (`SellerDetailView`, `SellerAuctionPanel`).
+**Surfaces:** `/discover` (buyer finds sellers/assemblies from network state) →
+`/s/[seller]` (`SellerDetailView`, `SellerAuctionPanel`) → `/sign` (the
+counterparty counter-signs).
 
 1. **`useCheckout`** (`lib/commerce/useCheckout.ts`) — orchestrates; delegates the
    per-order flow to **`useCommitmentFlow`** (`lib/core/useCommitmentFlow.ts`).
@@ -388,10 +390,11 @@ broken (the rest is tracked in the backlog):
    seller, currency, payment, expectedCumulativeValue, agreementHash, salt,
    deadline`).
 4. **`commitmentSubmission`** — `initiateAsParty(commitment, proposerRole, meta)`
-   (bilateral: buyer initiate + seller counter-sign, both gated by
-   `validateCommitmentAgreement`) → `FigaroCore.commit` → `waitForTransactionReceipt`.
-   Agreements are IPFS-hydrated off-chain (`useProcessAgreements`); only the
-   `agreementHash` goes on-chain.
+   (the proposer's half). The **bilateral commit completes at `/sign`**: the
+   counterparty's `useCommitmentFlow.counterSign(payload)` → `broadcast` →
+   `FigaroCore.commit` → `waitForTransactionReceipt` (both sign points gated by
+   `validateCommitmentAgreement`). Agreements are IPFS-hydrated off-chain
+   (`useProcessAgreements`); only the `agreementHash` goes on-chain.
 
 ### Phase 3 — in-flight & known issues
 
@@ -413,8 +416,9 @@ broken (the rest is tracked in the backlog):
 ### Phase 4 — Runtime (verified call-graph)
 
 **Surface:** `/orders/[processId]` (`OrderTimelineView`), `/inbox`, `/audit`,
-`/dispute`. The order page **names no clause** — capabilities are *derived*; "add
-a clause → its capability surfaces here" (guard `lint-no-hardcoded-clauses-in-runtime`).
+`/dispute`, `/evidence-display`. The order page **names no clause** — capabilities
+are *derived*; "add a clause → its capability surfaces here" (guard
+`lint-no-hardcoded-clauses-in-runtime`).
 
 1. **`OrderTimelineView`** reads the order's agreement clauses (IPFS-hydrated via
    `useProcessAgreements`) + on-chain state (`lib/core/indexer.ts`, event-derived).
@@ -429,6 +433,15 @@ a clause → its capability surfaces here" (guard `lint-no-hardcoded-clauses-in-
      *(on-chain; cross-order: `msg.sender == role.seller`, same process)*
    - transaction → `executeTransactionCapability` → e.g. `resolveProcess`
      (`useFigaroActions`) *(on-chain, buyer-only atomic settlement)*
+
+**Emissions reporting** (worked example of a derived self-gating panel): a
+designer-time GHG-standard clause (`figaro-ghg-iso-14064-v1` etc. →
+`submit-disclosure-commitment`) paired with a runtime grams clause
+(`figaro-ghg-measurement-v1` → `submit-disclosure-inventory`) surface as
+capabilities; `GHGWorkflowPanel` (mounted in `OrderTimelineView`) drives
+`executeCapability` → `useGHGDisclosure` (`encodeMeasurementGramsContent`) →
+`attestAsSeller`. The disclosure feeds the audit bundle via
+`lib/audit/emissionsExtract`.
 
 ### Phase 4 — in-flight & known issues
 
@@ -447,9 +460,90 @@ a clause → its capability surfaces here" (guard `lint-no-hardcoded-clauses-in-
 
 ---
 
-**Pipeline complete (Design · Adopt · Checkout · Runtime).** Next facet: the
-**off-protocol auxiliaries** — Uniswap/`SwapAndCommitCoordinator` (built-but-not-wired),
-Kleros (`figaro-arbitration-kleros-v1` + `lib/dispute`), Klima
-(`ProcessOffsetReceipt` + `lib/` offset + external aggregator) — each a
-clause/contract + a frontend hook + an external service, joined by external tx +
-attestation.
+**Pipeline complete (Design · Adopt · Checkout · Runtime).**
+
+---
+
+## Off-protocol auxiliaries
+
+External services a party uses **outside** the bilateral commitment, then anchors
+back into the process. The unifying pattern: a contract counterparty **cannot
+bond** (the kernel is ECDSA-only / EOA, no EIP-1271), so the swap venue /
+arbitration forum / offset aggregator operates off-protocol — the party performs
+the external action, then records it via an external tx + attestation against the
+process. **The kernel commitment stays bilaterally signed (executor ≠
+counterparty); alternative providers are valid permissionless extensions** (do
+not couple to Uniswap / Kleros / Klima by name).
+
+| Auxiliary | clause / contract | frontend | external service | status |
+|---|---|---|---|---|
+| **Swap** (pay-in-another-token) | `SwapAndCommitCoordinator` (`src/`) | `tokenConversion.ts` (Uniswap V3 quoter) — quote/display only | Uniswap (Permit2 + Universal Router) | **built-but-not-wired** — contract + Foundry exist; not in `Deploy.s.sol`; no checkout wiring |
+| **Arbitration** | `figaro-arbitration-kleros-v1` + validator; `MockKlerosArbitrableProxy` | `lib/dispute/` (`klerosProxy` / `klerosCourts` / `klerosEvidence` / `processJurisdiction`) + `/dispute` | Kleros court (off-chain adjudication) | wired (mock on devnet); provider-agnostic — Kleros is one forum |
+| **Offsets** | `figaro-offset-policy-v1`; `ProcessOffsetReceipt` (deployed) | `useOffsetRetirement` + `offsetAggregators` | Klima / Toucan aggregator (Polygon; `MockOffsetAggregator` on devnet) | wired (Path A: retire externally → `ProcessOffsetReceipt.record` → audit reads it) |
+
+**Load-bearing facts**
+
+1. Each is its own artifact family / anchor — offset receipts are **not**
+   attestations (no agreement clause, no inclusion proof), a separate primitive.
+2. The kernel never depends on any of them; they reference the process
+   **read-only** (e.g. `ProcessOffsetReceipt` gates on `rootBuyer`).
+3. Dispute resolution is **provider-agnostic** — do not couple naming to Kleros.
+
+**Not an off-protocol auxiliary:** `DutchAuction` is an **internal coordination
+mechanism** (a Figaro contract, standalone), not an external service. It's
+integrated at **checkout** for the `dutch-auction` coordination value
+(`SellerAuctionPanel` / the deferred-claim courier path) — "isolated" as a
+contract (no on-chain deps), but used in the Phase-3 flow.
+
+---
+
+## Frontend subsystems (cross-cutting)
+
+Live `lib/` subsystems the four-phase pipeline touches but doesn't deep-map.
+Verified against source.
+
+### Evidence export — `lib/audit/` (14 files)
+
+The immutable-evidence pillar's frontend. `buildAuditBundle(inputs)` composes the
+per-order extractors — `billOfLadingExtract`, `invoiceExtract`, `emissionsExtract`,
+`proximityExtract`, `dutchAuctionExtract`, `sellerRegistryExtract`,
+`processLogsExtract`, `contractExtract` — into an `AuditBundle`, rendered by
+`pdfBundle` / `auditBundlePdf` and consumed by the **`/audit/[processId]`** surface
+(recompute each hash against user-supplied content). Financials
+(`lib/semantic/financialsProjection`) are composed alongside.
+
+### Handoff coordination — `lib/handoff/` (10 files)
+
+The off-chain secure channel for a physical handoff. Per-order ephemeral
+secp256k1 keypairs (`ephemeralKeys`) + **ECDH** agreement (`ecdh`) over a
+`CoordinationChannel` (`xmtpChannel` real / `mockChannel` devnet); `handoffIntent`
+/ `handoffKeys` / `handoffArtifacts`; `useHandoffCleanup` purges keys on terminal
+order events. This is the substrate beneath the hand-off / proximity clauses.
+- **Vestigial:** `manifest.ts` — the on-chain codec was removed; now geohash/
+  logistics utils (backlog sense-D rename, open).
+- **Unbuilt:** device-witness capture (`PROXIMITY_DEVICE_SIG_PLACEHOLDER`) — the
+  real QR / BLE / NFC sensor path; and the `virtual` modality (digital handoff,
+  `figaro-content-handoff-v1`) has no implementation.
+
+### Dispute evidence — `lib/dispute/` (9 files)
+
+Beyond the Kleros proxy (auxiliaries facet): `evidenceTimeline` builds a
+`ProcessTimeline` from coordinator events; `deliveryAttestation` carries
+`PhotoGPSAttestation` + `GeohashMatchAttestation`. Feeds the **provider-agnostic**
+arbitration forum.
+
+### geohash (cross-cutting geo)
+
+The geo-proximity primitive, anchored in `figaro-geo-v2`, used across
+`deliveryAttestation` (geohash-match), `discoveryService` (seller location), and
+`lib/handoff`. A concern, not a single module — no one home.
+
+### Surfaces outside the protocol pipeline
+
+- **`/consent`** — the Figaro Beta consent ceremony (beta-governance / "Project
+  Operator"). Deliberately not a protocol surface; backlog tracks reconsidering
+  the vocabulary (it fights the ownerless doctrine).
+- **`components/modules/SellerBrandingModule.tsx`** — live (seller branding, used
+  by `SellerDetailView`/`Watermark`) but a **V4 naming vestige**: the `modules/` +
+  `Module` suffix is the retired module-registry vocabulary (backlog V4→V5
+  residual — there is no module-registry runtime).
