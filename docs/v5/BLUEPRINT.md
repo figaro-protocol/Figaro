@@ -108,7 +108,7 @@ other or to the kernel.** They are siblings co-deployed on the chain.
 | From | To | Via |
 |---|---|---|
 | indexer | every node's events | reads `ClauseRegistered`, `SellerRegistered/…`, `AssemblyRegistered`, `Attestation`, `ValidatorSet`, `Auction*`, `ReceiptRecorded` |
-| `AssemblyRegistry.contentHash` | assembly document (IPFS) | the assembly JSON (`AssemblyDocument`; the contract NatSpec still calls it "manifest" — see Open churn); **the assembly→clause reference lives here, off-chain** |
+| `AssemblyRegistry.contentHash` | assembly document (IPFS) | the assembly JSON (`AssemblyDocument`); **the assembly→clause reference lives here, off-chain** |
 | `ClauseRegistry.uriHash` | clause spec JSON (IPFS) | off-chain Layer-A spec |
 | `ClauseRegistry.family` | RPGF SP1 program → `RpgfMinter` | the proof reads `family` for Tier-1 weighting — the **only** clause↔FIG link, and it is off-chain |
 
@@ -227,9 +227,10 @@ kernel's NatSpec still uses the word, so a blanket ban is unsafe.
   - **separate KEPT sense:** `manifest-only` = a clause committed at signing with
     no runtime validator (`figaro-topology-v1`). NOT the assembly-JSON sense — do
     not conflate.
-  - The **contract NatSpec still says "manifest"** (e.g. `AssemblyRegistry.sol`) —
-    outside the frontend-scoped sweep. **Residue** (finish into Solidity) or
-    **carve-out** (the contract is artifact-agnostic)? **Undecided — needs a ruling.**
+  - **Contract NatSpec — DONE** (`0e4fb90`): `AssemblyRegistry` /
+    `AttestationCoordinator` now say "assembly document" / "agreement". Only the
+    **frozen `FigaroCore`** keeps "manifest" (never-edit-kernel). So **sense D
+    (`lib/handoff/manifest.ts`) is the sole remaining open item.**
 - **`AssemblyTemplate` vs `AssemblyDocument` — distinct, an old/new migration**
   (`project_assembly_template_phase2`): `AssemblyTemplate` = intended
   (party-agnostic, no hashes); `AssemblyDocument` = current (bakes hashes +
@@ -259,9 +260,8 @@ the biggest development-pain area.
 The off-chain tier's coarse "lib/ catalogues" and "authoring surfaces" nodes,
 expanded into the data-flow that drives the four lifecycle phases — the
 frontend's actual wiring, where the development pain and the naming churn live.
-This is the **verified frame** (directory structure + entry points); each phase's
-detailed intra-wiring (hook call-graphs, publish/commit sequences) is mapped
-per-phase as it lands.
+All four phases are mapped below as **verified call-graphs** (an at-a-glance table
+first, then per-phase detail, each followed by its in-flight / known-issues).
 
 `lib/` modules (verified): `core` (agreement, indexer, orderAgreement, commitment
 prep) · `designer` (assemblyTemplate, syntheticProcess) · `mechanisms` (registry +
