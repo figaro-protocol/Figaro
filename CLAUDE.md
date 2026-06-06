@@ -155,19 +155,15 @@ Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new
 
 ### Separation of Concerns — Artifact Families
 
-Each protocol artifact family has its own anchoring primitive. Families are parallel, not nested.
+Each protocol artifact family (clauses → `ClauseRegistry` + `IClauseValidator`; sellers → `SellerRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: `BLUEPRINT.md` on-chain-composition fact 2 — the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
 
-- **Clauses** — anchored via `ClauseRegistry` + per-clause `IClauseValidator`.
-- **Sellers** — anchored via `SellerRegistry` (event-emitting, metadataURI-pointing).
-- **Assemblies** — composition templates that USE clauses. Anchored via `AssemblyRegistry` — parallel to clauses/sellers, not subordinate to either.
+**The rule.** Each family gets its own registry/anchor, identity scheme, evolution path, indexer event stream. Do not nest one inside another, even when an existing primitive could host it.
 
-**The rule.** Each family gets its own registry/anchor, identity scheme, evolution path, and indexer event stream. Do not nest one inside another, even when an existing primitive could be made to host the new one.
+**The test.** Does the proposed reuse make Layer A reference Layer B's existence? Arrows point one way: assemblies use clauses; clauses don't know assemblies exist. If a proposal inverts an arrow, it is wrong, regardless of how much Solidity it saves.
 
-**The test.** Does the proposed reuse make Layer A reference Layer B's existence? The dependency arrows between families point one way: assemblies use clauses; clauses do not know assemblies exist. Sellers declare assemblies in their metadata JSON; `SellerRegistry` does not reference assemblyIds on-chain. If a proposal inverts an arrow, it is wrong, regardless of how much Solidity it saves.
+**The temptation to refuse.** "We already have `ClauseRegistry` — can we register this new artifact under it?" Refuse: "avoiding a new contract" / "minimum new surface" is NOT a valid criterion when it costs a layer boundary. Conceptual cleanliness is the protocol-scale optimization, not code reuse.
 
-**The temptation to refuse.** "We already have `ClauseRegistry` — can we register this new artifact under it?" When the test answer is yes, refuse the reuse. "Avoiding a new contract" / "minimum new surface" is NOT a valid optimization criterion when it costs a layer boundary. Conceptual cleanliness is the protocol-scale optimization; code reuse is not.
-
-When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE recommending an anchoring or registry-reuse choice. This applies to every agent operating in this repo.
+When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE recommending an anchoring or registry-reuse choice.
 
 ### Meaning lives in clauses + topology — never in a flat catch-all field
 
@@ -221,15 +217,11 @@ If yes, adding on-chain state, role checks, or lifecycle flags is a web2 pattern
 
 ### Frontend = runtime infrastructure, not product code
 
-`frontend/lib/` is runtime infrastructure where the abstraction IS the deliverable. Catalogues (`shared/clauseCategories.ts`, `shared/clauseSpecSource.ts`, mechanism packages, service-binding interfaces, the semantic-model layer in `lib/semantic/`) exist to be composed by UI surfaces — some shipped (`AgreementDrawer`, `/s/[seller]`, `/orders/[processId]`, `/inbox`, `/discover`), some not yet built. See `RUNTIME.md` Parts 1–3 for the composition model these catalogues are staging for.
+`frontend/lib/` is runtime infrastructure — the abstraction IS the deliverable; catalogues (`shared/clauseSpecSource.ts`, mechanism packages, `lib/semantic/`) land ahead of their UI consumers **by design**. **YAGNI does not apply**: "no readers today / one implementation / no consumer" are the expected state, not findings — bring UI down to the catalogue, don't shrink the catalogue to today's UI. (Composition model: `RUNTIME.md`; verified layering: `BLUEPRINT.md` off-chain-composition fact 2; doctrine: `feedback_runtime_abstractions_are_deliverable` memory.)
 
-**YAGNI does NOT apply here.** "This file has no readers today," "this interface has one implementation," and "this abstraction has no consumer" are NOT findings — they are the expected state of infrastructure code that lands ahead of its UI consumers, by design. Applying product-code YAGNI to runtime infrastructure is a category error.
+**Check before you build — no new rows of corn.** Before adding ANY frontend artifact (component, hook, helper, type, util, taxonomy, constant, style), `grep`/`glob` for an existing one and **reuse or extend it** — the bar for a net-new symbol is "no equivalent exists, *shown by a search*," never "I didn't happen to see one." Re-implementing what exists is the single most repeated failure here. A new catalogue that duplicates an existing one is still a finding (the no-new-helpers case, not the abstraction-ahead-of-UI case).
 
-When auditing the frontend, the right question is never "delete or keep." It is: *which UI surface is the next consumer of this catalogue, and what does it need?* Bring UI down to meet the catalogue; do not shrink the catalogue to match today's UI. The corollary: a new catalogue file that duplicates an existing one (parallel taxonomies of the same data) is still a finding — that is the "no new helpers" case (see memory), not the "abstraction ahead of UI" case.
-
-**Check before you build — no new rows of corn.** Before adding ANY frontend artifact (component, hook, helper, type, util, taxonomy, constant, style), `grep`/`glob` for an existing one that does the job and **reuse or extend it** — re-implementing what already exists is the single most repeated failure in this repo, and consolidating the duplicate rows back out is a tax the maintainer is done paying. The bar for a net-new file/symbol is "no equivalent exists, *shown by a search*" — never "I didn't happen to see one." This sharpens [[feedback_no_new_helpers_rule]]; it does NOT override the runtime-infrastructure doctrine above (building genuinely-absent infra is right; rebuilding present infra is the corn field).
-
-The frontend is a **protocol surface, not a product app**. Every surface, marketing or app, renders network state via the indexer; hardcoded/bundled lists are web2 drift. The `(marketing)`/`(app)` split is wallet-scope, not data-freshness.
+The frontend is a **protocol surface, not a product app**: every surface renders network state via the indexer; hardcoded/bundled lists are web2 drift. The `(marketing)`/`(app)` split is wallet-scope, not data-freshness.
 
 ### Documentation Discipline
 
