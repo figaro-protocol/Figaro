@@ -108,7 +108,7 @@ other or to the kernel.** They are siblings co-deployed on the chain.
 | From | To | Via |
 |---|---|---|
 | indexer | every node's events | reads `ClauseRegistered`, `SellerRegistered/…`, `AssemblyRegistered`, `Attestation`, `ValidatorSet`, `Auction*`, `ReceiptRecorded` |
-| `AssemblyRegistry.contentHash` | assembly document (IPFS) | the assembly JSON (`AssemblyDocument`); **the assembly→clause reference lives here, off-chain** |
+| `AssemblyRegistry.contentHash` | pinned assembly template (IPFS) | the serialized no-hash `AssemblyTemplate`; **the assembly→clause reference lives here, off-chain** |
 | `ClauseRegistry.uriHash` | clause spec JSON (IPFS) | off-chain Layer-A spec |
 | `ClauseRegistry.family` | RPGF SP1 program → `RpgfMinter` | the proof reads `family` for Tier-1 weighting — the **only** clause↔FIG link, and it is off-chain |
 
@@ -153,7 +153,7 @@ not one deploy script); the edges below are the verified cross-tier ones.
 | publish hooks | IPFS, then the matching registry | mixed | pin the JSON, then anchor its hash on-chain (simulate → write → wait) |
 | sequencer / prover | `FigaroBatchVerifier`, `RpgfMinter` | off-chain → on-chain | SP1 proof consumed on-chain |
 | `prover/rpgf` | `RpgfMinter` | off-chain | reads clause `family` + RPGF formula → proven claim root |
-| designer canvas / drawer | `AssemblyRegistry` + IPFS | off-chain | builds the assembly template → publishes (`AssemblyDocument` pinned, slug+hash anchored) |
+| designer canvas / drawer | `AssemblyRegistry` + IPFS | off-chain | builds the assembly template → publishes (serialized `AssemblyTemplate` pinned, slug+hash anchored) |
 | `clauseSpecSource` | drawer, indexer, semantic layer | off-chain | the single clause-spec source, read everywhere |
 
 **Load-bearing facts**
@@ -163,7 +163,7 @@ not one deploy script); the edges below are the verified cross-tier ones.
 2. `lib/` is **runtime infrastructure** — the abstraction is the deliverable;
    catalogues land ahead of their UI consumers (product-code YAGNI does not apply).
 3. The assembly→clause and seller→assembly references that were **absent
-   on-chain** live here — in the pinned `AssemblyDocument` and seller metadata.
+   on-chain** live here — in the pinned assembly template and seller metadata.
 
 ## Tier — trade
 
@@ -231,10 +231,12 @@ kernel's NatSpec still uses the word, so a blanket ban is unsafe.
     `AttestationCoordinator` now say "assembly document" / "agreement". Only the
     **frozen `FigaroCore`** keeps "manifest" (never-edit-kernel). So **sense D
     (`lib/handoff/manifest.ts`) is the sole remaining open item.**
-- **`AssemblyTemplate` vs `AssemblyDocument` — distinct, an old/new migration**
-  (`project_assembly_template_phase2`): `AssemblyTemplate` = intended
-  (party-agnostic, no hashes); `AssemblyDocument` = current (bakes hashes +
-  synthetic-process metadata). Endpoint retires `AssemblyDocument`.
+- **`AssemblyTemplate` vs `AssemblyDocument` — naming inconsistency; the no-hash
+  flip is DONE** (`4860ab5`, `project_assembly_template_phase2`). Publish serializes
+  the no-hash `AssemblyTemplate` (`buildAssemblyTemplate`/`serializeAssemblyTemplate`);
+  `AssemblyDocument` is the read-side type (`fetchAssemblyDocument`); the
+  `buildAssemblyDocument`/`serializeAssemblyDocument` pair appears legacy.
+  Consolidate the names — not a pending behavioral migration.
 - **`assembly` = design-time TEMPLATE; `process` = runtime INSTANCE** — settled
   (assembly→process rename declined by design). Not synonyms.
 - **`schema` → `clause`** — shipped in code, residual in ~10 memory files;
@@ -271,7 +273,7 @@ process hooks) · `commerce` (cart, checkout, pricing) · `semantic` (models,
 
 | Phase | Surface (route) | lib modules | Touches |
 |---|---|---|---|
-| **1 Design** | `/builders/designer` (`DesignerCanvas`, `AgreementDrawer`) | `designer`, `shared` (clauseSpecSource) | builds `AssemblyTemplate` (no-hash) → `useAssemblyRegistry` publish: pin `AssemblyDocument` (IPFS) + anchor slug/hash (`AssemblyRegistry`) |
+| **1 Design** | `/builders/designer` (`DesignerCanvas`, `AgreementDrawer`) | `designer`, `shared` (clauseSpecSource) | builds `AssemblyTemplate` (no-hash) → `useAssemblyRegistry` publish: pin serialized `AssemblyTemplate` (IPFS) + anchor slug/hash (`AssemblyRegistry`) |
 | **2 Adopt** | `/sellers`, `/s` (seller profile / catalogue) | `seller`, `mechanisms` (`useSellerRegistry`) | pin seller profile (IPFS) + `SellerRegistry` anchor; bind assembly into the catalogue (`counterpartyBindings`) |
 | **3 Checkout** | `/s/[seller]` | `commerce` (`useCheckout`), `core` (`orderCommitmentPreparation`, `agreement`) | prepare N commitments per topology → sign EIP-712 → `commit` (on-chain) + pin agreements (IPFS) |
 | **4 Runtime** | `/orders/[processId]`, `/inbox`, `/audit`, `/dispute` | `semantic` (`deriveProcessModelFromRuntime`), `mechanisms` (`useMerchantProcess` / `useCourierProcess`), `core/indexer`, `dispute`, `audit` | indexer reads events → agreement clauses → `deriveProcessModelFromRuntime` → `CapabilityRail` → `executeCapability` → attest / `resolveProcess` (on-chain) |
@@ -296,16 +298,21 @@ process hooks) · `commerce` (cart, checkout, pricing) · `semantic` (models,
    **recursively** through `ClauseControl` (spec-driven nesting, e.g. proximity
    under hand-off — never hardcoded).
 3. **`ViewAssemblyClient`** (`/view/[slug]`) — calls `usePublishAssembly().publish`.
-4. **`usePublishAssembly`** (`useAssemblyRegistry.ts:675`) — the wire:
-   `buildAssemblyDocument(snapshot)` → `serializeAssemblyDocument`
-   (`canonicalize` → `contentHash = keccak256(toHex(json))`) →
+4. **`usePublishAssembly`** (`useAssemblyRegistry.ts:722`) — the wire:
+   `buildAssemblyTemplate(snapshot)` (the **no-hash** template) →
+   `serializeAssemblyTemplate` (`canonicalize` → `contentHash = keccak256(toHex(json))`
+   — the IPFS/registry **content-address**, *not* the agreement fingerprint) →
    **`DEFAULT_IPFS_SERVICE.publishJSON` → metadataURI** *(off-chain pin)* →
    `simulateContract(registerAssembly(slug, contentHash, metadataURI), value: deposit)`
-   → `writeContractAsync` → wait *(on-chain, `AssemblyRegistry`)*.
+   → `writeContractAsync` → wait *(on-chain, `AssemblyRegistry`)*. The agreement
+   merkle-root fingerprint forms later, at **checkout**.
 
-Two artifacts, two names (not churn — see Open churn): the in-memory
-`AssemblyTemplate` (no-hash, what the canvas edits) vs the pinned
-`AssemblyDocument` (`buildAssemblyDocument` output, what `contentHash` hashes).
+`AssemblyTemplate` (`lib/designer/assemblyTemplate.ts`) is what the canvas edits
+**and** what publish serializes + content-addresses (the no-hash template).
+`AssemblyDocument` is the **read-side** type — `fetchAssemblyDocument` parses the
+pinned JSON back for `ViewAssemblyClient` + the published-list. (See Open churn:
+the `buildAssemblyDocument`/`serializeAssemblyDocument` pair is *not* on the
+publish or read path — likely legacy.)
 
 **Node-count gas cap (live, per-chain).** The assembly's node count is gated by
 ceilings derived from the active chain's block gas limit
@@ -353,14 +360,14 @@ by design (deposit + lock are spam-only; no role enum).
 The maps above are **current-state**; these load-bearing pieces are changing or
 broken (the rest is tracked in the backlog):
 
-- **Phase 1 — slug redesign (spec'd).** `buildAssemblyDocument:127` puts `slug`
-  *inside* the hashed doc, so `contentHash` depends on it (circular). Pending:
-  slug *out* of `contentHash` (derive slug *from* it) + drop the name input +
-  publish becomes **register-or-ADOPT** (dedup). Re-hashes every assembly →
-  fixture re-capture.
-- **Phase 1 — template/document flip.** Publish currently pins `AssemblyDocument`
-  (bakes synthetic agreements + hashes); the intended end-state pins the no-hash
-  `AssemblyTemplate` (`project_assembly_template_phase2`).
+- **Phase 1 — slug redesign (spec'd).** `buildAssemblyTemplate` puts `slug` *inside*
+  the template that `serializeAssemblyTemplate` hashes, so `contentHash` depends on
+  it (circular). Pending: slug *out* of `contentHash` (derive slug *from* it) + drop
+  the name input + publish becomes **register-or-ADOPT** (dedup). Re-hashes every
+  assembly → fixture re-capture.
+- **Phase 1 — template flip is DONE** (`4860ab5`): publish serializes the no-hash
+  `AssemblyTemplate`; the agreement merkle-root forms at checkout. The residual is
+  *naming* (Template vs Document for the pinned artifact), not behavior — see Open churn.
 - **Phase 1 — live bug.** `AgreementDrawer` Registry tab shows only
   `figaro-consent-v1`; the `useAllRegisteredClauses` / `BUILT_IN_SPECS` read path
   misbehaves.
