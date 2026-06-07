@@ -14,7 +14,6 @@ import {
     COMMERCE_CLAUSE_KEY,
     CONSENT_CLAUSE_KEY,
     COURIER_PROCESS_CLAUSE_KEY,
-    MERCHANT_PROCESS_CLAUSE_KEY,
     PROXIMITY_POLICY_CLAUSE_KEY,
     PROXIMITY_PROOF_CLAUSE_KEY,
     getSection,
@@ -224,7 +223,6 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
             if (handoff.length > 0) data.handoff = handoff;
             return { clause: FULFILMENT_V2_CLAUSE_KEY, data };
         },
-        [MERCHANT_PROCESS_CLAUSE_KEY]: () => ({ clause: MERCHANT_PROCESS_CLAUSE_KEY, data: {} }),
         [COURIER_PROCESS_CLAUSE_KEY]: () => ({ clause: COURIER_PROCESS_CLAUSE_KEY, data: {} }),
         [PROXIMITY_POLICY_CLAUSE_KEY]: (fields) => {
             const bands = arrOf(fields.bands).filter((b) => ALLOWED_PROXIMITY_BANDS.includes(b));
@@ -296,7 +294,17 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     for (const clauseId of Object.keys(cf)) {
         const encode = ENCODERS[clauseId];
         const fields = (cf[clauseId] ?? {}) as Record<string, unknown>;
-        const projected = encode ? encode(fields) : { clause: clauseId, data: fields };
+        const projected = encode
+            ? encode(fields)
+            : {
+                  clause: clauseId,
+                  // Spec-driven default. A Category-1 clause is an event-log ANCHOR:
+                  // its agreement section is empty — its fields (eventType, etc.) are
+                  // filled at runtime via attestation, not composed at build. Read
+                  // from the spec's block.tier. Every other clause (incl. unknown /
+                  // permissionless) projects its fields verbatim.
+                  data: getClauseSpec(clauseId)?.block?.tier === "category-1" ? {} : fields,
+              };
         if (projected == null) continue;
         if (Array.isArray(projected)) sections.push(...projected);
         else sections.push(projected);
