@@ -14,7 +14,6 @@ import {
     COMMERCE_CLAUSE_KEY,
     CONSENT_CLAUSE_KEY,
     PROXIMITY_POLICY_CLAUSE_KEY,
-    PROXIMITY_PROOF_CLAUSE_KEY,
     getSection,
     clauseFieldsToGeoSection,
     computeAgreementHash,
@@ -224,13 +223,11 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
             const allowedBands = clauseEnumValues(PROXIMITY_POLICY_CLAUSE_KEY, "bands");
             const bands = arrOf(fields.bands).filter((b) => allowedBands.includes(b));
             if (bands.length === 0) return null;
-            return [
-                { clause: PROXIMITY_POLICY_CLAUSE_KEY, data: { bands } },
-                {
-                    clause: PROXIMITY_PROOF_CLAUSE_KEY,
-                    data: { band: bands[0], nonce: `0x${"00".repeat(32)}`, deviceSig: `0x${"00".repeat(65)}` },
-                },
-            ];
+            // The runtime proof companion (figaro-proximity-proof-v1) is emitted
+            // generically below as an EMPTY anchor, from this clause's
+            // sisterClauseId — never a per-clause companion baked here. (Its real
+            // band/nonce/deviceSig are attested at runtime, not composed.)
+            return { clause: PROXIMITY_POLICY_CLAUSE_KEY, data: { bands } };
         },
         [ARBITRATION_KLEROS_CLAUSE_KEY]: (kleros) => {
             const klerosCourt = typeof kleros.klerosCourt === "string" ? kleros.klerosCourt : undefined;
@@ -307,8 +304,27 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         else sections.push(projected);
     }
 
+    // Companion (sister) runtime anchors. A composed clause whose spec declares
+    // a Category-1 `sisterClauseId` pairs with that runtime clause; at build the
+    // sister is an EMPTY anchor — its content is attested at runtime, never
+    // composed. Emitted generically from the spec (the SSoT for the pairing),
+    // not per-clause companion code. Deduped: a sister shared by several composed
+    // clauses, or already present, is emitted once. Triggers IFF the parent
+    // produced a section (so a dropped clause carries no orphan companion).
+    const composedClauseIds = sections.map((s) => s.clause);
+    const emittedClauses = new Set(composedClauseIds);
+    for (const clauseId of composedClauseIds) {
+        const sister = getClauseSpec(clauseId)?.block?.sisterClauseId;
+        if (!sister || emittedClauses.has(sister)) continue;
+        if (getClauseSpec(sister)?.block?.tier !== "category-1") continue;
+        sections.push({ clause: sister, data: {} });
+        emittedClauses.add(sister);
+    }
+
     // Companion leaf: the runtime measurement clause pairs with any GHG
-    // disclosure (added once). Companion declarations move into the spec later.
+    // disclosure (added once). One-to-many (N disclosures → 1 measurement), so it
+    // is NOT modeled by sisterClauseId; stays here until a many-to-one companion
+    // mechanism lands.
     if ((GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>).some((k) => !!cf[k])) {
         sections.push({ clause: GHG_MEASUREMENT_CLAUSE_KEY, data: {} });
     }
