@@ -13,7 +13,7 @@
  * happy path for clauses we ship.
  */
 
-import { parseClauseSpec, type ClauseSpec } from "@figaro/core/clauses";
+import { parseClauseSpec, type ClauseSpec, type FieldSpec } from "@figaro/core/clauses";
 import { keccak256, stringToHex } from "viem";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import commerceSpecRaw from "@/lib/shared/clauses/figaro-commerce-v1.json";
@@ -213,6 +213,28 @@ export function describeAttestation(
  *  so the frontend never hardcodes them. -1 if the code is unknown. */
 export function clauseEnumOrdinal(clauseId: string, code: string): number {
     return firstEnumValues(getClauseSpec(clauseId))?.indexOf(code) ?? -1;
+}
+
+/** The enum values a clause field admits, read STRAIGHT from the spec — the
+ *  SSoT for which strings are valid, so the build never hardcodes an
+ *  allow-list. `fieldPath` is dot-delimited for nested object fields (e.g.
+ *  "delivery.coordination"); the leaf may be an enum or an array-of-enum (its
+ *  item vocabulary is returned). Empty when the path or enum is absent. */
+export function clauseEnumValues(clauseId: string, fieldPath: string): readonly string[] {
+    let fields: readonly FieldSpec[] | undefined = getClauseSpec(clauseId)?.fields;
+    const segments = fieldPath.split(".");
+    for (let i = 0; i < segments.length; i++) {
+        const field = fields?.find((f) => f.name === segments[i]);
+        if (!field) return [];
+        if (i === segments.length - 1) {
+            if (field.type === "enum") return field.values;
+            if (field.type === "array" && field.items.type === "enum") return field.items.values;
+            return [];
+        }
+        if (field.type !== "object") return [];
+        fields = field.fields;
+    }
+    return [];
 }
 
 /** When a clause is attested, from block.tier. */

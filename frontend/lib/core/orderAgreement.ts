@@ -24,7 +24,7 @@ import {
     type TopologyMode,
 } from "@/lib/core/agreement";
 import { validateContent } from "@figaro/core/clauses";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, clauseEnumValues } from "@/lib/shared/clauseSpecSource";
 
 // ── Multi-valued fulfilment + proximity composition ────────────────────────
 //
@@ -46,11 +46,6 @@ const CANONICAL_FULFILMENT_METHODS_LIST = [
 ] as const;
 
 export type CanonicalFulfilmentMethod = typeof CANONICAL_FULFILMENT_METHODS_LIST[number];
-
-const ALLOWED_MODALITIES: ReadonlyArray<string> = ["consume-onsite", "pickup", "delivery", "virtual"];
-const ALLOWED_COORDINATIONS: ReadonlyArray<string> = ["buyer-assigned", "seller-assigned", "dutch-auction"];
-const ALLOWED_HANDOFF_POINTS: ReadonlyArray<string> = ["face-to-face", "dead-drop", "parking-area", "locker"];
-const ALLOWED_PROXIMITY_BANDS: ReadonlyArray<string> = ["zone-wifi", "nearby-ble", "contact-nfc"];
 
 /** Pull a canonical fulfilment method out of the v2 section's first
  *  (modality, coordination) pair. Returns null when the section's modalities
@@ -208,22 +203,26 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
             return null;
         },
         [FULFILMENT_V2_CLAUSE_KEY]: (fulfilment) => {
-            const modalities = arrOf(fulfilment.modalities).filter((m) => ALLOWED_MODALITIES.includes(m));
+            const allowedModalities = clauseEnumValues(FULFILMENT_V2_CLAUSE_KEY, "modalities");
+            const modalities = arrOf(fulfilment.modalities).filter((m) => allowedModalities.includes(m));
             if (modalities.length === 0) return null;
             const data: Record<string, unknown> = { modalities };
             // The validator requires coordination non-empty IFF delivery is the
             // request; default to "seller-assigned" when unset.
             if (modalities.includes("delivery")) {
                 const deliveryIn = (fulfilment.delivery ?? {}) as Record<string, unknown>;
-                const coords = arrOf(deliveryIn.coordination).filter((c) => ALLOWED_COORDINATIONS.includes(c));
+                const allowedCoordinations = clauseEnumValues(FULFILMENT_V2_CLAUSE_KEY, "delivery.coordination");
+                const coords = arrOf(deliveryIn.coordination).filter((c) => allowedCoordinations.includes(c));
                 data.delivery = { coordination: coords.length > 0 ? coords : ["seller-assigned"] };
             }
-            const handoff = arrOf(fulfilment.handoff).filter((h) => ALLOWED_HANDOFF_POINTS.includes(h));
+            const allowedHandoff = clauseEnumValues(FULFILMENT_V2_CLAUSE_KEY, "handoff");
+            const handoff = arrOf(fulfilment.handoff).filter((h) => allowedHandoff.includes(h));
             if (handoff.length > 0) data.handoff = handoff;
             return { clause: FULFILMENT_V2_CLAUSE_KEY, data };
         },
         [PROXIMITY_POLICY_CLAUSE_KEY]: (fields) => {
-            const bands = arrOf(fields.bands).filter((b) => ALLOWED_PROXIMITY_BANDS.includes(b));
+            const allowedBands = clauseEnumValues(PROXIMITY_POLICY_CLAUSE_KEY, "bands");
+            const bands = arrOf(fields.bands).filter((b) => allowedBands.includes(b));
             if (bands.length === 0) return null;
             return [
                 { clause: PROXIMITY_POLICY_CLAUSE_KEY, data: { bands } },
