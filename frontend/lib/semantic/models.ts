@@ -89,8 +89,7 @@ interface SubmitDisclosureInventoryCapabilityAction {
 export type MerchantProcessEventKind =
     | "prep-started"
     | "ready-for-pickup"
-    | "handed-off"
-    | "cancelled";
+    | "handed-off";
 
 /** Courier-process event types — re-exported from the SDK clause enum. */
 export type CourierProcessEventKind =
@@ -98,8 +97,7 @@ export type CourierProcessEventKind =
     | "arrived-pickup"
     | "in-transit"
     | "arrived-dropoff"
-    | "completed"
-    | "cancelled";
+    | "completed";
 
 /** Subset of courier-process events that require on-chain proximity proof —
  *  the two handoff edges (pickup, dropoff). */

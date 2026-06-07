@@ -49,14 +49,13 @@ const MERCHANT_HAPPY_PATH: ReadonlyArray<MerchantHappyEvent> = [
 // Terminal merchant stages + the two courier handoff edges, as enum ordinals
 // read from the clause specs (the single source for on-chain enum indices).
 const MERCHANT_HANDED_OFF_STAGE = clauseEnumOrdinal(MERCHANT_PROCESS_CLAUSE_KEY, "handed-off");
-const MERCHANT_CANCELLED_STAGE = clauseEnumOrdinal(MERCHANT_PROCESS_CLAUSE_KEY, "cancelled");
 const COURIER_ARRIVED_PICKUP_STAGE = clauseEnumOrdinal(COURIER_PROCESS_CLAUSE_KEY, "arrived-pickup");
 const COURIER_ARRIVED_DROPOFF_STAGE = clauseEnumOrdinal(COURIER_PROCESS_CLAUSE_KEY, "arrived-dropoff");
 
 /** Next merchant-process event the seller can fire, from the stages already
- *  attested. Null once handed-off or cancelled is reached. */
+ *  attested. Null once handed-off is reached. */
 function nextMerchantEvent(seenStages: Set<number>): MerchantHappyEvent | null {
-    if (seenStages.has(MERCHANT_HANDED_OFF_STAGE) || seenStages.has(MERCHANT_CANCELLED_STAGE)) return null;
+    if (seenStages.has(MERCHANT_HANDED_OFF_STAGE)) return null;
     for (const event of MERCHANT_HAPPY_PATH) {
         if (!seenStages.has(clauseEnumOrdinal(MERCHANT_PROCESS_CLAUSE_KEY, event))) return event;
     }

@@ -17,7 +17,7 @@ contract FigaroMerchantProcessV1ValidatorTest is Test {
     }
 
     function test_acceptsEachKnownEventType() public view {
-        for (uint8 e = 0; e <= 3; e++) {
+        for (uint8 e = 0; e <= 2; e++) {
             validator.validate(ID, 0,"", abi.encode(e, ""));
         }
     }

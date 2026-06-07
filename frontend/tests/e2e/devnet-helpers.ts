@@ -34,7 +34,6 @@ import {
     type ProximityBand,
 } from '@figaro/core/clauses';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
-import { clauseEnumOrdinal } from '@/lib/shared/clauseSpecSource';
 import { GHG_CLAUSE_KEY, GHG_CLAUSE_ID } from '@/lib/core/agreement';
 import { ZERO_PROCESS_ID } from '@/lib/shared/evm';
 import { gotoAsWallet } from './devnet-multi-test';
@@ -114,12 +113,7 @@ const DISCLOSURE_KIND = { commitment: 0, inventory: 1, restatement: 2, verificat
 
 const MERCHANT_PROCESS_CLAUSE_KEY = 'figaro-merchant-process-v1';
 const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex(MERCHANT_PROCESS_CLAUSE_KEY));
-/** `handed-off` on-chain stage — the clause-enum ordinal the runtime writes
- *  (useMerchantProcess.ts) and the proximity-proof handoff pairs with. Derived
- *  from the clause spec (the SSoT), never a hardcoded number. */
-const MERCHANT_HANDED_OFF_STAGE = clauseEnumOrdinal(MERCHANT_PROCESS_CLAUSE_KEY, 'handed-off');
 const COURIER_PROCESS_CLAUSE_KEY = 'figaro-courier-process-v1';
-const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex(COURIER_PROCESS_CLAUSE_KEY));
 const GHG_MEASUREMENT_CLAUSE_ID = keccak256(stringToHex('figaro-ghg-measurement-v1'));
 const PROXIMITY_POLICY_CLAUSE_KEY = 'figaro-proximity-policy-v1';
 const PROXIMITY_PROOF_CLAUSE_KEY = 'figaro-proximity-proof-v1';
@@ -141,7 +135,6 @@ const MERCHANT_EVENT = {
     prepStarted: 0,
     readyForPickup: 1,
     handedOff: 2,
-    cancelled: 3,
 } as const;
 
 /** Courier event types — uint8 stage per the validator's enum. available +
@@ -153,7 +146,6 @@ const COURIER_EVENT = {
     inTransit: 2,
     arrivedDropoff: 3,
     completed: 4,
-    cancelled: 5,
 } as const;
 
 // ── EIP-712 Types (imported from @figaro/core) ──────────────────────────────
@@ -1307,7 +1299,9 @@ export async function placeLocalCommerceOrderUI(
     page: Page,
     opts: {
         merchant: string;
-        itemId: string;
+        /** Catalogue item to buy. Omit to pick the seller's FIRST catalogue item
+         *  off the network (no hardcoded id) — the mainnet pattern. */
+        itemId?: string;
         fulfilmentMode?: string;
         geohash?: string;
         deliveryAddress?: string;
@@ -1319,8 +1313,9 @@ export async function placeLocalCommerceOrderUI(
             partnerName?: string;
             /** buyer-assigned: the courier's address to enter. */
             address?: string;
-            /** The delivery item to select — `seller-item-<deliveryItemId>`. */
-            deliveryItemId: string;
+            /** The delivery item to select. Omit to pick the courier's FIRST
+             *  catalogue item off the network (no hardcoded id). */
+            deliveryItemId?: string;
             /** If the delivery item is buyer-set, the token amount to enter. */
             buyerSetPrice?: string;
         };
@@ -1338,16 +1333,19 @@ export async function placeLocalCommerceOrderUI(
         await page.reload({ waitUntil: 'domcontentloaded' });
         await detailView.waitFor({ state: 'visible', timeout: 30000 });
     }
-    const menuItem = page.getByTestId(`menu-item-${opts.itemId}`);
+    // Pick the named item, or the seller's first catalogue item off the network.
+    const addButton = opts.itemId
+        ? page.getByTestId(`btn-add-${opts.itemId}`)
+        : page.locator('[data-testid^="btn-add-"]').first();
     try {
-        await menuItem.waitFor({ state: 'visible', timeout: 15000 });
+        await addButton.waitFor({ state: 'visible', timeout: 15000 });
     } catch {
         await page.reload({ waitUntil: 'domcontentloaded' });
         await detailView.waitFor({ state: 'visible', timeout: 30000 });
-        await menuItem.waitFor({ state: 'visible', timeout: 30000 });
+        await addButton.waitFor({ state: 'visible', timeout: 30000 });
     }
-    await page.getByTestId(`btn-add-${opts.itemId}`).click();
-    await expect(page.getByTestId(`cart-line-${opts.itemId}`)).toBeVisible({ timeout: 10000 });
+    await addButton.click();
+    await expect(page.locator('[data-testid^="cart-line-"]').first()).toBeVisible({ timeout: 10000 });
 
     await expect(page.getByTestId(`option-fulfilment-${fulfilmentMode}`)).toHaveCount(1, { timeout: 20000 });
     await page.getByTestId('select-fulfilment-mode').selectOption(fulfilmentMode);
@@ -1364,7 +1362,9 @@ export async function placeLocalCommerceOrderUI(
         } else {
             await page.getByTestId('input-seller-address').fill(opts.courier.address!);
         }
-        const deliveryItem = page.getByTestId(`seller-item-${opts.courier.deliveryItemId}`);
+        const deliveryItem = opts.courier.deliveryItemId
+            ? page.getByTestId(`seller-item-${opts.courier.deliveryItemId}`)
+            : page.locator('[data-testid^="seller-item-"]').first();
         await deliveryItem.waitFor({ state: 'visible', timeout: 30000 });
         await deliveryItem.click();
         if (opts.courier.buyerSetPrice) {
@@ -1517,68 +1517,37 @@ export async function walkMerchantToHandoff(
     page: Page,
     opts: { processId: Hex; merchant: string },
 ): Promise<void> {
-    const config = readLocalDeploymentConfig();
-    const coordinator = (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR
-        ?? config.attestationCoordinator) as Hex;
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
     await gotoAsWallet(page, opts.merchant, `/orders/${opts.processId}?e2e=devnet`);
     await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
 
     // The seller advances the merchant lifecycle entirely through the capability
-    // rail — ONE flow, no clause-specific buttons. The builder derives a plain
-    // merchant-process-signal capability for prep-started/ready-for-pickup, then
-    // a merchant-process-signal-with-proof capability for the handed-off
-    // cross-witness (both rotate under one testid family). Click whichever is
-    // enabled until the merchant has attested handed-off AND a proximity-proof
-    // cross-witness on-chain.
-    const merchantAttestations = () => publicClient.getContractEvents({
-        address: coordinator, abi: ATTESTATION_EVENT_ABI, eventName: 'Attestation',
-        args: { processId: opts.processId, attester: opts.merchant as Hex }, fromBlock: 0n,
-    });
-    const handoffComplete = (events: Awaited<ReturnType<typeof merchantAttestations>>) => {
-        const handedOff = events.some((e) => {
-            const args = (e as { args: { clauseId?: Hex; stage?: number } }).args;
-            return args.clauseId === MERCHANT_PROCESS_CLAUSE_ID && Number(args.stage) === MERCHANT_HANDED_OFF_STAGE;
-        });
-        const proofWitness = events.some(
-            (e) => (e as { args: { clauseId?: Hex } }).args.clauseId === PROXIMITY_PROOF_CLAUSE_ID,
-        );
-        return handedOff && proofWitness;
-    };
-
-    const handoffBtn = page.getByTestId('capability-execute-submit-merchant-process-signal-with-proof');
+    // rail — ONE flow. The rail is EVENT-DRIVEN: it re-derives from the indexer,
+    // so each step's button only appears once the prior attestation has been
+    // indexed. We drive AND sequence purely off that UI reaction (the rail
+    // rotating its label, then retiring) — never a chain read. The button's text
+    // is the stage code (CapabilityRail renders `capability.label`):
+    // prep-started → ready-for-pickup are plain signals (the text rotates under
+    // one testid); handed-off is the with-proof capability when the handoff
+    // cross-witnesses a proximity policy, else the plain signal.
     const signalBtn = page.getByTestId('capability-execute-submit-merchant-process-signal');
-    const deadline = Date.now() + 180_000;
-    for (;;) {
-        const events = await merchantAttestations();
-        if (handoffComplete(events)) break;
-        if (Date.now() > deadline) throw new Error('merchant lifecycle (handed-off + proximity cross-witness) timed out');
-        const countBefore = events.length;
+    const handoffBtn = page.getByTestId('capability-execute-submit-merchant-process-signal-with-proof');
 
-        // Prefer the handoff (with-proof) capability when present; else the plain
-        // signal. Gate on isVisible() — it returns immediately for an absent
-        // element; isEnabled() auto-waits up to the test timeout. click() then
-        // auto-waits for the button to be enabled (the rail disables it while
-        // its tx is in flight).
-        if (await handoffBtn.isVisible().catch(() => false)) {
-            await handoffBtn.click();
-        } else if (await signalBtn.isVisible().catch(() => false)) {
-            await signalBtn.click();
-        } else {
-            await new Promise((r) => setTimeout(r, 800));
-            continue;
-        }
-
-        // Wait for the attestation to land (the page re-derives the next capability).
-        const advanceDeadline = Date.now() + 60_000;
-        for (;;) {
-            if ((await merchantAttestations()).length > countBefore) break;
-            if (Date.now() > advanceDeadline) break;
-            await new Promise((r) => setTimeout(r, 1000));
-        }
+    for (const stage of ['prep-started', 'ready-for-pickup'] as const) {
+        const btn = signalBtn.filter({ hasText: stage });
+        await expect(btn, `merchant rail should surface ${stage}`).toBeEnabled({ timeout: 90_000 });
+        await btn.click();
     }
-    await expect(page.locator('[data-testid^="capability-execute-submit-merchant-process-signal"]')).toHaveCount(0, { timeout: 60000 });
+
+    // handed-off: whichever the rail derived — the with-proof cross-witness, or
+    // the plain signal when the merchant order carries no proximity policy.
+    const handedOffBtn = signalBtn.filter({ hasText: 'handed-off' }).or(handoffBtn);
+    await expect(handedOffBtn, 'merchant rail should surface handed-off').toBeEnabled({ timeout: 90_000 });
+    await handedOffBtn.click();
+
+    // UI reaction: every merchant-process capability retires once handed-off (and
+    // its proximity cross-witness) has landed and the rail has re-derived.
+    await expect(page.locator('[data-testid^="capability-execute-submit-merchant-process-signal"]'))
+        .toHaveCount(0, { timeout: 90_000 });
 }
 
 /**
@@ -1614,15 +1583,10 @@ export async function runDeliveryCoordination(
         ?? config.attestationCoordinator) as Hex;
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-    const courierStages = async (): Promise<number[]> => {
-        const all = await publicClient.getContractEvents({
-            address: coordinator, abi: ATTESTATION_EVENT_ABI, eventName: 'Attestation',
-            args: { processId: opts.processId }, fromBlock: 0n,
-        });
-        return (all as Array<{ args: { clauseId?: Hex; stage?: number } }>)
-            .filter((e) => e.args.clauseId === COURIER_PROCESS_CLAUSE_ID)
-            .map((e) => Number(e.args.stage));
-    };
+    // NOTE: submitEmissionsAsCurrentSeller below still polls the chain to confirm
+    // the measurement landed — a remaining UI-bypass on the OFFSET path only (not
+    // exercised by the base local-commerce/onsite flows). To convert when the
+    // offset scenario is brought up: wait for the ghg panel's own submitted state.
 
     // Inline emissions submit — file a figaro-ghg-measurement-v1 grams
     // measurement for the currently-active seller wallet on the order page.
@@ -1673,22 +1637,17 @@ export async function runDeliveryCoordination(
     // same testid; click it for each handoff edge.
     await gotoAsWallet(page, opts.courier, `/orders/${opts.processId}?e2e=devnet`);
     await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+    // The courier's with-proof capability rotates its label across the two handoff
+    // edges (arrived-pickup → arrived-dropoff) and retires once both land. Sequence
+    // off that event-driven UI reaction — never a chain read.
     const proofBtn = page.getByTestId('capability-execute-submit-courier-process-signal-with-proof');
-    for (let handoff = 0; handoff < 2; handoff++) {
-        await expect(proofBtn).toBeEnabled({ timeout: 45000 });
-        await proofBtn.click();
-        const want = handoff === 0 ? [3] : [3, 5];
-        const deadline = Date.now() + 90_000;
-        for (;;) {
-            const stages = await courierStages();
-            if (want.every((s) => stages.includes(s))) break;
-            if (Date.now() > deadline) throw new Error(`courier handoff ${handoff + 1} timed out — stages ${stages}`);
-            await new Promise((r) => setTimeout(r, 1000));
-        }
+    for (const edge of ['arrived-pickup', 'arrived-dropoff'] as const) {
+        const btn = proofBtn.filter({ hasText: edge });
+        await expect(btn, `courier rail should surface ${edge}`).toBeEnabled({ timeout: 90_000 });
+        await btn.click();
     }
-    const finalStages = await courierStages();
-    expect(finalStages).toContain(3); // arrived-pickup (merchant→courier)
-    expect(finalStages).toContain(5); // arrived-dropoff (courier→buyer)
+    // UI reaction: the courier handoff capability retires once both proofs land.
+    await expect(proofBtn).toHaveCount(0, { timeout: 90_000 });
     if (opts.emissions?.courier) {
         await submitEmissionsAsCurrentSeller(
             opts.courier as Hex,

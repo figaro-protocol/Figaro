@@ -14,8 +14,7 @@
             "values": [
                 "prep-started",
                 "ready-for-pickup",
-                "handed-off",
-                "cancelled"
+                "handed-off"
             ],
             "required": true,
             "description": "Merchant lifecycle event."

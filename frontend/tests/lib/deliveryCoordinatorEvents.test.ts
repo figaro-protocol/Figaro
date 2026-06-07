@@ -165,7 +165,7 @@ describe("createDeliveryCoordinatorSource", () => {
                     orderHash: "0xorder4",
                     clauseId: COURIER_CLAUSE_ID,
                     attester: "0xDriver",
-                    stage: 4, // completed (en-route-pickup=0 … completed=4, cancelled=5)
+                    stage: 4, // completed (en-route-pickup=0 … arrived-dropoff=3, completed=4)
                     contentRef: "0x",
                 }),
             ],

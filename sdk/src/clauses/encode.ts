@@ -133,8 +133,7 @@ export interface OffsetPolicyContent {
 export type MerchantEvent =
     | "prep-started"
     | "ready-for-pickup"
-    | "handed-off"
-    | "cancelled";
+    | "handed-off";
 
 export interface MerchantContent {
     eventType: MerchantEvent;
@@ -156,8 +155,7 @@ export type CourierEvent =
     | "arrived-pickup"
     | "in-transit"
     | "arrived-dropoff"
-    | "completed"
-    | "cancelled";
+    | "completed";
 
 export interface CourierContent {
     eventType: CourierEvent;

@@ -16,8 +16,7 @@
                 "arrived-pickup",
                 "in-transit",
                 "arrived-dropoff",
-                "completed",
-                "cancelled"
+                "completed"
             ],
             "required": true,
             "description": "Courier lifecycle event."

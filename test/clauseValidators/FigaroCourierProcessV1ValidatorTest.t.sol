@@ -17,7 +17,7 @@ contract FigaroCourierProcessV1ValidatorTest is Test {
     }
 
     function test_acceptsEachKnownEventType() public view {
-        for (uint8 e = 0; e <= 5; e++) {
+        for (uint8 e = 0; e <= 4; e++) {
             validator.validate(ID, 0,"", abi.encode(e, ""));
         }
     }

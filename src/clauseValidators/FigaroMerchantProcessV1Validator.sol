@@ -30,13 +30,12 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///        0 = prep-started
 ///        1 = ready-for-pickup
 ///        2 = handed-off
-///        3 = cancelled
 ///
 ///      evidenceUri is optional (max 512 bytes when present).
 contract FigaroMerchantProcessV1Validator is IClauseValidator {
     bytes32 public constant override clauseId = keccak256("figaro-merchant-process-v1");
 
-    uint8 internal constant MAX_EVENT_INDEX = 3;
+    uint8 internal constant MAX_EVENT_INDEX = 2;
     uint256 internal constant MAX_URI_LEN = 512;
 
     error ClauseIdMismatch(bytes32 got, bytes32 expected);

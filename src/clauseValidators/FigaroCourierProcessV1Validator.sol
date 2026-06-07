@@ -32,13 +32,12 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///        2 = in-transit
 ///        3 = arrived-dropoff
 ///        4 = completed
-///        5 = cancelled
 ///
 ///      evidenceUri is optional (max 512 bytes when present).
 contract FigaroCourierProcessV1Validator is IClauseValidator {
     bytes32 public constant override clauseId = keccak256("figaro-courier-process-v1");
 
-    uint8 internal constant MAX_EVENT_INDEX = 5;
+    uint8 internal constant MAX_EVENT_INDEX = 4;
     uint256 internal constant MAX_URI_LEN = 512;
 
     error ClauseIdMismatch(bytes32 got, bytes32 expected);
