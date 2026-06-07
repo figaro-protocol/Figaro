@@ -6,7 +6,6 @@ import {
     GEO_CLAUSE_KEY,
     GHG_CLAUSE_KEY,
     GHG_DISCLOSURE_CLAUSE_KEYS,
-    GHG_MEASUREMENT_CLAUSE_KEY,
     GHG_STANDARD_TO_CLAUSE,
     GHG_CLAUSE_TO_STANDARD,
     ARBITRATION_KLEROS_CLAUSE_KEY,
@@ -319,14 +318,6 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         if (getClauseSpec(sister)?.block?.tier !== "category-1") continue;
         sections.push({ clause: sister, data: {} });
         emittedClauses.add(sister);
-    }
-
-    // Companion leaf: the runtime measurement clause pairs with any GHG
-    // disclosure (added once). One-to-many (N disclosures → 1 measurement), so it
-    // is NOT modeled by sisterClauseId; stays here until a many-to-one companion
-    // mechanism lands.
-    if ((GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>).some((k) => !!cf[k])) {
-        sections.push({ clause: GHG_MEASUREMENT_CLAUSE_KEY, data: {} });
     }
 
     if (params.extraSections?.length) {

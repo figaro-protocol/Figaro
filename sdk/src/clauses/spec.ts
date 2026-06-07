@@ -135,8 +135,12 @@ export interface ClauseBlockBinding {
      *  "/evidence-display"]). Empty when the clause is view-tier only or
      *  has no UI at all. */
     routes?: readonly string[];
-    /** Sister clause in a Category-1 ↔ Category-2 pair. Omit for
-     *  unsisters and for one-to-many runtime sisters. */
+    /** The clause's runtime-attestation companion — the Category-1 clause
+     *  paired with this one. The agreement build emits it as an empty anchor
+     *  (its content is attested at runtime, not composed). N Category-2 clauses
+     *  MAY name the same Category-1 companion (e.g. the GHG disclosure clauses →
+     *  figaro-ghg-measurement-v1); the emitter dedups. Omit for unsistered
+     *  clauses. */
     sisterClauseId?: string;
 }
 

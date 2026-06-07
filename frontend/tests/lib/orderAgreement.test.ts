@@ -132,3 +132,32 @@ describe("buildOrderAgreement", () => {
         expect(summarizeAgreement(agreement)?.fulfilment?.handoffPoints).toEqual([]);
     });
 });
+
+describe("companion (sister) runtime anchors", () => {
+    const build = (clauseFields: ReturnType<typeof cf>) =>
+        buildOrderAgreement({ buyer: BUYER, seller: SELLER, currency: CURRENCY, payment: 10n, clauseFields });
+
+    it("emits the proximity-proof anchor (empty) from proximity-policy's sisterClauseId", () => {
+        const agreement = build(cf({ proximityBands: ["nearby-ble"] }));
+        // Policy keeps its composed bands; proof is an EMPTY runtime anchor —
+        // its band/nonce/deviceSig are attested at runtime, never composed.
+        expect(getSection(agreement, "figaro-proximity-policy-v1")?.data.bands).toEqual(["nearby-ble"]);
+        expect(getSection(agreement, "figaro-proximity-proof-v1")?.data).toEqual({});
+    });
+
+    it("emits the ghg-measurement anchor (empty) from a disclosure's sisterClauseId", () => {
+        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064-v1"] }));
+        expect(getSection(agreement, "figaro-ghg-measurement-v1")?.data).toEqual({});
+    });
+
+    it("emits the shared ghg-measurement anchor exactly once across N disclosures (dedup)", () => {
+        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064-v1", "figaro-ghg-en-16258-v1"] }));
+        expect(agreement.sections.filter((s) => s.clause === "figaro-ghg-measurement-v1")).toHaveLength(1);
+    });
+
+    it("emits no companion when the parent clause is absent", () => {
+        const agreement = build(cf({ origin: "dr5reg" }));
+        expect(getSection(agreement, "figaro-proximity-proof-v1")).toBeUndefined();
+        expect(getSection(agreement, "figaro-ghg-measurement-v1")).toBeUndefined();
+    });
+});
