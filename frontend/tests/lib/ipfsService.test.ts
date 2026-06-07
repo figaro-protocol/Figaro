@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_IPFS_SERVICE, resolveContentUri } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, ipfsTimeoutForBytes, resolveContentUri } from "@/lib/shared/ipfsService";
 
 describe("ipfsService", () => {
     const originalFetch = globalThis.fetch;
@@ -137,6 +137,36 @@ describe("ipfsService", () => {
         });
 
         await expect(DEFAULT_IPFS_SERVICE.uploadFile(file)).rejects.toThrow("IPFS upload returned no CID");
+    });
+
+    describe("ipfsTimeoutForBytes (size-aware request timeout)", () => {
+        const MB = 1024 * 1024;
+
+        it("keeps the 8s floor for a tiny agreement-JSON pin", () => {
+            // A few KB adds a sub-millisecond allowance — effectively the floor.
+            expect(ipfsTimeoutForBytes(2 * 1024)).toBeGreaterThanOrEqual(8000);
+            expect(ipfsTimeoutForBytes(2 * 1024)).toBeLessThan(8100);
+        });
+
+        it("scales the budget for a multi-MB media upload", () => {
+            // 5 MB (MAX_FILE_SIZE) gets the floor plus 5× the per-MB allowance.
+            expect(ipfsTimeoutForBytes(5 * MB)).toBe(8000 + 5 * 8000);
+            // Strictly more headroom than the floor that was aborting it before.
+            expect(ipfsTimeoutForBytes(5 * MB)).toBeGreaterThan(ipfsTimeoutForBytes(0));
+        });
+
+        it("is monotonic in payload size", () => {
+            expect(ipfsTimeoutForBytes(MB)).toBeGreaterThan(ipfsTimeoutForBytes(0));
+            expect(ipfsTimeoutForBytes(4 * MB)).toBeGreaterThan(ipfsTimeoutForBytes(MB));
+        });
+
+        it("clamps at the MAX_FILE_SIZE budget so an uncapped blob can't hang forever", () => {
+            const capped = ipfsTimeoutForBytes(5 * MB); // MAX_FILE_SIZE
+            expect(capped).toBe(8000 + 5 * 8000);
+            // pinBlob has no size cap — anything past the ceiling stays clamped.
+            expect(ipfsTimeoutForBytes(50 * MB)).toBe(capped);
+            expect(ipfsTimeoutForBytes(500 * MB)).toBe(capped);
+        });
     });
 
     it("accepts every allowed image MIME type", async () => {

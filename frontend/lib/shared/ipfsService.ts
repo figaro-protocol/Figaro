@@ -42,6 +42,30 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 // request so a stalled pin rejects and the fallback can take over.
 const IPFS_REQUEST_TIMEOUT_MS = 8000;
 
+// A small payload keeps the 8s floor above; larger payloads (media up to
+// MAX_FILE_SIZE) get a per-megabyte allowance on top, so a legitimate multi-MB
+// upload to a slow Kubo isn't aborted mid-flight by the same budget that bounds
+// a 2 KB agreement-JSON pin.
+const IPFS_TIMEOUT_PER_MB_MS = 8000;
+
+// Ceiling so an uncapped payload can't compute an arbitrarily long timeout —
+// pinBlob enforces no size cap (only uploadFile checks MAX_FILE_SIZE), so a
+// pathological blob would otherwise stretch the abort budget unbounded. Clamp
+// at the budget for a MAX_FILE_SIZE upload.
+const IPFS_MAX_REQUEST_TIMEOUT_MS =
+    IPFS_REQUEST_TIMEOUT_MS + (MAX_FILE_SIZE / (1024 * 1024)) * IPFS_TIMEOUT_PER_MB_MS;
+
+/** Size-aware request timeout: the 8s floor plus a per-megabyte allowance,
+ *  clamped to the MAX_FILE_SIZE budget so an uncapped blob can't hang forever. */
+export function ipfsTimeoutForBytes(bytes: number): number {
+    return Math.round(
+        Math.min(
+            IPFS_REQUEST_TIMEOUT_MS + (bytes / (1024 * 1024)) * IPFS_TIMEOUT_PER_MB_MS,
+            IPFS_MAX_REQUEST_TIMEOUT_MS,
+        ),
+    );
+}
+
 const ALLOWED_FILE_TYPES = new Set([
     "image/jpeg",
     "image/png",
@@ -95,13 +119,13 @@ class DefaultIpfsService implements IpfsService {
         const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
         const form = new FormData();
         form.append("file", blob);
-        return this.add(form, "IPFS pin failed", "IPFS pin returned no CID");
+        return this.add(form, "IPFS pin failed", "IPFS pin returned no CID", ipfsTimeoutForBytes(blob.size));
     }
 
     async pinBlob(blob: Blob): Promise<string> {
         const form = new FormData();
         form.append("file", blob);
-        return this.add(form, "IPFS pin failed", "IPFS pin returned no CID");
+        return this.add(form, "IPFS pin failed", "IPFS pin returned no CID", ipfsTimeoutForBytes(blob.size));
     }
 
     async publishJSON(data: unknown): Promise<IpfsPublishResult> {
@@ -112,7 +136,7 @@ class DefaultIpfsService implements IpfsService {
         validateUploadableFile(file);
         const form = new FormData();
         form.append("file", file);
-        const cid = await this.add(form, "IPFS upload failed", "IPFS upload returned no CID");
+        const cid = await this.add(form, "IPFS upload failed", "IPFS upload returned no CID", ipfsTimeoutForBytes(file.size));
         return buildPublishResult(this, cid);
     }
 
@@ -136,9 +160,10 @@ class DefaultIpfsService implements IpfsService {
         body: FormData,
         failureMessage: string,
         emptyCidMessage: string,
+        timeoutMs: number,
     ): Promise<string> {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), IPFS_REQUEST_TIMEOUT_MS);
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
         let res: Response;
         try {
             res = await fetch(`${this.apiUrl}/api/v0/add?pin=true`, {
