@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-05-27 (streamlining pass + launch-scenario task moved in from the backlog — Claude Opus 4.7).
+Last updated: 2026-06-07 (IPFS content-persistence task added — Claude Opus 4.8).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -92,6 +92,16 @@ fixtures is tracked in `frontend/tests/e2e/SCENARIOS.md`.
 Remaining output:
 
 1. mainnet seed list — `DeployMainnet.s.sol` seeds no assemblies at launch (recorded). If Task 4 disposition (2) is taken, the mainnet half collapses to n/a (no `AssemblyRegistry` deployed)
+
+### Task 6: IPFS Content Persistence — Pinning Durability
+
+The chain stores only the agreement fingerprint (`agreementHash` / assembly `contentHash`); the agreement itself lives on IPFS, and every downstream consumer — counterparty validation, indexer graph reconstruction, the SP1 prover, a dispute forum — retrieves it by CID. IPFS does **not** auto-replicate: pinned content lives only on the node(s) that pin it, so a single Kubo node is a single point of failure. The devnet runs one Docker Kubo node (API `:5001` and gateway `:8080` are two interfaces to the *same* node), which is correct for device-only dev (wiped each `devup`, no long-lived commitments). On a live network a commitment's agreement must stay fetchable by its CID for the life of any possible dispute, so content durability must outlive any single node.
+
+Required output:
+
+1. **Testnet — managed pinning service (Option 1).** Pin every published agreement, assembly document, and profile to a managed multi-node pinning service (Pinata / Filebase / Storacha) so content survives the loss of the dev node. The pin path (`frontend/lib/shared/ipfsService.ts`) targets the service API; add the service endpoint/key as env vars in `docs/v5/LOCAL_DEV.md` + `frontend/.env.local`.
+2. **Mainnet — sovereign per-party pinning (Option 3).** Shift durability to the parties: each publishing wallet's client pins what it authors, so no single operator is the custodian of availability — matching the ownerless / permissionless doctrine. No central pinning dependency in the mainnet trust model.
+3. **Retrieval-availability floor: 6 years, user-extensible.** An agreement must stay fetchable by its CID for the longest plausible dispute/audit window, anchored to the tax-audit horizon: most administrations can audit ~5 years back, plus 1 year because a year's transactions are declared the following year → a **6-year minimum**. The window varies by jurisdiction and shifts over time, so 6 years is a floor, not a fixed term — each agreement carries a per-party option to extend (longer retention for higher-stakes or longer-tail commitments).
 
 ## Validation Commands
 
@@ -197,6 +207,7 @@ external-audit gates above:
 - `SellerRegistry.registrationDeposit` and `SellerRegistry.depositLockPeriod` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `365 days` placeholders).
 - `AssemblyRegistry.registrationDeposit` and `AssemblyRegistry.depositLockPeriod` == the mainnet values picked per Task 3 — if Task 4 disposition (1) is taken. If disposition (2) is taken, `AssemblyRegistry` is not deployed and this check does not apply.
 - All settlement tokens are non-rebasing and non-fee-on-transfer.
+- Agreement / assembly-document / profile content is pinned for durable retrieval per Task 6 — on mainnet via sovereign per-party pinning (Option 3), never only a single Kubo node — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
 
 ## Freeze Notice — Solidity Surface Frozen for External Audit
 
