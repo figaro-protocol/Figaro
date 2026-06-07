@@ -13,7 +13,6 @@ import {
     APPLICABLE_LAW_CLAUSE_KEY,
     COMMERCE_CLAUSE_KEY,
     CONSENT_CLAUSE_KEY,
-    COURIER_PROCESS_CLAUSE_KEY,
     PROXIMITY_POLICY_CLAUSE_KEY,
     PROXIMITY_PROOF_CLAUSE_KEY,
     getSection,
@@ -223,7 +222,6 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
             if (handoff.length > 0) data.handoff = handoff;
             return { clause: FULFILMENT_V2_CLAUSE_KEY, data };
         },
-        [COURIER_PROCESS_CLAUSE_KEY]: () => ({ clause: COURIER_PROCESS_CLAUSE_KEY, data: {} }),
         [PROXIMITY_POLICY_CLAUSE_KEY]: (fields) => {
             const bands = arrOf(fields.bands).filter((b) => ALLOWED_PROXIMITY_BANDS.includes(b));
             if (bands.length === 0) return null;
