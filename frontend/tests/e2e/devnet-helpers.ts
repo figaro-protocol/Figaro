@@ -34,6 +34,7 @@ import {
     type ProximityBand,
 } from '@figaro/core/clauses';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
+import { clauseEnumOrdinal } from '@/lib/shared/clauseSpecSource';
 import { GHG_CLAUSE_KEY, GHG_CLAUSE_ID } from '@/lib/core/agreement';
 import { ZERO_PROCESS_ID } from '@/lib/shared/evm';
 import { gotoAsWallet } from './devnet-multi-test';
@@ -97,9 +98,6 @@ export function useChainSnapshot(test: PlaywrightLifecycleHooks): void {
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 }
 
-/** Merchant-process `handed-off` event stage — the attestation the
- *  `btn-merchant-proximity-proof` click pairs with the proximity-proof. */
-const MERCHANT_HANDED_OFF_STAGE = 4;
 const ATTESTATION_EVENT_ABI = parseAbi([
     'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)',
 ]);
@@ -116,6 +114,10 @@ const DISCLOSURE_KIND = { commitment: 0, inventory: 1, restatement: 2, verificat
 
 const MERCHANT_PROCESS_CLAUSE_KEY = 'figaro-merchant-process-v1';
 const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex(MERCHANT_PROCESS_CLAUSE_KEY));
+/** `handed-off` on-chain stage — the clause-enum ordinal the runtime writes
+ *  (useMerchantProcess.ts) and the proximity-proof handoff pairs with. Derived
+ *  from the clause spec (the SSoT), never a hardcoded number. */
+const MERCHANT_HANDED_OFF_STAGE = clauseEnumOrdinal(MERCHANT_PROCESS_CLAUSE_KEY, 'handed-off');
 const COURIER_PROCESS_CLAUSE_KEY = 'figaro-courier-process-v1';
 const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex(COURIER_PROCESS_CLAUSE_KEY));
 const GHG_MEASUREMENT_CLAUSE_ID = keccak256(stringToHex('figaro-ghg-measurement-v1'));
