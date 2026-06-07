@@ -374,9 +374,6 @@ broken (the rest is tracked in the backlog):
 - **Phase 2 — binding disambiguation.** `counterpartyBindings` → seller
   resolution happens at the `/s` page (`sellerListing.ts:154-155`); multi-binding
   disambiguation is unsettled.
-- **Both — IPFS pin timeout.** The 8s `AbortController` in
-  `DefaultIpfsService.add` is shared by every pin; may abort a legit 5 MB media
-  upload.
 
 ### Phase 3 — Checkout (verified call-graph)
 
