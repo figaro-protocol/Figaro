@@ -184,9 +184,12 @@ test.describe('kiosk-sale runtime — buyer checkout → seller accept → resol
         await expect(page.getByTestId('order-fulfilment-modality'))
             .toContainText(/Pickup/i, { timeout: 30000 });
 
-        const confirmReceipt = page.getByTestId('btn-confirm-receipt');
-        await confirmReceipt.waitFor({ state: 'visible', timeout: 30000 });
-        await confirmReceipt.click();
+        // Resolve the process — a capability now (one flow; replaces the bespoke
+        // confirm-receipt button). The executor raises the window.confirm the
+        // persistent dialog handler above accepts.
+        const resolveBtn = page.getByTestId('capability-execute-resolve-process');
+        await resolveBtn.waitFor({ state: 'visible', timeout: 30000 });
+        await resolveBtn.click();
 
         // Resolution settles the process: no active orders remain on-chain.
         await expect.poll(
