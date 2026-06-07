@@ -1,19 +1,17 @@
 /**
  * Assembly template — the no-hash JSON the designer emits.
  *
- * Per order it carries the order's place in the DAG (`parentOrderIds` — the
- * order in which the process unfurls) and the clauses selected on it (the
- * buyer↔seller relationship's MEANING). It carries NO party addresses (the
- * template is PARTY-AGNOSTIC — parties bind at adoption/checkout), NO agreement
- * hashes, NO clause field values, NO sentinels: the fingerprint forms later, at
- * checkout, when the real parties fill the clause fields.
- *
- * `parentOrderIds` is read from each order's existing topology section; clause
- * selection comes from the designer's per-order pick (the Registry checkboxes).
+ * Per order it carries the clauses composed on it (the buyer↔seller
+ * relationship's MEANING) — and the DAG is ONE OF THOSE CLAUSES:
+ * `figaro-topology-v1` holds the order's parent ids. The template carries NO
+ * party addresses (PARTY-AGNOSTIC — parties bind at adoption/checkout), NO
+ * agreement hashes, NO sentinels: the fingerprint forms later, at checkout,
+ * when the real parties fill the clause fields.
  */
 
 import { keccak256, toHex } from "viem";
 import type { Order } from "@/lib/core/store";
+import { TOPOLOGY_CLAUSE_KEY } from "@/lib/core/agreement";
 
 /** A clause on an order → the field values filled at design time. An empty
  *  object means the clause is selected but the designer set no fields (the
@@ -22,14 +20,12 @@ export type ClauseValues = Record<string, Record<string, unknown>>;
 
 interface AssemblyTemplateOrder {
     /** Local order label — `order-<index>`, stable within the template; the
-     *  reference target for other orders' `parentOrderIds`. NOT a chain id, and
-     *  NOT a party — the template is party-agnostic. */
+     *  reference target the topology clause points at. NOT a chain id, and NOT
+     *  a party — the template is party-agnostic. */
     id: string;
-    /** Parent order ids — the DAG edges defining unfurl order. Root = []. */
-    parentOrderIds: string[];
-    /** clauseId → the design-time field values the designer filled (the
-     *  buyer↔seller relationship's MEANING). Whatever's absent is filled
-     *  downstream. */
+    /** clauseId → the design-time field values the designer composed. The DAG
+     *  is a clause here too: `figaro-topology-v1` carries `{ parentOrderIds }`
+     *  (root = []). Whatever's absent is filled downstream. */
     clauses: ClauseValues;
 }
 
@@ -45,14 +41,16 @@ export interface AssemblyTemplate {
     orders: AssemblyTemplateOrder[];
 }
 
-/** Read an order's parent ids — its first-class `figaro-topology-v1` clause
- *  data — straight off the order. NOT recovered by loading the agreement. */
-function parentOrderIdsOf(order: Order): string[] {
-    return order.parentOrderIds ? [...order.parentOrderIds] : [];
+/** Read a template order's parent ids — the data of its `figaro-topology-v1`
+ *  clause. The DAG is a clause like any other; this is the one accessor for it. */
+export function templateParentOrderIds(order: AssemblyTemplateOrder): string[] {
+    const ids = order.clauses[TOPOLOGY_CLAUSE_KEY]?.parentOrderIds;
+    return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
 
-/** Build the no-hash assembly template from the design's orders + the
- *  per-order clause selection. */
+/** Build the no-hash assembly template from the design's orders + the per-order
+ *  clause selection. The DAG is folded in as the `figaro-topology-v1` clause —
+ *  not a separate field. */
 export function buildAssemblyTemplate(args: {
     slug: string;
     name: string;
@@ -62,8 +60,8 @@ export function buildAssemblyTemplate(args: {
 }): AssemblyTemplate {
     const { slug, name, privilegedToken, orders, clausesByOrderId } = args;
     // Re-label each design-time (synthetic) order id to a clean local label.
-    // The template carries no chain ids and no party addresses — only topology
-    // (these labels + parentOrderIds) and clauses.
+    // The template carries no chain ids and no party addresses — only the
+    // clauses (topology among them), keyed by these local labels.
     const idToLocal = new Map(orders.map((o, i) => [o.id, `order-${i}`]));
     return {
         slug,
@@ -71,8 +69,12 @@ export function buildAssemblyTemplate(args: {
         ...(privilegedToken ? { privilegedToken } : {}),
         orders: orders.map((order, i) => ({
             id: `order-${i}`,
-            parentOrderIds: parentOrderIdsOf(order).map((p) => idToLocal.get(p) ?? p),
-            clauses: { ...(clausesByOrderId[order.id] ?? {}) },
+            clauses: {
+                ...(clausesByOrderId[order.id] ?? {}),
+                [TOPOLOGY_CLAUSE_KEY]: {
+                    parentOrderIds: (order.parentOrderIds ?? []).map((p) => idToLocal.get(p) ?? p),
+                },
+            },
         })),
     };
 }

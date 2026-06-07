@@ -173,18 +173,19 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
             name: string;
             orders: Array<{
                 id: string;
-                parentOrderIds: string[];
                 clauses: Record<string, Record<string, unknown>>;
             }>;
         };
         expect(assemblyDoc.slug).toBe(slug);
         expect(assemblyDoc.orders).toHaveLength(1);
         const root = assemblyDoc.orders[0];
-        expect(root.parentOrderIds).toEqual([]);
+        // The DAG is a clause: root's figaro-topology-v1 carries empty parents.
+        expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
             'figaro-fulfilment-v2',
             'figaro-merchant-process-v1',
             'figaro-proximity-policy-v1',
+            'figaro-topology-v1',
         ]);
         expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['consume-onsite']);
         expect(root.clauses['figaro-fulfilment-v2'].delivery).toBeUndefined();

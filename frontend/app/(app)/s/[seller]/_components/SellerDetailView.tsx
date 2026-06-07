@@ -34,6 +34,7 @@ import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitm
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/core/assemblySubOrderPlan";
+import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import { CONTRACTS } from "@/lib/core/contracts";
 import {
     APPLICABLE_LAW_CLAUSE_KEY,
@@ -462,7 +463,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
         // (fulfilment / merchant-process / jurisdiction / ghg / proximity);
         // checkout spreads them and overlays the buyer's runtime geo.
         const pickedRoot =
-            pickedAssembly?.assemblyDoc.orders.find((o) => o.parentOrderIds.length === 0) ??
+            pickedAssembly?.assemblyDoc.orders.find((o) => templateParentOrderIds(o).length === 0) ??
             pickedAssembly?.assemblyDoc.orders[0];
         try {
             setCheckoutError(null);
@@ -587,7 +588,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             // the price the buyer sees is the price that commits.
             for (const { node, seller: boundSeller } of planSubOrderSellers(pickedAssembly!)) {
                 const nodeClauses = Object.keys(node.clauses);
-                const parentOrderHashes = node.parentOrderIds
+                const parentOrderHashes = templateParentOrderIds(node)
                     .map((pid) => realOrderHash.get(pid))
                     .filter((h): h is `0x${string}` => !!h);
                 const isCourierEdge = nodeClauses.includes("figaro-courier-process-v1")

@@ -14,6 +14,7 @@
  */
 
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
+import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import type { SellerCatalogue } from "@/lib/seller/types";
 import { resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata";
 import { hexEqual } from "@/lib/shared/evm";
@@ -36,13 +37,13 @@ export function planSubOrderSellers(
 ): Array<{ node: AssemblyDocumentOrder; seller: `0x${string}` | null }> {
     const { assemblyDoc } = assembly;
     const rootId =
-        assemblyDoc.orders.find((o) => o.parentOrderIds.length === 0)?.id ??
+        assemblyDoc.orders.find((o) => templateParentOrderIds(o).length === 0)?.id ??
         assemblyDoc.orders[0]?.id;
     const settled = new Set<string>(rootId ? [rootId] : []);
     const pending = assemblyDoc.orders.filter((o) => o.id !== rootId);
     const ordered: AssemblyDocumentOrder[] = [];
     while (pending.length > 0) {
-        const idx = pending.findIndex((o) => o.parentOrderIds.every((p) => settled.has(p)));
+        const idx = pending.findIndex((o) => templateParentOrderIds(o).every((p) => settled.has(p)));
         if (idx === -1) {
             throw new Error("Assembly topology is not a DAG — a sub-order's parents are unresolvable.");
         }

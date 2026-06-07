@@ -16,10 +16,12 @@
           "bands": [
             "zone-wifi"
           ]
+        },
+        "figaro-topology-v1": {
+          "parentOrderIds": []
         }
       },
-      "id": "order-0",
-      "parentOrderIds": []
+      "id": "order-0"
     }
   ],
   "slug": "direct-sale"

@@ -37,7 +37,7 @@ import {
 import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { buildAssemblyTemplate, serializeAssemblyTemplate, type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
+import { buildAssemblyTemplate, serializeAssemblyTemplate, templateParentOrderIds, type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { useSellerProfile } from "./useSellerRegistry";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
 import {
@@ -358,9 +358,9 @@ export function requiredCounterpartyClauses(template: AssemblyTemplate): string[
 
     const clauses = new Set<string>();
     for (const order of template.orders) {
-        if (order.parentOrderIds.length === 0) continue;
+        if (templateParentOrderIds(order).length === 0) continue;
 
-        const parentAllowsSellerAssigned = order.parentOrderIds.some((parentId) =>
+        const parentAllowsSellerAssigned = templateParentOrderIds(order).some((parentId) =>
             coordinationsOf(byId.get(parentId)).includes("seller-assigned"),
         );
         if (!parentAllowsSellerAssigned) continue;
@@ -545,7 +545,7 @@ function extractRootFulfilment(
     template: AssemblyTemplate,
 ): { modalities: string[]; coordinations: string[] } {
     const rootOrder =
-        template.orders.find((o) => o.parentOrderIds.length === 0) ?? template.orders[0];
+        template.orders.find((o) => templateParentOrderIds(o).length === 0) ?? template.orders[0];
     const data = rootOrder?.clauses[FULFILMENT_V2_CLAUSE_KEY] as
         | { modalities?: unknown; delivery?: { coordination?: unknown } }
         | undefined;

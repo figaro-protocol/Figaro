@@ -1074,18 +1074,23 @@ export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: 
  *  each order, express parents as parent indices, keep the clause values.
  *  Clauses + DAG structure are the deterministic part the fixture guards. */
 export function normalizeAssemblyTemplateOrders(
-    orders: Array<{ id: string; parentOrderIds: string[]; clauses: Record<string, unknown> }>,
+    orders: Array<{ id: string; clauses: Record<string, unknown> }>,
 ): Array<{ parents: number[]; clauses: Record<string, unknown> }> {
     const idToIndex = new Map(orders.map((o, i) => [o.id, i]));
-    return orders.map((o) => ({
-        parents: o.parentOrderIds.map((p) => idToIndex.get(p) ?? -1).sort((a, b) => a - b),
-        clauses: o.clauses,
-    }));
+    return orders.map((o) => {
+        // The DAG is a clause: parents live in figaro-topology-v1's data.
+        const topo = o.clauses['figaro-topology-v1'] as { parentOrderIds?: string[] } | undefined;
+        const parentIds = Array.isArray(topo?.parentOrderIds) ? topo!.parentOrderIds : [];
+        return {
+            parents: parentIds.map((p) => idToIndex.get(p) ?? -1).sort((a, b) => a - b),
+            clauses: o.clauses,
+        };
+    });
 }
 
 export function captureOrGuardAssemblyDocument(
     assemblyDoc: Record<string, unknown> & {
-        orders: Array<{ id: string; parentOrderIds: string[]; clauses: Record<string, unknown> }>;
+        orders: Array<{ id: string; clauses: Record<string, unknown> }>;
     },
     opts: { slug: string; name: string },
 ): unknown {
@@ -1100,7 +1105,7 @@ export function captureOrGuardAssemblyDocument(
         return normalizeAssemblyTemplateOrders(assemblyDoc.orders);
     }
     const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as {
-        orders: Array<{ id: string; parentOrderIds: string[]; clauses: Record<string, unknown> }>;
+        orders: Array<{ id: string; clauses: Record<string, unknown> }>;
     };
     return normalizeAssemblyTemplateOrders(fixture.orders);
 }
