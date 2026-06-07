@@ -17,7 +17,6 @@ import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/core/encoding";
 import {
     buildOrderAgreement,
-    getTopologyParentOrderHashes,
     summarizeAgreement,
 } from "@/lib/core/orderAgreement";
 import {
@@ -138,6 +137,9 @@ export function buildSyntheticOrder(params: {
         seller: params.seller,
         currency: params.currency,
         agreementHash,
+        // First-class DAG edges (the topology clause's data) — read directly by
+        // the topology deriver, never recovered from the agreement.
+        parentOrderIds: params.parentOrderHashes ?? [],
         cumulativeValue: params.cumulativeValue,
         payment: params.payment,
         state: OrderState.Active,
@@ -228,8 +230,7 @@ export function mergeSyntheticParent(
 ): MergeResult {
     if (newParentId === child.id) return { ok: false, reason: "self-loop" };
 
-    const existingAgreement = loadAgreement(child.agreementHash);
-    const existingParents = getTopologyParentOrderHashes(existingAgreement) ?? [];
+    const existingParents = child.parentOrderIds ?? [];
 
     if (existingParents.includes(newParentId)) {
         return { ok: false, reason: "duplicate-parent" };
@@ -269,7 +270,7 @@ export function mergeSyntheticParent(
 
     return {
         ok: true,
-        child: { ...child, agreementHash: newAgreementHash },
+        child: { ...child, agreementHash: newAgreementHash, parentOrderIds: nextParents },
     };
 }
 
@@ -321,8 +322,7 @@ function swapSyntheticFulfilmentMethod(
     child: Order,
     method: CanonicalFulfilmentMethod,
 ): Order {
-    const existingAgreement = loadAgreement(child.agreementHash);
-    const existingParents = getTopologyParentOrderHashes(existingAgreement) ?? [];
+    const existingParents = child.parentOrderIds ?? [];
 
     const newAgreement = buildOrderAgreement({
         buyer: child.buyer as `0x${string}`,
@@ -335,7 +335,7 @@ function swapSyntheticFulfilmentMethod(
     const newAgreementHash = computeAgreementHash(newAgreement);
     saveAgreement(newAgreement);
 
-    return { ...child, agreementHash: newAgreementHash };
+    return { ...child, agreementHash: newAgreementHash, parentOrderIds: existingParents };
 }
 
 // ── Per-node agreement editing ──────────────────────────────────────────────
@@ -364,8 +364,7 @@ export function editSyntheticAgreement(
     order: Order,
     edits: AgreementEdits,
 ): Order {
-    const existingAgreement = loadAgreement(order.agreementHash);
-    const existingParents = getTopologyParentOrderHashes(existingAgreement) ?? [];
+    const existingParents = order.parentOrderIds ?? [];
     const existingMethod = deriveFulfilmentMethod(order);
 
     // Fulfilment method is preserved across edits — the user changes it via
@@ -401,6 +400,7 @@ export function editSyntheticAgreement(
     return {
         ...order,
         agreementHash: newAgreementHash,
+        parentOrderIds: existingParents,
         currency,
         payment,
         cumulativeValue: existingParents.length === 0 ? payment : order.cumulativeValue,

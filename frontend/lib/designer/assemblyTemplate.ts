@@ -14,8 +14,6 @@
 
 import { keccak256, toHex } from "viem";
 import type { Order } from "@/lib/core/store";
-import { loadAgreement } from "@/lib/core/agreementStore";
-import { summarizeAgreement } from "@/lib/core/orderAgreement";
 
 /** A clause on an order → the field values filled at design time. An empty
  *  object means the clause is selected but the designer set no fields (the
@@ -47,12 +45,10 @@ export interface AssemblyTemplate {
     orders: AssemblyTemplateOrder[];
 }
 
-/** Read an order's parent ids from its topology section, or [] if none. */
+/** Read an order's parent ids — its first-class `figaro-topology-v1` clause
+ *  data — straight off the order. NOT recovered by loading the agreement. */
 function parentOrderIdsOf(order: Order): string[] {
-    if (!order.agreementHash) return [];
-    const parents = summarizeAgreement(loadAgreement(order.agreementHash))?.topology
-        ?.parentOrderHashes;
-    return parents ? [...parents] : [];
+    return order.parentOrderIds ? [...order.parentOrderIds] : [];
 }
 
 /** Build the no-hash assembly template from the design's orders + the

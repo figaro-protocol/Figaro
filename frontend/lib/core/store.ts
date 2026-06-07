@@ -17,6 +17,13 @@ export interface Order {
     seller: string;
     currency?: string;       // ERC-20 token address (from OrderCommitted event)
     agreementHash?: string;  // bytes32 — opaque off-chain agreement ref
+    /** Design-time first-class DAG edges: this order's parent order ids — the
+     *  data of its `figaro-topology-v1` clause. Set by the designer when edges
+     *  are drawn, so topology is read straight from the order and never
+     *  recovered by loading its agreement. Undefined for runtime/chain orders,
+     *  whose topology lives in the committed agreement's topology section
+     *  (reconstructed off-chain by the indexer). */
+    parentOrderIds?: string[];
     cumulativeValue: bigint;
     payment: bigint;
     state: OrderState;

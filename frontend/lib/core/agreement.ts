@@ -238,46 +238,10 @@ export const COURIER_PROCESS_CLAUSE_KEY = "figaro-courier-process-v1";
 
 export type TopologyMode = "root" | "explicit" | "linear-fallback";
 
-interface CommerceSectionData {
-    currency: `0x${string}`;
-    payment: string;
-    lineItems: AgreementLineItem[];
-}
-
-interface TopologySectionData {
-    topologyMode: TopologyMode;
-    parentOrderHashes: string[];
-}
-
-export function buildCommerceSection(params: {
-    currency: `0x${string}`;
-    payment: bigint | string;
-    lineItems?: AgreementLineItem[];
-}): AgreementSection {
-    return {
-        clause: COMMERCE_CLAUSE_KEY,
-        data: {
-            currency: params.currency,
-            payment: typeof params.payment === "bigint"
-                ? params.payment.toString()
-                : params.payment,
-            lineItems: params.lineItems ?? [],
-        } satisfies CommerceSectionData,
-    };
-}
-
-export function buildTopologySection(params: {
-    topologyMode: TopologyMode;
-    parentOrderHashes?: string[];
-}): AgreementSection {
-    return {
-        clause: TOPOLOGY_CLAUSE_KEY,
-        data: {
-            topologyMode: params.topologyMode,
-            parentOrderHashes: [...new Set((params.parentOrderHashes ?? []).filter(Boolean))],
-        } satisfies TopologySectionData,
-    };
-}
+// Commerce + topology section data is now assembled by composeOrderClauseFields
+// in buildOrderAgreement (the two structural clauses are folded into the clause
+// set and projected by the generic loop), so no bespoke section builders live
+// here. This file is the agreement model + merkle only.
 
 // ── Canonical serialization ──────────────────────────────────────────────────
 

@@ -75,6 +75,19 @@ export function deriveOrderTopology(
             sourceLabel: "default root fallback",
         };
 
+        // First-class design-time topology: when the order carries its DAG edges
+        // directly (the designer set them), use them — never round-trip through
+        // the agreement. Runtime/chain orders have no parentOrderIds; their
+        // topology is recovered from the committed agreement section below.
+        if (order.parentOrderIds !== undefined) {
+            topology.set(order.id, {
+                parentOrderIds: order.parentOrderIds,
+                topologyMode: order.parentOrderIds.length === 0 ? "root" : "explicit",
+                sourceLabel: "first-class design-time topology (figaro-topology-v1 clause)",
+            });
+            continue;
+        }
+
         const agreement = order.agreementHash
             ? (agreements.get(order.agreementHash) ?? null)
             : null;

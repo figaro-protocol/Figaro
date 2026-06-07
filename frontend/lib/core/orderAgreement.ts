@@ -2,8 +2,6 @@ import type { ClauseFields } from "@/lib/core/encoding";
 import {
     type AgreementLineItem,
     buildAgreement,
-    buildCommerceSection,
-    buildTopologySection,
     FULFILMENT_V2_CLAUSE_KEY,
     GEO_CLAUSE_KEY,
     GHG_CLAUSE_KEY,
@@ -13,6 +11,7 @@ import {
     GHG_CLAUSE_TO_STANDARD,
     ARBITRATION_KLEROS_CLAUSE_KEY,
     APPLICABLE_LAW_CLAUSE_KEY,
+    COMMERCE_CLAUSE_KEY,
     CONSENT_CLAUSE_KEY,
     COURIER_PROCESS_CLAUSE_KEY,
     MERCHANT_PROCESS_CLAUSE_KEY,
@@ -154,165 +153,168 @@ export interface AgreementSummary {
     consent?: Record<string, unknown>;
 }
 
-export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreement {
-    const explicitParentOrderHashes = dedupeOrderHashes(params.parentOrderHashes);
-    const fallbackParentOrderHashes = dedupeOrderHashes(params.fallbackParentOrderHashes);
-    const topologyParentOrderHashes = explicitParentOrderHashes.length > 0
-        ? explicitParentOrderHashes
-        : fallbackParentOrderHashes;
-
-    const topologyMode: TopologyMode = topologyParentOrderHashes.length === 0
-        ? "root"
-        : explicitParentOrderHashes.length > 0
-            ? "explicit"
-            : "linear-fallback";
-
-    const sections: AgreementSection[] = [
-        buildCommerceSection({
+/** Fold an order's two STRUCTURAL clauses — commerce + topology — into its
+ *  clause set. These are the always-referenced defaults: their data is the
+ *  order's structural properties (payment/currency; DAG position), not drawer
+ *  composition. Topology mode is derived from the parent set. Every OTHER clause
+ *  is already composed in `clauseFields`. This is the single place the two
+ *  structural clauses' data is assembled; from there they are projected by the
+ *  same generic loop as every other clause — no special-casing in the build. */
+function composeOrderClauseFields(params: BuildOrderAgreementParams): ClauseFields {
+    const explicit = dedupeOrderHashes(params.parentOrderHashes);
+    const fallback = dedupeOrderHashes(params.fallbackParentOrderHashes);
+    const parents = explicit.length > 0 ? explicit : fallback;
+    const topologyMode: TopologyMode =
+        parents.length === 0 ? "root" : explicit.length > 0 ? "explicit" : "linear-fallback";
+    return {
+        ...(params.clauseFields ?? {}),
+        [COMMERCE_CLAUSE_KEY]: {
             currency: params.currency,
-            payment: params.payment,
-            lineItems: params.lineItems,
-        }),
-        buildTopologySection({
-            topologyMode,
-            parentOrderHashes: topologyParentOrderHashes,
-        }),
-    ];
+            payment: params.payment.toString(),
+            lineItems: params.lineItems ?? [],
+        },
+        [TOPOLOGY_CLAUSE_KEY]: { topologyMode, parentOrderHashes: parents },
+    };
+}
 
-    // clauseFields is now the template's nested, spec-named shape:
-    // clauseId → its field values. Most clauses project straight to a section
-    // (data === the values); geo is the one that needs encoding; a few add
-    // their auto-paired Category-1 leaves.
-    const cf: ClauseFields = params.clauseFields ?? {};
+export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreement {
+    // The agreement is a GENERIC projection over the order's clause set. The two
+    // structural clauses (commerce + topology) are folded in by
+    // composeOrderClauseFields; every other clause is whatever the assembly
+    // composed, INCLUDING permissionlessly-registered clauses this code has
+    // never heard of — those pass through verbatim. The encoder map below holds
+    // the per-clause field transforms / defaults / companion leaves still living
+    // in code (transitional — they move into each clause's spec). Sections are
+    // sorted by clause key so the pinned JSON is deterministic; the merkle root
+    // sorts its own leaves, so order never affects agreementHash.
+    const cf: ClauseFields = composeOrderClauseFields(params);
     const arrOf = (v: unknown): string[] =>
         Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
-    // Geo — raw checkout strings (origin / "5 kg") → encoded section.
-    const geo = cf[GEO_CLAUSE_KEY];
-    if (
-        geo &&
-        (typeof geo.origin === "string" ||
-            typeof geo.destination === "string" ||
-            typeof geo.mass === "string" ||
-            typeof geo.volume === "string")
-    ) {
-        sections.push(
-            clauseFieldsToGeoSection(
-                geo as { origin?: string; destination?: string; mass?: string; volume?: string; class_?: string },
-            ),
-        );
-    }
-
-    // Fulfilment — the buyer's request. Coordination + handoff are sub-clauses
-    // under delivery, matching the clause JSON. Handoff's next sub-clause,
-    // proximity, is the separate figaro-proximity-policy-v1 section below.
-    const fulfilment = cf[FULFILMENT_V2_CLAUSE_KEY];
-    const modalities = arrOf(fulfilment?.modalities).filter((m) => ALLOWED_MODALITIES.includes(m));
-    if (modalities.length > 0) {
-        const data: Record<string, unknown> = { modalities };
-        // The validator requires coordination non-empty IFF delivery is the
-        // request; default to "seller-assigned" when unset.
-        if (modalities.includes("delivery")) {
-            const deliveryIn = (fulfilment?.delivery ?? {}) as Record<string, unknown>;
-            const coords = arrOf(deliveryIn.coordination).filter((c) => ALLOWED_COORDINATIONS.includes(c));
-            data.delivery = {
-                coordination: coords.length > 0 ? coords : ["seller-assigned"],
+    // clauseId → its field transform. A clause with no entry is permissionless
+    // to this code and projects its fields verbatim. Some entries emit a paired
+    // companion leaf (proximity → proof). Empty/invalid input → null (dropped).
+    type ClauseEncoder = (fields: Record<string, unknown>) => AgreementSection | AgreementSection[] | null;
+    const ENCODERS: Record<string, ClauseEncoder> = {
+        [GEO_CLAUSE_KEY]: (geo) => {
+            if (
+                typeof geo.origin === "string" ||
+                typeof geo.destination === "string" ||
+                typeof geo.mass === "string" ||
+                typeof geo.volume === "string"
+            ) {
+                return clauseFieldsToGeoSection(
+                    geo as { origin?: string; destination?: string; mass?: string; volume?: string; class_?: string },
+                );
+            }
+            return null;
+        },
+        [FULFILMENT_V2_CLAUSE_KEY]: (fulfilment) => {
+            const modalities = arrOf(fulfilment.modalities).filter((m) => ALLOWED_MODALITIES.includes(m));
+            if (modalities.length === 0) return null;
+            const data: Record<string, unknown> = { modalities };
+            // The validator requires coordination non-empty IFF delivery is the
+            // request; default to "seller-assigned" when unset.
+            if (modalities.includes("delivery")) {
+                const deliveryIn = (fulfilment.delivery ?? {}) as Record<string, unknown>;
+                const coords = arrOf(deliveryIn.coordination).filter((c) => ALLOWED_COORDINATIONS.includes(c));
+                data.delivery = { coordination: coords.length > 0 ? coords : ["seller-assigned"] };
+            }
+            const handoff = arrOf(fulfilment.handoff).filter((h) => ALLOWED_HANDOFF_POINTS.includes(h));
+            if (handoff.length > 0) data.handoff = handoff;
+            return { clause: FULFILMENT_V2_CLAUSE_KEY, data };
+        },
+        [MERCHANT_PROCESS_CLAUSE_KEY]: () => ({ clause: MERCHANT_PROCESS_CLAUSE_KEY, data: {} }),
+        [COURIER_PROCESS_CLAUSE_KEY]: () => ({ clause: COURIER_PROCESS_CLAUSE_KEY, data: {} }),
+        [PROXIMITY_POLICY_CLAUSE_KEY]: (fields) => {
+            const bands = arrOf(fields.bands).filter((b) => ALLOWED_PROXIMITY_BANDS.includes(b));
+            if (bands.length === 0) return null;
+            return [
+                { clause: PROXIMITY_POLICY_CLAUSE_KEY, data: { bands } },
+                {
+                    clause: PROXIMITY_PROOF_CLAUSE_KEY,
+                    data: { band: bands[0], nonce: `0x${"00".repeat(32)}`, deviceSig: `0x${"00".repeat(65)}` },
+                },
+            ];
+        },
+        [ARBITRATION_KLEROS_CLAUSE_KEY]: (kleros) => {
+            const klerosCourt = typeof kleros.klerosCourt === "string" ? kleros.klerosCourt : undefined;
+            const ALLOWED_KLEROS_COURTS = ["general", "blockchain-nontechnical", "blockchain-technical", "english-language"];
+            if (!klerosCourt || !ALLOWED_KLEROS_COURTS.includes(klerosCourt)) return null;
+            const rawJurors = (kleros as { klerosMinJurors?: unknown }).klerosMinJurors;
+            const parsed = rawJurors != null && rawJurors !== "" ? Number(rawJurors) : 3;
+            return {
+                clause: ARBITRATION_KLEROS_CLAUSE_KEY,
+                data: { klerosCourt, klerosMinJurors: Number.isFinite(parsed) && parsed >= 1 ? parsed : 3 },
             };
-        }
-        // Handoff applies to any physical exchange (on-site / pickup / delivery).
-        // Flat array-of-enum (the clause JSON), single-select in the drawer.
-        const handoff = arrOf(fulfilment?.handoff).filter((h) => ALLOWED_HANDOFF_POINTS.includes(h));
-        if (handoff.length > 0) data.handoff = handoff;
-        sections.push({ clause: FULFILMENT_V2_CLAUSE_KEY, data });
+        },
+        [APPLICABLE_LAW_CLAUSE_KEY]: (law) => {
+            const applicableLaw = typeof law.applicableLaw === "string" && law.applicableLaw ? law.applicableLaw : undefined;
+            if (!applicableLaw) return null;
+            const data: Record<string, unknown> = { applicableLaw };
+            if (typeof law.forum === "string" && law.forum) data.forum = law.forum;
+            if (typeof law.language === "string" && law.language) data.language = law.language;
+            return { clause: APPLICABLE_LAW_CLAUSE_KEY, data };
+        },
+        [CONSENT_CLAUSE_KEY]: (fields) => {
+            const rawConsentDocuments = fields.documents;
+            const consentDocuments = Array.isArray(rawConsentDocuments)
+                ? rawConsentDocuments.filter((doc): doc is { documentHash: string; documentVersion: string; documentTitle: string } =>
+                    typeof doc === "object" && doc !== null
+                    && typeof (doc as Record<string, unknown>).documentHash === "string"
+                    && typeof (doc as Record<string, unknown>).documentVersion === "string"
+                    && typeof (doc as Record<string, unknown>).documentTitle === "string"
+                    && (doc as Record<string, string>).documentHash.trim() !== ""
+                    && (doc as Record<string, string>).documentVersion.trim() !== ""
+                    && (doc as Record<string, string>).documentTitle.trim() !== "",
+                )
+                : [];
+            return consentDocuments.length > 0
+                ? { clause: CONSENT_CLAUSE_KEY, data: { documents: consentDocuments } }
+                : null;
+        },
+        // Each GHG disclosure clause → its scope section. The paired runtime
+        // measurement leaf is added once below (companion of *any* disclosure).
+        ...Object.fromEntries(
+            (GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>).map((k): [string, ClauseEncoder] => [
+                k,
+                (fields) => {
+                    const rawScope = (fields as { scope?: unknown }).scope;
+                    const parsedScope = typeof rawScope === "number" ? rawScope : Number(rawScope);
+                    return { clause: k, data: { scope: Number.isFinite(parsedScope) && parsedScope ? parsedScope : 1 } };
+                },
+            ]),
+        ),
+    };
+
+    // Project every clause in the set — structural (commerce, topology) and
+    // composed alike — through ONE loop. Known clauses use their encoder;
+    // unknown (permissionless) clauses pass through verbatim. commerce + topology
+    // have no encoder, so they pass through from the data composeOrderClauseFields
+    // folded in.
+    const sections: AgreementSection[] = [];
+    for (const clauseId of Object.keys(cf)) {
+        const encode = ENCODERS[clauseId];
+        const fields = (cf[clauseId] ?? {}) as Record<string, unknown>;
+        const projected = encode ? encode(fields) : { clause: clauseId, data: fields };
+        if (projected == null) continue;
+        if (Array.isArray(projected)) sections.push(...projected);
+        else sections.push(projected);
     }
 
-    // Per-role sovereign event-log anchors (Category-1, empty data). Pure
-    // projection: a clause is included iff the template carries it. The designer
-    // materializes merchant-process / courier-process into the template at design
-    // time (selecting delivery activates them on the canvas) — they are NOT
-    // re-derived here.
-    if (cf[MERCHANT_PROCESS_CLAUSE_KEY]) {
-        sections.push({ clause: MERCHANT_PROCESS_CLAUSE_KEY, data: {} });
-    }
-    if (cf[COURIER_PROCESS_CLAUSE_KEY]) {
-        sections.push({ clause: COURIER_PROCESS_CLAUSE_KEY, data: {} });
-    }
-
-    // GHG disclosures — each selected disclosure clause is its own key.
-    const ghgKeys = (GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>).filter((k) => !!cf[k]);
-    for (const clauseKey of ghgKeys) {
-        const rawScope = (cf[clauseKey] as { scope?: unknown }).scope;
-        const parsedScope = typeof rawScope === "number" ? rawScope : Number(rawScope);
-        sections.push({
-            clause: clauseKey,
-            data: { scope: Number.isFinite(parsedScope) && parsedScope ? parsedScope : 1 },
-        });
-    }
-    // Pair the runtime measurement clause with any disclosure so grams can be
-    // filed and offsets sized at runtime.
-    if (ghgKeys.length > 0) {
+    // Companion leaf: the runtime measurement clause pairs with any GHG
+    // disclosure (added once). Companion declarations move into the spec later.
+    if ((GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>).some((k) => !!cf[k])) {
         sections.push({ clause: GHG_MEASUREMENT_CLAUSE_KEY, data: {} });
-    }
-
-    // Proximity policy + the Category-1 proof leaf its handoff attestation
-    // opens against.
-    const bands = arrOf(cf[PROXIMITY_POLICY_CLAUSE_KEY]?.bands).filter((b) =>
-        ALLOWED_PROXIMITY_BANDS.includes(b),
-    );
-    if (bands.length > 0) {
-        sections.push({ clause: PROXIMITY_POLICY_CLAUSE_KEY, data: { bands } });
-        sections.push({
-            clause: PROXIMITY_PROOF_CLAUSE_KEY,
-            data: { band: bands[0], nonce: `0x${"00".repeat(32)}`, deviceSig: `0x${"00".repeat(65)}` },
-        });
-    }
-
-    // Jurisdiction — Kleros + applicable law.
-    const kleros = cf[ARBITRATION_KLEROS_CLAUSE_KEY];
-    const klerosCourt = typeof kleros?.klerosCourt === "string" ? kleros.klerosCourt : undefined;
-    const ALLOWED_KLEROS_COURTS = ["general", "blockchain-nontechnical", "blockchain-technical", "english-language"];
-    if (klerosCourt && ALLOWED_KLEROS_COURTS.includes(klerosCourt)) {
-        const rawJurors = (kleros as { klerosMinJurors?: unknown }).klerosMinJurors;
-        const parsed = rawJurors != null && rawJurors !== "" ? Number(rawJurors) : 3;
-        sections.push({
-            clause: ARBITRATION_KLEROS_CLAUSE_KEY,
-            data: { klerosCourt, klerosMinJurors: Number.isFinite(parsed) && parsed >= 1 ? parsed : 3 },
-        });
-    }
-    const law = cf[APPLICABLE_LAW_CLAUSE_KEY];
-    const applicableLaw = typeof law?.applicableLaw === "string" && law.applicableLaw ? law.applicableLaw : undefined;
-    if (applicableLaw) {
-        const data: Record<string, unknown> = { applicableLaw };
-        if (typeof law?.forum === "string" && law.forum) data.forum = law.forum;
-        if (typeof law?.language === "string" && law.language) data.language = law.language;
-        sections.push({ clause: APPLICABLE_LAW_CLAUSE_KEY, data });
-    }
-
-    // Consent: multi-document array. Each row must have non-empty hash +
-    // version + title; partial rows are silently dropped.
-    const rawConsentDocuments = cf[CONSENT_CLAUSE_KEY]?.documents;
-    const consentDocuments = Array.isArray(rawConsentDocuments)
-        ? rawConsentDocuments.filter((doc): doc is {
-            documentHash: string;
-            documentVersion: string;
-            documentTitle: string;
-        } =>
-            typeof doc === "object" && doc !== null
-            && typeof (doc as Record<string, unknown>).documentHash === "string"
-            && typeof (doc as Record<string, unknown>).documentVersion === "string"
-            && typeof (doc as Record<string, unknown>).documentTitle === "string"
-            && (doc as Record<string, string>).documentHash.trim() !== ""
-            && (doc as Record<string, string>).documentVersion.trim() !== ""
-            && (doc as Record<string, string>).documentTitle.trim() !== "",
-        )
-        : [];
-    if (consentDocuments.length > 0) {
-        sections.push({ clause: CONSENT_CLAUSE_KEY, data: { documents: consentDocuments } });
     }
 
     if (params.extraSections?.length) {
         sections.push(...params.extraSections);
     }
+
+    // Deterministic, permissionless-safe order. The merkle root sorts its own
+    // leaves, so this only fixes the pinned-JSON byte order.
+    sections.sort((a, b) => (a.clause < b.clause ? -1 : a.clause > b.clause ? 1 : 0));
 
     return buildAgreement({
         buyer: params.buyer,
