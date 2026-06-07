@@ -21,31 +21,18 @@
 import { type PublicClient } from "viem";
 import type { CoordinatorEventSource, TimelineEvent } from "@/lib/dispute/evidenceTimeline";
 import { CONTRACTS, ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
+import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { MERCHANT_PROCESS_CLAUSE_ID } from "@/lib/mechanisms/useMerchantProcess";
 import { COURIER_PROCESS_CLAUSE_ID, PROXIMITY_CLAUSE_ID } from "@/lib/mechanisms/useCourierProcess";
 
-/** Merchant lifecycle event labels keyed by uint8 stage. */
-const MERCHANT_EVENT_LABELS: Record<number, string> = {
-    0: "Order Received",
-    1: "Order Accepted",
-    2: "Preparation Started",
-    3: "Ready for Pickup",
-    4: "Handed Off",
-    5: "Order Cancelled",
-};
+// Merchant + courier lifecycle labels are the clause's OWN event codes, read
+// straight from the spec (`describeAttestation`) — never a frontend label map.
+// (A hardcoded map drifted: it numbered handed-off as stage 4 and invented an
+// 8-rung courier ladder the courier clause enum never had.)
 
-/** Courier lifecycle event labels keyed by uint8 stage. */
-const COURIER_EVENT_LABELS: Record<number, string> = {
-    0: "Courier Available",
-    1: "Courier Accepted",
-    2: "En Route to Pickup",
-    3: "Arrived at Pickup",
-    4: "In Transit",
-    5: "Arrived at Dropoff",
-    6: "Delivered",
-    7: "Job Cancelled",
-};
-
+// Proximity band labels stay a local map: the on-chain band stage is the proof
+// clause's enum ordinal + 1 (the validator rejects band 0 / "None"), so it is
+// NOT a direct enum lookup — see `committedBand` in deriveProcessModelFromRuntime.
 const BAND_LABELS: Record<number, string> = {
     0: "None",
     1: "Zone (WiFi ~30m)",
@@ -118,7 +105,7 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
 
                 if (clauseId === MERCHANT_PROCESS_CLAUSE_ID) {
                     events.push({
-                        label: MERCHANT_EVENT_LABELS[stage] ?? `Merchant Event ${stage}`,
+                        label: describeAttestation(MERCHANT_PROCESS_CLAUSE_ID, stage).eventLabel,
                         blockNumber: log.blockNumber!,
                         timestamp: ts,
                         iso: new Date(ts * 1000).toISOString(),
@@ -134,7 +121,7 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
                     });
                 } else if (clauseId === COURIER_PROCESS_CLAUSE_ID) {
                     events.push({
-                        label: COURIER_EVENT_LABELS[stage] ?? `Courier Event ${stage}`,
+                        label: describeAttestation(COURIER_PROCESS_CLAUSE_ID, stage).eventLabel,
                         blockNumber: log.blockNumber!,
                         timestamp: ts,
                         iso: new Date(ts * 1000).toISOString(),

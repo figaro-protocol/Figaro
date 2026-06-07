@@ -237,6 +237,6 @@ All runtime specs below predate the fulfilment retirement and read the dead
 | `local-commerce-offset` | (to author) | `local-commerce-offset-scenario` (rewrite) |
 | `local-food-basket` | (to author) | (to author) |
 
-`onsite-purchase` is the **legacy** direct-sale runtime against the *seeded* Counter
-& Co. (anvil[5], `scripts/seed-devnet.mjs` — deleted); `direct-sale-runtime` is its
-mainnet-compliant replacement against the roster-onboarded Aurora Café (anvil[6]).
+`direct-sale-runtime` is the mainnet-compliant direct-sale runtime against the
+roster-onboarded Aurora Café (anvil[6]). (Its legacy predecessor `onsite-purchase`,
+which ran against the deleted `scripts/seed-devnet.mjs`, was removed.)

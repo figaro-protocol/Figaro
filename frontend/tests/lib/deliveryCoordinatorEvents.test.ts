@@ -82,7 +82,7 @@ describe("createDeliveryCoordinatorSource", () => {
         expect(client.getContractEvents).toHaveBeenCalledTimes(1);
     });
 
-    it("maps merchant-process events (stage 2 = Preparation Started)", async () => {
+    it("maps merchant-process events (stage 2 = handed-off, the clause enum)", async () => {
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient(
             {
@@ -103,7 +103,7 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toBe("Preparation Started");
+        expect(events[0].label).toBe("handed-off");
         expect(events[0].eventName).toBe("Attestation");
         expect(events[0].orderHash).toBe("0xorder1");
         expect(events[0].timestamp).toBe(1700000100);
@@ -156,7 +156,7 @@ describe("createDeliveryCoordinatorSource", () => {
         expect(events[0].label).toContain("Contact (NFC ~4cm)");
     });
 
-    it("maps courier-process Attestation for completed (stage 6)", async () => {
+    it("maps courier-process Attestation for completed (stage 4, the clause enum)", async () => {
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient({
             Attestation: [
@@ -165,7 +165,7 @@ describe("createDeliveryCoordinatorSource", () => {
                     orderHash: "0xorder4",
                     clauseId: COURIER_CLAUSE_ID,
                     attester: "0xDriver",
-                    stage: 6, // completed
+                    stage: 4, // completed (en-route-pickup=0 … completed=4, cancelled=5)
                     contentRef: "0x",
                 }),
             ],
@@ -174,7 +174,7 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toBe("Delivered");
+        expect(events[0].label).toBe("completed");
         expect(events[0].eventName).toBe("Attestation");
         expect(events[0].details.clause).toBe("courier-process");
     });
@@ -237,8 +237,8 @@ describe("createDeliveryCoordinatorSource", () => {
 
         expect(events).toHaveLength(3);
         expect(events.map((e) => e.label)).toEqual([
-            "Preparation Started",
-            "En Route to Pickup",
+            "handed-off",   // merchant stage 2
+            "in-transit",   // courier stage 2
             expect.stringContaining("Proximity Proof"),
         ]);
     });
