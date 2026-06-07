@@ -24,17 +24,15 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { keccak256, toHex, parseAbi, BaseError, ContractFunctionRevertedError } from "viem";
+import { keccak256, parseAbi, BaseError, ContractFunctionRevertedError } from "viem";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { publicClient, activeChain } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import { loadAgreement } from "@/lib/core/agreementStore";
 import { FULFILMENT_V2_CLAUSE_KEY, TOPOLOGY_CLAUSE_KEY } from "@/lib/core/agreement";
 import {
     deriveCanonicalFulfilmentMethod,
     type CanonicalFulfilmentMethod,
 } from "@/lib/core/orderAgreement";
-import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { buildAssemblyTemplate, serializeAssemblyTemplate, templateParentOrderIds, type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
@@ -62,27 +60,6 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
 // The old `MAX_NODES_PER_ASSEMBLY` export is gone; callers that need
 // the chain-aware cap import `maxOrdersResolvablePerProcess` directly.
 
-/** Off-chain assemblyDoc persisted to IPFS. Content-addressed by keccak256
- *  of its canonical JSON serialization (`canonicalize` below). The
- *  on-chain binding stores only contentHash + metadataURI; this object
- *  carries the topology + per-order agreements. */
-interface AssemblyDocument {
-    slug: string;
-    name: string;
-    /** Synthetic-process metadata so the canvas can faithfully restore
-     *  session state when a forked draft is hydrated. */
-    processId: string;
-    nextOrderIndex: number;
-    nextSellerIndex: number;
-    /** Topology — each order's id, parent connections live in its
-     *  agreement's figaro-topology-v1 section. */
-    orders: Order[];
-    /** Per-agreementHash, the full agreement document with all clause
-     *  sections. Inlined so the assemblyDoc is self-contained — consumers
-     *  don't need a separate agreement-store fetch. */
-    agreements: Record<string, Agreement>;
-}
-
 /** Stable JSON serialization — sorted object keys at every depth, bigints
  *  serialized as decimal strings. The off-chain content hash and the
  *  IPFS-pinned bytes both derive from this function so they always agree. */
@@ -100,48 +77,6 @@ export function getAssemblyRegistry(): `0x${string}` | null {
     const addr = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
     if (!addr) return null;
     return addr as `0x${string}`;
-}
-
-/** Build a self-contained assemblyDoc from a DesignSnapshot. Inlines every
- *  order's agreement so the assemblyDoc doesn't depend on any external
- *  agreement-store state. Throws if any order's agreement is missing
- *  locally. */
-function buildAssemblyDocument(snapshot: DesignSnapshot): AssemblyDocument {
-    if (snapshot.orders.length === 0) {
-        throw new Error("Assembly has no orders.");
-    }
-    const agreements: Record<string, Agreement> = {};
-    for (const order of snapshot.orders) {
-        if (!order.agreementHash) {
-            throw new Error(`Order ${order.id} has no agreement.`);
-        }
-        const agreement = loadAgreement(order.agreementHash);
-        if (!agreement) {
-            throw new Error(
-                `Agreement ${order.agreementHash} for order ${order.id} not found in local storage.`,
-            );
-        }
-        agreements[order.agreementHash] = agreement;
-    }
-    return {
-        slug: snapshot.slug,
-        name: snapshot.name,
-        processId: snapshot.processId,
-        nextOrderIndex: snapshot.nextOrderIndex,
-        nextSellerIndex: snapshot.nextSellerIndex,
-        orders: snapshot.orders,
-        agreements,
-    };
-}
-
-/** Canonicalize the assemblyDoc and compute (canonical bytes, content hash). */
-function serializeAssemblyDocument(assemblyDoc: AssemblyDocument): {
-    json: string;
-    contentHash: `0x${string}`;
-} {
-    const json = canonicalize(assemblyDoc);
-    const contentHash = keccak256(toHex(json));
-    return { json, contentHash };
 }
 
 export interface PublishOutcome {
