@@ -86,12 +86,9 @@ check() {
 }
 
 # ── total count: every clause including manifest-only topology-v1 ────────────
-check "script/Deploy.s.sol" \
-    'Registered [0-9]+ reference clauses' \
-    "$total" "Deploy.s.sol registration console.log"
-check "script/DeployMainnet.s.sol" \
-    'ClauseRegistry: [0-9]+ reference clauses registered' \
-    "$total" "DeployMainnet registration console.log"
+# NB: the deploy scripts no longer register clause CONTENT (that moved to
+# populate-clauses.mjs), so they carry no clause-count console.log to track here.
+# They still wire validators — see the runtime-attestable section below.
 check "docs/v5/FRONTEND.md" \
     '[0-9]+ clauses in$' \
     "$total" "FRONTEND.md clauses-dir count"
