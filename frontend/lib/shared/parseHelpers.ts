@@ -58,13 +58,6 @@ function asArray(value: unknown, path: string): unknown[] {
     return value;
 }
 
-export function asStringArray(value: unknown, path: string): string[] {
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-    return value.map((entry, index) => asString(entry, `${path}[${index}]`));
-}
-
 export function asEnum<T extends string>(value: unknown, allowed: Set<T>, path: string): T {
     const stringValue = asString(value, path);
     if (!allowed.has(stringValue as T)) {

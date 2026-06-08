@@ -45,9 +45,7 @@ function buildBinding(
         bindingId: `binding:${wallet.toLowerCase()}:${choice.slug}`,
         subjectAddress: wallet,
         assemblySlug: choice.slug,
-        networkTargets: [...choice.networkTargets],
         counterpartyBindings: counterpartyBindings.length > 0 ? counterpartyBindings : undefined,
-        version: "1.0.0",
     };
 }
 

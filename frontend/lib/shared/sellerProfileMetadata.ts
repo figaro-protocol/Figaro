@@ -32,7 +32,6 @@ import {
     asOptionalString,
     asRecord,
     asString,
-    asStringArray,
     type UnknownRecord,
 } from "@/lib/shared/parseHelpers";
 
@@ -86,14 +85,7 @@ export interface AssemblyBindingRecord {
     bindingId: string;
     subjectAddress: `0x${string}`;
     assemblySlug: string;
-    networkTargets: string[];
     counterpartyBindings?: CounterpartyBinding[];
-    metadataURI?: string;
-    metadataHash?: string;
-    assetURI?: string;
-    assetHash?: string;
-    effectiveFrom?: string;
-    version: string;
 }
 
 /**
@@ -156,8 +148,6 @@ export interface SellerProfileMetadata {
     services?: SellerAgentServices;
     /** IPFS URI of the wallet's catalogue document. */
     catalogueURI?: string;
-    /** Document-shape version. */
-    version?: string;
 }
 
 // ── Assembly-binding parser helpers ──────────────────────────────────────────
@@ -189,14 +179,7 @@ function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution
         bindingId: asString(record.bindingId, `${sourceLabel}.bindingId`),
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
         assemblySlug: asString(record.assemblySlug, `${sourceLabel}.assemblySlug`),
-        networkTargets: asStringArray(record.networkTargets, `${sourceLabel}.networkTargets`),
         counterpartyBindings: parseCounterpartyBindingArray(record.counterpartyBindings, `${sourceLabel}.counterpartyBindings`),
-        metadataURI: asOptionalString(record.metadataURI, `${sourceLabel}.metadataURI`),
-        metadataHash: asOptionalString(record.metadataHash, `${sourceLabel}.metadataHash`),
-        assetURI: asOptionalString(record.assetURI, `${sourceLabel}.assetURI`),
-        assetHash: asOptionalString(record.assetHash, `${sourceLabel}.assetHash`),
-        effectiveFrom: asOptionalString(record.effectiveFrom, `${sourceLabel}.effectiveFrom`),
-        version: asString(record.version, `${sourceLabel}.version`),
     };
 }
 
@@ -312,7 +295,6 @@ export function parseSellerProfileDocument(
         assemblyBindings: parseAssemblyBindings(record.assemblyBindings, `${sourceLabel}.assemblyBindings`),
         services: parseAgentServicesField(record.services, `${sourceLabel}.services`),
         catalogueURI: asOptionalString(record.catalogueURI, `${sourceLabel}.catalogueURI`),
-        version: asOptionalString(record.version, `${sourceLabel}.version`),
     };
 }
 

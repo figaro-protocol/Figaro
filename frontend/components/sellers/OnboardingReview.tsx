@@ -82,7 +82,6 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
         defaultTokenAddress: state.profile.defaultTokenAddress,
         assemblyBindings: state.assemblies,
         services: state.services,
-        version: "1.0.0",
     };
 
     return { profileTemplate };

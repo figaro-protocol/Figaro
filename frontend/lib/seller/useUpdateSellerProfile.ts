@@ -167,7 +167,6 @@ function mergeProfile(
         ),
         // Preserve the wallet stamp — the patch never touches subjectAddress.
         subjectAddress: existing.subjectAddress,
-        version: patch.version ?? existing.version ?? "1.0.0",
     } as SellerProfileMetadata;
 
     // Strip explicitly-cleared fields. `subjectAddress` is non-clearable
